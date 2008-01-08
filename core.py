@@ -51,6 +51,16 @@ def print_graph(*rs):
     print as_string(*rs)
 
 
+def input(x):
+    if isinstance(x, numpy.ndarray):
+        return NumpyR(x)
+    elif isinstance(x, (int, float)):
+        return NumpyR(numpy.array(x))
+    elif isinstance(x, gof.Result):
+        raise TypeError("%s is already a result." % x)
+    else:
+        return PythonR(x)
+
 def wrap(x):
     if isinstance(x, NumpyR):
         return x
@@ -60,12 +70,34 @@ def wrap(x):
         return x.out
     elif isinstance(x, Proxy):
         return wrap(x._obj)
-    elif isinstance(x, numpy.ndarray):
-        return NumpyR(x)
-    elif isinstance(x, (int, float)):
-        return NumpyR(numpy.array(x))
     else:
-        return PythonR(x)
+        return input(x)
+#     elif isinstance(x, numpy.ndarray):
+#         return NumpyR(x)
+#     elif isinstance(x, (int, float)):
+#         return NumpyR(numpy.array(x))
+#     else:
+#         return PythonR(x)
+
+def literal(x):
+    try:
+        present = x in gof.literals_db
+    except TypeError: # x is unhashable
+        present = False
+
+    if present:
+        return gof.literals_db.get(x)
+    elif isinstance(x, numpy.ndarray):
+        ret = NumpyR(x, constant = True)
+    elif isinstance(x, (int, float)):
+        ret = NumpyR(numpy.array(x), constant = True)
+    elif isinstance(x, gof.Result):
+        raise TypeError("%s is already a result." % x)
+    else:
+        return PythonR(x, constant = True)
+    gof.literals_db[x] = ret
+    return ret
+
 
 
 inplace = gof.Destroyer

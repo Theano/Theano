@@ -11,6 +11,7 @@ import core
 
 
 def to_func(inputs, outputs):
+    print gof.Env(inputs, outputs)
     p = prog(inputs, outputs)
     print p.env
     def f(*args):
