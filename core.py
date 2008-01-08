@@ -9,26 +9,28 @@ from copy import copy as pycopy
 
 _mode = ['eval']
 
-def set_mode(mode):
-    _mode.append(mode)
+# def set_mode(mode):
+#     _mode.append(mode)
 
-def current_mode():
-    return _mode
+# def current_mode():
+#     return _mode[-1]
 
-def build_mode():
-    set_mode('build')
+# def build_mode():
+#     set_mode('build')
 
-def eval_mode():
-    set_mode('eval')
+# def eval_mode():
+#     set_mode('eval')
 
-def pop_mode():
-    if len(_mode) == 1:
-        raise Exception("There's only one mode left on the stack.")
-    else:
-        _mode.pop()
+# def pop_mode():
+#     if len(_mode) == 1:
+#         raise Exception("There's only one mode left on the stack.")
+#     else:
+#         _mode.pop()
 
-def end_eval():
-    set_mode('eval')
+# def end_eval():
+#     set_mode('eval')
+
+current_mode, set_mode, build_mode, eval_mode, pop_mode = gof.current_mode, gof.set_mode, gof.build_mode, gof.eval_mode, gof.pop_mode
 
 def build(f, *args, **kwargs):
     build_mode()
@@ -37,23 +39,27 @@ def build(f, *args, **kwargs):
     return r
 
 
-class Keyword:
+# class Keyword:
 
-    def __init__(self, name, nonzero=True):
-        self.name = name
-        self.nonzero = nonzero
+#     def __init__(self, name, nonzero=True):
+#         self.name = name
+#         self.nonzero = nonzero
 
-    def __nonzero__(self):
-        return self.nonzero
+#     def __nonzero__(self):
+#         return self.nonzero
 
-    def __str__(self):
-        return "<%s>" % self.name
+#     def __str__(self):
+#         return "<%s>" % self.name
 
-    def __repr__(self):
-        return str(self)
+#     def __repr__(self):
+#         return str(self)
 
-UNCOMPUTED = Keyword("UNCOMPUTED", False)
-UNDEFINED = Keyword("UNDEFINED", False)
+UNCOMPUTED = gof.UNCOMPUTED
+UNDEFINED = gof.UNDEFINED
+
+# UNCOMPUTED = Keyword("UNCOMPUTED", False)
+# UNDEFINED = Keyword("UNDEFINED", False)
+
 
 
 class Proxy(object):
@@ -79,62 +85,63 @@ class Proxy(object):
         delattr(self._obj, attr)
 
 
-class IViewer(gof.ext.Viewer):
-    _v_map = {}
+# class IViewer(gof.ext.Viewer):
+#     _v_map = {}
 
-    def view_map(self):
-        rval = {}
-        for output, inputs in self._v_map.items():
-            if isinstance(inputs, (list, tuple)):
-                rval[self.outputs[output]] = [self.inputs[i] for i in inputs]
-            else:
-                rval[self.outputs[output]] = self.inputs[inputs]
-        return rval
-
-
-class IDestroyer(gof.ext.Destroyer):
-    _d_map = {}
-
-    def destroy_map(self):
-        rval = {}
-        for output, inputs in self._d_map.items():
-            if isinstance(inputs, (list, tuple)):
-                rval[self.outputs[output]] = [self.inputs[i] for i in inputs]
-            else:
-                rval[self.outputs[output]] = self.inputs[inputs]
-        return rval
+#     def view_map(self):
+#         rval = {}
+#         for output, inputs in self._v_map.items():
+#             if isinstance(inputs, (list, tuple)):
+#                 rval[self.outputs[output]] = [self.inputs[i] for i in inputs]
+#             else:
+#                 rval[self.outputs[output]] = self.inputs[inputs]
+#         return rval
 
 
-class PythonR(gof.HolderResult):
+# class IDestroyer(gof.ext.Destroyer):
+#     _d_map = {}
 
-    def __init__(self, a = None):
-        if a is None:
-            self.storage = UNCOMPUTED
-        else:
-            self.storage = a
-
-    def set_value(self, value):
-        self.storage = value
-
-    def __str__(self):
-        return str(self.storage)
-
-    def __repr__(self):
-        return repr(self.storage)
+#     def destroy_map(self):
+#         rval = {}
+#         for output, inputs in self._d_map.items():
+#             if isinstance(inputs, (list, tuple)):
+#                 rval[self.outputs[output]] = [self.inputs[i] for i in inputs]
+#             else:
+#                 rval[self.outputs[output]] = self.inputs[inputs]
+#         return rval
 
 
-class NumpyR(gof.HolderResult):
+# class PythonR(gof.HolderResult):
 
-    def __init__(self, a = None):
-        self.set_value(a)
+#     def __init__(self, a = None):
+#         if a is None:
+#             self.storage = UNCOMPUTED
+#         else:
+#             self.storage = a
+
+#     def set_value(self, value):
+#         self.storage = value
+
+#     def __str__(self):
+#         return str(self.storage)
+
+#     def __repr__(self):
+#         return repr(self.storage)
+# gof.PythonR = PythonR
+
+
+class NumpyR(gof.PythonR):
+
+#     def __init__(self, a = None):
+#         self.set_value(a)
 
     def set_value(self, value):
         if value is None or value is UNCOMPUTED:
-            self.storage = UNCOMPUTED
+            self.data = UNCOMPUTED
         elif isinstance(value, numpy.ndarray):
-            self.storage = value
+            self.data = value
         else:
-            self.storage = numpy.array(value)
+            self.data = numpy.array(value)
         
     def __add__(self, y):
         return add(self, y)
@@ -196,12 +203,7 @@ class NumpyR(gof.HolderResult):
     def __copy__(self):
         return array_copy(self)
     
-    def __str__(self):
-        return str(self.storage)
 
-    def __repr__(self):
-        return repr(self.storage)
-    
 #[iadd(iadd(iadd(iadd(<UNCOMPUTED>, itwice(<UNCOMPUTED>)), <UNCOMPUTED>), 1.0), dot(<UNCOMPUTED>, <UNCOMPUTED>))]
 #[iadd(iadd(iadd(iadd(<UNCOMPUTED>, itwice(<UNCOMPUTED>)), <UNCOMPUTED>), 1.0), dot(<UNCOMPUTED>, <UNCOMPUTED>))]
 
@@ -220,79 +222,79 @@ def wrap(x):
     
     if isinstance(x, NumpyR):
         return x
-    elif isinstance(x, PythonR):
+    elif isinstance(x, gof.PythonR):
         return x
-    elif isinstance(x, NumpyOp):
+    elif isinstance(x, omega_op):
         return x.out
     elif isinstance(x, Proxy):
         return wrap(x._obj)
     elif isinstance(x, numpy.ndarray):
         return NumpyR(x)
     else:
-        return PythonR(x)
+        return gof.PythonR(x)
 #     else:
 #         raise TypeError("%s cannot be converted to or encapsulated in a NumpyR instance." % x)
 
 
-class NumpyOp(gof.Op, gof.ext.BuildableFromInputs):
+# class NumpyOp(gof.Op, gof.ext.BuildableFromInputs):
 
-    nout = 1
+#     nout = 1
     
-    def __init__(self, *args):
-        inputs = [wrap(arg) for arg in args]
-        outputs = [NumpyR() for i in xrange(self.nout)]
-        gof.Op.__init__(self, inputs, outputs)
+#     def __init__(self, *args):
+#         inputs = [wrap(arg) for arg in args]
+#         outputs = [NumpyR() for i in xrange(self.nout)]
+#         gof.Op.__init__(self, inputs, outputs)
 
-    @classmethod
-    def from_inputs(cls, *inputs):
-        return cls(*inputs)
+#     @classmethod
+#     def from_inputs(cls, *inputs):
+#         return cls(*inputs)
 
-    def gen_outputs(self):
-        return [NumpyR() for i in xrange(self.nout)]
+#     def gen_outputs(self):
+#         return [NumpyR() for i in xrange(self.nout)]
 
 
 
-class wrapper:
+# class wrapper:
 
-    __slots__ = ['f', 'opclass']
+#     __slots__ = ['f', 'opclass']
     
-    def __init__(self, name, f, grad, vmap = None, dmap = None, optype = NumpyOp):
-        self.f = f
+#     def __init__(self, name, f, grad, vmap = None, dmap = None, optype = NumpyOp):
+#         self.f = f
 
-        if not callable(f):
-            raise TypeError("Can only wrap a callable.")
+#         if not callable(f):
+#             raise TypeError("Can only wrap a callable.")
 
-        bases = [optype]
-        if vmap: bases.append(IViewer)
-        if dmap: bases.append(IDestroyer)
+#         bases = [optype]
+#         if vmap: bases.append(IViewer)
+#         if dmap: bases.append(IDestroyer)
         
-        Wrapper = type(name, tuple(bases), {})
-        if vmap: Wrapper._v_map = vmap
-        if dmap: Wrapper._d_map = dmap
+#         Wrapper = type(name, tuple(bases), {})
+#         if vmap: Wrapper._v_map = vmap
+#         if dmap: Wrapper._d_map = dmap
         
-        def thunk(self):
-            def ret():
-                self.outputs[0].set_value(f(*[input.storage for input in self.inputs]))
-            return ret
-        Wrapper.thunk = thunk
+#         def thunk(self):
+#             def ret():
+#                 self.outputs[0].set_value(f(*[input.storage for input in self.inputs]))
+#             return ret
+#         Wrapper.thunk = thunk
         
-        if grad is UNDEFINED:
-            grad = lambda *_: UNDEFINED
-        Wrapper.grad = staticmethod(grad)
+#         if grad is UNDEFINED:
+#             grad = lambda *_: UNDEFINED
+#         Wrapper.grad = staticmethod(grad)
 
-        self.opclass = Wrapper
+#         self.opclass = Wrapper
 
     
-    def __call__(self, *args):
-        op = self.opclass(*args)
-        if current_mode() == 'eval':
-            op.thunk()()
-        outputs = pycopy(op.outputs)
-#        outputs = [Proxy(output) for output in op.outputs]
-        if op.nout == 1:
-            return outputs[0]
-        else:
-            return outputs
+#     def __call__(self, *args):
+#         op = self.opclass(*args)
+#         if current_mode() == 'eval':
+#             op.thunk()()
+#         outputs = pycopy(op.outputs)
+# #        outputs = [Proxy(output) for output in op.outputs]
+#         if op.nout == 1:
+#             return outputs[0]
+#         else:
+#             return outputs
 
 
 # def wrap_producer(f):
@@ -304,19 +306,11 @@ class wrapper:
 #     return ret
 
 
-def wrap_producer(f):
-    wrapped_f = wrapper(f.__name__, f, UNDEFINED)
-    def ret(dim, dtype = 'float', order = 'C'):
-        return wrapped_f(dim, dtype, order)
-    return ret
-
-
-
-
-ndarray = wrap_producer(numpy.ndarray)
-array = wrap_producer(numpy.array)
-zeros = wrap_producer(numpy.zeros)
-ones = wrap_producer(numpy.ones)
+# def wrap_producer(f):
+#     wrapped_f = wrapper(f.__name__, f, UNDEFINED)
+#     def ret(dim, dtype = 'float', order = 'C'):
+#         return wrapped_f(dim, dtype, order)
+#     return ret
 
 
 inplace = gof.ext.Destroyer
@@ -331,59 +325,60 @@ class omega_op_metaclass(type):
 
 
 
-class omega_op(gof.Op, gof.ext.BuildableFromInputs):
+class omega_op(gof.PythonOp):  #(gof.Op, gof.ext.BuildableFromInputs):
 
-    __metaclass__ = omega_op_metaclass
+##    __metaclass__ = omega_op_metaclass
     
-    nout = 1
+##    nout = 1
 
-    @classmethod
+    @staticmethod
     def __clsinit__(cls, name, bases, dct):
-        # make grad and impl static methods
+        # make grad a static method
         grad = cls.grad
         if hasattr(grad, 'im_func'):
             grad = grad.im_func
-        impl = cls.impl
-        if hasattr(cls.impl, 'im_func'):
-            impl = impl.im_func
         cls.grad = staticmethod(grad)
-        cls.impl = staticmethod(impl)
+
+        # make impl a static method
+        gof.PythonOp.__clsinit__(cls, name, bases, dct)
     
     def __new__(cls, *inputs):
-        op = gof.Op.__new__(cls)
-        op.__init__(*[wrap(input) for input in inputs])
-        if current_mode() == 'eval':
-            op.thunk()()
-        if op.nout == 1:
-            return op.out
-        else:
-            return op.outputs
+        inputs = [wrap(input) for input in inputs]
+        return gof.PythonOp.__new__(cls, *inputs)
+#         op = gof.Op.__new__(cls)
+#         op.__init__(*[wrap(input) for input in inputs])
+#         if cls.current_mode() == 'eval':
+#             op.thunk()()
+#         if op.nout == 1:
+#             return op.out
+#         else:
+#             return op.outputs
     
-    def __init__(self, *inputs):
-        for input in inputs:
-            assert isinstance(input, gof.HolderResult)
-        gof.Op.__init__(self, inputs, self.gen_outputs())
+#     def __init__(self, *inputs):
+#         for input in inputs:
+#             assert isinstance(input, gof.HolderResult)
+#         gof.Op.__init__(self, inputs, self.gen_outputs())
 
-    @classmethod
-    def from_inputs(cls, *inputs):
-        build_mode()
-        r = cls(*inputs)
-        pop_mode()
-        return r.owner
+#     @classmethod
+#     def from_inputs(cls, *inputs):
+#         build_mode()
+#         r = cls(*inputs)
+#         pop_mode()
+#         return r.owner
 
     def gen_outputs(self):
         return [NumpyR() for i in xrange(self.nout)]
 
-    def thunk(self):
-        def ret():
-            results = self.impl(*[input.storage for input in self.inputs])
-            if self.nout == 1:
-                self.out.set_value(results)
-            else:
-                assert self.nout == len(results)
-                for result, output in zip(results, self.outputs):
-                    output.set_value(result)
-        return ret
+#     def thunk(self):
+#         def ret():
+#             results = self.impl(*[input.storage for input in self.inputs])
+#             if self.nout == 1:
+#                 self.out.set_value(results)
+#             else:
+#                 assert self.nout == len(results)
+#                 for result, output in zip(results, self.outputs):
+#                     output.set_value(result)
+#         return ret
     
     def update_gradient(self, grad_d):
         inputgs = self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
@@ -395,8 +390,22 @@ class omega_op(gof.Op, gof.ext.BuildableFromInputs):
     def grad(*args):
         return UNDEFINED
 
-    def impl(*args):
-        raise NotImplementedError("This op has no implementation.")
+#     def impl(*args):
+#         raise NotImplementedError("This op has no implementation.")
+
+    
+def wrap_producer(f):
+    class producer(omega_op):
+        impl = f
+    producer.__name__ = f.__name__
+    def ret(dim, dtype = 'float', order = 'C'):
+        return producer(dim, dtype, order)
+    return ret
+
+ndarray = wrap_producer(numpy.ndarray)
+array = wrap_producer(numpy.array)
+zeros = wrap_producer(numpy.zeros)
+ones = wrap_producer(numpy.ones)
 
     
 
@@ -419,6 +428,7 @@ class proto_twice(omega_op):
 
 class twice(proto_twice):
     def impl(x):
+#        print x
         return x + x
 
 class itwice(proto_twice, inplace):
@@ -443,88 +453,90 @@ class isub(proto_sub, inplace):
 
 ## Element-wise multiplication ##
 
-def mul_grad(x, y, gz):
-    return mul(y, gz), mul(x, gz)
+class proto_mul(omega_op):
+    def grad(x, y, gz):
+        return mul(y, gz), mul(x, gz)
 
-mul = wrapper("mul",
-              numpy.ndarray.__mul__,
-              mul_grad)
+class mul(proto_mul):
+    impl = numpy.ndarray.__mul__
 
-imul = wrapper("imul",
-               numpy.ndarray.__imul__,
-               mul_grad,
-               dmap = {0: 0})
-
-def sqr_grad(x, gz):
-    return scal(mul(x, gz), 2.0)
-
-sqr = wrapper("sqr",
-              lambda x: numpy.multiply(x, x),
-              sqr_grad)
-
-isqr = wrapper("isqr",
-               lambda x: x.__imul__(x),
-               sqr_grad,
-               dmap = {0: 0})
-
-def sqrt_grad(x, gz):
-    return scal(div(gz, sqrt(x)), 0.5)
-
-sqrt = wrapper("sqrt",
-               lambda x: numpy.sqrt(x),
-               sqrt_grad)
-
-isqrt = wrapper("isqrt",
-                lambda x: x.__ipow__(0.5),
-                sqrt_grad,
-                dmap = {0: 0})
+class imul(proto_mul, inplace):
+    impl = numpy.ndarray.__imul__
 
 
-## Element-wise division ##
+class proto_sqr(omega_op):
+    def grad(x, gz):
+        return scal(mul(x, gz), 2.0)
 
-def div_grad(x, y, gz):
-    return div(gz, y), -div(mul(x, gz), sqr(y))
+class sqr(proto_sqr):
+    impl = lambda x: numpy.multiply(x, x)
 
-div = wrapper("div",
-              numpy.ndarray.__div__,
-              div_grad)
-
-idiv = wrapper("idiv",
-               numpy.ndarray.__idiv__,
-               div_grad,
-               dmap = {0: 0})
+class isqr(proto_sqr, inplace):
+    impl = lambda x: x.__imul__(x),
 
 
-## Scaling ##
+class proto_sqrt(omega_op):
+    def grad(x, gz):
+        return scal(div(gz, sqrt(x)), 0.5)
 
-def scal_grad(x, a, gz):
-    return scal(a, gz), sum(mul(x, gz))
+class sqrt(proto_sqrt):
+    impl = numpy.sqrt
 
-scal = wrapper("scal",
-               numpy.ndarray.__mul__,
-               scal_grad)
-
-iscal = wrapper("iscal",
-                numpy.ndarray.__imul__,
-                scal_grad,
-                dmap = {0: 0})
-
-neg = wrapper("neg",
-              numpy.ndarray.__neg__,
-              lambda x, gz: -gz)
-
-ineg = wrapper("ineg",
-               lambda x: x.__imul__(-1),
-               lambda x, gz: -gz,
-               dmap = {0: 0})
+class isqrt(proto_sqrt, inplace):
+    impl = lambda x: x.__ipow__(0.5)
 
 
-## Dot product ##
+## Exponentiation ##
 
-dot = wrapper("dot",
-              numpy.dot,
-              lambda x, y, gz: (dot(gz, transpose(y)),
-                                dot(transpose(x), gz)))
+class exp(omega_op):
+    impl = numpy.exp
+    
+
+# ## Element-wise division ##
+
+# def div_grad(x, y, gz):
+#     return div(gz, y), -div(mul(x, gz), sqr(y))
+
+# div = wrapper("div",
+#               numpy.ndarray.__div__,
+#               div_grad)
+
+# idiv = wrapper("idiv",
+#                numpy.ndarray.__idiv__,
+#                div_grad,
+#                dmap = {0: 0})
+
+
+# ## Scaling ##
+
+# def scal_grad(x, a, gz):
+#     return scal(a, gz), sum(mul(x, gz))
+
+# scal = wrapper("scal",
+#                numpy.ndarray.__mul__,
+#                scal_grad)
+
+# iscal = wrapper("iscal",
+#                 numpy.ndarray.__imul__,
+#                 scal_grad,
+#                 dmap = {0: 0})
+
+# neg = wrapper("neg",
+#               numpy.ndarray.__neg__,
+#               lambda x, gz: -gz)
+
+# ineg = wrapper("ineg",
+#                lambda x: x.__imul__(-1),
+#                lambda x, gz: -gz,
+#                dmap = {0: 0})
+
+
+# ## Dot product ##
+
+# dot = wrapper("dot",
+#               numpy.dot,
+#               lambda x, y, gz: (dot(gz, transpose(y)),
+#                                 dot(transpose(x), gz)))
 
 
 ## Transposition ##

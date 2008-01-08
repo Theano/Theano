@@ -3,24 +3,28 @@ from core import *
 import gof
 
 
-def pattern_opt(in_pattern, out_pattern):
-    def parse(x):
-        if isinstance(x, (list, tuple)):
-            return [parse(y) for y in x]
-        elif isinstance(x, wrapper):
-            return x.opclass
-        elif isinstance(x, str) or (hasattr(x, '__bases__') and issubclass(x, gof.op.Op)):
-            return x
-        else:
-            raise TypeError("Bad input type for pattern_opt.")
-    return gof.opt.PatternOptimizer(parse(in_pattern), parse(out_pattern))
+# def pattern_opt(in_pattern, out_pattern):
+#     def parse(x):
+#         if isinstance(x, (list, tuple)):
+#             return [parse(y) for y in x]
+#         elif isinstance(x, wrapper):
+#             return x.opclass
+#         elif isinstance(x, str) or (hasattr(x, '__bases__') and issubclass(x, gof.op.Op)):
+#             return x
+#         else:
+#             raise TypeError("Bad input type for pattern_opt.")
+#     return gof.opt.PatternOptimizer(parse(in_pattern), parse(out_pattern))
 
-def op_sub(op1, op2):
-    if isinstance(op1, wrapper):
-        op1 = op1.opclass
-    if isinstance(op2, wrapper):
-        op2 = op2.opclass
-    return gof.opt.OpSubOptimizer(op1, op2)
+# def op_sub(op1, op2):
+#     if isinstance(op1, wrapper):
+#         op1 = op1.opclass
+#     if isinstance(op2, wrapper):
+#         op2 = op2.opclass
+#     return gof.opt.OpSubOptimizer(op1, op2)
+
+
+pattern_opt = gof.opt.PatternOptimizer
+op_sub = gof.opt.OpSubOptimizer
 
 
 #def make_patterns(patterns):
@@ -67,4 +71,15 @@ opts = [
 export_opts(opts) # publish the optimizations performed under individual names
 
 
-optimizer = gof.opt.MergeOptMerge(gof.opt.SeqOptimizer([opt for name, opt in opts]))
+# class AAA(gof.opt.Optimizer):
+
+#     def __init__(self, opt):
+#         self.opt = opt
+    
+#     def optimize(self, env):
+#         build_mode()
+#         self.opt.optimize(env)
+#         pop_mode()
+
+
+optimizer = gof.lib.PythonOpt(gof.opt.MergeOptMerge(gof.opt.SeqOptimizer([opt for name, opt in opts])))
