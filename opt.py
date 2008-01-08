@@ -23,23 +23,15 @@ import gof
 #     return gof.opt.OpSubOptimizer(op1, op2)
 
 
-pattern_opt = gof.opt.PatternOptimizer
-op_sub = gof.opt.OpSubOptimizer
+pattern_opt = gof.PatternOptimizer
+op_sub = gof.OpSubOptimizer
 
-
-#def make_patterns(patterns):
-#    return [name, pattern_opt(inp, outp) for name, inp, outp in patterns]
 
 def export_opts(opts):
     for name, opt in opts:
         if name:
             globals()[name] = opt
 
-
-
-# double_transpose_eliminator = pattern_opt((transpose, (transpose, 'x')), 'x')
-# patterns = make_patterns(patterns)
-# export_patterns(patterns)
 
 # List of optimizations to perform. They are listed in the order they are applied.
 opts = [
@@ -62,24 +54,14 @@ opts = [
     ['add_to_iadd_reverse',         pattern_opt((add, 'x', 'y'),
                                                 (iadd, 'y', 'x'))],
 
-    ['remove_copies',               gof.opt.OpRemover(array_copy)],
+    ['remove_copies',               gof.OpRemover(array_copy)],
     
-    [None,                          gof.lib.DummyRemover] # has to be at the end
+    [None,                          gof.DummyRemover] # has to be at the end
     
     ]
+
 
 export_opts(opts) # publish the optimizations performed under individual names
 
 
-# class AAA(gof.opt.Optimizer):
-
-#     def __init__(self, opt):
-#         self.opt = opt
-    
-#     def optimize(self, env):
-#         build_mode()
-#         self.opt.optimize(env)
-#         pop_mode()
-
-
-optimizer = gof.lib.PythonOpt(gof.opt.MergeOptMerge(gof.opt.SeqOptimizer([opt for name, opt in opts])))
+optimizer = gof.PythonOpt(gof.MergeOptMerge(gof.SeqOptimizer([opt for name, opt in opts])))
