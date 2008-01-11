@@ -231,6 +231,9 @@ class iadd(proto_add, inplace):
 class add_scalar(omega_op):
     impl = numpy.ndarray.__add__
 
+class iadd_scalar(omega_op):
+    impl = numpy.ndarray.__iadd__
+
 
 class proto_twice(omega_op):
     def grad(x, gz):
@@ -280,7 +283,7 @@ class imul(proto_mul, inplace):
 
 class proto_sqr(omega_op):
     def grad(x, gz):
-        return scal(mul(x, gz), 2.0)
+        return scale(mul(x, gz), 2.0)
 
 class sqr(proto_sqr):
     impl = lambda x: numpy.multiply(x, x)
@@ -291,7 +294,7 @@ class isqr(proto_sqr, inplace):
 
 class proto_sqrt(omega_op):
     def grad(x, gz):
-        return scal(div(gz, sqrt(x)), 0.5)
+        return scale(div(gz, sqrt(x)), 0.5)
 
 class sqrt(proto_sqrt):
     impl = numpy.sqrt
@@ -329,7 +332,7 @@ class iinv_scale(omega_op, inplace):
 
 class proto_scale(omega_op):
     def grad(x, a, gz):
-        return scal(a, gz), sum(mul(x, gz))
+        return scale(a, gz), sum(mul(x, gz))
 
 class scale(omega_op):
     impl = numpy.ndarray.__mul__
