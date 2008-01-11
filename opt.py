@@ -44,7 +44,7 @@ opts = [
 
     ['twice_to_itwice',             op_sub(twice, itwice)],
 
-    ['mulxx_to_twice',              pattern_opt((mul, 'x', 'x'),
+    ['mulxx_to_sqr',                pattern_opt((mul, 'x', 'x'),
                                                 (sqr, 'x'))],
 
     ['sqr_to_isqr',                 op_sub(sqr, isqr)],
@@ -65,3 +65,16 @@ export_opts(opts) # publish the optimizations performed under individual names
 
 
 optimizer = gof.PythonOpt(gof.MergeOptMerge(gof.SeqOptimizer([opt for name, opt in opts])))
+#optimizer = gof.PythonOpt(gof.SeqOptimizer([opt for name, opt in opts]))
+
+
+
+#[isub(1.0, mul(0.1, iadd(transpose(dot(transpose(*2 -> sigmoid(dot(0.0, 1.0))), *4 -> mul(mul(neg(scal(mul(*3 -> sub(0.0, *1 -> sigmoid(dot(*2, transpose(1.0)))), fill(isqr(*3), 1.0)), 2.0)), *1), sub(1, *1)))), dot(transpose(0.0), mul(mul(dot(*4, 1.0), *2), sub(1, *2))))))]
+
+#[isub(1.0, mul(0.1, iadd(dot(transpose(0.0), mul(mul(dot(*4 -> mul(mul(neg(scal(mul(*1 -> sub(0.0, *2 -> sigmoid(dot(*3 -> sigmoid(dot(0.0, 1.0)), transpose(1.0)))), fill(sqr(*1), 1.0)), 2.0)), *2), sub(1, *2)), 1.0), *3), sub(1, *3))), transpose(dot(transpose(*3), *4)))))]
+
+#[isub(1.0, mul(0.1, iadd(dot(transpose(0.0), mul(mul(dot(*2 -> mul(mul(neg(scal(mul(*4 -> sub(0.0, *1 -> sigmoid(dot(*3 -> sigmoid(dot(0.0, 1.0)), transpose(1.0)))), fill(sqr(*4), 1.0)), 2.0)), *1), sub(1, *1)), 1.0), *3), sub(1, *3))), transpose(dot(transpose(*3), *2)))))]
+
+
+# [ sqr(sub(0.0, sigmoid(dot(sigmoid(dot(0.0, 1.0)), transpose(1.0)))))]
+# [isqr(sub(0.0, sigmoid(dot(sigmoid(dot(0.0, 1.0)), transpose(1.0)))))]

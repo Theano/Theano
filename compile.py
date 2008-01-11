@@ -11,7 +11,7 @@ import core
 
 
 def to_func(inputs, outputs):
-    print gof.Env(inputs, outputs)
+#    print gof.Env(inputs, outputs).io_toposort()
     p = prog(inputs, outputs)
     print p.env
     def f(*args):
@@ -42,7 +42,7 @@ class prog(gof.Prog):
                           inputs,
                           outputs,
                           opt.optimizer,
-                          gof.link.thunk_linker,
+                          gof.link.perform_linker,
                           [])
 #        core.pop_mode()
 

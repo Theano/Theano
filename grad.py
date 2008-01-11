@@ -31,6 +31,7 @@ def expand_grad(i, o, cost_derivs):
 
 
 def grad(cost, wrt, cost_grad = 1.0):
+    assert core.current_mode() != 'eval'
 #    cost, wrt = core.wrap(cost), core.wrap(wrt)
     cost_derivs = expand_grad([wrt], [cost], {cost: core.wrap(cost_grad)})
 #     print wrt

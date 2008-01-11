@@ -71,7 +71,7 @@ def wrap(x):
     elif isinstance(x, Proxy):
         return wrap(x._obj)
     else:
-        return input(x)
+        return literal(x)
 #     elif isinstance(x, numpy.ndarray):
 #         return NumpyR(x)
 #     elif isinstance(x, (int, float)):
@@ -82,8 +82,10 @@ def wrap(x):
 def literal(x):
     try:
         present = x in gof.literals_db
+        hashable = True
     except TypeError: # x is unhashable
         present = False
+        hashable = False
 
     if present:
         return gof.literals_db.get(x)
@@ -95,7 +97,10 @@ def literal(x):
         raise TypeError("%s is already a result." % x)
     else:
         return PythonR(x, constant = True)
-    gof.literals_db[x] = ret
+
+    if hashable:
+        gof.literals_db[x] = ret
+
     return ret
 
 
@@ -103,8 +108,18 @@ def literal(x):
 inplace = gof.Destroyer
 view = gof.Viewer
 
+def assert_same_shapes(impl):
+    def ret(x, *rest):
+        shape = x.shape
+        for other in rest:
+            if other.shape != shape:
+                raise TypeError("The dimensions of the inputs do not match.")
+        return impl(x, *rest)
+    return ret
 
 class omega_op(gof.PythonOp):
+
+    broadcast_op = False
 
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
@@ -113,6 +128,10 @@ class omega_op(gof.PythonOp):
         if hasattr(grad, 'im_func'):
             grad = grad.im_func
         cls.grad = staticmethod(grad)
+
+        # adjust impl
+        if cls.broadcast_op:
+            cls.impl = assert_same_shapes(cls.impl)
 
         # make impl a static method
         gof.PythonOp.__clsinit__(cls, name, bases, dct)
@@ -135,6 +154,15 @@ class omega_op(gof.PythonOp):
         return UNDEFINED
 
 
+def scalar_switch(x, y, normal_f, scalar_f):
+    x, y = wrap(x), wrap(y)
+    if x.constant and not x.data.shape:
+        return scalar_f(y, x)
+    if y.constant and not y.data.shape:
+        return scalar_f(x, y)
+    return normal_f(x, y)
+
+
 class NumpyR(gof.PythonR):
 
     def set_value(self, value):
@@ -145,29 +173,25 @@ class NumpyR(gof.PythonR):
         else:
             self.data = numpy.array(value)
 
-    def  __add__(self, y): return  add(self, y)
-    def __radd__(self, x): return  add(x, self)
-    def __iadd__(self, y): return iadd(self, y)
+    def  __add__(self, y): return scalar_switch(self, y, add, add_scalar)
+    def __radd__(self, x): return scalar_switch(x, self, add, add_scalar)
+    def __iadd__(self, y): return scalar_switch(self, y, iadd, iadd_scalar)
     
-    def  __sub__(self, y): return  sub(self, y)
-    def __rsub__(self, x): return  sub(x, self)
-    def __isub__(self, y): return isub(self, y)
+    def  __sub__(self, y): return scalar_switch(self, y, sub, sub_scalar)
+    def __rsub__(self, x): return scalar_switch(x, self, sub, sub_scalar)
+    def __isub__(self, y): return scalar_switch(self, y, isub, isub_scalar)
     
-    def  __mul__(self, y): return  mul(self, y)
-    def __rmul__(self, x): return  mul(x, self)
-    def __imul__(self, y): return imul(self, y)
+    def  __mul__(self, y): return scalar_switch(self, y, mul, scale)
+    def __rmul__(self, x): return scalar_switch(x, self, mul, scale)
+    def __imul__(self, y): return scalar_switch(self, y, imul, iscale)
  
-    def  __div__(self, y): return  div(self, y)
-    def __rdiv__(self, x): return  div(x, self)
-    def __idiv__(self, y): return idiv(self, y)
-    
-    def  __mod__(self, y): return  mod(self, y)
-    def __rmod__(self, x): return  mod(x, self)
-    def __imod__(self, y): return imod(self, y)    
-    
-    def  __pow__(self, y): return  pow(self, y)
-    def __rpow__(self, x): return  pow(x, self)
-    def __ipow__(self, y): return ipow(self, y)
+    def  __div__(self, y): return scalar_switch(self, y, div, inv_scale)
+    def __rdiv__(self, x): return scalar_switch(x, self, div, inv_scale)
+    def __idiv__(self, y): return scalar_switch(self, y, idiv, iinv_scale)
+        
+    def  __pow__(self, y): return scalar_switch(self, y, pow_elemwise, pow)
+    def __rpow__(self, x): return scalar_switch(x, self, pow_elemwise, pow)
+    def __ipow__(self, y): return scalar_switch(self, y, ipow_elemwise, ipow)
 
     def __neg__(self):     return neg(self)
 
@@ -194,6 +218,7 @@ ones = wrap_producer(numpy.ones)
 ## Addition ##
 
 class proto_add(omega_op):
+    broadcast_op = True
     def grad(x, y, gz):
         return gz
 
@@ -202,6 +227,9 @@ class add(proto_add):
 
 class iadd(proto_add, inplace):
     impl = numpy.ndarray.__iadd__
+
+class add_scalar(omega_op):
+    impl = numpy.ndarray.__add__
 
 
 class proto_twice(omega_op):
@@ -230,6 +258,12 @@ class sub(proto_sub):
 class isub(proto_sub, inplace):
     impl = numpy.ndarray.__isub__
 
+class sub_scalar(omega_op):
+    impl = numpy.ndarray.__sub__
+
+class isub_scalar(omega_op, inplace):
+    impl = numpy.ndarray.__isub__
+
 
 ## Element-wise multiplication ##
 
@@ -252,7 +286,7 @@ class sqr(proto_sqr):
     impl = lambda x: numpy.multiply(x, x)
 
 class isqr(proto_sqr, inplace):
-    impl = lambda x: x.__imul__(x),
+    impl = lambda x: x.__imul__(x)
 
 
 class proto_sqrt(omega_op):
@@ -284,17 +318,23 @@ class div(proto_div):
 class idiv(proto_div, inplace):
     impl = numpy.ndarray.__idiv__
 
+class inv_scale(omega_op):
+    impl = numpy.ndarray.__div__
+
+class iinv_scale(omega_op, inplace):
+    impl = numpy.ndarray.__idiv__
+
 
 ## Scaling ##
 
-class proto_scal(omega_op):
+class proto_scale(omega_op):
     def grad(x, a, gz):
         return scal(a, gz), sum(mul(x, gz))
 
-class scal(omega_op):
+class scale(omega_op):
     impl = numpy.ndarray.__mul__
 
-class iscal(omega_op, inplace):
+class iscale(omega_op, inplace):
     impl = numpy.ndarray.__imul__
 
     
@@ -335,12 +375,44 @@ class array_copy(omega_op):
     grad = lambda x, gz: gz
 
 
+## Power ##
+
+class proto_pow(omega_op):
+    def grad(x, y, gz):
+        pass
+
+class pow(proto_pow):
+    impl = numpy.ndarray.__pow__
+
+class ipow(proto_pow, inplace):
+    impl = numpy.ndarray.__ipow__
+
+
+class proto_pow_elemwise(omega_op):
+    def grad(x, y, gz):
+        pass
+
+class pow_elemwise(proto_pow_elemwise):
+    impl = numpy.ndarray.__pow__
+
+class ipow_elemwise(proto_pow_elemwise, inplace):
+    impl = numpy.ndarray.__ipow__
+
+
 ## Others ##
 
 class minmax(omega_op):
     nout = 2
     def impl(x):
         return x.min, x.max
+
+class fill(omega_op):
+    impl = lambda model, value: (model * 0) + value
+
+class sum(omega_op):
+    impl = numpy.sum
+    def grad(x, gz):
+        return fill(x, gz)
 
     
 # array_copy = wrapper("copy",
