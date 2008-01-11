@@ -1,0 +1,2 @@
+
+- optimize a**2 -> sqr(a)
