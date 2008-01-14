@@ -154,39 +154,41 @@ class sigmoid(core.omega_op):
     def grad(x, gz):
         return gz * sigmoid(x) * (1 - sigmoid(x))
 
+numpy.random.seed(1)
 
-# x = core.zeros((1, 10))
-# w = core.input(numpy.random.rand(10, 15))
+x = core.zeros((1, 10))
+w = core.input(numpy.random.rand(10, 15))
 
-x = numpy.zeros((1, 10))
-w = numpy.random.rand(10, 15)
+# x = numpy.zeros((1, 10))
+# w = numpy.random.rand(10, 15)
 
 #print x.data, w.data
 
-import inspect
+# import inspect
 
-def omega_compile(f):
-    args, varargs, kwargs, defaults = inspect.getargspec(f)
-    assert not varargs
-    assert not kwargs
-    def ret(*args):
-        outputs = core.build(f, *args)
-        return compile.prog(args, outputs)
-    return ret
+# def omega_compile(f):
+#     args, varargs, kwargs, defaults = inspect.getargspec(f)
+#     assert not varargs
+#     assert not kwargs
+#     def ret(*args):
+#         outputs = core.build(f, *args)
+#         return compile.prog(args, outputs)
+#     return ret
 
-@omega_compile
+# @omega_compile
+
 def autoassociator(w, x):
     forward = sigmoid(core.dot(sigmoid(core.dot(x, w)), w.T))
     rec_error = core.sum(core.sqr(x - forward))
     w -= 0.1 * grad.grad(rec_error, w)
     return w, rec_error
 
-# w2, rec_error = core.build(autoassociator, w, x)
-# #f = compile.to_func([w, x], [w2, rec_error])
-# f = compile.single(w2, rec_error)
+w2, rec_error = core.build(autoassociator, w, x)
+f = compile.to_func([w, x], [w2, rec_error])
+#f = compile.single(w2, rec_error)
 
 for i in dataset_1hot(x.data, numpy.ndarray((1, )), 10000):
-    w2, rec_error = f() #w.data, x.data)
+    w2, rec_error = f(w.data, x.data)
     if not(i % 1000):
         print rec_error
 

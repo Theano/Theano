@@ -51,14 +51,21 @@ class prog(gof.Prog):
             for input in self.env.inputs:
                 if input.data is core.UNCOMPUTED:
                     raise Exception("You must provide a value for input %s!" % input)
-            for orphan in self.env.orphans():
-                if orphan.data is core.UNCOMPUTED:
-                    raise Exception("Orphan %s is uncomputed but needed to calculate the function. " % input + \
-                                        "Try calling prog.compute_orphans() or set it manually.")
+        self.compute_orphans()
+#             for orphan in self.env.orphans():
+#                 if orphan.data is core.UNCOMPUTED:
+#                     raise Exception("Orphan %s is uncomputed but needed to calculate the function. " % orphan + \
+#                                         "Try calling prog.compute_orphans() or set it manually.")
         return gof.Prog.__call__(self)
 
     def compute_orphans(self):
-        raise NotImplementedError
+        for orphan in self.env.orphans():
+            if orphan.data is core.UNCOMPUTED:
+                if orphan.owner:
+                    orphan.owner.compute()
+                else:
+                    raise Exception("Orphan %s is uncomputed but needed to calculate the function." % orphan)
+            
 
 
 def single(*outputs):

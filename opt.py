@@ -36,25 +36,25 @@ def export_opts(opts):
 # List of optimizations to perform. They are listed in the order they are applied.
 opts = [
 
-    ['double_transpose_eliminator', pattern_opt((transpose, (transpose, 'x')),
-                                                'x')],
+#     ['double_transpose_eliminator', pattern_opt((transpose, (transpose, 'x')),
+#                                                 'x')],
 
-    ['addxx_to_twice',              pattern_opt((add, 'x', 'x'),
-                                                (twice, 'x'))],
+#     ['addxx_to_twice',              pattern_opt((add_elemwise, 'x', 'x'),
+#                                                 (twice, 'x'))],
 
-    ['twice_to_itwice',             op_sub(twice, itwice)],
+#     ['twice_to_itwice',             op_sub(twice, itwice)],
 
-    ['mulxx_to_sqr',                pattern_opt((mul, 'x', 'x'),
-                                                (sqr, 'x'))],
+#     ['mulxx_to_sqr',                pattern_opt((mul_elemwise, 'x', 'x'),
+#                                                 (sqr, 'x'))],
 
-    ['sqr_to_isqr',                 op_sub(sqr, isqr)],
+#     ['sqr_to_isqr',                 op_sub(sqr, isqr)],
     
-    ['add_to_iadd',                 op_sub(add, iadd)],
+#     ['add_to_iadd',                 op_sub(add_elemwise, iadd_elemwise)],
 
-    ['add_to_iadd_reverse',         pattern_opt((add, 'x', 'y'),
-                                                (iadd, 'y', 'x'))],
+#     ['add_to_iadd_reverse',         pattern_opt((add_elemwise, 'x', 'y'),
+#                                                 (iadd_elemwise, 'y', 'x'))],
 
-    ['remove_copies',               gof.OpRemover(array_copy)],
+#     ['remove_copies',               gof.OpRemover(array_copy)],
     
     [None,                          gof.DummyRemover] # has to be at the end
     
