@@ -155,11 +155,11 @@ class omega_op(gof.PythonOp):
 
 
 def scalar_switch(x, y, normal_f, scalar_f):
-    x, y = wrap(x), wrap(y)
-    if x.constant and not x.data.shape:
-        return scalar_f(y, x)
-    if y.constant and not y.data.shape:
-        return scalar_f(x, y)
+#     x, y = wrap(x), wrap(y)
+#     if x.constant and not x.data.shape:
+#         return scalar_f(y, x)
+#     if y.constant and not y.data.shape:
+#         return scalar_f(x, y)
     return normal_f(x, y)
 
 
@@ -231,13 +231,13 @@ class iadd(proto_add, inplace):
 class add_scalar(omega_op):
     impl = numpy.ndarray.__add__
 
-class iadd_scalar(omega_op):
+class iadd_scalar(omega_op, inplace):
     impl = numpy.ndarray.__iadd__
 
 
 class proto_twice(omega_op):
     def grad(x, gz):
-        return scal(gz, 2.0)
+        return scale(gz, 2.0)
 
 class twice(proto_twice):
     def impl(x):
