@@ -131,62 +131,69 @@ import grad
 
 ############################
 
-# def dataset_1hot(x, targ, n):
-#     """Return an looping iterator over 1-hot vectors
+def dataset_1hot(x, targ, n):
+    """Return an looping iterator over 1-hot vectors
+    This function is a generator for the integers range(n) that works by
+    side-effect on the numpy ndarray mat.
+    On each iteration, mat is set (in-place) to the next element of an infinite
+    sequence of 1-hot vectors.
+    """
+    assert targ.size == 1
 
-#     This function is a generator for the integers range(n) that works by
-#     side-effect on the numpy ndarray mat.
-#     On each iteration, mat is set (in-place) to the next element of an infinite
-#     sequence of 1-hot vectors.
-
-#     """
-#     assert targ.size == 1
-
-#     for i in xrange(n):
-#         idx = i % x.shape[1]
-#         x[:] = 0
-#         x[0,idx] = 1
-#         targ[0] = idx
-#         yield i
+    for i in xrange(n):
+        idx = i % x.shape[1]
+        x[:] = 0
+        x[0,idx] = 1
+        targ[0] = idx
+        yield i
 
 
-# class sigmoid(core.omega_op):
-#     def impl(x):
-#         return 1.0 / (1.0 + numpy.exp(-x))
-#     def grad(x, gz):
-#         return gz * sigmoid(x) * (1 - sigmoid(x))
+class sigmoid(core.omega_op):
+    def impl(x):
+        return 1.0 / (1.0 + numpy.exp(-x))
+    def grad(x, gz):
+        return gz * sigmoid(x) * (1 - sigmoid(x))
 
+numpy.random.seed(1)
 
-# x = core.zeros((1, 10))
-# w = core.input(numpy.random.rand(10, 15))
+x = core.zeros((1, 10))
+w = core.input(numpy.random.rand(10, 15))
 
-# #print x.data, w.data
+# x = numpy.zeros((1, 10))
+# w = numpy.random.rand(10, 15)
 
-# def autoassociator(w, x):
-#     forward = sigmoid(core.dot(sigmoid(core.dot(x, w)), w.T))
-#     rec_error = core.sum(core.sqr(x - forward))
-#     w -= 0.1 * grad.grad(rec_error, w)
-#     return w, rec_error
+#print x.data, w.data
 
-# w2, rec_error = core.build(autoassociator, w, x)
-# f = compile.to_func([w, x], [w2, rec_error])
+# import inspect
 
-# for i in dataset_1hot(x.data, numpy.ndarray((1, )), 10000):
-#     w2, rec_error = f(w.data, x.data)
-#     if not(i % 1000):
-#         print rec_error
+# def omega_compile(f):
+#     args, varargs, kwargs, defaults = inspect.getargspec(f)
+#     assert not varargs
+#     assert not kwargs
+#     def ret(*args):
+#         outputs = core.build(f, *args)
+#         return compile.prog(args, outputs)
+#     return ret
 
-# print "done!"
-# print w.data
+# @omega_compile
 
+def autoassociator(w, x):
+    forward = sigmoid(core.dot(sigmoid(core.dot(x, w)), w.T))
+    rec_error = core.sum(core.sqr(x - forward))
+    w -= 0.1 * grad.grad(rec_error, w)
+    return w, rec_error
 
+w2, rec_error = core.build(autoassociator, w, x)
+f = compile.to_func([w, x], [w2, rec_error])
+#f = compile.single(w2, rec_error)
 
-# # 1 = mul(mul(neg(scal(mul(sub(0.736213102665, sigmoid(*3)), 1.0), 2.0)), sigmoid(*3)), sub(1, sigmoid(*3)))
-# # 2 = transpose(0.11474051836)
-# # 3 = dot(*2, *5)
-# # 4 = dot(0.11474051836, 0.736213102665)
-# # 5 = sigmoid(*4)
-# # add(transpose(dot(*1, transpose(*5))), dot(mul(mul(dot(transpose(*2), *1), sigmoid(*4)), sub(1, sigmoid(*4))), transpose(0.736213102665)))
+for i in dataset_1hot(x.data, numpy.ndarray((1, )), 10000):
+    w2, rec_error = f(w.data, x.data)
+    if not(i % 1000):
+        print rec_error
+
+print "done!"
+print w.data
 
 
 
@@ -209,8 +216,31 @@ import grad
 
 ############################
 
-print core.ones((2, 2)) + 1
+# print core.ones((2, 2)) + 1
 
-print numpy.ones((2, 2)) ** numpy.ones((2, 2))
+# print numpy.ones((2, 2)) ** numpy.ones((2, 2))
+
+
+############################
+
+
+x = core.ones((2, 2))
+y = core.zeros((1, 1))
+
+#print "?", gof.graph.ops([], [x + y])
+
+
+print x
+
+x + x
+print "1", gof.eval_env#.ops()
+y + y
+print "2", gof.eval_env#.ops()
+x + x
+print "3", gof.eval_env#.ops()
+
+
+x += (x + x)
+print x
 
 

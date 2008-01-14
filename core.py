@@ -108,18 +108,9 @@ def literal(x):
 inplace = gof.Destroyer
 view = gof.Viewer
 
-def assert_same_shapes(impl):
-    def ret(x, *rest):
-        shape = x.shape
-        for other in rest:
-            if other.shape != shape:
-                raise TypeError("The dimensions of the inputs do not match.")
-        return impl(x, *rest)
-    return ret
-
 class omega_op(gof.PythonOp):
 
-    broadcast_op = False
+    forbid_broadcast = False
 
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
@@ -129,9 +120,9 @@ class omega_op(gof.PythonOp):
             grad = grad.im_func
         cls.grad = staticmethod(grad)
 
-        # adjust impl
-        if cls.broadcast_op:
-            cls.impl = assert_same_shapes(cls.impl)
+#         # adjust impl
+#         if cls.forbid_broadcast:
+#             cls.impl = assert_same_shapes(cls.impl)
 
         # make impl a static method
         gof.PythonOp.__clsinit__(cls, name, bases, dct)
@@ -154,13 +145,15 @@ class omega_op(gof.PythonOp):
         return UNDEFINED
 
 
-def scalar_switch(x, y, normal_f, scalar_f):
-    x, y = wrap(x), wrap(y)
-    if x.constant and not x.data.shape:
-        return scalar_f(y, x)
-    if y.constant and not y.data.shape:
-        return scalar_f(x, y)
-    return normal_f(x, y)
+def scalar_switch(normal_f, scalar_f, scalar_f_reverse):
+    def f(x, y):
+        x, y = wrap(x), wrap(y)
+        if x.constant and not x.data.shape:
+            return scalar_f_reverse(y, x)
+        if y.constant and not y.data.shape:
+            return scalar_f(x, y)
+        return normal_f(x, y)
+    return f
 
 
 class NumpyR(gof.PythonR):
@@ -173,25 +166,25 @@ class NumpyR(gof.PythonR):
         else:
             self.data = numpy.array(value)
 
-    def  __add__(self, y): return scalar_switch(self, y, add, add_scalar)
-    def __radd__(self, x): return scalar_switch(x, self, add, add_scalar)
-    def __iadd__(self, y): return scalar_switch(self, y, iadd, iadd_scalar)
+    def  __add__(self, y): return add(self, y)
+    def __radd__(self, x): return add(x, self)
+    def __iadd__(self, y): return iadd(self, y)
     
-    def  __sub__(self, y): return scalar_switch(self, y, sub, sub_scalar)
-    def __rsub__(self, x): return scalar_switch(x, self, sub, sub_scalar)
-    def __isub__(self, y): return scalar_switch(self, y, isub, isub_scalar)
+    def  __sub__(self, y): return sub(self, y)
+    def __rsub__(self, x): return sub(x, self)
+    def __isub__(self, y): return isub(self, y)
     
-    def  __mul__(self, y): return scalar_switch(self, y, mul, scale)
-    def __rmul__(self, x): return scalar_switch(x, self, mul, scale)
-    def __imul__(self, y): return scalar_switch(self, y, imul, iscale)
+    def  __mul__(self, y): return mul(self, y)
+    def __rmul__(self, x): return mul(x, self)
+    def __imul__(self, y): return imul(self, y)
  
-    def  __div__(self, y): return scalar_switch(self, y, div, inv_scale)
-    def __rdiv__(self, x): return scalar_switch(x, self, div, inv_scale)
-    def __idiv__(self, y): return scalar_switch(self, y, idiv, iinv_scale)
+    def  __div__(self, y): return div(self, y)
+    def __rdiv__(self, x): return div(x, self)
+    def __idiv__(self, y): return idiv(self, y)
         
-    def  __pow__(self, y): return scalar_switch(self, y, pow_elemwise, pow)
-    def __rpow__(self, x): return scalar_switch(x, self, pow_elemwise, pow)
-    def __ipow__(self, y): return scalar_switch(self, y, ipow_elemwise, ipow)
+    def  __pow__(self, y): return pow(self, y)
+    def __rpow__(self, x): return pow(x, self)
+    def __ipow__(self, y): return ipow(self, y)
 
     def __neg__(self):     return neg(self)
 
@@ -215,29 +208,53 @@ zeros = wrap_producer(numpy.zeros)
 ones = wrap_producer(numpy.ones)
 
 
+
+# Wrapper to ensure that all inputs to the function impl have the same size (foils numpy's broadcasting)
+def assert_same_shapes(impl):
+    def ret(x, *rest):
+        shape = x.shape
+        for other in rest:
+            if other.shape != shape:
+                raise TypeError("The dimensions of the inputs do not match.")
+        return impl(x, *rest)
+    return ret
+
+# Wrapper to ensure that the last input to impl is a scalar
+def tensor_scalar_op(impl):
+    def ret(x, a):
+        if a.shape:
+            raise TypeError("The second argument to %s must be a scalar." % impl)
+        return impl(x, a)
+    return ret
+
+
 ## Addition ##
 
-class proto_add(omega_op):
-    broadcast_op = True
+class proto_add_elemwise(omega_op):
     def grad(x, y, gz):
         return gz
 
-class add(proto_add):
-    impl = numpy.ndarray.__add__
+class add_elemwise(proto_add_elemwise):
+    impl = assert_same_shapes(numpy.ndarray.__add__)
 
-class iadd(proto_add, inplace):
-    impl = numpy.ndarray.__iadd__
+class iadd_elemwise(proto_add_elemwise, inplace):
+    impl = assert_same_shapes(numpy.ndarray.__iadd__)
 
-class add_scalar(omega_op):
-    impl = numpy.ndarray.__add__
 
-class iadd_scalar(omega_op):
-    impl = numpy.ndarray.__iadd__
+class proto_add_scalar(omega_op):
+    def grad(x, a, gz):
+        return gz, sum(gz)
+
+class add_scalar(proto_add_scalar):
+    impl = tensor_scalar_op(numpy.ndarray.__add__)
+
+class iadd_scalar(proto_add_scalar, inplace):
+    impl = tensor_scalar_op(numpy.ndarray.__iadd__)
 
 
 class proto_twice(omega_op):
     def grad(x, gz):
-        return scal(gz, 2.0)
+        return scale(gz, 2.0)
 
 class twice(proto_twice):
     def impl(x):
@@ -251,39 +268,56 @@ class itwice(proto_twice, inplace):
 
 ## Subtraction ##
 
-class proto_sub(omega_op):
+class proto_sub_elemwise(omega_op):
     def grad(x, y, gz):
         return gz, -gz
 
-class sub(proto_sub):
-    impl = numpy.ndarray.__sub__
+class sub_elemwise(proto_sub_elemwise):
+    impl = assert_same_shapes(numpy.ndarray.__sub__)
 
-class isub(proto_sub, inplace):
-    impl = numpy.ndarray.__isub__
+class isub_elemwise(proto_sub_elemwise, inplace):
+    impl = assert_same_shapes(numpy.ndarray.__isub__)
 
-class sub_scalar(omega_op):
-    impl = numpy.ndarray.__sub__
+def sub_scalar_r(x, a):
+    return add_scalar(x, -a)
 
-class isub_scalar(omega_op, inplace):
-    impl = numpy.ndarray.__isub__
+def sub_scalar_l(x, a):
+    return add_scalar(-x, a)
+
+def isub_scalar_r(x, a):
+    return iadd_scalar(x, -a)
+
+def isub_scalar_l(x, a):
+    return iadd_scalar(-x, a)
 
 
 ## Element-wise multiplication ##
 
-class proto_mul(omega_op):
+class proto_mul_elemwise(omega_op):
     def grad(x, y, gz):
         return mul(y, gz), mul(x, gz)
 
-class mul(proto_mul):
-    impl = numpy.ndarray.__mul__
+class mul_elemwise(proto_mul_elemwise):
+    impl = assert_same_shapes(numpy.ndarray.__mul__)
 
-class imul(proto_mul, inplace):
-    impl = numpy.ndarray.__imul__
+class imul_elemwise(proto_mul_elemwise, inplace):
+    impl = assert_same_shapes(numpy.ndarray.__imul__)
+
+
+class proto_scale(omega_op):
+    def grad(x, a, gz):
+        return scale(a, gz), sum(mul_elemwise(x, gz))
+
+class scale(proto_scale):
+    impl = tensor_scalar_op(numpy.ndarray.__mul__)
+
+class iscale(proto_scale, inplace):
+    impl = tensor_scalar_op(numpy.ndarray.__imul__)
 
 
 class proto_sqr(omega_op):
     def grad(x, gz):
-        return scale(mul(x, gz), 2.0)
+        return scale(mul_elemwise(x, gz), 2.0)
 
 class sqr(proto_sqr):
     impl = lambda x: numpy.multiply(x, x)
@@ -311,45 +345,55 @@ class exp(omega_op):
 
 ## Element-wise division ##
 
-class proto_div(omega_op):
+class proto_div_elemwise(omega_op):
     def grad(x, y, gz):
         return div(gz, y), -div(mul(x, gz), sqr(y))
 
-class div(proto_div):
-    impl = numpy.ndarray.__div__
+class div_elemwise(proto_div_elemwise):
+    impl = assert_same_shapes(numpy.ndarray.__div__)
 
-class idiv(proto_div, inplace):
-    impl = numpy.ndarray.__idiv__
+class idiv_elemwise(proto_div_elemwise, inplace):
+    impl = assert_same_shapes(numpy.ndarray.__idiv__)
 
-class inv_scale(omega_op):
-    impl = numpy.ndarray.__div__
 
-class iinv_scale(omega_op, inplace):
-    impl = numpy.ndarray.__idiv__
+def div_scalar_r(x, a):
+    return scale(x, inv_elemwise(a))
+
+def div_scalar_l(x, a):
+    return scale(inv_elemwise(x), a)
+
+def idiv_scalar_r(x, a):
+    return iscale(x, inv_elemwise(a))
+
+def idiv_scalar_l(x, a):
+    return iscale(inv_elemwise(x), a)
+
 
 
 ## Scaling ##
-
-class proto_scale(omega_op):
-    def grad(x, a, gz):
-        return scale(a, gz), sum(mul(x, gz))
-
-class scale(omega_op):
-    impl = numpy.ndarray.__mul__
-
-class iscale(omega_op, inplace):
-    impl = numpy.ndarray.__imul__
 
     
 class proto_neg(omega_op):
     def grad(x, gz):
         return -gz
 
-class neg(omega_op):
+class neg(proto_neg):
     impl = numpy.ndarray.__neg__
 
-class ineg(omega_op, inplace):
+class ineg(proto_neg, inplace):
     impl = lambda x: x.__imul__(-1)
+
+
+class proto_inv_elemwise(omega_op):
+    def grad(x, gz):
+        raise NotImplemented
+
+class inv_elemwise(omega_op):
+    impl = lambda x: 1 / x
+
+class iinv_elemwise(omega_op, inplace):
+    def impl(x):
+        x[:] = 1 / x
 
 
 ## Dot product ##
@@ -424,6 +468,24 @@ class sum(omega_op):
 
 
 # array slicing
+
+
+
+
+add = scalar_switch(add_elemwise, add_scalar, add_scalar)
+iadd = scalar_switch(iadd_elemwise, iadd_scalar, iadd_scalar)
+
+sub = scalar_switch(sub_elemwise, sub_scalar_r, sub_scalar_l)
+isub = scalar_switch(isub_elemwise, isub_scalar_r, isub_scalar_l)
+
+mul = scalar_switch(mul_elemwise, scale, scale)
+imul = scalar_switch(imul_elemwise, iscale, iscale)
+
+div = scalar_switch(div_elemwise, div_scalar_r, div_scalar_l)
+idiv = scalar_switch(idiv_elemwise, idiv_scalar_r, idiv_scalar_l)
+
+# pow = scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
+# ipow = scalar_switch(ipow_elemwise, ipow_scalar_r, ipow_scalar_l)
 
 
 
