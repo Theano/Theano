@@ -1,6 +1,6 @@
 
 import gof
-from gof import current_mode, set_mode, build_mode, eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
+from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
 
 import numpy
 
@@ -165,6 +165,7 @@ class NumpyR(gof.PythonR):
             self.data = value
         else:
             self.data = numpy.array(value)
+        self.up_to_date = True
 
     def  __add__(self, y): return add(self, y)
     def __radd__(self, x): return add(x, self)
@@ -208,14 +209,13 @@ zeros = wrap_producer(numpy.zeros)
 ones = wrap_producer(numpy.ones)
 
 
-
 # Wrapper to ensure that all inputs to the function impl have the same size (foils numpy's broadcasting)
 def assert_same_shapes(impl):
     def ret(x, *rest):
         shape = x.shape
         for other in rest:
             if other.shape != shape:
-                raise TypeError("The dimensions of the inputs do not match.")
+                raise ValueError("The dimensions of the inputs do not match.")
         return impl(x, *rest)
     return ret
 
@@ -223,7 +223,7 @@ def assert_same_shapes(impl):
 def tensor_scalar_op(impl):
     def ret(x, a):
         if a.shape:
-            raise TypeError("The second argument to %s must be a scalar." % impl)
+            raise ValueError("The second argument to %s must be a scalar." % impl)
         return impl(x, a)
     return ret
 
@@ -239,7 +239,6 @@ class add_elemwise(proto_add_elemwise):
 
 class iadd_elemwise(proto_add_elemwise, inplace):
     impl = assert_same_shapes(numpy.ndarray.__iadd__)
-
 
 class proto_add_scalar(omega_op):
     def grad(x, a, gz):
@@ -354,7 +353,6 @@ class div_elemwise(proto_div_elemwise):
 
 class idiv_elemwise(proto_div_elemwise, inplace):
     impl = assert_same_shapes(numpy.ndarray.__idiv__)
-
 
 def div_scalar_r(x, a):
     return scale(x, inv_elemwise(a))

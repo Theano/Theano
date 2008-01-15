@@ -156,8 +156,10 @@ class sigmoid(core.omega_op):
 
 numpy.random.seed(1)
 
+core.build_eval_mode()
 x = core.zeros((1, 10))
 w = core.input(numpy.random.rand(10, 15))
+core.pop_mode()
 
 # x = numpy.zeros((1, 10))
 # w = numpy.random.rand(10, 15)
@@ -188,6 +190,8 @@ f = compile.to_func([w, x], [w2, rec_error])
 #f = compile.single(w2, rec_error)
 
 for i in dataset_1hot(x.data, numpy.ndarray((1, )), 10000):
+#     w.up_to_date = True
+#     x.up_to_date = True
     w2, rec_error = f(w.data, x.data)
     if not(i % 1000):
         print rec_error
@@ -223,24 +227,25 @@ print w.data
 
 ############################
 
-
 x = core.ones((2, 2))
 y = core.zeros((1, 1))
 
 #print "?", gof.graph.ops([], [x + y])
 
 
+# x + x
+# print "1", gof.eval_env#.ops()
+# y + y
+# print "2", gof.eval_env#.ops()
+# x + x
+# print "3", gof.eval_env#.ops()
+
+core.build_eval_mode()
+x = core.ones((2, 2))
+y = core.ones((2, 2)) * 2
+x += y.T
+# z = core.iadd(x, y)
+# core.iadd(x, y)
 print x
-
-x + x
-print "1", gof.eval_env#.ops()
-y + y
-print "2", gof.eval_env#.ops()
-x + x
-print "3", gof.eval_env#.ops()
-
-
-x += (x + x)
-print x
-
+core.pop_mode()
 
