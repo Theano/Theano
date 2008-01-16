@@ -1,3 +1,5 @@
 
 - optimize a**2 -> sqr(a)
 - add __getitem__ to NumpyR (including derivative) by storing the integer / slice object
+
+
