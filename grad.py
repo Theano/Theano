@@ -69,9 +69,7 @@ class Grad(object):
                         v.data.shape, dv.datashape))
 
             # add dr to self[r]
-            #print 'grad::add', id(r), 
             if r in self:
-                print 'adding to self'
                 self[r] = self[r] + dr
             else:
                 self[r] = dr
