@@ -13,7 +13,7 @@ import core
 def to_func(inputs, outputs):
 #    print gof.Env(inputs, outputs).io_toposort()
     p = prog(inputs, outputs)
-    print p.env
+#    print p.env
     def f(*args):
         for input, value in zip(inputs, args):
             p[input] = value

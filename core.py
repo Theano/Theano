@@ -289,9 +289,6 @@ def sub_scalar_l(x, a):
 def isub_scalar_r(x, a):
     return iadd_scalar(x, -a)
 
-# def isub_scalar_l(x, a):
-#     return iadd_scalar(ineg(x), a)
-
 
 ## Element-wise multiplication ##
 
@@ -366,9 +363,6 @@ def div_scalar_l(x, a):
 def idiv_scalar_r(x, a):
     return iscale(x, inv_elemwise(a))
 
-# def idiv_scalar_l(x, a):
-#     return iscale(inv_elemwise(x), a)
-
 
 
 ## Scaling ##
@@ -426,40 +420,30 @@ class array_copy(omega_op):
 ## Power ##
 
 class proto_pow(omega_op):
-    pass
-
-class pow_elemwise(proto_pow):
-    impl = assert_same_shapes(numpy.ndarray.__pow__)
     def grad(x, s, gz):
         return gz * s * (pow_elemwise(x, s-1.0))
 
-class pow_scalar_l(proto_pow):
+class pow_elemwise(proto_pow):
+    impl = assert_same_shapes(numpy.ndarray.__pow__)
+
+class ipow_elemwise(proto_pow, inplace):
+    impl = assert_same_shapes(numpy.ndarray.__ipow__)
+
+
+class pow_scalar_l(omega_op):
     impl = tensor_scalar_op(numpy.ndarray.__pow__)
     def grad(x, s, gz):
         return gz * x * (pow_scalar_l(s,x-1.0))
 
-class pow_scalar_r(proto_pow):
+class pow_scalar_r(omega_op):
     impl = tensor_scalar_op(numpy.ndarray.__pow__)
     def grad(x, s, gz):
         return gz * s * (pow_scalar_r(x,s-1.0))
 
-class proto_ipow(omega_op):
-    pass
-
-class ipow_elemwise(proto_ipow):
-    def __init__(self, *args, **kwargs):
-        omega_op.__init__(self, *args, **kwargs)
-        raise NotImplementedError()
-
-class ipow_scalar_l(proto_ipow):
-    def __init__(self, *args, **kwargs):
-        omega_op.__init__(self, *args, **kwargs)
-        raise NotImplementedError()
-
-class ipow_scalar_r(proto_ipow):
-    def __init__(self, *args, **kwargs):
-        omega_op.__init__(self, *args, **kwargs)
-        raise NotImplementedError()
+class ipow_scalar_r(omega_op, inplace):
+    impl = tensor_scalar_op(numpy.ndarray.__ipow__)
+    def grad(x, s, gz):
+        return gz * s * (pow_scalar_r(x,s-1.0))
 
 ## Others ##
 
@@ -477,14 +461,18 @@ class sum(omega_op):
         return fill(x, gz)
 
     
-# array_copy = wrapper("copy",
-#                      numpy.array,
-#                      lambda x, gz: gz)
+## Array slicing ##
 
+class get_slice(omega_op, view):
+    def grad(x, gz):
+        raise NotImplementedError()
+    def impl(x, dims):
+        return x.__getitem__(*dims)
 
-# array slicing
-
-
+# class set_slice(omega_op, inplace):
+#     def impl(x, dims):
+#         x.__setitem__(*dims)
+#         return x
 
 
 add = scalar_switch(add_elemwise, add_scalar, add_scalar)
@@ -500,7 +488,7 @@ div = scalar_switch(div_elemwise, div_scalar_r, div_scalar_l)
 idiv = scalar_switch(idiv_elemwise, idiv_scalar_r)
 
 pow = scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
-ipow = scalar_switch(ipow_elemwise, ipow_scalar_r, ipow_scalar_l)
+ipow = scalar_switch(ipow_elemwise, ipow_scalar_r)
 
 
 
