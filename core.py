@@ -145,13 +145,16 @@ class omega_op(gof.PythonOp):
         return UNDEFINED
 
 
-def scalar_switch(normal_f, scalar_f, scalar_f_reverse):
+def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
     def f(x, y):
         x, y = wrap(x), wrap(y)
-        if x.constant and not x.data.shape:
-            return scalar_f_reverse(y, x)
         if y.constant and not y.data.shape:
             return scalar_f(x, y)
+        if x.constant and not x.data.shape:
+            if scalar_f_reverse:
+                return scalar_f_reverse(y, x)
+            else:
+                raise TypeError("You cannot do this operation on a scalar.")
         return normal_f(x, y)
     return f
 
@@ -286,8 +289,8 @@ def sub_scalar_l(x, a):
 def isub_scalar_r(x, a):
     return iadd_scalar(x, -a)
 
-def isub_scalar_l(x, a):
-    return iadd_scalar(-x, a)
+# def isub_scalar_l(x, a):
+#     return iadd_scalar(ineg(x), a)
 
 
 ## Element-wise multiplication ##
@@ -363,8 +366,8 @@ def div_scalar_l(x, a):
 def idiv_scalar_r(x, a):
     return iscale(x, inv_elemwise(a))
 
-def idiv_scalar_l(x, a):
-    return iscale(inv_elemwise(x), a)
+# def idiv_scalar_l(x, a):
+#     return iscale(inv_elemwise(x), a)
 
 
 
@@ -485,16 +488,16 @@ class sum(omega_op):
 
 
 add = scalar_switch(add_elemwise, add_scalar, add_scalar)
-iadd = scalar_switch(iadd_elemwise, iadd_scalar, iadd_scalar)
+iadd = scalar_switch(iadd_elemwise, iadd_scalar)
 
 sub = scalar_switch(sub_elemwise, sub_scalar_r, sub_scalar_l)
-isub = scalar_switch(isub_elemwise, isub_scalar_r, isub_scalar_l)
+isub = scalar_switch(isub_elemwise, isub_scalar_r)
 
 mul = scalar_switch(mul_elemwise, scale, scale)
-imul = scalar_switch(imul_elemwise, iscale, iscale)
+imul = scalar_switch(imul_elemwise, iscale)
 
 div = scalar_switch(div_elemwise, div_scalar_r, div_scalar_l)
-idiv = scalar_switch(idiv_elemwise, idiv_scalar_r, idiv_scalar_l)
+idiv = scalar_switch(idiv_elemwise, idiv_scalar_r)
 
 pow = scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
 ipow = scalar_switch(ipow_elemwise, ipow_scalar_r, ipow_scalar_l)

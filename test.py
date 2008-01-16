@@ -179,6 +179,9 @@ core.pop_mode()
 
 # @omega_compile
 
+
+
+
 def autoassociator(w, x):
     forward = sigmoid(core.dot(sigmoid(core.dot(x, w)), w.T))
     rec_error = core.sum(core.sqr(x - forward))
@@ -248,4 +251,7 @@ x += y.T
 # core.iadd(x, y)
 print x
 core.pop_mode()
+
+
+
 
