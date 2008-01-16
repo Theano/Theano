@@ -179,6 +179,9 @@ core.pop_mode()
 
 # @omega_compile
 
+
+
+
 def autoassociator(w, x):
     forward = sigmoid(core.dot(sigmoid(core.dot(x, w)), w.T))
     rec_error = core.sum(core.sqr(x - forward))
@@ -227,25 +230,28 @@ print w.data
 
 ############################
 
-x = core.ones((2, 2))
-y = core.zeros((1, 1))
+# x = core.ones((2, 2))
+# y = core.zeros((1, 1))
 
-#print "?", gof.graph.ops([], [x + y])
+# #print "?", gof.graph.ops([], [x + y])
 
 
-# x + x
-# print "1", gof.eval_env#.ops()
-# y + y
-# print "2", gof.eval_env#.ops()
-# x + x
-# print "3", gof.eval_env#.ops()
+# # x + x
+# # print "1", gof.eval_env#.ops()
+# # y + y
+# # print "2", gof.eval_env#.ops()
+# # x + x
+# # print "3", gof.eval_env#.ops()
 
-core.build_eval_mode()
-x = core.ones((2, 2))
-y = core.ones((2, 2)) * 2
-x += y.T
-# z = core.iadd(x, y)
-# core.iadd(x, y)
-print x
-core.pop_mode()
+# core.build_eval_mode()
+# x = core.ones((2, 2))
+# y = core.ones((2, 2)) * 2
+# x += y.T
+# # z = core.iadd(x, y)
+# # core.iadd(x, y)
+# print x
+# core.pop_mode()
+
+
+
 
