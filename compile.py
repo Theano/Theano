@@ -10,9 +10,15 @@ from copy import copy
 class profile_linker:
     def __init__(self, env):
         self.order = env.toposort()
+#         print "digraph unix { size = '6,6'; node [color = lightblue2; style = filled];"
+#         for op in self.order:
+#             for input in op.inputs:
+#                 if input.owner:
+#                     print input.owner.__class__.__name__ + str(abs(id(input.owner))), " -> ", op.__class__.__name__ + str(abs(id(op))), ";"
         self.thunks = [op._perform for op in self.order]
         self.n_calls = 0
         self.times = [0.0 for op in self.order]
+    
     def __call__(self):
         for i, thunk in enumerate(self.thunks):
             start_time = time.time()
@@ -51,13 +57,14 @@ class prog(gof.Prog):
         TODO: think about whether orphan computation should be in this function,
         or in self.__call__()
         """
-        outputs = gof.mark_outputs_as_destroyed(outputs)
+        new_outputs = gof.mark_outputs_as_destroyed(outputs)
         gof.Prog.__init__(self,
                           inputs,
-                          outputs,
+                          new_outputs,
                           optimizer,
                           linker,
                           [])
+        self.outputs = outputs
         self.compute_orphans()
 
     def __call__(self, check_uncomputed = True):

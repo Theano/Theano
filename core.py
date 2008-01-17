@@ -193,6 +193,8 @@ class NumpyR(gof.PythonR):
             self.data = UNCOMPUTED
         elif isinstance(value, numpy.ndarray):
             self.data = value
+        elif isinstance(value, PythonR):
+            self.set_value(value.data)
         else:
             self.data = numpy.array(value)
         self.up_to_date = True

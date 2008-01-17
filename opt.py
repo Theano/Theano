@@ -34,5 +34,6 @@ optimizer_end = gof.SeqOptimizer([gof.DummyRemover])
 def optimizer(lst):
     seq_opt = gof.SeqOptimizer(optimizer_begin + lst + optimizer_end)
     rval = gof.PythonOpt(gof.MergeOptMerge(seq_opt))
+#    rval = gof.PythonOpt((seq_opt))
     return rval
     
