@@ -1,18 +1,48 @@
+import time
 
 import gof
 
+
+import core
 import opt
 from copy import copy
 
-#prog(inputs, outputs)
-#single(*outputs)
-#multi(*output_lists)
+class profile_linker:
+    def __init__(self, env):
+        self.order = env.toposort()
+        self.thunks = [op._perform for op in self.order]
+        self.n_calls = 0
+        self.times = [0.0 for op in self.order]
+    def __call__(self):
+        for i, thunk in enumerate(self.thunks):
+            start_time = time.time()
+            thunk()
+            self.times[i] += time.time() - start_time
+        self.n_calls += 1
 
-import core
+    def dump(self):
+        total_time = sum(self.times)
+        print self.n_calls, 'calls took', total_time, 'seconds'
+
+        print 'Proportion of CPU per op'
+        for op, t in zip(self.order, self.times):
+            s_op = str(op).split()[0][1:]
+            print "  %-35s %4.5f"% (s_op, t/total_time)
+
+        print 'Proportion of CPU per op class'
+        dct = {}
+        for op, t in zip(self.order, self.times):
+            s_op = str(op).split()[0][1:]
+            dct[s_op] = dct.get(s_op, 0.0) + t
+        for t, s_op in reversed(sorted([(t,op) for op, t in dct.items()])):
+            print "  %-35s %4.5f"% (s_op, t/total_time)
+
+
 
 
 class prog(gof.Prog):
-    def __init__(self, inputs, outputs, optimizer = opt.optimizer([])):
+    def __init__(self, inputs, outputs, optimizer = opt.optimizer([]), linker =
+            gof.link.perform_linker):
         """Compile a subgraph.
 
         N.B. This triggers computation of the subgraph leading to the outputs
@@ -26,7 +56,7 @@ class prog(gof.Prog):
                           inputs,
                           outputs,
                           optimizer,
-                          gof.link.perform_linker,
+                          linker,
                           [])
         self.compute_orphans()
 
@@ -65,6 +95,6 @@ def to_func(inputs, outputs):
             return outputs
     return f
 
-def single(*outputs):
-    return prog(gof.graph.inputs(outputs), outputs)
+def single(*outputs, **kwargs):
+    return prog(gof.graph.inputs(outputs), outputs, **kwargs)
 
