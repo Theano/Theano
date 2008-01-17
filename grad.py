@@ -66,7 +66,7 @@ class Grad(object):
                         type(dr.data)))
                 if r.data.shape != dr.data.shape:
                     raise ValueError(('Grad::add r, dr shape mismatch',
-                        v.data.shape, dv.datashape))
+                        r.data.shape, dr.data.shape))
 
             # add dr to self[r]
             if r in self:
