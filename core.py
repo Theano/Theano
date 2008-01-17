@@ -3,6 +3,7 @@ import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
 
 import numpy
+import weakref
 
 from copy import copy as pycopy
 
@@ -51,6 +52,9 @@ def print_graph(*rs):
     print as_string(*rs)
 
 
+literals_db = {}
+literals_id_db = weakref.WeakValueDictionary()
+
 def input(x):
     if isinstance(x, numpy.ndarray):
         return NumpyR(x)
@@ -72,37 +76,60 @@ def wrap(x):
         return wrap(x._obj)
     else:
         return literal(x)
+
+def _hashable(x):
+    try:
+        x in {}
+        return True
+    except TypeError: # x is unhashable
+        return False
+
+def _literal_hashable(x):
+#     try:
+#         present = x in literals_db
+#         hashable = True
+#     except TypeError: # x is unhashable
+#         present = False
+#         hashable = False
+
+    if x in literals_db:
+        return literals_db[x]
+    else:
+        r = input(x)
+        r.constant = True
+        literals_db[x] = r
+        return r
+    
 #     elif isinstance(x, numpy.ndarray):
-#         return NumpyR(x)
+#         ret = NumpyR(x, constant = True)
 #     elif isinstance(x, (int, float)):
-#         return NumpyR(numpy.array(x))
+#         ret = NumpyR(numpy.array(x), constant = True)
+#     elif isinstance(x, gof.Result):
+#         raise TypeError("%s is already a result." % x)
 #     else:
-#         return PythonR(x)
+#         return PythonR(x, constant = True)
+
+#     if hashable:
+#         literals_db[x] = ret
+
+#     return ret
+
+def _literal_unhashable(x):
+    idx = id(x)
+    if idx in literals_id_db:
+        return literals_id_db[idx]
+    else:
+        r = input(x)
+        r.constant = True
+        literals_id_db[idx] = r
+        return r
+
 
 def literal(x):
-    try:
-        present = x in gof.literals_db
-        hashable = True
-    except TypeError: # x is unhashable
-        present = False
-        hashable = False
-
-    if present:
-        return gof.literals_db.get(x)
-    elif isinstance(x, numpy.ndarray):
-        ret = NumpyR(x, constant = True)
-    elif isinstance(x, (int, float)):
-        ret = NumpyR(numpy.array(x), constant = True)
-    elif isinstance(x, gof.Result):
-        raise TypeError("%s is already a result." % x)
+    if _hashable(x):
+        return _literal_hashable(x)
     else:
-        return PythonR(x, constant = True)
-
-    if hashable:
-        gof.literals_db[x] = ret
-
-    return ret
-
+        return _literal_unhashable(x)
 
 
 inplace = gof.Destroyer
@@ -249,6 +276,22 @@ class proto_add_scalar(omega_op):
 
 class add_scalar(proto_add_scalar):
     impl = tensor_scalar_op(numpy.ndarray.__add__)
+    
+#     def c_impl(x, s, z):
+#         """
+#         if (*__z == NULL) {
+#             *__z = new ndarray
+#         }
+#         ndarray& z = **__z
+#         """
+
+#         return """
+#         z.resize_like(x);
+#         for (int i = 0; i < z.size(); i++) {
+#             z[i] = x[i] * s;
+#         }
+#         return z;
+#         """
 
 class iadd_scalar(proto_add_scalar, inplace):
     impl = tensor_scalar_op(numpy.ndarray.__iadd__)

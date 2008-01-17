@@ -23,15 +23,15 @@ class Grad(object):
             self.add_output(key,val)
 
     def __contains__(self, item):
-        return id(item) in self.map
+        return item in self.map
 
     def __getitem__(self, item):
         """Map item to its id and retrieve it."""
-        return self.map[id(item)]
+        return self.map[core.wrap(item)]
 
     def __setitem__(self, item, val):
         """Map item to its id and store internally."""
-        self.map[id(item)] = val
+        self.map[item] = val
 
     def add_output(self, r, dr):
         self.add(r, dr)
@@ -134,12 +134,14 @@ def grad(cost, param=None, cost_grad = 1.0):
     else:
         return rval(param)
 
+
 #
 # UNIT TEST
 #
 import unittest
 import numpy
 import compile
+
 
 class _testCase (unittest.TestCase):
     def setUp(self):
@@ -193,6 +195,18 @@ class _testCase (unittest.TestCase):
     def test1(self):
         self.assertEqual(('2.67327580893', '0.000438649434819'),
                 self.matinv_compiled(3))
+
+    def test_grad_wrt_ndarray_pointer(self):
+        """
+        Tests if it is possible to index the gradient by a pointer to a ndarray
+        that is used as a node of the computation graph.
+        """
+        a = numpy.ones((4, 4))
+        b = numpy.ones((4, 4))
+        c = numpy.ones((4, 4))
+        expr = core.sum(core.dot(core.add(a, b), c))
+        g = grad(expr)
+        g[a]
 
     def tearDown(self):
         core.pop_mode()

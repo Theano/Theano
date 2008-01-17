@@ -2,6 +2,7 @@
 import gof
 
 import opt
+from copy import copy
 
 #prog(inputs, outputs)
 #single(*outputs)
@@ -52,8 +53,8 @@ class prog(gof.Prog):
 
 def to_func(inputs, outputs):
 #    print gof.Env(inputs, outputs).io_toposort()
+##    p = prog([copy(input) for input in inputs], gof.graph.clone(inputs, outputs))
     p = prog(inputs, outputs)
-    print p.env
     def f(*args):
         for input, value in zip(inputs, args):
             p[input] = value
