@@ -147,6 +147,12 @@ class omega_op(gof.PythonOp):
             grad = grad.im_func
         cls.grad = staticmethod(grad)
 
+        # make c_impl a static method
+        c_impl = cls.c_impl
+        if hasattr(c_impl, 'im_func'):
+            c_impl = c_impl.im_func
+        cls.c_impl = staticmethod(c_impl)
+
 #         # adjust impl
 #         if cls.forbid_broadcast:
 #             cls.impl = assert_same_shapes(cls.impl)
@@ -170,6 +176,12 @@ class omega_op(gof.PythonOp):
 
     def grad(*args):
         return UNDEFINED
+
+    def c_impl(inputs, outputs):
+        raise NotImplementedError()
+
+    def c_perform(self):
+        pass
 
 
 def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
