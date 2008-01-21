@@ -1,6 +1,15 @@
 import core 
 import scipy.weave as weave
 
+"""
+File: omega/blas.py
+
+This file is in omega's core because it consists mostly of optimizations of the
+graphs that can be constructed from omega/core.py.  The optimizations provided
+by this file are aimed at the goal of inserting gemm Ops in place of more
+fine-grained motifs of iadd, isub, scale, and dot.
+"""
+
 _gemm_support_code = """
     template< typename T >
     struct TMat_t
@@ -132,8 +141,10 @@ def _gemm(a, x, y, b, z):
             headers=['<gsl/gsl_cblas.h>'],
             libraries=['cblas','atlas', 'g2c'])
 
+#TODO: modify gemm to work with vectors and tensors too!
+# (trac ticket 18)
 class gemm(core.omega_op, core.inplace):
-    def _impl(z, a,x,y,b):
+    def impl_unused(z, a,x,y,b):
         if b == 0.0:
             if a == 1.0:
                 z = numpy.dot(x,y)
