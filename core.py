@@ -177,12 +177,41 @@ class omega_op(gof.PythonOp):
     def grad(*args):
         return UNDEFINED
 
+    def __create_c_code(self):
+        behavior = self.c_impl(self.inputs, self.outputs)
+        (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
+        struct = """
+        struct _omega_%(name)s {
+          _omega_%(name)s() {}
+
+          void extract(void) {
+
+          }
+          void execute(void) {
+            %(code)s
+          }
+          void sync(void) {
+            
+          }
+        };
+        """ % self.__class__.__name__, behavior
+    
+    def c_alloc(self):
+        raise Exception("Cannot allocate output arrays for this Op.")
+    
     def c_impl(inputs, outputs):
         raise NotImplementedError()
 
+    def c_thunk(self):
+        self.c_alloc()
+        if self.c_module:
+            a
+        else:
+            
+    
     def c_perform(self):
-        pass
-
+        self.c_thunk()()
+        
 
 def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
     def f(x, y):
@@ -272,7 +301,42 @@ def tensor_scalar_op(impl):
     return ret
 
 
+# @omega_op
+# def add((x, y), (z, )):
+
+#     def grad(gz):
+#         return gz
+
+#     def c_alloc():
+#         return numpy.ndarray(x.shape, dtype = x.dtype)
+
+#     c_impl = """
+#              for (int i = 0; i < z.ncols; i++) {
+#                  for (int j = 0; j < z.nrows; j++) {
+#                      z(i, j) = x(i, j) + y(i, j);
+#                  }
+#              }
+#              """
+
+    
+
+
 ## Addition ##
+
+class add(omega_op):
+    impl = assert_same_shapes(numpy.ndarray.__add__)
+    def grad(x, y, gz):
+        return gz
+    def alloc(x, y):
+        return numpy.ndarray(x.shape, dtype = x.dtype)
+    def c_impl(x, y, z):
+        return """
+        for (int i = 0; i < z.ncols; i++) {
+            for (int j = 0; j < z.nrows; j++) {
+                z(i, j) = x(i, j) + y(i, j);
+            }
+        }
+        """
 
 class proto_add_elemwise(omega_op):
     def grad(x, y, gz):
