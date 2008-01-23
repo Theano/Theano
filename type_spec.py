@@ -30,9 +30,6 @@ class omega_type_converter_extension:
     def struct_support_code(self):
         return ""
 
-    def struct_declaration_code(self):
-        return ""
-
     def struct_typedefs(self):
         return "\n".join(["typedef %s %s_type;" % (c_type, name) for c_type, name, init in self.provides()])
 

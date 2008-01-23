@@ -90,13 +90,6 @@ def _hashable(x):
         return False
 
 def _literal_hashable(x):
-#     try:
-#         present = x in literals_db
-#         hashable = True
-#     except TypeError: # x is unhashable
-#         present = False
-#         hashable = False
-
     if x in literals_db:
         return literals_db[x]
     else:
@@ -104,20 +97,6 @@ def _literal_hashable(x):
         r.constant = True
         literals_db[x] = r
         return r
-    
-#     elif isinstance(x, numpy.ndarray):
-#         ret = NumpyR(x, constant = True)
-#     elif isinstance(x, (int, float)):
-#         ret = NumpyR(numpy.array(x), constant = True)
-#     elif isinstance(x, gof.Result):
-#         raise TypeError("%s is already a result." % x)
-#     else:
-#         return PythonR(x, constant = True)
-
-#     if hashable:
-#         literals_db[x] = ret
-
-#     return ret
 
 def _literal_unhashable(x):
     idx = id(x)
@@ -128,7 +107,6 @@ def _literal_unhashable(x):
         r.constant = True
         literals_id_db[idx] = r
         return r
-
 
 def literal(x):
     if _hashable(x):
@@ -141,28 +119,25 @@ inplace = gof.Destroyer
 view = gof.Viewer
 
 
+def cgetspecs(names, vals, converters):
+    d = {}
+    for name, value in zip(names, vals):
+        d[name] = value.data
+    specs = weave.ext_tools.assign_variable_types(names, d, type_converters = converters) #, auto_downcast = 0)
+    return d, specs
+
 def cgen(name, behavior, inames, ivals, onames, ovals, converters = None):
     if not converters:
         converters = type_spec.default
     for converter in converters:
         assert isinstance(converter, type_spec.omega_type_converter_extension)
 
-    d = {}
-    for name, value in zip(inames + onames, ivals + ovals):
-        d[name] = value.data
-        #         print inames + onames
-        #         print d
-        #         print [x.__class__ for x in converters]
-    specs = weave.ext_tools.assign_variable_types(inames + onames, d, type_converters = converters) #, auto_downcast = 0)
-
+    d, specs = cgetspecs(inames + onames, ivals + ovals, converters)
+    
     template = {}
     template['name'] = name
     template['code'] = behavior
     template['members'] = "\n".join([spec.struct_members_code() for spec in specs])
-    template['decl'] = "\n".join([spec.struct_declaration_code() for spec in specs])
-    #        types = [spec.struct_template_types() for spec in specs]
-    #        template['types'] = ", ".join([", ".join([c_type for c_type, name, init in spec.provides()]) for spec in specs])
-    #        template['typenames'] = ", ".join([spec.struct_template_code() for spec in specs])
     template['support'] = "\n".join([spec.struct_support_code() for spec in specs])
     template['typedefs'] = "\n".join([spec.struct_typedefs() for spec in specs])
 
@@ -174,7 +149,6 @@ def cgen(name, behavior, inames, ivals, onames, ovals, converters = None):
       %(support)s
 
       void execute(void) {
-        %(decl)s
         %(code)s
       }
     """ % template
@@ -184,26 +158,21 @@ def cgen(name, behavior, inames, ivals, onames, ovals, converters = None):
 
     struct = "struct %(struct_name)s { %(struct_contents)s\n};" % template
 
-    #        code = "_omega_%(name)s<%(types)s>* __STRUCT_P = new _omega_%(name)s();\n" % template
-    #        code = "_omega_%(name)s<%(types)s>* __STRUCT_P = &_omega_%(name)s<%(types)s>();\n" % template
     code = "%(struct_name)s* __STRUCT_P = &%(struct_name)s();\n" % template
     code += "\n".join([spec.struct_import_code() for spec in specs])
     code += "\n__STRUCT_P->execute();\n"
     code += "return_val = 10;"
     code += "\n//%(md5)s" % template
 
-    print struct
-    print code
+    return d, code, struct, converters
 
-    for spec in specs:
-        print spec.declaration_code()
 
-    print d
-
-    res = weave.inline(code, inames+onames, local_dict = d, global_dict = {}, support_code = struct, type_converters = converters)
-
-    return res, None
-
+def make_static(cls, fname):
+    f = getattr(cls, fname)
+    if hasattr(f, 'im_func'):
+        f = f.im_func
+    setattr(cls, fname, staticmethod(f))
+    
 
 
 class omega_op(gof.PythonOp):
@@ -212,27 +181,8 @@ class omega_op(gof.PythonOp):
 
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
-        # make grad a static method
-        grad = cls.grad
-        if hasattr(grad, 'im_func'):
-            grad = grad.im_func
-        cls.grad = staticmethod(grad)
-
-        # make c_impl a static method
-        c_impl = cls.c_impl
-        if hasattr(c_impl, 'im_func'):
-            c_impl = c_impl.im_func
-        cls.c_impl = staticmethod(c_impl)
-
-        # make c_alloc a static method
-        c_alloc = cls.c_alloc
-        if hasattr(c_alloc, 'im_func'):
-            c_alloc = c_alloc.im_func
-        cls.c_alloc = staticmethod(c_alloc)
-
-#         # adjust impl
-#         if cls.forbid_broadcast:
-#             cls.impl = assert_same_shapes(cls.impl)
+        for fname in ['grad', 'c_impl', 'c_alloc']:
+            make_static(cls, fname)
 
         # make impl a static method
         gof.PythonOp.__clsinit__(cls, name, bases, dct)
@@ -254,50 +204,10 @@ class omega_op(gof.PythonOp):
     def grad(*args):
         return UNDEFINED
 
-    def create_c_code(self, converters = None):
+    def c_code(self, converters = None):
         behavior = self.c_impl(self.inputs, self.outputs)
         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
         return cgen(self.__class__.__name__, behavior, inames, self.inputs, onames, self.outputs, converters)
-
-
-##        return code, struct
-
-
-#         behavior = self.c_impl(self.inputs, self.outputs)
-#         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
-#         d = {}
-#         for name, value in zip(inames + onames, self.inputs + self.outputs):
-#             d[name] = value.data
-#         converters = [omega_array_converter()] + weave.converters.default
-#         specs = assign_variable_types(inames + onames, d, type_converters = converters) #, auto_downcast = 0)
-        
-# #        itypes = [isinstance(input.data, numpy.ndarray) and num_to_c_types[input.data.dtype.char] for input in self.inputs]
-# #        otypes = [num_to_c_types[output.data.dtype.char] for output in self.outputs]
-
-#         tvars_list = [spec.template_vars() for spec in specs]
-
-#         template = {}
-#         template['name'] = self.__class__.__name__
-#         template['code'] = behavior
-#         template['members'] = ";\n".join([" %(name)s"])
-#         template['decl'] = ""
-#         template['typespecs'] = ", ".join(["%(name)s_type" % spec.name for spec in specs] +
-#                                           ["%(name)s_num_type" % tvars['name'] for tvars in tvars_list if 'num_type' in tvars])
-
-#         struct = """
-#         template<%(typespecs)s>
-#         struct _omega_%(name)s {
-
-#           %(members)s
-        
-#           _omega_%(name)s() {}
-          
-#           void execute(void) {
-#             %(decl)s
-#             %(code)s
-#           }
-#         };
-#         """ % template
 
     def _c_alloc(self):
         self.c_alloc(self.inputs, self.outputs)
@@ -310,16 +220,16 @@ class omega_op(gof.PythonOp):
 
     def c_thunk(self):
         self._c_alloc()
-        if self.c_module:
-            a
-        else:
-            aaaaaa
+        d, code, struct, converters = self.c_code()
+        def thunk():
+            weave.inline(code, d.keys(), local_dict = d, global_dict = {}, support_code = struct, type_converters = converters)
+        return thunk
     
     def c_perform(self):
         self.c_thunk()()
         
 
-def elemwise_wrap(beforeloop, inloop, afterloop, inames, onames):
+def elemwise_wrap(beforeloop, inloop, afterloop, loop_vars, writable_loop_vars):
     return """
     %(beforeloop)s
     for (int i = 0; i < N_%(v1)s[0]; i++) {
@@ -330,9 +240,11 @@ def elemwise_wrap(beforeloop, inloop, afterloop, inames, onames):
         }
     }
     %(afterloop)s
-    """ % dict(v1 = (inames + onames)[0],
-               idefs = "\n".join(["_%s_dtype %s = _%s2(i, j);" % (iname, iname, iname.upper()) for iname in inames if not iname.startswith("_")]),
-               odefs = "\n".join(["_%s_dtype& %s = _%s2(i, j);" % (oname, oname, oname.upper()) for oname in onames if not oname.startswith("_")]),
+    """ % dict(v1 = (loop_vars + writable_loop_vars)[0],
+               idefs = "\n".join(["_%s_dtype %s = _%s2(i, j);" % (loop_var, loop_var, loop_var.upper())
+                                  for loop_var in loop_vars]),
+               odefs = "\n".join(["_%s_dtype& %s = _%s2(i, j);" % (writable_loop_var, writable_loop_var, writable_loop_var.upper())
+                                  for writable_loop_var in writable_loop_vars]),
                beforeloop = beforeloop,
                inloop = inloop,
                afterloop = afterloop)
@@ -342,29 +254,10 @@ class elemwise(omega_op):
 
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
-        # make c_init a static method
-        c_init = cls.c_init
-        if hasattr(c_init, 'im_func'):
-            c_init = c_init.im_func
-        cls.c_init = staticmethod(c_init)
+        for fname in ['c_init', 'c_foreach', 'c_finalize']:
+            make_static(cls, fname)
 
-        # make c_foreach a static method
-        c_foreach = cls.c_foreach
-        if hasattr(c_foreach, 'im_func'):
-            c_foreach = c_foreach.im_func
-        cls.c_foreach = staticmethod(c_foreach)
-
-        # make c_finalize a static method
-        c_finalize = cls.c_finalize
-        if hasattr(c_finalize, 'im_func'):
-            c_finalize = c_finalize.im_func
-        cls.c_finalize = staticmethod(c_finalize)
-
-#         # adjust impl
-#         if cls.forbid_broadcast:
-#             cls.impl = assert_same_shapes(cls.impl)
-
-        # make impl a static method
+        # make impl, grad, etc. static methods
         omega_op.__clsinit__(cls, name, bases, dct)
 
     def _c_alloc(self):
@@ -405,10 +298,10 @@ class elemwise(omega_op):
     def c_finalize(inputs, outputs):
         return ""
 
-    def create_c_code(self, converters = None):
+    def c_code(self, converters = None, elemwise_wrap = elemwise_wrap):
         def mangle(name):
             if name.startswith("_"):
-                return name#[1:]
+                return name
             else:
                 return "_" + name
 
@@ -422,10 +315,12 @@ class elemwise(omega_op):
         during = self.c_foreach(self.inputs, self.outputs)
         after = self.c_finalize(self.inputs, self.outputs)
 
+        # Get c_init, etc.'s argument names so we can declare them properly in the C code
         spec_b = inspect.getargspec(self.c_init)
         spec_d = inspect.getargspec(self.c_foreach)
         spec_a = inspect.getargspec(self.c_finalize)
 
+        # Sanity check - apart from loop vars, variables are shared in the before/during/after parts
         if before and spec_b != spec_d:
             raise Exception("The input signature of c_init differs from the input signature of c_foreach.")
         if after and spec_a != spec_d:
@@ -433,7 +328,9 @@ class elemwise(omega_op):
         
         (inames, onames), _1, _2, _3 = spec_d
 
-        behavior = elemwise_wrap(before, during, after, inames, onames)
+        behavior = elemwise_wrap(before, during, after,
+                                 [iname for iname in inames if not iname.startswith("_")],
+                                 [oname for oname in onames if not oname.startswith("_")])
 
         inames = [mangle(name) for name in inames]
         onames = [mangle(name) for name in onames]
