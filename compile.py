@@ -10,30 +10,50 @@ from copy import copy
 class profile_linker:
     def __init__(self, env):
         self.order = env.toposort()
-#         print "digraph unix { size = '6,6'; node [color = lightblue2; style = filled];"
-#         for op in self.order:
-#             for input in op.inputs:
-#                 if input.owner:
-#                     print input.owner.__class__.__name__ + str(abs(id(input.owner))), " -> ", op.__class__.__name__ + str(abs(id(op))), ";"
         self.thunks = [op._perform for op in self.order]
         self.n_calls = 0
+        self.n_thunks = 0
         self.times = [0.0 for op in self.order]
+
+    #TODO: popen2("dot -Tpng | display") and actually make the graph window pop up
+    def print_for_dot(self):
+         print "digraph unix { size = '6,6'; node [color = lightblue2; style = filled];"
+         for op in self.order:
+             for input in op.inputs:
+                 if input.owner:
+                     print input.owner.__class__.__name__ + str(abs(id(input.owner))), " -> ", op.__class__.__name__ + str(abs(id(op))), ";"
     
-    def __call__(self):
+    def slow_call(self):
+        """Run the program, timing each thunk.  """
         for i, thunk in enumerate(self.thunks):
             start_time = time.time()
             thunk()
             self.times[i] += time.time() - start_time
+            self.n_thunks += 1
         self.n_calls += 1
 
-    def dump(self):
-        total_time = sum(self.times)
-        print self.n_calls, 'calls took', total_time, 'seconds'
+    def fast_call(self):
+        """Run the program, but only time the entire loop."""
+        start_time = time.time()
+        for th in self.thunks:
+            th()
+        self.n_thunks += len(self.thunks)
+        self.n_calls += 1
+        self.times[0] += time.time() - start_time
 
-        print 'Proportion of CPU per op'
-        for op, t in zip(self.order, self.times):
-            s_op = str(op).split()[0][1:]
-            print "  %-35s %4.5f"% (s_op, t/total_time)
+    __call__ = slow_call
+
+    def dump(self, proportion=True):
+        """Print statistics accumulated so far."""
+        total_time = sum(self.times)
+        print self.n_calls, 'calls took', total_time, 'seconds to evaluate',
+        print self.n_thunks, 'thunks'
+
+        if 0:
+            print 'Proportion of CPU per op'
+            for op, t in zip(self.order, self.times):
+                s_op = str(op).split()[0][1:]
+                print "  %-35s %4.5f"% (s_op, t/total_time)
 
         print 'Proportion of CPU per op class'
         dct = {}
@@ -41,7 +61,10 @@ class profile_linker:
             s_op = str(op).split()[0][1:]
             dct[s_op] = dct.get(s_op, 0.0) + t
         for t, s_op in reversed(sorted([(t,op) for op, t in dct.items()])):
-            print "  %-35s %4.5f"% (s_op, t/total_time)
+            if proportion:
+                print "  %-35s %4.5f"% (s_op, t/total_time)
+            else:
+                print "  %-35s %4.5f"% (s_op, t)
 
 
 
