@@ -2,8 +2,13 @@
 import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
 
+import type_spec
+
 import numpy
 import weakref
+import inspect
+import md5
+from scipy import weave
 
 from copy import copy as pycopy
 
@@ -135,6 +140,72 @@ def literal(x):
 inplace = gof.Destroyer
 view = gof.Viewer
 
+
+def cgen(name, behavior, inames, ivals, onames, ovals, converters = None):
+    if not converters:
+        converters = type_spec.default
+    for converter in converters:
+        assert isinstance(converter, type_spec.omega_type_converter_extension)
+
+    d = {}
+    for name, value in zip(inames + onames, ivals + ovals):
+        d[name] = value.data
+        #         print inames + onames
+        #         print d
+        #         print [x.__class__ for x in converters]
+    specs = weave.ext_tools.assign_variable_types(inames + onames, d, type_converters = converters) #, auto_downcast = 0)
+
+    template = {}
+    template['name'] = name
+    template['code'] = behavior
+    template['members'] = "\n".join([spec.struct_members_code() for spec in specs])
+    template['decl'] = "\n".join([spec.struct_declaration_code() for spec in specs])
+    #        types = [spec.struct_template_types() for spec in specs]
+    #        template['types'] = ", ".join([", ".join([c_type for c_type, name, init in spec.provides()]) for spec in specs])
+    #        template['typenames'] = ", ".join([spec.struct_template_code() for spec in specs])
+    template['support'] = "\n".join([spec.struct_support_code() for spec in specs])
+    template['typedefs'] = "\n".join([spec.struct_typedefs() for spec in specs])
+
+    template['struct_contents'] = """
+      %(typedefs)s
+
+      %(members)s
+
+      %(support)s
+
+      void execute(void) {
+        %(decl)s
+        %(code)s
+      }
+    """ % template
+
+    template['md5'] = md5.md5(template['struct_contents']).hexdigest()
+    template['struct_name'] = "_omega_%(name)s_%(md5)s" % template
+
+    struct = "struct %(struct_name)s { %(struct_contents)s\n};" % template
+
+    #        code = "_omega_%(name)s<%(types)s>* __STRUCT_P = new _omega_%(name)s();\n" % template
+    #        code = "_omega_%(name)s<%(types)s>* __STRUCT_P = &_omega_%(name)s<%(types)s>();\n" % template
+    code = "%(struct_name)s* __STRUCT_P = &%(struct_name)s();\n" % template
+    code += "\n".join([spec.struct_import_code() for spec in specs])
+    code += "\n__STRUCT_P->execute();\n"
+    code += "return_val = 10;"
+    code += "\n//%(md5)s" % template
+
+    print struct
+    print code
+
+    for spec in specs:
+        print spec.declaration_code()
+
+    print d
+
+    res = weave.inline(code, inames+onames, local_dict = d, global_dict = {}, support_code = struct, type_converters = converters)
+
+    return res, None
+
+
+
 class omega_op(gof.PythonOp):
 
     forbid_broadcast = False
@@ -152,6 +223,12 @@ class omega_op(gof.PythonOp):
         if hasattr(c_impl, 'im_func'):
             c_impl = c_impl.im_func
         cls.c_impl = staticmethod(c_impl)
+
+        # make c_alloc a static method
+        c_alloc = cls.c_alloc
+        if hasattr(c_alloc, 'im_func'):
+            c_alloc = c_alloc.im_func
+        cls.c_alloc = staticmethod(c_alloc)
 
 #         # adjust impl
 #         if cls.forbid_broadcast:
@@ -177,41 +254,193 @@ class omega_op(gof.PythonOp):
     def grad(*args):
         return UNDEFINED
 
-    def __create_c_code(self):
+    def create_c_code(self, converters = None):
         behavior = self.c_impl(self.inputs, self.outputs)
         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
-        struct = """
-        struct _omega_%(name)s {
-          _omega_%(name)s() {}
+        return cgen(self.__class__.__name__, behavior, inames, self.inputs, onames, self.outputs, converters)
 
-          void extract(void) {
 
-          }
-          void execute(void) {
-            %(code)s
-          }
-          void sync(void) {
-            
-          }
-        };
-        """ % self.__class__.__name__, behavior
+##        return code, struct
+
+
+#         behavior = self.c_impl(self.inputs, self.outputs)
+#         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
+#         d = {}
+#         for name, value in zip(inames + onames, self.inputs + self.outputs):
+#             d[name] = value.data
+#         converters = [omega_array_converter()] + weave.converters.default
+#         specs = assign_variable_types(inames + onames, d, type_converters = converters) #, auto_downcast = 0)
+        
+# #        itypes = [isinstance(input.data, numpy.ndarray) and num_to_c_types[input.data.dtype.char] for input in self.inputs]
+# #        otypes = [num_to_c_types[output.data.dtype.char] for output in self.outputs]
+
+#         tvars_list = [spec.template_vars() for spec in specs]
+
+#         template = {}
+#         template['name'] = self.__class__.__name__
+#         template['code'] = behavior
+#         template['members'] = ";\n".join([" %(name)s"])
+#         template['decl'] = ""
+#         template['typespecs'] = ", ".join(["%(name)s_type" % spec.name for spec in specs] +
+#                                           ["%(name)s_num_type" % tvars['name'] for tvars in tvars_list if 'num_type' in tvars])
+
+#         struct = """
+#         template<%(typespecs)s>
+#         struct _omega_%(name)s {
+
+#           %(members)s
+        
+#           _omega_%(name)s() {}
+          
+#           void execute(void) {
+#             %(decl)s
+#             %(code)s
+#           }
+#         };
+#         """ % template
+
+    def _c_alloc(self):
+        self.c_alloc(self.inputs, self.outputs)
     
-    def c_alloc(self):
-        raise Exception("Cannot allocate output arrays for this Op.")
+    def c_alloc(inputs, outputs):
+        raise NotImplementedError()
     
     def c_impl(inputs, outputs):
         raise NotImplementedError()
 
     def c_thunk(self):
-        self.c_alloc()
+        self._c_alloc()
         if self.c_module:
             a
         else:
-            
+            aaaaaa
     
     def c_perform(self):
         self.c_thunk()()
         
+
+def elemwise_wrap(beforeloop, inloop, afterloop, inames, onames):
+    return """
+    %(beforeloop)s
+    for (int i = 0; i < N_%(v1)s[0]; i++) {
+        for (int j = 0; j < N_%(v1)s[1]; j++) {
+            %(idefs)s
+            %(odefs)s
+            %(inloop)s
+        }
+    }
+    %(afterloop)s
+    """ % dict(v1 = (inames + onames)[0],
+               idefs = "\n".join(["_%s_dtype %s = _%s2(i, j);" % (iname, iname, iname.upper()) for iname in inames if not iname.startswith("_")]),
+               odefs = "\n".join(["_%s_dtype& %s = _%s2(i, j);" % (oname, oname, oname.upper()) for oname in onames if not oname.startswith("_")]),
+               beforeloop = beforeloop,
+               inloop = inloop,
+               afterloop = afterloop)
+
+
+class elemwise(omega_op):
+
+    @staticmethod
+    def __clsinit__(cls, name, bases, dct):
+        # make c_init a static method
+        c_init = cls.c_init
+        if hasattr(c_init, 'im_func'):
+            c_init = c_init.im_func
+        cls.c_init = staticmethod(c_init)
+
+        # make c_foreach a static method
+        c_foreach = cls.c_foreach
+        if hasattr(c_foreach, 'im_func'):
+            c_foreach = c_foreach.im_func
+        cls.c_foreach = staticmethod(c_foreach)
+
+        # make c_finalize a static method
+        c_finalize = cls.c_finalize
+        if hasattr(c_finalize, 'im_func'):
+            c_finalize = c_finalize.im_func
+        cls.c_finalize = staticmethod(c_finalize)
+
+#         # adjust impl
+#         if cls.forbid_broadcast:
+#             cls.impl = assert_same_shapes(cls.impl)
+
+        # make impl a static method
+        omega_op.__clsinit__(cls, name, bases, dct)
+
+    def _c_alloc(self):
+        if isinstance(self, inplace):
+            dmap = self.destroy_map()
+        else:
+            dmap = {}
+        try:
+            return self.c_alloc(self.inputs, self.outputs)
+        except NotImplementedError:
+            (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_foreach)
+            for oname in onames:
+                if oname.startswith("_"):
+                    raise Exception("cannot infer an allocation policy automatically for variable " \
+                                    "%s because it is not part of the elementwise loop - "\
+                                    "please override the c_alloc method" % oname[1:])
+            model = None
+            for iname, input in zip(inames, self.inputs):
+                if not iname.startswith("_"):
+                    model = input.data
+            if model is None:
+                raise Exception("cannot infer an allocation policy automatically for output variables " \
+                                "because there is no input variable in the loop from which to get the shape")
+            for output in self.outputs:
+                inplace_inputs = dmap.get(output, [])
+                if inplace_inputs:
+                    assert len(inplace_inputs) == 1
+                    output.data = inplace_inputs[0].data
+                else:
+                    output.data = numpy.ndarray(model.shape, model.dtype)
+
+    def c_init(inputs, outputs):
+        return ""
+
+    def c_foreach(inputs, outputs):
+        return ""
+
+    def c_finalize(inputs, outputs):
+        return ""
+
+    def create_c_code(self, converters = None):
+        def mangle(name):
+            if name.startswith("_"):
+                return name#[1:]
+            else:
+                return "_" + name
+
+        try:
+            self.c_impl(self.inputs, self.outputs)
+            raise Exception("c_impl is not used by elemwise ops - define behavior in c_foreach instead")
+        except NotImplementedError:
+            pass
+
+        before = self.c_init(self.inputs, self.outputs)
+        during = self.c_foreach(self.inputs, self.outputs)
+        after = self.c_finalize(self.inputs, self.outputs)
+
+        spec_b = inspect.getargspec(self.c_init)
+        spec_d = inspect.getargspec(self.c_foreach)
+        spec_a = inspect.getargspec(self.c_finalize)
+
+        if before and spec_b != spec_d:
+            raise Exception("The input signature of c_init differs from the input signature of c_foreach.")
+        if after and spec_a != spec_d:
+            raise Exception("The input signature of c_finalize differs from the input signature of c_foreach.")
+        
+        (inames, onames), _1, _2, _3 = spec_d
+
+        behavior = elemwise_wrap(before, during, after, inames, onames)
+
+        inames = [mangle(name) for name in inames]
+        onames = [mangle(name) for name in onames]
+        
+        return cgen(self.__class__.__name__, behavior, inames, self.inputs, onames, self.outputs, converters)
+
+
 
 def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
     def f(x, y):
