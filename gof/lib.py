@@ -238,7 +238,7 @@ class PythonOp(Op):
             if input not in exc:
                 self.check_input(input)
         try:
-            results = self.impl(*[input.data for input in self.inputs])
+            results = self._impl()
         except Exception, e:
             print "Error in %s: %s" % (self, e)
             raise
@@ -250,7 +250,7 @@ class PythonOp(Op):
                 output.set_value(result)
 
     def _perform(self):
-        results = self.impl(*[input.data for input in self.inputs])
+        results = self._impl()
         if self.nout == 1:
             self.out.set_value(results)
         else:
@@ -267,6 +267,9 @@ class PythonOp(Op):
                     raise Exception("Uncomputed input: %s in %s" % (input, self))
         self.perform()
 
+    def _impl(self):
+        return self.impl(*[input.data for input in self.inputs])
+    
     def impl(*args):
         raise NotImplementedError("This op has no implementation.")
 

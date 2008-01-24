@@ -13,28 +13,33 @@ class omega_type_converter_extension:
         return [(tvars['c_type'], tvars['name'], tvars['var_convert'])]
 
     def format_provide(self, x):
-        return '%s %s = %s;' % x
+        return '%s %s = %s;\n' % x
 
     def declaration_code(self, templatize = 0, inline = 0):
         tvars = self.template_vars(inline=inline)
         code = '%(py_var)s = %(var_lookup)s;\n' % tvars
-        code += '\n'.join([self.format_provide(export) for export in self.provides()])
+        code += ''.join([self.format_provide(export) for export in self.provides()])
         return code
 
+    def struct_init_code(self):
+        return "Py_INCREF(py_%s);" % self.name
+
+    def struct_cleanup_code(self):
+        return "Py_DECREF(py_%s);" % self.name
+    
     def struct_members_code(self):
-        return '\n'.join(['%s_type %s;' % (name, name) for c_type, name, init in self.provides()])
+        res = "PyObject* py_%s;\n" % self.name
+        return res + ''.join(['%s_type %s;\n' % (name, name) for c_type, name, init in self.provides()])
 
     def struct_import_code(self):
-        return '\n'.join(['__STRUCT_P->%s = %s;' % (name, name) for c_type, name, init in self.provides()])
+        res = "__STRUCT_P->py_%s = py_%s;\n" % (self.name, self.name)
+        return res + ''.join(['__STRUCT_P->%s = %s;\n' % (name, name) for c_type, name, init in self.provides()])
 
     def struct_support_code(self):
         return ""
 
     def struct_typedefs(self):
-        return "\n".join(["typedef %s %s_type;" % (c_type, name) for c_type, name, init in self.provides()])
-
-#     def struct_template_types(self):
-#         return [("typename %s_type" % name, ) for c_type, name, init in self.provides()]
+        return ''.join(["typedef %s %s_type;\n" % (c_type, name) for c_type, name, init in self.provides()])
 
 
 class int_converter(omega_type_converter_extension, c_spec.int_converter):
