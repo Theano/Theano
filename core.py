@@ -750,10 +750,10 @@ iscale.impl = tensor_scalar_impl(numpy.ndarray.__imul__)
 
 
 class sqr(elemwise):
-    def grad(x, gz):
-        return scale(mul_elemwise(x, gz), 2.0)
     def impl(x):
         return x * x
+    def grad(x, gz):
+        return scale(mul_elemwise(x, gz), 2.0)
     def c_foreach((x, ), (z, )):
         "z = x * x;"
 
@@ -773,9 +773,9 @@ isqr.impl = lambda x: x.__imul__(x)
 
 
 class sqrt(elemwise):
+    impl = numpy.sqrt
     def grad(x, gz):
         return scale(div(gz, sqrt(x)), 0.5)
-    impl = numpy.sqrt
     def c_foreach((x, ), (z, )):
         "z = pow(x, 0.5);"
 
