@@ -50,7 +50,6 @@ class Grad(object):
             r may be uncomputed or NumpyR
 
         """
-
         if dr is core.UNDEFINED:
             # nothing to do
             pass

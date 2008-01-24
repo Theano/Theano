@@ -7,14 +7,31 @@ import core
 import opt
 from copy import copy
 
+
+
+def experimental_linker(env, target = None):
+    def fetch(op):
+        try:
+            thunk = op.c_thunk()
+            print "yea %s" % op
+            return lambda: cutils.run_cthunk(thunk)
+        except NotImplementedError:
+            print "nope %s" % op
+            return op._perform
+    order = env.toposort()
+    thunks = [fetch(op) for op in order]
+    def ret():
+        for thunk in thunks:
+            thunk()
+    if not target:
+        return ret
+    else:
+        raise NotImplementedError("Cannot write thunk representation to a file.")
+
+
 class profile_linker:
     def __init__(self, env):
         self.order = env.toposort()
-#         print "digraph unix { size = '6,6'; node [color = lightblue2; style = filled];"
-#         for op in self.order:
-#             for input in op.inputs:
-#                 if input.owner:
-#                     print input.owner.__class__.__name__ + str(abs(id(input.owner))), " -> ", op.__class__.__name__ + str(abs(id(op))), ";"
         self.thunks = [op._perform for op in self.order]
         self.n_calls = 0
         self.times = [0.0 for op in self.order]
@@ -57,6 +74,7 @@ class prog(gof.Prog):
         TODO: think about whether orphan computation should be in this function,
         or in self.__call__()
         """
+#        linker = experimental_linker
         new_outputs = gof.mark_outputs_as_destroyed(outputs)
         gof.Prog.__init__(self,
                           inputs,
