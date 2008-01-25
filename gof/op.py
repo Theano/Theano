@@ -153,7 +153,7 @@ class Op(object):
                 self.set_output(i, previous, False)
 
 
-    def refresh(self, allow_changes = False):
+    def repair(self, allow_changes = False):
         """
         This function attempts to repair all inputs that are broken
         links by calling set_input on the new Result that replaced

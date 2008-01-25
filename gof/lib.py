@@ -22,11 +22,19 @@ __all__ = ['UNCOMPUTED',
            'PythonOp',
            'PythonOpt',
            'COp',
+           'make_static',
            'DualImplOp']
 
 
 UNCOMPUTED = Keyword("UNCOMPUTED", False)
 UNDEFINED = Keyword("UNDEFINED", False)
+
+
+def make_static(cls, fname):
+    f = getattr(cls, fname)
+    if hasattr(f, 'im_func'):
+        f = f.im_func
+    setattr(cls, fname, staticmethod(f))
 
 
 class ForbidConstantOverwrite(features.Listener, features.Constraint):
@@ -75,13 +83,14 @@ class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
 class PythonR(Result):
 
-    __slots__ = ['data', 'constant', 'up_to_date']
+    __slots__ = ['data', 'spec', 'constant', 'up_to_date']
     
     def __init__(self, x = None, constant = False):
         self.constant = False
         self.set_value(x)
         self.constant = constant
         self.up_to_date = True
+        self.spec = None
         
     def set_value(self, value):
         if self.constant:
@@ -93,6 +102,7 @@ class PythonR(Result):
         else:
             self.data = value
         self.up_to_date = True
+        self.refresh()
 
     def __str__(self):
         return str(self.data)
@@ -100,10 +110,16 @@ class PythonR(Result):
     def __repr__(self):
         return repr(self.data)
 
+    def refresh(self):
+        self.spec = id(self.data)
+
+    def alloc(self):
+        raise TypeError("Cannot allocate following this specification.")
+
     def perform(self):
         if self.owner:
             self.owner.perform()
-
+    
     def compute(self):
         if self.owner:
             self.owner.compute()
@@ -112,22 +128,19 @@ class PythonR(Result):
 class PythonOp(Op):
     
     __metaclass__ = ClsInit
-    __mode__ = ['build_eval']
     
     nout = 1
 
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
         # make impl a static method
-        impl = cls.impl
-        if hasattr(cls.impl, 'im_func'):
-            impl = impl.im_func
-        cls.impl = staticmethod(impl)
+        cls.set_impl(cls.impl)
+        make_static(cls, 'specs')
     
     def __new__(cls, *inputs, **kwargs):
         op = Op.__new__(cls)
         op.__init__(*inputs)
-        mode = kwargs.get('mode', None) or cls.current_mode()
+        mode = kwargs.get('mode', None) or current_mode()
         if mode == 'eval':
             op.perform()
             if op.nout == 1:
@@ -147,33 +160,6 @@ class PythonOp(Op):
     def __validate__(self):
         for input in self.inputs:
             assert isinstance(input, PythonR)
-
-    @classmethod
-    def current_mode(cls):
-        return cls.__mode__[-1]
-
-    @classmethod
-    def set_mode(cls, mode):
-        cls.__mode__.append(mode)
-
-    @classmethod
-    def build_mode(cls):
-        cls.set_mode('build')
-
-    @classmethod
-    def eval_mode(cls):
-        cls.set_mode('eval')
-
-    @classmethod
-    def build_eval_mode(cls):
-        cls.set_mode('build_eval')
-
-    @classmethod
-    def pop_mode(cls):
-        if len(cls.__mode__) == 1:
-            raise Exception("There's only one mode left on the stack.")
-        else:
-            cls.__mode__.pop()
     
     def gen_outputs(self):
         return [PythonR() for i in xrange(self.nout)]
@@ -269,10 +255,48 @@ class PythonOp(Op):
 
     def _impl(self):
         return self.impl(*[input.data for input in self.inputs])
+
+    @classmethod
+    def set_impl(cls, impl):
+        make_static(cls, 'impl')
+#         impl = cls.impl
+#         if hasattr(cls.impl, 'im_func'):
+#             impl = impl.im_func
+#         cls.impl = staticmethod(impl)
     
     def impl(*args):
         raise NotImplementedError("This op has no implementation.")
 
+    def _specs(self):
+        return self.specs(*[input.spec for input in self.inputs])
+
+    def specs(*inputs):
+        raise NotImplementedError("This op cannot infer the specs of its outputs.")
+
+    def refresh(self, except_list = []):
+        for input in self.inputs:
+            input.refresh()
+        change = self._propagate_specs()
+        if change:
+            self.alloc(except_list)
+        return change
+    
+    def _propagate_specs(self):
+        specs = self._specs()
+        if self.nout == 1:
+            specs = [specs]
+        change = False
+        for output, spec in zip(self.outputs, specs):
+            if output.spec != spec:
+                output.spec = spec
+                change = True
+        return change
+    
+    def alloc(self, except_list = []):
+        for output in self.outputs:
+            if output not in except_list:
+                output.alloc()
+    
     __require__ = ForbidConstantOverwrite
 
     def __copy__(self):
@@ -297,16 +321,30 @@ class PythonOp(Op):
             return op[0].owner
         return op.owner
 
+__mode__ = ['build_eval']
 
 
+def current_mode():
+    return __mode__[-1]
 
+def set_mode(mode):
+    __mode__.append(mode)
 
-current_mode = PythonOp.current_mode
-set_mode = PythonOp.set_mode
-build_mode = PythonOp.build_mode
-eval_mode = PythonOp.eval_mode
-build_eval_mode = PythonOp.build_eval_mode
-pop_mode = PythonOp.pop_mode
+def build_mode():
+    set_mode('build')
+
+def eval_mode():
+    set_mode('eval')
+
+def build_eval_mode():
+    set_mode('build_eval')
+
+def pop_mode():
+    if len(__mode__) == 1:
+        raise Exception("There's only one mode left on the stack.")
+    else:
+        __mode__.pop()
+
 
 
 class PythonOpt(opt.Optimizer):
@@ -315,9 +353,9 @@ class PythonOpt(opt.Optimizer):
         self.opt = opt
     
     def optimize(self, env):
-        PythonOp.build_mode()
+        build_mode()
         self.opt.optimize(env)
-        PythonOp.pop_mode()
+        pop_mode()
 
 
 

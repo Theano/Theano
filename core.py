@@ -101,6 +101,7 @@ def cgetspecs(names, vals, converters):
     return d, specs
 
 def cgen(name, behavior, names, vals, converters = None):
+    
     if not converters:
         converters = type_spec.default
     for converter in converters:
@@ -158,15 +159,7 @@ def cgen(name, behavior, names, vals, converters = None):
     code += "__STRUCT_P->init();\n"
     code += "return_val = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), __STRUCT_P, %(struct_name)s_destructor);\n" % template
 
-    return d, code, struct + static, converters
-
-
-def make_static(cls, fname):
-    f = getattr(cls, fname)
-    if hasattr(f, 'im_func'):
-        f = f.im_func
-    setattr(cls, fname, staticmethod(f))
-    
+    return d, names, code, struct + static, converters    
 
 
 class omega_op(gof.PythonOp):
@@ -175,8 +168,8 @@ class omega_op(gof.PythonOp):
 
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
-        for fname in ['grad', 'c_impl', 'alloc']:
-            make_static(cls, fname)
+        for fname in ['grad', 'c_impl']:
+            gof.make_static(cls, fname)
 
         # make impl a static method
         gof.PythonOp.__clsinit__(cls, name, bases, dct)
@@ -202,11 +195,11 @@ class omega_op(gof.PythonOp):
         (inames, onames), behavior = self._c_impl()
         return cgen(self.__class__.__name__, behavior, inames + onames, self.inputs + self.outputs, converters)
 
-    def _alloc(self):
-        self.alloc(self.inputs, self.outputs)
+#     def _alloc(self):
+#         self.alloc(self.inputs, self.outputs)
     
-    def alloc(inputs, outputs):
-        raise NotImplementedError()
+#     def alloc(inputs, outputs):
+#         raise NotImplementedError()
 
     def _c_impl(self):
         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
@@ -215,11 +208,31 @@ class omega_op(gof.PythonOp):
     def c_impl(inputs, outputs):
         raise NotImplementedError()
 
+    def c_thunk_creator(self):
+        self.refresh()
+        d, names, code, struct, converters = self.c_code()
+        
+        cthunk = object()
+        module_name = md5.md5(code).hexdigest()
+        mod = weave.ext_tools.ext_module(module_name)
+        instantiate = weave.ext_tools.ext_function('instantiate',
+                                                   code,
+                                                   names,
+                                                   local_dict = d, global_dict = {}, type_converters = converters)
+        instantiate.customize.add_support_code(struct)
+        mod.add_function(instantiate)
+        mod.compile(location = 'compiled')
+
+        module = __import__("compiled.%s" % module_name, fromlist = [module_name])
+        
+        def creator():
+            return module.instantiate(*[x.data for x in self.inputs + self.outputs])
+#         def creator():
+#             return weave.inline(code, d.keys(), local_dict = d, global_dict = {}, support_code = struct, type_converters = converters)
+        return creator
+    
     def c_thunk(self):
-        self._alloc()
-        d, code, struct, converters = self.c_code()
-        thunk = weave.inline(code, d.keys(), local_dict = d, global_dict = {}, support_code = struct, type_converters = converters)
-        return thunk
+        return self.c_thunk_creator()
     
     def c_perform(self):
         thunk = self.c_thunk()
@@ -341,62 +354,120 @@ class elemwise(omega_op):
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
         for fname in ['c_init', 'c_foreach', 'c_finalize']:
-            make_static(cls, fname)
+            gof.make_static(cls, fname)
 
         # make impl, grad, etc. static methods
         omega_op.__clsinit__(cls, name, bases, dct)
 
-    def _alloc(self):
-        if isinstance(self, inplace):
-            dmap = self.destroy_map()
-        else:
-            dmap = {}
+    def _specs(self):
         try:
-            return self.alloc(self.inputs, self.outputs)
+            return self.specs(*[input.spec for input in self.inputs])
         except NotImplementedError:
-            (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_foreach)
+            (inames, onames), code = self._c_foreach()
             for oname in onames:
                 if oname.startswith("_"):
-                    raise Exception("cannot infer an allocation policy automatically for variable " \
+                    raise Exception("cannot infer a specification automatically for variable " \
                                     "%s because it is not part of the elementwise loop - "\
-                                    "please override the alloc method" % oname[1:])
+                                    "please override the specs method" % oname[1:])
             shape, dtype = None, None
             for iname, input in zip(inames, self.inputs):
                 if not iname.startswith("_"):
-                    shape = input.data
+                    if input.spec:
+                        shape = input.spec[2]
             if shape is None:
-                raise Exception("cannot infer an allocation policy automatically for output variables " \
-                                "because there is no input variable in the loop from which to get the shape")
+                raise Exception("cannot infer a specification automatically for output variables " \
+                                "because there is no input variable in the loop from which to get the shape, "\
+                                "or their shape is unknown")
 
-            dtype = upcast(*[input.data.dtype
-                             for iname, input in zip(inames, self.inputs)
-                             if isinstance(input.data, numpy.ndarray)])
+            try:
+                dtype = upcast(*[input.spec[1]
+                                 for iname, input in zip(inames, self.inputs)
+                                 if isinstance(input, NumpyR)])
+            except IndexError:
+                raise Exception("not all numpy inputs are specified")
 
+            if isinstance(self, inplace):
+                dmap = self.destroy_map()
+            else:
+                dmap = {}
+
+            res = []
             for output in self.outputs:
                 inplace_inputs = dmap.get(output, [])
                 if inplace_inputs:
                     assert len(inplace_inputs) == 1
-                    output.data = inplace_inputs[0].data
+                    res.append(inplace_inputs[0].spec)
                 else:
-                    output.data = numpy.ndarray(shape, dtype)
+                    res.append((numpy.ndarray, dtype, shape))
+                    
+            if self.nout == 1:
+                return res[0]
+            else:
+                return res
+        
+    def alloc(self, except_list = []):
+        if isinstance(self, inplace):
+            dmap = self.destroy_map()
+        else:
+            dmap = {}
+
+        gof.PythonOp.alloc(self, except_list = except_list + dmap.keys())
+        for output, (input, ) in dmap.items():
+            if output not in except_list:
+                output.set_value(input.data)
+
+
+#     def _alloc(self):
+#         if isinstance(self, inplace):
+#             dmap = self.destroy_map()
+#         else:
+#             dmap = {}
+#         try:
+#             return self.alloc(self.inputs, self.outputs)
+#         except NotImplementedError:
+#             (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_foreach)
+#             for oname in onames:
+#                 if oname.startswith("_"):
+#                     raise Exception("cannot infer an allocation policy automatically for variable " \
+#                                     "%s because it is not part of the elementwise loop - "\
+#                                     "please override the alloc method" % oname[1:])
+#             shape, dtype = None, None
+#             for iname, input in zip(inames, self.inputs):
+#                 if not iname.startswith("_"):
+#                     shape = input.data
+#             if shape is None:
+#                 raise Exception("cannot infer an allocation policy automatically for output variables " \
+#                                 "because there is no input variable in the loop from which to get the shape")
+
+#             dtype = upcast(*[input.data.dtype
+#                              for iname, input in zip(inames, self.inputs)
+#                              if isinstance(input.data, numpy.ndarray)])
+
+#             for output in self.outputs:
+#                 inplace_inputs = dmap.get(output, [])
+#                 if inplace_inputs:
+#                     assert len(inplace_inputs) == 1
+#                     output.data = inplace_inputs[0].data
+#                 else:
+#                     output.data = numpy.ndarray(shape, dtype)
 
     def _c_init(self):
         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_init)
-        return (inames, onames), self.c_init(self.inputs, self.outputs)
+        return [list(inames), list(onames)], self.c_init(self.inputs, self.outputs)
         
     def c_init(inputs, outputs):
         return ""
 
     def _c_foreach(self):
         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_foreach)
-        return (inames, onames), self.c_foreach(self.inputs, self.outputs)
+        return [list(inames), list(onames)], self.c_foreach(self.inputs, self.outputs)
         
     def c_foreach(inputs, outputs):
         return ""
 
     def _c_finalize(self):
         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_finalize)
-        return (inames, onames), self.c_finalize(self.inputs, self.outputs)
+        return [list(inames), list(onames)], self.c_finalize(self.inputs, self.outputs)
 
     def c_finalize(inputs, outputs):
         return ""
@@ -514,7 +585,15 @@ class NumpyR(gof.PythonR):
             self.set_value(value.data)
         else:
             self.data = numpy.array(value)
+        self.refresh()
         self.up_to_date = True
+
+    def refresh(self):
+        if self.data is not UNCOMPUTED:
+            self.spec = (numpy.ndarray, self.data.dtype, self.data.shape)
+        
+    def alloc(self):
+        self.data = numpy.ndarray(self.spec[2], self.spec[1])
 
     def  __add__(self, y): return add(self, y)
     def __radd__(self, x): return add(x, self)
@@ -576,32 +655,12 @@ def tensor_scalar_impl(impl):
         return impl(x, a)
     return ret
 
-
-# @omega_op
-# def add((x, y), (z, )):
-
-#     def grad(gz):
-#         return gz
-
-#     def alloc():
-#         return numpy.ndarray(x.shape, dtype = x.dtype)
-
-#     c_impl = """
-#              for (int i = 0; i < z.ncols; i++) {
-#                  for (int j = 0; j < z.nrows; j++) {
-#                      z(i, j) = x(i, j) + y(i, j);
-#                  }
-#              }
-#              """
-
-    
-
-
 class tensor_scalar_op(elemwise):
     def c_init((x, _a), (z, )):
         return "_a_dtype a = _a[0];"
     def _c_foreach(self):
-        return (('x', '_a'), ('z', )), "z = %s;" % self.c_operation
+        return [['x', '_a'], ['z', ]], "z = %s;" % self.c_expr
+
 
 
 ## Addition ##
@@ -614,18 +673,7 @@ class add_elemwise(elemwise):
         return "z = x + y;"
 
 iadd_elemwise = add_elemwise.inplace_version()
-#iadd_elemwise.impl = assert_same_shapes(numpy.ndarray.__iadd__)
-
-
-# class proto_add_elemwise(omega_op):
-#     def grad(x, y, gz):
-#         return gz
-
-# class add_elemwise(proto_add_elemwise):
-#     impl = assert_same_shapes(numpy.ndarray.__add__)
-
-# class iadd_elemwise(proto_add_elemwise, inplace):
-#     impl = assert_same_shapes(numpy.ndarray.__iadd__)
+iadd_elemwise.set_impl(assert_same_shapes(numpy.ndarray.__iadd__))
 
 
 class add_scalar(tensor_scalar_op):
@@ -635,18 +683,7 @@ class add_scalar(tensor_scalar_op):
     c_expr = "x + a"
 
 iadd_scalar = add_scalar.inplace_version()
-#iadd_scalar.impl = tensor_scalar_impl(numpy.ndarray.__iadd__) 
-
-
-# class proto_add_scalar(omega_op):
-#     def grad(x, a, gz):
-#         return gz, sum(gz)
-
-# class add_scalar(proto_add_scalar):
-#     impl = tensor_scalar_impl(numpy.ndarray.__add__)
-
-# class iadd_scalar(proto_add_scalar, inplace):
-#     impl = tensor_scalar_impl(numpy.ndarray.__iadd__)
+iadd_scalar.set_impl(tensor_scalar_impl(numpy.ndarray.__iadd__))
 
 class twice(elemwise):
     def grad(x, gz):
@@ -659,20 +696,6 @@ class twice(elemwise):
 itwice = twice.inplace_version()
 
 
-# class proto_twice(omega_op):
-#     def grad(x, gz):
-#         return scale(gz, 2.0)
-
-# class twice(proto_twice):
-#     def impl(x):
-#         return x + x
-
-# class itwice(proto_twice, inplace):
-#     def impl(x):
-#         x += x
-#         return x
-
-
 ## Subtraction ##
 
 class sub_elemwise(elemwise):
@@ -683,18 +706,7 @@ class sub_elemwise(elemwise):
         return "z = x - y;"
 
 isub_elemwise = sub_elemwise.inplace_version()
-#isub_elemwise.impl = assert_same_shapes(numpy.ndarray.__isub__)
-
-
-# class proto_sub_elemwise(omega_op):
-#     def grad(x, y, gz):
-#         return gz, -gz
-
-# class sub_elemwise(proto_sub_elemwise):
-#     impl = assert_same_shapes(numpy.ndarray.__sub__)
-
-# class isub_elemwise(proto_sub_elemwise, inplace):
-#     impl = assert_same_shapes(numpy.ndarray.__isub__)
+isub_elemwise.set_impl(assert_same_shapes(numpy.ndarray.__isub__))
 
 def sub_scalar_r(x, a):
     return add_scalar(x, -a)
@@ -716,18 +728,7 @@ class mul_elemwise(elemwise):
         return "z = x * y;"
 
 imul_elemwise = mul_elemwise.inplace_version()
-#imul_elemwise.impl = assert_same_shapes(numpy.ndarray.__imul__)
-
-
-# class proto_mul_elemwise(omega_op):
-#     def grad(x, y, gz):
-#         return mul(y, gz), mul(x, gz)
-
-# class mul_elemwise(proto_mul_elemwise):
-#     impl = assert_same_shapes(numpy.ndarray.__mul__)
-
-# class imul_elemwise(proto_mul_elemwise, inplace):
-#     impl = assert_same_shapes(numpy.ndarray.__imul__)
+imul_elemwise.set_impl(assert_same_shapes(numpy.ndarray.__imul__))
 
 
 class scale(tensor_scalar_op):
@@ -737,18 +738,7 @@ class scale(tensor_scalar_op):
     c_expr = "x * a"
 
 iscale = scale.inplace_version()
-#iscale.impl = tensor_scalar_impl(numpy.ndarray.__imul__) 
-
-
-# class proto_scale(omega_op):
-#     def grad(x, a, gz):
-#         return scale(a, gz), sum(mul_elemwise(x, gz))
-
-# class scale(proto_scale):
-#     impl = tensor_scalar_impl(numpy.ndarray.__mul__)
-
-# class iscale(proto_scale, inplace):
-#     impl = tensor_scalar_impl(numpy.ndarray.__imul__)
+iscale.set_impl(tensor_scalar_impl(numpy.ndarray.__imul__))
 
 
 class sqr(elemwise):
@@ -757,21 +747,11 @@ class sqr(elemwise):
     def grad(x, gz):
         return scale(mul_elemwise(x, gz), 2.0)
     def c_foreach((x, ), (z, )):
-        "z = x * x;"
+        return "z = x * x;"
 
 isqr = sqr.inplace_version()
-isqr.impl = lambda x: x.__imul__(x)
+isqr.set_impl(lambda x: x.__imul__(x))
 
-
-# class proto_sqr(omega_op):
-#     def grad(x, gz):
-#         return scale(mul_elemwise(x, gz), 2.0)
-
-# class sqr(proto_sqr):
-#     impl = lambda x: numpy.multiply(x, x)
-
-# class isqr(proto_sqr, inplace):
-#     impl = lambda x: x.__imul__(x)
 
 
 class sqrt(elemwise):
@@ -782,18 +762,8 @@ class sqrt(elemwise):
         "z = pow(x, 0.5);"
 
 isqrt = sqrt.inplace_version()
-isqrt.impl = lambda x: x.__ipow__(0.5)
+isqrt.set_impl(lambda x: x.__ipow__(0.5))
 
-
-# class proto_sqrt(omega_op):
-#     def grad(x, gz):
-#         return scale(div(gz, sqrt(x)), 0.5)
-
-# class sqrt(proto_sqrt):
-#     impl = numpy.sqrt
-
-# class isqrt(proto_sqrt, inplace):
-#     impl = lambda x: x.__ipow__(0.5)
 
 
 ## Exponentiation ##
@@ -802,9 +772,6 @@ class exp(elemwise):
     impl = numpy.exp
     def c_foreach((x, ), (z, )):
         return "z = exp(x);"
-
-# class exp(omega_op):
-#     impl = numpy.exp
     
 
 ## Element-wise division ##
@@ -817,18 +784,7 @@ class div_elemwise(elemwise):
         return "z = x / y;"
 
 idiv_elemwise = div_elemwise.inplace_version()
-#idiv_elemwise.impl = assert_same_shapes(numpy.ndarray.__idiv__)
-
-
-# class proto_div_elemwise(omega_op):
-#     def grad(x, y, gz):
-#         return div(gz, y), -div(mul(x, gz), sqr(y))
-
-# class div_elemwise(proto_div_elemwise):
-#     impl = assert_same_shapes(numpy.ndarray.__div__)
-
-# class idiv_elemwise(proto_div_elemwise, inplace):
-#     impl = assert_same_shapes(numpy.ndarray.__idiv__)
+idiv_elemwise.set_impl(assert_same_shapes(numpy.ndarray.__idiv__))
 
 def div_scalar_r(x, a):
     return scale(x, inv_elemwise(a))
@@ -851,18 +807,7 @@ class neg(elemwise):
         return "z = -x;"
 
 ineg = neg.inplace_version()
-ineg.impl = lambda x: x.__imul__(-1)
-
-    
-# class proto_neg(omega_op):
-#     def grad(x, gz):
-#         return -gz
-
-# class neg(proto_neg):
-#     impl = numpy.ndarray.__neg__
-
-# class ineg(proto_neg, inplace):
-#     impl = lambda x: x.__imul__(-1)
+ineg.set_impl(lambda x: x.__imul__(-1))
 
 
 class inv_elemwise(elemwise):
@@ -875,25 +820,25 @@ class inv_elemwise(elemwise):
 iinv_elemwise = inv_elemwise.inplace_version()
 
 
-# class proto_inv_elemwise(omega_op):
-#     def grad(x, gz):
-#         raise NotImplemented
-
-# class inv_elemwise(omega_op):
-#     impl = lambda x: 1 / x
-
-# class iinv_elemwise(omega_op, inplace):
-#     def impl(x):
-#         x[:] = 1 / x
-
-
 ## Dot product ##
 
 class dot(omega_op):
     impl = numpy.dot
     def grad(x, y, gz):
         return dot(gz, transpose(y)), dot(transpose(x), gz)
-
+    def specs(x, y):
+        # todo: handle non-matrices!
+        if len(x[2]) == 0:
+            shape = y[2]
+        elif len(y[2]) == 0:
+            shape = x[2]
+        elif len(x[2]) == 1:
+            shape = (y[2][1], )
+        elif len(y[2]) == 1:
+            shape = (x[2][0], )
+        else:
+            shape = (x[2][0], y[2][1])
+        return (numpy.ndarray, upcast(x[1], y[1]), shape)
 
 ## Transposition ##
 
@@ -901,6 +846,9 @@ class transpose(omega_op, view):
     impl = numpy.transpose
     def grad(x, gz):
         return transpose_copy(gz)
+    def specs(x):
+        # todo: handle non-matrices!
+        return (numpy.ndarray, x[1], (x[2][1], x[2][0]))
 
 def transpose_copy(x):
     return array_copy(transpose(x))
@@ -908,9 +856,11 @@ def transpose_copy(x):
 
 ## Copy ##
 
-class array_copy(omega_op):
+class array_copy(elemwise):
     impl = numpy.array
     grad = lambda x, gz: gz
+    def c_foreach((x, ), (z, )):
+        return "z = x;"
 
 
 ## Power ##
@@ -923,18 +873,7 @@ class pow_elemwise(elemwise):
         return "z = pow(x, s)"
 
 ipow_elemwise = pow_elemwise.inplace_version()
-#ipow_elemwise.impl = assert_same_shapes(numpy.ndarray.__ipow__)
-
-    
-# class proto_pow(omega_op):
-#     def grad(x, s, gz):
-#         return gz * s * (pow_elemwise(x, s-1.0))
-
-# class pow_elemwise(proto_pow):
-#     impl = assert_same_shapes(numpy.ndarray.__pow__)
-
-# class ipow_elemwise(proto_pow, inplace):
-#     impl = assert_same_shapes(numpy.ndarray.__ipow__)
+ipow_elemwise.set_impl(assert_same_shapes(numpy.ndarray.__ipow__))
 
 
 class pow_scalar_l(tensor_scalar_op):
@@ -950,23 +889,9 @@ class pow_scalar_r(tensor_scalar_op):
     c_expr = "pow(x, a)"
 
 ipow_scalar_r = pow_scalar_r.inplace_version()
-#ipow_scalar_r.impl = tensor_scalar_impl(numpy.ndarray.__ipow__)
+ipow_scalar_r.set_impl(tensor_scalar_impl(numpy.ndarray.__ipow__))
 
 
-# class pow_scalar_l(omega_op):
-#     impl = tensor_scalar_impl(numpy.ndarray.__pow__)
-#     def grad(x, s, gz):
-#         return gz * x * (pow_scalar_l(s,x-1.0))
-
-# class pow_scalar_r(omega_op):
-#     impl = tensor_scalar_impl(numpy.ndarray.__pow__)
-#     def grad(x, s, gz):
-#         return gz * s * (pow_scalar_r(x,s-1.0))
-
-# class ipow_scalar_r(omega_op, inplace):
-#     impl = tensor_scalar_impl(numpy.ndarray.__ipow__)
-#     def grad(x, s, gz):
-#         return gz * s * (pow_scalar_r(x,s-1.0))
 
 ## Others ##
 
@@ -974,9 +899,11 @@ class minmax(elemwise):
     nout = 2
     def impl(x):
         return x.min, x.max
-    def alloc((x, ), (_min, _max)):
-        _min.data = numpy.ndarray((), x.dtype)
-        _max.data = numpy.ndarray((), x.dtype)
+    def specs(x):
+        return [(numpy.ndarray, x[1], ())] * 2
+#     def alloc((x, ), (_min, _max)):
+#         _min.data = numpy.ndarray((), x.dtype)
+#         _max.data = numpy.ndarray((), x.dtype)
     def c_init((x, ), (_min, _max)):
         return """
         _x_dtype min = _x[0];
@@ -993,11 +920,6 @@ class minmax(elemwise):
         _max[0] = max;
         """
 
-# class minmax(omega_op):
-#     nout = 2
-#     def impl(x):
-#         return x.min, x.max
-
 
 class fill(elemwise):
     impl = lambda model, value: (model * 0) + value
@@ -1008,26 +930,19 @@ class fill(elemwise):
 
 ifill = fill.inplace_version()
 
-    
-# class fill(omega_op):
-#     impl = lambda model, value: (model * 0) + value
 
 class sum(elemwise):
     impl = numpy.sum
     def grad(x, gz):
         return fill(x, gz)
-    def alloc((x, ), (_sum, )):
-        _sum.data = numpy.ndarray((), dtype = x.data.dtype)
+    def specs(x):
+        return (numpy.ndarray, x[1], ())
+#     def alloc((x, ), (_sum, )):
+#         _sum.data = numpy.ndarray((), dtype = x.data.dtype)
     def c_init((x, ), (_sum, )):
         return "_sum[0] = 0;"
     def c_foreach((x, ), (_sum, )):
         return "_sum[0] += x;"
-
-
-# class sum(omega_op):
-#     impl = numpy.sum
-#     def grad(x, gz):
-#         return fill(x, gz)
 
     
 ## Array slicing ##

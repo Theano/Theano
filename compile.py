@@ -1,28 +1,37 @@
 import time
 
 import gof
-
+import cutils
 
 import core
 import opt
 from copy import copy
 
-
-
 def experimental_linker(env, target = None):
     def fetch(op):
         try:
-            thunk = op.c_thunk()
-            print "yea %s" % op
-            return lambda: cutils.run_cthunk(thunk)
+            thunk = op.c_thunk_creator()
+#            print "yea %s" % op
+            return lambda: cutils.run_cthunk(thunk())
         except NotImplementedError:
-            print "nope %s" % op
+#            print "nope %s" % op
             return op._perform
     order = env.toposort()
+    for op in order:
+        op.refresh()
+#    for op in order:
+#        print op
+#        print 'ispecs: ', [input.spec for input in op.inputs]
+#        print 'ospecs: ', [output.spec for output in op.outputs]
     thunks = [fetch(op) for op in order]
     def ret():
-        for thunk in thunks:
+        for thunk, op in zip(thunks, order):
+#             print op
+#             print 'in: ', [id(input.data) for input in op.inputs]
+#             print 'out:', [id(output.data) for output in op.outputs]
             thunk()
+#         for thunk in thunks:
+#             thunk()
     if not target:
         return ret
     else:
@@ -102,7 +111,7 @@ class prog(gof.Prog):
         TODO: think about whether orphan computation should be in this function,
         or in self.__call__()
         """
-#        linker = experimental_linker
+        linker = experimental_linker
         new_outputs = gof.mark_outputs_as_destroyed(outputs)
         gof.Prog.__init__(self,
                           inputs,
