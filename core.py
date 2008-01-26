@@ -204,6 +204,9 @@ class omega_op(gof.PythonOp):
     def c_libs(self):
         return []
 
+    def c_support_code(self):
+        return ""
+
     def variable_names(self):
         (inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
         return (inames, onames)
@@ -227,7 +230,7 @@ class omega_op(gof.PythonOp):
                                                    local_dict = d,
                                                    global_dict = {},
                                                    type_converters = converters)
-        instantiate.customize.add_support_code(struct)
+        instantiate.customize.add_support_code(self.c_support_code() + struct)
         instantiate.customize.add_extra_compile_arg("-O3")
         instantiate.customize.add_extra_compile_arg("-ffast-math")
         instantiate.customize.add_extra_compile_arg("-falign-loops=4")
