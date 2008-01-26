@@ -85,7 +85,7 @@ class PythonR(Result):
 
     __slots__ = ['data', 'spec', 'constant', 'up_to_date']
     
-    def __init__(self, x = None, constant = False):
+    def __init__(self, x = UNCOMPUTED, constant = False):
         self.constant = False
         self.set_value(x)
         self.constant = constant
