@@ -54,10 +54,12 @@ class SeqOptimizer(Optimizer, list):
             optimizer.optimize(env)
 
     def __str__(self):
+        #return list.__str__(self)
         return "SeqOpt(%s)" % list.__str__(self)
 
     def __repr__(self):
-        return "SeqOpt(%s)" % list.__repr__(self)
+        return list.__repr__(self)
+        #return "SeqOpt(%s)" % list.__repr__(self)
 
 
 
