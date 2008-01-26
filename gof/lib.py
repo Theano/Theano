@@ -268,10 +268,13 @@ class PythonOp(Op):
         raise NotImplementedError("This op has no implementation.")
 
     def _specs(self):
-        return self.specs(*[input.spec for input in self.inputs])
+        try:
+            return self.specs(*[input.spec for input in self.inputs])
+        except NotImplementedError:
+            raise NotImplementedError("%s cannot infer the specs of its outputs" % self.__class__.__name__)
 
     def specs(*inputs):
-        raise NotImplementedError("This op cannot infer the specs of its outputs.")
+        raise NotImplementedError
 
     def refresh(self, except_list = []):
         for input in self.inputs:
