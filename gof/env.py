@@ -182,7 +182,8 @@ class Env(graph.Graph):
 
     def __add_feature__(self, feature_class, do_import):
         if not issubclass(feature_class, (Listener, Constraint, Orderings, Tool)):
-            raise TypeError("features must be subclasses of Listener, Constraint, Orderings and/or Tools")
+            raise TypeError("features must be subclasses of Listener, Constraint, Orderings and/or Tools", 
+                    (feature_class,type(feature_class)))
         feature = feature_class(self)
         if issubclass(feature_class, Listener):
             self._listeners[feature_class] = feature
