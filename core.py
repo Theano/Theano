@@ -784,7 +784,7 @@ class sqrt(elemwise):
     def grad(x, gz):
         return scale(div(gz, sqrt(x)), 0.5)
     def c_foreach((x_i, ), (z_i, )):
-        "z_i = pow(x_i, 0.5);"
+        return "z_i = pow(x_i, 0.5);"
 
 isqrt = sqrt.inplace_version()
 isqrt.set_impl(lambda x: x.__ipow__(0.5))
