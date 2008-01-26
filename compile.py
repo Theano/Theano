@@ -11,11 +11,11 @@ def experimental_linker(env, target = None):
     def fetch(op):
         try:
             factory = op.c_thunk_factory()
-#            print "yea %s" % op
+            print "yea %s" % op
             thunk = factory()
             return lambda: cutils.run_cthunk(thunk)
         except NotImplementedError:
-#            print "nope %s" % op
+            print "nope %s" % op
             return op._perform
     order = env.toposort()
     for op in order:
@@ -47,8 +47,8 @@ class profile_linker:
         self.n_thunks = 0
         self.times = [0.0 for op in self.order]
 
-    #TODO: popen2("dot -Tpng | display") and actually make the graph window pop up
     def print_for_dot(self):
+        #TODO: popen2("dot -Tpng | display") and actually make the graph window pop up
          print "digraph unix { size = '6,6'; node [color = lightblue2; style = filled];"
          for op in self.order:
              for input in op.inputs:
@@ -102,8 +102,8 @@ class profile_linker:
 
 
 class prog(gof.Prog):
-    def __init__(self, inputs, outputs, optimizer = opt.optimizer([]), linker =
-            gof.link.perform_linker):
+    def __init__(self, inputs, outputs, optimizer = opt.optimizer([]),
+            linker = experimental_linker):
         """Compile a subgraph.
 
         N.B. This triggers computation of the subgraph leading to the outputs
@@ -112,7 +112,6 @@ class prog(gof.Prog):
         TODO: think about whether orphan computation should be in this function,
         or in self.__call__()
         """
-        linker = experimental_linker
         new_outputs = gof.mark_outputs_as_destroyed(outputs)
         gof.Prog.__init__(self,
                           inputs,
