@@ -11,11 +11,11 @@ def experimental_linker(env, target = None):
     def fetch(op):
         try:
             factory = op.c_thunk_factory()
-            print "yea %s" % op
+#            print "yea %s" % op
             thunk = factory()
             return lambda: cutils.run_cthunk(thunk)
         except NotImplementedError:
-            print "nope %s" % op
+#            print "nope %s" % op
             return op._perform
     order = env.toposort()
     for op in order:

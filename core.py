@@ -1,4 +1,7 @@
 
+import os
+import sys
+
 import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
 
@@ -250,14 +253,15 @@ class omega_op(gof.PythonOp):
             instantiate.customize.add_library(lib)
         
         mod.add_function(instantiate)
-        mod.compile(location = 'compiled')
+        module_dir = os.path.expanduser('~/.omega/compiled')
+        mod.compile(location = module_dir)
 
-        module = __import__("compiled.%s" % module_name, {}, {}, [module_name])
+        sys.path.insert(0, module_dir)
+        module = __import__("%s" % module_name) #, {}, {}, [module_name])
+        sys.path = sys.path[1:]
         
         def creator():
             return module.instantiate(*[x.data for x in self.inputs + self.outputs])
-#         def creator():
-#             return weave.inline(code, d.keys(), local_dict = d, global_dict = {}, support_code = struct, type_converters = converters)
         return creator
     
     def c_thunk(self):
@@ -266,27 +270,7 @@ class omega_op(gof.PythonOp):
     def c_perform(self):
         thunk = self.c_thunk()
         cutils.run_cthunk(thunk)
-        
 
-# def elemwise_wrap_old(beforeloop, inloop, afterloop, loop_vars, writable_loop_vars):
-#     return """
-#     %(beforeloop)s
-#     for (int i = 0; i < N_%(v1)s[0]; i++) {
-#         for (int j = 0; j < N_%(v1)s[1]; j++) {
-#             %(idefs)s
-#             %(odefs)s
-#             %(inloop)s
-#         }
-#     }
-#     %(afterloop)s
-#     """ % dict(v1 = (loop_vars + writable_loop_vars)[0],
-#                idefs = "\n".join(["_%s_dtype %s = _%s2(i, j);" % (loop_var, loop_var, loop_var.upper())
-#                                   for loop_var in loop_vars]),
-#                odefs = "\n".join(["_%s_dtype& %s = _%s2(i, j);" % (writable_loop_var, writable_loop_var, writable_loop_var.upper())
-#                                   for writable_loop_var in writable_loop_vars]),
-#                beforeloop = beforeloop,
-#                inloop = inloop,
-#                afterloop = afterloop)
 
 def elemwise_loopcode(loopcode, init_template, next_template, acquire_template, cleanup_template, loop_vars, writable_loop_vars, aliases):
     all_loop_vars = loop_vars + writable_loop_vars
@@ -511,12 +495,6 @@ class elemwise(omega_op):
         during = self._c_foreach()
         after  = self._c_finalize()
         
-#         # Sanity check - apart from loop vars, variables are shared in the before/during/after parts
-#         if before and spec_b != spec_d:
-#             raise Exception("The input signature of c_init differs from the input signature of c_foreach.")
-#         if after and spec_a != spec_d:
-#             raise Exception("The input signature of c_finalize differs from the input signature of c_foreach.")
-        
         (inames, onames) = self.variable_names()
         (linames, lonames) = self.loop_variables()
 
@@ -531,18 +509,12 @@ class elemwise(omega_op):
         behavior = elemwise_wrap(before, during, after,
                                  [name for name in linames if name not in aliases],
                                  lonames,
-#                                  [mangle(iname) for iname in inames if iname.endswith("_i") and not iname in aliases],
-#                                  [mangle(oname) for oname in onames if oname.endswith("_i")],
                                  aliases)
-
-#         inames = [mangle(name) for name in inames]
-#         onames = [mangle(name) for name in onames]
         
         return cgen(self.__class__.__name__, behavior, inames + onames, self.inputs + self.outputs, converters)
 
     @classmethod
     def inplace_version(cls, dmap = {0: 0}):
-#        (inames, onames), _1, _2, _3 = inspect.getargspec(cls._c_foreach)
         inames, onames = cls.variable_names()
         linames, lonames = cls.loop_variables()
         for i, oname in enumerate(onames):
@@ -909,14 +881,14 @@ class dot(omega_op):
             
             if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
             {
-               fprintf(stderr, "Should be calling mat_gemm_general, but quitting instead\\n");
+               fprintf(stderr, "Should be calling mat_gemm_general, but quitting instead (1)\\n");
                return 1;
             }
             if ((Sx[0] < 1) || (Sx[1] < 1)
                || (Sy[0] < 1) || (Sy[1] < 1)
                || (Sz[0] < 1) || (Sz[1] < 1))
             {
-               fprintf(stderr, "Should be calling mat_gemm_general, but quitting instead\\n");
+               fprintf(stderr, "Should be calling mat_gemm_general, but quitting instead (2)\\n");
                return 1;
                //return mat_gemm_general(a, A, B, b, C);
             }
@@ -953,7 +925,7 @@ class dot(omega_op):
                 case 0x110: %(gemm)s(CblasColMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_1); break;
                 case 0x111: %(gemm)s(CblasColMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_1); break;
                 default: 
-                   fprintf(stderr, "Should be calling mat_gemm_general, but quitting instead\\n");
+                   fprintf(stderr, "Should be calling mat_gemm_general, but quitting instead (3)\\n");
                    return 1;
             };
             /* v 1 */

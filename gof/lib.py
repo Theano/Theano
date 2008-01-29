@@ -21,9 +21,7 @@ __all__ = ['UNCOMPUTED',
            'DummyRemover',
            'PythonOp',
            'PythonOpt',
-           'COp',
-           'make_static',
-           'DualImplOp']
+           'make_static']
 
 
 UNCOMPUTED = Keyword("UNCOMPUTED", False)
@@ -190,19 +188,6 @@ class PythonOp(Op):
             answer |= input.constant
         return answer
 
-#     def input_is_up_to_date(self, input):
-#         if not input.up_to_date:
-#             return False
-#         owner = input.owner
-#         if owner and isinstance(owner, ext.Viewer):
-#             view_map = owner.view_map()
-#             if input in view_map:
-#                 answer = True
-#                 for input2 in view_map[input]:
-#                     answer &= owner.input_is_up_to_date(input2)
-#                 return answer
-#         return True
-
     def check_input(self, input):
         if input.data is UNCOMPUTED:
             raise ValueError("Uncomputed input: %s in %s" % (input, self))
@@ -259,10 +244,6 @@ class PythonOp(Op):
     @classmethod
     def set_impl(cls, impl):
         make_static(cls, 'impl')
-#         impl = cls.impl
-#         if hasattr(cls.impl, 'im_func'):
-#             impl = impl.im_func
-#         cls.impl = staticmethod(impl)
     
     def impl(*args):
         raise NotImplementedError("This op has no implementation.")
@@ -372,100 +353,4 @@ class DummyOp(Op):
 
 
 DummyRemover = opt.OpRemover(DummyOp)
-
-
-# literals_db = {}
-
-# def literal(x):
-#     if x in literals_db:
-#         return literals_db.get(x)
-#     else:
-#         ret = PythonR(x, constant = True)
-#         liberals_db[x] = ret
-#         return ret
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-class COp(Op):
-
-    def thunk(self):
-        cc.compile([self])
-
-    def c_libs(self):
-        return []
-
-    def c_imports(self):
-        return []
-
-    def c_impl(self):
-        raise NotImplementedError("Provide the operation's behavior here.")
-
-
-class DualImplOp(PythonOp, COp):
-
-    language = 'c'
-    supported_languages = 'c', 'python'
-
-    def thunk(self, language = None):
-        """
-        Returns a thunk that does the operation on the inputs and stores the
-        results in the outputs. The language parameter defaults to self.language
-        and determines which implementation to use.
-        """
-        if not language:
-            language = self.language
-        if language == 'c':
-            return COp.thunk(self)
-        elif language == 'python':
-            return PythonOp.thunk(self)
-        elif language == 'all':
-            return [self.thunk(lang) for lang in self.supported_languages]
-        else:
-            raise ValueError("language should be any of %s or 'all', not '%s'" % (self.supported_languages, language))
-
-    def compare_implementations(self,
-                                samples,
-                                setter = lambda res, v: res.set_value(v),
-                                cmp = lambda x, y: x == y):
-        """
-        Compares the different implementations of this operation on a
-        list of input values to verify that they behave the same. The
-        input values are put in the Result instances using the setter
-        function (defaults to set_value). The output lists are
-        compared using the cmp predicate (defaults to ==).
-        """
-        for sample in samples:
-            for input, v in zip(self.inputs, sample):
-                input.set_value(v)
-            self.thunk('python')()
-            
-            # we must copy the outputs because they will be overwritten
-            results_py = [copy(output).extract() for output in self.outputs]
-
-            # we redo the assignment because the Op might be destructive,
-            # in which case the inputs might not be correct anymore
-            for input, v in zip(self.inputs, sample):
-                input.set_value(v)
-            self.thunk('c')()
-            results_c = [copy(output).extract() for output in self.outputs]
-
-            assert cmp(results_py, results_c)
-
-
 
