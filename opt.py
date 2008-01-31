@@ -14,9 +14,8 @@ def optimizer(lst):
     begin = gof.SeqOptimizer([])
     end   = gof.SeqOptimizer([gof.DummyRemover])
     seq_opt = gof.SeqOptimizer(begin + lst + end)
-    print 'seq_opt', seq_opt
     return gof.PythonOpt(gof.MergeOptMerge(seq_opt))
-    
+
 
 if 0:
     optimizer_begin = gof.SeqOptimizer([opt for name, opt in [

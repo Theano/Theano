@@ -7,37 +7,75 @@ import core
 import opt
 from copy import copy
 
+
 def experimental_linker(env, target = None):
-    def fetch(op):
-        try:
-            factory = op.c_thunk_factory()
-#            print "yea %s" % op
-            thunk = factory()
-            return lambda: cutils.run_cthunk(thunk)
-        except NotImplementedError:
-#            print "nope %s" % op
-            return op._perform
     order = env.toposort()
+    
     for op in order:
         op.refresh()
-#     for op in order:
-#         print op
-#         print 'ispecs: ', [input.spec for input in op.inputs]
-#         print 'ospecs: ', [output.spec for output in op.outputs]
-    thunks = [fetch(op) for op in order]
+        
+    py_ops = set()
+    thunks = []
+
+    for op in order:
+        try:
+            factory = op.c_thunk_factory()
+            for input in op.inputs:
+                producer = input.owner
+                if producer in py_ops:
+                    result = lambda factory = factory: cutils.run_cthunk(factory())
+                    break
+            else:
+                thunk = factory()
+                result = lambda thunk = thunk: cutils.run_cthunk(thunk)
+        except NotImplementedError:
+            result = op._perform
+            py_ops.add(op)
+        thunks.append((result, op._perform_like_c))
+    
     def ret():
-#         print "=================================================="
-#         for thunk, op in zip(thunks, order):
-#             print op
-#             print 'in: ', [id(input.data) for input in op.inputs]
-#             print 'out:', [id(output.data) for output in op.outputs]
-#             thunk()
-        for thunk in thunks:
-            thunk()
+        for thunk, fallback in thunks:
+            try:
+                thunk()
+            except NotImplementedError:
+                fallback()
+
     if not target:
         return ret
     else:
         raise NotImplementedError("Cannot write thunk representation to a file.")
+
+# def experimental_linker(env, target = None):
+#     def fetch(op):
+#         try:
+#             factory = op.c_thunk_factory()
+# #            print "yea %s" % op
+#             thunk = factory()
+#             return lambda: cutils.run_cthunk(thunk)
+#         except NotImplementedError:
+# #            print "nope %s" % op
+#             return op._perform
+#     order = env.toposort()
+#     for op in order:
+#         op.refresh()
+# #     for op in order:
+# #         print op
+# #         print 'ispecs: ', [input.spec for input in op.inputs]
+# #         print 'ospecs: ', [output.spec for output in op.outputs]
+#     thunks = [fetch(op) for op in order]
+#     def ret():
+# #         print "=================================================="
+# #         for thunk, op in zip(thunks, order):
+# #             print op
+# #             print 'in: ', [id(input.data) for input in op.inputs]
+# #             print 'out:', [id(output.data) for output in op.outputs]
+# #             thunk()
+#         for thunk in thunks:
+#             thunk()
+#     if not target:
+#         return ret
+#     else:
+#         raise NotImplementedError("Cannot write thunk representation to a file.")
 
 class profile_linker:
     def __init__(self, env):

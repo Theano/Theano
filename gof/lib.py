@@ -229,6 +229,15 @@ class PythonOp(Op):
             for result, output in zip(results, self.outputs):
                 output.set_value(result)
 
+    def _perform_like_c(self):
+        results = self._impl()
+        if self.nout == 1:
+            self.out.set_value(results)
+        else:
+            assert self.nout == len(results)
+            for result, output in zip(results, self.outputs):
+                output.data[:] = result
+
     def compute(self):
         for input in self.inputs:
             if input.data is UNCOMPUTED:

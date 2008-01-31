@@ -670,14 +670,14 @@ def tensor_scalar_impl(impl):
     return ret
 
 class tensor_scalar_op(elemwise):
-    def c_init((x, _a), (z, )):
-        return "_a_dtype a = ((_a_dtype*)PyArray_DATA(_a))[0];"
     @classmethod
     def variable_names(cls):
         return (['x', '_a'], ['z', ])
     @classmethod
     def loop_variables(cls):
         return (['x', ], ['z', ])
+    def c_init((x, _a), (z, )):
+        return "_a_dtype a = ((_a_dtype*)PyArray_DATA(_a))[0];"
     def _c_foreach(self):
         return "z_i = %s;" % self.c_expr
 
@@ -1053,47 +1053,55 @@ class transpose(omega_op, view):
         return (numpy.ndarray, x[1], (x[2][1], x[2][0]))
     def c_impl((x, ), (xt, )):
         return """
-        const int l = x->nd;
 
-        if (xt->nd != x->nd)
-        {
-            // this technique comes from PyArray_Resize()
-            npy_intp * dimptr = (npy_intp*)PyDimMem_RENEW(xt->dimensions, 2 * x->nd);
-            if (!dimptr)
-            {
-                fprintf(stderr, "%i: %p\\n", __LINE__, dimptr);
-                assert(!"dammit");
+        for (int i = 0; i < x->dimensions[0]; i++) {
+            for (int j = 0; j < x->dimensions[1]; j++) {
+                *((xt_dtype*)PyArray_GETPTR2(xt, j, i)) = *((x_dtype*)PyArray_GETPTR2(x, i, j));
             }
-            xt->nd = x->nd;
-            xt->dimensions = dimptr;
-            xt->strides = dimptr + x->nd;
-
-            //fprintf(stderr, "transpose:  %i %i %i %i\\n", x->dimensions[0], x->dimensions[1], x->strides[0], x->strides[1]);
-            
         }
-        //fprintf(stderr, "%s %i %p\\n", __FILE__, __LINE__, xt->base);
-        if ( xt->base != (PyObject*)x)
-        {
-            //fprintf(stderr, "%i: %p\\n", __LINE__, xt->base);
-            if ((xt->base) and (xt->base != Py_None)) Py_DECREF(xt->base);
-            Py_INCREF(x);
-            xt->base =  (PyObject*)x;
-        }
-
-        xt->data = x->data;
-        for (int i = 0; i < l; ++i)
-        {
-            xt->dimensions[i] = x->dimensions[l-i-1];
-            xt->strides[i] = x->strides[l-i-1];
-            //fprintf(stderr, "%li\t", x->dimensions[i]);
-        }
-        //fprintf(stderr, "\\n");
-        xt->flags &= ~NPY_OWNDATA;
-        PyArray_UpdateFlags(xt, NPY_CONTIGUOUS|NPY_FORTRAN|NPY_ALIGNED|NPY_WRITEABLE); 
-        //this function is described in 
-        // ~/zzz.NOBACKUP/pub/src/numpy-1.0.3.1/numpy/core/src/arrayobject.c:1890
-        return 0;
     """
+#         return """
+#         const int l = x->nd;
+
+#         if (xt->nd != x->nd)
+#         {
+#             // this technique comes from PyArray_Resize()
+#             npy_intp * dimptr = (npy_intp*)PyDimMem_RENEW(xt->dimensions, 2 * x->nd);
+#             if (!dimptr)
+#             {
+#                 fprintf(stderr, "%i: %p\\n", __LINE__, dimptr);
+#                 assert(!"dammit");
+#             }
+#             xt->nd = x->nd;
+#             xt->dimensions = dimptr;
+#             xt->strides = dimptr + x->nd;
+
+#             //fprintf(stderr, "transpose:  %i %i %i %i\\n", x->dimensions[0], x->dimensions[1], x->strides[0], x->strides[1]);
+            
+#         }
+#         //fprintf(stderr, "%s %i %p\\n", __FILE__, __LINE__, xt->base);
+#         if ( xt->base != (PyObject*)x)
+#         {
+#             //fprintf(stderr, "%i: %p\\n", __LINE__, xt->base);
+#             if ((xt->base) and (xt->base != Py_None)) Py_DECREF(xt->base);
+#             Py_INCREF(x);
+#             xt->base =  (PyObject*)x;
+#         }
+
+#         xt->data = x->data;
+#         for (int i = 0; i < l; ++i)
+#         {
+#             xt->dimensions[i] = x->dimensions[l-i-1];
+#             xt->strides[i] = x->strides[l-i-1];
+#             //fprintf(stderr, "%li\t", x->dimensions[i]);
+#         }
+#         //fprintf(stderr, "\\n");
+#         xt->flags &= ~NPY_OWNDATA;
+#         PyArray_UpdateFlags(xt, NPY_CONTIGUOUS|NPY_FORTRAN|NPY_ALIGNED|NPY_WRITEABLE); 
+#         //this function is described in 
+#         // ~/zzz.NOBACKUP/pub/src/numpy-1.0.3.1/numpy/core/src/arrayobject.c:1890
+#         return 0;
+#     """
 
 def transpose_copy(x):
     return array_copy(transpose(x))
