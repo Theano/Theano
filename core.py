@@ -792,6 +792,14 @@ class exp(elemwise):
     impl = numpy.exp
     def c_foreach((x_i, ), (z_i, )):
         return "z_i = exp(x_i);"
+
+
+## Logarithm ##
+
+class log(elemwise):
+    impl = numpy.log
+    def c_foreach((x_i, ), (z_i, )):
+        return "z_i = log(x_i);"
     
 
 ## Element-wise division ##
