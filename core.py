@@ -1,3 +1,5 @@
+import os # for building the location of the .omega/omega_compiled cache directory
+import sys # for adding the inline code cache to the include path
 
 import os
 import sys
@@ -40,7 +42,21 @@ literals_db = {}
 literals_id_db = weakref.WeakValueDictionary()
 
 #input floating point scalars will be cast to arrays of this type
+# see TRAC(#31)
 default_input_scalar_dtype = 'float64'
+
+# BLAS Support
+# These should be used by dependent modules to link blas functions.
+# - used by dot(), gemm()
+_blas_headers = ['"/home/bergstra/cvs/lgcm/omega/cblas.h"']
+_blas_libs = ['mkl', 'm']
+
+# WEAVE CACHE
+#_home_omega = os.path.join(os.getenv('HOME'), '.omega')
+_home_omega = os.path.join('/home/bergstra/.omega')
+_compiled = 'omega_compiled'
+_home_omega_compiled = os.path.join(_home_omega, _compiled)
+sys.path.append(_home_omega)  # J - is this a good idea??
 
 def input(x):
     #NB:
@@ -225,14 +241,14 @@ class omega_op(gof.PythonOp):
 
     def _c_impl(self):
         return self.c_impl(self.inputs, self.outputs)
-    
+
     def c_impl(inputs, outputs):
         raise NotImplementedError()
 
     def c_thunk_factory(self):
         self.refresh()
         d, names, code, struct, converters = self.c_code()
-        
+
         cthunk = object()
         module_name = md5.md5(code).hexdigest()
         mod = weave.ext_tools.ext_module(module_name)
@@ -244,29 +260,25 @@ class omega_op(gof.PythonOp):
                                                    type_converters = converters)
         instantiate.customize.add_support_code(self.c_support_code() + struct)
         instantiate.customize.add_extra_compile_arg("-O3")
-        instantiate.customize.add_extra_compile_arg("-ffast-math")
+        instantiate.customize.add_extra_compile_arg("-ffast-math") #TODO: make this optional, say by passing args to c_thunk_factory?
         instantiate.customize.add_extra_compile_arg("-falign-loops=4")
 #        instantiate.customize.add_extra_compile_arg("-mfpmath=sse")
         for header in self.c_headers():
             instantiate.customize.add_header(header)
         for lib in self.c_libs():
             instantiate.customize.add_library(lib)
-        
-        mod.add_function(instantiate)
-        module_dir = os.path.expanduser('~/.omega/compiled')
-        sys.path.insert(0, module_dir)
-        mod.compile(location = module_dir)
 
-        module = __import__("%s" % module_name) #, {}, {}, [module_name])
-        sys.path = sys.path[1:]
-        
+        mod.add_function(instantiate)
+        mod.compile(location = _home_omega_compiled)
+        module = __import__("%s.%s" % (_compiled, module_name), {}, {}, [module_name])
+
         def creator():
             return module.instantiate(*[x.data for x in self.inputs + self.outputs])
         return creator
-    
+
     def c_thunk(self):
         return self.c_thunk_creator()
-    
+
     def c_perform(self):
         thunk = self.c_thunk()
         cutils.run_cthunk(thunk)
@@ -287,7 +299,7 @@ def elemwise_loopcode(loopcode, init_template, next_template, acquire_template, 
                              for v1, v2 in aliases.items()]),
         loopcode = loopcode
         )
-    
+
     code = """
     %(init)s
     while (__elemwise_size--) {
@@ -381,8 +393,8 @@ class elemwise(omega_op):
             for oname in onames:
                 if oname not in lonames:
                     raise Exception("cannot infer a specification automatically for variable " \
-                                    "%s because it is not part of the elementwise loop - "\
-                                    "please override the specs method" % oname)
+                                    "%s.%s because it is not part of the elementwise loop - "\
+                                    "please override the specs method" % (self.__class__.__name__, oname))
             shape, dtype = None, None
             for iname, input in zip(inames, self.inputs):
                 if iname in linames:
@@ -855,7 +867,7 @@ class blas_code :
             npy_intp* Nx = _x->dimensions;
             npy_intp* Ny = _y->dimensions;
             npy_intp* Nz = _z->dimensions;
-            
+
             npy_intp* Sx = _x->strides;
             npy_intp* Sy = _y->strides;
             npy_intp* Sz = _z->strides;
@@ -867,7 +879,7 @@ class blas_code :
             if (_x->nd != 2) goto _dot_execute_fallback;
             if (_y->nd != 2) goto _dot_execute_fallback;
             if (_z->nd != 2) goto _dot_execute_fallback;
-            
+
             if ((_x->descr->type_num != PyArray_DOUBLE) 
                 && (_x->descr->type_num != PyArray_FLOAT))
                 goto _dot_execute_fallback;
@@ -884,7 +896,7 @@ class blas_code :
                 ||(_x->descr->type_num != _z->descr->type_num))
                 goto _dot_execute_fallback;
 
-            
+
             if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
             {
                 error_string = "Input dimensions do not agree";
@@ -905,7 +917,7 @@ class blas_code :
             unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 8;
 
             /* create appropriate strides for malformed matrices that are row or column
-             * vectors 
+             * vectors
              */
             sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
             sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
@@ -1054,11 +1066,13 @@ class gemm(omega_op, inplace):
     def alloc(self, except_list):
         self.outputs[0].data = self.inputs[0].data
     def c_headers(self):
-        return ["<gsl/gsl_cblas.h>"]
+        return _blas_headers
     def c_libs(self):
-        return ["cblas", "atlas", "g2c"]
+        return _blas_libs
     def c_impl((_zin, _a, _x, _y, _b), (_z,)):
-        return blas_code.gemm_xyz(str(_a), str(_b))
+        return blas_code.gemm_xyz(
+                '((_a->descr->type_num == PyArray_FLOAT) ? (float*)_a->data : (double*)_a->data)[0]',
+                '((_b->descr->type_num == PyArray_FLOAT) ? (float*)_b->data : (double*)_b->data)[0]')
 
 ## Transposition ##
 
