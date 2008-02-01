@@ -87,10 +87,10 @@ _gemm_code = { 'f': _gemm_code_template % { 'gemm':'cblas_sgemm', 'dtype':'float
                 'd': _gemm_code_template % { 'gemm':'cblas_dgemm', 'dtype':'double'}}
 
 def _gemm_rank2(a, x, y, b, z):
-    weave.inline(_gemm_code[z.dtype.char], 
-            ['a', 'x', 'y', 'b', 'z'], 
-            headers=['<gsl/gsl_cblas.h>'],
-            libraries=['cblas','goto', 'g2c'])
+    weave.inline(_gemm_code[z.dtype.char],
+            ['a', 'x', 'y', 'b', 'z'],
+            headers=['"/home/bergstra/cvs/lgcm/omega/cblas.h"'],
+            libraries=['mkl', 'm'])
 
 def _gemm(a, x, y, b, z):
     if len(x.shape) == 2 and len(y.shape) == 2:
