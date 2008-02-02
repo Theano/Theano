@@ -1,5 +1,6 @@
 import os # for building the location of the .omega/omega_compiled cache directory
 import sys # for adding the inline code cache to the include path
+import platform #
 
 import os
 import sys
@@ -45,18 +46,74 @@ literals_id_db = weakref.WeakValueDictionary()
 # see TRAC(#31)
 default_input_scalar_dtype = 'float64'
 
-# BLAS Support
-# These should be used by dependent modules to link blas functions.
-# - used by dot(), gemm()
-_blas_headers = ['"/home/bergstra/cvs/lgcm/omega/cblas.h"']
-_blas_libs = ['mkl', 'm']
+def _constant(f):
+    """Return a function that always returns its first call value
+    """
+    def rval(*args, **kwargs):
+        if not hasattr(f, 'rval'):
+            f.rval = f(*args, **kwargs)
+        return f.rval
+    return rval
 
-# WEAVE CACHE
-#_home_omega = os.path.join(os.getenv('HOME'), '.omega')
-_home_omega = os.path.join('/home/bergstra/.omega')
-_compiled = 'omega_compiled'
-_home_omega_compiled = os.path.join(_home_omega, _compiled)
-sys.path.append(_home_omega)  # J - is this a good idea??
+@_constant
+def _blas_headers():
+    """Return a list of strings which should be #include-ed into C files.
+    
+    Default: [''], but environment variable OMEGA_CBLAS_H overrides this.
+    """
+    envvar = os.getenv('OMEGA_CBLAS_H')
+    if envvar is None:
+        return []
+    else:
+        return [envvar]
+
+@_constant
+def _blas_libs():
+    """Return a list of libraries against which an Op's object file should be
+    linked to benefit from a BLAS implementation.
+    
+    Default: ['mkl','m'], but environment variable OMEGA_BLAS_LDFLAGS overrides this.
+    """
+    if os.getenv('OMEGA_BLAS_LDFLAGS'):
+        return os.getenv('OMEGA_BLAS_LDFLAGS').split()
+    else:
+        return ['mkl', 'm']
+
+@_constant
+def _compile_dir():
+    """Return the directory in which scipy.weave should store code objects.
+
+    If the environment variable OMEGA_COMPILEDIR is set, its value is returned.
+    If not, a directory of the form $HOME/.omega/compiledir_<platform Id>.
+
+    As a test, this function touches the file __init__.py in the returned
+    directory, and raises OSError if there's a problem.
+
+    A directory coming from OMEGA_COMPILEDIR is not created automatically, but
+    a directory in $HOME/.omega is created automatically.
+
+    This directory is appended to the sys.path search path before being
+    returned, if the touch was successful.
+    """
+    if os.getenv('OMEGA_COMPILEDIR'):
+        cachedir = os.getenv('OMEGA_COMPILEDIR')
+    else:
+        # use (and possibly create) a default code cache location
+        platform_id = platform.platform() + '-' + platform.processor()
+        cachedir = os.path.join(os.getenv('HOME'), '.omega', 'compiledir_'+platform_id)
+        if not os.access(cachedir, os.R_OK | os.W_OK):
+            #this may raise a number of problems, I think all of which are serious.
+            os.makedirs(cachedir, 7<<6)
+    cachedir_init = cachedir+'/__init__.py'
+    touch = os.system('touch '+cachedir_init)
+    if touch:
+        raise OSError('touch %s returned %i' % (cachedir_init, touch))
+
+    if cachedir not in sys.path:
+        sys.path.append(cachedir)
+    return cachedir
+
+
 
 def input(x):
     #NB:
@@ -269,8 +326,8 @@ class omega_op(gof.PythonOp):
             instantiate.customize.add_library(lib)
 
         mod.add_function(instantiate)
-        mod.compile(location = _home_omega_compiled)
-        module = __import__("%s.%s" % (_compiled, module_name), {}, {}, [module_name])
+        mod.compile(location = _compile_dir())
+        module = __import__("%s" % (module_name), {}, {}, [module_name])
 
         def creator():
             return module.instantiate(*[x.data for x in self.inputs + self.outputs])
@@ -647,6 +704,9 @@ class NumpyR(gof.PythonR):
     Tc = property(lambda self: transpose_copy(self))
 
     def __copy__(self):    return array_copy(self)
+
+    #def __getitem__(self, item): return get_slice(self, item)
+    #def __getslice__(self, item): return get_slice(self, item)
 
     
 def wrap_producer(f):
@@ -1034,9 +1094,9 @@ class dot(omega_op):
         shape = (x[2][0], y[2][1])
         return (numpy.ndarray, upcast(x[1], y[1]), shape)
     def c_headers(self):
-        return _blas_headers
+        return _blas_headers()
     def c_libs(self):
-        return _blas_libs
+        return _blas_libs()
     def c_impl((_x, _y), (_z, )):
         return blas_code.gemm_xyz('', '1.0', '0.0')
 
@@ -1070,9 +1130,9 @@ class gemm(omega_op, inplace):
     def alloc(self, except_list):
         self.outputs[0].data = self.inputs[0].data
     def c_headers(self):
-        return _blas_headers
+        return _blas_headers()
     def c_libs(self):
-        return _blas_libs
+        return _blas_libs()
     def c_impl((_zin, _a, _x, _y, _b), (_z,)):
         check_ab = """
         {
@@ -1221,7 +1281,6 @@ pow_scalar_r_inplace = pow_scalar_r.inplace_version()
 pow_scalar_r_inplace.set_impl(tensor_scalar_impl(numpy.ndarray.__ipow__))
 
 
-
 ## Others ##
 
 class minmax(elemwise):
@@ -1260,7 +1319,6 @@ class fill(elemwise):
 
 ifill = fill.inplace_version()
 
-
 class sum(elemwise):
     impl = numpy.sum
     def grad(x, gz):
@@ -1271,20 +1329,6 @@ class sum(elemwise):
         return "sum_dtype* sump = ((sum_dtype*)PyArray_DATA(sum)); sump[0] = 0;"
     def c_foreach((x_i, ), (sum, )):
         return "sump[0] += x_i;"
-
-    
-## Array slicing ##
-
-class get_slice(omega_op, view):
-    def grad(x, gz):
-        raise NotImplementedError()
-    def impl(x, dims):
-        return x.__getitem__(*dims)
-
-# class set_slice(omega_op, inplace):
-#     def impl(x, dims):
-#         x.__setitem__(*dims)
-#         return x
 
 
 add = scalar_switch(add_elemwise, add_scalar, add_scalar)
@@ -1301,6 +1345,5 @@ div_inplace = scalar_switch(div_elemwise_inplace, div_scalar_r_inplace)
 
 pow = scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
 pow_inplace = scalar_switch(pow_elemwise_inplace, pow_scalar_r_inplace)
-
 
 
