@@ -256,7 +256,8 @@ class omega_op(gof.PythonOp):
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
         for fname in ['grad', 'c_impl']:
-            gof.make_static(cls, fname)
+            if hasattr(cls, fname):
+                gof.make_static(cls, fname)
 
         # make impl a static method
         gof.PythonOp.__clsinit__(cls, name, bases, dct)
@@ -269,14 +270,31 @@ class omega_op(gof.PythonOp):
         return [NumpyR() for i in xrange(self.nout)]
     
     def update_gradient(self, grad_d):
+        """Call self.grad() and add the result to grad_d
+
+        This function is called by grad.Grad.bprop() to construct a symbolic gradient graph.
+
+        self.grad is called like this:
+
+            self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
+
+        In general, grad() should return a list of PythonR instances whose
+        length matches that of self.inputs, and whose elements are the
+        gradients of self.inputs.
+
+        There is a (but often used) special feature in place to automatically
+        wrap the return value of grad() in a list if it is a PythonR instance
+        and the op is unary.  This makes many grad implementations a little
+        cuter.
+
+        """
         inputgs = self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
-        if not isinstance(inputgs, (list, tuple)):
-            inputgs = [inputgs] * len(self.inputs)
+        if len(self.inputs) == 1 and isinstance(inputgs, gof.PythonR):
+            inputgs = [inputgs]
+        else:
+            assert len(inputgs) == len(self.inputs)
         for input, inputg in zip(self.inputs, inputgs):
             grad_d.add(input, inputg)
-
-    def grad(*args):
-        return UNDEFINED
 
     def c_code(self, converters = None):
         (inames, onames) = self.variable_names()
@@ -760,7 +778,7 @@ class tensor_scalar_op(elemwise):
 class add_elemwise(elemwise):
     impl = assert_same_shapes(numpy.ndarray.__add__)
     def grad(x, y, gz):
-        return gz
+        return gz, gz
     def c_foreach((x_i, y_i), (z_i, )):
         return "z_i = x_i + y_i;"
 
@@ -778,10 +796,10 @@ add_scalar_inplace = add_scalar.inplace_version()
 add_scalar_inplace.set_impl(tensor_scalar_impl(numpy.ndarray.__iadd__))
 
 class twice(elemwise):
+    def impl(x):
+        return 2.0 * x
     def grad(x, gz):
         return scale(gz, 2.0)
-    def impl(x):
-        return x + x
     def c_foreach((x_i, ), (z_i, )):
         "z_i = x_i + x_i;"
 
@@ -1254,9 +1272,18 @@ class array_copy(elemwise):
 
 ## Power ##
 
+class exp(elemwise):
+    def impl(x): return numpy.exp(x)
+    def grad(x, gz): return gz * exp(x)
+
+class log(elemwise):
+    def impl(x): return numpy.log(x)
+    def grad(x, gz): return gz / x
+
 class pow_elemwise(elemwise):
     impl = assert_same_shapes(numpy.ndarray.__pow__)
     def grad(x, s, gz):
+        raise NotImplemented # no gs
         return gz * s * (pow_elemwise(x, s-1.0))
     def c_foreach((x_i, s_i), (z_i, )):
         return "z_i = pow(x_i, s_i)"
@@ -1264,17 +1291,19 @@ class pow_elemwise(elemwise):
 pow_elemwise_inplace = pow_elemwise.inplace_version()
 pow_elemwise_inplace.set_impl(assert_same_shapes(numpy.ndarray.__ipow__))
 
-
 class pow_scalar_l(tensor_scalar_op):
     impl = tensor_scalar_impl(lambda x, y: numpy.ndarray.__pow__(y, x))
     def grad(x, s, gz):
+        raise NotImplemented # no gs
         return gz * x * (pow_scalar_l(s,x-1.0))
     c_expr = "pow(a, x_i)"
 
 class pow_scalar_r(tensor_scalar_op):
     impl = tensor_scalar_impl(numpy.ndarray.__pow__)
     def grad(x, s, gz):
-        return gz * s * (pow_scalar_r(x,s-1.0))
+        gx = gz * s * (pow_scalar_r(x,s-1.0))
+        gs = sum(gz * pow_scalar_r(x,s) * log(x))
+        return gx, gs
     c_expr = "pow(x_i, a)"
 
 pow_scalar_r_inplace = pow_scalar_r.inplace_version()

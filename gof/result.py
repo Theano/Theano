@@ -102,6 +102,17 @@ class Result(object):
         """
         raise NotImplementedError("This Result does not support set_value.")
 
+    def compute(self):
+        """If self has an owner, recursively compute it."""
+        if self.owner:
+            self.owner.compute()
+
+    def perform(self):
+        """Calls self.owner.perform() if self.owner exists."""
+        if self.owner:
+            self.owner.perform()
+    
+
 #     def extract(self):
 #         """
 #         Returns a representation of this datum for use in Op.impl.

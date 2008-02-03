@@ -114,12 +114,9 @@ class PythonR(Result):
     def alloc(self):
         raise TypeError("Cannot allocate following this specification.")
 
-    def perform(self):
-        if self.owner:
-            self.owner.perform()
-    
     def compute(self):
-        if self.owner:
+        """Overrides Op.compute(). Only recurses if self.data is UNCOMPUTED"""
+        if self.data is UNCOMPUTED:
             self.owner.compute()
 
 
@@ -239,14 +236,6 @@ class PythonOp(Op):
             for result, output in zip(results, self.outputs):
                 output.data[:] = result
 
-    def compute(self):
-        for input in self.inputs:
-            if input.data is UNCOMPUTED:
-                if input.owner:
-                    input.owner.compute()
-                else:
-                    raise Exception("Uncomputed input: %s in %s" % (input, self))
-        self.perform()
 
     def _impl(self):
         return self.impl(*[input.data for input in self.inputs])

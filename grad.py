@@ -21,13 +21,18 @@ class Grad(object):
         self.outputs = []
         for key,val in dct.items():
             self.add_output(key,val)
+        self.did_bprop = False
 
     def __contains__(self, item):
         return item in self.map
 
     def __getitem__(self, item):
         """Map item to its id and retrieve it."""
-        return self.map[core.wrap(item)]
+        key = core.wrap(item)
+        try:
+            return self.map[key]
+        except KeyError:
+            return core.UNDEFINED
 
     def __setitem__(self, item, val):
         """Map item to its id and store internally."""
@@ -73,7 +78,7 @@ class Grad(object):
             else:
                 self[r] = dr
 
-    def bprop(self):
+    def bprop(self, maybe_redo=False):
         """Build a backpropagation graph.
 
         The gradient associated with each value is stored in <self> which
@@ -92,6 +97,8 @@ class Grad(object):
         bprop sets the omega evaluation mode to be 'build', so no computations
         or allocations are done by bprop.
         """
+        if not maybe_redo and self.did_bprop:
+            raise Exception('bprop has already been done. Consider calling with maybe_redo=True.')
         core.build_mode()
         try:
             outputs = self.outputs
@@ -100,6 +107,7 @@ class Grad(object):
                 op.update_gradient(self)
         finally:
             core.pop_mode()
+            self.did_bprop = True
 
     def __call__(self, item):
         """Return a derivative term.
@@ -107,8 +115,11 @@ class Grad(object):
         If the current omega evaluation mode is 'build_eval' then the node is
         computed if necessary.
         """
+        if not self.did_bprop:
+            raise Exception('Grad.__call__ only makes sense after a bprop')
         rval = self[item]
-        if core.current_mode() == 'build_eval':
+        if rval is not core.UNDEFINED \
+                and core.current_mode() == 'build_eval':
             rval.compute()
         return rval
 
@@ -141,8 +152,18 @@ import unittest
 import numpy
 import compile
 
-
 class _testCase (unittest.TestCase):
+
+    class posneg(core.omega_op):
+        nout=2
+        def impl(x): return x, -x
+        def grad(x, gpos, gneg): return gpos - gneg
+
+    class posnegzero(core.omega_op):
+        nout=3
+        def impl(x): return x, -x, 0.0
+        def grad(x, gpos, gneg, gzero): return gpos - gneg
+
     def setUp(self):
         numpy.random.seed(1)
         core.build_eval_mode()
@@ -189,17 +210,16 @@ class _testCase (unittest.TestCase):
         return str0, str(ssdiff)
 
     def test0(self):
+        """Matrix inversion by gradient descent (eval mode)"""
         self.assertEqual(('2.67327580893', '0.000438649434819'), self.matinv(3))
 
     def test1(self):
+        """Matrix inversion by gradient descent (compiled mode)"""
         self.assertEqual(('2.67327580893', '0.000438649434819'),
                 self.matinv_compiled(3))
 
     def test_grad_wrt_ndarray_pointer(self):
-        """
-        Tests if it is possible to index the gradient by a pointer to a ndarray
-        that is used as a node of the computation graph.
-        """
+        """Grad indexing by un-wrapped ndarray"""
         a = numpy.ones((4, 4))
         b = numpy.ones((4, 4))
         c = numpy.ones((4, 4))
@@ -207,10 +227,108 @@ class _testCase (unittest.TestCase):
         g = grad(expr)
         g[a]
 
+    def test_bprop_call_order(self):
+        """Ensure call before bprop is illegal"""
+        a = numpy.ones((3,3,3))
+        b = core.exp(a)
+        gb = Grad({b:core.wrap(a)})
+        try:
+            gb(a)
+            self.assertEqual('should have raised',0)
+        except Exception, e:
+            self.assertEqual(e.message, 'Grad.__call__ only makes sense after a bprop')
+            return
+        self.assertEqual('should have caught, returned',0)
+
+    def test_undefined_grad0(self):
+        """Make sure posneg works with fully specified gradients"""
+
+        a = numpy.ones((3,3,3))
+        b,c = _testCase.posneg(a)
+
+        g = Grad({b:core.wrap(a),c:core.wrap(a)})
+        g.bprop()
+        max = numpy.max(g(a))
+        min = numpy.min(g(a))
+        self.assertEqual(max, min)
+        self.assertEqual(max, 0.0)
+
+    def test_undefined_grad1(self):
+        """Propagate undefined values through posneg's first gradient"""
+
+        a = numpy.ones((3,3,3))
+        b,c = _testCase.posneg(a)
+
+        gb = Grad({b:core.wrap(a)})
+        try:
+            gb.bprop()
+            self.assertEqual('should have raised',0)
+        except AttributeError, e:
+            self.assertEqual(e.message, "Keyword instance has no attribute 'shape'")
+            return
+        self.assertEqual("Should have been error", 0)
+    
+    def test_undefined_grad2(self):
+        """Propagate undefined values through posneg's second gradient"""
+
+        a = numpy.ones((3,3,3))
+        b,c = _testCase.posneg(a)
+        gc = Grad({c:core.wrap(a)})
+        try:
+            gc.bprop()
+            self.assertEqual('should have raised',0)
+        except AttributeError, e:
+            self.assertEqual(e.message, "Keyword instance has no attribute 'shape'")
+            return
+        self.assertEqual("Should have been error", 0)
+
+    def test_undefined_grad3(self):
+        """Ignore undefined values properly"""
+
+        a = numpy.ones((3,3,3))
+        b,c,d = _testCase.posnegzero(a)
+        #print b, c, d
+        g = Grad({b:core.wrap(a), c:core.wrap(a)})
+        g.bprop()
+        max = numpy.max(g(a))
+        min = numpy.min(g(a))
+        self.assertEqual(max, min)
+        self.assertEqual(max, 0.0)
+
+    def test_repeat_bprop(self):
+        """Refuse to repeat bprop"""
+
+        a = numpy.ones((3,3,3))
+        b,c,d = _testCase.posnegzero(a)
+        #print b, c, d
+        g = Grad({b:core.wrap(a), c:core.wrap(a)})
+        g.bprop()
+        try:
+            g.bprop()
+            self.assertEqual('should have raised')
+        except Exception, e:
+            self.assertEqual(e.message, 'bprop has already been done. Consider calling with maybe_redo=True.')
+            return
+        self.assertEqual('should have caught')
+
+    def test_repeat_bprop1(self):
+        """Force repeat bprop"""
+
+        a = numpy.ones((3,3,3))
+        z = numpy.zeros((3,3,3))
+        b,c,d = _testCase.posnegzero(a)
+        #print b, c, d
+        g = Grad({b:core.wrap(a), c:core.wrap(z)})
+        g.bprop()
+        g.bprop(maybe_redo=True)
+        max = numpy.max(g(a))
+        min = numpy.min(g(a))
+        self.assertEqual(max, min)
+        self.assertEqual(max, 2.0)
+
     def tearDown(self):
         core.pop_mode()
 
 if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(_testCase)
-    unittest.TextTestRunner(verbosity=3).run(suite)
+    unittest.main()
 
