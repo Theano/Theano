@@ -2,6 +2,18 @@
 
 def perform_linker(env, target = None):
     order = env.toposort()
+    thunks = [op.perform for op in order]
+    def ret():
+        for thunk in thunks:
+            thunk()
+    if not target:
+        return ret
+    else:
+        raise NotImplementedError("Cannot write thunk representation to a file.")
+
+
+def perform_linker_nochecks(env, target = None):
+    order = env.toposort()
     thunks = [op._perform for op in order]
     def ret():
         for thunk in thunks:
