@@ -800,6 +800,11 @@ class log(elemwise):
     impl = numpy.log
     def c_foreach((x_i, ), (z_i, )):
         return "z_i = log(x_i);"
+
+class log2(elemwise):
+    impl = numpy.log2
+    def c_foreach((x_i, ), (z_i, )):
+        return "z_i = log(x_i);"
     
 
 ## Element-wise division ##
@@ -1023,6 +1028,7 @@ class dot(omega_op):
         return dot(gz, transpose(y)), dot(transpose(x), gz)
     def specs(x, y):
         # todo: handle all tensors!
+        assert x[2][1] == y[2][0]
         shape = (x[2][0], y[2][1])
         return (numpy.ndarray, upcast(x[1], y[1]), shape)
     def c_headers(self):
