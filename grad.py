@@ -236,7 +236,7 @@ class _testCase (unittest.TestCase):
             gb(a)
             self.assertEqual('should have raised',0)
         except Exception, e:
-            self.assertEqual(e.message, 'Grad.__call__ only makes sense after a bprop')
+            self.assertEqual(str(e), 'Grad.__call__ only makes sense after a bprop')
             return
         self.assertEqual('should have caught, returned',0)
 
@@ -264,7 +264,7 @@ class _testCase (unittest.TestCase):
             gb.bprop()
             self.assertEqual('should have raised',0)
         except AttributeError, e:
-            self.assertEqual(e.message, "Keyword instance has no attribute 'shape'")
+            self.assertEqual(str(e), "Keyword instance has no attribute 'shape'")
             return
         self.assertEqual("Should have been error", 0)
     
@@ -278,7 +278,7 @@ class _testCase (unittest.TestCase):
             gc.bprop()
             self.assertEqual('should have raised',0)
         except AttributeError, e:
-            self.assertEqual(e.message, "Keyword instance has no attribute 'shape'")
+            self.assertEqual(str(e), "Keyword instance has no attribute 'shape'")
             return
         self.assertEqual("Should have been error", 0)
 
@@ -307,7 +307,7 @@ class _testCase (unittest.TestCase):
             g.bprop()
             self.assertEqual('should have raised')
         except Exception, e:
-            self.assertEqual(e.message, 'bprop has already been done. Consider calling with maybe_redo=True.')
+            self.assertEqual(str(e), 'bprop has already been done. Consider calling with maybe_redo=True.')
             return
         self.assertEqual('should have caught')
 
