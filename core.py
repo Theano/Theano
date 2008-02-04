@@ -7,14 +7,16 @@ import inspect
 import md5
 import copy
 
+import numpy
+from scipy import weave
+
 import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
 
 import type_spec
 import cutils
+import blas
 
-import numpy
-from scipy import weave
 
 # __all__ = ['set_mode', 'get_mode', 'NumpyR', 'NumpyOp']
 
@@ -44,40 +46,7 @@ literals_id_db = {}
 # see TRAC(#31)
 default_input_scalar_dtype = 'float64'
 
-def _constant(f):
-    """Return a function that always returns its first call value
-    """
-    def rval(*args, **kwargs):
-        if not hasattr(f, 'rval'):
-            f.rval = f(*args, **kwargs)
-        return f.rval
-    return rval
-
-@_constant
-def _blas_headers():
-    """Return a list of strings which should be #include-ed into C files.
-    
-    Default: [''], but environment variable OMEGA_CBLAS_H overrides this.
-    """
-    envvar = os.getenv('OMEGA_CBLAS_H')
-    if envvar is None:
-        return []
-    else:
-        return [envvar]
-
-@_constant
-def _blas_libs():
-    """Return a list of libraries against which an Op's object file should be
-    linked to benefit from a BLAS implementation.
-    
-    Default: ['mkl','m'], but environment variable OMEGA_BLAS_LDFLAGS overrides this.
-    """
-    if os.getenv('OMEGA_BLAS_LDFLAGS'):
-        return os.getenv('OMEGA_BLAS_LDFLAGS').split()
-    else:
-        return ['mkl', 'm']
-
-@_constant
+@blas._constant # TODO: move this decorator to a utility script
 def _compile_dir():
     """Return the directory in which scipy.weave should store code objects.
 
@@ -110,8 +79,6 @@ def _compile_dir():
     if cachedir not in sys.path:
         sys.path.append(cachedir)
     return cachedir
-
-
 
 def input(x):
     #NB:
@@ -965,176 +932,6 @@ inv_elemwise_inplace = inv_elemwise.inplace_version()
 
 ## Dot product ##
 
-class blas_code :
-    @staticmethod
-    def gemm_xyz(check_ab, a_init, b_init):
-        mod = '%'
-        return """
-            const char * error_string = NULL;
-
-            int type_num = _x->descr->type_num;
-            int type_size = _x->descr->elsize; // in bytes
-
-            npy_intp* Nx = _x->dimensions;
-            npy_intp* Ny = _y->dimensions;
-            npy_intp* Nz = _z->dimensions;
-
-            npy_intp* Sx = _x->strides;
-            npy_intp* Sy = _y->strides;
-            npy_intp* Sz = _z->strides;
-
-            size_t sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
-
-            int unit = 0;
-
-            if (_x->nd != 2) goto _dot_execute_fallback;
-            if (_y->nd != 2) goto _dot_execute_fallback;
-            if (_z->nd != 2) goto _dot_execute_fallback;
-
-            %(check_ab)s
-
-            if ((_x->descr->type_num != PyArray_DOUBLE) 
-                && (_x->descr->type_num != PyArray_FLOAT))
-                goto _dot_execute_fallback;
-
-            if ((_y->descr->type_num != PyArray_DOUBLE) 
-                && (_y->descr->type_num != PyArray_FLOAT))
-                goto _dot_execute_fallback;
-
-            if ((_y->descr->type_num != PyArray_DOUBLE) 
-                && (_y->descr->type_num != PyArray_FLOAT))
-                goto _dot_execute_fallback;
-
-            if ((_x->descr->type_num != _y->descr->type_num)
-                ||(_x->descr->type_num != _z->descr->type_num))
-                goto _dot_execute_fallback;
-
-
-            if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
-            {
-                error_string = "Input dimensions do not agree";
-                goto _dot_execute_fail;
-            }
-            if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] %(mod)s type_size) || (Sx[1] %(mod)s type_size)
-               || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] %(mod)s type_size) || (Sy[1] %(mod)s type_size)
-               || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] %(mod)s type_size) || (Sz[1] %(mod)s type_size))
-            {
-               goto _dot_execute_fallback;
-            }
-
-            /*
-            encode the stride structure of _x,_y,_z into a single integer
-            */
-            unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 0;
-            unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
-            unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 8;
-
-            /* create appropriate strides for malformed matrices that are row or column
-             * vectors
-             */
-            sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
-            sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
-            sy_0 = (Ny[0] > 1) ? Sy[0]/type_size : Ny[1];
-            sy_1 = (Ny[1] > 1) ? Sy[1]/type_size : Ny[0];
-            sz_0 = (Nz[0] > 1) ? Sz[0]/type_size : Nz[1];
-            sz_1 = (Nz[1] > 1) ? Sz[1]/type_size : Nz[0];
-
-            switch (type_num)
-            {
-                case PyArray_FLOAT:
-                {
-                    #define REAL float
-                    float a = %(a_init)s;
-                    float b = %(b_init)s;
-
-                    float* x = (float*)PyArray_DATA(_x);
-                    float* y = (float*)PyArray_DATA(_y);
-                    float* z = (float*)PyArray_DATA(_z);
-
-                    switch(unit)
-                    {
-                        case 0x000: cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_0); break;
-                        case 0x001: cblas_sgemm(CblasRowMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_0); break;
-                        case 0x010: cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_0); break;
-                        case 0x011: cblas_sgemm(CblasRowMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_0); break;
-                        case 0x100: cblas_sgemm(CblasColMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_1); break;
-                        case 0x101: cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_1); break;
-                        case 0x110: cblas_sgemm(CblasColMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_1); break;
-                        case 0x111: cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_1); break;
-                        default: goto _dot_execute_fallback;
-                    };
-                    #undef REAL
-                }
-                break;
-                case PyArray_DOUBLE:
-                {
-                    #define REAL double
-                    double a = %(a_init)s;
-                    double b = %(b_init)s;
-
-                    double* x = (double*)PyArray_DATA(_x);
-                    double* y = (double*)PyArray_DATA(_y);
-                    double* z = (double*)PyArray_DATA(_z);
-                    switch(unit)
-                    {
-                        case 0x000: cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_0); break;
-                        case 0x001: cblas_dgemm(CblasRowMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_0); break;
-                        case 0x010: cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_0); break;
-                        case 0x011: cblas_dgemm(CblasRowMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_0); break;
-                        case 0x100: cblas_dgemm(CblasColMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_1); break;
-                        case 0x101: cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_1); break;
-                        case 0x110: cblas_dgemm(CblasColMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_1); break;
-                        case 0x111: cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_1); break;
-                        default: goto _dot_execute_fallback;
-                    };
-                    #undef REAL
-                }
-                break;
-            }
-
-            return 0;  //success!
-
-            _dot_execute_fallback:
-            PyErr_SetString(PyExc_NotImplementedError, 
-                "dot->execute() fallback");
-            return -1;
-
-            _dot_execute_fail:
-            if (error_string == NULL)
-                PyErr_SetString(PyExc_ValueError, 
-                    "dot->execute() cant run on these inputs");
-            return -1;
-
-            /* v 1 */
-        """ % locals()
-
-    # currently unused, preferring the fallback method (throwing
-    # NotImplementedError) for when gemm won't work.
-    _templated_memaligned_gemm = """
-    template <typename Ta, typename Tx, typename Ty, typename Tb, typename Tz>
-    int general_gemm(int zM, int zN, int xN,.
-        Ta a,
-        Tx * x, int xm, int xn,
-        Tx * y, int ym, int yn,
-        Tb b,
-        Tz * z, int zm, int zn)
-    {
-        for (int i = 0; i < zM; ++i)
-        {
-            for (int j = 0; j < zN; ++j)
-            {
-                Tz zij = 0.0;
-                for (int k = 0; k < xN; ++k)
-                {
-                    zij += x[i*xm+k*xn] * y[k*ym+j*yn];
-                }
-                z[i * zm + j * zn] *= b;
-                z[i * zm + j * zn] += a * zij;
-            }
-        }
-    }
-    """
-
 class dot(omega_op):
 
     impl = numpy.dot
@@ -1145,12 +942,12 @@ class dot(omega_op):
         assert x[2][1] == y[2][0]
         shape = (x[2][0], y[2][1])
         return (numpy.ndarray, upcast(x[1], y[1]), shape)
-    def c_headers(self):
-        return _blas_headers()
+    def c_support_code(self):
+        return blas.cblas_header_text()
     def c_libs(self):
-        return _blas_libs()
+        return blas.ldflags()
     def c_impl((_x, _y), (_z, )):
-        return blas_code.gemm_xyz('', '1.0', '0.0')
+        return blas.gemm_code('', '1.0', '0.0')
 
 class gemm(omega_op, inplace):
 
@@ -1181,10 +978,10 @@ class gemm(omega_op, inplace):
         return z
     def alloc(self, except_list):
         self.outputs[0].data = self.inputs[0].data
-    def c_headers(self):
-        return _blas_headers()
+    def c_support_code(self):
+        return blas.cblas_header_text()
     def c_libs(self):
-        return _blas_libs()
+        return blas.ldflags()
     def c_impl((_zin, _a, _x, _y, _b), (_z,)):
         check_ab = """
         {
@@ -1197,7 +994,7 @@ class gemm(omega_op, inplace):
             goto _dot_execute_fallback;
         }
         """
-        return blas_code.gemm_xyz( check_ab,
+        return blas.gemm_code( check_ab,
                 '(_a->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_a->data)[0]) : (REAL)(((double*)_a->data)[0])',
                 '(_b->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_b->data)[0]) : (REAL)(((double*)_b->data)[0])')
 
