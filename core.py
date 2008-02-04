@@ -838,6 +838,41 @@ mul_elemwise_inplace = mul_elemwise.inplace_version()
 mul_elemwise_inplace.set_impl(assert_same_shapes(numpy.ndarray.__imul__))
 
 
+class scale(tensor_scalar_op):
+    impl = tensor_scalar_impl(numpy.ndarray.__mul__)
+    def grad(x, a, gz):
+        return scale(a, gz), sum(mul_elemwise(x, gz))
+    c_expr = "x_i * a"
+
+scale_inplace = scale.inplace_version()
+scale_inplace.set_impl(tensor_scalar_impl(numpy.ndarray.__imul__))
+
+
+class sqr(elemwise):
+    def impl(x):
+        return x * x
+    def grad(x, gz):
+        return scale(mul_elemwise(x, gz), 2.0)
+    def c_foreach((x_i, ), (z_i, )):
+        return "z_i = x_i * x_i;"
+
+isqr = sqr.inplace_version()
+isqr.set_impl(lambda x: x.__imul__(x))
+
+
+
+class sqrt(elemwise):
+    impl = numpy.sqrt
+    def grad(x, gz):
+        return scale(div(gz, sqrt(x)), 0.5)
+    def c_foreach((x_i, ), (z_i, )):
+        return "z_i = pow(x_i, 0.5);"
+
+isqrt = sqrt.inplace_version()
+isqrt.set_impl(lambda x: x.__ipow__(0.5))
+
+
+
 ## Element-wise division ##
 
 class div_elemwise(elemwise):
@@ -1073,6 +1108,7 @@ class dot(omega_op):
         return dot(gz, transpose(y)), dot(transpose(x), gz)
     def specs(x, y):
         # todo: handle all tensors!
+        assert x[2][1] == y[2][0]
         shape = (x[2][0], y[2][1])
         return (numpy.ndarray, upcast(x[1], y[1]), shape)
     def c_headers(self):
@@ -1311,6 +1347,11 @@ class log(elemwise):
     def impl(x): return numpy.log(x)
     def grad(x, gz): return gz / x
     def c_foreach((x_i, ), (z_i, )): return "z_i = log(x_i);"
+
+class log2(elemwise):
+    def impl(x): return numpy.log2(x)
+    def grad(x, gz): return gz / (x * numpy.log(2))
+    def c_foreach((x_i, ), (z_i, )): return "z_i = log2(x_i);"
 
 class pow_elemwise(elemwise):
     impl = assert_same_shapes(numpy.ndarray.__pow__)

@@ -224,8 +224,8 @@ class PythonOp(Op):
     def _perform(self):
         results = self._impl()
         if self.nout == 1:
-            #self.out.set_value(results)
-            self.outputs[0].data = results
+            self.out.set_value(results)
+#            self.outputs[0].data = results
         else:
             assert self.nout == len(results)
             for result, output in zip(results, self.outputs):

@@ -45,6 +45,7 @@ def experimental_linker(env, target = None):
     else:
         raise NotImplementedError("Cannot write thunk representation to a file.")
 
+
 # def experimental_linker(env, target = None):
 #     def fetch(op):
 #         try:
