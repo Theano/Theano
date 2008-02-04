@@ -1,9 +1,11 @@
 import os # for building the location of the .omega/omega_compiled cache directory
 import sys # for adding the inline code cache to the include path
 import platform #
-
-import os
-import sys
+import unittest
+import weakref
+import inspect
+import md5
+import copy
 
 import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
@@ -12,12 +14,7 @@ import type_spec
 import cutils
 
 import numpy
-import weakref
-import inspect
-import md5
 from scipy import weave
-
-from copy import copy as pycopy
 
 # __all__ = ['set_mode', 'get_mode', 'NumpyR', 'NumpyOp']
 
@@ -40,7 +37,8 @@ def print_graph(*rs):
 
 
 literals_db = {}
-literals_id_db = weakref.WeakValueDictionary()
+#literals_id_db = weakref.WeakValueDictionary()
+literals_id_db = {}
 
 #input floating point scalars will be cast to arrays of this type
 # see TRAC(#31)
@@ -170,6 +168,7 @@ def _literal_unhashable(x):
         return r
 
 def literal(x):
+    """Return a PythonR instance wrapping a literal."""
     if _hashable(x):
         return _literal_hashable(x)
     else:
@@ -624,7 +623,7 @@ class elemwise(omega_op):
                 else:
                     res = cls._impl(self)
                     if isinstance(res, (list, tuple)):
-                        res = pycopy(res)
+                        res = copy.copy(res)
                     else:
                         res = [res]
                     for output, input in dmap.items():
@@ -645,7 +644,6 @@ class elemwise(omega_op):
             C.__name__ = cls.__name__ + "_inplace%s" % dmap
         return C
 
-
 def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
     def f(x, y):
         x, y = wrap(x), wrap(y)
@@ -658,7 +656,6 @@ def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
                 raise TypeError("You cannot do this operation on a scalar.")
         return normal_f(x, y)
     return f
-
 
 class NumpyR(gof.PythonR):
     """The class for storing ndarray return values from omega ops.
@@ -723,8 +720,8 @@ class NumpyR(gof.PythonR):
 
     def __copy__(self):    return array_copy(self)
 
-    #def __getitem__(self, item): return get_slice(self, item)
-    #def __getslice__(self, item): return get_slice(self, item)
+    def __getitem__(self, item): return get_slice(self, item)
+    def __getslice__(self, *args): return get_slice(self, slice(*args))
 
     
 def wrap_producer(f):
@@ -803,7 +800,7 @@ class twice(elemwise):
     def c_foreach((x_i, ), (z_i, )):
         "z_i = x_i + x_i;"
 
-itwice = twice.inplace_version()
+twice_inplace = twice.inplace_version()
 
 
 ## Subtraction ##
@@ -841,49 +838,6 @@ mul_elemwise_inplace = mul_elemwise.inplace_version()
 mul_elemwise_inplace.set_impl(assert_same_shapes(numpy.ndarray.__imul__))
 
 
-class scale(tensor_scalar_op):
-    impl = tensor_scalar_impl(numpy.ndarray.__mul__)
-    def grad(x, a, gz):
-        return scale(a, gz), sum(mul_elemwise(x, gz))
-    c_expr = "x_i * a"
-
-scale_inplace = scale.inplace_version()
-scale_inplace.set_impl(tensor_scalar_impl(numpy.ndarray.__imul__))
-
-
-class sqr(elemwise):
-    def impl(x):
-        return x * x
-    def grad(x, gz):
-        return scale(mul_elemwise(x, gz), 2.0)
-    def c_foreach((x_i, ), (z_i, )):
-        return "z_i = x_i * x_i;"
-
-isqr = sqr.inplace_version()
-isqr.set_impl(lambda x: x.__imul__(x))
-
-
-
-class sqrt(elemwise):
-    impl = numpy.sqrt
-    def grad(x, gz):
-        return scale(div(gz, sqrt(x)), 0.5)
-    def c_foreach((x_i, ), (z_i, )):
-        return "z_i = pow(x_i, 0.5);"
-
-isqrt = sqrt.inplace_version()
-isqrt.set_impl(lambda x: x.__ipow__(0.5))
-
-
-
-## Exponentiation ##
-
-class exp(elemwise):
-    impl = numpy.exp
-    def c_foreach((x_i, ), (z_i, )):
-        return "z_i = exp(x_i);"
-    
-
 ## Element-wise division ##
 
 class div_elemwise(elemwise):
@@ -909,6 +863,16 @@ def div_scalar_r_inplace(x, a):
 
 ## Scaling ##
 
+class scale(tensor_scalar_op):
+    impl = tensor_scalar_impl(numpy.ndarray.__mul__)
+    def grad(x, a, gz):
+        return scale(a, gz), sum(mul_elemwise(x, gz))
+    c_expr = "x_i * a"
+
+scale_inplace = scale.inplace_version()
+scale_inplace.set_impl(tensor_scalar_impl(numpy.ndarray.__imul__))
+
+
 class neg(elemwise):
     impl = numpy.ndarray.__neg__
     def grad(x, gz):
@@ -916,8 +880,8 @@ class neg(elemwise):
     def c_foreach((x_i, ), (z_i, )):
         return "z_i = -x_i;"
 
-ineg = neg.inplace_version()
-ineg.set_impl(lambda x: x.__imul__(-1))
+neg_inplace = neg.inplace_version()
+neg_inplace.set_impl(lambda x: x.__imul__(-1))
 
 
 class inv_elemwise(elemwise):
@@ -927,7 +891,7 @@ class inv_elemwise(elemwise):
     def c_foreach((x_i, ), (z_i, )):
         return "z_i = 1 / x_i;"
 
-iinv_elemwise = inv_elemwise.inplace_version()
+inv_elemwise_inplace = inv_elemwise.inplace_version()
 
 
 ## Dot product ##
@@ -1167,6 +1131,7 @@ class gemm(omega_op, inplace):
                 '(_a->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_a->data)[0]) : (REAL)(((double*)_a->data)[0])',
                 '(_b->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_b->data)[0]) : (REAL)(((double*)_b->data)[0])')
 
+
 ## Transposition ##
 
 class transpose(omega_op, view):
@@ -1260,6 +1225,48 @@ class transpose(omega_op, view):
 def transpose_copy(x):
     return array_copy(transpose(x))
 
+class _testCase_transpose(unittest.TestCase):
+
+    def setUp(self):
+        build_eval_mode()
+
+    def tearDown(self):
+        pop_mode()
+    
+    def test_1d_alias(self):
+        a = numpy.ones(10)
+        ta = transpose(a)
+        self.failUnless(ta.data.shape == a.shape)
+        self.failUnless(numpy.all(ta.data == a))
+        a[3] *= -1.0
+        self.failUnless(numpy.all(ta.data == a))
+
+    def test_1d_copy(self):
+        a = numpy.ones(10)
+        ta = transpose_copy(a)
+        self.failUnless(ta.data.shape == a.shape)
+        self.failUnless(numpy.all(ta.data == a))
+        a[3] *= -1.0
+        self.failIf(numpy.all(ta.data == a))
+
+    def test_2d_alias(self):
+        a = numpy.ones((10,3))
+        ta = transpose(a)
+        self.failUnless(ta.data.shape == (3,10))
+
+    def test_3d_alias(self):
+        a = numpy.ones((10,3,5))
+        ta = transpose(a)
+        self.failUnless(ta.data.shape == (5,3,10))
+        a[9,0,0] = 5.0
+        self.failUnless(ta.data[0,0,9] == 5.0)
+
+    def test_3d_copy(self):
+        a = numpy.ones((10,3,5))
+        ta = transpose_copy(a)
+        self.failUnless(ta.data.shape == (5,3,10))
+        a[9,0,0] = 5.0
+        self.failUnless(ta.data[0,0,9] == 1.0)
 
 ## Copy ##
 
@@ -1272,13 +1279,38 @@ class array_copy(elemwise):
 
 ## Power ##
 
+class sqr(elemwise):
+    def impl(x):
+        return x * x
+    def grad(x, gz):
+        return scale(mul_elemwise(x, gz), 2.0)
+    def c_foreach((x_i, ), (z_i, )):
+        return "z_i = x_i * x_i;"
+
+sqr_inplace = sqr.inplace_version()
+sqr_inplace.set_impl(lambda x: x.__imul__(x))
+
+
+class sqrt(elemwise):
+    impl = numpy.sqrt
+    def grad(x, gz):
+        return scale(div(gz, sqrt(x)), 0.5)
+    def c_foreach((x_i, ), (z_i, )):
+        return "z_i = pow(x_i, 0.5);"
+
+sqrt_inplace = sqrt.inplace_version()
+sqrt_inplace.set_impl(lambda x: x.__ipow__(0.5))
+
+
 class exp(elemwise):
     def impl(x): return numpy.exp(x)
     def grad(x, gz): return gz * exp(x)
-
+    def c_foreach((x_i, ), (z_i, )): return "z_i = exp(x_i);"
+    
 class log(elemwise):
     def impl(x): return numpy.log(x)
     def grad(x, gz): return gz / x
+    def c_foreach((x_i, ), (z_i, )): return "z_i = log(x_i);"
 
 class pow_elemwise(elemwise):
     impl = assert_same_shapes(numpy.ndarray.__pow__)
@@ -1308,6 +1340,21 @@ class pow_scalar_r(tensor_scalar_op):
 
 pow_scalar_r_inplace = pow_scalar_r.inplace_version()
 pow_scalar_r_inplace.set_impl(tensor_scalar_impl(numpy.ndarray.__ipow__))
+
+class _testCase_power(unittest.TestCase):
+    def setUp(self):
+        build_eval_mode()
+        numpy.random.seed(44)
+    def tearDown(self):
+        pop_mode()
+
+    def test_0(self):
+        r = numpy.random.rand(50)
+        er = exp(r)
+        ler = log(er)
+
+        a,b = numpy.max(ler-r), numpy.min(ler-r)
+        self.failUnless(a < 1.0e-13 and b > -1.0e-13, 'exp and log are not inverses')
 
 
 ## Others ##
@@ -1346,7 +1393,7 @@ class fill(elemwise):
     def c_foreach((model_i, value), (z_i, )):
         return "z_i = value0;"
 
-ifill = fill.inplace_version()
+fill_inplace = fill.inplace_version()
 
 class sum(elemwise):
     impl = numpy.sum
@@ -1359,6 +1406,103 @@ class sum(elemwise):
     def c_foreach((x_i, ), (sum, )):
         return "sump[0] += x_i;"
 
+class ones_like(elemwise):
+    impl = numpy.ones_like
+    def grad(x, gz): return UNDEFINED
+
+class zeros_like(elemwise):
+    impl = numpy.zeros_like
+    def grad(x, gz): return UNDEFINED
+
+## Array slicing ##
+
+class get_slice(omega_op, view):
+    def impl(x, item): return x.__getitem__(item)
+    def grad(x, gz): raise NotImplemented
+
+class _testCase_slicing(unittest.TestCase):
+    def setUp(self):
+        build_eval_mode()
+    def tearDown(self):
+        pop_mode()
+
+    def test_getitem0(self):
+        a = numpy.ones((4,4))
+        wa1 = wrap(a)[:,1]
+        try:
+            err = wa1 + a
+        except ValueError, e:
+            self.failUnless(e.message == \
+                    'The dimensions of the inputs do not match.',
+                    'Wrong ValueError')
+            return
+        self.fail('add should not have succeeded')
+
+    def test_getitem1(self):
+        a = numpy.ones((4,4))
+        wa1 = wrap(a)[1]
+
+    def test_getslice_0d_all(self):
+        """Test getslice does not work on 0d array """
+        a = numpy.ones(())
+        try:
+            wa1 = wrap(a)[:]
+        except IndexError, e:
+            self.failUnless(e.message == "0-d arrays can't be indexed.")
+            return
+        self.fail()
+    def test_getslice_1d_all(self):
+        """Test getslice on 1d array"""
+        a = numpy.ones(4)
+        wa1 = wrap(a)[:]
+        self.failUnless(wa1.data.shape == (4,), 'wrong shape')
+        self.failUnless(numpy.all(wa1.data == a), 'unequal value')
+
+        a[1] = 3.4
+        self.failUnless(wa1.data[1] == 3.4, 'not a view')
+
+        try:
+            wa1[2] = 2.5
+        except TypeError, e:
+            self.failUnless(e.message == "'NumpyR' object does not support item assignment")
+            return
+        self.fail()
+    def test_getslice_3d_all(self):
+        """Test getslice on 3d array"""
+        a = numpy.ones((4,5,6))
+        wa1 = wrap(a)[:]
+        self.failUnless(wa1.data.shape == (4,5,6), 'wrong shape')
+        self.failUnless(numpy.all(wa1.data == a), 'unequal value')
+
+        a[1,1,1] = 3.4
+        self.failUnless(wa1.data[1,1,1] == 3.4, 'not a view')
+    def test_getslice_1d_some(self):
+        """Test getslice on 1d array"""
+        a = numpy.ones(5)
+        wa1 = wrap(a)[1:3]
+        a[2] = 5.0
+        a[3] = 2.5
+        self.failUnless(wa1.data.shape == (2,))
+        self.failUnless(a[1] == wa1.data[0])
+        self.failUnless(a[2] == wa1.data[1])
+    def test_getslice_1d_step(self):
+        """Test getslice on 1d array"""
+        a = numpy.ones(8)
+        wa1 = wrap(a)[0:8:2]
+        for i in xrange(8): a[i] = i
+
+        self.failUnless(wa1.data.shape == (4,))
+        for i in xrange(4):
+            self.failUnless(a[i*2] == wa1.data[i])
+    def test_getslice_3d_float(self):
+        """Test getslice on 3d array"""
+        a = numpy.asarray(range(4*5*6))
+        a.resize((4,5,6))
+        wa1 = wrap(a)[1:3]
+        wa1.data.shape
+        self.failUnless(numpy.all(a[1:3] == wa1.data))
+        a[1] *= -1.0
+        self.failUnless(numpy.all(a[1:3] == wa1.data))
 
 add = scalar_switch(add_elemwise, add_scalar, add_scalar)
 add_inplace = scalar_switch(add_elemwise_inplace, add_scalar_inplace)
@@ -1375,4 +1519,7 @@ div_inplace = scalar_switch(div_elemwise_inplace, div_scalar_r_inplace)
 pow = scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
 pow_inplace = scalar_switch(pow_elemwise_inplace, pow_scalar_r_inplace)
 
+
+if __name__ == '__main__':
+    unittest.main()
 

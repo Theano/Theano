@@ -205,11 +205,15 @@ class PythonOp(Op):
         for input in self.inputs:
             if input not in exc:
                 self.check_input(input)
-        try:
+        if 0:
+            #J- why is this try catch here? Leftover debug?
+            try:
+                results = self._impl()
+            except Exception, e:
+                print "Error in %s: %s" % (self, e)
+                raise
+        else:
             results = self._impl()
-        except Exception, e:
-            print "Error in %s: %s" % (self, e)
-            raise
         if self.nout == 1:
             self.out.set_value(results)
         else:
