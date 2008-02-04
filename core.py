@@ -793,7 +793,12 @@ class tensor_scalar_op(elemwise):
     def loop_variables(cls):
         return (['x', ], ['z', ])
     def c_init((x, _a), (z, )):
-        return "_a_dtype a = ((_a_dtype*)PyArray_DATA(_a))[0];"
+        return """
+        if (PyArray_SIZE(_a) != 1) {
+            PyErr_SetString(PyExc_ValueError, \"The size of the scalar argument is not 1.\");
+        }
+        _a_dtype a = ((_a_dtype*)PyArray_DATA(_a))[0];
+        """
     def _c_foreach(self):
         return "z_i = %s;" % self.c_expr
 
