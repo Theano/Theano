@@ -102,6 +102,9 @@ class PythonR(Result):
         self.up_to_date = True
         self.refresh()
 
+    def set_value_inplace(self, value):
+        raise NotImplementedError()
+
     def __str__(self):
         return str(self.data)
 
@@ -231,14 +234,14 @@ class PythonOp(Op):
             for result, output in zip(results, self.outputs):
                 output.set_value(result)
 
-    def _perform_like_c(self):
+    def _perform_inplace(self):
         results = self._impl()
         if self.nout == 1:
-            self.outputs[0].data[:] = results
+            self.out.set_value_inplace(results)
         else:
             assert self.nout == len(results)
             for result, output in zip(results, self.outputs):
-                output.data[:] = result
+                output.set_value_inplace(result)
 
 
     def _impl(self):

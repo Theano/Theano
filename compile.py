@@ -31,7 +31,7 @@ def experimental_linker(env, target = None):
         except NotImplementedError:
             result = op._perform
             py_ops.add(op)
-        thunks.append((result, op._perform_like_c))
+        thunks.append((result, op._perform_inplace))
     
     def ret():
         for thunk, fallback in thunks:
