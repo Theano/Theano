@@ -1,4 +1,6 @@
-
+"""
+This file defines the Exceptions that may be raised by graph manipulations.
+"""
 
 class GofError(Exception):
     pass

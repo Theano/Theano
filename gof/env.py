@@ -2,7 +2,6 @@
 from copy import copy
 
 import graph
-## from value import Value, AsValue
 from utils import ClsInit
 from err import GofError, GofTypeError, PropagationError
 from op import Op
@@ -46,6 +45,7 @@ __all__ = ['InconsistencyError',
 
 
 
+#TODO: why is this not in err.py? -James
 class InconsistencyError(GofError):
     """
     This exception is raised by Env whenever one of the listeners marks
@@ -71,6 +71,14 @@ class Env(graph.Graph):
     time and whenever there is a replacement). In addition to that, each listener can
     implement the 'consistent' and 'ordering' methods (see EnvListener) in order to
     restrict how ops in the subgraph can be related.
+
+    Regarding inputs and orphans:
+    In the context of a computation graph, the inputs and orphans are both
+    results that are the source nodes of computation.  Those results that are
+    named as inputs will be assumed to contain fresh.  In other words, the
+    backward search from outputs will stop at any node that has been explicitly
+    named as an input.
+
     """
 
     ### Special ###
@@ -79,6 +87,11 @@ class Env(graph.Graph):
         """
         Create an Env which operates on the subgraph bound by the inputs and outputs
         sets. If consistency_check is False, an illegal graph will be tolerated.
+
+        Features are class types derived from things in the tools file.  These
+        can be listeners, constraints, orderings, etc.  Features add much
+        (most?) functionality to an Env.
+
         """
 
         self._features = {}

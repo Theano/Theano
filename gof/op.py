@@ -30,17 +30,21 @@ class Op(object):
     __slots__ = ['_inputs', '_outputs']
     __require__ = []
 
+    #create inputs and outputs as read-only attributes
     inputs = property(lambda self: self._inputs, doc = "The list of this Op's input Results.")
     outputs = property(lambda self: self._outputs, doc = "The list of this Op's output Results.")
 
-    """
-    If true, self.default_output() or self.out can be used to access
-    self.outputs[0]
-    """
-    has_default_output = True
-    
-    out = property(lambda self: self.default_output(), doc = "Same as self.outputs[0] if this Op's has_default_output field is True.")
+    _default_output_idx = 0
 
+    def default_output(self):
+        """Returns the default output of this Op instance, typically self.outputs[0]."""
+        try:
+            return self.outputs[self._default_output_idx]
+        except (IndexError, TypeError):
+            raise AttributeError("Op does not have a default output.")
+    
+    out = property(default_output, 
+            doc = "Same as self.outputs[0] if this Op's has_default_output field is True.")
 
     def __init__(self, inputs, outputs, use_self_setters = False):
         """
@@ -72,14 +76,6 @@ class Op(object):
         self.validate()
 
         
-    def default_output(self):
-        """
-        Returns the default output of this Op instance, typically self.outputs[0].
-        """
-        if self.has_default_output:
-            return self.outputs[0]
-        else:
-            raise AttributeError("Op does not have a default output.")
 
 
     def set_input(self, i, input, allow_changes = False, validate = True):
@@ -153,7 +149,7 @@ class Op(object):
                 self.set_output(i, previous, False)
 
 
-    def repair(self, allow_changes = False):
+    def _dontuse_repair(self, allow_changes = False):
         """
         This function attempts to repair all inputs that are broken
         links by calling set_input on the new Result that replaced

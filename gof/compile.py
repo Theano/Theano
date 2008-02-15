@@ -1,9 +1,11 @@
-
 import env
 import tools
 import utils
 
 class Compiler:
+    """ What is this?  Please document.
+
+    """
 
     def __init__(self, optimizer, features):
         self.features = set(features)

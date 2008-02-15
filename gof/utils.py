@@ -30,6 +30,8 @@ def all_bases_collect(cls, raw_name):
 
 
 def uniq_features(_features, *_rest):
+    """Return a list such that no element is a subclass of another"""
+    # used in Env.__init__ to 
     features = [x for x in _features]
     for other in _rest:
         features += [x for x in other]

@@ -2,6 +2,7 @@
 """
 Contains the Result class, which is the base interface for a
 value that is the input or the output of an Op.
+
 """
 
 
@@ -43,10 +44,9 @@ class Result(object):
     The Result class represents a datum for use in a graph of Ops. It
     has two slots:
 
-    - owner: represents the Op which computes this Result. It is
-    assumed to be an instance of Op. If owner raises an
-    AttributeError, the Result is assumed to be an input.
-    - index: the index this Result holds in its owner's outputs.
+    - owner: represents the Op which computes this Result. Contains either None
+      or an instance of Op.
+    - index: the index of this Result in owner.outputs.
 
     Result has no __init__ or __new__ routine. It is the Op's
     responsibility to set the owner field of its results.
