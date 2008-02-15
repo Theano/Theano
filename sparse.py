@@ -46,16 +46,11 @@ class sparse2dense(op):
     def gen_outputs(self): return [core.NumpyR()]
     def impl(x): return numpy.asarray(x.todense())
     def grad(self, x, gz): 
-        if x.format is sparse.coo_matrix:
-            return dense2coo(gz)
-        if x.format is sparse.csc_matrix:
-            return dense2csc(gz)
-        if x.format is sparse.csr_matrix:
-            return dense2csr(gz)
-        if x.format is sparse.dok_matrix:
-            return dense2dok(gz)
-        if x.format is sparse.lil_matrix:
-            return dense2lil(gz)
+        if x.format is sparse.coo_matrix: return dense2coo(gz)
+        if x.format is sparse.csc_matrix: return dense2csc(gz)
+        if x.format is sparse.csr_matrix: return dense2csr(gz)
+        if x.format is sparse.dok_matrix: return dense2dok(gz)
+        if x.format is sparse.lil_matrix: return dense2lil(gz)
 
 # convert an ndarray to various sorts of sparse matrices.
 class _dense2sparse(op):
