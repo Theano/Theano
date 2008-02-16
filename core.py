@@ -11,7 +11,8 @@ import numpy
 from scipy import weave
 
 import gof
-from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode, pop_mode, UNCOMPUTED, UNDEFINED, PythonR
+from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode
+from gof import pop_mode, UNCOMPUTED, UNDEFINED, ResultValue
 
 import type_spec
 import cutils
@@ -105,12 +106,12 @@ def input(x):
     elif isinstance(x, gof.Result):
         raise TypeError("%s is already a result." % x)
     else:
-        return PythonR(x)
+        return ResultValue(x)
 
 def wrap(x):
     if isinstance(x, NumpyR):
         return x
-    elif isinstance(x, PythonR):
+    elif isinstance(x, ResultValue):
         return x
     elif isinstance(x, omega_op):
         return x.out
@@ -144,7 +145,7 @@ def _literal_unhashable(x):
         return r
 
 def literal(x):
-    """Return a PythonR instance wrapping a literal."""
+    """Return a ResultValue instance wrapping a literal."""
     if _hashable(x):
         return _literal_hashable(x)
     else:
@@ -253,18 +254,18 @@ class omega_op(gof.PythonOp):
 
             self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
 
-        In general, grad() should return a list of PythonR instances whose
+        In general, grad() should return a list of ResultValue instances whose
         length matches that of self.inputs, and whose elements are the
         gradients of self.inputs.
 
         There is a (but often used) special feature in place to automatically
-        wrap the return value of grad() in a list if it is a PythonR instance
+        wrap the return value of grad() in a list if it is a ResultValue instance
         and the op is unary.  This makes many grad implementations a little
         cuter.
 
         """
         inputgs = self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
-        if len(self.inputs) == 1 and isinstance(inputgs, gof.PythonR):
+        if len(self.inputs) == 1 and isinstance(inputgs, gof.ResultValue):
             inputgs = [inputgs]
         else:
             assert len(inputgs) == len(self.inputs)
@@ -660,9 +661,10 @@ def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
         return normal_f(x, y)
     return f
 
-class NumpyR(gof.PythonR):
+class NumpyR(gof.ResultValue):
     """The class for storing ndarray return values from omega ops.
-    The class provides additional functionality compared to the normal PythonR:
+    The class provides additional functionality compared to the normal
+    ResultValue:
     - operator overloads that correspond to omega ops such as add() and scale()
     - special attributes that make it behave like an ndarray when passed to
       numpy functions.
@@ -681,13 +683,7 @@ class NumpyR(gof.PythonR):
     __array__ = property(lambda self: self.data.__array__ )
     __array_struct__ = property(lambda self: self.data.__array_struct__ )
 
-    def set_value(self, value):
-        if value is UNCOMPUTED:
-            self.data = UNCOMPUTED
-        else:
-            self.data = numpy.asarray(value)
-        self.refresh()
-        self.up_to_date = True
+    def set_value_filter(self, value): return numpy.asarray(value)
 
     def set_value_inplace(self, value):
         if value is UNCOMPUTED:

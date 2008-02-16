@@ -9,24 +9,27 @@ import grad
 
 # Wrapper type
 
-class SparseR(gof.PythonR):
+class SparseR(gof.ResultValue):
     """
     Attribute:
     format - a subclass of sparse.spmatrix indicating self.data.__class__
+
+    Properties:
+    T - read-only: return a transpose of self
+
+    Methods:
+
+    Notes:
+
     """
     def __init__(self, x = core.UNCOMPUTED, constant = False, 
             format = sparse.csr_matrix):
-        gof.PythonR.__init__(self, x, constant)
+        gof.ResultValue.__init__(self, x, constant)
         self.format = isinstance(x, sparse.spmatrix) and x.__class__ or format
 
-    def set_value(self, value):
-        """Extend base impl, assert value is sparse matrix"""
-        gof.PythonR.set_value(self,value)
-        if self.data is not core.UNCOMPUTED:
-            if not isinstance(self.data, sparse.spmatrix):
-                print self.data.__class__
-                print self.owner.__class__
-                raise TypeError(('hrm',value))
+    def set_value_filter(self, value):
+        if isinstance(value, sparse.spmatrix): return value
+        return sparse.csr_matrix(value)
 
     def __add__(left, right): return add(left, right)
     def __radd__(right, left): return add(left, right)
@@ -148,11 +151,11 @@ class _testCase_dot(unittest.TestCase):
             m = mtype(a)
             ab = m.dot(b)
             try:
-                z = dot(SparseR(m),gof.lib.PythonR(b))
+                z = dot(SparseR(m),gof.lib.ResultValue(b))
                 self.failUnless(z.data.shape == ab.shape)
                 self.failUnless(type(z.data) == type(ab))
             except Exception, e:
-                print mtype, e, str(e)
+                print 'cccc', mtype, e, str(e)
                 raise
     def test_basic2(self):
         """dot: sparse right"""
@@ -164,7 +167,7 @@ class _testCase_dot(unittest.TestCase):
                 sparse.lil_matrix]:#, sparse.coo_matrix]:
             m = mtype(b)
             ab = m.transpose().dot(a.transpose()).transpose()
-            z = dot(gof.lib.PythonR(a),SparseR(mtype(b)))
+            z = dot(gof.lib.ResultValue(a),SparseR(mtype(b)))
             self.failUnless(z.data.shape == ab.shape)
             self.failUnless(type(z.data) == type(ab))
     def test_graph_bprop0(self):

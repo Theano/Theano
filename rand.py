@@ -16,7 +16,7 @@ class RandomState(gof.Op, gof.ext.IONames):
 
     def __init__(self, seed):
         inputs = [wrap(seed)]
-        outputs = [PythonR()]
+        outputs = [ResultValue()]
         gof.Op.__init__(self, inputs, outputs)
 
     def thunk(self):

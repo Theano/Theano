@@ -1,7 +1,7 @@
 
 from op import Op
 from result import Result #, HolderResult
-from utils import ClsInit, Keyword
+from utils import ClsInit, Keyword, AbstractFunctionError
 import opt
 import env
 import features
@@ -16,7 +16,7 @@ __all__ = ['UNCOMPUTED',
            'eval_mode',
            'build_eval_mode',
            'pop_mode',
-           'PythonR',
+           'ResultValue',
            'DummyOp',
            'DummyRemover',
            'PythonOp',
@@ -26,7 +26,6 @@ __all__ = ['UNCOMPUTED',
 
 UNCOMPUTED = Keyword("UNCOMPUTED", False)
 UNDEFINED = Keyword("UNDEFINED", False)
-
 
 def make_static(cls, fname):
     f = getattr(cls, fname)
@@ -79,7 +78,26 @@ class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
 
 
-class PythonR(Result):
+class ResultValue(Result):
+    """Augment Result to wrap a computed value.
+
+    Attributes:
+    data - 
+    spec - 
+    constant - 
+    up_to_date -
+
+    Properties:
+
+    Methods:
+
+    set_value_filter - ABSTRACT
+    set_value_inplace - ABSTRACT
+    alloc - ABSTRACT
+
+    Notes:
+
+    """
 
     __slots__ = ['data', 'spec', 'constant', 'up_to_date']
     
@@ -90,37 +108,57 @@ class PythonR(Result):
         self.up_to_date = True
         self.spec = None
         
+    def __str__(self): return str(self.data)
+
+    def __repr__(self): return repr(self.data)
+
+    #TODO: document this function, what does it do?
+    def refresh(self): self.spec = id(self.data)
+
+    ####################################################
+    #
+    # Functionality provided by this class
+    #
+
     def set_value(self, value):
         if self.constant:
             raise Exception("This Result is a constant. Its value cannot be changed.")
         if value is None or value is UNCOMPUTED:
             self.data = UNCOMPUTED
-        elif isinstance(value, PythonR):
+        elif isinstance(value, ResultValue):
             self.set_value(value.data)
         else:
-            self.data = value
+            try:
+                self.data = self.set_value_filter(value)
+            except AbstractFunctionError, e:
+                self.data = value
+
         self.up_to_date = True
         self.refresh()
 
-    def set_value_inplace(self, value):
-        raise NotImplementedError()
-
-    def __str__(self):
-        return str(self.data)
-
-    def __repr__(self):
-        return repr(self.data)
-
-    def refresh(self):
-        self.spec = id(self.data)
-
-    def alloc(self):
-        raise TypeError("Cannot allocate following this specification.")
-
     def compute(self):
+        #HACK: this is potentially very broken behaviour
         """Overrides Op.compute(). Only recurses if self.data is UNCOMPUTED"""
         if self.data is UNCOMPUTED:
-            self.owner.compute()
+            Result.compute(self)
+
+    ####################################################
+    #
+    # Pure virtual functions for subclasses to implement
+    #
+
+    # Perform error checking or automatic conversion of value, and return the
+    # result (which will be stored as self.data)
+    # Called by: set_value()
+    def set_value_filter(self, value): raise AbstractFunctionError()
+
+    # For mutable data types, overwrite the current contents with value
+    # Also, call refresh and set up_to_date = True
+    def set_value_inplace(self, value): raise AbstractFunctionError()
+
+    # Instantiate data (according to spec)
+    def alloc(self): raise AbstractFunctionError()
+
 
 
 class PythonOp(Op):
@@ -157,10 +195,10 @@ class PythonOp(Op):
 
     def __validate__(self):
         for input in self.inputs:
-            assert isinstance(input, PythonR)
+            assert isinstance(input, ResultValue)
     
     def gen_outputs(self):
-        return [PythonR() for i in xrange(self.nout)]
+        return [ResultValue() for i in xrange(self.nout)]
 
     def root_inputs(self, input):
         owner = input.owner

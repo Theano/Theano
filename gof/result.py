@@ -7,6 +7,7 @@ value that is the input or the output of an Op.
 
 
 from err import GofError
+from utils import AbstractFunctionError
 
 
 __all__ = ['Result', 'BrokenLink', 'BrokenLinkError']
@@ -40,13 +41,17 @@ class BrokenLinkError(GofError):
 ############################
 
 class Result(object):
-    """
-    The Result class represents a datum for use in a graph of Ops. It
-    has two slots:
+    """Storage node for data in a graph of Op instances.
 
-    - owner: represents the Op which computes this Result. Contains either None
-      or an instance of Op.
-    - index: the index of this Result in owner.outputs.
+    Attributes:
+    owner - represents the Op which computes this Result. Contains either None
+        or an instance of Op.
+    index - the index of this Result in owner.outputs.
+
+    Methods:
+    - 
+
+    Notes:
 
     Result has no __init__ or __new__ routine. It is the Op's
     responsibility to set the owner field of its results.
@@ -70,7 +75,8 @@ class Result(object):
             self._owner = None
         return self._owner
 
-    owner = property(get_owner, doc = "The Op of which this Result is an output or None if there is no such Op.")
+    owner = property(get_owner, 
+            doc = "The Op of which this Result is an output or None if there is no such Op.")
 
     def set_owner(self, owner, index):
         if self.owner is not None:
@@ -94,21 +100,21 @@ class Result(object):
             self._owner = owner
             self._index = index
 
-
-    def set_value(self, value):
-        """
-        Copies the provided value in this Result. It is not required to
-        implement this method.
-        """
-        raise NotImplementedError("This Result does not support set_value.")
-
     def compute(self):
-        """If self has an owner, recursively compute it."""
+        """If self has an owner, recursively compute it.
+
+        This is a mutually recursive function with gof.op.Op
+
+        """
         if self.owner:
             self.owner.compute()
 
     def perform(self):
-        """Calls self.owner.perform() if self.owner exists."""
+        """Calls self.owner.perform() if self.owner exists.
+
+        This is a mutually recursive function with gof.op.Op
+
+        """
         if self.owner:
             self.owner.perform()
     

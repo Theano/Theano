@@ -156,18 +156,18 @@ class update_gradient_via_grad:
 
             self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
 
-        In general, grad() should return a list of PythonR instances whose
+        In general, grad() should return a list of ResultValue instances whose
         length matches that of self.inputs, and whose elements are the
         gradients of self.inputs.
 
         There is a (but often used) special feature in place to automatically
-        wrap the return value of grad() in a list if it is a PythonR instance
+        wrap the return value of grad() in a list if it is a ResultValue instance
         and the op is unary.  This makes many grad implementations a little
         cuter.
 
         """
         inputgs = self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
-        if len(self.inputs) == 1 and isinstance(inputgs, gof.PythonR):
+        if len(self.inputs) == 1 and isinstance(inputgs, gof.ResultValue):
             inputgs = [inputgs]
         else:
             assert len(inputgs) == len(self.inputs)

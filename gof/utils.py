@@ -3,9 +3,14 @@
 # import result
 
 
-class OmegaError(Exception):
-    pass
+class OmegaError(Exception): pass
 
+class AbstractFunctionError(Exception): 
+    """To be raised by functions defined as part of an interface.
+
+    When the user sees such an error, it is because an important interface
+    function has been left out of an implementation class.
+    """
 
 
 def all_bases(cls, accept):
