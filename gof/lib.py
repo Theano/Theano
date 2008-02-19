@@ -42,24 +42,22 @@ class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
     def root_inputs(self, input):
         owner = input.owner
-        if owner and isinstance(owner, ext.Viewer):
-            view_map = owner.view_map()
-            if input in view_map:
-                answer = []
-                for input2 in view_map[input]:
-                    answer += owner.root_inputs(input2)
-                return answer
+        view_map = owner.view_map()
+        if input in view_map:
+            answer = []
+            for input2 in view_map[input]:
+                answer += owner.root_inputs(input2)
+            return answer
         else:
             return [input]
 
     def on_import(self, op):
-        if isinstance(op, ext.Destroyer):
-            for output, inputs in op.destroy_map().items():
-                for input in inputs:
-                    for root_input in self.root_inputs(input):
-                        if getattr(root_input, 'constant', False):
-                            self.bad.add(op)
-                            return
+        for output, inputs in op.destroy_map().items():
+            for input in inputs:
+                for root_input in self.root_inputs(input):
+                    if getattr(root_input, 'constant', False):
+                        self.bad.add(op)
+                        return
 
     def on_prune(self, op):
         if op in self.bad:
@@ -199,10 +197,14 @@ class PythonOp(Op):
     
     def gen_outputs(self):
         return [ResultValue() for i in xrange(self.nout)]
+    
+    def view_map(self): return {}
+
+    def destroy_map(self): return {}
 
     def root_inputs(self, input):
         owner = input.owner
-        if owner and isinstance(owner, ext.Viewer):
+        if owner:
             view_map = owner.view_map()
             if input in view_map:
                 answer = []
@@ -234,12 +236,11 @@ class PythonOp(Op):
 
     def perform(self):
         exc = set()
-        if isinstance(self, ext.Destroyer):
-            for output, inputs in self.destroy_map().items():
-                exc.update(inputs)
-                for input in inputs:
-                    if self.input_is_constant(input):
-                        raise ValueError("Input is constant: %s" % input)
+        for output, inputs in self.destroy_map().items():
+            exc.update(inputs)
+            for input in inputs:
+                if self.input_is_constant(input):
+                    raise ValueError("Input is constant: %s" % input)
         for input in exc:
             self.check_input(input)
             input.up_to_date = False

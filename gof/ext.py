@@ -9,7 +9,9 @@ from utils import ClsInit
 import graph
 
 
-__all__ = ['Viewer', 'Destroyer', 'DestroyHandler', 'IONames', 'mark_outputs_as_destroyed']
+#TODO: move mark_outputs_as_destroyed to the place that uses this function
+#TODO: move Return to where it is used.
+__all__ = ['DestroyHandler', 'IONames', 'mark_outputs_as_destroyed']
 
 
 class IONames:
@@ -164,15 +166,9 @@ class DestroyHandler(Listener, Constraint, Orderings):
             self.__detect_cycles_helper__(user, [])
 
     def get_maps(self, op):
-        dmap = {}
-        vmap = {}
-        if isinstance(op, Destroyer):
-            dmap = op.destroy_map()
-        if isinstance(op, Viewer):
-            vmap = op.view_map()
+        vmap = getattr(op, 'view_map',{})
+        dmap = getattr(op, 'destoy_map', {})
         return vmap, dmap
-#         return getattr(op, 'view_map', lambda:{})(), \
-#                getattr(op, 'destroy_map', lambda:{})()
 
     def on_import(self, op):
         view_map, destroy_map = self.get_maps(op)
@@ -330,52 +326,13 @@ class DestroyHandler(Listener, Constraint, Orderings):
         return ords
 
 
-class Viewer:
-    """
-    Represents an operation such that one or more of its outputs share
-    storage with one or more of its inputs so changing one might
-    change the other. All inputs are assumed to be left intact.
-    """
-
-    def view_map(self):
-        """
-        Returns a dictionary which maps an output to the list of
-        inputs of which it is a view (with which it might share
-        internal structures).
-
-        By default, supposes that the first output is a view of
-        the first input.
-        """
-        return {self.out: [self.inputs[0]]}
-
-
-class Destroyer:
-    """
-    Represents an operation which acts in place on one or several of
-    its inputs. As a result of this Op, the data contained in the
-    inputs might be changed.
-    """
-
-    __require__ = DestroyHandler
-
-    def destroy_map(self):
-        """
-        Returns a dictionary which maps an output to the list of
-        inputs which it destroys.
-
-        By default, supposes that the first input is overwritten
-        by the first output.
-        """
-        return {self.out: [self.inputs[0]]}
-
-
-class Return(DummyOp, Destroyer):
+class Return(DummyOp):
     """
     Dummy op which represents the action of returning its input
     value to an end user. It "destroys" its input to prevent any
     other Op to overwrite it.
     """
-    pass
+    def destroy_map(self): return {self.out:[self.inputs[0]]}
 
 
 def mark_outputs_as_destroyed(outputs):
