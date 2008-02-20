@@ -1,4 +1,5 @@
 import gof
+from gof.lib import compute_from
 import core
 
 class Grad(object):
@@ -19,9 +20,10 @@ class Grad(object):
     def __init__(self, dct={}):
         self.map = {}
         self.outputs = []
+        self._compute_history = set([])
+        self.did_bprop = False
         for key,val in dct.items():
             self.add_output(key,val)
-        self.did_bprop = False
 
     def __contains__(self, item):
         return item in self.map
@@ -60,8 +62,8 @@ class Grad(object):
             pass
         else:
             if r.data is core.UNCOMPUTED or dr.data is core.UNCOMPUTED:
-                pass
-            else: # try some hacky checks to catch obvious mistakes
+                pass # no sanity checking
+            else: # some sanity checking to catch obvious mistakes
                 if not hasattr(r.data, 'shape'):
                     raise ValueError(('Grad::add r lacks shape: type=',
                         type(r.data)))
@@ -71,6 +73,10 @@ class Grad(object):
                 if r.data.shape != dr.data.shape:
                     raise ValueError(('Grad::add r, dr shape mismatch',
                         r.data.shape, dr.data.shape))
+
+            # prevent 'r' from being re-calculated by self.__call__ in 'build_eval' mode
+            if r.data is not core.UNCOMPUTED:
+                self._compute_history.add(r) 
 
             # add dr to self[r]
             if r in self:
@@ -120,7 +126,7 @@ class Grad(object):
         rval = self[item]
         if rval is not core.UNDEFINED \
                 and core.current_mode() == 'build_eval':
-            rval.compute()
+            compute_from([rval], self._compute_history)
         return rval
 
 def grad(cost, param=None, cost_grad = 1.0):

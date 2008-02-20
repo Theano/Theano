@@ -13,17 +13,10 @@ __all__ = ['Feature',
            'Constraint',
            'Orderings',
            'Tool',
-#           'Preprocessor',
-           
            'EquivTool',
            'InstanceFinder',
-           
            'PrintListener',
            'ChangeListener',
-
-#           'DestroyPreprocessor',
-
-#           'DestroyHandler'
            ]
 
 
