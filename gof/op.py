@@ -212,12 +212,6 @@ class Op(object):
         """
         return self.perform()
 
-    def compute(self):
-        """Recursively perform() the ancestors of this node and then perform(self)."""
-        for input in self.inputs:
-            input.compute()
-        self.perform()
-
     @classmethod
     def require(cls):
         """

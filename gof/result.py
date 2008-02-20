@@ -100,15 +100,6 @@ class Result(object):
             self._owner = owner
             self._index = index
 
-    def compute(self):
-        """If self has an owner, recursively compute it.
-
-        This is a mutually recursive function with gof.op.Op
-
-        """
-        if self.owner:
-            self.owner.compute()
-
     def perform(self):
         """Calls self.owner.perform() if self.owner exists.
 

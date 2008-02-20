@@ -159,12 +159,6 @@ class ResultValue(Result):
         self.up_to_date = True
         self.refresh()
 
-    def compute(self):
-        #HACK: this is potentially very broken behaviour
-        """Overrides Op.compute(). Only recurses if self.data is UNCOMPUTED"""
-        if self.data is UNCOMPUTED:
-            Result.compute(self)
-
     ####################################################
     #
     # Pure virtual functions for subclasses to implement

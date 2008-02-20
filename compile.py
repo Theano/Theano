@@ -1,6 +1,7 @@
 import time
 
 import gof
+import gof.lib
 import cutils
 
 import core
@@ -177,7 +178,7 @@ class prog(gof.Prog):
         for orphan in self.env.orphans():
             if orphan.data is core.UNCOMPUTED:
                 if orphan.owner:
-                    orphan.owner.compute()
+                    gof.lib.compute(orphan.owner)
                 else:
                     raise Exception("Orphan %s is uncomputed but needed to calculate the function." % orphan)
             
