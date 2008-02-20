@@ -118,6 +118,9 @@ class Op(object):
             try:
                 self.validate()
             except:
+                # this call gives a subclass the chance to undo the set_outputs 
+                # that it may have triggered...
+                # TODO: test this functionality!
                 self.set_input(i, previous, True, False)
 
 

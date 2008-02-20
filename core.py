@@ -48,14 +48,6 @@ def _approx_eq(a,b,eps=1.0e-9):
     return numpy.all(d < eps)
 
 
-literals_db = {}
-#literals_id_db = weakref.WeakValueDictionary()
-literals_id_db = {}
-
-#input floating point scalars will be cast to arrays of this type
-# see TRAC(#31)
-default_input_scalar_dtype = 'float64'
-
 @blas._constant # TODO: move this decorator to a utility script
 def _compile_dir():
     """Return the directory in which scipy.weave should store code objects.
@@ -99,14 +91,21 @@ def input(x):
     #   being cast to floating-point (can that cause incorrectness?)
     if isinstance(x, numpy.ndarray):
         return NumpyR(x)
-    elif isinstance(x, (int, float)):
-        z = numpy.zeros((), dtype = default_input_scalar_dtype)
+    elif isinstance(x, int):
+        z = numpy.zeros((), dtype = input.int_dtype)
+        z += x
+        return NumpyR(z)
+    elif isinstance(x, float):
+        z = numpy.zeros((), dtype = input.float_dtype)
         z += x
         return NumpyR(z)
     elif isinstance(x, gof.Result):
         raise TypeError("%s is already a result." % x)
     else:
         return ResultValue(x)
+
+input.float_dtype = 'float64'
+input.int_dtype = 'int64'
 
 def wrap(x):
     if isinstance(x, NumpyR):
@@ -118,38 +117,69 @@ def wrap(x):
     else:
         return literal(x)
 
-def _hashable(x):
-    try:
-        x in {}
-        return True
-    except TypeError: # x is unhashable
-        return False
-
-def _literal_hashable(x):
-    if x in literals_db:
-        return literals_db[x]
-    else:
-        r = input(x)
-        r.constant = True
-        literals_db[x] = r
-        return r
-
-def _literal_unhashable(x):
-    idx = id(x)
-    if idx in literals_id_db:
-        return literals_id_db[idx]
-    else:
-        r = input(x)
-        r.constant = True
-        literals_id_db[idx] = r
-        return r
+class _testCase_wrap(unittest.TestCase):
+    def setUp(self):
+        literal.hdb = {}
+        literal.udb = {}
+    def test_input_int(self):
+        w = input(3)
+        self.failUnless(isinstance(w, NumpyR))
+        self.failUnless(str(w.data.dtype) == input.int_dtype)
+        self.failUnless(w.data == 3)
+    def test_input_float(self):
+        w = input(3.0)
+        self.failUnless(isinstance(w, NumpyR))
+        self.failUnless(str(w.data.dtype) == input.float_dtype)
+        self.failUnless(w.data == 3.0)
+    def test_literal_int(self):
+        w = literal(3)
+        self.failUnless(isinstance(w, NumpyR))
+        self.failUnless(str(w.data.dtype) == input.int_dtype)
+        self.failUnless(w.data == 3)
+    def test_literal_float(self):
+        w = literal(3.0)
+        self.failUnless(isinstance(w, NumpyR))
+        self.failUnless(str(w.data.dtype) == input.float_dtype)
+        self.failUnless(w.data == 3.0)
+    def test_wrap_int(self):
+        w = wrap(3)
+        self.failUnless(isinstance(w, NumpyR))
+        self.failUnless(str(w.data.dtype) == input.int_dtype)
+        self.failUnless(w.data == 3)
+    def test_wrap_float(self):
+        w = wrap(3.0)
+        self.failUnless(isinstance(w, NumpyR))
+        self.failUnless(str(w.data.dtype) == input.float_dtype)
+        self.failUnless(w.data == 3.0)
 
 def literal(x):
     """Return a ResultValue instance wrapping a literal."""
+    def _hashable(x):
+        try:
+            x in {}
+            return True
+        except TypeError: # x is unhashable
+            return False
+
+    #static member initialization
+    if not hasattr(literal, 'hdb'): 
+        literal.hdb = {}
+        literal.udb = {}
+
     if _hashable(x):
-        return _literal_hashable(x)
+        db = literal.hdb
+        key = (id(x),x)
     else:
-        return _literal_unhashable(x)
+        db = literal.udb
+        key = (id(x),)
+
+    if key in db:
+        return db[key]
+    else:
+        rval = input(x)
+        rval.constant = True
+        db[key] = rval
+        return rval
 
 
 
@@ -682,9 +712,9 @@ class NumpyR(gof.ResultValue):
             raise ValueError()
         else:
             if 0 == len(self.data.shape):
-                self.data.itemset(value)
+                self.data.itemset(value) # for scalars
             else:
-                self.data[:] = value
+                self.data[:] = value     # for matrices
         self.refresh()
         self.up_to_date = True
 
@@ -693,7 +723,8 @@ class NumpyR(gof.ResultValue):
             self.spec = (numpy.ndarray, self.data.dtype, self.data.shape)
         
     def alloc(self):
-        self.data = numpy.ndarray(self.spec[2], self.spec[1])
+        shape, dtype = self.spec[2], self.spec[1]
+        self.data = numpy.ndarray(shape, dtype=dtype)
 
     def  __add__(self, y): return add(self, y)
     def __radd__(self, x): return add(x, self)
@@ -1487,10 +1518,9 @@ class _testCase_slicing(unittest.TestCase):
         self.fail('add should not have succeeded')
 
     def test_getitem1(self):
-        #TODO: re-enable this test
-        return
         a = numpy.ones((4,4))
         wa1 = wrap(a)[1]
+        self.failUnless(wa1.data.shape == (4,))
 
     def test_getslice_0d_all(self):
         """Test getslice does not work on 0d array """

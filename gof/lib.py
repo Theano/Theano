@@ -126,10 +126,10 @@ class ResultValue(Result):
     
     def __init__(self, x = UNCOMPUTED, constant = False):
         self.constant = False
-        self.set_value(x)
+        self.set_value(x) # allow set_value before constant = True
         self.constant = constant
         self.up_to_date = True
-        self.spec = None
+        self.refresh() # to set spec
         
     def __str__(self): return str(self.data)
 
