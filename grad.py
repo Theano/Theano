@@ -1,5 +1,5 @@
 import gof
-from gof.lib import compute_from
+from gof.lib import compute_from, is_result
 import core
 
 class Grad(object):
@@ -173,7 +173,7 @@ class update_gradient_via_grad:
 
         """
         inputgs = self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
-        if len(self.inputs) == 1 and isinstance(inputgs, gof.ResultValue):
+        if len(self.inputs) == 1 and is_result(inputgs):
             inputgs = [inputgs]
         else:
             assert len(inputgs) == len(self.inputs)

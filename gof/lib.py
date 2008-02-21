@@ -58,6 +58,10 @@ def compute(*nodes):
     """Recursively evaluate each node (in a quick & dirty way)."""
     compute_from(nodes, set())
 
+def is_result(obj):
+    """Return True iff obj provides the interface of a Result"""
+    attr_list = 'data', 'owner'
+    return all([hasattr(obj, attr) for attr in attr_list])
 
 class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
@@ -460,8 +464,7 @@ class PythonOp(Op):
         Op.__init__(self, inputs, self.gen_outputs())
 
     def __validate__(self):
-        for input in self.inputs:
-            assert isinstance(input, ResultValue)
+        return all([ is_result(i) for i in self.inputs])
     
     def gen_outputs(self):
         return [ResultValue() for i in xrange(self.nout)]
