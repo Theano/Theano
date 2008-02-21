@@ -182,7 +182,7 @@ class _testCase_dot(unittest.TestCase):
             m = mtype(a)
             ab = m.dot(b)
             try:
-                z = dot(SparseR(m),gof.lib.ResultValue(b))
+                z = dot(SparseR(m),core.ResultBase(data=b))
                 self.failUnless(z.data.shape == ab.shape)
                 self.failUnless(type(z.data) == type(ab))
             except Exception, e:
@@ -198,7 +198,7 @@ class _testCase_dot(unittest.TestCase):
                 sparse.lil_matrix]:#, sparse.coo_matrix]:
             m = mtype(b)
             ab = m.transpose().dot(a.transpose()).transpose()
-            z = dot(gof.lib.ResultValue(a),SparseR(mtype(b)))
+            z = dot(core.ResultBase(data=a),SparseR(mtype(b)))
             self.failUnless(z.data.shape == ab.shape)
             self.failUnless(type(z.data) == type(ab))
     def test_graph_bprop0(self):

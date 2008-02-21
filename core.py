@@ -12,7 +12,7 @@ from scipy import weave
 
 import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode
-from gof import pop_mode, UNDEFINED, is_result
+from gof import pop_mode, is_result
 
 import type_spec
 import cutils
@@ -251,9 +251,6 @@ class Numpy2(ResultBase):
     __array__ = property(lambda self: self._data.__array__ )
     __array_struct__ = property(lambda self: self._data.__array_struct__ )
 
-    def data_set_inplace(self, data):
-        raise NotImplementedError()
-
     def data_alloc(self):
         self.data = numpy.ndarray(self.shape, self.dtype)
 
@@ -386,7 +383,7 @@ def input(x):
     elif is_result(x):
         raise TypeError("%s is already a result." % x)
     else:
-        return ResultBase(x)
+        return ResultBase(data=x)
 class _testCase_input(unittest.TestCase):
     def setUp(self):
         literal.hdb = {}
@@ -1067,11 +1064,14 @@ if 0:
     
 
 
+
+from grad import Grad
+
 def wrap_producer(f):
     class producer(omega_op):
         impl = f
         def grad(*args):
-            return [UNDEFINED] * (len(args) - 1)
+            return [Grad.Undefined] * (len(args) - 1)
     producer.__name__ = f.__name__
     def ret(dim, dtype = 'float', order = 'C'):
         return producer(dim, dtype, order)
@@ -1811,11 +1811,11 @@ class sum(elemwise):
 
 class ones_like(elemwise):
     impl = numpy.ones_like
-    def grad(x, gz): return UNDEFINED
+    def grad(x, gz): return Grad.Undefined
 
 class zeros_like(elemwise):
     impl = numpy.zeros_like
-    def grad(x, gz): return UNDEFINED
+    def grad(x, gz): return Grad.Undefined
 
 ## Array slicing ##
 

@@ -17,6 +17,8 @@ class Grad(object):
     __call__()
     __getitem__()
     """
+    class Undefined: pass
+
     def __init__(self, dct={}):
         self.map = {}
         self.outputs = []
@@ -34,7 +36,7 @@ class Grad(object):
         try:
             return self.map[key]
         except KeyError:
-            return core.UNDEFINED
+            return Grad.Undefined
 
     def __setitem__(self, item, val):
         """Map item to its id and store internally."""
@@ -49,7 +51,7 @@ class Grad(object):
         
         This function should be fed as follows:
 
-        if dr is UNDEFINED:
+        if dr is undefined:
             r could be anything
         else dr might be core.UNCOMPUTED:
             r may be uncomputed or NumpyR
@@ -57,7 +59,7 @@ class Grad(object):
             r may be uncomputed or NumpyR
 
         """
-        if dr is core.UNDEFINED: 
+        if dr is Grad.Undefined: 
             # nothing to do
             return
 
@@ -122,7 +124,7 @@ class Grad(object):
         if not self.did_bprop:
             raise Exception('Grad.__call__ only makes sense after a bprop')
         rval = self[item]
-        if rval is not core.UNDEFINED \
+        if rval is not Grad.Undefined \
                 and core.current_mode() == 'build_eval':
             compute_from([rval], self._compute_history)
         return rval
@@ -297,7 +299,7 @@ class _testCase (unittest.TestCase):
             gb.bprop()
             self.assertEqual('should have raised',0)
         except AttributeError, e:
-            self.assertEqual(str(e), "Keyword instance has no attribute 'shape'")
+            self.assertEqual(str(e), "class Undefined has no attribute 'shape'")
             return
         self.assertEqual("Should have been error", 0)
     
@@ -311,7 +313,7 @@ class _testCase (unittest.TestCase):
             gc.bprop()
             self.assertEqual('should have raised',0)
         except AttributeError, e:
-            self.assertEqual(str(e), "Keyword instance has no attribute 'shape'")
+            self.assertEqual(str(e), "class Undefined has no attribute 'shape'")
             return
         self.assertEqual("Should have been error", 0)
 
