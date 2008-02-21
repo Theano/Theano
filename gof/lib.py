@@ -1,6 +1,6 @@
 
 from op import Op
-from result import Result #, HolderResult
+from result import Result, is_result
 from utils import ClsInit, Keyword, AbstractFunctionError
 import opt
 import env
@@ -8,15 +8,14 @@ import features
 import ext
 
 
-__all__ = ['UNCOMPUTED',
-           'UNDEFINED',
+__all__ = [ 'UNDEFINED',
            'current_mode',
            'set_mode',
            'build_mode',
            'eval_mode',
            'build_eval_mode',
            'pop_mode',
-           'ResultValue',
+           #'ResultValue',
            'DummyOp',
            'DummyRemover',
            'PythonOp',
@@ -24,7 +23,6 @@ __all__ = ['UNCOMPUTED',
            'make_static']
 
 
-UNCOMPUTED = Keyword("UNCOMPUTED", False)
 UNDEFINED = Keyword("UNDEFINED", False)
 
 def make_static(cls, fname):
@@ -57,11 +55,6 @@ def compute_from(nodes, history):
 def compute(*nodes):
     """Recursively evaluate each node (in a quick & dirty way)."""
     compute_from(nodes, set())
-
-def is_result(obj):
-    """Return True iff obj provides the interface of a Result"""
-    attr_list = 'data', 'owner'
-    return all([hasattr(obj, attr) for attr in attr_list])
 
 class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
@@ -105,80 +98,81 @@ class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
 
 
-class ResultValue(Result):
-    """Augment Result to wrap a computed value.
+if 0:
+    class ResultValue(Result):
+        """Augment Result to wrap a computed value.
 
-    Attributes:
-    data - 
-    spec - 
-    constant - 
-    up_to_date -
+        Attributes:
+        data - 
+        spec - 
+        constant - 
+        up_to_date -
 
-    Properties:
+        Properties:
 
-    Methods:
+        Methods:
 
-    set_value_filter - ABSTRACT
-    set_value_inplace - ABSTRACT
-    alloc - ABSTRACT
+        set_value_filter - ABSTRACT
+        set_value_inplace - ABSTRACT
+        alloc - ABSTRACT
 
-    Notes:
+        Notes:
 
-    """
+        """
 
-    __slots__ = ['data', 'spec', 'constant', 'up_to_date']
-    
-    def __init__(self, x = UNCOMPUTED, constant = False):
-        self.constant = False
-        self.set_value(x) # allow set_value before constant = True
-        self.constant = constant
-        self.up_to_date = True
-        self.refresh() # to set spec
+        __slots__ = ['data', 'spec', 'constant', 'up_to_date']
         
-    def __str__(self): return str(self.data)
+        def __init__(self, x = None, constant = False):
+            self.constant = False
+            self.set_value(x) # allow set_value before constant = True
+            self.constant = constant
+            self.up_to_date = True
+            self.refresh() # to set spec
+            
+        def __str__(self): return str(self.data)
 
-    def __repr__(self): return repr(self.data)
+        def __repr__(self): return repr(self.data)
 
-    #TODO: document this function, what does it do?
-    def refresh(self): self.spec = id(self.data)
+        #TODO: document this function, what does it do?
+        def refresh(self): self.spec = id(self.data)
 
-    ####################################################
-    #
-    # Functionality provided by this class
-    #
+        ####################################################
+        #
+        # Functionality provided by this class
+        #
 
-    def set_value(self, value):
-        if self.constant:
-            raise Exception("This Result is a constant. Its value cannot be changed.")
-        if value is None or value is UNCOMPUTED:
-            self.data = UNCOMPUTED
-        elif isinstance(value, ResultValue):
-            self.set_value(value.data)
-        else:
-            try:
-                self.data = self.set_value_filter(value)
-            except AbstractFunctionError, e:
-                self.data = value
+        def set_value(self, value):
+            if self.constant:
+                raise Exception("This Result is a constant. Its value cannot be changed.")
+            if value is None or value is UNCOMPUTED:
+                self.data = UNCOMPUTED
+            elif is_result(value):
+                self.set_value(value.data)
+            else:
+                try:
+                    self.data = self.set_value_filter(value)
+                except AbstractFunctionError, e:
+                    self.data = value
 
-        self.up_to_date = True
-        self.refresh()
+            self.up_to_date = True
+            self.refresh()
 
-    ####################################################
-    #
-    # Pure virtual functions for subclasses to implement
-    #
+        ####################################################
+        #
+        # Pure virtual functions for subclasses to implement
+        #
 
-    # Perform error checking or automatic conversion of value, and return the
-    # result (which will be stored as self.data)
-    # Called by: set_value()
-    def set_value_filter(self, value): raise AbstractFunctionError()
+        # Perform error checking or automatic conversion of value, and return the
+        # result (which will be stored as self.data)
+        # Called by: set_value()
+        def set_value_filter(self, value): raise AbstractFunctionError()
 
-    # For mutable data types, overwrite the current contents with value
-    # Also, call refresh and set up_to_date = True
-    def set_value_inplace(self, value): raise AbstractFunctionError()
+        # For mutable data types, overwrite the current contents with value
+        # Also, call refresh and set up_to_date = True
+        def set_value_inplace(self, value): raise AbstractFunctionError()
 
-    # Instantiate data (according to spec)
-    def alloc(self): raise AbstractFunctionError()
+        # Instantiate data (according to spec)
+        def alloc(self): raise AbstractFunctionError()
 
 
 class DestroyHandler(features.Listener, features.Constraint, features.Orderings):
@@ -467,7 +461,8 @@ class PythonOp(Op):
         return all([ is_result(i) for i in self.inputs])
     
     def gen_outputs(self):
-        return [ResultValue() for i in xrange(self.nout)]
+        raise NotImplementedError()
+        #return [ResultValue() for i in xrange(self.nout)]
     
     def view_map(self): return {}
 
@@ -500,7 +495,7 @@ class PythonOp(Op):
         return answer
 
     def check_input(self, input):
-        if input.data is UNCOMPUTED:
+        if input.data is None:
             raise ValueError("Uncomputed input: %s in %s" % (input, self))
         if not self.input_is_up_to_date(input):
             raise ValueError("Input is out of date: %s in %s" % (input, self))

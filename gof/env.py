@@ -5,7 +5,7 @@ import graph
 from utils import ClsInit
 from err import GofError, GofTypeError, PropagationError
 from op import Op
-from result import Result
+from result import is_result
 from features import Listener, Orderings, Constraint, Tool
 import utils
 
@@ -14,10 +14,10 @@ __all__ = ['InconsistencyError',
 
 
 # class AliasDict(dict):
-#     "Utility class to keep track of what Result has been replaced with what Result."
+#     "Utility class to keep track of what result has been replaced with what result."
 
 #     def group(self, main, *keys):
-#         "Marks all the keys as having been replaced by the Result main."
+#         "Marks all the keys as having been replaced by the result main."
 #         keys = [key for key in keys if key is not main]
 #         if self.has_key(main):
 #             raise Exception("Only group results that have not been grouped before.")
@@ -284,9 +284,11 @@ class Env(graph.Graph):
         be raised if there are type mismatches.
         """
 
-        # Assert that they are Result instances.
-        assert isinstance(r, Result)
-        assert isinstance(new_r, Result)
+        # Assert that they are result instances.
+        if not is_result(r):
+            raise TypeError(r)
+        if not is_result(new_r):
+            raise TypeError(new_r)
 
         # Save where we are so we can backtrack
         if consistency_check:

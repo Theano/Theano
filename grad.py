@@ -57,32 +57,30 @@ class Grad(object):
             r may be uncomputed or NumpyR
 
         """
-        if dr is core.UNDEFINED:
+        if dr is core.UNDEFINED: 
             # nothing to do
-            pass
+            return
+
+        if r.data is not None and dr.data is not None:
+            if not hasattr(r, 'shape'):
+                raise ValueError(('Grad::add r lacks shape: type=',
+                    type(r)))
+            if not hasattr(dr, 'shape'):
+                raise ValueError(('Grad::add dr lacks shape: type=',
+                    type(dr)))
+            if r.shape != dr.shape:
+                raise ValueError(('Grad::add r, dr shape mismatch',
+                    r.shape, dr.shape))
+
+        # prevent 'r' from being re-calculated by self.__call__ in 'build_eval' mode
+        if r.computed:
+            self._compute_history.add(r) 
+
+        # add dr to self[r]
+        if r in self:
+            self[r] = self[r] + dr
         else:
-            if r.data is core.UNCOMPUTED or dr.data is core.UNCOMPUTED:
-                pass # no sanity checking
-            else: # some sanity checking to catch obvious mistakes
-                if not hasattr(r.data, 'shape'):
-                    raise ValueError(('Grad::add r lacks shape: type=',
-                        type(r.data)))
-                if not hasattr(dr.data, 'shape'):
-                    raise ValueError(('Grad::add dr lacks shape: type=',
-                        type(dr.data)))
-                if r.data.shape != dr.data.shape:
-                    raise ValueError(('Grad::add r, dr shape mismatch',
-                        r.data.shape, dr.data.shape))
-
-            # prevent 'r' from being re-calculated by self.__call__ in 'build_eval' mode
-            if r.data is not core.UNCOMPUTED:
-                self._compute_history.add(r) 
-
-            # add dr to self[r]
-            if r in self:
-                self[r] = self[r] + dr
-            else:
-                self[r] = dr
+            self[r] = dr
 
     def bprop(self, maybe_redo=False):
         """Build a backpropagation graph.
@@ -213,14 +211,14 @@ class _testCase (unittest.TestCase):
             diff = wwi - ident
             ssdiff = core.sum((diff**2))
             if i == 0:
-                str0 = str_ssdiff = str(ssdiff)
+                str0 = str_ssdiff = str(ssdiff.data)
 
             #print ssdiff
             g = grad(ssdiff)
             gw = g(w)
-            w.data += -0.4 * gw.data
+            w.data[:] += -0.4 * gw.data
 
-        return str0, str(ssdiff)
+        return str0, str(ssdiff.data)
 
     def matinv_compiled(self, dim):
         w = core.wrap(numpy.random.rand(dim,dim))
@@ -230,7 +228,7 @@ class _testCase (unittest.TestCase):
         wwi = core.dot(w, wi)
         diff = wwi - ident
         ssdiff = core.sum((diff**2))
-        str0 = str_ssdiff = str(ssdiff)
+        str0 = str_ssdiff = str(ssdiff.data)
 
         #print ssdiff
         g = grad(ssdiff)
@@ -240,9 +238,9 @@ class _testCase (unittest.TestCase):
 
         for i in xrange(300):
             prog()
-            w.data += -0.4 * gw.data
+            w.data[:] += -0.4 * gw.data
 
-        return str0, str(ssdiff)
+        return str0, str(ssdiff.data)
 
     def test0(self):
         """Matrix inversion by gradient descent (eval mode)"""

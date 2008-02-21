@@ -9,7 +9,7 @@ import grad
 
 # Wrapper type
 
-class SparseR(gof.ResultValue):
+class SparseR(core.ResultBase):
     """
     Attribute:
     format - a subclass of sparse.spmatrix indicating self.data.__class__
@@ -22,12 +22,17 @@ class SparseR(gof.ResultValue):
     Notes:
 
     """
-    def __init__(self, x = core.UNCOMPUTED, constant = False, 
+    def __init__(self, data=None, role=None, constant = False, 
             format = sparse.csr_matrix):
-        gof.ResultValue.__init__(self, x, constant)
-        self.format = isinstance(x, sparse.spmatrix) and x.__class__ or format
+        core.ResultBase.__init__(self, role, data, constant)
+        if isinstance(data, sparse.spmatrix):
+            self.format = data.__class__
+        else:
+            self.format = format
+        self._dtype = None
+        self._shape = None
 
-    def set_value_filter(self, value):
+    def data_filter(self, value):
         if isinstance(value, sparse.spmatrix): return value
         return sparse.csr_matrix(value)
 
@@ -35,6 +40,32 @@ class SparseR(gof.ResultValue):
     def __radd__(right, left): return add(left, right)
 
     T = property(lambda self: transpose(self), doc = "Return aliased transpose")
+
+    # self._dtype is used when self._data hasn't been set yet
+    def __dtype_get(self):
+        if self._data is None:
+            return self._dtype
+        else:
+            return self._data.dtype
+    def __dtype_set(self, dtype):
+        if self._data is None:
+            self._dtype = dtype
+        else:
+            raise StateError('cannot set dtype after data has been set')
+    dtype = property(__dtype_get, __dtype_set)
+
+    # self._shape is used when self._data hasn't been set yet
+    def __shape_get(self):
+        if self._data is None:
+            return self._shape
+        else:
+            return self._data.shape
+    def __shape_set(self, shape):
+        if self._data is None:
+            self._shape = shape
+        else:
+            raise StateError('cannot set shape after data has been set')
+    shape = property(__shape_get, __shape_set)
 
 # convenience base class
 class op(gof.PythonOp, grad.update_gradient_via_grad):
@@ -46,7 +77,7 @@ class op(gof.PythonOp, grad.update_gradient_via_grad):
 
 # convert a sparse matrix to an ndarray
 class sparse2dense(op):
-    def gen_outputs(self): return [core.NumpyR()]
+    def gen_outputs(self): return [core.Numpy2()]
     def impl(x): return numpy.asarray(x.todense())
     def grad(self, x, gz): 
         if x.format is sparse.coo_matrix: return dense2coo(gz)
@@ -135,7 +166,7 @@ class _testCase_dot(unittest.TestCase):
     def test_basic0(self):
         for mtype in [sparse.csc_matrix, sparse.csr_matrix]:
             x = SparseR(mtype(sparse.speye(5,3)))
-            y = core.NumpyR(numpy.random.rand(3, 2))
+            y = core.wrap(numpy.random.rand(3, 2))
 
             z = dot(x,y)
             self.failUnless(z.data.shape == (5,2))
@@ -171,7 +202,7 @@ class _testCase_dot(unittest.TestCase):
             self.failUnless(z.data.shape == ab.shape)
             self.failUnless(type(z.data) == type(ab))
     def test_graph_bprop0(self):
-        x = core.NumpyR(numpy.random.rand(10,2))
+        x = core.wrap(numpy.random.rand(10,2))
         w = SparseR(sparse.csr_matrix(numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0,
             0]],dtype='float64')))
 
@@ -187,10 +218,10 @@ class _testCase_dot(unittest.TestCase):
             g(w).data[1,4] = 0
             w.data = -lr * g(w).data + w.data
 
-        self.failUnless('3.08560636025' == str(loss))
+        self.failUnless('3.08560636025' == str(loss.data))
 
     def test_graph_bprop1(self):
-        x = core.NumpyR(numpy.random.rand(10,2))
+        x = core.wrap(numpy.random.rand(10,2))
         w = SparseR(sparse.csr_matrix(numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0,
             0]],dtype='float64')))
 
@@ -205,7 +236,7 @@ class _testCase_dot(unittest.TestCase):
             g(w).data[1,4] = 0
             w.data = -lr * g(w).data + w.data
 
-        self.failUnless('3.08560636025' == str(loss))
+        self.failUnless('3.08560636025' == str(loss.data))
         
 if __name__ == '__main__':
     unittest.main()

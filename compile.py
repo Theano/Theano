@@ -1,4 +1,5 @@
-import time
+import time, unittest
+import numpy
 
 import gof
 import gof.lib
@@ -170,13 +171,13 @@ class prog(gof.Prog):
         """
         if check_uncomputed:
             for input in self.env.inputs:
-                if input.data is core.UNCOMPUTED:
+                if input.data is None:
                     raise Exception("You must provide a value for input %s!" % input)
         return gof.Prog.__call__(self)
 
     def compute_orphans(self):
         for orphan in self.env.orphans():
-            if orphan.data is core.UNCOMPUTED:
+            if orphan.data is None:
                 if orphan.owner:
                     gof.lib.compute(orphan.owner)
                 else:
@@ -199,4 +200,23 @@ def to_func(inputs, outputs):
 
 def single(*outputs, **kwargs):
     return prog(gof.graph.inputs(outputs), outputs, **kwargs)
+
+
+class _test_single(unittest.TestCase):
+    def setUp(self):
+        core.build_eval_mode()
+        numpy.random.seed(44)
+    def tearDown(self):
+        core.pop_mode()
+
+    def test_3(self):
+        a = core.Numpy2(data=numpy.ones((2,2)))
+        b = core.Numpy2(data=numpy.ones((2,2)))
+        c = core.add(a,b)
+        p = single(c)
+        p()
+        self.failUnless(core._approx_eq(c, numpy.ones((2,2))*2))
+
+if __name__ == '__main__':
+    unittest.main()
 

@@ -12,7 +12,7 @@ from scipy import weave
 
 import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode
-from gof import pop_mode, UNCOMPUTED, UNDEFINED, ResultValue
+from gof import pop_mode, UNDEFINED, is_result
 
 import type_spec
 import cutils
@@ -45,7 +45,7 @@ def _approx_eq(a,b,eps=1.0e-9):
     b = numpy.asarray(b)
     if a.shape != b.shape:
         return False
-    return numpy.max( numpy.abs(a-b)) < eps
+    return numpy.max(numpy.abs(a-b)) < eps
 
 
 # This function is only executed the first time it is called, subsequent calls 
@@ -84,7 +84,7 @@ def _compile_dir():
         sys.path.append(cachedir)
     return cachedir
 
-class ResultBase:
+class ResultBase(object):
     """Base class for storing Op inputs and outputs
 
     Attributes:
@@ -98,6 +98,7 @@ class ResultBase:
     index - (ro)
     data - (rw)
     replaced - (rw) : True iff _role is BrokenLink
+    computed - (ro) : True iff contents of data are fresh
 
     Abstract Methods:
     data_filter
@@ -170,11 +171,12 @@ class ResultBase:
         if self.replaced: raise ResultBase.BrokenLinkError()
         if self.constant: raise Exception('cannot set constant ResultBase')
         try:
-            self._data = self.data_filter(self, data)
-        except ResultBase.AbstractFunction:
+            self._data = self.data_filter(data)
+        except ResultBase.AbstractFunction: #use default behaviour
             self._data = data
     data = property(__get_data, __set_data,
             doc = "The storage associated with this result")
+
     def data_filter(self, data):
         """(abstract) Return an appropriate _data based on data."""
         raise ResultBase.AbstractFunction()
@@ -189,7 +191,28 @@ class ResultBase:
         else:
             self._role = self._role.old_role
     replaced = property(__get_replaced, __set_replaced, doc = "has this Result been replaced?")
+
+    # computed
+    #TODO: think about how to handle this more correctly
+    computed = property(lambda self: self._data is not None)
+
+
+    #################
+    # NumpyR Compatibility
+    #
+    up_to_date = property(lambda self: True)
+    def refresh(self): pass
+    def set_owner(self, owner, idx):
+        self.role = (owner, idx)
+    def set_value(self, value):
+        self.data = value #may raise exception
+
 class _test_ResultBase(unittest.TestCase):
+    def setUp(self):
+        build_eval_mode()
+        numpy.random.seed(44)
+    def tearDown(self):
+        pop_mode()
     def test_0(self):
         r = ResultBase()
 
@@ -213,10 +236,13 @@ class Numpy2(ResultBase):
     # ResultBase
     # 
     def data_filter(self, data):
-        #return numpy.asarray(data) #TODO: consider whether this is correct
-        if isinstance(data, numpy.ndarray):
-            return data
-        raise TypeError('failed to filter data to ndarray', data)
+        #TODO: decide which of these implementations is better
+        if 0:
+            if isinstance(data, numpy.ndarray):
+                return data
+            raise TypeError('failed to filter data to ndarray', data)
+        else:
+            return numpy.asarray(data)
         
 
     ################################
@@ -256,7 +282,53 @@ class Numpy2(ResultBase):
         else:
             raise StateError('cannot set shape after data has been set')
     shape = property(__shape_get, __shape_set)
+
+    def  __add__(self, y): return add(self, y)
+    def __radd__(self, x): return add(x, self)
+    def __iadd__(self, y): return add_inplace(self, y)
+    
+    def  __sub__(self, y): return sub(self, y)
+    def __rsub__(self, x): return sub(x, self)
+    def __isub__(self, y): return sub_inplace(self, y)
+    
+    def  __mul__(self, y): return mul(self, y)
+    def __rmul__(self, x): return mul(x, self)
+    def __imul__(self, y): return mul_inplace(self, y)
+ 
+    def  __div__(self, y): return div(self, y)
+    def __rdiv__(self, x): return div(x, self)
+    def __idiv__(self, y): return div_inplace(self, y)
+        
+    def  __pow__(self, y): return pow(self, y)
+    def __rpow__(self, x): return pow(x, self)
+    def __ipow__(self, y): return pow_inplace(self, y)
+
+    def __neg__(self):     return neg(self)
+
+    T  = property(lambda self: transpose(self))
+    Tc = property(lambda self: transpose_copy(self))
+
+    def __copy__(self):    return array_copy(self)
+
+    def __getitem__(self, item): return get_slice(self, item)
+    def __getslice__(self, *args): return get_slice(self, slice(*args))
+
+    #################
+    # NumpyR Compatibility
+    #
+    spec = property(lambda self: (numpy.ndarray, self.dtype, self.shape))
+    def set_value_inplace(self, value):
+        if 0 == len(self.shape):
+            self.data.itemset(value) # for scalars
+        else:
+            self.data[:] = value     # for matrices
+
 class _test_Numpy2(unittest.TestCase):
+    def setUp(self):
+        build_eval_mode()
+        numpy.random.seed(44)
+    def tearDown(self):
+        pop_mode()
     def test_0(self):
         r = Numpy2()
     def test_1(self):
@@ -265,6 +337,7 @@ class _test_Numpy2(unittest.TestCase):
         self.failUnless(r.data is o)
         self.failUnless(r.shape == (3,3))
         self.failUnless(str(r.dtype) == 'float64')
+
     def test_2(self):
         r = Numpy2(data=[(3,3),'int32'])
         self.failUnless(r.data is None)
@@ -275,27 +348,45 @@ class _test_Numpy2(unittest.TestCase):
         self.failUnless(r.shape == (3,3))
         self.failUnless(str(r.dtype) == 'int32')
 
+    def test_3(self):
+        a = Numpy2(data=numpy.ones((2,2)))
+        b = Numpy2(data=numpy.ones((2,2)))
+        c = add(a,b)
+        self.failUnless(_approx_eq(c, numpy.ones((2,2))*2))
+
+    def test_4(self):
+        ones = numpy.ones((2,2))
+        a = Numpy2(data=ones)
+        o = numpy.asarray(a)
+        self.failUnless((ones == o).all())
+
+    def test_5(self):
+        ones = numpy.ones((2,2))
+        self.failUnless(_approx_eq(Numpy2(data=ones), Numpy2(data=ones)))
+
+
 def input(x):
     #static member initialization
     if not hasattr(input, 'float_dtype'):
         input.float_dtype = 'float64'
         input.int_dtype = 'int64'
-        input.NN = NumpyR
+        input.NN = Numpy2
 
     if isinstance(x, numpy.ndarray):
-        return input.NN(x)
+        #return NumpyR(x)
+        return input.NN(data=x)
     elif isinstance(x, int):
         z = numpy.zeros((), dtype = input.int_dtype)
         z += x
-        return input.NN(z)
+        return input.NN(data=z)
     elif isinstance(x, float):
         z = numpy.zeros((), dtype = input.float_dtype)
         z += x
-        return input.NN(z)
-    elif isinstance(x, gof.Result):
+        return input.NN(data=z)
+    elif is_result(x):
         raise TypeError("%s is already a result." % x)
     else:
-        return ResultValue(x)
+        return ResultBase(x)
 class _testCase_input(unittest.TestCase):
     def setUp(self):
         literal.hdb = {}
@@ -312,11 +403,11 @@ class _testCase_input(unittest.TestCase):
         self.failUnless(w.data == 3.0)
 
 def wrap(x):
-    if isinstance(x, NumpyR):
+    if isinstance(x, Numpy2):
         return x
-    elif isinstance(x, Numpy2):
-        return x
-    elif isinstance(x, ResultValue):
+    #elif isinstance(x, NumpyR):
+        #return x
+    elif is_result(x):
         return x
     elif isinstance(x, omega_op):
         return x.out
@@ -482,7 +573,7 @@ class omega_op(gof.PythonOp):
         return gof.PythonOp.__new__(cls, *inputs)
 
     def gen_outputs(self):
-        return [NumpyR() for i in xrange(self.nout)]
+        return [Numpy2() for i in xrange(self.nout)]
     
     def update_gradient(self, grad_d):
         """Call self.grad() and add the result to grad_d
@@ -504,7 +595,7 @@ class omega_op(gof.PythonOp):
 
         """
         inputgs = self.grad(*(self.inputs + [grad_d[output] for output in self.outputs]))
-        if len(self.inputs) == 1 and isinstance(inputgs, gof.ResultValue):
+        if len(self.inputs) == 1 and gof.result.is_result(inputgs):
             inputgs = [inputgs]
         else:
             assert len(inputgs) == len(self.inputs)
@@ -535,6 +626,11 @@ class omega_op(gof.PythonOp):
     def c_impl(inputs, outputs):
         raise NotImplementedError()
 
+    def c_compile_args(self):
+        # I always used these, but they don't make much improvement
+        #'-ffast-math', '-falign-loops=8'
+        return ['-O2'] 
+
     def c_thunk_factory(self):
         self.refresh()
         d, names, code, struct, converters = self.c_code()
@@ -549,10 +645,8 @@ class omega_op(gof.PythonOp):
                                                    global_dict = {},
                                                    type_converters = converters)
         instantiate.customize.add_support_code(self.c_support_code() + struct)
-        instantiate.customize.add_extra_compile_arg("-O3")
-        instantiate.customize.add_extra_compile_arg("-ffast-math") #TODO: make this optional, say by passing args to c_thunk_factory?
-        instantiate.customize.add_extra_compile_arg("-falign-loops=4")
-#        instantiate.customize.add_extra_compile_arg("-mfpmath=sse")
+        for arg in self.c_compile_args():
+            instantiate.customize.add_extra_compile_arg(arg)
         for header in self.c_headers():
             instantiate.customize.add_header(header)
         for lib in self.c_libs():
@@ -725,7 +819,7 @@ class elemwise(omega_op):
             try:
                 dtype = upcast(*[input.spec[1]
                                  for iname, input in zip(inames, self.inputs)
-                                 if isinstance(input, NumpyR)])
+                                 if input.spec[0] is numpy.ndarray])
             except IndexError:
                 raise Exception("not all numpy inputs are specified")
 
@@ -895,78 +989,79 @@ def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
         return normal_f(x, y)
     return f
 
-class NumpyR(gof.ResultValue):
-    """The class for storing ndarray return values from omega ops.
-    The class provides additional functionality compared to the normal
-    ResultValue:
-    - operator overloads that correspond to omega ops such as add() and scale()
-    - special attributes that make it behave like an ndarray when passed to
-      numpy functions.
+if 0:
+    class NumpyR(gof.ResultValue):
+        """The class for storing ndarray return values from omega ops.
+        The class provides additional functionality compared to the normal
+        ResultValue:
+        - operator overloads that correspond to omega ops such as add() and scale()
+        - special attributes that make it behave like an ndarray when passed to
+          numpy functions.
 
-    Attributes:
-    __array__ - alias of self.data.__array_struct__ 
-    __array_struct__ - alias of self.data.__array_struct__
+        Attributes:
+        __array__ - alias of self.data.__array_struct__ 
+        __array_struct__ - alias of self.data.__array_struct__
 
-    Methods:
-    set_value() - 
-    """
+        Methods:
+        set_value() - 
+        """
 
-    # The following attributes make NumpyR instances look like normal ndarray
-    # instances to many numpy functions, such as argmax(), dot(), svd(), sum(),
-    # etc.  These are documented in the numpy book.
-    __array__ = property(lambda self: self.data.__array__ )
-    __array_struct__ = property(lambda self: self.data.__array_struct__ )
+        # The following attributes make NumpyR instances look like normal ndarray
+        # instances to many numpy functions, such as argmax(), dot(), svd(), sum(),
+        # etc.  These are documented in the numpy book.
+        __array__ = property(lambda self: self.data.__array__ )
+        __array_struct__ = property(lambda self: self.data.__array_struct__ )
 
-    def set_value_filter(self, value): return numpy.asarray(value)
+        def set_value_filter(self, value): return numpy.asarray(value)
 
-    def set_value_inplace(self, value):
-        if value is UNCOMPUTED:
-            raise ValueError()
-        else:
-            if 0 == len(self.data.shape):
-                self.data.itemset(value) # for scalars
+        def set_value_inplace(self, value):
+            if value is UNCOMPUTED:
+                raise ValueError()
             else:
-                self.data[:] = value     # for matrices
-        self.refresh()
-        self.up_to_date = True
+                if 0 == len(self.data.shape):
+                    self.data.itemset(value) # for scalars
+                else:
+                    self.data[:] = value     # for matrices
+            self.refresh()
+            self.up_to_date = True
 
-    def refresh(self):
-        if self.data is not UNCOMPUTED:
-            self.spec = (numpy.ndarray, self.data.dtype, self.data.shape)
+        def refresh(self):
+            if self.data is not UNCOMPUTED:
+                self.spec = (numpy.ndarray, self.data.dtype, self.data.shape)
+            
+        def alloc(self):
+            shape, dtype = self.spec[2], self.spec[1]
+            self.data = numpy.ndarray(shape, dtype=dtype)
+
+        def  __add__(self, y): return add(self, y)
+        def __radd__(self, x): return add(x, self)
+        def __iadd__(self, y): return add_inplace(self, y)
         
-    def alloc(self):
-        shape, dtype = self.spec[2], self.spec[1]
-        self.data = numpy.ndarray(shape, dtype=dtype)
-
-    def  __add__(self, y): return add(self, y)
-    def __radd__(self, x): return add(x, self)
-    def __iadd__(self, y): return add_inplace(self, y)
-    
-    def  __sub__(self, y): return sub(self, y)
-    def __rsub__(self, x): return sub(x, self)
-    def __isub__(self, y): return sub_inplace(self, y)
-    
-    def  __mul__(self, y): return mul(self, y)
-    def __rmul__(self, x): return mul(x, self)
-    def __imul__(self, y): return mul_inplace(self, y)
- 
-    def  __div__(self, y): return div(self, y)
-    def __rdiv__(self, x): return div(x, self)
-    def __idiv__(self, y): return div_inplace(self, y)
+        def  __sub__(self, y): return sub(self, y)
+        def __rsub__(self, x): return sub(x, self)
+        def __isub__(self, y): return sub_inplace(self, y)
         
-    def  __pow__(self, y): return pow(self, y)
-    def __rpow__(self, x): return pow(x, self)
-    def __ipow__(self, y): return pow_inplace(self, y)
+        def  __mul__(self, y): return mul(self, y)
+        def __rmul__(self, x): return mul(x, self)
+        def __imul__(self, y): return mul_inplace(self, y)
+     
+        def  __div__(self, y): return div(self, y)
+        def __rdiv__(self, x): return div(x, self)
+        def __idiv__(self, y): return div_inplace(self, y)
+            
+        def  __pow__(self, y): return pow(self, y)
+        def __rpow__(self, x): return pow(x, self)
+        def __ipow__(self, y): return pow_inplace(self, y)
 
-    def __neg__(self):     return neg(self)
+        def __neg__(self):     return neg(self)
 
-    T  = property(lambda self: transpose(self))
-    Tc = property(lambda self: transpose_copy(self))
+        T  = property(lambda self: transpose(self))
+        Tc = property(lambda self: transpose_copy(self))
 
-    def __copy__(self):    return array_copy(self)
+        def __copy__(self):    return array_copy(self)
 
-    def __getitem__(self, item): return get_slice(self, item)
-    def __getslice__(self, *args): return get_slice(self, slice(*args))
+        def __getitem__(self, item): return get_slice(self, item)
+        def __getslice__(self, *args): return get_slice(self, slice(*args))
 
 
     
@@ -1215,157 +1310,160 @@ class dot(omega_op):
     def c_impl((_x, _y), (_z, )):
         return blas.gemm_code('', '1.0', '0.0')
 
-class _testCase_dot(unittest.TestCase):
-    def setUp(self):
-        build_eval_mode()
-        numpy.random.seed(44)
-    def tearDown(self):
-        pop_mode()
+if 0:
+    print 'SKIPPING DOT TESTS'
+else:
+    class _testCase_dot(unittest.TestCase):
+        def setUp(self):
+            build_eval_mode()
+            numpy.random.seed(44)
+        def tearDown(self):
+            pop_mode()
 
-    @staticmethod
-    def rand(*args):
-        return numpy.random.rand(*args)
+        @staticmethod
+        def rand(*args):
+            return numpy.random.rand(*args)
 
-    def cmp_dot(self,x,y):
-        def spec(x):
+        def cmp_dot(self,x,y):
+            def spec(x):
+                x = numpy.asarray(x)
+                return type(x), x.dtype, x.shape
+            zspec = dot.specs(spec(x), spec(y))
+            nz = numpy.dot(x,y)
+            self.failUnless(zspec == spec(nz))
+            self.failUnless(_approx_eq(dot(x,y), numpy.dot(x,y)))
+
+        def cmp_dot_comp(self, x,y):
             x = numpy.asarray(x)
-            return type(x), x.dtype, x.shape
-        zspec = dot.specs(spec(x), spec(y))
-        nz = numpy.dot(x,y)
-        self.failUnless(zspec == spec(nz))
-        self.failUnless(_approx_eq(dot(x,y), numpy.dot(x,y)))
+            y = numpy.asarray(y)
+            z = dot(x,y)
+            p = compile.single(z)
+            if len(x.shape):
+                x[:] = numpy.random.rand(*x.shape)
+            else:
+                x.fill(numpy.random.rand(*x.shape))
+            if len(y.shape):
+                y[:] = numpy.random.rand(*y.shape)
+            else:
+                y.fill(numpy.random.rand(*y.shape))
+            p() # recalculate z
+            self.failUnless(_approx_eq(z, numpy.dot(x,y)))
 
-    def cmp_dot_comp(self, x,y):
-        x = numpy.asarray(x)
-        y = numpy.asarray(y)
-        z = dot(x,y)
-        p = compile.single(z)
-        if len(x.shape):
-            x[:] = numpy.random.rand(*x.shape)
-        else:
-            x.fill(numpy.random.rand(*x.shape))
-        if len(y.shape):
-            y[:] = numpy.random.rand(*y.shape)
-        else:
-            y.fill(numpy.random.rand(*y.shape))
-        p() # recalculate z
-        self.failUnless(_approx_eq(z, numpy.dot(x,y)))
+        def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
+        def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
+        def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
+        def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
+        def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
+        def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
+        def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
+        def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
+        def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
+        def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
+        def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
+        def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
+        def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
+        def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
+        def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
+        def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
+        def test_dot_0d_0d_(self): self.cmp_dot_comp(1.1, 2.2)
+        def test_dot_0d_1d_(self): self.cmp_dot_comp(1.1, self.rand(5))
+        def test_dot_0d_2d_(self): self.cmp_dot_comp(3.0, self.rand(6,7))
+        def test_dot_0d_3d_(self): self.cmp_dot_comp(3.0, self.rand(8,6,7))
+        def test_dot_1d_0d_(self): self.cmp_dot_comp(self.rand(5), 1.1 )
+        def test_dot_1d_1d_(self): self.cmp_dot_comp(self.rand(5), self.rand(5))
+        def test_dot_1d_2d_(self): self.cmp_dot_comp(self.rand(6), self.rand(6,7))
+        def test_dot_1d_3d_(self): self.cmp_dot_comp(self.rand(6), self.rand(8,6,7))
+        def test_dot_2d_0d_(self): self.cmp_dot_comp(self.rand(5,6), 1.0)
+        def test_dot_2d_1d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6))
+        def test_dot_2d_2d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6,7))
+        def test_dot_2d_3d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(8,6,7))
+        def test_dot_3d_0d_(self): self.cmp_dot_comp(self.rand(4,5,6), 1.0)
+        def test_dot_3d_1d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6))
+        def test_dot_3d_2d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6,7))
+        def test_dot_3d_3d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(8,6,7))
 
-    def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
-    def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
-    def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
-    def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
-    def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
-    def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
-    def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
-    def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
-    def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
-    def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
-    def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
-    def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
-    def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
-    def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
-    def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
-    def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
-    def test_dot_0d_0d_(self): self.cmp_dot_comp(1.1, 2.2)
-    def test_dot_0d_1d_(self): self.cmp_dot_comp(1.1, self.rand(5))
-    def test_dot_0d_2d_(self): self.cmp_dot_comp(3.0, self.rand(6,7))
-    def test_dot_0d_3d_(self): self.cmp_dot_comp(3.0, self.rand(8,6,7))
-    def test_dot_1d_0d_(self): self.cmp_dot_comp(self.rand(5), 1.1 )
-    def test_dot_1d_1d_(self): self.cmp_dot_comp(self.rand(5), self.rand(5))
-    def test_dot_1d_2d_(self): self.cmp_dot_comp(self.rand(6), self.rand(6,7))
-    def test_dot_1d_3d_(self): self.cmp_dot_comp(self.rand(6), self.rand(8,6,7))
-    def test_dot_2d_0d_(self): self.cmp_dot_comp(self.rand(5,6), 1.0)
-    def test_dot_2d_1d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6))
-    def test_dot_2d_2d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6,7))
-    def test_dot_2d_3d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(8,6,7))
-    def test_dot_3d_0d_(self): self.cmp_dot_comp(self.rand(4,5,6), 1.0)
-    def test_dot_3d_1d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6))
-    def test_dot_3d_2d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6,7))
-    def test_dot_3d_3d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(8,6,7))
+        def test_dot_fail_1_1(self):
+            x = numpy.random.rand(5)
+            y = numpy.random.rand(6)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
 
-    def test_dot_fail_1_1(self):
-        x = numpy.random.rand(5)
-        y = numpy.random.rand(6)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-
-    def test_dot_fail_1_2(self):
-        x = numpy.random.rand(5)
-        y = numpy.random.rand(6,4)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-    def test_dot_fail_1_3(self):
-        x = numpy.random.rand(5)
-        y = numpy.random.rand(6,4,7)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-    def test_dot_fail_2_1(self):
-        x = numpy.random.rand(5,4)
-        y = numpy.random.rand(6)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-    def test_dot_fail_2_2(self):
-        x = numpy.random.rand(5,4)
-        y = numpy.random.rand(6,7)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-    def test_dot_fail_2_3(self):
-        x = numpy.random.rand(5,4)
-        y = numpy.random.rand(6,7,8)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-    def test_dot_fail_3_1(self):
-        x = numpy.random.rand(5,4,3)
-        y = numpy.random.rand(6)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-    def test_dot_fail_3_2(self):
-        x = numpy.random.rand(5,4,3)
-        y = numpy.random.rand(6,7)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
-    def test_dot_fail_3_3(self):
-        x = numpy.random.rand(5,4,3)
-        y = numpy.random.rand(6,7,8)
-        try:
-            z = dot(x,y)
-        except ValueError, e:
-            self.failUnless(str(e) == 'objects are not aligned', e)
-            return
-        self.fail()
+        def test_dot_fail_1_2(self):
+            x = numpy.random.rand(5)
+            y = numpy.random.rand(6,4)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
+        def test_dot_fail_1_3(self):
+            x = numpy.random.rand(5)
+            y = numpy.random.rand(6,4,7)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
+        def test_dot_fail_2_1(self):
+            x = numpy.random.rand(5,4)
+            y = numpy.random.rand(6)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
+        def test_dot_fail_2_2(self):
+            x = numpy.random.rand(5,4)
+            y = numpy.random.rand(6,7)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
+        def test_dot_fail_2_3(self):
+            x = numpy.random.rand(5,4)
+            y = numpy.random.rand(6,7,8)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
+        def test_dot_fail_3_1(self):
+            x = numpy.random.rand(5,4,3)
+            y = numpy.random.rand(6)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
+        def test_dot_fail_3_2(self):
+            x = numpy.random.rand(5,4,3)
+            y = numpy.random.rand(6,7)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
+        def test_dot_fail_3_3(self):
+            x = numpy.random.rand(5,4,3)
+            y = numpy.random.rand(6,7,8)
+            try:
+                z = dot(x,y)
+            except ValueError, e:
+                self.failUnless(str(e) == 'objects are not aligned', e)
+                return
+            self.fail()
 
 class gemm(omega_op):
     def destroy_map(self): return {self.out:[self.inputs[0]]}
@@ -1640,14 +1738,22 @@ class _testCase_power(unittest.TestCase):
         numpy.random.seed(44)
     def tearDown(self):
         pop_mode()
+    def test1(self):
+        r = numpy.random.rand(50)
+        exp_r = exp(r)
+        self.failUnless(exp_r.__array__().__class__ is numpy.ndarray)
+
     def test_0(self):
         r = numpy.random.rand(50)
 
         exp_r = exp(r)
-        self.failUnless( _approx_eq(exp_r, numpy.exp(r)))
+        n_exp_r = numpy.exp(r)
+        self.failUnless( _approx_eq(exp_r, n_exp_r), 
+                (exp_r, exp_r.data, n_exp_r,
+                    numpy.max(numpy.abs(n_exp_r.__sub__(exp_r.__array__())))))
 
         log_exp_r = log(exp_r)
-        self.failUnless( _approx_eq(log_exp_r, r))
+        self.failUnless( _approx_eq(log_exp_r, r), log_exp_r)
 
     def test_1(self):
         r = numpy.random.rand(50)

@@ -10,7 +10,7 @@ from err import GofError
 from utils import AbstractFunctionError
 
 
-__all__ = ['Result', 'BrokenLink', 'BrokenLinkError']
+__all__ = ['is_result', 'Result', 'BrokenLink', 'BrokenLinkError']
 
 
 class BrokenLink:
@@ -39,6 +39,11 @@ class BrokenLinkError(GofError):
 ############################
 # Result
 ############################
+
+def is_result(obj):
+    """Return True iff obj provides the interface of a Result"""
+    attr_list = 'owner',
+    return all([hasattr(obj, attr) for attr in attr_list])
 
 class Result(object):
     """Storage node for data in a graph of Op instances.
