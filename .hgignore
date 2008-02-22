@@ -1,8 +1,10 @@
 syntax: glob
 
-*.pyc
-*.o
-*.so
 *~
 \#*\#
 compiled/*.cpp
+cutils_ext.cpp
+*.o
+*.pyc
+*.so
+*.sw?
