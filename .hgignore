@@ -4,7 +4,9 @@ syntax: glob
 \#*\#
 compiled/*.cpp
 cutils_ext.cpp
+html
 *.o
+pdf
 *.pyc
 *.so
 *.sw?
