@@ -1,11 +1,4 @@
-# from op import *
-# from value import *
-# from opt import *
-# from env import *
-# from prog import *
-# from diff import *
-
-# import dispatchers
+import op, ext, lib, link, result, env, prog, features, opt, graph
 
 from op import *
 from ext import *
@@ -17,6 +10,4 @@ from prog import *
 from features import *
 from opt import *
 import graph
-
-#import utils
 

@@ -84,6 +84,8 @@ def _compile_dir():
         sys.path.append(cachedir)
     return cachedir
 
+class Allocated:
+    """Memory has been allocated, but contents are not the owner's output."""
 class Numpy2(ResultBase):
     """Result storing a numpy ndarray"""
     __slots__ = ['_dtype', '_shape', ]
@@ -121,6 +123,7 @@ class Numpy2(ResultBase):
 
     def data_alloc(self):
         self.data = numpy.ndarray(self.shape, self.dtype)
+        self.state = Allocated
 
     # self._dtype is used when self._data hasn't been set yet
     def __dtype_get(self):
@@ -351,15 +354,15 @@ class _testCase_literal(unittest.TestCase):
 
 
 
-def cgetspecs(names, vals, converters):
-    d = {}
-    for name, value in zip(names, vals):
-        d[name] = value.data
-    specs = weave.ext_tools.assign_variable_types(names, d, type_converters = converters) #, auto_downcast = 0)
-    return d, specs
-
 def cgen(name, behavior, names, vals, converters = None):
     
+    def cgetspecs(names, vals, converters):
+        d = {}
+        for name, value in zip(names, vals):
+            d[name] = value.data
+        specs = weave.ext_tools.assign_variable_types(names, d, type_converters = converters) #, auto_downcast = 0)
+        return d, specs
+
     if not converters:
         converters = type_spec.default
     for converter in converters:
@@ -872,6 +875,27 @@ array = wrap_producer(numpy.array)
 zeros = wrap_producer(numpy.zeros)
 ones = wrap_producer(numpy.ones)
 
+class _testCase_producer_build_mode(unittest.TestCase):
+    def test_0(self):
+        """producer in build mode"""
+        build_mode()
+        a = ones(4)
+        self.failUnless(a.data is None)
+        self.failUnless(a.state is gof.result.Empty)
+        self.failUnless(a.shape == (4,))
+        self.failUnless(a.dtype == 'float64')
+        pop_mode()
+    def test_1(self):
+        """producer in build_eval mode"""
+        build_eval_mode()
+        a = ones(4)
+        self.failUnless((a.data == numpy.ones(4)).all())
+        self.failUnless(a.state is gof.result.Computed)
+        self.failUnless(a.shape == (4,))
+        self.failUnless(a.dtype == 'float64')
+        pop_mode()
+
+
 
 # Wrapper to ensure that all inputs to the function impl have the same size (foils numpy's broadcasting)
 def assert_same_shapes(impl):
@@ -923,6 +947,8 @@ add_elemwise_inplace = add_elemwise.inplace_version()
 add_elemwise_inplace.set_impl(assert_same_shapes(numpy.ndarray.__iadd__))
 
 
+
+
 class add_scalar(tensor_scalar_op):
     impl = tensor_scalar_impl(numpy.ndarray.__add__)
     def grad(x, a, gz):
@@ -931,6 +957,13 @@ class add_scalar(tensor_scalar_op):
 
 add_scalar_inplace = add_scalar.inplace_version()
 add_scalar_inplace.set_impl(tensor_scalar_impl(numpy.ndarray.__iadd__))
+
+class _testCase_add_build_mode(unittest.TestCase):
+    def setUp(self):
+        build_mode()
+        numpy.random.seed(44)
+    def tearDown(self):
+        pop_mode()
 
 class twice(elemwise):
     def impl(x):
@@ -1100,160 +1133,157 @@ class dot(omega_op):
     def c_impl((_x, _y), (_z, )):
         return blas.gemm_code('', '1.0', '0.0')
 
-if 0:
-    print 'SKIPPING DOT TESTS'
-else:
-    class _testCase_dot(unittest.TestCase):
-        def setUp(self):
-            build_eval_mode()
-            numpy.random.seed(44)
-        def tearDown(self):
-            pop_mode()
+class _testCase_dot(unittest.TestCase):
+    def setUp(self):
+        build_eval_mode()
+        numpy.random.seed(44)
+    def tearDown(self):
+        pop_mode()
 
-        @staticmethod
-        def rand(*args):
-            return numpy.random.rand(*args)
+    @staticmethod
+    def rand(*args):
+        return numpy.random.rand(*args)
 
-        def cmp_dot(self,x,y):
-            def spec(x):
-                x = numpy.asarray(x)
-                return type(x), x.dtype, x.shape
-            zspec = dot.specs(spec(x), spec(y))
-            nz = numpy.dot(x,y)
-            self.failUnless(zspec == spec(nz))
-            self.failUnless(_approx_eq(dot(x,y), numpy.dot(x,y)))
-
-        def cmp_dot_comp(self, x,y):
+    def cmp_dot(self,x,y):
+        def spec(x):
             x = numpy.asarray(x)
-            y = numpy.asarray(y)
+            return type(x), x.dtype, x.shape
+        zspec = dot.specs(spec(x), spec(y))
+        nz = numpy.dot(x,y)
+        self.failUnless(zspec == spec(nz))
+        self.failUnless(_approx_eq(dot(x,y), numpy.dot(x,y)))
+
+    def cmp_dot_comp(self, x,y):
+        x = numpy.asarray(x)
+        y = numpy.asarray(y)
+        z = dot(x,y)
+        p = compile.single(z)
+        if len(x.shape):
+            x[:] = numpy.random.rand(*x.shape)
+        else:
+            x.fill(numpy.random.rand(*x.shape))
+        if len(y.shape):
+            y[:] = numpy.random.rand(*y.shape)
+        else:
+            y.fill(numpy.random.rand(*y.shape))
+        p() # recalculate z
+        self.failUnless(_approx_eq(z, numpy.dot(x,y)))
+
+    def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
+    def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
+    def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
+    def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
+    def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
+    def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
+    def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
+    def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
+    def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
+    def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
+    def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
+    def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
+    def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
+    def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
+    def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
+    def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
+    def test_dot_0d_0d_(self): self.cmp_dot_comp(1.1, 2.2)
+    def test_dot_0d_1d_(self): self.cmp_dot_comp(1.1, self.rand(5))
+    def test_dot_0d_2d_(self): self.cmp_dot_comp(3.0, self.rand(6,7))
+    def test_dot_0d_3d_(self): self.cmp_dot_comp(3.0, self.rand(8,6,7))
+    def test_dot_1d_0d_(self): self.cmp_dot_comp(self.rand(5), 1.1 )
+    def test_dot_1d_1d_(self): self.cmp_dot_comp(self.rand(5), self.rand(5))
+    def test_dot_1d_2d_(self): self.cmp_dot_comp(self.rand(6), self.rand(6,7))
+    def test_dot_1d_3d_(self): self.cmp_dot_comp(self.rand(6), self.rand(8,6,7))
+    def test_dot_2d_0d_(self): self.cmp_dot_comp(self.rand(5,6), 1.0)
+    def test_dot_2d_1d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6))
+    def test_dot_2d_2d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6,7))
+    def test_dot_2d_3d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(8,6,7))
+    def test_dot_3d_0d_(self): self.cmp_dot_comp(self.rand(4,5,6), 1.0)
+    def test_dot_3d_1d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6))
+    def test_dot_3d_2d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6,7))
+    def test_dot_3d_3d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(8,6,7))
+
+    def test_dot_fail_1_1(self):
+        x = numpy.random.rand(5)
+        y = numpy.random.rand(6)
+        try:
             z = dot(x,y)
-            p = compile.single(z)
-            if len(x.shape):
-                x[:] = numpy.random.rand(*x.shape)
-            else:
-                x.fill(numpy.random.rand(*x.shape))
-            if len(y.shape):
-                y[:] = numpy.random.rand(*y.shape)
-            else:
-                y.fill(numpy.random.rand(*y.shape))
-            p() # recalculate z
-            self.failUnless(_approx_eq(z, numpy.dot(x,y)))
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
 
-        def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
-        def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
-        def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
-        def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
-        def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
-        def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
-        def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
-        def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
-        def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
-        def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
-        def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
-        def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
-        def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
-        def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
-        def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
-        def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
-        def test_dot_0d_0d_(self): self.cmp_dot_comp(1.1, 2.2)
-        def test_dot_0d_1d_(self): self.cmp_dot_comp(1.1, self.rand(5))
-        def test_dot_0d_2d_(self): self.cmp_dot_comp(3.0, self.rand(6,7))
-        def test_dot_0d_3d_(self): self.cmp_dot_comp(3.0, self.rand(8,6,7))
-        def test_dot_1d_0d_(self): self.cmp_dot_comp(self.rand(5), 1.1 )
-        def test_dot_1d_1d_(self): self.cmp_dot_comp(self.rand(5), self.rand(5))
-        def test_dot_1d_2d_(self): self.cmp_dot_comp(self.rand(6), self.rand(6,7))
-        def test_dot_1d_3d_(self): self.cmp_dot_comp(self.rand(6), self.rand(8,6,7))
-        def test_dot_2d_0d_(self): self.cmp_dot_comp(self.rand(5,6), 1.0)
-        def test_dot_2d_1d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6))
-        def test_dot_2d_2d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(6,7))
-        def test_dot_2d_3d_(self): self.cmp_dot_comp(self.rand(5,6), self.rand(8,6,7))
-        def test_dot_3d_0d_(self): self.cmp_dot_comp(self.rand(4,5,6), 1.0)
-        def test_dot_3d_1d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6))
-        def test_dot_3d_2d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(6,7))
-        def test_dot_3d_3d_(self): self.cmp_dot_comp(self.rand(4,5,6), self.rand(8,6,7))
-
-        def test_dot_fail_1_1(self):
-            x = numpy.random.rand(5)
-            y = numpy.random.rand(6)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-
-        def test_dot_fail_1_2(self):
-            x = numpy.random.rand(5)
-            y = numpy.random.rand(6,4)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-        def test_dot_fail_1_3(self):
-            x = numpy.random.rand(5)
-            y = numpy.random.rand(6,4,7)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-        def test_dot_fail_2_1(self):
-            x = numpy.random.rand(5,4)
-            y = numpy.random.rand(6)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-        def test_dot_fail_2_2(self):
-            x = numpy.random.rand(5,4)
-            y = numpy.random.rand(6,7)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-        def test_dot_fail_2_3(self):
-            x = numpy.random.rand(5,4)
-            y = numpy.random.rand(6,7,8)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-        def test_dot_fail_3_1(self):
-            x = numpy.random.rand(5,4,3)
-            y = numpy.random.rand(6)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-        def test_dot_fail_3_2(self):
-            x = numpy.random.rand(5,4,3)
-            y = numpy.random.rand(6,7)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
-        def test_dot_fail_3_3(self):
-            x = numpy.random.rand(5,4,3)
-            y = numpy.random.rand(6,7,8)
-            try:
-                z = dot(x,y)
-            except ValueError, e:
-                self.failUnless(str(e) == 'objects are not aligned', e)
-                return
-            self.fail()
+    def test_dot_fail_1_2(self):
+        x = numpy.random.rand(5)
+        y = numpy.random.rand(6,4)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
+    def test_dot_fail_1_3(self):
+        x = numpy.random.rand(5)
+        y = numpy.random.rand(6,4,7)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
+    def test_dot_fail_2_1(self):
+        x = numpy.random.rand(5,4)
+        y = numpy.random.rand(6)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
+    def test_dot_fail_2_2(self):
+        x = numpy.random.rand(5,4)
+        y = numpy.random.rand(6,7)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
+    def test_dot_fail_2_3(self):
+        x = numpy.random.rand(5,4)
+        y = numpy.random.rand(6,7,8)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
+    def test_dot_fail_3_1(self):
+        x = numpy.random.rand(5,4,3)
+        y = numpy.random.rand(6)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
+    def test_dot_fail_3_2(self):
+        x = numpy.random.rand(5,4,3)
+        y = numpy.random.rand(6,7)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
+    def test_dot_fail_3_3(self):
+        x = numpy.random.rand(5,4,3)
+        y = numpy.random.rand(6,7,8)
+        try:
+            z = dot(x,y)
+        except ValueError, e:
+            self.failUnless(str(e) == 'objects are not aligned', e)
+            return
+        self.fail()
 
 class gemm(omega_op):
     def destroy_map(self): return {self.out:[self.inputs[0]]}

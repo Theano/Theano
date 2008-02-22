@@ -77,7 +77,7 @@ class Grad(object):
                     r.shape, dr.shape))
 
         # prevent 'r' from being re-calculated by self.__call__ in 'build_eval' mode
-        if r.computed:
+        if r.state is gof.result.Computed:
             self._compute_history.add(r) 
 
         # add dr to self[r]

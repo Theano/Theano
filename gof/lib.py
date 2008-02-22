@@ -44,6 +44,8 @@ def compute_from(nodes, history):
             if hasattr(node, 'owner'):  #node is storage
                 compute_recursive(node.owner)
             else:                       #node is op
+                if node.destroy_map():
+                    raise ValueError('compute_from() does not work on nodes with destroy_maps')
                 for input in node.inputs:
                     compute_recursive(input)
                 node.perform()
@@ -94,8 +96,6 @@ class ForbidConstantOverwrite(features.Listener, features.Constraint):
             raise env.InconsistencyError("The following ops overwrite a constant value: %s" % self.bad)
         else:
             return True
-
-
 
 class DestroyHandler(features.Listener, features.Constraint, features.Orderings):
     
@@ -383,13 +383,14 @@ class PythonOp(Op):
         return all([ is_result(i) for i in self.inputs])
     
     def gen_outputs(self):
-        raise NotImplementedError()
+        raise AbstractFunctionError()
     
     def view_map(self): return {}
 
     def destroy_map(self): return {}
 
-    def root_inputs(self, input):
+    @staticmethod
+    def root_inputs(input):
         owner = input.owner
         if owner:
             view_map = owner.view_map()
