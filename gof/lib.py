@@ -345,7 +345,16 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
         return ords
 
 
-class PythonOp(Op):
+class NewPythonOp(Op):
+
+    def view_map(self):
+        return {}
+
+    def destroy_map(self):
+        return {}
+
+
+class PythonOp(NewPythonOp):
     
     __metaclass__ = ClsInit
 
@@ -377,7 +386,7 @@ class PythonOp(Op):
             return op.outputs
     
     def __init__(self, *inputs):
-        Op.__init__(self, inputs, self.gen_outputs())
+        NewPythonOp.__init__(self, inputs, self.gen_outputs())
 
     def __validate__(self):
         return all([ is_result(i) for i in self.inputs])
@@ -385,10 +394,6 @@ class PythonOp(Op):
     def gen_outputs(self):
         raise AbstractFunctionError()
     
-    def view_map(self): return {}
-
-    def destroy_map(self): return {}
-
     @staticmethod
     def root_inputs(input):
         owner = input.owner
@@ -445,21 +450,20 @@ class PythonOp(Op):
         else:
             results = self._impl()
         if self.nout == 1:
-            self.out.set_value(results)
+            self.out.data = results
         else:
             assert self.nout == len(results)
             for result, output in zip(results, self.outputs):
-                output.set_value(result)
+                output.data = result
 
     def _perform(self):
         results = self._impl()
         if self.nout == 1:
-            self.out.set_value(results)
-#            self.outputs[0].data = results
+            self.out.data = results
         else:
             assert self.nout == len(results)
             for result, output in zip(results, self.outputs):
-                output.set_value(result)
+                output.data = result
 
     def _perform_inplace(self):
         results = self._impl()

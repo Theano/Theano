@@ -37,8 +37,9 @@ class BrokenLinkError(GofError):
 
 
 # ResultBase state keywords
-class Empty : pass
-class Computed : pass
+class Empty : """Memory has not been allocated"""
+class Allocated: """Memory has been allocated, contents are not the owner's output."""
+class Computed : """Memory has been allocated, contents are the owner's output."""
 
 
 ############################
@@ -63,11 +64,16 @@ class ResultBase(object):
     role - (rw)
     owner - (ro)
     index - (ro)
-    data - (rw)
+    data - (rw) : calls data_filter when setting
     replaced - (rw) : True iff _role is BrokenLink
+
+    Methods:
+    alloc() - create storage in data, suitable for use by C ops. 
+                (calls data_alloc)
 
     Abstract Methods:
     data_filter
+    data_alloc
 
 
     Notes (from previous implementation):
@@ -180,6 +186,24 @@ class ResultBase(object):
         implementation will be used in __set_data to map the argument to
         self._data.  This gives a subclass the opportunity to ensure that
         the contents of self._data remain sensible.
+        
+        """
+        raise ResultBase.AbstractFunction()
+
+    #
+    # alloc
+    #
+
+    def alloc(self):
+        """Create self.data from data_alloc, and set state to Allocated"""
+        self.data = self.data_alloc()  #might raise exception
+        self.state = Allocated
+
+    def data_alloc(self):
+        """(abstract) Return an appropriate _data based on self.
+
+        If a subclass overrides this function, then that overriding
+        implementation will be used in alloc() to produce a data object.
         
         """
         raise ResultBase.AbstractFunction()

@@ -84,8 +84,6 @@ def _compile_dir():
         sys.path.append(cachedir)
     return cachedir
 
-class Allocated:
-    """Memory has been allocated, but contents are not the owner's output."""
 class Numpy2(ResultBase):
     """Result storing a numpy ndarray"""
     __slots__ = ['_dtype', '_shape', ]
@@ -122,8 +120,7 @@ class Numpy2(ResultBase):
     __array_struct__ = property(lambda self: self._data.__array_struct__ )
 
     def data_alloc(self):
-        self.data = numpy.ndarray(self.shape, self.dtype)
-        self.state = Allocated
+        return numpy.ndarray(self.shape, self.dtype)
 
     # self._dtype is used when self._data hasn't been set yet
     def __dtype_get(self):
@@ -211,7 +208,7 @@ class _test_Numpy2(unittest.TestCase):
         self.failUnless(r.data is None)
         self.failUnless(r.shape == (3,3))
         self.failUnless(str(r.dtype) == 'int32')
-        r.data_alloc()
+        r.alloc()
         self.failUnless(isinstance(r.data, numpy.ndarray))
         self.failUnless(r.shape == (3,3))
         self.failUnless(str(r.dtype) == 'int32')
@@ -443,6 +440,8 @@ class omega_op(gof.PythonOp):
     def gen_outputs(self):
         return [Numpy2() for i in xrange(self.nout)]
     
+    #TODO: use the version of this code that is in grad.py
+    #      requires: eliminating module dependency cycles
     def update_gradient(self, grad_d):
         """Call self.grad() and add the result to grad_d
 
@@ -861,13 +860,25 @@ def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
 from grad import Undefined
 
 def wrap_producer(f):
-    class producer(omega_op):
+    class producer(gof.lib.NewPythonOp):
+        def __init__(self, shape, dtype, order):
+            assert order == 'C' #TODO: let Numpy2 support this
+            if current_mode() == 'build_eval':
+                gof.lib.NewPythonOp.__init__(self, 
+                        [input(shape), input(dtype), input(order)],
+                        [Numpy2(data = f(shape, dtype))])
+            elif current_mode() == 'build':
+                gof.lib.NewPythonOp.__init__(self, 
+                        [input(shape), input(dtype), input(order)],
+                        [Numpy2(data = (shape, dtype))])
+        def gen_outputs(self):
+            return [Numpy2() for i in xrange(self.nout)]
         impl = f
         def grad(*args):
             return [Undefined] * (len(args) - 1)
     producer.__name__ = f.__name__
-    def ret(dim, dtype = 'float', order = 'C'):
-        return producer(dim, dtype, order)
+    def ret(shape, dtype = 'float64', order = 'C'):
+        return producer(shape, dtype, order).out
     return ret
 
 ndarray = wrap_producer(numpy.ndarray)
@@ -880,19 +891,19 @@ class _testCase_producer_build_mode(unittest.TestCase):
         """producer in build mode"""
         build_mode()
         a = ones(4)
-        self.failUnless(a.data is None)
-        self.failUnless(a.state is gof.result.Empty)
-        self.failUnless(a.shape == (4,))
-        self.failUnless(a.dtype == 'float64')
+        self.failUnless(a.data is None, a.data)
+        self.failUnless(a.state is gof.result.Empty, a.state)
+        self.failUnless(a.shape == 4, a.shape)
+        self.failUnless(str(a.dtype) == 'float64', a.dtype)
         pop_mode()
     def test_1(self):
         """producer in build_eval mode"""
         build_eval_mode()
         a = ones(4)
-        self.failUnless((a.data == numpy.ones(4)).all())
-        self.failUnless(a.state is gof.result.Computed)
-        self.failUnless(a.shape == (4,))
-        self.failUnless(a.dtype == 'float64')
+        self.failUnless((a.data == numpy.ones(4)).all(), a.data)
+        self.failUnless(a.state is gof.result.Computed, a.state)
+        self.failUnless(a.shape == (4,), a.shape)
+        self.failUnless(str(a.dtype) == 'float64', a.dtype)
         pop_mode()
 
 
