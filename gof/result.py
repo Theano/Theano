@@ -5,12 +5,13 @@ value that is the input or the output of an Op.
 
 """
 
+import unittest
 
 from err import GofError
 from utils import AbstractFunctionError
 
 
-__all__ = ['is_result', 'Result', 'BrokenLink', 'BrokenLinkError']
+__all__ = ['is_result', 'ResultBase', 'BrokenLink', 'BrokenLinkError']
 
 
 class BrokenLink:
@@ -45,24 +46,27 @@ def is_result(obj):
     attr_list = 'owner',
     return all([hasattr(obj, attr) for attr in attr_list])
 
-class Result(object):
-    """Storage node for data in a graph of Op instances.
+class ResultBase(object):
+    """Base class for storing Op inputs and outputs
 
     Attributes:
-    owner - represents the Op which computes this Result. Contains either None
-        or an instance of Op.
-    index - the index of this Result in owner.outputs.
+    _role - None or (owner, index) or BrokenLink
+    _data - anything
+    constant - Boolean
 
-    Methods:
-    - 
+    Properties:
+    role - (rw)
+    owner - (ro)
+    index - (ro)
+    data - (rw)
+    replaced - (rw) : True iff _role is BrokenLink
+    computed - (ro) : True iff contents of data are fresh
+
+    Abstract Methods:
+    data_filter
+
 
     Notes:
-
-    Result has no __init__ or __new__ routine. It is the Op's
-    responsibility to set the owner field of its results.
-
-    The Result class is abstract. It must be subclassed to support the
-    types of data needed for computation.
 
     A Result instance should be immutable: indeed, if some aspect of a
     Result is changed, operations that use it might suddenly become
@@ -71,140 +75,120 @@ class Result(object):
     called on the Result which is replaced (this will make its owner a
     BrokenLink instance, which behaves like False in conditional
     expressions).
+    
     """
-    
-    __slots__ = ['_owner', '_index']
-    
-    def get_owner(self):
-        if not hasattr(self, '_owner'):
-            self._owner = None
-        return self._owner
+    class BrokenLink:
+        """The owner of a Result that was replaced by another Result"""
+        __slots__ = ['old_role']
+        def __init__(self, role): self.old_role = role
+        def __nonzero__(self): return False
 
-    owner = property(get_owner, 
-            doc = "The Op of which this Result is an output or None if there is no such Op.")
+    class BrokenLinkError(Exception):
+        """Exception thrown when an owner is a BrokenLink"""
 
-    def set_owner(self, owner, index):
-        if self.owner is not None:
-            if self.owner is not owner:
+    class AbstractFunction(Exception):
+        """Exception thrown when an abstract function is called"""
+
+    __slots__ = ['_role', '_data', 'constant']
+
+    def __init__(self, role=None, data=None, constant=False):
+        self._role = role
+        self.constant = constant
+        if data is None: #None is not filtered
+            self._data = None
+        else:
+            try:
+                self._data = self.data_filter(data)
+            except ResultBase.AbstractFunction:
+                self._data = data
+
+    #role is pair: (owner, outputs_position)
+    def __get_role(self):
+        return self._role
+    def __set_role(self, role):
+        owner, index = role
+        if self._role is not None:
+            # this is either an error or a no-op
+            _owner, _index = self._role
+            if _owner is not owner:
                 raise ValueError("Result %s already has an owner." % self)
-            elif self.index != index:
+            if _index != index:
                 raise ValueError("Result %s was already mapped to a different index." % self)
-        self._owner = owner
-        self._index = index
+            return # because _owner is owner and _index == index
+        self._role = role
+    role = property(__get_role, __set_role)
 
-    def invalidate(self):
-        if self.owner is None:
-            raise Exception("Cannot invalidate a Result instance with no owner.")
-        elif not isinstance(self.owner, BrokenLink):
-            self._owner = BrokenLink(self._owner, self._index)
-            del self._index
+    #owner is role[0]
+    def __get_owner(self):
+        if self._role is None: return None
+        if self.replaced: raise ResultBase.BrokenLinkError()
+        return self._role[0]
+    owner = property(__get_owner, 
+            doc = "Op of which this Result is an output, or None if role is None")
 
-    def revalidate(self):
-        if isinstance(self.owner, BrokenLink):
-            owner, index = self._owner.owner, self._owner.index
-            self._owner = owner
-            self._index = index
-
-    def perform(self):
-        """Calls self.owner.perform() if self.owner exists.
-
-        This is a mutually recursive function with gof.op.Op
-
-        """
-        if self.owner:
-            self.owner.perform()
-    
-
-#     def extract(self):
-#         """
-#         Returns a representation of this datum for use in Op.impl.
-#         Successive calls to extract should always return the same object.
-#         """
-#         raise NotImplementedError
-
-#     def sync(self):
-#         """
-#         After calling Op.impl, synchronizes the Result instance with the
-#         new contents of the storage. This might usually not be necessary.
-#         """
-#         raise NotImplementedError
-
-#     def c_libs(self):
-#         """
-#         Returns a list of libraries that must be included to work with
-#         this Result.
-#         """
-#         raise NotImplementedError
-
-#     def c_imports(self):
-#         """
-#         Returns a list of strings representing headers to import when
-#         building a C interface that uses this Result.
-#         """
-#         raise NotImplementedError
-
-#     def c_declare(self):
-#         """
-#         Returns code which declares and initializes a C variable in
-#         which this Result can be held.
-#         """
-#         raise NotImplementedError
-
-#     def pyo_to_c(self):
-#         raise NotImplementedError
-
-#     def c_to_pyo(self):
-#         raise NotImplementedError
+    #index is role[1]
+    def __get_index(self):
+        if self._role is None: return None
+        if self.replaced: raise ResultBase.BrokenLinkError()
+        return self._role[1]
+    index = property(__get_index,
+                doc = "position of self in owner's outputs, or None if role is None")
 
 
+    # assigning to self.data will invoke self.data_filter(value) if that
+    # function is defined
+    def __get_data(self):
+        return self._data
+    def __set_data(self, data):
+        if self.replaced: raise ResultBase.BrokenLinkError()
+        if self.constant: raise Exception('cannot set constant ResultBase')
+        try:
+            self._data = self.data_filter(data)
+        except ResultBase.AbstractFunction: #use default behaviour
+            self._data = data
+    data = property(__get_data, __set_data,
+            doc = "The storage associated with this result")
+
+    def data_filter(self, data):
+        """(abstract) Return an appropriate _data based on data."""
+        raise ResultBase.AbstractFunction()
 
 
-############################
-# Utilities
-############################
+    # replaced
+    def __get_replaced(self): return isinstance(self._role, ResultBase.BrokenLink)
+    def __set_replaced(self, replace):
+        if replace == self.replaced: return
+        if replace:
+            self._role = ResultBase.BrokenLink(self._role)
+        else:
+            self._role = self._role.old_role
+    replaced = property(__get_replaced, __set_replaced, doc = "has this Result been replaced?")
 
-# class SelfContainedResult(Result):
-#     """
-#     This represents a Result which acts as its own data container. It
-#     is recommended to subclass this if you wish to be able to use the
-#     Result in normal computations as well as working with a graph
-#     representation.
-#     """
-    
-# #     def extract(self):
-# #         """Returns self."""
-# #         return self
-
-# #     def sync(self):
-# #         """Does nothing."""
-# #         pass
+    # computed
+    #TODO: think about how to handle this more correctly
+    computed = property(lambda self: self._data is not None)
 
 
+    #################
+    # NumpyR Compatibility
+    #
+    up_to_date = property(lambda self: True)
+    def refresh(self): pass
+    def set_owner(self, owner, idx):
+        self.role = (owner, idx)
+    def set_value(self, value):
+        self.data = value #may raise exception
 
-# class HolderResult(Result):
-#     """
-#     HolderResult adds a 'data' slot which is meant to contain the
-#     object used by the Op implementation. It is recommended to subclass
-#     this if you want to be able to use the exact same object at
-#     different points in a computation.
-#     """
-
-#     __slots__ = ['data']
-
-# #     def extract(self):
-# #         """Returns self.data."""
-# #         return self.data
-
-# #     def sync(self):
-# #         """
-# #         Does nothing. Override if you have additional fields or
-# #         functionality in your subclass which need to be computed from
-# #         the data.
-# #         """
-# #         pass
+class _test_ResultBase(unittest.TestCase):
+    def setUp(self):
+        build_eval_mode()
+        numpy.random.seed(44)
+    def tearDown(self):
+        pop_mode()
+    def test_0(self):
+        r = ResultBase()
 
 
-
-
-
+if __name__ == '__main__':
+    unittest.main()
 

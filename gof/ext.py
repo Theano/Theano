@@ -2,7 +2,6 @@
 from copy import copy
 from op import Op
 from lib import DummyOp
-from result import Result
 from features import Listener, Constraint, Orderings
 from env import InconsistencyError
 from utils import ClsInit

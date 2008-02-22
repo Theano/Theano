@@ -1,6 +1,6 @@
 
 from op import Op
-from result import Result, is_result
+from result import is_result, ResultBase
 from utils import ClsInit, Keyword, AbstractFunctionError
 import opt
 import env
@@ -15,7 +15,6 @@ __all__ = [ 'UNDEFINED',
            'eval_mode',
            'build_eval_mode',
            'pop_mode',
-           #'ResultValue',
            'DummyOp',
            'DummyRemover',
            'PythonOp',
@@ -96,83 +95,6 @@ class ForbidConstantOverwrite(features.Listener, features.Constraint):
         else:
             return True
 
-
-
-if 0:
-    class ResultValue(Result):
-        """Augment Result to wrap a computed value.
-
-        Attributes:
-        data - 
-        spec - 
-        constant - 
-        up_to_date -
-
-        Properties:
-
-        Methods:
-
-        set_value_filter - ABSTRACT
-        set_value_inplace - ABSTRACT
-        alloc - ABSTRACT
-
-        Notes:
-
-        """
-
-        __slots__ = ['data', 'spec', 'constant', 'up_to_date']
-        
-        def __init__(self, x = None, constant = False):
-            self.constant = False
-            self.set_value(x) # allow set_value before constant = True
-            self.constant = constant
-            self.up_to_date = True
-            self.refresh() # to set spec
-            
-        def __str__(self): return str(self.data)
-
-        def __repr__(self): return repr(self.data)
-
-        #TODO: document this function, what does it do?
-        def refresh(self): self.spec = id(self.data)
-
-        ####################################################
-        #
-        # Functionality provided by this class
-        #
-
-        def set_value(self, value):
-            if self.constant:
-                raise Exception("This Result is a constant. Its value cannot be changed.")
-            if value is None or value is UNCOMPUTED:
-                self.data = UNCOMPUTED
-            elif is_result(value):
-                self.set_value(value.data)
-            else:
-                try:
-                    self.data = self.set_value_filter(value)
-                except AbstractFunctionError, e:
-                    self.data = value
-
-            self.up_to_date = True
-            self.refresh()
-
-        ####################################################
-        #
-        # Pure virtual functions for subclasses to implement
-        #
-
-        # Perform error checking or automatic conversion of value, and return the
-        # result (which will be stored as self.data)
-        # Called by: set_value()
-        def set_value_filter(self, value): raise AbstractFunctionError()
-
-        # For mutable data types, overwrite the current contents with value
-        # Also, call refresh and set up_to_date = True
-        def set_value_inplace(self, value): raise AbstractFunctionError()
-
-        # Instantiate data (according to spec)
-        def alloc(self): raise AbstractFunctionError()
 
 
 class DestroyHandler(features.Listener, features.Constraint, features.Orderings):
@@ -279,14 +201,14 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
             
             if destroyed:
 #                self.parent[output] = None
-                if isinstance(destroyed, Result):
+                if is_result(destroyed):
                     destroyed = [destroyed]
                 for input in destroyed:
                     path = self.__path__(input)
                     self.__add_destroyer__(path + [output])
 
             elif views:
-                if isinstance(views, Result):
+                if is_result(views):
                     views = [views]
                 if len(views) > 1: #views was inputs before?
                     raise Exception("Output is a view of too many inputs.")
@@ -462,7 +384,6 @@ class PythonOp(Op):
     
     def gen_outputs(self):
         raise NotImplementedError()
-        #return [ResultValue() for i in xrange(self.nout)]
     
     def view_map(self): return {}
 
@@ -657,7 +578,7 @@ class PythonOpt(opt.Optimizer):
 class DummyOp(Op):
     
     def __init__(self, input):
-        Op.__init__(self, [input], [Result()])
+        Op.__init__(self, [input], [ResultBase()])
         
     def thunk(self):
         return lambda:None

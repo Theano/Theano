@@ -1,7 +1,7 @@
 
 from copy import copy
 
-from result import Result, BrokenLink, BrokenLinkError
+from result import BrokenLink, BrokenLinkError
 from op import Op
 import utils
 

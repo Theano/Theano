@@ -2,7 +2,8 @@ import unittest, os, sys
 
 if __name__ == '__main__':
     suite = None
-    for filename in os.listdir('.'):
+    filenames = os.listdir('.') + ['gof.'+s for s in os.listdir('gof')]
+    for filename in filenames:
         if filename[-3:] == '.py':
             modname = filename[:-3]
             tests = unittest.TestLoader().loadTestsFromModule(__import__(modname))

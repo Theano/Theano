@@ -12,7 +12,7 @@ from scipy import weave
 
 import gof
 from gof import current_mode, set_mode, build_mode, eval_mode, build_eval_mode
-from gof import pop_mode, is_result
+from gof import pop_mode, is_result, ResultBase
 
 import type_spec
 import cutils
@@ -83,138 +83,6 @@ def _compile_dir():
     if cachedir not in sys.path:
         sys.path.append(cachedir)
     return cachedir
-
-class ResultBase(object):
-    """Base class for storing Op inputs and outputs
-
-    Attributes:
-    _role - None or (owner, index) or BrokenLink
-    _data - anything
-    constant - Boolean
-
-    Properties:
-    role - (rw)
-    owner - (ro)
-    index - (ro)
-    data - (rw)
-    replaced - (rw) : True iff _role is BrokenLink
-    computed - (ro) : True iff contents of data are fresh
-
-    Abstract Methods:
-    data_filter
-
-    
-    """
-    class BrokenLink:
-        """The owner of a Result that was replaced by another Result"""
-        __slots__ = ['old_role']
-        def __init__(self, role): self.old_role = role
-        def __nonzero__(self): return False
-
-    class BrokenLinkError(Exception):
-        """Exception thrown when an owner is a BrokenLink"""
-
-    class AbstractFunction(Exception):
-        """Exception thrown when an abstract function is called"""
-
-    __slots__ = ['_role', '_data', 'constant']
-
-    def __init__(self, role=None, data=None, constant=False):
-        self._role = role
-        self.constant = constant
-        if data is None: #None is not filtered
-            self._data = None
-        else:
-            try:
-                self._data = self.data_filter(data)
-            except ResultBase.AbstractFunction:
-                self._data = data
-
-    #role is pair: (owner, outputs_position)
-    def __get_role(self):
-        return self._role
-    def __set_role(self, role):
-        owner, index = role
-        if self._role is not None:
-            # this is either an error or a no-op
-            _owner, _index = self._role
-            if _owner is not owner:
-                raise ValueError("Result %s already has an owner." % self)
-            if _index != index:
-                raise ValueError("Result %s was already mapped to a different index." % self)
-            return # because _owner is owner and _index == index
-        self._role = role
-    role = property(__get_role, __set_role)
-
-    #owner is role[0]
-    def __get_owner(self):
-        if self._role is None: return None
-        if self.replaced: raise ResultBase.BrokenLinkError()
-        return self._role[0]
-    owner = property(__get_owner, 
-            doc = "Op of which this Result is an output, or None if role is None")
-
-    #index is role[1]
-    def __get_index(self):
-        if self._role is None: return None
-        if self.replaced: raise ResultBase.BrokenLinkError()
-        return self._role[1]
-    index = property(__get_index,
-                doc = "position of self in owner's outputs, or None if role is None")
-
-
-    # assigning to self.data will invoke self.data_filter(value) if that
-    # function is defined
-    def __get_data(self):
-        return self._data
-    def __set_data(self, data):
-        if self.replaced: raise ResultBase.BrokenLinkError()
-        if self.constant: raise Exception('cannot set constant ResultBase')
-        try:
-            self._data = self.data_filter(data)
-        except ResultBase.AbstractFunction: #use default behaviour
-            self._data = data
-    data = property(__get_data, __set_data,
-            doc = "The storage associated with this result")
-
-    def data_filter(self, data):
-        """(abstract) Return an appropriate _data based on data."""
-        raise ResultBase.AbstractFunction()
-
-
-    # replaced
-    def __get_replaced(self): return isinstance(self._role, ResultBase.BrokenLink)
-    def __set_replaced(self, replace):
-        if replace == self.replaced: return
-        if replace:
-            self._role = ResultBase.BrokenLink(self._role)
-        else:
-            self._role = self._role.old_role
-    replaced = property(__get_replaced, __set_replaced, doc = "has this Result been replaced?")
-
-    # computed
-    #TODO: think about how to handle this more correctly
-    computed = property(lambda self: self._data is not None)
-
-
-    #################
-    # NumpyR Compatibility
-    #
-    up_to_date = property(lambda self: True)
-    def refresh(self): pass
-    def set_owner(self, owner, idx):
-        self.role = (owner, idx)
-    def set_value(self, value):
-        self.data = value #may raise exception
-
-class _test_ResultBase(unittest.TestCase):
-    def setUp(self):
-        build_eval_mode()
-        numpy.random.seed(44)
-    def tearDown(self):
-        pop_mode()
-    def test_0(self):
-        r = ResultBase()
 
 class Numpy2(ResultBase):
     """Result storing a numpy ndarray"""
@@ -986,92 +854,14 @@ def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
         return normal_f(x, y)
     return f
 
-if 0:
-    class NumpyR(gof.ResultValue):
-        """The class for storing ndarray return values from omega ops.
-        The class provides additional functionality compared to the normal
-        ResultValue:
-        - operator overloads that correspond to omega ops such as add() and scale()
-        - special attributes that make it behave like an ndarray when passed to
-          numpy functions.
 
-        Attributes:
-        __array__ - alias of self.data.__array_struct__ 
-        __array_struct__ - alias of self.data.__array_struct__
-
-        Methods:
-        set_value() - 
-        """
-
-        # The following attributes make NumpyR instances look like normal ndarray
-        # instances to many numpy functions, such as argmax(), dot(), svd(), sum(),
-        # etc.  These are documented in the numpy book.
-        __array__ = property(lambda self: self.data.__array__ )
-        __array_struct__ = property(lambda self: self.data.__array_struct__ )
-
-        def set_value_filter(self, value): return numpy.asarray(value)
-
-        def set_value_inplace(self, value):
-            if value is UNCOMPUTED:
-                raise ValueError()
-            else:
-                if 0 == len(self.data.shape):
-                    self.data.itemset(value) # for scalars
-                else:
-                    self.data[:] = value     # for matrices
-            self.refresh()
-            self.up_to_date = True
-
-        def refresh(self):
-            if self.data is not UNCOMPUTED:
-                self.spec = (numpy.ndarray, self.data.dtype, self.data.shape)
-            
-        def alloc(self):
-            shape, dtype = self.spec[2], self.spec[1]
-            self.data = numpy.ndarray(shape, dtype=dtype)
-
-        def  __add__(self, y): return add(self, y)
-        def __radd__(self, x): return add(x, self)
-        def __iadd__(self, y): return add_inplace(self, y)
-        
-        def  __sub__(self, y): return sub(self, y)
-        def __rsub__(self, x): return sub(x, self)
-        def __isub__(self, y): return sub_inplace(self, y)
-        
-        def  __mul__(self, y): return mul(self, y)
-        def __rmul__(self, x): return mul(x, self)
-        def __imul__(self, y): return mul_inplace(self, y)
-     
-        def  __div__(self, y): return div(self, y)
-        def __rdiv__(self, x): return div(x, self)
-        def __idiv__(self, y): return div_inplace(self, y)
-            
-        def  __pow__(self, y): return pow(self, y)
-        def __rpow__(self, x): return pow(x, self)
-        def __ipow__(self, y): return pow_inplace(self, y)
-
-        def __neg__(self):     return neg(self)
-
-        T  = property(lambda self: transpose(self))
-        Tc = property(lambda self: transpose_copy(self))
-
-        def __copy__(self):    return array_copy(self)
-
-        def __getitem__(self, item): return get_slice(self, item)
-        def __getslice__(self, *args): return get_slice(self, slice(*args))
-
-
-    
-
-
-
-from grad import Grad
+from grad import Undefined
 
 def wrap_producer(f):
     class producer(omega_op):
         impl = f
         def grad(*args):
-            return [Grad.Undefined] * (len(args) - 1)
+            return [Undefined] * (len(args) - 1)
     producer.__name__ = f.__name__
     def ret(dim, dtype = 'float', order = 'C'):
         return producer(dim, dtype, order)
@@ -1811,11 +1601,11 @@ class sum(elemwise):
 
 class ones_like(elemwise):
     impl = numpy.ones_like
-    def grad(x, gz): return Grad.Undefined
+    def grad(x, gz): return Undefined
 
 class zeros_like(elemwise):
     impl = numpy.zeros_like
-    def grad(x, gz): return Grad.Undefined
+    def grad(x, gz): return Undefined
 
 ## Array slicing ##
 

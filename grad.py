@@ -2,6 +2,9 @@ import gof
 from gof.lib import compute_from, is_result
 import core
 
+class Undefined:
+    """A special class representing a gradient of 0"""
+
 class Grad(object):
     """A dictionary-like class, into which derivative expressions may be added.
 
@@ -17,7 +20,6 @@ class Grad(object):
     __call__()
     __getitem__()
     """
-    class Undefined: pass
 
     def __init__(self, dct={}):
         self.map = {}
@@ -36,7 +38,7 @@ class Grad(object):
         try:
             return self.map[key]
         except KeyError:
-            return Grad.Undefined
+            return Undefined
 
     def __setitem__(self, item, val):
         """Map item to its id and store internally."""
@@ -59,7 +61,7 @@ class Grad(object):
             r may be uncomputed or NumpyR
 
         """
-        if dr is Grad.Undefined: 
+        if dr is Undefined: 
             # nothing to do
             return
 
@@ -124,7 +126,7 @@ class Grad(object):
         if not self.did_bprop:
             raise Exception('Grad.__call__ only makes sense after a bprop')
         rval = self[item]
-        if rval is not Grad.Undefined \
+        if rval is not Undefined \
                 and core.current_mode() == 'build_eval':
             compute_from([rval], self._compute_history)
         return rval

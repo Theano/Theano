@@ -4,7 +4,7 @@ Contains the Op class, which is the base interface for all operations
 compatible with gof's graph manipulation routines.
 """
 
-from result import Result, BrokenLink
+from result import BrokenLink
 from utils import ClsInit, all_bases, all_bases_collect
 
 from copy import copy
