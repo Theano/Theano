@@ -7,7 +7,7 @@
 # The list of objects to document.  Objects can be named using
 # dotted names, module filenames, or package directory names.
 # Alases for this option include "objects" and "values".
-modules: *.py, gof/*.py, sys, os.path, re
+modules: *.py, gof/*.py, scipy, numpy
 
 # The type of output that should be generated.  Should be one
 # of: html, text, latex, dvi, ps, pdf.
@@ -127,7 +127,7 @@ separate-classes: no
 # in the output.  Graphs are generated using the Graphviz "dot"
 # executable.  Graph types include: "classtree", "callgraph",
 # "umlclass".  Use "all" to include all graph types
-#graph: all
+graph: all
 
 # The path to the Graphviz "dot" executable, used to generate
 # graphs.
