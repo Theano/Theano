@@ -1,6 +1,6 @@
 import unittest, os, sys
 
-def test_root_dir():
+if __name__ == '__main__':
     suite = None
     filenames = os.listdir('.')
     for filename in filenames:
@@ -17,8 +17,4 @@ def test_root_dir():
                     suite.addTests(tests)
 
     unittest.TextTestRunner(verbosity=1).run(suite)
-
-if __name__ == '__main__':
-    os.system('cd gof; python autotest.py')
-    test_root_dir()
 

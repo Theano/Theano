@@ -180,11 +180,6 @@ class ResultBase(object):
         self.data = value #may raise exception
 
 class _test_ResultBase(unittest.TestCase):
-    def setUp(self):
-        build_eval_mode()
-        numpy.random.seed(44)
-    def tearDown(self):
-        pop_mode()
     def test_0(self):
         r = ResultBase()
 
