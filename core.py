@@ -1508,6 +1508,8 @@ sqr_inplace = sqr.inplace_version()
 sqr_inplace.set_impl(lambda x: x.__imul__(x))
 
 
+
+
 class sqrt(elemwise):
     impl = numpy.sqrt
     def grad(x, gz):
