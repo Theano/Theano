@@ -116,33 +116,33 @@ class Numpy2(ResultBase):
     ################################
     # Numpy2 specific functionality
     #
-    __array__ = property(lambda self: self._data.__array__ )
-    __array_struct__ = property(lambda self: self._data.__array_struct__ )
+    __array__ = property(lambda self: self.data.__array__ )
+    __array_struct__ = property(lambda self: self.data.__array_struct__ )
 
     def data_alloc(self):
         return numpy.ndarray(self.shape, self.dtype)
 
-    # self._dtype is used when self._data hasn't been set yet
+    # self._dtype is used when self.data hasn't been set yet
     def __dtype_get(self):
-        if self._data is None:
+        if self.data is None:
             return self._dtype
         else:
-            return self._data.dtype
+            return self.data.dtype
     def __dtype_set(self, dtype):
-        if self._data is None:
+        if self.data is None:
             self._dtype = dtype
         else:
             raise StateError('cannot set dtype after data has been set')
     dtype = property(__dtype_get, __dtype_set)
 
-    # self._shape is used when self._data hasn't been set yet
+    # self._shape is used when self.data hasn't been set yet
     def __shape_get(self):
-        if self._data is None:
+        if self.data is None:
             return self._shape
         else:
-            return self._data.shape
+            return self.data.shape
     def __shape_set(self, shape):
-        if self._data is None:
+        if self.data is None:
             self._shape = shape
         else:
             raise StateError('cannot set shape after data has been set')
@@ -1729,7 +1729,7 @@ class _testCase_slicing(unittest.TestCase):
         wa1 = wrap(a)[0:8:2]
         for i in xrange(8): a[i] = i
 
-        self.failUnless(wa1.data.shape == (4,))
+        self.failUnless(wa1.shape == (4,))
         for i in xrange(4):
             self.failUnless(a[i*2] == wa1.data[i])
     def test_getslice_3d_float(self):
@@ -1737,10 +1737,18 @@ class _testCase_slicing(unittest.TestCase):
         a = numpy.asarray(range(4*5*6))
         a.resize((4,5,6))
         wa1 = wrap(a)[1:3]
-        wa1.data.shape
+        self.failUnless(wa1.shape == (2,5,6))
         self.failUnless(numpy.all(a[1:3] == wa1.data))
         a[1] *= -1.0
         self.failUnless(numpy.all(a[1:3] == wa1.data))
+    def test_getslice_3d_one(self):
+        """Test getslice on 3d array"""
+        a = numpy.asarray(range(4*5*6))
+        a.resize((4,5,6))
+        wa = wrap(a)
+        wa_123 = wa[1,2,3]
+        self.failUnless(wa_123.shape == (), wa_123.shape)
+
 
 add = scalar_switch(add_elemwise, add_scalar, add_scalar)
 add_inplace = scalar_switch(add_elemwise_inplace, add_scalar_inplace)

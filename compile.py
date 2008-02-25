@@ -210,12 +210,33 @@ class _test_single(unittest.TestCase):
         core.pop_mode()
 
     def test_3(self):
-        a = core.Numpy2(data=numpy.ones((2,2)))
-        b = core.Numpy2(data=numpy.ones((2,2)))
+        a = core.Numpy2(data=numpy.random.rand(2,2))
+        b = core.Numpy2(data=numpy.random.rand(2,2))
         c = core.add(a,b)
+
+        self.failUnless(c.data is None)
+        self.failUnless(c.state is Empty)
+
+        new_a = numpy.random.rand(2,2)
+        new_b = numpy.random.rand(2,2)
+        a.data = new_a
+        b.data = new_b
         p = single(c)
         p()
-        self.failUnless(core._approx_eq(c, numpy.ones((2,2))*2))
+        self.failUnless(core._approx_eq(c, new_a + new_b))
+
+    def test_get_element(self):
+        a_data = numpy.random.rand(2,2)
+        a = core.Numpy2(data=a_data)
+        a_i = a[0,0]
+        p = single(a_i)
+
+        for i in 0,1:
+            for j in 0,1:
+                p()
+                self.failUnless(a_data[i,j] == a_i.data)
+
+
 
 if __name__ == '__main__':
     unittest.main()

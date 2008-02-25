@@ -1,3 +1,4 @@
+from copy import copy
 
 from op import Op
 from result import is_result, ResultBase
@@ -57,27 +58,31 @@ def compute(*nodes):
     """Recursively evaluate each node (in a quick & dirty way)."""
     compute_from(nodes, set())
 
+def root_inputs(input):
+    """Return the leaves of a search through consecutive view_map()s"""
+    owner = input.owner
+    if owner:
+        view_map = owner.view_map()
+        if input in view_map:
+            answer = []
+            for input2 in view_map[input]:
+                answer.extend(root_inputs(input2))
+            return answer
+        else:
+            return [input]
+    else:
+        return [input]
+
 class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
     def __init__(self, env):
         self.env = env
         self.bad = set()
 
-    def root_inputs(self, input):
-        owner = input.owner
-        view_map = owner.view_map()
-        if input in view_map:
-            answer = []
-            for input2 in view_map[input]:
-                answer += owner.root_inputs(input2)
-            return answer
-        else:
-            return [input]
-
     def on_import(self, op):
         for output, inputs in op.destroy_map().items():
             for input in inputs:
-                for root_input in self.root_inputs(input):
+                for root_input in root_inputs(input):
                     if getattr(root_input, 'constant', False):
                         self.bad.add(op)
                         return
@@ -185,9 +190,7 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
             self.__detect_cycles_helper__(user, [])
 
     def get_maps(self, op):
-        vmap = getattr(op, 'view_map',{})
-        dmap = getattr(op, 'destoy_map', {})
-        return vmap, dmap
+        return op.view_map(), op.destroy_map()
 
     def on_import(self, op):
         view_map, destroy_map = self.get_maps(op)
@@ -347,6 +350,8 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
 
 class NewPythonOp(Op):
 
+    __env_require__ = DestroyHandler
+
     def view_map(self):
         return {}
 
@@ -358,8 +363,6 @@ class PythonOp(NewPythonOp):
     
     __metaclass__ = ClsInit
 
-    __require__ = DestroyHandler
-    
     nout = 1
 
     @staticmethod
@@ -389,45 +392,28 @@ class PythonOp(NewPythonOp):
         NewPythonOp.__init__(self, inputs, self.gen_outputs())
 
     def __validate__(self):
-        return all([ is_result(i) for i in self.inputs])
+        return all([is_result(i) for i in self.inputs])
     
     def gen_outputs(self):
         raise AbstractFunctionError()
-    
-    @staticmethod
-    def root_inputs(input):
-        owner = input.owner
-        if owner:
-            view_map = owner.view_map()
-            if input in view_map:
-                answer = []
-                for input2 in view_map[input]:
-                    answer += owner.root_inputs(input2)
-                return answer
-            else:
-                return [input]
-        else:
-            return [input]
-
-    def input_is_up_to_date(self, input):
-        answer = True
-        for input in self.root_inputs(input):
-            answer &= input.up_to_date
-        return answer
-
-    def input_is_constant(self, input):
-        answer = False
-        for input in self.root_inputs(input):
-            answer |= input.constant
-        return answer
 
     def check_input(self, input):
+        def input_is_up_to_date(input):
+            answer = True
+            for input in root_inputs(input):
+                answer &= input.up_to_date
+            return answer
         if input.data is None:
             raise ValueError("Uncomputed input: %s in %s" % (input, self))
-        if not self.input_is_up_to_date(input):
+        if not input_is_up_to_date(input):
             raise ValueError("Input is out of date: %s in %s" % (input, self))
 
     def perform(self):
+        def input_is_constant(input):
+            answer = False
+            for input in root_inputs(input):
+                answer |= input.constant
+            return answer
         exc = set()
         for output, inputs in self.destroy_map().items():
             exc.update(inputs)
@@ -518,7 +504,7 @@ class PythonOp(NewPythonOp):
             if output not in except_list:
                 output.alloc()
     
-    __require__ = ForbidConstantOverwrite
+    __env_require__ = ForbidConstantOverwrite
 
     def __copy__(self):
         """
@@ -580,7 +566,7 @@ class PythonOpt(opt.Optimizer):
 
 
 
-class DummyOp(Op):
+class DummyOp(NewPythonOp):
     
     def __init__(self, input):
         Op.__init__(self, [input], [ResultBase()])

@@ -9,35 +9,12 @@ import ext
 
 class Optimizer:
 
-    __require__ = ()
-    
     def apply(self, env):
         pass
 
     def optimize(self, env):
         env.satisfy(self)
         self.apply(env)
-
-    @classmethod
-    def require(cls):
-        """
-        Returns a list of EnvFeature subclasses that must be used by
-        any Env manipulating this kind of op. For instance, a
-        Destroyer requires features.DestroyHandler to guarantee that
-        various destructive operations don't interfere.
-        """
-        r = set()
-
-        bases = utils.all_bases(cls, lambda cls: hasattr(cls, '__require__'))
-        bases.append(cls)
-
-        for base in bases:
-            req = base.__require__
-            if isinstance(req, (list, tuple)):
-                r.update(req)
-            else:
-                r.add(req)
-        return r
 
     def __call__(self, env):
         self.optimize(env)
@@ -88,7 +65,7 @@ class LocalOptimizer(Optimizer):
 
 class OpSpecificOptimizer(LocalOptimizer):
 
-    __require__ = features.InstanceFinder
+    __env_require__ = features.InstanceFinder
 
     opclass = Op
 
@@ -100,7 +77,7 @@ class OpSpecificOptimizer(LocalOptimizer):
 
 class OpSubOptimizer(Optimizer):
 
-    __require__ = features.InstanceFinder
+    __env_require__ = features.InstanceFinder
 
     def __init__(self, op1, op2):
         if not op1.has_default_output:
@@ -127,7 +104,7 @@ class OpSubOptimizer(Optimizer):
 
 class OpRemover(Optimizer):
 
-    __require__ = features.InstanceFinder
+    __env_require__ = features.InstanceFinder
 
     def __init__(self, opclass):
         self.opclass = opclass

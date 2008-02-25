@@ -28,7 +28,6 @@ class Op(object):
     """
 
     __slots__ = ['_inputs', '_outputs']
-    __require__ = []
 
     #create inputs and outputs as read-only attributes
     inputs = property(lambda self: self._inputs, doc = "The list of this Op's input Results.")
@@ -229,11 +228,10 @@ class Op(object):
         """
         r = set()
 
-        bases = all_bases(cls, lambda cls: hasattr(cls, '__require__'))
-        bases.append(cls)
+        bases = all_bases(cls, lambda cls: hasattr(cls, '__env_require__'))
 
         for base in bases:
-            req = base.__require__
+            req = base.__env_require__
             if isinstance(req, (list, tuple)):
                 r.update(req)
             else:
