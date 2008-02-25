@@ -53,7 +53,22 @@ class InconsistencyError(GofError):
     """
     pass
 
+def require_set(cls):
+    """Return the set of objects named in a __env_require__ field in a base class"""
+    r = set()
 
+    if hasattr(cls, '__class__'):
+        cls = cls.__class__
+
+    bases = utils.all_bases(cls, lambda cls: hasattr(cls, '__env_require__'))
+
+    for base in bases:
+        req = base.__env_require__
+        if isinstance(req, (list, tuple)):
+            r.update(req)
+        else:
+            r.add(req)
+    return r
 
 class Env(graph.Graph):
     """
@@ -179,7 +194,7 @@ class Env(graph.Graph):
         return True
 
     def satisfy(self, x):
-        for feature_class in x.require():
+        for feature_class in require_set(x):
             self.add_feature(feature_class)
 
     def add_feature(self, feature_class, do_import = True):

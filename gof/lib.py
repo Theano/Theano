@@ -58,6 +58,21 @@ def compute(*nodes):
     """Recursively evaluate each node (in a quick & dirty way)."""
     compute_from(nodes, set())
 
+def root_inputs(input):
+    """Return the leaves of a search through consecutive view_map()s"""
+    owner = input.owner
+    if owner:
+        view_map = owner.view_map()
+        if input in view_map:
+            answer = []
+            for input2 in view_map[input]:
+                answer.append(root_inputs(input2))
+            return answer
+        else:
+            return [input]
+    else:
+        return [input]
+
 class ForbidConstantOverwrite(features.Listener, features.Constraint):
 
     def __init__(self, env):
@@ -346,7 +361,7 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
 
 class NewPythonOp(Op):
 
-    __require__ = DestroyHandler
+    __env_require__ = DestroyHandler
 
     def view_map(self):
         return {}
@@ -517,7 +532,7 @@ class PythonOp(NewPythonOp):
             if output not in except_list:
                 output.alloc()
     
-    __require__ = ForbidConstantOverwrite
+    __env_require__ = ForbidConstantOverwrite
 
     def __copy__(self):
         """
