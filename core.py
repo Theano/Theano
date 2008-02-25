@@ -1729,7 +1729,7 @@ class _testCase_slicing(unittest.TestCase):
         wa1 = wrap(a)[0:8:2]
         for i in xrange(8): a[i] = i
 
-        self.failUnless(wa1.data.shape == (4,))
+        self.failUnless(wa1.shape == (4,))
         for i in xrange(4):
             self.failUnless(a[i*2] == wa1.data[i])
     def test_getslice_3d_float(self):
@@ -1737,10 +1737,18 @@ class _testCase_slicing(unittest.TestCase):
         a = numpy.asarray(range(4*5*6))
         a.resize((4,5,6))
         wa1 = wrap(a)[1:3]
-        wa1.data.shape
+        self.failUnless(wa1.shape == (2,5,6))
         self.failUnless(numpy.all(a[1:3] == wa1.data))
         a[1] *= -1.0
         self.failUnless(numpy.all(a[1:3] == wa1.data))
+    def test_getslice_3d_one(self):
+        """Test getslice on 3d array"""
+        a = numpy.asarray(range(4*5*6))
+        a.resize((4,5,6))
+        wa = wrap(a)
+        wa_123 = wa[1,2,3]
+        self.failUnless(wa_123.shape == (), wa_123.shape)
+
 
 add = scalar_switch(add_elemwise, add_scalar, add_scalar)
 add_inplace = scalar_switch(add_elemwise_inplace, add_scalar_inplace)
