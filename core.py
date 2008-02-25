@@ -518,6 +518,12 @@ class omega_op(gof.PythonOp):
             instantiate.customize.add_header(header)
         for lib in self.c_libs():
             instantiate.customize.add_library(lib)
+        #add_library_dir
+        
+        #print dir(instantiate.customize)
+        #print instantiate.customize._library_dirs
+        if os.getenv('OMEGA_BLAS_LD_LIBRARY_PATH'):
+            instantiate.customize.add_library_dir(os.getenv('OMEGA_BLAS_LD_LIBRARY_PATH'))
 
         mod.add_function(instantiate)
         mod.compile(location = _compile_dir())
