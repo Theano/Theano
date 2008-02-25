@@ -1,3 +1,4 @@
+from copy import copy
 
 from op import Op
 from result import is_result, ResultBase
@@ -185,9 +186,7 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
             self.__detect_cycles_helper__(user, [])
 
     def get_maps(self, op):
-        vmap = getattr(op, 'view_map',{})
-        dmap = getattr(op, 'destoy_map', {})
-        return vmap, dmap
+        return op.view_map(), op.destroy_map()
 
     def on_import(self, op):
         view_map, destroy_map = self.get_maps(op)
@@ -347,6 +346,8 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
 
 class NewPythonOp(Op):
 
+    __require__ = DestroyHandler
+
     def view_map(self):
         return {}
 
@@ -358,8 +359,6 @@ class PythonOp(NewPythonOp):
     
     __metaclass__ = ClsInit
 
-    __require__ = DestroyHandler
-    
     nout = 1
 
     @staticmethod
@@ -580,7 +579,7 @@ class PythonOpt(opt.Optimizer):
 
 
 
-class DummyOp(Op):
+class DummyOp(NewPythonOp):
     
     def __init__(self, input):
         Op.__init__(self, [input], [ResultBase()])

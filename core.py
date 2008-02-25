@@ -116,33 +116,33 @@ class Numpy2(ResultBase):
     ################################
     # Numpy2 specific functionality
     #
-    __array__ = property(lambda self: self._data.__array__ )
-    __array_struct__ = property(lambda self: self._data.__array_struct__ )
+    __array__ = property(lambda self: self.data.__array__ )
+    __array_struct__ = property(lambda self: self.data.__array_struct__ )
 
     def data_alloc(self):
         return numpy.ndarray(self.shape, self.dtype)
 
-    # self._dtype is used when self._data hasn't been set yet
+    # self._dtype is used when self.data hasn't been set yet
     def __dtype_get(self):
-        if self._data is None:
+        if self.data is None:
             return self._dtype
         else:
-            return self._data.dtype
+            return self.data.dtype
     def __dtype_set(self, dtype):
-        if self._data is None:
+        if self.data is None:
             self._dtype = dtype
         else:
             raise StateError('cannot set dtype after data has been set')
     dtype = property(__dtype_get, __dtype_set)
 
-    # self._shape is used when self._data hasn't been set yet
+    # self._shape is used when self.data hasn't been set yet
     def __shape_get(self):
-        if self._data is None:
+        if self.data is None:
             return self._shape
         else:
-            return self._data.shape
+            return self.data.shape
     def __shape_set(self, shape):
-        if self._data is None:
+        if self.data is None:
             self._shape = shape
         else:
             raise StateError('cannot set shape after data has been set')
