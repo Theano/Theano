@@ -392,30 +392,28 @@ class PythonOp(NewPythonOp):
         NewPythonOp.__init__(self, inputs, self.gen_outputs())
 
     def __validate__(self):
-        return all([ is_result(i) for i in self.inputs])
+        return all([is_result(i) for i in self.inputs])
     
     def gen_outputs(self):
         raise AbstractFunctionError()
-    
-    def input_is_up_to_date(self, input):
-        answer = True
-        for input in root_inputs(input):
-            answer &= input.up_to_date
-        return answer
-
-    def input_is_constant(self, input):
-        answer = False
-        for input in root_inputs(input):
-            answer |= input.constant
-        return answer
 
     def check_input(self, input):
+        def input_is_up_to_date(input):
+            answer = True
+            for input in root_inputs(input):
+                answer &= input.up_to_date
+            return answer
         if input.data is None:
             raise ValueError("Uncomputed input: %s in %s" % (input, self))
-        if not self.input_is_up_to_date(input):
+        if not input_is_up_to_date(input):
             raise ValueError("Input is out of date: %s in %s" % (input, self))
 
     def perform(self):
+        def input_is_constant(input):
+            answer = False
+            for input in root_inputs(input):
+                answer |= input.constant
+            return answer
         exc = set()
         for output, inputs in self.destroy_map().items():
             exc.update(inputs)
