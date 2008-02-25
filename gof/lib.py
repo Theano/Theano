@@ -66,7 +66,7 @@ def root_inputs(input):
         if input in view_map:
             answer = []
             for input2 in view_map[input]:
-                answer.append(root_inputs(input2))
+                answer.extend(root_inputs(input2))
             return answer
         else:
             return [input]
@@ -79,21 +79,10 @@ class ForbidConstantOverwrite(features.Listener, features.Constraint):
         self.env = env
         self.bad = set()
 
-    def root_inputs(self, input):
-        owner = input.owner
-        view_map = owner.view_map()
-        if input in view_map:
-            answer = []
-            for input2 in view_map[input]:
-                answer += owner.root_inputs(input2)
-            return answer
-        else:
-            return [input]
-
     def on_import(self, op):
         for output, inputs in op.destroy_map().items():
             for input in inputs:
-                for root_input in self.root_inputs(input):
+                for root_input in root_inputs(input):
                     if getattr(root_input, 'constant', False):
                         self.bad.add(op)
                         return
@@ -408,30 +397,15 @@ class PythonOp(NewPythonOp):
     def gen_outputs(self):
         raise AbstractFunctionError()
     
-    @staticmethod
-    def root_inputs(input):
-        owner = input.owner
-        if owner:
-            view_map = owner.view_map()
-            if input in view_map:
-                answer = []
-                for input2 in view_map[input]:
-                    answer += owner.root_inputs(input2)
-                return answer
-            else:
-                return [input]
-        else:
-            return [input]
-
     def input_is_up_to_date(self, input):
         answer = True
-        for input in self.root_inputs(input):
+        for input in root_inputs(input):
             answer &= input.up_to_date
         return answer
 
     def input_is_constant(self, input):
         answer = False
-        for input in self.root_inputs(input):
+        for input in root_inputs(input):
             answer |= input.constant
         return answer
 
