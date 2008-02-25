@@ -10,6 +10,8 @@ import unittest
 from err import GofError
 from utils import AbstractFunctionError
 
+from python25 import all
+
 
 __all__ = ['is_result', 'ResultBase', 'BrokenLink', 'BrokenLinkError' ]
 

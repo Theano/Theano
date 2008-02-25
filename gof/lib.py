@@ -8,6 +8,7 @@ import env
 import features
 import ext
 
+from python25 import all
 
 __all__ = [ 'UNDEFINED',
            'current_mode',
