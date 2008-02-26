@@ -71,6 +71,8 @@ def _compile_dir():
     else:
         # use (and possibly create) a default code cache location
         platform_id = platform.platform() + '-' + platform.processor()
+        import re
+        platform_id = re.sub("[\(\)\s]+", "_", platform_id)
         cachedir = os.path.join(os.getenv('HOME'), '.omega', 'compiledir_'+platform_id)
         if not os.access(cachedir, os.R_OK | os.W_OK):
             #this may raise a number of problems, I think all of which are serious.
@@ -530,6 +532,12 @@ class omega_op(Numpy2Op):
             instantiate.customize.add_header(header)
         for lib in self.c_libs():
             instantiate.customize.add_library(lib)
+        #add_library_dir
+        
+        #print dir(instantiate.customize)
+        #print instantiate.customize._library_dirs
+        if os.getenv('OMEGA_BLAS_LD_LIBRARY_PATH'):
+            instantiate.customize.add_library_dir(os.getenv('OMEGA_BLAS_LD_LIBRARY_PATH'))
 
         mod.add_function(instantiate)
         mod.compile(location = _compile_dir())
