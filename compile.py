@@ -18,6 +18,7 @@ def experimental_linker(env, target = None):
         
     py_ops = set()
     thunks = []
+    computed_results = []
 
     for op in order:
         try:
@@ -34,6 +35,7 @@ def experimental_linker(env, target = None):
             result = op._perform
             py_ops.add(op)
         thunks.append((result, op._perform_inplace))
+        computed_results.extend(op.outputs)
     
     def ret():
         for thunk, fallback in thunks:
@@ -41,44 +43,14 @@ def experimental_linker(env, target = None):
                 thunk()
             except NotImplementedError:
                 fallback()
+        for r in computed_results:
+            r.state = gof.result.Computed
 
     if not target:
         return ret
     else:
         raise NotImplementedError("Cannot write thunk representation to a file.")
 
-
-# def experimental_linker(env, target = None):
-#     def fetch(op):
-#         try:
-#             factory = op.c_thunk_factory()
-# #            print "yea %s" % op
-#             thunk = factory()
-#             return lambda: cutils.run_cthunk(thunk)
-#         except NotImplementedError:
-# #            print "nope %s" % op
-#             return op._perform
-#     order = env.toposort()
-#     for op in order:
-#         op.refresh()
-# #     for op in order:
-# #         print op
-# #         print 'ispecs: ', [input.spec for input in op.inputs]
-# #         print 'ospecs: ', [output.spec for output in op.outputs]
-#     thunks = [fetch(op) for op in order]
-#     def ret():
-# #         print "=================================================="
-# #         for thunk, op in zip(thunks, order):
-# #             print op
-# #             print 'in: ', [id(input.data) for input in op.inputs]
-# #             print 'out:', [id(output.data) for output in op.outputs]
-# #             thunk()
-#         for thunk in thunks:
-#             thunk()
-#     if not target:
-#         return ret
-#     else:
-#         raise NotImplementedError("Cannot write thunk representation to a file.")
 
 class profile_linker:
     def __init__(self, env):
@@ -201,10 +173,9 @@ def to_func(inputs, outputs):
 def single(*outputs, **kwargs):
     return prog(gof.graph.inputs(outputs), outputs, **kwargs)
 
-
-class _test_single(unittest.TestCase):
+class _test_single_build_mode(unittest.TestCase):
     def setUp(self):
-        core.build_eval_mode()
+        core.build_mode()
         numpy.random.seed(44)
     def tearDown(self):
         core.pop_mode()
@@ -215,27 +186,44 @@ class _test_single(unittest.TestCase):
         c = core.add(a,b)
 
         self.failUnless(c.data is None)
-        self.failUnless(c.state is Empty)
+        self.failUnless(c.state is gof.result.Empty)
+        p = single(c)
+        self.failUnless(c.data is not None)
+        self.failUnless(c.state is gof.result.Allocated)
+        self.failUnless(not core._approx_eq(c, a.data + b.data))
+        p()
+        self.failUnless(c.state is gof.result.Computed)
+        self.failUnless(core._approx_eq(c, a.data + b.data))
 
         new_a = numpy.random.rand(2,2)
         new_b = numpy.random.rand(2,2)
-        a.data = new_a
-        b.data = new_b
-        p = single(c)
+        a.data[:] = new_a
+        b.data[:] = new_b
         p()
         self.failUnless(core._approx_eq(c, new_a + new_b))
 
     def test_get_element(self):
+        core.build_eval_mode()
         a_data = numpy.random.rand(2,2)
         a = core.Numpy2(data=a_data)
-        a_i = a[0,0]
+        pos = core.input((0,0))
+        a_i = core.get_slice(a, pos)
         p = single(a_i)
+        #p()
+        #print 'aaaa', a_i.owner.out, a_i.owner, a_i.data, pos.data
+
+        #print 'pre p()'
 
         for i in 0,1:
             for j in 0,1:
+                pos.data = (i,j)
                 p()
+                #print 'asdf', i,j,a_i.data
+                #print a_i.owner.inputs[1].data
+                #a_i.owner.inputs[1].data = [i,j]
                 self.failUnless(a_data[i,j] == a_i.data)
 
+        core.pop_mode()
 
 
 if __name__ == '__main__':

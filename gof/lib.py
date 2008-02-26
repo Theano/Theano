@@ -350,14 +350,13 @@ class DestroyHandler(features.Listener, features.Constraint, features.Orderings)
 
 class NewPythonOp(Op):
 
-    __env_require__ = DestroyHandler
+    __env_require__ = DestroyHandler, ForbidConstantOverwrite
 
     def view_map(self):
         return {}
 
     def destroy_map(self):
         return {}
-
 
 class PythonOp(NewPythonOp):
     
@@ -369,10 +368,9 @@ class PythonOp(NewPythonOp):
     def __clsinit__(cls, name, bases, dct):
         # make impl a static method
         cls.set_impl(cls.impl)
-        make_static(cls, 'specs')
     
     def __new__(cls, *inputs, **kwargs):
-        op = Op.__new__(cls)
+        op = NewPythonOp.__new__(cls)
         op.__init__(*inputs)
         mode = kwargs.get('mode', None) or current_mode()
         if mode == 'eval':
@@ -471,40 +469,6 @@ class PythonOp(NewPythonOp):
     def impl(*args):
         raise NotImplementedError("This op has no implementation.")
 
-    def _specs(self):
-        try:
-            return self.specs(*[input.spec for input in self.inputs])
-        except NotImplementedError:
-            raise NotImplementedError("%s cannot infer the specs of its outputs" % self.__class__.__name__)
-
-    def specs(*inputs):
-        raise NotImplementedError
-
-    def refresh(self, except_list = []):
-        for input in self.inputs:
-            input.refresh()
-        change = self._propagate_specs()
-        if change:
-            self.alloc(except_list)
-        return change
-    
-    def _propagate_specs(self):
-        specs = self._specs()
-        if self.nout == 1:
-            specs = [specs]
-        change = False
-        for output, spec in zip(self.outputs, specs):
-            if output.spec != spec:
-                output.spec = spec
-                change = True
-        return change
-    
-    def alloc(self, except_list = []):
-        for output in self.outputs:
-            if output not in except_list:
-                output.alloc()
-    
-    __env_require__ = ForbidConstantOverwrite
 
     def __copy__(self):
         """
@@ -577,3 +541,41 @@ class DummyOp(NewPythonOp):
 
 DummyRemover = opt.OpRemover(DummyOp)
 
+
+if 0:
+    class RefreshableOp(NewPythonOp):
+
+        def _specs(self):
+            try:
+                return self.specs(*[input.spec for input in self.inputs])
+            except NotImplementedError:
+                raise NotImplementedError("%s cannot infer the specs of its outputs" % self.__class__.__name__)
+
+        def specs(*inputs):
+            raise NotImplementedError
+
+        def refresh(self):
+            """Update and allocate outputs if necessary"""
+
+            for input in self.inputs:
+                input.refresh()
+            change = self._propagate_specs()
+            if change:
+                self.alloc(except_list)
+            return change
+        
+        def _propagate_specs(self):
+            specs = self._specs()
+            if self.nout == 1:
+                specs = [specs]
+            change = False
+            for output, spec in zip(self.outputs, specs):
+                if output.spec != spec:
+                    output.spec = spec
+                    change = True
+            return change
+        
+        def alloc(self, except_list = []):
+            for output in self.outputs:
+                if output not in except_list:
+                    output.alloc()

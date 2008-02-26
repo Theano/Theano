@@ -93,11 +93,11 @@ class ResultBase(object):
         def __init__(self, role): self.old_role = role
         def __nonzero__(self): return False
 
-    class BrokenLinkError(Exception):
-        """Exception thrown when an owner is a BrokenLink"""
+    class BrokenLinkError(Exception): 
+        """The owner is a BrokenLink"""
 
-    class AbstractFunction(Exception):
-        """Exception thrown when an abstract function is called"""
+    class StateError(Exception):
+        """The state of the Result is a problem"""
 
     __slots__ = ['_role', 'constant', '_data', 'state']
 
@@ -111,7 +111,7 @@ class ResultBase(object):
         else:
             try:
                 self._data[0] = self.data_filter(data)
-            except ResultBase.AbstractFunction:
+            except AbstractFunctionError:
                 self._data[0] = data
             self.state = Computed
 
@@ -175,10 +175,13 @@ class ResultBase(object):
             self._data[0] = None
             self.state = Empty
             return
+        if data is self or data is self._data[0]: return
         try:
             self._data[0] = self.data_filter(data)
-        except ResultBase.AbstractFunction: #use default behaviour
+        except AbstractFunctionError: #use default behaviour
             self._data[0] = data
+        if isinstance(data, ResultBase):
+            raise Exception()
         self.state = Computed
 
     data = property(__get_data, __set_data,
@@ -193,14 +196,19 @@ class ResultBase(object):
         the contents of self._data remain sensible.
         
         """
-        raise ResultBase.AbstractFunction()
+        raise AbstractFunctionError()
 
     #
     # alloc
     #
 
     def alloc(self):
-        """Create self.data from data_alloc, and set state to Allocated"""
+        """Create self.data from data_alloc, and set state to Allocated
+
+        Graph routines like the linker will ask Ops to allocate outputs.  The
+        Ops, in turn, usually call this function.  Results that are involved in
+        destroy maps and view maps are exceptions to the usual case.
+        """
         self.data = self.data_alloc()  #might raise exception
         self.state = Allocated
 
@@ -211,7 +219,7 @@ class ResultBase(object):
         implementation will be used in alloc() to produce a data object.
         
         """
-        raise ResultBase.AbstractFunction()
+        raise AbstractFunctionError()
 
 
     #

@@ -86,12 +86,13 @@ def _compile_dir():
 
 class Numpy2(ResultBase):
     """Result storing a numpy ndarray"""
-    __slots__ = ['_dtype', '_shape', ]
+    __slots__ = ['_dtype', '_shape', '_order']
 
     class ShapeUnknown: pass # TODO: use this as the shape of uncomputed ndarrays of unknown shape
     class StateError(Exception): pass
 
     def __init__(self, role=None, data=None, constant=False):
+        self._order = 'C'
         if isinstance(data, (tuple, list)): # unallocated setup
             shape, dtype = data
             ResultBase.__init__(self, role, data=None, constant=constant)
@@ -104,30 +105,23 @@ class Numpy2(ResultBase):
     # ResultBase
     # 
     def data_filter(self, data):
-        #TODO: decide which of these implementations is better
-        if 0:
-            if isinstance(data, numpy.ndarray):
-                return data
-            raise TypeError('failed to filter data to ndarray', data)
-        else:
-            return numpy.asarray(data)
+        return numpy.asarray(data)
         
 
     ################################
     # Numpy2 specific functionality
     #
-    __array__ = property(lambda self: self.data.__array__ )
-    __array_struct__ = property(lambda self: self.data.__array_struct__ )
+    __array__ = property(lambda self: self.data.__array__)
+    __array_struct__ = property(lambda self: self.data.__array_struct__)
 
     def data_alloc(self):
-        return numpy.ndarray(self.shape, self.dtype)
+        return numpy.ndarray(shape=self.shape, dtype=self.dtype, order=self._order)
 
     # self._dtype is used when self.data hasn't been set yet
     def __dtype_get(self):
-        if self.data is None:
-            return self._dtype
-        else:
-            return self.data.dtype
+        if self.data is not None:
+            self._dtype = self.data.dtype
+        return self._dtype
     def __dtype_set(self, dtype):
         if self.data is None:
             self._dtype = dtype
@@ -137,10 +131,9 @@ class Numpy2(ResultBase):
 
     # self._shape is used when self.data hasn't been set yet
     def __shape_get(self):
-        if self.data is None:
-            return self._shape
-        else:
-            return self.data.shape
+        if self.data is not None:
+            self._shape = self.data.shape
+        return self._shape
     def __shape_set(self, shape):
         if self.data is None:
             self._shape = shape
@@ -187,6 +180,7 @@ class Numpy2(ResultBase):
             self.data.itemset(value) # for scalars
         else:
             self.data[:] = value     # for matrices
+        self.state = gof.result.Computed
 
 class _test_Numpy2(unittest.TestCase):
     def setUp(self):
@@ -355,6 +349,7 @@ def cgen(name, behavior, names, vals, converters = None):
     
     def cgetspecs(names, vals, converters):
         d = {}
+        assert len(names) == len(vals)
         for name, value in zip(names, vals):
             d[name] = value.data
         specs = weave.ext_tools.assign_variable_types(names, d, type_converters = converters) #, auto_downcast = 0)
@@ -364,6 +359,7 @@ def cgen(name, behavior, names, vals, converters = None):
         converters = type_spec.default
     for converter in converters:
         assert isinstance(converter, type_spec.omega_type_converter_extension)
+
 
     d, specs = cgetspecs(names, vals, converters)
     
@@ -420,22 +416,38 @@ def cgen(name, behavior, names, vals, converters = None):
     return d, names, code, struct + static, converters    
 
 
-class omega_op(gof.PythonOp):
+class Numpy2Op(gof.lib.PythonOp):
+    """What can we do given we are interacting with Numpy2 inputs and outputs"""
+    def refresh(self, alloc = True):
+        shape = self.refresh_shape()
+        dtype = self.refresh_dtype()
+        out = self.out
+
+        if out.data is not None \
+                and out.shape == shape \
+                and out.dtype == dtype:
+                    return
+
+        alloc |= out.data is not None
+
+        if alloc: out.data = None
+        out.shape = shape
+        out.dtype = dtype
+        if alloc: out.alloc()
+
+class omega_op(Numpy2Op):
 
     forbid_broadcast = False
 
     @staticmethod
     def __clsinit__(cls, name, bases, dct):
-        for fname in ['grad', 'c_impl']:
+        for fname in ['grad', 'c_impl', 'impl']:
             if hasattr(cls, fname):
                 gof.make_static(cls, fname)
 
-        # make impl a static method
-        gof.PythonOp.__clsinit__(cls, name, bases, dct)
-    
     def __new__(cls, *inputs):
         inputs = [wrap(input) for input in inputs]
-        return gof.PythonOp.__new__(cls, *inputs)
+        return Numpy2Op.__new__(cls, *inputs)
 
     def gen_outputs(self):
         return [Numpy2() for i in xrange(self.nout)]
@@ -662,7 +674,7 @@ class elemwise(omega_op):
         # make impl, grad, etc. static methods
         omega_op.__clsinit__(cls, name, bases, dct)
 
-    def _specs(self):
+    def TOGO_specs(self):
         try:
             return self.specs(*[input.spec for input in self.inputs])
         except NotImplementedError:
@@ -706,13 +718,54 @@ class elemwise(omega_op):
             else:
                 return res
         
-    def alloc(self, except_list = []):
+    def TOGO_alloc(self, except_list = []):
         dmap = self.destroy_map()
+        vmap = self.view_map()
 
         gof.PythonOp.alloc(self, except_list = except_list + dmap.keys())
         for output, (input, ) in dmap.items():
             if output not in except_list:
                 output.set_value(input.data)
+
+    def refresh_shape(self):
+        """Make the output have the right stuff"""
+        if len(self.outputs) > 1:
+            raise NotImplementedError('multiple outputs')
+
+        dmap = self.destroy_map()
+        vmap = self.view_map()
+        if dmap != {} or vmap != {}:
+            raise NotImplementedError('destroys or views confuse things',
+                    self.__class__, dmap, vmap)
+
+        # take the shape of the leftmost loop_variable input
+        inames, onames = self.variable_names()
+        linames, lonames = self.loop_variables()
+
+        unknown_output_names = [n for n in onames if n not in lonames]
+        if len(unknown_output_names):
+            raise Exception("cannot infer a specification automatically for variables " \
+                            "%s.{%s} because it is not part of the elementwise loop - "\
+                            "please override the specs method" % 
+                            (self.__class__.__name__, str(unknown_output_names)))
+
+        # shape is leftmost loop-variable input
+        input_loop_shapes = [i.shape for n,i in zip(inames, self.inputs) if n in linames]
+        if len(input_loop_shapes) == 0:
+            raise Exception("cannot infer a specification automatically for output variables " \
+                            "because there is no input loop variable ")
+        for i in xrange(1,len(input_loop_shapes)):
+            if  input_loop_shapes[i] != input_loop_shapes[0]:
+                raise Exception("Input loop variables have different shapes", self.__class__)
+
+        return input_loop_shapes[0]
+
+    def refresh_dtype(self):
+        return upcast(*[i.dtype for i in self.inputs if hasattr(i, 'dtype')])
+
+    @classmethod
+    def set_impl(cls, impl):
+        gof.lib.make_static(cls, 'impl')
 
     @staticmethod
     def is_loop_var(name):
@@ -1134,9 +1187,22 @@ class dot(omega_op):
     impl = numpy.dot
     def grad(x, y, gz):
         return dot(gz, transpose(y)), dot(transpose(x), gz)
-    def specs(x, y):
-        shape = dot._output_shape(x[2], y[2])
-        return (numpy.ndarray, upcast(x[1], y[1]), shape)
+    def refresh(self, alloc=False):
+        x,y = self.inputs
+        shape = self._output_shape(x.shape, y.shape)
+        dtype = upcast(x.dtype, y.dtype)
+        if self.out.data is not None \
+                and self.out.shape == shape \
+                and self.out.dtype == dtype:
+                    return  #everything is ok
+        if alloc or self.out.data is not None: #data should be allocated
+            self.out.data = None
+            self.out.shape = shape
+            self.out.dtype = dtype
+            self.out.alloc()
+        else:
+            self.out.shape = shape
+            self.out.dtype = dtype
     def c_support_code(self):
         return blas.cblas_header_text()
     def c_libs(self):
@@ -1297,8 +1363,8 @@ class _testCase_dot(unittest.TestCase):
         self.fail()
 
 class gemm(omega_op):
-    def destroy_map(self): return {self.out:[self.inputs[0]]}
-
+    def destroy_map(self):
+        return {self.out:[self.inputs[0]]}
     def impl(z, a, x, y, b):
         if b == 0.0:
             if a == 1.0:
@@ -1318,15 +1384,14 @@ class gemm(omega_op):
             z *= b
             z += a * numpy.dot(x,y)
         return z[:]
-
     def grad(z, a, x, y, b, gz):
         raise NotImplemented
-
-    def specs(z, a, x, y, b):
-        assert z[2] == dot._output_shape(x[2], y[2])
-        return z
-    def alloc(self, except_list):
-        self.outputs[0].data = self.inputs[0].data
+    def refresh(self, alloc = False):
+        z,a,x,y,b = self.inputs
+        self.out.shape = z.shape
+        self.out.dtype = z.dtype
+        if alloc:
+            self.out.data = z.data
     def c_support_code(self):
         return blas.cblas_header_text()
     def c_libs(self):
@@ -1355,9 +1420,12 @@ class transpose(omega_op):
     impl = numpy.transpose
     def grad(x, gz):
         return transpose_copy(gz)
-    def specs(x):
-        # todo: handle all tensors!
-        return (numpy.ndarray, x[1], (x[2][1], x[2][0]))
+    def refresh_shape(self):
+        rval = list(self.inputs[0].shape)
+        rval.reverse()
+        return rval
+    def refresh_dtype(self):
+        return  self.inputs[0].dtype
     def c_impl((x, ), (xt, )):
         return """
         const int l = x->nd;
@@ -1635,8 +1703,8 @@ class sum(elemwise):
     impl = numpy.sum
     def grad(x, gz):
         return fill(x, gz)
-    def specs(x):
-        return (numpy.ndarray, x[1], ())
+    def refresh_shape(self):
+        return ()
     def c_init((x, ), (sum, )):
         return "sum_dtype* sump = ((sum_dtype*)PyArray_DATA(sum)); sump[0] = 0;"
     def c_foreach((x_i, ), (sum, )):
@@ -1654,8 +1722,18 @@ class zeros_like(elemwise):
 
 class get_slice(omega_op):
     def view_map(self): return {self.out: [self.inputs[0]]}
-    def impl(x, item): return x.__getitem__(item)
+    def impl(x, item): 
+        rval = x.__getitem__(item)
+        #print 'get_slice running', rval
+        return rval
     def grad(x, gz): raise NotImplemented
+    def refresh_shape(self): 
+        x,item = self.inputs
+        rval = x.data.__getitem__(item.data).shape 
+        #print 'refresh_shape', rval
+        return rval
+    def refresh_dtype(self):
+        return self.inputs[0].data.dtype
 
 class _testCase_slicing(unittest.TestCase):
     def setUp(self):
