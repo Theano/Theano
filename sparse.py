@@ -69,7 +69,7 @@ class SparseR(core.ResultBase):
 
 # convenience base class
 class op(gof.PythonOp, grad.update_gradient_via_grad):
-    pass
+    """unite PythonOp with update_gradient_via_grad"""
 
 #
 # Conversion
