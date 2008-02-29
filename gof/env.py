@@ -6,52 +6,20 @@ from utils import ClsInit
 from err import GofError, GofTypeError, PropagationError
 from op import Op
 from result import is_result
-from features import Listener, Orderings, Constraint, Tool
+from features import Listener, Orderings, Constraint, Tool, uniq_features
 import utils
 
 __all__ = ['InconsistencyError',
            'Env']
 
 
-# class AliasDict(dict):
-#     "Utility class to keep track of what result has been replaced with what result."
-
-#     def group(self, main, *keys):
-#         "Marks all the keys as having been replaced by the result main."
-#         keys = [key for key in keys if key is not main]
-#         if self.has_key(main):
-#             raise Exception("Only group results that have not been grouped before.")
-#         for key in keys:
-#             if self.has_key(key):
-#                 raise Exception("Only group results that have not been grouped before.")
-#             if key is main:
-#                 continue
-#             self.setdefault(key, main)
-
-#     def ungroup(self, main, *keys):
-#         "Undoes group(main, *keys)"
-#         keys = [key for key in keys if key is not main]
-#         for key in keys:
-#             if self[key] is main:
-#                 del self[key]
-
-#     def __call__(self, key):
-#         "Returns the currently active replacement for the given key."
-#         next = self.get(key, None)
-#         while next:
-#             key = next
-#             next = self.get(next, None)
-#         return key
-
-
-
-#TODO: why is this not in err.py? -James
-class InconsistencyError(GofError):
+class InconsistencyError(Exception):
     """
     This exception is raised by Env whenever one of the listeners marks
     the graph as inconsistent.
     """
     pass
+
 
 def require_set(cls):
     """Return the set of objects named in a __env_require__ field in a base class"""
@@ -70,22 +38,22 @@ def require_set(cls):
             r.add(req)
     return r
 
+
 class Env(graph.Graph):
     """
-    An Env represents a subgraph bound by a set of input results and a set of output
-    results. An op is in the subgraph iff it depends on the value of some of the Env's
-    inputs _and_ some of the Env's outputs depend on it. A result is in the subgraph
-    iff it is an input or an output of an op that is in the subgraph.
+    An Env represents a subgraph bound by a set of input results and a
+    set of output results. An op is in the subgraph iff it depends on
+    the value of some of the Env's inputs _and_ some of the Env's
+    outputs depend on it. A result is in the subgraph iff it is an
+    input or an output of an op that is in the subgraph.
 
-    The Env supports the replace operation which allows to replace a result in the
-    subgraph by another, e.g. replace (x + x).out by (2 * x).out. This is the basis
-    for optimization in omega.
+    The Env supports the replace operation which allows to replace a
+    result in the subgraph by another, e.g. replace (x + x).out by (2
+    * x).out. This is the basis for optimization in omega.
 
-    An Env can have listeners, which are instances of EnvListener. Each listener is
-    informed of any op entering or leaving the subgraph (which happens at construction
-    time and whenever there is a replacement). In addition to that, each listener can
-    implement the 'consistent' and 'ordering' methods (see EnvListener) in order to
-    restrict how ops in the subgraph can be related.
+    An Env's functionality can be extended with features, which must
+    be subclasses of L{Listener}, L{Constraint}, L{Orderings} or
+    L{Tool}.
 
     Regarding inputs and orphans:
     In the context of a computation graph, the inputs and orphans are both
@@ -93,7 +61,6 @@ class Env(graph.Graph):
     named as inputs will be assumed to contain fresh.  In other words, the
     backward search from outputs will stop at any node that has been explicitly
     named as an input.
-
     """
 
     ### Special ###
@@ -102,11 +69,6 @@ class Env(graph.Graph):
         """
         Create an Env which operates on the subgraph bound by the inputs and outputs
         sets. If consistency_check is False, an illegal graph will be tolerated.
-
-        Features are class types derived from things in the tools file.  These
-        can be listeners, constraints, orderings, etc.  Features add much
-        (most?) functionality to an Env.
-
         """
 
         self._features = {}
@@ -114,31 +76,13 @@ class Env(graph.Graph):
         self._constraints = {}
         self._orderings = {}
         self._tools = {}
-        
-#         self._preprocessors = set()
-
-#         for feature in features:
-#             if issubclass(feature, tools.Preprocessor):
-#                 preprocessor = feature()
-#                 self._preprocessors.add(preprocessor)
-#                 inputs, outputs = preprocessor.transform(inputs, outputs)
 
         # The inputs and outputs set bound the subgraph this Env operates on.
         self.inputs = set(inputs)
         self.outputs = set(outputs)
         
-        for feature_class in utils.uniq_features(features):
+        for feature_class in uniq_features(features):
             self.add_feature(feature_class, False)
-#             feature = feature_class(self)
-#             if isinstance(feature, tools.Listener):
-#                 self._listeners.add(feature)
-#             if isinstance(feature, tools.Constraint):
-#                 self._constraints.add(feature)
-#             if isinstance(feature, tools.Orderings):
-#                 self._orderings.add(feature)
-#             if isinstance(feature, tools.Tool):
-#                 self._tools.add(feature)
-#                 feature.publish()
 
         # All ops in the subgraph defined by inputs and outputs are cached in _ops
         self._ops = set()
@@ -234,20 +178,6 @@ class Env(graph.Graph):
             except KeyError:
                 pass
 
-#         for i, feature in enumerate(self._features):
-#             if isinstance(feature, feature_class): # exact class or subclass, nothing to do
-#                 return
-#             elif issubclass(feature_class, feature.__class__): # superclass, we replace it
-#                 new_feature = feature_class(self)
-#                 self._features[i] = new_feature
-#                 break
-#         else:
-#             new_feature = feature_class(self)
-#             self._features.append(new_feature)
-#         if isinstance(new_feature, tools.Listener):
-#             for op in self.io_toposort():
-#                 new_feature.on_import(op)
-
     def get_feature(self, feature_class):
         try:
             return self._features[feature_class]
@@ -325,7 +255,7 @@ class Env(graph.Graph):
             self.outputs.add(new_r)
 
         # The actual replacement operation occurs here. This might raise
-        # a GofTypeError
+        # an error.
         self.__move_clients__(clients, r, new_r)
 
         # This function undoes the replacement.

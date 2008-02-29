@@ -5,37 +5,32 @@ value that is the input or the output of an Op.
 
 """
 
-import unittest
-
-from err import GofError
 from utils import AbstractFunctionError
-
 from python25 import all
 
 
-__all__ = ['is_result', 'ResultBase', 'BrokenLink', 'BrokenLinkError' ]
+__all__ = ['is_result',
+           'ResultBase',
+           'BrokenLink',
+           'BrokenLinkError',
+           'StateError',
+           'Empty',
+           'Allocated',
+           'Computed',
+           ]
 
 
 class BrokenLink:
-    """
-    This is placed as the owner of a Result that was replaced by
-    another Result.
-    """
+    """The owner of a Result that was replaced by another Result"""
+    __slots__ = ['old_role']
+    def __init__(self, role): self.old_role = role
+    def __nonzero__(self): return False
 
-    __slots__ = ['owner', 'index']
+class BrokenLinkError(Exception): 
+    """The owner is a BrokenLink"""
 
-    def __init__(self, owner, index):
-        self.owner = owner
-        self.index = index
-
-    def __nonzero__(self):
-        return False
-
-
-class BrokenLinkError(GofError):
-    """
-    """
-    pass
+class StateError(Exception):
+    """The state of the Result is a problem"""
 
 
 # ResultBase state keywords
@@ -61,6 +56,7 @@ class ResultBase(object):
     _data - anything
     constant - Boolean
     state - one of (Empty, Allocated, Computed)
+    name - string
 
     Properties:
     role - (rw)
@@ -89,33 +85,17 @@ class ResultBase(object):
     expressions).
     
     """
-    class BrokenLink:
-        """The owner of a Result that was replaced by another Result"""
-        __slots__ = ['old_role']
-        def __init__(self, role): self.old_role = role
-        def __nonzero__(self): return False
 
-    class BrokenLinkError(Exception): 
-        """The owner is a BrokenLink"""
+    __slots__ = ['_role', 'constant', '_data', 'state', '_name']
 
-    class StateError(Exception):
-        """The state of the Result is a problem"""
-
-    __slots__ = ['_role', 'constant', '_data', 'state']
-
-    def __init__(self, role=None, data=None, constant=False):
+    def __init__(self, role=None, data=None, constant=False, name=None):
         self._role = role
-        self.constant = constant
         self._data = [None]
-        if data is None: #None is not filtered
-            self._data[0] = None
-            self.state = Empty
-        else:
-            try:
-                self._data[0] = self.data_filter(data)
-            except AbstractFunctionError:
-                self._data[0] = data
-            self.state = Computed
+        self.state = Empty
+        self.constant = False
+        self.__set_data(data)
+        self.constant = constant # can only lock data after setting it
+        self.name = name
 
     #
     # role 
@@ -144,7 +124,7 @@ class ResultBase(object):
 
     def __get_owner(self):
         if self._role is None: return None
-        if self.replaced: raise ResultBase.BrokenLinkError()
+        if self.replaced: raise BrokenLinkError()
         return self._role[0]
 
     owner = property(__get_owner, 
@@ -156,7 +136,7 @@ class ResultBase(object):
 
     def __get_index(self):
         if self._role is None: return None
-        if self.replaced: raise ResultBase.BrokenLinkError()
+        if self.replaced: raise BrokenLinkError()
         return self._role[1]
 
     index = property(__get_index,
@@ -171,34 +151,38 @@ class ResultBase(object):
         return self._data[0]
 
     def __set_data(self, data):
-        if self.replaced: raise ResultBase.BrokenLinkError()
-        if self.constant: raise Exception('cannot set constant ResultBase')
+        if self.replaced:
+            raise BrokenLinkError()
+        if data is self._data[0]:
+            return
+        if self.constant:
+            raise Exception('cannot set constant ResultBase')
         if data is None:
             self._data[0] = None
             self.state = Empty
             return
-        if data is self or data is self._data[0]: return
         try:
-            self._data[0] = self.data_filter(data)
-        except AbstractFunctionError: #use default behaviour
-            self._data[0] = data
-        if isinstance(data, ResultBase):
-            raise Exception()
+            self.validate(data)
+        except AbstractFunctionError:
+            pass
+        self._data[0] = data
         self.state = Computed
-
+        
     data = property(__get_data, __set_data,
-            doc = "The storage associated with this result")
+                    doc = "The storage associated with this result")
 
-    def data_filter(self, data):
-        """(abstract) Return an appropriate _data based on data.
+    def validate(self, data):
+        """(abstract) Raise an exception if the data is not of an
+        acceptable type.
 
-        If a subclass overrides this function, then that overriding
-        implementation will be used in __set_data to map the argument to
-        self._data.  This gives a subclass the opportunity to ensure that
-        the contents of self._data remain sensible.
+        If a subclass overrides this function, __set_data will use
+        it to check that the argument can be used properly. This gives
+        a subclass the opportunity to ensure that the contents of
+        self._data remain sensible.
         
         """
         raise AbstractFunctionError()
+
 
     #
     # alloc
@@ -229,19 +213,100 @@ class ResultBase(object):
     #
 
     def __get_replaced(self):
-        return isinstance(self._role, ResultBase.BrokenLink)
+        return isinstance(self._role, BrokenLink)
 
     def __set_replaced(self, replace):
         if replace == self.replaced: return
         if replace:
-            self._role = ResultBase.BrokenLink(self._role)
+            self._role = BrokenLink(self._role)
         else:
             self._role = self._role.old_role
 
     replaced = property(__get_replaced, __set_replaced, doc = "has this Result been replaced?")
 
 
+    #
+    # C code generators
+    #
 
+
+    def c_extract(self):
+        get_from_list = """
+        PyObject* py_%(name)s = PyList_GET_ITEM(%(name)s_storage, 0);
+        Py_XINCREF(py_%(name)s);
+        """
+        return self.c_data_extract() + get_from_list
+
+    def c_data_extract(self):
+        """
+        The code returned from this function must be templated using "%(name)s",
+        representing the name that the caller wants to call this Result.
+        The Python object self.data is in a variable called "py_%(name)s" and
+        this code must declare a variable named "%(name)s" of a type appropriate
+        to manipulate from C. Additional variables and typedefs can be produced.
+        If the data is improper, set an appropriate error message and insert
+        "%(fail)s".
+        """
+        raise AbstractFunction()
+
+
+    def c_sync(self, var_name):
+        set_in_list = """
+        PyList_SET_ITEM(%(name)s_storage, 0, py_%(name)s);
+        Py_XDECREF(py_%(name)s);
+        """
+        return self.c_data_sync() + set_in_list
+
+    def c_data_sync(self):
+        """
+        The code returned from this function must be templated using "%(name)s",
+        representing the name that the caller wants to call this Result.
+        The returned code may set "py_%(name)s" to a PyObject* and that PyObject*
+        will be accessible from Python via result.data. Do not forget to adjust
+        reference counts if "py_%(name)s" is changed from its original value!
+        """
+        raise AbstractFunction()
+
+    #
+    # name
+    #
+
+    def __get_name(self):
+        if self._name:
+            return self._name
+        elif self._role:
+            return "%s.%i" % (self.owner.__class__, self.owner.outputs.index(self))
+        else:
+            return None
+    def __set_name(self, name):
+        if name is not None and not isinstance(name, str):
+            raise TypeError("Name is expected to be a string, or None.")
+        self._name = name
+
+    name = property(__get_name, __set_name,
+                    doc = "Name of the Result.")
+
+
+    #
+    # String representation
+    #
+
+    def __str__(self):
+        name = self.name
+        if name:
+            if self.state is Computed:
+                return name + ":" + str(self.data)
+            else:
+                return name
+        elif self.state is Computed:
+            return str(self.data)
+        else:
+            return "<?>"
+
+    def __repr__(self):
+        return self.name or "<?>"
+                                            
+    
     #################
     # NumpyR Compatibility
     #
@@ -252,26 +317,26 @@ class ResultBase(object):
     def set_value(self, value):
         self.data = value #may raise exception
 
-class _test_ResultBase(unittest.TestCase):
-    def test_0(self):
-        r = ResultBase()
-    def test_1(self):
-        r = ResultBase()
-        assert r.state is Empty
 
-        r.data = 0
-        assert r.data == 0
-        assert r.state is Computed
-        
-        r.data = 1
-        assert r.data == 1
-        assert r.state is Computed
+#     def c_data_extract(self):
+#         return """
+#         PyArrayObject* %%(name)s;
+#         if (py_%%(name)s == Py_None)
+#             %%(name)s = NULL;
+#         else
+#             %%(name)s = (PyArrayObject*)(py_%%(name)s);
+#         typedef %(dtype)s %%(name)s_dtype;
+#         """ % dict(dtype = self.dtype)
 
-        r.data = None
-        assert r.data == None
-        assert r.state is Empty
-
-if __name__ == '__main__':
-    unittest.main()
-
+#     def c_data_sync(self):
+#         return """
+#         if (!%(name)s) {
+#             Py_XDECREF(py_%(name));
+#             py_%(name)s = Py_None;
+#         }
+#         else if ((void*)py_%(name)s != (void*)%(name)s) {
+#             Py_XDECREF(py_%(name));
+#             py_%(name)s = (PyObject*)%(name)s;
+#         }
+#         """
 

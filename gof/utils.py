@@ -12,6 +12,15 @@ class AbstractFunctionError(Exception):
     function has been left out of an implementation class.
     """
 
+def attr_checker(*attrs):
+    def f(candidate):
+        for attr in attrs:
+            if not hasattr(candidate, attr):
+                return False
+        return True
+    f.__doc__ = "Checks that the candidate has the following attributes: %s" % ", ".join(["'%s'"%attr for attr in attrs])
+    return f
+
 
 def all_bases(cls, accept):
     rval = set([cls])
@@ -34,21 +43,6 @@ def all_bases_collect(cls, raw_name):
 
 
 
-def uniq_features(_features, *_rest):
-    """Return a list such that no element is a subclass of another"""
-    # used in Env.__init__ to 
-    features = [x for x in _features]
-    for other in _rest:
-        features += [x for x in other]
-    res = []
-    while features:
-        feature = features.pop()
-        for feature2 in features:
-            if issubclass(feature2, feature):
-                break
-        else:
-            res.append(feature)
-    return res
 
 
 

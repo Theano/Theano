@@ -1,8 +1,6 @@
 
 from copy import copy
 
-from result import BrokenLink, BrokenLinkError
-from op import Op
 import utils
 
 
@@ -11,11 +9,17 @@ __all__ = ['inputs',
            'ops',
            'clone', 'clone_get_equiv',
            'io_toposort',
+           'default_leaf_formatter', 'default_node_formatter',
+           'op_as_string',
            'as_string',
            'Graph']
 
 
-def inputs(o, repair = False):
+is_result = utils.attr_checker('owner', 'index')
+is_op = utils.attr_checker('inputs', 'outputs')
+
+
+def inputs(o):
     """
     o -> list of output Results
 
@@ -24,21 +28,12 @@ def inputs(o, repair = False):
     """
     results = set()
     def seek(r):
-        if isinstance(r, BrokenLink):
-            raise BrokenLinkError
         op = r.owner
         if op is None:
             results.add(r)
         else:
-            for i in range(len(op.inputs)):
-                try:
-                    seek(op.inputs[i])
-                except BrokenLinkError:
-                    if repair:
-                        op.refresh()
-                        seek(op.inputs[i])
-                    else:
-                        raise
+            for input in op.inputs:
+                seek(input)
     for output in o:
         seek(output)
     return results
@@ -60,8 +55,6 @@ def results_and_orphans(i, o):
     incomplete_paths = []
 
     def helper(r, path):
-        if isinstance(r, BrokenLink):
-            raise BrokenLinkError
         if r in i:
             results.update(path)
         elif r.owner is None:
@@ -128,45 +121,56 @@ def orphans(i, o):
     return results_and_orphans(i, o)[1]
 
 
-def clone(i, o):
+def clone(i, o, copy_inputs = False):
     """
     i -> list of input Results
     o -> list of output Results
+    copy_inputs -> if True, the inputs will be copied (defaults to False)
 
     Copies the subgraph contained between i and o and returns the
-    outputs of that copy (corresponding to o). The input Results in
-    the list are _not_ copied and the new graph refers to the
-    originals.
+    outputs of that copy (corresponding to o).
     """
-    new_o, equiv = clone_get_equiv(i, o)
-    return new_o
+    equiv = clone_get_equiv(i, o)
+    return [equiv[output] for output in o]
 
 
 def clone_get_equiv(i, o, copy_inputs = False):
     """
     i -> list of input Results
     o -> list of output Results
+    copy_inputs -> if True, the inputs will be replaced in the cloned
+                   graph by copies available in the equiv dictionary
+                   returned by the function (copy_inputs defaults to False)
 
-    Returns (new_o, equiv) where new_o are the outputs of a copy of
-    the whole subgraph bounded by i and o and equiv is a dictionary
-    that maps the original ops and results found in the subgraph to
-    their copy (akin to deepcopy's memo). See clone for more details.
+    Returns equiv a dictionary mapping each result and op in the
+    graph delimited by i and o to a copy (akin to deepcopy's memo).
     """
 
     d = {}
 
-    for op in ops(i, o):
-        d[op] = copy(op)
+    for input in i:
+        if copy_inputs:
+            d[input] = copy(input)
+        else:
+            d[input] = input
 
-    for old_op, op in d.items():
-        for old_output, output in zip(old_op.outputs, op.outputs):
-            d[old_output] = output
-        for i, input in enumerate(op.inputs):
-            owner = input.owner
-            if owner in d:
-                op._inputs[i] = d[owner].outputs[input._index]
+    def clone_helper(result):
+        if result in d:
+            return d[result]
+        op = result.owner
+        if not op:
+            return result
+        else:
+            new_op = op.__class__(*[clone_helper(input) for input in op.inputs])
+            d[op] = new_op
+            for output, new_output in zip(op.outputs, new_op.outputs):
+                d[output] = new_output
+            return d[result]
 
-    return [[d[output] for output in o], d]
+    for output in o:
+        clone_helper(output)
+
+    return d
 
 
 def io_toposort(i, o, orderings = {}):
@@ -188,17 +192,32 @@ def io_toposort(i, o, orderings = {}):
     all = ops(i, o)
     for op in all:
         prereqs_d.setdefault(op, set()).update(set([input.owner for input in op.inputs if input.owner and input.owner in all]))
-#        prereqs_d[op] = set([input.owner for input in op.inputs if input.owner and input.owner in all])
     return utils.toposort(prereqs_d)
 
 
-def as_string(i, o):
+default_leaf_formatter = str
+default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.__class__.__name__,
+                                                            ", ".join(argstrings))
+
+def op_as_string(i, op,
+                 leaf_formatter = default_leaf_formatter,
+                 node_formatter = default_node_formatter):
+    strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
+    return node_formatter(op, strs)
+
+
+def as_string(i, o,
+              leaf_formatter = default_leaf_formatter,
+              node_formatter = default_node_formatter):
     """
     i -> list of input Results
     o -> list of output Results
+    leaf_formatter -> function that takes a result and returns a string to describe it
+    node_formatter -> function that takes an op and the list of strings corresponding
+                      to its arguments and returns a string to describe it
 
     Returns a string representation of the subgraph between i and o. If the same
-    Op is used by several other ops, the first occurrence will be marked as
+    op is used by several other ops, the first occurrence will be marked as
     '*n -> description' and all subsequent occurrences will be marked as '*n',
     where n is an id number (ids are attributed in an unspecified order and only
     exist for viewing convenience).
@@ -219,50 +238,37 @@ def as_string(i, o):
     done = set()
 
     def multi_index(x):
-        try:
-            return multi.index(x) + 1
-        except:
-            return 999
+        return multi.index(x) + 1
 
-    def describe(x, first = False):
-        if isinstance(x, Result):
-            done.add(x)
-            if x.owner is not None and x not in i:
-                op = x.owner
-                idx = op.outputs.index(x)
-                if idx:
-                    s = describe(op, first) + "." + str(idx)
-                else:
-                    s = describe(op, first)
-                return s
+    def describe(r):
+        if r.owner is not None and r not in i:
+            op = r.owner
+            idx = op.outputs.index(r)
+            if idx == op._default_output_idx:
+                idxs = ""
             else:
-                return str(id(x))
-                
-        elif isinstance(x, Op):
-            if x in done:
-                return "*%i" % multi_index(x)
+                idxs = "::%i" % idx
+            if op in done:
+                return "*%i%s" % (multi_index(x), idxs)
             else:
-                done.add(x)
-                if not first and hasattr(x, 'name') and x.name is not None:
-                    return x.name
-                s = x.__class__.__name__ + "(" + ", ".join([describe(v) for v in x.inputs]) + ")"
-                if x in multi:
+                done.add(op)
+                s = node_formatter(op, [describe(input) for input in op.inputs])
+                if op in multi:
                     return "*%i -> %s" % (multi_index(x), s)
                 else:
                     return s
-        
         else:
-            raise TypeError("Cannot print type: %s" % x.__class__)
+            return leaf_formatter(r)
 
-    return "[" + ", ".join([describe(x, True) for x in o]) + "]"
+    return [describe(output) for output in o]
 
-
-# Op.__str__ = lambda self: as_string(inputs(self.outputs), self.outputs)[1:-1]
-# Result.__str__ = lambda self: as_string(inputs([self]), [self])[1:-1]
 
 
 
 class Graph:
+    """
+    Object-oriented wrapper for all the functions in this module.
+    """
 
     def __init__(self, inputs, outputs):
         self.inputs = inputs
