@@ -2,10 +2,6 @@
 from copy import copy
 
 import graph
-from utils import ClsInit
-from err import GofError, GofTypeError, PropagationError
-from op import Op
-from result import is_result
 from features import Listener, Orderings, Constraint, Tool, uniq_features
 import utils
 from utils import AbstractFunctionError
@@ -236,12 +232,6 @@ class Env(graph.Graph):
         be raised if there are type mismatches.
         """
 
-        # Assert that they are result instances.
-        if not is_result(r):
-            raise TypeError(r)
-        if not is_result(new_r):
-            raise TypeError(new_r)
-
         self.__import_r_satisfy__([new_r])
         
         # Save where we are so we can backtrack
@@ -452,5 +442,20 @@ class Env(graph.Graph):
 
     def __str__(self):
         return "[%s]" % ", ".join(graph.as_string(self.inputs, self.outputs))
+
+    def clone(self, clone_inputs = True):
+        equiv = graph.clone_get_equiv(self.inputs, self.outputs, clone_inputs)
+        new = self.__class__([equiv[input] for input in self.inputs],
+                             [equiv[output] for output in self.outputs],
+                             self._features.keys(),
+                             consistency_check = False)
+        try:
+            new.set_equiv(equiv)
+        except AttributeError:
+            pass
+        return new
+
+    def __copy__(self):
+        return self.clone()
 
 

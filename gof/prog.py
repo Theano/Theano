@@ -1,4 +1,35 @@
 
+
+from env import Env
+from utils import AbstractFunctionError
+
+
+class Linker:
+
+    def __init__(self, env):
+        self.env = env
+        self.thunk = None
+
+    def compile(self):
+        raise AbstractFunctionError()
+
+    def run(self):
+        self.thunk()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # import compile
 
 import env

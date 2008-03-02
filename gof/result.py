@@ -6,28 +6,15 @@ value that is the input or the output of an Op.
 """
 
 from utils import AbstractFunctionError
-from python25 import all
 
 
-__all__ = ['is_result',
-           'ResultBase',
-#            'BrokenLink',
-#            'BrokenLinkError',
+__all__ = ['ResultBase',
            'StateError',
            'Empty',
            'Allocated',
            'Computed',
            ]
 
-
-# class BrokenLink:
-#     """The owner of a Result that was replaced by another Result"""
-#     __slots__ = ['old_role']
-#     def __init__(self, role): self.old_role = role
-#     def __nonzero__(self): return False
-
-# class BrokenLinkError(Exception): 
-#     """The owner is a BrokenLink"""
 
 class StateError(Exception):
     """The state of the Result is a problem"""
@@ -43,18 +30,12 @@ class Computed : """Memory has been allocated, contents are the owner's output."
 # Result
 ############################
 
-def is_result(obj):
-    """Return True iff obj provides the interface of a Result"""
-    attr_list = 'owner',
-    return all([hasattr(obj, attr) for attr in attr_list])
-
 class ResultBase(object):
     """Base class for storing Op inputs and outputs
 
     Attributes:
     _role - None or (owner, index) #or BrokenLink
     _data - anything
-    constant - Boolean
     state - one of (Empty, Allocated, Computed)
     name - string
 
@@ -63,7 +44,6 @@ class ResultBase(object):
     owner - (ro)
     index - (ro)
     data - (rw) : calls data_filter when setting
-#    replaced - (rw) : True iff _role is BrokenLink
 
     Methods:
     alloc() - create storage in data, suitable for use by C ops. 
@@ -72,29 +52,16 @@ class ResultBase(object):
     Abstract Methods:
     data_filter
     data_alloc
-
-
-#    Notes (from previous implementation):
-
-#    A Result instance should be immutable: indeed, if some aspect of a
-#    Result is changed, operations that use it might suddenly become
-#    invalid. Instead, a new Result instance should be instanciated
-#    with the correct properties and the invalidate method should be
-#    called on the Result which is replaced (this will make its owner a
-#    BrokenLink instance, which behaves like False in conditional
-#    expressions).
     
     """
 
-    __slots__ = ['_role', 'constant', '_data', 'state', '_name']
+    __slots__ = ['_role', '_data', 'state', '_name']
 
-    def __init__(self, role=None, data=None, constant=False, name=None):
+    def __init__(self, role=None, data=None, name=None):
         self._role = role
         self._data = [None]
         self.state = Empty
-        self.constant = False
         self.__set_data(data)
-        self.constant = constant # can only lock data after setting it
         self.name = name
 
     #
@@ -124,7 +91,6 @@ class ResultBase(object):
 
     def __get_owner(self):
         if self._role is None: return None
-#        if self.replaced: raise BrokenLinkError()
         return self._role[0]
 
     owner = property(__get_owner, 
@@ -136,7 +102,6 @@ class ResultBase(object):
 
     def __get_index(self):
         if self._role is None: return None
-#         if self.replaced: raise BrokenLinkError()
         return self._role[1]
 
     index = property(__get_index,
@@ -151,12 +116,8 @@ class ResultBase(object):
         return self._data[0]
 
     def __set_data(self, data):
-#         if self.replaced:
-#             raise BrokenLinkError()
         if data is self._data[0]:
             return
-        if self.constant:
-            raise Exception('cannot set constant ResultBase')
         if data is None:
             self._data[0] = None
             self.state = Empty
@@ -209,26 +170,15 @@ class ResultBase(object):
 
 
     #
-    # replaced
-    #
-
-#     def __get_replaced(self):
-#         return isinstance(self._role, BrokenLink)
-
-#     def __set_replaced(self, replace):
-#         if replace == self.replaced: return
-#         if replace:
-#             self._role = BrokenLink(self._role)
-#         else:
-#             self._role = self._role.old_role
-
-#     replaced = property(__get_replaced, __set_replaced, doc = "has this Result been replaced?")
-
-
-    #
     # C code generators
     #
 
+    def c_type(self):
+        """
+        Return a string naming the C type that Ops must use to manipulate
+        this Result.
+        """
+        raise AbstractFunctionError()
 
     def c_extract(self):
         get_from_list = """
@@ -239,16 +189,17 @@ class ResultBase(object):
 
     def c_data_extract(self):
         """
-        The code returned from this function must be templated using "%(name)s",
-        representing the name that the caller wants to call this Result.
-        The Python object self.data is in a variable called "py_%(name)s" and
-        this code must declare a variable named "%(name)s" of a type appropriate
-        to manipulate from C. Additional variables and typedefs can be produced.
-        If the data is improper, set an appropriate error message and insert
-        "%(fail)s".
+        The code returned from this function must be templated using
+        "%(name)s", representing the name that the caller wants to
+        call this Result. The Python object self.data is in a
+        variable called "py_%(name)s" and this code must declare a
+        variable named "%(name)s" of type "%(type)s" where "%(type)s"
+        will be replaced by the return value of
+        self.c_type(). Additional variables and typedefs can be
+        produced. If the data is improper, set an appropriate error
+        message and insert "%(fail)s".
         """
-        raise AbstractFunction()
-
+        raise AbstractFunctionError()
 
     def c_sync(self, var_name):
         set_in_list = """
@@ -265,7 +216,20 @@ class ResultBase(object):
         will be accessible from Python via result.data. Do not forget to adjust
         reference counts if "py_%(name)s" is changed from its original value!
         """
-        raise AbstractFunction()
+        raise AbstractFunctionError()
+
+    def c_headers(self):
+        """
+        Return a list of header files that must be included from C to manipulate
+        this Result.
+        """
+        return []
+
+    def c_libraries(self):
+        """
+        Return a list of libraries to link against to manipulate this Result.
+        """
+        return []
 
     #
     # name
@@ -310,16 +274,6 @@ class ResultBase(object):
     #
     # same properties
     #
-
-#     def __eq__(self, other):
-#         if self.state is not Computed:
-#             raise StateError("Can only compare computed results for equality.")
-#         if isinstance(other, Result):
-#             if other.state is not Computed:
-#                 raise StateError("Can only compare computed results for equality.")
-#             return self.data == other.data
-#         else:
-#             return self.data == other
 
     def same_properties(self, other):
         raise AbstractFunction()

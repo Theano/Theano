@@ -11,7 +11,7 @@ from toolbox import *
 class MyResult(ResultBase):
 
     def __init__(self, name):
-        ResultBase.__init__(self, role = None, data = [1000], constant = False, name = name)
+        ResultBase.__init__(self, role = None, data = [1000], name = name)
 
     def __str__(self):
         return self.name
@@ -22,11 +22,6 @@ class MyResult(ResultBase):
 
 
 class MyOp(Op):
-
-    def __new__(cls, *inputs):
-        op = Op.__new__(cls)
-        op.__init__(*inputs)
-        return op.out
         
     def __init__(self, *inputs):
         for input in inputs:
@@ -49,6 +44,14 @@ class Op4(MyOp):
     pass
 
 
+from constructor import Constructor
+from allocators import BuildAllocator
+c = Constructor(BuildAllocator)
+c.update(globals())
+for k, v in c.items():
+    globals()[k.lower()] = v
+
+
 def inputs():
     x = MyResult('x')
     y = MyResult('y')
@@ -63,7 +66,7 @@ class _test_PatternOptimizer(unittest.TestCase):
     
     def test_0(self):
         x, y, z = inputs()
-        e = Op1(Op2(x, y), z)
+        e = op1(op2(x, y), z)
         g = env([x, y, z], [e])
         PatternOptimizer((Op1, (Op2, '1', '2'), '3'),
                          (Op4, '3', '2')).optimize(g)
@@ -71,7 +74,7 @@ class _test_PatternOptimizer(unittest.TestCase):
 
     def test_1(self):
         x, y, z = inputs()
-        e = Op1(Op2(x, y), z)
+        e = op1(op2(x, y), z)
         g = env([x, y, z], [e])
         PatternOptimizer((Op1, (Op2, '1', '1'), '2'),
                          (Op4, '2', '1')).optimize(g)
@@ -79,7 +82,7 @@ class _test_PatternOptimizer(unittest.TestCase):
 
     def test_2(self):
         x, y, z = inputs()
-        e = Op1(Op2(x, y), z)
+        e = op1(op2(x, y), z)
         g = env([x, y, z], [e])
         PatternOptimizer((Op2, '1', '2'),
                          (Op1, '2', '1')).optimize(g)
@@ -87,7 +90,7 @@ class _test_PatternOptimizer(unittest.TestCase):
 
     def test_3(self):
         x, y, z = inputs()
-        e = Op1(Op2(x, y), Op2(x, y), Op2(y, z))
+        e = op1(op2(x, y), op2(x, y), op2(y, z))
         g = env([x, y, z], [e])
         PatternOptimizer((Op2, '1', '2'),
                          (Op4, '1')).optimize(g)
@@ -95,7 +98,7 @@ class _test_PatternOptimizer(unittest.TestCase):
 
     def test_4(self):
         x, y, z = inputs()
-        e = Op1(Op1(Op1(Op1(x))))
+        e = op1(op1(op1(op1(x))))
         g = env([x, y, z], [e])
         PatternOptimizer((Op1, (Op1, '1')),
                          '1').optimize(g)
@@ -103,7 +106,7 @@ class _test_PatternOptimizer(unittest.TestCase):
 
     def test_5(self):
         x, y, z = inputs()
-        e = Op1(Op1(Op1(Op1(Op1(x)))))
+        e = op1(op1(op1(op1(op1(x)))))
         g = env([x, y, z], [e])
         PatternOptimizer((Op1, (Op1, '1')),
                          '1').optimize(g)
@@ -114,14 +117,14 @@ class _test_OpSubOptimizer(unittest.TestCase):
     
     def test_0(self):
         x, y, z = inputs()
-        e = Op1(Op1(Op1(Op1(Op1(x)))))
+        e = op1(op1(op1(op1(op1(x)))))
         g = env([x, y, z], [e])
         OpSubOptimizer(Op1, Op2).optimize(g)
         assert str(g) == "[Op2(Op2(Op2(Op2(Op2(x)))))]"
     
     def test_1(self):
         x, y, z = inputs()
-        e = Op1(Op2(x), Op3(y), Op4(z))
+        e = op1(op2(x), op3(y), op4(z))
         g = env([x, y, z], [e])
         OpSubOptimizer(Op3, Op4).optimize(g)
         assert str(g) == "[Op1(Op2(x), Op4(y), Op4(z))]"

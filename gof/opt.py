@@ -82,9 +82,9 @@ class OpSubOptimizer(Optimizer):
         for op in candidates:
             try:
                 # note: only replaces the default 'out' port if it exists
-                r = self.op2(*op.inputs)
-                if isinstance(r, Op):
-                    r = r.out
+                r = self.op2(*op.inputs).out
+#                 if isinstance(r, Op):
+#                     r = r.out
                 env.replace(op.out, r)
             except InconsistencyError, e:
 #                print "Warning: OpSubOpt failed to transform %s into %s: %s" % (op, self.op2, str(e)) # warning is for debug
@@ -160,12 +160,13 @@ class PatternOptimizer(OpSpecificOptimizer):
         if u:
             try:
                 # note: only replaces the default 'out' port if it exists
-                new = build(self.out_pattern, u)
-                if isinstance(new, Op):
+                p = self.out_pattern
+                new = build(p, u)
+                if not isinstance(p, str):
                     new = new.out
                 env.replace(op.out, new)
             except InconsistencyError, e:
-                print "Warning: '%s' failed to apply on %s: %s" % (self, op, str(e)) # warning is for debug
+#                print "Warning: '%s' failed to apply on %s: %s" % (self, op, str(e)) # warning is for debug
                 pass
 
 

@@ -11,7 +11,7 @@ class MyResult(ResultBase):
 
     def __init__(self, thingy):
         self.thingy = thingy
-        ResultBase.__init__(self, role = None, data = [self.thingy], constant = False)
+        ResultBase.__init__(self, role = None, data = [self.thingy])
 
     def __eq__(self, other):
         return self.same_properties(other)

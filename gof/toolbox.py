@@ -23,6 +23,10 @@ class EquivTool(Listener, Tool, dict):
 
     def publish(self):
         self.env.equiv = self
+        self.env.set_equiv = self.set_equiv
+
+    def set_equiv(self, d):
+        self.update(d)
 
     def group(self, main, *keys):
         "Marks all the keys as having been replaced by the Result main."

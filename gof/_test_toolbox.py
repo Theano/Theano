@@ -13,7 +13,7 @@ from toolbox import *
 class MyResult(ResultBase):
 
     def __init__(self, name):
-        ResultBase.__init__(self, role = None, data = [1000], constant = False, name = name)
+        ResultBase.__init__(self, role = None, data = [1000], name = name)
 
     def __str__(self):
         return self.name
@@ -24,12 +24,7 @@ class MyResult(ResultBase):
 
 class MyOp(Op):
     nin = -1
-    
-    def __new__(cls, *inputs):
-        op = Op.__new__(cls)
-        op.__init__(*inputs)
-        return op.out
-        
+
     def __init__(self, *inputs):
         assert len(inputs) == self.nin
         for input in inputs:
@@ -46,6 +41,12 @@ class Add(MyOp):
 
 class Dot(MyOp):
     nin = 2
+
+from constructor import Constructor
+from allocators import BuildAllocator
+c = Constructor(BuildAllocator)
+c.update(globals())
+globals().update(c)
 
     
 def inputs():
@@ -64,7 +65,7 @@ class _test_EquivTool(unittest.TestCase):
         assert g.equiv(sx) is sx
         g.replace(sx, Dot(x, z))
         assert g.equiv(sx) is not sx
-        assert isinstance(g.equiv(sx).owner, Dot)
+        assert isinstance(g.equiv(sx).owner, Dot.opclass)
 
 
 

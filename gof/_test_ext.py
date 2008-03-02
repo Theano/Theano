@@ -9,10 +9,11 @@ from ext import *
 from env import Env, InconsistencyError
 from toolbox import EquivTool
 
+
 class MyResult(ResultBase):
 
     def __init__(self, name):
-        ResultBase.__init__(self, role = None, data = [1000], constant = False, name = name)
+        ResultBase.__init__(self, role = None, data = [1000], name = name)
 
     def __str__(self):
         return self.name
@@ -23,11 +24,6 @@ class MyResult(ResultBase):
 
 class MyOp(Op):
     nin = -1
-    
-    def __new__(cls, *inputs):
-        op = Op.__new__(cls)
-        op.__init__(*inputs)
-        return op.out
         
     def __init__(self, *inputs):
         assert len(inputs) == self.nin
@@ -64,6 +60,13 @@ i2a = OpSubOptimizer(AddInPlace, Add)
 
 t2s = OpSubOptimizer(TransposeView, Sigmoid)
 s2t = OpSubOptimizer(Sigmoid, TransposeView)
+
+
+from constructor import Constructor
+from allocators import BuildAllocator
+c = Constructor(BuildAllocator)
+c.update(globals())
+globals().update(c)
 
 
 class _test_all(unittest.TestCase):
