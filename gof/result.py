@@ -11,8 +11,8 @@ from python25 import all
 
 __all__ = ['is_result',
            'ResultBase',
-           'BrokenLink',
-           'BrokenLinkError',
+#            'BrokenLink',
+#            'BrokenLinkError',
            'StateError',
            'Empty',
            'Allocated',
@@ -20,14 +20,14 @@ __all__ = ['is_result',
            ]
 
 
-class BrokenLink:
-    """The owner of a Result that was replaced by another Result"""
-    __slots__ = ['old_role']
-    def __init__(self, role): self.old_role = role
-    def __nonzero__(self): return False
+# class BrokenLink:
+#     """The owner of a Result that was replaced by another Result"""
+#     __slots__ = ['old_role']
+#     def __init__(self, role): self.old_role = role
+#     def __nonzero__(self): return False
 
-class BrokenLinkError(Exception): 
-    """The owner is a BrokenLink"""
+# class BrokenLinkError(Exception): 
+#     """The owner is a BrokenLink"""
 
 class StateError(Exception):
     """The state of the Result is a problem"""
@@ -52,7 +52,7 @@ class ResultBase(object):
     """Base class for storing Op inputs and outputs
 
     Attributes:
-    _role - None or (owner, index) or BrokenLink
+    _role - None or (owner, index) #or BrokenLink
     _data - anything
     constant - Boolean
     state - one of (Empty, Allocated, Computed)
@@ -63,7 +63,7 @@ class ResultBase(object):
     owner - (ro)
     index - (ro)
     data - (rw) : calls data_filter when setting
-    replaced - (rw) : True iff _role is BrokenLink
+#    replaced - (rw) : True iff _role is BrokenLink
 
     Methods:
     alloc() - create storage in data, suitable for use by C ops. 
@@ -74,15 +74,15 @@ class ResultBase(object):
     data_alloc
 
 
-    Notes (from previous implementation):
+#    Notes (from previous implementation):
 
-    A Result instance should be immutable: indeed, if some aspect of a
-    Result is changed, operations that use it might suddenly become
-    invalid. Instead, a new Result instance should be instanciated
-    with the correct properties and the invalidate method should be
-    called on the Result which is replaced (this will make its owner a
-    BrokenLink instance, which behaves like False in conditional
-    expressions).
+#    A Result instance should be immutable: indeed, if some aspect of a
+#    Result is changed, operations that use it might suddenly become
+#    invalid. Instead, a new Result instance should be instanciated
+#    with the correct properties and the invalidate method should be
+#    called on the Result which is replaced (this will make its owner a
+#    BrokenLink instance, which behaves like False in conditional
+#    expressions).
     
     """
 
@@ -124,7 +124,7 @@ class ResultBase(object):
 
     def __get_owner(self):
         if self._role is None: return None
-        if self.replaced: raise BrokenLinkError()
+#        if self.replaced: raise BrokenLinkError()
         return self._role[0]
 
     owner = property(__get_owner, 
@@ -136,7 +136,7 @@ class ResultBase(object):
 
     def __get_index(self):
         if self._role is None: return None
-        if self.replaced: raise BrokenLinkError()
+#         if self.replaced: raise BrokenLinkError()
         return self._role[1]
 
     index = property(__get_index,
@@ -151,8 +151,8 @@ class ResultBase(object):
         return self._data[0]
 
     def __set_data(self, data):
-        if self.replaced:
-            raise BrokenLinkError()
+#         if self.replaced:
+#             raise BrokenLinkError()
         if data is self._data[0]:
             return
         if self.constant:
@@ -212,17 +212,17 @@ class ResultBase(object):
     # replaced
     #
 
-    def __get_replaced(self):
-        return isinstance(self._role, BrokenLink)
+#     def __get_replaced(self):
+#         return isinstance(self._role, BrokenLink)
 
-    def __set_replaced(self, replace):
-        if replace == self.replaced: return
-        if replace:
-            self._role = BrokenLink(self._role)
-        else:
-            self._role = self._role.old_role
+#     def __set_replaced(self, replace):
+#         if replace == self.replaced: return
+#         if replace:
+#             self._role = BrokenLink(self._role)
+#         else:
+#             self._role = self._role.old_role
 
-    replaced = property(__get_replaced, __set_replaced, doc = "has this Result been replaced?")
+#     replaced = property(__get_replaced, __set_replaced, doc = "has this Result been replaced?")
 
 
     #
@@ -305,6 +305,24 @@ class ResultBase(object):
 
     def __repr__(self):
         return self.name or "<?>"
+
+    
+    #
+    # same properties
+    #
+
+#     def __eq__(self, other):
+#         if self.state is not Computed:
+#             raise StateError("Can only compare computed results for equality.")
+#         if isinstance(other, Result):
+#             if other.state is not Computed:
+#                 raise StateError("Can only compare computed results for equality.")
+#             return self.data == other.data
+#         else:
+#             return self.data == other
+
+    def same_properties(self, other):
+        raise AbstractFunction()
                                             
     
     #################

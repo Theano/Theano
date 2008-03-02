@@ -3,7 +3,7 @@ from op import Op
 from env import InconsistencyError
 import utils
 import unify
-import features
+import toolbox
 import ext
 
 
@@ -51,21 +51,11 @@ class LocalOptimizer(Optimizer):
             if env.has_op(op):
                 self.apply_on_op(env, op)
 
-#         no_change_listener = graph.changed is None
-#         while(True):
-#             exprs = self.candidates(graph)
-#             graph.changed(False)
-#             for expr in exprs:
-#                 self.apply_on_op(graph, expr)
-#                 if no_change_listener or graph.changed:
-#                     break
-#             else:
-#                 break
 
 
 class OpSpecificOptimizer(LocalOptimizer):
 
-    __env_require__ = features.InstanceFinder
+    __env_require__ = toolbox.InstanceFinder
 
     opclass = Op
 
@@ -77,10 +67,10 @@ class OpSpecificOptimizer(LocalOptimizer):
 
 class OpSubOptimizer(Optimizer):
 
-    __env_require__ = features.InstanceFinder
+    __env_require__ = toolbox.InstanceFinder
 
     def __init__(self, op1, op2):
-        if not op1.has_default_output:
+        if not op1._default_output_idx >= 0:
             raise TypeError("OpSubOptimizer must be used with Op instances that have a default output.")
         # note: op2 must have the same input signature as op1
         self.op1 = op1
@@ -97,14 +87,14 @@ class OpSubOptimizer(Optimizer):
                     r = r.out
                 env.replace(op.out, r)
             except InconsistencyError, e:
-                print "Warning: OpSubOpt failed to transform %s into %s: %s" % (op, self.op2, str(e)) # warning is for debug
+#                print "Warning: OpSubOpt failed to transform %s into %s: %s" % (op, self.op2, str(e)) # warning is for debug
                 pass
 
 
 
 class OpRemover(Optimizer):
 
-    __env_require__ = features.InstanceFinder
+    __env_require__ = toolbox.InstanceFinder
 
     def __init__(self, opclass):
         self.opclass = opclass
@@ -118,7 +108,7 @@ class OpRemover(Optimizer):
                 for input, output in zip(op.inputs, op.outputs):
                     env.replace(output, input)
             except InconsistencyError, e:
-                print "Warning: OpRemover failed to remove %s: %s" % (op, str(e)) # warning is for debug
+#                print "Warning: OpRemover failed to remove %s: %s" % (op, str(e)) # warning is for debug
                 pass
 
 

@@ -4,7 +4,7 @@ Contains the Op class, which is the base interface for all operations
 compatible with gof's graph manipulation routines.
 """
 
-from result import BrokenLinkError
+# from result import BrokenLinkError
 from utils import ClsInit, all_bases, all_bases_collect, AbstractFunctionError
 import graph
 
@@ -44,132 +44,164 @@ class Op(object):
 
 
     def __init__(self, *inputs):
-        self._inputs = None
-        self._outputs = None
-        self.__set_inputs(inputs)
-        self.validate_update()
+        raise AbstractFunctionError("Op is an abstract class. Its constructor does nothing, you must override it.")
+
+    
+#     def __init__(self, *inputs):
+#         self._inputs = None
+#         self._outputs = None
+#         self.set_inputs(inputs)
+#         self.validate_update()
 
 
-    def __get_input(self, i):
-        input = self._inputs[i]
-        if input.replaced:
-            raise BrokenLinkError()
-        return input
-    def __set_input(self, i, new_input):
-        self._inputs[i] = new_input
+#     def __get_input(self, i):
+#         input = self._inputs[i]
+# #         if input.replaced:
+# #             raise BrokenLinkError()
+#         return input
+#     def __set_input(self, i, new_input):
+#         self._inputs[i] = new_input
 
 
-    def __get_inputs(self):
-        for input in self._inputs:
-            if input.replaced:
-                raise BrokenLinkError()
-        return self._inputs
-    def __set_inputs(self, new_inputs):
-        self._inputs = list(new_inputs)
+#     def __get_inputs(self):
+# #         for input in self._inputs:
+# #             if input.replaced:
+# #                 raise BrokenLinkError()
+#         return self._inputs
+#     def __set_inputs(self, new_inputs):
+#         self._inputs = list(new_inputs)
 
 
-    def __get_output(self, i):
-        return self._outputs[i]
-    def __set_output(self, i, new_output):
-        old_output = self._outputs[i]
-        if old_output != new_output:
-            old_output.replaced = True
-            try:
-                # We try to reuse the old storage, if there is one
-                new_output.data = old_output.data
-            except:
-                pass
-            new_output.role = (self, i)
-            self._outputs[i] = new_output
+#     def __get_output(self, i):
+#         return self._outputs[i]
+#     def __set_output(self, i, new_output):
+#         raise Exception("Cannot change outputs.")
+# #         old_output = self._outputs[i]
+# #         if old_output != new_output:
+# #             old_output.replaced = True
+# #             try:
+# #                 # We try to reuse the old storage, if there is one
+# #                 new_output.data = old_output.data
+# #             except:
+# #                 pass
+# #             new_output.role = (self, i)
+# #             self._outputs[i] = new_output
 
 
-    def __get_outputs(self):
-        return self._outputs
-    def __set_outputs(self, new_outputs):
-        if self._outputs is None:
-            for i, output in enumerate(new_outputs):
-                output.role = (self, i)
-            self._outputs = new_outputs
-            return
-        
-        if len(self._outputs) != len(new_outputs):
-            raise TypeError("The new outputs must be exactly as many as the previous outputs.")
+#     def __get_outputs(self):
+#         return self._outputs
+#     def __set_outputs(self, new_outputs):
+#         if self._outputs is None:
+#             for i, output in enumerate(new_outputs):
+#                 output.role = (self, i)
+#             self._outputs = new_outputs
+#             return True
+#         raise Exception("Cannot change outputs.")
+# #         if len(self._outputs) != len(new_outputs):
+# #             raise TypeError("The new outputs must be exactly as many as the previous outputs.")
 
-        for i, new_output in enumerate(new_outputs):
-            self.__set_output(i, new_output)
+# #         for i, new_output in enumerate(new_outputs):
+# #             self.__set_output(i, new_output)
+
+
+#     def get_input(self, i):
+#         return self.__get_input(i)
+#     def set_input(self, i, new_input):
+#         old_input = self.__get_input(i)
+#         try:
+#             self.__set_input(i, new_input)
+#             return self.validate_update()
+#         except:
+#             self.__set_input(i, old_input)
+#             self.validate_update()
+#             raise
+
+
+#     def get_inputs(self):
+#         return self.__get_inputs()
+#     def set_inputs(self, new_inputs):
+#         old_inputs = self.__get_inputs()
+#         try:
+#             self.__set_inputs(new_inputs)
+#             return self.validate_update()
+#         except:
+#             self._inputs = old_inputs
+#             raise
+
+
+#     def get_output(self, i):
+#         return self.__get_output(i)
+
+#     def get_outputs(self):
+#         return self.__get_outputs()
 
 
     def get_input(self, i):
-        return self.__get_input(i)
-    def set_input(self, i, new_input):
-        old_input = self.__get_input(i)
-        try:
-            self.__set_input(i, new_input)
-            self.validate_update()
-        except:
-            self.__set_input(i, old_input)
-            self.validate_update()
-            raise
-
+        return self._inputs[i]        
+    def set_input(self, i, new):
+        self._inputs[i] = new
 
     def get_inputs(self):
-        return self.__get_inputs()
-    def set_inputs(self, new_inputs):
-        old_inputs = self.__get_inputs()
-        try:
-            self.__set_inputs(new_inputs)
-            self.validate_update()
-        except:
-            self._inputs = old_inputs
-            raise
-
+        return self._inputs
+    def set_inputs(self, new):
+        self._inputs = list(new)
 
     def get_output(self, i):
-        return self.__get_output(i)
+        return self._outputs[i]
 
     def get_outputs(self):
-        return self.__get_outputs()
-
+        return self._outputs
+    def set_outputs(self, new):
+        if not hasattr(self, '_outputs') or self._outputs is None:
+            for i, output in enumerate(new):
+                output.role = (self, i)
+            self._outputs = list(new)
+        else:
+            raise Exception("Can only set outputs once, to initialize them.")
 
     #create inputs and outputs as read-only attributes
     inputs = property(get_inputs, set_inputs, doc = "The list of this Op's input Results.")
-    outputs = property(get_outputs, __set_outputs, doc = "The list of this Op's output Results.")
+    outputs = property(get_outputs, set_outputs, doc = "The list of this Op's output Results.")
 
-    def validate_update(self):
-        """
-        (Abstract) This function must do two things:
-        * validate: check all the inputs in self.inputs to ensure
-                    that they have the right type for this Op, etc.
-                    If the validation fails, raise an exception.
-        * update: create output Results and set the Op's outputs
-        The existing outputs must not be changed in place.
-        The return value of validate_update is not used.
-        """
-        raise AbstractFunctionError()
 
-    def repair(self):
-        """
-        Repairs all the inputs that are broken links to use what
-        they were replaced with. Then, calls self.validate_update()
-        to validate the new inputs and make new outputs.
-        """
-        changed = False
-        repaired_inputs = []
-        old_inputs = self._inputs
-        for input in self._inputs:
-            if input.replaced:
-                changed = True
-                role = input.role.old_role
-                input = role[0].outputs[role[1]]
-            repaired_inputs.append(input)
-        if changed:
-            try:
-                self.__set_inputs(repaired_inputs)
-                self.validate_update()
-            except:
-                self._inputs = old_inputs
-                raise
-        return changed
+#     def validate_update(self):
+#         """
+#         (Abstract) This function must do two things:
+#         * validate: check all the inputs in self.inputs to ensure
+#                     that they have the right type for this Op, etc.
+#                     If the validation fails, raise an exception.
+#         * update: if self.outputs is None, create output Results
+#                   and set the Op's outputs. Else, fail or update
+#                   the outputs in place.
+#         If any changes were made to the outputs, return True. Else,
+#         return False.
+#         """
+#         raise AbstractFunctionError()
+
+
+#     def repair(self):
+#         """
+#         Repairs all the inputs that are broken links to use what
+#         they were replaced with. Then, calls self.validate_update()
+#         to validate the new inputs and make new outputs.
+#         """
+#         changed = False
+#         repaired_inputs = []
+#         old_inputs = self._inputs
+#         for input in self._inputs:
+#             if input.replaced:
+#                 changed = True
+#                 role = input.role.old_role
+#                 input = role[0].outputs[role[1]]
+#             repaired_inputs.append(input)
+#         if changed:
+#             try:
+#                 self.__set_inputs(repaired_inputs)
+#                 self.validate_update()
+#             except:
+#                 self._inputs = old_inputs
+#                 raise
+#         return changed
 
 
     #
@@ -270,6 +302,29 @@ class Op(object):
         raise AbstractFunctionError()
 
 
+
+class GuardedOp(Op):
+
+    def set_input(self, i, new):
+        old = self._inputs[i]
+        if old is new:
+            return
+        try:
+            if not old.same_properties(new):
+                raise TypeError("The new input must have the same properties as the previous one.")
+        except AbstractFunction:
+            pass
+        Op.set_input(self, i, new)
+
+    def set_inputs(self, new):
+        if not hasattr(self, '_inputs') or self_inputs is None:
+            Op.set_inputs(self, new)
+        else:
+            if not len(new) == len(self._inputs):
+                raise TypeError("The new inputs are not as many as the previous ones.")
+            for i, new in enumerate(new):
+                self.set_input(i, new)
+        
 
 #     def __init__(self, inputs, outputs, use_self_setters = False):
 #         """

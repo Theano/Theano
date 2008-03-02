@@ -4,7 +4,7 @@ import unittest
 from graph import *
 
 from op import Op
-from result import ResultBase, BrokenLinkError
+from result import ResultBase
 
 
 class MyResult(ResultBase):
@@ -14,6 +14,9 @@ class MyResult(ResultBase):
         ResultBase.__init__(self, role = None, data = [self.thingy], constant = False)
 
     def __eq__(self, other):
+        return self.same_properties(other)
+
+    def same_properties(self, other):
         return isinstance(other, MyResult) and other.thingy == self.thingy
 
     def __str__(self):
@@ -25,11 +28,12 @@ class MyResult(ResultBase):
 
 class MyOp(Op):
 
-    def validate_update(self):
-        for input in self.inputs:
+    def __init__(self, *inputs):
+        for input in inputs:
             if not isinstance(input, MyResult):
                 raise Exception("Error 1")
-        self.outputs = [MyResult(sum([input.thingy for input in self.inputs]))]
+        self.inputs = inputs
+        self.outputs = [MyResult(sum([input.thingy for input in inputs]))]
 
 
 class _test_inputs(unittest.TestCase):

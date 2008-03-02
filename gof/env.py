@@ -8,6 +8,7 @@ from op import Op
 from result import is_result
 from features import Listener, Orderings, Constraint, Tool, uniq_features
 import utils
+from utils import AbstractFunctionError
 
 __all__ = ['InconsistencyError',
            'Env']
@@ -102,9 +103,11 @@ class Env(graph.Graph):
         # List of functions that undo the replace operations performed.
         # e.g. to recover the initial graph one could write: for u in self.history.__reversed__(): u()
         self.history = []
-
+        
         self.__import_r__(self.outputs)
-
+        for op in self.ops():
+            self.satisfy(op)
+        
         if consistency_check:
             self.validate()
 
@@ -161,7 +164,11 @@ class Env(graph.Graph):
             self._listeners[feature_class] = feature
             if do_import:
                 for op in self.io_toposort():
-                    feature.on_import(op)
+                    try:
+#                        print op
+                        feature.on_import(op)
+                    except AbstractFunctionError:
+                        pass
         if issubclass(feature_class, Constraint):
             self._constraints[feature_class] = feature
         if issubclass(feature_class, Orderings):
@@ -235,6 +242,8 @@ class Env(graph.Graph):
         if not is_result(new_r):
             raise TypeError(new_r)
 
+        self.__import_r_satisfy__([new_r])
+        
         # Save where we are so we can backtrack
         if consistency_check:
             chk = self.checkpoint()
@@ -256,7 +265,7 @@ class Env(graph.Graph):
 
         # The actual replacement operation occurs here. This might raise
         # an error.
-        self.__move_clients__(clients, r, new_r)
+        self.__move_clients__(clients, r, new_r) # not sure how to order this wrt to adjusting the outputs
 
         # This function undoes the replacement.
         def undo():
@@ -344,6 +353,11 @@ class Env(graph.Graph):
         if not self._clients[r]:
             del self._clients[r]
 
+    def __import_r_satisfy__(self, results):
+
+        for op in graph.ops(self.results(), results):
+            self.satisfy(op)
+
     def __import_r__(self, results):
         for result in results:
             owner = result.owner
@@ -358,8 +372,7 @@ class Env(graph.Graph):
         new_ops = graph.io_toposort(self.results(), op.outputs)
         
         for op in new_ops:
-            self.satisfy(op) # add the features required by this op
-            
+
             self._ops.add(op)
             self._results.update(op.outputs)
             
@@ -374,7 +387,10 @@ class Env(graph.Graph):
                     self._results.add(input)
             
             for listener in self._listeners.values():
-                listener.on_import(op)
+                try:
+                    listener.on_import(op)
+                except AbstractFunctionError:
+                    pass
 
     def __prune_r__(self, results):
         for result in set(results):
@@ -393,35 +409,48 @@ class Env(graph.Graph):
         self._results.difference_update(op.outputs)
         
         for listener in self._listeners.values():
-            listener.on_prune(op)
+            try:
+                listener.on_prune(op)
+            except AbstractFunctionError:
+                pass
             
         for i, input in enumerate(op.inputs):
             self.__remove_clients__(input, [(op, i)])
         self.__prune_r__(op.inputs)
 
     def __move_clients__(self, clients, r, new_r):
+        
+        # We import the new result in the fold
+        self.__import_r__([new_r])
+
         try:
             # Try replacing the inputs
             for op, i in clients:
-                op.set_input(i, new_r, False)
-        except GofTypeError, PropagationError:
+                op.set_input(i, new_r)
+        except:
             # Oops!
             for op, i in clients:
-                op.set_input(i, r, False)
+                op.set_input(i, r)
+            self.__prune_r__([new_r])
             raise
         self.__remove_clients__(r, clients)
         self.__add_clients__(new_r, clients)
 
-        # We import the new result in the fold
-        self.__import_r__([new_r])
+#         # We import the new result in the fold
+#         # why was this line AFTER the set_inputs???
+#         # if we do it here then satisfy in import fucks up...
+#         self.__import_r__([new_r])
         
         for listener in self._listeners.values():
-            listener.on_rewire(clients, r, new_r)
+            try:
+                listener.on_rewire(clients, r, new_r)
+            except AbstractFunctionError:
+                pass
 
         # We try to get rid of the old one
         self.__prune_r__([r])
 
     def __str__(self):
-        return graph.as_string(self.inputs, self.outputs)
+        return "[%s]" % ", ".join(graph.as_string(self.inputs, self.outputs))
 
 
