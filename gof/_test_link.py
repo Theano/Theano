@@ -64,7 +64,6 @@ class Div(Binary):
 import modes
 modes.make_constructors(globals())
 
-
 def inputs():
     x = modes.BuildMode(Double(1.0, 'x'))
     y = modes.BuildMode(Double(2.0, 'y'))
