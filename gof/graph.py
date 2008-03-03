@@ -91,7 +91,8 @@ def ops(i, o):
     results, orphans = results_and_orphans(i, o)
     for r in results:
         if r not in i and r not in orphans:
-            ops.add(r.owner)
+            if r.owner is not None:
+                ops.add(r.owner)
     return ops
 
 

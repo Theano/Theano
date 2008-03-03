@@ -62,29 +62,44 @@ t2s = OpSubOptimizer(TransposeView, Sigmoid)
 s2t = OpSubOptimizer(Sigmoid, TransposeView)
 
 
-from constructor import Constructor
-from allocators import BuildAllocator
-c = Constructor(BuildAllocator)
-c.update(globals())
-globals().update(c)
+# from constructor import Constructor
+# from allocators import BuildAllocator
+# c = Constructor(BuildAllocator)
+# c.update(globals())
+# globals().update(c)
+
+# def inputs():
+#     x = (MyResult('x'))
+#     y = (MyResult('y'))
+#     z = (MyResult('z'))
+#     return x, y, z
+
+# def env(inputs, outputs, validate = True):
+#     return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
+
+
+import modes
+modes.make_constructors(globals(), name_filter = lambda x:x)
+
+def inputs():
+    x = modes.BuildMode(MyResult('x'))
+    y = modes.BuildMode(MyResult('y'))
+    z = modes.BuildMode(MyResult('z'))
+    return x, y, z
+
+def env(inputs, outputs, validate = True):
+    inputs = [input.r for input in inputs]
+    outputs = [output.r for output in outputs]
+    return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
 
 
 class _test_all(unittest.TestCase):
-    
-    def inputs(self):
-        x = MyResult('x')
-        y = MyResult('y')
-        z = MyResult('z')
-        return x, y, z
-
-    def env(self, inputs, outputs, validate = True):
-        return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
 
     def test_0(self):
-        x, y, z = self.inputs()
+        x, y, z = inputs()
         e = Add(AddInPlace(x, y), AddInPlace(x, y))
         try:
-            g = self.env([x,y,z], [e])
+            g = env([x,y,z], [e])
         except InconsistencyError, e:
             pass
         else:
@@ -94,68 +109,68 @@ class _test_all(unittest.TestCase):
         # the loop is needed because a2i will optimize in a random order and sometimes
         # only one of them fails
         for i in xrange(100):
-            x, y, z = self.inputs()
+            x, y, z = inputs()
             e = Add(Add(x, y), Add(y, x))
-            g = self.env([x,y,z], [e])
+            g = env([x,y,z], [e])
             assert g.consistent()
             a2i.optimize(g)
             assert g.consistent()
             assert str(g) != "[AddInPlace(AddInPlace(x, y), AddInPlace(y, x))]"
 
     def test_2(self):
-        x, y, z = self.inputs()
-        g = self.env([x,y,z], [Dot(AddInPlace(x, z), x)], False)
+        x, y, z = inputs()
+        g = env([x,y,z], [Dot(AddInPlace(x, z), x)], False)
         assert not g.consistent()
         i2a.optimize(g)
         assert g.consistent()
             
     def test_3(self):
         for i in xrange(100):
-            x, y, z = self.inputs()
+            x, y, z = inputs()
             e = Dot(Add(TransposeView(z), y), Add(z, x))
-            g = self.env([x,y,z], [e])
+            g = env([x,y,z], [e])
             assert g.consistent()
             a2i.optimize(g)
             assert g.consistent()
             assert str(g) != "[Dot(AddInPlace(TransposeView(z), y), AddInPlace(z, x))]"
 
     def test_4(self):
-        x, y, z = self.inputs()
+        x, y, z = inputs()
         e = Dot(AddInPlace(x,y), TransposeView(x))
-        g = self.env([x,y,z], [e], False)
+        g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(e.owner.inputs[1], Add(x,z))
+        g.replace(e.r.owner.inputs[1], Add(x,z).r)
         assert g.consistent()
 
     def test_5(self):
-        x, y, z = self.inputs()
+        x, y, z = inputs()
         e = Dot(AddInPlace(x,y), TransposeView(TransposeView(TransposeView(TransposeView(Sigmoid(x))))))
-        g = self.env([x,y,z], [e])
+        g = env([x,y,z], [e])
         assert g.consistent()
-        g.replace(e.owner.inputs[1].owner.inputs[0], x, False)
+        g.replace(e.r.owner.inputs[1].owner.inputs[0], x.r, False)
         assert not g.consistent()
 
     def test_6(self):
         for i in xrange(100):
-            x, y, z = self.inputs()
+            x, y, z = inputs()
             e = Dot(AddInPlace(x,Sigmoid(y)), Sigmoid(Sigmoid(Sigmoid(Sigmoid(Sigmoid(x))))))
-            g = self.env([x,y,z], [e])
+            g = env([x,y,z], [e])
             assert g.consistent()
             s2t.optimize(g)
             assert g.consistent()
             assert str(g) != "[Dot(AddInPlace(x,TransposeView(y)), TransposeView(TransposeView(TransposeView(TransposeView(TransposeView(x))))))]"
 
     def test_7(self):
-        x, y, z = self.inputs()
+        x, y, z = inputs()
         e = TransposeView(TransposeView(TransposeView(TransposeView(x))))
-        g = self.env([x,y,z], [e])
+        g = env([x,y,z], [e])
         assert g.consistent()
         chk = g.checkpoint()
         dtv_elim.optimize(g)
         assert str(g) == "[x]"
-        g.replace(g.equiv(e), Add(x,y))
+        g.replace(g.equiv(e.r), Add(x,y).r)
         assert str(g) == "[Add(x, y)]"
-        g.replace(g.equiv(e), Dot(AddInPlace(x,y), TransposeView(x)), False)
+        g.replace(g.equiv(e.r), Dot(AddInPlace(x,y), TransposeView(x)).r, False)
         assert str(g) == "[Dot(AddInPlace(x, y), TransposeView(x))]"
         assert not g.consistent()
         g.revert(chk)
@@ -163,31 +178,31 @@ class _test_all(unittest.TestCase):
         assert str(g) == "[TransposeView(TransposeView(TransposeView(TransposeView(x))))]"
 
     def test_8(self):
-        x, y, z = self.inputs()
+        x, y, z = inputs()
         e = Dot(Dot(AddInPlace(x,y), AddInPlace(y,z)), Add(z,x))
-        g = self.env([x,y,z], [e])
+        g = env([x,y,z], [e])
         assert g.consistent()
         a2i.optimize(g)
         assert g.consistent()
         assert str(g) != "[Dot(Dot(AddInPlace(x, y), AddInPlace(y, z)), AddInPlace(z, x))]" # we don't want to see that!
 
     def test_9(self):
-        x, y, z = self.inputs()
-        x.indestructible = True
+        x, y, z = inputs()
+        x.r.indestructible = True
         e = AddInPlace(x, y)
-        g = self.env([x,y,z], [e], False)
+        g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(e, Add(x, y))
+        g.replace(e.r, Add(x, y).r)
         assert g.consistent()
 
     def test_10(self):
-        x, y, z = self.inputs()
-        x.indestructible = True
+        x, y, z = inputs()
+        x.r.indestructible = True
         tv = TransposeView(x)
         e = AddInPlace(tv, y)
-        g = self.env([x,y,z], [e], False)
+        g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(tv, Sigmoid(x))
+        g.replace(tv.r, Sigmoid(x).r)
         assert g.consistent()
         
 

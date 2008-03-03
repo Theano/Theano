@@ -2,6 +2,8 @@
 # import op
 # import result
 
+import re
+
 
 class OmegaError(Exception): pass
 
@@ -42,8 +44,21 @@ def all_bases_collect(cls, raw_name):
     return rval
 
 
+def camelcase_to_separated(string, sep = "_"):
+    return re.sub('(.)([A-Z])', '\\1%s\\2' % sep, string).lower()
 
 
+def to_return_values(values):
+    if len(values) == 1:
+        return values[0]
+    else:
+        return values
+
+def from_return_values(values):
+    if isinstance(values, (list, tuple)):
+        return values
+    else:
+        return [values]
 
 
 def partial(func, *args, **keywords):

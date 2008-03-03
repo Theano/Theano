@@ -1,6 +1,7 @@
 import unittest
 import constructor_fodder as cf
 
+
 class Allocator:
     def __init__(self, cls, ctor):
         self.cls = cls

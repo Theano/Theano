@@ -42,30 +42,33 @@ class Add(MyOp):
 class Dot(MyOp):
     nin = 2
 
-from constructor import Constructor
-from allocators import BuildAllocator
-c = Constructor(BuildAllocator)
-c.update(globals())
-globals().update(c)
 
-    
+import modes
+modes.make_constructors(globals())
+
 def inputs():
-    x = MyResult('x')
-    y = MyResult('y')
-    z = MyResult('z')
+    x = modes.BuildMode(MyResult('x'))
+    y = modes.BuildMode(MyResult('y'))
+    z = modes.BuildMode(MyResult('z'))
     return x, y, z
+
+def env(inputs, outputs, validate = True, features = []):
+    inputs = [input.r for input in inputs]
+    outputs = [output.r for output in outputs]
+    return Env(inputs, outputs, features = features, consistency_check = validate)
+
 
 class _test_EquivTool(unittest.TestCase):
 
     def test_0(self):
         x, y, z = inputs()
-        sx = Sigmoid(x)
-        e = Add(sx, Sigmoid(y))
-        g = Env([x, y, z], [e], features = [EquivTool])
-        assert g.equiv(sx) is sx
-        g.replace(sx, Dot(x, z))
-        assert g.equiv(sx) is not sx
-        assert isinstance(g.equiv(sx).owner, Dot.opclass)
+        sx = sigmoid(x)
+        e = add(sx, sigmoid(y))
+        g = env([x, y, z], [e], features = [EquivTool])
+        assert g.equiv(sx.r) is sx.r
+        g.replace(sx.r, dot(x, z).r)
+        assert g.equiv(sx.r) is not sx.r
+        assert isinstance(g.equiv(sx.r).owner, Dot)
 
 
 

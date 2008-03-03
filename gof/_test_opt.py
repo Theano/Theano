@@ -44,21 +44,19 @@ class Op4(MyOp):
     pass
 
 
-from constructor import Constructor
-from allocators import BuildAllocator
-c = Constructor(BuildAllocator)
-c.update(globals())
-for k, v in c.items():
-    globals()[k.lower()] = v
+import modes
+modes.make_constructors(globals())
 
 
 def inputs():
-    x = MyResult('x')
-    y = MyResult('y')
-    z = MyResult('z')
+    x = modes.BuildMode(MyResult('x'))
+    y = modes.BuildMode(MyResult('y'))
+    z = modes.BuildMode(MyResult('z'))
     return x, y, z
 
 def env(inputs, outputs, validate = True):
+    inputs = [input.r for input in inputs]
+    outputs = [output.r for output in outputs]
     return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
 
 
