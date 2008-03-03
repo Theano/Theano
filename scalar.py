@@ -3,9 +3,7 @@ import numpy
 
 from copy import copy
 
-from gof import ResultBase
-from gof import Op
-from gof import utils
+from gof import ResultBase, GuardedOp, utils
 
 
 def as_scalar(x, name = None):
@@ -21,13 +19,32 @@ class Scalar(ResultBase):
 
     def __init__(self, dtype, name=None):
         self.dtype = dtype
+        self.constant = False
         ResultBase.__init__(self, role = None, data = None, name = name)
 
+    def __get_constant(self):
+        return self._constant
+
+    def __set_constant(self, value):
+        if value:
+            self.indestructible = True
+        self.constant = value
+
+    constant = property(__get_constant, __set_constant)
+        
     def validate(self, data):
         py_type = self.py_type()
         if not isinstance(data, py_type):
             raise TypeError("Expected %s instance." % py_type)
 
+    def same_properties(self, other):
+        return other.dtype == self.dtype
+
+    def mergeable(self, other):
+        return getattr(self, 'constant', False) \
+            and getattr(other, 'constant', False) \
+            and self.data == other.data
+    
     def py_type(self):
         return {'float64': float}[self.dtype]
         
@@ -74,7 +91,7 @@ class Scalar(ResultBase):
 
 
 
-class ScalarMixedOp(Op):
+class ScalarMixedOp(GuardedOp):
 
     nin = -1
     nout = 1

@@ -1,10 +1,7 @@
 
 import unittest
 
-from gof import ResultBase
-from gof import Op
-from gof import Env
-from gof import modes
+from gof import ResultBase, Op, Env, modes
 
 
 from scalar_ops import *
