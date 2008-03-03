@@ -4,19 +4,40 @@ from env import Env
 from utils import AbstractFunctionError
 
 
-class Linker:
+class Prog:
 
-    def __init__(self, env):
-        self.env = env
-        self.thunk = None
+    def __init__(self, inputs, outputs, optimizer, linker_class, features = []):
+        self.inputs = inputs
+        if isinstance(outputs, dict):
+            for name, output in outputs.items():
+                setattr(self, name, output)
+            self.outputs = outputs.values()
+        else:
+            self.outputs = outputs
+        self.optimizer = optimizer
+        self.env = Env(self.inputs, self.outputs, features, False)
+        self.env.add_feature(EquivTool)
+        self.linker = linker_class(self.env)
 
-    def compile(self):
-        raise AbstractFunctionError()
+    def build(self):
+        self.optimizer.optimize(self.env)
+        
 
-    def run(self):
-        self.thunk()
+    def equiv(self, r):
+        return self.env.equiv(r)
 
+    def __getitem__(self, r):
+        if isinstance(r, str):
+            return getattr(self, r)
+        else:
+            return self.equiv(r)
 
+    def __setitem__(self, r, value):
+        if isinstance(r, tuple):
+            for a, b in zip(r, value):
+                self.__setitem__(a, b)
+        else:
+            self[r].data = value
 
 
 

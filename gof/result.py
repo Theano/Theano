@@ -145,38 +145,37 @@ class ResultBase(object):
         raise AbstractFunctionError()
 
 
-    #
-    # alloc
-    #
+#     #
+#     # alloc
+#     #
 
-    def alloc(self):
-        """Create self.data from data_alloc, and set state to Allocated
+#     def alloc(self):
+#         """Create self.data from data_alloc, and set state to Allocated
 
-        Graph routines like the linker will ask Ops to allocate outputs.  The
-        Ops, in turn, usually call this function.  Results that are involved in
-        destroy maps and view maps are exceptions to the usual case.
-        """
-        self.data = self.data_alloc()  #might raise exception
-        self.state = Allocated
+#         Graph routines like the linker will ask Ops to allocate outputs.  The
+#         Ops, in turn, usually call this function.  Results that are involved in
+#         destroy maps and view maps are exceptions to the usual case.
+#         """
+#         self.data = self.data_alloc()  #might raise exception
+#         self.state = Allocated
 
-    def data_alloc(self):
-        """(abstract) Return an appropriate _data based on self.
+#     def data_alloc(self):
+#         """(abstract) Return an appropriate _data based on self.
 
-        If a subclass overrides this function, then that overriding
-        implementation will be used in alloc() to produce a data object.
+#         If a subclass overrides this function, then that overriding
+#         implementation will be used in alloc() to produce a data object.
         
-        """
-        raise AbstractFunctionError()
+#         """
+#         raise AbstractFunctionError()
 
 
     #
     # C code generators
     #
 
-    def c_type(self):
+    def c_declare(self):
         """
-        Return a string naming the C type that Ops must use to manipulate
-        this Result.
+        Declares variables that will be instantiated by c_data_extract.
         """
         raise AbstractFunctionError()
 
@@ -185,23 +184,39 @@ class ResultBase(object):
         PyObject* py_%(name)s = PyList_GET_ITEM(%(name)s_storage, 0);
         Py_XINCREF(py_%(name)s);
         """
-        return self.c_data_extract() + get_from_list
+        return get_from_list + self.c_data_extract()
 
     def c_data_extract(self):
         """
-        The code returned from this function must be templated using
-        "%(name)s", representing the name that the caller wants to
-        call this Result. The Python object self.data is in a
-        variable called "py_%(name)s" and this code must declare a
-        variable named "%(name)s" of type "%(type)s" where "%(type)s"
-        will be replaced by the return value of
-        self.c_type(). Additional variables and typedefs can be
-        produced. If the data is improper, set an appropriate error
-        message and insert "%(fail)s".
+#         The code returned from this function must be templated using
+#         "%(name)s", representing the name that the caller wants to
+#         call this Result. The Python object self.data is in a
+#         variable called "py_%(name)s" and this code must declare a
+#         variable named "%(name)s" of type "%(type)s" where "%(type)s"
+#         will be replaced by the return value of
+#         self.c_type(). Additional variables and typedefs may not be
+#         produced. If the data is improper, set an appropriate error
+#         message and insert "%(fail)s".
         """
         raise AbstractFunctionError()
 
-    def c_sync(self, var_name):
+    def c_cleanup(self):
+        decref = """
+        Py_XDECREF(py_%(name)s);
+        """
+        return self.c_data_cleanup() + decref
+    
+    def c_data_cleanup(self):
+        """
+        This returns C code that should deallocate whatever
+        c_data_extract allocated or decrease the reference counts. Do
+        not decrease py_%(name)s's reference count.
+
+        Note: EITHER c_cleanup OR c_sync will be called.
+        """
+        raise AbstractFunctionError()
+    
+    def c_sync(self):
         set_in_list = """
         PyList_SET_ITEM(%(name)s_storage, 0, py_%(name)s);
         Py_XDECREF(py_%(name)s);
@@ -231,6 +246,13 @@ class ResultBase(object):
         """
         return []
 
+    def c_support(self):
+        """
+        Return utility code for use by this Result or Ops manipulating this
+        Result.
+        """
+        raise AbstractFunctionError()
+    
     #
     # name
     #
@@ -277,7 +299,8 @@ class ResultBase(object):
 
     def same_properties(self, other):
         raise AbstractFunction()
-                                            
+
+
     
     #################
     # NumpyR Compatibility

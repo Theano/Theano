@@ -1,6 +1,99 @@
 
 # from features import Tool
-# from utils import AbstractFunctionError
+
+from utils import AbstractFunctionError
+
+
+class Linker:
+
+    def __init__(self, env):
+        self.env = env
+        self.thunk = None
+
+    def compile(self):
+        raise AbstractFunctionError()
+
+    def run(self):
+        self.thunk()
+
+    def __call__(self):
+        self.thunk()
+
+
+class PerformLinker(Linker):
+
+    def compile(self):
+        order = self.env.toposort()
+        thunks = [op.perform for op in order]
+        def f():
+            for thunk in thunks:
+                thunk()
+        self.thunk = f
+        self.order = order
+        self.thunks = thunks
+
+
+class ProfilePerformLinker(Linker):
+
+    def compile(self):
+        order = self.env.toposort()
+        thunks = [op.perform for op in order]
+        self.n_calls = 0
+        self.n_thunks = 0
+        self.times = [0.0 for op in self.order]
+        def f():
+            for thunk in thunks:
+                thunk()
+        self.thunk = f
+        self.order = order
+        self.thunks = thunks
+    
+    def slow_call(self):
+        """Run the program, timing each thunk."""
+        for i, thunk in enumerate(self.thunks):
+            start_time = time.time()
+            thunk()
+            self.times[i] += time.time() - start_time
+            self.n_thunks += 1
+        self.n_calls += 1
+
+    def fast_call(self):
+        """Run the program, but only time the entire loop."""
+        start_time = time.time()
+        for thunk in self.thunks:
+            thunk()
+        self.n_thunks += len(self.thunks)
+        self.n_calls += 1
+        self.times[0] += time.time() - start_time
+
+    __call__ = slow_call
+
+    def dump(self, proportion=True):
+        """Print statistics accumulated so far."""
+        total_time = sum(self.times)
+        print self.n_calls, 'calls took', total_time, 'seconds to evaluate',
+        print self.n_thunks, 'thunks'
+
+        if 0:
+            print 'Proportion of CPU per op'
+            for op, t in zip(self.order, self.times):
+                s_op = str(op).split()[0][1:]
+                print "  %-35s %4.5f"% (s_op, t/total_time)
+
+        print 'Proportion of CPU per op class'
+        dct = {}
+        for op, t in zip(self.order, self.times):
+            s_op = str(op).split()[0][1:]
+            dct[s_op] = dct.get(s_op, 0.0) + t
+        for t, s_op in reversed(sorted([(t,op) for op, t in dct.items()])):
+            if proportion:
+                print "  %-35s %4.5f"% (s_op, t/total_time)
+            else:
+                print "  %-35s %4.5f"% (s_op, t)
+
+    
+
+
 
 # class Linker(Tool):
 
