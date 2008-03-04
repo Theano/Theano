@@ -145,30 +145,6 @@ class ResultBase(object):
         raise AbstractFunctionError()
 
 
-#     #
-#     # alloc
-#     #
-
-#     def alloc(self):
-#         """Create self.data from data_alloc, and set state to Allocated
-
-#         Graph routines like the linker will ask Ops to allocate outputs.  The
-#         Ops, in turn, usually call this function.  Results that are involved in
-#         destroy maps and view maps are exceptions to the usual case.
-#         """
-#         self.data = self.data_alloc()  #might raise exception
-#         self.state = Allocated
-
-#     def data_alloc(self):
-#         """(abstract) Return an appropriate _data based on self.
-
-#         If a subclass overrides this function, then that overriding
-#         implementation will be used in alloc() to produce a data object.
-        
-#         """
-#         raise AbstractFunctionError()
-
-
     #
     # C code generators
     #
