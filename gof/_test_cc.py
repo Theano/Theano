@@ -18,21 +18,46 @@ class Double(ResultBase):
     def __repr__(self):
         return self.name
 
-    def c_type(self):
-        return "double"
+#    def c_is_simple(self): return True
+    
+    def c_declare(self):
+        return "double %(name)s; void* %(name)s_bad_thing;"
 
-    def c_data_extract(self):
+    def c_init(self):
         return """
-        %(type)s %(name)s = PyFloat_AsDouble(py_%(name)s);
-        %(fail)s
+        %(name)s = 0;
+        %(name)s_bad_thing = malloc(100000);
+        printf("Initializing %(name)s\\n"); 
+        """
+
+    def c_literal(self):
+        return str(self.data)
+
+    def c_extract(self):
+        return """
+        if (!PyFloat_Check(py_%(name)s)) {
+            PyErr_SetString(PyExc_TypeError, "not a double!");
+            %(fail)s
+        }
+        %(name)s = PyFloat_AsDouble(py_%(name)s);
+        %(name)s_bad_thing = NULL;
+        printf("Extracting %(name)s\\n");
         """
     
-    def c_data_sync(self):
+    def c_sync(self):
         return """
         Py_XDECREF(py_%(name)s);
         py_%(name)s = PyFloat_FromDouble(%(name)s);
         if (!py_%(name)s)
             py_%(name)s = Py_None;
+        printf("Syncing %(name)s\\n");
+        """
+
+    def c_cleanup(self):
+        return """
+        printf("Cleaning up %(name)s\\n");
+        if (%(name)s_bad_thing)
+            free(%(name)s_bad_thing);
         """
 
 
@@ -95,10 +120,22 @@ class _test_CLinker(unittest.TestCase):
 
     def test_0(self):
         x, y, z = inputs()
-        e = mul(add(x, y), div(x, y))
-        lnk = CLinker(env([x, y, z], [e]))
-        print lnk.code_gen()
+        e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+        lnk = CLinker(env([x, y, z], [e]), [x.r, y.r, z.r], [e.r])
+        cgen = lnk.code_gen()
+        fn = lnk.make_function([x.r, y.r, z.r], [e.r])
+        print fn(2.0, 2.0, 2.0)
+#        fn = 0
 
+    def test_1(self):
+        x, y, z = inputs()
+        z.r.constant = True
+        e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+        lnk = CLinker(env([x, y], [e]), [x.r, y.r], [e.r])
+        cgen = lnk.code_gen()
+        fn = lnk.make_function([x.r, y.r], [e.r])
+        print fn(2.0, 2.0)
+#        fn = 0
 
 if __name__ == '__main__':
     unittest.main()

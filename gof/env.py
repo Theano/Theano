@@ -161,7 +161,6 @@ class Env(graph.Graph):
             if do_import:
                 for op in self.io_toposort():
                     try:
-#                        print op
                         feature.on_import(op)
                     except AbstractFunctionError:
                         pass

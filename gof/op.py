@@ -126,7 +126,7 @@ class Op(object):
         return [["i%i" % i for i in xrange(len(self.inputs))],
                 ["o%i" % i for i in xrange(len(self.outputs))]]
 
-    def c_validate(self):
+    def c_validate_update(self):
         """
         Returns C code that checks that the inputs to this function
         can be worked on. If a failure occurs, set an Exception
@@ -136,27 +136,27 @@ class Op(object):
         """
         raise AbstractFunctionError()
 
-    def c_validate_cleanup(self):
+    def c_validate_update_cleanup(self):
         """
         Clean up things allocated by c_validate().
         """
         raise AbstractFunctionError()
 
-    def c_update(self):
-        """
-        Returns C code that allocates and/or updates the outputs
-        (eg resizing, etc.) so they can be manipulated safely
-        by c_code.
+#     def c_update(self):
+#         """
+#         Returns C code that allocates and/or updates the outputs
+#         (eg resizing, etc.) so they can be manipulated safely
+#         by c_code.
         
-        You may use the variable names defined by c_var_names()
-        """
-        raise AbstractFunctionError()
+#         You may use the variable names defined by c_var_names()
+#         """
+#         raise AbstractFunctionError()
 
-    def c_update_cleanup(self):
-        """
-        Clean up things allocated by c_update().
-        """
-        raise AbstractFunctionError()
+#     def c_update_cleanup(self):
+#         """
+#         Clean up things allocated by c_update().
+#         """
+#         raise AbstractFunctionError()
 
     def c_code(self):
         """
@@ -171,6 +171,31 @@ class Op(object):
     def c_code_cleanup(self):
         """
         Clean up things allocated by c_code().
+        """
+        raise AbstractFunctionError()
+
+    def c_compile_args(self):
+        """
+        Return a list of compile args recommended to manipulate this Op.
+        """
+        raise AbstractFunctionError()
+
+    def c_headers(self):
+        """
+        Return a list of header files that must be included from C to manipulate
+        this Op.
+        """
+        raise AbstractFunctionError()
+
+    def c_libraries(self):
+        """
+        Return a list of libraries to link against to manipulate this Op.
+        """
+        raise AbstractFunctionError()
+
+    def c_support_code(self):
+        """
+        Return utility code for use by this Op.
         """
         raise AbstractFunctionError()
 

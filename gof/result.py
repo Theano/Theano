@@ -149,20 +149,23 @@ class ResultBase(object):
     # C code generators
     #
 
+    def c_is_simple(self):
+        return False
+    
     def c_declare(self):
         """
         Declares variables that will be instantiated by c_data_extract.
         """
         raise AbstractFunctionError()
 
-    def c_extract(self):
-        get_from_list = """
-        PyObject* py_%(name)s = PyList_GET_ITEM(%(name)s_storage, 0);
-        Py_XINCREF(py_%(name)s);
-        """
-        return get_from_list + self.c_data_extract()
+#     def c_extract(self):
+#         get_from_list = """
+#         //PyObject* py_%(name)s = PyList_GET_ITEM(%(name)s_storage, 0);
+#         //Py_XINCREF(py_%(name)s);
+#         """
+#         return get_from_list + self.c_data_extract()
 
-    def c_data_extract(self):
+    def c_extract(self):
         """
 #         The code returned from this function must be templated using
 #         "%(name)s", representing the name that the caller wants to
@@ -176,13 +179,13 @@ class ResultBase(object):
         """
         raise AbstractFunctionError()
 
-    def c_cleanup(self):
-        decref = """
-        Py_XDECREF(py_%(name)s);
-        """
-        return self.c_data_cleanup() + decref
+#     def c_cleanup(self):
+#         decref = """
+#         //Py_XDECREF(py_%(name)s);
+#         """
+#         return self.c_data_cleanup() + decref
     
-    def c_data_cleanup(self):
+    def c_cleanup(self):
         """
         This returns C code that should deallocate whatever
         c_data_extract allocated or decrease the reference counts. Do
@@ -192,14 +195,14 @@ class ResultBase(object):
         """
         raise AbstractFunctionError()
     
-    def c_sync(self):
-        set_in_list = """
-        PyList_SET_ITEM(%(name)s_storage, 0, py_%(name)s);
-        Py_XDECREF(py_%(name)s);
-        """
-        return self.c_data_sync() + set_in_list
+#     def c_sync(self):
+#         set_in_list = """
+#         //PyList_SET_ITEM(%(name)s_storage, 0, py_%(name)s);
+#         //Py_XDECREF(py_%(name)s);
+#         """
+#         return self.c_data_sync() + set_in_list
 
-    def c_data_sync(self):
+    def c_sync(self):
         """
         The code returned from this function must be templated using "%(name)s",
         representing the name that the caller wants to call this Result.
@@ -209,20 +212,26 @@ class ResultBase(object):
         """
         raise AbstractFunctionError()
 
+    def c_compile_args(self):
+        """
+        Return a list of compile args recommended to manipulate this Result.
+        """
+        raise AbstractFunctionError()
+
     def c_headers(self):
         """
         Return a list of header files that must be included from C to manipulate
         this Result.
         """
-        return []
+        raise AbstractFunctionError()
 
     def c_libraries(self):
         """
         Return a list of libraries to link against to manipulate this Result.
         """
-        return []
+        raise AbstractFunctionError()
 
-    def c_support(self):
+    def c_support_code(self):
         """
         Return utility code for use by this Result or Ops manipulating this
         Result.
