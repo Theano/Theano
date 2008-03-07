@@ -90,9 +90,9 @@ def struct_gen(args, struct_builders, blocks, sub):
     behavior = code_gen(blocks)
 
     storage_decl = "\n".join(["PyObject* %s;" % arg for arg in args])
-    # we're borrowing the references to the storage pointers because Python
-    # has (needs) references to them to feed inputs or get the results
     storage_set = "\n".join(["this->%s = %s;" % (arg, arg) for arg in args])
+    storage_incref = "\n".join(["Py_XINCREF(%s);" % arg for arg in args])
+    storage_decref = "\n".join(["Py_XDECREF(this->%s);" % arg for arg in args])
     args_names = ", ".join(args)
     args_decl = ", ".join(["PyObject* %s" % arg for arg in args])
 
@@ -139,6 +139,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         }
 
         int init(PyObject* __ERROR, %(args_decl)s) {
+            %(storage_incref)s
             %(storage_set)s
             int %(failure_var)s = 0;
             %(struct_init_head)s
@@ -150,6 +151,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         }
         void cleanup(void) {
             %(struct_cleanup)s
+            %(storage_decref)s
         }
         int run(void) {
             int %(failure_var)s = 0;
@@ -224,38 +226,34 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
 
 class CLinker(Linker):
 
-    def __init__(self, env, inputs = None, outputs = None):
+    def __init__(self, env):
         self.env = env
-        self.inputs = inputs
-        self.outputs = outputs
+        self.fetch_results()
 
     def fetch_results(self):
         env = self.env
-        results = env.results()
 
-        if self.inputs:
-            assert set(self.inputs) == set(env.inputs)
-            inputs = self.inputs
-        else:
-            inputs = env.inputs
+        self.inputs = env.inputs
+        self.outputs = env.outputs
 
-        if self.outputs:
-            assert set(self.outputs) == set(env.outputs)
-            outputs = self.outputs
-        else:
-            outputs = env.outputs
-            
-        outputs = env.outputs
-        orphans = env.orphans()
-        temps = results.difference(inputs).difference(outputs).difference(orphans)
-        return results, inputs, outputs, orphans, temps
+        try: self.results = list(env.results())
+        except AttributeError: self.results = self.inputs + self.outputs
+
+        try: self.orphans = list(env.orphans())
+        except AttributeError: self.orphans = []
+
+        try: self.temps = list(set(self.results).difference(self.inputs).difference(self.outputs).difference(self.orphans))
+        except AttributeError: self.temps = []
+
+        try: self.op_order = env.toposort()
+        except AttributeError: self.op_order = [env]
         
     def code_gen(self, reuse_storage = True):
 
-        env = self.env
-        op_order = env.toposort()
+        if getattr(self, 'struct_code', False) and self.reuse_storage == reuse_storage:
+            return self.struct_code
 
-        results, inputs, outputs, orphans, temps = self.fetch_results()
+        env = self.env
         
         consts = []
 
@@ -272,32 +270,32 @@ class CLinker(Linker):
 
         sub = dict(failure_var = failure_var)
 
-        for result in results:
+        for result in self.results:
             if getattr(result, 'constant', False):
-                if result in outputs or result in temps:
+                if result in self.outputs or result in self.temps:
                     raise Exception("Temporaries and outputs should not be marked constant. Check your graph.")
                 try:
                     symbol[result] = result.c_literal()
                     consts.append(result)
-                    if result in inputs:
+                    if result in self.inputs:
                         print "Warning: input %s is marked as constant and has been compiled as a literal." % result
-                    elif result in orphans:
-                        orphans.remove(result)
+                    elif result in self.orphans:
+                        self.orphans.remove(result)
                     continue
                 except AbstractFunctionError:
                     pass
             # policy = [[what to declare in the struct, what to do at construction, what to do at destruction],
             #           [what to declare in each run, what to do at the beginning of each run, what to do at the end of each run]]
-            if result in inputs:
+            if result in self.inputs:
                 # we need to extract the new inputs at each run
                 # they do not need to be relayed to Python, so we don't sync
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
-            elif result in orphans:
+            elif result in self.orphans:
                 # orphans are not inputs so we'll just get fetch them when we initialize the struct and assume they stay the same
                 policy = [[get_c_declare, get_c_extract, get_c_cleanup],
                           [get_nothing, get_nothing, get_nothing]]
-            elif result in temps or not reuse_storage:
+            elif result in self.temps or not reuse_storage:
                 # temps don't need to be extracted from Python, so we call c_init rather than c_extract
                 # they do not need to be relayed to Python, so we don't sync
                 if result.c_is_simple() or not reuse_storage:
@@ -307,7 +305,7 @@ class CLinker(Linker):
                     # it is useful for complex temps to reuse storage at each run, so we only clean up in the destructor
                     policy = [[get_c_declare, get_c_init, get_c_cleanup],
                               [get_nothing, get_nothing, get_nothing]]
-            elif result in outputs:
+            elif result in self.outputs:
                 # outputs don't need to be extracted from Python, so we call c_init rather than c_extract
                 if result.c_is_simple() or not reuse_storage:
                     
@@ -328,9 +326,7 @@ class CLinker(Linker):
 
             id += 2
 
-        print symbol
-        
-        for op in op_order:
+        for op in self.op_order:
 
             ivnames, ovnames = op.c_var_names()
             sub = dict(failure_var = failure_var)
@@ -365,17 +361,9 @@ class CLinker(Linker):
 
         args = []
         in_arg_order = []
-        for result in list(inputs):
-            in_arg_order.append(result)
-            args.append("storage_%s" % symbol[result])
-        out_arg_order = []
-        for result in list(outputs):
-            out_arg_order.append(result)
-            args.append("storage_%s" % symbol[result])
-        orphan_arg_order = []
-        for result in list(orphans):
-            orphan_arg_order.append(result)
-            args.append("storage_%s" % symbol[result])
+
+        args += ["storage_%s" % symbol[result] for result in self.inputs + self.outputs + self.orphans]
+        
         struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var))
 
         hash = md5.md5(struct_code).hexdigest()
@@ -383,19 +371,16 @@ class CLinker(Linker):
         struct_code %= dict(name = struct_name)
 
         self.struct_code = struct_code
+        self.reuse_storage = reuse_storage
         self.struct_name = struct_name
         self.hash = hash
         self.args = args
-        self.inputs = in_arg_order
-        self.outputs = out_arg_order
-        self.orphans = orphan_arg_order
         self.r2symbol = symbol
         self.init_blocks = init_blocks
         self.init_tasks = init_tasks
         self.blocks = blocks
         self.tasks = tasks
         
-        return struct_code
 
     def find_task(self, failure_code):
         n = len(self.init_tasks)
@@ -406,273 +391,203 @@ class CLinker(Linker):
     
     def support_code(self):
         ret = ""
-        for x in self.env.results().union(self.env.ops()):
+        for x in self.results + self.op_order:
             try: ret += x.c_support_code()
             except AbstractFunctionError: pass
         return ret
 
     def compile_args(self):
         ret = set()
-        for x in self.env.results().union(self.env.ops()):
+        for x in self.results + self.op_order:
             try: ret.update(x.c_compile_args())
             except AbstractFunctionError: pass
         return ret
 
     def headers(self):
         ret = set()
-        for x in self.env.results().union(self.env.ops()):
+        for x in self.results + self.op_order:
             try: ret.update(x.c_headers())
             except AbstractFunctionError: pass
         return ret
     
     def libraries(self):
         ret = set()
-        for x in self.env.results().union(self.env.ops()):
+        for x in self.results + self.op_order:
             try: ret.update(x.c_libraries())
             except AbstractFunctionError: pass
         return ret
 
-    def make_function(self, in_order, out_order):
-        nin = len(self.inputs)
-        nout = len(self.outputs)
+#     def make_function(self, in_order, out_order):
+#         nin = len(self.inputs)
+#         nout = len(self.outputs)
         
-        if nin != len(in_order):
-            raise TypeError("Wrong number of inputs.")
-        if nout != len(out_order):
-            raise TypeError("Wrong number of outputs.")
+#         if nin != len(in_order):
+#             raise TypeError("Wrong number of inputs.")
+#         if nout != len(out_order):
+#             raise TypeError("Wrong number of outputs.")
         
-        in_storage = []
-        out_storage = []
+#         in_storage = []
+#         out_storage = []
 
-        cthunk_in_args = [None] * nin
-        cthunk_out_args = [None] * nout
+#         cthunk_in_args = [None] * nin
+#         cthunk_out_args = [None] * nout
         
-        for result in in_order:
-            idx = self.inputs.index(result)
-            storage = [None]
-            cthunk_in_args[idx] = storage
-            in_storage.append(storage)
-        for result in out_order:
-            idx = self.outputs.index(result)
-            storage = [None]
-            cthunk_out_args[idx] = storage
-            out_storage.append(storage)
+#         for result in in_order:
+#             idx = self.inputs.index(result)
+#             storage = [None]
+#             cthunk_in_args[idx] = storage
+#             in_storage.append(storage)
+#         for result in out_order:
+#             idx = self.outputs.index(result)
+#             storage = [None]
+#             cthunk_out_args[idx] = storage
+#             out_storage.append(storage)
 
-        for arg in cthunk_in_args + cthunk_out_args:
-            if arg is None:
-                raise Exception("The inputs or outputs are underspecified.")
+#         for arg in cthunk_in_args + cthunk_out_args:
+#             if arg is None:
+#                 raise Exception("The inputs or outputs are underspecified.")
 
+#         error_storage = [None, None, None]
+#         cthunk = self.cthunk_factory(error_storage, cthunk_in_args, cthunk_out_args)
+        
+#         def execute(*args):
+#             for arg, storage in zip(args, in_storage):
+#                 storage[0] = arg
+#             failure = cutils.run_cthunk(cthunk)
+#             if failure:
+#                 raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
+#             return utils.to_return_values([storage[0] for storage in out_storage])
+
+#         return execute
+
+    def __compile__(self, inplace = False):
+        if inplace:
+            in_results = self.inputs
+            out_results = self.outputs
+        else:
+            in_results = [copy(input) for input in self.inputs]
+            out_results = [copy(output) for output in self.outputs]
         error_storage = [None, None, None]
-        cthunk = self.cthunk_factory(error_storage, cthunk_in_args, cthunk_out_args)
-        
-        def execute(*args):
-            for arg, storage in zip(args, in_storage):
-                storage[0] = arg
+        thunk = self.cthunk_factory(error_storage,
+                                    [result._data for result in in_results],
+                                    [result._data for result in out_results])
+        if not inplace:
+            for r in in_results + out_results:
+                r._role = None # we just need the wrapper, not the (copied) graph associated to it
+        return thunk, in_results, out_results, error_storage
+
+    def make_thunk(self, inplace = False):
+        cthunk, in_results, out_results, error_storage = self.__compile__(inplace)
+        def execute():
             failure = cutils.run_cthunk(cthunk)
             if failure:
                 raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
-            return utils.to_return_values([storage[0] for storage in out_storage])
+        return execute, in_results, out_results
+
+    def make_function(self, inplace = False):
+        cthunk, in_results, out_results, error_storage = self.__compile__(inplace)
+#        out_storage = [result._data for result in out_results]
+        
+        def execute(*args):
+            for arg, result in zip(args, in_results):
+                result.data = arg
+            failure = cutils.run_cthunk(cthunk)
+            if failure:
+                raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
+            return utils.to_return_values([result.data for result in out_results])
+#            return utils.to_return_values([storage[0] for storage in out_storage])
 
         return execute
-
+    
     def cthunk_factory(self, error_storage, in_storage, out_storage):
 
-        cthunk = object()
-        module_name = self.hash
-        mod = weave.ext_tools.ext_module(module_name)
+        if not getattr(self, 'instantiate', False):
+            self.code_gen()
+            
+            cthunk = object()
+            module_name = self.hash
+            mod = weave.ext_tools.ext_module(module_name)
 
-        argnames = ["i%i" % i for i in xrange(len(in_storage))] \
-            + ["o%i" % i for i in xrange(len(out_storage))] \
-            + ["orph%i" % i for i in xrange(len(self.orphans))]
+            argnames = ["i%i" % i for i in xrange(len(in_storage))] \
+                + ["o%i" % i for i in xrange(len(out_storage))] \
+                + ["orph%i" % i for i in xrange(len(self.orphans))]
 
-        code = """
-        %(struct_name)s* struct_ptr = new %(struct_name)s();
-        struct_ptr->init(error_storage, %(args)s);
-        PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);
-        return thunk;
-        // return_val = thunk; // oh my god weave why does this leak >:\
-        """ % dict(struct_name = self.struct_name,
-                   args = ", ".join(argnames))
+            code = """
+            %(struct_name)s* struct_ptr = new %(struct_name)s();
+            struct_ptr->init(error_storage, %(args)s);
+            PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);
+            return thunk;
+            // return_val = thunk; // oh my god weave why does this leak >:\
+            """ % dict(struct_name = self.struct_name,
+                       args = ", ".join(argnames))
 
-        d = dict(error_storage = object())
-        for argname in argnames:
-            d[argname] = object()
+            d = dict(error_storage = object())
+            for argname in argnames:
+                d[argname] = object()
 
-        instantiate = weave.ext_tools.ext_function('instantiate',
-                                                   code,
-                                                   ['error_storage'] + argnames,
-                                                   local_dict = d,
-                                                   global_dict = {})
+            instantiate = weave.ext_tools.ext_function('instantiate',
+                                                       code,
+                                                       ['error_storage'] + argnames,
+                                                       local_dict = d,
+                                                       global_dict = {})
 
-        static = """
-        int %(struct_name)s_executor(%(struct_name)s* self) {
-            return self->run();
-        }
+            static = """
+            int %(struct_name)s_executor(%(struct_name)s* self) {
+                return self->run();
+            }
 
-        void %(struct_name)s_destructor(void* executor, void* self) {
-            printf("doing cleanup\\n");
-            ((%(struct_name)s*)self)->cleanup();
-            free(self);
-        }
-        """ % dict(struct_name = self.struct_name)
+            void %(struct_name)s_destructor(void* executor, void* self) {
+                //printf("doing cleanup\\n");
+                ((%(struct_name)s*)self)->cleanup();
+                free(self);
+            }
+            """ % dict(struct_name = self.struct_name)
+
+            instantiate.customize.add_support_code(self.support_code() + self.struct_code + static)
+            instantiate.customize.add_extra_compile_arg("-w")
+            for arg in self.compile_args():
+                instantiate.customize.add_extra_compile_arg(arg)
+            for header in self.headers():
+                instantiate.customize.add_header(header)
+            for lib in self.libraries():
+                instantiate.customize.add_library(lib)
+
+            mod.add_function(instantiate)
+            mod.compile(location = compile_dir())
+            module = __import__("%s" % (module_name), {}, {}, [module_name])
+
+            self.instantiate = module.instantiate
         
-        instantiate.customize.add_support_code(self.support_code() + self.struct_code + static)
-        for arg in self.compile_args():
-            instantiate.customize.add_extra_compile_arg(arg)
-        for header in self.headers():
-            instantiate.customize.add_header(header)
-        for lib in self.libraries():
-            instantiate.customize.add_library(lib)
-
-        mod.add_function(instantiate)
-        mod.compile(location = compile_dir())
-        module = __import__("%s" % (module_name), {}, {}, [module_name])
-
         ret = module.instantiate(error_storage, *(in_storage + out_storage + [orphan._data for orphan in self.orphans]))
         assert sys.getrefcount(ret) == 2 # refcount leak check
         return ret
-    
 
 
 
-#     def c_thunk_factory(self):
-#         self.refresh()
-#         d, names, code, struct, converters = self.c_code()
+class OpWiseCLinker(Linker):
 
-#         cthunk = object()
-#         module_name = md5.md5(code).hexdigest()
-#         mod = weave.ext_tools.ext_module(module_name)
-#         instantiate = weave.ext_tools.ext_function('instantiate',
-#                                                    code,
-#                                                    names,
-#                                                    local_dict = d,
-#                                                    global_dict = {},
-#                                                    type_converters = converters)
-#         instantiate.customize.add_support_code(self.c_support_code() + struct)
-#         for arg in self.c_compile_args():
-#             instantiate.customize.add_extra_compile_arg(arg)
-#         for header in self.c_headers():
-#             instantiate.customize.add_header(header)
-#         for lib in self.c_libs():
-#             instantiate.customize.add_library(lib)
-#         #add_library_dir
+    def __init__(self, env):
+        self.env = env
+
+    def make_thunk(self, inplace = False):
+        if inplace:
+            env = self.env
+        else:
+            env = self.env.clone(True)
+        op_order = env.toposort()
+        inputs, outputs = env.inputs, env.outputs
+        env = None
+        thunks = []
+        for op in op_order:
+            cl = CLinker(op)
+            thunk, in_results, out_results = cl.make_thunk(True)
+            thunks.append(thunk)
+
+        def execute():
+            for thunk in thunks:
+                thunk()
         
-#         #print dir(instantiate.customize)
-#         #print instantiate.customize._library_dirs
-#         if os.getenv('OMEGA_BLAS_LD_LIBRARY_PATH'):
-#             instantiate.customize.add_library_dir(os.getenv('OMEGA_BLAS_LD_LIBRARY_PATH'))
-
-#         mod.add_function(instantiate)
-#         mod.compile(location = _compile_dir())
-#         module = __import__("%s" % (module_name), {}, {}, [module_name])
-
-#         def creator():
-#             return module.instantiate(*[x.data for x in self.inputs + self.outputs])
-#         return creator
-    
-        
-    
-
-#     def code_gen(self, reuse_storage = True):
-        
-#         env = self.env
-#         op_order = env.toposort()
-        
-#         to_extract = env.inputs.union(env.orphans())
-#         to_sync = env.outputs
-#         temporaries = env.results().difference(to_extract).difference(to_sync)
-
-#         symbol = {}
-        
-#         init_tasks = []
-#         tasks = []
-
-#         init_blocks = []
-#         blocks = []
-
-#         failure_var = "__failure"
-#         id = 0
-
-#         sub = dict(failure_var = failure_var)
-
-#         on_stack = [result for result in temporaries.union(to_sync) if not reuse_storage or result.c_is_simple()]
-        
-#         for result_set, type in [[to_extract, 'input'],
-#                                  [to_sync, 'output'],
-#                                  [temporaries, 'temporary']]:
-#             for result in result_set:
-#                 builder, block = struct_result_codeblocks(result, type, id, symbol, sub, on_stack)
-
-#                 init_tasks.append((result, 'init'))
-#                 init_blocks.append(builder)
-
-#                 tasks.append((result, 'get'))
-#                 blocks.append(block)
-
-#                 id += 2
-
-#         for op in op_order:
-
-#             ivnames, ovnames = op.c_var_names()
-#             sub = dict(failure_var = failure_var)
-#             for result, vname in zip(op.inputs + op.outputs, ivnames + ovnames):
-#                 sub[vname] = symbol[result]
-
-#             # c_validate_update
-#             try: validate_behavior = op.c_validate_update()
-#             except AbstractFunctionError:
-#                 validate_behavior = ""
-
-#             try: validate_behavior = op.c_validate_update_cleanup()
-#             except AbstractFunctionError:
-#                 validate_cleanup = ""
-
-#             sub['id'] = id
-#             blocks.append(CodeBlock("", validate_behavior, validate_cleanup, sub))
-#             tasks.append((op, 'validate_update'))
-#             id += 1
-
-#             # c_code
-#             behavior = op.c_code() # this one must be implemented!
-
-#             try: cleanup = op.c_code_cleanup()
-#             except AbstractFunctionError:
-#                 cleanup = ""
-            
-#             sub['id'] = id
-#             blocks.append(CodeBlock("", behavior, cleanup, sub))
-#             tasks.append((op, 'code'))
-#             id += 1
-
-#         args = []
-#         in_arg_order = []
-#         for result in list(to_extract):
-#             in_arg_order.append(result)
-#             args.append("storage_%s" % symbol[result])
-#         out_arg_order = []
-#         for result in to_sync:
-#             out_arg_order.append(result)
-#             args.append("storage_%s" % symbol[result])
-#         struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var))
-
-#         hash = md5.md5(struct_code).hexdigest()
-#         struct_name = 'compiled_op_%s' % hash
-#         struct_code %= dict(name = struct_name)
-
-#         self.struct_code = struct_code
-#         self.struct_name = struct_name
-#         self.hash = hash
-#         self.args = args
-#         self.inputs = in_arg_order
-#         self.outputs = out_arg_order
-#         self.r2symbol = symbol
-#         self.init_blocks = init_blocks
-#         self.init_tasks = init_tasks
-#         self.blocks = blocks
-#         self.tasks = tasks
-        
-#         return struct_code
-        
+        return execute, inputs, outputs
 
 
 
@@ -681,118 +596,4 @@ class CLinker(Linker):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-        
-#     def extract_sync(self, to_extract, to_sync, to_cleanup):
-#         pass
-
-#     def code_gen(self):
-#         env = self.env
-#         order = env.toposort()
-#         to_extract = env.inputs.union(env.outputs).union(env.orphans())
-#         head = ""
-#         tail = ""
-        
-#         label_id = 0        
-#         name_id = 0
-#         result_names = {}
-#         for result in env.results():
-#             name = "__v_%i" % name_id
-#             result_names[result] = name
-#             name_id += 1
-        
-#         for result in to_extract:
-#             head += """
-#             {
-#                 %(extract)s
-#             """
-#             tail = """
-#             __label_%(label_id)s:
-#                 %(sync)s
-#             }
-#             """ + tail
-#             name = result_names[result]
-#             type = result.c_type()
-#             head %= dict(extract = result.c_extract())
-#             head %= dict(name = name,
-#                          type = type,
-#                          fail = "{goto __label_%i;}" % label_id)
-#             tail %= dict(sync = result.c_sync(),
-#                          label_id = label_id)
-#             tail %= dict(name = name,
-#                          type = type)
-#             label_id += 1
-
-#         for op in order:
-#             inames, onames = op.c_var_names()
-            
-        
-#         return head + tail
-
-
-
-# def struct_result_codeblocks(result, type, id, symbol_table, sub, on_stack):
-
-#     if type == 'output':
-#         sync = get_c_sync(result)
-#     else:
-#         sync = ""
-
-#     if type == 'input':
-#         struct_declare = ""
-#         run_declare = result.c_declare()
-
-#         struct_behavior = ""
-#         run_behavior = get_c_extract(result)
-
-#         struct_cleanup = ""
-#         run_cleanup = get_c_cleanup(result)
-
-#     else:
-#         if result in on_stack:
-#             struct_declare = ""
-#             run_declare = result.c_declare()
-
-#             struct_behavior = ""
-#             run_behavior = result.c_init()
-
-#             struct_cleanup = ""
-#             run_cleanup = sync + get_c_cleanup(result)
-
-#         else:
-#             struct_declare = result.c_declare()
-#             run_declare = ""
-
-#             struct_behavior = result.c_init()
-#             run_behavior = ""
-
-#             struct_cleanup = get_c_cleanup(result)
-#             run_cleanup = sync
-
-#     name = "V%i" % id
-#     symbol_table[result] = name
-#     sub = copy(sub)
-#     sub['name'] = name
-#     sub['id'] = id
-#     struct_builder = CodeBlock(struct_declare, struct_behavior, struct_cleanup, sub)
-#     sub['id'] = id + 1
-#     block = CodeBlock(run_declare, run_behavior, run_cleanup, sub)
-
-#     return struct_builder, block
 

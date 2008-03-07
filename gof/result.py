@@ -64,6 +64,7 @@ class ResultBase(object):
         self.__set_data(data)
         self.name = name
 
+        
     #
     # role 
     #
@@ -123,7 +124,7 @@ class ResultBase(object):
             self.state = Empty
             return
         try:
-            self.validate(data)
+            data = self.filter(data)
         except AbstractFunctionError:
             pass
         self._data[0] = data
@@ -132,7 +133,7 @@ class ResultBase(object):
     data = property(__get_data, __set_data,
                     doc = "The storage associated with this result")
 
-    def validate(self, data):
+    def filter(self, data):
         """(abstract) Raise an exception if the data is not of an
         acceptable type.
 
@@ -140,7 +141,8 @@ class ResultBase(object):
         it to check that the argument can be used properly. This gives
         a subclass the opportunity to ensure that the contents of
         self._data remain sensible.
-        
+
+        Returns data or an appropriately wrapped data.
         """
         raise AbstractFunctionError()
 

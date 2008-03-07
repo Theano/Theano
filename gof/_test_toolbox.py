@@ -47,14 +47,14 @@ import modes
 modes.make_constructors(globals())
 
 def inputs():
-    x = modes.BuildMode(MyResult('x'))
-    y = modes.BuildMode(MyResult('y'))
-    z = modes.BuildMode(MyResult('z'))
+    x = modes.build(MyResult('x'))
+    y = modes.build(MyResult('y'))
+    z = modes.build(MyResult('z'))
     return x, y, z
 
 def env(inputs, outputs, validate = True, features = []):
-    inputs = [input.r for input in inputs]
-    outputs = [output.r for output in outputs]
+#     inputs = [input.r for input in inputs]
+#     outputs = [output.r for output in outputs]
     return Env(inputs, outputs, features = features, consistency_check = validate)
 
 
@@ -65,10 +65,10 @@ class _test_EquivTool(unittest.TestCase):
         sx = sigmoid(x)
         e = add(sx, sigmoid(y))
         g = env([x, y, z], [e], features = [EquivTool])
-        assert g.equiv(sx.r) is sx.r
-        g.replace(sx.r, dot(x, z).r)
-        assert g.equiv(sx.r) is not sx.r
-        assert isinstance(g.equiv(sx.r).owner, Dot)
+        assert g.equiv(sx) is sx
+        g.replace(sx, dot(x, z))
+        assert g.equiv(sx) is not sx
+        assert isinstance(g.equiv(sx).owner, Dot)
 
 
 

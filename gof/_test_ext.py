@@ -81,15 +81,21 @@ s2t = OpSubOptimizer(Sigmoid, TransposeView)
 import modes
 modes.make_constructors(globals(), name_filter = lambda x:x)
 
+# def inputs():
+#     x = modes.BuildMode(MyResult('x'))
+#     y = modes.BuildMode(MyResult('y'))
+#     z = modes.BuildMode(MyResult('z'))
+#     return x, y, z
+
 def inputs():
-    x = modes.BuildMode(MyResult('x'))
-    y = modes.BuildMode(MyResult('y'))
-    z = modes.BuildMode(MyResult('z'))
+    x = modes.build(MyResult('x'))
+    y = modes.build(MyResult('y'))
+    z = modes.build(MyResult('z'))
     return x, y, z
 
 def env(inputs, outputs, validate = True):
-    inputs = [input.r for input in inputs]
-    outputs = [output.r for output in outputs]
+    inputs = [input for input in inputs]
+    outputs = [output for output in outputs]
     return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
 
 
@@ -139,7 +145,7 @@ class _test_all(unittest.TestCase):
         e = Dot(AddInPlace(x,y), TransposeView(x))
         g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(e.r.owner.inputs[1], Add(x,z).r)
+        g.replace(e.owner.inputs[1], Add(x,z))
         assert g.consistent()
 
     def test_5(self):
@@ -147,7 +153,7 @@ class _test_all(unittest.TestCase):
         e = Dot(AddInPlace(x,y), TransposeView(TransposeView(TransposeView(TransposeView(Sigmoid(x))))))
         g = env([x,y,z], [e])
         assert g.consistent()
-        g.replace(e.r.owner.inputs[1].owner.inputs[0], x.r, False)
+        g.replace(e.owner.inputs[1].owner.inputs[0], x, False)
         assert not g.consistent()
 
     def test_6(self):
@@ -168,9 +174,9 @@ class _test_all(unittest.TestCase):
         chk = g.checkpoint()
         dtv_elim.optimize(g)
         assert str(g) == "[x]"
-        g.replace(g.equiv(e.r), Add(x,y).r)
+        g.replace(g.equiv(e), Add(x,y))
         assert str(g) == "[Add(x, y)]"
-        g.replace(g.equiv(e.r), Dot(AddInPlace(x,y), TransposeView(x)).r, False)
+        g.replace(g.equiv(e), Dot(AddInPlace(x,y), TransposeView(x)), False)
         assert str(g) == "[Dot(AddInPlace(x, y), TransposeView(x))]"
         assert not g.consistent()
         g.revert(chk)
@@ -188,21 +194,21 @@ class _test_all(unittest.TestCase):
 
     def test_9(self):
         x, y, z = inputs()
-        x.r.indestructible = True
+        x.indestructible = True
         e = AddInPlace(x, y)
         g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(e.r, Add(x, y).r)
+        g.replace(e, Add(x, y))
         assert g.consistent()
 
     def test_10(self):
         x, y, z = inputs()
-        x.r.indestructible = True
+        x.indestructible = True
         tv = TransposeView(x)
         e = AddInPlace(tv, y)
         g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(tv.r, Sigmoid(x).r)
+        g.replace(tv, Sigmoid(x))
         assert g.consistent()
         
 

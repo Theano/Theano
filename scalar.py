@@ -2,6 +2,7 @@
 import numpy
 
 from copy import copy
+import inspect
 
 from gof import ResultBase, GuardedOp, utils
 
@@ -17,10 +18,10 @@ def as_scalar(x, name = None):
 
 class Scalar(ResultBase):
 
-    def __init__(self, dtype, name=None):
+    def __init__(self, dtype, data = None, name=None):
         self.dtype = dtype
         self.constant = False
-        ResultBase.__init__(self, role = None, data = None, name = name)
+        ResultBase.__init__(self, role = None, data = data, name = name)
 
     def __get_constant(self):
         return self._constant
@@ -28,14 +29,13 @@ class Scalar(ResultBase):
     def __set_constant(self, value):
         if value:
             self.indestructible = True
-        self.constant = value
+        self._constant = value
 
     constant = property(__get_constant, __set_constant)
         
-    def validate(self, data):
-        py_type = self.py_type()
-        if not isinstance(data, py_type):
-            raise TypeError("Expected %s instance." % py_type)
+    def filter(self, data):
+        py_type = self.dtype_specs()[0]
+        return py_type(data)
 
     def same_properties(self, other):
         return other.dtype == self.dtype
@@ -44,50 +44,55 @@ class Scalar(ResultBase):
         return getattr(self, 'constant', False) \
             and getattr(other, 'constant', False) \
             and self.data == other.data
+
+    def dtype_specs(self):
+        return {'float64': (float, 'double', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble')}[self.dtype]
     
-    def py_type(self):
-        return {'float64': float}[self.dtype]
+#     def py_type(self):
+#         return {'float64': float}[self.dtype]
         
-    def c_type(self):
-        return {'float64': 'double'}[self.dtype]
+#     def c_type(self):
+#         return {'float64': 'double'}[self.dtype]
         
-    def c_from(self):
-        return {'float64': 'PyFloat_FromDouble'}[self.dtype]
+#     def c_from(self):
+#         return {'float64': 'PyFloat_FromDouble'}[self.dtype]
         
-    def c_as(self):
-        return {'float64': 'PyFloat_AsDouble'}[self.dtype]
+#     def c_as(self):
+#         return {'float64': 'PyFloat_AsDouble'}[self.dtype]
 
     def c_declare(self):
         return """
-        %(dtype)s* %%(name)s;
+        %(dtype)s %%(name)s;
         typedef %(dtype)s %%(name)s_dtype;
-        """ % dict(dtype = self.c_type())
+        """ % dict(dtype = self.dtype_specs()[1])
 
-    def c_data_extract(self):
+    def c_init(self):
         return """
-        %%(name)s = (%(dtype)s)%(conv)s(py_%%(name)s);
-        if (!%%(name)s)
-            %%(fail)s
-        """ % dict(dtype = self.c_type(),
-                   conv = self.c_as())
+        %(name)s = 0;
+        """
     
-    def c_data_sync(self):
+    def c_extract(self):
+        specs = self.dtype_specs()
+        return """
+        if (!%(check)s(py_%%(name)s))
+            %%(fail)s
+        %%(name)s = (%(dtype)s)%(conv)s(py_%%(name)s);
+        """ % dict(dtype = specs[1],
+                   check = specs[2],
+                   conv = specs[3])
+    
+    def c_sync(self):
+        specs = self.dtype_specs()
         return """
         Py_XDECREF(py_%%(name)s);
         py_%%(name)s = %(conv)s((%(dtype)s)%%(name)s);
         if (!py_%%(name)s)
             py_%%(name)s = Py_None;
-        """ % dict(dtype = self.c_type(),
-                   conv = self.c_as())
+        """ % dict(dtype = specs[1],
+                   conv = specs[4])
 
-    def c_data_cleanup(self):
+    def c_cleanup(self):
         return ""
-
-    def c_headers(self):
-        return []
-
-    def c_libraries(self):
-        return []
 
 
 
@@ -120,6 +125,15 @@ class ScalarMixedOp(GuardedOp):
     def perform(self):
         self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
 
+    def c_var_names(self):
+        (self, inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
+        inames = utils.from_return_values(inames)
+        onames = utils.from_return_values(onames)
+        return [inames, onames]
+
+    def c_code(self):
+        return self.c_impl(self.inputs, self.outputs)
+        
 
 def upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)

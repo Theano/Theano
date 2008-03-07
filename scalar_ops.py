@@ -23,7 +23,7 @@ class Mul(BinaryScalarOp):
     def impl(self, x, y):
         return x * y
     def c_impl(self, (x, y), z):
-        return "%(z)s = %(x)s + %(y)s;"
+        return "%(z)s = %(x)s * %(y)s;"
     def grad(self, (x, y), gz):
         return mul(y, gz), mul(x, gz)
 

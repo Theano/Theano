@@ -49,14 +49,14 @@ modes.make_constructors(globals())
 
 
 def inputs():
-    x = modes.BuildMode(MyResult('x'))
-    y = modes.BuildMode(MyResult('y'))
-    z = modes.BuildMode(MyResult('z'))
+    x = modes.build(MyResult('x'))
+    y = modes.build(MyResult('y'))
+    z = modes.build(MyResult('z'))
     return x, y, z
 
 def env(inputs, outputs, validate = True):
-    inputs = [input.r for input in inputs]
-    outputs = [output.r for output in outputs]
+#     inputs = [input.r for input in inputs]
+#     outputs = [output.r for output in outputs]
     return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
 
 

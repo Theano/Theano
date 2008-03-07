@@ -21,11 +21,12 @@ class NumpyR(ResultBase):
         elif not str(data.dtype) == self.dtype:
             raise TypeError("Expected ndarray with data type %i." % self.dtype)
 
-    def to_c_type(self, dtype):
-        if dtype == "float64":
-            return "double"
-        else:
-            raise TypeError("Cannot translate dtype to C.")
+    
+#     def to_c_type(self, dtype):
+#         if dtype == "float64":
+#             return "double"
+#         else:
+#             raise TypeError("Cannot translate dtype to C.")
         
     def c_declare(self):
         return """

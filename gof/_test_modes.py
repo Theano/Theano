@@ -22,7 +22,7 @@ class Double(ResultBase):
         return self.name
 
     def __add__(self, other):
-        return Add(self, other)
+        return add(self, other)
 
 
 def convert(x):
@@ -80,51 +80,51 @@ def inputs(mode):
     return x, y, z
 
 def env(inputs, outputs, validate = True):
-    inputs = [input.r for input in inputs]
-    outputs = [output.r for output in outputs]
+#     inputs = [input.r for input in inputs]
+#     outputs = [output.r for output in outputs]
     return Env(inputs, outputs, features = [], consistency_check = validate)
 
 
 class _test_Modes(unittest.TestCase):
 
     def test_0(self):
-        x, y, z = inputs(BuildMode)
+        x, y, z = inputs(build)
         e = add(add(x, y), z)
         g = env([x, y, z], [e])
         assert str(g) == "[Add(Add(x, y), z)]"
-        assert e.r.data == 0.0
+        assert e.data == 0.0
         
     def test_1(self):
-        x, y, z = inputs(BuildEvalMode)
+        x, y, z = inputs(build_eval)
         e = add(add(x, y), z)
         g = env([x, y, z], [e])
         assert str(g) == "[Add(Add(x, y), z)]"
-        assert e.r.data == 6.0
+        assert e.data == 6.0
         
     def test_2(self):
-        x, y, z = inputs(EvalMode)
+        x, y, z = inputs(eval)
         e = add(add(x, y), z)
         g = env([x, y, z], [e])
         assert str(g) == "[Add_R]"
-        assert e.r.data == 6.0
+        assert e.data == 6.0
 
     def test_3(self):
-        x, y, z = inputs(BuildMode)
+        x, y, z = inputs(build)
         e = x + y + z
         g = env([x, y, z], [e])
         assert str(g) == "[Add(Add(x, y), z)]"
-        assert e.r.data == 0.0
+        assert e.data == 0.0
         
     def test_4(self):
-        x, y, z = inputs(BuildEvalMode)
+        x, y, z = inputs(build_eval)
         e = x + 34.0
         g = env([x, y, z], [e])
         assert str(g) == "[Add(x, oignon)]"
-        assert e.r.data == 35.0
+        assert e.data == 35.0
         
     def test_5(self):
-        xb, yb, zb = inputs(BuildMode)
-        xe, ye, ze = inputs(EvalMode)
+        xb, yb, zb = inputs(build)
+        xe, ye, ze = inputs(eval)
         try:
             e = xb + ye
         except TypeError:

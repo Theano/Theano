@@ -75,8 +75,8 @@ class Env(graph.Graph):
         self._tools = {}
 
         # The inputs and outputs set bound the subgraph this Env operates on.
-        self.inputs = set(inputs)
-        self.outputs = set(outputs)
+        self.inputs = list(inputs)
+        self.outputs = list(outputs)
         
         for feature_class in uniq_features(features):
             self.add_feature(feature_class, False)
@@ -110,9 +110,9 @@ class Env(graph.Graph):
 
     ### Public interface ###
 
-    def add_output(self, output):
-        self.outputs.add(output)
-        self.__import_r__([output])
+#     def add_output(self, output):
+#         self.outputs.add(output)
+#         self.__import_r__([output])
 
     def clients(self, r):
         "Set of all the (op, i) pairs such that op.inputs[i] is r."
@@ -249,8 +249,9 @@ class Env(graph.Graph):
             new_was_output = True
         if r in self.outputs:
             was_output = True
-            self.outputs.remove(r)
-            self.outputs.add(new_r)
+            self.outputs[self.outputs.index(r)] = new_r
+#            self.outputs.remove(r)
+#            self.outputs.add(new_r)
 
         # The actual replacement operation occurs here. This might raise
         # an error.
@@ -261,8 +262,9 @@ class Env(graph.Graph):
             # Restore self.outputs
             if was_output:
                 if not new_was_output:
-                    self.outputs.remove(new_r)
-                self.outputs.add(r)
+                    self.outputs[self.outputs.index(new_r)] = r
+#                    self.outputs.remove(new_r)
+#                self.outputs.add(r)
 
             # Move back the clients. This should never raise an error.
             self.__move_clients__(clients, new_r, r)

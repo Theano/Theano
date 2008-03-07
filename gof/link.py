@@ -2,35 +2,80 @@
 # from features import Tool
 
 from utils import AbstractFunctionError
+import utils
 
 
 class Linker:
 
     def __init__(self, env):
         self.env = env
-        self.thunk = None
 
-    def compile(self):
+    def make_thunk(self, inplace = False):
+        """
+        This function must return a triplet (function, input_results, output_results)
+        where function is a thunk that operates on the returned results. If inplace
+        is True, the input_results and output_results lists will be the same as the
+        inputs and outputs of the graph provided to the Linker. Else, independent
+        results will be returned.
+
+        Example:
+         e = x + y
+         env = Env([x, y], [e])
+         fn, (new_x, new_y), (new_e, ) = MyLinker(env).make_thunk(inplace)
+         new_x.data = 1.0
+         new_y.data = 2.0
+         fn()
+         print new_e.data # 3.0
+         print e.data # 3.0 iff inplace == True (else unknown)
+        """
         raise AbstractFunctionError()
 
-    def run(self):
-        self.thunk()
+    def make_function(self, inplace = False):
+        """
+        Returns a function that takes values corresponding to the inputs of the
+        env used by this Linker and returns values corresponding the the outputs
+        of that env. If inplace is True, the calculations will operate in the
+        same storage the env uses, else independent storage will be allocated
+        for the function.
+        
+        Example:
+         e = x + y
+         env = Env([x, y], [e])
+         fn = MyLinker(env).make_function(inplace)
+         print fn(1.0, 2.0) # 3.0
+         print e.data # 3.0 iff inplace == True (else unknown)
+        """
+        thunk, inputs, outputs = self.make_thunk(inplace)
 
-    def __call__(self):
-        self.thunk()
+        def execute(*args):
+            for arg, result in zip(args, inputs):
+                result.data = arg
+            thunk()
+            return utils.to_return_values([result.data for result in outputs])
+
+        return execute
+
+
+
 
 
 class PerformLinker(Linker):
 
-    def compile(self):
-        order = self.env.toposort()
+    def make_thunk(self, inplace = False):
+        if inplace:
+            env = self.env
+        else:
+            env = self.env.clone(True)
+        order = env.toposort()
         thunks = [op.perform for op in order]
         def f():
             for thunk in thunks:
                 thunk()
-        self.thunk = f
-        self.order = order
-        self.thunks = thunks
+        return f, env.inputs, env.outputs
+
+#         self.thunk = f
+#         self.order = order
+#         self.thunks = thunks
 
 
 class ProfilePerformLinker(Linker):

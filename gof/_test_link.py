@@ -65,19 +65,18 @@ import modes
 modes.make_constructors(globals())
 
 def inputs():
-    x = modes.BuildMode(Double(1.0, 'x'))
-    y = modes.BuildMode(Double(2.0, 'y'))
-    z = modes.BuildMode(Double(3.0, 'z'))
+    x = modes.build(Double(1.0, 'x'))
+    y = modes.build(Double(2.0, 'y'))
+    z = modes.build(Double(3.0, 'z'))
     return x, y, z
 
 def env(inputs, outputs, validate = True, features = []):
-    inputs = [input.r for input in inputs]
-    outputs = [output.r for output in outputs]
+#     inputs = [input.r for input in inputs]
+#     outputs = [output.r for output in outputs]
     return Env(inputs, outputs, features = features, consistency_check = validate)
 
 def perform_linker(env):
     lnk = PerformLinker(env)
-    lnk.compile()
     return lnk
 
 
@@ -86,8 +85,23 @@ class _test_PerformLinker(unittest.TestCase):
     def test_0(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
-        perform_linker(env([x, y, z], [e])).run()
-        assert e.r.data == 1.5
+        fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(True)
+        fn()
+        assert e.data == 1.5
+
+    def test_1(self):
+        x, y, z = inputs()
+        e = mul(add(x, y), div(x, y))
+        fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(False)
+        fn()
+        assert e.data != 1.5
+
+    def test_2(self):
+        x, y, z = inputs()
+        e = mul(add(x, y), div(x, y))
+        fn = perform_linker(env([x, y, z], [e])).make_function()
+        assert fn(1.0, 2.0, 3.0) == 1.5
+        assert e.data != 1.5
 
 
 if __name__ == '__main__':
