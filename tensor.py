@@ -1,18 +1,20 @@
 
 import numpy
 from copy import copy
+import inspect
+from gof import ResultBase, Op, utils
 
-from gof import ResultBase
-from gof import Op
 
 
 def tensor(data, name = None):
+    data = numpy.asarray(data)
     return Tensor(data.dtype, [0]*len(data.shape), data, name)
 
 def _broadcastable_pattern(pattern):
     def factory(data = None, name = None):
         if data: assert len(data.shape) == len(pattern)
         return Tensor(data.dtype, pattern, data, name)
+    return factory
 
 matrix = _broadcastable_pattern([0, 0])
 row = _broadcastable_pattern([1, 0])
@@ -23,7 +25,7 @@ class Tensor(ResultBase):
 
     def __init__(self, dtype, broadcastable, data=None, name=None):
         self.broadcastable = broadcastable
-        self.dtype = dtype
+        self.dtype = str(dtype)
         ResultBase.__init__(self, role = None, data = None, name = name)
 
     def filter(self, data):
@@ -31,32 +33,55 @@ class Tensor(ResultBase):
         for b, s in zip(self.broadcastable, arr.shape):
             assert not b or s == 1
         return arr
-        
+
+    def dtype_specs(self):
+        return {'float64': (float, 'double')}[self.dtype]
+            
     def c_declare(self):
         return """
         PyArrayObject* %%(name)s;
         typedef %(dtype)s %%(name)s_dtype;
-        """ % dict(dtype = self.to_c_type(self.dtype))
+        """ % dict(dtype = self.dtype_specs()[1])
 
-    def c_data_extract(self):
+    def c_init(self):
         return """
-        if (py_%(name)s == Py_None)
-            %(name)s = NULL;
-        else
-            %(name)s = (PyArrayObject*)(py_%(name)s);
+        %(name)s = NULL;
         """
 
-    def c_data_cleanup(self):
-        return ""
+    def c_extract(self):
+        return """
+        if (py_%(name)s == Py_None) {
+            %(name)s = NULL;
+        }
+        else if (!PyArray_Check(py_%(name)s)) {
+            PyErr_SetString(PyExc_ValueError, "expected an ndarray");
+            %(fail)s
+        }
+        else {
+            %(name)s = (PyArrayObject*)(py_%(name)s);
+            Py_XINCREF(%(name)s);
+        }
+        """
+
+    def c_cleanup(self):
+        return """
+        if (%(name)s) {
+            Py_XDECREF(%(name)s);
+            for (int i = 0; i < PyArray_REFCOUNT(%(name)s); i++) {
+                printf("X");
+            }
+            printf("Y\\n");
+        }
+        """
     
-    def c_data_sync(self):
+    def c_sync(self):
         return """
         if (!%(name)s) {
-            Py_XDECREF(py_%(name));
+            Py_XDECREF(py_%(name)s);
             py_%(name)s = Py_None;
         }
         else if ((void*)py_%(name)s != (void*)%(name)s) {
-            Py_XDECREF(py_%(name));
+            Py_XDECREF(py_%(name)s);
             py_%(name)s = (PyObject*)%(name)s;
         }
         """
@@ -74,50 +99,5 @@ class Tensor(ResultBase):
         cpy = self.__class__(self.dtype, self.broadcastable, None, self.name)
         cpy.data = copy(self.data)
         return cpy
-
-
-
-def TensorOp(Op):
-
-    nin = -1
-    nout = 1
-    
-    def __init__(self, *inputs):
-
-        def wrap_as_tensor(x):
-            if isinstance(x, Tensor):
-                return x
-            else:
-                return Tensor(x)
-
-        inputs = map(wrap_as_tensor, inputs)
-        
-        if self.nin >= 0:
-            if len(inputs) != self.nin:
-                raise TypeError("Wrong number of inputs for %s (got %i, expected %i)") \
-                    % (self, len(inputs), self.nin)
-
-        i_broadcastables = [getattr(input, 'broadcastable', None) for input in inputs]
-        i_dtypes = [getattr(input, 'dtype', None) for input in inputs]
-
-        o_broadcastables = utils.from_return_values(self.propagate_broadcastable(*i_broadcastables))
-        o_dtypes = utils.from_return_values(self.propagate_dtype(*i_dtypes))
-
-        self.inputs = inputs
-        self.outputs = [Tensor(dtype, broadcastable) for broadcastable, dtype in zip(o_broadcastables, o_dtypes)]
-
-    def propagate_broadcastable(self, *inputs):
-        raise AbstractFunctionError()
-
-    def propagate_dtype(self, *inputs):
-        raise AbstractFunctionError()
-    
-    def impl(self, *inputs):
-        raise AbstractFunctionError()
-    
-    def perform(self):
-        self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
-
-
 
 
