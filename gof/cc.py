@@ -417,49 +417,6 @@ class CLinker(Linker):
             except AbstractFunctionError: pass
         return ret
 
-#     def make_function(self, in_order, out_order):
-#         nin = len(self.inputs)
-#         nout = len(self.outputs)
-        
-#         if nin != len(in_order):
-#             raise TypeError("Wrong number of inputs.")
-#         if nout != len(out_order):
-#             raise TypeError("Wrong number of outputs.")
-        
-#         in_storage = []
-#         out_storage = []
-
-#         cthunk_in_args = [None] * nin
-#         cthunk_out_args = [None] * nout
-        
-#         for result in in_order:
-#             idx = self.inputs.index(result)
-#             storage = [None]
-#             cthunk_in_args[idx] = storage
-#             in_storage.append(storage)
-#         for result in out_order:
-#             idx = self.outputs.index(result)
-#             storage = [None]
-#             cthunk_out_args[idx] = storage
-#             out_storage.append(storage)
-
-#         for arg in cthunk_in_args + cthunk_out_args:
-#             if arg is None:
-#                 raise Exception("The inputs or outputs are underspecified.")
-
-#         error_storage = [None, None, None]
-#         cthunk = self.cthunk_factory(error_storage, cthunk_in_args, cthunk_out_args)
-        
-#         def execute(*args):
-#             for arg, storage in zip(args, in_storage):
-#                 storage[0] = arg
-#             failure = cutils.run_cthunk(cthunk)
-#             if failure:
-#                 raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
-#             return utils.to_return_values([storage[0] for storage in out_storage])
-
-#         return execute
-
     def __compile__(self, inplace = False):
         if inplace:
             in_results = self.inputs

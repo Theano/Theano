@@ -6,27 +6,31 @@ from gof import ResultBase
 from gof import Op
 
 
-class NumpyR(ResultBase):
+def tensor(data, name = None):
+    return Tensor(data.dtype, [0]*len(data.shape), data, name)
 
-    def __init__(self, dtype, nd, name=None):
-        self.nd = nd
+def _broadcastable_pattern(pattern):
+    def factory(data = None, name = None):
+        if data: assert len(data.shape) == len(pattern)
+        return Tensor(data.dtype, pattern, data, name)
+
+matrix = _broadcastable_pattern([0, 0])
+row = _broadcastable_pattern([1, 0])
+col = _broadcastable_pattern([0, 1])
+
+
+class Tensor(ResultBase):
+
+    def __init__(self, dtype, broadcastable, data=None, name=None):
+        self.broadcastable = broadcastable
         self.dtype = dtype
         ResultBase.__init__(self, role = None, data = None, name = name)
 
-    def validate(self, data):
-        if not isinstance(data, numpy.ndarray):
-            raise TypeError("Expected ndarray instance.")
-        elif not len(data.shape) == self.nd:
-            raise TypeError("Expected ndarray with %i dimensions." % self.nd)
-        elif not str(data.dtype) == self.dtype:
-            raise TypeError("Expected ndarray with data type %i." % self.dtype)
-
-    
-#     def to_c_type(self, dtype):
-#         if dtype == "float64":
-#             return "double"
-#         else:
-#             raise TypeError("Cannot translate dtype to C.")
+    def filter(self, data):
+        arr = numpy.asarray(data, dtype = self.dtype)
+        for b, s in zip(self.broadcastable, arr.shape):
+            assert not b or s == 1
+        return arr
         
     def c_declare(self):
         return """
@@ -64,35 +68,48 @@ class NumpyR(ResultBase):
         return []
 
     def __copy__(self):
-        cpy = self.__class__(self.dtype, self.nd, self.name)
+        """
+        Returns a copy of this Tensor. If there is data stored inside it, it is also copied.
+        """
+        cpy = self.__class__(self.dtype, self.broadcastable, None, self.name)
         cpy.data = copy(self.data)
         return cpy
 
 
 
-def TheanoOp(Op):
+def TensorOp(Op):
 
     nin = -1
     nout = 1
     
     def __init__(self, *inputs):
+
+        def wrap_as_tensor(x):
+            if isinstance(x, Tensor):
+                return x
+            else:
+                return Tensor(x)
+
+        inputs = map(wrap_as_tensor, inputs)
+        
         if self.nin >= 0:
             if len(inputs) != self.nin:
                 raise TypeError("Wrong number of inputs for %s (got %i, expected %i)") \
                     % (self, len(inputs), self.nin)
 
-        i_nds = [getattr(input, 'nd', None) for input in inputs]
+        i_broadcastables = [getattr(input, 'broadcastable', None) for input in inputs]
         i_dtypes = [getattr(input, 'dtype', None) for input in inputs]
 
-        o_nds = self.propagate_nd(*i_nds)
-        o_dtypes = self.propagate_dtypes(*i_dtypes)
-        
-        return [NumpyR(nd, dtype) for nd, dtype in zip(o_nds, o_dtypes)]
+        o_broadcastables = utils.from_return_values(self.propagate_broadcastable(*i_broadcastables))
+        o_dtypes = utils.from_return_values(self.propagate_dtype(*i_dtypes))
 
-    def propagate_nds(self, *inputs):
+        self.inputs = inputs
+        self.outputs = [Tensor(dtype, broadcastable) for broadcastable, dtype in zip(o_broadcastables, o_dtypes)]
+
+    def propagate_broadcastable(self, *inputs):
         raise AbstractFunctionError()
 
-    def propagate_dtypes(self, *inputs):
+    def propagate_dtype(self, *inputs):
         raise AbstractFunctionError()
     
     def impl(self, *inputs):

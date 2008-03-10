@@ -29,9 +29,8 @@ class Grad(object):
 
     def __getitem__(self, item):
         """Map item to its id and retrieve it."""
-        key = core.wrap(item)
         try:
-            return self.map[key]
+            return self.map[item]
         except KeyError:
             return Undefined
 
@@ -60,16 +59,16 @@ class Grad(object):
             # nothing to do
             return
 
-        if r.data is not None and dr.data is not None:
-            if not hasattr(r, 'shape'):
-                raise ValueError(('Grad::add r lacks shape: type=',
-                    type(r)))
-            if not hasattr(dr, 'shape'):
-                raise ValueError(('Grad::add dr lacks shape: type=',
-                    type(dr)))
-            if r.shape != dr.shape:
-                raise ValueError(('Grad::add r, dr shape mismatch',
-                    r.shape, dr.shape))
+#         if r.data is not None and dr.data is not None:
+#             if not hasattr(r, 'shape'):
+#                 raise ValueError(('Grad::add r lacks shape: type=',
+#                     type(r)))
+#             if not hasattr(dr, 'shape'):
+#                 raise ValueError(('Grad::add dr lacks shape: type=',
+#                     type(dr)))
+#             if r.shape != dr.shape:
+#                 raise ValueError(('Grad::add r, dr shape mismatch',
+#                     r.shape, dr.shape))
 
         # prevent 'r' from being re-calculated by self.__call__ in 'build_eval' mode
         if r.state is gof.result.Computed:
@@ -102,14 +101,12 @@ class Grad(object):
         """
         if not maybe_redo and self.did_bprop:
             raise Exception('bprop has already been done. Consider calling with maybe_redo=True.')
-        core.build_mode()
         try:
             outputs = self.outputs
             inputs = gof.graph.inputs(outputs)
             for op in gof.graph.io_toposort(inputs, outputs).__reversed__():
                 op.update_gradient(self)
         finally:
-            core.pop_mode()
             self.did_bprop = True
 
     def __call__(self, item):
@@ -121,8 +118,7 @@ class Grad(object):
         if not self.did_bprop:
             raise Exception('Grad.__call__ only makes sense after a bprop')
         rval = self[item]
-        if rval is not Undefined \
-                and core.current_mode() == 'build_eval':
+        if rval is not Undefined:
             compute_from([rval], self._compute_history)
         return rval
 
