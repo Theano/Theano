@@ -23,10 +23,29 @@ col = _broadcastable_pattern([0, 1])
 
 class Tensor(ResultBase):
 
-    def __init__(self, dtype, broadcastable, data=None, name=None):
+    def __init__(self, dtype=None, broadcastable=None, data=None, name=None, constant=False):
+        if dtype is None or broadcastable is None:
+            if data is None:
+                raise TypeError("Provide non-None data to complete the dtype and broadcastable flags.")
+            dtype = data.dtype
+            if constant:
+                broadcastable = [1*(x == 1) for x in data.shape]
+            else:
+                broadcastable = [0] * len(data.shape)
         self.broadcastable = broadcastable
         self.dtype = str(dtype)
+        self.constant = constant
         ResultBase.__init__(self, role = None, data = None, name = name)
+
+    def __get_constant(self):
+        return self._constant
+
+    def __set_constant(self, value):
+        if value:
+            self.indestructible = True
+        self._constant = value
+
+    constant = property(__get_constant, __set_constant)
 
     def filter(self, data):
         arr = numpy.asarray(data, dtype = self.dtype)

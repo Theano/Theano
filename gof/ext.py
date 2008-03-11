@@ -118,7 +118,6 @@ class DestroyHandler(Listener, Constraint, Orderings):
                 for input in destroyed:
                     path = self.__path__(input)
                     self.__add_destroyer__(path + [output])
-#######                    self.__add_destroyer__(path + [op])
 
             elif views:
                 if len(views) > 1:

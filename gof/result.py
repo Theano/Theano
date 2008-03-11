@@ -160,32 +160,17 @@ class ResultBase(object):
         """
         raise AbstractFunctionError()
 
-#     def c_extract(self):
-#         get_from_list = """
-#         //PyObject* py_%(name)s = PyList_GET_ITEM(%(name)s_storage, 0);
-#         //Py_XINCREF(py_%(name)s);
-#         """
-#         return get_from_list + self.c_data_extract()
-
     def c_extract(self):
         """
-#         The code returned from this function must be templated using
-#         "%(name)s", representing the name that the caller wants to
-#         call this Result. The Python object self.data is in a
-#         variable called "py_%(name)s" and this code must declare a
-#         variable named "%(name)s" of type "%(type)s" where "%(type)s"
-#         will be replaced by the return value of
-#         self.c_type(). Additional variables and typedefs may not be
-#         produced. If the data is improper, set an appropriate error
-#         message and insert "%(fail)s".
+        The code returned from this function must be templated using
+        "%(name)s", representing the name that the caller wants to
+        call this Result. The Python object self.data is in a
+        variable called "py_%(name)s" and this code must set the
+        variables declared by c_declare to something representative
+        of py_%(name)s. If the data is improper, set an appropriate error
+        message and insert "%(fail)s".
         """
         raise AbstractFunctionError()
-
-#     def c_cleanup(self):
-#         decref = """
-#         //Py_XDECREF(py_%(name)s);
-#         """
-#         return self.c_data_cleanup() + decref
     
     def c_cleanup(self):
         """
@@ -196,13 +181,6 @@ class ResultBase(object):
         Note: EITHER c_cleanup OR c_sync will be called.
         """
         raise AbstractFunctionError()
-    
-#     def c_sync(self):
-#         set_in_list = """
-#         //PyList_SET_ITEM(%(name)s_storage, 0, py_%(name)s);
-#         //Py_XDECREF(py_%(name)s);
-#         """
-#         return self.c_data_sync() + set_in_list
 
     def c_sync(self):
         """
@@ -286,39 +264,4 @@ class ResultBase(object):
 
     def same_properties(self, other):
         raise AbstractFunction()
-
-
-    
-    #################
-    # NumpyR Compatibility
-    #
-    up_to_date = property(lambda self: True)
-    def refresh(self): pass
-    def set_owner(self, owner, idx):
-        self.role = (owner, idx)
-    def set_value(self, value):
-        self.data = value #may raise exception
-
-
-#     def c_data_extract(self):
-#         return """
-#         PyArrayObject* %%(name)s;
-#         if (py_%%(name)s == Py_None)
-#             %%(name)s = NULL;
-#         else
-#             %%(name)s = (PyArrayObject*)(py_%%(name)s);
-#         typedef %(dtype)s %%(name)s_dtype;
-#         """ % dict(dtype = self.dtype)
-
-#     def c_data_sync(self):
-#         return """
-#         if (!%(name)s) {
-#             Py_XDECREF(py_%(name));
-#             py_%(name)s = Py_None;
-#         }
-#         else if ((void*)py_%(name)s != (void*)%(name)s) {
-#             Py_XDECREF(py_%(name));
-#             py_%(name)s = (PyObject*)%(name)s;
-#         }
-#         """
 

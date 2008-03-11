@@ -142,22 +142,6 @@ class Op(object):
         """
         raise AbstractFunctionError()
 
-#     def c_update(self):
-#         """
-#         Returns C code that allocates and/or updates the outputs
-#         (eg resizing, etc.) so they can be manipulated safely
-#         by c_code.
-        
-#         You may use the variable names defined by c_var_names()
-#         """
-#         raise AbstractFunctionError()
-
-#     def c_update_cleanup(self):
-#         """
-#         Clean up things allocated by c_update().
-#         """
-#         raise AbstractFunctionError()
-
     def c_code(self):
         """
         Returns C code that does the computation associated to this
