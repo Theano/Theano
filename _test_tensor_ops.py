@@ -34,7 +34,14 @@ class _test_TensorOps(unittest.TestCase):
         e = (x + y) * 2
         fn, i, o = gof.PerformLinker(env([x, y], [e])).make_thunk(True)
         fn()
-        print e
+        assert (e.data == numpy.array([[8, 12], [8, 12]])).all()
+
+    def test_1(self):
+        x, y, z = inputs()
+        e = dot(x, z).T
+        fn, i, o = gof.PerformLinker(env([x, z], [e])).make_thunk(True)
+        fn()
+        assert (e.data == numpy.array([[3, 3, 3], [7, 7, 7]]).T).all()
 
 #     def test_0(self):
 #         x, y, z = inputs()
