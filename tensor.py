@@ -27,6 +27,7 @@ class Tensor(ResultBase):
         if dtype is None or broadcastable is None:
             if data is None:
                 raise TypeError("Provide non-None data to complete the dtype and broadcastable flags.")
+            data = numpy.asarray(data)
             dtype = data.dtype
             if constant:
                 broadcastable = [1*(x == 1) for x in data.shape]
@@ -35,7 +36,7 @@ class Tensor(ResultBase):
         self.broadcastable = broadcastable
         self.dtype = str(dtype)
         self.constant = constant
-        ResultBase.__init__(self, role = None, data = None, name = name)
+        ResultBase.__init__(self, role = None, data = data, name = name)
 
     def __get_constant(self):
         return self._constant
