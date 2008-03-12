@@ -20,11 +20,11 @@ def _wrap_as_tensor(x):
     else:
         return Tensor(data=x, constant=True)
 
-# _TensorOp is a convenient base class, permitting to factor the code for the
+# TensorOp is a convenient base class, permitting to factor the code for the
 # Ops in this file.
 # It is not necessary to inherit from TensorOp to make an Op that manipulates
 # Tensors.
-class _TensorOp(Op, gradient.SelfGrad):
+class TensorOp(Op, gradient.SelfGrad):
 
     nin = -1
     nout = 1
@@ -78,10 +78,10 @@ class _TensorOp(Op, gradient.SelfGrad):
 
 
 
-class UnaryTensorOp(_TensorOp):
+class UnaryTensorOp(TensorOp):
     nin = 1
 
-class BinaryTensorOp(_TensorOp):
+class BinaryTensorOp(TensorOp):
     nin = 2
 
 
@@ -138,7 +138,7 @@ def assert_tensor_scalar(x, a):
 
 
 
-class Elemwise(_TensorOp):
+class Elemwise(TensorOp):
 
     @staticmethod
     def extract_name(name):
@@ -220,7 +220,7 @@ class TensorScalarOp(Elemwise):
 ## Dot ##
 #########
 
-class Dot(_TensorOp):
+class Dot(TensorOp):
     @staticmethod
     def _output_shape(xshape, yshape):
         # This describes the logic to calculate numpy.dot(x, y).shape
@@ -463,7 +463,7 @@ class Fill(Elemwise):
 #### Unary Operations ####
 ##########################
 
-class Transpose(_TensorOp, Viewer):
+class Transpose(TensorOp, Viewer):
     def view_map(self):
         return {self.out: [self.inputs[0]]}
     def impl(self, x):
