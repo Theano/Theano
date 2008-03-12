@@ -146,8 +146,8 @@ def struct_gen(args, struct_builders, blocks, sub):
             this->__ERROR = __ERROR;
             return 0;
             %(struct_init_tail)s
+            %(storage_decref)s
             %(do_return)s
-            return %(failure_var)s;
         }
         void cleanup(void) {
             %(struct_cleanup)s

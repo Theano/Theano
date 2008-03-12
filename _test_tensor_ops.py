@@ -12,6 +12,8 @@ import numpy
 
 import sys
 
+from scipy import weave
+
 
 def inputs():
     l1 = [[1.0, 2.0], [3.0, 4.0]]
@@ -43,14 +45,24 @@ class _test_TensorOps(unittest.TestCase):
         fn()
         assert (e.data == numpy.array([[3, 3, 3], [7, 7, 7]]).T).all()
 
+    def test_2(self):
+        x, y, z = inputs()
+        x = x.data
+        y = weave.inline("""
+        PyObject* p = PyArray_Transpose(x_array, NULL);
+        return_val = p;
+        """, ['x'])
+        print y
+
 #     def test_0(self):
 #         x, y, z = inputs()
 #         e = transpose(x)
 #         g = env([x], [e])
 #         fn, (i, ), (o, ) = gof.cc.CLinker(g).make_thunk()
-#         i.data = [[1.0, 2.0], [3.0, 4.0]]
 # #        print sys.getrefcount(i.data)
-#         fn()
+#         for blah in xrange(10000):
+#             i.data = numpy.ones((1000, 1000)) # [[1.0, 2.0], [3.0, 4.0]]
+#             fn()
 # #        print sys.getrefcount(i.data)
 # #        print sys.getrefcount(o.data)
 #         print o.data

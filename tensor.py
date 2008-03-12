@@ -70,6 +70,7 @@ class Tensor(ResultBase):
 
     def c_extract(self):
         return """
+        %(name)s = NULL;
         if (py_%(name)s == Py_None) {
             %(name)s = NULL;
         }
@@ -103,6 +104,7 @@ class Tensor(ResultBase):
         else if ((void*)py_%(name)s != (void*)%(name)s) {
             Py_XDECREF(py_%(name)s);
             py_%(name)s = (PyObject*)%(name)s;
+            Py_XINCREF(py_%(name)s);
         }
         """
 

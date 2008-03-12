@@ -85,28 +85,28 @@ class BinaryTensorOp(_TensorOp):
     nin = 2
 
 
-class Transpose(UnaryTensorOp):
+# class Transpose(UnaryTensorOp):
 
-    def propagate_broadcastable(self, x):
-        x2 = copy(x)
-        x2.reverse()
-        return [x2]
+#     def propagate_broadcastable(self, x):
+#         x2 = copy(x)
+#         x2.reverse()
+#         return [x2]
 
-    def impl(self, x):
-        return x.T
+#     def impl(self, x):
+#         return x.T
 
-    def c_impl(self, x, z):
-        return """
-        PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
-        //if (PyArray_REFCOUNT(transposed) == 1) {
-        //    printf("lala\\n");
-        //}
-        //if (%(z)s) {
-        //    Py_XDECREF(%(z)s);
-        //}
-        %(z)s = transposed;
-        Py_XINCREF(%(z)s);
-        """
+#     def c_impl(self, x, z):
+#         return """
+#         PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
+#         //if (PyArray_REFCOUNT(transposed) == 1) {
+#         //    printf("lala\\n");
+#         //}
+#         //if (%(z)s) {
+#         //    Py_XDECREF(%(z)s);
+#         //}
+#         %(z)s = transposed;
+#         Py_XINCREF(%(z)s);
+#         """
 
 
 
@@ -474,86 +474,96 @@ class Transpose(_TensorOp, Viewer):
         rval = list(x)
         rval.reverse()
         return [rval]
-    def c_impl(self, (x, ), (xt, )):
-        return """
-        const int l = x->nd;
-        // The user must ensure that all references to
-        //xt->data go through xt, or there's going to be trouble..
-        int refcheck = 0;
-
-          if (x == xt)
-            {
-              return -1;
-            }
-          if (refcheck)
-            {
-              int refcnt =  PyArray_REFCOUNT(xt);
-                if ((refcnt > 2)  // you might think this should be 1.. but this works
-                    //|| (xt->base != NULL)
-                    || (xt->weakreflist != NULL))
-                  {
-                    PyErr_SetString(PyExc_ValueError,
-                                        "cannot resize an array that has "\\
-                                        "been referenced or is referencing\\n"\\
-                                        "another array in this way.  Use the "\\
-                                        "resize function");
-                    return -2;
-                  }
-            }
-
-        if (xt->nd != x->nd)
-        {
-            // this technique comes from PyArray_Resize()
-            npy_intp * dimptr = (npy_intp*)PyDimMem_RENEW(xt->dimensions, 2 * x->nd);
-            if (!dimptr)
-            {
-                  PyErr_NoMemory();
-                  return 1;
-            }
-            xt->nd = x->nd;
-            xt->dimensions = dimptr;
-            xt->strides = dimptr + x->nd;
-        }
-        //copy x's dimensions and strides
-        for (int i = 0; i < l; ++i)
-        {
-            xt->dimensions[i] = x->dimensions[l-i-1];
-            xt->strides[i] = x->strides[l-i-1];
-        }
-
-        // point directly at b's type descriptor
-        Py_INCREF(x->descr);
-        Py_DECREF(xt->descr);
-        xt->descr = x->descr;
-
-        // name x as a base of xt, increment its refcount
-        if ( xt->base != (PyObject*)x)
-        {
-          Py_INCREF(x);
-          if ((xt->base) && (xt->base != Py_None)) 
-            {
-              Py_DECREF(xt->base);
-            }
-          xt->base = (PyObject*)x;
-        }
     
-        // mark xt as not owning its data
-        if (PyArray_CHKFLAGS(xt, NPY_OWNDATA))
-          {
-            PyDataMem_FREE(xt->data);
-            xt->flags &= ~NPY_OWNDATA;
-          }
-        xt->data = x->data;
+    def c_impl(self, x, z):
+        return """
+        PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
+        if (%(z)s) {
+            Py_XDECREF(%(z)s);
+        }
+        %(z)s = transposed;
+        """
 
-        // this function is described in 
-        // ~/zzz.NOBACKUP/pub/src/numpy-1.0.3.1/numpy/core/src/arrayobject.c:1890
-        PyArray_UpdateFlags(xt, NPY_CONTIGUOUS|NPY_FORTRAN|NPY_ALIGNED|NPY_WRITEABLE); 
+#     def c_impl(self, (x, ), (xt, )):
+#         return """
+#         const int l = x->nd;
+#         // The user must ensure that all references to
+#         //xt->data go through xt, or there's going to be trouble..
+#         int refcheck = 0;
 
-        /*
-          TODO
-          What should be done with the weakreflist ?
-        */
-    """
+#           if (x == xt)
+#             {
+#               return -1;
+#             }
+#           if (refcheck)
+#             {
+#               int refcnt =  PyArray_REFCOUNT(xt);
+#                 if ((refcnt > 2)  // you might think this should be 1.. but this works
+#                     //|| (xt->base != NULL)
+#                     || (xt->weakreflist != NULL))
+#                   {
+#                     PyErr_SetString(PyExc_ValueError,
+#                                         "cannot resize an array that has "\\
+#                                         "been referenced or is referencing\\n"\\
+#                                         "another array in this way.  Use the "\\
+#                                         "resize function");
+#                     return -2;
+#                   }
+#             }
+
+#         if (xt->nd != x->nd)
+#         {
+#             // this technique comes from PyArray_Resize()
+#             npy_intp * dimptr = (npy_intp*)PyDimMem_RENEW(xt->dimensions, 2 * x->nd);
+#             if (!dimptr)
+#             {
+#                   PyErr_NoMemory();
+#                   return 1;
+#             }
+#             xt->nd = x->nd;
+#             xt->dimensions = dimptr;
+#             xt->strides = dimptr + x->nd;
+#         }
+#         //copy x's dimensions and strides
+#         for (int i = 0; i < l; ++i)
+#         {
+#             xt->dimensions[i] = x->dimensions[l-i-1];
+#             xt->strides[i] = x->strides[l-i-1];
+#         }
+
+#         // point directly at b's type descriptor
+#         Py_INCREF(x->descr);
+#         Py_DECREF(xt->descr);
+#         xt->descr = x->descr;
+
+#         // name x as a base of xt, increment its refcount
+#         if ( xt->base != (PyObject*)x)
+#         {
+#           Py_INCREF(x);
+#           if ((xt->base) && (xt->base != Py_None)) 
+#             {
+#               Py_DECREF(xt->base);
+#             }
+#           xt->base = (PyObject*)x;
+#         }
+    
+#         // mark xt as not owning its data
+#         if (PyArray_CHKFLAGS(xt, NPY_OWNDATA))
+#           {
+#             PyDataMem_FREE(xt->data);
+#             xt->flags &= ~NPY_OWNDATA;
+#           }
+#         xt->data = x->data;
+
+#         // this function is described in 
+#         // ~/zzz.NOBACKUP/pub/src/numpy-1.0.3.1/numpy/core/src/arrayobject.c:1890
+#         PyArray_UpdateFlags(xt, NPY_CONTIGUOUS|NPY_FORTRAN|NPY_ALIGNED|NPY_WRITEABLE); 
+
+#         /*
+#           TODO
+#           What should be done with the weakreflist ?
+#         */
+#     """
 
 def transpose_copy(x):
     return array_copy(transpose(x))
