@@ -121,6 +121,14 @@ def toposort(prereqs_d):
     return seq
 
 
+def print_for_dot(self):
+    #TODO: popen2("dot -Tpng | display") and actually make the graph window pop up
+     print "digraph unix { size = '6,6'; node [color = lightblue2; style = filled];"
+     for op in self.order:
+         for input in op.inputs:
+             if input.owner:
+                 print input.owner.__class__.__name__ + str(abs(id(input.owner))), " -> ", op.__class__.__name__ + str(abs(id(op))), ";"
+
 # def schedule(**kwargs):
     
 #     after = kwargs.get('after', [])

@@ -263,5 +263,6 @@ class ResultBase(object):
     #
 
     def same_properties(self, other):
+        """Return bool; True iff all properties are equal (ignores contents, role)"""
         raise AbstractFunction()
 

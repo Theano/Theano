@@ -65,6 +65,9 @@ class Op(object):
     def get_outputs(self):
         return self._outputs
     def set_outputs(self, new):
+        # the point of this function is 
+        # 1. to save the subclass's __init__ function always having to set the role of the outputs
+        # 2. to prevent accidentally re-setting outputs, which would probably be a bug
         if not hasattr(self, '_outputs') or self._outputs is None:
             for i, output in enumerate(new):
                 output.role = (self, i)
@@ -86,6 +89,8 @@ class Op(object):
         Shallow copy of this Op. The inputs are the exact same, but
         the outputs are recreated because of the one-owner-per-result
         policy.
+
+        This implementation permits a bottom-up copy of an entire graph.
         """
         return self.__class__(*self.inputs)
 
@@ -186,6 +191,7 @@ class Op(object):
 
 
 class GuardedOp(Op):
+    """An Op that disallows input properties to change after construction"""
 
     def set_input(self, i, new):
         old = self._inputs[i]
