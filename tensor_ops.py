@@ -1,30 +1,39 @@
 
-from tensor import *
 from gof import Op, utils, Destroyer, Viewer
+import gof.op
+
+import gradient
+from tensor import *
 
 
-def upcast(dtype, *dtypes):
+def _upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)
     for dtype in dtypes:
         z = z + numpy.zeros((), dtype = dtype)
     return str(z.dtype)
 
-def wrap_as_tensor(x):
-    if isinstance(x, Tensor):
+def _wrap_as_tensor(x):
+    if isinstance(x,Op):
+        return _wrap_as_tensor(x.out)
+    elif isinstance(x, Tensor):
         return x
     else:
         return Tensor(data=x, constant=True)
 
-class TensorOp(Op):
+# _TensorOp is a convenient base class, permitting to factor the code for the
+# Ops in this file.
+# It is not necessary to inherit from TensorOp to make an Op that manipulates
+# Tensors.
+class _TensorOp(Op, gradient.SelfGrad):
 
     nin = -1
     nout = 1
 
-    cast_method = lambda self, *args: upcast(*args)
+    cast_method = lambda self, *args: _upcast(*args)
     
     def __init__(self, *inputs):
 
-        inputs = map(wrap_as_tensor, inputs)
+        inputs = map(_wrap_as_tensor, inputs)
         
         if self.nin >= 0:
             if len(inputs) != self.nin:
@@ -69,10 +78,10 @@ class TensorOp(Op):
 
 
 
-class UnaryTensorOp(TensorOp):
+class UnaryTensorOp(_TensorOp):
     nin = 1
 
-class BinaryTensorOp(TensorOp):
+class BinaryTensorOp(_TensorOp):
     nin = 2
 
 
@@ -104,7 +113,7 @@ class BinaryTensorOp(TensorOp):
 
 def scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
     def f(x, y):
-        x, y = wrap_as_tensor(x), wrap_as_tensor(y)
+        x, y = _wrap_as_tensor(x), _wrap_as_tensor(y)
         if 0 not in y.broadcastable:
             return scalar_f(x, y)
         if 0 not in x.broadcastable:
@@ -129,7 +138,7 @@ def assert_tensor_scalar(x, a):
 
 
 
-class Elemwise(TensorOp):
+class Elemwise(_TensorOp):
 
     @staticmethod
     def extract_name(name):
@@ -211,7 +220,7 @@ class TensorScalarOp(Elemwise):
 ## Dot ##
 #########
 
-class Dot(TensorOp):
+class Dot(_TensorOp):
     @staticmethod
     def _output_shape(xshape, yshape):
         # This describes the logic to calculate numpy.dot(x, y).shape
@@ -454,7 +463,7 @@ class Fill(Elemwise):
 #### Unary Operations ####
 ##########################
 
-class Transpose(TensorOp, Viewer):
+class Transpose(_TensorOp, Viewer):
     def view_map(self):
         return {self.out: [self.inputs[0]]}
     def impl(self, x):
@@ -754,6 +763,8 @@ Tensor.__mul__ = mul
 Tensor.__iadd__ = add_inplace
 Tensor.__isub__ = sub_inplace
 Tensor.__imul__ = mul_inplace
+Tensor.__pow__ = pow
+Tensor.__ipow__ = pow_inplace
 Tensor.T = property(transpose)
 
 

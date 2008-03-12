@@ -96,21 +96,21 @@ class _test_compile(unittest.TestCase):
         fn()
         self.failUnless(go[0].data == 6.0)
 
-    def test_prog_noopt(self):
+    def test_noopt(self):
         gi, go = graph1()
-        p = Prog(gi,go)
+        p = Function(gi,go)
         self.failUnless(p() == 1.5)
 
-    def test_prog_opt(self):
+    def test_opt(self):
         opt = gof.opt.PatternOptimizer((Div, '1', '2'), (Div, '2', '1'))
         gi, go = graph1()
-        p = Prog(gi,go, optimizer=opt)
+        p = Function(gi,go, optimizer=opt)
         self.failUnless(p() == 6.0)
 
-    def test_prog_multiout(self):
+    def test_multiout(self):
         opt = gof.opt.PatternOptimizer((Div, '1', '2'), (Div, '2', '1'))
         gi, go = graph2()
-        p = Prog(gi,go, optimizer=opt)
+        p = Function(gi,go, optimizer=opt)
         a,b,c = p()
         self.failUnless(a == 6.0)
         self.failUnless(b == 6.0)
