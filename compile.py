@@ -6,15 +6,15 @@ import gof
 
 _optimizations = None
 
-def prog_py_opt(inputs, outputs, features=[]):
+def exec_py_opt(inputs, outputs, features=[]):
     """Return an optimized graph running purely python implementations"""
-    return Prog(intputs, outputs, features, _optimizations, gof.link.PerformLinker, False)
+    return Function(intputs, outputs, features, _optimizations, gof.link.PerformLinker, False)
 
-def prog_opt(inputs, outputs, features=[]):
+def exec_opt(inputs, outputs, features=[]):
     """Return a fast implementation"""
-    return Prog(intputs, outputs, features, _optimizations, gof.link.PerformLinker, False)
+    return Function(intputs, outputs, features, _optimizations, gof.link.PerformLinker, False)
 
-class Prog:
+class Function:
     """An 'executable' compiled from a graph
 
     This class is meant to be used as a function: the idea is to use
