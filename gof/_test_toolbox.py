@@ -13,7 +13,8 @@ from toolbox import *
 class MyResult(ResultBase):
 
     def __init__(self, name):
-        ResultBase.__init__(self, role = None, data = [1000], name = name)
+        ResultBase.__init__(self, role = None, name = name)
+        self.data = [1000]
 
     def __str__(self):
         return self.name
