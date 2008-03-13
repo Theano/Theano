@@ -62,7 +62,12 @@ class TensorOp(Op, gradient.SelfGrad):
         raise AbstractFunctionError()
     
     def perform(self):
-        self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
+        res = self.impl(*[input.data for input in self.inputs])
+        if self.nout == 1:
+            self.outputs[0].data = res
+        else:
+            for output, value in zip(self.outputs, res):
+                output.data = value
     
     def c_var_names(self):
         (self, inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)

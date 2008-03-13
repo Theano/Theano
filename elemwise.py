@@ -1,4 +1,265 @@
 
+from copy import copy
+
+
+class BasicElemwise(Op):
+
+    def var_desc(self):
+        raise AbstractFunctionError()
+
+    def c_var_names(self):
+        idesc, odesc = self.var_desc()
+        return [[i[0] for i in idesc],
+                [o[0] for o in odesc]]
+
+    def loop_variables(self):
+        idesc, odesc = self.var_desc()
+        return [[i[0] for i in idesc if i[1]],
+                [o[0] for o in odesc if o[1]]]
+
+    def propagate_broadcastable(self, *inputs):
+        idesc, odesc = self.var_desc()
+        nonloop_o = [o[0] for o in odesc if not o[1]]
+        if nonloop_o:
+            raise Exception("Cannot infer broadcastable for non-loop variable(s) %s" % nonloop_o)
+        all_bcast = [broadcastable for broadcastable, i in zip(inputs, idesc) if i[1]]
+        if reduce(lambda x, y: x is not False and x == y and y, [len(x) for x in all_bcast]) is False:
+            raise TypeError("Inputs that are loop variables do not all have the same number of dimensions.")
+        ret = []
+        for arr in zip(*all_bcast):
+            if 0 in arr:
+                ret.append(0)
+            else:
+                ret.append(1)
+        return [ret] * self.nout
+
+    def c_code_init(self):
+        raise AbstractFunctionError()
+
+    def c_code_foreach(self):
+        raise AbstractFunctionError()
+
+    def c_code_finalize(self):
+        raise AbstractFunctionError()
+
+    def c_code(self):
+        
+
+    @classmethod
+    def inplace_version(cls):
+        class Ret(cls, Destroyer):
+            def destroy_map(self):
+                return {self.outputs[0]: [self.inputs[0]]}
+        return Ret
+
+
+
+
+
+
+
+class Looper:
+
+    def __init__(self, declare, init, acquire, next, cleanup):
+        self.declare = declare
+        self.init = init
+        self.acquire = acquire
+        self.next = next
+        self.cleanup = cleanup
+
+    def fill(self, template):
+        ret = copy(self)
+        ret.declare %= template
+        ret.init %= template
+        ret.acquire %= template
+        ret.next %= template
+        ret.cleanup %= template
+        return ret
+
+general_looper = Looper(declare = """
+                        PyArrayIterObject* iter_%(name)s = NULL;
+                        dtype_%(name)s%(type_suffix)s %(name)s_i;
+                        """,
+                        init = """
+                        iter_%(name)s = (PyArrayIterObject*)PyArray_IterNew((PyObject*)%(name)s);
+                        if (iter_%(name)s == NULL) {
+                            PyErr_SetString(PyExc_ValueError, "Could not make an iterator over variable %(name)s.");
+                            %%(fail)s;
+                        }
+                        """,
+                        acquire = "%(name)s_i = *((dtype_%(name)s*)iter_%(name)s->dataptr);",
+                        next = "PyArray_ITER_NEXT(iter_%(name)s);",
+                        cleanup = "if (iter_%(name)s) Py_DECREF(iter_%(name)s);")
+
+contiguous_looper = Looper(declare = """
+                           dtype_%(name)s* __restrict__ iter_%(name)s = NULL;
+                           dtype_%(name)s%(type_suffix)s %(name)s_i;
+                           """,
+                           init = "iter_%(name)s = (dtype_%(name)s*)PyArray_DATA(%(name)s);",
+                           acquire = "%(name)s_i = *iter_%(name)s;",
+                           next = "iter_%(name)s++;",
+                           cleanup = "")
+
+alias_looper = Looper(declare = "dtype_%(name)s%(type_suffix)s %(name)s_i;",
+                      init = "",
+                      acquire = "%(name)s_i = %(other)s_i;",
+                      next = "",
+                      cleanup = "")
+
+def elemwise_loopcode(loopcode, loopers):
+
+    def make_block(loopers, type):
+        return "\n".join([getattr(looper, type) for looper in loopers])
+
+    template = dict(loopcode = loopcode)
+    for block_type in ['declare', 'init', 'next', 'acquire', 'cleanup']:
+        template[block_type] = make_block(loopers, block_type)
+
+    code = """
+    %(declare)s
+    %(init)s
+    while (__SIZE--) {
+        %(acquire)s
+        %(loopcode)s
+        %(next)s
+    }
+    """ % template
+
+    cleanup = """
+    %(cleanup)s
+    """ % template
+
+    return code, cleanup
+
+
+def elemwise_wrap(beforeloop, inloop, afterloop, input_loop_vars, output_loop_vars, aliases):
+
+    if len(input_loop_vars) > 1:
+        validate = """
+        npy_intp nd = %(first_loop_var)s->nd;
+        npy_intp* dims = %(first_loop_var)s->dimensions;
+        npy_intp* dims2;
+        """ % dict(first_loop_var = input_loop_vars[0])
+
+        for other_loop_var in input_loop_vars[1:]:
+            validate += """
+            if (%(other_loop_var)s->nd != nd) {
+                PyErr_SetString(PyExc_ValueError, \"The number of dimensions of the inputs do not match.\");
+                %%(fail)s
+            }
+            dims2 = %(other_loop_var)s->dimensions;
+            for (int i = 0; i < nd; i++) {
+                if (dims2[i] != dims[i]) {
+                    PyErr_SetString(PyExc_ValueError, \"The dimensions of the inputs do not match.\");
+                    %%(fail)s;
+                }
+            }
+            """ % dict(other_loop_var = other_loop_var)
+    else:
+        validate = ""
+
+    update = ""
+    for output_loop_var in output_loop_vars:
+        update += """
+        if (!%(output_loop_var)s) {
+            %(output_loop_var)s = PyArray_SimpleNew(nd, dims, type_num_%(output_loop_var)s);
+        }
+        """
+
+    validate_update = validate + update
+
+    # I'm here
+
+    
+        
+    all_loop_vars = loop_vars + writable_loop_vars
+    v1 = (loop_vars + writable_loop_vars)[0]
+    template = dict(
+        v1 = v1,
+        check_init = check_init % dict(loop_var = v1),
+        check = "\n".join([check % dict(loop_var = loop_var) for loop_var in loop_vars + writable_loop_vars if loop_var is not v1]),
+        beforeloop = beforeloop,
+        general_loop = elemwise_loopcode(
+            inloop,
+            general_init, general_next, general_acquire, general_cleanup,
+            loop_vars, writable_loop_vars, aliases),
+        contiguous_loop = elemwise_loopcode(
+            inloop,
+            contiguous_init, contiguous_next, contiguous_acquire, contiguous_cleanup,
+            loop_vars, writable_loop_vars, aliases),
+        contiguity_check = "".join(["all_c_contiguous &= PyArray_ISCARRAY(%(loop_var)s);\n" \
+                                    "all_f_contiguous &= PyArray_ISFARRAY(%(loop_var)s);\n" \
+                                        % dict(loop_var = loop_var)
+                                    for loop_var in all_loop_vars]),
+        afterloop = afterloop)
+    
+    code = """
+    {
+    %(check_init)s
+    %(check)s
+    }
+    npy_intp __elemwise_size = PyArray_SIZE(%(v1)s);
+    %(beforeloop)s
+    bool all_c_contiguous = 1;
+    bool all_f_contiguous = 1;
+    %(contiguity_check)s
+    if (all_c_contiguous || all_f_contiguous) {
+        %(contiguous_loop)s
+    }
+    else {
+        %(general_loop)s
+    }
+    %(afterloop)s
+    """ % template
+
+    return code
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import core
 
 

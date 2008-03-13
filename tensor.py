@@ -55,43 +55,46 @@ class Tensor(ResultBase):
         return arr
 
     def dtype_specs(self):
-        return {'float64': (float, 'double')}[self.dtype]
+        return {'float64': (float, 'double', 'NPY_DOUBLE')}[self.dtype]
             
     def c_declare(self):
         return """
         PyArrayObject* %%(name)s;
-        typedef %(dtype)s %%(name)s_dtype;
+        int type_num_%%(name)s;
+        typedef %(dtype)s dtype_%%(name)s;
         """ % dict(dtype = self.dtype_specs()[1])
 
     def c_init(self):
         return """
-        %(name)s = NULL;
-        """
+        %%(name)s = NULL;
+        type_num_%%(name)s = %(type_num)s;
+        """ % dict(type_num = self.dtype_specs()[2])
 
     def c_extract(self):
         return """
-        %(name)s = NULL;
-        if (py_%(name)s == Py_None) {
-            %(name)s = NULL;
+        %%(name)s = NULL;
+        type_num_%%(name)s = %(type_num)s;
+        if (py_%%(name)s == Py_None) {
+            %%(name)s = NULL;
         }
-        else if (!PyArray_Check(py_%(name)s)) {
+        else if (!PyArray_Check(py_%%(name)s)) {
             PyErr_SetString(PyExc_ValueError, "expected an ndarray");
-            %(fail)s
+            %%(fail)s
+        }
+        else if (((PyArrayObject*)py_%%(name)s)->descr->type_num != %(type_num)s) {
+            PyErr_SetString(PyExc_ValueError, "expected %(type_num)s");
+            %%(fail)s
         }
         else {
-            %(name)s = (PyArrayObject*)(py_%(name)s);
-            Py_XINCREF(%(name)s);
+            %%(name)s = (PyArrayObject*)(py_%%(name)s);
+            Py_XINCREF(%%(name)s);
         }
-        """
+        """ % dict(type_num = self.dtype_specs()[2])
 
     def c_cleanup(self):
         return """
         if (%(name)s) {
             Py_XDECREF(%(name)s);
-            for (int i = 0; i < PyArray_REFCOUNT(%(name)s); i++) {
-                printf("X");
-            }
-            printf("Y\\n");
         }
         """
     
