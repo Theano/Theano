@@ -9,8 +9,9 @@ from env import Env
 class Double(ResultBase):
 
     def __init__(self, data, name = "oignon"):
+        ResultBase.__init__(self, role = None, name = name)
         assert isinstance(data, float)
-        ResultBase.__init__(self, role = None, data = data, name = name)
+        self.data = data
 
     def __str__(self):
         return self.name

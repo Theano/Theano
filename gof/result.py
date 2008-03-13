@@ -57,11 +57,10 @@ class ResultBase(object):
 
     __slots__ = ['_role', '_data', 'state', '_name']
 
-    def __init__(self, role=None, data=None, name=None):
+    def __init__(self, role=None, name=None):
         self._role = role
         self._data = [None]
         self.state = Empty
-        self.__set_data(data)
         self.name = name
 
         

@@ -2,7 +2,7 @@
 
 import gof
 
-#TODO: put together some default optimizations
+#TODO: put together some default optimizations (TRAC #67)
 
 _optimizations = None
 

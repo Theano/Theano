@@ -11,8 +11,9 @@ from link import *
 class Double(ResultBase):
 
     def __init__(self, data, name = "oignon"):
+        ResultBase.__init__(self, role = None, name = name)
         assert isinstance(data, float)
-        ResultBase.__init__(self, role = None, data = data, name = name)
+        self.data = data
 
     def __str__(self):
         return self.name
@@ -60,6 +61,10 @@ class Div(Binary):
     def impl(self, x, y):
         return x / y
 
+class RaiseErr(Unary):
+    def impl(self, x):
+        raise NotImplementedError()
+
 
 import modes
 modes.make_constructors(globals())
@@ -102,6 +107,31 @@ class _test_PerformLinker(unittest.TestCase):
         fn = perform_linker(env([x, y, z], [e])).make_function()
         assert fn(1.0, 2.0, 3.0) == 1.5
         assert e.data != 1.5
+
+    def test_input_output_same(self):
+        x, y, z = inputs()
+        a,d = add(x,y), div(x,y)
+        e = mul(a,d)
+        fn = perform_linker(env([e], [e])).make_function()
+        self.failUnless(1 is fn(1))
+
+    def test_input_dependency0(self):
+        x, y, z = inputs()
+        a,d = add(x,y), div(x,y)
+        e = mul(a,d)
+        fn = perform_linker(env([x, a], [e])).make_function()
+        #perform linker should have recognized that one input is a function of
+        #the other one, which makes no sense
+        self.fail('this graph should not have been compiled')
+
+    def test_skiphole(self):
+        x,y,z = inputs()
+        a = add(x,y)
+        r = RaiseErr(a).out
+        e = add(r,a)
+        fn = perform_linker(env([x, y,r], [e])).make_function()
+        self.failUnless(fn(1.0,2.0,4.5) == 7.5)
+
 
 
 if __name__ == '__main__':
