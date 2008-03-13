@@ -86,9 +86,6 @@ class _test_grad_sources_inputs(unittest.TestCase):
         a1 = retNone([i],self)
         g = grad_sources_inputs([(a1.out, None)], None)
 
-    def test_no_invalid_graph(self):
-        """Test that bprop fails on an invalid graph"""
-        raise NotImplementedError()
     def test_1in_1out(self):
         """Test grad is called correctly for a 1-to-1 op"""
         gval = gof.result.ResultBase()
@@ -288,6 +285,8 @@ def matrices(n):
     return [matrix() for i in xrange(n)]
 
 
+#TODO: move this to the _test_tensor_ops.py
+
 class _testCase_matinv:# (unittest.TestCase):
 
     def setUp(self):
@@ -319,91 +318,6 @@ class _testCase_matinv:# (unittest.TestCase):
     def test_matinv(self):
         """Matrix inversion by gradient descent (eval mode)"""
         self.assertEqual(('2.67327580893', '0.000438649434819'), self.matinv(3))
-
-
-class _testCase_old:#(unittest.TestCase):
-
-
-    def setUp(self):
-        numpy.random.seed(1)
-
-    def test_grad_wrt_ndarray_pointer(self):
-        """Grad indexing by un-wrapped ndarray"""
-        a = numpy.ones((4, 4))
-        b = numpy.ones((4, 4))
-        c = numpy.ones((4, 4))
-        expr = core.sum(core.dot(core.add(a, b), c))
-        g = grad(expr)
-        g[a]
-
-    def test_bprop_call_order(self):
-        """Ensure call before bprop is illegal"""
-        a = numpy.ones((3,3,3))
-        b = core.exp(a)
-        gb = Grad({b:wrappers.wrap(a)})
-        try:
-            gb(a)
-            self.assertEqual('should have raised',0)
-        except Exception, e:
-            self.assertEqual(str(e), 'Grad.__call__ only makes sense after a bprop')
-            return
-        self.assertEqual('should have caught, returned',0)
-
-    def test_undefined_grad0(self):
-        """Make sure posneg works with fully specified gradients"""
-
-        a = numpy.ones((3,3,3))
-        b,c = _testCase.posneg(a)
-
-        g = Grad({b:wrappers.wrap(a),c:wrappers.wrap(a)})
-        g.bprop()
-        max = numpy.max(g(a))
-        min = numpy.min(g(a))
-        self.assertEqual(max, min)
-        self.assertEqual(max, 0.0)
-
-    def test_undefined_grad1(self):
-        """Propagate undefined values through posneg's first gradient"""
-
-        a = numpy.ones((3,3,3))
-        b,c = _testCase.posneg(a)
-
-        gb = Grad({b:wrappers.wrap(a)})
-        try:
-            gb.bprop()
-            self.assertEqual('should have raised',0)
-        except UndefinedError:
-            return
-        self.assertEqual("Should have been error", 0)
-    
-    def test_undefined_grad2(self):
-        """Propagate undefined values through posneg's second gradient"""
-
-        a = numpy.ones((3,3,3))
-        b,c = _testCase.posneg(a)
-        gc = Grad({c:wrappers.wrap(a)})
-        try:
-            gc.bprop()
-            self.assertEqual('should have raised',0)
-        except UndefinedError:
-            return
-        self.assertEqual("Should have been error", 0)
-
-    def test_undefined_grad3(self):
-        """Ignore undefined values properly"""
-
-        a = numpy.ones((3,3,3))
-        b,c,d = _testCase.posnegzero(a)
-        #print b, c, d
-        g = Grad({b:wrappers.wrap(a), c:wrappers.wrap(a)})
-        g.bprop()
-        max = numpy.max(g(a))
-        min = numpy.min(g(a))
-        self.assertEqual(max, min)
-        self.assertEqual(max, 0.0)
-
-    def tearDown(self):
-        core.pop_mode()
 
 if __name__ == '__main__':
     unittest.main()
