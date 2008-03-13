@@ -4,22 +4,10 @@
 #
 import unittest
 import numpy
-import tensor_ops as T
-import tensor
 import gof
 
 from gradient import *
 import gradient
-
-class posneg(T.TensorOp):
-    nout=2
-    def impl(self, x): return x, -x
-    def grad(self, x, (gpos, gneg)): return gpos - gneg
-
-class posnegzero(T.TensorOp):
-    nout=3
-    def impl(self, x): return x, -x, 0.0
-    def grad(self, x, (gpos, gneg, gzero)): return gpos - gneg
 
 class _test_grad_sources_inputs(unittest.TestCase):
     def test_retNone1(self): 
