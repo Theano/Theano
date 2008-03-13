@@ -1,160 +1,107 @@
-import gof
+import gof, gof.result
 
-class OrderError(Exception):
-    """Grad has been manipulated in the wrong order"""
+_msg_retNone = 'op.grad(...) returned None, consider returning [None]'
+_msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
-class Grad(object):
-    """A dictionary-like class, into which derivative expressions may be added.
-
-    Attributes:
-    map - dict: result -> grad(result)
-    outputs - list: results from which to backpropagate gradient
-    did_bprop - bool: has bprop been called?
-    items_got - set: results for which we have returned the gradient
-
-
-    Methods:
-
-    add() - accumulate a gradient expression
-    bprop() - recursively construct gradient expressions
-    __call__() - retrieve the gradient wrt a given Op or result
-    __getitem__() - retrieve the gradient wrt a given Op or result
-
-    This class operates on graphs of nodes which implement the UpdateGradient interface.
-
-    """
-
-    def __init__(self, dct={}):
-        self.map = {}
-        self.outputs = []
-        self.did_bprop = False
-        self.items_got = set([])
-        for key,val in dct.items():
-            self.add_output(key,val)
-
-    def __contains__(self, item):
-        return item in self.map
-
-    def __getitem__(self, r):
-        """Return the gradient wrt result r
-        
-        r is also added to the set of things for which the gradient has been
-        given.  Subsequent attempts to modify the gradient wrt r will fail
-        with exception FixedGradientError.
-        """
-        self.items_got.add(r)
-        try:
-            return self.map[r]
-        except KeyError:
-            return None
-    def __call__(self, r):
-        """Return the gradient wrt result r"""
-        return self.__getitem__(r)
-
-    def add_output(self, r, dr):
-        self.add(r, dr)
-        self.outputs.append(r)
-        
-    def add(self, r, dr):
-        """Add dr to the sum of gradients associated with r."""
-        if r in self.items_got:
-            raise OrderError('gradient has already been retrieved', r)
-        if r in self.map:
-            self.map[r] = self.map[r] + dr
-        else:
-            self.map[r] = dr
-
-    def bprop(self):
-        """Build a backpropagation graph.
-
-        This function traverses the graph backward from self.outputs, calling
-        update_gradient on the ops as it goes.  Ops without an update_gradient
-        function are considered not differentiable.  The update_gradient
-        function is defined in the UpdateGradient class.
-
-        maybe_redo
-        """
-        if self.did_bprop:
-            raise OrderError('bprop has already been done')
-        try:
-            outputs = self.outputs
-            inputs = gof.graph.inputs(outputs)
-            for op in gof.graph.io_toposort(inputs, outputs).__reversed__():
-                op.update_gradient(self)
-        finally:
-            self.did_bprop = True
-
-def grad(cost, param=None, cost_grad = 1.0):
-    """Return symbolic expression of gradient of <cost> wrt <param>.
-
-    If <param> is None, then return a Grad instance, from which the gradients of
-    multiple objects can be retrieved using the __getitem__ or __call__ methods
-    (as in function currying in languages such as scheme and OCaML).
-
-    If <param> is not None, then return the gradient expression for 
-    d cost / d param.
-
-    """
-    rval = Grad({cost:cost_grad})
-    rval.bprop()
-    if param is None:
-        return rval
+def _unpack_result(lst):
+    if len(lst) > 1:
+        return lst
     else:
-        return rval(param)
+        return lst[0]
 
+def _pack_result(arg):
+    if isinstance(arg, gof.result.ResultBase):
+        return [arg]
+    else:
+        return arg
 
-class UpdateGradient:
-    """This class defines the interface that Grad.bprop expects of each
-    differentiable Op"""
+def grad_sources_inputs(sources, graph_inputs):
+    """Return a dictionary mapping each result necessary for a source to its gradient
 
-    def update_gradient(self, grad_d):
-        """Override this function to call grad_d.add(r,grad_r) for each
-        differentiable input result, r.
+    sources - a list of gradient sources (explained below)
+    graph_inputs - a list of results considered to be constant
 
-        You can assume that the gradient with respect to all output results
-        has been accumulated in grad_d.  These expressions are available by
-        calling grad_d[o] for o in self.outputs.  If grad_d[o] returns None,
-        then this function should assume that grad_d[o] is an appropriate sort
-        of zero.
-        
-        """
-        raise AbstractFunctionError()
+    A gradient source is a pair (r, g_r), in which r is a result, and g_r is a
+    result that is a gradient wrt r.
 
-class SelfGrad (UpdateGradient):
-    """This class implements update_gradient in terms of the popular self.grad
+    This function traverses the graph backward from the 'r' sources,
+    calling op.grad(...) when it is provided by an op, and at least one of the
+    outputs of the op has an associated gradient.
 
-    This class defines update_gradient (necessary for Grad.bprop) to call a
-    self.grad function like this:
+    The op.grad(...) functions may be called in several ways (for the
+    convenience of the op implementer) depending on the number of inputs and
+    outputs.  
 
-        passed_inputs = self.inputs
-        if len(self.inputs) == 1: passed_inputs = passed_inputs[0]
-        passed_ograds = [grad_d[o] for o in self.outputs]
-        if len(self.outputs) == 1: passed_ograds = passed_ograds[0]
-        igrads = self.grad(passed_inputs, passed_ograds)
-        if len(self.inputs) == 1: igrads = [igrads]
+    If there is one input and one output:
+        op.grad( op.inputs[0], grad(op.outputs[0]))
 
-    self.grad() is an Abstract function, see its documentation for the
-    expected behaviour.
-    
+    If there are several inputs and one output:
+        op.grad( op.inputs, grad(op.outputs[0]))
+
+    If there is one input and several outputs:
+        op.grad( op.inputs[0], [grad(o) for o in op.outputs[0]])
+
+    If there are multiple inputs and outputs:
+        op.grad( op.inputs, [grad(o) for o in op.outputs[0]])
+
+    This function expects the op.grad(...) function to return the gradient
+    expression [results] associated with the inputs of the op.  If the op has a
+    single input, it should return a single result; if the op has multiple
+    inputs, it should return a list of results corresponding to the gradients in
+    the same order as the inputs.
+
+    For each input wrt to which an op is not differentiable, it should return
+    None instead of a result instance.
+
     """
+    gmap = {}
+    for (r, g_r) in sources:
+        if g_r is not None:
+            if r in gmap:
+                gmap[r] = gmap[r] + g_r
+            else:
+                gmap[r] = g_r
 
-    def update_gradient(self, grad_d):
-        #Call self.grad(inputs, output_gradients) and add the result to grad_d
-
-        inputgs = gof.utils.from_return_values(
-            self.grad(gof.utils.to_return_values(self.inputs),
-                      gof.utils.to_return_values([grad_d[o] for o in self.outputs])))
-        assert len(inputgs) == len(self.inputs)
+    graph_outputs = gmap.keys()
+    
+    if graph_inputs is None:
+        graph_inputs = gof.graph.inputs(graph_outputs)
         
-        for input, inputgrad in zip(self.inputs, inputgs):
-            grad_d.add(input, inputgrad)
+    for op in gof.graph.io_toposort(graph_inputs, graph_outputs).__reversed__():
+        g_outputs = [gmap.get(o,None) for o in op.outputs]
 
-    def grad(self, *args):
-        """Return gradient expressions wrt input arguments
+        #if all output gradients are None, continue
+        if all(map(lambda x:x is None, g_outputs)): continue
 
-        If len(self.inputs)==1 : return the input gradient expression
-        If len(self.inputs)>=2 : return a list of input gradient expressions 
-        """
-        raise AbstractFunctionError()
+        output_arg = _unpack_result(g_outputs)
+        input_arg = _unpack_result(op.inputs)
+        op_grad = op.grad(input_arg, output_arg)
+        if op_grad is None:
+            raise ValueError(_msg_retNone, op.__class__)
+        g_inputs = _pack_result(op_grad)
+        if len(g_inputs) != len(op.inputs):
+            raise ValueError(_msg_badlen, 
+                    op.__class__, 
+                    len(g_inputs),
+                    len(op.inputs))
+        for r, g_r in zip(op.inputs, g_inputs):
+            if g_r is not None: 
+                if r in gmap:
+                    gmap[r] = gmap[r] + g_r
+                else:
+                    gmap[r] = g_r
+    return gmap
+
+def grad(cost, param):
+    """Return symbolic expression of gradient of <cost> wrt <param>.
+    If <param> is a list, then return a list containing the gradient of cost wrt
+    each element of the list.
+    """
+    inputs = gof.graph.inputs([cost])
+    gmap = grad_sources_inputs([(cost, 1.0)], inputs)
+    if isinstance(param, list):
+        return [gmap.get(p, None) for p in param]
+    else:
+        return gmap.get(param, None)
 
 

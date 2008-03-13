@@ -2,7 +2,6 @@
 from gof import Op, utils, Destroyer, Viewer
 import gof.op
 
-import gradient
 from tensor import *
 
 
@@ -24,7 +23,7 @@ def _wrap_as_tensor(x):
 # Ops in this file.
 # It is not necessary to inherit from TensorOp to make an Op that manipulates
 # Tensors.
-class TensorOp(Op, gradient.SelfGrad):
+class TensorOp(Op):
 
     nin = -1
     nout = 1
