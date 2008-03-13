@@ -1,4 +1,5 @@
 import gof, gof.result
+import numpy #for numeric_grad
 
 _msg_retNone = 'op.grad(...) returned None, consider returning [None]'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
@@ -103,5 +104,60 @@ def grad(cost, param):
         return [gmap.get(p, None) for p in param]
     else:
         return gmap.get(param, None)
+
+
+class numeric_grad:
+    def __init__(self, f, pt, eps=1.0e-7):
+        """Return the gradient of f at pt.
+        
+        This function computes the gradient by a one-sided finite differences of a
+        fixed step size (eps).
+        
+        It is assumed that f(...) will return a scalar.
+        It is assumed that all f's inputs are numpy.ndarray objects.
+        """
+        gf = [numpy.ndarray(x.shape) for x in pt]
+        f_pt = f(*pt)
+
+        for idx in xrange(len(gf)):
+            if len(pt[idx].shape) == 0:
+                orig = pt[idx]
+                pt[idx] = numpy.asarray(pt[idx] + eps)
+                f_eps = f(*pt)
+                gf[idx] = numpy.asarray((f_eps - f_pt)/eps)
+                pt[idx] = orig
+
+            elif len(pt[idx].shape) == 1:
+                for i in xrange(pt[idx].shape[0]):
+                    orig = pt[idx][i]
+                    pt[idx][i] = pt[idx][i] + eps
+                    f_eps = f(*pt)
+                    gf[idx][i] = numpy.asarray((f_eps - f_pt)/eps)
+                    pt[idx][i] = orig
+            elif len(args[idx].shape) == 2:
+                for i in xrange(pt[idx].shape[0]):
+                    for j in xrange(args[idx].shape[1]):
+                        orig = pt[idx][i,j]
+                        pt[idx][i,j] = pt[idx][i,j] + eps
+                        f_eps = f(*pt)
+                        gf[idx][i,j] = numpy.asarray((f_eps - f_pt)/eps)
+                        pt[idx][i,j] = orig
+            else:
+                raise NotImplementedError()
+
+        self.gf = gf
+
+    @staticmethod
+    def abs_rel_err(a,b,eps=1.0e-10):
+        """Return a small number when a and b are close, relative to how big they are"""
+        return abs( (a-b) / (a+b+eps))
+
+    def max_err(self, g_pt):
+        """Return the biggest relative error between g_pt and self.gf"""
+        assert len(g_pt) == len(self.gf)
+        errs = []
+        for a, b in zip(g_pt, self.gf):
+            errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
+        return max(errs)
 
 
