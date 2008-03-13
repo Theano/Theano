@@ -61,6 +61,10 @@ class Div(Binary):
     def impl(self, x, y):
         return x / y
 
+class RaiseErr(Unary):
+    def impl(self, x):
+        raise NotImplementedError()
+
 
 import modes
 modes.make_constructors(globals())
@@ -119,6 +123,15 @@ class _test_PerformLinker(unittest.TestCase):
         #perform linker should have recognized that one input is a function of
         #the other one, which makes no sense
         self.fail('this graph should not have been compiled')
+
+    def test_skiphole(self):
+        x,y,z = inputs()
+        a = add(x,y)
+        r = RaiseErr(a).out
+        e = add(r,a)
+        fn = perform_linker(env([x, y,r], [e])).make_function()
+        self.failUnless(fn(1.0,2.0,4.5) == 7.5)
+
 
 
 if __name__ == '__main__':
