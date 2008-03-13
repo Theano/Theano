@@ -67,7 +67,7 @@ class Looper:
         self.next = next
         self.cleanup = cleanup
 
-    def fill(self, template):
+    def fill(self, **template):
         ret = copy(self)
         ret.declare %= template
         ret.init %= template
@@ -162,13 +162,29 @@ def elemwise_wrap(beforeloop, inloop, afterloop, input_loop_vars, output_loop_va
     for output_loop_var in output_loop_vars:
         update += """
         if (!%(output_loop_var)s) {
-            %(output_loop_var)s = PyArray_SimpleNew(nd, dims, type_num_%(output_loop_var)s);
+            %(output_loop_var)s = PyArray_EMPTY(nd, dims, type_num_%(output_loop_var)s, 0);
+        }
+        else {
+            PyArray_Dims new_dims(nd, dims);
+            PyObject* success = PyArray_Resize(%(output_loop_var)s, &new_dims, 0);
+            if (!success) {
+                // If we can't resize the ndarray we have we can allocate a new one.
+                PyErr_Clear();
+                Py_XDECREF(%(output_loop_var)s);
+                %(output_loop_var)s = PyArray_EMPTY(nd, dims, type_num_%(output_loop_var)s, 0);
+            }
+        }
+        if (!%(output_loop_var)s) {
+            %%(fail)s
         }
         """
 
     validate_update = validate + update
 
-    # I'm here
+    general_loopers = []
+    general_loopers += [general_looper.fill(name = loop_var, type_suffix = "") for loop_var in input_loop_vars]
+    general_loopers += [general_looper.fill(name = loop_var, type_suffix = "&") for loop_var in output_loop_vars]
+    general_loopers += [general_looper.fill(name = loop_var, type_suffix = "&") for v1, v2 in aliases.items()]
 
     
         
