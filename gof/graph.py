@@ -39,7 +39,7 @@ def inputs(o):
     return results
 
 
-def results_and_orphans(i, o, warn_unreachable_input=False):
+def results_and_orphans(i, o, except_unreachable_input=False):
     """
     i -> list of input Results
     o -> list of output Results
@@ -50,7 +50,8 @@ def results_and_orphans(i, o, warn_unreachable_input=False):
     intermediary steps from i to o. The second element of the returned
     pair is orphans(i, o).
     """
-    results = set(o)
+    results = set()
+    i = set(i)
     results.update(i)
     incomplete_paths = []
     reached = set()
@@ -67,7 +68,7 @@ def results_and_orphans(i, o, warn_unreachable_input=False):
                 helper(r2, path + [r2])
 
     for output in o:
-        helper(output, [])
+        helper(output, [output])
 
     orphans = set()
     for path in incomplete_paths:
@@ -76,9 +77,10 @@ def results_and_orphans(i, o, warn_unreachable_input=False):
                 orphans.add(r)
                 break
 
-    if warn_unreachable_input and len(i) != len(reached):
+    if except_unreachable_input and len(i) != len(reached):
         raise Exception(results_and_orphans.E_unreached)
 
+    results.update(orphans)
 
     return results, orphans
 results_and_orphans.E_unreached = 'there were unreachable inputs'
@@ -204,7 +206,8 @@ def io_toposort(i, o, orderings = {}):
     prereqs_d = copy(orderings)
     all = ops(i, o)
     for op in all:
-        prereqs_d.setdefault(op, set()).update(set([input.owner for input in op.inputs if input.owner and input.owner in all]))
+        asdf = set([input.owner for input in op.inputs if input.owner and input.owner in all])
+        prereqs_d.setdefault(op, set()).update(asdf)
     return utils.toposort(prereqs_d)
 
 
