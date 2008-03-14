@@ -30,7 +30,7 @@ class Linker:
         """
         raise AbstractFunctionError()
 
-    def make_function(self, inplace = False):
+    def make_function(self, inplace = False, unpack_single = True):
         """
         Returns a function that takes values corresponding to the inputs of the
         env used by this Linker and returns values corresponding the the outputs
@@ -44,6 +44,10 @@ class Linker:
          fn = MyLinker(env).make_function(inplace)
          print fn(1.0, 2.0) # 3.0
          print e.data # 3.0 iff inplace == True (else unknown)
+
+        If unpack_single is True (default) and that the function has only one
+        output, then that output will be returned. Else, a list or tuple of
+        length 1 will be returned.
         """
         thunk, inputs, outputs = self.make_thunk(inplace)
 
@@ -51,7 +55,10 @@ class Linker:
             for arg, result in zip(args, inputs):
                 result.data = arg
             thunk()
-            return utils.to_return_values([result.data for result in outputs])
+            if unpack_single:
+                return utils.to_return_values([result.data for result in outputs])
+            else:
+                return [result.data for result in outputs]
 
         return execute
 

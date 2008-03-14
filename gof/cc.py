@@ -441,7 +441,7 @@ class CLinker(Linker):
                 raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
         return execute, in_results, out_results
 
-    def make_function(self, inplace = False):
+    def make_function(self, inplace = False, unpack_single = True):
         cthunk, in_results, out_results, error_storage = self.__compile__(inplace)
 #        out_storage = [result._data for result in out_results]
         
@@ -451,7 +451,10 @@ class CLinker(Linker):
             failure = cutils.run_cthunk(cthunk)
             if failure:
                 raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
-            return utils.to_return_values([result.data for result in out_results])
+            if unpack_single:
+                return utils.to_return_values([result.data for result in out_results])
+            else:
+                return [result.data for result in out_results]
 #            return utils.to_return_values([storage[0] for storage in out_storage])
 
         return execute
