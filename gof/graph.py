@@ -152,7 +152,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
 
     for input in i:
         if copy_inputs_and_orphans:
-            d[input] = input.clone(True)
+            d[input] = copy(input)
         else:
             d[input] = input
 
@@ -162,7 +162,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
         op = result.owner
         if not op:
             if copy_inputs_and_orphans:
-                d[result] = result.clone(True)
+                d[result] = copy(result)
             else:
                 d[result] = result
             return d[result]
