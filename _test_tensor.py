@@ -148,10 +148,11 @@ class T_abs(unittest.TestCase):
         check_eq(self, t, abs(t), 1.0, 1.0)
         check_eq(self, t, abs(t), -1.0, 1.0)
 
-        t = tensor([0.0, 0.0])
-        d = numpy.asarray([-0.4, 1.2])
-        check_eq(self, t, abs(t), d, abs(d))
-        check_eq(self, t, abs(t), -d, abs(-d))
+        for shape in (2,), (3,4):
+            t = tensor(numpy.ones(shape))
+            d = numpy.random.rand(*shape)*2-1.0
+            check_eq(self, t, abs(t), d, abs(d))
+            check_eq(self, t, abs(t), -d, abs(-d))
 
     def test_grad(self):
         verify_grad(self, Abs, [[numpy.ones(())], [numpy.ones(3)]])
@@ -160,7 +161,7 @@ class T_abs(unittest.TestCase):
         def impl(self, x):
             return numpy.abs(x)
         def grad(self, x, gz):
-            return -gz * sgn(x)
+            return scale(gz * sgn(x),0.9)
         def c_foreach(self, (x_i, ), (z_i, )):
             return "z_i = abs(x_i);"
 

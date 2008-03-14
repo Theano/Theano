@@ -70,6 +70,13 @@ class Tensor(ResultBase):
     # type information  : Olivier what does this mean?
     #
     def dtype_specs(self):
+        """Return python - C type correspondance tuple for self.data
+
+        Return a tuple (python type, c type, numpy typenum) that corresponds to
+        self.dtype.  It is for use in C code generation.
+        """
+        #TODO: add more type correspondances for e.g. int32, int64, float32,
+        #complex64, etc.
         return {'float64': (float, 'double', 'NPY_DOUBLE')}[self.dtype]
             
     #
@@ -578,48 +585,47 @@ if 0:
     sub = _scalar_switch(sub_elemwise, sub_scalar_r, sub_scalar_l)
     sub_inplace = _scalar_switch(sub_elemwise_inplace, sub_scalar_rinplace)
 
-if 1:
-    ##########################
-    # Arithmetic : Mul
-    ##########################
+##########################
+# Arithmetic : Mul
+##########################
 
-    # Elemwise #
-    class MulElemwise(_Elemwise):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            return x * y
-        def grad(self, (x, y), gz):
-            return mul(y, gz), mul(x, gz)
-        def c_foreach(self, (x_i, y_i), (z_i, )):
-            return "z_i = x_i * y_i;"
-    mul_elemwise = constructor(MulElemwise)
+# Elemwise #
+class MulElemwise(_Elemwise):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        return x * y
+    def grad(self, (x, y), gz):
+        return mul(y, gz), mul(x, gz)
+    def c_foreach(self, (x_i, y_i), (z_i, )):
+        return "z_i = x_i * y_i;"
+mul_elemwise = constructor(MulElemwise)
 
-    class MulElemwiseInplace(MulElemwise.inplace_version()):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            x *= y
-            return x
-    mul_elemwise_inplace = constructor(MulElemwiseInplace)
+class MulElemwiseInplace(MulElemwise.inplace_version()):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        x *= y
+        return x
+mul_elemwise_inplace = constructor(MulElemwiseInplace)
 
-    # Scalar #
-    class Scale(TensorScalarOp):
-        def impl(self, x, a):
-            _assert_tensor_scalar(x, a)
-            return x * a
-        def grad(self, (x, a), gz):
-            return scale(a, gz), sum(mul_elemwise(x, gz))
-        c_expr = "x_i * a"
-    scale = constructor(Scale)
+# Scalar #
+class Scale(TensorScalarOp):
+    def impl(self, x, a):
+        _assert_tensor_scalar(x, a)
+        return x * a
+    def grad(self, (x, a), gz):
+        return scale(a, gz), sum(mul_elemwise(x, gz))
+    c_expr = "x_i * a"
+scale = constructor(Scale)
 
-    class ScaleInplace(Scale.inplace_version()):
-        def impl(self, x, a):
-            _assert_tensor_scalar(x, a)
-            x *= a
-            return x
-    scale_inplace = constructor(ScaleInplace)
+class ScaleInplace(Scale.inplace_version()):
+    def impl(self, x, a):
+        _assert_tensor_scalar(x, a)
+        x *= a
+        return x
+scale_inplace = constructor(ScaleInplace)
 
-    mul = _scalar_switch(mul_elemwise, scale, scale)
-    mul_inplace = _scalar_switch(mul_elemwise_inplace, scale_inplace)
+mul = _scalar_switch(mul_elemwise, scale, scale)
+mul_inplace = _scalar_switch(mul_elemwise_inplace, scale_inplace)
 
 
 if 0:
