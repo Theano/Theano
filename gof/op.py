@@ -88,12 +88,21 @@ class Op(object):
         """
         Shallow copy of this Op. The inputs are the exact same, but
         the outputs are recreated because of the one-owner-per-result
-        policy.
+        policy. The default behavior is to call the constructor on
+        this Op's inputs.
 
-        This implementation permits a bottom-up copy of an entire graph.
+        To do a bottom-up copy of a graph, use clone_with_new_inputs.
         """
         return self.__class__(*self.inputs)
 
+    def clone_with_new_inputs(self, *new_inputs):
+        """
+        Returns a clone of this Op that takes different inputs. The
+        default behavior is to call the constructor on the new inputs,
+        but if your Op has additional options or a different constructor
+        you might want to override this.
+        """
+        return self.__class__(*new_inputs)
 
     #
     # String representation

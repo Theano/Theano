@@ -135,13 +135,14 @@ def clone(i, o, copy_inputs = False):
     return [equiv[output] for output in o]
 
 
-def clone_get_equiv(i, o, copy_inputs = False):
+def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
     """
     i -> list of input Results
     o -> list of output Results
-    copy_inputs -> if True, the inputs will be replaced in the cloned
-                   graph by copies available in the equiv dictionary
-                   returned by the function (copy_inputs defaults to False)
+    copy_inputs_and_orphans -> if True, the inputs and the orphans
+         will be replaced in the cloned graph by copies available in
+         the equiv dictionary returned by the function (copy_inputs
+         defaults to False)
 
     Returns equiv a dictionary mapping each result and op in the
     graph delimited by i and o to a copy (akin to deepcopy's memo).
@@ -150,8 +151,8 @@ def clone_get_equiv(i, o, copy_inputs = False):
     d = {}
 
     for input in i:
-        if copy_inputs:
-            d[input] = copy(input)
+        if copy_inputs_and_orphans:
+            d[input] = input.clone(True)
         else:
             d[input] = input
 
@@ -160,9 +161,13 @@ def clone_get_equiv(i, o, copy_inputs = False):
             return d[result]
         op = result.owner
         if not op:
-            return result
+            if copy_inputs_and_orphans:
+                d[result] = result.clone(True)
+            else:
+                d[result] = result
+            return d[result]
         else:
-            new_op = op.__class__(*[clone_helper(input) for input in op.inputs])
+            new_op = op.clone_with_new_inputs(*[clone_helper(input) for input in op.inputs])
             d[op] = new_op
             for output, new_output in zip(op.outputs, new_op.outputs):
                 d[output] = new_output
