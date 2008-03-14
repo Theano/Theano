@@ -338,7 +338,7 @@ class CLinker(Linker):
             except AbstractFunctionError:
                 validate_behavior = ""
 
-            try: validate_behavior = op.c_validate_update_cleanup()
+            try: validate_cleanup = op.c_validate_update_cleanup()
             except AbstractFunctionError:
                 validate_cleanup = ""
 
