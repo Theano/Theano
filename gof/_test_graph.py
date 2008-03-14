@@ -58,6 +58,18 @@ class _test_orphans(unittest.TestCase):
         op = MyOp(r1, r2)
         op2 = MyOp(op.outputs[0], r5)
         assert orphans([r1, r2], op2.outputs) == set([r5])
+
+    def test_1(self):
+        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        op = MyOp(r1, r2)
+        op2 = MyOp(op.outputs[0], r5)
+        try:
+            ro = results_and_orphans([r1, r2, op2.outputs[0]], op.outputs, True)
+            self.fail()
+        except Exception, e:
+            if e[0] is results_and_orphans.E_unreached:
+                return
+            raise
     
 
 class _test_as_string(unittest.TestCase):

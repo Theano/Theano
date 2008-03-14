@@ -120,9 +120,7 @@ class _test_PerformLinker(unittest.TestCase):
         a,d = add(x,y), div(x,y)
         e = mul(a,d)
         fn = perform_linker(env([x, a], [e])).make_function()
-        #perform linker should have recognized that one input is a function of
-        #the other one, which makes no sense
-        self.fail('this graph should not have been compiled')
+        self.failUnless(fn(1.0,9.0) == 4.5)
 
     def test_skiphole(self):
         x,y,z = inputs()
@@ -131,6 +129,13 @@ class _test_PerformLinker(unittest.TestCase):
         e = add(r,a)
         fn = perform_linker(env([x, y,r], [e])).make_function()
         self.failUnless(fn(1.0,2.0,4.5) == 7.5)
+
+    def test_disconnected_input_output(self):
+        x,y,z = inputs()
+        a = add(x,y)
+        fn = perform_linker(env([z], [a])).make_function()
+        self.failUnless(fn(1.0) == 3.0)
+        self.failUnless(fn(2.0) == 3.0)
 
 
 

@@ -39,7 +39,7 @@ def inputs(o):
     return results
 
 
-def results_and_orphans(i, o):
+def results_and_orphans(i, o, warn_unreachable_input=False):
     """
     i -> list of input Results
     o -> list of output Results
@@ -53,9 +53,11 @@ def results_and_orphans(i, o):
     results = set(o)
     results.update(i)
     incomplete_paths = []
+    reached = set()
 
     def helper(r, path):
         if r in i:
+            reached.add(r)
             results.update(path)
         elif r.owner is None:
             incomplete_paths.append(path)
@@ -74,7 +76,12 @@ def results_and_orphans(i, o):
                 orphans.add(r)
                 break
 
+    if warn_unreachable_input and len(i) != len(reached):
+        raise Exception(results_and_orphans.E_unreached)
+
+
     return results, orphans
+results_and_orphans.E_unreached = 'there were unreachable inputs'
 
 
 def ops(i, o):

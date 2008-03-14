@@ -378,6 +378,7 @@ class Env(graph.Graph):
                     listener.on_import(op)
                 except AbstractFunctionError:
                     pass
+    __import__.E_output = 'op output in Env.inputs'
 
     def __prune_r__(self, results):
         for result in set(results):
