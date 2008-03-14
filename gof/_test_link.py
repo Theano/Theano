@@ -133,7 +133,8 @@ class _test_PerformLinker(unittest.TestCase):
     def test_disconnected_input_output(self):
         x,y,z = inputs()
         a = add(x,y)
-        fn = perform_linker(env([z], [a])).make_function()
+        a.data = 3.0 # simulate orphan calculation
+        fn = perform_linker(env([z], [a])).make_function(inplace=True)
         self.failUnless(fn(1.0) == 3.0)
         self.failUnless(fn(2.0) == 3.0)
 
