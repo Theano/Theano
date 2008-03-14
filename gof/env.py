@@ -339,6 +339,8 @@ class Env(graph.Graph):
         self._clients[r].difference_update(all)
         if not self._clients[r]:
             del self._clients[r]
+            if r in self._orphans:
+                self._orphans.remove(r)
 
     def __import_r_satisfy__(self, results):
 
@@ -395,7 +397,6 @@ class Env(graph.Graph):
                 return
         self._ops.remove(op)
         self._results.difference_update(op.outputs)
-        
         for listener in self._listeners.values():
             try:
                 listener.on_prune(op)
