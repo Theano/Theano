@@ -52,6 +52,11 @@ class Linker:
         thunk, inputs, outputs = self.make_thunk(inplace)
 
         def execute(*args):
+            def e_arity(takes, got):
+                return 'Function call takes exactly %i %s (%i given)' \
+                        % (takes, ['argument','arguments'][takes>1], got)
+            if (len(args) != len(inputs)):
+                raise TypeError(e_arity(len(inputs), len(args)))
             for arg, result in zip(args, inputs):
                 result.data = arg
             thunk()
@@ -61,7 +66,6 @@ class Linker:
                 return [result.data for result in outputs]
 
         return execute
-
 
 
 
