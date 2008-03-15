@@ -90,7 +90,7 @@ class Env(graph.Graph):
         # Set of all the results that are not an output of an op in the subgraph but
         # are an input of an op in the subgraph.
         # e.g. z for inputs=(x, y) and outputs=(x + (y - z),)
-        self._orphans = set()
+        self._orphans = set(outputs)
 
         # Maps results to ops that use them:
         # if op.inputs[i] == v then (op, i) in self._clients[v]
@@ -112,6 +112,7 @@ class Env(graph.Graph):
 
     def add_output(self, output):
         self.outputs.add(output)
+        self.orphans.add(output)
         self.__import_r__([output])
 
     def clients(self, r):
@@ -364,6 +365,7 @@ class Env(graph.Graph):
 
             self._ops.add(op)
             self._results.update(op.outputs)
+            self._orphans.difference_update(op.outputs)
             
             for i, input in enumerate(op.inputs):
                 self.__add_clients__(input, [(op, i)])
