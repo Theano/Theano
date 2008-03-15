@@ -1,11 +1,9 @@
 
 from copy import copy
-from gof import Op
+from gof import Op, Destroyer
 from gof.utils import AbstractFunctionError
 
-from tensor import _Op
-
-class Elemwise(_Op):
+class Elemwise(Op):
     
     def var_desc(self):
         raise AbstractFunctionError()
@@ -19,22 +17,6 @@ class Elemwise(_Op):
         idesc, odesc = self.var_desc()
         return [[i[0] for i in idesc if i[1]],
                 [o[0] for o in odesc if o[1]]]
-
-    def propagate_broadcastable(self, *inputs):
-        idesc, odesc = self.var_desc()
-        nonloop_o = [o[0] for o in odesc if not o[1]]
-        if nonloop_o:
-            raise Exception("Cannot infer broadcastable for non-loop variable(s) %s" % nonloop_o)
-        all_bcast = [broadcastable for broadcastable, i in zip(inputs, idesc) if i[1]]
-        if reduce(lambda x, y: x is not False and x == y and y, [len(x) for x in all_bcast]) is False:
-            raise TypeError("Inputs that are loop variables do not all have the same number of dimensions.")
-        ret = []
-        for arr in zip(*all_bcast):
-            if 0 in arr:
-                ret.append(0)
-            else:
-                ret.append(1)
-        return [ret] * self.nout
 
     def c_code_init(self):
         raise AbstractFunctionError()
@@ -76,7 +58,7 @@ class Elemwise(_Op):
                             ["%("+v+")s" for v in input_loop_vars],
                             ["%("+v+")s" for v in output_loop_vars],
                             aliases)
-
+        
         return ret
 
     def c_validate_update(self):

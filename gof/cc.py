@@ -234,7 +234,11 @@ class CLinker(Linker):
         env = self.env
 
         self.inputs = env.inputs
+        if len(set(self.inputs)) != len(self.inputs):
+            raise Exception("CLinker doesn't support duplicate inputs.")
         self.outputs = env.outputs
+        if len(set(self.outputs)) != len(self.outputs):
+            raise Exception("CLinker doesn't support duplicate outputs.")
 
         try: self.results = list(env.results())
         except AttributeError: self.results = self.inputs + self.outputs

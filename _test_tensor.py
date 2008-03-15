@@ -5,6 +5,8 @@ import unittest
 from copy import copy
 from compile import Function
 import gradient
+import gof
+
 
 #TODO: consider moving this function / functionality to gradient.py
 #      rationale: it's tricky, and necessary everytime you want to verify
@@ -57,7 +59,7 @@ class T_tensor(unittest.TestCase):
     def test0_int(self): # allocate from a scalar float
         t = tensor(1)
         self.failUnless(isinstance(t, Tensor))
-        self.failUnless(t.dtype == 'int64')
+        self.failUnless(t.dtype == 'int64' or t.dtype == 'int32')
     def test1(self): # allocate from a vector of ints, not broadcastable
         t = tensor(numpy.ones(5,dtype='int32'))
         self.failUnless(isinstance(t, Tensor))
@@ -138,6 +140,11 @@ def check_eq(self, node_in, node_out, arg_in, arg_out):
 
 def check_eq2(self, inputs, output, args_in, arg_out):
     fn = Function(inputs, [output])
+    val = fn(*args_in)
+    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+
+def check_eq2(self, inputs, output, args_in, arg_out):
+    fn = Function(inputs, [output], linker_cls = gof.CLinker)
     val = fn(*args_in)
     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 

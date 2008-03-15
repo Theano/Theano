@@ -1,6 +1,8 @@
 import gof, gof.result
 import numpy #for numeric_grad
 
+from gof.python25 import all
+
 _msg_retNone = 'op.grad(...) returned None, consider returning [None]'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 

@@ -3,162 +3,21 @@
 import numpy
 from copy import copy
 import inspect
-from gof import ResultBase, Op, utils, Destroyer, Viewer
+from gof import ResultBase, Op, utils, Destroyer, Viewer, AbstractFunctionError
 
-###########################
-# Tensor Class
-###########################
+from base_tensor import BaseTensor
+from elemwise import Elemwise
 
-class Tensor(ResultBase):
-    """ResultBase to store numpy.ndarray or equivalent via .data
+
+class Tensor(BaseTensor):
+    """
+    This subclass of BaseTensor provides operator overloading using implementations
+    of Tensor operations contained in this file.
     
-    Attributes:
-    _dtype - numpy dtype string such as 'int64' or 'float64' (among others)
-    _broadcastable - tuple of ints in  (0,1) saying which dimensions of this
-        tensor are guaranteed to be 1, and up for broadcasting
-
-    Properties:
-    dtype - read-only access to _dtype, which should not be changed
-    broadcastable - read-only access to _broadcastable, which should not be changed
-
     Operators:
     - most numeric operators are overloaded to return Ops that *would* perform
       the corresponding calculation
-
-    
     """
-
-    def __init__(self, dtype, broadcastable, role=None, name=None):
-        """Initialize a Tensor"""
-
-        # data is not given here. This may seem a bit strange, but when data was
-        # an argument, it made sense to use *either* the given dtype,
-        # broadcastable, or override them from the fields of data. This makes
-        # the function ugly, especially because it isn't obvious how to set
-        # broadcastable from data.  
-        #
-        # The only clean option I could think of, when passing a data arg was to 
-        # require the broadcastable field to be given.  Since broadcastable is
-        # the argument that is awkward to construct, I decided to put all this
-        # into the tensor(data,...) function below, which is like a second
-        # constructor that works with an ndarray.
-        ResultBase.__init__(self, role=role, name=name)
-        self._dtype = str(dtype)
-        self._broadcastable = tuple(broadcastable)
-
-    ######################
-    # ResultBase interface
-    ######################
-
-    # 
-    # filter
-    #
-    def filter(self, arr):
-        if not isinstance(arr, numpy.ndarray):
-            arr = numpy.asarray(arr, dtype = self.dtype)
-        if len(self.broadcastable) != len(arr.shape):
-            raise ValueError(Tensor.filter.E_rank)
-        for b, s in zip(self.broadcastable, arr.shape):
-            if b and (s != 1):
-                raise ValueError(Tensor.filter.E_shape)
-        return arr
-    # these strings are here so that tests can use them
-    filter.E_rank = 'wrong rank'
-    filter.E_shape = 'non-unit size on broadcastable dimension'
-
-    #
-    # type information  : Olivier what does this mean?
-    #
-    def dtype_specs(self):
-        """Return python - C type correspondance tuple for self.data
-
-        Return a tuple (python type, c type, numpy typenum) that corresponds to
-        self.dtype.  It is for use in C code generation.
-        """
-        #TODO: add more type correspondances for e.g. int32, int64, float32,
-        #complex64, etc.
-        return {'float64': (float, 'double', 'NPY_DOUBLE')}[self.dtype]
-            
-    #
-    # C codegen stubs
-    #
-    def c_declare(self):
-        return """
-        PyArrayObject* %%(name)s;
-        int type_num_%%(name)s;
-        typedef %(dtype)s dtype_%%(name)s;
-        """ % dict(dtype = self.dtype_specs()[1])
-
-    def c_init(self):
-        return """
-        %%(name)s = NULL;
-        type_num_%%(name)s = %(type_num)s;
-        """ % dict(type_num = self.dtype_specs()[2])
-
-    def c_extract(self):
-        return """
-        %%(name)s = NULL;
-        type_num_%%(name)s = %(type_num)s;
-        if (py_%%(name)s == Py_None) {
-            %%(name)s = NULL;
-        }
-        else if (!PyArray_Check(py_%%(name)s)) {
-            PyErr_SetString(PyExc_ValueError, "expected an ndarray");
-            %%(fail)s
-        }
-        else if (((PyArrayObject*)py_%%(name)s)->descr->type_num != %(type_num)s) {
-            PyErr_SetString(PyExc_ValueError, "expected %(type_num)s");
-            %%(fail)s
-        }
-        else {
-            %%(name)s = (PyArrayObject*)(py_%%(name)s);
-            Py_XINCREF(%%(name)s);
-        }
-        """ % dict(type_num = self.dtype_specs()[2])
-
-    def c_cleanup(self):
-        return """
-        if (%(name)s) {
-            Py_XDECREF(%(name)s);
-        }
-        """
-    
-    def c_sync(self):
-        return """
-        if (!%(name)s) {
-            Py_XDECREF(py_%(name)s);
-            py_%(name)s = Py_None;
-        }
-        else if ((void*)py_%(name)s != (void*)%(name)s) {
-            Py_XDECREF(py_%(name)s);
-            py_%(name)s = (PyObject*)%(name)s;
-            Py_XINCREF(py_%(name)s);
-        }
-        """
-
-    def c_headers(self):
-        return []
-
-    def c_libraries(self):
-        return []
-
-
-    ############################
-    # Tensor specific attributes
-    #
-    ############################
-
-    dtype = property(lambda self: self._dtype)
-    broadcastable = property(lambda self: self._broadcastable)
-
-    # STDLIB
-    def __copy__(self):
-        """
-        Returns a copy of this Tensor. If there is data stored inside it, it is also copied.
-        """
-        cpy = self.__class__(self.dtype, self.broadcastable, None, self.name)
-        cpy.data = copy(self.data)
-        return cpy
 
     #UNARY
     def __abs__(self): return Abs(self).out
@@ -241,6 +100,20 @@ def _scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
         return normal_f(x, y)
     return f
 
+def _assert_same_shapes(x, *rest):
+    """Ensure that all inputs to the function impl have the same size (foils numpy's broadcasting)"""
+    shape = x.shape
+    for other in rest:
+        if other.shape != shape:
+            raise _assert_same_shapes.E_shape
+_assert_same_shapes.E_shape = ValueError("The dimensions of the inputs do not match.")
+
+def _assert_tensor_scalar(x, a):
+    """ensure that the second input is a scalar"""
+    if numpy.product(a.shape) != 1:
+        raise ValueError("The second argument must be a scalar.")
+
+
 class _Op(Op):
     """A convenient base for the ops in this file"""
     nin = -1
@@ -288,7 +161,12 @@ class _Op(Op):
         raise AbstractFunctionError()
     
     def perform(self):
-        self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
+        res = self.impl(*[input.data for input in self.inputs])
+        if self.nout == 1:
+            self.outputs[0].data = res
+        else:
+            for output, value in zip(self.outputs, res):
+                output.data = value
     
     def c_var_names(self):
         (self, inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
@@ -308,20 +186,8 @@ class _Unary:
 class _Binary:
     nin = 2
 
-def _assert_same_shapes(x, *rest):
-    """Ensure that all inputs to the function impl have the same size (foils numpy's broadcasting)"""
-    shape = x.shape
-    for other in rest:
-        if other.shape != shape:
-            raise _assert_same_shapes.E_shape
-_assert_same_shapes.E_shape = ValueError("The dimensions of the inputs do not match.")
 
-def _assert_tensor_scalar(x, a):
-    """ensure that the second input is a scalar"""
-    if numpy.product(a.shape) != 1:
-        raise ValueError("The second argument must be a scalar.")
-
-class _Elemwise(_Op):
+class _Elemwise(Elemwise, _Op):
 
     @staticmethod
     def extract_name(name):
@@ -333,28 +199,21 @@ class _Elemwise(_Op):
     @staticmethod
     def is_loop_var(name):
         return name.endswith("_i")
-    
-    def c_var_names(self):
-        cls = self.__class__
-        (self, inames, onames), _1, _2, _3 = inspect.getargspec(self.c_foreach)
-        spec = ([cls.extract_name(name) for name in inames],
-                [cls.extract_name(name) for name in onames])
-        return spec
 
-    def loop_variables(self):
+    def var_desc(self):
         cls = self.__class__
         (self, inames, onames), _1, _2, _3 = inspect.getargspec(cls.c_foreach)
-        return ([cls.extract_name(name) for name in inames if cls.is_loop_var(name)],
-                [cls.extract_name(name) for name in onames if cls.is_loop_var(name)])
-    
+        return ([(cls.extract_name(name), cls.is_loop_var(name)) for name in inames],
+                [(cls.extract_name(name), cls.is_loop_var(name)) for name in onames])
+
     def propagate_broadcastable(self, *inputs):
-        inames, onames = self.c_var_names()
-        iloop, oloop = self.loop_variables()
-        if oloop != onames:
-            raise Exception(\
-                    "Cannot infer broadcastable for non-loop variable(s) %s" \
-                    % set(onames).difference(oloop), self.__class__)
-        all_bcast = [broadcastable for broadcastable, iname in zip(inputs, inames) if iname in iloop]
+        idesc, odesc = self.var_desc()
+        nonloop_o = [o[0] for o in odesc if not o[1]]
+        if nonloop_o:
+            raise Exception("Cannot infer broadcastable for non-loop variable(s) %s" % nonloop_o)
+        all_bcast = [broadcastable for broadcastable, i in zip(inputs, idesc) if i[1]]
+        if reduce(lambda x, y: x is not False and x == y and y, [len(x) for x in all_bcast]) is False:
+            raise TypeError("Inputs that are loop variables do not all have the same number of dimensions.")
         ret = []
         for arr in zip(*all_bcast):
             if 0 in arr:
@@ -363,37 +222,38 @@ class _Elemwise(_Op):
                 ret.append(1)
         return [ret] * self.nout
 
-    @classmethod
-    def inplace_version(cls):
-        class Ret(cls, Destroyer):
-            def destroy_list(self):
-                return self.inputs[0]
-        return Ret
-
     def c_init(self, inputs, outputs):
-        pass
+        raise AbstractFunctionError()        
 
     def c_foreach(self, inputs, outputs):
-        pass
+        raise AbstractFunctionError()
 
     def c_finalize(self, inputs, outputs):
-        pass
+        raise AbstractFunctionError()
+
+    def c_code_init(self):
+        return self.c_init(self.inputs, self.outputs)
+
+    def c_code_foreach(self):
+        return self.c_foreach(self.inputs, self.outputs)
+
+    def c_code_finalize(self):
+        return self.c_finalize(self.inputs, self.outputs)
 
 
 class TensorScalarOp(_Elemwise):
-    def c_var_names(self):
-        return (['x', '_a'], ['z', ])
-    def loop_variables(self):
-        return (['x', ], ['z', ])
-    def c_init((x, _a), (z, )):
+    def var_desc(self):
+        return [('x', 1), ('a', 0)], [('z', 1)]
+    def c_code_init(self):
         return """
-        if (PyArray_SIZE(_a) != 1) {
+        if (PyArray_SIZE(%(a)s) != 1) {
             PyErr_SetString(PyExc_ValueError, \"The size of the scalar argument is not 1.\");
+            %(fail)s
         }
-        _a_dtype a = ((_a_dtype*)PyArray_DATA(_a))[0];
+        dtype_%(a)s _%(a)s = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
         """
-    def _c_foreach(self):
-        return "z_i = %s;" % self.c_expr
+    def c_code_foreach(self):
+        return "%%(z)s_i = %s;" % self.c_expr
 
 def constructor(op_cls):
     def f(*args, **kwargs):
@@ -404,6 +264,7 @@ def constructor(op_cls):
             return op.outputs[0]
     return f
 
+
 ##########################
 # Unary Operations
 ##########################
@@ -412,9 +273,9 @@ class Abs(_Elemwise):
     def impl(self, x):
         return numpy.abs(x)
     def grad(self, x, gz):
-        return gz * Sgn(x).out #TODO: handle the corner case (get it? pun?)
+        return gz * Sgn(x).out #TODO: handle the corner case (get it? pun?) (there's a special place in hell for people like you)
     def c_foreach(self, (x_i, ), (z_i, )):
-        return "z_i = abs(x_i);"
+        return "%(z)s_i = abs(%(x)s_i);"
 #Constructor not necessary because builtin abs() does this
 
 class Neg(_Elemwise):
@@ -423,7 +284,7 @@ class Neg(_Elemwise):
     def grad(self, x, gz):
         return -gz
     def c_foreach(self, (x_i, ), (z_i, )):
-        return "z_i = -x_i;"
+        return "%(z)s_i = -%(x)s_i;"
 #Constructor not necessary because unary '-' does this
 
 class Sgn(_Elemwise):
@@ -432,7 +293,7 @@ class Sgn(_Elemwise):
     def grad(self, x, gz):
         return [None]
     def c_foreach(self, (x_i, ), (z_i, )):
-        return "z_i = x_i/abs(x_i);" # TODO: C use copysign
+        return "%(z)s_i = %(x)s_i/abs(%(x)s_i);" # TODO: C use copysign
 sgn = constructor(Sgn)
 
 class Sum(_Elemwise):
@@ -443,9 +304,9 @@ class Sum(_Elemwise):
     def propagate_broadcastable(self, *inputs):
         return [()]
     def c_init(self, (x, ), (sum, )):
-        return "sum_dtype* sump = ((sum_dtype*)PyArray_DATA(sum)); sump[0] = 0;"
+        return "dtype_%(sum)s* %(sum)sp = ((dtype_%(sum)s*)PyArray_DATA(%(sum)s)); %(sum)sp[0] = 0;"
     def c_foreach(self, (x_i, ), (sum, )):
-        return "sump[0] += x_i;"
+        return "%(sum)sp[0] += %(x)s_i;"
 sum = constructor(Sum)
 
 class Fill(_Elemwise):
@@ -454,9 +315,9 @@ class Fill(_Elemwise):
     def grad(self, (model, value), gz):
         return None, sum(gz)
     def c_init(self, (model, value), (z, )):
-        return "value_dtype value0 = ((value_dtype*)PyArray_DATA(value))[0];"
+        return "dtype_%(value)s %(value)s0 = ((dtype_%(value)s*)PyArray_DATA(%(value)s))[0];"
     def c_foreach(self, (model_i, value), (z_i, )):
-        return "z_i = value0;"
+        return "%(z)s_i = %(value)s0;"
 fill = constructor(Fill)
 
 
@@ -466,7 +327,7 @@ class TensorCopy(_Elemwise):
     def grad(self, x, gz):
         return gz
     def c_foreach(self, (x_i, ), (z_i, )):
-        return "z_i = x_i;"
+        return "%(z)s_i = %(x)s_i;"
 tensor_copy = constructor(TensorCopy)
 
 if 0:
@@ -597,7 +458,7 @@ class MulElemwise(_Elemwise):
     def grad(self, (x, y), gz):
         return mul(y, gz), mul(x, gz)
     def c_foreach(self, (x_i, y_i), (z_i, )):
-        return "z_i = x_i * y_i;"
+        return "%(z)s_i = %(x)s_i * %(y)s_i;"
 mul_elemwise = constructor(MulElemwise)
 
 class MulElemwiseInplace(MulElemwise.inplace_version()):
@@ -614,7 +475,7 @@ class Scale(TensorScalarOp):
         return x * a
     def grad(self, (x, a), gz):
         return scale(a, gz), sum(mul_elemwise(x, gz))
-    c_expr = "x_i * a"
+    c_expr = "%(x)s_i * _%(a)s"
 scale = constructor(Scale)
 
 class ScaleInplace(Scale.inplace_version()):
