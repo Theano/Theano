@@ -265,3 +265,6 @@ class ResultBase(object):
         """Return bool; True iff all properties are equal (ignores contents, role)"""
         raise AbstractFunction()
 
+
+    def __copy__(self):
+        raise AbstractFunctionError()
