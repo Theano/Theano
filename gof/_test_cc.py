@@ -19,6 +19,9 @@ class Double(ResultBase):
     def __repr__(self):
         return self.name
 
+    def __copy__(self):
+        return Double(self.data, self.name)
+
 #    def c_is_simple(self): return True
     
     def c_declare(self):

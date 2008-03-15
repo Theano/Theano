@@ -169,7 +169,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
         if result in d:
             return d[result]
         op = result.owner
-        if not op:
+        if not op: # result is an orphan
             if copy_inputs_and_orphans:
                 d[result] = copy(result)
             else:

@@ -9,19 +9,7 @@ from ext import *
 from env import Env, InconsistencyError
 from toolbox import EquivTool
 
-
-class MyResult(ResultBase):
-
-    def __init__(self, name):
-        ResultBase.__init__(self, role = None, name = name)
-        self.data = [1000]
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
+from _test_result import MyResult
 
 class MyOp(Op):
     nin = -1

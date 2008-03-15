@@ -8,19 +8,7 @@ from env import Env
 
 from link import *
 
-class Double(ResultBase):
-
-    def __init__(self, data, name = "oignon"):
-        ResultBase.__init__(self, role = None, name = name)
-        assert isinstance(data, float)
-        self.data = data
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
+from _test_result import Double
 
 class MyOp(Op):
 
