@@ -13,40 +13,17 @@ def thunk_hook(type, value, trace):
     if len(value.args) > 0 and hasattr(value[0], '__thunk_trace__'):
         # such a hack :(
         trace2 = value[0].__thunk_trace__ #.exc_info
-        print>>sys.stderr, "Definition in: "
-        for line in traceback.format_list(trace2):
-            print>>sys.stderr, line,
+        if trace2 is None:
+            print>>sys.stderr, "Could not find where this Op was defined."
+            print>>sys.stderr, " * You might have instantiated this Op directly instead of using a constructor."
+            print>>sys.stderr, " * The Op you constructed might have been optimized. Try turning off optimizations."
+        elif trace2:
+            print>>sys.stderr, "Definition in: "
+            for line in traceback.format_list(trace2):
+                print>>sys.stderr, line,
     __excepthook(type, value, trace)
 sys.excepthook = thunk_hook
 
-class Thunk:
-
-    def __init__(self):
-        self.results = None
-        self.is_valid = False
-        self.exc_info = ()
-        self.inputs = []
-        self.outputs = []
-
-    def call_thunk(self):
-        raise AbstractFunctionError
-    
-    def exc_print(self, f = sys.stderr):
-        if self.is_valid:
-            return
-        type, value, trace = self.exc_info
-        for line in traceback.format_list(trace):
-            print>>f, line,
-        print>>f, traceback.format_exception_only(type, value)
-
-    def call_thunk_and_raise(self):
-        self.call_thunk()
-        if not self.is_valid:
-            type, value, trace = self.exc_info
-            raise self.type, self.value
-    
-    def __call__(self, *inputs):
-        raise AbstractFunctionError
 
 
 class Linker:
@@ -124,13 +101,22 @@ class PerformLinker(Linker):
         order = env.toposort()
         thunks = [op.perform for op in order]
         def f():
-            for thunk in thunks:
-                thunk()
-        return f, env.inputs, env.outputs
+            try:
+                for thunk, op in zip(thunks, order):
+                    thunk()
+            except:
+                try:
+                    trace = op.trace
+                except AttributeError:
+                    trace = ()
+                exc_type, exc_value, exc_trace = sys.exc_info()
+                class X:pass
+                __x = X()
+                __x.__thunk_trace__ = trace
+                __x.__str__ = lambda: str(exc_value) + " (in op: " + str(op) + ")"
+                raise exc_type, __x, exc_trace
 
-#         self.thunk = f
-#         self.order = order
-#         self.thunks = thunks
+        return f, env.inputs, env.outputs
 
 
 class ProfilePerformLinker(Linker):
