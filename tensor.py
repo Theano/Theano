@@ -15,8 +15,8 @@ class Tensor(BaseTensor):
     of Tensor operations contained in this file.
     
     Operators:
-    - most numeric operators are overloaded to return Ops that *would* perform
-      the corresponding calculation
+    - most numeric operators are overloaded (to return Ops that perform the
+      corresponding calculation)
     """
 
     #UNARY
@@ -65,7 +65,7 @@ class Tensor(BaseTensor):
     def __getslice__(self, key): raise NotImplementedError()
 
 # alternate Tensor constructor
-def tensor(data, broadcastable=None, role=None, name=None):
+def tinit(data, broadcastable=None, role=None, name=None):
     """Return a Tensor containing given data"""
     data = numpy.asarray(data)
     if broadcastable is None:
@@ -88,7 +88,7 @@ def _scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
             if isinstance(obj, Tensor):
                 return obj
             else:
-                return tensor(obj)
+                return tinit(obj)
         x, y = as_tensor(x), as_tensor(y)
         if 0 not in y.broadcastable:
             return scalar_f(x, y)
@@ -125,7 +125,7 @@ class _Op(Op):
             if isinstance(obj, Tensor):
                 return obj
             else:
-                return tensor(obj)
+                return tinit(obj)
         inputs = map(as_tensor, inputs)
         
         if self.nin >= 0:
@@ -148,8 +148,11 @@ class _Op(Op):
     def propagate_dtype(self, *i_dtypes):
         def upcast(dtype, *dtypes):
             z = numpy.zeros((), dtype = dtype)
+            #print '----', self.__class__
+            #print type(z), dtype
             for dtype in dtypes:
                 z = z + numpy.zeros((), dtype = dtype)
+                #print type(z), type(dtype), dtype
             return str(z.dtype)
         for dtype in i_dtypes:
             if dtype is None:
@@ -213,7 +216,7 @@ class _Elemwise(Elemwise, _Op):
             raise Exception("Cannot infer broadcastable for non-loop variable(s) %s" % nonloop_o)
         all_bcast = [broadcastable for broadcastable, i in zip(inputs, idesc) if i[1]]
         if reduce(lambda x, y: x is not False and x == y and y, [len(x) for x in all_bcast]) is False:
-            raise TypeError("Inputs that are loop variables do not all have the same number of dimensions.")
+            raise TypeError(_Elemwise.propagate_broadcastable.E_ndim, self.__class__)
         ret = []
         for arr in zip(*all_bcast):
             if 0 in arr:
@@ -221,6 +224,8 @@ class _Elemwise(Elemwise, _Op):
             else:
                 ret.append(1)
         return [ret] * self.nout
+    propagate_broadcastable.E_ndim \
+            = "Inputs that are loop variables do not all have the same number of dimensions."
 
     def c_init(self, inputs, outputs):
         raise AbstractFunctionError()        
@@ -255,7 +260,10 @@ class TensorScalarOp(_Elemwise):
     def c_code_foreach(self):
         return "%%(z)s_i = %s;" % self.c_expr
 
-def constructor(op_cls):
+def _constructor(op_cls):
+    """Return a function that calls op_cls(*input)
+    and returns the outputs of the op (with single outputs unpacked)
+    """
     def f(*args, **kwargs):
         op = op_cls(*args, **kwargs)
         if len(op.outputs) > 1:
@@ -278,6 +286,12 @@ class Abs(_Elemwise):
         return "%(z)s_i = abs(%(x)s_i);"
 #Constructor not necessary because builtin abs() does this
 
+class Exp(_Elemwise):
+    def impl(self, x): return numpy.exp(x)
+    def grad(self, x, gz): return gz * exp(x)
+    def c_foreach(self, (x_i, ), (z_i, )): return "z_i = exp(x_i);"
+exp = _constructor(Exp)
+
 class Neg(_Elemwise):
     def impl(self, x):
         return -x
@@ -287,6 +301,12 @@ class Neg(_Elemwise):
         return "%(z)s_i = -%(x)s_i;"
 #Constructor not necessary because unary '-' does this
 
+class Log(_Elemwise):
+    def impl(self, x): return numpy.log(x)
+    def grad(self, x, gz): return gz / x
+    def c_foreach(self, (x_i, ), (z_i, )): return "z_i = log(x_i);"
+log = _constructor(Log)
+
 class Sgn(_Elemwise):
     def impl(self, x):
         return numpy.abs(x) / x
@@ -294,7 +314,7 @@ class Sgn(_Elemwise):
         return [None]
     def c_foreach(self, (x_i, ), (z_i, )):
         return "%(z)s_i = %(x)s_i/abs(%(x)s_i);" # TODO: C use copysign
-sgn = constructor(Sgn)
+sgn = _constructor(Sgn)
 
 class Sum(_Elemwise):
     def impl(self, x):
@@ -307,7 +327,7 @@ class Sum(_Elemwise):
         return "dtype_%(sum)s* %(sum)sp = ((dtype_%(sum)s*)PyArray_DATA(%(sum)s)); %(sum)sp[0] = 0;"
     def c_foreach(self, (x_i, ), (sum, )):
         return "%(sum)sp[0] += %(x)s_i;"
-sum = constructor(Sum)
+sum = _constructor(Sum)
 
 class Fill(_Elemwise):
     def impl(self, model, value):
@@ -318,7 +338,7 @@ class Fill(_Elemwise):
         return "dtype_%(value)s %(value)s0 = ((dtype_%(value)s*)PyArray_DATA(%(value)s))[0];"
     def c_foreach(self, (model_i, value), (z_i, )):
         return "%(z)s_i = %(value)s0;"
-fill = constructor(Fill)
+fill = _constructor(Fill)
 
 
 class TensorCopy(_Elemwise):
@@ -328,7 +348,7 @@ class TensorCopy(_Elemwise):
         return gz
     def c_foreach(self, (x_i, ), (z_i, )):
         return "%(z)s_i = %(x)s_i;"
-tensor_copy = constructor(TensorCopy)
+tensor_copy = _constructor(TensorCopy)
 
 if 0:
     ##########################
@@ -372,79 +392,83 @@ if 0:
             raise NotImplemented 
 
 
-if 0:
-    ##########################
-    # Arithmetic : Add
-    ##########################
+##########################
+# Arithmetic : Add
+##########################
 
-    # Elemwise #
-    class add_elemwise(_Elemwise):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            return x + y
-        def grad(self, (x, y), gz):
-            return gz, gz
-        def c_foreach(self, (x_i, y_i), (z_i, )):
-            return "z_i = x_i + y_i;"
+# Elemwise #
+class AddElemwise(_Elemwise):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        return x + y
+    def grad(self, (x, y), gz):
+        return gz, gz
+    def c_foreach(self, (x_i, y_i), (z_i, )):
+        return "z_i = x_i + y_i;"
+add_elemwise = _constructor(AddElemwise)
 
-    class add_elemwise_inplace(add_elemwise.inplace_version()):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            x += y
-            return x
+class AddElemwiseInplace(AddElemwise.inplace_version()):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        x += y
+        return x
+add_elemwise_inplace = _constructor(AddElemwiseInplace)
 
-    # Scalar #
-    class add_scalar(TensorScalarOp):
-        def impl(self, x, a):
-            _assert_tensor_scalar(x, a)
-            return x + a
-        def grad(self, (x, a), gz):
-            return gz, sum(gz)
-        c_expr = "x_i + a"
+# Scalar #
+class AddScalar(TensorScalarOp):
+    def impl(self, x, a):
+        _assert_tensor_scalar(x, a)
+        return x + a
+    def grad(self, (x, a), gz):
+        return gz, sum(gz)
+    c_expr = "x_i + a"
+add_scalar = _constructor(AddScalar)
 
-    class add_scalar_inplace(add_scalar.inplace_version()):
-        def impl(self, x, a):
-            _assert_tensor_scalar(x, a)
-            x += a
-            return x
+class AddScalarInplace(AddScalar.inplace_version()):
+    def impl(self, x, a):
+        _assert_tensor_scalar(x, a)
+        x += a
+        return x
+add_scalar_inplace = _constructor(AddScalarInplace)
 
-    add = _scalar_switch(add_elemwise, add_scalar, add_scalar)
-    add_inplace = _scalar_switch(add_elemwise_inplace, add_scalar_inplace)
+add = _scalar_switch(add_elemwise, add_scalar, add_scalar)
+add_inplace = _scalar_switch(add_elemwise_inplace, add_scalar_inplace)
 
 
-if 0:
-    ##########################
-    # Arithmetic : Sub
-    ##########################
+##########################
+# Arithmetic : Sub
+##########################
 
-    # Elemwise #
-    class SubElemwise(_Elemwise):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            return x - y
-        def grad(self, (x, y), gz):
-            return gz, -gz
-        def c_foreach(self, (x_i, y_i), (z_i, )):
-            return "z_i = x_i - y_i;"
+# Elemwise #
+class SubElemwise(_Elemwise):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        return x - y
+    def grad(self, (x, y), gz):
+        return gz, -gz
+    def c_foreach(self, (x_i, y_i), (z_i, )):
+        return "z_i = x_i - y_i;"
+sub_elemwise = _constructor(SubElemwise)
 
-    class SubElemwiseInplace(SubElemwise.inplace_version()):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            x -= y
-            return x
+class SubElemwiseInplace(SubElemwise.inplace_version()):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        x -= y
+        return x
+sub_elemwise_inplace = _constructor(SubElemwiseInplace)
 
-    # Scalar #
-    def sub_scalar_r(x, a):
-        return add_scalar(x, -a)
+# Scalar #
+def sub_scalar_r(x, a):
+    return add_scalar(x, -a)
 
-    def sub_scalar_l(x, a):
-        return add_scalar(-x, a)
+def sub_scalar_l(x, a):
+    return add_scalar(-x, a)
 
-    def sub_scalar_rinplace(x, a):
-        return add_scalar_inplace(x, -a)
+def sub_scalar_rinplace(x, a):
+    return add_scalar_inplace(x, -a)
 
-    sub = _scalar_switch(sub_elemwise, sub_scalar_r, sub_scalar_l)
-    sub_inplace = _scalar_switch(sub_elemwise_inplace, sub_scalar_rinplace)
+sub = _scalar_switch(sub_elemwise, sub_scalar_r, sub_scalar_l)
+sub_inplace = _scalar_switch(sub_elemwise_inplace, sub_scalar_rinplace)
 
 ##########################
 # Arithmetic : Mul
@@ -459,14 +483,14 @@ class MulElemwise(_Elemwise):
         return mul(y, gz), mul(x, gz)
     def c_foreach(self, (x_i, y_i), (z_i, )):
         return "%(z)s_i = %(x)s_i * %(y)s_i;"
-mul_elemwise = constructor(MulElemwise)
+mul_elemwise = _constructor(MulElemwise)
 
 class MulElemwiseInplace(MulElemwise.inplace_version()):
     def impl(self, x, y):
         _assert_same_shapes(x, y)
         x *= y
         return x
-mul_elemwise_inplace = constructor(MulElemwiseInplace)
+mul_elemwise_inplace = _constructor(MulElemwiseInplace)
 
 # Scalar #
 class Scale(TensorScalarOp):
@@ -476,109 +500,123 @@ class Scale(TensorScalarOp):
     def grad(self, (x, a), gz):
         return scale(a, gz), sum(mul_elemwise(x, gz))
     c_expr = "%(x)s_i * _%(a)s"
-scale = constructor(Scale)
+scale = _constructor(Scale)
 
 class ScaleInplace(Scale.inplace_version()):
     def impl(self, x, a):
         _assert_tensor_scalar(x, a)
         x *= a
         return x
-scale_inplace = constructor(ScaleInplace)
+scale_inplace = _constructor(ScaleInplace)
 
 mul = _scalar_switch(mul_elemwise, scale, scale)
 mul_inplace = _scalar_switch(mul_elemwise_inplace, scale_inplace)
 
 
-if 0:
-    ##########################
-    # Arithmetic : Div
-    ##########################
+##########################
+# Arithmetic : Div
+##########################
 
-    # Elemwise #
-    class DivElemwise(_Elemwise):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            return x / y
-        def grad(self, (x, y), gz):
-            return div(gz, y), -div(mul(x, gz), sqr(y))
-        def c_foreach(self, (x_i, y_i), (z_i, )):
-            return "z_i = x_i / y_i;"
+# Elemwise #
+class DivElemwise(_Elemwise):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        return x / y
+    def grad(self, (x, y), gz):
+        return div(gz, y), -div(mul(x, gz), (y*y))
+    def c_foreach(self, (x_i, y_i), (z_i, )):
+        return "%(z)s_i = %(x)s_i / %(y)s_i;"
+div_elemwise = _constructor(DivElemwise)
 
-    class DivElemwiseInplace(DivElemwise.inplace_version()):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            x /= y
-            return x
+class DivElemwiseInplace(DivElemwise.inplace_version()):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        x /= y
+        return x
+div_elemwise_inplace = _constructor(DivElemwiseInplace)
 
-    # Scalar #
-    def div_scalar_r(x, a):
-        return scale(x, inv_elemwise(a))
+class InvElemwise(_Elemwise):
+    def impl(self, x):
+        return 1.0/x
+    def grad(self, x, gz):
+        return -gz / (x*x)
+    def c_foreach(self, (x_i, ), (z_i, )):
+        return "%(z)s_i = 1.0 / %(x)s_i;" #TODO: cast 1.0 to the dtype of x
+inv_elemwise = _constructor(InvElemwise)
 
-    def div_scalar_l(x, a):
-        return scale(inv_elemwise(x), a)
+# Scalar #
+def div_scalar_r(x, a):
+    return scale(x, inv_elemwise(a))
 
-    def div_scalar_rinplace(x, a):
-        return scale_inplace(x, inv_elemwise(a))
+def div_scalar_l(x, a):
+    return scale(inv_elemwise(x), a)
 
-    div = _scalar_switch(div_elemwise, div_scalar_r, div_scalar_l)
-    div_inplace = _scalar_switch(div_elemwise_inplace, div_scalar_rinplace)
+def div_scalar_rinplace(x, a):
+    return scale_inplace(x, inv_elemwise(a))
+
+div = _scalar_switch(div_elemwise, div_scalar_r, div_scalar_l)
+div_inplace = _scalar_switch(div_elemwise_inplace, div_scalar_rinplace)
 
 
 
 
-if 0:
-    ##########################
-    # Arithmetic : Pow
-    ##########################
+##########################
+# Arithmetic : Pow
+##########################
 
-    # Elemwise #
+# Elemwise #
 
-    class PowElemwise(_Elemwise):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            return x ** y
-        def grad(self, (x, s), gz):
-            gx = gz * s * (pow_elemwise(x, s-1.0))
-            gs = gz * log(x) * pow_elemwise(x, s)
-            return gx, gs
-        def c_foreach(self, (x_i, s_i), (z_i, )):
-            return "z_i = pow(x_i, s_i)"
+class PowElemwise(_Elemwise):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        return x ** y
+    def grad(self, (x, y), gz):
+        gx = gz * y * (pow_elemwise(x, y-1.0))
+        gs = gz * log(x) * pow_elemwise(x, y)
+        return gx, gs
+    def c_foreach(self, (x_i, y_i), (z_i, )):
+        return "%(z)s_i = pow(%(x)s_i, %(y)s_i);"
+pow_elemwise = _constructor(PowElemwise)
 
-    class PowElemwiseInplace(PowElemwise.inplace_version()):
-        def impl(self, x, y):
-            _assert_same_shapes(x, y)
-            x **= y
-            return x
+class PowElemwiseInplace(PowElemwise.inplace_version()):
+    def impl(self, x, y):
+        _assert_same_shapes(x, y)
+        x **= y
+        return x
+pow_elemwise_inplace = _constructor(PowElemwiseInplace)
 
-    # Scalar #
-    class PowScalarL(TensorScalarOp):
-        def impl(self, x, a):
-            _assert_tensor_scalar(x, a)
-            return a ** x
-        def grad(self, (x, s), gz):
-            gx = sum(gz * s * pow_scalar_l(add_scalar(s,-1.0), x))
-            gs = scale(mul(gz, pow_scalar_l(s, x)), log(x))
-            return gx, gs
-        c_expr = "pow(a, x_i)"
+# Scalar #
+class PowScalarL(TensorScalarOp):
+    def impl(self, x, a):
+        _assert_tensor_scalar(x, a)
+        return a ** x
+    def grad(self, (x, s), gz):
+        gx = sum(gz * s * pow_scalar_l(add_scalar(s,-1.0), x))
+        gs = scale(mul(gz, pow_scalar_l(s, x)), log(x))
+        return gx, gs
+    c_expr = "pow(%(a)s, %(x)s_i)"
+pow_scalar_l = _constructor(PowScalarL)
 
-    class PowScalarR(TensorScalarOp):
-        def impl(self, x, a):
-            _assert_tensor_scalar(x, a)
-            return x ** a
-        def grad(self, (x, s), gz):
-            gx = scale(mul_elemwise(gz,pow_scalar_r(x, add_scalar(s,-1.0))), s)
-            gs = sum(mul_elemwise(mul_elemwise(gz, pow_scalar_r(x,s)), log(x)))
-            return gx, gs
-        c_expr = "pow(x_i, a)"
+class PowScalarR(TensorScalarOp):
+    def impl(self, x, a):
+        _assert_tensor_scalar(x, a)
+        return x ** a
+    def grad(self, (x, s), gz):
+        gx = scale(mul_elemwise(gz,pow_scalar_r(x, add_scalar(s,-1.0))), s)
+        gs = sum(mul_elemwise(mul_elemwise(gz, pow_scalar_r(x,s)), log(x)))
+        return gx, gs
+    c_expr = "pow(%(x)s_i, _%(a)s)"
+pow_scalar_r = _constructor(PowScalarR)
 
-    class PowScalarRInplace(PowScalarR.inplace_version()):
-        def impl(self, x, a):
-            _assert_tensor_scalar(x, a)
-            x **= a
-            return x
+class PowScalarRInplace(PowScalarR.inplace_version()):
+    def impl(self, x, a):
+        _assert_tensor_scalar(x, a)
+        x **= a
+        return x
+pow_scalar_r_inplace = _constructor(PowScalarRInplace)
 
-    pow = _scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
-    pow_inplace = _scalar_switch(pow_elemwise_inplace, pow_scalar_rinplace)
+pow = _scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
+pow_inplace = _scalar_switch(pow_elemwise_inplace, pow_scalar_r_inplace)
 
 
 if 0:

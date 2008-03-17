@@ -83,16 +83,7 @@ class InvElemwiseInplace(InvElemwise.inplace_version()):
         return x
 
 
-class Exp(Elemwise):
-    def impl(self, x): return numpy.exp(x)
-    def grad(self, x, gz): return gz * exp(x)
-    def c_foreach(self, (x_i, ), (z_i, )): return "z_i = exp(x_i);"
     
-class Log(Elemwise):
-    def impl(self, x): return numpy.log(x)
-    def grad(self, x, gz): return gz / x
-    def c_foreach(self, (x_i, ), (z_i, )): return "z_i = log(x_i);"
-
 class Log2(Elemwise):
     def impl(self, x): return numpy.log2(x)
     def grad(self, x, gz): return gz / (x * numpy.log(2))

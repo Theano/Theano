@@ -95,13 +95,13 @@ def grad_sources_inputs(sources, graph_inputs):
                     gmap[r] = g_r
     return gmap
 
-def grad(cost, param):
+def grad(cost, param, g_cost=1.0):
     """Return symbolic expression of gradient of <cost> wrt <param>.
     If <param> is a list, then return a list containing the gradient of cost wrt
     each element of the list.
     """
     inputs = gof.graph.inputs([cost])
-    gmap = grad_sources_inputs([(cost, 1.0)], inputs)
+    gmap = grad_sources_inputs([(cost, g_cost)], inputs)
     if isinstance(param, list):
         return [gmap.get(p, None) for p in param]
     else:
@@ -136,9 +136,9 @@ class numeric_grad:
                     f_eps = f(*pt)
                     gf[idx][i] = numpy.asarray((f_eps - f_pt)/eps)
                     pt[idx][i] = orig
-            elif len(args[idx].shape) == 2:
+            elif len(pt[idx].shape) == 2:
                 for i in xrange(pt[idx].shape[0]):
-                    for j in xrange(args[idx].shape[1]):
+                    for j in xrange(pt[idx].shape[1]):
                         orig = pt[idx][i,j]
                         pt[idx][i,j] = pt[idx][i,j] + eps
                         f_eps = f(*pt)

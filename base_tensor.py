@@ -55,7 +55,10 @@ class BaseTensor(ResultBase):
         if not isinstance(arr, numpy.ndarray):
             arr = numpy.asarray(arr, dtype = self.dtype)
         if len(self.broadcastable) != len(arr.shape):
-            raise ValueError(BaseTensor.filter.E_rank)
+            raise ValueError(BaseTensor.filter.E_rank,
+                    self.broadcastable,
+                    arr.shape,
+                    self.owner)
         for b, s in zip(self.broadcastable, arr.shape):
             if b and (s != 1):
                 raise ValueError(BaseTensor.filter.E_shape)

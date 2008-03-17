@@ -71,7 +71,7 @@ class Function:
         #print 'orphans', orphans
 
         #print 'ops', gof.graph.ops(inputs, outputs)
-        env = gof.env.Env(inputs, outputs, features, consistency_check = True)
+        env = gof.env.Env(inputs, outputs, features + [gof.EquivTool], consistency_check = True)
 
         #print 'orphans in env', env.orphans()
 
@@ -79,7 +79,7 @@ class Function:
 
         #print 'orphans after clone', env.orphans()
 
-        for d, o in zip(orphan_data, env.orphans()):
+        for d, o in zip(orphan_data, [env.equiv(orphan) for orphan in orphans]):
             #print 'assigning orphan value', d
             o.data = d
 

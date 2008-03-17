@@ -273,39 +273,5 @@ def matrices(n):
     return [matrix() for i in xrange(n)]
 
 
-#TODO: move this to the _test_tensor_ops.py
-
-class _testCase_matinv:# (unittest.TestCase):
-
-    def setUp(self):
-        numpy.random.seed(1)
-
-    def matinv(self,dim):
-        # symbolic program
-        a,b = matrices(2)
-        ab = T.dot(a,b)
-        diff = ab - tensor.tensor(numpy.identity(dim))
-        ssdiff = T.sum((diff**2.0))
-        g = grad(ssdiff,None, tensor.tensor(numpy.ones(1)))
-
-        # compilation to function
-        fn = compile.Function([a,b], [ssdiff,g(b)])
-
-        # use the function
-        w = numpy.random.rand(dim,dim)
-        wi = numpy.random.rand(dim,dim)
-        for i in xrange(300):
-            ssd, gw = fn(w,wi)
-            #print ssdiff
-            if i == 0:
-                str0 = str(ssd)
-            wi -= 0.4 * gw
-
-        return str0, str(ssd)
-
-    def test_matinv(self):
-        """Matrix inversion by gradient descent (eval mode)"""
-        self.assertEqual(('2.67327580893', '0.000438649434819'), self.matinv(3))
-
 if __name__ == '__main__':
     unittest.main()
