@@ -1,3 +1,4 @@
+"""A simple class to store ndarray data """
 
 from gof import ResultBase
 import numpy
@@ -50,6 +51,7 @@ class BaseTensor(ResultBase):
     # filter
     #
     def filter(self, arr):
+        """cast to an ndarray and ensure arr has correct rank, shape"""
         if not isinstance(arr, numpy.ndarray):
             arr = numpy.asarray(arr, dtype = self.dtype)
         if len(self.broadcastable) != len(arr.shape):
@@ -159,8 +161,10 @@ class BaseTensor(ResultBase):
         return self.clone(True)
     
     def clone(self, transfer_data = False):
-        """
-        Returns a copy of this Tensor. If there is data stored inside it, it is also copied.
+        """Return a copy of this instance (with its own attributes)
+        
+        If transfer_data is True, a copy of self.data is assigned to the copy's
+        data property, otherwise the copy's data is left as None.
         """
         cpy = self.__class__(self.dtype, self.broadcastable, None, self.name)
         if transfer_data:
