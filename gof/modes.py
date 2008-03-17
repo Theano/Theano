@@ -1,5 +1,6 @@
 
 import utils
+import traceback
 from op import Op
 
 __all__ = ['ModalConstructor',
@@ -48,15 +49,21 @@ def add_modal_members(cls, *members):
         setattr(cls, member, fn(member))
 
 
+def attach_trace(op):
+    stack = traceback.extract_stack()[:-3]
+    op.trace = stack
+
 def build_mode(op):
-    pass
+    attach_trace(op)
 
 def eval_mode(op):
+    attach_trace(op)
     op.perform()
     for output in op.outputs:
         output._role = None
 
 def build_eval_mode(op):
+    attach_trace(op)
     op.perform()
 
 

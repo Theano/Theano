@@ -31,7 +31,7 @@ class Double(ResultBase):
         return """
         %(name)s = 0;
         %(name)s_bad_thing = malloc(100000);
-        printf("Initializing %(name)s\\n"); 
+        //printf("Initializing %(name)s\\n"); 
         """
 
     def c_literal(self):
@@ -45,7 +45,7 @@ class Double(ResultBase):
         }
         %(name)s = PyFloat_AsDouble(py_%(name)s);
         %(name)s_bad_thing = NULL;
-        printf("Extracting %(name)s\\n");
+        //printf("Extracting %(name)s\\n");
         """
     
     def c_sync(self):
@@ -54,12 +54,12 @@ class Double(ResultBase):
         py_%(name)s = PyFloat_FromDouble(%(name)s);
         if (!py_%(name)s)
             py_%(name)s = Py_None;
-        printf("Syncing %(name)s\\n");
+        //printf("Syncing %(name)s\\n");
         """
 
     def c_cleanup(self):
         return """
-        printf("Cleaning up %(name)s\\n");
+        //printf("Cleaning up %(name)s\\n");
         if (%(name)s_bad_thing)
             free(%(name)s_bad_thing);
         """
@@ -101,6 +101,13 @@ class Mul(Binary):
         return "%(z)s = %(x)s * %(y)s;"
         
 class Div(Binary):
+    def c_validate_update(self):
+        return """
+        if (%(y)s == 0.0) {
+            PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");
+            %(fail)s
+        }
+        """
     def c_code(self):
         return "%(z)s = %(x)s / %(y)s;"
 
@@ -115,48 +122,62 @@ def inputs():
     return x, y, z
 
 def env(inputs, outputs, validate = True, features = []):
-#     inputs = [input.r for input in inputs]
-#     outputs = [output.r for output in outputs]
     return Env(inputs, outputs, features = features, consistency_check = validate)
 
 
 class _test_CLinker(unittest.TestCase):
 
-    def test_0(self):
+    def test_straightforward(self):
         x, y, z = inputs()
         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = CLinker(env([x, y, z], [e])) #, [x.r, y.r, z.r], [e.r])
-        cgen = lnk.code_gen()
-        fn = lnk.make_function() #[x.r, y.r, z.r], [e.r])
-        print fn(2.0, 2.0, 2.0)
-#        fn = 0
+        lnk = CLinker(env([x, y, z], [e]))
+        fn = lnk.make_function()
+        self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
 
-    def test_1(self):
+    def test_orphan(self):
         x, y, z = inputs()
-        z.constant = True
+        z.data = 4.12345678
         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = CLinker(env([x, y], [e])) #, [x.r, y.r], [e.r])
-        cgen = lnk.code_gen()
-        fn = lnk.make_function() #[x.r, y.r], [e.r])
-        print fn(2.0, 2.0)
-#        fn = 0
+        lnk = CLinker(env([x, y], [e]))
+        fn = lnk.make_function()
+        self.failUnless(abs(fn(2.0, 2.0) + 0.12345678) < 1e-9)
+        self.failUnless("4.12345678" not in lnk.code_gen()) # we do not expect the number to be inlined
 
-    def test_2(self):
+    def test_literal_inlining(self):
+        x, y, z = inputs()
+        z.data = 4.12345678
+        z.constant = True # this should tell the compiler to inline z as a literal
+        e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+        lnk = CLinker(env([x, y], [e]))
+        fn = lnk.make_function()
+        self.failUnless(abs(fn(2.0, 2.0) + 0.12345678) < 1e-9)
+        self.failUnless("4.12345678" in lnk.code_gen()) # we expect the number to be inlined
+
+    def test_single_op(self):
         x, y, z = inputs()
         op = Add(x, y)
         lnk = CLinker(op)
-        cgen = lnk.code_gen()
-        fn = lnk.make_function() #[x.r, y.r], [op.out])
-        print fn(2.0, 7.0)
-#        fn = 0
+        fn = lnk.make_function()
+        self.failUnless(fn(2.0, 7.0) == 9)
+    
+    def test_dups(self):
+        # Testing that duplicate inputs are allowed.
+        x, y, z = inputs()
+        op = Add(x, x)
+        lnk = CLinker(op)
+        fn = lnk.make_function()
+        self.failUnless(fn(2.0, 2.0) == 4)
+        # note: for now the behavior of fn(2.0, 7.0) is undefined
 
-    def test_3(self):
+
+class _test_OpWiseCLinker(unittest.TestCase):
+
+    def test_straightforward(self):
         x, y, z = inputs()
         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
         lnk = OpWiseCLinker(env([x, y, z], [e]))
         fn = lnk.make_function()
-        print fn(2.0, 2.0, 2.0)
-#        fn = 0
+        self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
 
 if __name__ == '__main__':
     unittest.main()

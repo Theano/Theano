@@ -9,6 +9,7 @@ import platform
 from scipy import weave
 import cutils
 import utils
+import traceback        
 
 
 def compile_dir():
@@ -266,7 +267,7 @@ class CLinker(Linker):
         blocks = []
 
         failure_var = "__failure"
-        id = 0
+        id = 1
 
         sub = dict(failure_var = failure_var)
        
@@ -319,10 +320,10 @@ class CLinker(Linker):
             
             builder, block = struct_result_codeblocks(result, policy, id, symbol, sub)
 
-            init_tasks.append((result, 'init'))
+            init_tasks.append((result, 'init', id))
             init_blocks.append(builder)
 
-            tasks.append((result, 'get'))
+            tasks.append((result, 'get', id + 1))
             blocks.append(block)
 
             id += 2
@@ -345,7 +346,7 @@ class CLinker(Linker):
 
             sub['id'] = id
             blocks.append(CodeBlock("", validate_behavior, validate_cleanup, sub))
-            tasks.append((op, 'validate_update'))
+            tasks.append((op, 'validate_update', id))
             id += 1
 
             # c_code
@@ -357,7 +358,7 @@ class CLinker(Linker):
             
             sub['id'] = id
             blocks.append(CodeBlock("", behavior, cleanup, sub))
-            tasks.append((op, 'code'))
+            tasks.append((op, 'code', id))
             id += 1
 
         args = []
@@ -386,6 +387,7 @@ class CLinker(Linker):
         
 
     def find_task(self, failure_code):
+        failure_code -= 1
         n = len(self.init_tasks)
         if failure_code < 2 * n:
             return [self.init_tasks, self.tasks][failure_code % 2][failure_code/2]
@@ -441,7 +443,21 @@ class CLinker(Linker):
         def execute():
             failure = cutils.run_cthunk(cthunk)
             if failure:
-                raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
+                task, taskname, id = self.find_task(failure)
+                #exc = traceback.format_exception_only(error_storage[0], error_storage[1])
+                try:
+                    trace = task.trace
+                except AttributeError:
+                    trace = ()
+                class X:pass
+                __x = X()
+                __x.__thunk_trace__ = trace
+                __x.__str__ = lambda: str(error_storage[1])
+                raise error_storage[0], __x
+##                raise ThunkException, (error_storage[0], error_storage[1], trace)
+#                 for stack_element in traceback.format_list(trace):
+#                     print >>sys.stderr, stack_element,
+#                 raise error_storage[0], error_storage[1] + " (error occurred in: " + str(task) + ")"
         return execute, in_results, out_results
 
 #     def make_function(self, inplace = False, unpack_single = True):

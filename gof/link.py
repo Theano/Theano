@@ -4,6 +4,50 @@
 from utils import AbstractFunctionError
 import utils
 
+import sys
+import traceback
+
+
+__excepthook = sys.excepthook
+def thunk_hook(type, value, trace):
+    if len(value.args) > 0 and hasattr(value[0], '__thunk_trace__'):
+        # such a hack :(
+        trace2 = value[0].__thunk_trace__ #.exc_info
+        print>>sys.stderr, "Definition in: "
+        for line in traceback.format_list(trace2):
+            print>>sys.stderr, line,
+    __excepthook(type, value, trace)
+sys.excepthook = thunk_hook
+
+class Thunk:
+
+    def __init__(self):
+        self.results = None
+        self.is_valid = False
+        self.exc_info = ()
+        self.inputs = []
+        self.outputs = []
+
+    def call_thunk(self):
+        raise AbstractFunctionError
+    
+    def exc_print(self, f = sys.stderr):
+        if self.is_valid:
+            return
+        type, value, trace = self.exc_info
+        for line in traceback.format_list(trace):
+            print>>f, line,
+        print>>f, traceback.format_exception_only(type, value)
+
+    def call_thunk_and_raise(self):
+        self.call_thunk()
+        if not self.is_valid:
+            type, value, trace = self.exc_info
+            raise self.type, self.value
+    
+    def __call__(self, *inputs):
+        raise AbstractFunctionError
+
 
 class Linker:
 

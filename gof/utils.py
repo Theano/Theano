@@ -14,6 +14,13 @@ class AbstractFunctionError(Exception):
     function has been left out of an implementation class.
     """
 
+def uniq(seq):
+    return [x for i, x in enumerate(seq) if seq.index(x) == i]
+
+def difference(seq1, seq2):
+    return [x for x in seq1 if x not in seq2]
+
+
 def attr_checker(*attrs):
     def f(candidate):
         for attr in attrs:
