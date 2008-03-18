@@ -80,7 +80,12 @@ class BaseTensor(ResultBase):
         #TODO: add more type correspondances for e.g. int32, int64, float32,
         #complex64, etc.
         try:
-            return {'float64': (float, 'double', 'NPY_DOUBLE')}[self.dtype]
+            return {'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
+                    'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
+                    'int8': (int, 'npy_int8', 'NPY_INT8'),
+                    'int16': (int, 'npy_int16', 'NPY_INT16'),
+                    'int32': (int, 'npy_int32', 'NPY_INT32'),
+                    'int64': (int, 'npy_int64', 'NPY_INT64')}[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for BaseTensor: %s" % self.dtype)
 
