@@ -41,6 +41,7 @@ class BaseTensor(ResultBase):
         # constructor that works with an ndarray.
         ResultBase.__init__(self, role=role, name=name)
         self._dtype = str(dtype)
+        self.dtype_specs() # this is just for error checking
         self._broadcastable = tuple(broadcastable)
 
     ######################
@@ -78,7 +79,10 @@ class BaseTensor(ResultBase):
         """
         #TODO: add more type correspondances for e.g. int32, int64, float32,
         #complex64, etc.
-        return {'float64': (float, 'double', 'NPY_DOUBLE')}[self.dtype]
+        try:
+            return {'float64': (float, 'double', 'NPY_DOUBLE')}[self.dtype]
+        except KeyError:
+            raise TypeError("Unsupported dtype for BaseTensor: %s" % self.dtype)
 
     #
     # Hash for constant folding
