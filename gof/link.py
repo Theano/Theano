@@ -105,11 +105,11 @@ class PerformLinker(Linker):
                 for thunk, op in zip(thunks, order):
                     thunk()
             except:
+                exc_type, exc_value, exc_trace = sys.exc_info()
                 try:
                     trace = op.trace
                 except AttributeError:
                     trace = ()
-                exc_type, exc_value, exc_trace = sys.exc_info()
                 class X:pass
                 __x = X()
                 __x.__thunk_trace__ = trace
