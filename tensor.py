@@ -119,6 +119,8 @@ class _Op(Op):
     nin = -1
     nout = 1
 
+    _destroy_map = {}
+
     def __init__(self, *inputs):
 
         def as_tensor(obj):
@@ -148,17 +150,28 @@ class _Op(Op):
     def propagate_dtype(self, *i_dtypes):
         def upcast(dtype, *dtypes):
             z = numpy.zeros((), dtype = dtype)
-            #print '----', self.__class__
-            #print type(z), dtype
             for dtype in dtypes:
                 z = z + numpy.zeros((), dtype = dtype)
-                #print type(z), type(dtype), dtype
             return str(z.dtype)
         for dtype in i_dtypes:
             if dtype is None:
                 raise TypeError("Expected a Tensor.")
-        rval = upcast(*i_dtypes)
-        return rval
+        upcasted = upcast(*i_dtypes)
+        return [upcasted] * self.nout
+#         try:
+#             dmap = self.destroy_map()
+#         except AttributeError:
+#             dmap = {}
+#         rval = []
+#         for i in xrange(self.nout):
+#             if i in dmap:
+#                 destroyed = dmap[output]
+#                 if len(destroyed) != 1:
+#                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
+#                 rval.append(destroyed[0])
+#             else:
+#                 rval.append(upcasted)
+#         return rval
     
     def impl(self, *inputs):
         raise AbstractFunctionError()

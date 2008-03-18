@@ -444,39 +444,15 @@ class CLinker(Linker):
             failure = cutils.run_cthunk(cthunk)
             if failure:
                 task, taskname, id = self.find_task(failure)
-                #exc = traceback.format_exception_only(error_storage[0], error_storage[1])
                 try:
                     trace = task.trace
                 except AttributeError:
                     trace = ()
-                class X:pass
-                __x = X()
-                __x.__thunk_trace__ = trace
-                __x.__str__ = lambda: str(error_storage[1])
-                raise error_storage[0], __x
-##                raise ThunkException, (error_storage[0], error_storage[1], trace)
-#                 for stack_element in traceback.format_list(trace):
-#                     print >>sys.stderr, stack_element,
-#                 raise error_storage[0], error_storage[1] + " (error occurred in: " + str(task) + ")"
+                exc_type, _exc_value, exc_trace = error_storage
+                exc_value = exc_type(_exc_value, task)
+                exc_value.__thunk_trace__ = trace
+                raise exc_type, exc_value, exc_trace
         return execute, in_results, out_results
-
-#     def make_function(self, inplace = False, unpack_single = True):
-#         cthunk, in_results, out_results, error_storage = self.__compile__(inplace)
-# #        out_storage = [result._data for result in out_results]
-        
-#         def execute(*args):
-#             for arg, result in zip(args, in_results):
-#                 result.data = arg
-#             failure = cutils.run_cthunk(cthunk)
-#             if failure:
-#                 raise error_storage[0], error_storage[1] + " " + str(self.find_task(failure - 1))
-#             if unpack_single:
-#                 return utils.to_return_values([result.data for result in out_results])
-#             else:
-#                 return [result.data for result in out_results]
-# #            return utils.to_return_values([storage[0] for storage in out_storage])
-
-#         return execute
     
     def cthunk_factory(self, error_storage, in_storage, out_storage):
 

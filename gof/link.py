@@ -10,9 +10,9 @@ import traceback
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):
-    if len(value.args) > 0 and hasattr(value[0], '__thunk_trace__'):
+    if hasattr(value, '__thunk_trace__'):
         # such a hack :(
-        trace2 = value[0].__thunk_trace__ #.exc_info
+        trace2 = value.__thunk_trace__
         if trace2 is None:
             print>>sys.stderr, "Could not find where this Op was defined."
             print>>sys.stderr, " * You might have instantiated this Op directly instead of using a constructor."
@@ -23,6 +23,22 @@ def thunk_hook(type, value, trace):
                 print>>sys.stderr, line,
     __excepthook(type, value, trace)
 sys.excepthook = thunk_hook
+
+# __excepthook = sys.excepthook
+# def thunk_hook(type, value, trace):
+#     if len(value.args) > 0 and hasattr(value[0], '__thunk_trace__'):
+#         # such a hack :(
+#         trace2 = value[0].__thunk_trace__ #.exc_info
+#         if trace2 is None:
+#             print>>sys.stderr, "Could not find where this Op was defined."
+#             print>>sys.stderr, " * You might have instantiated this Op directly instead of using a constructor."
+#             print>>sys.stderr, " * The Op you constructed might have been optimized. Try turning off optimizations."
+#         elif trace2:
+#             print>>sys.stderr, "Definition in: "
+#             for line in traceback.format_list(trace2):
+#                 print>>sys.stderr, line,
+#     __excepthook(type, value, trace)
+# sys.excepthook = thunk_hook
 
 
 
@@ -110,11 +126,9 @@ class PerformLinker(Linker):
                     trace = op.trace
                 except AttributeError:
                     trace = ()
-                class X:pass
-                __x = X()
-                __x.__thunk_trace__ = trace
-                __x.__str__ = lambda: str(exc_value) + " (in op: " + str(op) + ")"
-                raise exc_type, __x, exc_trace
+                exc_value.__thunk_trace__ = trace
+                exc_value.args = exc_value.args + (op, )
+                raise exc_type, exc_value, exc_trace
 
         return f, env.inputs, env.outputs
 

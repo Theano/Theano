@@ -188,9 +188,9 @@ class T_pow(unittest.TestCase):
         verify_grad(self, DivElemwise, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
         verify_grad(self, PowElemwise, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
     def test_scalar_l(self):
-        verify_grad(self, PowScalarL, [numpy.random.rand(3), 3.0])
+        verify_grad(self, PowScalarL, [numpy.random.rand(3), numpy.asarray(3.0)])
     def test_scalar_r(self):
-        verify_grad(self, PowScalarR, [numpy.random.rand(3), 3.0])
+        verify_grad(self, PowScalarR, [numpy.random.rand(3), numpy.asarray(3.0)])
 
 class _testCase_matinv:#(unittest.TestCase):
 
