@@ -114,6 +114,18 @@ class _test_PatternOptimizer(unittest.TestCase):
                          '1').optimize(g)
         assert str(g) == "[Op1(x)]"
 
+    def test_6(self):
+        x, y, z = inputs()
+        x.constant = True
+        x.value = 2
+        z.constant = True
+        z.value = 2
+        e = op1(op1(x, y), y)
+        g = env([y], [e])
+        PatternOptimizer((Op1, z, '1'),
+                         (Op2, '1', z)).optimize(g)
+        assert str(g) == "[Op1(Op2(y, z), y)]"
+
 
 class _test_OpSubOptimizer(unittest.TestCase):
     

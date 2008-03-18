@@ -1,5 +1,6 @@
 
 from op import Op
+from result import ResultBase
 from env import InconsistencyError
 import utils
 import unify
@@ -140,10 +141,14 @@ class PatternOptimizer(OpSpecificOptimizer):
                     return False
                 else:
                     u = u.merge(expr, v)
-            else:
-                if pattern != expr:
-                    return False
+            elif isinstance(pattern, ResultBase) \
+                    and getattr(pattern, 'constant', False) \
+                    and isinstance(expr, ResultBase) \
+                    and getattr(expr, 'constant', False) \
+                    and pattern.hash() == expr.hash():
                 return u
+            else:
+                return False
             return u
 
         def build(pattern, u):
@@ -204,8 +209,12 @@ class MergeOptimizer(Optimizer):
         for i, r in enumerate(env.orphans().union(env.inputs)):
             if getattr(r, 'constant', False) and hasattr(r, 'hash'):
                 ref = ('const', r.hash())
-                cid[r] = ref
-                inv_cid[ref] = r
+                other_r = inv_cid.get(ref, None)
+                if other_r is not None:
+                    env.replace(r, other_r)
+                else:
+                    cid[r] = ref
+                    inv_cid[ref] = r
             else:
                 cid[r] = i
                 inv_cid[i] = r
