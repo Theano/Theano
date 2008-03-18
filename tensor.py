@@ -105,8 +105,8 @@ def _assert_same_shapes(x, *rest):
     shape = x.shape
     for other in rest:
         if other.shape != shape:
-            raise _assert_same_shapes.E_shape
-_assert_same_shapes.E_shape = ValueError("The dimensions of the inputs do not match.")
+            raise ValueError(_assert_same_shapes.E_shape)
+_assert_same_shapes.E_shape = "The dimensions of the inputs do not match."
 
 def _assert_tensor_scalar(x, a):
     """ensure that the second input is a scalar"""
@@ -148,11 +148,8 @@ class _Op(Op):
     def propagate_dtype(self, *i_dtypes):
         def upcast(dtype, *dtypes):
             z = numpy.zeros((), dtype = dtype)
-            #print '----', self.__class__
-            #print type(z), dtype
             for dtype in dtypes:
                 z = z + numpy.zeros((), dtype = dtype)
-                #print type(z), type(dtype), dtype
             return str(z.dtype)
         for dtype in i_dtypes:
             if dtype is None:
@@ -572,8 +569,8 @@ class PowElemwise(_Elemwise):
         return x ** y
     def grad(self, (x, y), gz):
         gx = gz * y * (pow_elemwise(x, y-1.0))
-        gs = gz * log(x) * pow_elemwise(x, y)
-        return gx, gs
+        gy = gz * log(x) * pow_elemwise(x, y)
+        return gx, gy
     def c_foreach(self, (x_i, y_i), (z_i, )):
         return "%(z)s_i = pow(%(x)s_i, %(y)s_i);"
 pow_elemwise = _constructor(PowElemwise)
@@ -587,13 +584,13 @@ pow_elemwise_inplace = _constructor(PowElemwiseInplace)
 
 # Scalar #
 class PowScalarL(TensorScalarOp):
-    def impl(self, x, a):
-        _assert_tensor_scalar(x, a)
-        return a ** x
-    def grad(self, (x, s), gz):
-        gx = sum(gz * s * pow_scalar_l(add_scalar(s,-1.0), x))
-        gs = scale(mul(gz, pow_scalar_l(s, x)), log(x))
-        return gx, gs
+    def impl(self, y, x):
+        _assert_tensor_scalar(y, x)
+        return x ** y
+    def grad(self, (y, x), gz):
+        gx = sum(gz * y * x ** (y-1.0))
+        gy = gz * log(x) * x ** y
+        return gy, gx
     c_expr = "pow(%(a)s, %(x)s_i)"
 pow_scalar_l = _constructor(PowScalarL)
 
