@@ -83,8 +83,6 @@ class OpSubOptimizer(Optimizer):
             try:
                 # note: only replaces the default 'out' port if it exists
                 r = self.op2(*op.inputs).out
-#                 if isinstance(r, Op):
-#                     r = r.out
                 env.replace(op.out, r)
             except InconsistencyError, e:
 #                print "Warning: OpSubOpt failed to transform %s into %s: %s" % (op, self.op2, str(e)) # warning is for debug
@@ -179,15 +177,38 @@ class PatternOptimizer(OpSpecificOptimizer):
         return "%s -> %s" % (pattern_to_str(self.in_pattern), pattern_to_str(self.out_pattern))
 
 
+class ConstantFinder(Optimizer):
+    
+    def apply(self, env):
+        if env.has_feature(ext.DestroyHandler):
+            for r in env.orphans():
+                if not env.destroyers(r):
+                    r.indestructible = True
+                    r.constant = True
+            for r in env.inputs:
+                if not env.destroyers(r):
+                    r.indestructible = True
+        else:
+            for r in env.orphans():
+                r.indestructible = True
+                r.constant = True
+            for r in env.inputs:
+                r.indestructible = True
+
 
 class MergeOptimizer(Optimizer):
 
     def apply(self, env):
         cid = {}
         inv_cid = {}
-        for i, r in enumerate(env.inputs.union(env.orphans())):
-            cid[r] = i
-            inv_cid[i] = r
+        for i, r in enumerate(env.orphans().union(env.inputs)):
+            if getattr(r, 'constant', False) and hasattr(r, 'hash'):
+                ref = ('const', r.hash())
+                cid[r] = ref
+                inv_cid[ref] = r
+            else:
+                cid[r] = i
+                inv_cid[i] = r
 
         for op in env.io_toposort():
             op_cid = (op.__class__, tuple([cid[input] for input in op.inputs]))

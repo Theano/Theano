@@ -20,6 +20,9 @@ class MyResult(ResultBase):
     def __repr__(self):
         return self.name
 
+    def hash(self):
+        return self.data
+
 
 
 class MyOp(Op):
@@ -127,6 +130,39 @@ class _test_OpSubOptimizer(unittest.TestCase):
         g = env([x, y, z], [e])
         OpSubOptimizer(Op3, Op4).optimize(g)
         assert str(g) == "[Op1(Op2(x), Op4(y), Op4(z))]"
+
+
+class _test_MergeOptimizer(unittest.TestCase):
+
+    def test_0(self):
+        x, y, z = inputs()
+        e = op1(op2(x, y), op2(x, y), op2(x, z))
+        g = env([x, y, z], [e])
+        MergeOptimizer().optimize(g)
+        assert str(g) == "[Op1(*1 -> Op2(x, y), *1, Op2(x, z))]"
+
+    def test_1(self):
+        x, y, z = inputs()
+        y.data = 2
+        y.constant = True
+        z.data = 2.0
+        z.constant = True
+        e = op1(op2(x, y), op2(x, y), op2(x, z))
+        g = env([x, y, z], [e])
+        MergeOptimizer().optimize(g)
+        assert str(g) == "[Op1(*1 -> Op2(x, y), *1, *1)]" \
+            or str(g) == "[Op1(*1 -> Op2(x, z), *1, *1)]"
+
+    def test_2(self):
+        x, y, z = inputs()
+        y.data = 2
+        z.data = 2
+        e = op1(op2(x, y), op2(x, y), op2(x, z))
+        g = env([x], [e])
+        ConstantFinder().optimize(g)
+        MergeOptimizer().optimize(g)
+        assert str(g) == "[Op1(*1 -> Op2(x, y), *1, *1)]" \
+            or str(g) == "[Op1(*1 -> Op2(x, z), *1, *1)]"
 
 
 if __name__ == '__main__':

@@ -79,6 +79,15 @@ class BaseTensor(ResultBase):
         #TODO: add more type correspondances for e.g. int32, int64, float32,
         #complex64, etc.
         return {'float64': (float, 'double', 'NPY_DOUBLE')}[self.dtype]
+
+    #
+    # Hash for constant folding
+    #
+    def hash(self):
+        if self.data:
+            return (BaseTensor, self.dtype, self.broadcastable, self.data.data[:])
+        else:
+            return (BaseTensor, self.dtype, self.broadcastable, None)
             
     #
     # C codegen stubs

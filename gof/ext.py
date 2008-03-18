@@ -1,5 +1,5 @@
 
-from features import Listener, Constraint, Orderings
+from features import Listener, Constraint, Orderings, Tool
 from utils import AbstractFunctionError
 
 from copy import copy
@@ -13,7 +13,7 @@ __all__ = ['Destroyer',
 
 
 
-class DestroyHandler(Listener, Constraint, Orderings):
+class DestroyHandler(Listener, Constraint, Orderings, Tool):
     
     def __init__(self, env):
         self.parent = {}
@@ -27,6 +27,13 @@ class DestroyHandler(Listener, Constraint, Orderings):
         self.seen = set()
         for input in env.inputs:
             self.children[input] = set()
+
+    def publish(self):
+        def __destroyers():
+            ret = self.destroyers.get(foundation, set())
+            ret = ret.keys()
+            return ret
+        self.env.destroyers = __destroyers
 
     def __path__(self, r):
         path = self.paths.get(r, None)
