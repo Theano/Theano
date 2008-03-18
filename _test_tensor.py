@@ -14,6 +14,7 @@ import gof, gof.graph
 
 def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001):
     """testcase.failUnless( analytic gradient matches finite-diff gradient) """
+    pt = [numpy.asarray(p) for p in pt]
 
     for test_num in xrange(n_tests):
         tensor_pt = [tinit(p,name='input %i'%i) for i,p in enumerate(pt)]
@@ -165,7 +166,7 @@ class T_mul(unittest.TestCase):
                     [numpy.ones(3), numpy.ones(4)], 1.0)
             self.fail()
         except ValueError, e:
-            self.failUnless(e is tensor._assert_same_shapes.E_shape)
+            self.failUnless(e[0] is tensor._assert_same_shapes.E_shape)
 
 class T_div(unittest.TestCase):
     def setUp(self):
