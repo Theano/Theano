@@ -1,6 +1,6 @@
 """A simple class to store ndarray data """
 
-from gof import ResultBase
+from gof import ResultBase, Op, utils
 import numpy
 from copy import copy
 
@@ -191,6 +191,71 @@ class BaseTensor(ResultBase):
         if transfer_data:
             cpy.data = copy(self.data)
         return cpy
+
+
+
+
+class BaseTensorOp(Op):
+    """
+    A basic Op subclass that can be used to make Ops that operate on Tensors.
+    It is not mandatory to inherit from this class, but it is practical.
+
+    BasicTensorOp is parametrized as follows:
+     * nin: number of inputs
+     * nout: number of outputs
+     * out_tensor_class: BaseTensor subclass used to instantiate the outputs
+     * input_wrapper: returns a Tensor from its argument
+     * propagate_dtype: returns a list of dtypes corresponding to the
+           output dtypes from a list of input dtypes (if an input is
+           not a Tensor, the passed value will be None)
+     * propagate_broadcastable: returns a list of tuples corresponding to
+           the output broadcastable flags from the input broadcastable
+           flags  (if an input is not a Tensor, the passed value will be
+           None).
+    """
+    
+    nin = -1 # nin == -1 means: arbitrary number of inputs
+    nout = 1
+    
+    out_tensor_class = BaseTensor
+
+    @classmethod
+    def input_wrapper(cls, obj):
+        """
+        Returns a Result from an arbitrary-typed input, if possible.
+        """
+        if isinstance(obj, BaseResult):
+            return obj
+        else:
+            raise TypeError("Expected a Result instance.")
+
+    def __init__(self, *inputs):
+        inputs = map(self.input_wrapper, inputs)
+        
+        if self.nin >= 0:
+            if len(inputs) != self.nin:
+                raise TypeError("Wrong number of inputs for %s (got %i, expected %i)") \
+                    % (self, len(inputs), self.nin)
+
+        i_broadcastables = [getattr(input, 'broadcastable', None) for input in inputs]
+        i_dtypes = [getattr(input, 'dtype', None) for input in inputs]
+
+        o_broadcastables = utils.from_return_values(self.propagate_broadcastable(*i_broadcastables))
+        o_dtypes = utils.from_return_values(self.propagate_dtype(*i_dtypes))
+
+        self.inputs = inputs
+        self.outputs = [self.out_tensor_class(dtype, broadcastable) for broadcastable, dtype in zip(o_broadcastables, o_dtypes)]
+
+    def propagate_broadcastable(self, *inputs):
+        raise AbstractFunctionError()
+    
+    def propagate_dtype(self, *i_dtypes):
+        rval = set([dtype for dtype in i_dtypes if dtype is not None])
+        if len(rval) == 0:
+            raise ValueError("Cannot infer the dtypes of the outputs with no Tensor inputs.")
+        elif len(rval) > 1:
+            raise ValueError("The dtypes of all inputs should be identical.")
+        return [rval.pop()] * self.nout
 
 
 

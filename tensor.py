@@ -5,7 +5,7 @@ from copy import copy
 import inspect
 from gof import ResultBase, Op, utils, Destroyer, Viewer, AbstractFunctionError
 
-from base_tensor import BaseTensor
+from base_tensor import BaseTensor, BaseTensorOp
 from elemwise import Elemwise
 
 
@@ -114,64 +114,45 @@ def _assert_tensor_scalar(x, a):
         raise ValueError("The second argument must be a scalar.")
 
 
-class _Op(Op):
+class _Op(BaseTensorOp):
     """A convenient base for the ops in this file"""
-    nin = -1
-    nout = 1
 
-    _destroy_map = {}
+    out_tensor_class = Tensor
 
-    def __init__(self, *inputs):
-
-        def as_tensor(obj):
-            if isinstance(obj, Tensor):
-                return obj
-            else:
-                return tinit(obj)
-        inputs = map(as_tensor, inputs)
-        
-        if self.nin >= 0:
-            if len(inputs) != self.nin:
-                raise TypeError("Wrong number of inputs for %s (got %i, expected %i)") \
-                    % (self, len(inputs), self.nin)
-
-        i_broadcastables = [getattr(input, 'broadcastable', None) for input in inputs]
-        i_dtypes = [getattr(input, 'dtype', None) for input in inputs]
-
-        o_broadcastables = utils.from_return_values(self.propagate_broadcastable(*i_broadcastables))
-        o_dtypes = utils.from_return_values(self.propagate_dtype(*i_dtypes))
-
-        self.inputs = inputs
-        self.outputs = [Tensor(dtype, broadcastable) for broadcastable, dtype in zip(o_broadcastables, o_dtypes)]
-
-    def propagate_broadcastable(self, *inputs):
-        raise AbstractFunctionError()
+    @classmethod
+    def input_wrapper(cls, obj):
+        if isinstance(obj, Tensor):
+            return obj
+        else:
+            return tinit(obj)
     
-    def propagate_dtype(self, *i_dtypes):
-        def upcast(dtype, *dtypes):
-            z = numpy.zeros((), dtype = dtype)
-            for dtype in dtypes:
-                z = z + numpy.zeros((), dtype = dtype)
-            return str(z.dtype)
-        for dtype in i_dtypes:
-            if dtype is None:
-                raise TypeError("Expected a Tensor.")
-        upcasted = upcast(*i_dtypes)
-        return [upcasted] * self.nout
-#         try:
-#             dmap = self.destroy_map()
-#         except AttributeError:
-#             dmap = {}
-#         rval = []
-#         for i in xrange(self.nout):
-#             if i in dmap:
-#                 destroyed = dmap[output]
-#                 if len(destroyed) != 1:
-#                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
-#                 rval.append(destroyed[0])
-#             else:
-#                 rval.append(upcasted)
-#         return rval
+#    nin = -1
+#    nout = 1
+    
+#         def upcast(dtype, *dtypes):
+#             z = numpy.zeros((), dtype = dtype)
+#             for dtype in dtypes:
+#                 z = z + numpy.zeros((), dtype = dtype)
+#             return str(z.dtype)
+#         for dtype in i_dtypes:
+#             if dtype is None:
+#                 raise TypeError("Expected a Tensor.")
+#         upcasted = upcast(*i_dtypes)
+#         return [upcasted] * self.nout
+# #         try:
+# #             dmap = self.destroy_map()
+# #         except AttributeError:
+# #             dmap = {}
+# #         rval = []
+# #         for i in xrange(self.nout):
+# #             if i in dmap:
+# #                 destroyed = dmap[output]
+# #                 if len(destroyed) != 1:
+# #                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
+# #                 rval.append(destroyed[0])
+# #             else:
+# #                 rval.append(upcasted)
+# #         return rval
     
     def impl(self, *inputs):
         raise AbstractFunctionError()

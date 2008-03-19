@@ -165,7 +165,21 @@ class _test_MergeOptimizer(unittest.TestCase):
         assert str(g) == "[Op1(*1 -> Op2(x, y), *1, *1)]" \
             or str(g) == "[Op1(*1 -> Op2(x, z), *1, *1)]"
 
-    def test_2(self):
+
+class _test_ConstantFinder(unittest.TestCase):
+
+    def test_0(self):
+        x, y, z = inputs()
+        y.data = 2
+        z.data = 2
+        e = op1(x, y, z)
+        g = env([x], [e])
+        ConstantFinder().optimize(g)
+        MergeOptimizer().optimize(g)
+        assert str(g) == "[Op1(x, y, y)]" \
+            or str(g) == "[Op1(x, z, z)]"
+
+    def test_1(self):
         x, y, z = inputs()
         y.data = 2
         z.data = 2

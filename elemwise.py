@@ -78,7 +78,7 @@ class Elemwise(Op):
         return code_cleanup
     
     @classmethod
-    def inplace_version(cls):
+    def inplace_version(cls, dmap = {0:0}):
         class Ret(cls, Destroyer):
             def destroy_map(self):
                 return {self.outputs[0]: [self.inputs[0]]}
