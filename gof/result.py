@@ -1,10 +1,10 @@
-
 """
 Contains the Result class, which is the base interface for a
 value that is the input or the output of an Op.
 
 """
 
+import copy
 from utils import AbstractFunctionError
 
 
@@ -268,6 +268,7 @@ class ResultBase(object):
 
 
     def __copy__(self):
+        """Create a new instance of self.__class__ with role None, independent data"""
         raise AbstractFunctionError()
 
 
@@ -295,6 +296,13 @@ class PythonResult(ResultBase):
         py_%(name)s = %(name)s;
         Py_XINCREF(py_%(name)s);
         """
+    def same_properties(self, other):
+        return False
+
+    def __copy__(self):
+        rval = PythonResult(None, self.name)
+        rval.data = copy.copy(self.data)
+        return rval
 
     
 

@@ -501,10 +501,10 @@ class CLinker(Linker):
             }
             """ % dict(struct_name = self.struct_name)
 
-            instantiate.customize.add_support_code(self.struct_code)
-            instantiate.customize.add_support_code(static)
             for support_code in self.support_code():
                 instantiate.customize.add_support_code(support_code)
+            instantiate.customize.add_support_code(self.struct_code)
+            instantiate.customize.add_support_code(static)
             instantiate.customize.add_extra_compile_arg("-w")
             for arg in self.compile_args():
                 instantiate.customize.add_extra_compile_arg(arg)
