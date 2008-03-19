@@ -2,6 +2,8 @@ from base_tensor import *
 
 import unittest
 from copy import copy
+from compile import Function
+import gof
 
 def _tensor(data, broadcastable=None, role=None, name=None):
     """Return a BaseTensor containing given data"""
@@ -50,6 +52,8 @@ class T_tensor(unittest.TestCase):
         self.failUnless(t.dtype == 'complex64')
         self.failUnless(t.broadcastable == (0,0))
         self.failUnless(isinstance(t.data, numpy.ndarray))
+        f = Function([t], [t], linker_cls=gof.CLinker)
+        self.failUnless(numpy.all(t.data == f(t.data)))
     def test_data_normal(self): #test that assigning to .data works when it should
         t = _tensor(numpy.ones((5,1),dtype='complex64'), broadcastable=0)
         o27 = numpy.ones((2,7))
