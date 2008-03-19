@@ -3,6 +3,7 @@ import unittest
 
 from result import ResultBase
 from op import Op
+from ext import Destroyer
 from opt import *
 from env import Env
 from toolbox import *
@@ -46,6 +47,10 @@ class Op3(MyOp):
 
 class Op4(MyOp):
     pass
+
+class OpD(MyOp, Destroyer):
+    def destroyed_inputs(self):
+        return [self.inputs[0]]
 
 
 import modes
@@ -175,6 +180,7 @@ class _test_ConstantFinder(unittest.TestCase):
         e = op1(x, y, z)
         g = env([x], [e])
         ConstantFinder().optimize(g)
+        assert y.constant and z.constant
         MergeOptimizer().optimize(g)
         assert str(g) == "[Op1(x, y, y)]" \
             or str(g) == "[Op1(x, z, z)]"
@@ -186,9 +192,21 @@ class _test_ConstantFinder(unittest.TestCase):
         e = op1(op2(x, y), op2(x, y), op2(x, z))
         g = env([x], [e])
         ConstantFinder().optimize(g)
+        assert y.constant and z.constant
         MergeOptimizer().optimize(g)
         assert str(g) == "[Op1(*1 -> Op2(x, y), *1, *1)]" \
             or str(g) == "[Op1(*1 -> Op2(x, z), *1, *1)]"
+
+    def test_2(self):
+        x, y, z = inputs()
+        y.data = 2
+        z.data = 2
+        e = op_d(x, op2(y, z))
+        g = env([y], [e])
+        ConstantFinder().optimize(g)
+        assert not getattr(x, 'constant', False) and z.constant
+        MergeOptimizer().optimize(g)
+
 
 
 if __name__ == '__main__':

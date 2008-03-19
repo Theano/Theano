@@ -25,15 +25,16 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         self.illegal = set()
         self.env = env
         self.seen = set()
-        for input in env.inputs:
+        for input in env.orphans().union(env.inputs):
             self.children[input] = set()
 
     def publish(self):
-        def __destroyers():
-            ret = self.destroyers.get(foundation, set())
+        def __destroyers(r):
+            ret = self.destroyers.get(r, {})
             ret = ret.keys()
             return ret
         self.env.destroyers = __destroyers
+        self.env.destroy_handler = self
 
     def __path__(self, r):
         path = self.paths.get(r, None)
