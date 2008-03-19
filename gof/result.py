@@ -9,6 +9,7 @@ from utils import AbstractFunctionError
 
 
 __all__ = ['ResultBase',
+           'PythonResult',
            'StateError',
            'Empty',
            'Allocated',
@@ -268,3 +269,33 @@ class ResultBase(object):
 
     def __copy__(self):
         raise AbstractFunctionError()
+
+
+class PythonResult(ResultBase):
+    
+    def c_declare(self):
+        return """
+        PyObject* %(name)s;
+        """
+
+    def c_extract(self):
+        return """
+        Py_XINCREF(py_%(name)s);
+        %(name)s = py_%(name)s;
+        """
+    
+    def c_cleanup(self):
+        return """
+        Py_XDECREF(%(name)s);
+        """
+
+    def c_sync(self):
+        return """
+        Py_XDECREF(py_%(name)s);
+        py_%(name)s = %(name)s;
+        Py_XINCREF(py_%(name)s);
+        """
+
+    
+
+
