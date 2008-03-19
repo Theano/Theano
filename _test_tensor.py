@@ -67,6 +67,63 @@ def check_eq2_c(self, inputs, output, args_in, arg_out):
     val = fn(*args_in)
     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
+class T_argmax(unittest.TestCase):
+    def setUp(self):
+        numpy.random.seed(123784)
+        Argmax.debug = 0
+
+    def test0(self):
+        n = tinit(5.0)
+        v,i = eval_outputs(argmax(n))
+        self.failUnless(v == 5.0)
+        self.failUnless(i == 0)
+
+    def test1(self):
+        n = tinit([1,2,3,2,-6])
+        v,i = eval_outputs(argmax(n))
+        self.failUnless(v == 3)
+        self.failUnless(i == 2)
+
+    def test2(self):
+        n = tinit(numpy.random.rand(2,3))
+        v,i = eval_outputs(argmax(n))
+        self.failUnless(numpy.all(i == [0,1]))
+    def test2b(self):
+        n = tinit(numpy.random.rand(2,3))
+        v,i = eval_outputs(argmax(n,axis=0))
+        self.failUnless(numpy.all(i == [0,1,1]))
+    def test2_invalid(self):
+        n = tinit(numpy.random.rand(2,3))
+        try:
+            eval_outputs(argmax(n,axis=3))
+            self.fail()
+        except ValueError, e:
+            return
+    def test2_invalid_neg(self):
+        n = tinit(numpy.random.rand(2,3))
+        try:
+            eval_outputs(argmax(n,axis=-3))
+            self.fail()
+        except ValueError, e:
+            return
+    def test2_valid_neg(self):
+        n = tinit(numpy.random.rand(2,3))
+        v,i = eval_outputs(argmax(n,axis=-1))
+        self.failUnless(v.shape == (2,))
+        v,i = eval_outputs(argmax(n,axis=-2))
+        self.failUnless(v.shape == (3,))
+    def test3(self):
+        n = tinit(numpy.random.rand(2,3,4))
+        v,i = eval_outputs(argmax(n,axis=0))
+        self.failUnless(v.shape == (3,4))
+        self.failUnless(i.shape == (3,4))
+        v,i = eval_outputs(argmax(n,axis=1))
+        self.failUnless(v.shape == (2,4))
+        self.failUnless(i.shape == (2,4))
+        v,i = eval_outputs(argmax(n,axis=2))
+        self.failUnless(v.shape == (2,3))
+        self.failUnless(i.shape == (2,3))
+
 
 class T_transpose(unittest.TestCase):
     def test0(self):

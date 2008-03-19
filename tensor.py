@@ -281,11 +281,43 @@ class Abs(_Elemwise):
         return "%(z)s_i = abs(%(x)s_i);"
 #Constructor not necessary because builtin abs() does this
 
+class Argmax(Op):
+    nin=2 # tensor, axis
+    nout=2 # max val, max idx
+    E_axis = 'invalid axis'
+    debug = 0
+    def __init__(self, x, axis=None):
+        x = _as_tensor(x)
+        if axis is None:
+            axis = len(x.broadcastable) -1
+        axis = _as_tensor(axis)
+        self.inputs = [x, axis]
+        broadcastable = [0] * (len(x.broadcastable) - 1)
+        self.outputs = [Tensor(x.dtype, broadcastable), 
+                Tensor(axis.dtype, broadcastable)]
+    def perform(self): 
+        axis = self.inputs[1].data
+        x = self.inputs[0].data
+        self.outputs[0].data = numpy.max(x, axis)
+        self.outputs[1].data = numpy.argmax(x,axis)
+argmax = _constructor(Argmax)
+
+def max(x, axis=None):
+    """Return maximum elements obtained by iterating over given axis
+
+    Default axis is the last one.
+    """
+    # In python (using Argmax.perform()) this leads to an wasteful
+    # implementation that goes through the data twice instead of once
+    # but when Argmax.c_impl() is in place, it should be fine.
+    return argmax(x,axis)[0]
+
 class Exp(_Elemwise):
     def impl(self, x): return numpy.exp(x)
     def grad(self, x, gz): return gz * exp(x)
     def c_foreach(self, (x_i, ), (z_i, )): return "z_i = exp(x_i);"
 exp = _constructor(Exp)
+
 
 class Neg(_Elemwise):
     def impl(self, x):
@@ -302,6 +334,12 @@ class Log(_Elemwise):
     def c_foreach(self, (x_i, ), (z_i, )): return "z_i = log(x_i);"
 log = _constructor(Log)
 
+class Log2(_Elemwise):
+    def impl(self, x): return numpy.log2(x)
+    def grad(self, x, gz): return gz / (x * numpy.log(2.0))
+    def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = log2(%(x)s_i);"
+log2 = _constructor(Log2)
+
 class Sgn(_Elemwise):
     def impl(self, x):
         return numpy.abs(x) / x
@@ -310,6 +348,18 @@ class Sgn(_Elemwise):
     def c_foreach(self, (x_i, ), (z_i, )):
         return "%(z)s_i = %(x)s_i/abs(%(x)s_i);" # TODO: C use copysign
 sgn = _constructor(Sgn)
+
+class Sqr(_Elemwise):
+    def impl(self, x): return x * x
+    def grad(self, x, gz): return 2.0 * x * gz
+    def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = %(x)s_i * %(x)s_i;"
+sqr = _constructor(Sqr)
+
+class Sqrt(_Elemwise):
+    def impl(self, x): return numpy.sqrt(x)
+    def grad(self, x, gz): return 0.5 * gz / sqrt(x) 
+    def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = sqrt(%(x)s_i);"
+sqrt = _constructor(Sqrt)
 
 class Sum(_Elemwise):
     def impl(self, x):
@@ -334,6 +384,10 @@ class Fill(_Elemwise):
     def c_foreach(self, (model_i, value), (z_i, )):
         return "%(z)s_i = %(value)s0;"
 fill = _constructor(Fill)
+def ones_like(model):
+    return fill(model, 1.0)
+def zeros_like(model):
+    return fill(model, 0.0)
 
 
 class TensorCopy(_Elemwise):
