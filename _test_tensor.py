@@ -257,19 +257,18 @@ class T_subtensor(unittest.TestCase):
 
 
 class T_add(unittest.TestCase):
-    def test_complex128(self):
-        a = tinit(numpy.ones(3, dtype='complex128'))
-        b = tinit(numpy.ones(3, dtype='complex128'))
-        f = Function([a,b], [a+b], linker_cls = gof.CLinker)
-        self.failUnless(numpy.all((a.data + b.data) ==
-            f(a.data, b.data)))
 
-    def test_complex128b(self):
-        a = tinit(numpy.ones(3, dtype='complex128')+0.5j)
-        b = tinit(numpy.ones(3, dtype='complex128'))
-        f = Function([a,b], [a+b], linker_cls = gof.CLinker)
-        self.failUnless(numpy.all((a.data + b.data) ==
-            f(a.data, b.data)))
+    def test_complex_all_ops(self):
+        for nbits in (64, 128):
+            a = tinit(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
+            b = tinit(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
+            tests = (("+", lambda x,y: x+y),
+                     ("-", lambda x,y: x-y),
+                     ("*", lambda x,y: x*y),
+                     ("/", lambda x,y: x/y))
+            for s, fn in tests:
+                f = Function([a,b], [fn(a, b)], linker_cls = gof.CLinker)
+                self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
 
 class T_abs(unittest.TestCase):

@@ -489,7 +489,7 @@ class SubElemwise(_Elemwise):
     def grad(self, (x, y), gz):
         return gz, -gz
     def c_foreach(self, (x_i, y_i), (z_i, )):
-        return "z_i = x_i - y_i;"
+        return "%(z)s_i = %(x)s_i - %(y)s_i;"
 sub_elemwise = _constructor(SubElemwise)
 
 class SubElemwiseInplace(SubElemwise.inplace_version()):

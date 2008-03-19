@@ -169,25 +169,40 @@ class BaseTensor(ResultBase):
         return []
 
     def c_support_code(cls):
-        operator_template = """
-            me operator %(op)s(me y) {
-                me ret;
-                ret.real = this->real %(op)s y.real;
-                ret.imag = this->imag %(op)s y.imag;
-                return ret;
-            }
-        """        
         template = """
         struct theano_complex%(nbits)s : public npy_complex%(nbits)s
         {
-            typedef theano_complex%(nbits)s me;
-            typedef npy_complex%(nbits)s base;
+            typedef theano_complex%(nbits)s complex_type;
+            typedef npy_float%(half_nbits)s scalar_type;
 
-            %(operators)s
+            complex_type operator +(complex_type y) {
+                complex_type ret;
+                ret.real = this->real + y.real;
+                ret.imag = this->imag + y.imag;
+                return ret;
+            }
+            complex_type operator -(complex_type y) {
+                complex_type ret;
+                ret.real = this->real - y.real;
+                ret.imag = this->imag - y.imag;
+                return ret;
+            }
+            complex_type operator *(complex_type y) {
+                complex_type ret;
+                ret.real = this->real * y.real - this->imag * y.imag;
+                ret.imag = this->real * y.imag + this->imag * y.real;
+                return ret;
+            }
+            complex_type operator /(complex_type y) {
+                complex_type ret;
+                scalar_type y_norm_square = y.real * y.real + y.imag * y.imag;
+                ret.real = (this->real * y.real + this->imag * y.imag) / y_norm_square;
+                ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
+                return ret;
+            }
         };
         """
-        d = dict(operators = "\n".join([operator_template % dict(op=op) for op in ["+", "-", "*", "/"]]))
-        return template % dict(d, nbits = 64) + template % dict(d, nbits = 128)
+        return template % dict(nbits = 64, half_nbits = 32) + template % dict(nbits = 128, half_nbits = 64)
 
 
     ############################
