@@ -1,8 +1,9 @@
 """A ResultBase to store numpy.ndarray with basic accompanying Ops"""
+import sys # for sys.maxint
+import inspect
 
 import numpy
-from copy import copy
-import inspect
+
 from gof import ResultBase, Op, utils, Destroyer, Viewer, AbstractFunctionError
 import gof.result
 
@@ -374,6 +375,7 @@ class Subtensor(Op, Viewer):
     nin = 2
     nout = 1
     e_invalid = 'invalid index'
+    debug = 0
     def __init__(self, *args,**kwargs):
         def as_tuple_result(obj):
             if isinstance(obj, ResultBase):
@@ -384,17 +386,30 @@ class Subtensor(Op, Viewer):
             else:
                 r.data = (obj,)
             return r
+        def pad(tplR, N):
+            l = list(tplR.data)
+            for i in range(len(l), N):
+                l.append(slice(0,sys.maxint,1))
+            tplR.data = tuple(l)
 
-        print 'Subtensor.__init__', args, kwargs
+        if Subtensor.debug:
+            print 'Subtensor.__init__', args, kwargs
         #Olivier says not to call this
         #Op.__init__(self,  *args,**kwargs) 
         #Viewer.__init__(self, *args,**kwargs)
         t, coord = args
         t = _as_tensor(t)
         coord = as_tuple_result(coord)
-        if len(coord.data) != len(t.broadcastable):
+        if len(coord.data) > len(t.broadcastable):
             raise ValueError(Subtensor.e_invalid)
+        # add the implicit extra unbounded slices 
+        # e.g. n[0] on a 3d tensor pads to n[0,:,:]
+        pad(coord, len(t.broadcastable))
         broadcastable = [0 for c in coord.data if isinstance(c, slice)]
+        if Subtensor.debug:
+            print 'brdcstble', broadcastable
+            print 't', t.data
+            print 'coord', coord.data
         self.inputs = [t, coord]
         self.outputs = [Tensor(t.dtype, broadcastable)]
     def view_map(self): 
@@ -402,6 +417,9 @@ class Subtensor(Op, Viewer):
     def perform(self):
         x = self.inputs[0].data
         c = self.inputs[1].data
+        if Subtensor.debug:
+            print 'perform: x', x
+            print 'perform: c', c
         if len(c) == 1:
             self.outputs[0].data = x.__getitem__(c[0])
         else:
