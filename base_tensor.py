@@ -166,6 +166,27 @@ class BaseTensor(ResultBase):
     def c_libraries(self):
         return []
 
+    def c_support_code(cls):
+        operator_template = """
+            me operator %(op)s(me y) {
+                me ret;
+                ret.real = this->real %(op)s y.real;
+                ret.imag = this->imag %(op)s y.imag;
+                return ret;
+            }
+        """        
+        template = """
+        struct theano_complex%(nbits)s : public npy_complex%(nbits)s
+        {
+            typedef theano_complex%(nbits)s me;
+            typedef npy_complex%(nbits)s base;
+
+            %(operators)s
+        };
+        """
+        d = dict(operators = "\n".join([operator_template % dict(op=op) for op in ["+", "-", "*", "/"]]))
+        return template % dict(d, nbits = 64) + template % dict(d, nbits = 128)
+
 
     ############################
     # Tensor specific attributes

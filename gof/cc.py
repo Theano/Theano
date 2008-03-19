@@ -395,9 +395,9 @@ class CLinker(Linker):
             return self.tasks[failure_code - n]
     
     def support_code(self):
-        ret = ""
+        ret = set()
         for x in self.results + self.op_order:
-            try: ret += x.c_support_code()
+            try: ret.add(x.c_support_code())
             except AbstractFunctionError: pass
         return ret
 
@@ -501,7 +501,10 @@ class CLinker(Linker):
             }
             """ % dict(struct_name = self.struct_name)
 
-            instantiate.customize.add_support_code(self.support_code() + self.struct_code + static)
+            instantiate.customize.add_support_code(self.struct_code)
+            instantiate.customize.add_support_code(static)
+            for support_code in self.support_code():
+                instantiate.customize.add_support_code(support_code)
             instantiate.customize.add_extra_compile_arg("-w")
             for arg in self.compile_args():
                 instantiate.customize.add_extra_compile_arg(arg)
