@@ -85,7 +85,9 @@ class BaseTensor(ResultBase):
                     'int8': (int, 'npy_int8', 'NPY_INT8'),
                     'int16': (int, 'npy_int16', 'NPY_INT16'),
                     'int32': (int, 'npy_int32', 'NPY_INT32'),
-                    'int64': (int, 'npy_int64', 'NPY_INT64')}[self.dtype]
+                    'int64': (int, 'npy_int64', 'NPY_INT64'),
+                    'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
+                    'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')}[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for BaseTensor: %s" % self.dtype)
 
