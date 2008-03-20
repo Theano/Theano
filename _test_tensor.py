@@ -53,6 +53,20 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
 verify_grad.E_grad = 'gradient error exceeded tolerance'
 
 
+#useful mostly for unit tests
+def _approx_eq(a,b,eps=1.0e-9):
+    a = numpy.asarray(a)
+    b = numpy.asarray(b)
+    if a.shape != b.shape:
+        if _approx_eq.debug:
+            print a.shape, b.shape
+        return False
+    if numpy.max(numpy.abs(a-b)) >= eps:
+        if _approx_eq.debug:
+            print a, b
+        return False
+    return  True
+_approx_eq.debug = 0
 
 def check_eq(self, node_in, node_out, arg_in, arg_out):
     fn = Function([node_in], [node_out])
@@ -97,16 +111,16 @@ class T_argmax(unittest.TestCase):
         n = tinit(numpy.random.rand(2,3))
         try:
             eval_outputs(argmax(n,axis=3))
-            self.fail()
         except ValueError, e:
             return
+        self.fail()
     def test2_invalid_neg(self):
         n = tinit(numpy.random.rand(2,3))
         try:
             eval_outputs(argmax(n,axis=-3))
-            self.fail()
         except ValueError, e:
             return
+        self.fail()
     def test2_valid_neg(self):
         n = tinit(numpy.random.rand(2,3))
         v,i = eval_outputs(argmax(n,axis=-1))
@@ -178,19 +192,19 @@ class T_subtensor(unittest.TestCase):
         n = tinit(numpy.ones(()))
         try:
             t = n[0]
-            self.fail()
         except ValueError, e:
             self.failUnless(e[0] is Subtensor.e_invalid)
+        self.fail()
     def test1_err_bounds(self):
         n = tinit(numpy.ones(3))
         t = n[7]
         self.failUnless(t.owner.__class__ is Subtensor)
         try:
             tval = eval_outputs([t])
-            self.fail()
         except Exception, e:
             if e[0] != 'index out of bounds':
                 raise
+        self.fail()
     def test1_ok_range_finite(self):
         n = tinit(numpy.ones(3)*5)
         t = n[0:2]
@@ -209,9 +223,9 @@ class T_subtensor(unittest.TestCase):
         n = tinit(numpy.ones(1))
         try:
             t = n[0,0]
-            self.fail()
         except ValueError, e:
             self.failUnless(e[0] is Subtensor.e_invalid)
+        self.fail()
     def test1_ok_elem(self):
         n = tinit(numpy.ones(1)*5)
         t = n[0]
@@ -244,9 +258,9 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(t.owner.__class__ is Subtensor)
         try:
             tval = eval_outputs([t])
-            self.fail()
         except IndexError, e:
             return
+        self.fail()
     def test2_err_bounds1(self):
         n = tinit(numpy.ones((2,3))*5)
         t = n[4:5,2]
@@ -356,9 +370,9 @@ class T_abs(unittest.TestCase):
     def test_badgrad(self):
         try:
             verify_grad(self, T_abs.AbsBadGrad, [numpy.ones(())])
-            self.fail()
         except Exception, e:
             self.failUnless(str(e) == verify_grad.E_grad, str(e))
+        self.fail()
 
 class T_fill(unittest.TestCase):
     def test0(self):
@@ -425,9 +439,9 @@ class T_mul(unittest.TestCase):
         try:
             check_eq2(self, [a,b], MulElemwise(a,b).out,
                     [numpy.ones(3), numpy.ones(4)], 1.0)
-            self.fail()
         except ValueError, e:
             self.failUnless(e[0] is tensor._assert_same_shapes.E_shape)
+        self.fail()
 
 class T_div(unittest.TestCase):
     def setUp(self):
@@ -489,6 +503,125 @@ class _testCase_matinv:#(unittest.TestCase):
     def test_recip(self):
         """Matrix reciprocal by gradient descent"""
         self.assertEqual(('2.67327580893', '0.000438649434819'), self.mat_recip(3))
+
+class t_dot(unittest.TestCase):
+    def setUp(self):
+        numpy.random.seed(44)
+
+    @staticmethod
+    def rand(*args):
+        return numpy.random.rand(*args)
+
+    def cmp_dot(self,x,y):
+        #x, y are matrices or numbers
+        def spec(x):
+            x = numpy.asarray(x)
+            return type(x), x.dtype, x.shape
+        nz = numpy.dot(x,y)
+        tz = eval_outputs([dot(tinit(x), tinit(y))])
+        self.failUnless(tz.dtype == nz.dtype)
+        self.failUnless(tz.shape == nz.shape)
+        self.failUnless(_approx_eq(nz, tz))
+
+    def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
+    def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
+    def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
+    def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
+    def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
+    def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
+    def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
+    def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
+    def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
+    def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
+    def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
+    def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
+    def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
+    def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
+    def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
+    def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
+
+    def not_aligned(self, x, y):
+        z = dot(x,y)
+        try:
+            tz = eval_outputs([z])
+        except ValueError, e:
+            self.failUnless(e[0] == 'objects are not aligned', e)
+            return
+        self.fail()
+
+    def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
+    def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
+    def test_align_1_3(self): self.not_aligned(self.rand(5), self.rand(6,4,7))
+    def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6))
+    def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6,7))
+    def test_align_2_3(self): self.not_aligned(self.rand(5,4), self.rand(6,7,8))
+    def test_align_3_1(self): self.not_aligned(self.rand(5,4,3), self.rand(6))
+    def test_align_3_2(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7))
+    def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
+
+class t_gemm(unittest.TestCase):
+    def setUp(self):
+        numpy.random.seed(44)
+        _approx_eq.debug = 0
+
+    @staticmethod
+    def _gemm(z,a,x,y,b):
+        assert a.shape == ()
+        assert b.shape == ()
+        return b * z + a * numpy.dot(x,y)
+    @staticmethod
+    def rand(*args):
+        return numpy.random.rand(*args)
+
+    def cmp(self, z, a, x, y, b):
+        z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
+        cz = z.copy()
+        tz,ta,tx,ty,tb = [tinit(p) for p in z,a,x,y,b]
+
+        f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)])
+        new_z = f(z,a,x,y,b)
+        _z = self._gemm(cz, a, x, y, b)
+
+        self.failUnless(z is new_z)
+        #print cz, _z, z, type(cz), type(_z), type(z)
+        #_approx_eq.debug = 1
+        self.failUnless(_approx_eq(_z, z))
+        if a == 0.0 and b == 1.0:
+            return
+        else:
+            self.failIf(numpy.all(cz == z))
+
+
+    def test0(self): self.cmp(1., 0., 1.0, 1.0, 1.0)
+    def test1(self): self.cmp(2., 0., 1.0, 1.0, 0.0)
+    def test2(self): 
+        try:
+            self.cmp(2., 1.0, [3,2,1.], [[1],[2],[3.]], 1.0)
+        except ValueError, e:
+            self.failUnless(e[0] == Gemm.E_bcast)
+            return
+        self.fail()
+    def test3(self): self.cmp([2.], 1.,[3,2,1.], [[1],[2],[3.]], 1.0)
+    def test4(self): self.cmp(self.rand(3,4), 1.0,
+            self.rand(3,5), self.rand(5,4), 0.0)
+    def test5(self): self.cmp(self.rand(3,4), 1.0,
+            self.rand(3,5), self.rand(5,4), 1.0)
+    def test6(self): self.cmp(self.rand(3,4), 1.0,
+            self.rand(3,5), self.rand(5,4), -1.0)
+    def test7(self): self.cmp(self.rand(3,4), 0.0,
+            self.rand(3,5), self.rand(5,4), 0.0)
+    def test8(self): self.cmp(self.rand(3,4), 0.0,
+            self.rand(3,5), self.rand(5,4), 0.6)
+    def test9(self): self.cmp(self.rand(3,4), 0.0,
+            self.rand(3,5), self.rand(5,4), -1.0)
+    def test10(self): 
+        _approx_eq.debug = 1
+        self.cmp(self.rand(3,4), -1.0, self.rand(3,5), self.rand(5,4), 0.0)
+    def test11(self): self.cmp(self.rand(3,4), -1.0,
+            self.rand(3,5), self.rand(5,4), 1.0)
+    def test12(self): self.cmp(self.rand(3,4), -1.0,
+            self.rand(3,5), self.rand(5,4), -1.0)
+
 
 if __name__ == '__main__':
     unittest.main()

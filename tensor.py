@@ -690,6 +690,101 @@ pow = _scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
 pow_inplace = _scalar_switch(pow_elemwise_inplace, pow_scalar_r_inplace)
 
 
+
+#########################
+# Linalg : Dot
+#########################
+
+class Dot(_Op):
+    nin=2
+    nout=1
+    @staticmethod 
+    def broadcastable_rule(bx,by):
+        if len(bx) == 0:     # x is a scalar
+            rval = by
+        else:
+            if len(by) >= 2: #y is a matrix or tensor
+                rval = bx[:-1] + by[:-2] + by[-1:]
+            elif len(by)==1: #y is vector
+                rval = bx[:-1]
+            else:            #y is a scalar
+                rval = bx
+        return rval
+    def propagate_broadcastable(self, bx, by):
+        return [self.broadcastable_rule(bx,by)]
+    def impl(self, x, y):
+        return numpy.dot(x, y)
+    def grad(self, (x, y), gz):
+        return dot(gz, y.T), dot(x.T, gz)
+    if 0:
+        def c_support_code(self):
+            return blas.cblas_header_text()
+        def c_libs(self):
+            return blas.ldflags()
+        def c_impl(self, (_x, _y), (_z, )):
+            return blas.gemm_code('', '1.0', '0.0')
+dot = _constructor(Dot)
+
+class Gemm(_Op):
+    nin=5
+    nout=1
+    E_bcast = 'incompatible broadcastable flags'
+    def destroy_map(self):
+        return {self.out:[self.inputs[0]]}
+    def propagate_broadcastable(self, bz, ba, bx, by, bb):
+        if len(bz) != len(Dot.broadcastable_rule(bx,by)):
+            raise ValueError(Gemm.E_bcast, bz, bx, by)
+        return [bz]
+    def impl(self, z, a, x, y, b):
+        assert a.shape == ()
+        assert b.shape == ()
+        if z.shape == ():
+            z.itemset(z*a + b*numpy.dot(x,y))
+            return z
+        else:
+            if b == 0.0:
+                if a == 1.0:
+                    z[:] = numpy.dot(x,y)
+                elif a == -1.0:
+                    z[:] = -numpy.dot(x,y)
+                else:
+                    z[:] = a * numpy.dot(x,y)
+            elif b == 1.0:
+                if a == 1.0:
+                    z += numpy.dot(x,y)
+                elif a == -1.0:
+                    z -= numpy.dot(x,y)
+                else:
+                    z += a * numpy.dot(x,y)
+            else:
+                z *= b
+                z += a * numpy.dot(x,y)
+            return z
+    def grad(self, (z, a, x, y, b), gz):
+        raise NotImplementedError()
+    if 0:
+        def c_support_code(self):
+            return blas.cblas_header_text()
+        def c_libs(self):
+            return blas.ldflags()
+        def c_impl((_zin, _a, _x, _y, _b), (_z,)):
+            check_ab = """
+            {
+            if ((_a->descr->type_num != PyArray_DOUBLE)
+                && (_a->descr->type_num != PyArray_FLOAT))
+                goto _dot_execute_fallback;
+
+            if ((_b->descr->type_num != PyArray_DOUBLE)
+                && (_b->descr->type_num != PyArray_FLOAT))
+                goto _dot_execute_fallback;
+            }
+            """
+            return blas.gemm_code( check_ab,
+                    '(_a->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_a->data)[0]) : (REAL)(((double*)_a->data)[0])',
+                    '(_b->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_b->data)[0]) : (REAL)(((double*)_b->data)[0])')
+gemm = _constructor(Gemm)
+
+
 if 0:
     ##########################
     # Comparisons 
