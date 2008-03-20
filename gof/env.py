@@ -53,11 +53,12 @@ class Env(graph.Graph):
     L{Tool}.
 
     Regarding inputs and orphans:
-    In the context of a computation graph, the inputs and orphans are both
-    results that are the source nodes of computation.  Those results that are
-    named as inputs will be assumed to contain fresh.  In other words, the
-    backward search from outputs will stop at any node that has been explicitly
-    named as an input.
+
+    In the context of a computation graph, the inputs and orphans are
+    both results that are the source nodes of computation.  Those
+    results that are named as inputs will be assumed to contain fresh.
+    In other words, the backward search from outputs will stop at any
+    node that has been explicitly named as an input.
     """
 
     ### Special ###
@@ -90,6 +91,8 @@ class Env(graph.Graph):
         # Set of all the results that are not an output of an op in the subgraph but
         # are an input of an op in the subgraph.
         # e.g. z for inputs=(x, y) and outputs=(x + (y - z),)
+        # We initialize them to the set of outputs; if an output depends on an input,
+        # it will be removed from the set of orphans.
         self._orphans = set(outputs)
 
         # Maps results to ops that use them:
@@ -111,6 +114,7 @@ class Env(graph.Graph):
     ### Public interface ###
 
     def add_output(self, output):
+        "Add an output to the Env."
         self.outputs.add(output)
         self.orphans.add(output)
         self.__import_r__([output])
@@ -138,10 +142,17 @@ class Env(graph.Graph):
         return True
 
     def satisfy(self, x):
+        "Adds the features required by x unless they are already present."
         for feature_class in require_set(x):
             self.add_feature(feature_class)
 
     def add_feature(self, feature_class, do_import = True):
+        """
+        Adds an instance of the feature_class to this env's supported
+        features. If do_import is True and feature_class is a subclass
+        of Listener, its on_import method will be called on all the Ops
+        already in the env.
+        """
         if feature_class in self._features:
             return # the feature is already present
         else:
@@ -210,15 +221,17 @@ class Env(graph.Graph):
         return op in self._ops
 
     def orphans(self):
-        """All results not within the subgraph bound by env.inputs and env.outputs, not in
-        env.inputs but required by some op."""
+        """
+        All results not within the subgraph bound by env.inputs and
+        env.outputs, not in env.inputs but required by some op.
+        """
         return self._orphans
 
     def replace(self, r, new_r, consistency_check = True):
         """
         This is the main interface to manipulate the subgraph in Env.
         For every op that uses r as input, makes it use new_r instead.
-        This may raise a GofTypeError if the new result violates type
+        This may raise an error if the new result violates type
         constraints for one of the target ops. In that case, no
         changes are made.
 
@@ -228,8 +241,8 @@ class Env(graph.Graph):
         graph the way it was before the call to replace.
 
         If consistency_check is False, the replacement will succeed
-        even if there is an inconsistency. A GofTypeError will still
-        be raised if there are type mismatches.
+        even if there is an inconsistency, unless the replacement
+        violates hard constraints on the types involved.
         """
 
         self.__import_r_satisfy__([new_r])
@@ -277,9 +290,10 @@ class Env(graph.Graph):
 
     def replace_all(self, d):
         """
-        For (r, new_r) in d.items(), replaces r with new_r. Checks for consistency at the
-        end and raises an InconsistencyError if the graph is not consistent. If an error is
-        raised, the graph is restored to what it was before.
+        For (r, new_r) in d.items(), replaces r with new_r. Checks for
+        consistency at the end and raises an InconsistencyError if the
+        graph is not consistent. If an error is raised, the graph is
+        restored to what it was before.
         """
         chk = self.checkpoint()
         try:
@@ -295,19 +309,29 @@ class Env(graph.Graph):
             raise
 
     def results(self):
-        "All results within the subgraph bound by env.inputs and env.outputs and including them"
+        """
+        All results within the subgraph bound by env.inputs and
+        env.outputs and including them
+        """
         return self._results
 
     def revert(self, checkpoint):
         """
-        Reverts the graph to whatever it was at the provided checkpoint (undoes all replacements).
-        A checkpoint at any given time can be obtained using self.checkpoint().
+        Reverts the graph to whatever it was at the provided
+        checkpoint (undoes all replacements).  A checkpoint at any
+        given time can be obtained using self.checkpoint().
         """
         while len(self.history) > checkpoint:
             f = self.history.pop()
             f()
 
     def supplemental_orderings(self):
+        """
+        Returns a dictionary of {op: set(prerequisites)} that must
+        be satisfied in addition to the order defined by the structure
+        of the graph (returns orderings that not related to input/output
+        relationships).
+        """
         ords = {}
         for ordering in self._orderings.values():
             for op, prereqs in ordering.orderings().items():
@@ -316,14 +340,18 @@ class Env(graph.Graph):
 
     def toposort(self):
         """
-        Returns a list of ops in the order that they must be executed in order to preserve
-        the semantics of the graph and respect the constraints put forward by the listeners.
+        Returns a list of ops in the order that they must be executed
+        in order to preserve the semantics of the graph and respect
+        the constraints put forward by the listeners.
         """
         ords = self.supplemental_orderings()
         order = graph.io_toposort(self.inputs, self.outputs, ords)
         return order
     
     def validate(self):
+        """
+        Raises an error if the graph is inconsistent.
+        """
         for constraint in self._constraints.values():
             constraint.validate()
         return True
@@ -332,9 +360,21 @@ class Env(graph.Graph):
     ### Private interface ###
 
     def __add_clients__(self, r, all):
+        """
+        r -> result
+        all -> list of (op, i) pairs representing who r is an input of.
+
+        Updates the list of clients of r with all.
+        """
         self._clients.setdefault(r, set()).update(all)
 
     def __remove_clients__(self, r, all):
+        """
+        r -> result
+        all -> list of (op, i) pairs representing who r is an input of.
+
+        Removes all from the clients list of r.
+        """
         if not all:
             return
         self._clients[r].difference_update(all)
@@ -344,11 +384,12 @@ class Env(graph.Graph):
                 self._orphans.remove(r)
 
     def __import_r_satisfy__(self, results):
-
+        # Satisfies the owners of the results.
         for op in graph.ops(self.results(), results):
             self.satisfy(op)
 
     def __import_r__(self, results):
+        # Imports the owners of the results
         for result in results:
             owner = result.owner
             if owner:
@@ -385,6 +426,7 @@ class Env(graph.Graph):
     __import__.E_output = 'op output in Env.inputs'
 
     def __prune_r__(self, results):
+        # Prunes the owners of the results.
         for result in set(results):
             if result in self.inputs:
                 continue
@@ -393,6 +435,10 @@ class Env(graph.Graph):
                 self.__prune__(owner)
 
     def __prune__(self, op):
+        # If op's outputs have no clients, removes it from the graph
+        # and recursively tries to prune its inputs. If at least one
+        # of the op's outputs is an output to the graph or has a client
+        # then __prune__ is a no-op.
         for output in op.outputs:
             # Cannot prune an op which is an output or used somewhere
             if self.clients(output) or output in self.outputs: #output in self.outputs or self.clients(output):

@@ -199,7 +199,39 @@ class _test_all(unittest.TestCase):
         assert not g.consistent()
         g.replace(tv, Sigmoid(x))
         assert g.consistent()
-        
+
+    def test_11(self):
+        x, y, z = inputs()
+        e1 = TransposeView(TransposeView(x))
+        e2 = TransposeView(TransposeView(e1))
+        e3 = AddInPlace(e2, y)
+        e4 = AddInPlace(e1, z)
+        g = env([x,y,z], [e3, e4], False)
+        assert not g.consistent()
+        g.replace(e2, TransposeView(x), False)
+        assert not g.consistent()
+
+    def test_12(self):
+        x, y, z = inputs()
+        e0 = AddInPlace(x, y)
+        e = Dot(Sigmoid(e0), TransposeView(x))
+        g = env([x,y,z], [e], False)
+        assert not g.consistent()
+        new_e0 = Add(x, y)
+        g.replace(e0, new_e0, False)
+        assert g.consistent()
+        g.replace(new_e0, AddInPlace(x, y), False)
+        assert not g.consistent()
+
+    def test_13(self):
+        x, y, z = inputs()
+        e0 = TransposeView(x)
+        e = Dot(Sigmoid(AddInPlace(x, y)), e0)
+        g = env([x,y,z], [e], False)
+        assert not g.consistent()
+        new_e0 = Add(e0, y)
+        g.replace(e0, new_e0, False)
+        assert g.consistent()
 
 
 if __name__ == '__main__':
