@@ -6,6 +6,7 @@ from copy import copy
 from compile import Function, eval_outputs
 import gradient
 import gof, gof.graph
+from gof.python25 import any
 
 
 #TODO: consider moving this function / functionality to gradient.py

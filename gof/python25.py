@@ -9,10 +9,16 @@ if sys.version_info[:2] < (2,5):
             if not element:
                 return False
         return True
+    def any(iterable):
+        for element in iterable:
+            if element:
+                return True
+        return False
 else:
      # Only bother with this else clause and the __all__ line if you are putting
      # this in a separate file.
      import __builtin__
      all = __builtin__.all
+     any = __builtin__.any
 
-__all__ = ['all']
+__all__ = ['all', 'any']
