@@ -6,7 +6,6 @@ import utils
 __all__ = ['EquivTool',
           'InstanceFinder',
           'PrintListener',
-          'ChangeListener',
            ]
 
 
