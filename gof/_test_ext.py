@@ -42,39 +42,20 @@ class Dot(MyOp):
     nin = 2
 
 
-dtv_elim = PatternOptimizer((TransposeView, (TransposeView, 'x')), 'x')
+# dtv_elim = PatternOptimizer((TransposeView, (TransposeView, 'x')), 'x')
 
-a2i = OpSubOptimizer(Add, AddInPlace)
-i2a = OpSubOptimizer(AddInPlace, Add)
+# AddCls = Add
+# AddInPlaceCls = AddInPlace
 
-t2s = OpSubOptimizer(TransposeView, Sigmoid)
-s2t = OpSubOptimizer(Sigmoid, TransposeView)
+# a2i = OpSubOptimizer(Add, AddInPlace)
+# i2a = OpSubOptimizer(AddInPlace, Add)
 
-
-# from constructor import Constructor
-# from allocators import BuildAllocator
-# c = Constructor(BuildAllocator)
-# c.update(globals())
-# globals().update(c)
-
-# def inputs():
-#     x = (MyResult('x'))
-#     y = (MyResult('y'))
-#     z = (MyResult('z'))
-#     return x, y, z
-
-# def env(inputs, outputs, validate = True):
-#     return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
+# t2s = OpSubOptimizer(TransposeView, Sigmoid)
+# s2t = OpSubOptimizer(Sigmoid, TransposeView)
 
 
 import modes
-modes.make_constructors(globals(), name_filter = lambda x:x)
-
-# def inputs():
-#     x = modes.BuildMode(MyResult('x'))
-#     y = modes.BuildMode(MyResult('y'))
-#     z = modes.BuildMode(MyResult('z'))
-#     return x, y, z
+modes.make_constructors(globals()) #, name_filter = lambda x:x)
 
 def inputs():
     x = modes.build(MyResult('x'))
@@ -83,153 +64,181 @@ def inputs():
     return x, y, z
 
 def env(inputs, outputs, validate = True):
-    inputs = [input for input in inputs]
-    outputs = [output for output in outputs]
     return Env(inputs, outputs, features = [EquivTool], consistency_check = validate)
+
+
+class FailureWatch:
+    # when passed to OpSubOptimizer or PatternOptimizer, counts the number of failures
+    def __init__(self):
+        self.failures = 0
+    def __call__(self, op1, op2, exception):
+        assert isinstance(exception, InconsistencyError)
+        self.failures += 1
 
 
 class _test_all(unittest.TestCase):
 
-    def test_0(self):
+    def test_multi_destroyers(self):
         x, y, z = inputs()
-        e = Add(AddInPlace(x, y), AddInPlace(x, y))
+        e = add(add_in_place(x, y), add_in_place(x, y))
         try:
             g = env([x,y,z], [e])
+            self.fail()
         except InconsistencyError, e:
             pass
-        else:
-            raise Exception("Expected an InconsistencyError")
 
-    def test_1(self):
-        # the loop is needed because a2i will optimize in a random order and sometimes
-        # only one of them fails
-        for i in xrange(100):
-            x, y, z = inputs()
-            e = Add(Add(x, y), Add(y, x))
-            g = env([x,y,z], [e])
-            assert g.consistent()
-            a2i.optimize(g)
-            assert g.consistent()
-            assert str(g) != "[AddInPlace(AddInPlace(x, y), AddInPlace(y, x))]"
-
-    def test_2(self):
+    def test_multi_destroyers_through_views(self):
         x, y, z = inputs()
-        g = env([x,y,z], [Dot(AddInPlace(x, z), x)], False)
-        assert not g.consistent()
-        i2a.optimize(g)
-        assert g.consistent()
-            
-    def test_3(self):
-        for i in xrange(100):
-            x, y, z = inputs()
-            e = Dot(Add(TransposeView(z), y), Add(z, x))
-            g = env([x,y,z], [e])
-            assert g.consistent()
-            a2i.optimize(g)
-            assert g.consistent()
-            assert str(g) != "[Dot(AddInPlace(TransposeView(z), y), AddInPlace(z, x))]"
-
-    def test_4(self):
-        x, y, z = inputs()
-        e = Dot(AddInPlace(x,y), TransposeView(x))
-        g = env([x,y,z], [e], False)
-        assert not g.consistent()
-        g.replace(e.owner.inputs[1], Add(x,z))
-        assert g.consistent()
-
-    def test_5(self):
-        x, y, z = inputs()
-        e = Dot(AddInPlace(x,y), TransposeView(TransposeView(TransposeView(TransposeView(Sigmoid(x))))))
+        e = dot(add(transpose_view(z), y), add(z, x))
         g = env([x,y,z], [e])
         assert g.consistent()
-        g.replace(e.owner.inputs[1].owner.inputs[0], x, False)
-        assert not g.consistent()
+        fail = FailureWatch()
+        OpSubOptimizer(Add, AddInPlace, fail).optimize(g)
+        assert g.consistent()
+        assert fail.failures == 1 # should have succeeded once and failed once
 
-    def test_6(self):
-        for i in xrange(100):
-            x, y, z = inputs()
-            e = Dot(AddInPlace(x,Sigmoid(y)), Sigmoid(Sigmoid(Sigmoid(Sigmoid(Sigmoid(x))))))
-            g = env([x,y,z], [e])
-            assert g.consistent()
-            s2t.optimize(g)
-            assert g.consistent()
-            assert str(g) != "[Dot(AddInPlace(x,TransposeView(y)), TransposeView(TransposeView(TransposeView(TransposeView(TransposeView(x))))))]"
-
-    def test_7(self):
+    def test_destroyers_loop(self):
+        # AddInPlace(x, y) and AddInPlace(y, x) should not coexist
         x, y, z = inputs()
-        e = TransposeView(TransposeView(TransposeView(TransposeView(x))))
+        e1 = add(x, y)
+        e2 = add(y, x)
+        g = env([x,y,z], [e1, e2])
+        chk = g.checkpoint()
+        assert g.consistent()
+        g.replace(e1, add_in_place(x, y))
+        assert g.consistent()
+        try:
+            g.replace(e2, add_in_place(y, x))
+            self.fail()
+        except InconsistencyError:
+            pass
+        assert g.consistent()
+        g.revert(chk)
+        g.replace(e2, add_in_place(y, x))
+        assert g.consistent()
+        try:
+            g.replace(e1, add_in_place(x, y))
+            self.fail()
+        except InconsistencyError:
+            pass
+        assert g.consistent()
+
+    def test_long_destroyers_loop(self):
+        x, y, z = inputs()
+        e = dot(dot(add_in_place(x,y), add_in_place(y,z)), add(z,x))
+        g = env([x,y,z], [e])
+        assert g.consistent()
+        OpSubOptimizer(Add, AddInPlace).optimize(g)
+        assert g.consistent()
+        assert str(g) != "[Dot(Dot(AddInPlace(x, y), AddInPlace(y, z)), AddInPlace(z, x))]" # we don't want to see that!
+        e2 = dot(dot(add_in_place(x,y), add_in_place(y,z)), add_in_place(z,x))
+        try:
+            g2 = env([x,y,z], [e2])
+            self.fail()
+        except InconsistencyError:
+            pass
+
+    def test_usage_loop(self):
+        x, y, z = inputs()
+        g = env([x,y,z], [dot(add_in_place(x, z), x)], False)
+        assert not g.consistent()
+        OpSubOptimizer(AddInPlace, Add).optimize(g) # replace AddInPlace with Add
+        assert g.consistent()
+
+    def test_usage_loop_through_views(self):
+        x, y, z = inputs()
+        aip = add_in_place(x, y)
+        e = dot(aip, transpose_view(x))
+        g = env([x,y,z], [e], False)
+        assert not g.consistent()
+        g.replace(aip, add(x, z))
+        assert g.consistent()
+
+    def test_usage_loop_through_views_2(self):
+        x, y, z = inputs()
+        e0 = transpose_view(transpose_view(transpose_view(sigmoid(x))))
+        e = dot(add_in_place(x,y), transpose_view(e0))
+        g = env([x,y,z], [e])
+        assert g.consistent() # because sigmoid can do the copy
+        g.replace(e0, x, False)
+        assert not g.consistent() # we cut off the path to the sigmoid
+
+    def test_usage_loop_insert_views(self):
+        x, y, z = inputs()
+        e = dot(add_in_place(x, add(y, z)), sigmoid(sigmoid(sigmoid(sigmoid(sigmoid(x))))))
+        g = env([x,y,z], [e])
+        assert g.consistent()
+        fail = FailureWatch()
+        OpSubOptimizer(Sigmoid, TransposeView, fail).optimize(g)
+        assert g.consistent()
+        assert fail.failures == 1 # it must keep one sigmoid in the long sigmoid chain
+
+    def test_misc(self):
+        x, y, z = inputs()
+        e = transpose_view(transpose_view(transpose_view(transpose_view(x))))
         g = env([x,y,z], [e])
         assert g.consistent()
         chk = g.checkpoint()
-        dtv_elim.optimize(g)
+        PatternOptimizer((TransposeView, (TransposeView, 'x')), 'x').optimize(g)
         assert str(g) == "[x]"
-        g.replace(g.equiv(e), Add(x,y))
+        g.replace(g.equiv(e), add(x,y))
         assert str(g) == "[Add(x, y)]"
-        g.replace(g.equiv(e), Dot(AddInPlace(x,y), TransposeView(x)), False)
+        g.replace(g.equiv(e), dot(add_in_place(x,y), transpose_view(x)), False)
         assert str(g) == "[Dot(AddInPlace(x, y), TransposeView(x))]"
         assert not g.consistent()
         g.revert(chk)
         assert g.consistent()
         assert str(g) == "[TransposeView(TransposeView(TransposeView(TransposeView(x))))]"
 
-    def test_8(self):
-        x, y, z = inputs()
-        e = Dot(Dot(AddInPlace(x,y), AddInPlace(y,z)), Add(z,x))
-        g = env([x,y,z], [e])
-        assert g.consistent()
-        a2i.optimize(g)
-        assert g.consistent()
-        assert str(g) != "[Dot(Dot(AddInPlace(x, y), AddInPlace(y, z)), AddInPlace(z, x))]" # we don't want to see that!
-
-    def test_9(self):
+    def test_indestructible(self):
         x, y, z = inputs()
         x.indestructible = True
-        e = AddInPlace(x, y)
+        e = add_in_place(x, y)
         g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(e, Add(x, y))
+        g.replace(e, add(x, y))
         assert g.consistent()
 
-    def test_10(self):
+    def test_indestructible_through_views(self):
         x, y, z = inputs()
         x.indestructible = True
-        tv = TransposeView(x)
-        e = AddInPlace(tv, y)
+        tv = transpose_view(x)
+        e = add_in_place(tv, y)
         g = env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(tv, Sigmoid(x))
+        g.replace(tv, sigmoid(x))
         assert g.consistent()
 
-    def test_11(self):
+    def test_repair_destroy_path(self):
         x, y, z = inputs()
-        e1 = TransposeView(TransposeView(x))
-        e2 = TransposeView(TransposeView(e1))
-        e3 = AddInPlace(e2, y)
-        e4 = AddInPlace(e1, z)
+        e1 = transpose_view(transpose_view(x))
+        e2 = transpose_view(transpose_view(e1))
+        e3 = add_in_place(e2, y)
+        e4 = add_in_place(e1, z)
         g = env([x,y,z], [e3, e4], False)
         assert not g.consistent()
-        g.replace(e2, TransposeView(x), False)
+        g.replace(e2, transpose_view(x), False)
         assert not g.consistent()
 
-    def test_12(self):
+    def test_indirect(self):
         x, y, z = inputs()
-        e0 = AddInPlace(x, y)
-        e = Dot(Sigmoid(e0), TransposeView(x))
+        e0 = add_in_place(x, y)
+        e = dot(sigmoid(e0), transpose_view(x))
         g = env([x,y,z], [e], False)
         assert not g.consistent()
-        new_e0 = Add(x, y)
+        new_e0 = add(x, y)
         g.replace(e0, new_e0, False)
         assert g.consistent()
-        g.replace(new_e0, AddInPlace(x, y), False)
+        g.replace(new_e0, add_in_place(x, y), False)
         assert not g.consistent()
 
-    def test_13(self):
+    def test_indirect_2(self):
         x, y, z = inputs()
-        e0 = TransposeView(x)
-        e = Dot(Sigmoid(AddInPlace(x, y)), e0)
+        e0 = transpose_view(x)
+        e = dot(sigmoid(add_in_place(x, y)), e0)
         g = env([x,y,z], [e], False)
         assert not g.consistent()
-        new_e0 = Add(e0, y)
+        new_e0 = add(e0, y)
         g.replace(e0, new_e0, False)
         assert g.consistent()
 

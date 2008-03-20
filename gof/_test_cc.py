@@ -169,6 +169,14 @@ class _test_CLinker(unittest.TestCase):
         self.failUnless(fn(2.0, 2.0) == 4)
         # note: for now the behavior of fn(2.0, 7.0) is undefined
 
+    def test_dups_inner(self):
+        # Testing that duplicates are allowed inside the graph
+        x, y, z = inputs()
+        e = add(mul(y, y), add(x, z))
+        lnk = CLinker(env([x, y, z], [e]))
+        fn = lnk.make_function()
+        self.failUnless(fn(1.0, 2.0, 3.0) == 8.0)
+
 
 class _test_OpWiseCLinker(unittest.TestCase):
 
@@ -180,9 +188,4 @@ class _test_OpWiseCLinker(unittest.TestCase):
         self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
 
 if __name__ == '__main__':
-#    unittest.main()
-    x, y, z = inputs()
-    e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-    lnk = CLinker(env([x, y, z], [e]))
-    fn = lnk.make_function()
-    fn(2.0, 0.0, 2.0)
+    unittest.main()

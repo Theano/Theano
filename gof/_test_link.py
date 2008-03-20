@@ -64,8 +64,6 @@ def inputs():
     return x, y, z
 
 def env(inputs, outputs, validate = True, features = []):
-#     inputs = [input.r for input in inputs]
-#     outputs = [output.r for output in outputs]
     return Env(inputs, outputs, features = features, consistency_check = validate)
 
 def perform_linker(env):
@@ -75,26 +73,27 @@ def perform_linker(env):
 
 class _test_PerformLinker(unittest.TestCase):
 
-    def test_0(self):
+    def test_thunk_inplace(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
         fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(True)
         fn()
         assert e.data == 1.5
 
-    def test_1(self):
+    def test_thunk_not_inplace(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
         fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(False)
         fn()
+        assert o[0].data == 1.5
         assert e.data != 1.5
 
-    def test_2(self):
+    def test_function(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
         fn = perform_linker(env([x, y, z], [e])).make_function()
         assert fn(1.0, 2.0, 3.0) == 1.5
-        assert e.data != 1.5
+        assert e.data != 1.5 # not inplace
 
     def test_input_output_same(self):
         x, y, z = inputs()

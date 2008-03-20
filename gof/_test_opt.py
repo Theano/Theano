@@ -260,7 +260,7 @@ class _test_MergeOptimizer(unittest.TestCase):
 
 class _test_ConstantFinder(unittest.TestCase):
 
-    def test_0(self):
+    def test_straightforward(self):
         x, y, z = inputs()
         y.data = 2
         z.data = 2
@@ -272,7 +272,7 @@ class _test_ConstantFinder(unittest.TestCase):
         assert str(g) == "[Op1(x, y, y)]" \
             or str(g) == "[Op1(x, z, z)]"
 
-    def test_1(self):
+    def test_deep(self):
         x, y, z = inputs()
         y.data = 2
         z.data = 2
@@ -284,11 +284,11 @@ class _test_ConstantFinder(unittest.TestCase):
         assert str(g) == "[Op1(*1 -> Op2(x, y), *1, *1)]" \
             or str(g) == "[Op1(*1 -> Op2(x, z), *1, *1)]"
 
-    def test_2(self):
+    def test_destroyed_orphan_not_constant(self):
         x, y, z = inputs()
         y.data = 2
         z.data = 2
-        e = op_d(x, op2(y, z))
+        e = op_d(x, op2(y, z)) # here x is destroyed by op_d
         g = env([y], [e])
         ConstantFinder().optimize(g)
         assert not getattr(x, 'constant', False) and z.constant

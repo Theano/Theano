@@ -36,9 +36,10 @@ class MyResult(ResultBase):
 
 
 class _test_ResultBase(unittest.TestCase):
-    def test_0(self):
+    def test_trivial(self):
         r = ResultBase()
-    def test_1(self):
+        
+    def test_state(self):
         r = ResultBase()
         assert r.state is Empty
 

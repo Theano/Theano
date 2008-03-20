@@ -113,25 +113,26 @@ class PrintListener(Listener):
             print "-- moving from %s to %s" % (r, new_r)
 
 
+### UNUSED AND UNTESTED ###
 
-class ChangeListener(Listener):
+# class ChangeListener(Listener):
 
-    def __init__(self, env):
-        self.change = False
+#     def __init__(self, env):
+#         self.change = False
 
-    def on_import(self, op):
-        self.change = True
+#     def on_import(self, op):
+#         self.change = True
 
-    def on_prune(self, op):
-        self.change = True
+#     def on_prune(self, op):
+#         self.change = True
 
-    def on_rewire(self, clients, r, new_r):
-        self.change = True
+#     def on_rewire(self, clients, r, new_r):
+#         self.change = True
 
-    def __call__(self, value = "get"):
-        if value == "get":
-            return self.change
-        else:
-            self.change = value
+#     def __call__(self, value = "get"):
+#         if value == "get":
+#             return self.change
+#         else:
+#             self.change = value
 
 

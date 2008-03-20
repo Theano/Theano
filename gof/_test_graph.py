@@ -39,37 +39,38 @@ class MyOp(Op):
 
 class _test_inputs(unittest.TestCase):
 
-    def test_0(self):
+    def test_straightforward(self):
         r1, r2 = MyResult(1), MyResult(2)
         op = MyOp(r1, r2)
         assert inputs(op.outputs) == set([r1, r2])
 
-    def test_1(self):
+    def test_deep(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         op = MyOp(r1, r2)
         op2 = MyOp(op.outputs[0], r5)
         assert inputs(op2.outputs) == set([r1, r2, r5])
 
-
-class _test_orphans(unittest.TestCase):
-
-    def test_0(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
-        op = MyOp(r1, r2)
-        op2 = MyOp(op.outputs[0], r5)
-        assert orphans([r1, r2], op2.outputs) == set([r5])
-
-    def test_1(self):
+    def test_unreached_inputs(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         op = MyOp(r1, r2)
         op2 = MyOp(op.outputs[0], r5)
         try:
+            # function doesn't raise if we put False instead of True
             ro = results_and_orphans([r1, r2, op2.outputs[0]], op.outputs, True)
             self.fail()
         except Exception, e:
             if e[0] is results_and_orphans.E_unreached:
                 return
             raise
+
+
+class _test_orphans(unittest.TestCase):
+
+    def test_straightforward(self):
+        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        op = MyOp(r1, r2)
+        op2 = MyOp(op.outputs[0], r5)
+        assert orphans([r1, r2], op2.outputs) == set([r5])
     
 
 class _test_as_string(unittest.TestCase):
@@ -78,24 +79,24 @@ class _test_as_string(unittest.TestCase):
     node_formatter = lambda op, argstrings: "%s(%s)" % (op.__class__.__name__,
                                                         ", ".join(argstrings))
 
-    def test_0(self):
+    def test_straightforward(self):
         r1, r2 = MyResult(1), MyResult(2)
         op = MyOp(r1, r2)
         assert as_string([r1, r2], op.outputs) == ["MyOp(1, 2)"]
 
-    def test_1(self):
+    def test_deep(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         op = MyOp(r1, r2)
         op2 = MyOp(op.outputs[0], r5)
         assert as_string([r1, r2, r5], op2.outputs) == ["MyOp(MyOp(1, 2), 5)"]
 
-    def test_2(self):
+    def test_multiple_references(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         op = MyOp(r1, r2)
         op2 = MyOp(op.outputs[0], op.outputs[0])
         assert as_string([r1, r2, r5], op2.outputs) == ["MyOp(*1 -> MyOp(1, 2), *1)"]
 
-    def test_3(self):
+    def test_cutoff(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         op = MyOp(r1, r2)
         op2 = MyOp(op.outputs[0], op.outputs[0])
@@ -105,24 +106,24 @@ class _test_as_string(unittest.TestCase):
 
 class _test_clone(unittest.TestCase):
 
-    def test_0(self):
+    def test_accurate(self):
         r1, r2 = MyResult(1), MyResult(2)
         op = MyOp(r1, r2)
         new = clone([r1, r2], op.outputs)
         assert as_string([r1, r2], new) == ["MyOp(1, 2)"]
 
-    def test_1(self):
+    def test_copy(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         op = MyOp(r1, r2)
         op2 = MyOp(op.outputs[0], r5)
         new = clone([r1, r2, r5], op2.outputs)
-        assert op2.outputs[0] == new[0] and op2.outputs[0] is not new[0]
-        assert op2 is not new[0].owner
-        assert new[0].owner.inputs[1] is r5
-        assert new[0].owner.inputs[0] == op.outputs[0] and new[0].owner.inputs[0] is not op.outputs[0]
+        assert op2.outputs[0] == new[0] and op2.outputs[0] is not new[0] # the new output is like the old one but not the same object
+        assert op2 is not new[0].owner # the new output has a new owner
+        assert new[0].owner.inputs[1] is r5 # the inputs are not copied
+        assert new[0].owner.inputs[0] == op.outputs[0] and new[0].owner.inputs[0] is not op.outputs[0] # check that we copied deeper too
 
-    def test_2(self):
-        "Checks that manipulating a cloned graph leaves the original unchanged."
+    def test_not_destructive(self):
+        # Checks that manipulating a cloned graph leaves the original unchanged.
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         op = MyOp(MyOp(r1, r2).outputs[0], r5)
         new = clone([r1, r2, r5], op.outputs)

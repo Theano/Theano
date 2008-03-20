@@ -512,7 +512,8 @@ class CLinker(Linker):
         # List of indices that should be ignored when passing the arguments
         # (basically, everything that the previous call to uniq eliminated)
         self.dupidx = [i for i, x in enumerate(all) if all.count(x) > 1 and all.index(x) != i]
-        
+        return self.struct_code
+
     def find_task(self, failure_code):
         """
         Maps a failure code to the task that is associated to it.
