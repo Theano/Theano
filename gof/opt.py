@@ -261,7 +261,8 @@ class PatternOptimizer(OpSpecificOptimizer):
 
         def build(pattern, u):
             if isinstance(pattern, (list, tuple)):
-                return pattern[0](*[build(p, u) for p in pattern[1:]])
+                args = [build(p, u) for p in pattern[1:]]
+                return pattern[0](*args).out
             elif isinstance(pattern, str):
                 return u[unify.Var(pattern)]
             else:
@@ -272,9 +273,8 @@ class PatternOptimizer(OpSpecificOptimizer):
             try:
                 # note: only replaces the default 'out' port if it exists
                 p = self.out_pattern
+                new = 'unassigned'
                 new = build(p, u)
-                if not isinstance(p, str):
-                    new = new.out
                 env.replace(op.out, new)
             except Exception, e:
                 if self.failure_callback is not None:
@@ -349,12 +349,11 @@ class MergeOptimizer(Optimizer):
                 cid[op] = op_cid
                 inv_cid[op_cid] = op
                 for i, output in enumerate(op.outputs):
-                    ref = (i, op_cid)
+                    ref = id(output) # (i, op_cid)
                     cid[output] = ref
                     inv_cid[ref] = output
             else:
                 for output, other_output in zip(op.outputs, dup.outputs):
-                    #print "replacing: %s %s" % (repr(output.owner), repr(other_output.owner))
                     env.replace(output, other_output)
 
 
