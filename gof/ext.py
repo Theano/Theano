@@ -428,6 +428,8 @@ class Destroyer:
     inplace operation, use them as temporary storage, puts garbage in
     them or anything else that invalidates the contents for use by other
     Ops.
+
+    Usage of this class in an env requires DestroyHandler.
     """
 
     def destroyed_inputs(self):
