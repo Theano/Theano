@@ -1,8 +1,9 @@
 """A ResultBase to store numpy.ndarray with basic accompanying Ops"""
+import sys # for sys.maxint
+import inspect
 
 import numpy
-from copy import copy
-import inspect
+
 from gof import ResultBase, Op, utils, Destroyer, Viewer, AbstractFunctionError
 import gof.result
 
@@ -128,31 +129,6 @@ class _Op(BaseTensorOp):
     @classmethod
     def input_wrapper(cls, obj):
         return _as_tensor(obj)
-    
-#         def upcast(dtype, *dtypes):
-#             z = numpy.zeros((), dtype = dtype)
-#             for dtype in dtypes:
-#                 z = z + numpy.zeros((), dtype = dtype)
-#             return str(z.dtype)
-#         for dtype in i_dtypes:
-#             if dtype is None:
-#                 raise TypeError("Expected a Tensor.")
-#         upcasted = upcast(*i_dtypes)
-#         return [upcasted] * self.nout
-# #         try:
-# #             dmap = self.destroy_map()
-# #         except AttributeError:
-# #             dmap = {}
-# #         rval = []
-# #         for i in xrange(self.nout):
-# #             if i in dmap:
-# #                 destroyed = dmap[output]
-# #                 if len(destroyed) != 1:
-# #                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
-# #                 rval.append(destroyed[0])
-# #             else:
-# #                 rval.append(upcasted)
-# #         return rval
     
     def impl(self, *inputs):
         raise AbstractFunctionError()
@@ -280,11 +256,43 @@ class Abs(_Elemwise):
         return "%(z)s_i = abs(%(x)s_i);"
 #Constructor not necessary because builtin abs() does this
 
+class Argmax(Op):
+    nin=2 # tensor, axis
+    nout=2 # max val, max idx
+    E_axis = 'invalid axis'
+    debug = 0
+    def __init__(self, x, axis=None):
+        x = _as_tensor(x)
+        if axis is None:
+            axis = len(x.broadcastable) -1
+        axis = _as_tensor(axis)
+        self.inputs = [x, axis]
+        broadcastable = [0] * (len(x.broadcastable) - 1)
+        self.outputs = [Tensor(x.dtype, broadcastable), 
+                Tensor(axis.dtype, broadcastable)]
+    def perform(self): 
+        axis = self.inputs[1].data
+        x = self.inputs[0].data
+        self.outputs[0].data = numpy.max(x, axis)
+        self.outputs[1].data = numpy.argmax(x,axis)
+argmax = _constructor(Argmax)
+
+def max(x, axis=None):
+    """Return maximum elements obtained by iterating over given axis
+
+    Default axis is the last one.
+    """
+    # In python (using Argmax.perform()) this leads to an wasteful
+    # implementation that goes through the data twice instead of once
+    # but when Argmax.c_impl() is in place, it should be fine.
+    return argmax(x,axis)[0]
+
 class Exp(_Elemwise):
     def impl(self, x): return numpy.exp(x)
     def grad(self, x, gz): return gz * exp(x)
     def c_foreach(self, (x_i, ), (z_i, )): return "z_i = exp(x_i);"
 exp = _constructor(Exp)
+
 
 class Neg(_Elemwise):
     def impl(self, x):
@@ -301,6 +309,12 @@ class Log(_Elemwise):
     def c_foreach(self, (x_i, ), (z_i, )): return "z_i = log(x_i);"
 log = _constructor(Log)
 
+class Log2(_Elemwise):
+    def impl(self, x): return numpy.log2(x)
+    def grad(self, x, gz): return gz / (x * numpy.log(2.0))
+    def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = log2(%(x)s_i);"
+log2 = _constructor(Log2)
+
 class Sgn(_Elemwise):
     def impl(self, x):
         return numpy.abs(x) / x
@@ -309,6 +323,18 @@ class Sgn(_Elemwise):
     def c_foreach(self, (x_i, ), (z_i, )):
         return "%(z)s_i = %(x)s_i/abs(%(x)s_i);" # TODO: C use copysign
 sgn = _constructor(Sgn)
+
+class Sqr(_Elemwise):
+    def impl(self, x): return x * x
+    def grad(self, x, gz): return 2.0 * x * gz
+    def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = %(x)s_i * %(x)s_i;"
+sqr = _constructor(Sqr)
+
+class Sqrt(_Elemwise):
+    def impl(self, x): return numpy.sqrt(x)
+    def grad(self, x, gz): return 0.5 * gz / sqrt(x) 
+    def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = sqrt(%(x)s_i);"
+sqrt = _constructor(Sqrt)
 
 class Sum(_Elemwise):
     def impl(self, x):
@@ -333,6 +359,10 @@ class Fill(_Elemwise):
     def c_foreach(self, (model_i, value), (z_i, )):
         return "%(z)s_i = %(value)s0;"
 fill = _constructor(Fill)
+def ones_like(model):
+    return fill(model, 1.0)
+def zeros_like(model):
+    return fill(model, 0.0)
 
 
 class TensorCopy(_Elemwise):
@@ -374,6 +404,7 @@ class Subtensor(Op, Viewer):
     nin = 2
     nout = 1
     e_invalid = 'invalid index'
+    debug = 0
     def __init__(self, *args,**kwargs):
         def as_tuple_result(obj):
             if isinstance(obj, ResultBase):
@@ -384,17 +415,30 @@ class Subtensor(Op, Viewer):
             else:
                 r.data = (obj,)
             return r
+        def pad(tplR, N):
+            l = list(tplR.data)
+            for i in range(len(l), N):
+                l.append(slice(0,sys.maxint,1))
+            tplR.data = tuple(l)
 
-        print 'Subtensor.__init__', args, kwargs
+        if Subtensor.debug:
+            print 'Subtensor.__init__', args, kwargs
         #Olivier says not to call this
         #Op.__init__(self,  *args,**kwargs) 
         #Viewer.__init__(self, *args,**kwargs)
         t, coord = args
         t = _as_tensor(t)
         coord = as_tuple_result(coord)
-        if len(coord.data) != len(t.broadcastable):
+        if len(coord.data) > len(t.broadcastable):
             raise ValueError(Subtensor.e_invalid)
+        # add the implicit extra unbounded slices 
+        # e.g. n[0] on a 3d tensor pads to n[0,:,:]
+        pad(coord, len(t.broadcastable))
         broadcastable = [0 for c in coord.data if isinstance(c, slice)]
+        if Subtensor.debug:
+            print 'brdcstble', broadcastable
+            print 't', t.data
+            print 'coord', coord.data
         self.inputs = [t, coord]
         self.outputs = [Tensor(t.dtype, broadcastable)]
     def view_map(self): 
@@ -402,6 +446,9 @@ class Subtensor(Op, Viewer):
     def perform(self):
         x = self.inputs[0].data
         c = self.inputs[1].data
+        if Subtensor.debug:
+            print 'perform: x', x
+            print 'perform: c', c
         if len(c) == 1:
             self.outputs[0].data = x.__getitem__(c[0])
         else:
@@ -739,3 +786,28 @@ if 0:
         return t
 
 
+#         def upcast(dtype, *dtypes):
+#             z = numpy.zeros((), dtype = dtype)
+#             for dtype in dtypes:
+#                 z = z + numpy.zeros((), dtype = dtype)
+#             return str(z.dtype)
+#         for dtype in i_dtypes:
+#             if dtype is None:
+#                 raise TypeError("Expected a Tensor.")
+#         upcasted = upcast(*i_dtypes)
+#         return [upcasted] * self.nout
+# #         try:
+# #             dmap = self.destroy_map()
+# #         except AttributeError:
+# #             dmap = {}
+# #         rval = []
+# #         for i in xrange(self.nout):
+# #             if i in dmap:
+# #                 destroyed = dmap[output]
+# #                 if len(destroyed) != 1:
+# #                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
+# #                 rval.append(destroyed[0])
+# #             else:
+# #                 rval.append(upcasted)
+# #         return rval
+    

@@ -67,6 +67,63 @@ def check_eq2_c(self, inputs, output, args_in, arg_out):
     val = fn(*args_in)
     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
+class T_argmax(unittest.TestCase):
+    def setUp(self):
+        numpy.random.seed(123784)
+        Argmax.debug = 0
+
+    def test0(self):
+        n = tinit(5.0)
+        v,i = eval_outputs(argmax(n))
+        self.failUnless(v == 5.0)
+        self.failUnless(i == 0)
+
+    def test1(self):
+        n = tinit([1,2,3,2,-6])
+        v,i = eval_outputs(argmax(n))
+        self.failUnless(v == 3)
+        self.failUnless(i == 2)
+
+    def test2(self):
+        n = tinit(numpy.random.rand(2,3))
+        v,i = eval_outputs(argmax(n))
+        self.failUnless(numpy.all(i == [0,1]))
+    def test2b(self):
+        n = tinit(numpy.random.rand(2,3))
+        v,i = eval_outputs(argmax(n,axis=0))
+        self.failUnless(numpy.all(i == [0,1,1]))
+    def test2_invalid(self):
+        n = tinit(numpy.random.rand(2,3))
+        try:
+            eval_outputs(argmax(n,axis=3))
+            self.fail()
+        except ValueError, e:
+            return
+    def test2_invalid_neg(self):
+        n = tinit(numpy.random.rand(2,3))
+        try:
+            eval_outputs(argmax(n,axis=-3))
+            self.fail()
+        except ValueError, e:
+            return
+    def test2_valid_neg(self):
+        n = tinit(numpy.random.rand(2,3))
+        v,i = eval_outputs(argmax(n,axis=-1))
+        self.failUnless(v.shape == (2,))
+        v,i = eval_outputs(argmax(n,axis=-2))
+        self.failUnless(v.shape == (3,))
+    def test3(self):
+        n = tinit(numpy.random.rand(2,3,4))
+        v,i = eval_outputs(argmax(n,axis=0))
+        self.failUnless(v.shape == (3,4))
+        self.failUnless(i.shape == (3,4))
+        v,i = eval_outputs(argmax(n,axis=1))
+        self.failUnless(v.shape == (2,4))
+        self.failUnless(i.shape == (2,4))
+        v,i = eval_outputs(argmax(n,axis=2))
+        self.failUnless(v.shape == (2,3))
+        self.failUnless(i.shape == (2,3))
+
 
 class T_transpose(unittest.TestCase):
     def test0(self):
@@ -129,6 +186,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(t.owner.__class__ is Subtensor)
         try:
             tval = eval_outputs([t])
+            self.fail()
         except Exception, e:
             if e[0] != 'index out of bounds':
                 raise
@@ -146,62 +204,113 @@ class T_subtensor(unittest.TestCase):
         tval = eval_outputs([t])
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
-    if 0:
-        def test1_err_invalid(self):
-            n = tinit(numpy.ones(1))
-            try:
-                t = n[0,0]
-                self.fail()
-            except ValueError, e:
-                self.failUnless(e[0] is Subtensor.e_invalid)
-        def test1_ok_elem(self):
-            n = tinit(numpy.ones(1)*5)
-            t = n[0]
-            self.failUnless(t.owner.__class__ is Subtensor)
-            tval = eval_outputs([t])
-            self.failUnless(tval.shape == (1,))
-            self.failUnless(tval[0] == 5.0)
-        def test1_ok_range_infinite(self):
-            n = tinit(numpy.ones(3)*5)
-            t = n[1:]
-            self.failUnless(t.owner.__class__ is Subtensor)
-            tval = eval_outputs([t])
-            self.failUnless(tval.shape == (2,))
-            self.failUnless(tval[1] == 5.0)
-        def test1_ok_strided(self):
-            n = tinit(numpy.ones(5)*5)
-            t = n[1::2]
-            self.failUnless(t.owner.__class__ is Subtensor)
-            tval = eval_outputs([t])
-            self.failUnless(tval.shape == (3,))
-            self.failUnless(tval[1] == 5.0)
+    def test1_err_invalid(self):
+        n = tinit(numpy.ones(1))
+        try:
+            t = n[0,0]
+            self.fail()
+        except ValueError, e:
+            self.failUnless(e[0] is Subtensor.e_invalid)
+    def test1_ok_elem(self):
+        n = tinit(numpy.ones(1)*5)
+        t = n[0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == ())
+        self.failUnless(tval == 5.0)
+    def test1_ok_range_infinite(self):
+        n = tinit(numpy.ones(3)*5)
+        t = n[1:]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
+    def test1_ok_strided(self):
+        n = tinit(numpy.ones(5)*5)
+        t = n[1::2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
 
-            tval = eval_outputs([n[1:-1:2]])
-            self.failUnless(tval.shape == (3,))
-            self.failUnless(tval[1] == 5.0)
+        tval = eval_outputs([n[0:-1:2]]) #0 to 1 from the end stepping by 2
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
 
-    def test2(self):
-        raise NotImplementedError() #remember to bring back the rest of tests
-    if 0:
-        def test2_err_bounds0(self):
-            raise NotImplementedError()
-        def test2_err_bounds1(self):
-            raise NotImplementedError()
-        def test2_ok_elem(self):
-            raise NotImplementedError()
-        def test2_ok_row(self):
-            raise NotImplementedError()
-        def test2_ok_col(self):
-            raise NotImplementedError()
-        def test2_ok_rows_finite(self):
-            raise NotImplementedError()
-        def test2_ok_cols_infinite(self):
-            raise NotImplementedError()
-        def test2_ok_strided(self):
-            raise NotImplementedError()
+    def test2_err_bounds0(self):
+        n = tinit(numpy.ones((2,3))*5)
+        t = n[0,4]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        try:
+            tval = eval_outputs([t])
+            self.fail()
+        except IndexError, e:
+            return
+    def test2_err_bounds1(self):
+        n = tinit(numpy.ones((2,3))*5)
+        t = n[4:5,2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        try:
+            tval = eval_outputs([t])
+        except Exception, e:
+            if e[0] != 'index out of bounds':
+                raise
+    def test2_ok_elem(self):
+        n = tinit(numpy.asarray(range(6)).reshape((2,3)))
+        t = n[0,2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == ())
+        self.failUnless(numpy.all(tval == 2))
+    def test2_ok_row(self):
+        n = tinit(numpy.asarray(range(6)).reshape((2,3)))
+        t = n[1]
+        self.failIf(any(n.broadcastable))
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (3,))
+        self.failUnless(numpy.all(tval == [3,4,5]))
 
-        def test3_ok_mat(self):
-            raise NotImplementedError()
+    def test2_ok_col(self):
+        n = tinit(numpy.ones((2,3))*5)
+        t = n[:,0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        self.failIf(any(n.broadcastable))
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(numpy.all(tval == 5.0))
+
+    def test2_ok_rows_finite(self):
+        n = tinit(numpy.ones((4,3))*5)
+        t = n[1:3,0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(numpy.all(tval == 5.0))
+
+    def test2_ok_cols_infinite(self):
+        n = tinit(numpy.asarray(range(12)).reshape((4,3)))
+        t = n[1,2:]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (1,))
+        self.failUnless(numpy.all(tval == 5))
+
+    def test2_ok_strided(self):
+        n = tinit(numpy.asarray(range(20)).reshape((4,5)))
+        t = n[1:4:2,1:5:2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,2))
+        self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
+
+    def test3_ok_mat(self):
+        n = tinit(numpy.asarray(range(24)).reshape((2,3,4)))
+        t = n[0,0,0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == ())
+        self.failUnless(numpy.all(tval == 0))
 
 
 class T_add(unittest.TestCase):
@@ -332,6 +441,9 @@ class T_div(unittest.TestCase):
         verify_grad(self, DivElemwise, [numpy.random.rand(3), numpy.ones(3)])
         verify_grad(self, DivElemwise, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
 
+class T_log2(unittest.TestCase):
+    def test0(self):
+        verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
 
 class T_pow(unittest.TestCase):
     def setUp(self):
