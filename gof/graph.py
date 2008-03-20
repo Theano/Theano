@@ -241,6 +241,12 @@ def as_string(i, o,
 
     multi = set()
     seen = set()
+    for output in o:
+        op = output.owner
+        if op in seen:
+            multi.add(op)
+        else:
+            seen.add(op)
     for op in ops(i, o):
         for input in op.inputs:
             op2 = input.owner
@@ -265,12 +271,12 @@ def as_string(i, o,
             else:
                 idxs = "::%i" % idx
             if op in done:
-                return "*%i%s" % (multi_index(x), idxs)
+                return "*%i%s" % (multi_index(op), idxs)
             else:
                 done.add(op)
                 s = node_formatter(op, [describe(input) for input in op.inputs])
                 if op in multi:
-                    return "*%i -> %s" % (multi_index(x), s)
+                    return "*%i -> %s" % (multi_index(op), s)
                 else:
                     return s
         else:
