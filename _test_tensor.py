@@ -441,6 +441,9 @@ class T_div(unittest.TestCase):
         verify_grad(self, DivElemwise, [numpy.random.rand(3), numpy.ones(3)])
         verify_grad(self, DivElemwise, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
 
+class T_log2(unittest.TestCase):
+    def test0(self):
+        verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
 
 class T_pow(unittest.TestCase):
     def setUp(self):

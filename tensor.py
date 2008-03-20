@@ -130,31 +130,6 @@ class _Op(BaseTensorOp):
     def input_wrapper(cls, obj):
         return _as_tensor(obj)
     
-#         def upcast(dtype, *dtypes):
-#             z = numpy.zeros((), dtype = dtype)
-#             for dtype in dtypes:
-#                 z = z + numpy.zeros((), dtype = dtype)
-#             return str(z.dtype)
-#         for dtype in i_dtypes:
-#             if dtype is None:
-#                 raise TypeError("Expected a Tensor.")
-#         upcasted = upcast(*i_dtypes)
-#         return [upcasted] * self.nout
-# #         try:
-# #             dmap = self.destroy_map()
-# #         except AttributeError:
-# #             dmap = {}
-# #         rval = []
-# #         for i in xrange(self.nout):
-# #             if i in dmap:
-# #                 destroyed = dmap[output]
-# #                 if len(destroyed) != 1:
-# #                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
-# #                 rval.append(destroyed[0])
-# #             else:
-# #                 rval.append(upcasted)
-# #         return rval
-    
     def impl(self, *inputs):
         raise AbstractFunctionError()
     
@@ -811,3 +786,28 @@ if 0:
         return t
 
 
+#         def upcast(dtype, *dtypes):
+#             z = numpy.zeros((), dtype = dtype)
+#             for dtype in dtypes:
+#                 z = z + numpy.zeros((), dtype = dtype)
+#             return str(z.dtype)
+#         for dtype in i_dtypes:
+#             if dtype is None:
+#                 raise TypeError("Expected a Tensor.")
+#         upcasted = upcast(*i_dtypes)
+#         return [upcasted] * self.nout
+# #         try:
+# #             dmap = self.destroy_map()
+# #         except AttributeError:
+# #             dmap = {}
+# #         rval = []
+# #         for i in xrange(self.nout):
+# #             if i in dmap:
+# #                 destroyed = dmap[output]
+# #                 if len(destroyed) != 1:
+# #                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
+# #                 rval.append(destroyed[0])
+# #             else:
+# #                 rval.append(upcasted)
+# #         return rval
+    
