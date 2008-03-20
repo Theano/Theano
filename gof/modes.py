@@ -1,4 +1,6 @@
 
+### CODE CAN BE SIMPLIFIED IF WE ONLY KEEP BUILD MODE ###
+
 import utils
 import traceback
 from op import Op
@@ -50,7 +52,11 @@ def add_modal_members(cls, *members):
 
 
 def attach_trace(op):
-    stack = traceback.extract_stack()[:-3]
+    """
+    Extracts the stack trace at the point of construction and
+    puts it in the op's trace field.
+    """
+    stack = traceback.extract_stack()[:-3] # we discard 3 levels
     op.trace = stack
 
 def build_mode(op):

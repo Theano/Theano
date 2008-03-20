@@ -4,7 +4,6 @@ Contains the Op class, which is the base interface for all operations
 compatible with gof's graph manipulation routines.
 """
 
-# from result import BrokenLinkError
 from utils import ClsInit, all_bases, all_bases_collect, AbstractFunctionError
 import graph
 
@@ -25,9 +24,6 @@ class Op(object):
     list of at most one Op, its owner. It is the responsibility of the
     Op to ensure that it owns its outputs and it is encouraged (though
     not required) that it creates them.
-
-    After construction, self.inputs and self.outputs should only be
-    modified through the set_input and set_output methods.
     """
 
     __slots__ = ['_inputs', '_outputs']
@@ -42,13 +38,13 @@ class Op(object):
             raise AttributeError("Op does not have a default output.")
 
     out = property(default_output, 
-            doc = "Same as self.outputs[0] if this Op's has_default_output field is True.")
+                   doc = "Same as self.outputs[0] if this Op's has_default_output field is True.")
 
 
     def __init__(self, *inputs):
+        # this might be a bit brainless
         raise AbstractFunctionError("Op is an abstract class. Its constructor does nothing, you must override it.")
 
-    
     def get_input(self, i):
         return self._inputs[i]        
     def set_input(self, i, new):
@@ -121,9 +117,8 @@ class Op(object):
     
     def perform(self):
         """
-        (abstract) Performs the computation associated to this Op,
-        places the result(s) in the output Results and gives them
-        the Computed status.
+        Performs the computation associated to this Op and places the
+        result(s) in the output Results.
         """
         raise AbstractFunctionError()
 
@@ -142,11 +137,12 @@ class Op(object):
 
     def c_validate_update(self):
         """
-        Returns C code that checks that the inputs to this function
-        can be worked on. If a failure occurs, set an Exception
-        and insert "%(fail)s".
+        Returns templated C code that checks that the inputs to this
+        function can be worked on. If a failure occurs, set an
+        Exception and insert "%(fail)s".
         
-        You may use the variable names defined by c_var_names()
+        You may use the variable names defined by c_var_names() in
+        the template.
         """
         raise AbstractFunctionError()
 
@@ -158,11 +154,12 @@ class Op(object):
 
     def c_code(self):
         """
-        Returns C code that does the computation associated to this
-        Op. You may assume that input validation and output allocation
-        have already been done.
+        Returns templated C code that does the computation associated
+        to this Op. You may assume that input validation and output
+        allocation have already been done.
         
-        You may use the variable names defined by c_var_names()
+        You may use the variable names defined by c_var_names() in
+        the templates.
         """
         raise AbstractFunctionError()
 
@@ -193,7 +190,8 @@ class Op(object):
 
     def c_support_code(self):
         """
-        Return utility code for use by this Op.
+        Return utility code for use by this Op. It may refer to support code
+        defined for its input Results.
         """
         raise AbstractFunctionError()
 

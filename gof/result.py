@@ -17,6 +17,8 @@ __all__ = ['ResultBase',
            ]
 
 
+### CLEANUP - DO WE REALLY EVEN THE STATE ANYMORE? ###
+
 class StateError(Exception):
     """The state of the Result is a problem"""
 
@@ -46,14 +48,8 @@ class ResultBase(object):
     index - (ro)
     data - (rw) : calls data_filter when setting
 
-    Methods:
-    alloc() - create storage in data, suitable for use by C ops. 
-                (calls data_alloc)
-
     Abstract Methods:
     data_filter
-    data_alloc
-    
     """
 
     __slots__ = ['_role', '_data', 'state', '_name']
@@ -95,7 +91,7 @@ class ResultBase(object):
         return self._role[0]
 
     owner = property(__get_owner, 
-            doc = "Op of which this Result is an output, or None if role is None")
+                     doc = "Op of which this Result is an output, or None if role is None")
 
     #
     # index
@@ -106,7 +102,7 @@ class ResultBase(object):
         return self._role[1]
 
     index = property(__get_index,
-                doc = "position of self in owner's outputs, or None if role is None")
+                     doc = "position of self in owner's outputs, or None if role is None")
 
 
     # 
@@ -117,6 +113,9 @@ class ResultBase(object):
         return self._data[0]
 
     def __set_data(self, data):
+        """
+        Filters the data provided and sets the result in the storage.
+        """
         if data is self._data[0]:
             return
         if data is None:
@@ -134,12 +133,12 @@ class ResultBase(object):
                     doc = "The storage associated with this result")
 
     def filter(self, data):
-        """(abstract) Raise an exception if the data is not of an
-        acceptable type.
+        """
+        Raise an exception if the data is not of an acceptable type.
 
-        If a subclass overrides this function, __set_data will use
-        it to check that the argument can be used properly. This gives
-        a subclass the opportunity to ensure that the contents of
+        If a subclass overrides this function, __set_data will use it
+        to check that the argument can be used properly. This gives a
+        subclass the opportunity to ensure that the contents of
         self._data remain sensible.
 
         Returns data or an appropriately wrapped data.
@@ -152,6 +151,11 @@ class ResultBase(object):
     #
 
     def c_is_simple(self):
+        """
+        A hint to tell the compiler that this type is a builtin C
+        type or a small struct and that its memory footprint is
+        negligible.
+        """
         return False
     
     def c_declare(self):
@@ -167,8 +171,8 @@ class ResultBase(object):
         call this Result. The Python object self.data is in a
         variable called "py_%(name)s" and this code must set the
         variables declared by c_declare to something representative
-        of py_%(name)s. If the data is improper, set an appropriate error
-        message and insert "%(fail)s".
+        of py_%(name)s. If the data is improper, set an appropriate
+        exception and insert "%(fail)s".
         """
         raise AbstractFunctionError()
     
@@ -177,8 +181,6 @@ class ResultBase(object):
         This returns C code that should deallocate whatever
         c_data_extract allocated or decrease the reference counts. Do
         not decrease py_%(name)s's reference count.
-
-        Note: EITHER c_cleanup OR c_sync will be called.
         """
         raise AbstractFunctionError()
 
@@ -188,7 +190,7 @@ class ResultBase(object):
         representing the name that the caller wants to call this Result.
         The returned code may set "py_%(name)s" to a PyObject* and that PyObject*
         will be accessible from Python via result.data. Do not forget to adjust
-        reference counts if "py_%(name)s" is changed from its original value!
+        reference counts if "py_%(name)s" is changed from its original value.
         """
         raise AbstractFunctionError()
 
@@ -273,6 +275,10 @@ class ResultBase(object):
 
 
 class PythonResult(ResultBase):
+    """
+    Represents a generic Python object. The object is available
+    through %(name)s.
+    """
     
     def c_declare(self):
         return """
@@ -296,6 +302,7 @@ class PythonResult(ResultBase):
         py_%(name)s = %(name)s;
         Py_XINCREF(py_%(name)s);
         """
+    
     def same_properties(self, other):
         return False
 

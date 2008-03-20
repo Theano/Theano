@@ -1,6 +1,4 @@
 
-# from features import Tool
-
 from utils import AbstractFunctionError
 import utils
 
@@ -10,8 +8,16 @@ import traceback
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):
+    """
+    This function is meant to replace excepthook and do some
+    special work if the exception value has a __thunk_trace__
+    field. In that case, it retrieves the field, which should
+    contain a trace as returned by traceback.extract_stack,
+    and prints it out on stderr.
+
+    The normal excepthook is then called.
+    """
     if hasattr(value, '__thunk_trace__'):
-        # such a hack :(
         trace2 = value.__thunk_trace__
         if trace2 is None:
             print>>sys.stderr, "Could not find where this Op was defined."
@@ -23,22 +29,6 @@ def thunk_hook(type, value, trace):
                 print>>sys.stderr, line,
     __excepthook(type, value, trace)
 sys.excepthook = thunk_hook
-
-# __excepthook = sys.excepthook
-# def thunk_hook(type, value, trace):
-#     if len(value.args) > 0 and hasattr(value[0], '__thunk_trace__'):
-#         # such a hack :(
-#         trace2 = value[0].__thunk_trace__ #.exc_info
-#         if trace2 is None:
-#             print>>sys.stderr, "Could not find where this Op was defined."
-#             print>>sys.stderr, " * You might have instantiated this Op directly instead of using a constructor."
-#             print>>sys.stderr, " * The Op you constructed might have been optimized. Try turning off optimizations."
-#         elif trace2:
-#             print>>sys.stderr, "Definition in: "
-#             for line in traceback.format_list(trace2):
-#                 print>>sys.stderr, line,
-#     __excepthook(type, value, trace)
-# sys.excepthook = thunk_hook
 
 
 
@@ -108,6 +98,10 @@ class Linker:
 
 
 class PerformLinker(Linker):
+    """
+    Basic Linker subclass that calls the perform method on each op in
+    the env in the order given by env.toposort.
+    """
 
     def make_thunk(self, inplace = False):
         if inplace:
@@ -133,127 +127,64 @@ class PerformLinker(Linker):
         return f, env.inputs, env.outputs
 
 
-class ProfilePerformLinker(Linker):
 
-    def compile(self):
-        order = self.env.toposort()
-        thunks = [op.perform for op in order]
-        self.n_calls = 0
-        self.n_thunks = 0
-        self.times = [0.0 for op in self.order]
-        def f():
-            for thunk in thunks:
-                thunk()
-        self.thunk = f
-        self.order = order
-        self.thunks = thunks
-    
-    def slow_call(self):
-        """Run the program, timing each thunk."""
-        for i, thunk in enumerate(self.thunks):
-            start_time = time.time()
-            thunk()
-            self.times[i] += time.time() - start_time
-            self.n_thunks += 1
-        self.n_calls += 1
+### PROFILEPERFORMLINKER USES COMPLETELY OUTDATED INTERFACE - FIX ###
 
-    def fast_call(self):
-        """Run the program, but only time the entire loop."""
-        start_time = time.time()
-        for thunk in self.thunks:
-            thunk()
-        self.n_thunks += len(self.thunks)
-        self.n_calls += 1
-        self.times[0] += time.time() - start_time
-
-    __call__ = slow_call
-
-    def dump(self, proportion=True):
-        """Print statistics accumulated so far."""
-        total_time = sum(self.times)
-        print self.n_calls, 'calls took', total_time, 'seconds to evaluate',
-        print self.n_thunks, 'thunks'
-
-        if 0:
-            print 'Proportion of CPU per op'
-            for op, t in zip(self.order, self.times):
-                s_op = str(op).split()[0][1:]
-                print "  %-35s %4.5f"% (s_op, t/total_time)
-
-        print 'Proportion of CPU per op class'
-        dct = {}
-        for op, t in zip(self.order, self.times):
-            s_op = str(op).split()[0][1:]
-            dct[s_op] = dct.get(s_op, 0.0) + t
-        for t, s_op in reversed(sorted([(t,op) for op, t in dct.items()])):
-            if proportion:
-                print "  %-35s %4.5f"% (s_op, t/total_time)
-            else:
-                print "  %-35s %4.5f"% (s_op, t)
-
-    
-
-
-
-# class Linker(Tool):
+# class ProfilePerformLinker(Linker):
 
 #     def compile(self):
-#         raise AbstractFunctionError()
-
-#     def run(self):
-#         raise AbstractFunctionError()
-
+#         order = self.env.toposort()
+#         thunks = [op.perform for op in order]
+#         self.n_calls = 0
+#         self.n_thunks = 0
+#         self.times = [0.0 for op in self.order]
+#         def f():
+#             for thunk in thunks:
+#                 thunk()
+#         self.thunk = f
+#         self.order = order
+#         self.thunks = thunks
     
-
-
-
-
-# def perform_linker(env, target = None):
-#     order = env.toposort()
-#     thunks = [op.perform for op in order]
-#     def ret():
-#         for thunk in thunks:
+#     def slow_call(self):
+#         """Run the program, timing each thunk."""
+#         for i, thunk in enumerate(self.thunks):
+#             start_time = time.time()
 #             thunk()
-#     if not target:
-#         return ret
-#     else:
-#         raise NotImplementedError("Cannot write thunk representation to a file.")
+#             self.times[i] += time.time() - start_time
+#             self.n_thunks += 1
+#         self.n_calls += 1
 
-
-# def perform_linker_nochecks(env, target = None):
-#     order = env.toposort()
-#     thunks = [op._perform for op in order]
-#     def ret():
-#         for thunk in thunks:
+#     def fast_call(self):
+#         """Run the program, but only time the entire loop."""
+#         start_time = time.time()
+#         for thunk in self.thunks:
 #             thunk()
-#     if not target:
-#         return ret
-#     else:
-#         raise NotImplementedError("Cannot write thunk representation to a file.")
+#         self.n_thunks += len(self.thunks)
+#         self.n_calls += 1
+#         self.times[0] += time.time() - start_time
 
+#     __call__ = slow_call
 
-# def cthunk_linker(env):
-#     order = env.toposort()
-#     thunks = []
-#     cstreak = []
+#     def dump(self, proportion=True):
+#         """Print statistics accumulated so far."""
+#         total_time = sum(self.times)
+#         print self.n_calls, 'calls took', total_time, 'seconds to evaluate',
+#         print self.n_thunks, 'thunks'
 
-#     def append_cstreak():
-#         if cstreak:
-#             thunks.append(cutils.create_cthunk_loop(*cstreak))
-#             cstreak = []
-#     def ret():
-#         for thunk in thunks:
-#             thunk()
+#         if 0:
+#             print 'Proportion of CPU per op'
+#             for op, t in zip(self.order, self.times):
+#                 s_op = str(op).split()[0][1:]
+#                 print "  %-35s %4.5f"% (s_op, t/total_time)
 
-#     for op in order:
-#         if hasattr(op, 'cthunk'):
-#             cstreak.append(op.cthunk())
-#         else:
-#             append_cstreak()
-#             thunks.append(op.perform)
-
-#     if len(thunks) == 1:
-#         return thunks[0]
-#     else:
-#         return ret
+#         print 'Proportion of CPU per op class'
+#         dct = {}
+#         for op, t in zip(self.order, self.times):
+#             s_op = str(op).split()[0][1:]
+#             dct[s_op] = dct.get(s_op, 0.0) + t
+#         for t, s_op in reversed(sorted([(t,op) for op, t in dct.items()])):
+#             if proportion:
+#                 print "  %-35s %4.5f"% (s_op, t/total_time)
+#             else:
+#                 print "  %-35s %4.5f"% (s_op, t)
 
