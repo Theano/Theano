@@ -2,7 +2,7 @@
 import unittest
 import numpy
 
-from tensor import tinit, Tensor
+from tensor import astensor, Tensor
 import gof
 from gof import modes, Env
 
@@ -29,9 +29,9 @@ def inputs():
     l1 = [[1.0, 2.0], [3.0, 4.0]]
     l2 = [[3.0, 4.0], [1.0, 2.0]]
     l3 = numpy.ones((2, 3))
-    x = modes.build(tinit(l1, name = 'x'))
-    y = modes.build(tinit(l2, name = 'y'))
-    z = modes.build(tinit(l3, name = 'z'))
+    x = modes.build(astensor(l1, name = 'x'))
+    y = modes.build(astensor(l2, name = 'y'))
+    z = modes.build(astensor(l3, name = 'z'))
     return x, y, z
 
 def env(inputs, outputs, validate = True, features = []):

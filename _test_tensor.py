@@ -18,7 +18,7 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
     pt = [numpy.asarray(p) for p in pt]
 
     for test_num in xrange(n_tests):
-        tensor_pt = [tinit(p,name='input %i'%i) for i,p in enumerate(pt)]
+        tensor_pt = [astensor(p,name='input %i'%i) for i,p in enumerate(pt)]
         o = op_cls(*tensor_pt)
         if len(o.outputs) > 1:
             raise NotImplementedError('cant (yet) autotest gradient of op with multiple outputs')
@@ -28,7 +28,7 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
         o_fn = Function(tensor_pt, o.outputs)
         o_fn_out = o_fn(*pt)
         random_projection = rng.rand(*o_fn_out.shape)
-        t_r = tinit(random_projection)
+        t_r = astensor(random_projection)
 
         #random projection of o onto t_r
         cost = sum(t_r * o.outputs[0])
@@ -36,7 +36,7 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
 
         num_grad = gradient.numeric_grad(cost_fn, pt)
 
-        symbolic_grad = gradient.grad(cost, tensor_pt,tinit(1.0,name='g_cost'))
+        symbolic_grad = gradient.grad(cost, tensor_pt,astensor(1.0,name='g_cost'))
         if 0:
             print '-------'
             print '----------'
@@ -74,47 +74,47 @@ class T_argmax(unittest.TestCase):
         Argmax.debug = 0
 
     def test0(self):
-        n = tinit(5.0)
+        n = astensor(5.0)
         v,i = eval_outputs(argmax(n))
         self.failUnless(v == 5.0)
         self.failUnless(i == 0)
 
     def test1(self):
-        n = tinit([1,2,3,2,-6])
+        n = astensor([1,2,3,2,-6])
         v,i = eval_outputs(argmax(n))
         self.failUnless(v == 3)
         self.failUnless(i == 2)
 
     def test2(self):
-        n = tinit(numpy.random.rand(2,3))
+        n = astensor(numpy.random.rand(2,3))
         v,i = eval_outputs(argmax(n))
         self.failUnless(numpy.all(i == [0,1]))
     def test2b(self):
-        n = tinit(numpy.random.rand(2,3))
+        n = astensor(numpy.random.rand(2,3))
         v,i = eval_outputs(argmax(n,axis=0))
         self.failUnless(numpy.all(i == [0,1,1]))
     def test2_invalid(self):
-        n = tinit(numpy.random.rand(2,3))
+        n = astensor(numpy.random.rand(2,3))
         try:
             eval_outputs(argmax(n,axis=3))
             self.fail()
         except ValueError, e:
             return
     def test2_invalid_neg(self):
-        n = tinit(numpy.random.rand(2,3))
+        n = astensor(numpy.random.rand(2,3))
         try:
             eval_outputs(argmax(n,axis=-3))
             self.fail()
         except ValueError, e:
             return
     def test2_valid_neg(self):
-        n = tinit(numpy.random.rand(2,3))
+        n = astensor(numpy.random.rand(2,3))
         v,i = eval_outputs(argmax(n,axis=-1))
         self.failUnless(v.shape == (2,))
         v,i = eval_outputs(argmax(n,axis=-2))
         self.failUnless(v.shape == (3,))
     def test3(self):
-        n = tinit(numpy.random.rand(2,3,4))
+        n = astensor(numpy.random.rand(2,3,4))
         v,i = eval_outputs(argmax(n,axis=0))
         self.failUnless(v.shape == (3,4))
         self.failUnless(i.shape == (3,4))
@@ -128,7 +128,7 @@ class T_argmax(unittest.TestCase):
 
 class T_transpose(unittest.TestCase):
     def test0(self):
-        n = tinit(numpy.ones(()))
+        n = astensor(numpy.ones(()))
         t = transpose(n)
         self.failUnless(t.owner.__class__ is Transpose)
         f = Function([n], [t])
@@ -140,7 +140,7 @@ class T_transpose(unittest.TestCase):
         self.failUnless(n.data == 56.0)
         
     def test1(self):
-        n = tinit(numpy.ones(5))
+        n = astensor(numpy.ones(5))
         t = transpose(n)
         self.failUnless(t.owner.__class__ is Transpose)
         f = Function([n], [t])
@@ -151,7 +151,7 @@ class T_transpose(unittest.TestCase):
         self.failUnless(n.data[0] == 56.0)
         
     def test2(self):
-        n = tinit(numpy.ones((5,3)))
+        n = astensor(numpy.ones((5,3)))
         t = transpose(n)
         self.failUnless(t.owner.__class__ is Transpose)
         f = Function([n], [t])
@@ -162,7 +162,7 @@ class T_transpose(unittest.TestCase):
         self.failUnless(n.data[0,0] == 56.0)
 
     def test3(self):
-        n = tinit(numpy.ones((5,3,2)))
+        n = astensor(numpy.ones((5,3,2)))
         t = transpose(n)
         self.failUnless(t.owner.__class__ is Transpose)
         f = Function([n], [t])
@@ -175,14 +175,14 @@ class T_transpose(unittest.TestCase):
 class T_subtensor(unittest.TestCase):
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
-        n = tinit(numpy.ones(()))
+        n = astensor(numpy.ones(()))
         try:
             t = n[0]
             self.fail()
         except ValueError, e:
             self.failUnless(e[0] is Subtensor.e_invalid)
     def test1_err_bounds(self):
-        n = tinit(numpy.ones(3))
+        n = astensor(numpy.ones(3))
         t = n[7]
         self.failUnless(t.owner.__class__ is Subtensor)
         try:
@@ -192,42 +192,42 @@ class T_subtensor(unittest.TestCase):
             if e[0] != 'index out of bounds':
                 raise
     def test1_ok_range_finite(self):
-        n = tinit(numpy.ones(3)*5)
+        n = astensor(numpy.ones(3)*5)
         t = n[0:2]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
     def test2_ok_range_finite(self):
-        n = tinit(numpy.ones((3,4))*5)
+        n = astensor(numpy.ones((3,4))*5)
         t = n[0:2,3]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
     def test1_err_invalid(self):
-        n = tinit(numpy.ones(1))
+        n = astensor(numpy.ones(1))
         try:
             t = n[0,0]
             self.fail()
         except ValueError, e:
             self.failUnless(e[0] is Subtensor.e_invalid)
     def test1_ok_elem(self):
-        n = tinit(numpy.ones(1)*5)
+        n = astensor(numpy.ones(1)*5)
         t = n[0]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
         self.failUnless(tval.shape == ())
         self.failUnless(tval == 5.0)
     def test1_ok_range_infinite(self):
-        n = tinit(numpy.ones(3)*5)
+        n = astensor(numpy.ones(3)*5)
         t = n[1:]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
     def test1_ok_strided(self):
-        n = tinit(numpy.ones(5)*5)
+        n = astensor(numpy.ones(5)*5)
         t = n[1::2]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
@@ -239,7 +239,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(tval[1] == 5.0)
 
     def test2_err_bounds0(self):
-        n = tinit(numpy.ones((2,3))*5)
+        n = astensor(numpy.ones((2,3))*5)
         t = n[0,4]
         self.failUnless(t.owner.__class__ is Subtensor)
         try:
@@ -248,7 +248,7 @@ class T_subtensor(unittest.TestCase):
         except IndexError, e:
             return
     def test2_err_bounds1(self):
-        n = tinit(numpy.ones((2,3))*5)
+        n = astensor(numpy.ones((2,3))*5)
         t = n[4:5,2]
         self.failUnless(t.owner.__class__ is Subtensor)
         try:
@@ -257,14 +257,14 @@ class T_subtensor(unittest.TestCase):
             if e[0] != 'index out of bounds':
                 raise
     def test2_ok_elem(self):
-        n = tinit(numpy.asarray(range(6)).reshape((2,3)))
+        n = astensor(numpy.asarray(range(6)).reshape((2,3)))
         t = n[0,2]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 2))
     def test2_ok_row(self):
-        n = tinit(numpy.asarray(range(6)).reshape((2,3)))
+        n = astensor(numpy.asarray(range(6)).reshape((2,3)))
         t = n[1]
         self.failIf(any(n.broadcastable))
         self.failUnless(t.owner.__class__ is Subtensor)
@@ -273,7 +273,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == [3,4,5]))
 
     def test2_ok_col(self):
-        n = tinit(numpy.ones((2,3))*5)
+        n = astensor(numpy.ones((2,3))*5)
         t = n[:,0]
         self.failUnless(t.owner.__class__ is Subtensor)
         self.failIf(any(n.broadcastable))
@@ -282,7 +282,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_rows_finite(self):
-        n = tinit(numpy.ones((4,3))*5)
+        n = astensor(numpy.ones((4,3))*5)
         t = n[1:3,0]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
@@ -290,7 +290,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_cols_infinite(self):
-        n = tinit(numpy.asarray(range(12)).reshape((4,3)))
+        n = astensor(numpy.asarray(range(12)).reshape((4,3)))
         t = n[1,2:]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
@@ -298,7 +298,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == 5))
 
     def test2_ok_strided(self):
-        n = tinit(numpy.asarray(range(20)).reshape((4,5)))
+        n = astensor(numpy.asarray(range(20)).reshape((4,5)))
         t = n[1:4:2,1:5:2]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
@@ -306,7 +306,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
 
     def test3_ok_mat(self):
-        n = tinit(numpy.asarray(range(24)).reshape((2,3,4)))
+        n = astensor(numpy.asarray(range(24)).reshape((2,3,4)))
         t = n[0,0,0]
         self.failUnless(t.owner.__class__ is Subtensor)
         tval = eval_outputs([t])
@@ -318,8 +318,8 @@ class T_add(unittest.TestCase):
 
     def test_complex_all_ops(self):
         for nbits in (64, 128):
-            a = tinit(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
-            b = tinit(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
+            a = astensor(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
+            b = astensor(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
             tests = (("+", lambda x,y: x+y),
                      ("-", lambda x,y: x-y),
                      ("*", lambda x,y: x*y),
@@ -331,12 +331,12 @@ class T_add(unittest.TestCase):
 
 class T_abs(unittest.TestCase):
     def test_impl(self):
-        t = tinit(1.0)
+        t = astensor(1.0)
         check_eq(self, t, abs(t), 1.0, 1.0)
         check_eq(self, t, abs(t), -1.0, 1.0)
 
         for shape in (2,), (3,4):
-            t = tinit(numpy.ones(shape))
+            t = astensor(numpy.ones(shape))
             d = numpy.random.rand(*shape)*2-1.0
             check_eq(self, t, abs(t), d, abs(d))
             check_eq(self, t, abs(t), -d, abs(-d))
@@ -374,11 +374,11 @@ class T_fill(unittest.TestCase):
 
 class T_sum(unittest.TestCase):
     def test_impl(self):
-        t = tinit(0.0)
+        t = astensor(0.0)
         check_eq(self, t, Sum(t).out, 1.0, 1.0)
         check_eq(self, t, Sum(t).out, -1.0, -1.0)
 
-        t = tinit([0.0, 0.0])
+        t = astensor([0.0, 0.0])
         d = numpy.asarray([-0.4, 1.2])
         check_eq(self, t, Sum(t).out, d, numpy.sum(d))
         check_eq(self, t, Sum(t).out, -d, -numpy.sum(d))
@@ -388,14 +388,14 @@ class T_mul(unittest.TestCase):
         numpy.random.seed([1,2,3,4])
 
     def test_elemwise(self):
-        a = tinit(0.0)
-        b = tinit(0.0)
+        a = astensor(0.0)
+        b = astensor(0.0)
         check_eq2(self, [a,b], mul_elemwise(a,b), [3.0, 4.0], 12.0)
         check_eq2(self, [a,b], mul_elemwise(b,a), [-1.0,2.0], -2.0)
         self.failUnless(isinstance(mul(a,b).owner, Scale))
 
-        a = tinit(numpy.ones(2))
-        b = tinit(numpy.ones(2))
+        a = astensor(numpy.ones(2))
+        b = astensor(numpy.ones(2))
         aa = numpy.asarray([-0.5, 4.0])
         bb = numpy.asarray([-0.5, 2.0])
         check_eq2(self, [a,b], mul_elemwise(a,b), [aa,bb], numpy.asarray([0.25, 8.0]))
@@ -404,24 +404,24 @@ class T_mul(unittest.TestCase):
 
     def test_scalar(self):
         r = numpy.random.rand(2,3)
-        a = tinit(r)
-        b = tinit(2.0)
+        a = astensor(r)
+        b = astensor(2.0)
         check_eq2(self, [a,b], scale(a,b), [r, 2.0], r*2.0)
         check_eq2(self, [a,b], scale(a,b), [r, 4.0], r*4.0)
         self.failUnless(b.data == 2.0)
 
     def test_operator(self):
-        a = tinit([1,1])
-        aa = tinit([1,1])
-        b = tinit(4)
+        a = astensor([1,1])
+        aa = astensor([1,1])
+        b = astensor(4)
         self.failUnless(isinstance((a*b).owner, Scale))
         self.failUnless(isinstance((b*a).owner, Scale))
         self.failUnless(isinstance((a*aa).owner, MulElemwise))
         self.failUnless(isinstance((aa*a).owner, MulElemwise))
 
     def test_wrong_shapes(self):
-        a = tinit(numpy.ones(3))
-        b = tinit(numpy.ones(4))
+        a = astensor(numpy.ones(3))
+        b = astensor(numpy.ones(4))
         try:
             check_eq2(self, [a,b], MulElemwise(a,b).out,
                     [numpy.ones(3), numpy.ones(4)], 1.0)
@@ -471,15 +471,14 @@ class _testCase_matinv(unittest.TestCase):
         a = Tensor('float64', broadcastable=[False,False], name='a')
         b = Tensor('float64', broadcastable=[False,False], name='b')
         ab = a*b
-        # Here, tinit actually uses the data allocated by numpy.
-        # TODO: Rename tinit to tensor
-        diff = ab - tinit(numpy.ones((dim,dim)))
+        # Here, astensor actually uses the data allocated by numpy.
+        diff = ab - astensor(numpy.ones((dim,dim)))
         # Sum of squared errors
         ssdiff = sum((diff**2.0))
 
         # May be able to abbreviate this by assuming default parameter
         # TODO: Test that default works
-        g_b = gradient.grad(ssdiff, b, tinit(numpy.ones(1),name='g_cost'))
+        g_b = gradient.grad(ssdiff, b, astensor(numpy.ones(1),name='g_cost'))
         #g_b = gradient.grad(ssdiff, b)     # This should be the abbreviated version
 
         # compilation to function

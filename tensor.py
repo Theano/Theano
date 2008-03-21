@@ -67,7 +67,7 @@ class Tensor(BaseTensor):
     def __getslice__(self, *args): return subtensor(self, slice(*args))
 
 # alternate Tensor constructor
-def tinit(data, broadcastable=None, role=None, name=None):
+def astensor(data, broadcastable=None, role=None, name=None):
     """Return a Tensor containing given data"""
     data = numpy.asarray(data)
     if broadcastable is None:
@@ -90,7 +90,7 @@ def _scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
             if isinstance(obj, Tensor):
                 return obj
             else:
-                return tinit(obj)
+                return astensor(obj)
         x, y = as_tensor(x), as_tensor(y)
         if 0 not in y.broadcastable:
             return scalar_f(x, y)
@@ -119,7 +119,7 @@ def _as_tensor(obj):
     if isinstance(obj, Tensor):
         return obj
     else:
-        return tinit(obj)
+        return astensor(obj)
 
 class _Op(BaseTensorOp):
     """A convenient base for the ops in this file"""
