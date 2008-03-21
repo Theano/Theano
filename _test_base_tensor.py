@@ -56,7 +56,7 @@ class T_tensor(unittest.TestCase):
         self.failUnless(numpy.all(t.data == f(t.data)))
     def test_data_normal(self): #test that assigning to .data works when it should
         t = _tensor(numpy.ones((5,1),dtype='complex64'), broadcastable=0)
-        o27 = numpy.ones((2,7))
+        o27 = numpy.ones((2,7), dtype='complex64')
         t.data = o27
         lst = t._data
         self.failUnless(t.data.shape == (2,7))
