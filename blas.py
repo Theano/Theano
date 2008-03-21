@@ -1,5 +1,4 @@
 import os, sys
-from gof import PatternOptimizer as pattern_opt, OpSubOptimizer as op_sub
 import scipy.weave as weave
 
 """

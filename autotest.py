@@ -4,10 +4,9 @@ def test_root_dir():
     suite = None
     filenames = os.listdir('.')
     for filename in filenames:
-        if filename[-3:] == '.py':
-            modname = filename[:-3]
-            if modname in ['__init__', 'autotest']: continue
+        if filename[-3:] == '.py' and filename[0:5] == '_test':
             #print >>sys.stderr, 'Loading', modname
+            modname = filename[0:-3]
             tests = unittest.TestLoader().loadTestsFromModule(__import__(modname))
             if tests.countTestCases() > 0:
                 print >>sys.stderr, 'Testing', modname
