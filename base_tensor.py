@@ -26,7 +26,11 @@ class BaseTensor(ResultBase):
     """
 
     def __init__(self, dtype, broadcastable, role=None, name=None):
-        """Initialize a Tensor"""
+        """Initialize a Tensor
+        
+        Note:
+        This does not actually allocate any data.
+        """
 
         # data is not given here. This may seem a bit strange, but when data was
         # an argument, it made sense to use *either* the given dtype,

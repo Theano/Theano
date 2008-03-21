@@ -457,38 +457,50 @@ class T_pow(unittest.TestCase):
     def test_scalar_r(self):
         verify_grad(self, PowScalarR, [numpy.random.rand(3), numpy.asarray(3.0)])
 
-class _testCase_matinv:#(unittest.TestCase):
+class _testCase_matinv(unittest.TestCase):
 
     def setUp(self):
         numpy.random.seed(1)
 
-    def mat_recip(self,dim):
+    def mat_reciprocal(self,dim):
         # symbolic program
-        a = Tensor('float64', [0,0], name='a')
-        b = Tensor('float64', [0,0], name='b')
+        # broadcastable=[False,False] means that the shape of matrix is two dimensional,
+        # and none of the dimensions are constrained to have length 1.
+        # Note that Tensor's constructor does not actually allocate any memory.
+        # TODO: Make Tensor syntax more explicit, and maybe give shape or number of dimensions.
+        a = Tensor('float64', broadcastable=[False,False], name='a')
+        b = Tensor('float64', broadcastable=[False,False], name='b')
         ab = a*b
+        # Here, tinit actually uses the data allocated by numpy.
+        # TODO: Rename tinit to tensor
         diff = ab - tinit(numpy.ones((dim,dim)))
+        # Sum of squared errors
         ssdiff = sum((diff**2.0))
+
+        # May be able to abbreviate this by assuming default parameter
+        # TODO: Test that default works
         g_b = gradient.grad(ssdiff, b, tinit(numpy.ones(1),name='g_cost'))
+        #g_b = gradient.grad(ssdiff, b)     # This should be the abbreviated version
 
         # compilation to function
+        # [a,b] are the inputs, [ssdiff,g_b] are the outputs
         fn = Function([a,b], [ssdiff,g_b])
 
         # use the function
+        x = numpy.random.rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
         w = numpy.random.rand(dim,dim)
-        wi = numpy.random.rand(dim,dim)
         for i in xrange(300):
-            ssd, gw = fn(w,wi)
-            #print ssd
+            ssd, gw = fn(x,w)
+            #print ssd, x*w, x, w
             if i == 0:
                 str0 = str(ssd)
-            wi -= 0.4 * gw
+            w -= 0.4 * gw
 
         return str0, str(ssd)
 
-    def test_recip(self):
+    def test_reciprocal(self):
         """Matrix reciprocal by gradient descent"""
-        self.assertEqual(('2.67327580893', '0.000438649434819'), self.mat_recip(3))
+        self.assertEqual(('6.10141615619', '0.00703816291711'), self.mat_reciprocal(3))
 
 if __name__ == '__main__':
     unittest.main()
