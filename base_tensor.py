@@ -57,7 +57,8 @@ class BaseTensor(ResultBase):
     #
     def filter(self, arr):
         """cast to an ndarray and ensure arr has correct rank, shape"""
-        if not isinstance(arr, numpy.ndarray):
+        if not (isinstance(arr, numpy.ndarray) \
+                and arr.dtype==self.dtype):
             arr = numpy.asarray(arr, dtype = self.dtype)
         if len(self.broadcastable) != len(arr.shape):
             raise ValueError(BaseTensor.filter.E_rank,

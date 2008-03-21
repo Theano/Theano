@@ -99,6 +99,11 @@ class T_tensor(unittest.TestCase):
         except ValueError, e:
             self.failUnless(e[0] is BaseTensor.filter.E_shape)
 
+    def test_cast0(self):
+        t = BaseTensor('float32', [0])
+        t.data = numpy.random.rand(4) > 0.5
+        print t.data
+
 class T_stdlib(unittest.TestCase):
     def test0(self):
         t = _tensor(1.0)
