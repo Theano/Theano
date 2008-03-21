@@ -532,7 +532,7 @@ class t_dot(unittest.TestCase):
             x = numpy.asarray(x)
             return type(x), x.dtype, x.shape
         nz = numpy.dot(x,y)
-        tz = eval_outputs([dot(tinit(x), tinit(y))])
+        tz = eval_outputs([dot(astensor(x), astensor(y))])
         self.failUnless(tz.dtype == nz.dtype)
         self.failUnless(tz.shape == nz.shape)
         self.failUnless(_approx_eq(nz, tz))
@@ -590,7 +590,7 @@ class t_gemm(unittest.TestCase):
     def cmp(self, z, a, x, y, b):
         z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
         cz = z.copy()
-        tz,ta,tx,ty,tb = [tinit(p) for p in z,a,x,y,b]
+        tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
 
         f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)])
         new_z = f(z,a,x,y,b)
