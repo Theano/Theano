@@ -1,20 +1,15 @@
 
-from core import *
-import gof
-
-from gof import PatternOptimizer as pattern_opt, OpSubOptimizer as op_sub
-
 """
 This variable is used in compile.prog as the optimizer for all programs built
 using either compile.single, compile.to_func, and compile.prog.
 
-"""
 
-def optimizer(lst):
-    begin = gof.SeqOptimizer([])
-    end   = gof.SeqOptimizer([gof.DummyRemover])
-    seq_opt = gof.SeqOptimizer(begin + lst + end)
-    return gof.PythonOpt(gof.MergeOptMerge(seq_opt))
+if 0:
+    def optimizer(lst):
+        begin = gof.SeqOptimizer([])
+        end   = gof.SeqOptimizer([gof.DummyRemover])
+        seq_opt = gof.SeqOptimizer(begin + lst + end)
+        return gof.PythonOpt(gof.MergeOptMerge(seq_opt))
 
 if 0:
     optimizer_begin = gof.SeqOptimizer([opt for name, opt in [
@@ -34,3 +29,4 @@ if 0:
                  (iadd_elemwise, 'y', 'x'))]]])
 #         ['remove_copies',               gof.OpRemover(array_copy)],
 #         [None,                          gof.DummyRemover] # has to be at the end
+"""

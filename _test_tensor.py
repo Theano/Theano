@@ -194,6 +194,7 @@ class T_subtensor(unittest.TestCase):
             t = n[0]
         except ValueError, e:
             self.failUnless(e[0] is Subtensor.e_invalid)
+            return
         self.fail()
     def test1_err_bounds(self):
         n = tinit(numpy.ones(3))
@@ -372,6 +373,7 @@ class T_abs(unittest.TestCase):
             verify_grad(self, T_abs.AbsBadGrad, [numpy.ones(())])
         except Exception, e:
             self.failUnless(str(e) == verify_grad.E_grad, str(e))
+            return
         self.fail()
 
 class T_fill(unittest.TestCase):
@@ -441,6 +443,7 @@ class T_mul(unittest.TestCase):
                     [numpy.ones(3), numpy.ones(4)], 1.0)
         except ValueError, e:
             self.failUnless(e[0] is tensor._assert_same_shapes.E_shape)
+            return
         self.fail()
 
 class T_div(unittest.TestCase):

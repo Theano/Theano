@@ -3,13 +3,11 @@ import unittest
 import numpy
 from scipy import sparse
 
-import gof.lib
-import core
-import grad
+import gof
 
 # Wrapper type
 
-class SparseR(core.ResultBase):
+class SparseR(gof.ResultBase):
     """
     Attribute:
     format - a subclass of sparse.spmatrix indicating self.data.__class__
