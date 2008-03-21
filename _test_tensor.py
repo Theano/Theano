@@ -493,10 +493,7 @@ class _testCase_matinv(unittest.TestCase):
         # Sum of squared errors
         ssdiff = sum((diff**2.0))
 
-        # May be able to abbreviate this by assuming default parameter
-        # TODO: Test that default works
-        g_b = gradient.grad(ssdiff, b, astensor(numpy.ones(1),name='g_cost'))
-        #g_b = gradient.grad(ssdiff, b)     # This should be the abbreviated version
+        g_b = gradient.grad(ssdiff, b)
 
         # compilation to function
         # [a,b] are the inputs, [ssdiff,g_b] are the outputs

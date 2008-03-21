@@ -107,7 +107,7 @@ def _assert_same_shapes(x, *rest):
     shape = x.shape
     for other in rest:
         if other.shape != shape:
-            raise ValueError(_assert_same_shapes.E_shape)
+            raise ValueError(_assert_same_shapes.E_shape, shape, other.shape)
 _assert_same_shapes.E_shape = "The dimensions of the inputs do not match."
 
 def _assert_tensor_scalar(x, a):
@@ -470,7 +470,11 @@ subtensor = _constructor(Subtensor)
 # Elemwise #
 class AddElemwise(_Elemwise):
     def impl(self, x, y):
-        _assert_same_shapes(x, y)
+        try:
+            _assert_same_shapes(x, y)
+        except Exception, e:
+            print '------ ERROR HERE'
+            raise
         return x + y
     def grad(self, (x, y), gz):
         return gz, gz
