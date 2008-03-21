@@ -463,6 +463,16 @@ class T_log2(unittest.TestCase):
     def test0(self):
         verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
 
+class T_log(unittest.TestCase):
+    def test0(self):
+        verify_grad(self, Log, [numpy.random.rand(3,1)+0.0001])
+    def test1(self):
+        a = astensor(numpy.ones(2))
+        b = astensor(numpy.ones(2))
+        aa = numpy.asarray([0.5, 4.0])
+        bb = numpy.asarray([0.5, 2.0])
+        check_eq2(self, [a], log(a), [aa], numpy.log(numpy.asarray(aa)))
+
 class T_pow(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(9999)
