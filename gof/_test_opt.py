@@ -182,6 +182,19 @@ class _test_PatternOptimizer(unittest.TestCase):
                          (Op2, '1', z)).optimize(g)
         assert str(g) == "[Op1(Op2(y, z), y)]"
 
+    def test_constraints(self):
+        x, y, z = inputs()
+        e = op4(op1(op2(x, y)), op1(op1(x, y)))
+        g = env([x, y, z], [e])
+        def constraint(env, r):
+            # Only replacing if the input is an instance of Op2
+            return isinstance(r.owner, Op2)
+        PatternOptimizer((Op1, {'pattern': '1',
+                                'constraint': constraint}),
+                         (Op3, '1')).optimize(g)
+        assert str(g) == "[Op4(Op3(Op2(x, y)), Op1(Op1(x, y)))]"
+        
+
 
 class _test_OpSubOptimizer(unittest.TestCase):
     

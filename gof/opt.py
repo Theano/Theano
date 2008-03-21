@@ -209,19 +209,63 @@ class OpRemover(Optimizer):
 
 class PatternOptimizer(OpSpecificOptimizer):
     """
-    Replaces all occurrences of the first pattern by the second pattern.
+    Replaces all occurrences of the input pattern by the output pattern.
+
+     input_pattern ::= (OpClass, <sub_pattern1>, <sub_pattern2>, ...)
+     input_pattern ::= dict(pattern = <input_pattern>,
+                            constraint = <constraint>)
+     sub_pattern ::= input_pattern
+     sub_pattern ::= string
+     sub_pattern ::= a Result r such that r.constant is True
+     constraint ::= lambda env, expr: additional matching condition
+     
+     output_pattern ::= (OpClass, <output_pattern1>, <output_pattern2>, ...)
+     output_pattern ::= string
+
+    Each string in the input pattern is a variable that will be set to
+    whatever expression is found in its place. If the same string is
+    used more than once, the same expression must be found in those
+    places. If a string used in the input pattern is used in the
+    output pattern, the matching expression will be inserted in its
+    place. The input pattern cannot just be a string but the output
+    pattern can.
+
+    If you put a constant result in the input pattern, there will be a
+    match iff a constant result with the same value is found in its
+    place.
+
+    You can add a constraint to the match by using the dict(...)  form
+    described above with a 'constraint' key. The constraint must be a
+    function that takes the env and the current Result that we are
+    trying to match and returns True or False according to an
+    arbitrary criterion.
+
+    Examples:
+     PatternOptimizer((Add, 'x', 'y'), (Add, 'y', 'x'))
+     PatternOptimizer((Multiply, 'x', 'x'), (Square, 'x'))
+     PatternOptimizer((Subtract, (Add, 'x', 'y'), 'y'), 'x')
+     PatternOptimizer((Power, 'x', Double(2.0, constant = True)), (Square, 'x'))
+     PatternOptimizer((Boggle, {'pattern': 'x',
+                                'constraint': lambda env, expr: expr.owner.scrabble == True}),
+                      (Scrabble, 'x'))
     """
 
-    def __init__(self, in_pattern, out_pattern, failure_callback = None):
+    def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False, failure_callback = None):
         """
         Sets in_pattern for replacement by out_pattern.
         self.opclass is set to in_pattern[0] to accelerate the search.
         """
         self.in_pattern = in_pattern
         self.out_pattern = out_pattern
-        self.opclass = self.in_pattern[0]
+        if isinstance(in_pattern, (list, tuple)):
+            self.opclass = self.in_pattern[0]
+        elif isinstance(in_pattern, dict):
+            self.opclass = self.in_pattern['pattern'][0]
+        else:
+            raise TypeError("The pattern to search for must start with a specific Op class.")
         self.__doc__ = self.__class__.__doc__ + "\n\nThis instance does: " + str(self) + "\n"
         self.failure_callback = failure_callback
+        self.allow_multiple_clients = allow_multiple_clients
 
     def apply_on_op(self, env, op):
         """
@@ -231,11 +275,13 @@ class PatternOptimizer(OpSpecificOptimizer):
         If self.failure_callback is not None, if there is a match but a
         replacement fails to occur, the callback will be called with
         arguments (results_to_replace, replacement, exception).
-        """
 
+        If self.allow_multiple_clients is False, he pattern matching will fail
+        if one of the subpatterns has more than one client.
+        """
         def match(pattern, expr, u, first = False):
             if isinstance(pattern, (list, tuple)):
-                if not issubclass(expr.owner.__class__, pattern[0]) or (not first and env.nclients(expr.owner) > 1):
+                if not issubclass(expr.owner.__class__, pattern[0]) or (self.allow_multiple_clients and not first and env.nclients(expr.owner) > 1):
                     return False
                 if len(pattern) - 1 != len(expr.owner.inputs):
                     return False
@@ -243,6 +289,14 @@ class PatternOptimizer(OpSpecificOptimizer):
                     u = match(p, v, u)
                     if not u:
                         return False
+            elif isinstance(pattern, dict):
+                try:
+                    real_pattern = pattern['pattern']
+                    constraint = pattern['constraint']
+                except KeyError:
+                    raise KeyError("Malformed pattern: %s (expected keys pattern and constraint)" % pattern)
+                if constraint(env, expr):
+                    return match(real_pattern, expr, u, False)
             elif isinstance(pattern, str):
                 v = unify.Var(pattern)
                 if u[v] is not v and u[v] is not expr:
