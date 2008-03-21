@@ -81,7 +81,10 @@ def grad_sources_inputs(sources, graph_inputs):
         op_grad = op.grad(input_arg, output_arg)
         if op_grad is None:
             raise ValueError(_msg_retNone, op.__class__)
+        if isinstance(op_grad, float):
+            raise TypeError('wtf!!!!!!!!', op)
         g_inputs = _pack_result(op_grad)
+        assert isinstance(g_inputs, (list, tuple))
         if len(g_inputs) != len(op.inputs):
             raise ValueError(_msg_badlen, 
                     op.__class__, 

@@ -463,6 +463,16 @@ class T_log2(unittest.TestCase):
     def test0(self):
         verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
 
+class T_log(unittest.TestCase):
+    def test0(self):
+        verify_grad(self, Log, [numpy.random.rand(3,1)+0.0001])
+    def test1(self):
+        a = astensor(numpy.ones(2))
+        b = astensor(numpy.ones(2))
+        aa = numpy.asarray([0.5, 4.0])
+        bb = numpy.asarray([0.5, 2.0])
+        check_eq2(self, [a], log(a), [aa], numpy.log(numpy.asarray(aa)))
+
 class T_pow(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(9999)
@@ -493,10 +503,7 @@ class _testCase_matinv(unittest.TestCase):
         # Sum of squared errors
         ssdiff = sum((diff**2.0))
 
-        # May be able to abbreviate this by assuming default parameter
-        # TODO: Test that default works
-        g_b = gradient.grad(ssdiff, b, astensor(numpy.ones(1),name='g_cost'))
-        #g_b = gradient.grad(ssdiff, b)     # This should be the abbreviated version
+        g_b = gradient.grad(ssdiff, b)
 
         # compilation to function
         # [a,b] are the inputs, [ssdiff,g_b] are the outputs
