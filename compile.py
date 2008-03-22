@@ -4,15 +4,15 @@ import gof
 
 #TODO: put together some default optimizations (TRAC #67)
 
-_optimizations = None
-
 def exec_py_opt(inputs, outputs, features=[]):
     """Return an optimized graph running purely python implementations"""
-    return Function(intputs, outputs, features, _optimizations, gof.link.PerformLinker, False)
+    return Function(intputs, outputs, features, exec_py_opt.optimizer, gof.link.PerformLinker, False)
+exec_py_opt.optimizer = None
 
 def exec_opt(inputs, outputs, features=[]):
     """Return a fast implementation"""
-    return Function(intputs, outputs, features, _optimizations, gof.link.PerformLinker, False)
+    return Function(intputs, outputs, features, exec_opt.optimizer, gof.link.PerformLinker, False)
+exec_opt.optimizer = None
 
 def _mark_indestructible(results):
     for r in results:
@@ -85,7 +85,7 @@ class Function:
 
         # optimize and link the cloned env
         if None is not optimizer:
-            optimizer.optimize(env)
+            optimizer(env)
         linker = linker_cls(env)
 
         if keep_locals:# useful flag for debugging!
@@ -122,7 +122,7 @@ def eval_outputs(outputs,
 
     _mark_indestructible(env.outputs)
     if None is not optimizer:
-        optimizer.optimize(env)
+        optimizer(env)
     linker = linker_cls(env)
     fn = linker.make_function(inplace=True, unpack_single=unpack_single)
     rval = fn(*in_data)

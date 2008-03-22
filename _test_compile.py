@@ -103,7 +103,7 @@ class T_Function(unittest.TestCase):
     def test_opt(self):
         opt = gof.opt.PatternOptimizer((Div, '1', '2'), (Div, '2', '1'))
         gi, go = graph1()
-        p = Function(gi,go, optimizer=opt)
+        p = Function(gi,go, optimizer=opt.optimize)
         self.failUnless(p(1.,3.,4.) == 16.0)
 
     def test_multiout(self):
@@ -116,7 +116,7 @@ class T_Function(unittest.TestCase):
             return [x,y,z], [o, o.owner.inputs[1]]
         opt = gof.opt.PatternOptimizer((Div, '1', '2'), (Div, '2', '1'))
         gi, go = graph2()
-        p = Function(gi,go, optimizer=opt)
+        p = Function(gi,go, optimizer=opt.optimize)
         a,b = p(1.,3.,4.)
         self.failUnless(a == 16.0)
         self.failUnless(b == 4.0)
@@ -124,13 +124,13 @@ class T_Function(unittest.TestCase):
     def test_orphans(self):
         gi, go = graph1()
         opt = None
-        p0 = Function(gi[0:0], go, optimizer=opt)
+        p0 = Function(gi[0:0], go)
 
         self.failUnless(p0() == 1.0)
 
-        p3 = Function(gi,go, optimizer=opt)
-        p2 = Function(gi[0:2], go, optimizer=opt)
-        p1 = Function(gi[0:1], go, optimizer=opt)
+        p3 = Function(gi,go)
+        p2 = Function(gi[0:2], go)
+        p1 = Function(gi[0:1], go)
         try:
             self.failUnless(p3() == 6.0)
             self.fail()
