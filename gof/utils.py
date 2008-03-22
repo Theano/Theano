@@ -15,11 +15,21 @@ class AbstractFunctionError(Exception):
     """
 
 def uniq(seq):
+    #TODO: consider building a set out of seq so that the if condition is constant time -JB
     return [x for i, x in enumerate(seq) if seq.index(x) == i]
 
 def difference(seq1, seq2):
-    return [x for x in seq1 if x not in seq2]
-
+    try: 
+        # try to use O(const * len(seq1)) algo
+        if len(seq2) < 4: # I'm guessing this threshold -JB
+            raise Exception('not worth it')
+        set2 = set(seq2)
+        return [x for x in seq1 if x not in set2]
+    except Exception, e:
+        # maybe a seq2 element is not hashable
+        # maybe seq2 is too short
+        # -> use O(len(seq1) * len(seq2)) algo
+        return [x for x in seq1 if x not in seq2]
 
 def attr_checker(*attrs):
     def f(candidate):
