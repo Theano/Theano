@@ -614,7 +614,8 @@ class InvElemwise(_Elemwise):
     def impl(self, x):
         return 1.0/x
     def grad(self, x, gz):
-        return -gz / (x*x)
+        ix = inv(x)
+        return -gz * (ix * ix)
     def c_foreach(self, (x_i, ), (z_i, )):
         return "%(z)s_i = 1.0 / %(x)s_i;" #TODO: cast 1.0 to the dtype of x
 inv_elemwise = _constructor(InvElemwise)
