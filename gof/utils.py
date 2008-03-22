@@ -110,7 +110,7 @@ def toposort(prereqs_d):
     for x, prereqs in prereqs_d.items():
         for prereq in prereqs:
             postreqs_d.setdefault(prereq, set()).add(x)
-    next = set(k for k in prereqs_d if not prereqs_d[k])
+    next = set([k for k in prereqs_d if not prereqs_d[k]])
     while next:
         bases = next
         next = set()
