@@ -205,6 +205,7 @@ class T_subtensor(unittest.TestCase):
         except Exception, e:
             if e[0] != 'index out of bounds':
                 raise
+            return
         self.fail()
     def test1_ok_range_finite(self):
         n = astensor(numpy.ones(3)*5)
@@ -226,6 +227,7 @@ class T_subtensor(unittest.TestCase):
             t = n[0,0]
         except ValueError, e:
             self.failUnless(e[0] is Subtensor.e_invalid)
+            return
         self.fail()
     def test1_ok_elem(self):
         n = astensor(numpy.ones(1)*5)
@@ -566,7 +568,7 @@ class t_dot(unittest.TestCase):
         try:
             tz = eval_outputs([z])
         except ValueError, e:
-            self.failUnless(e[0] == 'objects are not aligned', e)
+            self.failUnless(e[0].split()[1:4] == ['are', 'not', 'aligned'], e)
             return
         self.fail()
 
