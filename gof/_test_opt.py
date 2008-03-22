@@ -279,7 +279,8 @@ class _test_MergeOptimizer(unittest.TestCase):
         e1 = op1(y, z)
         g = env([x, y, z], [e1])
         MergeOptimizer().optimize(g)
-        self.failUnless(str(g) == '[Op1(y, y)]')
+        strg = str(g)
+        self.failUnless(strg == '[Op1(y, y)]' or strg == '[Op1(z, z)]', strg)
 
     def test_identical_constant_args_with_destroymap(self):
         x, y, z = inputs()
@@ -290,20 +291,26 @@ class _test_MergeOptimizer(unittest.TestCase):
         e1 = op_d(y, z)
         g = env([x, y, z], [e1])
         MergeOptimizer().optimize(g)
-        self.failUnless(str(g) == '[OpD(y, z)]', str(g))
+        strg = str(g)
+        self.failUnless(strg == '[OpD(y, z)]', strg)
 
-    def test_dont_merge_destroyer_inputs(self):
+    def test_merge_with_destroyer_1(self):
         x, y, z = inputs()
-        y.data = 2.0
-        y.constant = True
-        z.data = 2.0
-        z.constant = True
+        e1 = op_d(op1(x,y), y)
+        e2 = op_d(op1(x,y), z)
+        g = env([x, y, z], [e1,e2])
+        MergeOptimizer().optimize(g)
+        strg = str(g)
+        self.failUnless(strg == '[OpD(Op1(x, y), y), OpD(Op1(x, y), z)]', strg)
+
+    def test_merge_with_destroyer_2(self):
+        x, y, z = inputs()
         e1 = op_d(op1(x,y), z)
         e2 = op_d(op1(x,y), z)
         g = env([x, y, z], [e1,e2])
         MergeOptimizer().optimize(g)
         strg = str(g)
-        self.failUnless(strg == '[OpD(Op1(x, y), z), OpD(Op1(x, y), z)]', strg)
+        self.failUnless(strg == '[*1 -> OpD(Op1(x, y), z), *1]', strg)
 
 
 

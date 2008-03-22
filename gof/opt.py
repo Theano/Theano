@@ -399,17 +399,22 @@ class MergeOptimizer(Optimizer):
             # of the op.
             op_cid = (op.__class__, tuple([cid[input] for input in op.inputs]))
             dup = inv_cid.get(op_cid, None)
-            if dup is None:
+            success = False
+            if dup is not None:
+                success = True
+                for output, other_output in zip(op.outputs, dup.outputs):
+                    try:
+                        env.replace(output, other_output)
+                    except:
+                        success = False
+                        break
+            if not success:
                 cid[op] = op_cid
                 inv_cid[op_cid] = op
                 for i, output in enumerate(op.outputs):
-                    ref = id(output) # (i, op_cid)
+                    ref = (i, op_cid)
                     cid[output] = ref
                     inv_cid[ref] = output
-            else:
-                for output, other_output in zip(op.outputs, dup.outputs):
-                    env.replace(output, other_output)
-
 
 
 def MergeOptMerge(opt):
