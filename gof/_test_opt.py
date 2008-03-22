@@ -270,6 +270,42 @@ class _test_MergeOptimizer(unittest.TestCase):
         assert strg == "[Op1(*1 -> Op1(x, y), Op4(*2 -> Op2(Op3(x), y, z), *1), Op1(*2))]" \
             or strg == "[Op1(*2 -> Op1(x, y), Op4(*1 -> Op2(Op3(x), y, z), *2), Op1(*1))]"
 
+    def test_identical_constant_args(self):
+        x, y, z = inputs()
+        y.data = 2.0
+        y.constant = True
+        z.data = 2.0
+        z.constant = True
+        e1 = op1(y, z)
+        g = env([x, y, z], [e1])
+        MergeOptimizer().optimize(g)
+        self.failUnless(str(g) == '[Op1(y, y)]')
+
+    def test_identical_constant_args_with_destroymap(self):
+        x, y, z = inputs()
+        y.data = 2.0
+        y.constant = False
+        z.data = 2.0
+        z.constant = True
+        e1 = op_d(y, z)
+        g = env([x, y, z], [e1])
+        MergeOptimizer().optimize(g)
+        self.failUnless(str(g) == '[OpD(y, z)]', str(g))
+
+    def test_dont_merge_destroyer_inputs(self):
+        x, y, z = inputs()
+        y.data = 2.0
+        y.constant = True
+        z.data = 2.0
+        z.constant = True
+        e1 = op_d(op1(x,y), z)
+        e2 = op_d(op1(x,y), z)
+        g = env([x, y, z], [e1,e2])
+        MergeOptimizer().optimize(g)
+        strg = str(g)
+        self.failUnless(strg == '[OpD(Op1(x, y), z), OpD(Op1(x, y), z)]', strg)
+
+
 
 class _test_ConstantFinder(unittest.TestCase):
 
