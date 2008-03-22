@@ -18,6 +18,9 @@ def test_root_dir():
     unittest.TextTestRunner(verbosity=1).run(suite)
 
 if __name__ == '__main__':
-    os.system('cd gof; python autotest.py')
+    try:
+        os.system('cd gof; %s autotest.py' % sys.argv[1])
+    except IndexError, e:
+        os.system('cd gof; python autotest.py')
     test_root_dir()
 
