@@ -240,9 +240,9 @@ def elemwise_wrap(beforeloop, inloop, afterloop, input_loop_vars, output_loop_va
     %(general_decl)s
     %(contig_decl)s
     npy_intp __SIZE = PyArray_SIZE(%(v1)s);
-    %(beforeloop)s
     bool all_c_contiguous = 1;
     bool all_f_contiguous = 1;
+    %(beforeloop)s
     %(contiguity_check)s
     if (all_c_contiguous || all_f_contiguous) {
         %(contig_loop)s

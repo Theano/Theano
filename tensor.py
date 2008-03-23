@@ -221,11 +221,12 @@ class TensorScalarOp(_Elemwise):
         return [('x', 1), ('a', 0)], [('z', 1)]
     def c_code_init(self):
         return """
+        dtype_%(a)s _%(a)s;
         if (PyArray_SIZE(%(a)s) != 1) {
             PyErr_SetString(PyExc_ValueError, \"The size of the scalar argument is not 1.\");
             %(fail)s
         }
-        dtype_%(a)s _%(a)s = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
+        _%(a)s = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
         """
     def c_code_foreach(self):
         return "%%(z)s_i = %s;" % self.c_expr
