@@ -1,6 +1,7 @@
 
 import unittest
 
+from link import PerformLinker
 from cc import *
 from result import ResultBase
 from op import Op
@@ -91,14 +92,20 @@ class Binary(MyOp):
 class Add(Binary):
     def c_code(self):
         return "%(z)s = %(x)s + %(y)s;"
+    def perform(self):
+        self.outputs[0].data = self.inputs[0].data + self.inputs[1].data
         
 class Sub(Binary):
     def c_code(self):
         return "%(z)s = %(x)s - %(y)s;"
+    def perform(self):
+        self.outputs[0].data = -10 # erroneous
         
 class Mul(Binary):
     def c_code(self):
         return "%(z)s = %(x)s * %(y)s;"
+    def perform(self):
+        self.outputs[0].data = self.inputs[0].data * self.inputs[1].data
         
 class Div(Binary):
     def c_validate_update(self):
@@ -110,6 +117,9 @@ class Div(Binary):
         """
     def c_code(self):
         return "%(z)s = %(x)s / %(y)s;"
+    def perform(self):
+        self.outputs[0].data = self.inputs[0].data / self.inputs[1].data
+
 
 
 import modes
@@ -187,5 +197,57 @@ class _test_OpWiseCLinker(unittest.TestCase):
         fn = lnk.make_function()
         self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
 
+
+class MyExc(Exception):
+    pass
+def _my_checker(x, y):
+    if x.data != y.data:
+        raise MyExc("Output mismatch.", {'performlinker': x.data, 'clinker': y.data})
+
+
+class _test_DualLinker(unittest.TestCase):
+
+    def test_straightforward(self):
+        x, y, z = inputs()
+        e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
+        lnk = DualLinker(env([x, y, z], [e]), checker = _my_checker)
+        fn = lnk.make_function()
+        res = fn(7.2, 1.5, 3.0)
+        self.failUnless(res == 15.3, res)
+
+    def test_mismatch(self):
+        x, y, z = inputs()
+        e = sub(mul(x, y), mul(y, z)) # sub is correct in C but erroneous in Python
+        g = env([x, y, z], [e])
+        lnk = DualLinker(g, checker = _my_checker)
+        fn = lnk.make_function()
+
+        self.failUnless(CLinker(g).make_function()(1.0, 2.0, 3.0) == -4.0) # good
+        self.failUnless(OpWiseCLinker(g).make_function()(1.0, 2.0, 3.0) == -4.0) # good
+        self.failUnless(PerformLinker(g).make_function()(1.0, 2.0, 3.0) == -10.0) # (purposely) wrong
+        
+        try:
+            # this runs OpWiseCLinker and PerformLinker in parallel and feeds
+            # results of matching operations to _my_checker to verify that they
+            # are the same.
+            res = fn(1.0, 2.0, 3.0)
+            self.fail()
+        except MyExc, e:
+            pass
+        else:
+            self.fail()
+
+    def test_orphan(self):
+        x, y, z = inputs()
+        x.data = 7.2
+        e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
+        lnk = DualLinker(env([y, z], [e]), checker = _my_checker)
+        fn = lnk.make_function()
+        res = fn(1.5, 3.0)
+        self.failUnless(res == 15.3, res)
+
+
+
+        
 if __name__ == '__main__':
     unittest.main()

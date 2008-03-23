@@ -745,6 +745,84 @@ class OpWiseCLinker(Linker):
 
 
 
+def _default_checker(x, y):
+    """
+    Default checker for DualLinker. This checks that the
+    results 
+    """
+    if x.data != y.data:
+        raise Exception("Output mismatch.", {'performlinker': x.data, 'clinker': y.data})
+
+class DualLinker(Linker):
+    """
+    Runs the env in parallel using PerformLinker and CLinker.
+
+    The thunk/function produced by DualLinker uses PerformLinker as the
+    "main" implementation: the inputs and outputs are fed to/taken from
+    the Ops' perform. However, DualLinker also instantiates a copy of
+    the env on which it runs OpWiseCLinker. At each step, the results
+    of perform and of the C implementation are verified using a checker
+    function.
+    """
+
+    def __init__(self, env, checker = _default_checker):
+        """
+        Initialize a DualLinker.
+        
+        The checker argument must be a function that takes two Result
+        instances. The first one passed will be the output computed by
+        PerformLinker and the second one the output computed by
+        OpWiseCLinker. The checker should compare the data fields of
+        the two results to see if they match. By default, DualLinker
+        uses ==. A custom checker can be provided to compare up to a
+        certain error tolerance.
+
+        If a mismatch occurs, the checker should raise an exception to
+        halt the computation. If it does not, the computation will
+        carry on and errors will snowball. The checker can sidestep
+        the problem by fiddling with the data, but it should be
+        careful not to share data between the two outputs (or inplace
+        operations that use them will interfere).
+        """
+        self.env = env
+        self.checker = checker
+
+    def make_thunk(self, inplace = False):
+        if inplace:
+            env1 = self.env
+        else:
+            env1 = self.env.clone(True)
+        env2, equiv = env1.clone_get_equiv(True)
+
+        op_order_1 = env1.toposort()
+        op_order_2 = [equiv[op.outputs[0]].owner for op in op_order_1] # we need to have the exact same order so we can compare each step
+
+        thunks1 = [op.perform for op in op_order_1]
+        thunks2 = [CLinker(op).make_thunk(True)[0] for op in op_order_2]
+        
+        def f():
+            for input1, input2 in zip(env1.inputs, env2.inputs):
+                # set the inputs to be the same in both branches
+                # the copy is necessary in order for inplace ops not to interfere
+                input2.data = copy(input1.data)
+            for thunk1, thunk2, op1, op2 in zip(thunks1, thunks2, op_order_1, op_order_2):
+                try:
+                    thunk1()
+                    thunk2()
+                    for output1, output2 in zip(op1.outputs, op2.outputs):
+                        self.checker(output1, output2)
+                except:
+                    exc_type, exc_value, exc_trace = sys.exc_info()
+                    try:
+                        trace = op1.trace
+                    except AttributeError:
+                        trace = ()
+                    exc_value.__thunk_trace__ = trace
+                    exc_value.args = exc_value.args + (op1, )
+                    raise exc_type, exc_value, exc_trace
+
+        return f, env1.inputs, env1.outputs
+
 
 
 

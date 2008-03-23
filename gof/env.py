@@ -490,6 +490,14 @@ class Env(graph.Graph):
     def __str__(self):
         return "[%s]" % ", ".join(graph.as_string(self.inputs, self.outputs))
 
+    def clone_get_equiv(self, clone_inputs = True):
+        equiv = graph.clone_get_equiv(self.inputs, self.outputs, clone_inputs)
+        new = self.__class__([equiv[input] for input in self.inputs],
+                             [equiv[output] for output in self.outputs],
+                             self._features.keys(),
+                             consistency_check = False)
+        return new, equiv
+
     def clone(self, clone_inputs = True):
         equiv = graph.clone_get_equiv(self.inputs, self.outputs, clone_inputs)
         new = self.__class__([equiv[input] for input in self.inputs],
