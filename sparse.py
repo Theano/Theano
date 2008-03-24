@@ -1,15 +1,26 @@
-
+import copy #for __copy__
 import numpy
 from scipy import sparse
 
-import gof
+import gof.op, gof.result
+import tensor
+
 
 # Wrapper type
 
-class SparseR(gof.ResultBase):
+def assparse(sp, **kwargs):
+    """Return SparseR version of sp"""
+    if isinstance(sp, SparseR):
+        return sp
+    else:
+        rval = SparseR(str(sp.dtype), sp.format, **kwargs)
+        rval.data = sp
+        return rval
+
+class SparseR(gof.result.ResultBase):
     """
     Attribute:
-    format - a subclass of sparse.spmatrix indicating self.data.__class__
+    format - a string identifying the type of sparsity
 
     Properties:
     T - read-only: return a transpose of self
@@ -19,126 +30,152 @@ class SparseR(gof.ResultBase):
     Notes:
 
     """
-    def __init__(self, data=None, role=None, constant = False, 
-            format = sparse.csr_matrix):
-        core.ResultBase.__init__(self, role, data, constant)
-        if isinstance(data, sparse.spmatrix):
-            self.format = data.__class__
-        else:
-            self.format = format
-        self._dtype = None
-        self._shape = None
+    format_cls = {
+            'csr' : sparse.csr_matrix,
+            'csc' : sparse.csc_matrix
+            }
+    dtype_set = set(['int', 'int32', 'int64', 'float32', 'float64'])
 
-    def data_filter(self, value):
-        if isinstance(value, sparse.spmatrix): return value
-        return sparse.csr_matrix(value)
+    def __init__(self, dtype, format, **kwargs):
+        gof.ResultBase.__init__(self, **kwargs)
+        if dtype in SparseR.dtype_set:
+            self._dtype = dtype
+        assert isinstance(format, str)
+
+        #print format, type(format), SparseR.format_cls.keys(), format in SparseR.format_cls
+        if format in SparseR.format_cls:
+            self._format = format
+        else:
+            raise NotImplementedError('unsupported format "%s" not in list' % format, SparseR.format_cls.keys())
+
+    def filter(self, value):
+        if isinstance(value, SparseR.format_cls[self.format])\
+                and value.dtype == self.dtype:
+                    return value
+        #print 'pass-through failed', type(value)
+        sp = SparseR.format_cls[self.format](value)
+        if str(sp.dtype) != self.dtype:
+            raise NotImplementedError()
+        if sp.format != self.format:
+            raise NotImplementedError()
+        return sp
+
+    def __copy__(self):
+        if self.name is not None:
+            rval = SparseR(self._dtype, self._format, name=self.name)
+        else:
+            rval = SparseR(self._dtype, self._format)
+        rval.data = copy.copy(self.data)
+        return rval
+
+
+    dtype = property(lambda self: self._dtype)
+    format = property(lambda self: self._format)
+    T = property(lambda self: transpose(self), doc = "Return aliased transpose")
+
 
     def __add__(left, right): return add(left, right)
     def __radd__(right, left): return add(left, right)
 
-    T = property(lambda self: transpose(self), doc = "Return aliased transpose")
-
-    # self._dtype is used when self._data hasn't been set yet
-    def __dtype_get(self):
-        if self._data is None:
-            return self._dtype
-        else:
-            return self._data.dtype
-    def __dtype_set(self, dtype):
-        if self._data is None:
-            self._dtype = dtype
-        else:
-            raise StateError('cannot set dtype after data has been set')
-    dtype = property(__dtype_get, __dtype_set)
-
-    # self._shape is used when self._data hasn't been set yet
-    def __shape_get(self):
-        if self._data is None:
-            return self._shape
-        else:
-            return self._data.shape
-    def __shape_set(self, shape):
-        if self._data is None:
-            self._shape = shape
-        else:
-            raise StateError('cannot set shape after data has been set')
-    shape = property(__shape_get, __shape_set)
-
-# convenience base class
-class op(gof.PythonOp, grad.update_gradient_via_grad):
-    """unite PythonOp with update_gradient_via_grad"""
 
 #
 # Conversion
 #
 
 # convert a sparse matrix to an ndarray
-class sparse2dense(op):
-    def gen_outputs(self): return [core.Numpy2()]
-    def impl(x): return numpy.asarray(x.todense())
+class DenseFromSparse(gof.op.Op):
+    def __init__(self, x, **kwargs):
+        gof.op.Op.__init__(self, **kwargs)
+        self.inputs = [assparse(x)]
+        self.outputs = [tensor.Tensor(x.dtype,[0,0])]
+    def impl(self, x):
+        return numpy.asarray(x.todense())
     def grad(self, x, gz): 
-        if x.format is sparse.coo_matrix: return dense2coo(gz)
-        if x.format is sparse.csc_matrix: return dense2csc(gz)
-        if x.format is sparse.csr_matrix: return dense2csr(gz)
-        if x.format is sparse.dok_matrix: return dense2dok(gz)
-        if x.format is sparse.lil_matrix: return dense2lil(gz)
+        return sparse_from_dense(gz, x.format)
+dense_from_sparse = gof.op.constructor(DenseFromSparse)
 
-# convert an ndarray to various sorts of sparse matrices.
-class _dense2sparse(op):
-    def gen_outputs(self): return [SparseR()]
-    def grad(self, x, gz): return sparse2dense(gz)
-class dense2coo(_dense2sparse):
-    def impl(x): return sparse.coo_matrix(x)
-class dense2csc(_dense2sparse):
-    def impl(x): return sparse.csc_matrix(x)
-class dense2csr(_dense2sparse):
-    def impl(x): return sparse.csr_matrix(x)
-class dense2dok(_dense2sparse):
-    def impl(x): return sparse.dok_matrix(x)
-class dense2lil(_dense2sparse):
-    def impl(x): return sparse.lil_matrix(x)
-
+class SparseFromDense(gof.op.Op):
+    def __init__(self, x, format, **kwargs):
+        gof.op.Op.__init__(self, **kwargs)
+        if isinstance(format, gof.result.ResultBase):
+            self.inputs = [tensor.astensor(x), format]
+        else:
+            self.inputs =  [tensor.astensor(x), gof.result.PythonResult()]
+            self.inputs[1].data = format
+        self.outputs = [SparseR(x.dtype, self.inputs[1].data)]
+    def impl(self, x, fmt):
+        # this would actually happen anyway when we try to assign to
+        # self.outputs[0].data, but that seems hackish -JB
+        return SparseR.format_cls[fmt](x)
+    def grad(self, (x, fmt), gz):
+        return dense_from_sparse(gz)
+sparse_from_dense = gof.op.constructor(SparseFromDense)
 
 # Linear Algebra
 
-class add(op):
-    def gen_outputs(self): return [SparseR()]
-    def impl(csr,y): return csr + y
+class Transpose(gof.op.Op):
+    format_map = {
+            'csr' : 'csc',
+            'csc' : 'csr'}
+    def __init__(self, x, **kwargs):
+        gof.op.Op.__init__(self, **kwargs)
+        x = assparse(x)
+        self.inputs = [x]
+        self.outputs = [SparseR(x.dtype, Transpose.format_map[x.format])]
+    def impl(self, x):
+        return x.transpose() 
+    def grad(self, x, gz): 
+        return transpose(gz)
+transpose = gof.op.constructor(Transpose)
 
-class transpose(op):
-    def gen_outputs(self): return [SparseR()]
-    def impl(x): return x.transpose() 
-    def grad(self, x, gz): return transpose(gz)
+class AddSS(gof.op.Op): #add two sparse matrices
+    def __init__(self, x, y, **kwargs):
+        gof.op.Op.__init__(self, **kwargs)
+        x, y = [assparse(x), assparse(y)]
+        self.inputs = [x, y]
+        if x.dtype != y.dtype:
+            raise NotImplementedError()
+        if x.format != y.format:
+            raise NotImplementedError()
+        self.outputs = [SparseR(x.dtype, x.format)]
+    def impl(self, x,y): 
+        return x + y
+    def grad(self, (x, y), gz):
+        return gz, gz
+add_s_s = gof.op.constructor(AddSS)
 
-class dot(op):
-    """
-    Attributes:
-    grad_preserves_dense - an array of boolean flags (described below)
+
+if 0:
+    class dot(gof.op.Op):
+        """
+        Attributes:
+        grad_preserves_dense - an array of boolean flags (described below)
 
 
-    grad_preserves_dense controls whether gradients with respect to inputs are
-    converted to dense matrices when the corresponding inputs are not in a
-    SparseR wrapper.  This can be a good idea when dot is in the middle of a
-    larger graph, because the types of gx and gy will match those of x and y.
-    This conversion might be annoying if the gradients are graph outputs though,
-    hence this mask.
-    """
-    def __init__(self, *args, **kwargs):
-        op.__init__(self, *args, **kwargs)
-        self.grad_preserves_dense = [True, True]
-    def gen_outputs(self): return [SparseR()]
-    def impl(x,y):
-        if hasattr(x, 'getnnz'):
-            return x.dot(y)
-        else:
-            return y.transpose().dot(x.transpose()).transpose()
+        grad_preserves_dense controls whether gradients with respect to inputs are
+        converted to dense matrices when the corresponding inputs are not in a
+        SparseR wrapper.  This can be a good idea when dot is in the middle of a
+        larger graph, because the types of gx and gy will match those of x and y.
+        This conversion might be annoying if the gradients are graph outputs though,
+        hence this mask.
+        """
+        def __init__(self, *args, **kwargs):
+            gof.op.Op.__init__(self, **kwargs)
+            self.grad_preserves_dense = [True, True]
+        def gen_outputs(self): return [SparseR()]
+        def impl(x,y):
+            if hasattr(x, 'getnnz'):
+                return x.dot(y)
+            else:
+                return y.transpose().dot(x.transpose()).transpose()
 
-    def grad(self, x, y, gz):
-        rval = [dot(gz, y.T), dot(x.T, gz)]
-        for i in 0,1:
-            if not isinstance(self.inputs[i], SparseR):
-                #assume it is a dense matrix
-                if self.grad_preserves_dense[i]:
-                    rval[i] = sparse2dense(rval[i])
-        return rval
+        def grad(self, x, y, gz):
+            rval = [dot(gz, y.T), dot(x.T, gz)]
+            for i in 0,1:
+                if not isinstance(self.inputs[i], SparseR):
+                    #assume it is a dense matrix
+                    if self.grad_preserves_dense[i]:
+                        rval[i] = dense_from_sparse(rval[i])
+            return rval
+
 

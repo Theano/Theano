@@ -144,7 +144,7 @@ class Op(object):
         TODO: consider moving this function to the python linker.
         """
         res = self.impl(*[input.data for input in self.inputs])
-        if self.nout == 1:
+        if len(self.outputs) == 1:
             self.outputs[0].data = res
         else:
             assert len(res) == len(self.outputs)

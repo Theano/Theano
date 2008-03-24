@@ -70,6 +70,8 @@ class Tensor(BaseTensor):
 # alternate Tensor constructor
 def astensor(data, broadcastable=None, role=None, name=None):
     """Return a Tensor containing given data"""
+    if isinstance(data, Tensor) and broadcastable is None and role is None and name is None:
+        return data
     data = numpy.asarray(data)
     if broadcastable is None:
         broadcastable = [s==1 for s in data.shape]
@@ -116,11 +118,9 @@ def _assert_tensor_scalar(x, a):
     if numpy.product(a.shape) != 1:
         raise ValueError("The second argument must be a scalar.")
 
-def _as_tensor(obj):
-    if isinstance(obj, Tensor):
-        return obj
-    else:
-        return astensor(obj)
+# this has a different name, because _as_tensor is the function which ops use
+# to upcast their arguments... this internal-use function is a good place to put debugging stuff, better than the global astensor.
+_as_tensor = astensor
 
 class _Op(BaseTensorOp):
     """A convenient base for the ops in this file"""
