@@ -66,7 +66,7 @@ class Linker:
         """
         raise AbstractFunctionError()
 
-    def make_function(self, inplace = False, unpack_single = True):
+    def make_function(self, inplace = False, unpack_single = True, **kwargs):
         """
         Returns a function that takes values corresponding to the inputs of the
         env used by this Linker and returns values corresponding the the outputs
@@ -85,7 +85,7 @@ class Linker:
         output, then that output will be returned. Else, a list or tuple of
         length 1 will be returned.
         """
-        thunk, inputs, outputs = self.make_thunk(inplace)
+        thunk, inputs, outputs = self.make_thunk(inplace, **kwargs)
 
         def execute(*args):
             def e_arity(takes, got):
@@ -101,10 +101,8 @@ class Linker:
             else:
                 return [result.data for result in outputs]
         execute.thunk = thunk
-        try:
-            execute.profiler = thunk.profiler
-        except AttributeError:
-            pass
+        execute.inputs = inputs
+        execute.outputs = outputs
         
         return execute
 
@@ -117,18 +115,17 @@ class PerformLinker(Linker):
     the env in the order given by env.toposort.
     """
 
-    def __init__(self, env, profiler = None):
+    def __init__(self, env):
         self.env = env
-        self.profiler = profiler
 
-    def make_thunk(self, inplace = False):
+    def make_thunk(self, inplace = False, profiler = None):
         if inplace:
             env = self.env
         else:
             env = self.env.clone(True)
         order = env.toposort()
         thunks = [op.perform for op in order]
-        if self.profiler is None:
+        if profiler is None:
             def f():
                 try:
                     for thunk, op in zip(thunks, order):
@@ -136,7 +133,6 @@ class PerformLinker(Linker):
                 except:
                     raise_with_op(op)
         else:
-            profiler = self.profiler()
             def f():
                 def g():
                     for thunk, op in zip(thunks, order):

@@ -40,6 +40,7 @@ class Function:
             features = [],
             optimizer = None,
             linker_cls = gof.link.PerformLinker,
+            profiler = None,
             unpack_single = True,
             except_unreachable_input = True,
             keep_locals = True):
@@ -86,13 +87,19 @@ class Function:
         # optimize and link the cloned env
         if None is not optimizer:
             optimizer(env)
+
         linker = linker_cls(env)
 
         if keep_locals:# useful flag for debugging!
             self.__dict__.update(locals())
 
-        self.fn  = linker.make_function(inplace=True, 
-                unpack_single=unpack_single)
+        if profiler is None:
+            self.fn  = linker.make_function(inplace=True, 
+                                            unpack_single=unpack_single)
+        else:
+            self.fn  = linker.make_function(inplace=True, 
+                                            unpack_single=unpack_single,
+                                            profiler=profiler)
 
     def __call__(self, *args):
         return self.fn(*args)

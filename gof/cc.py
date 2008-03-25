@@ -722,12 +722,11 @@ class OpWiseCLinker(Linker):
     perform method if no C version can be generated.
     """
 
-    def __init__(self, env, profiler = None, fallback_on_perform = True):
+    def __init__(self, env, fallback_on_perform = True):
         self.env = env
-        self.profiler = profiler
         self.fallback_on_perform = fallback_on_perform
 
-    def make_thunk(self, inplace = False):
+    def make_thunk(self, inplace = False, profiler = None):
         if inplace:
             env = self.env
         else:
@@ -747,7 +746,7 @@ class OpWiseCLinker(Linker):
                 else:
                     raise
         
-        if self.profiler is None:
+        if profiler is None:
             def f():
                 try:
                     for thunk, op in zip(thunks, op_order):
@@ -755,7 +754,6 @@ class OpWiseCLinker(Linker):
                 except:
                     raise_with_op(op)
         else:
-            profiler = self.profiler()
             def f():
                 def g():
                     for thunk, op in zip(thunks, op_order):
