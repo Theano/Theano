@@ -1,7 +1,7 @@
 
 import unittest
 
-from link import PerformLinker
+from link import PerformLinker, Profiler
 from cc import *
 from result import ResultBase
 from op import Op
@@ -186,6 +186,7 @@ class _test_CLinker(unittest.TestCase):
         lnk = CLinker(env([x, y, z], [e]))
         fn = lnk.make_function()
         self.failUnless(fn(1.0, 2.0, 3.0) == 8.0)
+    
 
 
 class _test_OpWiseCLinker(unittest.TestCase):

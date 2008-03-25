@@ -31,11 +31,20 @@ def thunk_hook(type, value, trace):
 sys.excepthook = thunk_hook
 
 
+def raise_with_op(op, exc_info = None):
+    if exc_info is None:
+        exc_info = sys.exc_info()
+    exc_type, exc_value, exc_trace = exc_info
+    try:
+        trace = op.trace
+    except AttributeError:
+        trace = ()
+    exc_value.__thunk_trace__ = trace
+    exc_value.args = exc_value.args + (op, )
+    raise exc_type, exc_value, exc_trace
+
 
 class Linker:
-
-    def __init__(self, env):
-        self.env = env
 
     def make_thunk(self, inplace = False):
         """
@@ -91,7 +100,12 @@ class Linker:
                 return utils.to_return_values([result.data for result in outputs])
             else:
                 return [result.data for result in outputs]
-
+        execute.thunk = thunk
+        try:
+            execute.profiler = thunk.profiler
+        except AttributeError:
+            pass
+        
         return execute
 
 
@@ -103,6 +117,10 @@ class PerformLinker(Linker):
     the env in the order given by env.toposort.
     """
 
+    def __init__(self, env, profiler = None):
+        self.env = env
+        self.profiler = profiler
+
     def make_thunk(self, inplace = False):
         if inplace:
             env = self.env
@@ -110,81 +128,130 @@ class PerformLinker(Linker):
             env = self.env.clone(True)
         order = env.toposort()
         thunks = [op.perform for op in order]
-        def f():
-            try:
-                for thunk, op in zip(thunks, order):
-                    thunk()
-            except:
-                exc_type, exc_value, exc_trace = sys.exc_info()
+        if self.profiler is None:
+            def f():
                 try:
-                    trace = op.trace
-                except AttributeError:
-                    trace = ()
-                exc_value.__thunk_trace__ = trace
-                exc_value.args = exc_value.args + (op, )
-                raise exc_type, exc_value, exc_trace
-
+                    for thunk, op in zip(thunks, order):
+                        thunk()
+                except:
+                    raise_with_op(op)
+        else:
+            profiler = self.profiler()
+            def f():
+                def g():
+                    for thunk, op in zip(thunks, order):
+                        profiler.profile_op(thunk, op)
+                profiler.profile_env(g, env)
+            f.profiler = profiler
+            
+                
         return f, env.inputs, env.outputs
 
 
 
-### PROFILEPERFORMLINKER USES COMPLETELY OUTDATED INTERFACE - FIX ###
+from collections import defaultdict
+import time
 
-# class ProfilePerformLinker(Linker):
+class Stats:
+    def __init__(self):
+        self.ncalls = 0
+        self.time = 0
+        self.nfailures = 0
+        self.time_failures = 0
+    def inc_ncalls(self, v): self.ncalls += v
+    def inc_time(self, v): self.time += v
+    def inc_nfailures(self, v): self.nfailures += v
+    def inc_time_failures(self, v): self.time_failures += v
 
-#     def compile(self):
-#         order = self.env.toposort()
-#         thunks = [op.perform for op in order]
-#         self.n_calls = 0
-#         self.n_thunks = 0
-#         self.times = [0.0 for op in self.order]
-#         def f():
-#             for thunk in thunks:
-#                 thunk()
-#         self.thunk = f
-#         self.order = order
-#         self.thunks = thunks
+class Profiler:
+    """
+    Collects performance statistics on a function on a per-op
+    or per-op-class basis.
+    """
     
-#     def slow_call(self):
-#         """Run the program, timing each thunk."""
-#         for i, thunk in enumerate(self.thunks):
-#             start_time = time.time()
-#             thunk()
-#             self.times[i] += time.time() - start_time
-#             self.n_thunks += 1
-#         self.n_calls += 1
+    def __init__(self, ignore = [], by_class = True):
+        """
+        Creates a Profiler. If by_class is True, stats will
+        be collected for each Op class, adding the totals for
+        each occurrence of that Op in the computation. If
+        by_class is False, each node will be timed individually.
 
-#     def fast_call(self):
-#         """Run the program, but only time the entire loop."""
-#         start_time = time.time()
-#         for thunk in self.thunks:
-#             thunk()
-#         self.n_thunks += len(self.thunks)
-#         self.n_calls += 1
-#         self.times[0] += time.time() - start_time
+        All op classes or ops (depending on the value of by_class)
+        listed in ignore will not be timed.
+        """
+        self.ignore = ignore
+        self.stats = defaultdict(Stats)
+        self.started = {}
+        self.by_class = by_class
 
-#     __call__ = slow_call
+    def profile_env(self, f, env):
+        stats = self.stats['TOTAL']
+        n, t = stats.inc_ncalls, stats.inc_time
+        failed = False
+        
+        start = time.time()
+        try:
+            f()
+            end = time.time()
+        except:
+            end = time.time()
+            n, t = stats.inc_nfailures, stats.inc_times_failures
+            failed = True
+            ety, eva, etr = sys.exc_info()
+        n(1)
+        t(end - start)
+        if failed:
+            raise ety, eva, etr
 
-#     def dump(self, proportion=True):
-#         """Print statistics accumulated so far."""
-#         total_time = sum(self.times)
-#         print self.n_calls, 'calls took', total_time, 'seconds to evaluate',
-#         print self.n_thunks, 'thunks'
+    def profile_op(self, f, op):
+        if self.by_class:
+            entry = op.__class__
+        else:
+            entry = op
+        stats = self.stats[entry]
+        n, t = stats.inc_ncalls, stats.inc_time
+        failed = False
+        
+        start = time.time()
+        try:
+            f()
+            end = time.time()
+        except:
+            end = time.time()
+            n, t = stats.inc_nfailures, stats.inc_times_failures
+            failed = True
+            exc = sys.exc_info()
 
-#         if 0:
-#             print 'Proportion of CPU per op'
-#             for op, t in zip(self.order, self.times):
-#                 s_op = str(op).split()[0][1:]
-#                 print "  %-35s %4.5f"% (s_op, t/total_time)
+        if entry not in self.ignore:
+            n(1)
+            t(end - start)
+        if failed:
+            raise_with_op(op, exc)
 
-#         print 'Proportion of CPU per op class'
-#         dct = {}
-#         for op, t in zip(self.order, self.times):
-#             s_op = str(op).split()[0][1:]
-#             dct[s_op] = dct.get(s_op, 0.0) + t
-#         for t, s_op in reversed(sorted([(t,op) for op, t in dct.items()])):
-#             if proportion:
-#                 print "  %-35s %4.5f"% (s_op, t/total_time)
-#             else:
-#                 print "  %-35s %4.5f"% (s_op, t)
+
+    def print_stats(self, sort_by = 'time'):
+        
+        def compare_fn((op1, stat1), (op2, stat2)):
+            x1 = getattr(stat2, sort_by)
+            x2 = getattr(stat1, sort_by)
+            if x1 > x2:
+                return 1
+            elif x1 < x2:
+                return -1
+            else:
+                return 0
+
+        totals = self.stats['TOTAL']
+
+        print 'CPU usage statistics' 
+        print "  %-25s %9s %12s %12s %12s" % (("Op%s" % (self.by_class and ' class' or '')), 'NCALLS', 'PER_CALL', 'TOTAL', 'CPU%')
+
+        for op, stat in sorted(self.stats.items(), compare_fn):
+            if op == 'TOTAL': continue
+            to_print = self.by_class and (op.__module__ + "." + op.__name__) or str(op)
+            print "  %-25s %9i %12.5f %12.5f %12.5f" % (to_print, stat.ncalls, stat.time / stat.ncalls, stat.time, stat.time / totals.time)
+
+        stat = self.stats['TOTAL']
+        print "  %-25s %9i %12.5f %12.5f %12.5f" % ('TOTAL (includes overhead)', stat.ncalls, stat.time / stat.ncalls, stat.time, stat.time / totals.time)
+
 
