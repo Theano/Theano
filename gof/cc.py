@@ -1,5 +1,5 @@
 
-from link import Linker
+from link import Linker, raise_with_op
 from copy import copy
 from utils import AbstractFunctionError
 import md5
@@ -717,10 +717,15 @@ class OpWiseCLinker(Linker):
     the whole env, but saves on compilation time because small changes
     in the computation graph won't necessarily trigger any recompilation,
     only local changes in the Results or Ops that are used.
+
+    If fallback_on_perform is True, OpWiseCLinker will use an op's
+    perform method if no C version can be generated.
     """
 
-    def __init__(self, env):
+    def __init__(self, env, profiler = None, fallback_on_perform = True):
         self.env = env
+        self.profiler = profiler
+        self.fallback_on_perform = fallback_on_perform
 
     def make_thunk(self, inplace = False):
         if inplace:
@@ -732,15 +737,33 @@ class OpWiseCLinker(Linker):
         env = None
         thunks = []
         for op in op_order:
-            cl = CLinker(op)
-            thunk, in_results, out_results = cl.make_thunk(True)
-            thunks.append(thunk)
-
-        def execute():
-            for thunk in thunks:
-                thunk()
+            try:
+                cl = CLinker(op)
+                thunk, in_results, out_results = cl.make_thunk(True)
+                thunks.append(thunk)
+            except AbstractFunctionError:
+                if self.fallback_on_perform:
+                    thunks.append(op.perform)
+                else:
+                    raise
         
-        return execute, inputs, outputs
+        if self.profiler is None:
+            def f():
+                try:
+                    for thunk, op in zip(thunks, op_order):
+                        thunk()
+                except:
+                    raise_with_op(op)
+        else:
+            profiler = self.profiler()
+            def f():
+                def g():
+                    for thunk, op in zip(thunks, op_order):
+                        profiler.profile_op(thunk, op)
+                profiler.profile_env(g, env)
+            f.profiler = profiler
+
+        return f, inputs, outputs
 
 
 
@@ -748,7 +771,7 @@ class OpWiseCLinker(Linker):
 def _default_checker(x, y):
     """
     Default checker for DualLinker. This checks that the
-    results 
+    results contain the same data using ==.
     """
     if x.data != y.data:
         raise Exception("Output mismatch.", {'performlinker': x.data, 'clinker': y.data})
@@ -812,14 +835,15 @@ class DualLinker(Linker):
                     for output1, output2 in zip(op1.outputs, op2.outputs):
                         self.checker(output1, output2)
                 except:
-                    exc_type, exc_value, exc_trace = sys.exc_info()
-                    try:
-                        trace = op1.trace
-                    except AttributeError:
-                        trace = ()
-                    exc_value.__thunk_trace__ = trace
-                    exc_value.args = exc_value.args + (op1, )
-                    raise exc_type, exc_value, exc_trace
+                    raise_with_op(op1)
+#                     exc_type, exc_value, exc_trace = sys.exc_info()
+#                     try:
+#                         trace = op1.trace
+#                     except AttributeError:
+#                         trace = ()
+#                     exc_value.__thunk_trace__ = trace
+#                     exc_value.args = exc_value.args + (op1, )
+#                     raise exc_type, exc_value, exc_trace
 
         return f, env1.inputs, env1.outputs
 
