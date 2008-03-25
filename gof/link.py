@@ -149,7 +149,6 @@ class PerformLinker(Linker):
 
 
 
-from collections import defaultdict
 import time
 
 class Stats:
@@ -180,12 +179,11 @@ class Profiler:
         listed in ignore will not be timed.
         """
         self.ignore = ignore
-        self.stats = defaultdict(Stats)
-        self.started = {}
+        self.stats = {}
         self.by_class = by_class
 
     def profile_env(self, f, env):
-        stats = self.stats['TOTAL']
+        stats = self.stats.setdefault('TOTAL', Stats())
         n, t = stats.inc_ncalls, stats.inc_time
         failed = False
         
@@ -208,7 +206,7 @@ class Profiler:
             entry = op.__class__
         else:
             entry = op
-        stats = self.stats[entry]
+        stats = self.stats.setdefault(entry, Stats())
         n, t = stats.inc_ncalls, stats.inc_time
         failed = False
         
