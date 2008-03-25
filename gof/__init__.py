@@ -1,5 +1,5 @@
 
-import op, result, ext, link, env, features, toolbox, graph, cc
+import op, result, ext, link, env, features, toolbox, graph, cc, opt
 
 from op import *
 from result import *
@@ -9,6 +9,7 @@ from env import *
 from features import *
 from toolbox import *
 from cc import *
+from opt import *
 
 
 

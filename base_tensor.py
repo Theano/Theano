@@ -100,7 +100,7 @@ class BaseTensor(ResultBase):
     # Hash for constant folding
     #
     def hash(self):
-        if self.data:
+        if self.data is not None:
             return (BaseTensor, self.dtype, self.broadcastable, self.data.data[:])
         else:
             return (BaseTensor, self.dtype, self.broadcastable, None)

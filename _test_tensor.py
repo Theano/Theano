@@ -159,41 +159,42 @@ class T_transpose(unittest.TestCase):
     def test0(self):
         n = astensor(numpy.ones(()))
         t = transpose(n)
-        self.failUnless(t.owner.__class__ is Transpose)
+        self.failUnless(t.owner.__class__ is TransposeInplace)
         f = Function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
 
         #test aliasing
         tval += 55.0
-        self.failUnless(n.data == 56.0)
+        self.failUnless(n.data == 1.0)
         
     def test1(self):
         n = astensor(numpy.ones(5))
         t = transpose(n)
-        self.failUnless(t.owner.__class__ is Transpose)
+        self.failUnless(t.owner.__class__ is TransposeInplace)
         f = Function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
         #test aliasing
         tval += 55.0
-        self.failUnless(n.data[0] == 56.0)
+        self.failUnless(n.data[0] == 1.0)
         
     def test2(self):
         n = astensor(numpy.ones((5,3)))
         t = transpose(n)
-        self.failUnless(t.owner.__class__ is Transpose)
+        self.failUnless(t.owner.__class__ is TransposeInplace)
         f = Function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == (3,5))
         #test aliasing
         tval += 55.0
-        self.failUnless(n.data[0,0] == 56.0)
+        self.failUnless(n.data[0,0] == 1.0)
 
     def test3(self):
+        """Test transpose of tensor, inplace version"""
         n = astensor(numpy.ones((5,3,2)))
-        t = transpose(n)
-        self.failUnless(t.owner.__class__ is Transpose)
+        t = transpose_inplace(n)
+        self.failUnless(t.owner.__class__ is TransposeInplace)
         f = Function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == (2,3,5))
@@ -404,6 +405,14 @@ class T_fill(unittest.TestCase):
 #        self.failUnless(o.inputs[1].dtype[0:3] == 'flo')
         self.failUnless(o.outputs[0].broadcastable == (0,))
 #        self.failUnless(o.outputs[0].dtype[0:3] == 'flo')
+        self.failUnless(numpy.all(eval_outputs([t]) == [9,9,9]))
+
+    def test1(self):
+        x = astensor(numpy.ones((4,5)))
+        l = ones_like(x[:,0:1])
+        r = ones_like(x[0:1,:])
+        xx = x + dot(l,r)
+        self.failUnless(numpy.mean(eval_outputs([xx]) == 2.0))
 
 class T_sum(unittest.TestCase):
     def test_impl(self):

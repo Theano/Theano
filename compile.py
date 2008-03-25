@@ -14,6 +14,13 @@ def exec_opt(inputs, outputs, features=[]):
     return Function(intputs, outputs, features, exec_opt.optimizer, gof.link.PerformLinker, False)
 exec_opt.optimizer = None
 
+def default_optimizer(env):
+    default_optimizer.const(env)
+    default_optimizer.merge(env)
+    pass
+default_optimizer.merge = gof.opt.MergeOptimizer()
+default_optimizer.const = gof.opt.ConstantFinder()
+        
 def _mark_indestructible(results):
     for r in results:
         r.indestructible = True
@@ -38,7 +45,7 @@ class Function:
     """
     def __init__(self, inputs, outputs,
             features = [],
-            optimizer = None,
+            optimizer = default_optimizer,
             linker_cls = gof.link.PerformLinker,
             unpack_single = True,
             except_unreachable_input = True,
@@ -96,6 +103,7 @@ class Function:
 
     def __call__(self, *args):
         return self.fn(*args)
+
 
 def eval_outputs(outputs,
         features = [],

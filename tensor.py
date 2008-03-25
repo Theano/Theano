@@ -59,9 +59,7 @@ class Tensor(BaseTensor):
     def __rpow__(self,other): return pow(other,self)
 
     #TRANSPOSE
-    def __get_T(self):
-        return tensor_copy(transpose(self))
-    T = property(__get_T)
+    T = property(lambda self: transpose(self))
 
     #SLICING
     def __getitem__(self, item): return subtensor(self, item)
@@ -357,7 +355,7 @@ tensor_copy = gof.op.constructor(TensorCopy)
 # View Operations
 ##########################
 
-class Transpose(_Op, Viewer):
+class TransposeInplace(_Op, Viewer):
     def view_map(self):
         return {self.out: [self.inputs[0]]}
     def propagate_broadcastable(self, x):
@@ -367,7 +365,7 @@ class Transpose(_Op, Viewer):
     def impl(self, x):
         return x.T #numpy's transpose
     def grad(self, x, gz):
-        return transpose_copy(gz)
+        return transpose(gz)
     
     def c_impl(self, x, z):
         return """
@@ -377,7 +375,9 @@ class Transpose(_Op, Viewer):
         }
         %(z)s = transposed;
         """
-transpose = gof.op.constructor(Transpose)
+transpose_inplace = gof.op.constructor(TransposeInplace)
+def transpose(x, **kwargs):
+    return transpose_inplace(tensor_copy(x), **kwargs)
 
 class Subtensor(Op, Viewer):
     nin = 2

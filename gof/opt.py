@@ -34,6 +34,9 @@ class Optimizer:
         env.satisfy(self)
         self.apply(env)
 
+    def __call__(self, env):
+        return self.optimize(env)
+
 
 DummyOpt = Optimizer()
 DummyOpt.__doc__ = "Does nothing."
@@ -378,8 +381,8 @@ class MergeOptimizer(Optimizer):
     """
 
     def apply(self, env):
-        cid = {}
-        inv_cid = {}
+        cid = {}     #result -> result.hash()  (for constants)
+        inv_cid = {} #hash -> result (for constants)
         for i, r in enumerate(env.orphans().union(env.inputs)):
             if getattr(r, 'constant', False) and hasattr(r, 'hash'):
                 ref = ('const', r.hash())
