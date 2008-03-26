@@ -627,36 +627,53 @@ class t_gemm(unittest.TestCase):
         return numpy.random.rand(*args)
 
     def cmp(self, z, a, x, y, b):
-        z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
-        cz = z.copy()
-        tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
+        def cmp_linker(z, a, x, y, b, l):
+            z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
+            cz = z.copy()
+            tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
 
-        f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)])
-        new_z = f(z,a,x,y,b)
-        _z = self._gemm(cz, a, x, y, b)
+            f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker_cls=l)
+            new_z = f(z,a,x,y,b)
+            _z = self._gemm(cz, a, x, y, b)
 
-        self.failUnless(z is new_z)
-        #print cz, _z, z, type(cz), type(_z), type(z)
-        #_approx_eq.debug = 1
-        self.failUnless(_approx_eq(_z, z))
-        if a == 0.0 and b == 1.0:
-            return
-        else:
-            self.failIf(numpy.all(cz == z))
+            self.failUnless(z is new_z)
+            #print cz, _z, z, type(cz), type(_z), type(z)
+            #_approx_eq.debug = 1
+            self.failUnless(_approx_eq(_z, z))
+            if a == 0.0 and b == 1.0:
+                return
+            else:
+                self.failIf(numpy.all(cz == z))
 
+        cmp_linker(copy(z), a, x, y, b, gof.cc.OpWiseCLinker)
+        #cmp_linker(copy(z), a, x, y, b, gof.cc.CLinker)
+        cmp_linker(copy(z), a, x, y, b, gof.link.PerformLinker)
 
-    def test0(self): self.cmp(1., 0., 1.0, 1.0, 1.0)
-    def test1(self): self.cmp(2., 0., 1.0, 1.0, 0.0)
+    def test0a(self): 
+        try:
+            g = gemm([1.], 1., [1.], [1.], 1.)
+        except ValueError, e:
+            if e[0] is Gemm.E_rank:
+                return
+        self.fail()
+
+    def test0(self): 
+        try:
+            self.cmp(1., 0., 1.0, 1.0, 1.0)
+        except ValueError, e:
+            if e[0] is Gemm.E_rank:
+                return
+        self.fail()
+
     def test2(self): 
         try:
             self.cmp(2., 1.0, [3,2,1.], [[1],[2],[3.]], 1.0)
         except ValueError, e:
-            self.failUnless(e[0] == Gemm.E_bcast)
+            self.failUnless(e[0] == Gemm.E_rank)
             return
         self.fail()
-    def test3(self): self.cmp([2.], 1.,[3,2,1.], [[1],[2],[3.]], 1.0)
-    def test4(self): self.cmp(self.rand(3,4), 1.0,
-            self.rand(3,5), self.rand(5,4), 0.0)
+    def test4(self): 
+        self.cmp(self.rand(3,4), 1.0, self.rand(3,5), self.rand(5,4), 0.0)
     def test5(self): self.cmp(self.rand(3,4), 1.0,
             self.rand(3,5), self.rand(5,4), 1.0)
     def test6(self): self.cmp(self.rand(3,4), 1.0,

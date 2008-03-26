@@ -4,6 +4,7 @@ Contains the Op class, which is the base interface for all operations
 compatible with gof's graph manipulation routines.
 """
 
+import utils
 from utils import ClsInit, all_bases, all_bases_collect, AbstractFunctionError
 import graph
 
@@ -36,7 +37,7 @@ class Op(object):
     not required) that it creates them.
     """
 
-    __slots__ = ['_inputs', '_outputs']
+    __slots__ = ['_inputs', '_outputs', '_hash_id']
 
     _default_output_idx = 0
 
@@ -52,7 +53,29 @@ class Op(object):
 
 
     def __init__(self, **kwargs):
-        pass
+        self._hash_id = utils.hashgen()
+
+    #
+    # Python stdlib compatibility
+    #
+
+    def __cmp__(self, other):
+        return cmp(id(self), id(other))
+
+    def __eq__(self, other):
+        return self is other #assuming this is faster, equiv to id(self) == id(other)
+
+    def __ne__(self, other):
+        return self is not other #assuming this is faster, equiv to id(self) != id(other)
+
+    def __hash__(self):
+        if not hasattr(self, '_hash_id'):
+            self._hash_id = utils.hashgen()
+        return self._hash_id
+
+    #
+    #
+    #
 
     def get_input(self, i):
         return self._inputs[i]        

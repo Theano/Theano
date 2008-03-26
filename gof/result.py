@@ -5,6 +5,7 @@ value that is the input or the output of an Op.
 """
 
 import copy
+import utils
 from utils import AbstractFunctionError
 
 
@@ -52,14 +53,30 @@ class ResultBase(object):
     data_filter
     """
 
-    __slots__ = ['_role', '_data', 'state', '_name']
+    __slots__ = ['_role', '_data', 'state', '_name', '_hash_id']
 
     def __init__(self, role=None, name=None):
         self._role = role
         self._data = [None]
         self.state = Empty
         self.name = name
+        self._hash_id = utils.hashgen()
 
+    #
+    # Python stdlib compatibility
+    #
+
+    def __cmp__(self, other):
+        return cmp(id(self), id(other))
+
+    def __eq__(self, other):
+        return self is other #assuming this is faster, equiv to id(self) == id(other)
+
+    def __ne__(self, other):
+        return self is not other #assuming this is faster, equiv to id(self) != id(other)
+
+    def __hash__(self):
+        return self._hash_id
         
     #
     # role 

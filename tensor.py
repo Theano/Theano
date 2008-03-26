@@ -10,6 +10,7 @@ import gof.op
 
 from base_tensor import BaseTensor, BaseTensorOp
 from elemwise import Elemwise
+import blas # for gemm, dot
 
 
 class Tensor(BaseTensor):
@@ -712,12 +713,17 @@ dot = gof.op.constructor(Dot)
 class Gemm(_Op):
     nin=5
     nout=1
-    E_bcast = 'incompatible broadcastable flags'
+    E_rank = 'gemm only works for rank 2'
+    E_scalar = 'gemm requires scalar argument'
     def destroy_map(self):
         return {self.out:[self.inputs[0]]}
     def propagate_broadcastable(self, bz, ba, bx, by, bb):
-        if len(bz) != len(Dot.broadcastable_rule(bx,by)):
-            raise ValueError(Gemm.E_bcast, bz, bx, by)
+        if len(bz) != 2: raise ValueError(Gemm.E_rank, len(bz))
+        if len(bx) != 2: raise ValueError(Gemm.E_rank, len(bx))
+        if len(by) != 2: raise ValueError(Gemm.E_rank, len(by))
+        if len(ba): raise ValueError(Gemm.E_scalar, ba)
+        if len(bb): raise ValueError(Gemm.E_scalar, bb)
+
         return [bz]
     def impl(self, z, a, x, y, b):
         assert a.shape == ()
@@ -746,26 +752,168 @@ class Gemm(_Op):
             return z
     def grad(self, (z, a, x, y, b), gz):
         raise NotImplementedError()
-    if 0:
-        def c_support_code(self):
-            return blas.cblas_header_text()
-        def c_libs(self):
-            return blas.ldflags()
-        def c_impl((_zin, _a, _x, _y, _b), (_z,)):
-            check_ab = """
-            {
-            if ((_a->descr->type_num != PyArray_DOUBLE)
-                && (_a->descr->type_num != PyArray_FLOAT))
-                goto _dot_execute_fallback;
 
-            if ((_b->descr->type_num != PyArray_DOUBLE)
-                && (_b->descr->type_num != PyArray_FLOAT))
-                goto _dot_execute_fallback;
+    def c_support_code(self):
+        return blas.cblas_header_text()
+    def c_libraries(self):
+        return blas.ldflags()
+    def c_var_names(self):
+        return [['_z', '_a', '_x', '_y', '_b'], ['_zout']]
+    def c_validate_update(self):
+        return """
+        if (%(_zout)s)
+        {
+            Py_DECREF(%(_zout)s);
+        }
+        if (%(_zout)s != %(_z)s)
+        {
+            %(_zout)s = %(_z)s;
+            Py_INCREF(%(_zout)s);
+        }
+        """
+    def c_validate_update_cleanup(self):
+        return ""
+    def c_code(self):
+        return """
+        int unit = 0;
+
+        int type_num = %(_x)s->descr->type_num;
+        int type_size = %(_x)s->descr->elsize; // in bytes
+
+        npy_intp* Nx = %(_x)s->dimensions;
+        npy_intp* Ny = %(_y)s->dimensions;
+        npy_intp* Nz = %(_z)s->dimensions;
+
+        npy_intp* Sx = %(_x)s->strides;
+        npy_intp* Sy = %(_y)s->strides;
+        npy_intp* Sz = %(_z)s->strides;
+
+        size_t sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
+
+        if (%(_x)s->nd != 2)
+        {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
+        if (%(_y)s->nd != 2)
+        {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
+        if (%(_z)s->nd != 2)
+        {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
+
+        if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
+            && (%(_a)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(a) is not double or float"); %(fail)s;}
+
+        if ((%(_b)s->descr->type_num != PyArray_DOUBLE)
+            && (%(_b)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(b) is not double or float"); %(fail)s;}
+
+        if ((%(_x)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_x)s->descr->type_num != PyArray_FLOAT))
+            %(fail)s;
+
+        if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_y)s->descr->type_num != PyArray_FLOAT))
+            %(fail)s;
+
+        if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_y)s->descr->type_num != PyArray_FLOAT))
+            %(fail)s;
+
+        if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
+            ||(%(_x)s->descr->type_num != %(_z)s->descr->type_num))
+            %(fail)s;
+
+        if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
+        {
+            PyErr_SetString(PyExc_ValueError, "Input dimensions do not agree");
+            %(fail)s;
+        }
+        if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] MOD type_size) || (Sx[1] MOD type_size)
+           || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
+           || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
+        {
+            PyErr_SetString(PyExc_ValueError, "gemm cant run on these inputs");
+            %(fail)s;
+        }
+
+
+        /*
+        encode the stride structure of _x,_y,_z into a single integer
+        */
+        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 0;
+        unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
+        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 8;
+
+        /* create appropriate strides for malformed matrices that are row or column
+         * vectors
+         */
+        sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
+        sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
+        sy_0 = (Ny[0] > 1) ? Sy[0]/type_size : Ny[1];
+        sy_1 = (Ny[1] > 1) ? Sy[1]/type_size : Ny[0];
+        sz_0 = (Nz[0] > 1) ? Sz[0]/type_size : Nz[1];
+        sz_1 = (Nz[1] > 1) ? Sz[1]/type_size : Nz[0];
+
+        switch (type_num)
+        {
+            case PyArray_FLOAT:
+            {
+                #define REAL float
+                float a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
+                ? (REAL)(((float*)%(_a)s->data)[0])
+                : (REAL)(((double*)%(_a)s->data)[0]);
+                float b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
+                (REAL)(((float*)%(_b)s->data)[0])
+                : (REAL)(((double*)%(_b)s->data)[0]);
+
+                float* x = (float*)PyArray_DATA(%(_x)s);
+                float* y = (float*)PyArray_DATA(%(_y)s);
+                float* z = (float*)PyArray_DATA(%(_z)s);
+
+                switch(unit)
+                {
+                    case 0x000: cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_0); break;
+                    case 0x001: cblas_sgemm(CblasRowMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_0); break;
+                    case 0x010: cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_0); break;
+                    case 0x011: cblas_sgemm(CblasRowMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_0); break;
+                    case 0x100: cblas_sgemm(CblasColMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_1); break;
+                    case 0x101: cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_1); break;
+                    case 0x110: cblas_sgemm(CblasColMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_1); break;
+                    case 0x111: cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_1); break;
+                    default: %(fail)s;
+                };
+                #undef REAL
             }
-            """
-            return blas.gemm_code( check_ab,
-                    '(_a->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_a->data)[0]) : (REAL)(((double*)_a->data)[0])',
-                    '(_b->descr->type_num == PyArray_FLOAT) ? (REAL)(((float*)_b->data)[0]) : (REAL)(((double*)_b->data)[0])')
+            break;
+            case PyArray_DOUBLE:
+            {
+                #define REAL double
+
+                double a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
+                ? (REAL)(((float*)%(_a)s->data)[0])
+                : (REAL)(((double*)%(_a)s->data)[0]);
+                double b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
+                (REAL)(((float*)%(_b)s->data)[0])
+                : (REAL)(((double*)%(_b)s->data)[0]);
+                double* x = (double*)PyArray_DATA(%(_x)s);
+                double* y = (double*)PyArray_DATA(%(_y)s);
+                double* z = (double*)PyArray_DATA(%(_z)s);
+                switch(unit)
+                {
+                    case 0x000: cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_0); break;
+                    case 0x001: cblas_dgemm(CblasRowMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_0); break;
+                    case 0x010: cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_0); break;
+                    case 0x011: cblas_dgemm(CblasRowMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_0); break;
+                    case 0x100: cblas_dgemm(CblasColMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_1); break;
+                    case 0x101: cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_1); break;
+                    case 0x110: cblas_dgemm(CblasColMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_1); break;
+                    case 0x111: cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_1); break;
+                    default: %(fail)s;
+                };
+                #undef REAL
+            }
+            break;
+        }
+
+        """
 gemm = gof.op.constructor(Gemm)
 
 

@@ -26,6 +26,8 @@ def cblas_header_text():
 
     __BEGIN_DECLS
 
+    #define MOD %
+
     /*
      * Enumerated and derived types
      */

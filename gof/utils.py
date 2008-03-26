@@ -4,6 +4,10 @@
 
 import re
 
+def hashgen():
+    hashgen.next += 1
+    return  hashgen.next
+hashgen.next = 0
 
 class OmegaError(Exception): pass
 

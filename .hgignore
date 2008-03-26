@@ -11,3 +11,4 @@ pull.sh
 *.pyc
 *.so
 *.sw?
+core.*
