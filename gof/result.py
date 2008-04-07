@@ -56,7 +56,9 @@ class ResultBase(object):
     __slots__ = ['_role', '_data', 'state', '_name', '_hash_id']
 
     def __init__(self, role=None, name=None):
-        self._role = role
+        self._role = None
+        if role is not None:
+            self.role = role
         self._data = [None]
         self.state = Empty
         self.name = name
@@ -95,6 +97,9 @@ class ResultBase(object):
             if _index != index:
                 raise ValueError("Result %s was already mapped to a different index." % self)
             return # because _owner is owner and _index == index
+        #TODO: this doesn't work because many bits of code set the role before
+        # owner.outputs.  Op.__init__ should do this I think. -JSB
+        #assert owner.outputs[index] is self
         self._role = role
 
     role = property(__get_role, __set_role)
