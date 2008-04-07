@@ -175,13 +175,13 @@ class ResultBase(object):
         """
         return False
     
-    def c_declare(self):
+    def c_declare(self, name, sub):
         """
         Declares variables that will be instantiated by c_data_extract.
         """
         raise AbstractFunctionError()
 
-    def c_extract(self):
+    def c_extract(self, name, sub):
         """
         The code returned from this function must be templated using
         "%(name)s", representing the name that the caller wants to
@@ -193,7 +193,7 @@ class ResultBase(object):
         """
         raise AbstractFunctionError()
     
-    def c_cleanup(self):
+    def c_cleanup(self, name, sub):
         """
         This returns C code that should deallocate whatever
         c_data_extract allocated or decrease the reference counts. Do
@@ -201,7 +201,7 @@ class ResultBase(object):
         """
         raise AbstractFunctionError()
 
-    def c_sync(self):
+    def c_sync(self, name, sub):
         """
         The code returned from this function must be templated using "%(name)s",
         representing the name that the caller wants to call this Result.
@@ -297,28 +297,28 @@ class PythonResult(ResultBase):
     through %(name)s.
     """
     
-    def c_declare(self):
+    def c_declare(self, name, sub):
         return """
         PyObject* %(name)s;
-        """
+        """ % locals()
 
-    def c_extract(self):
+    def c_extract(self, name, sub):
         return """
         Py_XINCREF(py_%(name)s);
         %(name)s = py_%(name)s;
-        """
+        """ % locals()
     
-    def c_cleanup(self):
+    def c_cleanup(self, name, sub):
         return """
         Py_XDECREF(%(name)s);
-        """
+        """ % locals()
 
-    def c_sync(self):
+    def c_sync(self, name, sub):
         return """
         Py_XDECREF(py_%(name)s);
         py_%(name)s = %(name)s;
         Py_XINCREF(py_%(name)s);
-        """
+        """ % locals()
     
     def same_properties(self, other):
         return False

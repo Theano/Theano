@@ -108,53 +108,53 @@ class BaseTensor(ResultBase):
     #
     # C codegen stubs
     #
-    def c_declare(self):
+    def c_declare(self, name, sub):
         return """
-        PyArrayObject* %%(name)s;
-        int type_num_%%(name)s;
-        typedef %(dtype)s dtype_%%(name)s;
-        """ % dict(dtype = self.dtype_specs()[1])
+        PyArrayObject* %(name)s;
+        int type_num_%(name)s;
+        typedef %(dtype)s dtype_%(name)s;
+        """ % dict(sub, name = name, dtype = self.dtype_specs()[1])
 
-    def c_init(self):
+    def c_init(self, name, sub):
         return """
-        %%(name)s = NULL;
-        type_num_%%(name)s = %(type_num)s;
-        """ % dict(type_num = self.dtype_specs()[2])
+        %(name)s = NULL;
+        type_num_%(name)s = %(type_num)s;
+        """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
 
-    def c_extract(self):
+    def c_extract(self, name, sub):
         return """
-        %%(name)s = NULL;
-        type_num_%%(name)s = %(type_num)s;
-        if (py_%%(name)s == Py_None) {
-            // We can either fail here or set %%(name)s to NULL and rely on Ops using
+        %(name)s = NULL;
+        type_num_%(name)s = %(type_num)s;
+        if (py_%(name)s == Py_None) {
+            // We can either fail here or set %(name)s to NULL and rely on Ops using
             // tensors to handle the NULL case, but if they fail to do so they'll end up
             // with nasty segfaults, so this is public service.
             PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
-            %%(fail)s
-            //%%(name)s = NULL;
+            %(fail)s
+            //%(name)s = NULL;
         }
-        else if (!PyArray_Check(py_%%(name)s)) {
+        else if (!PyArray_Check(py_%(name)s)) {
             PyErr_SetString(PyExc_ValueError, "expected an ndarray");
-            %%(fail)s
+            %(fail)s
         }
-        else if (((PyArrayObject*)py_%%(name)s)->descr->type_num != %(type_num)s) {
+        else if (((PyArrayObject*)py_%(name)s)->descr->type_num != %(type_num)s) {
             PyErr_SetString(PyExc_ValueError, "expected %(type_num)s");
-            %%(fail)s
+            %(fail)s
         }
         else {
-            %%(name)s = (PyArrayObject*)(py_%%(name)s);
-            Py_XINCREF(%%(name)s);
+            %(name)s = (PyArrayObject*)(py_%(name)s);
+            Py_XINCREF(%(name)s);
         }
-        """ % dict(type_num = self.dtype_specs()[2])
+        """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
 
-    def c_cleanup(self):
+    def c_cleanup(self, name, sub):
         return """
         if (%(name)s) {
             Py_XDECREF(%(name)s);
         }
-        """
+        """ % locals()
     
-    def c_sync(self):
+    def c_sync(self, name, sub):
         return """
         if (!%(name)s) {
             Py_XDECREF(py_%(name)s);
@@ -165,7 +165,7 @@ class BaseTensor(ResultBase):
             py_%(name)s = (PyObject*)%(name)s;
             Py_XINCREF(py_%(name)s);
         }
-        """
+        """ % locals()
 
     def c_headers(self):
         return []

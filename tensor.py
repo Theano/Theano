@@ -136,8 +136,12 @@ class _Op(BaseTensorOp):
         onames = utils.from_return_values(onames)
         return [inames, onames]
     
-    def c_code(self):
-        return self.c_impl(self.inputs, self.outputs)
+    def c_code(self, input_names, output_names, sub):
+        sub = dict(sub)
+        icvn, ocvn = self.c_var_names()
+        for real, tosub in zip(input_names + output_names, icvn + ocvn):
+            sub[tosub] = real
+        return self.c_impl(self.inputs, self.outputs) % sub
 
     def c_impl(self, inputs, outputs):
         raise AbstractFunctionError()
@@ -759,7 +763,7 @@ class Gemm(_Op):
         return blas.ldflags()
     def c_var_names(self):
         return [['_z', '_a', '_x', '_y', '_b'], ['_zout']]
-    def c_validate_update(self):
+    def c_validate_update(self, (_z, _a, _x, _y, _b), (_zout, ), sub):
         return """
         if (%(_zout)s)
         {
@@ -770,10 +774,10 @@ class Gemm(_Op):
             %(_zout)s = %(_z)s;
             Py_INCREF(%(_zout)s);
         }
-        """
-    def c_validate_update_cleanup(self):
+        """ % locals()
+    def c_validate_update_cleanup(self, ignore, _ignore, __ignore):
         return ""
-    def c_code(self):
+    def c_code(self, (_z, _a, _x, _y, _b), (_zout, ), sub):
         return """
         int unit = 0;
 
@@ -913,7 +917,7 @@ class Gemm(_Op):
             break;
         }
 
-        """
+        """ % dict(locals(), **sub)
 gemm = gof.op.constructor(Gemm)
 
 

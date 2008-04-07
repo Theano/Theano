@@ -25,20 +25,20 @@ class Double(ResultBase):
 
 #    def c_is_simple(self): return True
     
-    def c_declare(self):
-        return "double %(name)s; void* %(name)s_bad_thing;"
+    def c_declare(self, name, sub):
+        return "double %(name)s; void* %(name)s_bad_thing;" % locals()
 
-    def c_init(self):
+    def c_init(self, name, sub):
         return """
         %(name)s = 0;
         %(name)s_bad_thing = malloc(100000);
         //printf("Initializing %(name)s\\n"); 
-        """
+        """ % locals()
 
     def c_literal(self):
         return str(self.data)
 
-    def c_extract(self):
+    def c_extract(self, name, sub):
         return """
         if (!PyFloat_Check(py_%(name)s)) {
             PyErr_SetString(PyExc_TypeError, "not a double!");
@@ -47,23 +47,23 @@ class Double(ResultBase):
         %(name)s = PyFloat_AsDouble(py_%(name)s);
         %(name)s_bad_thing = NULL;
         //printf("Extracting %(name)s\\n");
-        """
+        """ % dict(locals(), **sub)
     
-    def c_sync(self):
+    def c_sync(self, name, sub):
         return """
         Py_XDECREF(py_%(name)s);
         py_%(name)s = PyFloat_FromDouble(%(name)s);
         if (!py_%(name)s)
             py_%(name)s = Py_None;
         //printf("Syncing %(name)s\\n");
-        """
+        """ % locals()
 
-    def c_cleanup(self):
+    def c_cleanup(self, name, sub):
         return """
         //printf("Cleaning up %(name)s\\n");
         if (%(name)s_bad_thing)
             free(%(name)s_bad_thing);
-        """
+        """ % locals()
 
 
 class MyOp(Op):
@@ -80,43 +80,43 @@ class MyOp(Op):
 
 class Unary(MyOp):
     nin = 1
-    def c_var_names(self):
-        return [['x'], ['z']]
+#     def c_var_names(self):
+#         return [['x'], ['z']]
 
 class Binary(MyOp):
     nin = 2
-    def c_var_names(self):
-        return [['x', 'y'], ['z']]
+#     def c_var_names(self):
+#         return [['x', 'y'], ['z']]
 
         
 class Add(Binary):
-    def c_code(self):
-        return "%(z)s = %(x)s + %(y)s;"
+    def c_code(self, (x, y), (z, ), sub):
+        return "%(z)s = %(x)s + %(y)s;" % locals()
     def perform(self):
         self.outputs[0].data = self.inputs[0].data + self.inputs[1].data
         
 class Sub(Binary):
-    def c_code(self):
-        return "%(z)s = %(x)s - %(y)s;"
+    def c_code(self, (x, y), (z, ), sub):
+        return "%(z)s = %(x)s - %(y)s;" % locals()
     def perform(self):
         self.outputs[0].data = -10 # erroneous
         
 class Mul(Binary):
-    def c_code(self):
-        return "%(z)s = %(x)s * %(y)s;"
+    def c_code(self, (x, y), (z, ), sub):
+        return "%(z)s = %(x)s * %(y)s;" % locals()
     def perform(self):
         self.outputs[0].data = self.inputs[0].data * self.inputs[1].data
         
 class Div(Binary):
-    def c_validate_update(self):
+    def c_validate_update(self, (x, y), (z, ), sub):
         return """
         if (%(y)s == 0.0) {
             PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");
             %(fail)s
         }
-        """
-    def c_code(self):
-        return "%(z)s = %(x)s / %(y)s;"
+        """ % dict(locals(), **sub)
+    def c_code(self, (x, y), (z, ), sub):
+        return "%(z)s = %(x)s / %(y)s;" % locals()
     def perform(self):
         self.outputs[0].data = self.inputs[0].data / self.inputs[1].data
 

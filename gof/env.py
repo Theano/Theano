@@ -78,22 +78,22 @@ class Env(graph.Graph):
         # The inputs and outputs set bound the subgraph this Env operates on.
         self.inputs = list(inputs)
         self.outputs = list(outputs)
-        
-        for feature_class in uniq_features(features):
-            self.add_feature(feature_class, False)
 
         # All ops in the subgraph defined by inputs and outputs are cached in _ops
         self._ops = set()
 
         # Ditto for results
         self._results = set(self.inputs)
-
+        
         # Set of all the results that are not an output of an op in the subgraph but
         # are an input of an op in the subgraph.
         # e.g. z for inputs=(x, y) and outputs=(x + (y - z),)
         # We initialize them to the set of outputs; if an output depends on an input,
         # it will be removed from the set of orphans.
         self._orphans = set(outputs)
+
+        for feature_class in uniq_features(features):
+            self.add_feature(feature_class, False)
 
         # Maps results to ops that use them:
         # if op.inputs[i] == v then (op, i) in self._clients[v]

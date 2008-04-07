@@ -61,21 +61,41 @@ class Elemwise(Op):
         
         return ret
 
-    def c_validate_update(self):
-        (valupd, valupd_cleanup), (code, code_cleanup) = self.__c_code()
-        return valupd
+    def c_validate_update(self, input_names, output_names, sub):
+        sub = dict(sub)
+        icvn, ocvn = self.c_var_names()
+        for real, tosub in zip(input_names + output_names, icvn + ocvn):
+            sub[tosub] = real
 
-    def c_validate_update_cleanup(self):
         (valupd, valupd_cleanup), (code, code_cleanup) = self.__c_code()
-        return valupd_cleanup
+        return valupd % sub
 
-    def c_code(self):
-        (valupd, valupd_cleanup), (code, code_cleanup) = self.__c_code()
-        return code
+    def c_validate_update_cleanup(self, input_names, output_names, sub):
+        sub = dict(sub)
+        icvn, ocvn = self.c_var_names()
+        for real, tosub in zip(input_names + output_names, icvn + ocvn):
+            sub[tosub] = real
 
-    def c_code_cleanup(self):
         (valupd, valupd_cleanup), (code, code_cleanup) = self.__c_code()
-        return code_cleanup
+        return valupd_cleanup % sub
+
+    def c_code(self, input_names, output_names, sub):
+        sub = dict(sub)
+        icvn, ocvn = self.c_var_names()
+        for real, tosub in zip(input_names + output_names, icvn + ocvn):
+            sub[tosub] = real
+
+        (valupd, valupd_cleanup), (code, code_cleanup) = self.__c_code()
+        return code % sub
+
+    def c_code_cleanup(self, input_names, output_names, sub):
+        sub = dict(sub)
+        icvn, ocvn = self.c_var_names()
+        for real, tosub in zip(input_names + output_names, icvn + ocvn):
+            sub[tosub] = real
+
+        (valupd, valupd_cleanup), (code, code_cleanup) = self.__c_code()
+        return code_cleanup % sub
     
     @classmethod
     def inplace_version(cls, dmap = {0:0}):

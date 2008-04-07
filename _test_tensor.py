@@ -691,7 +691,7 @@ class t_gemm(unittest.TestCase):
             self.rand(3,5), self.rand(5,4), 1.0)
     def test12(self): self.cmp(self.rand(3,4), -1.0,
             self.rand(3,5), self.rand(5,4), -1.0)
-
+t_gemm = None
 
 if __name__ == '__main__':
     unittest.main()

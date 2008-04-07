@@ -66,15 +66,19 @@ class CodeBlock:
         to jump to. It should also contain a key called 'failure_var' that contains
         the name of the variable that contains the error code.
         """
-        self.declare = declare % sub
-        behavior_sub = copy(sub)
-        behavior_sub['fail'] = "{%(failure_var)s = %(id)s; goto __label_%(id)i;}" % sub
-        self.behavior = behavior % behavior_sub
+        self.declare = declare #% sub
+#        behavior_sub = copy(sub)
+#        behavior_sub['fail'] = "{%(failure_var)s = %(id)s; goto __label_%(id)i;}" % sub
+        self.behavior = behavior #% behavior_sub
         # the dummy is because gcc throws an error when a label's right next to a closing
         # brace (maybe there's an ignore flag for that...)
         # we need the label even if cleanup is empty because the behavior block jumps there
         # on failure
-        self.cleanup = ("__label_%(id)i:\n" + cleanup + "\ndouble __DUMMY_%(id)i;\n") % sub
+        self.cleanup = ("__label_%(id)i:\n"%sub + cleanup + "\ndouble __DUMMY_%(id)i;\n"%sub) #% sub
+
+
+def failure_code(sub):
+    return "{%(failure_var)s = %(id)s; goto __label_%(id)i;}" % sub
 
 
 def code_gen(blocks):
@@ -192,14 +196,14 @@ def struct_gen(args, struct_builders, blocks, sub):
     # TODO: add some error checking to make sure storage_<x> are 1-element lists
     # and __ERROR is a 3-elements list.
     struct_code = """
-    struct %%(name)s {
+    struct %(name)s {
         PyObject* __ERROR;
 
         %(storage_decl)s
         %(struct_decl)s
         
-        %%(name)s() {}
-        ~%%(name)s(void) {
+        %(name)s() {}
+        ~%(name)s(void) {
             cleanup();
         }
 
@@ -232,47 +236,47 @@ def struct_gen(args, struct_builders, blocks, sub):
 # The get_<x> functions complete the return value of r.get_<x>()
 # with handling of the py_<name> variable.
 
-def get_nothing(r):
+def get_nothing(r, name, sub):
     ""
     return ""
 
-def get_c_declare(r):
+def get_c_declare(r, name, sub):
     pre = """
     PyObject* py_%(name)s;
-    """
-    return pre + r.c_declare()
+    """ % locals()
+    return pre + r.c_declare(name, sub)
 
-def get_c_init(r):
+def get_c_init(r, name, sub):
     pre = "" """
     py_%(name)s = Py_None;
-    """
-    return pre + r.c_init()
+    """ % locals()
+    return pre + r.c_init(name, sub)
 
-def get_c_extract(r):
+def get_c_extract(r, name, sub):
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     Py_XINCREF(py_%(name)s);
-    """
-    return pre + r.c_extract()
+    """ % locals()
+    return pre + r.c_extract(name, sub)
 
-def get_c_cleanup(r):
+def get_c_cleanup(r, name, sub):
     post = """
     Py_XDECREF(py_%(name)s);
-    """
-    return r.c_cleanup() + post
+    """ % locals()
+    return r.c_cleanup(name, sub) + post
 
-def get_c_sync(r):
+def get_c_sync(r, name, sub):
     return """
-    if (!%%(failure_var)s) {
+    if (!%(failure_var)s) {
       %(sync)s
-      PyObject* old = PyList_GET_ITEM(storage_%%(name)s, 0);
-      Py_XINCREF(py_%%(name)s);
-      PyList_SET_ITEM(storage_%%(name)s, 0, py_%%(name)s);
+      PyObject* old = PyList_GET_ITEM(storage_%(name)s, 0);
+      Py_XINCREF(py_%(name)s);
+      PyList_SET_ITEM(storage_%(name)s, 0, py_%(name)s);
       Py_XDECREF(old);
     }
-    """ % dict(sync = r.c_sync())
+    """ % dict(sync = r.c_sync(name, sub), name = name, **sub)
 
-def apply_policy(policy, r):
+def apply_policy(policy, r, name, sub):
     """
     policy -> list of functions that map a Result to a string,
               or a single such function
@@ -282,8 +286,8 @@ def apply_policy(policy, r):
     if isinstance(r, (list, tuple)):
         ret = ""
         for sub_policy in policy:
-            ret += sub_policy(r)
-    return policy(r)
+            ret += sub_policy(r, name, sub)
+    return policy(r, name, sub)
 
 
 
@@ -304,11 +308,15 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
     name = "V%i" % id
     symbol_table[result] = name
     sub = copy(sub)
-    sub['name'] = name
+#    sub['name'] = name
     sub['id'] = id
-    struct_builder = CodeBlock(*[apply_policy(policy, result) for policy in policies[0]]+[sub]) # struct_declare, struct_behavior, struct_cleanup, sub)
+    sub['fail'] = failure_code(sub)
+    struct_builder = CodeBlock(*[apply_policy(policy, result, name, sub)
+                                 for policy in policies[0]]+[sub]) # struct_declare, struct_behavior, struct_cleanup, sub)
     sub['id'] = id + 1
-    block = CodeBlock(*[apply_policy(policy, result) for policy in policies[1]]+[sub]) # run_declare, run_behavior, run_cleanup, sub)
+    sub['fail'] = failure_code(sub)
+    block = CodeBlock(*[apply_policy(policy, result, name, sub)
+                        for policy in policies[1]]+[sub]) # run_declare, run_behavior, run_cleanup, sub)
 
     return struct_builder, block
 
@@ -453,33 +461,39 @@ class CLinker(Linker):
             
             # We populate sub with a mapping from the variable names specified by the op's c_var_names
             # method to the actual variable names that we will use.
-            ivnames, ovnames = op.c_var_names()
+##            ivnames, ovnames = op.c_var_names()
             sub = dict(failure_var = failure_var)
-            for result, vname in zip(op.inputs + op.outputs, ivnames + ovnames):
-                sub[vname] = symbol[result]
+##            for result, vname in zip(op.inputs + op.outputs, ivnames + ovnames):
+##                sub[vname] = symbol[result]
+
+            isyms, osyms = [symbol[r] for r in op.inputs], [symbol[r] for r in op.outputs]
 
             # Make the CodeBlock for c_validate_update
-            try: validate_behavior = op.c_validate_update()
+            sub['id'] = id
+            sub['fail'] = failure_code(sub)
+            
+            try: validate_behavior = op.c_validate_update(isyms, osyms, sub)
             except AbstractFunctionError:
                 validate_behavior = ""
 
-            try: validate_cleanup = op.c_validate_update_cleanup()
+            try: validate_cleanup = op.c_validate_update_cleanup(isyms, osyms, sub)
             except AbstractFunctionError:
                 validate_cleanup = ""
 
-            sub['id'] = id
             blocks.append(CodeBlock("", validate_behavior, validate_cleanup, sub))
             tasks.append((op, 'validate_update', id))
             id += 1
 
             # Make the CodeBlock for c_code
-            behavior = op.c_code() # this one must be implemented!
+            sub['id'] = id
+            sub['fail'] = failure_code(sub)
 
-            try: cleanup = op.c_code_cleanup()
+            behavior = op.c_code(isyms, osyms, sub) # this one must be implemented!
+
+            try: cleanup = op.c_code_cleanup(isyms, osyms, sub)
             except AbstractFunctionError:
                 cleanup = ""
             
-            sub['id'] = id
             blocks.append(CodeBlock("", behavior, cleanup, sub))
             tasks.append((op, 'code', id))
             id += 1
@@ -489,7 +503,7 @@ class CLinker(Linker):
         args = []
         args += ["storage_%s" % symbol[result] for result in utils.uniq(self.inputs + self.outputs + self.orphans)]
         
-        struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var))
+        struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var, name = "%(name)s"))
 
         # The hash calculated on the code identifies it so weave can cache properly.
         # (the hash has to be used outside of the support code because weave does not consider changes in the support code)

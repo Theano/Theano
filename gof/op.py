@@ -179,15 +179,15 @@ class Op(object):
     # C code generators
     #
 
-    def c_var_names(self):
-        """
-        Returns ([list of input names], [list of output names]) for
-        use as C variables.
-        """
-        return [["i%i" % i for i in xrange(len(self.inputs))],
-                ["o%i" % i for i in xrange(len(self.outputs))]]
+#     def c_var_names(self):
+#         """
+#         Returns ([list of input names], [list of output names]) for
+#         use as C variables.
+#         """
+#         return [["i%i" % i for i in xrange(len(self.inputs))],
+#                 ["o%i" % i for i in xrange(len(self.outputs))]]
 
-    def c_validate_update(self):
+    def c_validate_update(self, inputs, outputs, sub):
         """
         Returns templated C code that checks that the inputs to this
         function can be worked on. If a failure occurs, set an
@@ -198,13 +198,13 @@ class Op(object):
         """
         raise AbstractFunctionError()
 
-    def c_validate_update_cleanup(self):
+    def c_validate_update_cleanup(self, inputs, outputs, sub):
         """
         Clean up things allocated by c_validate().
         """
         raise AbstractFunctionError()
 
-    def c_code(self):
+    def c_code(self, inputs, outputs, sub):
         """
         Returns templated C code that does the computation associated
         to this Op. You may assume that input validation and output
@@ -215,7 +215,7 @@ class Op(object):
         """
         raise AbstractFunctionError()
 
-    def c_code_cleanup(self):
+    def c_code_cleanup(self, inputs, outputs, sub):
         """
         Clean up things allocated by c_code().
         """
