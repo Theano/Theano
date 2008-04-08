@@ -1,6 +1,6 @@
 """A simple class to store ndarray data """
 
-from gof import ResultBase, Op, utils
+from gof import ResultBase, Op, utils, AbstractFunctionError
 import numpy
 from copy import copy
 

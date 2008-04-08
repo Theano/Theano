@@ -398,13 +398,9 @@ class T_abs(unittest.TestCase):
         verify_grad(self, Abs, [numpy.ones(())])
         verify_grad(self, Abs, [numpy.ones(3)])
 
-    class AbsBadGrad(tensor._Elemwise):
-        def impl(self, x):
-            return numpy.abs(x)
+    class AbsBadGrad(Abs):
         def grad(self, (x, ), (gz, )):
             return mul(gz * sgn(x),0.9),
-        def c_foreach(self, (x_i, ), (z_i, )):
-            return "z_i = abs(x_i);"
 
     def test_badgrad(self):
         try:
