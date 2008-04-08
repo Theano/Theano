@@ -77,6 +77,9 @@ class ResultBase(object):
 
     def __hash__(self):
         return self._hash_id
+
+    def desc(self):
+        return id(self)
         
     #
     # role 

@@ -21,7 +21,7 @@ class MyResult(ResultBase):
     def __repr__(self):
         return self.name
 
-    def hash(self):
+    def desc(self):
         return self.data
 
 

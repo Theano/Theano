@@ -97,9 +97,9 @@ class BaseTensor(ResultBase):
             raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
 
     #
-    # Hash for constant folding
+    # Description for constant folding
     #
-    def hash(self):
+    def desc(self):
         if self.data is not None:
             return (BaseTensor, self.dtype, self.broadcastable, self.data.data[:])
         else:

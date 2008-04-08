@@ -310,7 +310,7 @@ class PatternOptimizer(OpSpecificOptimizer):
                     and getattr(pattern, 'constant', False) \
                     and isinstance(expr, ResultBase) \
                     and getattr(expr, 'constant', False) \
-                    and pattern.hash() == expr.hash():
+                    and pattern.desc() == expr.desc():
                 return u
             else:
                 return False
@@ -371,7 +371,7 @@ class ConstantFinder(Optimizer):
             for r in env.inputs:
                 r.indestructible = True
 
-
+import graph
 class MergeOptimizer(Optimizer):
     """
     Merges parts of the graph that are identical, i.e. parts that
@@ -381,11 +381,11 @@ class MergeOptimizer(Optimizer):
     """
 
     def apply(self, env):
-        cid = {}     #result -> result.hash()  (for constants)
-        inv_cid = {} #hash -> result (for constants)
+        cid = {}     #result -> result.desc()  (for constants)
+        inv_cid = {} #desc -> result (for constants)
         for i, r in enumerate(env.orphans().union(env.inputs)):
-            if getattr(r, 'constant', False) and hasattr(r, 'hash'):
-                ref = ('const', r.hash())
+            if getattr(r, 'constant', False):
+                ref = ('const', r.desc())
                 other_r = inv_cid.get(ref, None)
                 if other_r is not None:
                     env.replace(r, other_r)
@@ -397,20 +397,16 @@ class MergeOptimizer(Optimizer):
                 inv_cid[i] = r
 
         for op in env.io_toposort():
-            # this could be made more robust by having an op.hash() that
-            # doesn't depend on the inputs but can depend on additional properties
-            # of the op.
-            op_cid = (op.__class__, tuple([cid[input] for input in op.inputs]))
+            op_cid = (op.desc(), tuple([cid[input] for input in op.inputs]))
             dup = inv_cid.get(op_cid, None)
             success = False
             if dup is not None:
                 success = True
-                for output, other_output in zip(op.outputs, dup.outputs):
-                    try:
-                        env.replace(output, other_output)
-                    except:
-                        success = False
-                        break
+                d = dict(zip(op.outputs, dup.outputs))
+                try:
+                    env.replace_all(d)
+                except Exception, e:
+                    success = False
             if not success:
                 cid[op] = op_cid
                 inv_cid[op_cid] = op

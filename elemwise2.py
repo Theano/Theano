@@ -7,7 +7,7 @@ from base_tensor import BaseTensor as Tensor
 from scalar import upcast, Scalar
 import scalar_ops
 import gof
-
+from gof.python25 import all
 
 def astensor(data):
     assert isinstance(data, Tensor)
@@ -67,6 +67,9 @@ class DimShuffle(Op, Viewer):
             return {self.outputs[0]: [self.inputs[0]]}
         else:
             return {}
+
+    def desc(self):
+        return (self.__class__, tuple(self.new_order))
 
     def perform(self):
         res = self.inputs[0].data
@@ -153,8 +156,8 @@ class Broadcast(Op, Destroyer):
     def clone_with_new_inputs(self, *new_inputs):
         return Broadcast(self.scalar_opclass, new_inputs, self.inplace_pattern)
 
-    def id(self):
-        return (self.__class__, self.scalar_opclass, self.inplace_pattern)
+    def desc(self):
+        return (self.__class__, self.scalar_opclass, tuple(self.inplace_pattern.items()))
 
     def destroy_map(self):
         ret = {}
@@ -388,8 +391,8 @@ class CAReduce(Op):
         self.shadow = scalar_opclass(*[Scalar(dtype = inputs[0].dtype) for i in xrange(scalar_opclass.nin)])
         self.ufunc = numpy.frompyfunc(self.shadow.impl, scalar_opclass.nin, scalar_opclass.nout)
 
-    def id(self):
-        return (self.__class__, self.scalar_opclass, self.dimensions_to_reduce)
+    def desc(self):
+        return (self.__class__, self.scalar_opclass, tuple(self.dimensions_to_reduce))
         
     def clone_with_new_inputs(self, *new_inputs):
         return CAReduce(self.scalar_opclass, new_inputs, self.dimensions_to_reduce)

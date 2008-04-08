@@ -217,6 +217,9 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         self.seen.add(op)
         view_map, destroy_map = self.get_maps(op)
 
+        for input in op.inputs:
+            self.children.setdefault(input, set())
+
         for i, output in enumerate(op.outputs):
             views = view_map.get(output, None)
             destroyed = destroy_map.get(output, None)

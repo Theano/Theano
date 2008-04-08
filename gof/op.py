@@ -73,6 +73,9 @@ class Op(object):
             self._hash_id = utils.hashgen()
         return self._hash_id
 
+    def desc(self):
+        return self.__class__
+
     #
     #
     #

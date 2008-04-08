@@ -400,7 +400,7 @@ class Env(graph.Graph):
         # in new ops, so we use all results we know of as if they were the input set.
         # (the functions in the graph module only use the input set to
         # know where to stop going down)
-        new_ops = graph.io_toposort(self.results(), op.outputs)
+        new_ops = graph.io_toposort(self.results().difference(self.orphans()), op.outputs)
         
         for op in new_ops:
 
@@ -443,6 +443,8 @@ class Env(graph.Graph):
             # Cannot prune an op which is an output or used somewhere
             if self.clients(output) or output in self.outputs: #output in self.outputs or self.clients(output):
                 return
+        if op not in self._ops: # this can happen from replacing an orphan
+            return
         self._ops.remove(op)
         self._results.difference_update(op.outputs)
         for listener in self._listeners.values():
