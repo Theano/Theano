@@ -333,6 +333,9 @@ class PythonResult(ResultBase):
         rval.data = copy.copy(self.data)
         return rval
 
-    
+def python_result(data, **kwargs):
+    rval = PythonResult(**kwargs)
+    rval.data = data
+    return rval
 
 
