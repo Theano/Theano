@@ -235,22 +235,15 @@ class TensorScalarOp(_Elemwise):
 # Unary Operations
 ##########################
 
-# class Abs(_Elemwise):
-#     def impl(self, x):
-#         return numpy.abs(x)
-#     def grad(self, x, gz):
-#         return gz * Sgn(x).out #TODO: handle the corner case (get it? pun?) (there's a special place in hell for people like you)
-#     def c_foreach(self, (x_i, ), (z_i, )):
-#         return "%(z)s_i = abs(%(x)s_i);"
-# #Constructor not necessary because builtin abs() does this
-
-
-Abs = s2t.make_broadcast(scal.Abs)
-AbsInplace = s2t.make_broadcast(scal.Abs, {0:0})
-
-#Constructor not necessary because builtin abs() does this
-abs_inplace = gof.op.constructor(s2t.wrap_broadcast(AbsInplace))
-
+def broadcast(scalar_opclass, name, inplace_versions = True):
+    C = s2t.make_broadcast(scalar_opclass, name = name)
+    c = gof.op.constructor(s2t.wrap_broadcast(C))
+    if inplace_versions:
+        CInplace = s2t.make_broadcast(scalar_opclass, {0:0}, name = name+"Inplace")
+        c_inplace = gof.op.constructor(s2t.wrap_broadcast(CInplace))
+        return C, c, CInplace, c_inplace
+    else:
+        return C, c
     
 class Argmax(Op):
     nin=2 # tensor, axis
@@ -283,153 +276,27 @@ def max(x, axis=None):
     # but when Argmax.c_impl() is in place, it should be fine.
     return argmax(x,axis)[0]
 
-# class Exp(_Elemwise):
-#     def impl(self, x): return numpy.exp(x)
-#     def grad(self, x, gz): return gz * exp(x)
-#     def c_foreach(self, (x_i, ), (z_i, )): return "z_i = exp(x_i);"
-# exp = gof.op.constructor(Exp)
-
-Exp = s2t.make_broadcast(scal.Exp)
-ExpInplace = s2t.make_broadcast(scal.Exp, {0:0})
-exp = gof.op.constructor(s2t.wrap_broadcast(Exp))
-exp_inplace = gof.op.constructor(s2t.wrap_broadcast(ExpInplace))
-
-
-# class Neg(_Elemwise):
-#     def impl(self, x):
-#         return -x
-#     def grad(self, x, gz):
-#         return -gz
-#     def c_foreach(self, (x_i, ), (z_i, )):
-#         return "%(z)s_i = -%(x)s_i;"
-# #Constructor not necessary because unary '-' does this
-
-Neg = s2t.make_broadcast(scal.Neg)
-NegInplace = s2t.make_broadcast(scal.Neg, {0:0})
-neg = gof.op.constructor(s2t.wrap_broadcast(Neg))
-neg_inplace = gof.op.constructor(s2t.wrap_broadcast(NegInplace))
-
-
-# class Log(_Elemwise):
-#     def impl(self, x): return numpy.log(x)
-#     def grad(self, x, gz): return gz / x
-#     def c_foreach(self, (x_i, ), (z_i, )): return "z_i = log(x_i);"
-# log = gof.op.constructor(Log)
-
-Log = s2t.make_broadcast(scal.Log)
-LogInplace = s2t.make_broadcast(scal.Log, {0:0})
-log = gof.op.constructor(s2t.wrap_broadcast(Log))
-log_inplace = gof.op.constructor(s2t.wrap_broadcast(LogInplace))
-
-# class Log2(_Elemwise):
-#     def impl(self, x): return numpy.log2(x)
-#     def grad(self, x, gz): return gz / (x * numpy.log(2.0))
-#     def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = log2(%(x)s_i);"
-# log2 = gof.op.constructor(Log2)
-
-Log2 = s2t.make_broadcast(scal.Log2)
-Log2Inplace = s2t.make_broadcast(scal.Log2, {0:0})
-log2 = gof.op.constructor(s2t.wrap_broadcast(Log2))
-log2_inplace = gof.op.constructor(s2t.wrap_broadcast(Log2Inplace))
-
-# class Sgn(_Elemwise):
-#     def impl(self, x):
-#         return numpy.abs(x) / x
-#     def grad(self, x, gz):
-#         return [None]
-#     def c_foreach(self, (x_i, ), (z_i, )):
-#         return "%(z)s_i = %(x)s_i/abs(%(x)s_i);" # TODO: C use copysign
-# sgn = gof.op.constructor(Sgn)
-
-Sgn = s2t.make_broadcast(scal.Sgn)
-SgnInplace = s2t.make_broadcast(scal.Sgn, {0:0})
-sgn = gof.op.constructor(s2t.wrap_broadcast(Sgn))
-sgn_inplace = gof.op.constructor(s2t.wrap_broadcast(SgnInplace))
-
-# class Sqr(_Elemwise):
-#     def impl(self, x): return x * x
-#     def grad(self, x, gz): return 2.0 * x * gz
-#     def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = %(x)s_i * %(x)s_i;"
-# sqr = gof.op.constructor(Sqr)
-
-Sqr = s2t.make_broadcast(scal.Sqr)
-SqrInplace = s2t.make_broadcast(scal.Sqr, {0:0})
-sqr = gof.op.constructor(s2t.wrap_broadcast(Sqr))
-sqr_inplace = gof.op.constructor(s2t.wrap_broadcast(SqrInplace))
-
-# class Sqrt(_Elemwise):
-#     def impl(self, x): return numpy.sqrt(x)
-#     def grad(self, x, gz): return 0.5 * gz / sqrt(x) 
-#     def c_foreach(self, (x_i, ), (z_i, )): return "%(z)s_i = sqrt(%(x)s_i);"
-# sqrt = gof.op.constructor(Sqrt)
-
-Sqrt = s2t.make_broadcast(scal.Sqrt)
-SqrtInplace = s2t.make_broadcast(scal.Sqrt, {0:0})
-sqrt = gof.op.constructor(s2t.wrap_broadcast(Sqrt))
-sqrt_inplace = gof.op.constructor(s2t.wrap_broadcast(SqrtInplace))
-
-# class Sum(_Elemwise):
-#     def impl(self, x):
-#         return numpy.sum(x)
-#     def grad(self, (x, ), (gz, )):
-#         return fill(x, gz),
-#     def propagate_broadcastable(self, *inputs):
-#         return [()]
-#     def c_init(self, (x, ), (sum, )):
-#         return "dtype_%(sum)s* %(sum)sp = ((dtype_%(sum)s*)PyArray_DATA(%(sum)s)); %(sum)sp[0] = 0;"
-#     def c_foreach(self, (x_i, ), (sum, )):
-#         return "%(sum)sp[0] += %(x)s_i;"
-# sum0 = gof.op.constructor(Sum)
+Abs, _abs, AbsInplace, abs_inplace = broadcast(scal.Abs, 'Abs')
+Exp, exp, ExpInplace, exp_inplace = broadcast(scal.Exp, 'Exp')
+Neg, neg, NegInplace, neg_inplace = broadcast(scal.Neg, 'Neg')
+Log, log, LogInplace, log_inplace = broadcast(scal.Log, 'Log')
+Log2, log2, Log2Inplace, log2_inplace = broadcast(scal.Log2, 'Log2')
+Sgn, sgn, SgnInplace, sgn_inplace = broadcast(scal.Sgn, 'Sgn')
+Sqr, sqr, SqrInplace, sqr_inplace = broadcast(scal.Sqr, 'Sqr')
+Sqrt, sqrt, SqrtInplace, sqrt_inplace = broadcast(scal.Sqrt, 'Sqrt')
 
 Sum = s2t.Sum
 sum = gof.op.constructor(Sum)
 
-# class Fill(_Elemwise):
-#     def impl(self, model, value):
-#         return (model * 0) + value #TODO: we can probably do better than this
-#     def grad(self, (model, value), (gz, )):
-#         return None, sum(gz)
-#     def c_init(self, (model, value), (z, )):
-#         return "dtype_%(value)s %(value)s0 = ((dtype_%(value)s*)PyArray_DATA(%(value)s))[0];"
-#     def c_foreach(self, (model_i, value), (z_i, )):
-#         return "%(z)s_i = %(value)s0;"
-# fill = gof.op.constructor(Fill)
-
-
-def broadcast_package(scalar_opclass, name, inplace_versions = True):
-    C = s2t.make_broadcast(scalar_opclass, name = name)
-    c = gof.op.constructor(s2t.wrap_broadcast(C))
-    if inplace_versions:
-        CInplace = s2t.make_broadcast(scalar_opclass, name = name+"Inplace")
-        c_inplace = gof.op.constructor(s2t.wrap_broadcast(CInplace))
-        return C, c, CInplace, c_inplace
-    else:
-        return C, c
-    
-
-# Fill = s2t.make_broadcast(scal.Second)
-# FillInplace = s2t.make_broadcast(scal.Second, {0:0})
-# fill = gof.op.constructor(s2t.wrap_broadcast(Fill))
-# fill_inplace = gof.op.constructor(s2t.wrap_broadcast(FillInplace))
-
-Fill, fill, FillInplace, fill_inplace = broadcast_package(scal.Second, 'Fill')
+Fill, fill, FillInplace, fill_inplace = broadcast(scal.Second, 'Fill')
 
 def ones_like(model):
     return fill(model, 1.0)
 def zeros_like(model):
     return fill(model, 0.0)
 
+TensorCopy, tensor_copy = broadcast(scal.Identity, 'TensorCopy', False)
 
-# class TensorCopy(_Elemwise):
-#     def impl(self, x):
-#         return numpy.array(x)
-#     def grad(self, x, gz):
-#         return gz
-#     def c_foreach(self, (x_i, ), (z_i, )):
-#         return "%(z)s_i = %(x)s_i;"
-
-TensorCopy = s2t.make_broadcast(scal.Identity)
-tensor_copy = gof.op.constructor(TensorCopy)
 
 ##########################
 # View Operations
@@ -523,269 +390,14 @@ subtensor = gof.op.constructor(Subtensor)
 
 
 ##########################
-# Arithmetic : Add
+# Arithmetics
 ##########################
 
-# # Elemwise #
-# class AddElemwise(_Elemwise):
-#     def impl(self, x, y):
-#         try:
-#             _assert_same_shapes(x, y)
-#         except Exception, e:
-#             print '------ ERROR HERE'
-#             raise
-#         return x + y
-#     def grad(self, (x, y), gz):
-#         return gz, gz
-#     def c_foreach(self, (x_i, y_i), (z_i, )):
-#         return "%(z)s_i = %(x)s_i + %(y)s_i;"
-# add_elemwise = gof.op.constructor(AddElemwise)
-
-# class AddElemwiseInplace(AddElemwise.inplace_version()):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         x += y
-#         return x
-# add_elemwise_inplace = gof.op.constructor(AddElemwiseInplace)
-
-# # Scalar #
-# class AddScalar(TensorScalarOp):
-#     def impl(self, x, a):
-#         _assert_tensor_scalar(x, a)
-#         return x + a
-#     def grad(self, (x, a), gz):
-#         return gz, sum(gz)
-#     c_expr = "x_i + a"
-# add_scalar = gof.op.constructor(AddScalar)
-
-# class AddScalarInplace(AddScalar.inplace_version()):
-#     def impl(self, x, a):
-#         _assert_tensor_scalar(x, a)
-#         x += a
-#         return x
-# add_scalar_inplace = gof.op.constructor(AddScalarInplace)
-
-# add = _scalar_switch(add_elemwise, add_scalar, add_scalar)
-# add_inplace = _scalar_switch(add_elemwise_inplace, add_scalar_inplace)
-
-Add = s2t.make_broadcast(scal.Add)
-AddInplace = s2t.make_broadcast(scal.Add, {0:0})
-
-add = gof.op.constructor(s2t.wrap_broadcast(Add))
-add_inplace = gof.op.constructor(s2t.wrap_broadcast(AddInplace))
-
-
-##########################
-# Arithmetic : Sub
-##########################
-
-# # Elemwise #
-# class SubElemwise(_Elemwise):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         return x - y
-#     def grad(self, (x, y), gz):
-#         return gz, -gz
-#     def c_foreach(self, (x_i, y_i), (z_i, )):
-#         return "%(z)s_i = %(x)s_i - %(y)s_i;"
-# sub_elemwise = gof.op.constructor(SubElemwise)
-
-# class SubElemwiseInplace(SubElemwise.inplace_version()):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         x -= y
-#         return x
-# sub_elemwise_inplace = gof.op.constructor(SubElemwiseInplace)
-
-# # Scalar #
-# def sub_scalar_r(x, a):
-#     return add_scalar(x, -a)
-
-# def sub_scalar_l(x, a):
-#     return add_scalar(-x, a)
-
-# def sub_scalar_rinplace(x, a):
-#     return add_scalar_inplace(x, -a)
-
-# sub = _scalar_switch(sub_elemwise, sub_scalar_r, sub_scalar_l)
-# sub_inplace = _scalar_switch(sub_elemwise_inplace, sub_scalar_rinplace)
-
-Sub = s2t.make_broadcast(scal.Sub)
-SubInplace = s2t.make_broadcast(scal.Sub, {0:0})
-
-sub = gof.op.constructor(s2t.wrap_broadcast(Sub))
-sub_inplace = gof.op.constructor(s2t.wrap_broadcast(SubInplace))
-
-
-##########################
-# Arithmetic : Mul
-##########################
-
-# # Elemwise #
-# class MulElemwise(_Elemwise):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         return x * y
-#     def grad(self, (x, y), gz):
-#         return mul(y, gz), mul(x, gz)
-#     def c_foreach(self, (x_i, y_i), (z_i, )):
-#         return "%(z)s_i = %(x)s_i * %(y)s_i;"
-# mul_elemwise = gof.op.constructor(MulElemwise)
-
-# class MulElemwiseInplace(MulElemwise.inplace_version()):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         x *= y
-#         return x
-# mul_elemwise_inplace = gof.op.constructor(MulElemwiseInplace)
-
-# # Scalar #
-# class Scale(TensorScalarOp):
-#     def impl(self, x, a):
-#         _assert_tensor_scalar(x, a)
-#         return x * a
-#     def grad(self, (x, a), gz):
-#         return scale(a, gz), sum(mul_elemwise(x, gz))
-#     c_expr = "%(x)s_i * _%(a)s"
-# scale = gof.op.constructor(Scale)
-
-# class ScaleInplace(Scale.inplace_version()):
-#     def impl(self, x, a):
-#         _assert_tensor_scalar(x, a)
-#         x *= a
-#         return x
-# scale_inplace = gof.op.constructor(ScaleInplace)
-
-# mul = _scalar_switch(mul_elemwise, scale, scale)
-# mul_inplace = _scalar_switch(mul_elemwise_inplace, scale_inplace)
-
-
-Mul = s2t.make_broadcast(scal.Mul)
-MulInplace = s2t.make_broadcast(scal.Mul, {0:0})
-
-mul = gof.op.constructor(s2t.wrap_broadcast(Mul))
-mul_inplace = gof.op.constructor(s2t.wrap_broadcast(MulInplace))
-
-
-##########################
-# Arithmetic : Div
-##########################
-
-# # Elemwise #
-# class DivElemwise(_Elemwise):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         return x / y
-#     def grad(self, (x, y), gz):
-#         return div(gz, y), -div(mul(x, gz), (y*y))
-#     def c_foreach(self, (x_i, y_i), (z_i, )):
-#         return "%(z)s_i = %(x)s_i / %(y)s_i;"
-# div_elemwise = gof.op.constructor(DivElemwise)
-
-# class DivElemwiseInplace(DivElemwise.inplace_version()):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         x /= y
-#         return x
-# div_elemwise_inplace = gof.op.constructor(DivElemwiseInplace)
-
-# class InvElemwise(_Elemwise):
-#     def impl(self, x):
-#         return 1.0/x
-#     def grad(self, x, gz):
-#         ix = inv(x)
-#         return -gz * (ix * ix)
-#     def c_foreach(self, (x_i, ), (z_i, )):
-#         return "%(z)s_i = 1.0 / %(x)s_i;" #TODO: cast 1.0 to the dtype of x
-# inv_elemwise = gof.op.constructor(InvElemwise)
-
-# # Scalar #
-# def div_scalar_r(x, a):
-#     return scale(x, inv_elemwise(a))
-
-# def div_scalar_l(x, a):
-#     return scale(inv_elemwise(x), a)
-
-# def div_scalar_rinplace(x, a):
-#     return scale_inplace(x, inv_elemwise(a))
-
-# div = _scalar_switch(div_elemwise, div_scalar_r, div_scalar_l)
-# div_inplace = _scalar_switch(div_elemwise_inplace, div_scalar_rinplace)
-
-Div = s2t.make_broadcast(scal.Div)
-DivInplace = s2t.make_broadcast(scal.Div, {0:0})
-
-div = gof.op.constructor(s2t.wrap_broadcast(Div))
-div_inplace = gof.op.constructor(s2t.wrap_broadcast(DivInplace))
-
-
-
-
-
-##########################
-# Arithmetic : Pow
-##########################
-
-# # Elemwise #
-
-# class PowElemwise(_Elemwise):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         return x ** y
-#     def grad(self, (x, y), gz):
-#         gx = gz * y * (pow_elemwise(x, y-1.0))
-#         gy = gz * log(x) * pow_elemwise(x, y)
-#         return gx, gy
-#     def c_foreach(self, (x_i, y_i), (z_i, )):
-#         return "%(z)s_i = pow(%(x)s_i, %(y)s_i);"
-# pow_elemwise = gof.op.constructor(PowElemwise)
-
-# class PowElemwiseInplace(PowElemwise.inplace_version()):
-#     def impl(self, x, y):
-#         _assert_same_shapes(x, y)
-#         x **= y
-#         return x
-# pow_elemwise_inplace = gof.op.constructor(PowElemwiseInplace)
-
-# # Scalar #
-# class PowScalarL(TensorScalarOp):
-#     def impl(self, y, x):
-#         _assert_tensor_scalar(y, x)
-#         return x ** y
-#     def grad(self, (y, x), gz):
-#         gx = sum(gz * y * x ** (y-1.0))
-#         gy = gz * log(x) * x ** y
-#         return gy, gx
-#     c_expr = "pow(%(a)s, %(x)s_i)"
-# pow_scalar_l = gof.op.constructor(PowScalarL)
-
-# class PowScalarR(TensorScalarOp):
-#     def impl(self, x, a):
-#         _assert_tensor_scalar(x, a)
-#         return x ** a
-#     def grad(self, (x, s), gz):
-#         gx = scale(mul_elemwise(gz,pow_scalar_r(x, add_scalar(s,-1.0))), s)
-#         gs = sum(mul_elemwise(mul_elemwise(gz, pow_scalar_r(x,s)), log(x)))
-#         return gx, gs
-#     c_expr = "pow(%(x)s_i, _%(a)s)"
-# pow_scalar_r = gof.op.constructor(PowScalarR)
-
-# class PowScalarRInplace(PowScalarR.inplace_version()):
-#     def impl(self, x, a):
-#         _assert_tensor_scalar(x, a)
-#         x **= a
-#         return x
-# pow_scalar_r_inplace = gof.op.constructor(PowScalarRInplace)
-
-# pow = _scalar_switch(pow_elemwise, pow_scalar_r, pow_scalar_l)
-# pow_inplace = _scalar_switch(pow_elemwise_inplace, pow_scalar_r_inplace)
-
-
-Pow = s2t.make_broadcast(scal.Pow)
-PowInplace = s2t.make_broadcast(scal.Pow, {0:0})
-
-pow = gof.op.constructor(s2t.wrap_broadcast(Pow))
-pow_inplace = gof.op.constructor(s2t.wrap_broadcast(PowInplace))
+Add, add, AddInplace, add_inplace = broadcast(scal.Add, 'Add')
+Sub, sub, SubInplace, sub_inplace = broadcast(scal.Sub, 'Sub')
+Mul, mul, MulInplace, mul_inplace = broadcast(scal.Mul, 'Mul')
+Div, div, DivInplace, div_inplace = broadcast(scal.Div, 'Div')
+Pow, pow, PowInplace, pow_inplace = broadcast(scal.Pow, 'Pow')
 
 
 
