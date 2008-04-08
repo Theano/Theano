@@ -832,8 +832,14 @@ class DualLinker(Linker):
         op_order_1 = env1.toposort()
         op_order_2 = [equiv[op.outputs[0]].owner for op in op_order_1] # we need to have the exact same order so we can compare each step
 
+        def c_make_thunk(op):
+            try:
+                return CLinker(op).make_thunk(True)[0]
+            except AbstractFunctionError:
+                return op.perform
+        
         thunks1 = [op.perform for op in op_order_1]
-        thunks2 = [CLinker(op).make_thunk(True)[0] for op in op_order_2]
+        thunks2 = [c_make_thunk(op) for op in op_order_2]
         
         def f():
             for input1, input2 in zip(env1.inputs, env2.inputs):

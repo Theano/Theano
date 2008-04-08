@@ -22,19 +22,37 @@ def env(inputs, outputs, validate = True, features = []):
 
 class _test_DimShuffle(unittest.TestCase):
 
-    def test_straightforward(self):
-        x, y, z = inputs()
-        e0 = DimShuffle(x, [1, 'x', 0]).out
-        f = gof.PerformLinker(env([x], [e0])).make_function(inplace=True)
-        assert f(numpy.ones((2, 3))).shape == (3, 1, 2)
+    def with_linker(self, linker):
+        for xsh, shuffle, zsh in [((2, 3), (1, 'x', 0), (3, 1, 2)),
+                                  ((1, 2, 3), (1, 2), (2, 3)),
+                                  ((1, 2, 1, 3), (1, 3), (2, 3)),
+                                  ((2, 3, 4), (2, 1, 0), (4, 3, 2)),
+                                  ((2, 3, 4), ('x', 2, 1, 0, 'x'), (1, 4, 3, 2, 1)),
+                                  ((1, 4, 3, 2, 1), (3, 2, 1), (2, 3, 4)),
+                                  ((1, 1, 4), (1, 2), (1, 4))]:
+            x = modes.build(Tensor('float64', [1 * (entry == 1) for entry in xsh], name = 'x'))
+            e = DimShuffle(x, shuffle).out
+#             print shuffle, e.owner.grad(e.owner.inputs, e.owner.outputs).owner.new_order
+            f = linker(env([x], [e])).make_function(inplace=False)
+            assert f(numpy.ones(xsh)).shape == zsh
+
+    def test_perform(self):
+        self.with_linker(gof.PerformLinker)
+
+
+#     def test_straightforward(self):
+#         x, y, z = inputs()
+#         e0 = DimShuffle(x, [1, 'x', 0]).out
+#         f = gof.PerformLinker(env([x], [e0])).make_function(inplace=True)
+#         assert f(numpy.ones((2, 3))).shape == (3, 1, 2)
 
 
 class _test_Broadcast(unittest.TestCase):
 
     def with_linker(self, linker):
-        for xsh, ysh in [((5, 5), (5, 5)),
-                         ((5, 5), (1, 5)),
-                         ((5, 5), (5, 1)),
+        for xsh, ysh in [((3, 5), (3, 5)),
+                         ((3, 5), (1, 5)),
+                         ((3, 5), (3, 1)),
                          ((1, 5), (5, 1)),
                          ((1, 1), (1, 1)),
                          ((2, 3, 4, 5), (2, 3, 4, 5)),
@@ -52,7 +70,11 @@ class _test_Broadcast(unittest.TestCase):
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
-            
+
+#             print "AAAAAAAAAAAAAAAAAA"
+#             print f(xv, yv)
+#             print zv
+#             print "BBBBBBBBBBBBBBBBBB"
             self.failUnless((f(xv, yv) == zv).all())
 
     def with_linker_inplace(self, linker):
@@ -105,7 +127,9 @@ class _test_CAReduce(unittest.TestCase):
         for xsh, tosum in [((5, 6), (0, 1)),
                            ((5, 6), (0, )),
                            ((5, 6), (1, )),
-                           ((2, 3, 4, 5), (0, 1, 3))]:
+                           ((5, 6), ()),
+                           ((2, 3, 4, 5), (0, 1, 3)),
+                           ((), ())]:
             x = modes.build(Tensor('float64', [1 * (entry == 1) for entry in xsh], name = 'x'))
             e = CAReduce(Add, [x], dimensions_to_reduce = tosum).out
             f = linker(env([x], [e])).make_function(inplace = False)
@@ -113,7 +137,13 @@ class _test_CAReduce(unittest.TestCase):
             zv = xv
             for axis in reversed(sorted(tosum)):
                 zv = numpy.add.reduce(zv, axis)
-            self.failUnless((f(xv) - zv < 1e-10).all())
+#             print "AAAAAAAAAAAAAAAAAA"
+#             print xsh, tosum
+#             print f(xv)
+#             print zv
+#             print f(xv) - zv
+#             print "BBBBBBBBBBBBBBBBBB"
+            self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker)
@@ -123,27 +153,27 @@ class _test_CAReduce(unittest.TestCase):
         
 
 if __name__ == '__main__':
-#    unittest.main()
-    x = modes.build(Tensor('float64', [0, 0], name = 'x'))
-    y = modes.build(Tensor('float64', [0, 0], name = 'y'))
-    e = Broadcast(SquareDiff, (x, y), {0:0}).out
-    f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
-    xv = numpy.random.rand(1000, 1000)
-    yv = numpy.random.rand(1000, 1000)
-    zv = numpy.random.rand(1000, 1000)
-    add = numpy.frompyfunc(lambda x, y: x + y, 2, 1)
+    unittest.main()
+#     x = modes.build(Tensor('float64', [0, 0], name = 'x'))
+#     y = modes.build(Tensor('float64', [0, 0], name = 'y'))
+#     e = Broadcast(SquareDiff, (x, y), {0:0}).out
+#     f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
+#     xv = numpy.random.rand(1000, 1000)
+#     yv = numpy.random.rand(1000, 1000)
+#     zv = numpy.random.rand(1000, 1000)
+#     add = numpy.frompyfunc(lambda x, y: x + y, 2, 1)
 
-    t0 = time.time()
-    for i in xrange(100):
-        xv -= yv
-        xv *= xv
-#        xv += yv
-    print time.time() - t0
+#     t0 = time.time()
+#     for i in xrange(100):
+#         xv -= yv
+#         xv *= xv
+# #        xv += yv
+#     print time.time() - t0
 
-    t0 = time.time()
-    for i in xrange(100):
-        f(xv, yv)
-    print time.time() - t0
+#     t0 = time.time()
+#     for i in xrange(100):
+#         f(xv, yv)
+#     print time.time() - t0
     
 
 

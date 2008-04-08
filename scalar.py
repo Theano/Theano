@@ -12,6 +12,10 @@ def as_scalar(x, name = None):
         s = Scalar('float64', name = name)
         s.data = x
         return s
+    if isinstance(x, int):
+        s = Scalar('int32', name = name)
+        s.data = x
+        return s
     if isinstance(x, Scalar):
         return x
 
@@ -45,7 +49,8 @@ class Scalar(ResultBase):
 #             and self.data == other.data
 
     def dtype_specs(self):
-        return {'float64': (float, 'double', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble')}[self.dtype]
+        return {'float64': (float, 'npy_float64', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
+                'int32': (int, 'npy_int32', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong')}[self.dtype]
 
     def c_declare(self, name, sub):
         return """

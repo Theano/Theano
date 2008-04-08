@@ -94,7 +94,7 @@ class BaseTensor(ResultBase):
                     'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
                     'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')}[self.dtype]
         except KeyError:
-            raise TypeError("Unsupported dtype for BaseTensor: %s" % self.dtype)
+            raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
 
     #
     # Hash for constant folding

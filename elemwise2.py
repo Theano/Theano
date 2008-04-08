@@ -3,11 +3,15 @@ import elemwise_cgen as cgen
 
 import numpy
 from gof import Op, Viewer, Destroyer
-from tensor import Tensor
+from base_tensor import BaseTensor as Tensor
 from scalar import upcast, Scalar
 import scalar_ops
 import gof
 
+
+def astensor(data):
+    assert isinstance(data, Tensor)
+    return data
 
 
 ##################
@@ -17,6 +21,8 @@ import gof
 class DimShuffle(Op, Viewer):
 
     def __init__(self, input, new_order, inplace = True):
+
+        input = astensor(input)
 
         ib = input.broadcastable
         ob = []
@@ -35,13 +41,23 @@ class DimShuffle(Op, Viewer):
         self.outputs = output,
 
         self.inplace = inplace
-        
-        self.numorder = [x for x in new_order if type(x) == int]
-        self.is_transposition = sorted(new_order) == range(len(ib))
-        self.dup_dims = len(set(self.numorder)) != len(self.numorder)
-        self.all_dims = len(set(self.numorder)) == len(ib)
-        if self.dup_dims or not self.all_dims:
-            raise NotImplementedError("You must provide a permutation of *all* the input dimensions with *no duplicates*.")
+
+        self.drop = []
+        self.augment = []
+        i2j = {}
+        j = 0
+        for i, b in enumerate(ib):
+            if i not in new_order:
+                if b == 1:
+                    self.drop.append(i)
+                else:
+                    raise NotImplementedError("You cannot drop a non-broadcastable dimension.")
+            else:
+                i2j[i] = j
+                j += 1
+
+        self.shuffle = [i2j[x] for x in new_order if x != 'x']
+        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
 
     def clone_with_new_inputs(self, *new_inputs):
         return DimShuffle(new_inputs[0], self.new_order, self.inplace)
@@ -53,19 +69,31 @@ class DimShuffle(Op, Viewer):
             return {}
 
     def perform(self):
-        res = self.inputs[0].data.transpose(self.numorder)
+        res = self.inputs[0].data
         shape = list(res.shape)
-        new_shape = []
-        for entry in self.new_order:
-            if entry == 'x':
-                new_shape.append(1)
-            else:
-                new_shape.append(shape.pop(0))
-        res = res.reshape(new_shape)
+        for drop in reversed(self.drop):
+            shape.pop(drop)
+        res = res.reshape(shape)
+        
+        res = res.transpose(self.shuffle)
+
+        shape = list(res.shape)
+        for augm in self.augment:
+            shape.insert(augm, 1)
+        res = res.reshape(shape)
+
         if not self.inplace:
             res = numpy.copy(res)
+
         self.outputs[0].data = res
 
+    def grad(self, (x, ), (gz, )):
+        grad_order = ['x'] * len(self.inputs[0].broadcastable)
+        for i, x in enumerate(self.new_order):
+            if x != 'x':
+                grad_order[x] = i
+        return DimShuffle(gz, grad_order).out,
+        
     def __str__(self):
         return "%s(%s, %s)" % (self.__class__.__name__, str(self.inputs[0]), self.new_order)
 
@@ -90,6 +118,9 @@ class Transpose(DimShuffle):
 class Broadcast(Op, Destroyer):
 
     def __init__(self, scalar_opclass, inputs, inplace_pattern = {}):
+
+        inputs = map(astensor, inputs)
+        
         try:
             assert len(set([len(input.broadcastable) for input in inputs])) == 1
         except (AssertionError, AttributeError):
@@ -141,15 +172,29 @@ class Broadcast(Op, Destroyer):
             if r in scalar_ograds:
                 return ograds[scalar_ograds.index(r)]
             op = r.owner
+            if op is None:
+                b = [1] * len(inputs[0].broadcastable)
+                res = astensor(numpy.asarray(r.data).reshape(b),
+                               broadcastable = b)
+                return res
             op_class = op.__class__
-            bcasted = Broadcast(op_class, [transform(input) for input in op.inputs], {})
+            bcasted = Broadcast(op_class, [transform(input) for input in op.inputs], {}).out
             return bcasted
         ret = []
         for scalar_igrad, input in zip(scalar_igrads, inputs):
             r = transform(scalar_igrad)
             to_sum = [i for i, bcast in enumerate(input.broadcastable) if bcast]
             if to_sum:
+                shuffle = []
+                j = 0
+                for bcast in input.broadcastable:
+                    if bcast == 1:
+                        shuffle.append('x')
+                    else:
+                        shuffle.append(j)
+                        j += 1
                 sr = Sum(r, axis = to_sum).out
+                sr = DimShuffle(sr, shuffle).out
                 ret.append(sr)
             else:
                 ret.append(r)
@@ -269,16 +314,19 @@ def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
         New.__name__ = "Tensor" + scalar_opclass.__name__
     return New
 
-def broadcast(op):
+def wrap_broadcast(op):
     def instantiate(*inputs):
+        inputs = map(astensor, inputs)
+        
         target_length = max([len(input.broadcastable) for input in inputs])
         args = []
         for input in inputs:
-            difference = target_length - len(input.broadcastable)
+            length = len(input.broadcastable)
+            difference = target_length - length
             if not difference:
                 args.append(input)
             else:
-                args.append(DimShuffle(input, ['x']*difference + range(length)))
+                args.append(DimShuffle(input, ['x']*difference + range(length)).out)
         return op(*args)
     return instantiate
 
@@ -319,6 +367,8 @@ class CAReduce(Op):
     """
     
     def __init__(self, scalar_opclass, inputs, dimensions_to_reduce = None):
+        inputs = map(astensor, inputs)
+        
         if scalar_opclass.nin != 2 or scalar_opclass.nout != 1:
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
         if len(inputs) != 1:
@@ -346,9 +396,13 @@ class CAReduce(Op):
         
     def perform(self):
         result = self.inputs[0].data
-        for dimension in reversed(sorted(self.dimensions_to_reduce)):
-            result = self.ufunc.reduce(result, dimension)
-        self.outputs[0].data = result
+        to_reduce = reversed(sorted(self.dimensions_to_reduce))
+        if to_reduce:
+            for dimension in to_reduce:
+                result = self.ufunc.reduce(result, dimension)
+            self.outputs[0].data = result
+        else:
+            self.outputs[0].data = numpy.copy(result)
 
     def _c_all(self, inames, onames, sub):
 
@@ -362,6 +416,9 @@ class CAReduce(Op):
         odtype = output.dtype_specs()[1]
 
         tosum = self.dimensions_to_reduce
+
+        if tosum == ():
+            return Broadcast(scalar_ops.Identity, (input, ))._c_all(inames, onames, sub)
 
         order1 = [i for i in xrange(len(input.broadcastable)) if i not in tosum]
         order = order1 + list(tosum)
@@ -459,7 +516,19 @@ def make_reduce(scalar_opclass, name = None):
         New.__name__ = "Reduce" + scalar_opclass.__name__
     return New
 
-Sum = make_reduce(scalar_ops.Add, name = 'Sum')
+class Sum(make_reduce(scalar_ops.Add)):
+    def grad(self, (x, ), (gz, )):
+        if self.dimensions_to_reduce == ():
+            return gz,
+        new_dims = []
+        i = 0
+        for j, _ in enumerate(x.broadcastable):
+            if j in self.dimensions_to_reduce:
+                new_dims.append('x')
+            else:
+                new_dims.append(i)
+                i += 1
+        return Broadcast(scalar_ops.Second, (x, DimShuffle(gz, new_dims).out)).out, 
 
 
 def reduce(op):

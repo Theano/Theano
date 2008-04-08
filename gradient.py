@@ -76,14 +76,17 @@ def grad_sources_inputs(sources, graph_inputs):
         #if all output gradients are None, continue
         if all(map(lambda x:x is None, g_outputs)): continue
 
-        output_arg = _unpack_result(g_outputs)
-        input_arg = _unpack_result(op.inputs)
+#         output_arg = _unpack_result(g_outputs)
+#         input_arg = _unpack_result(op.inputs)
+        
+        output_arg = g_outputs
+        input_arg = op.inputs
         op_grad = op.grad(input_arg, output_arg)
         if op_grad is None:
             raise ValueError(_msg_retNone, op.__class__)
         if isinstance(op_grad, float):
             raise TypeError('wtf!!!!!!!!', op)
-        g_inputs = _pack_result(op_grad)
+        g_inputs = op_grad #_pack_result(op_grad)
         assert isinstance(g_inputs, (list, tuple))
         if len(g_inputs) != len(op.inputs):
             raise ValueError(_msg_badlen, 
@@ -123,6 +126,10 @@ class numeric_grad:
         """
         gf = [numpy.ndarray(x.shape) for x in pt]
         f_pt = f(*pt)
+        if isinstance(f, (list, tuple)):
+            f_pt = [numpy.copy(x) for x in f_pt]
+        else:
+            f_pt = numpy.copy(f_pt)
 
         for idx in xrange(len(gf)):
             if len(pt[idx].shape) == 0:

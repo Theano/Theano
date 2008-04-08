@@ -7,7 +7,9 @@ from compile import Function, eval_outputs
 import gradient
 import gof, gof.graph
 from gof.python25 import any
+import gof
 
+from elemwise2 import DimShuffle
 
 def _numpy_checker(x, y):
     """
@@ -57,6 +59,15 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
         analytic_grad = grad_fn(*pt)
         if not isinstance(analytic_grad, (list, tuple)):
             analytic_grad = [analytic_grad]
+
+#         if num_grad.max_err(analytic_grad) > 1.0e-4:
+#             print "aaaaaaaaaa"
+#             print gof.Env(tensor_pt, [cost])
+#             print gof.Env(tensor_pt, symbolic_grad)
+#             print analytic_grad
+#             print num_grad.gf
+#             print num_grad.max_err(analytic_grad)
+#             print "bbbbbbbbbb"
 
         if num_grad.max_err(analytic_grad) > 1.0e-4:
             raise Exception(verify_grad.E_grad)
@@ -361,6 +372,15 @@ class T_add(unittest.TestCase):
                 f = Function([a,b], [fn(a, b)], linker_cls = gof.CLinker)
                 self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
+    def test_grad_scalar_l(self):
+        verify_grad(self, Add, [numpy.asarray([3.0]), numpy.random.rand(3)])
+    def test_grad_scalar_r(self):
+        verify_grad(self, Add, [numpy.random.rand(3), numpy.asarray([3.0])])
+    def test_grad_row(self):
+        verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+    def test_grad_col(self):
+        verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+
 
 class T_abs(unittest.TestCase):
     def test_impl(self):
@@ -381,8 +401,8 @@ class T_abs(unittest.TestCase):
     class AbsBadGrad(tensor._Elemwise):
         def impl(self, x):
             return numpy.abs(x)
-        def grad(self, x, gz):
-            return scale(gz * sgn(x),0.9)
+        def grad(self, (x, ), (gz, )):
+            return mul(gz * sgn(x),0.9),
         def c_foreach(self, (x_i, ), (z_i, )):
             return "z_i = abs(x_i);"
 
@@ -401,7 +421,7 @@ class T_fill(unittest.TestCase):
         o = t.owner
         self.failUnless(o.inputs[0].broadcastable == (0,))
 #        self.failUnless(o.inputs[0].dtype[0:3] == 'int')
-        self.failUnless(o.inputs[1].broadcastable == ())
+        self.failUnless(o.inputs[1].broadcastable == (1,))
 #        self.failUnless(o.inputs[1].dtype[0:3] == 'flo')
         self.failUnless(o.outputs[0].broadcastable == (0,))
 #        self.failUnless(o.outputs[0].dtype[0:3] == 'flo')
@@ -432,47 +452,70 @@ class T_mul(unittest.TestCase):
     def test_elemwise(self):
         a = astensor(0.0)
         b = astensor(0.0)
-        check_eq2_both(self, [a,b], mul_elemwise(a,b), [3.0, 4.0], 12.0)
-        check_eq2_both(self, [a,b], mul_elemwise(b,a), [-1.0,2.0], -2.0)
-        self.failUnless(isinstance(mul(a,b).owner, Scale))
+        check_eq2_both(self, [a,b], mul(a,b), [3.0, 4.0], 12.0)
+        check_eq2_both(self, [a,b], mul(b,a), [-1.0,2.0], -2.0)
+        #self.failUnless(isinstance(mul(a,b).owner, Scale))
 
         a = astensor(numpy.ones(2))
         b = astensor(numpy.ones(2))
         aa = numpy.asarray([-0.5, 4.0])
         bb = numpy.asarray([-0.5, 2.0])
-        check_eq2_both(self, [a,b], mul_elemwise(a,b), [aa,bb], numpy.asarray([0.25, 8.0]))
-        check_eq2_both(self, [a,b], mul_elemwise(a,b), [bb,aa], numpy.asarray([0.25, 8.0]))
-        self.failUnless(isinstance(mul(a,b).owner, MulElemwise))
+        check_eq2_both(self, [a,b], mul(a,b), [aa,bb], numpy.asarray([0.25, 8.0]))
+        check_eq2_both(self, [a,b], mul(a,b), [bb,aa], numpy.asarray([0.25, 8.0]))
+        #self.failUnless(isinstance(mul(a,b).owner, MulElemwise))
 
     def test_scalar(self):
         r = numpy.random.rand(2,3)
         a = astensor(r)
         b = astensor(2.0)
-        check_eq2_both(self, [a,b], scale(a,b), [r, 2.0], r*2.0)
-        check_eq2_both(self, [a,b], scale(a,b), [r, 4.0], r*4.0)
+        check_eq2_both(self, [a,b], mul(a,b), [r, 2.0], r*2.0)
+        check_eq2_both(self, [a,b], mul(a,b), [r, 4.0], r*4.0)
         self.failUnless(b.data == 2.0)
 
-    def test_operator(self):
-        a = astensor([1,1])
-        aa = astensor([1,1])
-        b = astensor(4)
-        self.failUnless(isinstance((a*b).owner, Scale))
-        self.failUnless(isinstance((b*a).owner, Scale))
-        self.failUnless(isinstance((a*aa).owner, MulElemwise))
-        self.failUnless(isinstance((aa*a).owner, MulElemwise))
+    def test_rowcol(self):
+        r1 = numpy.random.rand(3,5)
+        r2 = numpy.random.rand(1,5)
+        r3 = numpy.random.rand(3,1)
+        a1, a2, a3 = astensor(r1), astensor(r2), astensor(r3)
+        check_eq2_both(self, [a1,a2], mul(a1,a2), [r1, r2], r1*r2)
+        check_eq2_both(self, [a1,a3], mul(a1,a3), [r1, r3], r1*r3)
+
+    def test_grad_elemwise(self):
+        verify_grad(self, Mul, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+    def test_grad_scalar_l(self):
+        verify_grad(self, Mul, [numpy.asarray([3.0]), numpy.random.rand(3)])
+    def test_grad_scalar_r(self):
+        verify_grad(self, Mul, [numpy.random.rand(3), numpy.asarray([3.0])])
+    def test_grad_row(self):
+        verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+    def test_grad_row2(self):
+        op = lambda x, y: Mul(x, DimShuffle(y, ['x', 0]).out)
+        verify_grad(self, op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
+    def test_grad_col(self):
+        verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+
+
+#     def test_operator(self):
+#         a = astensor([1,1])
+#         aa = astensor([1,1])
+#         b = astensor(4)
+#         self.failUnless(isinstance((a*b).owner, Scale))
+#         self.failUnless(isinstance((b*a).owner, Scale))
+#         self.failUnless(isinstance((a*aa).owner, MulElemwise))
+#         self.failUnless(isinstance((aa*a).owner, MulElemwise))
 
     def test_wrong_shapes(self):
         a = astensor(numpy.ones(3))
         b = astensor(numpy.ones(4))
         try:
-            check_eq2(self, [a,b], MulElemwise(a,b).out,
+            check_eq2(self, [a,b], Mul(a,b).out,
                       [numpy.ones(3), numpy.ones(4)], 1.0)
             self.fail()
         except ValueError, e:
-            self.failUnless(e[0] is tensor._assert_same_shapes.E_shape)
+            self.failUnless('shape mismatch' in str(e))
         
         try:
-            check_eq2_c(self, [a,b], MulElemwise(a,b).out,
+            check_eq2_c(self, [a,b], Mul(a,b).out,
                         [numpy.ones(3), numpy.ones(4)], 1.0)
             self.fail()
         except ValueError, e:
@@ -482,14 +525,14 @@ class T_div(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(9999)
     def test_grad_e(self):
-        verify_grad(self, DivElemwise, [numpy.ones(()), numpy.ones(())])
-        verify_grad(self, DivElemwise, [numpy.random.rand(3), numpy.ones(3)])
-        verify_grad(self, DivElemwise, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
+        verify_grad(self, Div, [numpy.random.rand(3), numpy.ones(3)])
+        verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
+        verify_grad(self, Div, [numpy.ones(()), numpy.ones(())])
 
     def test_grad_sl(self):
-        verify_grad(self, DivElemwise, [numpy.ones(()), numpy.ones(())])
-        verify_grad(self, DivElemwise, [numpy.random.rand(3), numpy.ones(3)])
-        verify_grad(self, DivElemwise, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
+        verify_grad(self, Div, [numpy.ones((3, 5)), numpy.ones((1, 1))])
+        verify_grad(self, Div, [numpy.random.rand(3), numpy.ones((1, ))])
+        verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
 
 class T_log2(unittest.TestCase):
     def test0(self):
@@ -509,12 +552,16 @@ class T_pow(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(9999)
     def test_elemwise(self):
-        verify_grad(self, DivElemwise, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
-        verify_grad(self, PowElemwise, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+        verify_grad(self, Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
+        verify_grad(self, Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
     def test_scalar_l(self):
-        verify_grad(self, PowScalarL, [numpy.random.rand(3), numpy.asarray(3.0)])
+        verify_grad(self, Pow, [numpy.asarray([3.0]), numpy.random.rand(3)])
     def test_scalar_r(self):
-        verify_grad(self, PowScalarR, [numpy.random.rand(3), numpy.asarray(3.0)])
+        verify_grad(self, Pow, [numpy.random.rand(3), numpy.asarray([3.0])])
+    def test_row(self):
+        verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+    def test_col(self):
+        verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 class _testCase_matinv(unittest.TestCase):
 
