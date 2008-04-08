@@ -450,7 +450,6 @@ class T_mul(unittest.TestCase):
         b = astensor(0.0)
         check_eq2_both(self, [a,b], mul(a,b), [3.0, 4.0], 12.0)
         check_eq2_both(self, [a,b], mul(b,a), [-1.0,2.0], -2.0)
-        #self.failUnless(isinstance(mul(a,b).owner, Scale))
 
         a = astensor(numpy.ones(2))
         b = astensor(numpy.ones(2))
@@ -458,7 +457,6 @@ class T_mul(unittest.TestCase):
         bb = numpy.asarray([-0.5, 2.0])
         check_eq2_both(self, [a,b], mul(a,b), [aa,bb], numpy.asarray([0.25, 8.0]))
         check_eq2_both(self, [a,b], mul(a,b), [bb,aa], numpy.asarray([0.25, 8.0]))
-        #self.failUnless(isinstance(mul(a,b).owner, MulElemwise))
 
     def test_scalar(self):
         r = numpy.random.rand(2,3)
@@ -489,16 +487,6 @@ class T_mul(unittest.TestCase):
         verify_grad(self, op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
     def test_grad_col(self):
         verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
-
-
-#     def test_operator(self):
-#         a = astensor([1,1])
-#         aa = astensor([1,1])
-#         b = astensor(4)
-#         self.failUnless(isinstance((a*b).owner, Scale))
-#         self.failUnless(isinstance((b*a).owner, Scale))
-#         self.failUnless(isinstance((a*aa).owner, MulElemwise))
-#         self.failUnless(isinstance((aa*a).owner, MulElemwise))
 
     def test_wrong_shapes(self):
         a = astensor(numpy.ones(3))
@@ -734,7 +722,6 @@ class t_gemm(unittest.TestCase):
             self.rand(3,5), self.rand(5,4), 1.0)
     def test12(self): self.cmp(self.rand(3,4), -1.0,
             self.rand(3,5), self.rand(5,4), -1.0)
-t_gemm = None
 
 if __name__ == '__main__':
     unittest.main()

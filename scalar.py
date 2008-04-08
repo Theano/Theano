@@ -25,6 +25,7 @@ class Scalar(ResultBase):
     def __init__(self, dtype, name = None):
         ResultBase.__init__(self, role = None, name = name)
         self.dtype = dtype
+        self.dtype_specs()
 
     def __get_constant(self):
         return self._constant
@@ -49,8 +50,17 @@ class Scalar(ResultBase):
 #             and self.data == other.data
 
     def dtype_specs(self):
-        return {'float64': (float, 'npy_float64', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
-                'int32': (int, 'npy_int32', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong')}[self.dtype]
+        try:
+            return {'float32': (float, 'npy_float32', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
+                    'float64': (float, 'npy_float64', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
+                    'int8': (int, 'npy_int8', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
+                    'int16': (int, 'npy_int16', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
+                    'int32': (int, 'npy_int32', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
+                    'int64': (int, 'npy_int64', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
+                    'complex128': (complex, 'theano_complex128', 'PyComplex_Check', 'PyComplex_AsCComplex', 'PyComplex_FromCComplex'),
+                    'complex64': (complex, 'theano_complex64', None, None, None)}[self.dtype]
+        except KeyError:
+            raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
 
     def c_declare(self, name, sub):
         return """
@@ -88,6 +98,42 @@ class Scalar(ResultBase):
 
     def c_cleanup(self, name, sub):
         return ""
+
+    def c_support_code(cls):
+        template = """
+        struct theano_complex%(nbits)s : public npy_complex%(nbits)s
+        {
+            typedef theano_complex%(nbits)s complex_type;
+            typedef npy_float%(half_nbits)s scalar_type;
+
+            complex_type operator +(complex_type y) {
+                complex_type ret;
+                ret.real = this->real + y.real;
+                ret.imag = this->imag + y.imag;
+                return ret;
+            }
+            complex_type operator -(complex_type y) {
+                complex_type ret;
+                ret.real = this->real - y.real;
+                ret.imag = this->imag - y.imag;
+                return ret;
+            }
+            complex_type operator *(complex_type y) {
+                complex_type ret;
+                ret.real = this->real * y.real - this->imag * y.imag;
+                ret.imag = this->real * y.imag + this->imag * y.real;
+                return ret;
+            }
+            complex_type operator /(complex_type y) {
+                complex_type ret;
+                scalar_type y_norm_square = y.real * y.real + y.imag * y.imag;
+                ret.real = (this->real * y.real + this->imag * y.imag) / y_norm_square;
+                ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
+                return ret;
+            }
+        };
+        """
+        return template % dict(nbits = 64, half_nbits = 32) + template % dict(nbits = 128, half_nbits = 64)
 
     def __copy__(self):
         """
@@ -128,15 +174,6 @@ class ScalarMixedOp(GuardedOp):
     def perform(self):
         self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
 
-#     def c_var_names(self):
-#         (self, inames, onames), _1, _2, _3 = inspect.getargspec(self.c_impl)
-#         inames = utils.from_return_values(inames)
-#         onames = utils.from_return_values(onames)
-#         return [inames, onames]
-
-#     def c_code(self):
-#         return self.c_impl(self.inputs, self.outputs)
-        
 
 def upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)
