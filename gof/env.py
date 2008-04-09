@@ -90,7 +90,7 @@ class Env(graph.Graph):
         # e.g. z for inputs=(x, y) and outputs=(x + (y - z),)
         # We initialize them to the set of outputs; if an output depends on an input,
         # it will be removed from the set of orphans.
-        self._orphans = set(outputs)
+        self._orphans = set(outputs).difference(inputs)
 
         for feature_class in uniq_features(features):
             self.add_feature(feature_class, False)

@@ -52,6 +52,14 @@ class OpD(MyOp, Destroyer):
     def destroyed_inputs(self):
         return [self.inputs[0]]
 
+class OpZ(MyOp):
+    def __init__(self, x, y, a, b):
+        self.a = a
+        self.b = b
+        MyOp.__init__(self, x, y)
+    def desc(self):
+        return (self.a, self.b)
+
 
 import modes
 modes.make_constructors(globals())
@@ -193,7 +201,64 @@ class _test_PatternOptimizer(unittest.TestCase):
                                 'constraint': constraint}),
                          (Op3, '1')).optimize(g)
         assert str(g) == "[Op4(Op3(Op2(x, y)), Op1(Op1(x, y)))]"
+
+    def test_match_same(self):
+        x, y, z = inputs()
+        e = op1(x, x)
+        g = env([x, y, z], [e])
+        PatternOptimizer((Op1, 'x', 'y'),
+                         (Op3, 'x', 'y')).optimize(g)
+        assert str(g) == "[Op3(x, x)]"
+
+    def test_match_same_illegal(self):
+        x, y, z = inputs()
+        e = op2(op1(x, x), op1(x, y))
+        g = env([x, y, z], [e])
+        def constraint(env, r):
+            # Only replacing if the input is an instance of Op2
+            return r.owner.inputs[0] is not r.owner.inputs[1]
+        PatternOptimizer({'pattern': (Op1, 'x', 'y'),
+                          'constraint': constraint},
+                         (Op3, 'x', 'y')).optimize(g)
+        assert str(g) == "[Op2(Op1(x, x), Op3(x, y))]"
+
+    def test_multi(self):
+        x, y, z = inputs()
+        e0 = op1(x, y)
+        e = op3(op4(e0), e0)
+        g = env([x, y, z], [e])
+        PatternOptimizer((Op4, (Op1, 'x', 'y')),
+                         (Op3, 'x', 'y')).optimize(g)
+        assert str(g) == "[Op3(Op4(*1 -> Op1(x, y)), *1)]"
+
+    def test_multi_ingraph(self):
+        x, y, z = inputs()
+        e0 = op1(x, y)
+        e = op4(e0, e0)
+        g = env([x, y, z], [e])
+        PatternOptimizer((Op4, (Op1, 'x', 'y'), (Op1, 'x', 'y')),
+                         (Op3, 'x', 'y')).optimize(g)
+        assert str(g) == "[Op3(x, y)]"
         
+
+class _test_PatternDescOptimizer(unittest.TestCase):
+    
+    def test_replace_output(self):
+        # replacing the whole graph
+        x, y, z = inputs()
+        e = op1(op2(x, y), z)
+        g = env([x, y, z], [e])
+        PatternDescOptimizer((Op1, (Op2, '1', '2'), '3'),
+                             (Op4, '3', '2')).optimize(g)
+        assert str(g) == "[Op4(z, y)]"
+
+    def test_desc(self):
+        x, y, z = inputs()
+        e = op1(op_z(x, y, 37, 88), op2(op_z(y, z, 1, 7)))
+        g = env([x, y, z], [e])
+        PatternDescOptimizer(((37, 88), '1', '2'),
+                             (Op3, '2', '1')).optimize(g)
+        assert str(g) == "[Op1(Op3(y, x), Op2(OpZ(y, z)))]"
 
 
 class _test_OpSubOptimizer(unittest.TestCase):

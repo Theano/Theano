@@ -5,6 +5,7 @@ import utils
 
 __all__ = ['EquivTool',
           'InstanceFinder',
+          'DescFinder',
           'PrintListener',
            ]
 
@@ -86,6 +87,36 @@ class InstanceFinder(Listener, Tool, dict):
 
     def publish(self):
         self.env.get_instances_of = self.query
+
+
+
+class DescFinder(Listener, Tool, dict):
+
+    def __init__(self, env):
+        self.env = env
+
+    def on_import(self, op):
+        self.setdefault(op.desc(), set()).add(op)
+
+    def on_prune(self, op):
+        desc = op.desc()
+        self[desc].remove(op)
+        if not self[desc]:
+            del self[desc]
+
+    def __query__(self, desc):
+        all = [x for x in self.get(desc, [])]
+        shuffle(all) # this helps for debugging because the order of the replacements will vary
+        while all:
+            next = all.pop()
+            if next in self.env.ops():
+                yield next
+
+    def query(self, desc):
+        return self.__query__(desc)
+
+    def publish(self):
+        self.env.get_from_desc = self.query
 
 
 

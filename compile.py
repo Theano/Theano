@@ -59,6 +59,8 @@ class Function:
         features - features to add to the env
         optimizer - an optimizer to apply to the copied graph, before linking
         linker_cls - a callable that takes an env and returns a Linker
+        profiler - a Profiler for the produced function (only valid if the
+                   linker_cls's make_function takes a profiler argument)
         unpack_single - unpack return value lists of length 1
                       - see  Linker.make_function
         keep_locals - add the local variables from __init__ to the class
@@ -102,15 +104,34 @@ class Function:
             self.__dict__.update(locals())
 
         if profiler is None:
-            self.fn  = linker.make_function(inplace=True, 
+            self.fn  = linker.make_function(inplace=True,
                                             unpack_single=unpack_single)
         else:
-            self.fn  = linker.make_function(inplace=True, 
+            self.fn  = linker.make_function(inplace=True,
                                             unpack_single=unpack_single,
                                             profiler=profiler)
+        self.inputs = inputs
+        self.outputs = outputs
+        self.features = features
+        self.optimizer = optimizer
+        self.linker_cls = linker_cls
+        self.profiler = profiler
+        self.unpack_single = unpack_single
+        self.except_unreachable_input = except_unreachable_input
+        self.keep_locals = keep_locals
 
     def __call__(self, *args):
         return self.fn(*args)
+
+    def __copy__(self):
+        return Function(self.inputs, self.outputs,
+                        features = self.features,
+                        optimizer = self.optimizer,
+                        linker_cls = self.linker_cls,
+                        profiler = self.profiler,
+                        unpack_single = self.unpack_single,
+                        except_unreachable_input = self.except_unreachable_input,
+                        keep_locals = self.keep_locals)
 
 
 def eval_outputs(outputs,
