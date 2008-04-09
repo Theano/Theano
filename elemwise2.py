@@ -157,7 +157,7 @@ class Broadcast(Op, Destroyer):
         return Broadcast(self.scalar_opclass, new_inputs, self.inplace_pattern)
 
     def desc(self):
-        return (self.__class__, self.scalar_opclass, tuple(self.inplace_pattern.items()))
+        return (Broadcast, self.scalar_opclass, tuple(self.inplace_pattern.items()))
 
     def destroy_map(self):
         ret = {}
@@ -311,6 +311,9 @@ def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
             Broadcast.__init__(self, scalar_opclass, inputs, inplace_pattern)
         def clone_with_new_inputs(self, *new_inputs):
             return New(*new_inputs)
+        @classmethod
+        def desc(cls):
+            return (Broadcast, scalar_opclass, tuple(inplace_pattern.items()))
     if name is not None:
         New.__name__ = name
     else:
