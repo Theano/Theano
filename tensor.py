@@ -367,6 +367,11 @@ class Gemm(_Op):
     nout=1
     E_rank = 'gemm only works for rank 2'
     E_scalar = 'gemm requires scalar argument'
+    def __init__(self, *args, **kwargs):
+        z, a, x, y, b = args
+        if z in args[1:]:
+            raise ValueError('argument z not unique in argument list', args)
+        _Op.__init__(self, *args, **kwargs)
     def destroy_map(self):
         return {self.out:[self.inputs[0]]}
     def propagate_broadcastable(self, bz, ba, bx, by, bb):
