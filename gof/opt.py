@@ -284,7 +284,7 @@ class PatternOptimizer(OpSpecificOptimizer):
         """
         def match(pattern, expr, u, first = False):
             if isinstance(pattern, (list, tuple)):
-                if not issubclass(expr.owner.__class__, pattern[0]) or (self.allow_multiple_clients and not first and env.nclients(expr.owner) > 1):
+                if not issubclass(expr.owner.__class__, pattern[0]) or (not self.allow_multiple_clients and not first and env.nclients(expr) > 1):
                     return False
                 if len(pattern) - 1 != len(expr.owner.inputs):
                     return False
@@ -393,7 +393,7 @@ class PatternDescOptimizer(LocalOptimizer):
         """
         def match(pattern, expr, u, first = False):
             if isinstance(pattern, (list, tuple)):
-                if not expr.owner.desc() == pattern[0] or (self.allow_multiple_clients and not first and env.nclients(expr.owner) > 1):
+                if not expr.owner or not expr.owner.desc() == pattern[0] or (self.allow_multiple_clients and not first and env.nclients(expr.owner) > 1):
                     return False
                 if len(pattern) - 1 != len(expr.owner.inputs):
                     return False
