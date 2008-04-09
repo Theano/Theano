@@ -52,6 +52,14 @@ class OpD(MyOp, Destroyer):
     def destroyed_inputs(self):
         return [self.inputs[0]]
 
+class OpZ(MyOp):
+    def __init__(self, x, y, a, b):
+        self.a = a
+        self.b = b
+        MyOp.__init__(self, x, y)
+    def desc(self):
+        return (self.a, self.b)
+
 
 import modes
 modes.make_constructors(globals())
@@ -194,6 +202,25 @@ class _test_PatternOptimizer(unittest.TestCase):
                          (Op3, '1')).optimize(g)
         assert str(g) == "[Op4(Op3(Op2(x, y)), Op1(Op1(x, y)))]"
         
+
+class _test_PatternDescOptimizer(unittest.TestCase):
+    
+    def test_replace_output(self):
+        # replacing the whole graph
+        x, y, z = inputs()
+        e = op1(op2(x, y), z)
+        g = env([x, y, z], [e])
+        PatternDescOptimizer((Op1, (Op2, '1', '2'), '3'),
+                             (Op4, '3', '2')).optimize(g)
+        assert str(g) == "[Op4(z, y)]"
+
+    def test_desc(self):
+        x, y, z = inputs()
+        e = op1(op_z(x, y, 37, 88), op2(op_z(y, z, 1, 7)))
+        g = env([x, y, z], [e])
+        PatternDescOptimizer(((37, 88), '1', '2'),
+                             (Op3, '2', '1')).optimize(g)
+        assert str(g) == "[Op1(Op3(y, x), Op2(OpZ(y, z)))]"
 
 
 class _test_OpSubOptimizer(unittest.TestCase):

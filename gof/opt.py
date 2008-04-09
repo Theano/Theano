@@ -338,14 +338,125 @@ class PatternOptimizer(OpSpecificOptimizer):
                     self.failure_callback(op.out, new, e)
                 pass
 
-
     def __str__(self):
         def pattern_to_str(pattern):
             if isinstance(pattern, (list, tuple)):
                 return "%s(%s)" % (pattern[0].__name__, ", ".join([pattern_to_str(p) for p in pattern[1:]]))
+            elif isinstance(pattern, dict):
+                return "%s subject to %s" % (pattern_to_str(pattern['pattern']), str(pattern['constraint']))
             else:
                 return str(pattern)
         return "%s -> %s" % (pattern_to_str(self.in_pattern), pattern_to_str(self.out_pattern))
+
+
+
+class PatternDescOptimizer(LocalOptimizer):
+    """
+    """
+    
+    __env_require__ = toolbox.DescFinder
+
+    def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False, failure_callback = None):
+        """
+        Sets in_pattern for replacement by out_pattern.
+        self.opclass is set to in_pattern[0] to accelerate the search.
+        """
+        self.in_pattern = in_pattern
+        self.out_pattern = out_pattern
+        if isinstance(in_pattern, (list, tuple)):
+            self.desc = self.in_pattern[0]
+        elif isinstance(in_pattern, dict):
+            self.desc = self.in_pattern['pattern'][0]
+        else:
+            raise TypeError("The pattern to search for must start with a specific desc.")
+        self.__doc__ = self.__class__.__doc__ + "\n\nThis instance does: " + str(self) + "\n"
+        self.failure_callback = failure_callback
+        self.allow_multiple_clients = allow_multiple_clients
+
+    def candidates(self, env):
+        """
+        Returns all instances of self.desc
+        """
+        return env.get_from_desc(self.desc)
+
+    def apply_on_op(self, env, op):
+        """
+        Checks if the graph from op corresponds to in_pattern. If it does,
+        constructs out_pattern and performs the replacement.
+
+        If self.failure_callback is not None, if there is a match but a
+        replacement fails to occur, the callback will be called with
+        arguments (results_to_replace, replacement, exception).
+
+        If self.allow_multiple_clients is False, he pattern matching will fail
+        if one of the subpatterns has more than one client.
+        """
+        def match(pattern, expr, u, first = False):
+            if isinstance(pattern, (list, tuple)):
+                if not expr.owner.desc() == pattern[0] or (self.allow_multiple_clients and not first and env.nclients(expr.owner) > 1):
+                    return False
+                if len(pattern) - 1 != len(expr.owner.inputs):
+                    return False
+                for p, v in zip(pattern[1:], expr.owner.inputs):
+                    u = match(p, v, u)
+                    if not u:
+                        return False
+            elif isinstance(pattern, dict):
+                try:
+                    real_pattern = pattern['pattern']
+                    constraint = pattern['constraint']
+                except KeyError:
+                    raise KeyError("Malformed pattern: %s (expected keys pattern and constraint)" % pattern)
+                if constraint(env, expr):
+                    return match(real_pattern, expr, u, False)
+            elif isinstance(pattern, str):
+                v = unify.Var(pattern)
+                if u[v] is not v and u[v] is not expr:
+                    return False
+                else:
+                    u = u.merge(expr, v)
+            elif isinstance(pattern, ResultBase) \
+                    and getattr(pattern, 'constant', False) \
+                    and isinstance(expr, ResultBase) \
+                    and getattr(expr, 'constant', False) \
+                    and pattern.desc() == expr.desc():
+                return u
+            else:
+                return False
+            return u
+
+        def build(pattern, u):
+            if isinstance(pattern, (list, tuple)):
+                args = [build(p, u) for p in pattern[1:]]
+                return pattern[0](*args).out
+            elif isinstance(pattern, str):
+                return u[unify.Var(pattern)]
+            else:
+                return pattern
+
+        u = match(self.in_pattern, op.out, unify.Unification(), True)
+        if u:
+            try:
+                # note: only replaces the default 'out' port if it exists
+                p = self.out_pattern
+                new = 'unassigned'
+                new = build(p, u)
+                env.replace(op.out, new)
+            except Exception, e:
+                if self.failure_callback is not None:
+                    self.failure_callback(op.out, new, e)
+                pass
+
+    def __str__(self):
+        def pattern_to_str(pattern):
+            if isinstance(pattern, (list, tuple)):
+                return "%s(%s)" % (pattern[0], ", ".join([pattern_to_str(p) for p in pattern[1:]]))
+            elif isinstance(pattern, dict):
+                return "%s subject to %s" % (pattern_to_str(pattern['pattern']), str(pattern['constraint']))
+            else:
+                return str(pattern)
+        return "%s -> %s" % (pattern_to_str(self.in_pattern), pattern_to_str(self.out_pattern))
+
 
 
 class ConstantFinder(Optimizer):
