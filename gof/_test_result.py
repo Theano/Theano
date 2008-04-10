@@ -3,10 +3,10 @@ import unittest
 from result import *
 
 
-class Double(ResultBase):
+class Double(Result):
 
     def __init__(self, data, name = "oignon"):
-        ResultBase.__init__(self, role = None, name = name)
+        Result.__init__(self, role = None, name = name)
         assert isinstance(data, float)
         self.data = data
 
@@ -19,10 +19,10 @@ class Double(ResultBase):
     def __copy__(self):
         return Double(self.data, self.name)
 
-class MyResult(ResultBase):
+class MyResult(Result):
 
     def __init__(self, name):
-        ResultBase.__init__(self, role = None, name = name)
+        Result.__init__(self, role = None, name = name)
         self.data = [1000]
 
     def __str__(self):
@@ -35,12 +35,12 @@ class MyResult(ResultBase):
         return MyResult(self.name)
 
 
-class _test_ResultBase(unittest.TestCase):
+class _test_Result(unittest.TestCase):
     def test_trivial(self):
-        r = ResultBase()
+        r = Result()
         
     def test_state(self):
-        r = ResultBase()
+        r = Result()
         assert r.state is Empty
 
         r.data = 0

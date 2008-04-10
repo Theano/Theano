@@ -9,7 +9,7 @@ import utils
 from utils import AbstractFunctionError
 
 
-__all__ = ['ResultBase',
+__all__ = ['Result',
            'PythonResult',
            'StateError',
            'Empty',
@@ -24,7 +24,7 @@ class StateError(Exception):
     """The state of the Result is a problem"""
 
 
-# ResultBase state keywords
+# Result state keywords
 class Empty : """Memory has not been allocated"""
 class Allocated: """Memory has been allocated, contents are not the owner's output."""
 class Computed : """Memory has been allocated, contents are the owner's output."""
@@ -34,7 +34,7 @@ class Computed : """Memory has been allocated, contents are the owner's output."
 # Result
 ############################
 
-class ResultBase(object):
+class Result(object):
     """Base class for storing Op inputs and outputs
 
     Attributes:
@@ -299,7 +299,7 @@ class ResultBase(object):
         raise AbstractFunctionError()
 
 
-class PythonResult(ResultBase):
+class PythonResult(Result):
     """
     Represents a generic Python object. The object is available
     through %(name)s.

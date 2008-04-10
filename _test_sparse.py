@@ -104,7 +104,7 @@ class _testCase_dot(unittest.TestCase):
                 m = mtype(a)
                 ab = m.dot(b)
                 try:
-                    z = dot(SparseR(m),core.ResultBase(data=b))
+                    z = dot(SparseR(m),core.Result(data=b))
                     self.failUnless(z.data.shape == ab.shape)
                     self.failUnless(type(z.data) == type(ab))
                 except Exception, e:
@@ -121,7 +121,7 @@ class _testCase_dot(unittest.TestCase):
                     sparse.lil_matrix]:#, sparse.coo_matrix]:
                 m = mtype(b)
                 ab = m.transpose().dot(a.transpose()).transpose()
-                z = dot(core.ResultBase(data=a),SparseR(mtype(b)))
+                z = dot(core.Result(data=a),SparseR(mtype(b)))
                 self.failUnless(z.data.shape == ab.shape)
                 self.failUnless(type(z.data) == type(ab))
 

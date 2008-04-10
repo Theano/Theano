@@ -1,6 +1,6 @@
 
 from op import Op
-from result import ResultBase
+from result import Result
 from env import InconsistencyError
 import utils
 import unify
@@ -306,9 +306,9 @@ class PatternOptimizer(OpSpecificOptimizer):
                     return False
                 else:
                     u = u.merge(expr, v)
-            elif isinstance(pattern, ResultBase) \
+            elif isinstance(pattern, Result) \
                     and getattr(pattern, 'constant', False) \
-                    and isinstance(expr, ResultBase) \
+                    and isinstance(expr, Result) \
                     and getattr(expr, 'constant', False) \
                     and pattern.desc() == expr.desc():
                 return u
@@ -415,9 +415,9 @@ class PatternDescOptimizer(LocalOptimizer):
                     return False
                 else:
                     u = u.merge(expr, v)
-            elif isinstance(pattern, ResultBase) \
+            elif isinstance(pattern, Result) \
                     and getattr(pattern, 'constant', False) \
-                    and isinstance(expr, ResultBase) \
+                    and isinstance(expr, Result) \
                     and getattr(expr, 'constant', False) \
                     and pattern.desc() == expr.desc():
                 return u

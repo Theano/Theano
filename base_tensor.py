@@ -1,6 +1,6 @@
 """A simple class to store ndarray data """
 
-from gof import ResultBase, Op, utils, AbstractFunctionError
+from gof import Result, Op, utils, AbstractFunctionError
 import numpy
 from copy import copy
 
@@ -9,8 +9,8 @@ from copy import copy
 # BaseTensor Class
 ###########################
 
-class BaseTensor(ResultBase):
-    """ResultBase to store numpy.ndarray or equivalent via .data
+class BaseTensor(Result):
+    """Result to store numpy.ndarray or equivalent via .data
     
     Attributes:
     _dtype - numpy dtype string such as 'int64' or 'float64' (among others)
@@ -43,13 +43,13 @@ class BaseTensor(ResultBase):
         # the argument that is awkward to construct, I decided to put all this
         # into the tensor(data,...) function below, which is like a second
         # constructor that works with an ndarray.
-        ResultBase.__init__(self, role=role, name=name)
+        Result.__init__(self, role=role, name=name)
         self._dtype = str(dtype)
         self.dtype_specs() # this is just for error checking
         self._broadcastable = tuple(broadcastable)
 
     ######################
-    # ResultBase interface
+    # Result interface
     ######################
 
     # 

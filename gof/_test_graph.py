@@ -4,14 +4,14 @@ import unittest
 from graph import *
 
 from op import Op
-from result import ResultBase
+from result import Result
 
 
-class MyResult(ResultBase):
+class MyResult(Result):
 
     def __init__(self, thingy):
         self.thingy = thingy
-        ResultBase.__init__(self, role = None )
+        Result.__init__(self, role = None )
         self.data = [self.thingy]
 
     def __eq__(self, other):

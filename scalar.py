@@ -5,7 +5,7 @@ import math
 from copy import copy
 import inspect
 
-from gof import ResultBase, GuardedOp, utils
+from gof import Result, GuardedOp, utils
 
 
 def as_scalar(x, name = None):
@@ -21,10 +21,10 @@ def as_scalar(x, name = None):
         return x
 
 
-class Scalar(ResultBase):
+class Scalar(Result):
 
     def __init__(self, dtype, name = None):
-        ResultBase.__init__(self, role = None, name = name)
+        Result.__init__(self, role = None, name = name)
         self.dtype = dtype
         self.dtype_specs()
 

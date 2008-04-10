@@ -3,11 +3,11 @@ import gof, gof.modes, gof.opt
 
 from compile import *
 
-class Double(gof.result.ResultBase):
+class Double(gof.result.Result):
 
     def __init__(self, data, name = "oignon"):
         assert isinstance(data, float)
-        gof.result.ResultBase.__init__(self, role = None, name = name)
+        gof.result.Result.__init__(self, role = None, name = name)
         self.data = data
 
     def __str__(self):

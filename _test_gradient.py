@@ -14,8 +14,8 @@ class _test_grad_sources_inputs(unittest.TestCase):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
             def __init__(self, arg):
-                self.inputs = [gof.result.ResultBase()]
-                self.outputs = [gof.result.ResultBase()]
+                self.inputs = [gof.result.Result()]
+                self.outputs = [gof.result.Result()]
             def grad(self, (x, ), (gz, )):
                 pass
         a = retNone(5)
@@ -30,10 +30,10 @@ class _test_grad_sources_inputs(unittest.TestCase):
         class retNone(gof.op.Op):
             def __init__(self, arg):
                 self.inputs = arg
-                self.outputs = [gof.result.ResultBase()]
+                self.outputs = [gof.result.Result()]
             def grad(self, (x, ), (gz, )):
                 return [None]
-        i = gof.result.ResultBase()
+        i = gof.result.Result()
         a = retNone([i])
         g = grad_sources_inputs([(a.out, 1)], None)
         self.failUnless(not i in g)
@@ -43,12 +43,12 @@ class _test_grad_sources_inputs(unittest.TestCase):
         class retNone(gof.op.Op):
             def __init__(self, arg):
                 self.inputs = arg
-                self.outputs = [gof.result.ResultBase()]
+                self.outputs = [gof.result.Result()]
             def grad(self, inputs, (gz, )):
                 return [None]
 
-        i = gof.result.ResultBase()
-        j = gof.result.ResultBase()
+        i = gof.result.Result()
+        j = gof.result.Result()
         a1 = retNone([i])
         g = grad_sources_inputs([(a1.out, 1)], None)
         a2 = retNone([i,j])
@@ -65,22 +65,22 @@ class _test_grad_sources_inputs(unittest.TestCase):
         class retNone(gof.op.Op):
             def __init__(self, arg, tst):
                 self.inputs = arg
-                self.outputs = [gof.result.ResultBase()]
+                self.outputs = [gof.result.Result()]
                 self.tst = tst
             def grad(self, inputs, (gz, )):
                 self.tst.fail()
 
-        i = gof.result.ResultBase()
+        i = gof.result.Result()
         a1 = retNone([i],self)
         g = grad_sources_inputs([(a1.out, None)], None)
 
     def test_1in_1out(self):
         """Test grad is called correctly for a 1-to-1 op"""
-        gval = gof.result.ResultBase()
+        gval = gof.result.Result()
         class O(gof.op.Op):
             def __init__(self):
-                self.inputs = [gof.result.ResultBase()]
-                self.outputs = [gof.result.ResultBase()]
+                self.inputs = [gof.result.Result()]
+                self.outputs = [gof.result.Result()]
             def grad(self, (x, ), (gz, )):
                 return gval,
         a1 = O()
@@ -89,11 +89,11 @@ class _test_grad_sources_inputs(unittest.TestCase):
 
     def test_1in_Nout(self):
         """Test grad is called correctly for a 1-to-many op"""
-        gval = gof.result.ResultBase()
+        gval = gof.result.Result()
         class O(gof.op.Op):
             def __init__(self):
-                self.inputs = [gof.result.ResultBase()]
-                self.outputs = [gof.result.ResultBase(),gof.result.ResultBase()]
+                self.inputs = [gof.result.Result()]
+                self.outputs = [gof.result.Result(),gof.result.Result()]
             def grad(self, (x, ), (gz1, gz2)):
                 return gval,
         a1 = O()
@@ -101,12 +101,12 @@ class _test_grad_sources_inputs(unittest.TestCase):
         self.failUnless(g[a1.inputs[0]] is gval)
     def test_Nin_1out(self):
         """Test grad is called correctly for a many-to-1 op"""
-        gval0 = gof.result.ResultBase()
-        gval1 = gof.result.ResultBase()
+        gval0 = gof.result.Result()
+        gval1 = gof.result.Result()
         class O(gof.op.Op):
             def __init__(self):
-                self.inputs = [gof.result.ResultBase(),gof.result.ResultBase()]
-                self.outputs = [gof.result.ResultBase()]
+                self.inputs = [gof.result.Result(),gof.result.Result()]
+                self.outputs = [gof.result.Result()]
             def grad(self, (x0,x1), (gz, )):
                 return (gval0, gval1)
         a1 = O()
@@ -115,12 +115,12 @@ class _test_grad_sources_inputs(unittest.TestCase):
         self.failUnless(g[a1.inputs[1]] is gval1)
     def test_Nin_Nout(self):
         """Test grad is called correctly for a many-to-many op"""
-        gval0 = gof.result.ResultBase()
-        gval1 = gof.result.ResultBase()
+        gval0 = gof.result.Result()
+        gval1 = gof.result.Result()
         class O(gof.op.Op):
             def __init__(self):
-                self.inputs = [gof.result.ResultBase(),gof.result.ResultBase()]
-                self.outputs = [gof.result.ResultBase(),gof.result.ResultBase()]
+                self.inputs = [gof.result.Result(),gof.result.Result()]
+                self.outputs = [gof.result.Result(),gof.result.Result()]
             def grad(self, (x0,x1), (gz0,gz1)):
                 return gval0, gval1
         a1 = O()
@@ -132,11 +132,11 @@ class _test_grad_sources_inputs(unittest.TestCase):
         class O(gof.op.Op):
             def __init__(self, arg, tst):
                 self.inputs = arg
-                self.outputs = [gof.result.ResultBase(),gof.result.ResultBase()]
+                self.outputs = [gof.result.Result(),gof.result.Result()]
                 self.tst = tst
             def grad(self, inputs, g_out):
                 return [1]
-        i = gof.result.ResultBase()
+        i = gof.result.Result()
         a1 = O([i],self)
         g = grad_sources_inputs([(a1.outputs[0], 1)], None)
         self.failUnless(g[i] is 1)
@@ -146,7 +146,7 @@ class _test_grad_sources_inputs(unittest.TestCase):
         class O(gof.op.Op):
             def __init__(self, arg, tst, grad_ok):
                 self.inputs = arg
-                self.outputs = [gof.result.ResultBase(),gof.result.ResultBase()]
+                self.outputs = [gof.result.Result(),gof.result.Result()]
                 self.tst = tst
                 self.grad_ok = grad_ok
             def grad(self, inputs, g_out):
@@ -154,9 +154,9 @@ class _test_grad_sources_inputs(unittest.TestCase):
                     self.tst.fail()
                 else:
                     return [1, None]
-        i = gof.result.ResultBase()
-        j = gof.result.ResultBase()
-        k = gof.result.ResultBase()
+        i = gof.result.Result()
+        j = gof.result.Result()
+        k = gof.result.Result()
         a1 = O([i,j],self,True)
         a2 = O([a1.outputs[1], k], self, True)
         g = grad_sources_inputs([(a2.outputs[0], 1)], None)
@@ -172,7 +172,7 @@ class _test_grad_sources_inputs(unittest.TestCase):
         class O(gof.op.Op):
             def __init__(self, arg, tst, grad_ok):
                 self.inputs = arg
-                self.outputs = [gof.result.ResultBase(),gof.result.ResultBase()]
+                self.outputs = [gof.result.Result(),gof.result.Result()]
                 self.tst = tst
                 self.grad_ok = grad_ok
             def grad(self, inputs, (g0,g1)):
@@ -183,9 +183,9 @@ class _test_grad_sources_inputs(unittest.TestCase):
                         return [g0, g0+g1]
                     else:
                         return [g0, g0]
-        i = gof.result.ResultBase()
-        j = gof.result.ResultBase()
-        k = gof.result.ResultBase()
+        i = gof.result.Result()
+        j = gof.result.Result()
+        k = gof.result.Result()
         a1 = O([i,j],self,True)
         a2 = O([k,a1.outputs[1]], self, True)
         g = grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
@@ -202,7 +202,7 @@ class _test_grad_sources_inputs(unittest.TestCase):
         class O(gof.op.Op):
             def __init__(self, arg, tst, grad_ok):
                 self.inputs = arg
-                self.outputs = [gof.result.ResultBase(),gof.result.ResultBase()]
+                self.outputs = [gof.result.Result(),gof.result.Result()]
                 self.tst = tst
                 self.grad_ok = grad_ok
             def grad(self, inputs, (g0,g1)):
@@ -213,9 +213,9 @@ class _test_grad_sources_inputs(unittest.TestCase):
                         return [g0, g0+g1]
                     else:
                         return [g0, g0]
-        i = gof.result.ResultBase()
-        j = gof.result.ResultBase()
-        k = gof.result.ResultBase()
+        i = gof.result.Result()
+        j = gof.result.Result()
+        k = gof.result.Result()
         a1 = O([i,j],self,True)
         a2 = O([k,a1.outputs[1]], self, True)
         g = grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
@@ -231,10 +231,10 @@ class _test_grad_sources_inputs(unittest.TestCase):
 class _test_grad(unittest.TestCase):
     class O(gof.op.Op):
         def __init__(self):
-            self.inputs = [gof.result.ResultBase(),gof.result.ResultBase()]
-            self.outputs = [gof.result.ResultBase(),gof.result.ResultBase()]
-            self.gval0 = gof.result.ResultBase()
-            self.gval1 = gof.result.ResultBase()
+            self.inputs = [gof.result.Result(),gof.result.Result()]
+            self.outputs = [gof.result.Result(),gof.result.Result()]
+            self.gval0 = gof.result.Result()
+            self.gval1 = gof.result.Result()
         def grad(self, (x0,x1), (gz0,gz1)):
             return self.gval0, self.gval1
 

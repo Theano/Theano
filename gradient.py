@@ -13,7 +13,7 @@ def _unpack_result(lst):
         return lst[0]
 
 def _pack_result(arg):
-    if isinstance(arg, gof.result.ResultBase):
+    if isinstance(arg, gof.result.Result):
         return [arg]
     else:
         return arg

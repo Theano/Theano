@@ -4,15 +4,15 @@ import unittest
 from modes import *
 
 
-from result import ResultBase
+from result import Result
 from op import Op
 from env import Env
 
 
-class Double(ResultBase):
+class Double(Result):
 
     def __init__(self, data, name = "oignon"):
-        ResultBase.__init__(self, role = None, name = name)
+        Result.__init__(self, role = None, name = name)
         assert isinstance(data, float)
         self.data = data
 

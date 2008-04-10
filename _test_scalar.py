@@ -1,7 +1,7 @@
 
 import unittest
 
-from gof import ResultBase, Op, Env, modes
+from gof import Result, Op, Env, modes
 import gof
 
 from scalar import *

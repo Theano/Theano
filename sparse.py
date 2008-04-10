@@ -22,7 +22,7 @@ def assparse(sp, **kwargs):
         rval.data = sp
         return rval
 
-class SparseR(gof.result.ResultBase):
+class SparseR(gof.result.Result):
     """
     Attribute:
     format - a string identifying the type of sparsity
@@ -49,7 +49,7 @@ class SparseR(gof.result.ResultBase):
         @return         An empty SparseR instance.
         """
 
-        gof.ResultBase.__init__(self, **kwargs)
+        gof.Result.__init__(self, **kwargs)
         if dtype in SparseR.dtype_set:
             self._dtype = dtype
         assert isinstance(format, str)
@@ -109,7 +109,7 @@ dense_from_sparse = gof.op.constructor(DenseFromSparse)
 class SparseFromDense(gof.op.Op):
     def __init__(self, x, format, **kwargs):
         gof.op.Op.__init__(self, **kwargs)
-        if isinstance(format, gof.result.ResultBase):
+        if isinstance(format, gof.result.Result):
             self.inputs = [tensor.astensor(x), format]
         else:
             self.inputs =  [tensor.astensor(x), gof.result.PythonResult()]
@@ -157,39 +157,41 @@ class AddSS(gof.op.Op): #add two sparse matrices
 add_s_s = gof.op.constructor(AddSS)
 
 
-if 0:
-    class dot(gof.op.Op):
-        """
-        Attributes:
-        grad_preserves_dense - an array of boolean flags (described below)
+class Dot(gof.op.Op):
+    def __init__(self, x, y):
+    def perform:
+        #return numpy.dot(x, y)
+    def grad:
+
+    """
+    Attributes:
+    grad_preserves_dense - an array of boolean flags (described below)
 
 
-        grad_preserves_dense controls whether gradients with respect to inputs are
-        converted to dense matrices when the corresponding inputs are not in a
-        SparseR wrapper.  This can be a good idea when dot is in the middle of a
-        larger graph, because the types of gx and gy will match those of x and y.
-        This conversion might be annoying if the gradients are graph outputs though,
-        hence this mask.
-        """
-        def __init__(self, *args, **kwargs):
-            gof.op.Op.__init__(self, **kwargs)
-            self.grad_preserves_dense = [True, True]
-        def gen_outputs(self): return [SparseR()]
-        def impl(x,y):
-            if hasattr(x, 'getnnz'):
-                # if x is sparse, then do this.
-                return x.dot(y)
-            else:
-                # if x is dense (and y is sparse), we do this
-                return y.transpose().dot(x.transpose()).transpose()
+    grad_preserves_dense controls whether gradients with respect to inputs are
+    converted to dense matrices when the corresponding inputs are not in a
+    SparseR wrapper.  This can be a good idea when dot is in the middle of a
+    larger graph, because the types of gx and gy will match those of x and y.
+    This conversion might be annoying if the gradients are graph outputs though,
+    hence this mask.
+    """
+    def __init__(self, *args, **kwargs):
+        gof.op.Op.__init__(self, **kwargs)
+        self.grad_preserves_dense = [True, True]
+    def gen_outputs(self): return [SparseR()]
+    def impl(x,y):
+        if hasattr(x, 'getnnz'):
+            # if x is sparse, then do this.
+            return x.dot(y)
+        else:
+            # if x is dense (and y is sparse), we do this
+            return y.transpose().dot(x.transpose()).transpose()
 
-        def grad(self, x, y, gz):
-            rval = [dot(gz, y.T), dot(x.T, gz)]
-            for i in 0,1:
-                if not isinstance(self.inputs[i], SparseR):
-                    #assume it is a dense matrix
-                    if self.grad_preserves_dense[i]:
-                        rval[i] = dense_from_sparse(rval[i])
-            return rval
-
-
+    def grad(self, x, y, gz):
+        rval = [dot(gz, y.T), dot(x.T, gz)]
+        for i in 0,1:
+            if not isinstance(self.inputs[i], SparseR):
+                #assume it is a dense matrix
+                if self.grad_preserves_dense[i]:
+                    rval[i] = dense_from_sparse(rval[i])
+        return rval

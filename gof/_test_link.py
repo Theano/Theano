@@ -2,7 +2,7 @@
 
 import unittest
 
-from result import ResultBase
+from result import Result
 from op import Op
 from env import Env
 

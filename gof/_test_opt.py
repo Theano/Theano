@@ -1,7 +1,7 @@
 
 import unittest
 
-from result import ResultBase
+from result import Result
 from op import Op
 from ext import Destroyer
 from opt import *
@@ -9,10 +9,10 @@ from env import Env
 from toolbox import *
 
 
-class MyResult(ResultBase):
+class MyResult(Result):
 
     def __init__(self, name):
-        ResultBase.__init__(self, role = None, name = name)
+        Result.__init__(self, role = None, name = name)
         self.data = [1000]
 
     def __str__(self):

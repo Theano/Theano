@@ -2,14 +2,14 @@
 import unittest
 from copy import copy
 from op import *
-from result import ResultBase
+from result import Result
 
 
-class MyResult(ResultBase):
+class MyResult(Result):
 
     def __init__(self, thingy):
         self.thingy = thingy
-        ResultBase.__init__(self, role = None)
+        Result.__init__(self, role = None)
         self.data = [self.thingy]
 
     def __eq__(self, other):
@@ -48,7 +48,7 @@ class _test_Op(unittest.TestCase):
     # validate_update
     def test_validate_update(self):
         try:
-            MyOp(ResultBase(), MyResult(1)) # MyOp requires MyResult instances
+            MyOp(Result(), MyResult(1)) # MyOp requires MyResult instances
         except Exception, e:
             assert str(e) == "Error 1"
         else:

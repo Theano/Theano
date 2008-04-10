@@ -1,10 +1,10 @@
-"""A ResultBase to store numpy.ndarray with basic accompanying Ops"""
+"""A Result to store numpy.ndarray with basic accompanying Ops"""
 import sys # for sys.maxint
 import inspect
 
 import numpy
 
-from gof import ResultBase, Op, utils, Destroyer, Viewer, AbstractFunctionError
+from gof import Result, Op, utils, Destroyer, Viewer, AbstractFunctionError
 import gof.result
 import gof.op
 
@@ -260,7 +260,7 @@ class Subtensor(Op, Viewer):
     debug = 0
     def __init__(self, *args,**kwargs):
         def as_tuple_result(obj):
-            if isinstance(obj, ResultBase):
+            if isinstance(obj, Result):
                 return obj
             r = gof.result.PythonResult(None)
             if isinstance(obj, tuple):
