@@ -12,7 +12,7 @@ from base_tensor import BaseTensor, BaseTensorOp
 import blas # for gemm, dot
 
 import elemwise2 as s2t
-import scalar_ops as scal
+import scalar as scal
 
 
 class Tensor(BaseTensor):
@@ -69,7 +69,7 @@ class Tensor(BaseTensor):
     def __getslice__(self, *args): return subtensor(self, slice(*args))
 s2t.Tensor = Tensor
 
-    
+
 # alternate Tensor constructor
 def astensor(data, broadcastable=None, role=None, name=None):
     """Return a Tensor containing given data"""

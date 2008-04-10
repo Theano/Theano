@@ -58,6 +58,8 @@ class Op(object):
     #
     # Python stdlib compatibility
     #
+    # These are defined so that sets of Ops, Results will have a consistent
+    # ordering
 
     def __cmp__(self, other):
         return cmp(id(self), id(other))

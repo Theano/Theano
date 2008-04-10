@@ -4,8 +4,8 @@ import elemwise_cgen as cgen
 import numpy
 from gof import Op, Viewer, Destroyer
 from base_tensor import BaseTensor as Tensor
+import scalar
 from scalar import upcast, Scalar
-import scalar_ops
 import gof
 from gof.python25 import all
 
@@ -424,7 +424,7 @@ class CAReduce(Op):
         tosum = self.dimensions_to_reduce
 
         if tosum == ():
-            return Broadcast(scalar_ops.Identity, (input, ))._c_all(inames, onames, sub)
+            return Broadcast(scalar.Identity, (input, ))._c_all(inames, onames, sub)
 
         order1 = [i for i in xrange(len(input.broadcastable)) if i not in tosum]
         order = order1 + list(tosum)
@@ -522,7 +522,7 @@ def make_reduce(scalar_opclass, name = None):
         New.__name__ = "Reduce" + scalar_opclass.__name__
     return New
 
-class Sum(make_reduce(scalar_ops.Add)):
+class Sum(make_reduce(scalar.Add)):
     def grad(self, (x, ), (gz, )):
         if self.dimensions_to_reduce == ():
             return gz,
@@ -534,7 +534,7 @@ class Sum(make_reduce(scalar_ops.Add)):
             else:
                 new_dims.append(i)
                 i += 1
-        return Broadcast(scalar_ops.Second, (x, DimShuffle(gz, new_dims).out)).out, 
+        return Broadcast(scalar.Second, (x, DimShuffle(gz, new_dims).out)).out, 
 
 
 def reduce(op):

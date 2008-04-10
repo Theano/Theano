@@ -22,7 +22,7 @@ class _test_grad_sources_inputs(unittest.TestCase):
         try:
             grad_sources_inputs([(a.out, 1)], None)
         except ValueError, e:
-            self.failUnless(e[0] is gradient._msg_retNone)
+            self.failUnless(e[0] is gradient._msg_retType)
             return
         self.fail()
     def test_retNone1_b(self): 

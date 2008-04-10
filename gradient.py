@@ -3,7 +3,7 @@ import numpy #for numeric_grad
 
 from gof.python25 import all
 
-_msg_retNone = 'op.grad(...) returned None, consider returning [None]'
+_msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
 def _unpack_result(lst):
@@ -82,10 +82,8 @@ def grad_sources_inputs(sources, graph_inputs):
         output_arg = g_outputs
         input_arg = op.inputs
         op_grad = op.grad(input_arg, output_arg)
-        if op_grad is None:
-            raise ValueError(_msg_retNone, op.__class__)
-        if isinstance(op_grad, float):
-            raise TypeError('wtf!!!!!!!!', op)
+        if not isinstance(op_grad, (list,tuple)):
+            raise ValueError(_msg_retType, op.__class__)
         g_inputs = op_grad #_pack_result(op_grad)
         assert isinstance(g_inputs, (list, tuple))
         if len(g_inputs) != len(op.inputs):

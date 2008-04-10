@@ -5,7 +5,7 @@ import unittest
 from gof import ResultBase, Op, Env, modes
 import gof
 
-from scalar_ops import *
+from scalar import *
 
 from elemwise2 import *
 
