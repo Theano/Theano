@@ -647,6 +647,7 @@ class t_gemm(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(44)
         _approx_eq.debug = 0
+        Gemm.debug = False
 
     @staticmethod
     def _gemm(z,a,x,y,b):
@@ -681,6 +682,7 @@ class t_gemm(unittest.TestCase):
         cmp_linker(copy(z), a, x, y, b, gof.link.PerformLinker)
 
     def test0a(self): 
+        Gemm.debug = True
         try:
             g = gemm([1.], 1., [1.], [1.], 1.)
         except ValueError, e:
@@ -722,6 +724,53 @@ class t_gemm(unittest.TestCase):
             self.rand(3,5), self.rand(5,4), 1.0)
     def test12(self): self.cmp(self.rand(3,4), -1.0,
             self.rand(3,5), self.rand(5,4), -1.0)
+
+    def test_destroy_map0(self):
+        """test that only first input can be overwritten"""
+        Z = astensor(self.rand(2,2))
+        try:
+            gemm(Z, 1.0, Z, Z, 1.0)
+        except ValueError, e:
+            if e[0] == Gemm.E_z_uniq:
+                return
+        self.fail()
+    def test_destroy_map1(self):
+        """test that only first input can be overwritten"""
+        Z = astensor(self.rand(2,2))
+        A = astensor(self.rand(2,2))
+        try:
+            gemm(Z, 1.0, A, Z.T, 1.0)
+        except ValueError, e:
+            if e[0] == Gemm.E_z_uniq:
+                return
+        self.fail()
+    def test_destroy_map2(self):
+        """test that only first input can be overwritten"""
+        Z = astensor(self.rand(2,2))
+        A = astensor(self.rand(2,2))
+        try:
+            gemm(Z, 1.0, Z.T, A, 1.0)
+        except ValueError, e:
+            if e[0] == Gemm.E_z_uniq:
+                return
+        self.fail()
+    def test_destroy_map3(self):
+        """test that only first input can be overwritten"""
+        Z = astensor(self.rand(2,2))
+        A = astensor(self.rand(2,2))
+        try:
+            gemm(Z, 1.0, Z, A, 1.0)
+        except ValueError, e:
+            if e[0] == Gemm.E_z_uniq:
+                return
+        self.fail()
+
+    def test_destroy_map4(self):
+        """test that dot args can be aliased"""
+        Z = astensor(self.rand(2,2))
+        A = astensor(self.rand(2,2))
+        eval_outputs([gemm(Z, 1.0, A, A, 1.0)])
+        eval_outputs([gemm(Z, 1.0, A, A.T, 1.0)])
 
 if __name__ == '__main__':
     unittest.main()
