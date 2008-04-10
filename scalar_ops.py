@@ -60,12 +60,6 @@ class Second(BinaryScalarOp):
     def grad(self, (x, y), (gz, )):
         return None, gz
 
-# class SquareDiff(BinaryScalarOp):
-#     def impl(self, x, y):
-#         diff = (x - y)
-#         return diff * diff
-#     def c_code(self, (x, y), (z, ), sub):
-#         return "%(z)s = %(x)s - %(y)s; %(z)s *= %(z)s;" % locals()
 
 class Identity(UnaryScalarOp):
     def impl(self, x):

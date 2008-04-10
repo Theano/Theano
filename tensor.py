@@ -327,7 +327,6 @@ Div, div, DivInplace, div_inplace = broadcast(scal.Div, 'Div')
 Pow, pow, PowInplace, pow_inplace = broadcast(scal.Pow, 'Pow')
 
 
-
 #########################
 # Linalg : Dot
 #########################

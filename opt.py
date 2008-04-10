@@ -1,4 +1,49 @@
 
+from gof import opt
+from elemwise2 import Broadcast
+
+class InplaceOptimizer(opt.OpSpecificOptimizer):
+
+    opclass = Broadcast
+    
+    def apply_on_op(self, env, op):
+        baseline = op.inplace_pattern
+        candidate_outputs = [i for i in xrange(len(op.outputs)) if i not in baseline]
+        candidate_inputs = [i for i in xrange(len(op.inputs)) if i not in baseline.values()]
+        for candidate_output in candidate_outputs:
+            for candidate_input in candidate_inputs:
+                inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
+                try:
+                    new_op = Broadcast(op.scalar_opclass, op.inputs, inplace_pattern)
+                    env.replace_all(dict(zip(op.outputs, new_op.outputs)))
+                except:
+                    continue
+                candidate_inputs.remove(candidate_input)
+                op = new_op
+                break
+
+inplace_optimizer = InplaceOptimizer()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
 This variable is used in compile.prog as the optimizer for all programs built
 using either compile.single, compile.to_func, and compile.prog.
