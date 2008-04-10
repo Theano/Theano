@@ -17,7 +17,7 @@ __all__ = ['Op',
 
 
 def constructor(op_cls):
-    """Make an Op look like a Result-valued function."""
+    """Make an Op look like a L{Result}-valued function."""
     def f(*args, **kwargs):
         op = op_cls(*args, **kwargs)
         if len(op.outputs) > 1:
@@ -28,12 +28,12 @@ def constructor(op_cls):
 
 class Op(object):
     """
-    Op represents a computation on the storage in its 'inputs' slot,
-    the results of which are stored in the Result instances in the
-    'outputs' slot. The owner of each Result in the outputs list must
-    be set to this Op and thus any Result instance is in the outputs
-    list of at most one Op, its owner. It is the responsibility of the
-    Op to ensure that it owns its outputs and it is encouraged (though
+    L{Op} represents a computation on the storage in its 'inputs' slot,
+    the results of which are stored in the L{Result} instances in the
+    'outputs' slot. The owner of each L{Result} in the outputs list must
+    be set to this L{Op} and thus any L{Result} instance is in the outputs
+    list of at most one L{Op}, its owner. It is the responsibility of the
+    L{Op} to ensure that it owns its outputs and it is encouraged (though
     not required) that it creates them.
     """
 
