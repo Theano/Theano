@@ -101,9 +101,12 @@ class Op(object):
     def get_outputs(self):
         return self._outputs
     def set_outputs(self, new):
-        # the point of this function is 
-        # 1. to save the subclass's __init__ function always having to set the role of the outputs
-        # 2. to prevent accidentally re-setting outputs, which would probably be a bug
+        """
+        The point of this function is:
+        1. to save the subclass's __init__ function always having to set the role of the outputs
+
+        2. to prevent accidentally re-setting outputs, which would probably be a bug
+        """
         if not hasattr(self, '_outputs') or self._outputs is None:
             for i, output in enumerate(new):
                 output.role = (self, i)
@@ -122,10 +125,10 @@ class Op(object):
 
     def __copy__(self):        
         """
-        Shallow copy of this Op. The inputs are the exact same, but
+        Shallow copy of this L{Op}. The inputs are the exact same, but
         the outputs are recreated because of the one-owner-per-result
         policy. The default behavior is to call the constructor on
-        this Op's inputs.
+        this L{Op}'s inputs.
 
         To do a bottom-up copy of a graph, use clone_with_new_inputs.
         """
@@ -133,9 +136,9 @@ class Op(object):
 
     def clone_with_new_inputs(self, *new_inputs):
         """
-        Returns a clone of this Op that takes different inputs. The
+        Returns a clone of this L{Op} that takes different inputs. The
         default behavior is to call the constructor on the new inputs,
-        but if your Op has additional options or a different constructor
+        but if your L{Op} has additional options or a different constructor
         you might want to override this.
         """
         return self.__class__(*new_inputs)
@@ -158,10 +161,10 @@ class Op(object):
     def impl(self, *args):
         """Return output data [tuple], given input data
         
-        If this Op has a single output (len(self.outputs)==1) then the return
+        If this L{Op} has a single output (len(self.outputs)==1) then the return
         value of this function will be assigned to self.outputs[0].data.
 
-        If this Op has multiple otuputs, then this function should return a
+        If this L{Op} has multiple otuputs, then this function should return a
         tuple with the data for outputs[0], outputs[1], outputs[2], etc. 
         """
         raise AbstractFunctionError()
@@ -169,8 +172,8 @@ class Op(object):
     
     def perform(self):
         """
-        Performs the computation associated to this Op and places the
-        result(s) in the output Results.
+        Performs the computation associated to this L{Op} and places the
+        result(s) in the output L{Result}s.
 
         TODO: consider moving this function to the python linker.
         """
@@ -231,27 +234,27 @@ class Op(object):
 
     def c_compile_args(self):
         """
-        Return a list of compile args recommended to manipulate this Op.
+        Return a list of compile args recommended to manipulate this L{Op}.
         """
         raise AbstractFunctionError()
 
     def c_headers(self):
         """
         Return a list of header files that must be included from C to manipulate
-        this Op.
+        this L{Op}.
         """
         raise AbstractFunctionError()
 
     def c_libraries(self):
         """
-        Return a list of libraries to link against to manipulate this Op.
+        Return a list of libraries to link against to manipulate this L{Op}.
         """
         raise AbstractFunctionError()
 
     def c_support_code(self):
         """
         Return utility code for use by this Op. It may refer to support code
-        defined for its input Results.
+        defined for its input L{Result}s.
         """
         raise AbstractFunctionError()
 
