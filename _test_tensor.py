@@ -739,7 +739,7 @@ class t_gemm(unittest.TestCase):
         Z = astensor(self.rand(2,2))
         A = astensor(self.rand(2,2))
         try:
-            gemm(Z, 1.0, A, Z.T, 1.0)
+            gemm(Z, 1.0, A, transpose_inplace(Z), 1.0)
         except ValueError, e:
             if e[0] == Gemm.E_z_uniq:
                 return
@@ -749,7 +749,7 @@ class t_gemm(unittest.TestCase):
         Z = astensor(self.rand(2,2))
         A = astensor(self.rand(2,2))
         try:
-            gemm(Z, 1.0, Z.T, A, 1.0)
+            gemm(Z, 1.0, transpose_inplace(Z), A, 1.0)
         except ValueError, e:
             if e[0] == Gemm.E_z_uniq:
                 return

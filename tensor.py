@@ -366,13 +366,16 @@ class Gemm(_Op):
     nout=1
     E_rank = 'gemm only works for rank 2'
     E_scalar = 'gemm requires scalar argument'
-    E_z_uniq = 'argument z not unique in argument list'
+    E_z_uniq = 'argument z aliased to x or y'
     debug = False
     def __init__(self, *args, **kwargs):
         _Op.__init__(self, *args, **kwargs)
         z, a, x, y, b = self.inputs
-        if z in self.inputs[1:]:
-            raise ValueError(Gemm.E_z_uniq, self.inputs)
+        zr, xr, yr = [set(gof.view_roots(i)) for i in z,x,y]
+        if zr.intersection(xr):
+            raise ValueError(Gemm.E_z_uniq, (z, x))
+        if zr.intersection(yr):
+            raise ValueError(Gemm.E_z_uniq, (z, y))
     def destroy_map(self):
         return {self.out:[self.inputs[0]]}
     def propagate_broadcastable(self, bz, ba, bx, by, bb):
