@@ -9,7 +9,7 @@ import gof, gof.graph
 from gof.python25 import any
 import gof
 
-from elemwise2 import DimShuffle
+from elemwise import DimShuffle
 
 def _numpy_checker(x, y):
     """

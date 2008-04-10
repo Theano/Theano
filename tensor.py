@@ -11,7 +11,7 @@ import gof.op
 from base_tensor import BaseTensor, BaseTensorOp
 import blas # for gemm, dot
 
-import elemwise2 as s2t
+import elemwise as s2t
 import scalar as scal
 
 

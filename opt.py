@@ -1,6 +1,6 @@
 
 from gof import opt
-from elemwise2 import Broadcast
+from elemwise import Broadcast
 
 class InplaceOptimizer(opt.OpSpecificOptimizer):
 
