@@ -71,6 +71,9 @@ class DimShuffle(Op, Viewer):
     def desc(self):
         return (self.__class__, tuple(self.new_order))
 
+    def strdesc(self):
+        return "DimShuffle{%s}" % "".join(str(x) for x in self.new_order)
+
     def perform(self):
         res = self.inputs[0].data
         shape = list(res.shape)
@@ -158,6 +161,12 @@ class Broadcast(Op, Destroyer):
 
     def desc(self):
         return (Broadcast, self.scalar_opclass, tuple(self.inplace_pattern.items()))
+
+    def strdesc(self):
+        if self.inplace_pattern:
+            return "Broadcast{%s}%s" % (self.shadow.strdesc(), str(self.inplace_pattern))
+        else:
+            return "Broadcast{%s}" % (self.shadow.strdesc())
 
     def destroy_map(self):
         ret = {}
@@ -396,6 +405,12 @@ class CAReduce(Op):
 
     def desc(self):
         return (self.__class__, self.scalar_opclass, tuple(self.dimensions_to_reduce))
+        
+    def strdesc(self):
+        if set(self.dimensions_to_reduce) != set(xrange(len(self.inputs[0].broadcastable))):
+            return "Reduce{%s}{%s}" % (self.scalar_opclass.__name__, "".join(str(x) for x in self.dimensions_to_reduce))
+        else:
+            return "Reduce{%s}" % self.scalar_opclass.__name__
         
     def clone_with_new_inputs(self, *new_inputs):
         return CAReduce(self.scalar_opclass, new_inputs, self.dimensions_to_reduce)

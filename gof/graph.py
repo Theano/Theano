@@ -212,7 +212,7 @@ def io_toposort(i, o, orderings = {}):
 
 
 default_leaf_formatter = str
-default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.__class__.__name__,
+default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.strdesc(),
                                                             ", ".join(argstrings))
 
 def op_as_string(i, op,

@@ -78,6 +78,9 @@ class Op(object):
     def desc(self):
         return self.__class__
 
+    def strdesc(self):
+        return self.__class__.__name__
+
     #
     #
     #
