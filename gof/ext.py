@@ -8,6 +8,7 @@ from env import InconsistencyError
 
 __all__ = ['Destroyer',
            'Viewer',
+           'view_roots',
            'DestroyHandler',
            ]
 
@@ -470,24 +471,25 @@ class Viewer:
         """
         raise AbstractFunctionError()
 
-    def view_roots(self, r):
-        """
-        Utility function that returns the leaves of a search through
-        consecutive view_map()s.
-        """
-        owner = r.owner
-        if owner is not None:
-            try:
-                view_map = owner.view_map()
-            except AttributeError, AbstractFunctionError:
-                return []
-            if r in view_map:
-                answer = []
-                for r2 in view_map[r]:
-                    answer.extend(helper(r2))
-                return answer
-            else:
-                return [r]
+
+def view_roots(r):
+    """
+    Utility function that returns the leaves of a search through
+    consecutive view_map()s.
+    """
+    owner = r.owner
+    if owner is not None:
+        try:
+            view_map = owner.view_map()
+        except AttributeError, AbstractFunctionError:
+            return [r]
+        if r in view_map:
+            answer = []
+            for r2 in view_map[r]:
+                answer += view_roots(r2)
+            return answer
         else:
             return [r]
+    else:
+        return [r]
 
