@@ -2,6 +2,7 @@
 from gof import opt
 from elemwise import Broadcast
 
+
 class InplaceOptimizer(opt.OpSpecificOptimizer):
 
     opclass = Broadcast
@@ -25,7 +26,14 @@ class InplaceOptimizer(opt.OpSpecificOptimizer):
 inplace_optimizer = InplaceOptimizer()
 
 
+# class ElemwisePatternOptimizer(opt.Optimizer):
 
+#     def __init__(self, scalar_opt):
+#         self.
+
+
+# def find_elemwise_cliques(env):
+    
 
 
 

@@ -45,11 +45,6 @@ class Scalar(ResultBase):
     def same_properties(self, other):
         return other.dtype == self.dtype
 
-#     def mergeable(self, other):
-#         return getattr(self, 'constant', False) \
-#             and getattr(other, 'constant', False) \
-#             and self.data == other.data
-
     def dtype_specs(self):
         try:
             return {'float32': (float, 'npy_float32', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
@@ -246,7 +241,7 @@ class Sub(BinaryScalarOp):
     def c_code(self, (x, y), (z, ), sub):
         return "%(z)s = %(x)s - %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return gz, neg(gz)
+        return gz, -gz
 
 class Mul(BinaryScalarOp):
     def impl(self, x, y):
@@ -254,7 +249,7 @@ class Mul(BinaryScalarOp):
     def c_code(self, (x, y), (z, ), sub):
         return "%(z)s = %(x)s * %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return mul(y, gz), mul(x, gz)
+        return gz * y, gz * x
 
 class Div(BinaryScalarOp):
     def impl(self, x, y):
@@ -262,7 +257,7 @@ class Div(BinaryScalarOp):
     def c_code(self, (x, y), (z, ), sub):
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return div(gz, y), neg(div(mul(x, gz), mul(y, y)))
+        return gz / y, -(gz * x) / (y * y)
 
 class Pow(BinaryScalarOp):
     def impl(self, x, y):
@@ -270,7 +265,8 @@ class Pow(BinaryScalarOp):
     def c_code(self, (x, y), (z, ), sub):
         return "%(z)s = pow(%(x)s, %(y)s);" % locals()
     def grad(self, (x, y), (gz, )):
-        return mul(gz, mul(y, pow(x, sub(y, as_scalar(1))))), mul(gz, mul(log(x), pow(x, y)))
+        return gz * y * x**(y - as_scalar(1)), gz * log(x) * x**y
+#        return mul(gz, mul(y, pow(x, sub(y, as_scalar(1))))), mul(gz, mul(log(x), pow(x, y)))
 
 class First(BinaryScalarOp):
     def impl(self, x, y):
