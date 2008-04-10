@@ -32,18 +32,23 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
     for test_num in xrange(n_tests):
         tensor_pt = [astensor(p,name='input %i'%i) for i,p in enumerate(pt)]
         o = op_cls(*tensor_pt)
-        if len(o.outputs) > 1:
+        if hasattr(o, 'outputs'):
+            o_outputs = o.outputs
+        else:
+            o_outputs = o
+
+        if len(o_outputs) > 1:
             raise NotImplementedError('cant (yet) autotest gradient of op with multiple outputs')
             # we could make loop over outputs making random projections R for each,
             # but this doesn't handle the case where not all the outputs are
             # differentiable... so I leave this as TODO for now -JB.
-        o_fn = Function(tensor_pt, o.outputs)
+        o_fn = Function(tensor_pt, o_outputs)
         o_fn_out = o_fn(*pt)
         random_projection = rng.rand(*o_fn_out.shape)
         t_r = astensor(random_projection)
 
         #random projection of o onto t_r
-        cost = sum(t_r * o.outputs[0])
+        cost = sum(t_r * o_outputs[0])
         cost_fn = Function(tensor_pt, [cost])
 
         num_grad = gradient.numeric_grad(cost_fn, pt)
