@@ -8,7 +8,18 @@ if __name__ == '__main__':
             modname = filename[:-3]
             if modname in ['__init__', 'autotest']: continue
             #print >>sys.stderr, 'Loading', modname
-            tests = unittest.TestLoader().loadTestsFromModule(__import__(modname))
+
+            try:
+                module = __import__(modname)
+            except Exception, e:
+                print >>sys.stderr, "===================================================="
+                print >>sys.stderr, "Failed to load module %s" % modname
+                print >>sys.stderr, "===================================================="
+                traceback.print_exc()
+                print >>sys.stderr, "===================================================="
+                continue
+                
+            tests = unittest.TestLoader().loadTestsFromModule(module)
             if tests.countTestCases() > 0:
                 print >>sys.stderr, 'Testing', modname
                 if suite is None:
