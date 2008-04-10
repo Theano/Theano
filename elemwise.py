@@ -216,12 +216,12 @@ class Broadcast(Op, Destroyer):
         output_storage = []
         if not self.inplace_pattern:
             for output in self.outputs:
-                odat = output.data
+#                odat = output.data
                 shape = [max(values) for values in zip(*[input.data.shape for input in self.inputs])]
-                if odat is not None:
-                    odat.resize(shape)
-                else:
-                    odat = numpy.ndarray(shape, dtype = output.dtype)
+#                if odat is not None:
+#                    odat.resize(shape)
+#                else:
+                odat = numpy.ndarray(shape, dtype = output.dtype)
                 output_storage.append(odat)
                 output.data = odat
         else:
