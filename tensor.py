@@ -1,4 +1,4 @@
-"""A Result to store numpy.ndarray with basic accompanying Ops"""
+"""A L{Result} to store L{numpy.ndarray} with basic accompanying L{Op}s"""
 import sys # for sys.maxint
 import inspect
 
@@ -17,12 +17,12 @@ import scalar as scal
 
 class Tensor(BaseTensor):
     """
-    This subclass of BaseTensor provides operator overloading using implementations
-    of Tensor operations contained in this file.
+    This subclass of L{BaseTensor} provides operator overloading using
+    implementations of L{Tensor} operations contained in this file.
     
     Operators:
-    - most numeric operators are overloaded (to return Ops that perform the
-      corresponding calculation)
+    - most numeric operators are overloaded (to return L{Op}s that
+    perform the corresponding calculation)
     """
 
     #UNARY
@@ -72,7 +72,7 @@ s2t.Tensor = Tensor
 
 # alternate Tensor constructor
 def astensor(data, broadcastable=None, role=None, name=None):
-    """Return a Tensor containing given data"""
+    """Return a L{Tensor} containing given data"""
     if isinstance(data, Tensor) and broadcastable is None and role is None and name is None:
         return data
     data = numpy.asarray(data)
@@ -239,7 +239,7 @@ class TransposeInplace(_Op, Viewer):
         return [rval]
     def impl(self, x):
         return x.T #numpy's transpose
-    def grad(self, (x,), (gz),):
+    def grad(self, (x,), (gz,)):
         return transpose(gz),
     
     def c_code(self, (x, ), (z, ), sub):
