@@ -67,6 +67,10 @@ class Tensor(BaseTensor):
     #SLICING
     def __getitem__(self, item): return subtensor(self, item)
     def __getslice__(self, *args): return subtensor(self, slice(*args))
+
+    #COPYING
+    def copy(self): return tensor_copy(self)
+    
 s2t.Tensor = Tensor
 
 
