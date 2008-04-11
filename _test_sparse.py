@@ -90,6 +90,9 @@ class _testCase_dot(unittest.TestCase):
             self.failUnless(z.shape == (5,2))
             self.failUnless(type(z) is mtype)
 
+    def test_missing(self):
+        raise NotImplementedError('tests commented out')
+
 #    def test_basic1(self):
 #        """dot: sparse left"""
 #        a = numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0, 0]],
