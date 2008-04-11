@@ -21,8 +21,8 @@ class Tensor(BaseTensor):
     implementations of L{Tensor} operations contained in this file.
     
     Operators:
-    - most numeric operators are overloaded (to return L{Op}s that
-    perform the corresponding calculation)
+     - most numeric operators are overloaded (to return L{Op}s that
+     perform the corresponding calculation)
     """
 
     #UNARY

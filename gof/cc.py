@@ -51,15 +51,15 @@ def compile_dir():
 
 class CodeBlock:
     """
-    Represents a computation unit composed of:
-     * declare -> C code that declares variables for use by the computation
-     * behavior -> C code that performs the computation
-     * cleanup -> C code that cleans up things allocated or incref-ed in behavior
+    Represents a computation unit composed of declare, behavior, and cleanup.
+    @ivar declare: C code that declares variables for use by the computation
+    @ivar behavior: C code that performs the computation
+    @ivar cleanup: C code that cleans up things allocated or incref-ed in behavior
     """
 
     def __init__(self, declare, behavior, cleanup, sub):
         """
-        Initialize a CodeBlock with templatized declare, behavior and cleanup.
+        Initialize a L{CodeBlock} with templatized declare, behavior and cleanup.
         The sub parameter will be used in the other arguments' templates. sub
         should contain a key called 'id' that maps to an identifier for this block.
         The identifier will be used to determine the failure code and a label
@@ -83,7 +83,7 @@ def failure_code(sub):
 
 def code_gen(blocks):
     """
-    From a list of CodeBlock instances, returns a string that executes them
+    From a list of L{CodeBlock} instances, returns a string that executes them
     all in sequence. eg for (decl1, task1, cleanup1) and (decl2, task2, cleanup2)
     the returned string will be of the form:
 
@@ -114,7 +114,7 @@ def struct_gen(args, struct_builders, blocks, sub):
     Generates a struct conforming to the following specifications:
      * args -> all of the PyObject* type, stored in the struct
        they represent the storage and must be length 1 python lists.
-     * struct_builders -> list of CodeBlock instances such that
+     * struct_builders -> list of L{CodeBlock} instances such that
        * declarations are in the struct
        * behavior is in the constructor
        * cleanup is in the destructor
@@ -302,7 +302,7 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
     symbol_table -> a dict that maps results to variable names. It is not read
         by this function but a variable name for the result is computed and added
         to the table.
-    sub -> dictionary for use by CodeBlock.
+    sub -> dictionary for use by L{CodeBlock}.
     """
     
     name = "V%i" % id

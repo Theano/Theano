@@ -1,4 +1,4 @@
-"""A simple class to store ndarray data """
+"""A simple class to store L{numpy.ndarray} data """
 
 from gof import Result, Op, utils, AbstractFunctionError
 import numpy
@@ -10,26 +10,28 @@ from copy import copy
 ###########################
 
 class BaseTensor(Result):
-    """Result to store numpy.ndarray or equivalent via .data
+    """
+    L{Result} to store L{numpy.ndarray} or equivalent via .data
     
-    Attributes:
-    _dtype - numpy dtype string such as 'int64' or 'float64' (among others)
-    _broadcastable - tuple of ints in  (0,1) saying which dimensions of this
-        tensor are guaranteed to be 1, and up for broadcasting
+    @type _dtype: numpy dtype string such as 'int64' or 'float64' (among others)
+    @type _broadcastable: - tuple of ints in  (0,1)
+    @ivar _broadcastable: which dimensions of this tensor are guaranteed
+    to be 1, and up for broadcasting.
 
     Properties:
     dtype - read-only access to _dtype, which should not be changed
     broadcastable - read-only access to _broadcastable, which should not be changed
 
     This class does not implement python operators and has no dependencies
-    on the Ops that use it.
+    on the L{Op}s that use it.
     """
 
     def __init__(self, dtype, broadcastable, role=None, name=None):
-        """Initialize a Tensor
+        """Initialize a L{Tensor}
+
+        @todo: Initialize a L{Tensor} or a L{BaseTensor}? -jpt
         
-        Note:
-        This does not actually allocate any data.
+        @note: This does not actually allocate any data.
         """
 
         # data is not given here. This may seem a bit strange, but when data was
@@ -56,7 +58,7 @@ class BaseTensor(Result):
     # filter
     #
     def filter(self, arr):
-        """cast to an ndarray and ensure arr has correct rank, shape"""
+        """cast to an L{numpy.ndarray} and ensure arr has correct rank, shape"""
         if not (isinstance(arr, numpy.ndarray) \
                 and arr.dtype==self.dtype):
             arr = numpy.asarray(arr, dtype = self.dtype)
@@ -80,7 +82,7 @@ class BaseTensor(Result):
         """Return python - C type correspondance tuple for self.data
 
         Return a tuple (python type, c type, numpy typenum) that corresponds to
-        self.dtype.  It is for use in C code generation.
+        L{self.dtype}.  It is for use in C code generation.
         """
         #TODO: add more type correspondances for e.g. int32, int64, float32,
         #complex64, etc.
@@ -240,21 +242,20 @@ class BaseTensor(Result):
 
 class BaseTensorOp(Op):
     """
-    A basic Op subclass that can be used to make Ops that operate on Tensors.
+    A basic L{Op} subclass that can be used to make L{Op}s that operate on L{Tensor}s.
     It is not mandatory to inherit from this class, but it is practical.
 
-    BasicTensorOp is parametrized as follows:
-     * nin: number of inputs
-     * nout: number of outputs
-     * out_tensor_class: BaseTensor subclass used to instantiate the outputs
-     * input_wrapper: returns a Tensor from its argument
-     * propagate_dtype: returns a list of dtypes corresponding to the
-           output dtypes from a list of input dtypes (if an input is
-           not a Tensor, the passed value will be None)
-     * propagate_broadcastable: returns a list of tuples corresponding to
-           the output broadcastable flags from the input broadcastable
-           flags  (if an input is not a Tensor, the passed value will be
-           None).
+    @ivar nin: number of inputs
+    @ivar nout: number of outputs
+    @ivar out_tensor_class: L{BaseTensor} subclass used to instantiate the outputs
+
+     - input_wrapper: returns a L{Tensor} from its argument
+     - propagate_dtype: returns a list of dtypes corresponding to the
+     output dtypes from a list of input dtypes (if an input is not a
+     L{Tensor}, the passed value will be None)
+     - propagate_broadcastable: returns a list of tuples corresponding
+     to the output broadcastable flags from the input broadcastable flags
+     (if an input is not a L{Tensor}, the passed value will be None).
     """
     
     nin = -1 # nin == -1 means: arbitrary number of inputs
@@ -265,7 +266,7 @@ class BaseTensorOp(Op):
     @classmethod
     def input_wrapper(cls, obj):
         """
-        Returns a Result from an arbitrary-typed input, if possible.
+        Returns a L{Result} from an arbitrary-typed input, if possible.
         """
         if isinstance(obj, BaseResult):
             return obj

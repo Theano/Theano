@@ -19,7 +19,9 @@ def astensor(data):
 ##################
 
 class DimShuffle(Op, Viewer):
-
+    """
+    @todo: DOCUMENTATION? --jpt
+    """
     def __init__(self, input, new_order, inplace = True):
 
         input = astensor(input)
@@ -122,6 +124,9 @@ class Transpose(DimShuffle):
 #################
 
 class Broadcast(Op, Destroyer):
+    """
+    @todo: DOCUMENTATION? --jpt
+    """
 
     def __init__(self, scalar_opclass, inputs, inplace_pattern = {}):
 
@@ -356,11 +361,12 @@ class CAReduce(Op):
     CAReduce(scalar_op, inputs, dimensions_to_reduce = None, init = None, shortcut = False)
     
     The number of inputs must be the difference between the number of
-    outputs of scalar_op and its number of inputs. CAReduce holds
+    outputs of scalar_op and its number of inputs. L{CAReduce} holds
     scalar states, the accumulators, in proportion to the number of
-    outputs of scalar_op and it updates them iteratively:
-    for x, y, ... in input0, input1, ...
-      scalar_state <- scalar_op(scalar_state, x, y, ...)
+    outputs of scalar_op and it updates them iteratively::
+
+      for x, y, ... in input0, input1, ...
+        scalar_state <- scalar_op(scalar_state, x, y, ...)}
 
     The initial states are init if provided (they must be scalars),
     else if there are as many states as inputs, a sample from each
@@ -373,7 +379,7 @@ class CAReduce(Op):
     multiply/and will return 0 at first sight of 0 and 'or' will
     return 1 at first sight of 1.
 
-    In order to optimize memory usage patterns, CAReduce makes zero
+    In order to optimize memory usage patterns, L{CAReduce} makes zero
     guarantees on the order in which it iterates over the dimensions
     and the elements of the array(s). Therefore, to ensure consistent
     results, the scalar operation represented by the reduction must be

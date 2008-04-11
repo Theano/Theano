@@ -1,6 +1,6 @@
 
 """
-Contains the Op class, which is the base interface for all operations
+Contains the L{Op} class, which is the base interface for all operations
 compatible with gof's graph manipulation routines.
 """
 
@@ -103,9 +103,8 @@ class Op(object):
     def set_outputs(self, new):
         """
         The point of this function is:
-        1. to save the subclass's __init__ function always having to set the role of the outputs
-
-        2. to prevent accidentally re-setting outputs, which would probably be a bug
+         1. to save the subclass's __init__ function always having to set the role of the outputs
+         2. to prevent accidentally re-setting outputs, which would probably be a bug
         """
         if not hasattr(self, '_outputs') or self._outputs is None:
             for i, output in enumerate(new):
@@ -215,17 +214,17 @@ class Op(object):
 
     def c_validate_update_cleanup(self, inputs, outputs, sub):
         """
-        Clean up things allocated by c_validate().
+        Clean up things allocated by L{c_validate}().
         """
         raise AbstractFunctionError()
 
     def c_code(self, inputs, outputs, sub):
         """
         Returns templated C code that does the computation associated
-        to this Op. You may assume that input validation and output
+        to this L{Op}. You may assume that input validation and output
         allocation have already been done.
         
-        You may use the variable names defined by c_var_names() in
+        You may use the variable names defined by L{c_var_names}() in
         the templates.
         """
         raise AbstractFunctionError()
@@ -257,7 +256,7 @@ class Op(object):
 
     def c_support_code(self):
         """
-        Return utility code for use by this Op. It may refer to support code
+        Return utility code for use by this L{Op}. It may refer to support code
         defined for its input L{Result}s.
         """
         raise AbstractFunctionError()

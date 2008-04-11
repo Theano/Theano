@@ -21,7 +21,8 @@ is_op = utils.attr_checker('inputs', 'outputs')
 
 def inputs(o):
     """
-    o -> list of output Results
+    @type o: list
+    @param o: output L{Result}s
 
     Returns the set of inputs necessary to compute the outputs in o
     such that input.owner is None.
@@ -41,11 +42,13 @@ def inputs(o):
 
 def results_and_orphans(i, o, except_unreachable_input=False):
     """
-    i -> list of input Results
-    o -> list of output Results
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
 
     Returns the pair (results, orphans). The former is the set of
-    Results that are involved in the subgraph that lies between i and
+    L{Result}s that are involved in the subgraph that lies between i and
     o. This includes i, o, orphans(i, o) and all results of all
     intermediary steps from i to o. The second element of the returned
     pair is orphans(i, o).
@@ -88,13 +91,15 @@ results_and_orphans.E_unreached = 'there were unreachable inputs'
 
 def ops(i, o):
     """
-    i -> list of input Results
-    o -> list of output Results
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
 
     Returns the set of ops that are contained within the subgraph
-    that lies between i and o, including the owners of the Results in
+    that lies between i and o, including the owners of the L{Result}s in
     o and intermediary ops between i and o, but not the owners of the
-    Results in i.
+    L{Result}s in i.
     """
     ops = set()
     results, orphans = results_and_orphans(i, o)
@@ -107,8 +112,10 @@ def ops(i, o):
 
 def results(i, o):
     """
-    i -> list of input Results
-    o -> list of output Results
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
 
     Returns the set of Results that are involved in the subgraph
     that lies between i and o. This includes i, o, orphans(i, o)
@@ -119,8 +126,10 @@ def results(i, o):
 
 def orphans(i, o):
     """
-    i -> list of input Results
-    o -> list of output Results
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
 
     Returns the set of Results which one or more Results in o depend
     on but are neither in i nor in the subgraph that lies between
@@ -133,9 +142,12 @@ def orphans(i, o):
 
 def clone(i, o, copy_inputs = False):
     """
-    i -> list of input Results
-    o -> list of output Results
-    copy_inputs -> if True, the inputs will be copied (defaults to False)
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
+    @type copy_inputs: bool
+    @param copy_inputs: if True, the inputs will be copied (defaults to False)
 
     Copies the subgraph contained between i and o and returns the
     outputs of that copy (corresponding to o).
@@ -146,14 +158,18 @@ def clone(i, o, copy_inputs = False):
 
 def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
     """
-    i -> list of input Results
-    o -> list of output Results
-    copy_inputs_and_orphans -> if True, the inputs and the orphans
-         will be replaced in the cloned graph by copies available in
-         the equiv dictionary returned by the function (copy_inputs
-         defaults to False)
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
+    @type copy_inputs_and_orphans: bool
+    @param copy_inputs_and_orphans: if True, the inputs and the orphans
+         will be replaced in the cloned graph by copies available
+         in the equiv dictionary returned by the function
+         (copy_inputs_and_orphans defaults to False)
 
-    Returns equiv a dictionary mapping each result and op in the
+    @rtype: a dictionary
+    @return: equiv mapping each L{Result} and L{Op} in the
     graph delimited by i and o to a copy (akin to deepcopy's memo).
     """
 
@@ -190,15 +206,18 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
 
 def io_toposort(i, o, orderings = {}):
     """
-    i -> list of input Results
-    o -> list of output Results
-    orderings -> {op: [requirements for op]} (defaults to {})
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
+    @param orderings: {op: [requirements for op]} (defaults to {})
 
-    Returns an ordered list of Ops that belong in the subgraph between
-    i and o which respects the following constraints:
-    - all inputs in i are assumed to be already computed
-    - the Ops that compute an Op's inputs must be computed before it
-    - the orderings specified in the optional orderings parameter must be satisfied
+    @rtype: ordered list
+    @return: L{Op}s that belong in the subgraph between i and o which
+    respects the following constraints:
+     - all inputs in i are assumed to be already computed
+     - the L{Op}s that compute an L{Op}'s inputs must be computed before it
+     - the orderings specified in the optional orderings parameter must be satisfied
 
     Note that this function does not take into account ordering information
     related to destructive operations or other special behavior.
@@ -226,11 +245,15 @@ def as_string(i, o,
               leaf_formatter = default_leaf_formatter,
               node_formatter = default_node_formatter):
     """
-    i -> list of input Results
-    o -> list of output Results
-    leaf_formatter -> function that takes a result and returns a string to describe it
-    node_formatter -> function that takes an op and the list of strings corresponding
-                      to its arguments and returns a string to describe it
+    @type i: list
+    @param i: input L{Result}s
+    @type o: list
+    @param o: output L{Result}s
+    @type leaf_formatter: function
+    @param leaf_formatter: takes a L{Result} and returns a string to describe it
+    @type node_formatter: function
+    @param node_formatter: takes an L{Op} and the list of strings
+    corresponding to its arguments and returns a string to describe it
 
     Returns a string representation of the subgraph between i and o. If the same
     op is used by several other ops, the first occurrence will be marked as

@@ -24,12 +24,12 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
     all of its views have been processed.
 
     Examples:
-     * (x += 1) + (x += 1) -> fails because the first += makes the second
+     - (x += 1) + (x += 1) -> fails because the first += makes the second
        invalid
-     * x += transpose_view(x) -> fails because the input that is destroyed
+     - x += transpose_view(x) -> fails because the input that is destroyed
        depends on an input that shares the same data
-     * (a += b) + (c += a) -> succeeds but we have to do c += a first
-     * (a += b) + (b += c) + (c += a) -> fails because there's a cyclical
+     - (a += b) + (c += a) -> succeeds but we have to do c += a first
+     - (a += b) + (b += c) + (c += a) -> fails because there's a cyclical
        dependency (no possible ordering)
 
     This feature allows some optimizations (eg sub += for +) to be applied
@@ -75,8 +75,8 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
     def publish(self):
         """
         Publishes the following on the env:
-         * destroyers(r) -> returns all Ops that destroy the result r
-         * destroy_handler -> self
+         - destroyers(r) -> returns all L{Op}s that destroy the result r
+         - destroy_handler -> self
         """
         def __destroyers(r):
             ret = self.destroyers.get(r, {})
@@ -89,9 +89,9 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         """
         Returns a path from r to the result that it is ultimately
         a view of, i.e. path such that:
-         * path[-1] == r
-         * path[i] == parent[path[i+1]]
-         * parent[path[0]] == None
+         - path[-1] == r
+         - path[i] == parent[path[i+1]]
+         - parent[path[0]] == None
         """
         path = self.paths.get(r, None)
         if path:
@@ -165,8 +165,9 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         Does a depth-first search to find cycles in the graph of
         computation given a directed connection from an op to
         its __pre__ set.
-         * seq -> sequence of nodes visited up to now
-         * r -> current node
+        @type seq: sequence
+        @param seq: nodes visited up to now
+        @param r: current node
         If r is found in seq, we have a cycle and it is added to
         the set of cycles.
         """
@@ -198,9 +199,9 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
 
     def get_maps(self, op):
         """
-        Returns vmap, dmap where:
-         * vmap -> {output : [inputs output is a view of]}
-         * dmap -> {output : [inputs that are destroyed by the Op
+        @return: (vmap, dmap) where:
+         - vmap -> {output : [inputs output is a view of]}
+         - dmap -> {output : [inputs that are destroyed by the Op
                               (and presumably returned as that output)]}
         """
         try: vmap = op.view_map()
@@ -398,10 +399,10 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
 
     def validate(self):
         """
-        Raises an InconsistencyError on any of the following conditions:
-         * Some results are destroyed by more than one Op
-         * There is a cycle of preconditions
-         * An Op attempts to destroy an indestructible result.
+        Raises an L{InconsistencyError} on any of the following conditions:
+         - Some results are destroyed by more than one L{Op}
+         - There is a cycle of preconditions
+         - An L{Op} attempts to destroy an indestructible result.
         """
         if self.dups:
             raise InconsistencyError("The following values are destroyed more than once: %s" % self.dups)
@@ -415,9 +416,9 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
     def orderings(self):
         """
         Returns a dict of {op : set(ops that must be computed before it)} according
-        to DestroyHandler.
+        to L{DestroyHandler}.
         In particular, all the users of a destroyed result have priority over the
-        op that destroys the result.
+        L{Op} that destroys the result.
         """
         ords = {}
         for foundation, destroyers in self.destroyers.items():

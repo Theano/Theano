@@ -12,7 +12,8 @@ hashgen.next = 0
 class OmegaError(Exception): pass
 
 class AbstractFunctionError(Exception): 
-    """To be raised by functions defined as part of an interface.
+    """
+    To be raised by functions defined as part of an interface.
 
     When the user sees such an error, it is because an important interface
     function has been left out of an implementation class.
@@ -94,12 +95,13 @@ def partial(func, *args, **keywords):
 
 
 class ClsInit(type):
-    """Class initializer for Op subclasses"""
+    """Class initializer for L{Op} subclasses"""
     def __init__(cls, name, bases, dct):
-        """Validate and initialize the Op subclass 'cls'
+        """
+        Validate and initialize the L{Op} subclass 'cls'
 
         This function:
-        - changes class attributes input_names and output_names to be lists if they are single strings.
+          - changes class attributes input_names and output_names to be lists if they are single strings.
         """
         type.__init__(cls, name, bases, dct)
 

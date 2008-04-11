@@ -3,7 +3,7 @@ Classes for handling sparse matrices.
 
 To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 
-@todo Automatic methods for determining best sparse format?
+@todo: Automatic methods for determining best sparse format?
 """
 
 import copy #for __copy__
@@ -199,8 +199,8 @@ class Dot(gof.op.Op):
         self.grad_preserves_dense = grad_preserves_dense
     def perform(self):
         """
-        @todo Verify that output is sufficiently sparse, and raise a warning if it is not
-        @todo Also determine that we are storing the output in the best storage format?
+        @todo: Verify that output is sufficiently sparse, and raise a warning if it is not
+        @todo: Also determine that we are storing the output in the best storage format?
         """
         self.outputs[0].data = self.inputs[0].data.dot(self.inputs[1].data)
     def grad(self, (x, y), (gz,)):
@@ -216,7 +216,7 @@ class Dot(gof.op.Op):
         return self.__class__(new_inputs[0], new_inputs[1], self.grad_preserves_dense)
 def dot(x, y, grad_preserves_dense=True):
     """
-    @todo Maybe the triple-transposition formulation (when x is dense)
+    @todo: Maybe the triple-transposition formulation (when x is dense)
     is slow. See if there is a direct way to do this.
     """
     if hasattr(x, 'getnnz'): x = assparse(x)

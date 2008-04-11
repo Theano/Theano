@@ -19,20 +19,24 @@ def _pack_result(arg):
         return arg
 
 def grad_sources_inputs(sources, graph_inputs):
-    """Return a dictionary mapping each result necessary for a source to its gradient
+    """
+    @rtype: dictionary
+    @return: dictionary mapping each result necessary for a source to its gradient.
 
-    sources - a list of gradient sources (explained below)
-    graph_inputs - a list of results considered to be constant
+    @type sources: list
+    @param sources: gradient sources (explained below)
+    @type graph_inputs: list
+    @param graph_inputs: results considered to be constant
 
     A gradient source is a pair (r, g_r), in which r is a result, and g_r is a
     result that is a gradient wrt r.
 
     This function traverses the graph backward from the 'r' sources,
-    calling op.grad(...) when it is provided by an op, and at least one of the
-    outputs of the op has an associated gradient.
+    calling L{Op.grad}(...) when it is provided by an L{Op}, and at least one of the
+    outputs of the L{Op} has an associated gradient.
 
-    The op.grad(...) functions may be called in several ways (for the
-    convenience of the op implementer) depending on the number of inputs and
+    The L{Op.grad}(...) functions may be called in several ways (for the
+    convenience of the L{Op} implementer) depending on the number of inputs and
     outputs.  
 
     If there is one input and one output:
@@ -47,13 +51,13 @@ def grad_sources_inputs(sources, graph_inputs):
     If there are multiple inputs and outputs:
         op.grad( op.inputs, [grad(o) for o in op.outputs[0]])
 
-    This function expects the op.grad(...) function to return the gradient
-    expression [results] associated with the inputs of the op.  If the op has a
-    single input, it should return a single result; if the op has multiple
+    This function expects the L{Op.grad}(...) function to return the gradient
+    expression [results] associated with the inputs of the L{Op}.  If the L{Op} has a
+    single input, it should return a single result; if the L{Op} has multiple
     inputs, it should return a list of results corresponding to the gradients in
     the same order as the inputs.
 
-    For each input wrt to which an op is not differentiable, it should return
+    For each input wrt to which an L{Op} is not differentiable, it should return
     None instead of a result instance.
 
     """

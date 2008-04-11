@@ -1,6 +1,6 @@
 """
-Contains the Result class, which is the base interface for a
-value that is the input or the output of an Op.
+Contains the L{Result} class, which is the base interface for a
+value that is the input or the output of an L{Op}.
 
 """
 
@@ -21,7 +21,7 @@ __all__ = ['Result',
 ### CLEANUP - DO WE REALLY EVEN THE STATE ANYMORE? ###
 
 class StateError(Exception):
-    """The state of the Result is a problem"""
+    """The state of the L{Result} is a problem"""
 
 
 # Result state keywords
@@ -35,7 +35,7 @@ class Computed : """Memory has been allocated, contents are the owner's output."
 ############################
 
 class Result(object):
-    """Base class for storing Op inputs and outputs
+    """Base class for storing L{Op} inputs and outputs
 
     Attributes:
     _role - None or (owner, index) #or BrokenLink
@@ -161,10 +161,10 @@ class Result(object):
         """
         Raise an exception if the data is not of an acceptable type.
 
-        If a subclass overrides this function, __set_data will use it
+        If a subclass overrides this function, L{__set_data} will use it
         to check that the argument can be used properly. This gives a
         subclass the opportunity to ensure that the contents of
-        self._data remain sensible.
+        L{self._data} remain sensible.
 
         Returns data or an appropriately wrapped data.
         """
@@ -185,7 +185,7 @@ class Result(object):
     
     def c_declare(self, name, sub):
         """
-        Declares variables that will be instantiated by c_data_extract.
+        Declares variables that will be instantiated by L{c_extract}.
         """
         raise AbstractFunctionError()
 
@@ -193,18 +193,21 @@ class Result(object):
         """
         The code returned from this function must be templated using
         "%(name)s", representing the name that the caller wants to
-        call this Result. The Python object self.data is in a
+        call this L{Result}. The Python object self.data is in a
         variable called "py_%(name)s" and this code must set the
         variables declared by c_declare to something representative
         of py_%(name)s. If the data is improper, set an appropriate
         exception and insert "%(fail)s".
+
+        @todo: Point out that template filling (via sub) is now performed
+        by this function. --jpt
         """
         raise AbstractFunctionError()
     
     def c_cleanup(self, name, sub):
         """
         This returns C code that should deallocate whatever
-        c_data_extract allocated or decrease the reference counts. Do
+        L{c_extract} allocated or decrease the reference counts. Do
         not decrease py_%(name)s's reference count.
         """
         raise AbstractFunctionError()
@@ -221,27 +224,27 @@ class Result(object):
 
     def c_compile_args(self):
         """
-        Return a list of compile args recommended to manipulate this Result.
+        Return a list of compile args recommended to manipulate this L{Result}.
         """
         raise AbstractFunctionError()
 
     def c_headers(self):
         """
         Return a list of header files that must be included from C to manipulate
-        this Result.
+        this L{Result}.
         """
         raise AbstractFunctionError()
 
     def c_libraries(self):
         """
-        Return a list of libraries to link against to manipulate this Result.
+        Return a list of libraries to link against to manipulate this L{Result}.
         """
         raise AbstractFunctionError()
 
     def c_support_code(self):
         """
-        Return utility code for use by this Result or Ops manipulating this
-        Result.
+        Return utility code for use by this L{Result} or L{Op}s manipulating this
+        L{Result}.
         """
         raise AbstractFunctionError()
     

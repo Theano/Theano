@@ -27,14 +27,14 @@ def _mark_indestructible(results):
         r.indestructible = True
 
 class Function:
-    """An 'executable' compiled from a graph
+    """
+    An 'executable' compiled from a graph
 
     This class is meant to be used as a function: the idea is to use
     __call__(*args) and it will compute your graph's function on the args and
     return the value(s) corresponding to the output(s).
     
-    Attributes
-    fn - the return value of linker.make_function(False)
+    @ivar fn: the return value of L{linker.make_function}(False)
 
     Additional Attributes if keep_locals == True
     inputs - inputs in the env
@@ -44,12 +44,11 @@ class Function:
     linker - the linker allocated from env
     env - The env passed to the linker
 
-    REMARK Re: Memory ownership, aliasing, re-use
-    -------------------------------------------
-    Note that the objects returned by Function.__call__(self, *args) are owned
+    @note: B{Re: Memory ownership, aliasing, re-use:}
+    That the objects returned by L{Function.__call__}(self, *args) are owned
     by self, and that in general these outputs might be overwritten (in-place)
-    by subsequent calls to self.__call__(*args).  Why?  This behaviour is
-    necessary for inplace operations to work, and Function's linker might re-use
+    by subsequent calls to L{self.__call__}(*args).  Why?  This behaviour is
+    necessary for inplace operations to work, and L{Function}'s linker might re-use
     memory from one execution to the next in order to make each execution faster.
 
     """
@@ -61,18 +60,18 @@ class Function:
             unpack_single = True,
             except_unreachable_input = True,
             keep_locals = True):
-        """ Copy the graph, optimize, and link it.
-        Parameters:
-        inputs - a list of results to be this function's inputs
-        outputs - a list of results to be this function's outputs
-        features - features to add to the env
-        optimizer - an optimizer to apply to the copied graph, before linking
-        linker_cls - a callable that takes an env and returns a Linker
-        profiler - a Profiler for the produced function (only valid if the
+        """
+        Copy the graph, optimize, and link it.
+
+        @param inputs: a list of results to be this function's inputs
+        @param outputs: a list of results to be this function's outputs
+        @param features: features to add to the env
+        @param optimizer: an optimizer to apply to the copied graph, before linking
+        @param linker_cls: a callable that takes an env and returns a Linker
+        @param profiler: a L{Profiler} for the produced function (only valid if the
                    linker_cls's make_function takes a profiler argument)
-        unpack_single - unpack return value lists of length 1
-                      - see  Linker.make_function
-        keep_locals - add the local variables from __init__ to the class
+        @param unpack_single: unpack return value lists of length 1. @see: L{Linker.make_function}
+        @param keep_locals: add the local variables from __init__ to the class
         """
 
         _mark_indestructible(outputs)

@@ -84,7 +84,7 @@ name: Theano
 css: white
 
 # The documented project's URL.
-url: http://lgcm:8000/testenv/
+url: http://lgcm.iro.umontreal.ca:8000/theano/
 
 # HTML code for the project link in the navigation bar.  If left
 # unspecified, the project link will be generated based on the
@@ -101,7 +101,8 @@ url: http://lgcm:8000/testenv/
 #help: my_helpfile.html
 
 # Whether or not to include a frames-based table of contents.
-frames: yes
+#frames: yes
+frames: no
 
 # Whether each class should be listed in its own section when
 # generating LaTeX or PDF output.
@@ -127,7 +128,7 @@ separate-classes: no
 # in the output.  Graphs are generated using the Graphviz "dot"
 # executable.  Graph types include: "classtree", "callgraph",
 # "umlclass".  Use "all" to include all graph types
-graph: all
+graph: classtree
 
 # The path to the Graphviz "dot" executable, used to generate
 # graphs.

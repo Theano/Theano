@@ -10,24 +10,24 @@ import ext
 
 class Optimizer:
     """
-    An Optimizer can be applied to an env to transform it.
+    An L{Optimizer} can be applied to an L{Env} to transform it.
     It can represent an optimization or in general any kind
-    of transformation you could apply to an env.
+    of transformation you could apply to an L{Env}.
     """
 
     def apply(self, env):
         """
-        Applies the optimization to the provided env. It may
-        use all the methods defined by the env. If the optimizer
-        needs to use a certain tool, such as an InstanceFinder,
-        it should set the __env_require__ field to a list of
-        what needs to be registered with the Env.
+        Applies the optimization to the provided L{Env}. It may use all
+        the methods defined by the L{Env}. If the L{Optimizer} needs
+        to use a certain tool, such as an L{InstanceFinder}, it should
+        set the L{__env_require__} field to a list of what needs to be
+        registered with the L{Env}.
         """
         pass
 
     def optimize(self, env):
         """
-        This is meant as a shortcut to:
+        This is meant as a shortcut to::
           env.satisfy(opt)
           opt.apply(env)
         """
@@ -44,7 +44,7 @@ DummyOpt.__doc__ = "Does nothing."
 
 class SeqOptimizer(Optimizer, list):
     """
-    Takes a list of Optimizer instances and applies them
+    Takes a list of L{Optimizer} instances and applies them
     sequentially.
     """
 
@@ -55,7 +55,7 @@ class SeqOptimizer(Optimizer, list):
 
     def apply(self, env):
         """
-        Applies each optimizer in self in turn.
+        Applies each L{Optimizer} in self in turn.
         """
         for optimizer in self:
             optimizer.optimize(env)
@@ -70,12 +70,12 @@ class SeqOptimizer(Optimizer, list):
 
 class LocalOptimizer(Optimizer):
     """
-    Generic Optimizer class that considers local parts of
-    the env. It must be subclassed and should override the
+    Generic L{Optimizer} class that considers local parts of
+    the L{Env}. It must be subclassed and should override the
     following two methods:
-     * candidates(env) -> returns a set of ops that can be
+     - candidates(env) -> returns a set of ops that can be
        optimized
-     * apply_on_op(env, op) -> for each op in candidates,
+     - apply_on_op(env, op) -> for each op in candidates,
        this function will be called to perform the actual
        optimization.
     """
@@ -105,8 +105,8 @@ class LocalOptimizer(Optimizer):
 
 class OpSpecificOptimizer(LocalOptimizer):
     """
-    Generic optimizer that applies only to ops of a certain
-    type. The type in question is accessed through self.opclass.
+    Generic L{Optimizer} that applies only to ops of a certain
+    type. The type in question is accessed through L{self.opclass}.
     opclass can also be a class variable of the subclass.
     """
 
@@ -114,7 +114,7 @@ class OpSpecificOptimizer(LocalOptimizer):
 
     def candidates(self, env):
         """
-        Returns all instances of self.opclass.
+        Returns all instances of L{self.opclass}.
         """
         return env.get_instances_of(self.opclass)
 
@@ -123,7 +123,7 @@ class OpSpecificOptimizer(LocalOptimizer):
 
 class OpSubOptimizer(Optimizer):
     """
-    Replaces all ops of a certain type by ops of another type that
+    Replaces all L{Op}s of a certain type by L{Op}s of another type that
     take the same inputs as what they are replacing.
 
     e.g. OpSubOptimizer(add, sub) ==> add(div(x, y), add(y, x)) -> sub(div(x, y), sub(y, x))
@@ -212,7 +212,7 @@ class OpRemover(Optimizer):
 
 class PatternOptimizer(OpSpecificOptimizer):
     """
-    Replaces all occurrences of the input pattern by the output pattern.
+    Replaces all occurrences of the input pattern by the output pattern::
 
      input_pattern ::= (OpClass, <sub_pattern1>, <sub_pattern2>, ...)
      input_pattern ::= dict(pattern = <input_pattern>,

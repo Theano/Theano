@@ -16,7 +16,7 @@ class Feature(object):
     
     def __init__(self, env):
         """
-        Initializes the Feature's env field to the parameter
+        Initializes the L{Feature}'s env field to the parameter
         provided.
         """
         self.env = env
@@ -24,31 +24,30 @@ class Feature(object):
 
 class Listener(Feature):
     """
-    When registered by an env, each listener is informed of any op
+    When registered by an L{Env}, each listener is informed of any L{Op}
     entering or leaving the subgraph (which happens at construction
     time and whenever there is a replacement).
     """
 
     def on_import(self, op):
         """
-        This method is called by the env whenever a new op is
+        This method is called by the L{Env} whenever a new L{Op} is
         added to the graph.
         """
         raise utils.AbstractFunctionError()
     
     def on_prune(self, op):
         """
-        This method is called by the env whenever an op is
+        This method is called by the L{Env} whenever an L{Op} is
         removed from the graph.
         """
         raise utils.AbstractFunctionError()
 
     def on_rewire(self, clients, r, new_r):
         """
-        clients -> (op, i) pairs such that op.inputs[i] is new_r
-                   but used to be r
-        r -> the old result that was used by the ops in clients
-        new_r -> the new result that is now used by the ops in clients
+        @param clients: (op, i) pairs such that op.inputs[i] is new_r but used to be r
+        @param r: the old result that was used by the L{Op}s in clients
+        @param new_r: the new result that is now used by the L{Op}s in clients
 
         Note that the change from r to new_r is done before this
         method is called.
@@ -58,14 +57,14 @@ class Listener(Feature):
 
 class Constraint(Feature):
     """
-    When registered by an env, a Constraint can restrict the ops that
-    can be in the subgraph or restrict the ways ops interact with each
+    When registered by an L{Env}, a L{Constraint} can restrict the L{Op}s that
+    can be in the subgraph or restrict the ways L{Op}s interact with each
     other.
     """
 
     def validate(self):
         """
-        Raises an L{InconsistencyError} if the env is currently
+        Raises an L{InconsistencyError} if the L{Env} is currently
         invalid from the perspective of this object.
         """
         raise utils.AbstractFunctionError()
@@ -73,29 +72,29 @@ class Constraint(Feature):
 
 class Orderings(Feature):
     """
-    When registered by an env, an Orderings object can provide supplemental
+    When registered by an L{Env}, an L{Orderings} object can provide supplemental
     ordering constraints to the subgraph's topological sort.
     """
 
     def orderings(self):
         """
         Returns {op: set(ops that must be evaluated before this op), ...}
-        This is called by env.orderings() and used in env.toposort() but
-        not in env.io_toposort().
+        This is called by L{Env.orderings}() and used in L{Env.toposort}() but
+        not in L{Env.io_toposort}().
         """
         raise utils.AbstractFunctionError()
 
 
 class Tool(Feature):
     """
-    A Tool can extend the functionality of an env so that, for example,
+    A L{Tool} can extend the functionality of an L{Env} so that, for example,
     optimizations can have access to efficient ways to search the graph.
     """
 
     def publish(self):
         """
-        This is only called once by the env, when the Tool is added.
-        Adds methods to env.
+        This is only called once by the L{Env}, when the L{Tool} is added.
+        Adds methods to L{Env}.
         """
         raise utils.AbstractFunctionError()
 

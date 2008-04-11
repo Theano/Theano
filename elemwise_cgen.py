@@ -118,18 +118,21 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub):
     Make a nested loop over several arrays and associate specific code
     to each level of nesting.
     
-    loop_orders: list of N tuples of length M. Each value of each
+    @type loop_orders: list of N tuples of length M.
+    @param loop_orders: Each value of each
       tuple can be either the index of a dimension to loop over or
       the letter 'x' which means there is no looping to be done
       over that variable at that point (in other words we broadcast
       over that dimension). If an entry is an integer, it will become
       an alias of the entry of that rank.
 
-    loop_tasks: list of M+1 pieces of code. The ith loop_task is code
+    @type loop_tasks: list of M+1 pieces of code.
+    @param loop_tasks: The ith loop_task is code
       to be executed just before going to the next element of the
       ith dimension. The last is code to be executed at the very end.
 
-    sub: a dictionary that maps 'lv#' to a suitable variable name.
+    @type sub: a dictionary.
+    @param sub: Maps 'lv#' to a suitable variable name.
       The 'lvi' variable corresponds to the ith element of loop_orders.
     """
 
