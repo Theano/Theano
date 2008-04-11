@@ -43,6 +43,15 @@ class Function:
     linker_cls - the linker class
     linker - the linker allocated from env
     env - The env passed to the linker
+
+    REMARK Re: Memory ownership, aliasing, re-use
+    -------------------------------------------
+    Note that the objects returned by Function.__call__(self, *args) are owned
+    by self, and that in general these outputs might be overwritten (in-place)
+    by subsequent calls to self.__call__(*args).  Why?  This behaviour is
+    necessary for inplace operations to work, and Function's linker might re-use
+    memory from one execution to the next in order to make each execution faster.
+
     """
     def __init__(self, inputs, outputs,
             features = [],
