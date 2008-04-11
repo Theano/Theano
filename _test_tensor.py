@@ -217,6 +217,9 @@ class T_transpose(unittest.TestCase):
         #test aliasing
         tval += 55.0
         self.failUnless(n.data[0,0,0] == 56.0)
+    def test_grad(self):
+        verify_grad(self, TransposeInplace, [numpy.random.rand(2, 3)])
+        verify_grad(self, TransposeInplace, [numpy.ones(3)])
 
 class T_subtensor(unittest.TestCase):
     def test0_err_invalid(self):
@@ -647,6 +650,9 @@ class t_dot(unittest.TestCase):
     def test_align_3_1(self): self.not_aligned(self.rand(5,4,3), self.rand(6))
     def test_align_3_2(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7))
     def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
+
+    def test_grad(self):
+        verify_grad(self, Dot, [self.rand(2,3), self.rand(3,2)])
 
 class t_gemm(unittest.TestCase):
     def setUp(self):

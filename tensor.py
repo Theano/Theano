@@ -239,7 +239,7 @@ class TransposeInplace(_Op, Viewer):
         return [rval]
     def impl(self, x):
         return x.T #numpy's transpose
-    def grad(self, (x,), (gz),):
+    def grad(self, (x,), (gz,)):
         return transpose(gz),
     
     def c_code(self, (x, ), (z, ), sub):
