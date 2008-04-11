@@ -131,15 +131,19 @@ class Op(object):
         this L{Op}'s inputs.
 
         To do a bottom-up copy of a graph, use clone_with_new_inputs.
+
+        @attention: If your L{Op} has additional options or a different
+        constructor you probably want to override this.
         """
         return self.__class__(*self.inputs)
 
     def clone_with_new_inputs(self, *new_inputs):
         """
         Returns a clone of this L{Op} that takes different inputs. The
-        default behavior is to call the constructor on the new inputs,
-        but if your L{Op} has additional options or a different constructor
-        you might want to override this.
+        default behavior is to call the constructor on the new inputs.
+
+        @attention: If your L{Op} has additional options or a different
+        constructor you probably want to override this.
         """
         return self.__class__(*new_inputs)
 

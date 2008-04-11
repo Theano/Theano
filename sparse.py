@@ -1,3 +1,11 @@
+"""
+Classes for handling sparse matrices.
+
+To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
+
+@todo Automatic methods for determining best sparse format?
+"""
+
 import copy #for __copy__
 import numpy
 from scipy import sparse
@@ -14,10 +22,14 @@ def assparse(sp, **kwargs):
     @param sp:  A sparse matrix. assparse reads dtype and format properties
                 out of this sparse matrix.
     @return:    SparseR version of sp.
+
+    @todo Verify that sp is sufficiently sparse, and raise a warning if it is not
     """
     if isinstance(sp, SparseR):
         return sp
     else:
+        # @todo Verify that sp is sufficiently sparse, and raise a
+        # warning if it is not
         rval = SparseR(str(sp.dtype), sp.format, **kwargs)
         rval.data = sp
         return rval
@@ -156,43 +168,65 @@ class AddSS(gof.op.Op): #add two sparse matrices
         return gz, gz
 add_s_s = gof.op.constructor(AddSS)
 
-#class Dot(gof.op.Op):
-#    def __init__(self, x, y):
-#        self.inputs = [x, y]    # Need to convert? e.g. _as_tensor
-#        # broadcastable
-#    def perform:
-#        #return numpy.dot(x, y)
-#    def grad:
-#
-#    """
-#    Attributes:
-#    grad_preserves_dense - an array of boolean flags (described below)
-#
-#
-#    grad_preserves_dense controls whether gradients with respect to inputs are
-#    converted to dense matrices when the corresponding inputs are not in a
-#    SparseR wrapper.  This can be a good idea when dot is in the middle of a
-#    larger graph, because the types of gx and gy will match those of x and y.
-#    This conversion might be annoying if the gradients are graph outputs though,
-#    hence this mask.
-#    """
-#    def __init__(self, *args, **kwargs):
-#        gof.op.Op.__init__(self, **kwargs)
-#        self.grad_preserves_dense = [True, True]
-#    def gen_outputs(self): return [SparseR()]
-#    def impl(x,y):
-#        if hasattr(x, 'getnnz'):
-#            # if x is sparse, then do this.
-#            return x.dot(y)
-#        else:
-#            # if x is dense (and y is sparse), we do this
-#            return y.transpose().dot(x.transpose()).transpose()
-#
-#    def grad(self, x, y, gz):
-#        rval = [dot(gz, y.T), dot(x.T, gz)]
-#        for i in 0,1:
-#            if not isinstance(self.inputs[i], SparseR):
-#                #assume it is a dense matrix
-#                if self.grad_preserves_dense[i]:
-#                    rval[i] = dense_from_sparse(rval[i])
-#        return rval
+class Dot(gof.op.Op):
+    """
+    Attributes:
+    grad_preserves_dense - a boolean flags [default: True].
+    grad_preserves_dense controls whether gradients with respect to inputs
+    are converted to dense matrices when the corresponding input y is
+    dense (not in a L{SparseR} wrapper). This is generally a good idea
+    when L{Dot} is in the middle of a larger graph, because the types
+    of gy will match that of y. This conversion might be inefficient if
+    the gradients are graph outputs though, hence this mask.
+    """
+    def __init__(self, x, y, grad_preserves_dense=True):
+        """
+        Because of trickiness of implementing, we assume that the left argument x is SparseR (not dense)
+        """
+        if x.dtype != y.dtype:
+            raise NotImplementedError()
+
+        # These are the conversions performed by scipy.sparse.dot
+        if x.format == "csc" or x.format == "coo":
+            myformat = "csc"
+        elif x.format == "csr":
+            myformat = "csr"
+        else:
+            raise NotImplementedError()
+
+        self.inputs = [x, y]    # Need to convert? e.g. assparse
+        self.outputs = [SparseR(x.dtype, myformat)]
+        self.grad_preserves_dense = grad_preserves_dense
+    def perform(self):
+        """
+        @todo Verify that output is sufficiently sparse, and raise a warning if it is not
+        @todo Also determine that we are storing the output in the best storage format?
+        """
+        self.outputs[0].data = self.inputs[0].data.dot(self.inputs[1].data)
+    def grad(self, (x, y), (gz,)):
+        rval = [dot(gz, y.T), dot(x.T, gz)]
+        assert isinstance(self.inputs[0], SparseR)
+        if not isinstance(self.inputs[1], SparseR):
+            if self.grad_preserves_dense:
+                rval[1] = dense_from_sparse(rval[1])
+        return rval
+    def __copy__(self):
+        return self.__class__(self.inputs[0], self.inputs[1], self.grad_preserves_dense)
+    def clone_with_new_inputs(self, *new_inputs):
+        return self.__class__(new_inputs[0], new_inputs[1], self.grad_preserves_dense)
+def dot(x, y, grad_preserves_dense=True):
+    """
+    @todo Maybe the triple-transposition formulation (when x is dense)
+    is slow. See if there is a direct way to do this.
+    """
+    if hasattr(x, 'getnnz'): x = assparse(x)
+    if hasattr(y, 'getnnz'): y = assparse(y)
+
+    x_is_sparse = isinstance(x, SparseR)
+    y_is_sparse = isinstance(y, SparseR)
+    if not x_is_sparse and not y_is_sparse:
+        raise TypeError()
+    if x_is_sparse:
+        return Dot(x,y,grad_preserves_dense).outputs[0]
+    else:
+        return transpose(Dot(transpose(y), transpose(x), grad_preserves_dense).outputs[0])

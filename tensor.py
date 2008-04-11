@@ -351,6 +351,9 @@ class Dot(_Op):
     def impl(self, x, y):
         return numpy.dot(x, y)
     def grad(self, (x, y), gz):
+        """
+        @todo Shouldn't it be (gz,) ? -jpt
+        """
         return dot(gz, y.T), dot(x.T, gz)
     if 0:
         def c_support_code(self):
