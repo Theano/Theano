@@ -427,12 +427,12 @@ class Gemm(_Op):
         return [['_z', '_a', '_x', '_y', '_b'], ['_zout']]
     def c_validate_update(self, (_z, _a, _x, _y, _b), (_zout, ), sub):
         return """
-        if (%(_zout)s)
-        {
-            Py_DECREF(%(_zout)s);
-        }
         if (%(_zout)s != %(_z)s)
         {
+            if (%(_zout)s)
+            {
+                Py_DECREF(%(_zout)s);
+            }
             %(_zout)s = %(_z)s;
             Py_INCREF(%(_zout)s);
         }
