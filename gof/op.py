@@ -217,6 +217,8 @@ class Op(object):
         Clean up things allocated by L{c_validate}().
         """
         raise AbstractFunctionError()
+        raise AbstractFunctionError('%s.c_validate_update_cleanup ' \
+                % self.__class__.__name__)
 
     def c_code(self, inputs, outputs, sub):
         """
@@ -227,7 +229,8 @@ class Op(object):
         You may use the variable names defined by L{c_var_names}() in
         the templates.
         """
-        raise AbstractFunctionError()
+        raise AbstractFunctionError('%s.c_code' \
+                % self.__class__.__name__)
 
     def c_code_cleanup(self, inputs, outputs, sub):
         """
