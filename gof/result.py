@@ -182,6 +182,9 @@ class Result(object):
         negligible.
         """
         return False
+
+    def c_literal(self):
+        raise AbstractFunctionError()
     
     def c_declare(self, name, sub):
         """
