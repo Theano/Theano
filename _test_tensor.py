@@ -150,54 +150,178 @@ def randint_notzero(*shape):
     r = numpy.random.random_integers(-10, 9, shape)
     return r + (r == 0) * 10
 
-randplus = numpy.random.rand
+# randplus = numpy.random.rand
+# randintplus = 
+
+# def banzero(f):
+#     def f2(*shape):
+#         res = f(*shape)
+#         while numpy.any(res == 0):
+#             res = f(*shape)
+#         return res
+#     return f2
+
+# def banneg(f):
+#     def f2(*shape):
+#         res = f(*shape)
+#         while numpy.any(res < 0):
+#             res = f(*shape)
+#         return res
+#     return f2
+
+
+def make_broadcast_tester(op_class, expected, checks = {}, **kwargs):
+
+    _randint = randint
+    _rand = rand
+    if kwargs.has_key('nonzero'):
+        if kwargs['nonzero']:
+            _randint = banzero(_randint)
+            _rand = banzero(_rand)
+        del kwargs['nonzero']
+
+    if kwargs.has_key('positive'):
+        if kwargs['positive']:
+            _randint = banneg(_randint)
+            _rand = banneg(_rand)
+        del kwargs['positive']
+
+    _good_broadcast = dict(same_shapes = (_rand(2, 3), _rand(2, 3)),
+                           scalar = (_rand(2, 3), _rand(1, 1)),
+                           row = (_rand(2, 3), _rand(1, 3)),
+                           column = (_rand(2, 3), _rand(2, 1)),
+                           integers = (_randint(2, 3), _randint(2, 3)),
+                           dtype_mixup_1 = (_rand(2, 3), _randint(2, 3)),
+                           dtype_mixup_2 = (_randint(2, 3), _rand(2, 3)))
+
+    _bad_build_broadcast = dict(not_same_dimensions = (_rand(2), _rand(2, 2)))
+
+    _bad_runtime_broadcast = dict(bad_shapes = (_rand(2, 3), _rand(3, 2)),
+                                  bad_row = (_rand(2, 3), _rand(1, 2)))
+
+    _grad_broadcast = dict(same_shapes = (_rand(2, 3), _rand(2, 3)),
+                           scalar = (_rand(2, 3), _rand(1, 1)),
+                           row = (_rand(2, 3), _rand(1, 3)),
+                           column = (_rand(2, 3), _rand(2, 1)))
     
-
-
-_good_broadcast = dict(same_shapes = (rand(2, 3), rand(2, 3)),
-                       scalar = (rand(2, 3), rand(1, 1)),
-                       row = (rand(2, 3), rand(1, 3)),
-                       column = (rand(2, 3), rand(2, 1)),
-                       integers = (randint(2, 3), randint(2, 3)),
-                       dtype_mixup = (rand(2, 3), randint(2, 3)))
-
-_bad_build_broadcast = dict(not_same_dimensions = (rand(2), rand(2, 2)))
-
-_bad_runtime_broadcast = dict(not_same_dimensions = (rand(2), rand(2, 2)))
-
-_grad_broadcast = _good_broadcast
-
-
+    kwargs.setdefault('good', _good_broadcast)
+    kwargs.setdefault('bad_build', _bad_build_broadcast)
+    kwargs.setdefault('bad_runtime', _bad_runtime_broadcast)
+    kwargs.setdefault('grad', _grad_broadcast)
+    name = op_class.__name__ + "Tester"
+    if kwargs.has_key('inplace'):
+        if kwargs['inplace']:
+            _expected = expected
+            expected = lambda *inputs: numpy.array(_expected(*inputs), dtype = inputs[0].dtype)
+            checks = dict(checks,
+                          inplace_check = lambda inputs, outputs: inputs[0] is outputs[0])
+        del kwargs['inplace']
+    return make_tester(name, op_class, expected, checks, **kwargs)
 
 
 
 
 
-AddTester = make_tester(name = 'AddTester',
-                        op_class = Add,
-                        expected = lambda x, y: x + y,
-                        checks = {},
-                        good = dict(same_shapes = (rand(5, 6), rand(5, 6)),
-                                    scalar = (rand(5, 6), rand(1, 1)),
-                                    row = (rand(5, 6), rand(1, 6)),
-                                    column = (rand(5, 6), rand(5, 1)),
-                                    integers = (randint(5, 6), randint(5, 6)),
-                                    dtype_mixup = (rand(5, 6), randint(5, 6))),
-                        bad_build = dict(not_same_dimensions = (rand(5), rand(5, 5))),
-                        bad_runtime = dict(bad_shapes = (rand(5, 6), rand(6, 5)),
-                                           bad_row = (rand(5, 6), rand(1, 5))),
-                        grad = {})
+# AddTester = make_broadcast_tester(op_class = Add,
+#                                   expected = lambda x, y: x + y,
+#                                   grad = {})
+# AddInplaceTester = make_broadcast_tester(op_class = AddInplace,
+#                                          expected = lambda x, y: x + y,
+#                                          inplace = True,
+#                                          grad = {})
 
-AddInplaceTester = make_tester(name = 'AddInplaceTester',
-                               op_class = AddInplace,
-                               expected = lambda x, y: numpy.array(x + y, dtype = x.dtype),
-                               checks = dict(inplace_check = lambda (x, y), (z, ): x is z),
-                               good = dict(same_shapes = (rand(5, 6), rand(5, 6)),
-                                           dtype_mixup = (randint(5, 6), rand(5, 6))),
-                               bad_build = dict(not_same_dimensions = (rand(5), rand(5, 5))),
-                               bad_runtime = dict(bad_shapes = (rand(5, 6), rand(6, 5)),
-                                                  bad_row = (rand(5, 6), rand(1, 5))),
-                               grad = {})
+# SubTester = make_broadcast_tester(op_class = Sub,
+#                                   expected = lambda x, y: x - y)
+# SubInplaceTester = make_broadcast_tester(op_class = SubInplace,
+#                                          expected = lambda x, y: x - y,
+#                                          inplace = True)
+
+# MulTester = make_broadcast_tester(op_class = Mul,
+#                                   expected = lambda x, y: x * y)
+# MulInplaceTester = make_broadcast_tester(op_class = MulInplace,
+#                                          expected = lambda x, y: x * y,
+#                                          inplace = True)
+
+# DivTester = make_broadcast_tester(op_class = Div,
+#                                   expected = lambda x, y: x / y,
+#                                   nonzero = True,
+#                                   positive = True)
+# DivInplaceTester = make_broadcast_tester(op_class = DivInplace,
+#                                          expected = lambda x, y: x / y,
+#                                          inplace = True,
+#                                          nonzero = True,
+#                                          positive = True)
+
+# _pow_good = dict(normal = ()
+
+# _pow_grad = 
+
+# PowTester = make_broadcast_tester(op_class = Pow,
+#                                   expected = lambda x, y: x ** y,
+#                                   good = _pow_good)
+# PowInplaceTester = make_broadcast_tester(op_class = PowInplace,
+#                                          expected = lambda x, y: x ** y,
+#                                          good = _pow_good)
+
+
+# AbsTester = make_broadcast_tester(op_class = Abs,
+#                                   expected = lambda x: abs(x))
+# AbsInplaceTester = make_broadcast_tester(op_class = AbsInplace,
+#                                          expected = lambda x: abs(x),
+#                                          inplace = True)
+
+# ExpTester = make_broadcast_tester(op_class = Exp,
+#                                   expected = lambda x: numpy.exp(x))
+# ExpInplaceTester = make_broadcast_tester(op_class = ExpInplace,
+#                                          expected = lambda x: numpy.exp(x),
+#                                          inplace = True)
+
+
+
+# Abs, _abs, AbsInplace, abs_inplace = broadcast(scal.Abs, 'Abs')
+# Exp, exp, ExpInplace, exp_inplace = broadcast(scal.Exp, 'Exp')
+# Neg, neg, NegInplace, neg_inplace = broadcast(scal.Neg, 'Neg')
+# Log, log, LogInplace, log_inplace = broadcast(scal.Log, 'Log')
+# Log2, log2, Log2Inplace, log2_inplace = broadcast(scal.Log2, 'Log2')
+# Sgn, sgn, SgnInplace, sgn_inplace = broadcast(scal.Sgn, 'Sgn')
+# Sqr, sqr, SqrInplace, sqr_inplace = broadcast(scal.Sqr, 'Sqr')
+# Sqrt, sqrt, SqrtInplace, sqrt_inplace = broadcast(scal.Sqrt, 'Sqrt')
+
+
+# AddTester = make_broadcast_tester(op_class = Add,
+#                                   expected = lambda x, y: x + y,
+#                                   checks = {},
+#                                   grad = {})
+# AddInplaceTester = make_broadcast_tester(op_class = AddInplace,
+#                                          expected = lambda x, y: numpy.array(x + y, dtype = x.dtype),
+#                                          checks = dict(inplace_check = lambda (x, y), (z, ): x is z),
+#                                          grad = {})
+
+# AddTester = make_tester(name = 'AddTester',
+#                         op_class = Add,
+#                         expected = lambda x, y: x + y,
+#                         checks = {},
+#                         good = dict(same_shapes = (rand(5, 6), rand(5, 6)),
+#                                     scalar = (rand(5, 6), rand(1, 1)),
+#                                     row = (rand(5, 6), rand(1, 6)),
+#                                     column = (rand(5, 6), rand(5, 1)),
+#                                     integers = (randint(5, 6), randint(5, 6)),
+#                                     dtype_mixup = (rand(5, 6), randint(5, 6))),
+#                         bad_build = dict(not_same_dimensions = (rand(5), rand(5, 5))),
+#                         bad_runtime = dict(bad_shapes = (rand(5, 6), rand(6, 5)),
+#                                            bad_row = (rand(5, 6), rand(1, 5))),
+#                         grad = {})
+
+# AddInplaceTester = make_tester(name = 'AddInplaceTester',
+#                                op_class = AddInplace,
+#                                expected = lambda x, y: numpy.array(x + y, dtype = x.dtype),
+#                                checks = dict(inplace_check = lambda (x, y), (z, ): x is z),
+#                                good = dict(same_shapes = (rand(5, 6), rand(5, 6)),
+#                                            dtype_mixup = (randint(5, 6), rand(5, 6))),
+#                                bad_build = dict(not_same_dimensions = (rand(5), rand(5, 5))),
+#                                bad_runtime = dict(bad_shapes = (rand(5, 6), rand(6, 5)),
+#                                                   bad_row = (rand(5, 6), rand(1, 5))),
+#                                grad = {})
 
 DotTester = make_tester(name = 'DotTester',
                         op_class = Dot,
@@ -221,7 +345,7 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
 
     for test_num in xrange(n_tests):
         tensor_pt = [astensor(p,name='input %i'%i) for i,p in enumerate(pt)]
-        o = op_cls(*tensor_pt)
+        o = op_cls(*[tpt.copy() for tpt in tensor_pt])
         if hasattr(o, 'outputs'):
             o_outputs = o.outputs
         else:
@@ -249,7 +373,11 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
             print '----------'
             for op in gof.graph.io_toposort(tensor_pt, symbolic_grad):
                 print op
-        grad_fn = Function(tensor_pt, symbolic_grad)
+        try:
+            grad_fn = Function(tensor_pt, symbolic_grad)
+        except:
+            print gof.graph.as_string(tensor_pt, symbolic_grad)
+            raise
         
         analytic_grad = grad_fn(*pt)
         if not isinstance(analytic_grad, (list, tuple)):
