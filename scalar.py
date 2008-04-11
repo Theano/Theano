@@ -291,7 +291,7 @@ class Identity(UnaryScalarOp):
         return x
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = %(x)s;" % locals()
-    def grad(self, (x, y), (gz, )):
+    def grad(self, (x, ), (gz, )):
         return gz,
 
 class Neg(UnaryScalarOp):
