@@ -32,16 +32,24 @@ inplace_optimizer = InplaceOptimizer()
 #         self.
 
 
-# def find_elemwise_cliques(env):
+# def find_elemwise_cliques(env, cross_broadcast = False):
     
 
 
 
 
 
+# def synchronize(env1, env2, equiv, transform):
 
+#     class Synchronize(Listener, Constraint):
+        
+#         def on_import(self, op1):
+#             if op1 not in equiv:
+#                 equiv[op1] = transform(op1)
 
-
+#         def on_prune(self, op1):
+#             if op1 in equiv:
+#                 del equiv[op1]
 
 
 

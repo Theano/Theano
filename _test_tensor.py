@@ -17,8 +17,9 @@ def _numpy_checker(x, y):
     Checks if x.data and y.data have the same contents.
     Used in DualLinker to compare C version with Python version.
     """
-    if (x.data != y.data).any():
-        raise Exception("Output mismatch.", {'performlinker': x.data, 'clinker': y.data})
+    x, y = x.data, y.data
+    if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
+        raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
 
 
 def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = None):
@@ -39,6 +40,7 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
 
         def test_good(self):
             for testname, inputs in self.good.items():
+                inputs = [copy(input) for input in inputs]
                 try:
                     op = self.op_class(*inputs)
                 except:
@@ -74,7 +76,7 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
                 if not isinstance(expecteds, (list, tuple)):
                     expecteds = (expecteds, )
                 for i, (result, expected) in enumerate(zip(results, expecteds)):
-                    if result.dtype != expected.dtype or numpy.any(abs(result - expected) > 1e-10):
+                    if result.dtype != expected.dtype or result.shape != expected.shape or numpy.any(abs(result - expected) > 1e-10):
                         self.fail("With data %s::%s: Output %s of %s gave the wrong value. With inputs %s, expected %s, got %s."
                                   % (self.op_class.__name__, testname, i, op, inputs, expected, result))
 
@@ -85,6 +87,7 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
 
         def test_bad_build(self):
             for testname, inputs in self.bad_build.items():
+                inputs = [copy(input) for input in inputs]
                 try:
                     op = self.op_class(*inputs)
                 except:
@@ -94,6 +97,7 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
 
         def test_bad_runtime(self):
             for testname, inputs in self.bad_runtime.items():
+                inputs = [copy(input) for input in inputs]
                 try:
                     op = self.op_class(*inputs)
                 except:
@@ -125,6 +129,7 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
 
         def test_grad(self):
             for testname, inputs in self.grad.items():
+                inputs = [copy(input) for input in inputs]
                 try:
                     verify_grad(self, self.op_class, inputs)
                 except:
@@ -138,8 +143,34 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
     return Checker
             
 
-rand = numpy.random.rand
+rand = lambda *shape: 2 * numpy.random.rand(*shape) - 1
 randint = lambda *shape: numpy.random.random_integers(-10, 10, shape)
+
+def randint_notzero(*shape):
+    r = numpy.random.random_integers(-10, 9, shape)
+    return r + (r == 0) * 10
+
+randplus = numpy.random.rand
+    
+
+
+_good_broadcast = dict(same_shapes = (rand(2, 3), rand(2, 3)),
+                       scalar = (rand(2, 3), rand(1, 1)),
+                       row = (rand(2, 3), rand(1, 3)),
+                       column = (rand(2, 3), rand(2, 1)),
+                       integers = (randint(2, 3), randint(2, 3)),
+                       dtype_mixup = (rand(2, 3), randint(2, 3)))
+
+_bad_build_broadcast = dict(not_same_dimensions = (rand(2), rand(2, 2)))
+
+_bad_runtime_broadcast = dict(not_same_dimensions = (rand(2), rand(2, 2)))
+
+_grad_broadcast = _good_broadcast
+
+
+
+
+
 
 
 AddTester = make_tester(name = 'AddTester',
