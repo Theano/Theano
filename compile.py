@@ -1,5 +1,6 @@
 """Convenient driver of graph construction, optimization, and linking."""
 
+import numpy
 import gof
 
 #TODO: put together some default optimizations (TRAC #67)
@@ -25,6 +26,20 @@ default_optimizer.const = gof.opt.ConstantFinder()
 def _mark_indestructible(results):
     for r in results:
         r.indestructible = True
+
+def linker_cls_python_and_c(env):
+    """Use this as the linker_cls argument to Function.__init__ to compare
+    python and C implementations"""
+    def checker(x, y):
+        x, y = x.data, y.data
+        if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
+            if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
+                raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
+        else:
+            if x != y:
+                raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
+    return gof.DualLinker(env, checker)
+
 
 class Function:
     """
