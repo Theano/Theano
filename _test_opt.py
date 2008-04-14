@@ -1,0 +1,123 @@
+
+import unittest
+
+import gof
+from opt import *
+import tensor
+from tensor import Tensor
+from gof import Env
+from elemwise import DimShuffle
+import numpy
+
+
+def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
+    x = Tensor(broadcastable = xbc, dtype = 'float64', name = 'x')
+    y = Tensor(broadcastable = ybc, dtype = 'float64', name = 'y')
+    z = Tensor(broadcastable = zbc, dtype = 'float64', name = 'z')
+    return x, y, z
+
+ds = gof.op.constructor(DimShuffle)
+
+class _test_inplace_opt(unittest.TestCase):
+
+    def test_straightforward(self):
+        x, y, z = inputs()
+        e = x + y + z
+        g = Env([x, y], [e])
+        assert str(g) == "[Broadcast{Add}(Broadcast{Add}(x, y), z)]"
+        inplace_optimizer.optimize(g)
+        assert str(g) == "[Broadcast{Add}{0: 0}(Broadcast{Add}{0: 0}(x, y), z)]"
+
+    def test_multiple_uses(self):
+        x, y, z = inputs()
+        e0 = x + y
+        e1 = x * y
+        g = Env([x, y], [e0, e1])
+        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}(x, y)]"
+        inplace_optimizer.optimize(g)
+        assert str(g) == "[Broadcast{Add}{0: 0}(x, y), Broadcast{Mul}(x, y)]" \
+            or str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]"
+
+    def test_user_inplace(self):
+        x, y, z = inputs()
+        e0 = x + y
+        e1 = tensor.mul_inplace(x, y)
+        g = Env([x, y], [e0, e1])
+        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]"
+        inplace_optimizer.optimize(g)
+        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]"
+
+
+class _test_dimshuffle_lift(unittest.TestCase):
+
+    def test_double_transpose(self):
+        x, y, z = inputs()
+        e = ds(ds(x, (1, 0)), (1, 0))
+        g = Env([x], [e])
+        assert str(g) == "[DimShuffle{10}(DimShuffle{10}(x))]"
+        lift_dimshuffle.optimize(g)
+        assert str(g) == "[x]"
+
+    def test_merge2(self):
+        x, y, z = inputs()
+        e = ds(ds(x, (1, 'x', 0)), (2, 0, 'x', 1))
+        g = Env([x], [e])
+        self.failUnless(str(g) == "[DimShuffle{20x1}(DimShuffle{1x0}(x))]", str(g))
+        lift_dimshuffle.optimize(g)
+        self.failUnless(str(g) == "[DimShuffle{01xx}(x)]", str(g))
+
+    def test_elim3(self):
+        x, y, z = inputs()
+        e = ds(ds(ds(x, (0, 'x', 1)), (2, 0, 'x', 1)), (1, 0))
+        g = Env([x], [e])
+        self.failUnless(str(g) == "[DimShuffle{10}(DimShuffle{20x1}(DimShuffle{0x1}(x)))]", str(g))
+        lift_dimshuffle.optimize(g)
+        self.failUnless(str(g) == "[x]", str(g))
+
+    def test_lift(self):
+        x, y, z = inputs([0]*1, [0]*2, [0]*3)
+        e = x + y + z
+        g = Env([x, y, z], [e])
+        self.failUnless(str(g) == "[Broadcast{Add}(DimShuffle{x01}(Broadcast{Add}(DimShuffle{x0}(x), y)), z)]", str(g))
+        lift_dimshuffle.optimize(g)
+        self.failUnless(str(g) == "[Broadcast{Add}(Broadcast{Add}(DimShuffle{xx0}(x), DimShuffle{x01}(y)), z)]", str(g))
+
+
+class _test_cliques(unittest.TestCase):
+
+    def test_straightforward(self):
+        x, y, z = inputs()
+        m = y * z
+        d = tensor.dot(x, m)
+        d.name = 'd'
+        e = x + y + d
+        g = Env([x, y, z], [e])
+        cliques = find_cliques(g)
+        assert len(cliques) == 2
+        (i1, o1), (i2, o2) = cliques
+        assert str(Env(i1, [o1])) == "[Broadcast{Add}(Broadcast{Add}(x, y), d)]"
+        assert str(Env(i2, [o2])) == "[Broadcast{Mul}(y, z)]"
+#         print g
+#         for i, o in find_cliques(g):
+#             print "-->", Env(i, [o])
+
+    def test_broadcasting(self):
+        x, y, z = inputs([0]*1, [0]*2, [0]*3)
+        e = x + y + z
+        g = Env([x, y, z], [e])
+        lift_dimshuffle.optimize(g)
+        assert len(find_cliques(g, through_broadcast = True)) == 1
+        assert len(find_cliques(g, through_broadcast = False)) == 2
+#         print g
+#         for i, o in find_cliques(g, True):
+#             print "-->", Env(i, [o])
+
+    
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+
+
