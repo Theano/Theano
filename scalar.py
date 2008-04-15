@@ -324,7 +324,8 @@ class Abs(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         return gz * sgn(x),
     def c_code(self, (x, ), (z, ), sub):
-        return "%(z)s = abs(%(x)s);" % locals()
+        return "%(z)s = %(prefix)sabs(%(x)s);" \
+            % dict(locals(), prefix = 'float' in self.inputs[0].dtype and 'f' or '')
 
 class Sgn(UnaryScalarOp):
     def impl(self, x):
