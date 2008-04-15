@@ -8,6 +8,7 @@ from tensor import Tensor
 from gof import Env
 from elemwise import DimShuffle
 import numpy
+import scalar_opt
 
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
@@ -95,8 +96,8 @@ class _test_cliques(unittest.TestCase):
         cliques = find_cliques(g)
         assert len(cliques) == 2
         (i1, o1), (i2, o2) = cliques
-        assert str(Env(i1, [o1])) == "[Broadcast{Add}(Broadcast{Add}(x, y), d)]"
-        assert str(Env(i2, [o2])) == "[Broadcast{Mul}(y, z)]"
+        assert str(Env(i1, o1)) == "[Broadcast{Add}(Broadcast{Add}(x, y), d)]"
+        assert str(Env(i2, o2)) == "[Broadcast{Mul}(y, z)]"
 #         print g
 #         for i, o in find_cliques(g):
 #             print "-->", Env(i, [o])
@@ -112,6 +113,64 @@ class _test_cliques(unittest.TestCase):
 #         for i, o in find_cliques(g, True):
 #             print "-->", Env(i, [o])
 
+
+# class _test_clique_opt(unittest.TestCase):
+
+#     def test_straightforward(self):
+#         x, y, z = inputs()
+#         e = x ** 2.0 #x * x
+#         g = Env([x], [e])
+#         gof.ConstantFinder().optimize(g)
+#         opt = CliqueOptimizer(through_broadcast = False,
+#                               scalar_optimizer = scalar_opt.opt2,
+#                               make_composite = False)
+#         print g
+#         opt.optimize(g)
+#         print g
+
+#     def test_inplace(self):
+#         x, y, z = inputs()
+#         #e = tensor.add_inplace(x, y + z)
+#         e = x + tensor.add_inplace(y, z)
+#         g = Env([x, y, z], [e])
+#         opt = CliqueOptimizer(through_broadcast = False,
+#                               scalar_optimizer = None,
+#                               make_composite = True)
+#         print g
+#         opt.optimize(g)
+#         print g
+# #        print g.outputs[0].owner.c_code(['x', 'y', 'z'], ['e'], dict(fail = "FAIL;", id = 0))
+#         print gof.OpWiseCLinker(g).make_function()(numpy.ones((5, 5)), numpy.ones((5, 5)), numpy.ones((5, 5)))
+
+#     def test_straightforward(self):
+#         x, y, z = inputs()
+#         e = x + y + z
+#         g = Env([x, y, z], [e])
+#         opt = CliqueOptimizer(through_broadcast = False,
+#                               scalar_optimizer = None,
+#                               make_composite = True)
+#         print g
+#         opt.optimize(g)
+#         print g
+# #        print g.outputs[0].owner.c_code(['x', 'y', 'z'], ['e'], dict(fail = "FAIL;", id = 0))
+#         print gof.OpWiseCLinker(g).make_function()(numpy.ones((5, 5)), numpy.ones((5, 5)), numpy.ones((5, 5)))
+
+#     def test_straightforward2(self):
+#         x, y, z = inputs()
+#         m = y * z
+#         d = tensor.dot(x, m)
+#         d.name = 'd'
+#         e = x + y + d
+#         g = Env([x, y, z], [e])
+#         opt = CliqueOptimizer(through_broadcast = False,
+#                               scalar_optimizer = None,
+#                               make_composite = True)
+#         print g
+#         opt.optimize(g)
+#         print g
+# #        print g.outputs[0].owner.c_code(['x', 'y', 'z'], ['e'], dict(fail = "FAIL;", id = 0))
+#         print gof.OpWiseCLinker(g).make_function()(numpy.ones((5, 5)), numpy.ones((5, 5)), numpy.ones((5, 5)))
+        
     
 
 
