@@ -153,7 +153,7 @@ class _Op(BaseTensorOp):
         return self.c_impl(self.inputs, self.outputs) % sub
 
     def c_impl(self, inputs, outputs):
-        raise AbstractFunctionError()
+        raise AbstractFunctionError("No c_impl for %s" % self.__class__.__name__)
 
 class _Unary:
     nin = 1

@@ -397,9 +397,6 @@ class CAReduce(Op):
         if dimensions_to_reduce is None:
             dimensions_to_reduce = range(len(inputs[0].broadcastable))
 
-        self.nin = 1
-        self.nout = 1
-
         self.inputs = inputs
         self.outputs = [Tensor(dtype = inputs[0].dtype,
                                broadcastable = [x for i, x in enumerate(inputs[0].broadcastable) if i not in dimensions_to_reduce])]
