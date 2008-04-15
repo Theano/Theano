@@ -35,22 +35,23 @@ class Computed : """Memory has been allocated, contents are the owner's output."
 ############################
 
 class Result(object):
-    """Base class for storing L{Op} inputs and outputs
+    """
+    Base class for storing L{Op} inputs and outputs
 
     Attributes:
-    _role - None or (owner, index) #or BrokenLink
-    _data - anything
-    state - one of (Empty, Allocated, Computed)
-    name - string
+     - _role - None or (owner, index) #or BrokenLink
+     - _data - anything
+     - state - one of (Empty, Allocated, Computed)
+     - name - string
 
     Properties:
-    role - (rw)
-    owner - (ro)
-    index - (ro)
-    data - (rw) : calls data_filter when setting
+     - role - (rw)
+     - owner - (ro)
+     - index - (ro)
+     - data - (rw) : calls data_filter when setting
 
     Abstract Methods:
-    data_filter
+     - data_filter
     """
 
     __slots__ = ['_role', '_data', 'state', '_name', '_hash_id']
