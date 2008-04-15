@@ -409,7 +409,7 @@ class CLinker(Linker):
                     elif result in self.orphans:
                         self.orphans.remove(result)
                     continue
-                except AbstractFunctionError:
+                except (AbstractFunctionError, NotImplementedError):
                     pass
             # policy = [[what to declare in the struct, what to do at construction, what to do at destruction],
             #           [what to declare in each run, what to do at the beginning of each run, what to do at the end of each run]]

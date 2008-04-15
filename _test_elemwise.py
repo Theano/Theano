@@ -120,6 +120,16 @@ class _test_Broadcast(unittest.TestCase):
         f(xv, yv)
         assert (xv == yv).all()
 
+    def test_weird_strides(self):
+        x = modes.build(Tensor('float64', [0, 0, 0, 0, 0], name = 'x'))
+        y = modes.build(Tensor('float64', [0, 0, 0, 0, 0], name = 'y'))
+        e = Broadcast(Add, (x, y)).out
+        f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
+        xv = numpy.random.rand(2, 2, 2, 2, 2)
+        yv = numpy.random.rand(2, 2, 2, 2, 2).transpose(4, 0, 3, 1, 2)
+        zv = xv + yv
+        assert (f(xv, yv) == zv).all()
+
 
 class _test_CAReduce(unittest.TestCase):
 

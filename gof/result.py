@@ -35,22 +35,23 @@ class Computed : """Memory has been allocated, contents are the owner's output."
 ############################
 
 class Result(object):
-    """Base class for storing L{Op} inputs and outputs
+    """
+    Base class for storing L{Op} inputs and outputs
 
     Attributes:
-    _role - None or (owner, index) #or BrokenLink
-    _data - anything
-    state - one of (Empty, Allocated, Computed)
-    name - string
+     - _role - None or (owner, index) #or BrokenLink
+     - _data - anything
+     - state - one of (Empty, Allocated, Computed)
+     - name - string
 
     Properties:
-    role - (rw)
-    owner - (ro)
-    index - (ro)
-    data - (rw) : calls data_filter when setting
+     - role - (rw)
+     - owner - (ro)
+     - index - (ro)
+     - data - (rw) : calls data_filter when setting
 
     Abstract Methods:
-    data_filter
+     - data_filter
     """
 
     __slots__ = ['_role', '_data', 'state', '_name', '_hash_id']
@@ -241,6 +242,13 @@ class Result(object):
     def c_libraries(self):
         """
         Return a list of libraries to link against to manipulate this L{Result}.
+
+        For example: return ['gsl', 'gslcblas', 'm', 'fftw3', 'g2c'].
+
+        The compiler will search the directories specified by the environment
+        variable LD_LIBRARY_PATH.  No option is provided for an Op to provide an
+        extra library directory because this would change the linking path for
+        other Ops in a potentially disasterous way.
         """
         raise AbstractFunctionError()
 

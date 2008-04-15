@@ -153,7 +153,7 @@ class _Op(BaseTensorOp):
         return self.c_impl(self.inputs, self.outputs) % sub
 
     def c_impl(self, inputs, outputs):
-        raise AbstractFunctionError()
+        raise AbstractFunctionError("No c_impl for %s" % self.__class__.__name__)
 
 class _Unary:
     nin = 1
@@ -420,24 +420,22 @@ class Gemm(_Op):
         raise NotImplementedError()
 
     def c_support_code(self):
-        return blas.cblas_header_text()
+        #return blas.cblas_header_text()
+        mod_str = """
+        #ifndef MOD
+        #define MOD %
+        #endif
+        """
+        return blas.blas_proto() + mod_str
+    def c_headers(self):
+        return ['<iostream>']
     def c_libraries(self):
         return blas.ldflags()
-    def c_var_names(self):
-        return [['_z', '_a', '_x', '_y', '_b'], ['_zout']]
-    def c_validate_update(self, (_z, _a, _x, _y, _b), (_zout, ), sub):
-        return """
-        if (%(_zout)s != %(_z)s)
-        {
-            if (%(_zout)s)
-            {
-                Py_DECREF(%(_zout)s);
-            }
-            %(_zout)s = %(_z)s;
-            Py_INCREF(%(_zout)s);
-        }
-        """ % locals()
-    def c_validate_update_cleanup(self, ignore, _ignore, __ignore):
+    #def c_var_names(self):
+    #    return [['_z', '_a', '_x', '_y', '_b'], ['_zout']]
+    def c_validate_update(self, *args):
+        return ""
+    def c_validate_update_cleanup(self, *args):
         return ""
     def c_code(self, (_z, _a, _x, _y, _b), (_zout, ), sub):
         return """
@@ -454,14 +452,22 @@ class Gemm(_Op):
         npy_intp* Sy = %(_y)s->strides;
         npy_intp* Sz = %(_z)s->strides;
 
-        size_t sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
+        //strides for x, y, z in dimensions 0, 1
+        int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
 
-        if (%(_x)s->nd != 2)
-        {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
-        if (%(_y)s->nd != 2)
-        {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
-        if (%(_z)s->nd != 2)
-        {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
+        if (%(_zout)s != %(_z)s)
+        {
+            if (%(_zout)s)
+            {
+                Py_DECREF(%(_zout)s);
+            }
+            %(_zout)s = %(_z)s;
+            Py_INCREF(%(_zout)s);
+        }
+
+        if (%(_x)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
+        if (%(_y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
+        if (%(_z)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
 
         if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
             && (%(_a)s->descr->type_num != PyArray_FLOAT))
@@ -473,19 +479,19 @@ class Gemm(_Op):
 
         if ((%(_x)s->descr->type_num != PyArray_DOUBLE) 
             && (%(_x)s->descr->type_num != PyArray_FLOAT))
-            %(fail)s;
+        {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
 
         if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
             && (%(_y)s->descr->type_num != PyArray_FLOAT))
-            %(fail)s;
+        {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
 
-        if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
-            && (%(_y)s->descr->type_num != PyArray_FLOAT))
-            %(fail)s;
+        if ((%(_z)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_z)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
 
         if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
             ||(%(_x)s->descr->type_num != %(_z)s->descr->type_num))
-            %(fail)s;
+        { PyErr_SetString(PyExc_NotImplementedError, "type(z), type(y), type(z) are not all the same"); %(fail)s; }
 
         if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
         {
@@ -496,17 +502,15 @@ class Gemm(_Op):
            || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
            || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
         {
-            PyErr_SetString(PyExc_ValueError, "gemm cant run on these inputs");
-            %(fail)s;
+            PyErr_SetString(PyExc_ValueError, "stride is not multiple of element size"); %(fail)s;
         }
-
 
         /*
         encode the stride structure of _x,_y,_z into a single integer
         */
-        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 0;
+        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 8;
         unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
-        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 8;
+        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 0;
 
         /* create appropriate strides for malformed matrices that are row or column
          * vectors
@@ -533,18 +537,21 @@ class Gemm(_Op):
                 float* x = (float*)PyArray_DATA(%(_x)s);
                 float* y = (float*)PyArray_DATA(%(_y)s);
                 float* z = (float*)PyArray_DATA(%(_z)s);
-
+                char N = 'N';
+                char T = 'T';
+                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+                std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
                 switch(unit)
                 {
-                    case 0x000: cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_0); break;
-                    case 0x001: cblas_sgemm(CblasRowMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_0); break;
-                    case 0x010: cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_0); break;
-                    case 0x011: cblas_sgemm(CblasRowMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_0); break;
-                    case 0x100: cblas_sgemm(CblasColMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_1); break;
-                    case 0x101: cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_1); break;
-                    case 0x110: cblas_sgemm(CblasColMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_1); break;
-                    case 0x111: cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_1); break;
-                    default: %(fail)s;
+                    case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x100: sgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x010: sgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x110: sgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x001: sgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x101: sgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x011: sgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+                    case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
                 };
                 #undef REAL
             }
@@ -562,17 +569,21 @@ class Gemm(_Op):
                 double* x = (double*)PyArray_DATA(%(_x)s);
                 double* y = (double*)PyArray_DATA(%(_y)s);
                 double* z = (double*)PyArray_DATA(%(_z)s);
+                char N = 'N';
+                char T = 'T';
+                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
                 switch(unit)
                 {
-                    case 0x000: cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_0); break;
-                    case 0x001: cblas_dgemm(CblasRowMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_0); break;
-                    case 0x010: cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_0); break;
-                    case 0x011: cblas_dgemm(CblasRowMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_0); break;
-                    case 0x100: cblas_dgemm(CblasColMajor, CblasTrans,   CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_0, b, z, sz_1); break;
-                    case 0x101: cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans,   Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_0, b, z, sz_1); break;
-                    case 0x110: cblas_dgemm(CblasColMajor, CblasTrans,   CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_0, y, sy_1, b, z, sz_1); break;
-                    case 0x111: cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Nz[0], Nz[1], Nx[1], a, x, sx_1, y, sy_1, b, z, sz_1); break;
-                    default: %(fail)s;
+                    case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+                    case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
                 };
                 #undef REAL
             }

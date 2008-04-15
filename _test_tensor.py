@@ -990,21 +990,21 @@ class t_gemm(unittest.TestCase):
     def cmp(self, z, a, x, y, b):
         def cmp_linker(z, a, x, y, b, l):
             z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
-            cz = z.copy()
+            z_orig = z.copy()
             tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
 
             f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker_cls=l)
             new_z = f(z,a,x,y,b)
-            _z = self._gemm(cz, a, x, y, b)
+            z_after = self._gemm(z_orig, a, x, y, b)
 
             self.failUnless(z is new_z)
-            #print cz, _z, z, type(cz), type(_z), type(z)
+            #print z_orig, z_after, z, type(z_orig), type(z_after), type(z)
             #_approx_eq.debug = 1
-            self.failUnless(_approx_eq(_z, z))
+            self.failUnless(_approx_eq(z_after, z))
             if a == 0.0 and b == 1.0:
                 return
             else:
-                self.failIf(numpy.all(cz == z))
+                self.failIf(numpy.all(z_orig == z))
 
         cmp_linker(copy(z), a, x, y, b, gof.cc.OpWiseCLinker)
         #cmp_linker(copy(z), a, x, y, b, gof.cc.CLinker)
@@ -1100,6 +1100,50 @@ class t_gemm(unittest.TestCase):
         A = astensor(self.rand(2,2))
         eval_outputs([gemm(Z, 1.0, A, A, 1.0)])
         eval_outputs([gemm(Z, 1.0, A, A.T, 1.0)])
+
+
+    def test_transposes(self):
+        # three square matrices which are not contiguous
+        A = self.rand(4,5)[:,:4]
+        B = self.rand(4,5)[:,:4]
+        C = self.rand(4,5)[:,:4]
+        
+        def t(z,x,y,a=1.0, b=0.0,l=gof.cc.OpWiseCLinker):
+            z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
+            z_orig = z.copy()
+            z_after = self._gemm(z, a, x, y, b)
+
+            tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
+
+            f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker_cls=l)
+            f(z, a, x, y, b)
+            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z))
+            f(z.T, a, y.T, x.T, b)
+            self.failUnless(_approx_eq(z_after, z))
+
+        t(C,A,B)
+        t(C.T, A, B)
+        t(C, A.T, B)
+        t(C, A, B.T)
+        t(C.T, A.T, B)
+        t(C, A.T, B.T)
+        t(C.T, A, B.T)
+        t(C.T, A.T, B.T)
+
+        t(C, A[:,:2], B[:2, :])
+        t(C.T, A[:,:2], B[:2, :])
+        t(C, A[:2,:].T, B[:2, :])
+        t(C.T, A[:2,:].T, B[:2, :])
+        t(C, A[:2,:].T, B[:, :2].T)
+        t(C.T, A[:2,:].T, B[:, :2].T)
+
+        try:
+            t(C.T, A[:2,:], B[:, :2].T)
+        except ValueError, e:
+            if e[0].find('aligned') >= 0:
+                return
+        self.fail()
+
 
 if __name__ == '__main__':
     unittest.main()
