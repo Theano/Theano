@@ -21,6 +21,11 @@ def as_scalar(x, name = None):
     if isinstance(x, Scalar):
         return x
 
+def constant(x):
+    res = as_scalar(x)
+    res.constant = True
+    return res
+
 
 class Scalar(Result):
 
@@ -40,7 +45,10 @@ class Scalar(Result):
         self._constant = value
 
     constant = property(__get_constant, __set_constant)
-        
+
+    def desc(self):
+        return (self.dtype, self.data)
+    
     def filter(self, data):
         py_type = self.dtype_specs()[0]
         return py_type(data)
@@ -474,6 +482,12 @@ def composite(inputs, outputs):
             inputs = [input.data for input in self.inputs]
             for output, impl in zip(self.outputs, _impls):
                 output.data = impl(inputs)
+
+        def impl(self, *inputs):
+            for r, input in zip(self.inputs, inputs):
+                r.data = input
+            self.perform()
+            return utils.to_return_values([output.data for output in self.outputs])
 
         def grad(self, inputs, output_grads):
             raise NotImplementedError("grad is not implemented for Composite")
