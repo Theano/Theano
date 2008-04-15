@@ -122,11 +122,12 @@ class _testCase_dot(unittest.TestCase):
             x.data = x.data.T
             y.data = y.data.T
 
-            zop = transpose(dot(y, x))
 #            zop = dot(y, x)
+            zop = transpose(dot(y, x))
             z = compile.eval_outputs([zop])
             self.failUnless(z.shape == (500,2))
-            self.failUnless(type(z) is mtype)
+            print mtype, type(z)
+#            self.failUnless(type(z) is mtype)
 
             w = mtype((500,2))
             w[(10, 0)] = 3.
@@ -134,9 +135,11 @@ class _testCase_dot(unittest.TestCase):
             w[(10, 1)] = 4
             w[(20, 1)] = 2
             self.failUnless(z.shape == w.shape)
-            self.failUnless(type(z) == type(w))
+            # Type should switch from csr to csc and vice-versa, so don't perform this test
+            #self.failUnless(type(z) == type(w))
             self.failUnless(z.dtype == w.dtype)
 
+            # Type should switch from csr to csc and vice-versa, so don't perform this test
             #self.failUnless(z == w)
             self.failUnless(abs(z-w).nnz == 0)
 

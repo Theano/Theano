@@ -229,4 +229,5 @@ def dot(x, y, grad_preserves_dense=True):
     if x_is_sparse:
         return Dot(x,y,grad_preserves_dense).outputs[0]
     else:
-        return transpose(Dot(transpose(y), transpose(x), grad_preserves_dense).outputs[0])
+        assert y_is_sparse
+        return transpose(Dot(y.T, x.T, grad_preserves_dense).outputs[0])
