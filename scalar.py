@@ -324,12 +324,13 @@ class Abs(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         return gz * sgn(x),
     def c_code(self, (x, ), (z, ), sub):
-        dtype = self.inputs[0].dtype
-        if dtype in ('int32', 'int64'):
+        dtype = str(self.inputs[0].dtype)
+        if 'int' in dtype:
             return "%(z)s = abs(%(x)s);" % locals()
-        if dtype in ('float32', 'float64'):
+        if 'float' in dtype:
             return "%(z)s = fabs(%(x)s);" % locals()
-        raise NotImplementedError('Abs not implemented for dtype', dtype)
+        #complex, other?
+        raise NotImplementedError('dtype not supported', dtype)
 
 class Sgn(UnaryScalarOp):
     def impl(self, x):

@@ -77,21 +77,75 @@ class T_conversion(unittest.TestCase):
 
 
 class _testCase_dot(unittest.TestCase):
+    """ Types of sparse matrices to use for testing """
+    mtypes = [sparse.csc_matrix, sparse.csr_matrix]
+    #mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix, sparse.lil_matrix, sparse.coo_matrix]
+
     def setUp(self):
         numpy.random.seed(44)
 
     def test_basic0(self):
-        for mtype in [sparse.csc_matrix, sparse.csr_matrix]:
-            x = assparse(mtype(sparse.speye(5,3)))
-            y = tensor.astensor(numpy.random.rand(3, 2))
+        for mtype in self.mtypes:
+            x = assparse(mtype((500,3)))
+            x.data[(10, 1)] = 1
+            x.data[(20, 2)] = 2 
+            y = tensor.astensor([[1., 2], [3, 4], [2, 1]])
 
             zop = dot(x,y)
             z = compile.eval_outputs([zop])
-            self.failUnless(z.shape == (5,2))
+            self.failUnless(z.shape == (500,2))
             self.failUnless(type(z) is mtype)
 
-    def test_missing(self):
-        raise NotImplementedError('tests commented out')
+            w = mtype((500,2))
+            w[(10, 0)] = 3.
+            w[(20, 0)] = 4
+            w[(10, 1)] = 4
+            w[(20, 1)] = 2
+            self.failUnless(z.shape == w.shape)
+            self.failUnless(type(z) == type(w))
+            self.failUnless(z.dtype == w.dtype)
+
+            #self.failUnless(z == w)
+            self.failUnless(abs(z-w).nnz == 0)
+
+            z = z.todense()
+            w = w.todense()
+            self.failUnless((z == w).all() == True)
+
+    def test_basic1(self):
+        for mtype in self.mtypes:
+            x = assparse(mtype((500,3)))
+            x.data[(10, 1)] = 1
+            x.data[(20, 2)] = 2
+            y = tensor.astensor([[1., 2], [3, 4], [2, 1]])
+
+            x.data = x.data.T
+            y.data = y.data.T
+
+#            zop = dot(y, x)
+            zop = transpose(dot(y, x))
+            z = compile.eval_outputs([zop])
+            self.failUnless(z.shape == (500,2))
+            print mtype, type(z)
+#            self.failUnless(type(z) is mtype)
+
+            w = mtype((500,2))
+            w[(10, 0)] = 3.
+            w[(20, 0)] = 4
+            w[(10, 1)] = 4
+            w[(20, 1)] = 2
+            self.failUnless(z.shape == w.shape)
+            # Type should switch from csr to csc and vice-versa, so don't perform this test
+            #self.failUnless(type(z) == type(w))
+            self.failUnless(z.dtype == w.dtype)
+
+            # Type should switch from csr to csc and vice-versa, so don't perform this test
+            #self.failUnless(z == w)
+            self.failUnless(abs(z-w).nnz == 0)
+
+            z = z.todense()
+            w = w.todense()
+            self.failUnless((z == w).all() == True)
 
 #    def test_basic1(self):
 #        """dot: sparse left"""
@@ -110,7 +164,10 @@ class _testCase_dot(unittest.TestCase):
 #            except Exception, e:
 #                print 'cccc', mtype, e, str(e)
 #                raise
-#
+
+    def test_missing(self):
+        raise NotImplementedError('tests commented out')
+
 #    def test_basic2(self):
 #        """dot: sparse right"""
 #        a = numpy.random.rand(2, 5)
