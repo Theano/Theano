@@ -66,9 +66,9 @@ class _test_composite(unittest.TestCase):
         assert c.outputs[0].data == 6.0
         assert c.outputs[1].data == 7.0
         assert c.outputs[2].data == 0.5
-        g = env([x, y], c.outputs)
+        g = env([x, y, z], c.outputs)
         fn = gof.DualLinker(g).make_function()
-        assert fn(1.0, 2.0) == [6.0, 7.0, 0.5]
+        assert fn(1.0, 2.0, 3.0) == [6.0, 7.0, 0.5]
         
 
 if __name__ == '__main__':

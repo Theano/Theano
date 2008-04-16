@@ -262,6 +262,8 @@ def as_string(i, o,
     exist for viewing convenience).
     """
 
+    orph = orphans(i, o)
+    
     multi = set()
     seen = set()
     for output in o:
@@ -273,7 +275,7 @@ def as_string(i, o,
     for op in ops(i, o):
         for input in op.inputs:
             op2 = input.owner
-            if input in i or op2 is None:
+            if input in i or input in orph or op2 is None:
                 continue
             if op2 in seen:
                 multi.add(op2)
@@ -286,7 +288,7 @@ def as_string(i, o,
         return multi.index(x) + 1
 
     def describe(r):
-        if r.owner is not None and r not in i:
+        if r.owner is not None and r not in i and r not in orph:
             op = r.owner
             idx = op.outputs.index(r)
             if idx == op._default_output_idx:
