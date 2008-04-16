@@ -136,8 +136,11 @@ class Broadcast(Op, Destroyer):
             assert len(set([len(input.broadcastable) for input in inputs])) == 1
         except (AssertionError, AttributeError):
             raise TypeError("All inputs to a Broadcast subclass must be Tensor instances and their broadcastable fields must all have the same length.", self.__class__)
-        self.nin = scalar_opclass.nin
-        self.nout = scalar_opclass.nout
+        
+        self.shadow = scalar_opclass(*[Scalar(dtype = t.dtype) for t in inputs])
+        
+        self.nin = self.shadow.nin
+        self.nout = self.shadow.nout
         out_broadcastables = [[1*all(bcast) for bcast in zip(*[input.broadcastable for input in inputs])]] * self.nout
 
         if inplace_pattern:
@@ -158,8 +161,7 @@ class Broadcast(Op, Destroyer):
         self.outputs = [Tensor(dtype = dtype, broadcastable = broadcastable) for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
         self.inplace_pattern = inplace_pattern
         self.scalar_opclass = scalar_opclass
-        self.shadow = scalar_opclass(*[Scalar(dtype = t.dtype) for t in self.inputs])
-        self.ufunc = numpy.frompyfunc(self.shadow.impl, scalar_opclass.nin, scalar_opclass.nout)
+        self.ufunc = numpy.frompyfunc(self.shadow.impl, self.shadow.nin, self.shadow.nout)
 
     def clone_with_new_inputs(self, *new_inputs):
         return Broadcast(self.scalar_opclass, new_inputs, self.inplace_pattern)
@@ -389,8 +391,10 @@ class CAReduce(Op):
     
     def __init__(self, scalar_opclass, inputs, dimensions_to_reduce = None):
         inputs = map(astensor, inputs)
+
+        self.shadow = scalar_opclass(*[Scalar(dtype = inputs[0].dtype) for i in xrange(len(inputs) + 1)])
         
-        if scalar_opclass.nin != 2 or scalar_opclass.nout != 1:
+        if self.shadow.nin != 2 or self.shadow.nout != 1:
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
         if len(inputs) != 1:
             raise TypeError("Only one argument expected.")
@@ -403,8 +407,7 @@ class CAReduce(Op):
 
         self.dimensions_to_reduce = dimensions_to_reduce
         self.scalar_opclass = scalar_opclass
-        self.shadow = scalar_opclass(*[Scalar(dtype = inputs[0].dtype) for i in xrange(scalar_opclass.nin)])
-        self.ufunc = numpy.frompyfunc(self.shadow.impl, scalar_opclass.nin, scalar_opclass.nout)
+        self.ufunc = numpy.frompyfunc(self.shadow.impl, self.shadow.nin, self.shadow.nout)
 
     def desc(self):
         return (self.__class__, self.scalar_opclass, tuple(self.dimensions_to_reduce))
