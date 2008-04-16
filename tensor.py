@@ -83,7 +83,9 @@ def astensor(data, broadcastable=None, name=None):
         if isinstance(data, Tensor) and (name is None or name == data.name):
             return data
         else:
-            return Tensor(data.dtype, data.broadcastable, name = name)
+            t = Tensor(data.dtype, data.broadcastable, name = name)
+            t.data = data
+            return t
     elif isinstance(data, Result):
         data = data.data
         
