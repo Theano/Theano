@@ -216,6 +216,12 @@ Log2, log2, Log2Inplace, log2_inplace = broadcast(scal.Log2, 'Log2')
 Sgn, sgn, SgnInplace, sgn_inplace = broadcast(scal.Sgn, 'Sgn')
 Sqr, sqr, SqrInplace, sqr_inplace = broadcast(scal.Sqr, 'Sqr')
 Sqrt, sqrt, SqrtInplace, sqrt_inplace = broadcast(scal.Sqrt, 'Sqrt')
+Cos, cos, CosInplace, cos_inplace = broadcast(scal.Cos, 'Cos')
+Sin, sin, SinInplace, sin_inplace = broadcast(scal.Sin, 'Sin')
+Tan, tan, TanInplace, tan_inplace = broadcast(scal.Tan, 'Tan')
+Cosh, cosh, CoshInplace, cosh_inplace = broadcast(scal.Cosh, 'Cosh')
+Sinh, sinh, SinhInplace, sinh_inplace = broadcast(scal.Sinh, 'Sinh')
+Tanh, tanh, TanhInplace, tanh_inplace = broadcast(scal.Tanh, 'Tanh')
 
 Sum = s2t.Sum
 sum = gof.op.constructor(Sum)

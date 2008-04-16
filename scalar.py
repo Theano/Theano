@@ -388,6 +388,53 @@ class Sqrt(UnaryScalarOp):
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = sqrt(%(x)s);" % locals()
 
+class Cos(UnaryScalarOp):
+    def impl(self, x):
+        return math.cos(x)
+    def grad(self, (x, ), (gz, )):
+        return gz * sin(x),
+    def c_code(self, (x, ), (z, ), sub):
+        return "%(z)s = cos(%(x)s);" % locals()
+
+class Sin(UnaryScalarOp):
+    def impl(self, x):
+        return math.sin(x)
+    def grad(self, (x, ), (gz, )):
+        return -gz * cos(x),
+    def c_code(self, (x, ), (z, ), sub):
+        return "%(z)s = sin(%(x)s);" % locals()
+
+class Tan(UnaryScalarOp):
+    def impl(self, x):
+        return math.tan(x)
+    def grad(self, (x, ), (gz, )):
+        raise NotImplementedError('lazy')
+    def c_code(self, (x, ), (z, ), sub):
+        return "%(z)s = tan(%(x)s);" % locals()
+
+class Cosh(UnaryScalarOp):
+    def impl(self, x):
+        return math.cosh(x)
+    def grad(self, (x, ), (gz, )):
+        raise NotImplementedError()
+    def c_code(self, (x, ), (z, ), sub):
+        return "%(z)s = cosh(%(x)s);" % locals()
+
+class Sinh(UnaryScalarOp):
+    def impl(self, x):
+        return math.sin(x)
+    def grad(self, (x, ), (gz, )):
+        return -gz * cos(x),
+    def c_code(self, (x, ), (z, ), sub):
+        return "%(z)s = sin(%(x)s);" % locals()
+
+class Tanh(UnaryScalarOp):
+    def impl(self, x):
+        return math.tanh(x)
+    def grad(self, (x, ), (gz, )):
+        return gz * (1 - tanh(x))**2
+    def c_code(self, (x, ), (z, ), sub):
+        return "%(z)s = tanh(%(x)s);" % locals()
 
 
 #NOTE WELL!!!
