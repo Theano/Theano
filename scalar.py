@@ -186,28 +186,32 @@ class Scalar(Result):
 
 
 
-class ScalarMixedOp(GuardedOp):
-    """Olivier: document this stuff! -JB"""
+def upcast(dtype, *dtypes):
+    z = numpy.zeros((), dtype = dtype)
+    for dtype in dtypes:
+        z = z + numpy.zeros((), dtype = dtype)
+    return str(z.dtype)
+
+class ScalarOp(GuardedOp):
 
     nin = -1
     nout = 1
-    
+        
     def __init__(self, *inputs):
         if self.nin >= 0:
             if len(inputs) != self.nin:
                 raise TypeError("Wrong number of inputs for %s (got %i, expected %i)" \
                                     % (self.__class__.__name__, len(inputs), self.nin))
+        else:
+            self.nin = len(inputs)
         
         inputs = [as_scalar(input) for input in inputs]
         i_dtypes = [getattr(input, 'dtype', None) for input in inputs]
-        o_dtypes = self.propagate_dtypes(*i_dtypes)
+        o_dtypes = [upcast(*i_dtypes)] * self.nout
 
         self.inputs = inputs
         self.outputs = [Scalar(dtype) for dtype in o_dtypes]
 
-    def propagate_dtypes(self, *inputs):
-        raise AbstractFunctionError()
-    
     def impl(self, *inputs):
         raise AbstractFunctionError()
     
@@ -215,43 +219,45 @@ class ScalarMixedOp(GuardedOp):
         raise AbstractFunctionError()
     
     def perform(self):
-        self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
+        if self.nout == 1:
+            self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
+        else:
+            results = utils.from_return_values(self.impl(*[input.data for input in self.inputs]))
+            for output, result in zip(self.outputs, results):
+                output.data = result
 
-
-def upcast(dtype, *dtypes):
-    z = numpy.zeros((), dtype = dtype)
-    for dtype in dtypes:
-        z = z + numpy.zeros((), dtype = dtype)
-    return str(z.dtype)
-
-
-class PureScalarOp(ScalarMixedOp):
-
-    cast_method = lambda self, *args: upcast(*args)
-    
-    def propagate_dtypes(self, *i_dtypes):
-        for dtype in i_dtypes:
-            if dtype is None:
-                raise TypeError("Expected a Scalar.")
-        return [self.cast_method(*i_dtypes)] * self.nout
-
-
-class UnaryScalarOp(PureScalarOp):
+class UnaryScalarOp(ScalarOp):
     nin = 1
 
-class BinaryScalarOp(PureScalarOp):
+class BinaryScalarOp(ScalarOp):
     nin = 2
 
 
-
-class Add(BinaryScalarOp):
+class Add(ScalarOp):
     identity = 0
-    def impl(self, x, y):
-        return x + y
-    def c_code(self, (x, y), (z, ), sub):
-        return "%(z)s = %(x)s + %(y)s;" % locals()
-    def grad(self, (x, y), (gz, )):
-        return gz, gz
+    def impl(self, *inputs):
+        return sum(inputs)
+    def c_code(self, inputs, (z, ), sub):
+        if not inputs:
+            return z + " = 0;"
+        else:
+            return z + " = " + " + ".join(inputs) + ";"
+    def grad(self, inputs, (gz, )):
+        return (gz, ) * len(inputs)
+
+class Mul(ScalarOp):
+    identity = 1
+    def impl(self, *inputs):
+        return numpy.product(inputs)
+    def c_code(self, inputs, (z, ), sub):
+        if not inputs:
+            return z + " = 1;"
+        else:
+            return z + " = " + " * ".join(inputs) + ";"
+    def grad(self, inputs, (gz, )):
+        return [mul(*([gz] + utils.difference(inputs, [input])))
+                for input in inputs]
+
 
 class Sub(BinaryScalarOp):
     def impl(self, x, y):
@@ -260,14 +266,6 @@ class Sub(BinaryScalarOp):
         return "%(z)s = %(x)s - %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         return gz, -gz
-
-class Mul(BinaryScalarOp):
-    def impl(self, x, y):
-        return x * y
-    def c_code(self, (x, y), (z, ), sub):
-        return "%(z)s = %(x)s * %(y)s;" % locals()
-    def grad(self, (x, y), (gz, )):
-        return gz * y, gz * x
 
 class Div(BinaryScalarOp):
     def impl(self, x, y):
@@ -300,6 +298,7 @@ class Second(BinaryScalarOp):
         return "%(z)s = %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         return None, gz
+
 
 
 class Identity(UnaryScalarOp):
@@ -338,7 +337,8 @@ class Sgn(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         return None,
     def c_code(self, (x, ), (z, ), sub):
-        return "%(z)s = %(x)s/abs(%(x)s);" % locals() # TODO: C use copysign
+        return "%(z)s = %(x)s/%(prefix)sabs(%(x)s);" \
+            % dict(locals(), prefix = 'float' in self.inputs[0].dtype and 'f' or '') # TODO: C use copysign
 
 class Inv(UnaryScalarOp):
     def impl(self, x):
@@ -410,7 +410,7 @@ def composite(inputs, outputs):
     
     The operations between inputs and outputs (as given by
     Env(inputs, outputs).ops()) must all be instances of
-    PureScalarOp.
+    ScalarOp.
 
     Examples:
       x, y = Scalar(), Scalar()
@@ -425,8 +425,8 @@ def composite(inputs, outputs):
     inputs, outputs = env.inputs, env.outputs
 
     for op in env.ops():
-        if not isinstance(op, PureScalarOp):
-            raise ValueError("The input env to composite must be exclusively composed of PureScalarOp instances.")
+        if not isinstance(op, ScalarOp):
+            raise ValueError("The input env to composite must be exclusively composed of ScalarOp instances.")
 
     subd = dict(zip(inputs,
                     ["%%(i%i)s"%i for i in range(len(inputs))]) +
@@ -465,7 +465,7 @@ def composite(inputs, outputs):
         # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
         # it will calculate *1 twice
         # it also doesn't follow env.toposort but that's (presumably)
-        # still correct since we only have pure scalar ops
+        # still correct since we only have scalar ops
         if r in env.inputs:
             idx = env.inputs.index(r)
             return lambda inputs: inputs[idx]
@@ -477,7 +477,7 @@ def composite(inputs, outputs):
 
     _impls = [compose_impl(r) for r in env.outputs]
     
-    class Composite(PureScalarOp):
+    class Composite(ScalarOp):
 
         nin = len(inputs)
         nout = len(outputs)

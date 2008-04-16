@@ -276,7 +276,7 @@ class GuardedOp(Op):
         try:
             if not old.same_properties(new):
                 raise TypeError("The new input must have the same properties as the previous one.")
-        except AbstractFunction:
+        except AbstractFunctionError:
             pass
         Op.set_input(self, i, new)
 

@@ -36,6 +36,16 @@ def difference(seq1, seq2):
         # -> use O(len(seq1) * len(seq2)) algo
         return [x for x in seq1 if x not in seq2]
 
+def partition(f, seq):
+    seqt = []
+    seqf = []
+    for elem in seq:
+        if f(elem):
+            seqt.append(elem)
+        else:
+            seqf.append(elem)
+    return seqt, seqf
+    
 def attr_checker(*attrs):
     def f(candidate):
         for attr in attrs:
