@@ -26,7 +26,7 @@ class BaseTensor(Result):
     on the L{Op}s that use it.
     """
 
-    def __init__(self, dtype, broadcastable, role=None, name=None):
+    def __init__(self, dtype, broadcastable, name=None):
         """Initialize a L{Tensor}
 
         @todo: Initialize a L{Tensor} or a L{BaseTensor}? -jpt
@@ -45,7 +45,7 @@ class BaseTensor(Result):
         # the argument that is awkward to construct, I decided to put all this
         # into the tensor(data,...) function below, which is like a second
         # constructor that works with an ndarray.
-        Result.__init__(self, role=role, name=name)
+        Result.__init__(self, role=None, name=name)
         self._dtype = str(dtype)
         self.dtype_specs() # this is just for error checking
         self._broadcastable = tuple(broadcastable)
@@ -232,7 +232,7 @@ class BaseTensor(Result):
         If transfer_data is True, a copy of self.data is assigned to the copy's
         data property, otherwise the copy's data is left as None.
         """
-        cpy = self.__class__(self.dtype, self.broadcastable, None, self.name)
+        cpy = self.__class__(self.dtype, self.broadcastable, self.name)
         if transfer_data:
             cpy.data = copy(self.data)
         return cpy

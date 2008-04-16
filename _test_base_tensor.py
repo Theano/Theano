@@ -5,14 +5,14 @@ from copy import copy
 from compile import Function
 import gof
 
-def _tensor(data, broadcastable=None, role=None, name=None):
+def _tensor(data, broadcastable=None, name=None):
     """Return a BaseTensor containing given data"""
     data = numpy.asarray(data)
     if broadcastable is None:
         broadcastable = [s==1 for s in data.shape]
     elif broadcastable in [0, 1]:
         broadcastable = [broadcastable] *  len(data.shape)
-    rval = BaseTensor(data.dtype, broadcastable, role, name)
+    rval = BaseTensor(data.dtype, broadcastable, name)
     rval.data = data # will raise if broadcastable was mis-specified
     return rval
 

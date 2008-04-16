@@ -75,16 +75,27 @@ s2t.Tensor = Tensor
 
 
 # alternate Tensor constructor
-def astensor(data, broadcastable=None, role=None, name=None):
+def astensor(data, broadcastable=None, name=None):
     """Return a L{Tensor} containing given data"""
-    if isinstance(data, Tensor) and broadcastable is None and role is None and name is None:
-        return data
+    if isinstance(data, BaseTensor):
+        if broadcastable is not None and list(data.broadcastable) != list(broadcastable):
+            raise TypeError("The data to wrap as a Tensor has the wrong broadcastable pattern. Expected %s, got %s." % (broadcastable, data.broadcastable))
+        if isinstance(data, Tensor) and (name is None or name == data.name):
+            return data
+        else:
+            return Tensor(data.dtype, data.broadcastable, name = name)
+    elif isinstance(data, Result):
+        data = data.data
+        
+    if data is None and broadcastable is None:
+        raise TypeError("Cannot make a Tensor out of None or a Result with no data.")
+    
     data = numpy.asarray(data)
     if broadcastable is None:
         broadcastable = [s==1 for s in data.shape]
     elif broadcastable in [0, 1]:
         broadcastable = [broadcastable] *  len(data.shape)
-    rval = Tensor(data.dtype, broadcastable, role, name)
+    rval = Tensor(data.dtype, broadcastable, name = name)
     rval.data = data # will raise if broadcastable was mis-specified
     return rval
 s2t.astensor = astensor
