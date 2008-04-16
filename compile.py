@@ -15,13 +15,13 @@ def exec_opt(inputs, outputs, features=[]):
     return Function(intputs, outputs, features, exec_opt.optimizer, gof.link.PerformLinker, False)
 exec_opt.optimizer = None
 
-def default_optimizer(env):
-    #TODO: pass tests with these un-commented
-    default_optimizer.const(env)
-    default_optimizer.merge(env)
-    pass
-default_optimizer.merge = gof.opt.MergeOptimizer()
-default_optimizer.const = gof.opt.ConstantFinder()
+class _DefaultOptimizer(object):
+    const = gof.opt.ConstantFinder()
+    merge = gof.opt.MergeOptimizer()
+    def __call__(self, env):
+        self.const(env)
+        self.merge(env)
+default_optimizer = _DefaultOptimizer()
         
 def _mark_indestructible(results):
     for r in results:
