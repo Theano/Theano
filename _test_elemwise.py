@@ -164,27 +164,34 @@ class _test_CAReduce(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-#     x = modes.build(Tensor('float64', [0, 0], name = 'x'))
-#     y = modes.build(Tensor('float64', [0, 0], name = 'y'))
-#     e = Broadcast(SquareDiff, (x, y), {0:0}).out
+#     x = modes.build(Tensor('int32', [0, 0], name = 'x'))
+#     y = modes.build(Tensor('int32', [0, 0], name = 'y'))
+# #     x = modes.build(Tensor('float64', [0, 0], name = 'x'))
+# #     y = modes.build(Tensor('float64', [0, 0], name = 'y'))
+#     e = Broadcast(Pow, (x, y)).out
 #     f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
-#     xv = numpy.random.rand(1000, 1000)
-#     yv = numpy.random.rand(1000, 1000)
-#     zv = numpy.random.rand(1000, 1000)
+# #     xv = numpy.random.rand(1000, 1000)
+# #     yv = numpy.random.rand(1000, 1000)
+# #     zv = numpy.random.rand(1000, 1000)
+#     xv = numpy.random.randint(1, 5, (1000, 1000))
+#     yv = numpy.random.randint(1, 5, (1000, 1000))
 #     add = numpy.frompyfunc(lambda x, y: x + y, 2, 1)
 
-#     t0 = time.time()
-#     for i in xrange(100):
-#         xv -= yv
-#         xv *= xv
-# #        xv += yv
-#     print time.time() - t0
+# #     t0 = time.time()
+# #     for i in xrange(100):
+# #         xv / yv
+# #     print time.time() - t0
 
 #     t0 = time.time()
 #     for i in xrange(100):
 #         f(xv, yv)
 #     print time.time() - t0
-    
+
+    # speed ratios:
+    # add : 1
+    # mul : 1
+    # div : 2
+    # pow : 20
 
 
 

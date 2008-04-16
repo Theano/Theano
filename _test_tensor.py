@@ -219,6 +219,47 @@ def make_broadcast_tester(op_class, expected, checks = {}, **kwargs):
     return make_tester(name, op_class, expected, checks, **kwargs)
 
 
+def make_broadcast_tester_unary(op_class, expected, checks = {}, **kwargs):
+
+    _randint = randint
+    _rand = rand
+    if kwargs.has_key('nonzero'):
+        if kwargs['nonzero']:
+            _randint = banzero(_randint)
+            _rand = banzero(_rand)
+        del kwargs['nonzero']
+
+    if kwargs.has_key('positive'):
+        if kwargs['positive']:
+            _randint = banneg(_randint)
+            _rand = banneg(_rand)
+        del kwargs['positive']
+
+    _good_broadcast = dict(normal = (_rand(2, 3), ),
+                           int = (_rand(2, 3), ))
+
+    _bad_build_broadcast = dict()
+
+    _bad_runtime_broadcast = dict()
+
+    _grad_broadcast = dict(normal = (_rand(2, 3), ),
+                           int = (_rand(2, 3), ))
+    
+    kwargs.setdefault('good', _good_broadcast)
+    kwargs.setdefault('bad_build', _bad_build_broadcast)
+    kwargs.setdefault('bad_runtime', _bad_runtime_broadcast)
+    kwargs.setdefault('grad', _grad_broadcast)
+    name = op_class.__name__ + "Tester"
+    if kwargs.has_key('inplace'):
+        if kwargs['inplace']:
+            _expected = expected
+            expected = lambda *inputs: numpy.array(_expected(*inputs), dtype = inputs[0].dtype)
+            checks = dict(checks,
+                          inplace_check = lambda inputs, outputs: inputs[0] is outputs[0])
+        del kwargs['inplace']
+    return make_tester(name, op_class, expected, checks, **kwargs)
+
+
 
 
 
@@ -264,11 +305,11 @@ def make_broadcast_tester(op_class, expected, checks = {}, **kwargs):
 #                                          good = _pow_good)
 
 
-# AbsTester = make_broadcast_tester(op_class = Abs,
-#                                   expected = lambda x: abs(x))
-# AbsInplaceTester = make_broadcast_tester(op_class = AbsInplace,
-#                                          expected = lambda x: abs(x),
-#                                          inplace = True)
+AbsTester = make_broadcast_tester_unary(op_class = Abs,
+                                        expected = lambda x: abs(x))
+AbsInplaceTester = make_broadcast_tester_unary(op_class = AbsInplace,
+                                               expected = lambda x: abs(x),
+                                               inplace = True)
 
 # ExpTester = make_broadcast_tester(op_class = Exp,
 #                                   expected = lambda x: numpy.exp(x))
