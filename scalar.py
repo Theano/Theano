@@ -282,6 +282,8 @@ class Div(BinaryScalarOp):
     def impl(self, x, y):
         return x / y
     def c_code(self, (x, y), (z, ), sub):
+        if 'int' in self.inputs[0].dtype and 'int' in self.inputs[1].dtype:
+            raise NotImplementedError("For integer arguments the behavior of division in C and in Python differ when the quotient is negative (to implement).")
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         return gz / y, -(gz * x) / (y * y)
@@ -346,13 +348,13 @@ class Abs(UnaryScalarOp):
 class Sgn(UnaryScalarOp):
     def impl(self, x):
         #casting to output type is handled by filter
-        return 1.0 if x >= 0 else -1.0
+        return numpy.sign(x)
     def grad(self, (x, ), (gz, )):
         return None,
     def c_code(self, (x, ), (z, ), sub):
         #casting is done by compiler
         #TODO: use copysign
-        return "%(z)s = (%(x)s >= 0) ? 1.0 : -1.0;" % locals()
+        return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
 
 class Inv(FloatUnaryScalarOp):
     def impl(self, x):
@@ -406,7 +408,7 @@ class Cos(FloatUnaryScalarOp):
     def impl(self, x):
         return math.cos(x)
     def grad(self, (x, ), (gz, )):
-        return gz * sin(x),
+        return -gz * sin(x),
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = cos(%(x)s);" % locals()
 
@@ -414,7 +416,7 @@ class Sin(FloatUnaryScalarOp):
     def impl(self, x):
         return math.sin(x)
     def grad(self, (x, ), (gz, )):
-        return -gz * cos(x),
+        return gz * cos(x),
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = sin(%(x)s);" % locals()
 
@@ -440,13 +442,13 @@ class Sinh(FloatUnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         raise NotImplementedError()
     def c_code(self, (x, ), (z, ), sub):
-        return "%(z)s = sin(%(x)s);" % locals()
+        return "%(z)s = sinh(%(x)s);" % locals()
 
 class Tanh(FloatUnaryScalarOp):
     def impl(self, x):
         return math.tanh(x)
     def grad(self, (x, ), (gz, )):
-        return gz * (1 - tanh(x))**2
+        return gz * (1 - tanh(x)**2),
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = tanh(%(x)s);" % locals()
 
