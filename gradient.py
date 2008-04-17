@@ -119,8 +119,9 @@ def grad_sources_inputs(sources, graph_inputs):
     return gmap
 
 def grad(cost, param, g_cost=1.0):
-    """Return symbolic expression of gradient of <cost> wrt <param>.
-    If <param> is a list, then return a list containing the gradient of cost wrt
+    """
+    @return: symbolic expression of gradient of I{cost} wrt I{param}.
+    If I{param} is a list, then return a list containing the gradient of I{cost} wrt
     each element of the list.
     """
     inputs = gof.graph.inputs([cost])
