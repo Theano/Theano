@@ -149,15 +149,51 @@ class _testCase_dot(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(44)
 
-    def test_basic0(self):
+    def test_basicSS(self):
         for mtype in _mtypes:
             x = assparse(mtype((500,3)))
             x.data[(10, 1)] = 1
-            x.data[(20, 2)] = 2 
+            x.data[(20, 2)] = 2
+            self.failUnless(_is_sparse_result(x))
+
+            xT = x.T
+            self.failUnless(_is_sparse_result(xT))
+
+            zop = dot(x,xT)
+            self.failUnless(_is_sparse_result(zop))
+            z = compile.eval_outputs([zop])
+            self.failUnless(_is_sparse(z))
+            self.failUnless(z.shape == (500,500))
+            self.failUnless(type(z) is mtype)
+
+            w = mtype((500,500))
+            w[(10, 10)] = 1
+            w[(20, 20)] = 4
+            self.failUnless(z.shape == w.shape)
+            self.failUnless(type(z) == type(w))
+            self.failUnless(z.dtype == w.dtype)
+
+            #self.failUnless(z == w)
+            self.failUnless(abs(z-w).nnz == 0)
+
+            z = z.todense()
+            w = w.todense()
+            self.failUnless((z == w).all() == True)
+
+    def test_basicSD(self):
+        for mtype in _mtypes:
+            x = assparse(mtype((500,3)))
+            x.data[(10, 1)] = 1
+            x.data[(20, 2)] = 2
+            self.failUnless(_is_sparse_result(x))
+
             y = tensor.astensor([[1., 2], [3, 4], [2, 1]])
+            self.failUnless(_is_dense_result(y))
 
             zop = dot(x,y)
+            self.failUnless(_is_sparse_result(zop))
             z = compile.eval_outputs([zop])
+            self.failUnless(_is_sparse(z))
             self.failUnless(z.shape == (500,2))
             self.failUnless(type(z) is mtype)
 
@@ -177,19 +213,24 @@ class _testCase_dot(unittest.TestCase):
             w = w.todense()
             self.failUnless((z == w).all() == True)
 
-    def test_basic1(self):
+    def test_basicDS(self):
         for mtype in _mtypes:
             x = assparse(mtype((500,3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
+            self.failUnless(_is_sparse_result(x))
+
             y = tensor.astensor([[1., 2], [3, 4], [2, 1]])
+            self.failUnless(_is_dense_result(y))
 
             x.data = x.data.T
             y.data = y.data.T
 
 #            zop = dot(y, x)
             zop = transpose(dot(y, x))
+            self.failUnless(_is_sparse_result(zop))
             z = compile.eval_outputs([zop])
+            self.failUnless(_is_sparse(z))
             self.failUnless(z.shape == (500,2))
 #            self.failUnless(type(z) is mtype)
 
@@ -212,7 +253,7 @@ class _testCase_dot(unittest.TestCase):
             self.failUnless((z == w).all() == True)
 
     def test_missing(self):
-        raise NotImplementedError('tests commented out. want to test dotSS and dotSD and dotDS')
+        raise NotImplementedError('tests commented out.')
 
     def test_graph_bprop0(self):
 #        x = tensor.astensor(numpy.random.rand(10,2))
