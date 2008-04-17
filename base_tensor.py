@@ -108,7 +108,7 @@ class BaseTensor(Result):
     #
     def desc(self):
         """
-        Returns a hashable description of this BaseTensor.
+        Returns a hashable description of this L{BaseTensor}.
         """
         if self.data is not None:
             return (BaseTensor, self.dtype, self.broadcastable, self.data.data[:])

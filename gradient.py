@@ -120,6 +120,10 @@ def grad_sources_inputs(sources, graph_inputs):
 
 def grad(cost, param, g_cost=1.0):
     """
+    @type cost: L{Result}
+    @type param: L{Result} or list of L{Result}s.
+
+    @rtype: L{Result} or list of L{Result}s (depending upon I{param})
     @return: symbolic expression of gradient of I{cost} wrt I{param}.
     If I{param} is a list, then return a list containing the gradient of I{cost} wrt
     each element of the list.
