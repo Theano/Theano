@@ -32,7 +32,7 @@ def _is_dense_result(x):
     """
     if not isinstance(x, SparseResult) and not isinstance(x, base_tensor.BaseTensor):
         raise NotImplementedError("_is_sparse should only be called on sparse.SparseResult or base_tensor.BaseTensor, not,", x)
-    return isinstance(x, SparseResult)
+    return isinstance(x, base_tensor.BaseTensor)
 
 def _is_sparse(x):
     """
