@@ -11,7 +11,46 @@ import numpy
 from scipy import sparse
 
 import gof.op, gof.result
-import tensor
+import tensor, base_tensor
+
+
+
+## Type checking
+
+def _is_sparse_result(x):
+    """
+    @rtype: boolean
+    @return: True iff x is a L{SparseResult} (and not a L{base_tensor.BaseTensor})
+    """
+    if not isinstance(x, SparseResult) and not isinstance(x, base_tensor.BaseTensor):
+        raise NotImplementedError("_is_sparse should only be called on sparse.SparseResult or base_tensor.BaseTensor, not,", x)
+    return isinstance(x, SparseResult)
+def _is_dense_result(x):
+    """
+    @rtype: boolean
+    @return: True unless x is a L{SparseResult} (and not a L{base_tensor.BaseTensor})
+    """
+    if not isinstance(x, SparseResult) and not isinstance(x, base_tensor.BaseTensor):
+        raise NotImplementedError("_is_sparse should only be called on sparse.SparseResult or base_tensor.BaseTensor, not,", x)
+    return isinstance(x, SparseResult)
+
+def _is_sparse(x):
+    """
+    @rtype: boolean
+    @return: True iff x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray})
+    """
+    if not isinstance(x, sparse.spmatrix) and not isinstance(x, numpy.ndarray):
+        raise NotImplementedError("_is_sparse should only be called on sparse.scipy.sparse.spmatrix or numpy.ndarray, not,", x)
+    return isinstance(x, sparse.spmatrix)
+def _is_dense(x):
+    """
+    @rtype: boolean
+    @return: True unless x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray})
+    """
+    if not isinstance(x, sparse.spmatrix) and not isinstance(x, numpy.ndarray):
+        raise NotImplementedError("_is_sparse should only be called on sparse.scipy.sparse.spmatrix or numpy.ndarray, not,", x)
+    return isinstance(x, numpy.ndarray)
+
 
 
 # Wrapper type
@@ -26,13 +65,14 @@ def assparse(sp, **kwargs):
     @todo Verify that sp is sufficiently sparse, and raise a warning if it is not
     """
     if isinstance(sp, SparseResult):
-        return sp
+        rval = sp
     else:
         # @todo Verify that sp is sufficiently sparse, and raise a
         # warning if it is not
         rval = SparseResult(str(sp.dtype), sp.format, **kwargs)
         rval.data = sp
-        return rval
+    assert _is_sparse_result(rval)
+    return rval
 
 class SparseResult(gof.result.Result):
     """
@@ -40,7 +80,11 @@ class SparseResult(gof.result.Result):
      - format - a string identifying the type of sparsity
 
     Properties:
-     - T - read-only: return a transpose of self
+    - T - read-only: return a transpose of self
+
+    Methods:
+
+    @note As far as I can tell, L{scipy.sparse} objects must be matrices, i.e. have dimension 2.
     """
     format_cls = {
             'csr' : sparse.csr_matrix,
@@ -96,7 +140,6 @@ class SparseResult(gof.result.Result):
     def __add__(left, right): return add(left, right)
     def __radd__(right, left): return add(left, right)
 
-
 #
 # Conversion
 #
@@ -108,9 +151,11 @@ class DenseFromSparse(gof.op.Op):
         self.inputs = [assparse(x)]
         self.outputs = [tensor.Tensor(x.dtype,[0,0])]
     def impl(self, x):
+        assert _is_sparse(x)
         return numpy.asarray(x.todense())
-    def grad(self, x, gz): 
-        return sparse_from_dense(gz, x.format)
+    def grad(self, (x,), (gz,)):
+        assert _is_sparse_result(x) and _is_dense_result(gz)
+        return sparse_from_dense(gz, x.format),
 dense_from_sparse = gof.op.constructor(DenseFromSparse)
 
 class SparseFromDense(gof.op.Op):
@@ -125,9 +170,11 @@ class SparseFromDense(gof.op.Op):
     def impl(self, x, fmt):
         # this would actually happen anyway when we try to assign to
         # self.outputs[0].data, but that seems hackish -JB
+        assert _is_dense(x)
         return SparseResult.format_cls[fmt](x)
-    def grad(self, (x, fmt), gz):
-        return dense_from_sparse(gz)
+    def grad(self, (x, fmt), (gz,)):
+        assert _is_dense_result(x) and _is_sparse_result(gz)
+        return dense_from_sparse(gz), None
 sparse_from_dense = gof.op.constructor(SparseFromDense)
 
 # Linear Algebra
@@ -142,12 +189,15 @@ class Transpose(gof.op.Op):
         self.inputs = [x]
         self.outputs = [SparseResult(x.dtype, Transpose.format_map[x.format])]
     def impl(self, x):
+        assert _is_sparse(x)
         return x.transpose() 
-    def grad(self, x, gz): 
-        return transpose(gz)
+    def grad(self, (x,), (gz,)):
+        assert _is_sparse_result(x) and _is_sparse_result(gz)
+        return transpose(gz),
 transpose = gof.op.constructor(Transpose)
 
-class AddSS(gof.op.Op): #add two sparse matrices
+class AddSS(gof.op.Op):
+    ''' Add two sparse matrices '''
     def __init__(self, x, y, **kwargs):
         gof.op.Op.__init__(self, **kwargs)
         x, y = [assparse(x), assparse(y)]
@@ -158,10 +208,49 @@ class AddSS(gof.op.Op): #add two sparse matrices
             raise NotImplementedError()
         self.outputs = [SparseResult(x.dtype, x.format)]
     def impl(self, x,y): 
+        assert _is_sparse(x) and _is_sparse(y)
         return x + y
-    def grad(self, (x, y), gz):
+    def grad(self, (x, y), (gz,)):
+        assert _is_sparse_result(x) and _is_sparse_result(y)
+        assert _is_sparse_result(gz)
         return gz, gz
 add_s_s = gof.op.constructor(AddSS)
+class AddSD(gof.op.Op):
+    ''' Add a sparse and a dense matrix '''
+    def __init__(self, x, y, **kwargs):
+        gof.op.Op.__init__(self, **kwargs)
+        x, y = [assparse(x), tensor.astensor(y)]
+        self.inputs = [x, y]
+        if x.dtype != y.dtype:
+            raise NotImplementedError()
+        # The magic number two here arises because L{scipy.sparse}
+        # objects must be matrices (have dimension 2)
+        assert len(y.broadcastable) == 2
+        self.outputs = [tensor.Tensor(y.dtype, y.broadcastable)]
+    def impl(self, x,y): 
+        assert _is_sparse(x) and _is_dense(y)
+        return x + y
+    def grad(self, (x, y), (gz,)):
+        assert _is_sparse_result(x) and _is_dense_result(y)
+        assert _is_dense_result(gz)
+        return SparseFromDense(gz), gz
+add_s_d = gof.op.constructor(AddSD)
+def add(x,y):
+    """
+    Add two matrices, at least one of which is sparse.
+    """
+    if hasattr(x, 'getnnz'): x = assparse(x)
+    if hasattr(y, 'getnnz'): y = assparse(y)
+    
+    x_is_sparse_result = _is_sparse_result(x)
+    y_is_sparse_result = _is_sparse_result(y)
+
+    assert x_is_sparse_result or y_is_sparse_result
+    if x_is_sparse_result and y_is_sparse_result: return add_s_s(x,y)
+    elif x_is_sparse_result and not y_is_sparse_result: return add_s_d(x,y)
+    elif y_is_sparse_result and not x_is_sparse_result: return add_s_d(y,x)
+    else: raise NotImplementedError()
+
 
 class Dot(gof.op.Op):
     """
@@ -173,6 +262,8 @@ class Dot(gof.op.Op):
     when L{Dot} is in the middle of a larger graph, because the types
     of gy will match that of y. This conversion might be inefficient if
     the gradients are graph outputs though, hence this mask.
+
+    @todo: Simplify code by splitting into DotSS and DotSD.
     """
     def __init__(self, x, y, grad_preserves_dense=True):
         """
@@ -181,6 +272,7 @@ class Dot(gof.op.Op):
         if x.dtype != y.dtype:
             raise NotImplementedError()
 
+        assert _is_sparse_result(x)
         # These are the conversions performed by scipy.sparse.dot
         if x.format == "csc" or x.format == "coo":
             myformat = "csc"
@@ -199,9 +291,10 @@ class Dot(gof.op.Op):
         """
         self.outputs[0].data = self.inputs[0].data.dot(self.inputs[1].data)
     def grad(self, (x, y), (gz,)):
+        assert _is_sparse_result(gz)
         rval = [dot(gz, y.T), dot(x.T, gz)]
-        assert isinstance(self.inputs[0], SparseResult)
-        if not isinstance(self.inputs[1], SparseResult):
+        assert _is_sparse_result(x)
+        if _is_dense_result(y):
             if self.grad_preserves_dense:
                 rval[1] = dense_from_sparse(rval[1])
         return rval
@@ -217,12 +310,12 @@ def dot(x, y, grad_preserves_dense=True):
     if hasattr(x, 'getnnz'): x = assparse(x)
     if hasattr(y, 'getnnz'): y = assparse(y)
 
-    x_is_sparse = isinstance(x, SparseResult)
-    y_is_sparse = isinstance(y, SparseResult)
-    if not x_is_sparse and not y_is_sparse:
+    x_is_sparse_result = _is_sparse_result(x)
+    y_is_sparse_result = _is_sparse_result(y)
+    if not x_is_sparse_result and not y_is_sparse_result:
         raise TypeError()
-    if x_is_sparse:
+    if x_is_sparse_result:
         return Dot(x,y,grad_preserves_dense).outputs[0]
     else:
-        assert y_is_sparse
+        assert y_is_sparse_result
         return transpose(Dot(y.T, x.T, grad_preserves_dense).outputs[0])

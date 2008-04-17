@@ -14,9 +14,13 @@ class BaseTensor(Result):
     L{Result} to store L{numpy.ndarray} or equivalent via .data
     
     @type _dtype: numpy dtype string such as 'int64' or 'float64' (among others)
-    @type _broadcastable: - tuple of ints in  (0,1)
-    @ivar _broadcastable: which dimensions of this tensor are guaranteed
-    to be 1, and up for broadcasting.
+    @type _broadcastable: tuple or list or array of boolean values, whose length
+      is the number of dimensions of the contained L{ndarray}.
+    @ivar _broadcastable: Each element of the broadcastable vector tells us
+      something about the corresponding dimension:
+        - False means the dimension can be anything.
+        - True means  the dimension must be 1. Also, this dimension will be considered
+          for L{broadcasting}, as described and implemented in Numpy.
 
     Properties:
     dtype - read-only access to _dtype, which should not be changed
@@ -24,13 +28,14 @@ class BaseTensor(Result):
 
     This class does not implement python operators and has no dependencies
     on the L{Op}s that use it.
+
+    @todo At some point we should document a glossary, such as terms like
+    broadcasting and shape.
     """
 
     def __init__(self, dtype, broadcastable, name=None):
-        """Initialize a L{Tensor}
+        """Initialize a L{BaseTensor}
 
-        @todo: Initialize a L{Tensor} or a L{BaseTensor}? -jpt
-        
         @note: This does not actually allocate any data.
         """
 
@@ -103,7 +108,7 @@ class BaseTensor(Result):
     #
     def desc(self):
         """
-        Returns a hashable description of this BaseTensor.
+        Returns a hashable description of this L{BaseTensor}.
         """
         if self.data is not None:
             return (BaseTensor, self.dtype, self.broadcastable, self.data.data[:])

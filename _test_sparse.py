@@ -2,6 +2,7 @@ from sparse import *
 
 import unittest
 import compile
+import gradient
 
 class T_transpose(unittest.TestCase):
     def setUp(self):
@@ -35,12 +36,13 @@ class T_Add(unittest.TestCase):
     def test0(self):
         sp_a = sparse.csc_matrix(sparse.speye(5,3))
         a = assparse(sp_a)
+        self.failUnless(a.data is sp_a)
 
         sp_b = sparse.csc_matrix(sparse.speye(5,3))
         b = assparse(sp_b)
+        self.failUnless(b.data is sp_b)
 
-        self.failUnless(a.data is sp_a)
-        apb = add_s_s(a, b)
+        apb = add(a, b)
 
         self.failUnless(apb.dtype == a.dtype, apb.dtype)
         self.failUnless(apb.format == a.format, apb.format)
@@ -55,7 +57,7 @@ class T_conversion(unittest.TestCase):
 
     def test0(self):
         a = tensor.astensor(numpy.random.rand(5))
-        s = sparse_from_dense(a,'csc')
+        s = sparse_from_dense(a, 'csc')
         val = compile.eval_outputs([s])
         self.failUnless(str(val.dtype)=='float64')
         self.failUnless(val.format == 'csc')
@@ -79,6 +81,7 @@ class T_conversion(unittest.TestCase):
 class _testCase_dot(unittest.TestCase):
     """ Types of sparse matrices to use for testing """
     mtypes = [sparse.csc_matrix, sparse.csr_matrix]
+    mtypes_str = ["csc", "csr"] 
     #mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix, sparse.lil_matrix, sparse.coo_matrix]
 
     def setUp(self):
@@ -126,7 +129,6 @@ class _testCase_dot(unittest.TestCase):
             zop = transpose(dot(y, x))
             z = compile.eval_outputs([zop])
             self.failUnless(z.shape == (500,2))
-            print mtype, type(z)
 #            self.failUnless(type(z) is mtype)
 
             w = mtype((500,2))
@@ -147,61 +149,41 @@ class _testCase_dot(unittest.TestCase):
             w = w.todense()
             self.failUnless((z == w).all() == True)
 
-#    def test_basic1(self):
-#        """dot: sparse left"""
-#        a = numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0, 0]],
-#                dtype='float64')
-#        b = numpy.random.rand(5, 3)
-#        for mtype in [sparse.csr_matrix, sparse.csc_matrix, sparse.dok_matrix,
-#                sparse.lil_matrix]:#, sparse.coo_matrix]:
-#            #print type(a), mtype
-#            m = mtype(a)
-#            ab = m.dot(b)
-#            try:
-#                z = dot(assparse(m), gof.Result(data=b))
-#                self.failUnless(z.data.shape == ab.shape)
-#                self.failUnless(type(z.data) == type(ab))
-#            except Exception, e:
-#                print 'cccc', mtype, e, str(e)
-#                raise
-
     def test_missing(self):
         raise NotImplementedError('tests commented out')
 
-#    def test_basic2(self):
-#        """dot: sparse right"""
-#        a = numpy.random.rand(2, 5)
-#        b = numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0, 0]],
-#                dtype='float64').transpose()
-#
-#        for mtype in [sparse.csr_matrix, sparse.csc_matrix, sparse.dok_matrix,
-#                sparse.lil_matrix]:#, sparse.coo_matrix]:
-#            m = mtype(b)
-#            ab = m.transpose().dot(a.transpose()).transpose()
-#            z = dot(gof.Result(data=a),assparse(mtype(b)))
-#            self.failUnless(z.data.shape == ab.shape)
-#            self.failUnless(type(z.data) == type(ab))
-#
-#    def test_graph_bprop0(self):
+    def test_graph_bprop0(self):
 #        x = tensor.astensor(numpy.random.rand(10,2))
 #        w = assparse(sparse.csr_matrix(
 #                numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0,0]],dtype='float64')
 #            ))
-#
-#        for epoch in xrange(50):
-#            xw = dense_from_sparse(dot(x, w))
-#            y = dense_from_sparse(dot(xw, transpose(w)))
-#            loss = core.sum(core.sqr(x-y))
-#            gy = y-x
-#            g = grad.Grad({y:gy})
-#            g.bprop()
-#            lr = 0.002
-#            g(w).data[1,0] = 0
-#            g(w).data[1,4] = 0
-#            w.data = -lr * g(w).data + w.data
-#
-#        self.failUnless('3.08560636025' == str(loss.data))
-#
+        for mtype in self.mtypes_str:
+#            x = tensor.astensor([[1., 2], [3, 4], [2, 1]])
+#            w = assparse(mtype((500,3)))
+#            w.data[(10, 1)] = 1
+#            w.data[(20, 2)] = 2
+
+            x = tensor.Tensor('float64', broadcastable=[False,False], name='x')
+            w = SparseResult('float64', mtype)
+            xw = dense_from_sparse(dot(x, w))
+            y = dense_from_sparse(dot(xw, w.T))
+            diff = x-y
+            loss = tensor.sum(tensor.sqr(diff))
+            gw = gradient.grad(loss, w)
+            trainfn = compile.Function([x, w], [y, loss, gw])
+
+#            for epoch in xrange(50):
+#                gy = y-x
+#                g = grad.Grad({y:gy})
+#                g.bprop()
+#                lr = 0.002
+#                g(w).data[1,0] = 0
+#                g(w).data[1,4] = 0
+#                w.data = -lr * g(w).data + w.data
+#                print loss.data
+
+            self.failUnless('3.08560636025' == str(loss.data))
+
 #    def test_graph_bprop1(self):
 #        x = tensor.astensor(numpy.random.rand(10,2))
 #        w = assparse(sparse.csr_matrix(
