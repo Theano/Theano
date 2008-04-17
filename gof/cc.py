@@ -84,19 +84,19 @@ def failure_code(sub):
 def code_gen(blocks):
     """
     From a list of L{CodeBlock} instances, returns a string that executes them
-    all in sequence. eg for (decl1, task1, cleanup1) and (decl2, task2, cleanup2)
-    the returned string will be of the form:
+    all in sequence. eg for C{(decl1, task1, cleanup1)} and C{(decl2, task2, cleanup2)}
+    the returned string will be of the form::
 
-    decl1
-    decl2
-    {
-     task1
-     {
-      task2
-      cleanup2
-     }
-     cleanup1
-    }
+        decl1
+        decl2
+        {
+         task1
+         {
+          task2
+          cleanup2
+         }
+         cleanup1
+        }
     """
 
     decl = ""
@@ -278,10 +278,9 @@ def get_c_sync(r, name, sub):
 
 def apply_policy(policy, r, name, sub):
     """
-    policy -> list of functions that map a Result to a string,
-              or a single such function
-    r -> a Result
-    returns policy[0](r) + policy[1](r) + ...
+    @param policy: list of functions that map a L{Result} to a string, or a single such function
+    @type r: L{Result}
+    @return: C{policy[0](r) + policy[1](r) + ...}
     """
     if isinstance(r, (list, tuple)):
         ret = ""

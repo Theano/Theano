@@ -1,4 +1,6 @@
-"""A simple class to store L{numpy.ndarray} data """
+"""
+A simple class to store L{numpy.ndarray} data
+"""
 
 from gof import Result, Op, utils, AbstractFunctionError
 import numpy
@@ -12,6 +14,12 @@ from copy import copy
 class BaseTensor(Result):
     """
     L{Result} to store L{numpy.ndarray} or equivalent via .data
+
+    This class does not implement python operators and has no dependencies
+    on the L{Op}s that use it.
+
+    @todo: At some point we should document a glossary, such as terms like
+    broadcasting and shape.
     
     @type _dtype: numpy dtype string such as 'int64' or 'float64' (among others)
     @type _broadcastable: tuple or list or array of boolean values, whose length
@@ -21,16 +29,6 @@ class BaseTensor(Result):
         - False means the dimension can be anything.
         - True means  the dimension must be 1. Also, this dimension will be considered
           for L{broadcasting}, as described and implemented in Numpy.
-
-    Properties:
-    dtype - read-only access to _dtype, which should not be changed
-    broadcastable - read-only access to _broadcastable, which should not be changed
-
-    This class does not implement python operators and has no dependencies
-    on the L{Op}s that use it.
-
-    @todo At some point we should document a glossary, such as terms like
-    broadcasting and shape.
     """
 
     def __init__(self, dtype, broadcastable, name=None):
@@ -225,8 +223,8 @@ class BaseTensor(Result):
     # Tensor specific attributes
     ############################
 
-    dtype = property(lambda self: self._dtype)
-    broadcastable = property(lambda self: self._broadcastable)
+    dtype = property(lambda self: self._dtype, doc = "read-only access to _dtype, which should not be changed")
+    broadcastable = property(lambda self: self._broadcastable, doc = "read-only access to _broadcastable, which should not be changed")
 
     ############################
     # Cloning facilities

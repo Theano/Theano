@@ -1,4 +1,3 @@
-
 from op import Op
 from result import Result
 from env import InconsistencyError

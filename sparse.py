@@ -76,13 +76,9 @@ def assparse(sp, **kwargs):
 
 class SparseResult(gof.result.Result):
     """
-    Attribute:
-     - format - a string identifying the type of sparsity
-
-    Properties:
-    - T - read-only: return a transpose of self
-
-    Methods:
+    @type _dtype: numpy dtype string such as 'int64' or 'float64' (among others)
+    @type _format: string
+    @ivar _format: The sparse storage strategy.
 
     @note As far as I can tell, L{scipy.sparse} objects must be matrices, i.e. have dimension 2.
     """
@@ -94,7 +90,7 @@ class SparseResult(gof.result.Result):
 
     def __init__(self, dtype, format, **kwargs):
         """
-        Fundamental way to do create a sparse node.
+        Fundamental way to create a sparse node.
         @param dtype:   Type of numbers in the matrix.
         @param format:  The sparse storage strategy.
         @return         An empty SparseResult instance.
@@ -134,7 +130,7 @@ class SparseResult(gof.result.Result):
 
     dtype = property(lambda self: self._dtype)
     format = property(lambda self: self._format)
-    T = property(lambda self: transpose(self), doc = "Return aliased transpose")
+    T = property(lambda self: transpose(self), doc = "Return aliased transpose of self (read-only)")
 
 
     def __add__(left, right): return add(left, right)

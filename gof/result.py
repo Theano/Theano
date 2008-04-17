@@ -43,15 +43,6 @@ class Result(object):
      - _data - anything
      - state - one of (Empty, Allocated, Computed)
      - name - string
-
-    Properties:
-     - role - (rw)
-     - owner - (ro)
-     - index - (ro)
-     - data - (rw) : calls data_filter when setting
-
-    Abstract Methods:
-     - data_filter
     """
 
     __slots__ = ['_role', '_data', 'state', '_name', '_hash_id']
@@ -106,7 +97,7 @@ class Result(object):
         #assert owner.outputs[index] is self
         self._role = role
 
-    role = property(__get_role, __set_role)
+    role = property(__get_role, __set_role, doc="(writeable)")
 
     #
     # owner
@@ -117,7 +108,7 @@ class Result(object):
         return self._role[0]
 
     owner = property(__get_owner, 
-                     doc = "Op of which this Result is an output, or None if role is None")
+                     doc = "Op of which this Result is an output, or None if role is None (read-only)")
 
     #
     # index
@@ -128,7 +119,7 @@ class Result(object):
         return self._role[1]
 
     index = property(__get_index,
-                     doc = "position of self in owner's outputs, or None if role is None")
+                     doc = "position of self in owner's outputs, or None if role is None (read-only)")
 
 
     # 
@@ -156,7 +147,7 @@ class Result(object):
         self.state = Computed
         
     data = property(__get_data, __set_data,
-                    doc = "The storage associated with this result")
+                    doc = "The storage associated with this result (writeable)")
 
     def filter(self, data):
         """
