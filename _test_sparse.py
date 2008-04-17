@@ -9,7 +9,7 @@ from sparse import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
 """ Types of sparse matrices to use for testing """
 _mtypes = [sparse.csc_matrix, sparse.csr_matrix]
 #_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix, sparse.lil_matrix, sparse.coo_matrix]
-_mtypes_str = ["csc", "csr"] 
+_mtype_to_str = {sparse.csc_matrix: "csc", sparse.csr_matrix: "csr"}
 
 class T_transpose(unittest.TestCase):
     def setUp(self):
@@ -252,59 +252,54 @@ class _testCase_dot(unittest.TestCase):
             w = w.todense()
             self.failUnless((z == w).all() == True)
 
-    def test_missing(self):
-        raise NotImplementedError('tests commented out.')
-
     def test_graph_bprop0(self):
-#        x = tensor.astensor(numpy.random.rand(10,2))
-#        w = assparse(sparse.csr_matrix(
-#                numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0,0]],dtype='float64')
-#            ))
-        for mtype in _mtypes_str:
-#            x = tensor.astensor([[1., 2], [3, 4], [2, 1]])
-#            w = assparse(mtype((500,3)))
-#            w.data[(10, 1)] = 1
-#            w.data[(20, 2)] = 2
-
+        for mtype in _mtypes:
             x = tensor.Tensor('float64', broadcastable=[False,False], name='x')
-            w = SparseResult('float64', mtype)
-            xw = dense_from_sparse(dot(x, w))
-            y = dense_from_sparse(dot(xw, w.T))
+            w = SparseResult('float64', _mtype_to_str[mtype])
+            xw = dense_from_sparse(dot(w, x))
+            y = dense_from_sparse(dot(w.T, xw))
             diff = x-y
             loss = tensor.sum(tensor.sqr(diff))
             gw = gradient.grad(loss, w)
             trainfn = compile.Function([x, w], [y, loss, gw])
 
-#            for epoch in xrange(50):
-#                gy = y-x
-#                g = grad.Grad({y:gy})
-#                g.bprop()
-#                lr = 0.002
-#                g(w).data[1,0] = 0
-#                g(w).data[1,4] = 0
-#                w.data = -lr * g(w).data + w.data
-#                print loss.data
+            x = numpy.asarray([[1., 2], [3, 4], [2, 1]])
+            w = mtype((500,3))
+            w[(10, 1)] = 1
+            w[(20, 2)] = 2
+            lr = 0.001
+            y, origloss, gw = trainfn(x, w)
+            for epoch in xrange(50):
+                y, loss, gw = trainfn(x, w)
+                w = w - (lr * gw)
 
-            self.failUnless('3.08560636025' == str(loss.data))
+            self.failUnless(origloss > loss)
+            self.failUnless('1.0543172285' == str(loss))
 
-#    def test_graph_bprop1(self):
-#        x = tensor.astensor(numpy.random.rand(10,2))
-#        w = assparse(sparse.csr_matrix(
-#                numpy.asarray([[1, 0, 3, 0, 5], [0, 0, -2, 0,0]],dtype='float64')
-#            ))
-#
-#        for epoch in xrange(50):
-#            xw = dense_from_sparse(dot(x, w))
-#            y = dense_from_sparse(dot(xw, transpose(w)))
-#            loss = core.sum(core.sqr(x-y))
-#            g = grad.grad(loss)
-#            lr = 0.001
-#
-#            g(w).data[1,0] = 0
-#            g(w).data[1,4] = 0
-#            w.data = -lr * g(w).data + w.data
-#
-#        self.failUnless('3.08560636025' == str(loss.data))
+    def test_graph_bprop_rand(self):
+        for i in range(10):
+            xorig = numpy.random.rand(3,2)
+            for mtype in _mtypes:
+                x = tensor.Tensor('float64', broadcastable=[False,False], name='x')
+                w = SparseResult('float64', _mtype_to_str[mtype])
+                xw = dense_from_sparse(dot(w, x))
+                y = dense_from_sparse(dot(w.T, xw))
+                diff = x-y
+                loss = tensor.sum(tensor.sqr(diff))
+                gw = gradient.grad(loss, w)
+                trainfn = compile.Function([x, w], [y, loss, gw])
+
+                x = xorig
+                w = mtype((500,3))
+                w[(10, 1)] = 1
+                w[(20, 2)] = 2
+                lr = 0.001
+                y, origloss, gw = trainfn(x, w)
+                for epoch in xrange(50):
+                    y, loss, gw = trainfn(x, w)
+                    w = w - (lr * gw)
+
+                self.failUnless(origloss > loss)
 
 if __name__ == '__main__':
     unittest.main()
