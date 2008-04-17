@@ -149,13 +149,13 @@ class Broadcast(Op, Destroyer):
                     if ib and not ob:
                         raise ValueError("Operation cannot be done inplace on an input with broadcasted dimensions.")
 
-        upcasted = upcast(*[input.dtype for input in inputs])
+        out_dtypes = [t.dtype for t in self.shadow.outputs]
         def get_dtype(i):
             input_idx = inplace_pattern.get(i, None)
             if input_idx is not None:
                 return inputs[input_idx].dtype
             else:
-                return upcasted
+                return out_dtypes[i]
         out_dtypes = map(get_dtype, xrange(self.nout))
         self.inputs = inputs
         self.outputs = [Tensor(dtype = dtype, broadcastable = broadcastable) for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
@@ -201,6 +201,9 @@ class Broadcast(Op, Destroyer):
             return bcasted
         ret = []
         for scalar_igrad, input in zip(scalar_igrads, inputs):
+            if scalar_igrad is None:
+                ret.append(None)
+                continue
             r = transform(scalar_igrad)
             to_sum = [i for i, bcast in enumerate(input.broadcastable) if bcast]
             if to_sum:

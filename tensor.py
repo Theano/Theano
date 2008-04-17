@@ -84,7 +84,7 @@ def astensor(data, broadcastable=None, name=None):
             raise ValueError("Cannot rename an existing Tensor.")
         return data
     elif isinstance(data, Result):
-        raise TypeError("Cannot make a Tensor out of a non-Tensor result.")
+        raise TypeError("Cannot make a Tensor out of a non-Tensor result.", data)
         
     if data is None and broadcastable is None:
         raise TypeError("Cannot make a Tensor out of None.")
