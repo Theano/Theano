@@ -42,7 +42,7 @@ class _test_opts(unittest.TestCase):
 #         x, y, z = inputs()
 #         a, b, c, d = more_inputs()
 # #        e = (2.0 * x) / (2.0 * y)
-# #        e = (2.0 * x) / (4.0 * y)
+#         e = (2.0 * x) / (4.0 * y)
 # #        e = x / (y / z)
 # #        e = (x * y) / x
 # #        e = (x / y) * (y / z) * (z / x)
@@ -71,11 +71,12 @@ class _test_opts(unittest.TestCase):
 # #        e = (a - b) + (b - c) + (c - d)
 # #        e = x + -y
 # #        e = a - b - b + a + b + c + b - c
-#         e = x + log(y) - x + y
+# #        e = x + log(y) - x + y
+#         e = 2.0 + x + 4.0
 #         g = Env([x, y, z, a, b, c, d], [e])
 #         print g
 #         gof.ConstantFinder().optimize(g)
-#         addfn = lambda *inputs: reduce(lambda x, y: x + y, (0,) + inputs)
+#         addfn = lambda *inputs: sum(inputs)
 #         subfn = lambda x, y: x - y
 #         negfn = lambda x: -x
 #         Canonizer(Add, Sub, Neg, addfn, subfn, negfn).optimize(g)

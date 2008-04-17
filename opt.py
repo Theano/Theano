@@ -7,6 +7,19 @@ import scalar
 
 
 class InplaceOptimizer(opt.OpSpecificOptimizer):
+    """
+    Usage: inplace_optimizer.optimize(env)
+    
+    Attempts to replace all Broadcast ops by versions of them
+    that operate inplace. It operates greedily: for each Broadcast
+    Op that is encountered, for each output, tries each input to
+    see if it can operate inplace on that input. If so, makes the
+    change and go to the next output or Broadcast Op.
+
+    Examples:
+      x + y + z -> x += y += z
+      (x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)
+    """
 
     opclass = Broadcast
     
@@ -24,6 +37,7 @@ class InplaceOptimizer(opt.OpSpecificOptimizer):
                     continue
                 candidate_inputs.remove(candidate_input)
                 op = new_op
+                baseline = inplace_pattern
                 break
 
 inplace_optimizer = InplaceOptimizer()
@@ -32,6 +46,8 @@ inplace_optimizer = InplaceOptimizer()
 
 class DimShuffleLifter(opt.Optimizer):
     """
+    Usage: lift_dimshuffle.optimize(env)
+    
     "Lifts" DimShuffle through Broadcast operations and merges
     consecutive DimShuffles. Basically, applies the following
     transformations on the whole graph:
@@ -46,9 +62,6 @@ class DimShuffleLifter(opt.Optimizer):
     def apply(self, env):
 
         seen = set()
-
-        def merge(ord1, ord2):
-            return [x == 'x' and 'x' or ord1[x] for x in ord2]
         
         def lift(r):
             if r in seen:
@@ -62,6 +75,7 @@ class DimShuffleLifter(opt.Optimizer):
             if isinstance(op, DimShuffle):
                 in_op = op.inputs[0].owner
                 if isinstance(in_op, DimShuffle):
+                    # DimShuffle(DimShuffle(x)) => DimShuffle(x)
                     new_order = [x == 'x' and 'x' or in_op.new_order[x] for x in op.new_order]
                     if new_order == range(len(new_order)):
                         repl = in_op.inputs[0]
@@ -71,6 +85,7 @@ class DimShuffleLifter(opt.Optimizer):
                     lift(repl)
                     return
                 elif isinstance(in_op, Broadcast):
+                    # DimShuffle(Broadcast(x, y)) => Broadcast(DimShuffle(x), DimShuffle(y))
                     repl = Broadcast(in_op.scalar_opclass,
                                      [DimShuffle(input, op.new_order).out for input in in_op.inputs],
                                      in_op.inplace_pattern).out
@@ -87,9 +102,24 @@ lift_dimshuffle = DimShuffleLifter()
 
 
 def find_cliques(env, through_broadcast = False):
+    """
+    Usage: find_cliques(env, through_broadcast = False)
 
+    Returns a list of pairs where each pair contains a list
+    of inputs and a list of outputs such that Env(inputs, outputs)
+    contains nothing but Broadcast Ops.
+
+    If through_broadcast is False, the cliques will only be
+    allowed to broadcast over the inputs, which means, for
+    example, that vector operations will not be mixed with
+    matrix operations.
+    """
 
     def seek_from(r):
+        # walks through the graph until it encounters a
+        # non-Broadcast operation or (if through_broadcast
+        # is False) a Result which needs to be broadcasted.
+        
         op = r.owner
         if r in env.inputs \
                 or r in env.orphans() \
@@ -103,6 +133,10 @@ def find_cliques(env, through_broadcast = False):
         ret = set()
 
         if not through_broadcast:
+            # check each dimension over all the inputs - if the broadcastable
+            # fields are not all 0 or all 1 for a particular dimension, then
+            # broadcasting will be performed along it on the inputs where the
+            # value is 1 and we will stop.
             if any(any(bc) and not all(bc)
                    for bc in zip(*[input.broadcastable for input in op.inputs])):
                 ret.update(op.inputs)
@@ -111,6 +145,7 @@ def find_cliques(env, through_broadcast = False):
         for input in op.inputs:
             res = seek_from(input)
             if res is None:
+                # input is a leaf of our search
                 ret.add(input)
             else:
                 ret.update(res)
@@ -124,11 +159,14 @@ def find_cliques(env, through_broadcast = False):
             return
         clique_inputs = seek_from(r)
         if clique_inputs is None:
+            # Not in a clique, keep going
             op = r.owner
             if op is not None:
                 for input in op.inputs:
                     find_cliques_helper(input)
         else:
+            # We found a clique, add it to the list and
+            # jump to the leaves.
             cliques.append((clique_inputs, [r]))
             for input in clique_inputs:
                 find_cliques_helper(input)
@@ -142,6 +180,24 @@ def find_cliques(env, through_broadcast = False):
 
 
 class CliqueOptimizer(opt.Optimizer):
+    """
+    Usage: CliqueOptimizer(through_broadcast = False,
+                           scalar_optimizer = None,
+                           make_composite = False).optimize(env)
+
+    Finds cliques of Broadcast operations in the env and does either
+    or both of two things:
+    
+    * Apply scalar_optimizer on the clique as if the clique was a
+      group of scalar operations. scalar_optimizer can be any optimization
+      which applies on scalars. If it is None, no optimization is done.
+    * Replace the clique with a single Op, optimized to perform the
+      computations properly. If make_composite is False, no such replacement
+      is done.
+
+    Note: it is recommended to run the lift_dimshuffle optimization before
+    this one.
+    """
 
     def __init__(self, through_broadcast = False, scalar_optimizer = None, make_composite = False):
         self.through_broadcast = through_broadcast
@@ -152,20 +208,25 @@ class CliqueOptimizer(opt.Optimizer):
         if self.scalar_optimizer is None and not self.make_composite:
             # there's nothing to do with the cliques...
             return
+        
         cliques = find_cliques(env, self.through_broadcast)
         opt = self.scalar_optimizer
 
         def build_scalar_clique(r, env, equiv):
+            # Maps a clique of Broadcast Ops to a clique of Scalar Ops with the same
+            # structure and equivalent operations. equiv contains the mapping.
             if r in equiv:
                 return equiv[r]
             op = r.owner
             if r in env.inputs or r in env.orphans():
+                # For each leave we make a Scalar of the corresponding dtype
                 s = scalar.Scalar(dtype = r.dtype)
                 _r = r
                 if isinstance(r.owner, DimShuffle) and all(x == 'x' for x in r.owner.new_order):
                     _r = r.owner.inputs[0]
                 if (getattr(r, 'constant', False) or getattr(_r, 'constant', False)) \
                        and _r.broadcastable == ():
+                    # If we have a constant tensor we map it to a constant scalar.
                     s.data = _r.data
                     s.constant = True
                 equiv[r] = s
@@ -184,15 +245,18 @@ class CliqueOptimizer(opt.Optimizer):
             s_g = Env([equiv[r] for r in g.inputs],
                       [equiv[r] for r in g.outputs])
             if opt is not None:
-                equiv2 = dict()
+                equiv2 = dict() # reverse mapping, from Scalar Op to Tensor Op
                 for k, v in equiv.items():
                     equiv2[v] = k
                 def transform(op, equiv):
+                    # We get a scalar op and we return an equivalent op on tensors.
                     return Broadcast(op.__class__, [equiv[input] for input in op.inputs])
-                s_g.add_feature(sync_to(env, equiv2, transform))
+                s_g.add_feature(sync_to(env, equiv2, transform)) # Any change to s_g will now be transferred to g
                 opt.optimize(s_g)
             if self.make_composite:
                 def follow_inplace(r):
+                    # Tries to find the earliest r2 in g such that r destroys r2
+                    # If no such r2 is found, returns None
                     op = r.owner
                     if op is None or r in g.inputs or r in g.orphans():
                         return None
@@ -211,6 +275,8 @@ class CliqueOptimizer(opt.Optimizer):
                 for i, output in enumerate(g.outputs):
                     destroyed = follow_inplace(output)
                     if destroyed is not None and destroyed in g.inputs:
+                        # we transfer the inplace operation only if it is
+                        # an input that is destroyed
                         inplace_pattern[i] = g.inputs.index(destroyed)
                 C = scalar.composite(s_g.inputs, s_g.outputs)
                 ec = Broadcast(C, g.inputs, inplace_pattern = inplace_pattern)
@@ -218,6 +284,17 @@ class CliqueOptimizer(opt.Optimizer):
 
 
 def sync_to(target, equiv, transform):
+    """
+    Usage: sync_to(target, equiv, transform)
+    * target: an Env
+    * equiv: a dictionary that maps results and ops to results and ops
+             in target
+    * transform: a function that takes (op, equiv) as inputs and
+                 returns a new op.
+    
+    Returns a Feature that can be added to an Env and mirrors all
+    modifications to that env with modifications to the target env.
+    """
 
     class Synchronize(gof.Listener, gof.Constraint):
 
@@ -259,44 +336,3 @@ def sync_to(target, equiv, transform):
 
     return Synchronize
 
-
-
-
-
-
-
-
-
-
-
-"""
-This variable is used in compile.prog as the optimizer for all programs built
-using either compile.single, compile.to_func, and compile.prog.
-
-Old code::
-	if 0:
-	    def optimizer(lst):
-	        begin = gof.SeqOptimizer([])
-	        end   = gof.SeqOptimizer([gof.DummyRemover])
-	        seq_opt = gof.SeqOptimizer(begin + lst + end)
-	        return gof.PythonOpt(gof.MergeOptMerge(seq_opt))
-	
-	if 0:
-	    optimizer_begin = gof.SeqOptimizer([opt for name, opt in [
-	             ['double_transpose_eliminator', pattern_opt((transpose, (transpose, 'x')), 'x')],
-	
-	             ['addxx_to_twice',              pattern_opt((add_elemwise, 'x', 'x'), (twice, 'x'))],
-	
-	             ['twice_to_itwice',             op_sub(twice, itwice)],
-	
-	             ['mulxx_to_sqr',                pattern_opt((mul_elemwise, 'x', 'x'), (sqr, 'x'))],
-	
-	             ['sqr_to_isqr',                 op_sub(sqr, isqr)],
-	
-	             ['add_to_iadd',                 op_sub(add_elemwise, iadd_elemwise)],
-	
-	             ['add_to_iadd_reverse',         pattern_opt((add_elemwise, 'x', 'y'),
-	                 (iadd_elemwise, 'y', 'x'))]]])
-	#         ['remove_copies',               gof.OpRemover(array_copy)],
-	#         [None,                          gof.DummyRemover] # has to be at the end
-"""

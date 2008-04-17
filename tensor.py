@@ -80,17 +80,14 @@ def astensor(data, broadcastable=None, name=None):
     if isinstance(data, BaseTensor):
         if broadcastable is not None and list(data.broadcastable) != list(broadcastable):
             raise TypeError("The data to wrap as a Tensor has the wrong broadcastable pattern. Expected %s, got %s." % (broadcastable, data.broadcastable))
-        if isinstance(data, Tensor) and (name is None or name == data.name):
-            return data
-        else:
-            t = Tensor(data.dtype, data.broadcastable, name = name)
-            t.data = data
-            return t
+        if name is not None and name != data.name:
+            raise ValueError("Cannot rename an existing Tensor.")
+        return data
     elif isinstance(data, Result):
-        data = data.data
+        raise TypeError("Cannot make a Tensor out of a non-Tensor result.")
         
     if data is None and broadcastable is None:
-        raise TypeError("Cannot make a Tensor out of None or a Result with no data.")
+        raise TypeError("Cannot make a Tensor out of None.")
     
     data = numpy.asarray(data)
     if broadcastable is None:
@@ -106,38 +103,6 @@ s2t.astensor = astensor
 ############################
 # Supporting Ops
 ############################
-
-def _scalar_switch(normal_f, scalar_f, scalar_f_reverse = None):
-    """a decorator for operators before broadcasting works properly"""
-    def f(x, y):
-        def as_tensor(obj):
-            if isinstance(obj, Tensor):
-                return obj
-            else:
-                return astensor(obj)
-        x, y = as_tensor(x), as_tensor(y)
-        if 0 not in y.broadcastable:
-            return scalar_f(x, y)
-        if 0 not in x.broadcastable:
-            if scalar_f_reverse:
-                return scalar_f_reverse(y, x)
-            else:
-                raise TypeError("You cannot do this operation on a scalar.")
-        return normal_f(x, y)
-    return f
-
-def _assert_same_shapes(x, *rest):
-    """Ensure that all inputs to the function impl have the same size (foils numpy's broadcasting)"""
-    shape = x.shape
-    for other in rest:
-        if other.shape != shape:
-            raise ValueError(_assert_same_shapes.E_shape, shape, other.shape)
-_assert_same_shapes.E_shape = "The dimensions of the inputs do not match."
-
-def _assert_tensor_scalar(x, a):
-    """ensure that the second input is a scalar"""
-    if numpy.product(a.shape) != 1:
-        raise ValueError("The second argument must be a scalar.")
 
 # this has a different name, because _as_tensor is the function which ops use
 # to upcast their arguments... this internal-use function is a good place to put debugging stuff, better than the global astensor.
@@ -450,8 +415,6 @@ class Gemm(_Op):
         return ['<iostream>']
     def c_libraries(self):
         return blas.ldflags()
-    #def c_var_names(self):
-    #    return [['_z', '_a', '_x', '_y', '_b'], ['_zout']]
     def c_validate_update(self, *args):
         return ""
     def c_validate_update_cleanup(self, *args):
@@ -612,125 +575,3 @@ class Gemm(_Op):
         """ % dict(locals(), **sub)
 gemm = gof.op.constructor(Gemm)
 
-
-if 0:
-    ##########################
-    # Comparisons 
-    ##########################
-
-    # Less-than
-    class lt_elemwise(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-    class lt_scalar_r(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-    # Less-than or equal
-    class le_elemwise(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-    class le_scalar_r(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-    # Greater-than or equal
-    class gt_elemwise(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-    class gt_scalar_r(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-    # Greater-than or equal
-    class ge_elemwise(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-    class ge_scalar_r(_Elemwise):
-        def __init__(self, *args):
-            raise NotImplementedError()
-
-
-
-
-if 0:
-    def _broadcastable_pattern(pattern):
-        def factory(data = None, name = None, dtype=None):
-            if data: 
-                assert len(data.shape) == len(pattern)
-                if dtype is not None:
-                    assert dtype is data.dtype
-                dtype = data.dtype
-                rval = Tensor(dtype, pattern, name)
-                rval.data = data
-            else:
-                rval = Tensor(dtype, pattern, name)
-            return  rval
-        return factory
-
-    row = _broadcastable_pattern([1, 0])
-    col = _broadcastable_pattern([0, 1])
-    matrix = _broadcastable_pattern([0, 0])
-
-if 0: #old __init__ code
-    """Create a Tensor
-
-    If data is given:
-        - constant defaults to True
-        - if dtype is given, it must match data.dtype
-            - otherwise: default is data.dtype
-        - if broadcastable is given, len(broadcastable) must match len(data.shape)
-            - otherwise: if it is constant, it defaults to 1 where shape[i]==1
-            - if it is not constant, it defaults to 0s
-
-    If data is not given:
-        - constant defaults to False
-    """
-    if dtype is None or broadcastable is None:
-        if data is None:
-            raise TypeError("Provide non-None data to complete the dtype and broadcastable flags.")
-        data = numpy.asarray(data)
-        if constant is None:
-            constant = True
-        dtype = data.dtype
-        if constant:
-            broadcastable = [1*(x == 1) for x in data.shape]
-        else:
-            broadcastable = [0] * len(data.shape)
-
-if 0:
-    def tensor__new__(cls, *args, **kwargs):
-        """__new__ is overloaded to handle the special form Tensor(x) when x is
-        a Tensor or an Op whose default output is a Tensor.  In these cases, the
-        argument x is returned, and a new Tensor is not created.
-        """
-        if len(args) == 1:
-            a = args[0]
-
-        t = super(Tensor, cls).__new__(cls, *args, **kwargs)
-        t.__init__(*args, **kwargs)
-        return t
-
-
-#         def upcast(dtype, *dtypes):
-#             z = numpy.zeros((), dtype = dtype)
-#             for dtype in dtypes:
-#                 z = z + numpy.zeros((), dtype = dtype)
-#             return str(z.dtype)
-#         for dtype in i_dtypes:
-#             if dtype is None:
-#                 raise TypeError("Expected a Tensor.")
-#         upcasted = upcast(*i_dtypes)
-#         return [upcasted] * self.nout
-# #         try:
-# #             dmap = self.destroy_map()
-# #         except AttributeError:
-# #             dmap = {}
-# #         rval = []
-# #         for i in xrange(self.nout):
-# #             if i in dmap:
-# #                 destroyed = dmap[output]
-# #                 if len(destroyed) != 1:
-# #                     raise TypeError("Cannot infer dtype of output %s because it destroys more than one input." % output)
-# #                 rval.append(destroyed[0])
-# #             else:
-# #                 rval.append(upcasted)
-# #         return rval
-    

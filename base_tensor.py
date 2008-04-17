@@ -58,7 +58,7 @@ class BaseTensor(Result):
     # filter
     #
     def filter(self, arr):
-        """cast to an L{numpy.ndarray} and ensure arr has correct rank, shape"""
+        """Cast to an L{numpy.ndarray} and ensure arr has correct rank and shape."""
         if not (isinstance(arr, numpy.ndarray) \
                 and arr.dtype==self.dtype):
             arr = numpy.asarray(arr, dtype = self.dtype)
@@ -102,6 +102,9 @@ class BaseTensor(Result):
     # Description for constant folding
     #
     def desc(self):
+        """
+        Returns a hashable description of this BaseTensor.
+        """
         if self.data is not None:
             return (BaseTensor, self.dtype, self.broadcastable, self.data.data[:])
         else:
@@ -210,6 +213,7 @@ class BaseTensor(Result):
         };
         """
         return template % dict(nbits = 64, half_nbits = 32) + template % dict(nbits = 128, half_nbits = 64)
+        # todo: use C templating
 
 
     ############################
