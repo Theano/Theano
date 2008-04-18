@@ -402,7 +402,7 @@ def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
     scalar_name = scalar_opclass.__name__
     previous_doc = Broadcast.__doc__
 
-    scalar_doc = scalar_opclass.__doc__
+    scalar_doc = scalar_opclass.__doc__ or ""
     if scalar_doc:
         scalar_doc = """
     %(scalar_name)s documentation:
@@ -411,7 +411,7 @@ def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
 
     doc = """
     Usage: %(name)s(*inputs)
-    Equivalent to: Broadcast(%(scalar_name)s, inputs, %(inplace_pattern)s)
+    Equivalent to: Broadcast(scalar.%(scalar_name)s, inputs, %(inplace_pattern)s)
 
     Performs Scalar %(scalar_name)s on each element of the
     input tensors.
@@ -460,15 +460,16 @@ def wrap_broadcast(op):
 
 class CAReduce(Op):
     """
-    Usage: CAReduce(scalar_opclass, inputs, dimensions_to_reduce = None)
+    Usage: CAReduce(scalar_opclass, inputs, axis = None)
 
     * scalar_opclass: a binary scalar op with only one output.
                       It will be instantiated as such:
                       scalar_opclass.__init__([Scalar(t.dtype) for t in inputs])
                       It must be commutative and associative.
     * inputs: list of Tensor instances
-    * dimensions_to_reduce: list of dimensions that we want to reduce
-                            if None, all dimensions are reduced
+    * axis: - the dimension along which we want to reduce
+            - list of dimensions that we want to reduce
+            - if None, all dimensions are reduced
 
     The output will have the same shape as the input minus the reduced
     dimensions. It will contain the result of accumulating all values
@@ -489,7 +490,7 @@ class CAReduce(Op):
     or/and/xor - but not subtract, divide or power).
     """
     
-    def __init__(self, scalar_opclass, inputs, dimensions_to_reduce = None):
+    def __init__(self, scalar_opclass, inputs, axis = None):
         inputs = map(astensor, inputs)
 
         self.shadow = scalar_opclass(*[Scalar(dtype = inputs[0].dtype) for i in xrange(len(inputs) + 1)])
@@ -498,32 +499,34 @@ class CAReduce(Op):
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
         if len(inputs) != 1:
             raise TypeError("Only one argument expected.")
-        if dimensions_to_reduce is None:
-            dimensions_to_reduce = range(len(inputs[0].broadcastable))
+        if axis is None:
+            axis = range(len(inputs[0].broadcastable))
+        elif isinstance(axis, int):
+            axis = [axis]
 
         self.inputs = inputs
         self.outputs = [Tensor(dtype = inputs[0].dtype,
-                               broadcastable = [x for i, x in enumerate(inputs[0].broadcastable) if i not in dimensions_to_reduce])]
+                               broadcastable = [x for i, x in enumerate(inputs[0].broadcastable) if i not in axis])]
 
-        self.dimensions_to_reduce = dimensions_to_reduce
+        self.axis = axis
         self.scalar_opclass = scalar_opclass
         self.ufunc = numpy.frompyfunc(self.shadow.impl, self.shadow.nin, self.shadow.nout)
 
     def desc(self):
-        return (self.__class__, self.scalar_opclass, tuple(self.dimensions_to_reduce))
+        return (self.__class__, self.scalar_opclass, tuple(self.axis))
         
     def strdesc(self):
-        if set(self.dimensions_to_reduce) != set(xrange(len(self.inputs[0].broadcastable))):
-            return "Reduce{%s}{%s}" % (self.scalar_opclass.__name__, "".join(str(x) for x in self.dimensions_to_reduce))
+        if set(self.axis) != set(xrange(len(self.inputs[0].broadcastable))):
+            return "Reduce{%s}{%s}" % (self.scalar_opclass.__name__, "".join(str(x) for x in self.axis))
         else:
             return "Reduce{%s}" % self.scalar_opclass.__name__
         
     def clone_with_new_inputs(self, *new_inputs):
-        return CAReduce(self.scalar_opclass, new_inputs, self.dimensions_to_reduce)
+        return CAReduce(self.scalar_opclass, new_inputs, self.axis)
         
     def perform(self):
         result = self.inputs[0].data
-        to_reduce = reversed(sorted(self.dimensions_to_reduce))
+        to_reduce = reversed(sorted(self.axis))
         if to_reduce:
             for dimension in to_reduce:
                 result = self.ufunc.reduce(result, dimension)
@@ -542,7 +545,7 @@ class CAReduce(Op):
         idtype = input.dtype_specs()[1]
         odtype = output.dtype_specs()[1]
 
-        tosum = self.dimensions_to_reduce
+        tosum = self.axis
 
         if tosum == ():
             return Broadcast(scalar.Identity, (input, ))._c_all(inames, onames, sub)
@@ -604,7 +607,7 @@ class CAReduce(Op):
 
     def __str__(self):
         input = self.inputs[0]
-        if len(input.broadcastable) == len(self.dimensions_to_reduce):
+        if len(input.broadcastable) == len(self.axis):
             return "%s:%s(%s)" % (self.__class__.__name__,
                                   self.scalar_opclass.__name__,
                                   str(input))
@@ -612,7 +615,7 @@ class CAReduce(Op):
             return "%s:%s(%s, axis = %s)" % (self.__class__.__name__,
                                              self.scalar_opclass.__name__,
                                              str(input),
-                                             self.dimensions_to_reduce)
+                                             self.axis)
         
         
 
@@ -645,16 +648,16 @@ def make_reduce(scalar_opclass, name = None):
         def __init__(self, *inputs, **kwargs):
             reducer.__init__(self, scalar_opclass, inputs, kwargs.get('axis', None))
         def clone_with_new_inputs(self, *new_inputs):
-            return New(*new_inputs, **dict(axis = self.dimensions_to_reduce))
+            return New(*new_inputs, **dict(axis = self.axis))
         def __str__(self):
             input = self.inputs[0]
-            if len(input.broadcastable) == len(self.dimensions_to_reduce):
+            if len(input.broadcastable) == len(self.axis):
                 return "%s(%s)" % (self.__class__.__name__,
                                    str(input))
             else:
                 return "%s(%s, axis = %s)" % (self.__class__.__name__,
                                               str(input),
-                                              self.dimensions_to_reduce)
+                                              self.axis)
     New.__name__ = name
     return New
 
@@ -662,12 +665,12 @@ _Sum = make_reduce(scalar.Add, '_Sum')
 class Sum(_Sum):
     __doc__ = _Sum.__doc__
     def grad(self, (x, ), (gz, )):
-        if self.dimensions_to_reduce == ():
+        if self.axis == ():
             return gz,
         new_dims = []
         i = 0
         for j, _ in enumerate(x.broadcastable):
-            if j in self.dimensions_to_reduce:
+            if j in self.axis:
                 new_dims.append('x')
             else:
                 new_dims.append(i)
@@ -681,7 +684,7 @@ def reduce(op):
     else:
         raise NotImplementedError("The scalar op class to reduce must be commutative and associative.")
     def instantiate(*inputs):
-        return reducer(op, inputs, dimensions_to_reduce)
+        return reducer(op, inputs, axis)
     return instantiate
 
 

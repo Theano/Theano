@@ -421,7 +421,7 @@ class CLinker(Linker):
                 # orphans are not inputs so we'll just get fetch them when we initialize the struct and assume they stay the same
                 policy = [[get_c_declare, get_c_extract, get_c_cleanup],
                           [get_nothing, get_nothing, get_nothing]]
-            elif result in self.temps or not reuse_storage:
+            elif result in self.temps:
                 # temps don't need to be extracted from Python, so we call c_init rather than c_extract
                 # they do not need to be relayed to Python, so we don't sync
                 if result.c_is_simple() or not reuse_storage:
@@ -441,6 +441,8 @@ class CLinker(Linker):
                     # it is useful for complex outputs to reuse storage at each run, so we only clean up in the destructor
                     policy = [[get_c_declare, get_c_init, get_c_cleanup],
                               [get_nothing, get_nothing, get_c_sync]]
+            else:
+                raise Exception("what the fuck")
 
             builder, block = struct_result_codeblocks(result, policy, id, symbol, sub)
 

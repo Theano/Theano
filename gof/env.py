@@ -155,12 +155,6 @@ class Env(graph.Graph):
         """
         if feature_class in self._features:
             return # the feature is already present
-        else:
-            for other_feature_class in self._features:
-                if issubclass(other_feature_class, feature_class):
-                    return
-                elif issubclass(feature_class, other_feature_class):
-                    self.__del_feature__(other_feature_class)
         self.__add_feature__(feature_class, do_import)
 
     def __add_feature__(self, feature_class, do_import):
@@ -193,14 +187,7 @@ class Env(graph.Graph):
                 pass
 
     def get_feature(self, feature_class):
-        try:
-            return self._features[feature_class]
-        except KeyError:
-            for other_feature_class in self._features:
-                if issubclass(other_feature_class, feature_class):
-                    return self._features[other_feature_class]
-            else:
-                raise
+        return self._features[feature_class]
 
     def has_feature(self, feature_class):
         try:
@@ -213,6 +200,18 @@ class Env(graph.Graph):
         "Same as len(self.clients(r))."
         return len(self.clients(r))
 
+    def edge(self, r):
+        return r in self.inputs or r in self.orphans()
+
+    def follow(self, r):
+        op = r.owner
+        if self.edge(r):
+            return None
+        else:
+            if op is None:
+                raise Exception("what the fuck")
+            return op.inputs
+    
     def ops(self):
         "All ops within the subgraph bound by env.inputs and env.outputs."
         return self._ops

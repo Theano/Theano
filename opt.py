@@ -67,11 +67,9 @@ class DimShuffleLifter(opt.Optimizer):
             if r in seen:
                 return
             seen.add(r)
-            op = r.owner
-            if op is None \
-                    or op in env.inputs \
-                    or op in env.orphans():
+            if env.edge(r):
                 return
+            op = r.owner
             if isinstance(op, DimShuffle):
                 in_op = op.inputs[0].owner
                 if isinstance(in_op, DimShuffle):
@@ -121,9 +119,7 @@ def find_cliques(env, through_broadcast = False):
         # is False) a Result which needs to be broadcasted.
         
         op = r.owner
-        if r in env.inputs \
-                or r in env.orphans() \
-                or op is None \
+        if env.edge(r) \
                 or not isinstance(op, Broadcast) \
                 or len(op.outputs) > 1:
             # todo: handle multiple-output broadcast ops
@@ -155,7 +151,7 @@ def find_cliques(env, through_broadcast = False):
     cliques = []
 
     def find_cliques_helper(r):
-        if r in env.inputs or r in env.orphans():
+        if env.edge(r):
             return
         clique_inputs = seek_from(r)
         if clique_inputs is None:
@@ -218,7 +214,7 @@ class CliqueOptimizer(opt.Optimizer):
             if r in equiv:
                 return equiv[r]
             op = r.owner
-            if r in env.inputs or r in env.orphans():
+            if env.edge(r):
                 # For each leave we make a Scalar of the corresponding dtype
                 s = scalar.Scalar(dtype = r.dtype)
                 _r = r
