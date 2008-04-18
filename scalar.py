@@ -246,6 +246,8 @@ class FloatUnaryScalarOp(UnaryScalarOp):
 
 class Add(ScalarOp):
     identity = 0
+    commutative = True
+    associative = True
     def impl(self, *inputs):
         return sum(inputs)
     def c_code(self, inputs, (z, ), sub):
@@ -258,6 +260,8 @@ class Add(ScalarOp):
 
 class Mul(ScalarOp):
     identity = 1
+    commutative = True
+    associative = True
     def impl(self, *inputs):
         return numpy.product(inputs)
     def c_code(self, inputs, (z, ), sub):
@@ -424,27 +428,37 @@ class Tan(FloatUnaryScalarOp):
     def impl(self, x):
         return math.tan(x)
     def grad(self, (x, ), (gz, )):
-        raise NotImplementedError()
+        return gz / (cos(x) ** 2),
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = tan(%(x)s);" % locals()
 
 class Cosh(FloatUnaryScalarOp):
+    """
+    sinh(x) = (exp(x) + exp(-x)) / 2
+    """
     def impl(self, x):
         return math.cosh(x)
     def grad(self, (x, ), (gz, )):
-        raise NotImplementedError()
+        return gz * sinh(x),
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = cosh(%(x)s);" % locals()
 
 class Sinh(FloatUnaryScalarOp):
+    """
+    sinh(x) = (exp(x) - exp(-x)) / 2
+    """
     def impl(self, x):
         return math.sinh(x)
     def grad(self, (x, ), (gz, )):
-        raise NotImplementedError()
+        return gz * cosh(x),
     def c_code(self, (x, ), (z, ), sub):
         return "%(z)s = sinh(%(x)s);" % locals()
 
 class Tanh(FloatUnaryScalarOp):
+    """
+    tanh(x) = sinh(x) / cosh(x)
+            = (exp(2*x) - 1) / (exp(2*x) + 1)
+    """
     def impl(self, x):
         return math.tanh(x)
     def grad(self, (x, ), (gz, )):

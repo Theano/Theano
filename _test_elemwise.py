@@ -7,6 +7,7 @@ import gof
 
 from scalar import *
 
+import tensor
 from elemwise import *
 
 
@@ -38,13 +39,6 @@ class _test_DimShuffle(unittest.TestCase):
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker)
-
-
-#     def test_straightforward(self):
-#         x, y, z = inputs()
-#         e0 = DimShuffle(x, [1, 'x', 0]).out
-#         f = gof.PerformLinker(env([x], [e0])).make_function(inplace=True)
-#         assert f(numpy.ones((2, 3))).shape == (3, 1, 2)
 
 
 class _test_Broadcast(unittest.TestCase):
@@ -164,27 +158,42 @@ class _test_CAReduce(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-#     x = modes.build(Tensor('int32', [0, 0], name = 'x'))
-#     y = modes.build(Tensor('int32', [0, 0], name = 'y'))
-# #     x = modes.build(Tensor('float64', [0, 0], name = 'x'))
-# #     y = modes.build(Tensor('float64', [0, 0], name = 'y'))
-#     e = Broadcast(Pow, (x, y)).out
+    
+# #     x = modes.build(Tensor('int32', [0, 0], name = 'x'))
+# #     y = modes.build(Tensor('int32', [0, 0], name = 'y'))
+#     from scalar import Scalar, composite
+#     x = modes.build(Tensor('float64', [0, 0], name = 'x'))
+#     y = modes.build(Tensor('float64', [0, 0], name = 'y'))
+#     xs, ys = Scalar('float64'), Scalar('float64')
+#     e = Broadcast(composite([xs, ys], [(xs * ys) + (xs / ys) * 7.0]), (x, y)).out
 #     f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
-# #     xv = numpy.random.rand(1000, 1000)
-# #     yv = numpy.random.rand(1000, 1000)
-# #     zv = numpy.random.rand(1000, 1000)
-#     xv = numpy.random.randint(1, 5, (1000, 1000))
-#     yv = numpy.random.randint(1, 5, (1000, 1000))
-#     add = numpy.frompyfunc(lambda x, y: x + y, 2, 1)
+#     size = 2000
+#     xv = numpy.random.rand(size, size)
+#     yv = numpy.random.rand(size, size)
+#     zv = numpy.random.rand(size, size)
+# #     xv = numpy.random.randint(1, 5, (1000, 1000))
+# #     yv = numpy.random.randint(1, 5, (1000, 1000))
 
 # #     t0 = time.time()
 # #     for i in xrange(100):
 # #         xv / yv
 # #     print time.time() - t0
 
+# #     t0 = time.time()
+# #     for i in xrange(10):
+# #         f(xv, yv)
+# #     print time.time() - t0
+
+# #     t0 = time.time()
+# #     for i in xrange(10):
+# #         (xv * yv) + (xv / yv) * 7.0
+# #     print time.time() - t0
+
+#     from scipy import weave
+#     import numpy
 #     t0 = time.time()
-#     for i in xrange(100):
-#         f(xv, yv)
+#     for i in xrange(10):
+#         weave.blitz("zv = dot(xv, yv)", locals())
 #     print time.time() - t0
 
     # speed ratios:

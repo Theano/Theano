@@ -281,18 +281,18 @@ PowTester = make_broadcast_tester(op_class = Pow,
                                               row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
                                               column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))))
                                   )
-PowTester = make_broadcast_tester(op_class = PowInplace,
-                                  expected = lambda x, y: x ** y,
-                                  good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                              scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                              row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                              column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
-                                              dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3)))),
-                                  grad = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                              scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                              row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                              column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1)))),
-                                  inplace = True)
+PowInplaceTester = make_broadcast_tester(op_class = PowInplace,
+                                         expected = lambda x, y: x ** y,
+                                         good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
+                                                     scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
+                                                     row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
+                                                     column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
+                                                     dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3)))),
+                                         grad = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
+                                                     scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
+                                                     row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
+                                                     column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1)))),
+                                         inplace = True)
 
 
 
@@ -417,28 +417,36 @@ CosInplaceTester = make_broadcast_tester(op_class = CosInplace,
 TanTester = make_broadcast_tester(op_class = Tan,
                                   expected = numpy.tan,
                                   good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
+                                              shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
+                                  grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)))
-TanInplaceTester = make_broadcast_tester(op_class = CosInplace,
-                                         expected = numpy.cos,
+TanInplaceTester = make_broadcast_tester(op_class = TanInplace,
+                                         expected = numpy.tan,
                                          good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
+                                                     shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
+                                         grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                                      shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
                                          inplace = True)
 
 
 CoshTester = make_broadcast_tester(op_class = Cosh,
                                    expected = numpy.cosh,
-                                   good = _good_broadcast_unary_normal)
+                                   good = _good_broadcast_unary_normal,
+                                   grad = _grad_broadcast_unary_normal)
 CoshInplaceTester = make_broadcast_tester(op_class = CoshInplace,
                                           expected = numpy.cosh,
                                           good = _good_broadcast_unary_normal,
+                                          grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
 SinhTester = make_broadcast_tester(op_class = Sinh,
                                    expected = numpy.sinh,
-                                   good = _good_broadcast_unary_normal)
+                                   good = _good_broadcast_unary_normal,
+                                   grad = _grad_broadcast_unary_normal)
 SinhInplaceTester = make_broadcast_tester(op_class = SinhInplace,
                                           expected = numpy.sinh,
                                           good = _good_broadcast_unary_normal,
+                                          grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
 TanhTester = make_broadcast_tester(op_class = Tanh,

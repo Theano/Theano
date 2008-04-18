@@ -218,15 +218,14 @@ TensorCopy, tensor_copy = broadcast(scal.Identity, 'TensorCopy', False)
 # View Operations
 ##########################
 
-class TransposeInplace(_Op, Viewer):
-    def view_map(self):
-        return {self.out: [self.inputs[0]]}
-    def propagate_broadcastable(self, x):
-        rval = list(x)
-        rval.reverse()
-        return [rval]
-    def impl(self, x):
-        return x.T #numpy's transpose
+class TransposeInplace(s2t.DimShuffle):
+
+    def __init__(self, input):
+        s2t.DimShuffle.__init__(self, input, range(len(input.broadcastable)-1, -1, -1), True)
+    
+    def perform(self):
+        self.outputs[0].data = self.inputs[0].data.T
+    
     def grad(self, (x,), (gz,)):
         return transpose(gz),
     
@@ -238,6 +237,7 @@ class TransposeInplace(_Op, Viewer):
         }
         %(z)s = transposed;
         """ % locals()
+
 transpose_inplace = gof.op.constructor(TransposeInplace)
 def transpose(x, **kwargs):
     return transpose_inplace(tensor_copy(x), **kwargs)

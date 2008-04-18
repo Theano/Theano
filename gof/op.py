@@ -16,7 +16,7 @@ __all__ = ['Op',
            ]
 
 
-def constructor(op_cls):
+def constructor(op_cls, name = None):
     """Make an Op look like a L{Result}-valued function."""
     def f(*args, **kwargs):
         op = op_cls(*args, **kwargs)
@@ -24,6 +24,17 @@ def constructor(op_cls):
             return op.outputs
         else:
             return op.outputs[0]
+    opname = op_cls.__name__
+    if name is None:
+        name = "constructor{%s}" % opname
+    f.__name__ = name
+    doc = op_cls.__doc__
+    f.__doc__ = """
+
+    Constructor for %(opname)s:
+
+    %(doc)s
+    """ % locals()
     return f
 
 class Op(object):
