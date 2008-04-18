@@ -17,7 +17,9 @@ __all__ = ['Op',
 
 
 def constructor(op_cls, name = None):
-    """Make an Op look like a L{Result}-valued function."""
+    """
+    Make an L{Op} look like a L{Result}-valued function.
+    """
     def f(*args, **kwargs):
         op = op_cls(*args, **kwargs)
         if len(op.outputs) > 1:

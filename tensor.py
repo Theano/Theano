@@ -232,6 +232,7 @@ class Tensor(Result):
 
     dtype = property(lambda self: self._dtype, doc = "read-only access to _dtype, which should not be changed")
     broadcastable = property(lambda self: self._broadcastable, doc = "read-only access to _broadcastable, which should not be changed")
+    ndim = property(lambda self: len(self.broadcastable), doc = "read-only access to the number of dimensions")
 
     ############################
     # Cloning facilities
