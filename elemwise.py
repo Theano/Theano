@@ -402,7 +402,7 @@ def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
     scalar_name = scalar_opclass.__name__
     previous_doc = Broadcast.__doc__
 
-    scalar_doc = scalar_opclass.__doc__
+    scalar_doc = scalar_opclass.__doc__ or ""
     if scalar_doc:
         scalar_doc = """
     %(scalar_name)s documentation:
@@ -411,7 +411,7 @@ def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
 
     doc = """
     Usage: %(name)s(*inputs)
-    Equivalent to: Broadcast(%(scalar_name)s, inputs, %(inplace_pattern)s)
+    Equivalent to: Broadcast(scalar.%(scalar_name)s, inputs, %(inplace_pattern)s)
 
     Performs Scalar %(scalar_name)s on each element of the
     input tensors.

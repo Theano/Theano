@@ -71,17 +71,22 @@ class Canonizer(gof.Optimizer):
 
         def canonize(r):
             
-            if r in env.inputs or r in env.orphans():
+#             if r in env.inputs or r in env.orphans():
+#                 return
+            next = env.follow(r)
+            if next is None:
                 return
             
             def flatten(r, nclients_check = True):
                 # Collapses a tree of main/inverse/reciprocal Ops (aka Mul/Div/Inv or Add/Sub/Neg)
                 # into a list of numerators and a list of denominators
                 # e.g. (x*(1/y))*(x/(z/a)) aka Mul(Mul(x, (Inv, y)), Div(x, Div(z, a))) -> [x, x, a], [z, y]
-                
-                op = r.owner
-                if op is None or r in env.inputs or r in env.orphans():
+
+                if env.edge(r):
                     return [r], []
+                op = r.owner
+#                 if op is None or r in env.inputs or r in env.orphans():
+#                     return [r], []
                 
                 results = [r2.dtype == r.dtype and flatten(r2) or ([r2], []) for r2 in op.inputs]
                 if isinstance(op, self.main) and (not nclients_check or env.nclients(r) == 1):
@@ -103,12 +108,15 @@ class Canonizer(gof.Optimizer):
             num, denum = flatten(r, False)
 
             if (num, denum) == ([r], []):
-                if r.owner is None:
-                    return
-                else:
-                    for input in r.owner.inputs:
-                        canonize(input)
-                    return
+                for input in (env.follow(r) or []):
+                    canonize(input)
+                return
+#                 if r.owner is None:
+#                     return
+#                 else:
+#                     for input in r.owner.inputs:
+#                         canonize(input)
+#                     return
 
             # Terms that are both in the num and denum lists cancel each other
             for d in list(denum):
@@ -194,7 +202,7 @@ def group_powers(env, num, denum):
         # and does d[base].append(power).
         for factor in list(seq):
             op = factor.owner
-            if op is None or factor in env.inputs or factor in env.orphans():
+            if env.edge(factor):
                 continue
             if isinstance(op, Exp):
                 d.setdefault('e', []).append(op.inputs[0])
