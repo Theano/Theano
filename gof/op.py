@@ -204,14 +204,6 @@ class Op(object):
     # C code generators
     #
 
-#     def c_var_names(self):
-#         """
-#         Returns ([list of input names], [list of output names]) for
-#         use as C variables.
-#         """
-#         return [["i%i" % i for i in xrange(len(self.inputs))],
-#                 ["o%i" % i for i in xrange(len(self.outputs))]]
-
     def c_validate_update(self, inputs, outputs, sub):
         """
         Returns templated C code that checks that the inputs to this
@@ -220,32 +212,52 @@ class Op(object):
         
         You may use the variable names defined by c_var_names() in
         the template.
+
+        Note: deprecated!!
+        @todo: Merge this with c_code.
         """
         raise AbstractFunctionError()
 
     def c_validate_update_cleanup(self, inputs, outputs, sub):
         """
         Clean up things allocated by L{c_validate}().
+
+        Note: deprecated!! 
+        @todo: Merge this with c_code.
         """
         raise AbstractFunctionError()
         raise AbstractFunctionError('%s.c_validate_update_cleanup ' \
                 % self.__class__.__name__)
 
     def c_code(self, inputs, outputs, sub):
-        """
+        """Return the C implementation of an Op.
+
         Returns templated C code that does the computation associated
         to this L{Op}. You may assume that input validation and output
         allocation have already been done.
         
-        You may use the variable names defined by L{c_var_names}() in
-        the templates.
+        @param inputs: list of strings.  There is a string for each input
+                       of the function, and the string is the name of a C
+                       L{PyObject}* variable pointing to that input.
+
+        @param outputs: list of strings.  Each string is the name of a
+                        L{PyObject}* pointer where the Op should store its
+                        results.  The L{CLinker} guarantees that on entry to
+                        this code block, each pointer is either NULL or is
+                        unchanged from the end of the previous execution.
+
+        @param sub: extra symbols defined in L{CLinker sub symbols} (such as
+                'fail').
+
         """
         raise AbstractFunctionError('%s.c_code' \
                 % self.__class__.__name__)
 
     def c_code_cleanup(self, inputs, outputs, sub):
-        """
-        Clean up things allocated by c_code().
+        """Code to be run after c_code, whether it failed or not.
+
+        This is a convenient place to clean up things allocated by c_code().  
+        
         """
         raise AbstractFunctionError()
 
