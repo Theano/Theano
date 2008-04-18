@@ -135,7 +135,7 @@ class _test_CAReduce(unittest.TestCase):
                            ((2, 3, 4, 5), (0, 1, 3)),
                            ((), ())]:
             x = modes.build(Tensor('float64', [1 * (entry == 1) for entry in xsh], name = 'x'))
-            e = CAReduce(Add, [x], dimensions_to_reduce = tosum).out
+            e = CAReduce(Add, [x], axis = tosum).out
             f = linker(env([x], [e])).make_function(inplace = False)
             xv = numpy.asarray(numpy.random.rand(*xsh))
             zv = xv
