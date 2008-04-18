@@ -27,27 +27,14 @@ def grad_sources_inputs(sources, graph_inputs):
     calling L{Op.grad}(...) when it is provided by an L{Op}, and at least one of the
     outputs of the L{Op} has an associated gradient.
 
-    The L{Op.grad}(...) functions may be called in several ways (for the
-    convenience of the L{Op} implementer) depending on the number of inputs and
-    outputs.  
-
-    If there is one input and one output::
+    The L{Op.grad}(...) functions are called as such:
         op.grad( op.inputs[0], grad(op.outputs[0]))
 
-    If there are several inputs and one output::
-        op.grad( op.inputs, grad(op.outputs[0]))
-
-    If there is one input and several outputs::
-        op.grad( op.inputs[0], [grad(o) for o in op.outputs[0]])
-
-    If there are multiple inputs and outputs::
-        op.grad( op.inputs, [grad(o) for o in op.outputs[0]])
-
     This function expects the L{Op.grad}(...) function to return the gradient
-    expression [results] associated with the inputs of the L{Op}.  If the L{Op} has a
-    single input, it should return a single result; if the L{Op} has multiple
-    inputs, it should return a list of results corresponding to the gradients in
-    the same order as the inputs.
+    expression [results] associated with the inputs of the L{Op}. The L{Op} should
+    return a list of results corresponding to the gradients in the same order
+    as the inputs. If it has a single output it should return a list or tuple
+    of length 1.
 
     For each input wrt to which an L{Op} is not differentiable, it should return
     None instead of a result instance.
@@ -78,9 +65,6 @@ def grad_sources_inputs(sources, graph_inputs):
 
         #if all output gradients are None, continue
         if all(map(lambda x:x is None, g_outputs)): continue
-
-#         output_arg = _unpack_result(g_outputs)
-#         input_arg = _unpack_result(op.inputs)
         
         output_arg = g_outputs
         input_arg = op.inputs
@@ -89,8 +73,6 @@ def grad_sources_inputs(sources, graph_inputs):
             dinputs = [x[0] for x in op.destroy_map().values()]
         except AttributeError:
             dinputs = []
-
-#        input_arg = [input in dinputs and input.copy() or input for input in input_arg]
 
         new_input_arg = []
         for input in input_arg:

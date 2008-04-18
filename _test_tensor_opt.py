@@ -2,7 +2,7 @@
 import unittest
 
 import gof
-from opt import *
+from tensor_opt import *
 import tensor
 from tensor import Tensor
 from gof import Env

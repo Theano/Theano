@@ -11,7 +11,7 @@ import numpy
 from scipy import sparse
 
 import gof.op, gof.result
-import tensor, base_tensor
+import tensor
 
 
 
@@ -20,19 +20,19 @@ import tensor, base_tensor
 def _is_sparse_result(x):
     """
     @rtype: boolean
-    @return: True iff x is a L{SparseResult} (and not a L{base_tensor.BaseTensor})
+    @return: True iff x is a L{SparseResult} (and not a L{tensor.Tensor})
     """
-    if not isinstance(x, SparseResult) and not isinstance(x, base_tensor.BaseTensor):
-        raise NotImplementedError("_is_sparse should only be called on sparse.SparseResult or base_tensor.BaseTensor, not,", x)
+    if not isinstance(x, SparseResult) and not isinstance(x, tensor.Tensor):
+        raise NotImplementedError("_is_sparse should only be called on sparse.SparseResult or tensor.Tensor, not,", x)
     return isinstance(x, SparseResult)
 def _is_dense_result(x):
     """
     @rtype: boolean
-    @return: True unless x is a L{SparseResult} (and not a L{base_tensor.BaseTensor})
+    @return: True unless x is a L{SparseResult} (and not a L{tensor.Tensor})
     """
-    if not isinstance(x, SparseResult) and not isinstance(x, base_tensor.BaseTensor):
-        raise NotImplementedError("_is_sparse should only be called on sparse.SparseResult or base_tensor.BaseTensor, not,", x)
-    return isinstance(x, base_tensor.BaseTensor)
+    if not isinstance(x, SparseResult) and not isinstance(x, tensor.Tensor):
+        raise NotImplementedError("_is_sparse should only be called on sparse.SparseResult or tensor.Tensor, not,", x)
+    return isinstance(x, tensor.Tensor)
 
 def _is_sparse(x):
     """

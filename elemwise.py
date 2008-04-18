@@ -3,7 +3,6 @@ import elemwise_cgen as cgen
 
 import numpy
 from gof import Op, Viewer, Destroyer
-#from base_tensor import BaseTensor as Tensor
 import scalar
 from scalar import upcast, Scalar
 import gof
