@@ -100,6 +100,14 @@ def grad_sources_inputs(sources, graph_inputs):
                 new_input_arg.append(input)
         input_arg = new_input_arg
         
+        #note that this function is not in a try-except block
+        # the rationale:
+        #  If the op implements grad, then any exception should be passed to the
+        #  caller
+        #  If the op doesn't implement grad, this entire function should fail.
+        #  Other possibilities:
+        #    * return a partial back-prop
+        #
         op_grad = op.grad(input_arg, output_arg)
         if not isinstance(op_grad, (list,tuple)):
             raise ValueError(_msg_retType, op.__class__)
