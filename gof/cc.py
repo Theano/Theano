@@ -356,7 +356,7 @@ class CLinker(Linker):
         try: self.op_order = env.toposort()
         except AttributeError: self.op_order = [env]
         
-    def code_gen(self, reuse_storage = True):
+    def code_gen(self, do_not_reuse = []): # reuse_storage = True):
         """
         Generates code for a struct that does the computation of the env and
         stores it in the struct_code field of the instance.
@@ -370,7 +370,7 @@ class CLinker(Linker):
         This method caches its computations.
         """
 
-        if getattr(self, 'struct_code', False) and self.reuse_storage == reuse_storage:
+        if getattr(self, 'struct_code', False) and self.do_not_reuse == do_not_reuse:
             return self.struct_code
 
         env = self.env
@@ -424,7 +424,7 @@ class CLinker(Linker):
             elif result in self.temps:
                 # temps don't need to be extracted from Python, so we call c_init rather than c_extract
                 # they do not need to be relayed to Python, so we don't sync
-                if result.c_is_simple() or not reuse_storage:
+                if result.c_is_simple() or result in do_not_reuse:
                     policy = [[get_nothing, get_nothing, get_nothing],
                               [get_c_declare, get_c_init, get_c_cleanup]]
                 else:
@@ -433,7 +433,7 @@ class CLinker(Linker):
                               [get_nothing, get_nothing, get_nothing]]
             elif result in self.outputs:
                 # outputs don't need to be extracted from Python, so we call c_init rather than c_extract
-                if result.c_is_simple() or not reuse_storage:
+                if result.c_is_simple() or result in do_not_reuse:
                     
                     policy = [[get_nothing, get_nothing, get_nothing],
                               [get_c_declare, get_c_init, (get_c_sync, get_c_cleanup)]]
@@ -513,7 +513,7 @@ class CLinker(Linker):
         struct_code %= dict(name = struct_name)
 
         self.struct_code = struct_code
-        self.reuse_storage = reuse_storage
+        self.do_not_reuse = do_not_reuse
         self.struct_name = struct_name
         self.hash = hash
         self.args = args
