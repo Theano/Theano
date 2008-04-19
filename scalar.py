@@ -3,7 +3,8 @@ import numpy
 import math
 
 from copy import copy
-import inspect
+
+from functools import partial
 
 import gof
 from gof import Result, GuardedOp, Env, utils
@@ -182,6 +183,28 @@ class Scalar(Result):
     def __rmul__(self,other): return mul(other,self)
     def __rdiv__(self,other): return div(other,self)
     def __rpow__(self,other): return pow(other,self)
+
+
+# Easy constructors
+
+def _multi(*fns):
+    def f2(f, names):
+        if len(names) == 1:
+            return f(names)
+        else:
+            return [f(name) for name in names]
+    if len(fns) == 1:
+        return partial(f2, fns)
+    else:
+        return [partial(f2, f) for f in fns]
+
+def intr(name):
+    return Scalar(name = name, dtype = 'int64')
+ints = _multi(intr)
+
+def floatr(name):
+    return Scalar(name = name, dtype = 'float64')
+floats = _multi(floatr)
 
 
 

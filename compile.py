@@ -133,8 +133,8 @@ class Function:
             self.fn  = linker.make_function(inplace=True,
                                             unpack_single=unpack_single,
                                             profiler=profiler)
-        self.inputs = inputs
-        self.outputs = outputs
+        self.inputs = env.inputs
+        self.outputs = env.outputs
         self.features = features
         self.optimizer = optimizer
         self.linker_cls = linker_cls
@@ -189,3 +189,100 @@ def eval_outputs(outputs,
     return rval
 
 
+
+
+# StateFunction([x, y], [e], (w, w + lr * bla()))
+
+
+
+
+# class _Function:
+
+#     def __init__(self,
+#                  inputs,
+#                  outputs,
+#                  optimizer,
+#                  linker_type = 'py',
+#                  unpack_single = True,
+#                  except_unreachable_input = True,
+#                  disposable_inputs = [],
+#                  borrow_outputs = []):
+
+
+
+
+#         _mark_indestructible(outputs)
+
+#         if len(inputs) != len(set(inputs)):
+#             raise Exception('duplicate inputs')
+#         if len(outputs) != len(set(outputs)):
+#             raise Exception('duplicate outputs')
+
+#         orphans = list(gof.graph.results_and_orphans(inputs, outputs,
+#             except_unreachable_input=except_unreachable_input)[1])
+#         orphan_data = eval_outputs(orphans, unpack_single=False)
+
+#         env = gof.env.Env(inputs, outputs, features + [gof.EquivTool], consistency_check = True)
+
+#         env = env.clone(clone_inputs=True)
+
+#         for d, o in zip(orphan_data, [env.equiv(orphan) for orphan in orphans]):
+#             o.data = d
+
+#         # optimize and link the cloned env
+#         if None is not optimizer:
+#             optimizer(env)
+
+#         linker = linker_cls(env)
+
+#         if keep_locals:# useful flag for debugging!
+#             self.__dict__.update(locals())
+
+#         if profiler is None:
+#             self.fn  = linker.make_function(inplace=True,
+#                                             unpack_single=unpack_single)
+#         else:
+#             self.fn  = linker.make_function(inplace=True,
+#                                             unpack_single=unpack_single,
+#                                             profiler=profiler)
+#         self.inputs = env.inputs
+#         self.outputs = env.outputs
+#         self.features = features
+#         self.optimizer = optimizer
+#         self.linker_cls = linker_cls
+#         self.profiler = profiler
+#         self.unpack_single = unpack_single
+#         self.except_unreachable_input = except_unreachable_input
+#         self.keep_locals = keep_locals
+
+#     def __call__(self, *args):
+#         return self.fn(*args)
+
+#     def __copy__(self):
+#         return Function(self.inputs, self.outputs,
+#                         features = self.features,
+#                         optimizer = self.optimizer,
+#                         linker_cls = self.linker_cls,
+#                         profiler = self.profiler,
+#                         unpack_single = self.unpack_single,
+#                         except_unreachable_input = self.except_unreachable_input,
+#                         keep_locals = self.keep_locals)
+
+
+
+
+
+
+
+
+
+
+
+
+# class StateFunction:
+
+#     def __init__(self, inputs, outputs, *states):
+#         in_states, out_states = zip(*states)
+#         env = 
+
+    

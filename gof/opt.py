@@ -460,9 +460,7 @@ class PatternDescOptimizer(LocalOptimizer):
 
 class ConstantFinder(Optimizer):
     """
-    Sets as constant every orphan that is not destroyed
-    and sets as indestructible every input that is not
-    destroyed.
+    Sets as constant every orphan that is not destroyed.
     """
     
     def apply(self, env):
@@ -471,15 +469,15 @@ class ConstantFinder(Optimizer):
                 if not env.destroyers(r):
                     r.indestructible = True
                     r.constant = True
-            for r in env.inputs:
-                if not env.destroyers(r):
-                    r.indestructible = True
+#             for r in env.inputs:
+#                 if not env.destroyers(r):
+#                     r.indestructible = True
         else:
             for r in env.orphans():
                 r.indestructible = True
                 r.constant = True
-            for r in env.inputs:
-                r.indestructible = True
+#             for r in env.inputs:
+#                 r.indestructible = True
 
 import graph
 class MergeOptimizer(Optimizer):

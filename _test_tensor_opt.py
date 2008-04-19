@@ -48,6 +48,15 @@ class _test_inplace_opt(unittest.TestCase):
         inplace_optimizer.optimize(g)
         assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]"
 
+    def test_inplace_on_second_argument(self):
+        x, y, z = inputs()
+        e0 = x + y
+        e1 = tensor.mul_inplace(x, z)
+        g = Env([x, y], [e0, e1])
+        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, z)]"
+        inplace_optimizer.optimize(g)
+        assert str(g) == "[Broadcast{Add}{0: 1}(x, y), Broadcast{Mul}{0: 0}(x, z)]"
+
 
 class _test_dimshuffle_lift(unittest.TestCase):
 
