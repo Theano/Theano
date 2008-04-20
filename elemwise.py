@@ -241,6 +241,7 @@ class Broadcast(Op, Destroyer):
         return ret
 
     def grad(self, inputs, ograds):
+        ograds = map(astensor, ograds)
         shadow = self.shadow
         scalar_ograds = [Scalar(dtype = ograd.dtype) for ograd in ograds]
         scalar_igrads = shadow.grad(shadow.inputs, scalar_ograds)
@@ -320,11 +321,17 @@ class Broadcast(Op, Destroyer):
         self.ufunc(*([input.data for input in self.inputs] + output_storage))
 
     def _c_all(self, inames, onames, sub):
+        _inames = inames
+        _onames = onames
+
+        inames = gof.utils.uniq(inames)
+        inputs = gof.utils.uniq(self.inputs)
+        
         defines = ""
         undefs = ""
         dmap = self.destroy_map()
 
-        idtypes = [input.dtype_specs()[1] for input in self.inputs]
+        idtypes = [input.dtype_specs()[1] for input in inputs]
 
         real = zip(*[(r, s, r.dtype_specs()[1])
                      for r, s in zip(self.outputs, onames) if r not in dmap])
@@ -340,10 +347,10 @@ class Broadcast(Op, Destroyer):
         else:
             aliased_outputs, aliased_onames = [], []
         
-        orders = [[x and 'x' or i for i, x in enumerate(input.broadcastable)] for input in self.inputs]
+        orders = [[x and 'x' or i for i, x in enumerate(input.broadcastable)] for input in inputs]
         nnested = len(orders[0])
         sub = dict(sub)
-        for i, (input, iname) in enumerate(zip(self.inputs, inames)):
+        for i, (input, iname) in enumerate(zip(inputs, inames)):
             sub['lv%i' % i] = iname
         decl = cgen.make_declare(orders, idtypes, sub)
         checks = cgen.make_checks(orders, idtypes, sub)
@@ -358,7 +365,7 @@ class Broadcast(Op, Destroyer):
             alloc += cgen.make_checks([range(nnested)], [odtype], dict(sub, lv0 = oname))
         
         for output, oname in zip(aliased_outputs, aliased_onames):
-            iname = inames[self.inputs.index(dmap[output][0])]
+            iname = inames[inputs.index(dmap[output][0])]
             alloc += """
             if (%(oname)s) {
                 Py_XDECREF(%(oname)s);
@@ -368,8 +375,8 @@ class Broadcast(Op, Destroyer):
             """ % locals()
             defines += "#define %(oname)s_i %(iname)s_i" % locals()
             undefs += "#undef %(oname)s_i" % locals()
-        
-        task_code = self.shadow.c_code(["%s_i" % s for s in inames],
+
+        task_code = self.shadow.c_code(["%s_i" % s for s in _inames],
                                        ["%s_i" % s for s in onames],
                                        sub)
         task_decl = "".join(["%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % locals() for name, dtype in zip(inames + list(real_onames), idtypes + list(real_odtypes))])

@@ -124,6 +124,14 @@ class _test_Broadcast(unittest.TestCase):
         zv = xv + yv
         assert (f(xv, yv) == zv).all()
 
+    def test_same_inputs(self):
+        x = modes.build(Tensor('float64', [0, 0], name = 'x'))
+        e = Broadcast(Add, (x, x)).out
+        f = gof.CLinker(env([x], [e])).make_function(inplace = False)
+        xv = numpy.random.rand(2, 2)
+        zv = xv + xv
+        assert (f(xv) == zv).all()
+
 
 class _test_CAReduce(unittest.TestCase):
 
