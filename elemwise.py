@@ -318,7 +318,11 @@ class Broadcast(Op, Destroyer):
                         odat = numpy.ndarray(shape, dtype = output.dtype)
                 output_storage.append(odat)
                 output.data = odat
-        self.ufunc(*([input.data for input in self.inputs] + output_storage))
+        # the second calling form is used because in certain versions of numpy
+        # the first (faster) version leads to segfaults
+        ufunc_args = [input.data for input in self.inputs]# + output_storage
+        #self.ufunc(*(ufunc_args+output_storage))
+        output_storage[0][:] = self.ufunc(*ufunc_args)
 
     def _c_all(self, inames, onames, sub):
         _inames = inames
