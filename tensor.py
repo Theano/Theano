@@ -315,13 +315,17 @@ def astensor(data, broadcastable=None, name=None):
         
     if data is None and broadcastable is None:
         raise TypeError("Cannot make a Tensor out of None.")
-    
+
+    _data = data
     data = numpy.asarray(data)
     if broadcastable is None:
         broadcastable = [s==1 for s in data.shape]
     elif broadcastable in [0, 1]:
         broadcastable = [broadcastable] *  len(data.shape)
-    rval = Tensor(data.dtype, broadcastable, name = name)
+    try:
+        rval = Tensor(data.dtype, broadcastable, name = name)
+    except TypeError:
+        raise TypeError("Cannot convert %s to Tensor." % _data)
     rval.data = data # will raise if broadcastable was mis-specified
     return rval
 s2t.astensor = astensor

@@ -21,6 +21,7 @@ def as_scalar(x, name = None):
         return s
     if isinstance(x, Scalar):
         return x
+    raise TypeError("Cannot convert %s to Scalar" % x)
 
 def constant(x):
     res = as_scalar(x)
