@@ -304,6 +304,12 @@ s2t.Tensor = Tensor
 # alternate Tensor constructor
 def astensor(data, broadcastable=None, name=None):
     """Return a L{Tensor} containing given data"""
+    if isinstance(data, Op):
+        if len(data.outputs) != 1:
+            raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", data)
+        else:
+            data = data.outputs[0]
+    
     if isinstance(data, Tensor):
         if broadcastable is not None and list(data.broadcastable) != list(broadcastable):
             raise TypeError("The data to wrap as a Tensor has the wrong broadcastable pattern. Expected %s, got %s." % (broadcastable, data.broadcastable))
@@ -325,7 +331,7 @@ def astensor(data, broadcastable=None, name=None):
     try:
         rval = Tensor(data.dtype, broadcastable, name = name)
     except TypeError:
-        raise TypeError("Cannot convert %s to Tensor." % _data)
+        raise TypeError("Cannot convert %s to Tensor." % repr(_data))
     rval.data = data # will raise if broadcastable was mis-specified
     return rval
 s2t.astensor = astensor
