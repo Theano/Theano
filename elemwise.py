@@ -105,10 +105,10 @@ class DimShuffle(Op, Viewer):
             return {}
 
     def desc(self):
-        return (self.__class__, tuple(self.new_order))
+        return (self.__class__, tuple(self.new_order, self.inplace))
 
     def strdesc(self):
-        return "DimShuffle{%s}" % "".join(str(x) for x in self.new_order)
+        return "DimShuffle{%s}" % "".join(str(x) for x in (self.new_order, self.inplace))
 
     def perform(self):
         # drop
