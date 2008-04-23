@@ -4,10 +4,12 @@ import tensor
 import sparse
 import compile
 import gradient
-import opt
+import tensor_opt
+import scalar_opt
 
 from tensor import *
 from compile import *
-from opt import *
+from tensor_opt import *
+from scalar_opt import *
 from gradient import *
 
