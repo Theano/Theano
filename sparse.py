@@ -14,6 +14,11 @@ import gof.op, gof.result
 import tensor
 
 
+""" Types of sparse matrices to use for testing """
+_mtypes = [sparse.csc_matrix, sparse.csr_matrix]
+#_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix, sparse.lil_matrix, sparse.coo_matrix]
+_mtype_to_str = {sparse.csc_matrix: "csc", sparse.csr_matrix: "csr"}
+
 
 ## Type checking
 

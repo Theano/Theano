@@ -5,11 +5,7 @@ import compile
 import gradient
 
 from sparse import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
-
-""" Types of sparse matrices to use for testing """
-_mtypes = [sparse.csc_matrix, sparse.csr_matrix]
-#_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix, sparse.lil_matrix, sparse.coo_matrix]
-_mtype_to_str = {sparse.csc_matrix: "csc", sparse.csr_matrix: "csr"}
+from sparse import _mtypes, _mtype_to_str
 
 class T_transpose(unittest.TestCase):
     def setUp(self):
