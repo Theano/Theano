@@ -89,6 +89,13 @@ class Op(object):
         return self._hash_id
 
     def desc(self):
+        """
+        Description (signature) of this L{Op}. L{Op}s with the same
+        signature may be collapsed by the L{MergeOptimizer}.
+
+        @attention: If your L{Op} has additional options or a different
+        constructor you probably want to override this.
+        """
         return self.__class__
 
     def strdesc(self):
