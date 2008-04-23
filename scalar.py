@@ -11,6 +11,11 @@ from gof import Result, GuardedOp, Env, utils
 
 
 def as_scalar(x, name = None):
+    if isinstance(x, gof.Op):
+        if len(x.outputs) != 1:
+            raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", x)
+        else:
+            x = x.outputs[0]
     if isinstance(x, float):
         s = Scalar('float64', name = name)
         s.data = x
@@ -21,6 +26,7 @@ def as_scalar(x, name = None):
         return s
     if isinstance(x, Scalar):
         return x
+    raise TypeError("Cannot convert %s to Scalar" % x)
 
 def constant(x):
     res = as_scalar(x)
@@ -194,7 +200,7 @@ def _multi(*fns):
         else:
             return [f(name) for name in names]
     if len(fns) == 1:
-        return partial(f2, fns)
+        return partial(f2, fns[0])
     else:
         return [partial(f2, f) for f in fns]
 

@@ -321,8 +321,15 @@ class Broadcast(Op, Destroyer):
         # the second calling form is used because in certain versions of numpy
         # the first (faster) version leads to segfaults
         ufunc_args = [input.data for input in self.inputs]# + output_storage
-        #self.ufunc(*(ufunc_args+output_storage))
-        output_storage[0][:] = self.ufunc(*ufunc_args)
+        results = self.ufunc(*ufunc_args)
+        if self.ufunc.nout == 1: results = [results]
+        for result, storage in zip(results, output_storage):
+            if storage.shape:
+                storage[:] = result
+            else:
+                storage.itemset(result)
+        # the following should be used instead of the previous loop, unfortunately it tends to segfault
+        # self.ufunc(*(ufunc_args+output_storage))
 
     def _c_all(self, inames, onames, sub):
         _inames = inames

@@ -89,6 +89,13 @@ class Op(object):
         return self._hash_id
 
     def desc(self):
+        """
+        Description (signature) of this L{Op}. L{Op}s with the same
+        signature may be collapsed by the L{MergeOptimizer}.
+
+        @attention: If your L{Op} has additional options or a different
+        constructor you probably want to override this.
+        """
         return self.__class__
 
     def strdesc(self):
@@ -139,10 +146,10 @@ class Op(object):
         """
         Shallow copy of this L{Op}. The inputs are the exact same, but
         the outputs are recreated because of the one-owner-per-result
-        policy. The default behavior is to call the constructor on
-        this L{Op}'s inputs.
+        policy. The default behavior is to call the constructor on this
+        L{Op}'s inputs.
 
-        To do a bottom-up copy of a graph, use clone_with_new_inputs.
+        To do a bottom-up copy of a graph, use L{clone_with_new_inputs}.
 
         @attention: If your L{Op} has additional options or a different
         constructor you probably want to override this.
