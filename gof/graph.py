@@ -18,6 +18,43 @@ __all__ = ['inputs',
 is_result = utils.attr_checker('owner', 'index')
 is_op = utils.attr_checker('inputs', 'outputs')
 
+def dfs(outputs):
+    """Perform a depth-first search backward from outputs
+
+    @type outputs: list of L{Result}s
+    @param outputs: L{Result}s from which to search
+
+    @rtype: list of L{Result}s
+    @returns: list of unique results which are reachable by depth-first search from outputs
+
+    @note: this function guarantees a consistent ordering of result and op
+    instances in the return value, which is dictated by the structure of the
+    graph, and independent from the hash or id of each instance.
+
+    @todo: is it useful to include the old 'blocker' parameter to prevent full recursive search?
+
+    @todo: think: should the results include the outputs?
+
+    @todo: consider rewriting this function as a generator.
+    """
+
+    raise Exception('this function has not been tested')
+    r_set = set()
+    r_list = list()
+    def seek(r):
+        if r not in r_set: # then this is an unseen result
+            r_set.add(r)
+            r_list.append(r)
+            r_owner = r.owner
+            if r.owner is not None:
+                for input in r.owner.inputs:
+                    seek(input)
+        pass
+    for r in outputs:
+        seek(r)
+    return r_list
+
+
 
 def inputs(o):
     """
@@ -27,17 +64,7 @@ def inputs(o):
     Returns the set of inputs necessary to compute the outputs in o
     such that input.owner is None.
     """
-    results = set()
-    def seek(r):
-        op = r.owner
-        if op is None:
-            results.add(r)
-        else:
-            for input in op.inputs:
-                seek(input)
-    for output in o:
-        seek(output)
-    return results
+    return [r in dfs(o) if r.owner is None]
 
 
 def results_and_orphans(i, o, except_unreachable_input=False):
