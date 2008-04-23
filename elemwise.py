@@ -412,11 +412,14 @@ class Broadcast(Op, Destroyer):
          
 
 
-def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
-    if name is None:
-        name = "Tensor" + scalar_opclass.__name__
-        
+def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None, module_name = None):
     scalar_name = scalar_opclass.__name__
+    if name is None:
+        name = scalar_name
+    if module_name is None:
+        module_name = 'elemwise.make_broadcast(%s, %s, %s)' % (scalar_name, inplace_pattern, repr(name))
+        name = "New"
+        
     previous_doc = Broadcast.__doc__
 
     scalar_doc = scalar_opclass.__doc__ or ""
@@ -449,6 +452,7 @@ def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None):
         def desc(cls):
             return (Broadcast, scalar_opclass, tuple(inplace_pattern.items()))
     New.__name__ = name
+    New.__module__ = module_name
     return New
 
 def wrap_broadcast(op):

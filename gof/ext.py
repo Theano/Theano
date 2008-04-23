@@ -493,4 +493,3 @@ def view_roots(r):
             return [r]
     else:
         return [r]
-

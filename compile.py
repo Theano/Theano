@@ -189,6 +189,24 @@ def eval_outputs(outputs,
     return rval
 
 
+def infer_reuse_pattern(env, outputs_to_disown):
+    do_not_reuse = outputs_to_disown
+    seen = set()
+    def walk(r):
+        if env.edge(r) or r in seen:
+            return
+        seen.add(r)
+        do_not_reuse.append(r)
+        op = r.owner
+        dmap = op.destroy_map() if hasattr(op, 'destroy_map') else {}
+        vmap = op.view_map() if hasattr(op, 'view_map') else {}
+        cat = lambda x, y: list(x) + list(y)
+        for r2 in reduce(cat, dmap.values()) + reduce(cat, vmap.values()):
+            accumulate(r2)
+    for output in outputs_to_disown:
+        walk(output)
+    return do_not_reuse
+
 
 
 # StateFunction([x, y], [e], (w, w + lr * bla()))
