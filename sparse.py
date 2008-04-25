@@ -320,3 +320,93 @@ def dot(x, y, grad_preserves_dense=True):
     else:
         assert y_is_sparse_result
         return transpose(Dot(y.T, x.T, grad_preserves_dense).outputs[0])
+
+
+class RowRandomTransformation(gof.op.Op):
+    """
+    Given C{x}, a (sparse) matrix with shape (exmpls, dimensions), we
+    multiply it by a deterministic random matrix of shape (dimensions,
+    length) to obtain random transformation output of shape (exmpls,
+    length).
+
+    Each element of the deterministic random matrix is selected uniformly
+    from [-1, +1).
+    @todo: Use another random distribution?
+
+    @note: This function should be written such that if length is
+    increased, we obtain the same results (except longer). Similarly,
+    the rows should be able to be permuted and get the same result.
+
+    @todo: This may be slow?
+    @todo: Rewrite for dense matrices too?
+    @todo: Is there any way to verify the convention that each row is
+    an example? Should I rename the variables in the code to make the
+    semantics more explicit?
+    @todo: AUTOTEST: This function should be written such that if length
+    is increased, we obtain the same results (except longer). Similarly,
+    the rows should be able to be permuted and get the same result. Also,
+    autotest that dense and spare versions of this are identical.
+    @todo: Rename? Is Row the correct name? Maybe column-wise?
+
+    @type  x: L{scipy.sparse.spmatrix}
+    @param x: Sparse matrix to be randomly transformed with shape (exmpls, dimensions)
+    @type  length: int
+    @param length: The number of transformations of C{x} to be performed.
+    @param initial_seed: Initial seed for the RNG.
+    @rtype: L{numpy.ndarray}
+    @return: Array with C{length} random transformations, with shape (exmpls, length)
+    """
+
+    import random
+    """
+    RNG used for random transformations.
+    Does not share state with rest of program.
+    @todo: Make STATIC and private. Ask James or Olivier how to make this more Pythonic.
+    """
+    _trng = random.Random()
+
+    def __init__(self, x, length, initial_seed=0, **kwargs):
+        """
+        @todo: Which broadcastable values should I use?
+        """
+        gof.op.Op.__init__(self, **kwargs)
+        x = assparse(x)
+        self.initial_seed = initial_seed
+        self.length = length
+        self.inputs = [x]
+        self.outputs = [tensor.Tensor(x.dtype, broadcastable=[False, False])]
+#        self.outputs = [tensor.Tensor(x.dtype, broadcastable=[True, True])]
+    def impl(self, x):
+        assert _is_sparse(x)
+        assert len(x.shape) == 2
+        (rows, cols) = x.shape
+        tot = rows * cols
+        out = numpy.zeros((rows, self.length))
+        for l in range(self.length):
+            for i in range(x.getnnz()):
+                (r, c) = x.rowcol(i)
+                assert c < cols
+                assert r < rows
+
+                # Choose the random entry at (l, c)
+                rngidx = l * cols + c
+                # Set the random number state for this random entry
+                # Note: This may be slow
+                self._trng.seed(rngidx + self.initial_seed)
+
+                # Determine the value for this entry
+                val = self._trng.uniform(-1, +1)
+    #           print "Exmpl #%d, dimension #%d => Random projection #%d has idx %d (+ seed %d) and value %f" % (r, c, j, rngidx, self.initial_seed, val)
+
+                out[r][l] += val * x.getdata(i)
+        return out
+    def grad(self, (x, y), (gz,)):
+        raise NotImplementedError
+    def __copy__(self):
+        return self.__class__(self.inputs[0], self.length, self.initial_seed)
+    def clone_with_new_inputs(self, *new_inputs):
+        return self.__class__(new_inputs[0], self.length, self.initial_seed)
+    def desc(self, *new_inputs):
+        return (self.__class__, self.length, self.initial_seed)
+row_random_transformation = gof.op.constructor(RowRandomTransformation)
+

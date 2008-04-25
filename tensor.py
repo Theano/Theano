@@ -460,7 +460,23 @@ def broadcast(scalar_opclass, name, module_name = None, inplace_versions = True)
 def _broadcast(scalar_opclass, name, inplace_versions = True):
     return broadcast(scalar_opclass, name, 'tensor', inplace_versions)
 
-    
+class Shape(Op):
+    """
+    L{Op} to return the shape of a matrix.
+
+    @note: Non-differentiable.
+    """
+    def __init__(self, x, **kwargs):
+        Op.__init__(self, **kwargs)
+        x = astensor(x)
+        self.inputs = [x]
+        self.outputs = [Tensor("int64", [False])]
+    def impl(self, x):
+        return numpy.asarray(x.shape)
+    def grad(self, (x,), (gz,)):
+        raise ValueError
+shape = gof.op.constructor(Shape)
+
 class Argmax(Op):
     """Calculate the max and argmax over a given axis"""
     nin=2 # tensor, axis
@@ -621,6 +637,61 @@ class Subtensor(Op, Viewer):
         # function that works on a corresponding view of the original data
         raise NotImplementedError() 
 subtensor = gof.op.constructor(Subtensor)
+
+
+class VerticalStack(Op):
+    """
+    Vertically stack two L{Tensor}s.
+    Stack two L{Tensor}s along the first axis (row wise). These
+    L{Tensor}s must have the same shape along all dimensions but the
+    first.
+
+    @attention: Because we use vstack as the implementation, if the
+    inputs have 1-dimension, the output will have 2-dimensions.
+    """
+    def __init__(self, x, y, **kwargs):
+        Op.__init__(self, **kwargs)
+        x = astensor(x)
+        y = astensor(y)
+        assert x.dtype == y.dtype
+        if x.broadcastable[1:] != y.broadcastable[1:]:
+            raise NotImplementedError
+        self.inputs = [x, y]
+        bcastable = (False, ) + x.broadcastable[1:]
+        self.outputs = [Tensor(x.dtype, bcastable)]
+    def impl(self, x, y):
+        assert x.ndim == y.ndim
+        # Make sure every dimension (save the first) is the same
+        for i in range(x.ndim): assert i == 0 or x.shape[i] == y.shape[i]
+
+        return numpy.vstack([x, y])
+    def grad(self, (x, y), (gz,)):
+        """
+        @todo: Make VSplit (or this grad implementation) its own L{Op},
+        that way we can do more sanity-checking::
+            assert x.ndim == y.ndim
+            # Make sure every dimension (save the first) is the same
+            for i in range(x.data.ndim): assert i == 0 or x.data.shape[i] == y.shape[i]
+            etc...
+        """
+        xs = shape(x)
+        ys = shape(y)
+        return gz[:xs[0]], gz[xs[0]:]
+vertical_stack = gof.op.constructor(VerticalStack)
+
+def horizontal_stack(x, y, **kwargs):
+    """
+    Horizontally stack two L{Tensor}s.
+    Stack two L{Tensor}s along the second axis (column wise). These
+    L{Tensor}s must have the same shape along all dimensions but the
+    second.
+
+    @note: Unlike VerticalStack, we assume that the L{Tensor}s have
+    two dimensions.
+    """
+    assert x.ndim == 2
+    assert y.ndim == 2
+    return transpose(vertical_stack(x.T, y.T, **kwargs))
 
 
 #########################

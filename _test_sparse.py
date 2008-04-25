@@ -7,6 +7,8 @@ import gradient
 from sparse import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
 from sparse import _mtypes, _mtype_to_str
 
+import random
+
 class T_transpose(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(44)
@@ -296,6 +298,60 @@ class _testCase_dot(unittest.TestCase):
                     w = w - (lr * gw)
 
                 self.failUnless(origloss > loss)
+
+class T_RowRandomTransformation(unittest.TestCase):
+    def setUp(self):
+        random.seed(44)
+        numpy.random.seed(44)
+
+    def test_length(self):
+        """ Test that if length is increased, we obtain the same results
+        (except longer). """
+
+        for i in range(10):
+            mtype = random.choice(_mtypes)
+            rows = random.randint(1, 20)
+            cols = random.randint(1, 20)
+            fakeseed = random.randint(0, 100)
+            length = random.randint(1, 10)
+            extralength = random.randint(1, 10)
+
+            m = assparse(mtype(numpy.random.rand(rows, cols)))
+            o1 = row_random_transformation(m, length, initial_seed=fakeseed)
+            o2 = row_random_transformation(m, length + extralength, initial_seed=fakeseed)
+
+            y1 = compile.eval_outputs([o1])
+            y2 = compile.eval_outputs([o2])
+
+            self.failUnless((y1 == y2[:,:length]).all())
+
+    def test_permute(self):
+        """ Test that if the order of the rows is permuted, we obtain the same results. """
+        for i in range(10):
+            mtype = random.choice(_mtypes)
+            rows = random.randint(2, 20)
+            cols = random.randint(1, 20)
+            fakeseed = random.randint(0, 100)
+            length = random.randint(1, 10)
+
+            permute = numpy.random.permutation(rows)
+
+
+            m1 = numpy.random.rand(rows, cols)
+            m2 = m1[permute]
+            for r in range(rows):
+                self.failUnless((m2[r] == m1[permute[r]]).all())
+            s1 = assparse(mtype(m1))
+            s2 = assparse(mtype(m2))
+            o1 = row_random_transformation(s1, length, initial_seed=fakeseed)
+            o2 = row_random_transformation(s2, length, initial_seed=fakeseed)
+            y1 = compile.eval_outputs([o1])
+            y2 = compile.eval_outputs([o2])
+
+            self.failUnless(y1.shape == y2.shape)
+            for r in range(rows):
+                self.failUnless((y2[r] == y1[permute[r]]).all())
+
 
 if __name__ == '__main__':
     unittest.main()

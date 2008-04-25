@@ -25,37 +25,37 @@ class _test_inplace_opt(unittest.TestCase):
         x, y, z = inputs()
         e = x + y + z
         g = Env([x, y], [e])
-        assert str(g) == "[Broadcast{Add}(Broadcast{Add}(x, y), z)]"
+        self.failUnless(str(g) == "[Broadcast{Add}(Broadcast{Add}(x, y), z)]")
         inplace_optimizer.optimize(g)
-        assert str(g) == "[Broadcast{Add}{0: 0}(Broadcast{Add}{0: 0}(x, y), z)]"
+        self.failUnless(str(g) == "[Broadcast{Add}{0: 0}(Broadcast{Add}{0: 0}(x, y), z)]")
 
     def test_multiple_uses(self):
         x, y, z = inputs()
         e0 = x + y
         e1 = x * y
         g = Env([x, y], [e0, e1])
-        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}(x, y)]"
+        self.failUnless(str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}(x, y)]")
         inplace_optimizer.optimize(g)
-        assert str(g) == "[Broadcast{Add}{0: 0}(x, y), Broadcast{Mul}(x, y)]" \
-            or str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]"
+        self.failUnless(str(g) == "[Broadcast{Add}{0: 0}(x, y), Broadcast{Mul}(x, y)]" \
+            or str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]")
 
     def test_user_inplace(self):
         x, y, z = inputs()
         e0 = x + y
         e1 = tensor.mul_inplace(x, y)
         g = Env([x, y], [e0, e1])
-        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]"
+        self.failUnless(str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]")
         inplace_optimizer.optimize(g)
-        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]"
+        self.failUnless(str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]")
 
     def test_inplace_on_second_argument(self):
         x, y, z = inputs()
         e0 = x + y
         e1 = tensor.mul_inplace(x, z)
         g = Env([x, y], [e0, e1])
-        assert str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, z)]"
+        self.failUnless(str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, z)]")
         inplace_optimizer.optimize(g)
-        assert str(g) == "[Broadcast{Add}{0: 1}(x, y), Broadcast{Mul}{0: 0}(x, z)]"
+        self.failUnless(str(g) == "[Broadcast{Add}{0: 1}(x, y), Broadcast{Mul}{0: 0}(x, z)]")
 
 
 class _test_dimshuffle_lift(unittest.TestCase):
@@ -64,9 +64,9 @@ class _test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs()
         e = ds(ds(x, (1, 0)), (1, 0))
         g = Env([x], [e])
-        assert str(g) == "[InplaceDimShuffle{1,0}(InplaceDimShuffle{1,0}(x))]"
+        self.failUnless(str(g) == "[InplaceDimShuffle{1,0}(InplaceDimShuffle{1,0}(x))]")
         lift_dimshuffle.optimize(g)
-        assert str(g) == "[x]"
+        self.failUnless(str(g) == "[x]")
 
     def test_merge2(self):
         x, y, z = inputs()
@@ -103,10 +103,10 @@ class _test_cliques(unittest.TestCase):
         e = x + y + d
         g = Env([x, y, z], [e])
         cliques = find_cliques(g)
-        assert len(cliques) == 2
+        self.failUnless(len(cliques) == 2)
         (i1, o1), (i2, o2) = cliques
-        assert str(Env(i1, o1)) == "[Broadcast{Add}(Broadcast{Add}(x, y), d)]"
-        assert str(Env(i2, o2)) == "[Broadcast{Mul}(y, z)]"
+        self.failUnless(str(Env(i1, o1)) == "[Broadcast{Add}(Broadcast{Add}(x, y), d)]")
+        self.failUnless(str(Env(i2, o2)) == "[Broadcast{Mul}(y, z)]")
 #         print g
 #         for i, o in find_cliques(g):
 #             print "-->", Env(i, [o])
@@ -116,8 +116,8 @@ class _test_cliques(unittest.TestCase):
         e = x + y + z
         g = Env([x, y, z], [e])
         lift_dimshuffle.optimize(g)
-        assert len(find_cliques(g, through_broadcast = True)) == 1
-        assert len(find_cliques(g, through_broadcast = False)) == 2
+        self.failUnless(len(find_cliques(g, through_broadcast = True)) == 1)
+        self.failUnless(len(find_cliques(g, through_broadcast = False)) == 2)
 #         print g
 #         for i, o in find_cliques(g, True):
 #             print "-->", Env(i, [o])

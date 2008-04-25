@@ -566,6 +566,17 @@ def check_eq2_both(self, inputs, output, args_in, arg_out):
     val = fn(*args_in)
     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
+class T_Shape(unittest.TestCase):
+    def test_basic0(self):
+        s = shape(numpy.ones((5, 3)))
+        self.failUnless((eval_outputs([s]) == [5, 3]).all())
+    def test_basic1(self):
+        s = shape(numpy.ones((2)))
+        self.failUnless((eval_outputs([s]) == [2]).all())
+    def test_basic2(self):
+        s = shape(numpy.ones((5, 3, 10)))
+        self.failUnless((eval_outputs([s]) == [5, 3, 10]).all())
+
 class T_argmax(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(123784)
@@ -817,6 +828,21 @@ class T_subtensor(unittest.TestCase):
         tval = eval_outputs([t])
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 0))
+
+
+class T_Stack(unittest.TestCase):
+    def test_hstack(self):
+        a = astensor(numpy.array([[1, 2, 3], [4, 5, 6]]), broadcastable=[False,False])
+        b = astensor(numpy.array([[7], [8]]), broadcastable=[False,False])
+        s = horizontal_stack(a, b)
+        c = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]])
+        self.failUnless((eval_outputs([s]) == c).all())
+    def test_vstack(self):
+        a = astensor(numpy.array([[1, 2, 3], [4, 5, 6]]), broadcastable=[False,False])
+        b = astensor(numpy.array([[7, 8, 9]]), broadcastable=[False,False])
+        s = vertical_stack(a, b)
+        c = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        self.failUnless((eval_outputs([s]) == c).all())
 
 
 class T_add(unittest.TestCase):
