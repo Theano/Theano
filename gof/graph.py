@@ -5,12 +5,26 @@ import utils
 from utils import object2
         
 
+def deprecated(f):
+    printme = True
+    def g(*args, **kwargs):
+        if printme:
+            print 'gof.graph.%s deprecated: April 29' % f.__name__
+            printme = False
+        return f(*args, **kwargs)
+    return g
+
 
 class Apply(object2):
+    """
+    Note: it is illegal for an output element to have an owner != self
+    """
     #__slots__ = ['op', 'inputs', 'outputs']
     def __init__(self, op, inputs, outputs):
         self.op = op
         self.inputs = []
+
+        ## filter inputs to make sure each element is a Result
         for input in inputs:
             if isinstance(input, Result):
                 self.inputs.append(input)
@@ -19,6 +33,7 @@ class Apply(object2):
             else:
                 raise TypeError("The 'inputs' argument to Apply must contain Result instances, not %s" % input)
         self.outputs = []
+        ## filter outputs to make sure each element is a Result
         for i, output in enumerate(outputs):
             if isinstance(output, Result):
                 if output.owner is None:
@@ -32,6 +47,7 @@ class Apply(object2):
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
     def default_output(self):
+        print 'default_output deprecated: April 29'
         """
         Returns the default output for this Node, typically self.outputs[0].
         Depends on the value of node.op.default_output
@@ -75,6 +91,7 @@ class Result(object2):
             return "?::" + str(self.type)
     def __repr__(self):
         return str(self)
+    @deprecated
     def __asresult__(self):
         return self
 
@@ -94,6 +111,7 @@ class Constant(Result):
             return self.name
         return str(self.data) #+ "::" + str(self.type)
 
+@deprecated
 def as_result(x):
     if isinstance(x, Result):
         return x
@@ -107,6 +125,7 @@ def as_result(x):
     else:
         raise TypeError("Cannot wrap %s in a Result" % x)
 
+@deprecated
 def as_apply(x):
     if isinstance(x, Apply):
         return x
@@ -121,7 +140,7 @@ def as_apply(x):
 
 
 
-
+@deprecated
 def inputs(o):
     """
     @type o: list
@@ -130,6 +149,7 @@ def inputs(o):
     Returns the set of inputs necessary to compute the outputs in o
     such that input.owner is None.
     """
+    print 'gof.graph.inputs deprecated: April 29'
     results = set()
     def seek(r):
         op = r.owner
