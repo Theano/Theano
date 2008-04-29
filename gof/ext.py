@@ -6,14 +6,6 @@ from copy import copy
 from env import InconsistencyError
 
 
-__all__ = ['Destroyer',
-           'Viewer',
-           'view_roots',
-           'DestroyHandler',
-           ]
-
-
-
 class DestroyHandler(Listener, Constraint, Orderings, Tool):
     """
     This feature ensures that an env represents a consistent data flow
@@ -488,13 +480,14 @@ def view_roots(r):
     owner = r.owner
     if owner is not None:
         try:
-            view_map = owner.view_map()
-        except AttributeError, AbstractFunctionError:
+            view_map = owner.op.view_map
+            view_map = dict([(owner.outputs[o], i) for o, i in view_map.items()])
+        except AttributeError:
             return [r]
         if r in view_map:
             answer = []
-            for r2 in view_map[r]:
-                answer += view_roots(r2)
+            for i in view_map[r]:
+                answer += view_roots(owner.inputs[i])
             return answer
         else:
             return [r]

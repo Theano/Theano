@@ -12,12 +12,12 @@ import scalar_opt
 
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
-    x = Tensor(broadcastable = xbc, dtype = 'float64', name = 'x')
-    y = Tensor(broadcastable = ybc, dtype = 'float64', name = 'y')
-    z = Tensor(broadcastable = zbc, dtype = 'float64', name = 'z')
+    x = Tensor(broadcastable = xbc, dtype = 'float64')('x')
+    y = Tensor(broadcastable = ybc, dtype = 'float64')('y')
+    z = Tensor(broadcastable = zbc, dtype = 'float64')('z')
     return x, y, z
 
-ds = gof.op.constructor(DimShuffle)
+ds = DimShuffle
 
 class _test_inplace_opt(unittest.TestCase):
 

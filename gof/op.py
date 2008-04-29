@@ -24,7 +24,11 @@ class Op(object2):
         raise AbstractFunctionError()
 
     def __call__(self, *inputs):
-        return self.make_node(*inputs).out
+        node = self.make_node(*inputs)
+        if len(node.outputs) == 1:
+            return node.outputs[0]
+        else:
+            return node.outputs
 
 
     #########################

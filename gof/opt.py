@@ -396,8 +396,14 @@ class _metadict:
             return self.d[item]
         except:
             for item2, value in self.l:
-                if item == item2:
-                    return value
+                try:
+                    if item == item2:
+                        return value
+                    if item.equals(item2):
+                        return value
+                except:
+                    if item is item2:
+                        return value
             else:
                 return default
     def clear(self):
