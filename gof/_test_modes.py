@@ -4,7 +4,7 @@ import unittest
 from modes import *
 
 
-from result import Result
+from graph import Result
 from op import Op
 from env import Env
 
@@ -86,53 +86,53 @@ def env(inputs, outputs, validate = True):
     return Env(inputs, outputs, features = [], consistency_check = validate)
 
 
-class _test_Modes(unittest.TestCase):
+# class _test_Modes(unittest.TestCase):
 
-    def test_0(self):
-        x, y, z = inputs(build)
-        e = add(add(x, y), z)
-        g = env([x, y, z], [e])
-        assert str(g) == "[Add(Add(x, y), z)]"
-        assert e.data == 0.0
+#     def test_0(self):
+#         x, y, z = inputs(build)
+#         e = add(add(x, y), z)
+#         g = env([x, y, z], [e])
+#         assert str(g) == "[Add(Add(x, y), z)]"
+#         assert e.data == 0.0
         
-    def test_1(self):
-        x, y, z = inputs(build_eval)
-        e = add(add(x, y), z)
-        g = env([x, y, z], [e])
-        assert str(g) == "[Add(Add(x, y), z)]"
-        assert e.data == 6.0
+#     def test_1(self):
+#         x, y, z = inputs(build_eval)
+#         e = add(add(x, y), z)
+#         g = env([x, y, z], [e])
+#         assert str(g) == "[Add(Add(x, y), z)]"
+#         assert e.data == 6.0
         
-    def test_2(self):
-        x, y, z = inputs(eval)
-        e = add(add(x, y), z)
-        g = env([x, y, z], [e])
-        assert str(g) == "[Add_R]"
-        assert e.data == 6.0
+#     def test_2(self):
+#         x, y, z = inputs(eval)
+#         e = add(add(x, y), z)
+#         g = env([x, y, z], [e])
+#         assert str(g) == "[Add_R]"
+#         assert e.data == 6.0
 
-    def test_3(self):
-        x, y, z = inputs(build)
-        e = x + y + z
-        g = env([x, y, z], [e])
-        assert str(g) == "[Add(Add(x, y), z)]"
-        assert e.data == 0.0
+#     def test_3(self):
+#         x, y, z = inputs(build)
+#         e = x + y + z
+#         g = env([x, y, z], [e])
+#         assert str(g) == "[Add(Add(x, y), z)]"
+#         assert e.data == 0.0
         
-    def test_4(self):
-        x, y, z = inputs(build_eval)
-        e = x + 34.0
-        g = env([x, y, z], [e])
-        assert str(g) == "[Add(x, oignon)]"
-        assert e.data == 35.0
+#     def test_4(self):
+#         x, y, z = inputs(build_eval)
+#         e = x + 34.0
+#         g = env([x, y, z], [e])
+#         assert str(g) == "[Add(x, oignon)]"
+#         assert e.data == 35.0
         
-    def test_5(self):
-        xb, yb, zb = inputs(build)
-        xe, ye, ze = inputs(eval)
-        try:
-            e = xb + ye
-        except TypeError:
-            # Trying to add inputs from different modes is forbidden
-            pass
-        else:
-            raise Exception("Expected an error.")
+#     def test_5(self):
+#         xb, yb, zb = inputs(build)
+#         xe, ye, ze = inputs(eval)
+#         try:
+#             e = xb + ye
+#         except TypeError:
+#             # Trying to add inputs from different modes is forbidden
+#             pass
+#         else:
+#             raise Exception("Expected an error.")
         
 
 if __name__ == '__main__':

@@ -17,20 +17,20 @@ def _numpy_checker(x, y):
     Checks if x.data and y.data have the same contents.
     Used in DualLinker to compare C version with Python version.
     """
-    x, y = x.data, y.data
+    x, y = x[0], y[0]
     if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
         raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
 
 
-def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}):
+def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}):
     if grad is True:
         grad = good
 
-    _op_class, _expected, _checks, _good, _bad_build, _bad_runtime, _grad = op_class, expected, checks, good, bad_build, bad_runtime, grad
+    _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad = op, expected, checks, good, bad_build, bad_runtime, grad
     
     class Checker(unittest.TestCase):
 
-        op_class = _op_class
+        op = _op
         expected = staticmethod(_expected)
         checks = _checks
         good = _good
@@ -41,24 +41,25 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
         def test_good(self):
             for testname, inputs in self.good.items():
                 inputs = [copy(input) for input in inputs]
+                inputrs = [constant(input).type() for input in inputs]
                 try:
-                    op = self.op_class(*inputs)
+                    node = self.op.make_node(*inputrs)
                 except:
                     type, value, traceback = sys.exc_info()
-                    err_msg = "With data %s::%s: This error occurred while trying to build a %s instance with inputs %s" \
-                        % (self.op_class.__name__, testname, self.op_class, inputs)
+                    err_msg = "Test %s::%s: Error occurred while making a node with inputs %s" \
+                        % (self.op, testname, inputs)
                     value.args = value.args + (err_msg, )
                     raise type, value, traceback
 
                 try:
-                    f = Function(op.inputs, op.outputs,
+                    f = Function(node.inputs, node.outputs,
                                  linker_cls = lambda env: gof.DualLinker(env, checker = _numpy_checker),
                                  unpack_single = False,
                                  optimizer = None)
                 except:
                     type, value, traceback = sys.exc_info()
-                    err_msg = "With data %s::%s: This error occurred while trying to make a function out of %s" \
-                        % (self.op_class.__name__, testname, op)
+                    err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
+                        % (self.op, testname)
                     value.args = value.args + (err_msg, )
                     raise type, value, traceback
 
@@ -68,8 +69,8 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
                     results = f(*inputs)
                 except:
                     type, value, traceback = sys.exc_info()
-                    err_msg = "With data %s::%s: This error occurred while calling %s on the inputs %s" \
-                        % (self.op_class.__name__, testname, op, inputs)
+                    err_msg = "Test %s::%s: Error occurred while calling the Function on the inputs %s" \
+                        % (self.op, testname, inputs)
                     value.args = value.args + (err_msg, )
                     raise type, value, traceback
 
@@ -77,45 +78,47 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
                     expecteds = (expecteds, )
                 for i, (result, expected) in enumerate(zip(results, expecteds)):
                     if result.dtype != expected.dtype or result.shape != expected.shape or numpy.any(abs(result - expected) > 1e-10):
-                        self.fail("With data %s::%s: Output %s of %s gave the wrong value. With inputs %s, expected %s, got %s."
-                                  % (self.op_class.__name__, testname, i, op, inputs, expected, result))
+                        self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s."
+                                  % (self.op, testname, i, inputs, expected, result))
 
                 for description, check in self.checks.items():
                     if not check(inputs, results):
-                        self.fail("With data %s::%s: %s failed the following check: %s (inputs were %s)"
-                                  % (self.op_class.__name__, testname, op, description, inputs))
+                        self.fail("Test %s::%s: Failed check: %s (inputs were %s)"
+                                  % (self.op, testname, description, inputs))
 
         def test_bad_build(self):
             for testname, inputs in self.bad_build.items():
                 inputs = [copy(input) for input in inputs]
+                inputrs = [constant(input).type() for input in inputs]
                 try:
-                    op = self.op_class(*inputs)
+                    node = self.op.make_node(*inputrs)
                 except:
                     return
-                self.fail("With data %s::%s: %s was successfully instantiated on the following bad inputs: %s"
-                          % (self.op_class.__name__, testname, op, inputs))
+                self.fail("Test %s::%s: %s was successfully instantiated on the following bad inputs: %s"
+                          % (self.op, testname, node, inputs))
 
         def test_bad_runtime(self):
             for testname, inputs in self.bad_runtime.items():
                 inputs = [copy(input) for input in inputs]
+                inputrs = [constant(input).type() for input in inputs]
                 try:
-                    op = self.op_class(*inputs)
+                    node = self.op.make_node(*inputrs)
                 except:
                     type, value, traceback = sys.exc_info()
-                    err_msg = "With data %s::%s: This error occurred while trying to build a %s instance with inputs %s" \
-                        % (self.op_class.__name__, testname, self.op_class, inputs)
+                    err_msg = "Test %s::%s: Error occurred while trying to make a node with inputs %s" \
+                        % (self.op, testname, inputs)
                     value.args = value.args + (err_msg, )
                     raise type, value, traceback
 
                 try:
-                    f = Function(op.inputs, op.outputs,
+                    f = Function(node.inputs, node.outputs,
                                  linker_cls = lambda env: gof.DualLinker(env, checker = _numpy_checker),
                                  unpack_single = False,
                                  optimizer = None)
                 except:
                     type, value, traceback = sys.exc_info()
-                    err_msg = "With data %s::%s: This error occurred while trying to make a function out of %s" \
-                        % (self.op_class.__name__, testname, op)
+                    err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
+                        % (self.op, testname)
                     value.args = value.args + (err_msg, )
                     raise type, value, traceback
 
@@ -124,18 +127,19 @@ def make_tester(name, op_class, expected, checks = {}, good = {}, bad_build = {}
                 except:
                     return
                 
-                self.fail("With data %s::%s: %s was successfully called on the following bad inputs: %s"
-                          % (self.op_class.__name__, testname, op, inputs))
+                self.fail("Test %s::%s: Successful call on the following bad inputs: %s"
+                          % (self.op, testname, inputs))
 
         def test_grad(self):
             for testname, inputs in self.grad.items():
                 inputs = [copy(input) for input in inputs]
+                inputrs = [constant(input).type() for input in inputs]
                 try:
-                    verify_grad(self, self.op_class, inputs)
+                    verify_grad(self, self.op, inputs)
                 except:
                     type, value, traceback = sys.exc_info()
-                    err_msg = "With data %s::%s: This error occurred while computing the gradient for %s on the following inputs: %s" \
-                        % (self.op_class.__name__, testname, self.op_class, inputs)
+                    err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
+                        % (self.op, testname, inputs)
                     value.args = value.args + (err_msg, )
                     raise type, value, traceback
 
@@ -157,8 +161,8 @@ def randint_ranged(min, max, shape):
     return numpy.random.random_integers(min, max, shape)
 
 
-def make_broadcast_tester(op_class, expected, checks = {}, **kwargs):
-    name = op_class.__name__ + "Tester"
+def make_broadcast_tester(op, expected, checks = {}, **kwargs):
+    name = str(op) + "Tester"
     if kwargs.has_key('inplace'):
         if kwargs['inplace']:
             _expected = expected
@@ -166,7 +170,7 @@ def make_broadcast_tester(op_class, expected, checks = {}, **kwargs):
             checks = dict(checks,
                           inplace_check = lambda inputs, outputs: inputs[0] is outputs[0])
         del kwargs['inplace']
-    return make_tester(name, op_class, expected, checks, **kwargs)
+    return make_tester(name, op, expected, checks, **kwargs)
 
 
 
@@ -189,28 +193,28 @@ _grad_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                      column = (rand(2, 3), rand(2, 1)))
 
 
-AddTester = make_broadcast_tester(op_class = Add,
+AddTester = make_broadcast_tester(op = add,
                                   expected = lambda *inputs: reduce(lambda x, y: x + y, inputs),
                                   good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
                                               four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
                                               **_good_broadcast_binary_normal),
                                   bad_build = _bad_build_broadcast_binary_normal,
                                   bad_runtime = _bad_runtime_broadcast_binary_normal)
-AddInplaceTester = make_broadcast_tester(op_class = AddInplace,
+AddInplaceTester = make_broadcast_tester(op = add_inplace,
                                          expected = lambda x, y: x + y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
                                          bad_runtime = _bad_runtime_broadcast_binary_normal,
                                          inplace = True)
 
-SubTester = make_broadcast_tester(op_class = Sub,
+SubTester = make_broadcast_tester(op = sub,
                                   expected = lambda x, y: x - y,
                                   good = _good_broadcast_binary_normal,
                                   bad_build = _bad_build_broadcast_binary_normal,
                                   bad_runtime = _bad_runtime_broadcast_binary_normal,
                                   grad = _grad_broadcast_binary_normal)
 
-SubInplaceTester = make_broadcast_tester(op_class = SubInplace,
+SubInplaceTester = make_broadcast_tester(op = sub_inplace,
                                          expected = lambda x, y: x - y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
@@ -218,7 +222,7 @@ SubInplaceTester = make_broadcast_tester(op_class = SubInplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
-MulTester = make_broadcast_tester(op_class = Mul,
+MulTester = make_broadcast_tester(op = mul,
                                   expected = lambda *inputs: reduce(lambda x, y: x * y, inputs),
                                   good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
                                               four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
@@ -228,7 +232,7 @@ MulTester = make_broadcast_tester(op_class = Mul,
                                   grad = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
                                               four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
                                               **_grad_broadcast_binary_normal))
-MulInplaceTester = make_broadcast_tester(op_class = MulInplace,
+MulInplaceTester = make_broadcast_tester(op = mul_inplace,
                                          expected = lambda x, y: x * y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
@@ -236,7 +240,7 @@ MulInplaceTester = make_broadcast_tester(op_class = MulInplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
-DivTester = make_broadcast_tester(op_class = Div,
+DivTester = make_broadcast_tester(op = div,
                                   expected = lambda x, y: x / y,
                                   good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                               scalar = (rand(2, 3), rand(1, 1)),
@@ -254,7 +258,7 @@ DivTester = make_broadcast_tester(op_class = Div,
                                               scalar = (rand(2, 3), rand(1, 1)),
                                               row = (rand(2, 3), rand(1, 3)),
                                               column = (rand(2, 3), rand(2, 1))))
-DivInplaceTester = make_broadcast_tester(op_class = DivInplace,
+DivInplaceTester = make_broadcast_tester(op = div_inplace,
                                          expected = lambda x, y: x / y,
                                          good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                                      scalar = (rand(2, 3), rand(1, 1)),
@@ -269,7 +273,7 @@ DivInplaceTester = make_broadcast_tester(op_class = DivInplace,
                                                      column = (rand(2, 3), rand(2, 1))),
                                          inplace = True)
 
-PowTester = make_broadcast_tester(op_class = Pow,
+PowTester = make_broadcast_tester(op = pow,
                                   expected = lambda x, y: x ** y,
                                   good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
                                               scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
@@ -281,7 +285,7 @@ PowTester = make_broadcast_tester(op_class = Pow,
                                               row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
                                               column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))))
                                   )
-PowInplaceTester = make_broadcast_tester(op_class = PowInplace,
+PowInplaceTester = make_broadcast_tester(op = pow_inplace,
                                          expected = lambda x, y: x ** y,
                                          good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
                                                      scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
@@ -302,49 +306,49 @@ _good_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
 _grad_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),))
 
 
-AbsTester = make_broadcast_tester(op_class = Abs,
+AbsTester = make_broadcast_tester(op = tensor._abs,
                                   expected = lambda x: abs(x),
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-AbsInplaceTester = make_broadcast_tester(op_class = AbsInplace,
+AbsInplaceTester = make_broadcast_tester(op = abs_inplace,
                                          expected = lambda x: abs(x),
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-NegTester = make_broadcast_tester(op_class = Neg,
+NegTester = make_broadcast_tester(op = neg,
                                   expected = lambda x: -x,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-NegInplaceTester = make_broadcast_tester(op_class = NegInplace,
+NegInplaceTester = make_broadcast_tester(op = neg_inplace,
                                          expected = lambda x: -x,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-SgnTester = make_broadcast_tester(op_class = Sgn,
+SgnTester = make_broadcast_tester(op = sgn,
                                   expected = numpy.sign,
                                   good = _good_broadcast_unary_normal)
-SgnInplaceTester = make_broadcast_tester(op_class = SgnInplace,
+SgnInplaceTester = make_broadcast_tester(op = sgn_inplace,
                                          expected = numpy.sign,
                                          good = _good_broadcast_unary_normal,
                                          inplace = True)
 
-SqrTester = make_broadcast_tester(op_class = Sqr,
+SqrTester = make_broadcast_tester(op = sqr,
                                   expected = numpy.square,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-SqrInplaceTester = make_broadcast_tester(op_class = SqrInplace,
+SqrInplaceTester = make_broadcast_tester(op = sqr_inplace,
                                          expected = numpy.square,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-ExpTester = make_broadcast_tester(op_class = Exp,
+ExpTester = make_broadcast_tester(op = exp,
                                   expected = numpy.exp,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-ExpInplaceTester = make_broadcast_tester(op_class = ExpInplace,
+ExpInplaceTester = make_broadcast_tester(op = exp_inplace,
                                          expected = numpy.exp,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
@@ -356,31 +360,31 @@ _good_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
 
 _grad_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),))
 
-LogTester = make_broadcast_tester(op_class = Log,
+LogTester = make_broadcast_tester(op = log,
                                   expected = numpy.log,
                                   good = _good_broadcast_unary_positive,
                                   grad = _grad_broadcast_unary_positive)
-LogInplaceTester = make_broadcast_tester(op_class = LogInplace,
+LogInplaceTester = make_broadcast_tester(op = log_inplace,
                                          expected = numpy.log,
                                          good = _good_broadcast_unary_positive,
                                          grad = _grad_broadcast_unary_positive,
                                          inplace = True)
 
-Log2Tester = make_broadcast_tester(op_class = Log2,
+Log2Tester = make_broadcast_tester(op = log2,
                                    expected = numpy.log2,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
-Log2InplaceTester = make_broadcast_tester(op_class = Log2Inplace,
+Log2InplaceTester = make_broadcast_tester(op = log2_inplace,
                                           expected = numpy.log2,
                                           good = _good_broadcast_unary_positive,
                                           grad = _grad_broadcast_unary_positive,
                                           inplace = True)
 
-SqrtTester = make_broadcast_tester(op_class = Sqrt,
+SqrtTester = make_broadcast_tester(op = sqrt,
                                    expected = numpy.sqrt,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
-SqrtInplaceTester = make_broadcast_tester(op_class = SqrtInplace,
+SqrtInplaceTester = make_broadcast_tester(op = sqrt_inplace,
                                           expected = numpy.sqrt,
                                           good = _good_broadcast_unary_positive,
                                           grad = _grad_broadcast_unary_positive,
@@ -394,33 +398,33 @@ _good_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
 _grad_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),))
 
 
-SinTester = make_broadcast_tester(op_class = Sin,
+SinTester = make_broadcast_tester(op = sin,
                                   expected = numpy.sin,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
-SinInplaceTester = make_broadcast_tester(op_class = SinInplace,
+SinInplaceTester = make_broadcast_tester(op = sin_inplace,
                                          expected = numpy.sin,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
 
-CosTester = make_broadcast_tester(op_class = Cos,
+CosTester = make_broadcast_tester(op = cos,
                                   expected = numpy.cos,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
-CosInplaceTester = make_broadcast_tester(op_class = CosInplace,
+CosInplaceTester = make_broadcast_tester(op = cos_inplace,
                                          expected = numpy.cos,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
 
-TanTester = make_broadcast_tester(op_class = Tan,
+TanTester = make_broadcast_tester(op = tan,
                                   expected = numpy.tan,
                                   good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
                                   grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)))
-TanInplaceTester = make_broadcast_tester(op_class = TanInplace,
+TanInplaceTester = make_broadcast_tester(op = tan_inplace,
                                          expected = numpy.tan,
                                          good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                                      shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
@@ -429,31 +433,31 @@ TanInplaceTester = make_broadcast_tester(op_class = TanInplace,
                                          inplace = True)
 
 
-CoshTester = make_broadcast_tester(op_class = Cosh,
+CoshTester = make_broadcast_tester(op = cosh,
                                    expected = numpy.cosh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-CoshInplaceTester = make_broadcast_tester(op_class = CoshInplace,
+CoshInplaceTester = make_broadcast_tester(op = cosh_inplace,
                                           expected = numpy.cosh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
-SinhTester = make_broadcast_tester(op_class = Sinh,
+SinhTester = make_broadcast_tester(op = sinh,
                                    expected = numpy.sinh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-SinhInplaceTester = make_broadcast_tester(op_class = SinhInplace,
+SinhInplaceTester = make_broadcast_tester(op = sinh_inplace,
                                           expected = numpy.sinh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
-TanhTester = make_broadcast_tester(op_class = Tanh,
+TanhTester = make_broadcast_tester(op = tanh,
                                    expected = numpy.tanh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-TanhInplaceTester = make_broadcast_tester(op_class = TanhInplace,
+TanhInplaceTester = make_broadcast_tester(op = tanh_inplace,
                                           expected = numpy.tanh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
@@ -461,15 +465,15 @@ TanhInplaceTester = make_broadcast_tester(op_class = TanhInplace,
 
 
 
-DotTester = make_tester(name = 'DotTester',
-                        op_class = Dot,
-                        expected = lambda x, y: numpy.dot(x, y),
-                        checks = {},
-                        good = dict(correct1 = (rand(5, 7), rand(7, 5)),
-                                    correct2 = (rand(5, 7), rand(7, 9))),
-                        bad_build = dict(),
-                        bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
-                                           bad2 = (rand(5, 7), rand(8, 3))))
+# DotTester = make_tester(name = 'DotTester',
+#                         op = Dot,
+#                         expected = lambda x, y: numpy.dot(x, y),
+#                         checks = {},
+#                         good = dict(correct1 = (rand(5, 7), rand(7, 5)),
+#                                     correct2 = (rand(5, 7), rand(7, 9))),
+#                         bad_build = dict(),
+#                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
+#                                            bad2 = (rand(5, 7), rand(8, 3))))
 
 
 
@@ -477,13 +481,14 @@ DotTester = make_tester(name = 'DotTester',
 #      rationale: it's tricky, and necessary everytime you want to verify
 #      gradient numerically
 
-def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001):
+def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001):
     """testcase.failUnless( analytic gradient matches finite-diff gradient) """
     pt = [numpy.asarray(p) for p in pt]
 
     for test_num in xrange(n_tests):
-        tensor_pt = [astensor(p,name='input %i'%i) for i,p in enumerate(pt)]
-        o = op_cls(*[tpt.copy() for tpt in tensor_pt])
+#        tensor_pt = [as_tensor(p,name='input %i'%i) for i,p in enumerate(pt)]
+        tensor_pt = [constant(p).type('input %i'%i) for i,p in enumerate(pt)]
+        o = op.make_node(*[tpt.copy() for tpt in tensor_pt])
         if hasattr(o, 'outputs'):
             o_outputs = o.outputs
         else:
@@ -497,7 +502,7 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
         o_fn = Function(tensor_pt, o_outputs)
         o_fn_out = o_fn(*pt)
         random_projection = rng.rand(*o_fn_out.shape)
-        t_r = astensor(random_projection)
+        t_r = as_tensor(random_projection)
 
         #random projection of o onto t_r
         cost = sum(t_r * o_outputs[0])
@@ -505,7 +510,7 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
 
         num_grad = gradient.numeric_grad(cost_fn, pt)
 
-        symbolic_grad = gradient.grad(cost, tensor_pt,astensor(1.0,name='g_cost'))
+        symbolic_grad = gradient.grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
         if 0:
             print '-------'
             print '----------'
@@ -532,887 +537,887 @@ def verify_grad(testcase, op_cls, pt, n_tests=1, rng=numpy.random, eps=0.0000001
 verify_grad.E_grad = 'gradient error exceeded tolerance'
 
 
-#useful mostly for unit tests
-def _approx_eq(a,b,eps=1.0e-9):
-    a = numpy.asarray(a)
-    b = numpy.asarray(b)
-    if a.shape != b.shape:
-        if _approx_eq.debug:
-            print a.shape, b.shape
-        return False
-    if numpy.max(numpy.abs(a-b)) >= eps:
-        if _approx_eq.debug:
-            print a, b
-        return False
-    return  True
-_approx_eq.debug = 0
+# #useful mostly for unit tests
+# def _approx_eq(a,b,eps=1.0e-9):
+#     a = numpy.asarray(a)
+#     b = numpy.asarray(b)
+#     if a.shape != b.shape:
+#         if _approx_eq.debug:
+#             print a.shape, b.shape
+#         return False
+#     if numpy.max(numpy.abs(a-b)) >= eps:
+#         if _approx_eq.debug:
+#             print a, b
+#         return False
+#     return  True
+# _approx_eq.debug = 0
 
-def check_eq(self, node_in, node_out, arg_in, arg_out):
-    fn = Function([node_in], [node_out])
-    self.failUnless( numpy.all(fn(arg_in) == arg_out), (arg_in, arg_out))
+# def check_eq(self, node_in, node_out, arg_in, arg_out):
+#     fn = Function([node_in], [node_out])
+#     self.failUnless( numpy.all(fn(arg_in) == arg_out), (arg_in, arg_out))
 
-def check_eq2(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output])
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, [output])
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
-def check_eq2_c(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output], linker_cls = gof.CLinker)
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2_c(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, [output], linker_cls = gof.CLinker)
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
-def check_eq2_both(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output], linker_cls = lambda env: gof.DualLinker(env, _numpy_checker))
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2_both(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, [output], linker_cls = lambda env: gof.DualLinker(env, _numpy_checker))
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
-class T_argmax(unittest.TestCase):
-    def setUp(self):
-        numpy.random.seed(123784)
-        Argmax.debug = 0
+# class T_argmax(unittest.TestCase):
+#     def setUp(self):
+#         numpy.random.seed(123784)
+#         Argmax.debug = 0
 
-    def test0(self):
-        n = astensor(5.0)
-        v,i = eval_outputs(argmax(n))
-        self.failUnless(v == 5.0)
-        self.failUnless(i == 0)
+#     def test0(self):
+#         n = astensor(5.0)
+#         v,i = eval_outputs(argmax(n))
+#         self.failUnless(v == 5.0)
+#         self.failUnless(i == 0)
 
-    def test1(self):
-        n = astensor([1,2,3,2,-6])
-        v,i = eval_outputs(argmax(n))
-        self.failUnless(v == 3)
-        self.failUnless(i == 2)
+#     def test1(self):
+#         n = astensor([1,2,3,2,-6])
+#         v,i = eval_outputs(argmax(n))
+#         self.failUnless(v == 3)
+#         self.failUnless(i == 2)
 
-    def test2(self):
-        n = astensor(numpy.random.rand(2,3))
-        v,i = eval_outputs(argmax(n))
-        self.failUnless(numpy.all(i == [0,1]))
-    def test2b(self):
-        n = astensor(numpy.random.rand(2,3))
-        v,i = eval_outputs(argmax(n,axis=0))
-        self.failUnless(numpy.all(i == [0,1,1]))
-    def test2_invalid(self):
-        n = astensor(numpy.random.rand(2,3))
-        try:
-            eval_outputs(argmax(n,axis=3))
-        except ValueError, e:
-            return
-        self.fail()
-    def test2_invalid_neg(self):
-        n = astensor(numpy.random.rand(2,3))
-        try:
-            eval_outputs(argmax(n,axis=-3))
-        except ValueError, e:
-            return
-        self.fail()
-    def test2_valid_neg(self):
-        n = astensor(numpy.random.rand(2,3))
-        v,i = eval_outputs(argmax(n,axis=-1))
-        self.failUnless(v.shape == (2,))
-        v,i = eval_outputs(argmax(n,axis=-2))
-        self.failUnless(v.shape == (3,))
-    def test3(self):
-        n = astensor(numpy.random.rand(2,3,4))
-        v,i = eval_outputs(argmax(n,axis=0))
-        self.failUnless(v.shape == (3,4))
-        self.failUnless(i.shape == (3,4))
-        v,i = eval_outputs(argmax(n,axis=1))
-        self.failUnless(v.shape == (2,4))
-        self.failUnless(i.shape == (2,4))
-        v,i = eval_outputs(argmax(n,axis=2))
-        self.failUnless(v.shape == (2,3))
-        self.failUnless(i.shape == (2,3))
+#     def test2(self):
+#         n = astensor(numpy.random.rand(2,3))
+#         v,i = eval_outputs(argmax(n))
+#         self.failUnless(numpy.all(i == [0,1]))
+#     def test2b(self):
+#         n = astensor(numpy.random.rand(2,3))
+#         v,i = eval_outputs(argmax(n,axis=0))
+#         self.failUnless(numpy.all(i == [0,1,1]))
+#     def test2_invalid(self):
+#         n = astensor(numpy.random.rand(2,3))
+#         try:
+#             eval_outputs(argmax(n,axis=3))
+#         except ValueError, e:
+#             return
+#         self.fail()
+#     def test2_invalid_neg(self):
+#         n = astensor(numpy.random.rand(2,3))
+#         try:
+#             eval_outputs(argmax(n,axis=-3))
+#         except ValueError, e:
+#             return
+#         self.fail()
+#     def test2_valid_neg(self):
+#         n = astensor(numpy.random.rand(2,3))
+#         v,i = eval_outputs(argmax(n,axis=-1))
+#         self.failUnless(v.shape == (2,))
+#         v,i = eval_outputs(argmax(n,axis=-2))
+#         self.failUnless(v.shape == (3,))
+#     def test3(self):
+#         n = astensor(numpy.random.rand(2,3,4))
+#         v,i = eval_outputs(argmax(n,axis=0))
+#         self.failUnless(v.shape == (3,4))
+#         self.failUnless(i.shape == (3,4))
+#         v,i = eval_outputs(argmax(n,axis=1))
+#         self.failUnless(v.shape == (2,4))
+#         self.failUnless(i.shape == (2,4))
+#         v,i = eval_outputs(argmax(n,axis=2))
+#         self.failUnless(v.shape == (2,3))
+#         self.failUnless(i.shape == (2,3))
 
 
-class T_transpose(unittest.TestCase):
-    def test0(self):
-        n = astensor(numpy.ones(()))
-        t = transpose(n)
-        self.failUnless(t.owner.__class__ is TransposeInplace)
-        f = Function([n], [t])
-        tval = f(n.data)
-        self.failUnless(tval.shape == n.data.shape)
+# class T_transpose(unittest.TestCase):
+#     def test0(self):
+#         n = astensor(numpy.ones(()))
+#         t = transpose(n)
+#         self.failUnless(t.owner.__class__ is TransposeInplace)
+#         f = Function([n], [t])
+#         tval = f(n.data)
+#         self.failUnless(tval.shape == n.data.shape)
 
-        #test aliasing
-        tval += 55.0
-        self.failUnless(n.data == 1.0)
+#         #test aliasing
+#         tval += 55.0
+#         self.failUnless(n.data == 1.0)
         
-    def test1(self):
-        n = astensor(numpy.ones(5))
-        t = transpose(n)
-        self.failUnless(t.owner.__class__ is TransposeInplace)
-        f = Function([n], [t])
-        tval = f(n.data)
-        self.failUnless(tval.shape == n.data.shape)
-        #test aliasing
-        tval += 55.0
-        self.failUnless(n.data[0] == 1.0)
+#     def test1(self):
+#         n = astensor(numpy.ones(5))
+#         t = transpose(n)
+#         self.failUnless(t.owner.__class__ is TransposeInplace)
+#         f = Function([n], [t])
+#         tval = f(n.data)
+#         self.failUnless(tval.shape == n.data.shape)
+#         #test aliasing
+#         tval += 55.0
+#         self.failUnless(n.data[0] == 1.0)
         
-    def test2(self):
-        n = astensor(numpy.ones((5,3)))
-        t = transpose(n)
-        self.failUnless(t.owner.__class__ is TransposeInplace)
-        f = Function([n], [t])
-        tval = f(n.data)
-        self.failUnless(tval.shape == (3,5))
-        #test aliasing
-        tval += 55.0
-        self.failUnless(n.data[0,0] == 1.0)
+#     def test2(self):
+#         n = astensor(numpy.ones((5,3)))
+#         t = transpose(n)
+#         self.failUnless(t.owner.__class__ is TransposeInplace)
+#         f = Function([n], [t])
+#         tval = f(n.data)
+#         self.failUnless(tval.shape == (3,5))
+#         #test aliasing
+#         tval += 55.0
+#         self.failUnless(n.data[0,0] == 1.0)
 
-    def test3(self):
-        """Test transpose of tensor, inplace version"""
-        n = astensor(numpy.ones((5,3,2)))
-        t = transpose_inplace(n)
-        self.failUnless(t.owner.__class__ is TransposeInplace)
-        f = Function([n], [t])
-        tval = f(n.data)
-        self.failUnless(tval.shape == (2,3,5))
-        #test aliasing
-        tval += 55.0
-        self.failUnless(n.data[0,0,0] == 56.0)
-    def test_grad(self):
-        verify_grad(self, TransposeInplace, [numpy.random.rand(2, 3)])
-        verify_grad(self, TransposeInplace, [numpy.ones(3)])
+#     def test3(self):
+#         """Test transpose of tensor, inplace version"""
+#         n = astensor(numpy.ones((5,3,2)))
+#         t = transpose_inplace(n)
+#         self.failUnless(t.owner.__class__ is TransposeInplace)
+#         f = Function([n], [t])
+#         tval = f(n.data)
+#         self.failUnless(tval.shape == (2,3,5))
+#         #test aliasing
+#         tval += 55.0
+#         self.failUnless(n.data[0,0,0] == 56.0)
+#     def test_grad(self):
+#         verify_grad(self, TransposeInplace, [numpy.random.rand(2, 3)])
+#         verify_grad(self, TransposeInplace, [numpy.ones(3)])
 
-class T_subtensor(unittest.TestCase):
-    def test0_err_invalid(self):
-        #it is impossible to retrieve a view of a 0-d tensor
-        n = astensor(numpy.ones(()))
-        try:
-            t = n[0]
-        except ValueError, e:
-            self.failUnless(e[0] is Subtensor.e_invalid)
-            return
-        self.fail()
-    def test1_err_bounds(self):
-        n = astensor(numpy.ones(3))
-        t = n[7]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        try:
-            tval = eval_outputs([t])
-        except Exception, e:
-            if e[0] != 'index out of bounds':
-                raise
-            return
-        self.fail()
-    def test1_ok_range_finite(self):
-        n = astensor(numpy.ones(3)*5)
-        t = n[0:2]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(tval[1] == 5.0)
-    def test2_ok_range_finite(self):
-        n = astensor(numpy.ones((3,4))*5)
-        t = n[0:2,3]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(tval[1] == 5.0)
-    def test1_err_invalid(self):
-        n = astensor(numpy.ones(1))
-        try:
-            t = n[0,0]
-        except ValueError, e:
-            self.failUnless(e[0] is Subtensor.e_invalid)
-            return
-        self.fail()
-    def test1_ok_elem(self):
-        n = astensor(numpy.ones(1)*5)
-        t = n[0]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == ())
-        self.failUnless(tval == 5.0)
-    def test1_ok_range_infinite(self):
-        n = astensor(numpy.ones(3)*5)
-        t = n[1:]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(tval[1] == 5.0)
-    def test1_ok_strided(self):
-        n = astensor(numpy.ones(5)*5)
-        t = n[1::2]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(tval[1] == 5.0)
+# class T_subtensor(unittest.TestCase):
+#     def test0_err_invalid(self):
+#         #it is impossible to retrieve a view of a 0-d tensor
+#         n = astensor(numpy.ones(()))
+#         try:
+#             t = n[0]
+#         except ValueError, e:
+#             self.failUnless(e[0] is Subtensor.e_invalid)
+#             return
+#         self.fail()
+#     def test1_err_bounds(self):
+#         n = astensor(numpy.ones(3))
+#         t = n[7]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         try:
+#             tval = eval_outputs([t])
+#         except Exception, e:
+#             if e[0] != 'index out of bounds':
+#                 raise
+#             return
+#         self.fail()
+#     def test1_ok_range_finite(self):
+#         n = astensor(numpy.ones(3)*5)
+#         t = n[0:2]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (2,))
+#         self.failUnless(tval[1] == 5.0)
+#     def test2_ok_range_finite(self):
+#         n = astensor(numpy.ones((3,4))*5)
+#         t = n[0:2,3]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (2,))
+#         self.failUnless(tval[1] == 5.0)
+#     def test1_err_invalid(self):
+#         n = astensor(numpy.ones(1))
+#         try:
+#             t = n[0,0]
+#         except ValueError, e:
+#             self.failUnless(e[0] is Subtensor.e_invalid)
+#             return
+#         self.fail()
+#     def test1_ok_elem(self):
+#         n = astensor(numpy.ones(1)*5)
+#         t = n[0]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == ())
+#         self.failUnless(tval == 5.0)
+#     def test1_ok_range_infinite(self):
+#         n = astensor(numpy.ones(3)*5)
+#         t = n[1:]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (2,))
+#         self.failUnless(tval[1] == 5.0)
+#     def test1_ok_strided(self):
+#         n = astensor(numpy.ones(5)*5)
+#         t = n[1::2]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (2,))
+#         self.failUnless(tval[1] == 5.0)
 
-        tval = eval_outputs([n[0:-1:2]]) #0 to 1 from the end stepping by 2
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(tval[1] == 5.0)
+#         tval = eval_outputs([n[0:-1:2]]) #0 to 1 from the end stepping by 2
+#         self.failUnless(tval.shape == (2,))
+#         self.failUnless(tval[1] == 5.0)
 
-    def test2_err_bounds0(self):
-        n = astensor(numpy.ones((2,3))*5)
-        t = n[0,4]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        try:
-            tval = eval_outputs([t])
-        except IndexError, e:
-            return
-        self.fail()
-    def test2_err_bounds1(self):
-        n = astensor(numpy.ones((2,3))*5)
-        t = n[4:5,2]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        try:
-            tval = eval_outputs([t])
-        except Exception, e:
-            if e[0] != 'index out of bounds':
-                raise
-    def test2_ok_elem(self):
-        n = astensor(numpy.asarray(range(6)).reshape((2,3)))
-        t = n[0,2]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == ())
-        self.failUnless(numpy.all(tval == 2))
-    def test2_ok_row(self):
-        n = astensor(numpy.asarray(range(6)).reshape((2,3)))
-        t = n[1]
-        self.failIf(any(n.broadcastable))
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (3,))
-        self.failUnless(numpy.all(tval == [3,4,5]))
+#     def test2_err_bounds0(self):
+#         n = astensor(numpy.ones((2,3))*5)
+#         t = n[0,4]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         try:
+#             tval = eval_outputs([t])
+#         except IndexError, e:
+#             return
+#         self.fail()
+#     def test2_err_bounds1(self):
+#         n = astensor(numpy.ones((2,3))*5)
+#         t = n[4:5,2]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         try:
+#             tval = eval_outputs([t])
+#         except Exception, e:
+#             if e[0] != 'index out of bounds':
+#                 raise
+#     def test2_ok_elem(self):
+#         n = astensor(numpy.asarray(range(6)).reshape((2,3)))
+#         t = n[0,2]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == ())
+#         self.failUnless(numpy.all(tval == 2))
+#     def test2_ok_row(self):
+#         n = astensor(numpy.asarray(range(6)).reshape((2,3)))
+#         t = n[1]
+#         self.failIf(any(n.broadcastable))
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (3,))
+#         self.failUnless(numpy.all(tval == [3,4,5]))
 
-    def test2_ok_col(self):
-        n = astensor(numpy.ones((2,3))*5)
-        t = n[:,0]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        self.failIf(any(n.broadcastable))
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(numpy.all(tval == 5.0))
+#     def test2_ok_col(self):
+#         n = astensor(numpy.ones((2,3))*5)
+#         t = n[:,0]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         self.failIf(any(n.broadcastable))
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (2,))
+#         self.failUnless(numpy.all(tval == 5.0))
 
-    def test2_ok_rows_finite(self):
-        n = astensor(numpy.ones((4,3))*5)
-        t = n[1:3,0]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,))
-        self.failUnless(numpy.all(tval == 5.0))
+#     def test2_ok_rows_finite(self):
+#         n = astensor(numpy.ones((4,3))*5)
+#         t = n[1:3,0]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (2,))
+#         self.failUnless(numpy.all(tval == 5.0))
 
-    def test2_ok_cols_infinite(self):
-        n = astensor(numpy.asarray(range(12)).reshape((4,3)))
-        t = n[1,2:]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (1,))
-        self.failUnless(numpy.all(tval == 5))
+#     def test2_ok_cols_infinite(self):
+#         n = astensor(numpy.asarray(range(12)).reshape((4,3)))
+#         t = n[1,2:]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (1,))
+#         self.failUnless(numpy.all(tval == 5))
 
-    def test2_ok_strided(self):
-        n = astensor(numpy.asarray(range(20)).reshape((4,5)))
-        t = n[1:4:2,1:5:2]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == (2,2))
-        self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
+#     def test2_ok_strided(self):
+#         n = astensor(numpy.asarray(range(20)).reshape((4,5)))
+#         t = n[1:4:2,1:5:2]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == (2,2))
+#         self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
 
-    def test3_ok_mat(self):
-        n = astensor(numpy.asarray(range(24)).reshape((2,3,4)))
-        t = n[0,0,0]
-        self.failUnless(t.owner.__class__ is Subtensor)
-        tval = eval_outputs([t])
-        self.failUnless(tval.shape == ())
-        self.failUnless(numpy.all(tval == 0))
-
-
-class T_add(unittest.TestCase):
-
-    def test_complex_all_ops(self):
-        for nbits in (64, 128):
-            a = astensor(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
-            b = astensor(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
-            tests = (("+", lambda x,y: x+y),
-                     ("-", lambda x,y: x-y),
-                     ("*", lambda x,y: x*y),
-                     ("/", lambda x,y: x/y))
-            for s, fn in tests:
-                f = Function([a,b], [fn(a, b)], linker_cls = gof.CLinker)
-                self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
-
-    def test_grad_scalar_l(self):
-        verify_grad(self, Add, [numpy.asarray([3.0]), numpy.random.rand(3)])
-    def test_grad_scalar_r(self):
-        verify_grad(self, Add, [numpy.random.rand(3), numpy.asarray([3.0])])
-    def test_grad_row(self):
-        verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
-    def test_grad_col(self):
-        verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+#     def test3_ok_mat(self):
+#         n = astensor(numpy.asarray(range(24)).reshape((2,3,4)))
+#         t = n[0,0,0]
+#         self.failUnless(t.owner.__class__ is Subtensor)
+#         tval = eval_outputs([t])
+#         self.failUnless(tval.shape == ())
+#         self.failUnless(numpy.all(tval == 0))
 
 
-class T_abs(unittest.TestCase):
-    def test_impl(self):
-        t = astensor(1.0)
-        check_eq(self, t, abs(t), 1.0, 1.0)
-        check_eq(self, t, abs(t), -1.0, 1.0)
+# class T_add(unittest.TestCase):
 
-        for shape in (2,), (3,4):
-            t = astensor(numpy.ones(shape))
-            d = numpy.random.rand(*shape)*2-1.0
-            check_eq(self, t, abs(t), d, abs(d))
-            check_eq(self, t, abs(t), -d, abs(-d))
+#     def test_complex_all_ops(self):
+#         for nbits in (64, 128):
+#             a = astensor(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
+#             b = astensor(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
+#             tests = (("+", lambda x,y: x+y),
+#                      ("-", lambda x,y: x-y),
+#                      ("*", lambda x,y: x*y),
+#                      ("/", lambda x,y: x/y))
+#             for s, fn in tests:
+#                 f = Function([a,b], [fn(a, b)], linker_cls = gof.CLinker)
+#                 self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
-    def test_grad(self):
-        verify_grad(self, Abs, [numpy.ones(())])
-        verify_grad(self, Abs, [numpy.ones(3)])
+#     def test_grad_scalar_l(self):
+#         verify_grad(self, Add, [numpy.asarray([3.0]), numpy.random.rand(3)])
+#     def test_grad_scalar_r(self):
+#         verify_grad(self, Add, [numpy.random.rand(3), numpy.asarray([3.0])])
+#     def test_grad_row(self):
+#         verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+#     def test_grad_col(self):
+#         verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
-    class AbsBadGrad(Abs):
-        def grad(self, (x, ), (gz, )):
-            return mul(gz * sgn(x),0.9),
 
-    def test_badgrad(self):
-        try:
-            verify_grad(self, T_abs.AbsBadGrad, [numpy.ones(())])
-        except Exception, e:
-            self.failUnless(str(e) == verify_grad.E_grad, str(e))
-            return
-        self.fail()
+# class T_abs(unittest.TestCase):
+#     def test_impl(self):
+#         t = astensor(1.0)
+#         check_eq(self, t, abs(t), 1.0, 1.0)
+#         check_eq(self, t, abs(t), -1.0, 1.0)
 
-class T_fill(unittest.TestCase):
-    def test0(self):
-        t = fill(numpy.asarray([1,2,3]), 9)
-        self.failUnless(t.owner.__class__ == Fill)
-        o = t.owner
-        self.failUnless(o.inputs[0].broadcastable == (0,))
-#        self.failUnless(o.inputs[0].dtype[0:3] == 'int')
-        self.failUnless(o.inputs[1].broadcastable == (1,))
-#        self.failUnless(o.inputs[1].dtype[0:3] == 'flo')
-        self.failUnless(o.outputs[0].broadcastable == (0,))
-#        self.failUnless(o.outputs[0].dtype[0:3] == 'flo')
-        self.failUnless(numpy.all(eval_outputs([t]) == [9,9,9]))
+#         for shape in (2,), (3,4):
+#             t = astensor(numpy.ones(shape))
+#             d = numpy.random.rand(*shape)*2-1.0
+#             check_eq(self, t, abs(t), d, abs(d))
+#             check_eq(self, t, abs(t), -d, abs(-d))
 
-    def test1(self):
-        x = astensor(numpy.ones((4,5)))
-        l = ones_like(x[:,0:1])
-        r = ones_like(x[0:1,:])
-        xx = x + dot(l,r)
-        self.failUnless(numpy.mean(eval_outputs([xx]) == 2.0))
+#     def test_grad(self):
+#         verify_grad(self, Abs, [numpy.ones(())])
+#         verify_grad(self, Abs, [numpy.ones(3)])
 
-class T_sum(unittest.TestCase):
-    def test_impl(self):
-        t = astensor(0.0)
-        check_eq(self, t, Sum(t).out, 1.0, 1.0)
-        check_eq(self, t, Sum(t).out, -1.0, -1.0)
+#     class AbsBadGrad(Abs):
+#         def grad(self, (x, ), (gz, )):
+#             return mul(gz * sgn(x),0.9),
 
-        t = astensor([0.0, 0.0])
-        d = numpy.asarray([-0.4, 1.2])
-        check_eq(self, t, Sum(t).out, d, numpy.sum(d))
-        check_eq(self, t, Sum(t).out, -d, -numpy.sum(d))
+#     def test_badgrad(self):
+#         try:
+#             verify_grad(self, T_abs.AbsBadGrad, [numpy.ones(())])
+#         except Exception, e:
+#             self.failUnless(str(e) == verify_grad.E_grad, str(e))
+#             return
+#         self.fail()
 
-class T_mul(unittest.TestCase):
-    def setUp(self):
-        numpy.random.seed([1,2,3,4])
+# class T_fill(unittest.TestCase):
+#     def test0(self):
+#         t = fill(numpy.asarray([1,2,3]), 9)
+#         self.failUnless(t.owner.__class__ == Fill)
+#         o = t.owner
+#         self.failUnless(o.inputs[0].broadcastable == (0,))
+# #        self.failUnless(o.inputs[0].dtype[0:3] == 'int')
+#         self.failUnless(o.inputs[1].broadcastable == (1,))
+# #        self.failUnless(o.inputs[1].dtype[0:3] == 'flo')
+#         self.failUnless(o.outputs[0].broadcastable == (0,))
+# #        self.failUnless(o.outputs[0].dtype[0:3] == 'flo')
+#         self.failUnless(numpy.all(eval_outputs([t]) == [9,9,9]))
 
-    def test_elemwise(self):
-        a = astensor(0.0)
-        b = astensor(0.0)
-        check_eq2_both(self, [a,b], mul(a,b), [3.0, 4.0], 12.0)
-        check_eq2_both(self, [a,b], mul(b,a), [-1.0,2.0], -2.0)
+#     def test1(self):
+#         x = astensor(numpy.ones((4,5)))
+#         l = ones_like(x[:,0:1])
+#         r = ones_like(x[0:1,:])
+#         xx = x + dot(l,r)
+#         self.failUnless(numpy.mean(eval_outputs([xx]) == 2.0))
 
-        a = astensor(numpy.ones(2))
-        b = astensor(numpy.ones(2))
-        aa = numpy.asarray([-0.5, 4.0])
-        bb = numpy.asarray([-0.5, 2.0])
-        check_eq2_both(self, [a,b], mul(a,b), [aa,bb], numpy.asarray([0.25, 8.0]))
-        check_eq2_both(self, [a,b], mul(a,b), [bb,aa], numpy.asarray([0.25, 8.0]))
+# class T_sum(unittest.TestCase):
+#     def test_impl(self):
+#         t = astensor(0.0)
+#         check_eq(self, t, Sum(t).out, 1.0, 1.0)
+#         check_eq(self, t, Sum(t).out, -1.0, -1.0)
 
-    def test_scalar(self):
-        r = numpy.random.rand(2,3)
-        a = astensor(r)
-        b = astensor(2.0)
-        check_eq2_both(self, [a,b], mul(a,b), [r, 2.0], r*2.0)
-        check_eq2_both(self, [a,b], mul(a,b), [r, 4.0], r*4.0)
-        self.failUnless(b.data == 2.0)
+#         t = astensor([0.0, 0.0])
+#         d = numpy.asarray([-0.4, 1.2])
+#         check_eq(self, t, Sum(t).out, d, numpy.sum(d))
+#         check_eq(self, t, Sum(t).out, -d, -numpy.sum(d))
 
-    def test_rowcol(self):
-        r1 = numpy.random.rand(3,5)
-        r2 = numpy.random.rand(1,5)
-        r3 = numpy.random.rand(3,1)
-        a1, a2, a3 = astensor(r1), astensor(r2), astensor(r3)
-        check_eq2_both(self, [a1,a2], mul(a1,a2), [r1, r2], r1*r2)
-        check_eq2_both(self, [a1,a3], mul(a1,a3), [r1, r3], r1*r3)
+# class T_mul(unittest.TestCase):
+#     def setUp(self):
+#         numpy.random.seed([1,2,3,4])
 
-    def test_grad_elemwise(self):
-        verify_grad(self, Mul, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
-    def test_grad_scalar_l(self):
-        verify_grad(self, Mul, [numpy.asarray([3.0]), numpy.random.rand(3)])
-    def test_grad_scalar_r(self):
-        verify_grad(self, Mul, [numpy.random.rand(3), numpy.asarray([3.0])])
-    def test_grad_row(self):
-        verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
-    def test_grad_row2(self):
-        op = lambda x, y: Mul(x, DimShuffle(y, ['x', 0]).out)
-        verify_grad(self, op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
-    def test_grad_col(self):
-        verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+#     def test_elemwise(self):
+#         a = astensor(0.0)
+#         b = astensor(0.0)
+#         check_eq2_both(self, [a,b], mul(a,b), [3.0, 4.0], 12.0)
+#         check_eq2_both(self, [a,b], mul(b,a), [-1.0,2.0], -2.0)
 
-    def test_wrong_shapes(self):
-        a = astensor(numpy.ones(3))
-        b = astensor(numpy.ones(4))
-        try:
-            check_eq2(self, [a,b], Mul(a,b).out,
-                      [numpy.ones(3), numpy.ones(4)], 1.0)
-            self.fail()
-        except ValueError, e:
-            self.failUnless('shape mismatch' in str(e))
+#         a = astensor(numpy.ones(2))
+#         b = astensor(numpy.ones(2))
+#         aa = numpy.asarray([-0.5, 4.0])
+#         bb = numpy.asarray([-0.5, 2.0])
+#         check_eq2_both(self, [a,b], mul(a,b), [aa,bb], numpy.asarray([0.25, 8.0]))
+#         check_eq2_both(self, [a,b], mul(a,b), [bb,aa], numpy.asarray([0.25, 8.0]))
+
+#     def test_scalar(self):
+#         r = numpy.random.rand(2,3)
+#         a = astensor(r)
+#         b = astensor(2.0)
+#         check_eq2_both(self, [a,b], mul(a,b), [r, 2.0], r*2.0)
+#         check_eq2_both(self, [a,b], mul(a,b), [r, 4.0], r*4.0)
+#         self.failUnless(b.data == 2.0)
+
+#     def test_rowcol(self):
+#         r1 = numpy.random.rand(3,5)
+#         r2 = numpy.random.rand(1,5)
+#         r3 = numpy.random.rand(3,1)
+#         a1, a2, a3 = astensor(r1), astensor(r2), astensor(r3)
+#         check_eq2_both(self, [a1,a2], mul(a1,a2), [r1, r2], r1*r2)
+#         check_eq2_both(self, [a1,a3], mul(a1,a3), [r1, r3], r1*r3)
+
+#     def test_grad_elemwise(self):
+#         verify_grad(self, Mul, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+#     def test_grad_scalar_l(self):
+#         verify_grad(self, Mul, [numpy.asarray([3.0]), numpy.random.rand(3)])
+#     def test_grad_scalar_r(self):
+#         verify_grad(self, Mul, [numpy.random.rand(3), numpy.asarray([3.0])])
+#     def test_grad_row(self):
+#         verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+#     def test_grad_row2(self):
+#         op = lambda x, y: Mul(x, DimShuffle(y, ['x', 0]).out)
+#         verify_grad(self, op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
+#     def test_grad_col(self):
+#         verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+
+#     def test_wrong_shapes(self):
+#         a = astensor(numpy.ones(3))
+#         b = astensor(numpy.ones(4))
+#         try:
+#             check_eq2(self, [a,b], Mul(a,b).out,
+#                       [numpy.ones(3), numpy.ones(4)], 1.0)
+#             self.fail()
+#         except ValueError, e:
+#             self.failUnless('shape mismatch' in str(e))
         
-        try:
-            check_eq2_c(self, [a,b], Mul(a,b).out,
-                        [numpy.ones(3), numpy.ones(4)], 1.0)
-            self.fail()
-        except ValueError, e:
-            pass
+#         try:
+#             check_eq2_c(self, [a,b], Mul(a,b).out,
+#                         [numpy.ones(3), numpy.ones(4)], 1.0)
+#             self.fail()
+#         except ValueError, e:
+#             pass
 
-class T_div(unittest.TestCase):
-    def setUp(self):
-        numpy.random.seed(9999)
-    def test_grad_e(self):
-        verify_grad(self, Div, [numpy.random.rand(3), numpy.ones(3)])
-        verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
-        verify_grad(self, Div, [numpy.ones(()), numpy.ones(())])
+# class T_div(unittest.TestCase):
+#     def setUp(self):
+#         numpy.random.seed(9999)
+#     def test_grad_e(self):
+#         verify_grad(self, Div, [numpy.random.rand(3), numpy.ones(3)])
+#         verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
+#         verify_grad(self, Div, [numpy.ones(()), numpy.ones(())])
 
-    def test_grad_sl(self):
-        verify_grad(self, Div, [numpy.ones((3, 5)), numpy.ones((1, 1))])
-        verify_grad(self, Div, [numpy.random.rand(3), numpy.ones((1, ))])
-        verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
+#     def test_grad_sl(self):
+#         verify_grad(self, Div, [numpy.ones((3, 5)), numpy.ones((1, 1))])
+#         verify_grad(self, Div, [numpy.random.rand(3), numpy.ones((1, ))])
+#         verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
 
-class T_log2(unittest.TestCase):
-    def test0(self):
-        verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
+# class T_log2(unittest.TestCase):
+#     def test0(self):
+#         verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
 
-class T_log(unittest.TestCase):
-    def test0(self):
-        verify_grad(self, Log, [numpy.random.rand(3,1)+0.0001])
-    def test1(self):
-        a = astensor(numpy.ones(2))
-        b = astensor(numpy.ones(2))
-        aa = numpy.asarray([0.5, 4.0])
-        bb = numpy.asarray([0.5, 2.0])
-        check_eq2(self, [a], log(a), [aa], numpy.log(numpy.asarray(aa)))
+# class T_log(unittest.TestCase):
+#     def test0(self):
+#         verify_grad(self, Log, [numpy.random.rand(3,1)+0.0001])
+#     def test1(self):
+#         a = astensor(numpy.ones(2))
+#         b = astensor(numpy.ones(2))
+#         aa = numpy.asarray([0.5, 4.0])
+#         bb = numpy.asarray([0.5, 2.0])
+#         check_eq2(self, [a], log(a), [aa], numpy.log(numpy.asarray(aa)))
 
-class T_pow(unittest.TestCase):
-    def setUp(self):
-        numpy.random.seed(9999)
-    def test_elemwise(self):
-        verify_grad(self, Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
-        verify_grad(self, Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
-    def test_scalar_l(self):
-        verify_grad(self, Pow, [numpy.asarray([3.0]), numpy.random.rand(3)])
-    def test_scalar_r(self):
-        verify_grad(self, Pow, [numpy.random.rand(3), numpy.asarray([3.0])])
-    def test_row(self):
-        verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
-    def test_col(self):
-        verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+# class T_pow(unittest.TestCase):
+#     def setUp(self):
+#         numpy.random.seed(9999)
+#     def test_elemwise(self):
+#         verify_grad(self, Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
+#         verify_grad(self, Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+#     def test_scalar_l(self):
+#         verify_grad(self, Pow, [numpy.asarray([3.0]), numpy.random.rand(3)])
+#     def test_scalar_r(self):
+#         verify_grad(self, Pow, [numpy.random.rand(3), numpy.asarray([3.0])])
+#     def test_row(self):
+#         verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+#     def test_col(self):
+#         verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
-class _testCase_matinv(unittest.TestCase):
+# class _testCase_matinv(unittest.TestCase):
 
-    def setUp(self):
-        numpy.random.seed(1)
+#     def setUp(self):
+#         numpy.random.seed(1)
 
-    def mat_reciprocal(self,dim):
-        # symbolic program
-        # broadcastable=[False,False] means that the shape of matrix is two dimensional,
-        # and none of the dimensions are constrained to have length 1.
-        # Note that Tensor's constructor does not actually allocate any memory.
-        # TODO: Make Tensor syntax more explicit, and maybe give shape or number of dimensions.
-        a = Tensor('float64', broadcastable=[False,False], name='a')
-        b = Tensor('float64', broadcastable=[False,False], name='b')
-        ab = a*b
-        # Here, astensor actually uses the data allocated by numpy.
-        diff = ab - astensor(numpy.ones((dim,dim)))
-        # Sum of squared errors
-        ssdiff = sum((diff**2.0))
+#     def mat_reciprocal(self,dim):
+#         # symbolic program
+#         # broadcastable=[False,False] means that the shape of matrix is two dimensional,
+#         # and none of the dimensions are constrained to have length 1.
+#         # Note that Tensor's constructor does not actually allocate any memory.
+#         # TODO: Make Tensor syntax more explicit, and maybe give shape or number of dimensions.
+#         a = Tensor('float64', broadcastable=[False,False], name='a')
+#         b = Tensor('float64', broadcastable=[False,False], name='b')
+#         ab = a*b
+#         # Here, astensor actually uses the data allocated by numpy.
+#         diff = ab - astensor(numpy.ones((dim,dim)))
+#         # Sum of squared errors
+#         ssdiff = sum((diff**2.0))
 
-        g_b = gradient.grad(ssdiff, b)
+#         g_b = gradient.grad(ssdiff, b)
 
-        # compilation to function
-        # [a,b] are the inputs, [ssdiff,g_b] are the outputs
-        fn = Function([a,b], [ssdiff,g_b])
+#         # compilation to function
+#         # [a,b] are the inputs, [ssdiff,g_b] are the outputs
+#         fn = Function([a,b], [ssdiff,g_b])
 
-        # use the function
-        x = numpy.random.rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
-        w = numpy.random.rand(dim,dim)
-        for i in xrange(300):
-            ssd, gw = fn(x,w)
-            #print ssd, x*w, x, w
-            if i == 0:
-                str0 = str(ssd)
-            w -= 0.4 * gw
+#         # use the function
+#         x = numpy.random.rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
+#         w = numpy.random.rand(dim,dim)
+#         for i in xrange(300):
+#             ssd, gw = fn(x,w)
+#             #print ssd, x*w, x, w
+#             if i == 0:
+#                 str0 = str(ssd)
+#             w -= 0.4 * gw
 
-        return str0, str(ssd)
+#         return str0, str(ssd)
 
-    def test_reciprocal(self):
-        """Matrix reciprocal by gradient descent"""
-        self.assertEqual(('6.10141615619', '0.00703816291711'), self.mat_reciprocal(3))
+#     def test_reciprocal(self):
+#         """Matrix reciprocal by gradient descent"""
+#         self.assertEqual(('6.10141615619', '0.00703816291711'), self.mat_reciprocal(3))
 
-class t_dot(unittest.TestCase):
-    def setUp(self):
-        numpy.random.seed(44)
+# class t_dot(unittest.TestCase):
+#     def setUp(self):
+#         numpy.random.seed(44)
 
-    @staticmethod
-    def rand(*args):
-        return numpy.random.rand(*args)
+#     @staticmethod
+#     def rand(*args):
+#         return numpy.random.rand(*args)
 
-    def cmp_dot(self,x,y):
-        #x, y are matrices or numbers
-        def spec(x):
-            x = numpy.asarray(x)
-            return type(x), x.dtype, x.shape
-        nz = numpy.dot(x,y)
-        tz = eval_outputs([dot(astensor(x), astensor(y))])
-        self.failUnless(tz.dtype == nz.dtype)
-        self.failUnless(tz.shape == nz.shape)
-        self.failUnless(_approx_eq(nz, tz))
+#     def cmp_dot(self,x,y):
+#         #x, y are matrices or numbers
+#         def spec(x):
+#             x = numpy.asarray(x)
+#             return type(x), x.dtype, x.shape
+#         nz = numpy.dot(x,y)
+#         tz = eval_outputs([dot(astensor(x), astensor(y))])
+#         self.failUnless(tz.dtype == nz.dtype)
+#         self.failUnless(tz.shape == nz.shape)
+#         self.failUnless(_approx_eq(nz, tz))
 
-    def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
-    def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
-    def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
-    def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
-    def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
-    def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
-    def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
-    def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
-    def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
-    def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
-    def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
-    def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
-    def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
-    def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
-    def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
-    def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
+#     def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
+#     def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
+#     def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
+#     def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
+#     def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
+#     def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
+#     def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
+#     def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
+#     def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
+#     def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
+#     def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
+#     def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
+#     def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
+#     def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
+#     def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
+#     def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
 
-    def not_aligned(self, x, y):
-        z = dot(x,y)
-        try:
-            tz = eval_outputs([z])
-        except ValueError, e:
-            self.failUnless(e[0].split()[1:4] == ['are', 'not', 'aligned'], e)
-            return
-        self.fail()
+#     def not_aligned(self, x, y):
+#         z = dot(x,y)
+#         try:
+#             tz = eval_outputs([z])
+#         except ValueError, e:
+#             self.failUnless(e[0].split()[1:4] == ['are', 'not', 'aligned'], e)
+#             return
+#         self.fail()
 
-    def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
-    def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
-    def test_align_1_3(self): self.not_aligned(self.rand(5), self.rand(6,4,7))
-    def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6))
-    def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6,7))
-    def test_align_2_3(self): self.not_aligned(self.rand(5,4), self.rand(6,7,8))
-    def test_align_3_1(self): self.not_aligned(self.rand(5,4,3), self.rand(6))
-    def test_align_3_2(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7))
-    def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
+#     def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
+#     def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
+#     def test_align_1_3(self): self.not_aligned(self.rand(5), self.rand(6,4,7))
+#     def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6))
+#     def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6,7))
+#     def test_align_2_3(self): self.not_aligned(self.rand(5,4), self.rand(6,7,8))
+#     def test_align_3_1(self): self.not_aligned(self.rand(5,4,3), self.rand(6))
+#     def test_align_3_2(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7))
+#     def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
 
-    def test_grad(self):
-        verify_grad(self, Dot, [self.rand(2,3), self.rand(3,2)])
+#     def test_grad(self):
+#         verify_grad(self, Dot, [self.rand(2,3), self.rand(3,2)])
 
-class t_gemm(unittest.TestCase):
-    def setUp(self):
-        numpy.random.seed(44)
-        _approx_eq.debug = 0
-        Gemm.debug = False
+# class t_gemm(unittest.TestCase):
+#     def setUp(self):
+#         numpy.random.seed(44)
+#         _approx_eq.debug = 0
+#         Gemm.debug = False
 
-    @staticmethod
-    def _gemm(z,a,x,y,b):
-        assert a.shape == ()
-        assert b.shape == ()
-        return b * z + a * numpy.dot(x,y)
-    @staticmethod
-    def rand(*args):
-        return numpy.random.rand(*args)
+#     @staticmethod
+#     def _gemm(z,a,x,y,b):
+#         assert a.shape == ()
+#         assert b.shape == ()
+#         return b * z + a * numpy.dot(x,y)
+#     @staticmethod
+#     def rand(*args):
+#         return numpy.random.rand(*args)
 
-    def cmp(self, z, a, x, y, b):
-        def cmp_linker(z, a, x, y, b, l):
-            z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
-            z_orig = z.copy()
-            tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
+#     def cmp(self, z, a, x, y, b):
+#         def cmp_linker(z, a, x, y, b, l):
+#             z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
+#             z_orig = z.copy()
+#             tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
 
-            f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker_cls=l)
-            new_z = f(z,a,x,y,b)
-            z_after = self._gemm(z_orig, a, x, y, b)
+#             f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker_cls=l)
+#             new_z = f(z,a,x,y,b)
+#             z_after = self._gemm(z_orig, a, x, y, b)
 
-            self.failUnless(z is new_z)
-            #print z_orig, z_after, z, type(z_orig), type(z_after), type(z)
-            #_approx_eq.debug = 1
-            self.failUnless(_approx_eq(z_after, z))
-            if a == 0.0 and b == 1.0:
-                return
-            else:
-                self.failIf(numpy.all(z_orig == z))
+#             self.failUnless(z is new_z)
+#             #print z_orig, z_after, z, type(z_orig), type(z_after), type(z)
+#             #_approx_eq.debug = 1
+#             self.failUnless(_approx_eq(z_after, z))
+#             if a == 0.0 and b == 1.0:
+#                 return
+#             else:
+#                 self.failIf(numpy.all(z_orig == z))
 
-        cmp_linker(copy(z), a, x, y, b, gof.cc.OpWiseCLinker)
-        #cmp_linker(copy(z), a, x, y, b, gof.cc.CLinker)
-        cmp_linker(copy(z), a, x, y, b, gof.link.PerformLinker)
+#         cmp_linker(copy(z), a, x, y, b, gof.cc.OpWiseCLinker)
+#         #cmp_linker(copy(z), a, x, y, b, gof.cc.CLinker)
+#         cmp_linker(copy(z), a, x, y, b, gof.link.PerformLinker)
 
-    def test0a(self): 
-        Gemm.debug = True
-        try:
-            g = gemm([1.], 1., [1.], [1.], 1.)
-        except ValueError, e:
-            if e[0] is Gemm.E_rank:
-                return
-        self.fail()
+#     def test0a(self): 
+#         Gemm.debug = True
+#         try:
+#             g = gemm([1.], 1., [1.], [1.], 1.)
+#         except ValueError, e:
+#             if e[0] is Gemm.E_rank:
+#                 return
+#         self.fail()
 
-    def test0(self): 
-        try:
-            self.cmp(1., 0., 1.0, 1.0, 1.0)
-        except ValueError, e:
-            if e[0] is Gemm.E_rank:
-                return
-        self.fail()
+#     def test0(self): 
+#         try:
+#             self.cmp(1., 0., 1.0, 1.0, 1.0)
+#         except ValueError, e:
+#             if e[0] is Gemm.E_rank:
+#                 return
+#         self.fail()
 
-    def test2(self): 
-        try:
-            self.cmp(2., 1.0, [3,2,1.], [[1],[2],[3.]], 1.0)
-        except ValueError, e:
-            self.failUnless(e[0] == Gemm.E_rank)
-            return
-        self.fail()
-    def test4(self): 
-        self.cmp(self.rand(3,4), 1.0, self.rand(3,5), self.rand(5,4), 0.0)
-    def test5(self): self.cmp(self.rand(3,4), 1.0,
-            self.rand(3,5), self.rand(5,4), 1.0)
-    def test6(self): self.cmp(self.rand(3,4), 1.0,
-            self.rand(3,5), self.rand(5,4), -1.0)
-    def test7(self): self.cmp(self.rand(3,4), 0.0,
-            self.rand(3,5), self.rand(5,4), 0.0)
-    def test8(self): self.cmp(self.rand(3,4), 0.0,
-            self.rand(3,5), self.rand(5,4), 0.6)
-    def test9(self): self.cmp(self.rand(3,4), 0.0,
-            self.rand(3,5), self.rand(5,4), -1.0)
-    def test10(self): 
-        _approx_eq.debug = 1
-        self.cmp(self.rand(3,4), -1.0, self.rand(3,5), self.rand(5,4), 0.0)
-    def test11(self): self.cmp(self.rand(3,4), -1.0,
-            self.rand(3,5), self.rand(5,4), 1.0)
-    def test12(self): self.cmp(self.rand(3,4), -1.0,
-            self.rand(3,5), self.rand(5,4), -1.0)
+#     def test2(self): 
+#         try:
+#             self.cmp(2., 1.0, [3,2,1.], [[1],[2],[3.]], 1.0)
+#         except ValueError, e:
+#             self.failUnless(e[0] == Gemm.E_rank)
+#             return
+#         self.fail()
+#     def test4(self): 
+#         self.cmp(self.rand(3,4), 1.0, self.rand(3,5), self.rand(5,4), 0.0)
+#     def test5(self): self.cmp(self.rand(3,4), 1.0,
+#             self.rand(3,5), self.rand(5,4), 1.0)
+#     def test6(self): self.cmp(self.rand(3,4), 1.0,
+#             self.rand(3,5), self.rand(5,4), -1.0)
+#     def test7(self): self.cmp(self.rand(3,4), 0.0,
+#             self.rand(3,5), self.rand(5,4), 0.0)
+#     def test8(self): self.cmp(self.rand(3,4), 0.0,
+#             self.rand(3,5), self.rand(5,4), 0.6)
+#     def test9(self): self.cmp(self.rand(3,4), 0.0,
+#             self.rand(3,5), self.rand(5,4), -1.0)
+#     def test10(self): 
+#         _approx_eq.debug = 1
+#         self.cmp(self.rand(3,4), -1.0, self.rand(3,5), self.rand(5,4), 0.0)
+#     def test11(self): self.cmp(self.rand(3,4), -1.0,
+#             self.rand(3,5), self.rand(5,4), 1.0)
+#     def test12(self): self.cmp(self.rand(3,4), -1.0,
+#             self.rand(3,5), self.rand(5,4), -1.0)
 
-    def test_destroy_map0(self):
-        """test that only first input can be overwritten"""
-        Z = astensor(self.rand(2,2))
-        try:
-            gemm(Z, 1.0, Z, Z, 1.0)
-        except ValueError, e:
-            if e[0] == Gemm.E_z_uniq:
-                return
-        self.fail()
-    def test_destroy_map1(self):
-        """test that only first input can be overwritten"""
-        Z = astensor(self.rand(2,2))
-        A = astensor(self.rand(2,2))
-        try:
-            gemm(Z, 1.0, A, transpose_inplace(Z), 1.0)
-        except ValueError, e:
-            if e[0] == Gemm.E_z_uniq:
-                return
-        self.fail()
-    def test_destroy_map2(self):
-        """test that only first input can be overwritten"""
-        Z = astensor(self.rand(2,2))
-        A = astensor(self.rand(2,2))
-        try:
-            gemm(Z, 1.0, transpose_inplace(Z), A, 1.0)
-        except ValueError, e:
-            if e[0] == Gemm.E_z_uniq:
-                return
-        self.fail()
-    def test_destroy_map3(self):
-        """test that only first input can be overwritten"""
-        Z = astensor(self.rand(2,2))
-        A = astensor(self.rand(2,2))
-        try:
-            gemm(Z, 1.0, Z, A, 1.0)
-        except ValueError, e:
-            if e[0] == Gemm.E_z_uniq:
-                return
-        self.fail()
+#     def test_destroy_map0(self):
+#         """test that only first input can be overwritten"""
+#         Z = astensor(self.rand(2,2))
+#         try:
+#             gemm(Z, 1.0, Z, Z, 1.0)
+#         except ValueError, e:
+#             if e[0] == Gemm.E_z_uniq:
+#                 return
+#         self.fail()
+#     def test_destroy_map1(self):
+#         """test that only first input can be overwritten"""
+#         Z = astensor(self.rand(2,2))
+#         A = astensor(self.rand(2,2))
+#         try:
+#             gemm(Z, 1.0, A, transpose_inplace(Z), 1.0)
+#         except ValueError, e:
+#             if e[0] == Gemm.E_z_uniq:
+#                 return
+#         self.fail()
+#     def test_destroy_map2(self):
+#         """test that only first input can be overwritten"""
+#         Z = astensor(self.rand(2,2))
+#         A = astensor(self.rand(2,2))
+#         try:
+#             gemm(Z, 1.0, transpose_inplace(Z), A, 1.0)
+#         except ValueError, e:
+#             if e[0] == Gemm.E_z_uniq:
+#                 return
+#         self.fail()
+#     def test_destroy_map3(self):
+#         """test that only first input can be overwritten"""
+#         Z = astensor(self.rand(2,2))
+#         A = astensor(self.rand(2,2))
+#         try:
+#             gemm(Z, 1.0, Z, A, 1.0)
+#         except ValueError, e:
+#             if e[0] == Gemm.E_z_uniq:
+#                 return
+#         self.fail()
 
-    def test_destroy_map4(self):
-        """test that dot args can be aliased"""
-        Z = astensor(self.rand(2,2))
-        A = astensor(self.rand(2,2))
-        eval_outputs([gemm(Z, 1.0, A, A, 1.0)])
-        eval_outputs([gemm(Z, 1.0, A, A.T, 1.0)])
+#     def test_destroy_map4(self):
+#         """test that dot args can be aliased"""
+#         Z = astensor(self.rand(2,2))
+#         A = astensor(self.rand(2,2))
+#         eval_outputs([gemm(Z, 1.0, A, A, 1.0)])
+#         eval_outputs([gemm(Z, 1.0, A, A.T, 1.0)])
 
 
-    def test_transposes(self):
-        # three square matrices which are not contiguous
-        A = self.rand(4,5)[:,:4]
-        B = self.rand(4,5)[:,:4]
-        C = self.rand(4,5)[:,:4]
+#     def test_transposes(self):
+#         # three square matrices which are not contiguous
+#         A = self.rand(4,5)[:,:4]
+#         B = self.rand(4,5)[:,:4]
+#         C = self.rand(4,5)[:,:4]
         
-        def t(z,x,y,a=1.0, b=0.0,l=gof.cc.OpWiseCLinker,dt='float64'):
-            z,a,x,y,b = [numpy.asarray(p,dtype=dt) for p in z,a,x,y,b]
-            z_orig = z.copy()
-            z_after = self._gemm(z, a, x, y, b)
+#         def t(z,x,y,a=1.0, b=0.0,l=gof.cc.OpWiseCLinker,dt='float64'):
+#             z,a,x,y,b = [numpy.asarray(p,dtype=dt) for p in z,a,x,y,b]
+#             z_orig = z.copy()
+#             z_after = self._gemm(z, a, x, y, b)
 
-            tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
+#             tz,ta,tx,ty,tb = [astensor(p) for p in z,a,x,y,b]
 
-            f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker_cls=l)
-            f(z, a, x, y, b)
-            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z))
-            f(z.T, a, y.T, x.T, b)
-            self.failUnless(_approx_eq(z_after, z))
+#             f = Function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker_cls=l)
+#             f(z, a, x, y, b)
+#             self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z))
+#             f(z.T, a, y.T, x.T, b)
+#             self.failUnless(_approx_eq(z_after, z))
 
-        t(C,A,B)
-        t(C.T, A, B)
-        t(C, A.T, B, dt='float32')
-        t(C, A, B.T)
-        t(C.T, A.T, B)
-        t(C, A.T, B.T, dt='float32')
-        t(C.T, A, B.T)
-        t(C.T, A.T, B.T, dt='float32')
+#         t(C,A,B)
+#         t(C.T, A, B)
+#         t(C, A.T, B, dt='float32')
+#         t(C, A, B.T)
+#         t(C.T, A.T, B)
+#         t(C, A.T, B.T, dt='float32')
+#         t(C.T, A, B.T)
+#         t(C.T, A.T, B.T, dt='float32')
 
-        t(C, A[:,:2], B[:2, :])
-        t(C.T, A[:,:2], B[:2, :], dt='float32')
-        t(C, A[:2,:].T, B[:2, :])
-        t(C.T, A[:2,:].T, B[:2, :], dt='float32')
-        t(C, A[:2,:].T, B[:, :2].T)
-        t(C.T, A[:2,:].T, B[:, :2].T)
+#         t(C, A[:,:2], B[:2, :])
+#         t(C.T, A[:,:2], B[:2, :], dt='float32')
+#         t(C, A[:2,:].T, B[:2, :])
+#         t(C.T, A[:2,:].T, B[:2, :], dt='float32')
+#         t(C, A[:2,:].T, B[:, :2].T)
+#         t(C.T, A[:2,:].T, B[:, :2].T)
 
-        try:
-            t(C.T, A[:2,:], B[:, :2].T)
-        except ValueError, e:
-            if e[0].find('aligned') >= 0:
-                return
-        self.fail()
-
-
-
-
-def _tensor(data, broadcastable=None, name=None):
-    """Return a Tensor containing given data"""
-    data = numpy.asarray(data)
-    if broadcastable is None:
-        broadcastable = [s==1 for s in data.shape]
-    elif broadcastable in [0, 1]:
-        broadcastable = [broadcastable] *  len(data.shape)
-    rval = Tensor(data.dtype, broadcastable, name)
-    rval.data = data # will raise if broadcastable was mis-specified
-    return rval
+#         try:
+#             t(C.T, A[:2,:], B[:, :2].T)
+#         except ValueError, e:
+#             if e[0].find('aligned') >= 0:
+#                 return
+#         self.fail()
 
 
 
-class T_tensor(unittest.TestCase):
-    def test0(self): # allocate from a scalar float
-        t = _tensor(1.0)
-        self.failUnless(isinstance(t, Tensor))
-        self.failUnless(t.dtype == 'float64')
-        self.failUnless(t.broadcastable == ())
-        self.failUnless(t.role == None)
-        self.failUnless(isinstance(t.data, numpy.ndarray))
-        self.failUnless(str(t.data.dtype) == 'float64')
-        self.failUnless(t.data == 1.0)
-    def test0_int(self): # allocate from a scalar float
-        t = _tensor(1)
-        self.failUnless(isinstance(t, Tensor))
-        self.failUnless(t.dtype == 'int64' or t.dtype == 'int32')
-    def test1(self): # allocate from a vector of ints, not broadcastable
-        t = _tensor(numpy.ones(5,dtype='int32'))
-        self.failUnless(isinstance(t, Tensor))
-        self.failUnless(t.dtype == 'int32')
-        self.failUnless(t.broadcastable == (0,))
-        self.failUnless(isinstance(t.data, numpy.ndarray))
-        self.failUnless(str(t.data.dtype) == 'int32')
-    def test2(self): # allocate from a column matrix of complex with name
-        t = _tensor(numpy.ones((5,1),dtype='complex64'),name='bart')
-        self.failUnless(isinstance(t, Tensor))
-        self.failUnless(t.dtype == 'complex64')
-        self.failUnless(t.broadcastable == (0,1))
-        self.failUnless(isinstance(t.data, numpy.ndarray))
-        self.failUnless(t.name == 'bart')
-    def test2b(self): # allocate from a column matrix, not broadcastable
-        t = _tensor(numpy.ones((5,1),dtype='complex64'),broadcastable=0)
-        self.failUnless(isinstance(t, Tensor))
-        self.failUnless(t.dtype == 'complex64')
-        self.failUnless(t.broadcastable == (0,0))
-        self.failUnless(isinstance(t.data, numpy.ndarray))
-        f = Function([t], [t], linker_cls=gof.CLinker)
-        self.failUnless(numpy.all(t.data == f(t.data)))
-    def test_data_normal(self): #test that assigning to .data works when it should
-        t = _tensor(numpy.ones((5,1),dtype='complex64'), broadcastable=0)
-        o27 = numpy.ones((2,7), dtype='complex64')
-        t.data = o27
-        lst = t._data
-        self.failUnless(t.data.shape == (2,7))
-        self.failUnless(t.data is o27)
-        self.failUnless(t._data is lst)
-    def test_data_badrank0(self):
-        t = _tensor(numpy.ones((5,1),dtype='complex64'), broadcastable=0)
-        try:
-            t.data = numpy.ones((2,7,1))
-            self.fail()
-        except ValueError, e:
-            self.failUnless(e[0] is Tensor.filter.E_rank)
-        try:
-            t.data = numpy.ones(1)
-            self.fail()
-        except ValueError, e:
-            self.failUnless(e[0] is Tensor.filter.E_rank)
-    def test_data_badrank1(self):
-        t = _tensor(numpy.ones((1,1),dtype='complex64'), broadcastable=1)
-        try:
-            t.data = numpy.ones((1,1,1))
-            self.fail()
-        except ValueError, e:
-            self.failUnless(e[0] is Tensor.filter.E_rank)
-        try:
-            t.data = numpy.ones(1)
-            self.fail()
-        except ValueError, e:
-            self.failUnless(e[0] is Tensor.filter.E_rank)
-    def test_data_badshape0(self):
-        t = _tensor(numpy.ones((1,1),dtype='complex64'), broadcastable=1)
-        try:
-            t.data = numpy.ones((1,2))
-            self.fail()
-        except ValueError, e:
-            self.failUnless(e[0] is Tensor.filter.E_shape)
-        try:
-            t.data = numpy.ones((0,1))
-            self.fail()
-        except ValueError, e:
-            self.failUnless(e[0] is Tensor.filter.E_shape)
 
-    def test_cast0(self):
-        t = Tensor('float32', [0])
-        t.data = numpy.random.rand(4) > 0.5
-        self.failUnless(str(t.data.dtype) == t.dtype)
+# def _tensor(data, broadcastable=None, name=None):
+#     """Return a Tensor containing given data"""
+#     data = numpy.asarray(data)
+#     if broadcastable is None:
+#         broadcastable = [s==1 for s in data.shape]
+#     elif broadcastable in [0, 1]:
+#         broadcastable = [broadcastable] *  len(data.shape)
+#     rval = Tensor(data.dtype, broadcastable, name)
+#     rval.data = data # will raise if broadcastable was mis-specified
+#     return rval
 
-class T_stdlib(unittest.TestCase):
-    def test0(self):
-        t = _tensor(1.0)
-        tt = t.clone(False)
-        self.failUnless(t.dtype == tt.dtype)
-        self.failUnless(t.broadcastable is tt.broadcastable)
-        self.failUnless(tt.data is None)
-        self.failUnless(t.data == 1.0)
-    def test0b(self):
-        t = _tensor(1.0)
-        tt = t.clone()
-        self.failUnless(t.dtype == tt.dtype)
-        self.failUnless(t.broadcastable is tt.broadcastable)
-        self.failUnless(tt.data is None)
-        self.failUnless(t.data == 1.0)
 
-    def test1(self):
-        t = _tensor(1.0)
-        tt = t.clone(True)
-        self.failUnless(t.dtype == tt.dtype)
-        self.failUnless(t.broadcastable is tt.broadcastable)
-        self.failUnless(tt.data == 1.0)
-        self.failUnless(t.data == 1.0)
-        self.failUnless(t.data is not tt.data)
-    def test1b(self):
-        t = _tensor(1.0)
-        tt = copy(t)
-        self.failUnless(t.dtype == tt.dtype)
-        self.failUnless(t.broadcastable is tt.broadcastable)
-        self.failUnless(tt.data == 1.0)
-        self.failUnless(t.data == 1.0)
-        self.failUnless(t.data is not tt.data)
+
+# class T_tensor(unittest.TestCase):
+#     def test0(self): # allocate from a scalar float
+#         t = _tensor(1.0)
+#         self.failUnless(isinstance(t, Tensor))
+#         self.failUnless(t.dtype == 'float64')
+#         self.failUnless(t.broadcastable == ())
+#         self.failUnless(t.role == None)
+#         self.failUnless(isinstance(t.data, numpy.ndarray))
+#         self.failUnless(str(t.data.dtype) == 'float64')
+#         self.failUnless(t.data == 1.0)
+#     def test0_int(self): # allocate from a scalar float
+#         t = _tensor(1)
+#         self.failUnless(isinstance(t, Tensor))
+#         self.failUnless(t.dtype == 'int64' or t.dtype == 'int32')
+#     def test1(self): # allocate from a vector of ints, not broadcastable
+#         t = _tensor(numpy.ones(5,dtype='int32'))
+#         self.failUnless(isinstance(t, Tensor))
+#         self.failUnless(t.dtype == 'int32')
+#         self.failUnless(t.broadcastable == (0,))
+#         self.failUnless(isinstance(t.data, numpy.ndarray))
+#         self.failUnless(str(t.data.dtype) == 'int32')
+#     def test2(self): # allocate from a column matrix of complex with name
+#         t = _tensor(numpy.ones((5,1),dtype='complex64'),name='bart')
+#         self.failUnless(isinstance(t, Tensor))
+#         self.failUnless(t.dtype == 'complex64')
+#         self.failUnless(t.broadcastable == (0,1))
+#         self.failUnless(isinstance(t.data, numpy.ndarray))
+#         self.failUnless(t.name == 'bart')
+#     def test2b(self): # allocate from a column matrix, not broadcastable
+#         t = _tensor(numpy.ones((5,1),dtype='complex64'),broadcastable=0)
+#         self.failUnless(isinstance(t, Tensor))
+#         self.failUnless(t.dtype == 'complex64')
+#         self.failUnless(t.broadcastable == (0,0))
+#         self.failUnless(isinstance(t.data, numpy.ndarray))
+#         f = Function([t], [t], linker_cls=gof.CLinker)
+#         self.failUnless(numpy.all(t.data == f(t.data)))
+#     def test_data_normal(self): #test that assigning to .data works when it should
+#         t = _tensor(numpy.ones((5,1),dtype='complex64'), broadcastable=0)
+#         o27 = numpy.ones((2,7), dtype='complex64')
+#         t.data = o27
+#         lst = t._data
+#         self.failUnless(t.data.shape == (2,7))
+#         self.failUnless(t.data is o27)
+#         self.failUnless(t._data is lst)
+#     def test_data_badrank0(self):
+#         t = _tensor(numpy.ones((5,1),dtype='complex64'), broadcastable=0)
+#         try:
+#             t.data = numpy.ones((2,7,1))
+#             self.fail()
+#         except ValueError, e:
+#             self.failUnless(e[0] is Tensor.filter.E_rank)
+#         try:
+#             t.data = numpy.ones(1)
+#             self.fail()
+#         except ValueError, e:
+#             self.failUnless(e[0] is Tensor.filter.E_rank)
+#     def test_data_badrank1(self):
+#         t = _tensor(numpy.ones((1,1),dtype='complex64'), broadcastable=1)
+#         try:
+#             t.data = numpy.ones((1,1,1))
+#             self.fail()
+#         except ValueError, e:
+#             self.failUnless(e[0] is Tensor.filter.E_rank)
+#         try:
+#             t.data = numpy.ones(1)
+#             self.fail()
+#         except ValueError, e:
+#             self.failUnless(e[0] is Tensor.filter.E_rank)
+#     def test_data_badshape0(self):
+#         t = _tensor(numpy.ones((1,1),dtype='complex64'), broadcastable=1)
+#         try:
+#             t.data = numpy.ones((1,2))
+#             self.fail()
+#         except ValueError, e:
+#             self.failUnless(e[0] is Tensor.filter.E_shape)
+#         try:
+#             t.data = numpy.ones((0,1))
+#             self.fail()
+#         except ValueError, e:
+#             self.failUnless(e[0] is Tensor.filter.E_shape)
+
+#     def test_cast0(self):
+#         t = Tensor('float32', [0])
+#         t.data = numpy.random.rand(4) > 0.5
+#         self.failUnless(str(t.data.dtype) == t.dtype)
+
+# class T_stdlib(unittest.TestCase):
+#     def test0(self):
+#         t = _tensor(1.0)
+#         tt = t.clone(False)
+#         self.failUnless(t.dtype == tt.dtype)
+#         self.failUnless(t.broadcastable is tt.broadcastable)
+#         self.failUnless(tt.data is None)
+#         self.failUnless(t.data == 1.0)
+#     def test0b(self):
+#         t = _tensor(1.0)
+#         tt = t.clone()
+#         self.failUnless(t.dtype == tt.dtype)
+#         self.failUnless(t.broadcastable is tt.broadcastable)
+#         self.failUnless(tt.data is None)
+#         self.failUnless(t.data == 1.0)
+
+#     def test1(self):
+#         t = _tensor(1.0)
+#         tt = t.clone(True)
+#         self.failUnless(t.dtype == tt.dtype)
+#         self.failUnless(t.broadcastable is tt.broadcastable)
+#         self.failUnless(tt.data == 1.0)
+#         self.failUnless(t.data == 1.0)
+#         self.failUnless(t.data is not tt.data)
+#     def test1b(self):
+#         t = _tensor(1.0)
+#         tt = copy(t)
+#         self.failUnless(t.dtype == tt.dtype)
+#         self.failUnless(t.broadcastable is tt.broadcastable)
+#         self.failUnless(tt.data == 1.0)
+#         self.failUnless(t.data == 1.0)
+#         self.failUnless(t.data is not tt.data)
 
 
 

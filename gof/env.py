@@ -6,9 +6,6 @@ from features import Listener, Orderings, Constraint, Tool, uniq_features
 import utils
 from utils import AbstractFunctionError
 
-__all__ = ['InconsistencyError',
-           'Env']
-
 
 class InconsistencyError(Exception):
     """
@@ -18,22 +15,12 @@ class InconsistencyError(Exception):
     pass
 
 
-def require_set(cls):
-    """Return the set of objects named in a __env_require__ field in a base class"""
-    r = set()
-
-    if hasattr(cls, '__class__'):
-        cls = cls.__class__
-
-    bases = utils.all_bases(cls, lambda cls: hasattr(cls, '__env_require__'))
-
-    for base in bases:
-        req = base.__env_require__
-        if isinstance(req, (list, tuple)):
-            r.update(req)
-        else:
-            r.add(req)
-    return r
+def require_set(x):
+    try:
+        req = x.env_require
+    except AttributeError:
+        req = []
+    return req
 
 
 class Env(graph.Graph):
@@ -63,39 +50,41 @@ class Env(graph.Graph):
 
     ### Special ###
 
-    def __init__(self, inputs, outputs, features = [], consistency_check = True): # **listeners):
+    def __init__(self, inputs, outputs): #, consistency_check = True):
         """
         Create an Env which operates on the subgraph bound by the inputs and outputs
         sets. If consistency_check is False, an illegal graph will be tolerated.
         """
 
-        self._features = {}
-        self._listeners = {}
-        self._constraints = {}
-        self._orderings = {}
-        self._tools = {}
+#         self._features = {}
+#         self._listeners = {}
+#         self._constraints = {}
+#         self._orderings = {}
+#         self._tools = {}
+
+        self._features = []
 
         # The inputs and outputs set bound the subgraph this Env operates on.
         self.inputs = list(inputs)
         self.outputs = list(outputs)
 
-        # All ops in the subgraph defined by inputs and outputs are cached in _ops
-        self._ops = set()
+        # All nodes in the subgraph defined by inputs and outputs are cached in nodes
+        self.nodes = set()
 
         # Ditto for results
-        self._results = set(self.inputs)
+        self.results = set(self.inputs)
         
         # Set of all the results that are not an output of an op in the subgraph but
         # are an input of an op in the subgraph.
         # e.g. z for inputs=(x, y) and outputs=(x + (y - z),)
         # We initialize them to the set of outputs; if an output depends on an input,
         # it will be removed from the set of orphans.
-        self._orphans = set(outputs).difference(inputs)
+        self.orphans = set(outputs).difference(inputs)
 
-        for feature_class in uniq_features(features):
-            self.add_feature(feature_class, False)
+#         for feature_class in uniq_features(features):
+#             self.add_feature(feature_class, False)
 
-        # Maps results to ops that use them:
+        # Maps results to nodes that use them:
         # if op.inputs[i] == v then (op, i) in self._clients[v]
         self._clients = {}
 
@@ -104,11 +93,11 @@ class Env(graph.Graph):
         self.history = []
         
         self.__import_r__(self.outputs)
-        for op in self.ops():
-            self.satisfy(op)
+#         for op in self.nodes():
+#             self.satisfy(op)
         
-        if consistency_check:
-            self.validate()
+#         if consistency_check:
+#             self.validate()
 
 
     ### Public interface ###
@@ -141,97 +130,87 @@ class Env(graph.Graph):
             return False
         return True
 
-    def satisfy(self, x):
-        "Adds the features required by x unless they are already present."
-        for feature_class in require_set(x):
-            self.add_feature(feature_class)
+#     def satisfy(self, x):
+#         "Adds the features required by x unless they are already present."
+#         for feature_class in require_set(x):
+#             self.add_feature(feature_class)
 
-    def add_feature(self, feature_class, do_import = True):
+    def extend(self, feature, do_import = True, validate = False):
         """
+        @todo out of date
         Adds an instance of the feature_class to this env's supported
         features. If do_import is True and feature_class is a subclass
-        of Listener, its on_import method will be called on all the Ops
+        of Listener, its on_import method will be called on all the Nodes
         already in the env.
         """
-        if feature_class in self._features:
+        if feature in self._features:
             return # the feature is already present
-        self.__add_feature__(feature_class, do_import)
+        self.__add_feature__(feature, do_import)
+        if validate:
+            self.validate()
 
-    def __add_feature__(self, feature_class, do_import):
-        if not issubclass(feature_class, (Listener, Constraint, Orderings, Tool)):
-            raise TypeError("features must be subclasses of Listener, Constraint, Orderings and/or Tools", 
-                    (feature_class,type(feature_class)))
-        feature = feature_class(self)
-        if issubclass(feature_class, Listener):
-            self._listeners[feature_class] = feature
-            if do_import:
-                for op in self.io_toposort():
-                    try:
-                        feature.on_import(op)
-                    except AbstractFunctionError:
-                        pass
-        if issubclass(feature_class, Constraint):
-            self._constraints[feature_class] = feature
-        if issubclass(feature_class, Orderings):
-            self._orderings[feature_class] = feature
-        if issubclass(feature_class, Tool):
-            self._tools[feature_class] = feature
-            feature.publish()
-        self._features[feature_class] = feature
-
-    def __del_feature__(self, feature_class):
-        for set in [self._features, self._constraints, self._orderings, self._tools, self._listeners]:
+    def execute_callbacks(self, name, *args):
+        for feature in self._features:
             try:
-                del set[feature_class]
-            except KeyError:
-                pass
+                fn = getattr(feature, name)
+            except AttributeError:
+                continue
+            fn(*args)
 
-    def get_feature(self, feature_class):
-        return self._features[feature_class]
+    def __add_feature__(self, feature, do_import):
+        self._features.append(feature)
+        publish = getattr(feature, 'publish', None)
+        if publish is not None:
+            publish()
+        if do_import:
+            try:
+                fn = feature.on_import
+            except AttributeError:
+                return
+            for node in self.io_toposort():
+                fn(node)
 
-    def has_feature(self, feature_class):
+    def __del_feature__(self, feature):
         try:
-            self.get_feature(feature_class)
+            del self._features[feature]
         except:
-            return False
-        return True
+            pass
+        unpublish = hasattr(feature, 'unpublish')
+        if unpublish is not None:
+            unpublish()            
+
+    def get_feature(self, feature):
+        idx = self._features.index(feature)
+        return self._features[idx]
+
+    def has_feature(self, feature):
+        return feature in self._features
 
     def nclients(self, r):
         "Same as len(self.clients(r))."
         return len(self.clients(r))
 
     def edge(self, r):
-        return r in self.inputs or r in self.orphans()
+        return r in self.inputs or r in self.orphans
 
     def follow(self, r):
-        op = r.owner
+        node = r.owner
         if self.edge(r):
             return None
         else:
-            if op is None:
+            if node is None:
                 raise Exception("what the fuck")
-            return op.inputs
-    
-    def ops(self):
-        "All ops within the subgraph bound by env.inputs and env.outputs."
-        return self._ops
+            return node.inputs
 
-    def has_op(self, op):
-        return op in self._ops
-
-    def orphans(self):
-        """
-        All results not within the subgraph bound by env.inputs and
-        env.outputs, not in env.inputs but required by some op.
-        """
-        return self._orphans
+    def has_node(self, node):
+        return node in self.nodes
 
     def replace(self, r, new_r, consistency_check = True):
         """
         This is the main interface to manipulate the subgraph in Env.
         For every op that uses r as input, makes it use new_r instead.
         This may raise an error if the new result violates type
-        constraints for one of the target ops. In that case, no
+        constraints for one of the target nodes. In that case, no
         changes are made.
 
         If the replacement makes the graph inconsistent and the value
@@ -243,9 +222,8 @@ class Env(graph.Graph):
         even if there is an inconsistency, unless the replacement
         violates hard constraints on the types involved.
         """
+        assert r in self.results
 
-        self.__import_r_satisfy__([new_r])
-        
         # Save where we are so we can backtrack
         if consistency_check:
             chk = self.checkpoint()
@@ -257,12 +235,14 @@ class Env(graph.Graph):
         # result. Note that if v is an input result, we do nothing at all for
         # now (it's not clear what it means to replace an input result).
         was_output = False
-        new_was_output = False
-        if new_r in self.outputs:
-            new_was_output = True
         if r in self.outputs:
             was_output = True
             self.outputs[self.outputs.index(r)] = new_r
+
+        was_input = False
+        if r in self.inputs:
+            was_input = True
+            self.inputs[self.inputs.index(r)] = new_r
 
         # The actual replacement operation occurs here. This might raise
         # an error.
@@ -272,8 +252,11 @@ class Env(graph.Graph):
         def undo():
             # Restore self.outputs
             if was_output:
-                if not new_was_output:
-                    self.outputs[self.outputs.index(new_r)] = r
+                self.outputs[self.outputs.index(new_r)] = r
+
+            # Restore self.inputs
+            if was_input:
+                self.inputs[self.inputs.index(new_r)] = r
 
             # Move back the clients. This should never raise an error.
             self.__move_clients__(clients, new_r, r)
@@ -307,13 +290,6 @@ class Env(graph.Graph):
             self.revert(chk)
             raise
 
-    def results(self):
-        """
-        All results within the subgraph bound by env.inputs and
-        env.outputs and including them
-        """
-        return self._results
-
     def revert(self, checkpoint):
         """
         Reverts the graph to whatever it was at the provided
@@ -332,14 +308,15 @@ class Env(graph.Graph):
         relationships).
         """
         ords = {}
-        for ordering in self._orderings.values():
-            for op, prereqs in ordering.orderings().items():
-                ords.setdefault(op, set()).update(prereqs)
+        for feature in self._features:
+            if hasattr(feature, 'orderings'):
+                for op, prereqs in feature.orderings().items():
+                    ords.setdefault(op, set()).update(prereqs)
         return ords
 
     def toposort(self):
         """
-        Returns a list of ops in the order that they must be executed
+        Returns a list of nodes in the order that they must be executed
         in order to preserve the semantics of the graph and respect
         the constraints put forward by the listeners.
         """
@@ -351,8 +328,9 @@ class Env(graph.Graph):
         """
         Raises an error if the graph is inconsistent.
         """
-        for constraint in self._constraints.values():
-            constraint.validate()
+        self.execute_callbacks('validate')
+#         for constraint in self._constraints.values():
+#             constraint.validate()
         return True
 
 
@@ -379,12 +357,12 @@ class Env(graph.Graph):
         self._clients[r].difference_update(all)
         if not self._clients[r]:
             del self._clients[r]
-            if r in self._orphans:
-                self._orphans.remove(r)
+            if r in self.orphans:
+                self.orphans.remove(r)
 
     def __import_r_satisfy__(self, results):
         # Satisfies the owners of the results.
-        for op in graph.ops(self.results(), results):
+        for op in graph.ops(self.results, results):
             self.satisfy(op)
 
     def __import_r__(self, results):
@@ -393,35 +371,39 @@ class Env(graph.Graph):
             owner = result.owner
             if owner:
                 self.__import__(result.owner)
+            if result not in self.results:
+                self.results.add(result)
+                self.orphans.add(result)
 
     def __import__(self, op):
-        # We import the ops in topological order. We only are interested
-        # in new ops, so we use all results we know of as if they were the input set.
+        # We import the nodes in topological order. We only are interested
+        # in new nodes, so we use all results we know of as if they were the input set.
         # (the functions in the graph module only use the input set to
         # know where to stop going down)
-        new_ops = graph.io_toposort(self.results().difference(self.orphans()), op.outputs)
+        new_nodes = graph.io_toposort(self.results.difference(self.orphans), op.outputs)
         
-        for op in new_ops:
+        for op in new_nodes:
 
-            self._ops.add(op)
-            self._results.update(op.outputs)
-            self._orphans.difference_update(op.outputs)
+            self.nodes.add(op)
+            self.results.update(op.outputs)
+            self.orphans.difference_update(op.outputs)
             
             for i, input in enumerate(op.inputs):
                 self.__add_clients__(input, [(op, i)])
-                if input not in self._results:
+                if input not in self.results:
                     # This input is an orphan because if the op that
                     # produced it was in the subgraph, io_toposort
                     # would have placed it before, so we would have
                     # seen it (or it would already be in the graph)
-                    self._orphans.add(input)
-                    self._results.add(input)
+                    self.orphans.add(input)
+                    self.results.add(input)
             
-            for listener in self._listeners.values():
-                try:
-                    listener.on_import(op)
-                except AbstractFunctionError:
-                    pass
+            self.execute_callbacks('on_import', op)
+#             for listener in self._listeners.values():
+#                 try:
+#                     listener.on_import(op)
+#                 except AbstractFunctionError:
+#                     pass
     __import__.E_output = 'op output in Env.inputs'
 
     def __prune_r__(self, results):
@@ -432,6 +414,10 @@ class Env(graph.Graph):
             owner = result.owner
             if owner:
                 self.__prune__(owner)
+#             if result in self.results:
+#                 self.results.remove(result)
+#                 if result in self.orphans:
+#                     self.orphans.remove(result)
 
     def __prune__(self, op):
         # If op's outputs have no clients, removes it from the graph
@@ -442,35 +428,41 @@ class Env(graph.Graph):
             # Cannot prune an op which is an output or used somewhere
             if self.clients(output) or output in self.outputs: #output in self.outputs or self.clients(output):
                 return
-        if op not in self._ops: # this can happen from replacing an orphan
+        if op not in self.nodes: # this can happen from replacing an orphan
             return
-        self._ops.remove(op)
-        self._results.difference_update(op.outputs)
-        for listener in self._listeners.values():
-            try:
-                listener.on_prune(op)
-            except AbstractFunctionError:
-                pass
+        self.nodes.remove(op)
+        self.results.difference_update(op.outputs)
+        self.execute_callbacks('on_prune', op)
+#         for listener in self._listeners.values():
+#             try:
+#                 listener.on_prune(op)
+#             except AbstractFunctionError:
+#                 pass
             
         for i, input in enumerate(op.inputs):
             self.__remove_clients__(input, [(op, i)])
         self.__prune_r__(op.inputs)
 
     def __move_clients__(self, clients, r, new_r):
+
+        if not (r.type == new_r.type):
+            raise TypeError("Cannot move clients between Results that have different types.", r, new_r)
         
         # We import the new result in the fold
         self.__import_r__([new_r])
 
-        try:
-            # Try replacing the inputs
-            for op, i in clients:
-                op.set_input(i, new_r)
-        except:
-            # Oops!
-            for op, i in clients:
-                op.set_input(i, r)
-            self.__prune_r__([new_r])
-            raise
+        for op, i in clients:
+            op.inputs[i] = new_r
+#         try:
+#             # Try replacing the inputs
+#             for op, i in clients:
+#                 op.set_input(i, new_r)
+#         except:
+#             # Oops!
+#             for op, i in clients:
+#                 op.set_input(i, r)
+#             self.__prune_r__([new_r])
+#             raise
         self.__remove_clients__(r, clients)
         self.__add_clients__(new_r, clients)
 
@@ -478,12 +470,13 @@ class Env(graph.Graph):
 #         # why was this line AFTER the set_inputs???
 #         # if we do it here then satisfy in import fucks up...
 #         self.__import_r__([new_r])
-        
-        for listener in self._listeners.values():
-            try:
-                listener.on_rewire(clients, r, new_r)
-            except AbstractFunctionError:
-                pass
+
+        self.execute_callbacks('on_rewire', clients, r, new_r)
+#         for listener in self._listeners.values():
+#             try:
+#                 listener.on_rewire(clients, r, new_r)
+#             except AbstractFunctionError:
+#                 pass
 
         # We try to get rid of the old one
         self.__prune_r__([r])
@@ -494,17 +487,17 @@ class Env(graph.Graph):
     def clone_get_equiv(self, clone_inputs = True):
         equiv = graph.clone_get_equiv(self.inputs, self.outputs, clone_inputs)
         new = self.__class__([equiv[input] for input in self.inputs],
-                             [equiv[output] for output in self.outputs],
-                             self._features.keys(),
-                             consistency_check = False)
+                             [equiv[output] for output in self.outputs])
+        for feature in self._features:
+            new.extend(feature)
         return new, equiv
 
     def clone(self, clone_inputs = True):
         equiv = graph.clone_get_equiv(self.inputs, self.outputs, clone_inputs)
         new = self.__class__([equiv[input] for input in self.inputs],
-                             [equiv[output] for output in self.outputs],
-                             self._features.keys(),
-                             consistency_check = False)
+                             [equiv[output] for output in self.outputs])
+        for feature in self._features:
+            new.extend(feature)
         try:
             new.set_equiv(equiv)
         except AttributeError:

@@ -6,9 +6,8 @@ import numpy
 
 from copy import copy
 
-from gof import Result, Op, utils, Destroyer, Viewer, AbstractFunctionError
-import gof.result
-import gof.op
+from gof import Result, Op, utils, Destroyer, Viewer, AbstractFunctionError, Type, Result, Constant, Apply
+import gof
 
 import blas # for gemm, dot
 
@@ -18,76 +17,73 @@ import scalar as scal
 from functools import partial
 
 
-class Tensor(Result):
-    """
-    L{Result} to store L{numpy.ndarray} or equivalent via .data
+def as_tensor(x, name = None):
+    if isinstance(x, gof.Apply):
+        if len(x.outputs) != 1:
+            raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", x)
+        else:
+            x = x.outputs[0]
+    if isinstance(x, Result):
+        if not isinstance(x.type, Tensor):
+            raise TypeError("Result type field must be a Tensor.", x, x.type)
+        return x
+    if isinstance(x, Constant):
+        if not isinstance(x.type, Tensor):
+            raise TypeError("Constant type field must be a Tensor.", x, x.type)
+        return x
+    try:
+        return constant(x)
+    except TypeError:
+        raise
+        raise TypeError("Cannot convert %s to Tensor" % x, type(x))
 
-    This class does not implement python operators and has no dependencies
-    on the L{Op}s that use it.
+
+def constant(x):
+    if not isinstance(x, numpy.ndarray):
+        x = numpy.asarray(x)
+    try:
+        return TensorConstant(Tensor(dtype = x.dtype,
+                                     broadcastable = [d == 1 for d in x.shape]), x)
+    except:
+        raise
+        raise TypeError("Could not convert %s to Tensor" % _x, type(_x))
+
+
+class Tensor(Type):
+    """
+    L{Type} representing L{numpy.ndarray} in Theano.
 
     @todo: At some point we should document a glossary, such as terms like
     broadcasting and shape.
     
-    @type _dtype: numpy dtype string such as 'int64' or 'float64' (among others)
-    @type _broadcastable: tuple or list or array of boolean values, whose length
-      is the number of dimensions of the contained L{ndarray}.
-    @ivar _broadcastable: Each element of the broadcastable vector tells us
+    @type dtype: numpy dtype string such as 'int64' or 'float64' (among others)
+    @type broadcastable: tuple or list or array of boolean values, whose length
+      is the number of dimensions of the L{ndarray} represented by this Type.
+    @ivar broadcastable: Each element of the broadcastable vector tells us
       something about the corresponding dimension:
         - False means the dimension can be anything.
         - True means  the dimension must be 1. Also, this dimension will be considered
           for L{broadcasting}, as described and implemented in Numpy.
     """
 
-    def __init__(self, dtype, broadcastable, name=None):
-        """Initialize a L{Tensor}
+    def __init__(self, dtype, broadcastable):
+        self.dtype = str(dtype)
+        self.broadcastable = broadcastable
+        self.dtype_specs() # error checking is done there
+    
+    def filter(self, data, strict = False):
+        _data = data
+        if strict:
+            assert isinstance(data, numpy.ndarray)
+            assert str(data.dtype) == self.dtype
+        else:
+            data = numpy.asarray(data, dtype = self.dtype)
+        if not self.ndim == data.ndim:
+            raise TypeError("Wrong number of dimensions: expected %s, got %s." % (self.ndim, data.ndim), _data)
+        if any(b and d != 1 for d, b in zip(data.shape, self.broadcastable)):
+            raise ValueError("Non-unit value on shape on a broadcastable dimension.", data.shape, self.broadcastable)
+        return data
 
-        @note: This does not actually allocate any data.
-        """
-
-        # data is not given here. This may seem a bit strange, but when data was
-        # an argument, it made sense to use *either* the given dtype,
-        # broadcastable, or override them from the fields of data. This makes
-        # the function ugly, especially because it isn't obvious how to set
-        # broadcastable from data.  
-        #
-        # The only clean option I could think of, when passing a data arg was to 
-        # require the broadcastable field to be given.  Since broadcastable is
-        # the argument that is awkward to construct, I decided to put all this
-        # into the tensor(data,...) function below, which is like a second
-        # constructor that works with an ndarray.
-        Result.__init__(self, role=None, name=name)
-        self._dtype = str(dtype)
-        self.dtype_specs() # this is just for error checking
-        self._broadcastable = tuple(broadcastable)
-
-    ######################
-    # Result interface
-    ######################
-
-    # 
-    # filter
-    #
-    def filter(self, arr):
-        """Cast to an L{numpy.ndarray} and ensure arr has correct rank and shape."""
-        if not (isinstance(arr, numpy.ndarray) \
-                and arr.dtype==self.dtype):
-            arr = numpy.asarray(arr, dtype = self.dtype)
-        if len(self.broadcastable) != len(arr.shape):
-            raise ValueError(Tensor.filter.E_rank,
-                    self.broadcastable,
-                    arr.shape,
-                    self.owner)
-        for b, s in zip(self.broadcastable, arr.shape):
-            if b and (s != 1):
-                raise ValueError(Tensor.filter.E_shape)
-        return arr
-    # these strings are here so that tests can use them
-    filter.E_rank = 'wrong rank'
-    filter.E_shape = 'non-unit size on broadcastable dimension'
-
-    #
-    # type information
-    #
     def dtype_specs(self):
         """Return python - C type correspondance tuple for self.data
 
@@ -108,21 +104,23 @@ class Tensor(Result):
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
 
-    #
-    # Description for constant folding
-    #
-    def desc(self):
-        """
-        Returns a hashable description of this L{Tensor}.
-        """
-        if self.data is not None:
-            return (Tensor, self.dtype, self.broadcastable, self.data.data[:])
-        else:
-            return (Tensor, self.dtype, self.broadcastable, None)
-            
-    #
-    # C codegen stubs
-    #
+    def __eq__(self, other):
+        return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
+
+    def __hash__(self):
+        return hash(self.dtype) ^ hash(self.broadcastable)
+
+    ndim = property(lambda self: len(self.broadcastable), doc = "read-only access to the number of dimensions")
+
+    def make_result(self, name = None):
+        return TensorResult(self, name = name)
+
+    def __str__(self):
+        return "%s(%s)" % (str(self.dtype), str(self.broadcastable))
+
+    def __repr__(self):
+        return "Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
+
     def c_declare(self, name, sub):
         return """
         PyArrayObject* %(name)s;
@@ -226,35 +224,69 @@ class Tensor(Result):
         # todo: use C templating
 
 
-    ############################
-    # Tensor specific attributes
-    ############################
+# Easy constructors
 
-    dtype = property(lambda self: self._dtype, doc = "read-only access to _dtype, which should not be changed")
-    broadcastable = property(lambda self: self._broadcastable, doc = "read-only access to _broadcastable, which should not be changed")
-    ndim = property(lambda self: len(self.broadcastable), doc = "read-only access to the number of dimensions")
+def _multi(*fns):
+    def f2(f, names):
+        if len(names) == 1:
+            return f(names)
+        else:
+            return [f(name) for name in names]
+    if len(fns) == 1:
+        return partial(f2, fns)
+    else:
+        return [partial(f2, f) for f in fns]
 
-    ############################
-    # Cloning facilities
-    ############################
+fscalar = Tensor('float32', ())
+dscalar = Tensor('float64', ())
+iscalar = Tensor('int32', ())
+lscalar = Tensor('int64', ())
+def scalar(name = None, dtype = 'float64'):
+    type = Tensor(dtype, ())
+    return type(name)
+scalars, fscalars, dscalars, iscalars, lscalars = _multi(scalar, fscalar, dscalar, iscalar, lscalar)
 
-    def __copy__(self):
-        return self.clone(True)
-    
-    def clone(self, transfer_data = False):
-        """Return a copy of this instance (with its own attributes)
-        
-        If transfer_data is True, a copy of self.data is assigned to the copy's
-        data property, otherwise the copy's data is left as None.
-        """
-        cpy = self.__class__(self.dtype, self.broadcastable, self.name)
-        if transfer_data:
-            cpy.data = copy(self.data)
-        return cpy
+fvector = Tensor('float32', (False, ))
+dvector = Tensor('float64', (False, ))
+ivector = Tensor('int32', (False, ))
+lvector = Tensor('int64', (False, ))
+def vector(name = None, dtype = 'float64'):
+    type = Tensor(dtype, (False, ))
+    return type(name)
+vectors, fvectors, dvectors, ivectors, lvectors = _multi(vector, fvector, dvector, ivector, lvector)
 
+fmatrix = Tensor('float32', (False, False))
+dmatrix = Tensor('float64', (False, False))
+imatrix = Tensor('int32', (False, False))
+lmatrix = Tensor('int64', (False, False))
+def matrix(name = None, dtype = 'float64'):
+    type = Tensor(dtype, (False, False))
+    return type(name)
+matrices, fmatrices, dmatrices, imatrices, lmatrices = _multi(matrix, fmatrix, dmatrix, imatrix, lmatrix)
+
+frow = Tensor('float32', (True, False))
+drow = Tensor('float64', (True, False))
+irow = Tensor('int32', (True, False))
+lrow = Tensor('int64', (True, False))
+def row(name = None, dtype = 'float64'):
+    type = Tensor(dtype, (True, False))
+    return type(name)
+rows, frows, drows, irows, lrows = _multi(row, frow, drow, irow, lrow)
+
+fcol = Tensor('float32', (False, True))
+dcol = Tensor('float64', (False, True))
+icol = Tensor('int32', (False, True))
+lcol = Tensor('int64', (False, True))
+def col(name = None, dtype = 'float64'):
+    type = Tensor(dtype, (False, True))
+    return type(name)
+cols, fcols, dcols, icols, lcols = _multi(col, fcol, dcol, icol, lcol)
+
+
+class _tensor_py_operators:
     #UNARY
-    def __abs__(self): return Abs(self).out
-    def __neg__(self): return Neg(self).out
+    def __abs__(self): return _abs(self)
+    def __neg__(self): return neg(self)
 
     #CASTS
     def __int__(self): return AsInt(self).out
@@ -297,86 +329,17 @@ class Tensor(Result):
 
     #COPYING
     def copy(self): return tensor_copy(self)
-    
+
+class TensorResult(Result, _tensor_py_operators):
+    pass
+
+class TensorConstant(Constant, _tensor_py_operators):
+    pass
+
+s2t.as_tensor = as_tensor    
 s2t.Tensor = Tensor
-
-
-# alternate Tensor constructor
-def astensor(data, broadcastable=None, name=None):
-    """Return a L{Tensor} containing given data"""
-    if isinstance(data, Op):
-        if len(data.outputs) != 1:
-            raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", data)
-        else:
-            data = data.outputs[0]
-    
-    if isinstance(data, Tensor):
-        if broadcastable is not None and list(data.broadcastable) != list(broadcastable):
-            raise TypeError("The data to wrap as a Tensor has the wrong broadcastable pattern. Expected %s, got %s." % (broadcastable, data.broadcastable))
-        if name is not None and name != data.name:
-            raise ValueError("Cannot rename an existing Tensor.")
-        return data
-    elif isinstance(data, Result):
-        raise TypeError("Cannot make a Tensor out of a result that is not an instance of Tensor: %s (%s)" % (data, data.__class__.__name__), data)
-        
-    if data is None and broadcastable is None:
-        raise TypeError("Cannot make a Tensor out of None.")
-
-    _data = data
-    data = numpy.asarray(data)
-    if broadcastable is None:
-        broadcastable = [s==1 for s in data.shape]
-    elif broadcastable in [0, 1]:
-        broadcastable = [broadcastable] *  len(data.shape)
-    try:
-        rval = Tensor(data.dtype, broadcastable, name = name)
-    except TypeError:
-        raise TypeError("Cannot convert %s to Tensor." % repr(_data))
-    rval.data = data # will raise if broadcastable was mis-specified
-    return rval
-s2t.astensor = astensor
-
-
-# Easy constructors
-
-def _multi(*fns):
-    def f2(f, names):
-        if len(names) == 1:
-            return f(names)
-        else:
-            return [f(name) for name in names]
-    if len(fns) == 1:
-        return partial(f2, fns)
-    else:
-        return [partial(f2, f) for f in fns]
-
-def _int_float(f):
-    return partial(f, dtype = 'int64'), partial(f, dtype = 'float64') 
-
-def scalar(name, dtype = 'float64'):
-    return Tensor(name = name, dtype = dtype, broadcastable = ())
-iscalar, fscalar = _int_float(scalar)
-scalars, iscalars, fscalars = _multi(scalar, iscalar, fscalar)
-
-def vector(name, dtype = 'float64'):
-    return Tensor(name = name, dtype = dtype, broadcastable = (False))
-ivector, fvector = _int_float(vector)
-vectors, ivectors, fvectors = _multi(vector, ivector, fvector)
-
-def matrix(name, dtype = 'float64'):
-    return Tensor(name = name, dtype = dtype, broadcastable = (False, False))
-imatrix, fmatrix = _int_float(matrix)
-matrices, imatrices, fmatrices = _multi(matrix, imatrix, fmatrix)
-
-def row(name, dtype = 'float64'):
-    return Tensor(name = name, dtype = dtype, broadcastable = (True, False))
-irow, frow = _int_float(row)
-rows, irows, frows = _multi(row, irow, frow)
-
-def col(name, dtype = 'float64'):
-    return Tensor(name = name, dtype = dtype, broadcastable = (False, True))
-icol, fcol = _int_float(col)
-cols, icols, fcols = _multi(col, icol, fcol)
+s2t.TensorResult = TensorResult
+s2t.TensorConstant = TensorConstant
 
 
 
@@ -386,58 +349,59 @@ cols, icols, fcols = _multi(col, icol, fcol)
 
 # this has a different name, because _as_tensor is the function which ops use
 # to upcast their arguments... this internal-use function is a good place to put debugging stuff, better than the global astensor.
-_as_tensor = astensor
+_as_tensor = as_tensor
 
 
 
-class _Op(Op):
-    """
-    A basic L{Op} subclass that can be used to make L{Op}s that operate on L{Tensor}s.
-    It is not mandatory to inherit from this class, but it is practical.
 
-    @ivar nin: number of inputs
-    @ivar nout: number of outputs
-    @ivar out_tensor_class: L{Tensor} subclass used to instantiate the outputs
+# class _Op(Op):
+#     """
+#     A basic L{Op} subclass that can be used to make L{Op}s that operate on L{Tensor}s.
+#     It is not mandatory to inherit from this class, but it is practical.
 
-     - input_wrapper: returns a L{Tensor} from its argument
-     - propagate_dtype: returns a list of dtypes corresponding to the
-     output dtypes from a list of input dtypes (if an input is not a
-     L{Tensor}, the passed value will be None)
-     - propagate_broadcastable: returns a list of tuples corresponding
-     to the output broadcastable flags from the input broadcastable flags
-     (if an input is not a L{Tensor}, the passed value will be None).
-    """
+#     @ivar nin: number of inputs
+#     @ivar nout: number of outputs
+#     @ivar out_tensor_class: L{Tensor} subclass used to instantiate the outputs
+
+#      - input_wrapper: returns a L{Tensor} from its argument
+#      - propagate_dtype: returns a list of dtypes corresponding to the
+#      output dtypes from a list of input dtypes (if an input is not a
+#      L{Tensor}, the passed value will be None)
+#      - propagate_broadcastable: returns a list of tuples corresponding
+#      to the output broadcastable flags from the input broadcastable flags
+#      (if an input is not a L{Tensor}, the passed value will be None).
+#     """
     
-    nin = -1 # nin == -1 means: arbitrary number of inputs
-    nout = 1
+#     nin = -1 # nin == -1 means: arbitrary number of inputs
+#     nout = 1
 
-    def __init__(self, *inputs):
-        inputs = map(_as_tensor, inputs)
+#     def __init__(self, *inputs):
+#         inputs = map(_as_tensor, inputs)
         
-        if self.nin >= 0:
-            if len(inputs) != self.nin:
-                raise TypeError("Wrong number of inputs for %s (got %i, expected %i)") \
-                    % (self, len(inputs), self.nin)
+#         if self.nin >= 0:
+#             if len(inputs) != self.nin:
+#                 raise TypeError("Wrong number of inputs for %s (got %i, expected %i)") \
+#                     % (self, len(inputs), self.nin)
 
-        i_broadcastables = [getattr(input, 'broadcastable', None) for input in inputs]
-        i_dtypes = [getattr(input, 'dtype', None) for input in inputs]
+#         i_broadcastables = [getattr(input, 'broadcastable', None) for input in inputs]
+#         i_dtypes = [getattr(input, 'dtype', None) for input in inputs]
 
-        o_broadcastables = utils.from_return_values(self.propagate_broadcastable(*i_broadcastables))
-        o_dtypes = utils.from_return_values(self.propagate_dtype(*i_dtypes))
+#         o_broadcastables = utils.from_return_values(self.propagate_broadcastable(*i_broadcastables))
+#         o_dtypes = utils.from_return_values(self.propagate_dtype(*i_dtypes))
 
-        self.inputs = inputs
-        self.outputs = [Tensor(dtype, broadcastable) for broadcastable, dtype in zip(o_broadcastables, o_dtypes)]
+#         self.inputs = inputs
+#         self.outputs = [Tensor(dtype, broadcastable) for broadcastable, dtype in zip(o_broadcastables, o_dtypes)]
 
-    def propagate_broadcastable(self, *inputs):
-        raise AbstractFunctionError()
+#     def propagate_broadcastable(self, *inputs):
+#         raise AbstractFunctionError()
     
-    def propagate_dtype(self, *i_dtypes):
-        rval = set([dtype for dtype in i_dtypes if dtype is not None])
-        if len(rval) == 0:
-            raise ValueError("Cannot infer the dtypes of the outputs with no Tensor inputs.")
-        elif len(rval) > 1:
-            raise ValueError("The dtypes of all inputs should be identical.")
-        return [rval.pop()] * self.nout
+#     def propagate_dtype(self, *i_dtypes):
+#         rval = set([dtype for dtype in i_dtypes if dtype is not None])
+#         if len(rval) == 0:
+#             raise ValueError("Cannot infer the dtypes of the outputs with no Tensor inputs.")
+#         elif len(rval) > 1:
+#             raise ValueError("The dtypes of all inputs should be identical.")
+#         return [rval.pop()] * self.nout
 
 
 
@@ -445,109 +409,116 @@ class _Op(Op):
 # Unary Operations
 ##########################
 
-def broadcast(scalar_opclass, name, module_name = None, inplace_versions = True):
-    C = s2t.make_broadcast(scalar_opclass, name = name, module_name = module_name) # this returns a class
-    C.__module__ = module_name
-    c = gof.op.constructor(s2t.wrap_broadcast(C))
-    if inplace_versions:
-        CInplace = s2t.make_broadcast(scalar_opclass, {0:0}, name = name+"Inplace")
-        CInplace.__module__ = module_name
-        c_inplace = gof.op.constructor(s2t.wrap_broadcast(CInplace))
-        return C, c, CInplace, c_inplace
-    else:
-        return C, c
+# def broadcast(scalar_opclass, name, module_name = None, inplace_versions = True):
+#     C = s2t.make_broadcast(scalar_opclass, name = name, module_name = module_name) # this returns a class
+#     C.__module__ = module_name
+#     c = gof.op.constructor(s2t.wrap_broadcast(C))
+#     if inplace_versions:
+#         CInplace = s2t.make_broadcast(scalar_opclass, {0:0}, name = name+"Inplace")
+#         CInplace.__module__ = module_name
+#         c_inplace = gof.op.constructor(s2t.wrap_broadcast(CInplace))
+#         return C, c, CInplace, c_inplace
+#     else:
+#         return C, c
 
-def _broadcast(scalar_opclass, name, inplace_versions = True):
-    return broadcast(scalar_opclass, name, 'tensor', inplace_versions)
+# def _broadcast(scalar_opclass, name, inplace_versions = True):
+#     return broadcast(scalar_opclass, name, 'tensor', inplace_versions)
 
     
-class Argmax(Op):
-    """Calculate the max and argmax over a given axis"""
-    nin=2 # tensor, axis
-    nout=2 # max val, max idx
-    E_axis = 'invalid axis'
-    debug = 0
-    def __init__(self, x, axis=None):
-        x = _as_tensor(x)
-        if axis is None:
-            axis = len(x.broadcastable) -1
-        axis = _as_tensor(axis)
-        self.inputs = [x, axis]
-        broadcastable = [0] * (len(x.broadcastable) - 1)
-        self.outputs = [Tensor(x.dtype, broadcastable), 
-                Tensor(axis.dtype, broadcastable)]
-    def perform(self): 
-        axis = self.inputs[1].data
-        x = self.inputs[0].data
-        self.outputs[0].data = numpy.max(x, axis)
-        self.outputs[1].data = numpy.argmax(x,axis)
-argmax = gof.op.constructor(Argmax)
+# class Argmax(Op):
+#     """Calculate the max and argmax over a given axis"""
+#     nin=2 # tensor, axis
+#     nout=2 # max val, max idx
+#     E_axis = 'invalid axis'
+#     debug = 0
+#     def __init__(self, x, axis=None):
+#         x = _as_tensor(x)
+#         if axis is None:
+#             axis = len(x.broadcastable) -1
+#         axis = _as_tensor(axis)
+#         self.inputs = [x, axis]
+#         broadcastable = [0] * (len(x.broadcastable) - 1)
+#         self.outputs = [Tensor(x.dtype, broadcastable), 
+#                 Tensor(axis.dtype, broadcastable)]
+#     def perform(self): 
+#         axis = self.inputs[1].data
+#         x = self.inputs[0].data
+#         self.outputs[0].data = numpy.max(x, axis)
+#         self.outputs[1].data = numpy.argmax(x,axis)
+# argmax = gof.op.constructor(Argmax)
 
-def max(x, axis=None):
-    """Return maximum elements obtained by iterating over given axis
+# def max(x, axis=None):
+#     """Return maximum elements obtained by iterating over given axis
 
-    Default axis is the last one.
-    """
-    # In python (using Argmax.perform()) this leads to an wasteful
-    # implementation that goes through the data twice instead of once
-    # but when Argmax.c_impl() is in place, it should be fine.
-    return argmax(x,axis)[0]
+#     Default axis is the last one.
+#     """
+#     # In python (using Argmax.perform()) this leads to an wasteful
+#     # implementation that goes through the data twice instead of once
+#     # but when Argmax.c_impl() is in place, it should be fine.
+#     return argmax(x,axis)[0]
 
-Abs, _abs, AbsInplace, abs_inplace = _broadcast(scal.Abs, 'Abs')
-Exp, exp, ExpInplace, exp_inplace = _broadcast(scal.Exp, 'Exp')
-Neg, neg, NegInplace, neg_inplace = _broadcast(scal.Neg, 'Neg')
-Log, log, LogInplace, log_inplace = _broadcast(scal.Log, 'Log')
-Log2, log2, Log2Inplace, log2_inplace = _broadcast(scal.Log2, 'Log2')
-Sgn, sgn, SgnInplace, sgn_inplace = _broadcast(scal.Sgn, 'Sgn')
-Sqr, sqr, SqrInplace, sqr_inplace = _broadcast(scal.Sqr, 'Sqr')
-Sqrt, sqrt, SqrtInplace, sqrt_inplace = _broadcast(scal.Sqrt, 'Sqrt')
-Cos, cos, CosInplace, cos_inplace = _broadcast(scal.Cos, 'Cos')
-Sin, sin, SinInplace, sin_inplace = _broadcast(scal.Sin, 'Sin')
-Tan, tan, TanInplace, tan_inplace = _broadcast(scal.Tan, 'Tan')
-Cosh, cosh, CoshInplace, cosh_inplace = _broadcast(scal.Cosh, 'Cosh')
-Sinh, sinh, SinhInplace, sinh_inplace = _broadcast(scal.Sinh, 'Sinh')
-Tanh, tanh, TanhInplace, tanh_inplace = _broadcast(scal.Tanh, 'Tanh')
 
-Fill, fill, FillInplace, fill_inplace = _broadcast(scal.Second, 'Fill')
+def _elemwise(scalar_op, name):
+    straight = s2t.Elemwise(scalar_op)
+    inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
+    inplace = s2t.Elemwise(inplace_scalar_op, {0: 0})
+    return straight, inplace
+
+_abs, abs_inplace = _elemwise(scal.abs, 'abs')
+exp, exp_inplace = _elemwise(scal.exp, 'exp')
+neg, neg_inplace = _elemwise(scal.neg, 'neg')
+log, log_inplace = _elemwise(scal.log, 'log')
+log2, log2_inplace = _elemwise(scal.log2, 'log2')
+sgn, sgn_inplace = _elemwise(scal.sgn, 'sgn')
+sqr, sqr_inplace = _elemwise(scal.sqr, 'sqr')
+sqrt, sqrt_inplace = _elemwise(scal.sqrt, 'sqrt')
+cos, cos_inplace = _elemwise(scal.cos, 'cos')
+sin, sin_inplace = _elemwise(scal.sin, 'sin')
+tan, tan_inplace = _elemwise(scal.tan, 'tan')
+cosh, cosh_inplace = _elemwise(scal.cosh, 'cosh')
+sinh, sinh_inplace = _elemwise(scal.sinh, 'sinh')
+tanh, tanh_inplace = _elemwise(scal.tanh, 'tanh')
+
+fill, fill_inplace = _elemwise(scal.second, 'fill')
 
 def ones_like(model):
     return fill(model, 1.0)
 def zeros_like(model):
     return fill(model, 0.0)
 
-TensorCopy, tensor_copy = _broadcast(scal.Identity, 'TensorCopy', inplace_versions = False)
+tensor_copy = s2t.Elemwise(scal.identity)
 
-Sum = s2t.Sum
-sum = gof.op.constructor(Sum)
+def sum(input, axis = None):
+    return s2t.Sum(axis)(input)
 
 
 ##########################
 # Arithmetics
 ##########################
 
-Add, add, AddInplace, add_inplace = _broadcast(scal.Add, 'Add')
-Sub, sub, SubInplace, sub_inplace = _broadcast(scal.Sub, 'Sub')
-Mul, mul, MulInplace, mul_inplace = _broadcast(scal.Mul, 'Mul')
-Div, div, DivInplace, div_inplace = _broadcast(scal.Div, 'Div')
-Pow, pow, PowInplace, pow_inplace = _broadcast(scal.Pow, 'Pow')
+add, add_inplace = _elemwise(scal.add, 'add')
+sub, sub_inplace = _elemwise(scal.sub, 'sub')
+mul, mul_inplace = _elemwise(scal.mul, 'mul')
+div, div_inplace = _elemwise(scal.div, 'div')
+pow, pow_inplace = _elemwise(scal.pow, 'pow')
 
 
 ##########################
 # View Operations
 ##########################
 
-class TransposeInplace(s2t.DimShuffle):
+class TransposeInplace(Op):
 
-    def __init__(self, input):
-        s2t.DimShuffle.__init__(self, input, range(len(input.broadcastable)-1, -1, -1), True)
+    def make_node(self, input):
+        return Apply(self, [input], [input.type()])
     
-    def perform(self):
-        self.outputs[0].data = self.inputs[0].data.T
+    def perform(self, node, (x, ), (z, )):
+        z[0] = x.T
     
     def grad(self, (x,), (gz,)):
         return transpose(gz),
     
-    def c_code(self, (x, ), (z, ), sub):
+    def c_code(self, node, name, (x, ), (z, ), sub):
         return """
         PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
         if (%(z)s) {
@@ -556,319 +527,334 @@ class TransposeInplace(s2t.DimShuffle):
         %(z)s = transposed;
         """ % locals()
 
-transpose_inplace = gof.op.constructor(TransposeInplace)
+transpose_inplace = TransposeInplace()
 def transpose(x, **kwargs):
     return transpose_inplace(tensor_copy(x), **kwargs)
 
-class Subtensor(Op, Viewer):
-    nin = 2
-    nout = 1
-    e_invalid = 'invalid index'
-    debug = 0
-    def __init__(self, *args,**kwargs):
-        def as_tuple_result(obj):
-            if isinstance(obj, Result):
-                return obj
-            r = gof.result.PythonResult(None)
-            if isinstance(obj, tuple):
-                r.data = obj
-            else:
-                r.data = (obj,)
-            return r
-        def pad(tplR, N):
-            l = list(tplR.data)
-            for i in range(len(l), N):
-                l.append(slice(0,sys.maxint,1))
-            tplR.data = tuple(l)
+# class Subtensor(Op, Viewer):
+#     nin = 2
+#     nout = 1
+#     e_invalid = 'invalid index'
+#     debug = 0
+#     def __init__(self, *args,**kwargs):
+#         def as_tuple_result(obj):
+#             if isinstance(obj, Result):
+#                 return obj
+#             r = gof.result.PythonResult(None)
+#             if isinstance(obj, tuple):
+#                 r.data = obj
+#             else:
+#                 r.data = (obj,)
+#             return r
+#         def pad(tplR, N):
+#             l = list(tplR.data)
+#             for i in range(len(l), N):
+#                 l.append(slice(0,sys.maxint,1))
+#             tplR.data = tuple(l)
 
-        if Subtensor.debug:
-            print 'Subtensor.__init__', args, kwargs
-        #Olivier says not to call this
-        #Op.__init__(self,  *args,**kwargs) 
-        #Viewer.__init__(self, *args,**kwargs)
-        t, coord = args
-        t = _as_tensor(t)
-        coord = as_tuple_result(coord)
-        if len(coord.data) > len(t.broadcastable):
-            raise ValueError(Subtensor.e_invalid)
-        # add the implicit extra unbounded slices 
-        # e.g. n[0] on a 3d tensor pads to n[0,:,:]
-        pad(coord, len(t.broadcastable))
-        broadcastable = [0 for c in coord.data if isinstance(c, slice)]
-        if Subtensor.debug:
-            print 'brdcstble', broadcastable
-            print 't', t.data
-            print 'coord', coord.data
-        self.inputs = [t, coord]
-        self.outputs = [Tensor(t.dtype, broadcastable)]
-    def view_map(self): 
-        return {self.out: [self.inputs[0]]}
-    def perform(self):
-        x = self.inputs[0].data
-        c = self.inputs[1].data
-        if Subtensor.debug:
-            print 'perform: x', x
-            print 'perform: c', c
-        if len(c) == 1:
-            self.outputs[0].data = x.__getitem__(c[0])
-        else:
-            self.outputs[0].data = x.__getitem__(c)
-    def grad(self, (x,), (gz,)):
-        # - option: allocate a potentially large matrix of zeros, and fill in
-        # the appropriate elements from gz
-        # - option: return a sparse matrix
-        # - option: return gz, but think about how to include a special addition
-        # function that works on a corresponding view of the original data
-        raise NotImplementedError() 
-subtensor = gof.op.constructor(Subtensor)
+#         if Subtensor.debug:
+#             print 'Subtensor.__init__', args, kwargs
+#         #Olivier says not to call this
+#         #Op.__init__(self,  *args,**kwargs) 
+#         #Viewer.__init__(self, *args,**kwargs)
+#         t, coord = args
+#         t = _as_tensor(t)
+#         coord = as_tuple_result(coord)
+#         if len(coord.data) > len(t.broadcastable):
+#             raise ValueError(Subtensor.e_invalid)
+#         # add the implicit extra unbounded slices 
+#         # e.g. n[0] on a 3d tensor pads to n[0,:,:]
+#         pad(coord, len(t.broadcastable))
+#         broadcastable = [0 for c in coord.data if isinstance(c, slice)]
+#         if Subtensor.debug:
+#             print 'brdcstble', broadcastable
+#             print 't', t.data
+#             print 'coord', coord.data
+#         self.inputs = [t, coord]
+#         self.outputs = [Tensor(t.dtype, broadcastable)]
+#     def view_map(self): 
+#         return {self.out: [self.inputs[0]]}
+#     def perform(self):
+#         x = self.inputs[0].data
+#         c = self.inputs[1].data
+#         if Subtensor.debug:
+#             print 'perform: x', x
+#             print 'perform: c', c
+#         if len(c) == 1:
+#             self.outputs[0].data = x.__getitem__(c[0])
+#         else:
+#             self.outputs[0].data = x.__getitem__(c)
+#     def grad(self, (x,), (gz,)):
+#         # - option: allocate a potentially large matrix of zeros, and fill in
+#         # the appropriate elements from gz
+#         # - option: return a sparse matrix
+#         # - option: return gz, but think about how to include a special addition
+#         # function that works on a corresponding view of the original data
+#         raise NotImplementedError() 
+# subtensor = gof.op.constructor(Subtensor)
 
 
 #########################
 # Linalg : Dot
 #########################
 
-class Dot(_Op):
-    nin=2
-    nout=1
-    def propagate_broadcastable(self, bx, by):
+class Dot(Op):
+#     nin=2
+#     nout=1
+    def make_node(self, *inputs):
+        inputs = map(as_tensor, inputs)
+        if len(inputs) != 2:
+            raise TypeError("Wrong number of inputs for %s (got %i, expected 2)" % self)
+        i_broadcastables = [input.type.broadcastable for input in inputs]
+        i_dtypes = [input.type.dtype for input in inputs]
+
+#         o_broadcastables = utils.from_return_values(self.propagate_broadcastable(*i_broadcastables))
+#         o_dtypes = utils.from_return_values(self.propagate_dtype(*i_dtypes))
+
+        bx, by = i_broadcastables
         if len(bx) == 0:     # x is a scalar
-            rval = by
+            bz = by
         else:
             if len(by) >= 2: #y is a matrix or tensor
-                rval = bx[:-1] + by[:-2] + by[-1:]
+                bz = bx[:-1] + by[:-2] + by[-1:]
             elif len(by)==1: #y is vector
-                rval = bx[:-1]
+                bz = bx[:-1]
             else:            #y is a scalar
-                rval = bx
-        return [rval]
-    def impl(self, x, y):
-        return numpy.dot(x, y)
+                bz = bx
+        o_broadcastables = [bz]
+        o_dtypes = [scal.upcast(*i_dtypes)]
+
+        outputs = [Tensor(t, b)() for b, t in zip(o_broadcastables, o_dtypes)]
+
+        return Apply(self, inputs, outputs)
+    def perform(self, node, (x, y), (z, )):
+        z[0] = numpy.dot(x, y)
     def grad(self, (x, y), (gz,)):
         return dot(gz, y.T), dot(x.T, gz)
-dot = gof.op.constructor(Dot)
+dot = Dot()
 
-class Gemm(_Op):
-    nin=5
-    nout=1
-    E_rank = 'gemm only works for rank 2'
-    E_scalar = 'gemm requires scalar argument'
-    E_z_uniq = 'argument z aliased to x or y'
-    debug = False
-    def __init__(self, *args, **kwargs):
-        _Op.__init__(self, *args, **kwargs)
-        z, a, x, y, b = self.inputs
-        zr, xr, yr = [set(gof.view_roots(i)) for i in z,x,y]
-        if zr.intersection(xr):
-            raise ValueError(Gemm.E_z_uniq, (z, x))
-        if zr.intersection(yr):
-            raise ValueError(Gemm.E_z_uniq, (z, y))
-    def destroy_map(self):
-        return {self.out:[self.inputs[0]]}
-    def propagate_broadcastable(self, bz, ba, bx, by, bb):
-        if len(bz) != 2: raise ValueError(Gemm.E_rank, len(bz))
-        if len(bx) != 2: raise ValueError(Gemm.E_rank, len(bx))
-        if len(by) != 2: raise ValueError(Gemm.E_rank, len(by))
-        if len(ba): raise ValueError(Gemm.E_scalar, ba)
-        if len(bb): raise ValueError(Gemm.E_scalar, bb)
+# class Gemm(_Op):
+#     nin=5
+#     nout=1
+#     E_rank = 'gemm only works for rank 2'
+#     E_scalar = 'gemm requires scalar argument'
+#     E_z_uniq = 'argument z aliased to x or y'
+#     debug = False
+#     def __init__(self, *args, **kwargs):
+#         _Op.__init__(self, *args, **kwargs)
+#         z, a, x, y, b = self.inputs
+#         zr, xr, yr = [set(gof.view_roots(i)) for i in z,x,y]
+#         if zr.intersection(xr):
+#             raise ValueError(Gemm.E_z_uniq, (z, x))
+#         if zr.intersection(yr):
+#             raise ValueError(Gemm.E_z_uniq, (z, y))
+#     def destroy_map(self):
+#         return {self.out:[self.inputs[0]]}
+#     def propagate_broadcastable(self, bz, ba, bx, by, bb):
+#         if len(bz) != 2: raise ValueError(Gemm.E_rank, len(bz))
+#         if len(bx) != 2: raise ValueError(Gemm.E_rank, len(bx))
+#         if len(by) != 2: raise ValueError(Gemm.E_rank, len(by))
+#         if len(ba): raise ValueError(Gemm.E_scalar, ba)
+#         if len(bb): raise ValueError(Gemm.E_scalar, bb)
 
-        return [bz]
-    def impl(self, z, a, x, y, b):
-        assert a.shape == ()
-        assert b.shape == ()
-        if z.shape == ():
-            z.itemset(z*a + b*numpy.dot(x,y))
-            return z
-        else:
-            if b == 0.0:
-                if a == 1.0:
-                    z[:] = numpy.dot(x,y)
-                elif a == -1.0:
-                    z[:] = -numpy.dot(x,y)
-                else:
-                    z[:] = a * numpy.dot(x,y)
-            elif b == 1.0:
-                if a == 1.0:
-                    z += numpy.dot(x,y)
-                elif a == -1.0:
-                    z -= numpy.dot(x,y)
-                else:
-                    z += a * numpy.dot(x,y)
-            else:
-                z *= b
-                z += a * numpy.dot(x,y)
-            return z
-    def grad(self, (z, a, x, y, b), (gz,)):
-        raise NotImplementedError()
+#         return [bz]
+#     def impl(self, z, a, x, y, b):
+#         assert a.shape == ()
+#         assert b.shape == ()
+#         if z.shape == ():
+#             z.itemset(z*a + b*numpy.dot(x,y))
+#             return z
+#         else:
+#             if b == 0.0:
+#                 if a == 1.0:
+#                     z[:] = numpy.dot(x,y)
+#                 elif a == -1.0:
+#                     z[:] = -numpy.dot(x,y)
+#                 else:
+#                     z[:] = a * numpy.dot(x,y)
+#             elif b == 1.0:
+#                 if a == 1.0:
+#                     z += numpy.dot(x,y)
+#                 elif a == -1.0:
+#                     z -= numpy.dot(x,y)
+#                 else:
+#                     z += a * numpy.dot(x,y)
+#             else:
+#                 z *= b
+#                 z += a * numpy.dot(x,y)
+#             return z
+#     def grad(self, (z, a, x, y, b), (gz,)):
+#         raise NotImplementedError()
 
-    def c_support_code(self):
-        #return blas.cblas_header_text()
-        mod_str = """
-        #ifndef MOD
-        #define MOD %
-        #endif
-        """
-        return blas.blas_proto() + mod_str
-    def c_headers(self):
-        return ['<iostream>']
-    def c_libraries(self):
-        return blas.ldflags()
-    def c_validate_update(self, *args):
-        return ""
-    def c_validate_update_cleanup(self, *args):
-        return ""
-    def c_code(self, (_z, _a, _x, _y, _b), (_zout, ), sub):
-        return """
-        int unit = 0;
+#     def c_support_code(self):
+#         #return blas.cblas_header_text()
+#         mod_str = """
+#         #ifndef MOD
+#         #define MOD %
+#         #endif
+#         """
+#         return blas.blas_proto() + mod_str
+#     def c_headers(self):
+#         return ['<iostream>']
+#     def c_libraries(self):
+#         return blas.ldflags()
+#     def c_validate_update(self, *args):
+#         return ""
+#     def c_validate_update_cleanup(self, *args):
+#         return ""
+#     def c_code(self, (_z, _a, _x, _y, _b), (_zout, ), sub):
+#         return """
+#         int unit = 0;
 
-        int type_num = %(_x)s->descr->type_num;
-        int type_size = %(_x)s->descr->elsize; // in bytes
+#         int type_num = %(_x)s->descr->type_num;
+#         int type_size = %(_x)s->descr->elsize; // in bytes
 
-        npy_intp* Nx = %(_x)s->dimensions;
-        npy_intp* Ny = %(_y)s->dimensions;
-        npy_intp* Nz = %(_z)s->dimensions;
+#         npy_intp* Nx = %(_x)s->dimensions;
+#         npy_intp* Ny = %(_y)s->dimensions;
+#         npy_intp* Nz = %(_z)s->dimensions;
 
-        npy_intp* Sx = %(_x)s->strides;
-        npy_intp* Sy = %(_y)s->strides;
-        npy_intp* Sz = %(_z)s->strides;
+#         npy_intp* Sx = %(_x)s->strides;
+#         npy_intp* Sy = %(_y)s->strides;
+#         npy_intp* Sz = %(_z)s->strides;
 
-        //strides for x, y, z in dimensions 0, 1
-        int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
+#         //strides for x, y, z in dimensions 0, 1
+#         int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
 
-        if (%(_zout)s != %(_z)s)
-        {
-            if (%(_zout)s)
-            {
-                Py_DECREF(%(_zout)s);
-            }
-            %(_zout)s = %(_z)s;
-            Py_INCREF(%(_zout)s);
-        }
+#         if (%(_zout)s != %(_z)s)
+#         {
+#             if (%(_zout)s)
+#             {
+#                 Py_DECREF(%(_zout)s);
+#             }
+#             %(_zout)s = %(_z)s;
+#             Py_INCREF(%(_zout)s);
+#         }
 
-        if (%(_x)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
-        if (%(_y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
-        if (%(_z)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
+#         if (%(_x)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
+#         if (%(_y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
+#         if (%(_z)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
 
-        if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_a)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(a) is not double or float"); %(fail)s;}
+#         if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
+#             && (%(_a)s->descr->type_num != PyArray_FLOAT))
+#         {PyErr_SetString(PyExc_NotImplementedError, "type(a) is not double or float"); %(fail)s;}
 
-        if ((%(_b)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_b)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(b) is not double or float"); %(fail)s;}
+#         if ((%(_b)s->descr->type_num != PyArray_DOUBLE)
+#             && (%(_b)s->descr->type_num != PyArray_FLOAT))
+#         {PyErr_SetString(PyExc_NotImplementedError, "type(b) is not double or float"); %(fail)s;}
 
-        if ((%(_x)s->descr->type_num != PyArray_DOUBLE) 
-            && (%(_x)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
+#         if ((%(_x)s->descr->type_num != PyArray_DOUBLE) 
+#             && (%(_x)s->descr->type_num != PyArray_FLOAT))
+#         {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
 
-        if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
-            && (%(_y)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
+#         if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
+#             && (%(_y)s->descr->type_num != PyArray_FLOAT))
+#         {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
 
-        if ((%(_z)s->descr->type_num != PyArray_DOUBLE) 
-            && (%(_z)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
+#         if ((%(_z)s->descr->type_num != PyArray_DOUBLE) 
+#             && (%(_z)s->descr->type_num != PyArray_FLOAT))
+#         {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
 
-        if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
-            ||(%(_x)s->descr->type_num != %(_z)s->descr->type_num))
-        { PyErr_SetString(PyExc_NotImplementedError, "type(z), type(y), type(z) are not all the same"); %(fail)s; }
+#         if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
+#             ||(%(_x)s->descr->type_num != %(_z)s->descr->type_num))
+#         { PyErr_SetString(PyExc_NotImplementedError, "type(z), type(y), type(z) are not all the same"); %(fail)s; }
 
-        if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
-        {
-            PyErr_SetString(PyExc_ValueError, "Input dimensions do not agree");
-            %(fail)s;
-        }
-        if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] MOD type_size) || (Sx[1] MOD type_size)
-           || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
-           || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
-        {
-            PyErr_SetString(PyExc_ValueError, "stride is not multiple of element size"); %(fail)s;
-        }
+#         if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
+#         {
+#             PyErr_SetString(PyExc_ValueError, "Input dimensions do not agree");
+#             %(fail)s;
+#         }
+#         if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] MOD type_size) || (Sx[1] MOD type_size)
+#            || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
+#            || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
+#         {
+#             PyErr_SetString(PyExc_ValueError, "stride is not multiple of element size"); %(fail)s;
+#         }
 
-        /*
-        encode the stride structure of _x,_y,_z into a single integer
-        */
-        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 8;
-        unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
-        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 0;
+#         /*
+#         encode the stride structure of _x,_y,_z into a single integer
+#         */
+#         unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 8;
+#         unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
+#         unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 0;
 
-        /* create appropriate strides for malformed matrices that are row or column
-         * vectors
-         */
-        sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
-        sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
-        sy_0 = (Ny[0] > 1) ? Sy[0]/type_size : Ny[1];
-        sy_1 = (Ny[1] > 1) ? Sy[1]/type_size : Ny[0];
-        sz_0 = (Nz[0] > 1) ? Sz[0]/type_size : Nz[1];
-        sz_1 = (Nz[1] > 1) ? Sz[1]/type_size : Nz[0];
+#         /* create appropriate strides for malformed matrices that are row or column
+#          * vectors
+#          */
+#         sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
+#         sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
+#         sy_0 = (Ny[0] > 1) ? Sy[0]/type_size : Ny[1];
+#         sy_1 = (Ny[1] > 1) ? Sy[1]/type_size : Ny[0];
+#         sz_0 = (Nz[0] > 1) ? Sz[0]/type_size : Nz[1];
+#         sz_1 = (Nz[1] > 1) ? Sz[1]/type_size : Nz[0];
 
-        switch (type_num)
-        {
-            case PyArray_FLOAT:
-            {
-                #define REAL float
-                float a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
-                ? (REAL)(((float*)%(_a)s->data)[0])
-                : (REAL)(((double*)%(_a)s->data)[0]);
-                float b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
-                (REAL)(((float*)%(_b)s->data)[0])
-                : (REAL)(((double*)%(_b)s->data)[0]);
+#         switch (type_num)
+#         {
+#             case PyArray_FLOAT:
+#             {
+#                 #define REAL float
+#                 float a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
+#                 ? (REAL)(((float*)%(_a)s->data)[0])
+#                 : (REAL)(((double*)%(_a)s->data)[0]);
+#                 float b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
+#                 (REAL)(((float*)%(_b)s->data)[0])
+#                 : (REAL)(((double*)%(_b)s->data)[0]);
 
-                float* x = (float*)PyArray_DATA(%(_x)s);
-                float* y = (float*)PyArray_DATA(%(_y)s);
-                float* z = (float*)PyArray_DATA(%(_z)s);
-                char N = 'N';
-                char T = 'T';
-                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
-                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
-                switch(unit)
-                {
-                    case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x100: sgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x010: sgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x110: sgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x001: sgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x101: sgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x011: sgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
-                    case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
-                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
-                };
-                #undef REAL
-            }
-            break;
-            case PyArray_DOUBLE:
-            {
-                #define REAL double
+#                 float* x = (float*)PyArray_DATA(%(_x)s);
+#                 float* y = (float*)PyArray_DATA(%(_y)s);
+#                 float* z = (float*)PyArray_DATA(%(_z)s);
+#                 char N = 'N';
+#                 char T = 'T';
+#                 int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+#                 //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+#                 switch(unit)
+#                 {
+#                     case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+#                     case 0x100: sgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+#                     case 0x010: sgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+#                     case 0x110: sgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+#                     case 0x001: sgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+#                     case 0x101: sgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+#                     case 0x011: sgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+#                     case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+#                     default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
+#                 };
+#                 #undef REAL
+#             }
+#             break;
+#             case PyArray_DOUBLE:
+#             {
+#                 #define REAL double
 
-                double a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
-                ? (REAL)(((float*)%(_a)s->data)[0])
-                : (REAL)(((double*)%(_a)s->data)[0]);
-                double b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
-                (REAL)(((float*)%(_b)s->data)[0])
-                : (REAL)(((double*)%(_b)s->data)[0]);
-                double* x = (double*)PyArray_DATA(%(_x)s);
-                double* y = (double*)PyArray_DATA(%(_y)s);
-                double* z = (double*)PyArray_DATA(%(_z)s);
-                char N = 'N';
-                char T = 'T';
-                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
-                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
-                switch(unit)
-                {
-                    case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
-                    case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
-                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
-                };
-                #undef REAL
-            }
-            break;
-        }
+#                 double a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
+#                 ? (REAL)(((float*)%(_a)s->data)[0])
+#                 : (REAL)(((double*)%(_a)s->data)[0]);
+#                 double b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
+#                 (REAL)(((float*)%(_b)s->data)[0])
+#                 : (REAL)(((double*)%(_b)s->data)[0]);
+#                 double* x = (double*)PyArray_DATA(%(_x)s);
+#                 double* y = (double*)PyArray_DATA(%(_y)s);
+#                 double* z = (double*)PyArray_DATA(%(_z)s);
+#                 char N = 'N';
+#                 char T = 'T';
+#                 int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+#                 //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+#                 switch(unit)
+#                 {
+#                     case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+#                     case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+#                     case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+#                     case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+#                     case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+#                     case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+#                     case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+#                     case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+#                     default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
+#                 };
+#                 #undef REAL
+#             }
+#             break;
+#         }
 
-        """ % dict(locals(), **sub)
-gemm = gof.op.constructor(Gemm)
+#         """ % dict(locals(), **sub)
+# gemm = gof.op.constructor(Gemm)
 

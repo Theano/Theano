@@ -6,20 +6,20 @@ from gof import utils
 C = constant
 
 # x**2 -> x*x
-pow2sqr_float = Pattern((Pow, 'x', C(2.0)), (Sqr, 'x'))
-pow2sqr_int = Pattern((Pow, 'x', C(2)), (Sqr, 'x'))
+pow2sqr_float = Pattern((pow, 'x', C(2.0)), (sqr, 'x'))
+pow2sqr_int = Pattern((pow, 'x', C(2)), (sqr, 'x'))
 
 # x**0 -> 1
-pow2one_float = Pattern((Pow, 'x', C(0.0)), C(1.0))
-pow2one_int = Pattern((Pow, 'x', C(0)), C(1))
+pow2one_float = Pattern((pow, 'x', C(0.0)), C(1.0))
+pow2one_int = Pattern((pow, 'x', C(0)), C(1))
 
 # x**1 -> x
-pow2x_float = Pattern((Pow, 'x', C(1.0)), 'x')
-pow2x_int = Pattern((Pow, 'x', C(1)), 'x')
+pow2x_float = Pattern((pow, 'x', C(1.0)), 'x')
+pow2x_int = Pattern((pow, 'x', C(1)), 'x')
 
 # log(x**y) -> y*log(x)
-logpow = Pattern((Log, (Pow, 'x', 'y')),
-                 (Mul, 'y', (Log, 'x')))
+logpow = Pattern((log, (pow, 'x', 'y')),
+                 (mul, 'y', (log, 'x')))
 
 
 class Canonizer(gof.Optimizer):
@@ -71,8 +71,6 @@ class Canonizer(gof.Optimizer):
 
         def canonize(r):
             
-#             if r in env.inputs or r in env.orphans():
-#                 return
             next = env.follow(r)
             if next is None:
                 return
@@ -84,19 +82,20 @@ class Canonizer(gof.Optimizer):
 
                 if env.edge(r):
                     return [r], []
-                op = r.owner
-#                 if op is None or r in env.inputs or r in env.orphans():
-#                     return [r], []
+                print "a", r, r.owner, env, env.orphans
+                node = r.owner
+                op = node.op
+                print "b"
                 
-                results = [r2.dtype == r.dtype and flatten(r2) or ([r2], []) for r2 in op.inputs]
-                if isinstance(op, self.main) and (not nclients_check or env.nclients(r) == 1):
+                results = [r2.type == r.type and flatten(r2) or ([r2], []) for r2 in node.inputs]
+                if op == self.main and (not nclients_check or env.nclients(r) == 1):
                     nums = [x[0] for x in results]
                     denums = [x[1] for x in results]
-                elif isinstance(op, self.inverse) and (not nclients_check or env.nclients(r) == 1):
+                elif op == self.inverse and (not nclients_check or env.nclients(r) == 1):
                     # num, denum of the second argument are added to the denum, num respectively
                     nums = [results[0][0], results[1][1]]
                     denums = [results[0][1], results[1][0]]
-                elif isinstance(op, self.reciprocal) and (not nclients_check or env.nclients(r) == 1):
+                elif op == self.reciprocal and (not nclients_check or env.nclients(r) == 1):
                     # num, denum of the sole argument are added to the denum, num respectively
                     nums = [results[0][1]]
                     denums = [results[0][0]]
@@ -111,12 +110,6 @@ class Canonizer(gof.Optimizer):
                 for input in (env.follow(r) or []):
                     canonize(input)
                 return
-#                 if r.owner is None:
-#                     return
-#                 else:
-#                     for input in r.owner.inputs:
-#                         canonize(input)
-#                     return
 
             # Terms that are both in the num and denum lists cancel each other
             for d in list(denum):
@@ -126,8 +119,8 @@ class Canonizer(gof.Optimizer):
                     denum.remove(d)
 
             # We identify the constants in num and denum
-            numct, num = utils.partition(lambda factor: getattr(factor, 'constant', False) and factor.data is not None, num)
-            denumct, denum = utils.partition(lambda factor: getattr(factor, 'constant', False) and factor.data is not None, denum)
+            numct, num = utils.partition(lambda factor: isinstance(factor, Constant) and factor.data is not None, num)
+            denumct, denum = utils.partition(lambda factor: isinstance(factor, Constant) and factor.data is not None, denum)
 
             # All constants in num and denum are combined into a single constant which we add to num (unless it's a neutral constant)
             v = self.invfn(self.mainfn(*[x.data for x in numct]), self.mainfn(*[x.data for x in denumct]))
@@ -147,7 +140,7 @@ class Canonizer(gof.Optimizer):
                 elif n == 1:
                     return factors[0]
                 else:
-                    return self.main(*factors).out
+                    return self.main(*factors)
 
             numr, denumr = make(num), make(denum)
             
@@ -155,17 +148,15 @@ class Canonizer(gof.Optimizer):
                 if denumr is None:
                     # Everything cancelled each other so we're left with
                     # the neutral element.
-                    new_r = Scalar(dtype = r.dtype)
-                    new_r.constant = True
-                    new_r.data = self.neutral
+                    new_r = Constant(r.type, self.neutral)
                 else:
                     # There's no numerator so we use reciprocal
-                    new_r = self.reciprocal(denumr).out
+                    new_r = self.reciprocal(denumr)
             else:
                 if denumr is None:
                     new_r = numr
                 else:
-                    new_r = self.inverse(numr, denumr).out
+                    new_r = self.inverse(numr, denumr)
 
             # Hopefully this won't complain!
             env.replace(r, new_r)
@@ -191,7 +182,6 @@ def group_powers(env, num, denum):
     Examples:
       group_powers([x, exp(x), exp(y)], [exp(z)]) -> [x, exp(x+y-z)], []
     """
-
     # maps a base to the list of powers it is raised to in the
     # numerator/denominator lists.
     num_powers = {}
@@ -201,14 +191,15 @@ def group_powers(env, num, denum):
         # For each instance of exp or pow in seq, removes it from seq
         # and does d[base].append(power).
         for factor in list(seq):
-            op = factor.owner
             if env.edge(factor):
                 continue
-            if isinstance(op, Exp):
-                d.setdefault('e', []).append(op.inputs[0])
+            node = factor.owner
+            op = node.op
+            if op == exp:
+                d.setdefault('e', []).append(node.inputs[0])
                 seq.remove(factor)
-            elif isinstance(op, Pow):
-                d.setdefault(op.inputs[0], []).append(op.inputs[1])
+            elif op == pow:
+                d.setdefault(node.inputs[0], []).append(node.inputs[1])
                 seq.remove(factor)
 
     populate(num_powers, num)

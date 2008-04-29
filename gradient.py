@@ -1,4 +1,4 @@
-import gof, gof.result
+import gof #, gof.result
 import numpy #for numeric_grad
 
 from gof.python25 import all
@@ -60,17 +60,17 @@ def grad_sources_inputs(sources, graph_inputs):
     if graph_inputs is None:
         graph_inputs = gof.graph.inputs(graph_outputs)
         
-    for op in gof.graph.io_toposort(graph_inputs, graph_outputs).__reversed__():
-        g_outputs = [gmap.get(o,None) for o in op.outputs]
+    for node in gof.graph.io_toposort(graph_inputs, graph_outputs).__reversed__():
+        g_outputs = [gmap.get(o,None) for o in node.outputs]
 
         #if all output gradients are None, continue
         if all(map(lambda x:x is None, g_outputs)): continue
         
         output_arg = g_outputs
-        input_arg = op.inputs
+        input_arg = node.inputs
 
         try:
-            dinputs = [x[0] for x in op.destroy_map().values()]
+            dinputs = [node.inputs[x[0]] for x in node.op.destroy_map.values()]
         except AttributeError:
             dinputs = []
 
@@ -90,17 +90,17 @@ def grad_sources_inputs(sources, graph_inputs):
         #  Other possibilities:
         #    * return a partial back-prop
         #
-        op_grad = op.grad(input_arg, output_arg)
+        op_grad = node.op.grad(input_arg, output_arg)
         if not isinstance(op_grad, (list,tuple)):
-            raise ValueError(_msg_retType, op.__class__)
+            raise ValueError(_msg_retType, node.op)
         g_inputs = op_grad #_pack_result(op_grad)
         assert isinstance(g_inputs, (list, tuple))
-        if len(g_inputs) != len(op.inputs):
+        if len(g_inputs) != len(node.inputs):
             raise ValueError(_msg_badlen, 
-                    op.__class__, 
+                    node.op, 
                     len(g_inputs),
-                    len(op.inputs))
-        for r, g_r in zip(op.inputs, g_inputs):
+                    len(node.inputs))
+        for r, g_r in zip(node.inputs, g_inputs):
             if g_r is not None: 
                 if r in gmap:
                     gmap[r] = gmap[r] + g_r

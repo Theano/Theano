@@ -3,28 +3,15 @@ import unittest
 
 from link import PerformLinker, Profiler
 from cc import *
-from result import Result
+from type import Type
+from graph import Result, as_result, Apply, Constant
 from op import Op
 from env import Env
 
-class Double(Result):
+class TDouble(Type):
+    def filter(self, data):
+        return float(data)
 
-    def __init__(self, data, name = "oignon"):
-        Result.__init__(self, role = None, name = name)
-        assert isinstance(data, float)
-        self.data = data
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
-    def __copy__(self):
-        return Double(self.data, self.name)
-
-#    def c_is_simple(self): return True
-    
     def c_declare(self, name, sub):
         return "double %(name)s; void* %(name)s_bad_thing;" % locals()
 
@@ -35,8 +22,8 @@ class Double(Result):
         //printf("Initializing %(name)s\\n"); 
         """ % locals()
 
-    def c_literal(self):
-        return str(self.data)
+    def c_literal(self, data):
+        return str(data)
 
     def c_extract(self, name, sub):
         return """
@@ -65,74 +52,77 @@ class Double(Result):
             free(%(name)s_bad_thing);
         """ % locals()
 
+tdouble = TDouble()
+
+def double(name):
+    return Result(tdouble, None, None, name = name)
+
 
 class MyOp(Op):
 
-    nin = -1
-
-    def __init__(self, *inputs):
+    def __init__(self, nin, name):
+        self.nin = nin
+        self.name = name
+    
+    def make_node(self, *inputs):
         assert len(inputs) == self.nin
+        inputs = map(as_result, inputs)
         for input in inputs:
-            if not isinstance(input, Double):
+            if input.type is not tdouble:
                 raise Exception("Error 1")
-        self.inputs = inputs
-        self.outputs = [Double(0.0, self.__class__.__name__ + "_R")]
+        outputs = [double(self.name + "_R")]
+        return Apply(self, inputs, outputs)
+
+    def __str__(self):
+        return self.name
+    
+    def perform(self, node, inputs, (out, )):
+        out[0] = self.impl(*inputs)
+
 
 class Unary(MyOp):
-    nin = 1
-#     def c_var_names(self):
-#         return [['x'], ['z']]
+    def __init__(self):
+        MyOp.__init__(self, 1, self.__class__.__name__)
 
 class Binary(MyOp):
-    nin = 2
-#     def c_var_names(self):
-#         return [['x', 'y'], ['z']]
+    def __init__(self):
+        MyOp.__init__(self, 2, self.__class__.__name__)
 
         
 class Add(Binary):
-    def c_code(self, (x, y), (z, ), sub):
+    def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s + %(y)s;" % locals()
-    def perform(self):
-        self.outputs[0].data = self.inputs[0].data + self.inputs[1].data
+    def impl(self, x, y):
+        return x + y
+add = Add()
         
 class Sub(Binary):
-    def c_code(self, (x, y), (z, ), sub):
+    def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s - %(y)s;" % locals()
-    def perform(self):
-        self.outputs[0].data = -10 # erroneous
+    def impl(self, x, y):
+        return -10 # erroneous (most of the time)
+sub = Sub()
         
 class Mul(Binary):
-    def c_code(self, (x, y), (z, ), sub):
+    def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s * %(y)s;" % locals()
-    def perform(self):
-        self.outputs[0].data = self.inputs[0].data * self.inputs[1].data
+    def impl(self, x, y):
+        return x * y
+mul = Mul()
         
 class Div(Binary):
-    def c_validate_update(self, (x, y), (z, ), sub):
-        return """
-        if (%(y)s == 0.0) {
-            PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");
-            %(fail)s
-        }
-        """ % dict(locals(), **sub)
-    def c_code(self, (x, y), (z, ), sub):
+    def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s / %(y)s;" % locals()
-    def perform(self):
-        self.outputs[0].data = self.inputs[0].data / self.inputs[1].data
+    def impl(self, x, y):
+        return x / y
+div = Div()
 
-
-
-import modes
-modes.make_constructors(globals())
 
 def inputs():
-    x = modes.build(Double(1.0, 'x'))
-    y = modes.build(Double(2.0, 'y'))
-    z = modes.build(Double(3.0, 'z'))
+    x = double('x')
+    y = double('y')
+    z = double('z')
     return x, y, z
-
-def env(inputs, outputs, validate = True, features = []):
-    return Env(inputs, outputs, features = features, consistency_check = validate)
 
 
 class _test_CLinker(unittest.TestCase):
@@ -140,41 +130,41 @@ class _test_CLinker(unittest.TestCase):
     def test_straightforward(self):
         x, y, z = inputs()
         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = CLinker(env([x, y, z], [e]))
+        lnk = CLinker(Env([x, y, z], [e]))
         fn = lnk.make_function()
         self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
 
-    def test_orphan(self):
-        x, y, z = inputs()
-        z.data = 4.12345678
-        e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = CLinker(env([x, y], [e]))
-        fn = lnk.make_function()
-        self.failUnless(abs(fn(2.0, 2.0) + 0.12345678) < 1e-9)
-        self.failUnless("4.12345678" not in lnk.code_gen()) # we do not expect the number to be inlined
+#     def test_orphan(self):
+#         x, y, z = inputs()
+#         z = Constant(tdouble, 4.12345678)
+#         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+#         lnk = CLinker(Env([x, y], [e]))
+#         fn = lnk.make_function()
+#         self.failUnless(abs(fn(2.0, 2.0) + 0.12345678) < 1e-9)
+#         print lnk.code_gen()
+#         self.failUnless("4.12345678" not in lnk.code_gen()) # we do not expect the number to be inlined
 
     def test_literal_inlining(self):
         x, y, z = inputs()
-        z.data = 4.12345678
-        z.constant = True # this should tell the compiler to inline z as a literal
+        z = Constant(tdouble, 4.12345678)
         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = CLinker(env([x, y], [e]))
+        lnk = CLinker(Env([x, y], [e]))
         fn = lnk.make_function()
         self.failUnless(abs(fn(2.0, 2.0) + 0.12345678) < 1e-9)
         self.failUnless("4.12345678" in lnk.code_gen()) # we expect the number to be inlined
 
-    def test_single_op(self):
+    def test_single_node(self):
         x, y, z = inputs()
-        op = Add(x, y)
-        lnk = CLinker(op)
+        node = add.make_node(x, y)
+        lnk = CLinker(Env(node.inputs, node.outputs))
         fn = lnk.make_function()
         self.failUnless(fn(2.0, 7.0) == 9)
     
     def test_dups(self):
         # Testing that duplicate inputs are allowed.
         x, y, z = inputs()
-        op = Add(x, x)
-        lnk = CLinker(op)
+        e = add(x, x)
+        lnk = CLinker(Env([x, x], [e]))
         fn = lnk.make_function()
         self.failUnless(fn(2.0, 2.0) == 4)
         # note: for now the behavior of fn(2.0, 7.0) is undefined
@@ -183,7 +173,7 @@ class _test_CLinker(unittest.TestCase):
         # Testing that duplicates are allowed inside the graph
         x, y, z = inputs()
         e = add(mul(y, y), add(x, z))
-        lnk = CLinker(env([x, y, z], [e]))
+        lnk = CLinker(Env([x, y, z], [e]))
         fn = lnk.make_function()
         self.failUnless(fn(1.0, 2.0, 3.0) == 8.0)
     
@@ -194,16 +184,25 @@ class _test_OpWiseCLinker(unittest.TestCase):
     def test_straightforward(self):
         x, y, z = inputs()
         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = OpWiseCLinker(env([x, y, z], [e]))
+        lnk = OpWiseCLinker(Env([x, y, z], [e]))
         fn = lnk.make_function()
         self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
+
+    def test_constant(self):
+        x, y, z = inputs()
+        x = Constant(tdouble, 7.2, name = 'x')
+        e = add(mul(x, y), mul(y, z))
+        lnk = OpWiseCLinker(Env([y, z], [e]))
+        fn = lnk.make_function()
+        res = fn(1.5, 3.0)
+        self.failUnless(res == 15.3, res)
 
 
 class MyExc(Exception):
     pass
 def _my_checker(x, y):
-    if x.data != y.data:
-        raise MyExc("Output mismatch.", {'performlinker': x.data, 'clinker': y.data})
+    if x[0] != y[0]:
+        raise MyExc("Output mismatch.", {'performlinker': x[0], 'clinker': y[0]})
 
 
 class _test_DualLinker(unittest.TestCase):
@@ -211,7 +210,7 @@ class _test_DualLinker(unittest.TestCase):
     def test_straightforward(self):
         x, y, z = inputs()
         e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
-        lnk = DualLinker(env([x, y, z], [e]), checker = _my_checker)
+        lnk = DualLinker(Env([x, y, z], [e]), checker = _my_checker)
         fn = lnk.make_function()
         res = fn(7.2, 1.5, 3.0)
         self.failUnless(res == 15.3, res)
@@ -219,7 +218,7 @@ class _test_DualLinker(unittest.TestCase):
     def test_mismatch(self):
         x, y, z = inputs()
         e = sub(mul(x, y), mul(y, z)) # sub is correct in C but erroneous in Python
-        g = env([x, y, z], [e])
+        g = Env([x, y, z], [e])
         lnk = DualLinker(g, checker = _my_checker)
         fn = lnk.make_function()
 
@@ -238,14 +237,14 @@ class _test_DualLinker(unittest.TestCase):
         else:
             self.fail()
 
-    def test_orphan(self):
-        x, y, z = inputs()
-        x.data = 7.2
-        e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
-        lnk = DualLinker(env([y, z], [e]), checker = _my_checker)
-        fn = lnk.make_function()
-        res = fn(1.5, 3.0)
-        self.failUnless(res == 15.3, res)
+#     def test_orphan(self):
+#         x, y, z = inputs()
+#         x = Constant(tdouble, 7.2, name = 'x')
+#         e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
+#         lnk = DualLinker(Env([y, z], [e]), checker = _my_checker)
+#         fn = lnk.make_function()
+#         res = fn(1.5, 3.0)
+#         self.failUnless(res == 15.3, res)
 
 
 

@@ -69,7 +69,7 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         self.seen = set()
 
         # Initialize the children if the inputs and orphans.
-        for input in env.orphans().union(env.inputs):
+        for input in env.orphans.union(env.inputs):
             self.children[input] = set()
 
     def publish(self):
@@ -197,17 +197,23 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         for user in users:
             self.__detect_cycles_helper__(user, [])
 
-    def get_maps(self, op):
+    def get_maps(self, node):
         """
         @return: (vmap, dmap) where:
          - vmap -> {output : [inputs output is a view of]}
          - dmap -> {output : [inputs that are destroyed by the Op
                               (and presumably returned as that output)]}
         """
-        try: vmap = op.view_map()
-        except AttributeError, AbstractFunctionError: vmap = {}
-        try: dmap = op.destroy_map()
-        except AttributeError, AbstractFunctionError: dmap = {}
+        try: _vmap = node.op.view_map
+        except AttributeError, AbstractFunctionError: _vmap = {}
+        try: _dmap = node.op.destroy_map
+        except AttributeError, AbstractFunctionError: _dmap = {}
+        vmap = {}
+        for oidx, iidxs in _vmap.items():
+            vmap[node.outputs[oidx]] = [node.inputs[iidx] for iidx in iidxs]
+        dmap = {}
+        for oidx, iidxs in _dmap.items():
+            dmap[node.outputs[oidx]] = [node.inputs[iidx] for iidx in iidxs]
         return vmap, dmap
 
     def on_import(self, op):
@@ -395,6 +401,7 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
 
         # Recompute the cycles from both r_1 and r_2.
         self.__detect_cycles__(r_1) # we should really just remove the cycles that have r_1 and a result in prev just before
+        self.children.setdefault(r_2, set())
         self.__detect_cycles__(r_2)
 
     def validate(self):

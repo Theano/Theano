@@ -2,21 +2,124 @@
 from copy import copy
 
 import utils
+from utils import object2
+        
 
 
-__all__ = ['inputs',
-           'results_and_orphans', 'results', 'orphans',
-           'ops',
-           'clone', 'clone_get_equiv',
-           'io_toposort',
-           'default_leaf_formatter', 'default_node_formatter',
-           'op_as_string',
-           'as_string',
-           'Graph']
+class Apply(object2):
+    #__slots__ = ['op', 'inputs', 'outputs']
+    def __init__(self, op, inputs, outputs):
+        self.op = op
+        self.inputs = []
+        for input in inputs:
+            if isinstance(input, Result):
+                self.inputs.append(input)
+#             elif isinstance(input, Type):
+#                 self.inputs.append(Result(input, None, None))
+            else:
+                raise TypeError("The 'inputs' argument to Apply must contain Result instances, not %s" % input)
+        self.outputs = []
+        for i, output in enumerate(outputs):
+            if isinstance(output, Result):
+                if output.owner is None:
+                    output.owner = self
+                    output.index = i
+                elif output.owner is not self or output.index != i:
+                    raise ValueError("All output results passed to Apply must belong to it.")
+                self.outputs.append(output)
+#             elif isinstance(output, Type):
+#                 self.outputs.append(Result(output, self, i))
+            else:
+                raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
+    def default_output(self):
+        """
+        Returns the default output for this Node, typically self.outputs[0].
+        Depends on the value of node.op.default_output
+        """
+        do = self.op.default_output
+        if do < 0:
+            raise AttributeError("%s does not have a default output." % self.op)
+        elif do > len(self.outputs):
+            raise AttributeError("default output for %s is out of range." % self.op)
+        return self.outputs[do]
+    out = property(default_output, 
+                   doc = "Same as self.outputs[0] if this Op's has_default_output field is True.")
+    def __str__(self):
+        return op_as_string(self.inputs, self)
+    def __repr__(self):
+        return str(self)
+    def __asapply__(self):
+        return self
+    nin = property(lambda self: len(self.inputs))
+    nout = property(lambda self: len(self.outputs))
 
 
-is_result = utils.attr_checker('owner', 'index')
-is_op = utils.attr_checker('inputs', 'outputs')
+class Result(object2):
+    #__slots__ = ['type', 'owner', 'index', 'name']
+    def __init__(self, type, owner = None, index = None, name = None):
+        self.type = type
+        self.owner = owner
+        self.index = index
+        self.name = name
+
+    def __str__(self):
+        if self.name is not None:
+            return self.name
+        if self.owner is not None:
+            op = self.owner.op
+            if self.index == op.default_output:
+                return str(self.owner.op) + ".out"
+            else:
+                return str(self.owner.op) + "." + str(self.index)
+        else:
+            return "?::" + str(self.type)
+    def __repr__(self):
+        return str(self)
+    def __asresult__(self):
+        return self
+
+class Constant(Result):
+    #__slots__ = ['data']
+    def __init__(self, type, data, name = None):
+        Result.__init__(self, type, None, None, name)
+        self.data = type.filter(data)
+        self.indestructible = True
+    def equals(self, other):
+        # this does what __eq__ should do, but Result and Apply should always be hashable by id
+        return isinstance(other, Constant) and self.signature() == other.signature()
+    def signature(self):
+        return (self.type, self.data)
+    def __str__(self):
+        if self.name is not None:
+            return self.name
+        return str(self.data) #+ "::" + str(self.type)
+
+def as_result(x):
+    if isinstance(x, Result):
+        return x
+#     elif isinstance(x, Type):
+#         return Result(x, None, None)
+    elif hasattr(x, '__asresult__'):
+        r = x.__asresult__()
+        if not isinstance(r, Result):
+            raise TypeError("%s.__asresult__ must return a Result instance" % x, (x, r))
+        return r
+    else:
+        raise TypeError("Cannot wrap %s in a Result" % x)
+
+def as_apply(x):
+    if isinstance(x, Apply):
+        return x
+    elif hasattr(x, '__asapply__'):
+        node = x.__asapply__()
+        if not isinstance(node, Apply):
+            raise TypeError("%s.__asapply__ must return an Apply instance" % x, (x, node))
+        return node
+    else:
+        raise TypeError("Cannot map %s to Apply" % x)
+    
+
+
 
 
 def inputs(o):
@@ -177,24 +280,39 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
 
     for input in i:
         if copy_inputs_and_orphans:
-            d[input] = copy(input)
+            cpy = copy(input)
+            cpy.owner = None
+            cpy.index = None
+            d[input] = cpy
         else:
             d[input] = input
 
     def clone_helper(result):
         if result in d:
             return d[result]
-        op = result.owner
-        if not op: # result is an orphan
+        node = result.owner
+        if node is None: # result is an orphan
             if copy_inputs_and_orphans:
-                d[result] = copy(result)
+                cpy = copy(result)
+                cpy.owner = None
+                cpy.index = None
+                d[result] = cpy
             else:
                 d[result] = result
             return d[result]
         else:
-            new_op = op.clone_with_new_inputs(*[clone_helper(input) for input in op.inputs])
-            d[op] = new_op
-            for output, new_output in zip(op.outputs, new_op.outputs):
+            new_node = copy(node)
+            new_node.inputs = [clone_helper(input) for input in node.inputs]
+            new_node.outputs = []
+            for output in node.outputs:
+                new_output = copy(output)
+                new_output.owner = new_node
+                new_node.outputs.append(new_output)
+#             new_node = Apply(node.op,
+#                              [clone_helper(input) for input in node.inputs],
+#                              [output.type for output in node.outputs])
+            d[node] = new_node
+            for output, new_output in zip(node.outputs, new_node.outputs):
                 d[output] = new_output
             return d[result]
 
@@ -202,6 +320,36 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
         clone_helper(output)
 
     return d
+
+#     d = {}
+
+#     for input in i:
+#         if copy_inputs_and_orphans:
+#             d[input] = copy(input)
+#         else:
+#             d[input] = input
+
+#     def clone_helper(result):
+#         if result in d:
+#             return d[result]
+#         op = result.owner
+#         if not op: # result is an orphan
+#             if copy_inputs_and_orphans:
+#                 d[result] = copy(result)
+#             else:
+#                 d[result] = result
+#             return d[result]
+#         else:
+#             new_op = op.clone_with_new_inputs(*[clone_helper(input) for input in op.inputs])
+#             d[op] = new_op
+#             for output, new_output in zip(op.outputs, new_op.outputs):
+#                 d[output] = new_output
+#             return d[result]
+
+#     for output in o:
+#         clone_helper(output)
+
+#     return d
 
 
 def io_toposort(i, o, orderings = {}):
@@ -231,7 +379,7 @@ def io_toposort(i, o, orderings = {}):
 
 
 default_leaf_formatter = str
-default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.strdesc(),
+default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.op,
                                                             ", ".join(argstrings))
 
 def op_as_string(i, op,
@@ -291,7 +439,7 @@ def as_string(i, o,
         if r.owner is not None and r not in i and r not in orph:
             op = r.owner
             idx = op.outputs.index(r)
-            if idx == op._default_output_idx:
+            if idx == op.op.default_output:
                 idxs = ""
             else:
                 idxs = "::%i" % idx

@@ -19,6 +19,23 @@ class AbstractFunctionError(Exception):
     function has been left out of an implementation class.
     """
 
+class object2(object):
+    __slots__ = []
+    def __hash__(self):
+        # this fixes silent-error-prone new-style class behavior
+        if hasattr(self, '__eq__') or hasattr(self, '__cmp__'):
+            raise TypeError("unhashable object: %s" % self)
+        return id(self)
+
+class scratchpad:
+    def clear(self):
+        self.__dict__.clear()
+    def __str__(self):
+        print "scratch" + str(self.__dict__)
+
+
+
+
 def uniq(seq):
     #TODO: consider building a set out of seq so that the if condition is constant time -JB
     return [x for i, x in enumerate(seq) if seq.index(x) == i]

@@ -2,6 +2,8 @@
 from utils import AbstractFunctionError
 import utils
 
+from graph import Constant
+
 import sys
 import traceback
 
@@ -46,7 +48,7 @@ def raise_with_op(op, exc_info = None):
 
 class Linker:
 
-    def make_thunk(self, inplace = False):
+    def make_thunk(self):
         """
         This function must return a triplet (function, input_results, output_results)
         where function is a thunk that operates on the returned results. If inplace
@@ -55,6 +57,7 @@ class Linker:
         results will be returned.
 
         Example::
+         x, y = Result(Double), Result(Double)
          e = x + y
          env = Env([x, y], [e])
          fn, (new_x, new_y), (new_e, ) = MyLinker(env).make_thunk(inplace)
@@ -66,7 +69,7 @@ class Linker:
         """
         raise AbstractFunctionError()
 
-    def make_function(self, inplace = False, unpack_single = True, **kwargs):
+    def make_function(self, unpack_single = True, **kwargs):
         """
         Returns a function that takes values corresponding to the inputs of the
         env used by this L{Linker} and returns values corresponding the the outputs
@@ -85,8 +88,7 @@ class Linker:
         output, then that output will be returned. Else, a list or tuple of
         length 1 will be returned.
         """
-        thunk, inputs, outputs = self.make_thunk(inplace, **kwargs)
-
+        thunk, inputs, outputs = self.make_thunk(**kwargs)
         def execute(*args):
             def e_arity(takes, got):
                 return 'Function call takes exactly %i %s (%i given)' \
@@ -107,9 +109,78 @@ class Linker:
         return execute
 
 
+class Filter(object):
+    def __init__(self, type, storage, readonly = False):
+        self.type = type
+        self.storage = storage
+        self.readonly = readonly
+    def __get(self):
+        return self.storage[0]
+    def __set(self, value):
+        if self.readonly:
+            raise Exception("Cannot set readonly storage.")
+        self.storage[0] = self.type.filter(value)
+    data = property(__get, __set)
+    def __str__(self):
+        return "<" + str(self.storage[0]) + ">"
+    def __repr__(self):
+        return "<" + repr(self.storage[0]) + ">"
 
 
-class PerformLinker(Linker):
+def map_storage(env, order, input_storage, output_storage):
+    if input_storage is None:
+        input_storage = [[None] for input in env.inputs]
+    else:
+        assert len(env.inputs) == len(input_storage)
+    storage_map = {}
+    for r, storage in zip(env.inputs, input_storage):
+        storage_map[r] = storage
+    for orphan in env.orphans:
+        if not isinstance(orphan, Constant):
+            raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
+        storage_map[orphan] = [orphan.data]
+    if output_storage is not None:
+        assert len(env.outputs) == len(output_storage)
+        for r, storage in zip(env.outputs, output_storage):
+            storage_map[r] = storage
+    thunks = []
+    for node in order:
+        for r in node.outputs:
+            storage_map.setdefault(r, [None])
+
+    if output_storage is None:
+        output_storage = [storage_map[r] for r in env.outputs]
+
+    return input_storage, output_storage, storage_map
+
+
+
+class LocalLinker(Linker):
+    def streamline(self, env, thunks, order, no_recycling = [], profiler = None):        
+        if profiler is None:
+            def f():
+                for x in no_recycling:
+                    x[0] = None
+                try:
+                    for thunk, node in zip(thunks, order):
+                        thunk()
+                except:
+                    raise_with_op(node)
+        else:
+            def f():
+                for x in no_recycling:
+                    x[0] = None
+                def g():
+                    for thunk, node in zip(thunks, order):
+                        profiler.profile_node(thunk, node)
+                profiler.profile_env(g, env)
+            f.profiler = profiler
+        return f
+
+
+
+
+class PerformLinker(LocalLinker):
     """
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
     the L{Env} in the order given by L{Env.toposort}.
@@ -119,38 +190,107 @@ class PerformLinker(Linker):
         self.env = env
         self.no_recycling = no_recycling
 
-    def make_thunk(self, inplace = False, profiler = None):
-        if inplace:
-            env = self.env
-        else:
-            env = self.env.clone(True)
+    def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
+        return self.make_all(profiler = profiler,
+                             input_storage = input_storage,
+                             output_storage = output_storage)[:3]
+    
+    def make_all(self, profiler = None, input_storage = None, output_storage = None):
+        env = self.env
         order = env.toposort()
-        thunks = [op.perform for op in order]
         no_recycling = self.no_recycling
+
+#        input_storage = [[None] for input in env.inputs]
+#        output_storage = [[None] for output in env.outputs]
+        
+#         storage_map = {}
+#         for r, storage in zip(env.inputs, input_storage):
+#             storage_map[r] = storage
+#         for orphan in env.orphans:
+#             if not isinstance(orphan, Constant):
+#                 raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
+#             storage_map[orphan] = [orphan.data]
+
+#         thunks = []
+#         for node in order:
+#             node_input_storage = [storage_map[input] for input in node.inputs]
+#             node_output_storage = [storage_map.setdefault(r, [None]) for r in node.outputs]
+#             p = node.op.perform
+#             thunks.append(lambda p = p, i = node_input_storage, o = node_output_storage: p([x[0] for x in i], o))
+
+#         output_storage = [storage_map[r] for r in env.outputs]
+
+        thunks = []
+        input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
+        for node in order:
+            node_input_storage = [storage_map[input] for input in node.inputs]
+            node_output_storage = [storage_map[output] for output in node.outputs]
+            p = node.op.perform
+            thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
+            thunk.inputs = node_input_storage
+            thunk.outputs = node_output_storage
+            thunk.perform = p
+            thunks.append(thunk)
+
         if no_recycling is True:
-            no_recycling = list(env.results())
-        no_recycling = utils.difference(no_recycling, env.inputs)
-        if profiler is None:
-            def f():
-                for r in no_recycling:
-                    r.data = None
-                try:
-                    for thunk, op in zip(thunks, order):
-                        thunk()
-                except:
-                    raise_with_op(op)
+            no_recycling = storage_map.values()
+            no_recycling = utils.difference(no_recycling, input_storage)
         else:
-            def f():
-                for r in no_recycling:
-                    r.data = None
-                def g():
-                    for thunk, op in zip(thunks, order):
-                        profiler.profile_op(thunk, op)
-                profiler.profile_env(g, env)
-            f.profiler = profiler
+            no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
+
+        f = self.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
+  
+        return f, [Filter(input.type, storage) for input, storage in zip(env.inputs, input_storage)], \
+            [Filter(output.type, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+            thunks, order
+
+#        return f, env.inputs, env.outputs
+
+
+
+
+# class PerformLinker(Linker):
+#     """
+#     Basic L{Linker} subclass that calls the perform method on each L{Op} in
+#     the L{Env} in the order given by L{Env.toposort}.
+#     """
+
+#     def __init__(self, env, no_recycling = []):
+#         self.env = env
+#         self.no_recycling = no_recycling
+
+#     def make_thunk(self, inplace = False, profiler = None):
+#         if inplace:
+#             env = self.env
+#         else:
+#             env = self.env.clone(True)
+#         order = env.toposort()
+#         thunks = [op.perform for op in order]
+#         no_recycling = self.no_recycling
+#         if no_recycling is True:
+#             no_recycling = list(env.results())
+#         no_recycling = utils.difference(no_recycling, env.inputs)
+#         if profiler is None:
+#             def f():
+#                 for r in no_recycling:
+#                     r.data = None
+#                 try:
+#                     for thunk, op in zip(thunks, order):
+#                         thunk()
+#                 except:
+#                     raise_with_op(op)
+#         else:
+#             def f():
+#                 for r in no_recycling:
+#                     r.data = None
+#                 def g():
+#                     for thunk, op in zip(thunks, order):
+#                         profiler.profile_op(thunk, op)
+#                 profiler.profile_env(g, env)
+#             f.profiler = profiler
             
                 
-        return f, env.inputs, env.outputs
+#         return f, env.inputs, env.outputs
 
 
 

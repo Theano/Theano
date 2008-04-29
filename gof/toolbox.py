@@ -1,16 +1,12 @@
 
-from features import Listener, Tool
 from random import shuffle
 import utils
 
-__all__ = ['EquivTool',
-          'InstanceFinder',
-          'DescFinder',
-          'PrintListener',
-           ]
 
+class EquivTool(dict):
 
-class EquivTool(Listener, Tool, dict):
+    def __init__(self, env):
+        self.env = env
 
     def on_rewire(self, clients, r, new_r):
         repl = self(new_r)
@@ -24,6 +20,10 @@ class EquivTool(Listener, Tool, dict):
     def publish(self):
         self.env.equiv = self
         self.env.set_equiv = self.set_equiv
+
+    def unpublish(self):
+        del self.env.equiv
+        del self.env.set_equiv
 
     def set_equiv(self, d):
         self.update(d)
@@ -56,71 +56,109 @@ class EquivTool(Listener, Tool, dict):
         return key
 
 
-class InstanceFinder(Listener, Tool, dict):
+class NodeFinder(dict):
 
     def __init__(self, env):
         self.env = env
 
-    def all_bases(self, cls):
-        return utils.all_bases(cls, lambda cls: cls is not object)
+    def on_import(self, node):
+        try:
+            self.setdefault(node.op, set()).add(node)
+        except TypeError:
+            pass
 
-    def on_import(self, op):
-        for base in self.all_bases(op.__class__):
-            self.setdefault(base, set()).add(op)
+    def on_prune(self, node):
+        try:
+            self[node.op].remove(node)
+        except TypeError:
+            return
+        if not self[node.op]:
+            del self[node.op]
 
-    def on_prune(self, op):
-        for base in self.all_bases(op.__class__):
-            self[base].remove(op)
-            if not self[base]:
-                del self[base]
-
-    def __query__(self, cls):
-        all = [x for x in self.get(cls, [])]
+    def query(self, op):
+        try:
+            all = self.get(op, [])
+        except TypeError:
+            raise TypeError("%s in unhashable and cannot be queried by the optimizer" % op)
+        all = [x for x in all]
         shuffle(all) # this helps a lot for debugging because the order of the replacements will vary
         while all:
             next = all.pop()
-            if next in self.env.ops():
+            if self.env.has_node(next):
                 yield next
 
-    def query(self, cls):
-        return self.__query__(cls)
-
     def publish(self):
-        self.env.get_instances_of = self.query
+        self.env.get_nodes = self.query
+
+    def __eq__(self, other):
+        return isinstance(other, NodeFinder) and self.env is other.env
+
+
+# class InstanceFinder(Listener, Tool, dict):
+
+#     def __init__(self, env):
+#         self.env = env
+
+#     def all_bases(self, cls):
+#         return utils.all_bases(cls, lambda cls: cls is not object)
+
+#     def on_import(self, op):
+#         for base in self.all_bases(op.__class__):
+#             self.setdefault(base, set()).add(op)
+
+#     def on_prune(self, op):
+#         for base in self.all_bases(op.__class__):
+#             self[base].remove(op)
+#             if not self[base]:
+#                 del self[base]
+
+#     def __query__(self, cls):
+#         all = [x for x in self.get(cls, [])]
+#         shuffle(all) # this helps a lot for debugging because the order of the replacements will vary
+#         while all:
+#             next = all.pop()
+#             if next in self.env.ops():
+#                 yield next
+
+#     def query(self, cls):
+#         return self.__query__(cls)
+
+#     def publish(self):
+#         self.env.get_instances_of = self.query
 
 
 
-class DescFinder(Listener, Tool, dict):
+# class DescFinder(Listener, Tool, dict):
 
-    def __init__(self, env):
-        self.env = env
+#     def __init__(self, env):
+#         self.env = env
 
-    def on_import(self, op):
-        self.setdefault(op.desc(), set()).add(op)
+#     def on_import(self, op):
+#         self.setdefault(op.desc(), set()).add(op)
 
-    def on_prune(self, op):
-        desc = op.desc()
-        self[desc].remove(op)
-        if not self[desc]:
-            del self[desc]
+#     def on_prune(self, op):
+#         desc = op.desc()
+#         self[desc].remove(op)
+#         if not self[desc]:
+#             del self[desc]
 
-    def __query__(self, desc):
-        all = [x for x in self.get(desc, [])]
-        shuffle(all) # this helps for debugging because the order of the replacements will vary
-        while all:
-            next = all.pop()
-            if next in self.env.ops():
-                yield next
+#     def __query__(self, desc):
+#         all = [x for x in self.get(desc, [])]
+#         shuffle(all) # this helps for debugging because the order of the replacements will vary
+#         while all:
+#             next = all.pop()
+#             if next in self.env.ops():
+#                 yield next
 
-    def query(self, desc):
-        return self.__query__(desc)
+#     def query(self, desc):
+#         return self.__query__(desc)
 
-    def publish(self):
-        self.env.get_from_desc = self.query
+#     def publish(self):
+#         self.env.get_from_desc = self.query
 
 
 
-class PrintListener(Listener):
+class PrintListener(object):
 
     def __init__(self, env, active = True):
         self.env = env
@@ -128,13 +166,13 @@ class PrintListener(Listener):
         if active:
             print "-- initializing"
 
-    def on_import(self, op):
+    def on_import(self, node):
         if self.active:
-            print "-- importing: %s" % op
+            print "-- importing: %s" % node
 
-    def on_prune(self, op):
+    def on_prune(self, node):
         if self.active:
-            print "-- pruning: %s" % op
+            print "-- pruning: %s" % node
 
     def on_rewire(self, clients, r, new_r):
         if self.active:

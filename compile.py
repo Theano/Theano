@@ -16,10 +16,10 @@ def exec_opt(inputs, outputs, features=[]):
 exec_opt.optimizer = None
 
 class _DefaultOptimizer(object):
-    const = gof.opt.ConstantFinder()
+    #const = gof.opt.ConstantFinder()
     merge = gof.opt.MergeOptimizer()
     def __call__(self, env):
-        self.const(env)
+        #self.const(env)
         self.merge(env)
 default_optimizer = _DefaultOptimizer()
         
@@ -31,7 +31,7 @@ def linker_cls_python_and_c(env):
     """Use this as the linker_cls argument to Function.__init__ to compare
     python and C implementations"""
     def checker(x, y):
-        x, y = x.data, y.data
+        x, y = x[0], y[0]
         if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
             if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
                 raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
@@ -105,17 +105,23 @@ class Function:
         #print 'orphans', orphans
 
         #print 'ops', gof.graph.ops(inputs, outputs)
-        env = gof.env.Env(inputs, outputs, features + [gof.EquivTool], consistency_check = True)
+        env = gof.env.Env(inputs, outputs)
 
         #print 'orphans in env', env.orphans()
 
-        env = env.clone(clone_inputs=True)
+        env, equiv = env.clone_get_equiv(clone_inputs=True)
+        for feature in features:
+            env.extend(feature(env))
+        env.extend(gof.DestroyHandler(env))
 
         #print 'orphans after clone', env.orphans()
 
-        for d, o in zip(orphan_data, [env.equiv(orphan) for orphan in orphans]):
+        for d, o in zip(orphan_data, [equiv[orphan] for orphan in orphans]):
             #print 'assigning orphan value', d
-            o.data = d
+            #o.data = d
+            new_o = gof.Constant(o.type, d)
+            env.replace(o, new_o)
+            assert new_o in env.orphans
 
         # optimize and link the cloned env
         if None is not optimizer:
@@ -127,11 +133,9 @@ class Function:
             self.__dict__.update(locals())
 
         if profiler is None:
-            self.fn  = linker.make_function(inplace=True,
-                                            unpack_single=unpack_single)
+            self.fn  = linker.make_function(unpack_single=unpack_single)
         else:
-            self.fn  = linker.make_function(inplace=True,
-                                            unpack_single=unpack_single,
+            self.fn  = linker.make_function(unpack_single=unpack_single,
                                             profiler=profiler)
         self.inputs = env.inputs
         self.outputs = env.outputs
@@ -145,16 +149,6 @@ class Function:
 
     def __call__(self, *args):
         return self.fn(*args)
-
-    def __copy__(self):
-        return Function(self.inputs, self.outputs,
-                        features = self.features,
-                        optimizer = self.optimizer,
-                        linker_cls = self.linker_cls,
-                        profiler = self.profiler,
-                        unpack_single = self.unpack_single,
-                        except_unreachable_input = self.except_unreachable_input,
-                        keep_locals = self.keep_locals)
 
 
 def eval_outputs(outputs,
@@ -171,20 +165,23 @@ def eval_outputs(outputs,
         else:
             return []
 
-    inputs = list(gof.graph.inputs(outputs))
-    in_data = [i.data for i in inputs if i.data is not None]
+    inputs = gof.graph.inputs(outputs)
+    if any(not isinstance(input, gof.Constant) for input in inputs):
+        raise TypeError("Cannot evaluate outputs because some of the leaves are not Constant.", outputs)
+    in_data = [i.data for i in inputs]
     #print 'in_data = ', in_data
     if len(inputs) != len(in_data):
         raise Exception('some input data is unknown')
 
-    env = gof.env.Env(inputs, outputs, features, consistency_check = True)
+    env = gof.env.Env(inputs, outputs)
+    env.replace_all(dict([(i, i.type()) for i in inputs]))
     env = env.clone(clone_inputs=True)
 
     _mark_indestructible(env.outputs)
     if None is not optimizer:
         optimizer(env)
     linker = linker_cls(env)
-    fn = linker.make_function(inplace=True, unpack_single=unpack_single)
+    fn = linker.make_function(unpack_single=unpack_single)
     rval = fn(*in_data)
     return rval
 

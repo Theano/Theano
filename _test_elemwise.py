@@ -11,14 +11,14 @@ import tensor
 from elemwise import *
 
 
-def inputs():
-    x = modes.build(Tensor('float64', (0, 0), name = 'x'))
-    y = modes.build(Tensor('float64', (1, 0), name = 'y'))
-    z = modes.build(Tensor('float64', (0, 0), name = 'z'))
-    return x, y, z
+# def inputs():
+#     x = modes.build(Tensor('float64', (0, 0), name = 'x'))
+#     y = modes.build(Tensor('float64', (1, 0), name = 'y'))
+#     z = modes.build(Tensor('float64', (0, 0), name = 'z'))
+#     return x, y, z
 
-def env(inputs, outputs, validate = True, features = []):
-    return Env(inputs, outputs, features = features, consistency_check = validate)
+# def env(inputs, outputs, validate = True, features = []):
+#     return Env(inputs, outputs, features = features, consistency_check = validate)
 
 
 class _test_DimShuffle(unittest.TestCase):
@@ -31,10 +31,11 @@ class _test_DimShuffle(unittest.TestCase):
                                   ((2, 3, 4), ('x', 2, 1, 0, 'x'), (1, 4, 3, 2, 1)),
                                   ((1, 4, 3, 2, 1), (3, 2, 1), (2, 3, 4)),
                                   ((1, 1, 4), (1, 2), (1, 4))]:
-            x = modes.build(Tensor('float64', [1 * (entry == 1) for entry in xsh], name = 'x'))
-            e = DimShuffle(x, shuffle).out
+            ib = [(entry == 1) for entry in xsh]
+            x = Tensor('float64', ib)('x')
+            e = DimShuffle(ib, shuffle)(x)
 #             print shuffle, e.owner.grad(e.owner.inputs, e.owner.outputs).owner.new_order
-            f = linker(env([x], [e])).make_function(inplace=False)
+            f = linker(Env([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
 
     def test_perform(self):
@@ -53,10 +54,10 @@ class _test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = modes.build(Tensor('float64', [1 * (entry == 1) for entry in xsh], name = 'x'))
-            y = modes.build(Tensor('float64', [1 * (entry == 1) for entry in ysh], name = 'y'))
-            e = Broadcast(Add, (x, y)).out
-            f = linker(env([x, y], [e])).make_function(inplace = False)
+            x = Tensor('float64', [(entry == 1) for entry in xsh])('x')
+            y = Tensor('float64', [(entry == 1) for entry in ysh])('y')
+            e = Elemwise(add)(x, y)
+            f = linker(Env([x, y], [e])).make_function()
 #             xv = numpy.array(range(numpy.product(xsh)))
 #             xv = xv.reshape(xsh)
 #             yv = numpy.array(range(numpy.product(ysh)))
@@ -80,10 +81,10 @@ class _test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = modes.build(Tensor('float64', [1 * (entry == 1) for entry in xsh], name = 'x'))
-            y = modes.build(Tensor('float64', [1 * (entry == 1) for entry in ysh], name = 'y'))
-            e = Broadcast(Add, (x, y), {0:0}).out
-            f = linker(env([x, y], [e])).make_function(inplace = False)
+            x = Tensor('float64', [(entry == 1) for entry in xsh])('x')
+            y = Tensor('float64', [(entry == 1) for entry in ysh])('y')
+            e = Elemwise(Add(transfer_type(0)), {0:0})(x, y)
+            f = linker(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
@@ -105,29 +106,29 @@ class _test_Broadcast(unittest.TestCase):
         self.with_linker_inplace(gof.CLinker)
 
     def test_fill(self):
-        x = modes.build(Tensor('float64', [0, 0], name = 'x'))
-        y = modes.build(Tensor('float64', [1, 1], name = 'y'))
-        e = Broadcast(Second, (x, y), {0:0}).out
-        f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
+        x = Tensor('float64', [0, 0])('x')
+        y = Tensor('float64', [1, 1])('y')
+        e = Elemwise(Second(transfer_type(0)), {0:0})(x, y)
+        f = gof.CLinker(Env([x, y], [e])).make_function()
         xv = numpy.ones((5, 5))
         yv = numpy.random.rand(1, 1)
         f(xv, yv)
         assert (xv == yv).all()
 
     def test_weird_strides(self):
-        x = modes.build(Tensor('float64', [0, 0, 0, 0, 0], name = 'x'))
-        y = modes.build(Tensor('float64', [0, 0, 0, 0, 0], name = 'y'))
-        e = Broadcast(Add, (x, y)).out
-        f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
+        x = Tensor('float64', [0, 0, 0, 0, 0])('x')
+        y = Tensor('float64', [0, 0, 0, 0, 0])('y')
+        e = Elemwise(add)(x, y)
+        f = gof.CLinker(Env([x, y], [e])).make_function()
         xv = numpy.random.rand(2, 2, 2, 2, 2)
         yv = numpy.random.rand(2, 2, 2, 2, 2).transpose(4, 0, 3, 1, 2)
         zv = xv + yv
         assert (f(xv, yv) == zv).all()
 
     def test_same_inputs(self):
-        x = modes.build(Tensor('float64', [0, 0], name = 'x'))
-        e = Broadcast(Add, (x, x)).out
-        f = gof.CLinker(env([x], [e])).make_function(inplace = False)
+        x = Tensor('float64', [0, 0])('x')
+        e = Elemwise(add)(x, x)
+        f = gof.CLinker(Env([x], [e])).make_function()
         xv = numpy.random.rand(2, 2)
         zv = xv + xv
         assert (f(xv) == zv).all()
@@ -136,15 +137,17 @@ class _test_Broadcast(unittest.TestCase):
 class _test_CAReduce(unittest.TestCase):
 
     def with_linker(self, linker):
-        for xsh, tosum in [((5, 6), (0, 1)),
+        for xsh, tosum in [((5, 6), None),
+                           ((5, 6), (0, 1)),
                            ((5, 6), (0, )),
                            ((5, 6), (1, )),
                            ((5, 6), ()),
                            ((2, 3, 4, 5), (0, 1, 3)),
                            ((), ())]:
-            x = modes.build(Tensor('float64', [1 * (entry == 1) for entry in xsh], name = 'x'))
-            e = CAReduce(Add, [x], axis = tosum).out
-            f = linker(env([x], [e])).make_function(inplace = False)
+            x = Tensor('float64', [(entry == 1) for entry in xsh])('x')
+            e = CAReduce(add, axis = tosum)(x)
+            if tosum is None: tosum = range(len(xsh))
+            f = linker(Env([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             zv = xv
             for axis in reversed(sorted(tosum)):

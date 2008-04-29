@@ -1,8 +1,9 @@
 
-import op, result, ext, link, env, features, toolbox, graph, cc, opt
+import op, type, ext, link, env, features, toolbox, graph, cc, opt
 
 from op import *
-from result import *
+from graph import Apply, Result, Constant, as_apply, as_result
+from type import *
 from ext import *
 from link import *
 from env import *

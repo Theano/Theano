@@ -1,5 +1,7 @@
+
 from op import Op
-from result import Result
+from graph import Constant
+from type import Type
 from env import InconsistencyError
 import utils
 import unify
@@ -30,11 +32,14 @@ class Optimizer:
           env.satisfy(opt)
           opt.apply(env)
         """
-        env.satisfy(self)
+        self.add_requirements(env)
         self.apply(env)
 
     def __call__(self, env):
         return self.optimize(env)
+
+    def add_requirements(self, env):
+        pass
 
 
 DummyOpt = Optimizer()
@@ -81,13 +86,13 @@ class LocalOptimizer(Optimizer):
 
     def candidates(self, env):
         """
-        Must return a set of ops that can be optimized.
+        Must return a set of nodes that can be optimized.
         """
         raise utils.AbstractFunctionError()
 
-    def apply_on_op(self, env, op):
+    def apply_on_node(self, env, node):
         """
-        For each op in candidates, this function will be called to
+        For each node in candidates, this function will be called to
         perform the actual optimization.
         """
         raise utils.AbstractFunctionError()
@@ -96,26 +101,27 @@ class LocalOptimizer(Optimizer):
         """
         Calls self.apply_on_op(env, op) for each op in self.candidates(env).
         """
-        for op in self.candidates(env):
-            if env.has_op(op):
-                self.apply_on_op(env, op)
+        for node in self.candidates(env):
+            if env.has_node(node):
+                self.apply_on_node(env, node)
 
 
 
 class OpSpecificOptimizer(LocalOptimizer):
     """
     Generic L{Optimizer} that applies only to ops of a certain
-    type. The type in question is accessed through L{self.opclass}.
-    opclass can also be a class variable of the subclass.
+    type. The type in question is accessed through L{self.op}.
+    op can also be a class variable of the subclass.
     """
 
-    __env_require__ = toolbox.InstanceFinder
+    def add_requirements(self, env):
+        env.extend(toolbox.NodeFinder(env))
 
     def candidates(self, env):
         """
-        Returns all instances of L{self.opclass}.
+        Returns all instances of L{self.op}.
         """
-        return env.get_instances_of(self.opclass)
+        return env.get_nodes(self.op)
 
 
 
@@ -128,7 +134,8 @@ class OpSubOptimizer(Optimizer):
     e.g. OpSubOptimizer(add, sub) ==> add(div(x, y), add(y, x)) -> sub(div(x, y), sub(y, x))
     """
 
-    __env_require__ = toolbox.InstanceFinder
+    def add_requirements(self, env):
+        env.extend(toolbox.NodeFinder(env))
 
     def __init__(self, op1, op2, failure_callback = None):
         """
@@ -149,38 +156,40 @@ class OpSubOptimizer(Optimizer):
         the Optimizer fails to do a replacement in the graph. The
         arguments to the callback are: (op1_instance, replacement, exception)
         """
-        candidates = env.get_instances_of(self.op1)
+        candidates = env.get_nodes(self.op1)
 
-        for op in candidates:
+        for node in candidates:
             try:
-                repl = self.op2(*op.inputs)
-                assert len(op.outputs) == len(repl.outputs)
-                for old, new in zip(op.outputs, repl.outputs):
+                repl = self.op2.make_node(*node.inputs)
+                assert len(node.outputs) == len(repl.outputs)
+                for old, new in zip(node.outputs, repl.outputs):
                     env.replace(old, new)
             except Exception, e:
                 if self.failure_callback is not None:
-                    self.failure_callback(op, repl, e)
+                    self.failure_callback(node, repl, e)
                 pass
 
     def str(self):
-        return "%s -> %s" % (self.op1.__name__, self.op2.__name__)
+        return "%s -> %s" % (self.op1, self.op2)
 
 
 
 class OpRemover(Optimizer):
     """
+    @todo untested
     Removes all ops of a certain type by transferring each of its
     outputs to the corresponding input.
     """
 
-    __env_require__ = toolbox.InstanceFinder
+    def add_requirements(self, env):
+        env.extend(toolbox.NodeFinder(env))
 
-    def __init__(self, opclass, failure_callback = None):
+    def __init__(self, op, failure_callback = None):
         """
         opclass is the class of the ops to remove. It must take as
         many inputs as outputs.
         """
-        self.opclass = opclass
+        self.op = op
         self.failure_callback = failure_callback
 
     def apply(self, env):
@@ -192,25 +201,27 @@ class OpRemover(Optimizer):
         arguments to the callback are: (opclass_instance, exception)
         """
         
-        candidates = env.get_instances_of(self.opclass)
+        candidates = env.get_nodes(self.op)
 
-        for op in candidates:
+        for node in candidates:
             try:
-                assert len(op.inputs) == len(op.outputs)
-                for input, output in zip(op.inputs, op.outputs):
+                assert len(node.inputs) == len(node.outputs)
+                for input, output in zip(node.inputs, node.outputs):
                     env.replace(output, input)
             except Exception, e:
                 if self.failure_callback is not None:
-                    self.failure_callback(op, e)
+                    self.failure_callback(node, e)
                 pass
 
     def str(self):
-        return "f(%s(x)) -> f(x)" % self.opclass
+        return "f(%s(x)) -> f(x)" % self.op
 
 
 
 class PatternOptimizer(OpSpecificOptimizer):
     """
+    @todo update
+    
     Replaces all occurrences of the input pattern by the output pattern::
 
      input_pattern ::= (OpClass, <sub_pattern1>, <sub_pattern2>, ...)
@@ -253,23 +264,19 @@ class PatternOptimizer(OpSpecificOptimizer):
     """
 
     def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False, failure_callback = None):
-        """
-        Sets in_pattern for replacement by out_pattern.
-        self.opclass is set to in_pattern[0] to accelerate the search.
-        """
         self.in_pattern = in_pattern
         self.out_pattern = out_pattern
         if isinstance(in_pattern, (list, tuple)):
-            self.opclass = self.in_pattern[0]
+            self.op = self.in_pattern[0]
         elif isinstance(in_pattern, dict):
-            self.opclass = self.in_pattern['pattern'][0]
+            self.op = self.in_pattern['pattern'][0]
         else:
-            raise TypeError("The pattern to search for must start with a specific Op class.")
+            raise TypeError("The pattern to search for must start with a specific Op instance.")
         self.__doc__ = self.__class__.__doc__ + "\n\nThis instance does: " + str(self) + "\n"
         self.failure_callback = failure_callback
         self.allow_multiple_clients = allow_multiple_clients
 
-    def apply_on_op(self, env, op):
+    def apply_on_node(self, env, node):
         """
         Checks if the graph from op corresponds to in_pattern. If it does,
         constructs out_pattern and performs the replacement.
@@ -283,7 +290,9 @@ class PatternOptimizer(OpSpecificOptimizer):
         """
         def match(pattern, expr, u, first = False):
             if isinstance(pattern, (list, tuple)):
-                if not issubclass(expr.owner.__class__, pattern[0]) or (not self.allow_multiple_clients and not first and env.nclients(expr) > 1):
+                if expr.owner is None:
+                    return False
+                if not (expr.owner.op == pattern[0]) or (not self.allow_multiple_clients and not first and env.nclients(expr) > 1):
                     return False
                 if len(pattern) - 1 != len(expr.owner.inputs):
                     return False
@@ -305,11 +314,7 @@ class PatternOptimizer(OpSpecificOptimizer):
                     return False
                 else:
                     u = u.merge(expr, v)
-            elif isinstance(pattern, Result) \
-                    and getattr(pattern, 'constant', False) \
-                    and isinstance(expr, Result) \
-                    and getattr(expr, 'constant', False) \
-                    and pattern.desc() == expr.desc():
+            elif isinstance(pattern, Constant) and isinstance(expr, Constant) and pattern.equals(expr):
                 return u
             else:
                 return False
@@ -318,29 +323,29 @@ class PatternOptimizer(OpSpecificOptimizer):
         def build(pattern, u):
             if isinstance(pattern, (list, tuple)):
                 args = [build(p, u) for p in pattern[1:]]
-                return pattern[0](*args).out
+                return pattern[0](*args)
             elif isinstance(pattern, str):
                 return u[unify.Var(pattern)]
             else:
                 return pattern
 
-        u = match(self.in_pattern, op.out, unify.Unification(), True)
+        u = match(self.in_pattern, node.out, unify.Unification(), True)
         if u:
             try:
                 # note: only replaces the default 'out' port if it exists
                 p = self.out_pattern
-                new = 'unassigned'
+                new = 'unassigned' # this is for the callback if build fails
                 new = build(p, u)
-                env.replace(op.out, new)
+                env.replace(node.out, new)
             except Exception, e:
                 if self.failure_callback is not None:
-                    self.failure_callback(op.out, new, e)
+                    self.failure_callback(node.out, new, e)
                 pass
 
     def __str__(self):
         def pattern_to_str(pattern):
             if isinstance(pattern, (list, tuple)):
-                return "%s(%s)" % (pattern[0].__name__, ", ".join([pattern_to_str(p) for p in pattern[1:]]))
+                return "%s(%s)" % (str(pattern[0]), ", ".join([pattern_to_str(p) for p in pattern[1:]]))
             elif isinstance(pattern, dict):
                 return "%s subject to %s" % (pattern_to_str(pattern['pattern']), str(pattern['constraint']))
             else:
@@ -349,137 +354,59 @@ class PatternOptimizer(OpSpecificOptimizer):
 
 
 
-class PatternDescOptimizer(LocalOptimizer):
-    """
-    """
+# class ConstantFinder(Optimizer):
+#     """
+#     Sets as constant every orphan that is not destroyed.
+#     """
     
-    __env_require__ = toolbox.DescFinder
-
-    def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False, failure_callback = None):
-        """
-        Sets in_pattern for replacement by out_pattern.
-        self.opclass is set to in_pattern[0] to accelerate the search.
-        """
-        self.in_pattern = in_pattern
-        self.out_pattern = out_pattern
-        if isinstance(in_pattern, (list, tuple)):
-            self.desc = self.in_pattern[0]
-        elif isinstance(in_pattern, dict):
-            self.desc = self.in_pattern['pattern'][0]
-        else:
-            raise TypeError("The pattern to search for must start with a specific desc.")
-        self.__doc__ = self.__class__.__doc__ + "\n\nThis instance does: " + str(self) + "\n"
-        self.failure_callback = failure_callback
-        self.allow_multiple_clients = allow_multiple_clients
-
-    def candidates(self, env):
-        """
-        Returns all instances of self.desc
-        """
-        return env.get_from_desc(self.desc)
-
-    def apply_on_op(self, env, op):
-        """
-        Checks if the graph from op corresponds to in_pattern. If it does,
-        constructs out_pattern and performs the replacement.
-
-        If self.failure_callback is not None, if there is a match but a
-        replacement fails to occur, the callback will be called with
-        arguments (results_to_replace, replacement, exception).
-
-        If self.allow_multiple_clients is False, he pattern matching will fail
-        if one of the subpatterns has more than one client.
-        """
-        def match(pattern, expr, u, first = False):
-            if isinstance(pattern, (list, tuple)):
-                if not expr.owner or not expr.owner.desc() == pattern[0] or (self.allow_multiple_clients and not first and env.nclients(expr.owner) > 1):
-                    return False
-                if len(pattern) - 1 != len(expr.owner.inputs):
-                    return False
-                for p, v in zip(pattern[1:], expr.owner.inputs):
-                    u = match(p, v, u)
-                    if not u:
-                        return False
-            elif isinstance(pattern, dict):
-                try:
-                    real_pattern = pattern['pattern']
-                    constraint = pattern['constraint']
-                except KeyError:
-                    raise KeyError("Malformed pattern: %s (expected keys pattern and constraint)" % pattern)
-                if constraint(env, expr):
-                    return match(real_pattern, expr, u, False)
-            elif isinstance(pattern, str):
-                v = unify.Var(pattern)
-                if u[v] is not v and u[v] is not expr:
-                    return False
-                else:
-                    u = u.merge(expr, v)
-            elif isinstance(pattern, Result) \
-                    and getattr(pattern, 'constant', False) \
-                    and isinstance(expr, Result) \
-                    and getattr(expr, 'constant', False) \
-                    and pattern.desc() == expr.desc():
-                return u
-            else:
-                return False
-            return u
-
-        def build(pattern, u):
-            if isinstance(pattern, (list, tuple)):
-                args = [build(p, u) for p in pattern[1:]]
-                return pattern[0](*args).out
-            elif isinstance(pattern, str):
-                return u[unify.Var(pattern)]
-            else:
-                return pattern
-
-        u = match(self.in_pattern, op.out, unify.Unification(), True)
-        if u:
-            try:
-                # note: only replaces the default 'out' port if it exists
-                p = self.out_pattern
-                new = 'unassigned'
-                new = build(p, u)
-                env.replace(op.out, new)
-            except Exception, e:
-                if self.failure_callback is not None:
-                    self.failure_callback(op.out, new, e)
-                pass
-
-    def __str__(self):
-        def pattern_to_str(pattern):
-            if isinstance(pattern, (list, tuple)):
-                return "%s(%s)" % (pattern[0], ", ".join([pattern_to_str(p) for p in pattern[1:]]))
-            elif isinstance(pattern, dict):
-                return "%s subject to %s" % (pattern_to_str(pattern['pattern']), str(pattern['constraint']))
-            else:
-                return str(pattern)
-        return "%s -> %s" % (pattern_to_str(self.in_pattern), pattern_to_str(self.out_pattern))
-
-
-
-class ConstantFinder(Optimizer):
-    """
-    Sets as constant every orphan that is not destroyed.
-    """
-    
-    def apply(self, env):
-        if env.has_feature(ext.DestroyHandler):
-            for r in env.orphans():
-                if not env.destroyers(r):
-                    r.indestructible = True
-                    r.constant = True
-#             for r in env.inputs:
+#     def apply(self, env):
+#         if env.has_feature(ext.DestroyHandler(env)):
+#             for r in env.orphans():
 #                 if not env.destroyers(r):
 #                     r.indestructible = True
-        else:
-            for r in env.orphans():
-                r.indestructible = True
-                r.constant = True
-#             for r in env.inputs:
+#                     r.constant = True
+# #             for r in env.inputs:
+# #                 if not env.destroyers(r):
+# #                     r.indestructible = True
+#         else:
+#             for r in env.orphans():
 #                 r.indestructible = True
+#                 r.constant = True
+# #             for r in env.inputs:
+# #                 r.indestructible = True
 
 import graph
+
+class _metadict:
+    # dict that accepts unhashable keys
+    # uses an associative list
+    # for internal use only
+    def __init__(self):
+        self.d = {}
+        self.l = []
+    def __getitem__(self, item):
+        return self.get(item, None)
+    def __setitem__(self, item, value):
+        try:
+            self.d[item] = value
+        except:
+            self.l.append((item, value))
+    def get(self, item, default):
+        try:
+            return self.d[item]
+        except:
+            for item2, value in self.l:
+                if item == item2:
+                    return value
+            else:
+                return default
+    def clear(self):
+        self.d = {}
+        self.l = []
+    def __str__(self):
+        return "(%s, %s)" % (self.d, self.l)
+
+
 class MergeOptimizer(Optimizer):
     """
     Merges parts of the graph that are identical, i.e. parts that
@@ -489,37 +416,41 @@ class MergeOptimizer(Optimizer):
     """
 
     def apply(self, env):
-        cid = {}     #result -> result.desc()  (for constants)
-        inv_cid = {} #desc -> result (for constants)
-        for i, r in enumerate(env.orphans().union(env.inputs)):
-            if getattr(r, 'constant', False):
-                ref = ('const', r.desc())
-                other_r = inv_cid.get(ref, None)
+        cid = _metadict()     #result -> result.desc()  (for constants)
+        inv_cid = _metadict() #desc -> result (for constants)
+        for i, r in enumerate(env.orphans.union(env.inputs)):
+            if isinstance(r, Constant):
+                sig = r.signature()
+                other_r = inv_cid.get(sig, None)
                 if other_r is not None:
                     env.replace(r, other_r)
                 else:
-                    cid[r] = ref
-                    inv_cid[ref] = r
-            else:
-                cid[r] = i
-                inv_cid[i] = r
+                    cid[r] = sig
+                    inv_cid[sig] = r
+        # we clear the dicts because the Constants signatures are not necessarily hashable
+        # and it's more efficient to give them an integer cid like the other Results
+        cid.clear()
+        inv_cid.clear()
+        for i, r in enumerate(env.orphans.union(env.inputs)):
+            cid[r] = i
+            inv_cid[i] = r
 
-        for op in env.io_toposort():
-            op_cid = (op.desc(), tuple([cid[input] for input in op.inputs]))
-            dup = inv_cid.get(op_cid, None)
+        for node in env.io_toposort():
+            node_cid = (node.op, tuple([cid[input] for input in node.inputs]))
+            dup = inv_cid.get(node_cid, None)
             success = False
             if dup is not None:
                 success = True
-                d = dict(zip(op.outputs, dup.outputs))
+                d = dict(zip(node.outputs, dup.outputs))
                 try:
                     env.replace_all(d)
                 except Exception, e:
                     success = False
             if not success:
-                cid[op] = op_cid
-                inv_cid[op_cid] = op
-                for i, output in enumerate(op.outputs):
-                    ref = (i, op_cid)
+                cid[node] = node_cid
+                inv_cid[node_cid] = node
+                for i, output in enumerate(node.outputs):
+                    ref = (i, node_cid)
                     cid[output] = ref
                     inv_cid[ref] = output
 

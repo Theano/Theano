@@ -2,69 +2,66 @@
 
 import unittest
 
-from result import Result
+from graph import Result, as_result, Apply
+from type import Type
 from op import Op
 from env import Env
 
 from link import *
 
-from _test_result import Double
+#from _test_result import Double
+
+
+class TDouble(Type):
+    def filter(self, data):
+        return float(data)
+
+tdouble = TDouble()
+
+def double(name):
+    return Result(tdouble, None, None, name = name)
+
 
 class MyOp(Op):
 
-    nin = -1
-
-    def __init__(self, *inputs):
-        assert len(inputs) == self.nin
-        for input in inputs:
-            if not isinstance(input, Double):
-                raise Exception("Error 1")
-        self.inputs = inputs
-        self.outputs = [Double(0.0, self.__class__.__name__ + "_R")]
+    def __init__(self, nin, name, impl = None):
+        self.nin = nin
+        self.name = name
+        if impl:
+            self.impl = impl
     
-    def perform(self):
-        self.outputs[0].data = self.impl(*[input.data for input in self.inputs])
+    def make_node(self, *inputs):
+        assert len(inputs) == self.nin
+        inputs = map(as_result, inputs)
+        for input in inputs:
+            if input.type is not tdouble:
+                raise Exception("Error 1")
+        outputs = [double(self.name + "_R")]
+        return Apply(self, inputs, outputs)
+
+    def __str__(self):
+        return self.name
+    
+    def perform(self, node, inputs, (out, )):
+        out[0] = self.impl(*inputs)
+
+add = MyOp(2, 'Add', lambda x, y: x + y)
+sub = MyOp(2, 'Sub', lambda x, y: x - y)
+mul = MyOp(2, 'Mul', lambda x, y: x * y)
+div = MyOp(2, 'Div', lambda x, y: x / y)
+
+def notimpl(self, x):
+    raise NotImplementedError()
+
+raise_err = MyOp(1, 'RaiseErr', notimpl)
 
 
-class Unary(MyOp):
-    nin = 1
-
-class Binary(MyOp):
-    nin = 2
-
-        
-class Add(Binary):
-    def impl(self, x, y):
-        return x + y
-        
-class Sub(Binary):
-    def impl(self, x, y):
-        return x - y
-        
-class Mul(Binary):
-    def impl(self, x, y):
-        return x * y
-        
-class Div(Binary):
-    def impl(self, x, y):
-        return x / y
-
-class RaiseErr(Unary):
-    def impl(self, x):
-        raise NotImplementedError()
-
-
-import modes
-modes.make_constructors(globals())
 
 def inputs():
-    x = modes.build(Double(1.0, 'x'))
-    y = modes.build(Double(2.0, 'y'))
-    z = modes.build(Double(3.0, 'z'))
+    x = double('x')
+    y = double('y')
+    z = double('z')
     return x, y, z
-
-def env(inputs, outputs, validate = True, features = []):
-    return Env(inputs, outputs, features = features, consistency_check = validate)
 
 def perform_linker(env):
     lnk = PerformLinker(env)
@@ -73,58 +70,79 @@ def perform_linker(env):
 
 class _test_PerformLinker(unittest.TestCase):
 
-    def test_thunk_inplace(self):
+    def test_thunk(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
-        fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(True)
-        fn()
-        assert e.data == 1.5
-
-    def test_thunk_not_inplace(self):
-        x, y, z = inputs()
-        e = mul(add(x, y), div(x, y))
-        fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(False)
+        fn, i, o = perform_linker(Env([x, y, z], [e])).make_thunk()
+        i[0].data = 1
+        i[1].data = 2
         fn()
         assert o[0].data == 1.5
-        assert e.data != 1.5
-
+        
     def test_function(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
-        fn = perform_linker(env([x, y, z], [e])).make_function()
+        fn = perform_linker(Env([x, y, z], [e])).make_function()
         assert fn(1.0, 2.0, 3.0) == 1.5
-        assert e.data != 1.5 # not inplace
+
+    def test_constant(self):
+        x, y, z = inputs()
+        y = Constant(tdouble, 2.0)
+        e = mul(add(x, y), div(x, y))
+        fn = perform_linker(Env([x], [e])).make_function()
+        assert fn(1.0) == 1.5
 
     def test_input_output_same(self):
         x, y, z = inputs()
         a,d = add(x,y), div(x,y)
         e = mul(a,d)
-        fn = perform_linker(env([e], [e])).make_function()
-        self.failUnless(1 is fn(1))
+        fn = perform_linker(Env([e], [e])).make_function()
+        self.failUnless(1.0 is fn(1.0))
 
     def test_input_dependency0(self):
         x, y, z = inputs()
         a,d = add(x,y), div(x,y)
         e = mul(a,d)
-        fn = perform_linker(env([x, a], [e])).make_function()
-        self.failUnless(fn(1.0,9.0) == 4.5)
+        fn = perform_linker(Env([x, y, a], [e])).make_function()
+        self.failUnless(fn(1.0,2.0,9.0) == 4.5)
 
     def test_skiphole(self):
         x,y,z = inputs()
         a = add(x,y)
-        r = RaiseErr(a).out
+        r = raise_err(a)
         e = add(r,a)
-        fn = perform_linker(env([x, y,r], [e])).make_function()
+        fn = perform_linker(Env([x, y,r], [e])).make_function()
         self.failUnless(fn(1.0,2.0,4.5) == 7.5)
 
-    def test_disconnected_input_output(self):
-        x,y,z = inputs()
-        a = add(x,y)
-        a.data = 3.0 # simulate orphan calculation
-        fn = perform_linker(env([z], [a])).make_function(inplace=True)
-        self.failUnless(fn(1.0) == 3.0)
-        self.failUnless(fn(2.0) == 3.0)
+#     def test_disconnected_input_output(self):
+#         x,y,z = inputs()
+#         a = add(x,y)
+#         a.data = 3.0 # simulate orphan calculation
+#         fn = perform_linker(env([z], [a])).make_function(inplace=True)
+#         self.failUnless(fn(1.0) == 3.0)
+#         self.failUnless(fn(2.0) == 3.0)
 
+#     def test_thunk_inplace(self):
+#         x, y, z = inputs()
+#         e = mul(add(x, y), div(x, y))
+#         fn, i, o = perform_linker(Env([x, y, z], [e])).make_thunk(True)
+#         fn()
+#         assert e.data == 1.5
+
+#     def test_thunk_not_inplace(self):
+#         x, y, z = inputs()
+#         e = mul(add(x, y), div(x, y))
+#         fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(False)
+#         fn()
+#         assert o[0].data == 1.5
+#         assert e.data != 1.5
+
+#     def test_function(self):
+#         x, y, z = inputs()
+#         e = mul(add(x, y), div(x, y))
+#         fn = perform_linker(env([x, y, z], [e])).make_function()
+#         assert fn(1.0, 2.0, 3.0) == 1.5
+#         assert e.data != 1.5 # not inplace
 
 
 if __name__ == '__main__':

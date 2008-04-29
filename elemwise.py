@@ -2,17 +2,23 @@
 import elemwise_cgen as cgen
 
 import numpy
-from gof import Op, Viewer, Destroyer
+from gof import Op, Apply
 import scalar
-from scalar import upcast, Scalar
+from scalar import Scalar
 import gof
 from gof.python25 import all
 
 
-def astensor(data):
+def as_tensor(data):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
 def Tensor(*inputs, **kwargs):
+    raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
+
+def TensorResult(*inputs, **kwargs):
+    raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
+
+def TensorConstant(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
 
@@ -20,11 +26,10 @@ def Tensor(*inputs, **kwargs):
 ### DimShuffle ###
 ##################
 
-class DimShuffle(Op, Viewer):
+class DimShuffle(Op):
     """
-    Usage: DimShuffle(input, new_order, inplace = True)
+    Usage: DimShuffle(new_order, inplace = True)
 
-    * input: a Tensor instance
     * new_order: a list representing the relationship between the
                  input's dimensions and the output's dimensions. Each
                  element of the list can either be an index or 'x'.
@@ -51,33 +56,18 @@ class DimShuffle(Op, Viewer):
       DimShuffle(t2, [1, 'x', 0]) -> like doing t3.T.reshape((t3.shape[0], 1, t3.shape[1])) in numpy
     """
     
-    def __init__(self, input, new_order, inplace = True):
-
-        input = astensor(input)
-
-        ib = input.broadcastable
-        ob = []
-        for value in new_order:
-            if value == 'x':
-                self.has_x = True
-                ob.append(1)
-            else:
-                ob.append(ib[value])
-        
-        output = Tensor(dtype = input.dtype,
-                        broadcastable = ob)
-
+    def __init__(self, input_broadcastable, new_order, inplace = True):
+        input_broadcastable = tuple(input_broadcastable)
+        self.input_broadcastable = input_broadcastable
+        new_order = tuple(new_order)
         self.new_order = new_order
-        self.inputs = input,
-        self.outputs = output,
-
         self.inplace = inplace
 
         # list of dimensions of the input to drop
         self.drop = []
         i2j = {} # this maps i before dropping dimensions to j after dropping dimensions so self.shuffle can be set properly later on
         j = 0
-        for i, b in enumerate(ib):
+        for i, b in enumerate(input_broadcastable):
             if i not in new_order:
                 # we want to drop this dimension because it's not a value in new_order
                 if b == 1:
@@ -95,24 +85,39 @@ class DimShuffle(Op, Viewer):
         # list of dimensions of the output that are broadcastable and were not in the original input
         self.augment = [i for i, x in enumerate(new_order) if x == 'x']
 
-    def clone_with_new_inputs(self, *new_inputs):
-        return DimShuffle(new_inputs[0], self.new_order, self.inplace)
-    
-    def view_map(self):
         if self.inplace:
-            return {self.outputs[0]: [self.inputs[0]]}
-        else:
-            return {}
+            self.view_map = {0: [0]}
 
-    def desc(self):
-        return (self.__class__, tuple(self.new_order))
+    def make_node(self, input):
+        ib = tuple(input.type.broadcastable)
+        if not ib == self.input_broadcastable:
+            raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (ib, self.input_broadcastable))
+        ob = []
+        for value in self.new_order:
+            if value == 'x':
+                ob.append(1)
+            else:
+                ob.append(ib[value])
+        
+        output = Tensor(dtype = input.type.dtype,
+                        broadcastable = ob).make_result()
+        return Apply(self, [input], [output])
+        
+    def __eq__(self, other):
+        return type(self) == type(other) \
+            and self.inplace == other.inplace \
+            and self.new_order == other.new_order \
+            and self.input_broadcastable == other.input_broadcastable
 
-    def strdesc(self):
+    def __hash__(self, other):
+        return hash(self.inplace) ^ hash(self.new_order) ^ hash(self.input_broadcastable)
+
+    def __str__(self):
         return "DimShuffle{%s}" % "".join(str(x) for x in self.new_order)
 
-    def perform(self):
+    def perform(self, node, (input, ), (storage, )):
         # drop
-        res = self.inputs[0].data
+        res = input
         shape = list(res.shape)
         for drop in reversed(self.drop):
             shape.pop(drop)
@@ -131,33 +136,30 @@ class DimShuffle(Op, Viewer):
         if not self.inplace:
             res = numpy.copy(res)
 
-        self.outputs[0].data = res
+        storage[0] = res
 
     def grad(self, (x, ), (gz, )):
-        grad_order = ['x'] * len(self.inputs[0].broadcastable)
-        for i, x in enumerate(self.new_order):
-            if x != 'x':
-                grad_order[x] = i
-        return DimShuffle(gz, grad_order).out,
-        
-    def __str__(self):
-        return "%s(%s, %s)" % (self.__class__.__name__, str(self.inputs[0]), self.new_order)
+        gz = as_tensor(gz)
+        grad_order = ['x'] * len(x.type.broadcastable)
+        for i, v in enumerate(self.new_order):
+            if v != 'x':
+                grad_order[v] = i
+        return DimShuffle(gz.type.broadcastable, grad_order)(gz),
 
 
 
-#################
-### Broadcast ###
-#################
+################
+### Elemwise ###
+################
 
-class Broadcast(Op, Destroyer):
+class Elemwise(Op):
     """
     Generalizes a scalar op to tensors.
     
-    Usage: Broadcast(scalar_opclass, inputs, inplace_pattern = {})
+    Usage: Elemwise(scalar_op, inplace_pattern = {})
 
-    * scalar_opclass: a class that extends scalar.ScalarOp, works uniquely on
-                      scalars and can be instantiated from the list of its inputs
-    * inputs: a list of Tensor instances
+    * scalar_op: an instance of a subclass of scalar.ScalarOp which works uniquely on
+                 scalars
     * inplace_pattern: a dictionary that maps the index of an output to the
                        index of an input so the output is calculated inplace using
                        the input's storage.
@@ -175,94 +177,86 @@ class Broadcast(Op, Destroyer):
     as the input (in a nutshell, int + float -> float but int += float -> int)
 
     Examples:
-      Broadcast(Add, rand(10, 5), rand(10, 5), {0 : 0}) # this does input0 += input1
-      Broadcast(Add, rand(10, 5), rand(10, 5), {0 : 1}) # this does input1 += input0
-      Broadcast(Mul, rand(10, 5), rand(1, 5)) # the second input is completed along the first dimension to match the first input
-      Broadcast(Div, rand(10, 5), rand(10, 1)) # same but along the second dimension
-      Broadcast(Div, rand(1, 5), rand(10, 1)) # the output has size (10, 5)
-      Broadcast(Log, rand(3, 4, 5))
+      Elemwise(add) # represents + on tensors (x + y)
+      Elemwise(add, {0 : 0}) # represents the += operation (x += y)
+      Elemwise(add, {0 : 1}) # represents += on the second argument (y += x)
+      Elemwise(mul)(rand(10, 5), rand(1, 5)) # the second input is completed along the first dimension to match the first input
+      Elemwise(div)(rand(10, 5), rand(10, 1)) # same but along the second dimension
+      Elemwise(div)(rand(1, 5), rand(10, 1)) # the output has size (10, 5)
+      Elemwise(log)(rand(3, 4, 5))
     """
 
-    def __init__(self, scalar_opclass, inputs, inplace_pattern = {}):
+    def __init__(self, scalar_op, inplace_pattern = {}):
+        self.scalar_op = scalar_op
+        self.inplace_pattern = inplace_pattern
+        self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
+        if scalar_op.nin > 0:
+            self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin, scalar_op.nout)
+        else:
+            self.ufunc = None
 
-        inputs = map(astensor, inputs)
-        
-        try:
-            assert len(set([len(input.broadcastable) for input in inputs])) == 1
-        except (AssertionError, AttributeError):
-            raise TypeError("All inputs to a Broadcast subclass must be Tensor instances and their broadcastable fields must all have the same length.", self.__class__)
+    def make_node(self, *inputs):
+        inputs = map(as_tensor, inputs)        
+        shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
 
-        # self.shadow is an instance of scalar_opclass used to get values for all the properties we need (dtypes, gradient, etc.)
-        self.shadow = scalar_opclass(*[Scalar(dtype = t.dtype) for t in inputs])
-        
-        self.nin = self.shadow.nin
-        self.nout = self.shadow.nout
-        out_broadcastables = [[1*all(bcast) for bcast in zip(*[input.broadcastable for input in inputs])]] * self.nout
+        target_length = max([input.type.ndim for input in inputs])
+        args = []
+        for input in inputs:
+            length = input.type.ndim
+            difference = target_length - length
+            if not difference:
+                args.append(input)
+            else:
+                args.append(DimShuffle(range(length), ['x']*difference + range(length))(input))
+        inputs = args
 
+#         try:
+#             assert len(set([len(input.type.broadcastable) for input in inputs])) == 1
+#         except (AssertionError, AttributeError):
+#             raise TypeError("All inputs to a Broadcast subclass must be Tensor instances and their broadcastable fields must all have the same length.", inputs)
+
+        out_broadcastables = [[all(bcast) for bcast in zip(*[input.type.broadcastable for input in inputs])]] * shadow.nout
+        inplace_pattern = self.inplace_pattern
         if inplace_pattern:
             for overwriter, overwritten in inplace_pattern.items():
-                for ob, ib in zip(out_broadcastables[overwriter], inputs[overwritten].broadcastable):
+                for ob, ib in zip(out_broadcastables[overwriter], inputs[overwritten].type.broadcastable):
                     if ib and not ob:
                         raise ValueError("Operation cannot be done inplace on an input with broadcasted dimensions.")
+        out_dtypes = [o.type.dtype for o in shadow.outputs]
+        if any(inputs[i].type.dtype != out_dtypes[o] for i, o in inplace_pattern.items()):
+            raise TypeError("Cannot do an inplace operation on incompatible data types.", [i.type.dtype for i in inputs], out_dtypes)
+        outputs = [Tensor(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
+        return Apply(self, inputs, outputs)
 
-        out_dtypes = [t.dtype for t in self.shadow.outputs]
-        def get_dtype(i):
-            # If an operation is done inplace, the dtype of the output
-            # will be the same as the dtype of the input it overwrites
-            # eg int + float -> float, but int += float -> int
-            input_idx = inplace_pattern.get(i, None)
-            if input_idx is not None:
-                return inputs[input_idx].dtype
-            else:
-                return out_dtypes[i]
-        out_dtypes = map(get_dtype, xrange(self.nout))
-        self.inputs = inputs
-        self.outputs = [Tensor(dtype = dtype, broadcastable = broadcastable) for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
-        self.inplace_pattern = inplace_pattern
-        self.scalar_opclass = scalar_opclass
-        self.ufunc = numpy.frompyfunc(self.shadow.impl, self.shadow.nin, self.shadow.nout)
-
-    def clone_with_new_inputs(self, *new_inputs):
-        return Broadcast(self.scalar_opclass, new_inputs, self.inplace_pattern)
-
-    def desc(self):
-        return (Broadcast, self.scalar_opclass, tuple(self.inplace_pattern.items()))
-
-    def strdesc(self):
+    def __str__(self):
         if self.inplace_pattern:
-            return "Broadcast{%s}%s" % (self.shadow.strdesc(), str(self.inplace_pattern))
+            return "Broadcast{%s}%s" % (self.scalar_op, str(self.inplace_pattern))
         else:
-            return "Broadcast{%s}" % (self.shadow.strdesc())
-
-    def destroy_map(self):
-        ret = {}
-        for key, value in self.inplace_pattern.items():
-            ret[self.outputs[key]] = [self.inputs[value]]
-        return ret
+            return "Broadcast{%s}" % (self.scalar_op)
 
     def grad(self, inputs, ograds):
-        ograds = map(astensor, ograds)
-        shadow = self.shadow
-        scalar_ograds = [Scalar(dtype = ograd.dtype) for ograd in ograds]
-        scalar_igrads = shadow.grad(shadow.inputs, scalar_ograds)
-        nd = len(inputs[0].broadcastable) # this is the same for everyone
+        ograds = map(as_tensor, ograds) # this shouldn't be necessary...
+        scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
+        scalar_ograds = [Scalar(dtype = ograd.type.dtype)() for ograd in ograds]
+        scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
+        nd = len(inputs[0].type.broadcastable) # this is the same for everyone
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
-            if r in shadow.inputs:
-                return inputs[shadow.inputs.index(r)]
+            if r in scalar_inputs:
+                return inputs[scalar_inputs.index(r)]
             if r in scalar_ograds:
                 return ograds[scalar_ograds.index(r)]
-            op = r.owner
-            if op is None:
+            node = r.owner
+            if node is None:
                 # the gradient contains a constant, translate it as
                 # an equivalent Tensor of size 1 and proper number of dimensions
                 b = [1] * nd
-                res = astensor(numpy.asarray(r.data).reshape(b),
-                               broadcastable = b)
+                res = TensorConstant(Tensor(dtype = r.type.dtype,
+                                            broadcastable = b),
+                                     numpy.asarray(r.data).reshape(b))
                 return res
-            op_class = op.__class__
-            bcasted = Broadcast(op_class, [transform(input) for input in op.inputs], {}).out
-            return bcasted
+            new_r = Elemwise(node.op, {})(*[transform(input) for input in node.inputs])
+            return new_r
         ret = []
         for scalar_igrad, input in zip(scalar_igrads, inputs):
             if scalar_igrad is None:
@@ -274,91 +268,89 @@ class Broadcast(Op, Destroyer):
             # list of all the dimensions that are broadcastable for that input so we
             # can sum over them
             # todo: only count dimensions that were effectively broadcasted
-            to_sum = [i for i, bcast in enumerate(input.broadcastable) if bcast]
+            to_sum = [i for i, bcast in enumerate(input.type.broadcastable) if bcast]
 
             if to_sum:
                 shuffle = []
                 j = 0
-                for bcast in input.broadcastable:
+                for bcast in input.type.broadcastable:
                     if bcast == 1:
                         shuffle.append('x')
                     else:
                         shuffle.append(j)
                         j += 1
-                sr = Sum(r, axis = to_sum).out
-                sr = DimShuffle(sr, shuffle).out
+                sr = Sum(axis = to_sum)(r)
+                sr = DimShuffle(sr.type.broadcastable, shuffle)(sr)
                 ret.append(sr)
             else:
                 ret.append(r)
         return ret
 
-    def perform(self):
-        output_storage = []
+    def perform(self, node, inputs, output_storage):
         if not self.inplace_pattern:
-            for output in self.outputs:
-                odat = output.data
-                shape = [max(values) for values in zip(*[input.data.shape for input in self.inputs])]
+            for output, storage in zip(node.outputs, output_storage):
+                odat = storage[0]
+                shape = [max(values) for values in zip(*[input.shape for input in inputs])]
                 if odat is not None:
                     # reuse storage if we can
                     odat.resize(shape, refcheck = 0)
                 else:
-                    odat = numpy.ndarray(shape, dtype = output.dtype)
-                output_storage.append(odat)
-                output.data = odat
+                    odat = numpy.ndarray(shape, dtype = output.type.dtype)
+                storage[0] = odat
         else:
-            for i, output in enumerate(self.outputs):
+            for i, (output, storage) in enumerate(zip(node.outputs, output_storage)):
                 if i in self.inplace_pattern:
-                    odat = self.inputs[self.inplace_pattern[i]].data
+                    odat = inputs[self.inplace_pattern[i]]
                 else:
-                    odat = output.data
-                    shape = [max(values) for values in zip(*[input.data.shape for input in self.inputs])]
+                    odat = storage[0]
+                    shape = [max(values) for values in zip(*[input.shape for input in inputs])]
                     if odat is not None:
-                        odat.resize(shape)
+                        odat.resize(shape, refcheck = 0)
                     else:
-                        odat = numpy.ndarray(shape, dtype = output.dtype)
-                output_storage.append(odat)
-                output.data = odat
+                        odat = numpy.ndarray(shape, dtype = output.type.dtype)
+                storage[0] = odat
         # the second calling form is used because in certain versions of numpy
         # the first (faster) version leads to segfaults
-        ufunc_args = [input.data for input in self.inputs]# + output_storage
-        results = self.ufunc(*ufunc_args)
-        if self.ufunc.nout == 1: results = [results]
+        ufunc_args = inputs # + output_storage
+        ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
+        results = ufunc(*ufunc_args)
+        if ufunc.nout == 1: results = [results]
         for result, storage in zip(results, output_storage):
-            if storage.shape:
-                storage[:] = result
+            if storage[0].shape:
+                storage[0][:] = result
             else:
-                storage.itemset(result)
+                storage[0].itemset(result)
         # the following should be used instead of the previous loop, unfortunately it tends to segfault
-        # self.ufunc(*(ufunc_args+output_storage))
+        # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
-    def _c_all(self, inames, onames, sub):
+    def _c_all(self, node, name, inames, onames, sub):
         _inames = inames
         _onames = onames
 
         inames = gof.utils.uniq(inames)
-        inputs = gof.utils.uniq(self.inputs)
+        inputs = gof.utils.uniq(node.inputs)
         
         defines = ""
         undefs = ""
-        dmap = self.destroy_map()
+        dmap = dict([(node.outputs[i], [node.inputs[o]]) for i, o in self.inplace_pattern.items()])
 
-        idtypes = [input.dtype_specs()[1] for input in inputs]
+        idtypes = [input.type.dtype_specs()[1] for input in inputs]
 
-        real = zip(*[(r, s, r.dtype_specs()[1])
-                     for r, s in zip(self.outputs, onames) if r not in dmap])
+        real = zip(*[(r, s, r.type.dtype_specs()[1])
+                     for r, s in zip(node.outputs, onames) if r not in dmap])
         if real:
             real_outputs, real_onames, real_odtypes = real
         else:
             real_outputs, real_onames, real_odtypes = [], [], []
 
         aliased = zip(*[(r, s)
-                        for (r, s) in zip(self.outputs, onames) if r in dmap])
+                        for (r, s) in zip(node.outputs, onames) if r in dmap])
         if aliased:
             aliased_outputs, aliased_onames = aliased
         else:
             aliased_outputs, aliased_onames = [], []
         
-        orders = [[x and 'x' or i for i, x in enumerate(input.broadcastable)] for input in inputs]
+        orders = [[x and 'x' or i for i, x in enumerate(input.type.broadcastable)] for input in inputs]
         nnested = len(orders[0])
         sub = dict(sub)
         for i, (input, iname) in enumerate(zip(inputs, inames)):
@@ -387,9 +379,13 @@ class Broadcast(Op, Destroyer):
             defines += "#define %(oname)s_i %(iname)s_i" % locals()
             undefs += "#undef %(oname)s_i" % locals()
 
-        task_code = self.shadow.c_code(["%s_i" % s for s in _inames],
-                                       ["%s_i" % s for s in onames],
-                                       sub)
+        task_code = self.scalar_op.c_code(Apply(self.scalar_op,
+                                                [Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                                                [Scalar(dtype = output.type.dtype)() for input in node.outputs]),
+                                          None,
+                                          ["%s_i" % s for s in _inames],
+                                          ["%s_i" % s for s in onames],
+                                          sub)
         task_decl = "".join(["%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % locals() for name, dtype in zip(inames + list(real_onames), idtypes + list(real_odtypes))])
         code = """
         {
@@ -406,72 +402,72 @@ class Broadcast(Op, Destroyer):
         loop = cgen.make_loop(orders + [range(nnested)] * len(real_onames), idtypes + list(real_odtypes), all_code, sub)
         return decl, checks, alloc, loop
         
-    def c_code(self, inames, onames, sub):
-        code = "\n".join(self._c_all(inames, onames, sub))
+    def c_code(self, node, name, inames, onames, sub):
+        code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
          
 
 
-def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None, module_name = None):
-    scalar_name = scalar_opclass.__name__
-    if name is None:
-        name = scalar_name
-    if module_name is None:
-        module_name = 'elemwise.make_broadcast(%s, %s, %s)' % (scalar_name, inplace_pattern, repr(name))
-        name = "New"
+# def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None, module_name = None):
+#     scalar_name = scalar_opclass.__name__
+#     if name is None:
+#         name = scalar_name
+#     if module_name is None:
+#         module_name = 'elemwise.make_broadcast(%s, %s, %s)' % (scalar_name, inplace_pattern, repr(name))
+#         name = "New"
         
-    previous_doc = Broadcast.__doc__
+#     previous_doc = Broadcast.__doc__
 
-    scalar_doc = scalar_opclass.__doc__ or ""
-    if scalar_doc:
-        scalar_doc = """
-    %(scalar_name)s documentation:
-        %(scalar_doc)s
-        """ % locals()
+#     scalar_doc = scalar_opclass.__doc__ or ""
+#     if scalar_doc:
+#         scalar_doc = """
+#     %(scalar_name)s documentation:
+#         %(scalar_doc)s
+#         """ % locals()
 
-    doc = """
-    Usage: %(name)s(*inputs)
-    Equivalent to: Broadcast(scalar.%(scalar_name)s, inputs, %(inplace_pattern)s)
+#     doc = """
+#     Usage: %(name)s(*inputs)
+#     Equivalent to: Broadcast(scalar.%(scalar_name)s, inputs, %(inplace_pattern)s)
 
-    Performs Scalar %(scalar_name)s on each element of the
-    input tensors.
-    %(scalar_doc)s
-    Documention for Broadcast:
-    ==================================================
-    %(previous_doc)s
-    ==================================================
-    """ % locals()
+#     Performs Scalar %(scalar_name)s on each element of the
+#     input tensors.
+#     %(scalar_doc)s
+#     Documention for Broadcast:
+#     ==================================================
+#     %(previous_doc)s
+#     ==================================================
+#     """ % locals()
 
-    class New(Broadcast):
-        __doc__ = doc
-        def __init__(self, *inputs):
-            Broadcast.__init__(self, scalar_opclass, inputs, inplace_pattern)
-        def clone_with_new_inputs(self, *new_inputs):
-            return New(*new_inputs)
-        @classmethod
-        def desc(cls):
-            return (Broadcast, scalar_opclass, tuple(inplace_pattern.items()))
-    New.__name__ = name
-    New.__module__ = module_name
-    return New
+#     class New(Broadcast):
+#         __doc__ = doc
+#         def __init__(self, *inputs):
+#             Broadcast.__init__(self, scalar_opclass, inputs, inplace_pattern)
+#         def clone_with_new_inputs(self, *new_inputs):
+#             return New(*new_inputs)
+#         @classmethod
+#         def desc(cls):
+#             return (Broadcast, scalar_opclass, tuple(inplace_pattern.items()))
+#     New.__name__ = name
+#     New.__module__ = module_name
+#     return New
 
-def wrap_broadcast(op):
-    def instantiate(*inputs):
-        inputs = map(astensor, inputs)
+# def wrap_broadcast(op):
+#     def instantiate(*inputs):
+#         inputs = map(astensor, inputs)
         
-        target_length = max([len(input.broadcastable) for input in inputs])
-        args = []
-        for input in inputs:
-            length = len(input.broadcastable)
-            difference = target_length - length
-            if not difference:
-                args.append(input)
-            else:
-                args.append(DimShuffle(input, ['x']*difference + range(length)).out)
-        return op(*args)
-    instantiate.__name__ = "instantiate{%s}" % op.__name__
-    instantiate.__doc__ = op.__doc__
-    return instantiate
+#         target_length = max([len(input.broadcastable) for input in inputs])
+#         args = []
+#         for input in inputs:
+#             length = len(input.broadcastable)
+#             difference = target_length - length
+#             if not difference:
+#                 args.append(input)
+#             else:
+#                 args.append(DimShuffle(input, ['x']*difference + range(length)).out)
+#         return op(*args)
+#     instantiate.__name__ = "instantiate{%s}" % op.__name__
+#     instantiate.__doc__ = op.__doc__
+#     return instantiate
 
 
 
@@ -497,11 +493,10 @@ class CAReduce(Op):
     over the reduced dimensions using the specified scalar op.
 
     Examples:
-     CAReduce(Add, inputs) -> sum(inputs)
-     CAReduce(Mul, inputs) -> product(inputs)
-     CAReduce(Or, inputs) -> any(inputs) # not lazy
-     CAReduce(And, inputs) -> all(inputs) # not lazy
-     CAReduce(Xor, inputs) -> sum(inputs != 0) % 2
+     CAReduce(add) -> sum
+     CAReduce(mul) -> product
+     CAReduce(_or) -> any # not lazy
+     CAReduce(_and) -> all # not lazy
 
     In order to optimize memory usage patterns, L{CAReduce} makes zero
     guarantees on the order in which it iterates over the dimensions
@@ -510,74 +505,72 @@ class CAReduce(Op):
     both commutative and associative (eg add, multiply, binary
     or/and/xor - but not subtract, divide or power).
     """
-    
-    def __init__(self, scalar_opclass, inputs, axis = None):
-        inputs = map(astensor, inputs)
 
-        self.shadow = scalar_opclass(*[Scalar(dtype = inputs[0].dtype) for i in xrange(len(inputs) + 1)])
-        
-        if self.shadow.nin != 2 or self.shadow.nout != 1:
+    def __init__(self, scalar_op, axis = None):
+        if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
-        if len(inputs) != 1:
-            raise TypeError("Only one argument expected.")
-        if axis is None:
-            axis = range(len(inputs[0].broadcastable))
-        elif isinstance(axis, int):
-            axis = [axis]
-
-        self.inputs = inputs
-        self.outputs = [Tensor(dtype = inputs[0].dtype,
-                               broadcastable = [x for i, x in enumerate(inputs[0].broadcastable) if i not in axis])]
-
-        self.axis = axis
-        self.scalar_opclass = scalar_opclass
-        self.ufunc = numpy.frompyfunc(self.shadow.impl, self.shadow.nin, self.shadow.nout)
-
-    def desc(self):
-        return (self.__class__, self.scalar_opclass, tuple(self.axis))
-        
-    def strdesc(self):
-        if set(self.axis) != set(xrange(len(self.inputs[0].broadcastable))):
-            return "Reduce{%s}{%s}" % (self.scalar_opclass.__name__, "".join(str(x) for x in self.axis))
+        self.scalar_op = scalar_op
+        if isinstance(axis, int):
+            self.axis = [axis]
         else:
-            return "Reduce{%s}" % self.scalar_opclass.__name__
+            self.axis = axis
+        self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
+    
+    def make_node(self, input):
+        input = as_tensor(input)
+        axis = self.axis
+        if axis is None:
+            axis = range(len(input.type.broadcastable))
+        output = Tensor(dtype = input.type.dtype,
+                        broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
+        return Apply(self, [input], [output])
         
-    def clone_with_new_inputs(self, *new_inputs):
-        return CAReduce(self.scalar_opclass, new_inputs, self.axis)
+    def __str__(self):
+        if self.axis is not None:
+            return "Reduce{%s}{%s}" % (self.scalar_op, ", ".join(str(x) for x in self.axis))
+        else:
+            return "Reduce{%s}" % self.scalar_op
         
-    def perform(self):
-        result = self.inputs[0].data
-        to_reduce = reversed(sorted(self.axis))
+    def perform(self, node, (input, ), (output, )):
+        axis = self.axis
+        if axis is None:
+            axis = range(input.ndim)
+        result = input
+        to_reduce = reversed(sorted(axis))
         if to_reduce:
             for dimension in to_reduce:
                 result = self.ufunc.reduce(result, dimension)
-            self.outputs[0].data = result
+            output[0] = numpy.asarray(result, dtype = node.outputs[0].type.dtype)
         else:
-            self.outputs[0].data = numpy.copy(result)
+            output[0] = numpy.copy(result)
 
-    def _c_all(self, inames, onames, sub):
+    def _c_all(self, node, name, inames, onames, sub):
 
-        input = self.inputs[0]
-        output = self.outputs[0]
+        input = node.inputs[0]
+        output = node.outputs[0]
 
         iname = inames[0]
         oname = onames[0]
         
-        idtype = input.dtype_specs()[1]
-        odtype = output.dtype_specs()[1]
+        idtype = input.type.dtype_specs()[1]
+        odtype = output.type.dtype_specs()[1]
 
-        tosum = self.axis
+        axis = self.axis
+        if axis is None:
+            axis = range(len(input.type.broadcastable))
 
-        if tosum == ():
-            return Broadcast(scalar.Identity, (input, ))._c_all(inames, onames, sub)
+        if axis == ():
+            op = Elemwise(scalar.identity)
+            return op._c_all(op.make_node(input), name, inames, onames, sub)
+#            return Broadcast(scalar.Identity, (input, ))._c_all(inames, onames, sub)
 
-        order1 = [i for i in xrange(len(input.broadcastable)) if i not in tosum]
-        order = order1 + list(tosum)
+        order1 = [i for i in xrange(input.type.ndim) if i not in axis]
+        order = order1 + list(axis)
         
         nnested = len(order1)
 
         sub = dict(sub)
-        for i, (input, iname) in enumerate(zip(self.inputs, inames)):
+        for i, (input, iname) in enumerate(zip(node.inputs, inames)):
             sub['lv%i' % i] = iname
 
         decl = cgen.make_declare([order], [idtype], sub)
@@ -587,18 +580,23 @@ class CAReduce(Op):
         i += 1
         sub['lv%i' % i] = oname
         sub['olv'] = oname
-        alloc += cgen.make_declare([range(nnested) + ['x'] * len(tosum)], [odtype], dict(sub, lv0 = oname))
+        alloc += cgen.make_declare([range(nnested) + ['x'] * len(axis)], [odtype], dict(sub, lv0 = oname))
         alloc += cgen.make_alloc([order1], odtype, sub)
-        alloc += cgen.make_checks([range(nnested) + ['x'] * len(tosum)], [odtype], dict(sub, lv0 = oname))
+        alloc += cgen.make_checks([range(nnested) + ['x'] * len(axis)], [odtype], dict(sub, lv0 = oname))
 
         task0_decl = "%(dtype)s& %(name)s_i = *%(name)s_iter;\n%(name)s_i = %(identity)s;" % dict(dtype = odtype,
                                                                                                   name = onames[0],
-                                                                                                  identity = self.shadow.identity)
+                                                                                                  identity = self.scalar_op.identity)
 
         task1_decl = "%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % dict(dtype = idtype, name = inames[0])
-        task1_code = self.shadow.c_code(["%s_i" % onames[0], "%s_i" % inames[0]],
-                                        ["%s_i" % onames[0]],
-                                        sub)
+
+        task1_code = self.scalar_op.c_code(Apply(self.scalar_op,
+                                                 [Scalar(dtype = input.type.dtype)() for input in node.inputs*2],
+                                                 [Scalar(dtype = output.type.dtype)() for input in node.outputs]),
+                                           None,
+                                           ["%s_i" % onames[0], "%s_i" % inames[0]],
+                                           ["%s_i" % onames[0]],
+                                           sub)
         code1 = """
         {
             %(task1_decl)s
@@ -606,107 +604,100 @@ class CAReduce(Op):
         }
         """ % locals()
 
-        if len(tosum) == 1:
+        if len(axis) == 1:
             all_code = [("", "")] * nnested + [(task0_decl, code1), ""]
         else:
-            all_code = [("", "")] * nnested + [(task0_decl, "")] + [("", "")] * (len(tosum) - 2) + [("", code1), ""]
+            all_code = [("", "")] * nnested + [(task0_decl, "")] + [("", "")] * (len(axis) - 2) + [("", code1), ""]
         
 #         if nnested:
 #             all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
 #         else:
 #             all_code = [code]
 
-#        print [order, range(nnested) + ['x'] * len(tosum)]
+#        print [order, range(nnested) + ['x'] * len(axis)]
         
-        loop = cgen.make_loop([order, range(nnested) + ['x'] * len(tosum)], [idtype, odtype], all_code, sub)
+        loop = cgen.make_loop([order, range(nnested) + ['x'] * len(axis)], [idtype, odtype], all_code, sub)
         return decl, checks, alloc, loop
         
-    def c_code(self, inames, onames, sub):
-        code = "\n".join(self._c_all(inames, onames, sub))
+    def c_code(self, node, name, inames, onames, sub):
+        code = "\n".join(self._c_all(node, name, inames, onames, sub))
 #        print code
         return code
-
-    def __str__(self):
-        input = self.inputs[0]
-        if len(input.broadcastable) == len(self.axis):
-            return "%s:%s(%s)" % (self.__class__.__name__,
-                                  self.scalar_opclass.__name__,
-                                  str(input))
-        else:
-            return "%s:%s(%s, axis = %s)" % (self.__class__.__name__,
-                                             self.scalar_opclass.__name__,
-                                             str(input),
-                                             self.axis)
         
         
 
-def make_reduce(scalar_opclass, name = None):
-    if getattr(scalar_opclass, 'commutative', False) \
-            and getattr(scalar_opclass, 'associative', False):
-        reducer = CAReduce
-    else:
-        raise NotImplementedError("The scalar op class to reduce must be commutative and associative.")
+# def make_reduce(scalar_opclass, name = None):
+#     if getattr(scalar_opclass, 'commutative', False) \
+#             and getattr(scalar_opclass, 'associative', False):
+#         reducer = CAReduce
+#     else:
+#         raise NotImplementedError("The scalar op class to reduce must be commutative and associative.")
 
-    scalar_name = scalar_opclass.__name__
-    if name is None:
-        name = "Reduce" + scalar_name
-    previous_doc = reducer.__doc__
+#     scalar_name = scalar_opclass.__name__
+#     if name is None:
+#         name = "Reduce" + scalar_name
+#     previous_doc = reducer.__doc__
 
-    doc = """
-    Usage: %(name)s(input, axis)
-    Equivalent to: CAReduce(%(scalar_name)s, input, axis)
+#     doc = """
+#     Usage: %(name)s(input, axis)
+#     Equivalent to: CAReduce(%(scalar_name)s, input, axis)
 
-    Reduces the input over the specified axis.
+#     Reduces the input over the specified axis.
 
-    Documention for CAReduce:
-    ==================================================
-    %(previous_doc)s
-    ==================================================
-    """ % locals()
+#     Documention for CAReduce:
+#     ==================================================
+#     %(previous_doc)s
+#     ==================================================
+#     """ % locals()
 
-    class New(reducer):
-        __doc__ = doc
-        def __init__(self, *inputs, **kwargs):
-            reducer.__init__(self, scalar_opclass, inputs, kwargs.get('axis', None))
-        def clone_with_new_inputs(self, *new_inputs):
-            return New(*new_inputs, **dict(axis = self.axis))
-        def __str__(self):
-            input = self.inputs[0]
-            if len(input.broadcastable) == len(self.axis):
-                return "%s(%s)" % (self.__class__.__name__,
-                                   str(input))
-            else:
-                return "%s(%s, axis = %s)" % (self.__class__.__name__,
-                                              str(input),
-                                              self.axis)
-    New.__name__ = name
-    return New
+#     class New(reducer):
+#         __doc__ = doc
+#         def __init__(self, *inputs, **kwargs):
+#             reducer.__init__(self, scalar_opclass, inputs, kwargs.get('axis', None))
+#         def clone_with_new_inputs(self, *new_inputs):
+#             return New(*new_inputs, **dict(axis = self.axis))
+#         def __str__(self):
+#             input = self.inputs[0]
+#             if len(input.broadcastable) == len(self.axis):
+#                 return "%s(%s)" % (self.__class__.__name__,
+#                                    str(input))
+#             else:
+#                 return "%s(%s, axis = %s)" % (self.__class__.__name__,
+#                                               str(input),
+#                                               self.axis)
+#     New.__name__ = name
+#     return New
 
-_Sum = make_reduce(scalar.Add, '_Sum')
-class Sum(_Sum):
-    __doc__ = _Sum.__doc__
+class Sum(CAReduce):
+    def __init__(self, axis = None):
+        CAReduce.__init__(self, scalar.add, axis)
+
     def grad(self, (x, ), (gz, )):
-        if self.axis == ():
+        gz = as_tensor(gz)
+        axis = self.axis
+        if axis is None:
+            axis = range(x.type.ndim)
+        if axis == ():
             return gz,
         new_dims = []
         i = 0
-        for j, _ in enumerate(x.broadcastable):
-            if j in self.axis:
+        for j, _ in enumerate(x.type.broadcastable):
+            if j in axis:
                 new_dims.append('x')
             else:
                 new_dims.append(i)
                 i += 1
-        return Broadcast(scalar.Second, (x, DimShuffle(gz, new_dims).out)).out, 
+        return Elemwise(scalar.second)(x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
 
 
-def reduce(op):
-    if getattr(op, 'commutative', True) and getattr(op, 'associative', True):
-        reducer = CAReduce
-    else:
-        raise NotImplementedError("The scalar op class to reduce must be commutative and associative.")
-    def instantiate(*inputs):
-        return reducer(op, inputs, axis)
-    return instantiate
+# def reduce(op):
+#     if getattr(op, 'commutative', True) and getattr(op, 'associative', True):
+#         reducer = CAReduce
+#     else:
+#         raise NotImplementedError("The scalar op class to reduce must be commutative and associative.")
+#     def instantiate(*inputs):
+#         return reducer(op, inputs, axis)
+#     return instantiate
 
 
 
