@@ -317,7 +317,7 @@ def astensor(data, broadcastable=None, name=None):
             raise ValueError("Cannot rename an existing Tensor.")
         return data
     elif isinstance(data, Result):
-        raise TypeError("Cannot make a Tensor out of a non-Tensor result:", data)
+        raise TypeError("Cannot make a Tensor out of a result that is not an instance of Tensor: %s (%s)" % (data, data.__class__.__name__), data)
         
     if data is None and broadcastable is None:
         raise TypeError("Cannot make a Tensor out of None.")
@@ -445,16 +445,38 @@ class _Op(Op):
 # Unary Operations
 ##########################
 
-def broadcast(scalar_opclass, name, inplace_versions = True):
-    C = s2t.make_broadcast(scalar_opclass, name = name)
+def broadcast(scalar_opclass, name, module_name = None, inplace_versions = True):
+    C = s2t.make_broadcast(scalar_opclass, name = name, module_name = module_name) # this returns a class
+    C.__module__ = module_name
     c = gof.op.constructor(s2t.wrap_broadcast(C))
     if inplace_versions:
         CInplace = s2t.make_broadcast(scalar_opclass, {0:0}, name = name+"Inplace")
+        CInplace.__module__ = module_name
         c_inplace = gof.op.constructor(s2t.wrap_broadcast(CInplace))
         return C, c, CInplace, c_inplace
     else:
         return C, c
-    
+
+def _broadcast(scalar_opclass, name, inplace_versions = True):
+    return broadcast(scalar_opclass, name, 'tensor', inplace_versions)
+
+class Shape(Op):
+    """
+    L{Op} to return the shape of a matrix.
+
+    @note: Non-differentiable.
+    """
+    def __init__(self, x, **kwargs):
+        Op.__init__(self, **kwargs)
+        x = astensor(x)
+        self.inputs = [x]
+        self.outputs = [Tensor("int64", [False])]
+    def impl(self, x):
+        return numpy.asarray(x.shape)
+    def grad(self, (x,), (gz,)):
+        raise ValueError
+shape = gof.op.constructor(Shape)
+
 class Argmax(Op):
     """Calculate the max and argmax over a given axis"""
     nin=2 # tensor, axis
@@ -487,32 +509,43 @@ def max(x, axis=None):
     # but when Argmax.c_impl() is in place, it should be fine.
     return argmax(x,axis)[0]
 
-Abs, _abs, AbsInplace, abs_inplace = broadcast(scal.Abs, 'Abs')
-Exp, exp, ExpInplace, exp_inplace = broadcast(scal.Exp, 'Exp')
-Neg, neg, NegInplace, neg_inplace = broadcast(scal.Neg, 'Neg')
-Log, log, LogInplace, log_inplace = broadcast(scal.Log, 'Log')
-Log2, log2, Log2Inplace, log2_inplace = broadcast(scal.Log2, 'Log2')
-Sgn, sgn, SgnInplace, sgn_inplace = broadcast(scal.Sgn, 'Sgn')
-Sqr, sqr, SqrInplace, sqr_inplace = broadcast(scal.Sqr, 'Sqr')
-Sqrt, sqrt, SqrtInplace, sqrt_inplace = broadcast(scal.Sqrt, 'Sqrt')
-Cos, cos, CosInplace, cos_inplace = broadcast(scal.Cos, 'Cos')
-Sin, sin, SinInplace, sin_inplace = broadcast(scal.Sin, 'Sin')
-Tan, tan, TanInplace, tan_inplace = broadcast(scal.Tan, 'Tan')
-Cosh, cosh, CoshInplace, cosh_inplace = broadcast(scal.Cosh, 'Cosh')
-Sinh, sinh, SinhInplace, sinh_inplace = broadcast(scal.Sinh, 'Sinh')
-Tanh, tanh, TanhInplace, tanh_inplace = broadcast(scal.Tanh, 'Tanh')
+Abs, _abs, AbsInplace, abs_inplace = _broadcast(scal.Abs, 'Abs')
+Exp, exp, ExpInplace, exp_inplace = _broadcast(scal.Exp, 'Exp')
+Neg, neg, NegInplace, neg_inplace = _broadcast(scal.Neg, 'Neg')
+Log, log, LogInplace, log_inplace = _broadcast(scal.Log, 'Log')
+Log2, log2, Log2Inplace, log2_inplace = _broadcast(scal.Log2, 'Log2')
+Sgn, sgn, SgnInplace, sgn_inplace = _broadcast(scal.Sgn, 'Sgn')
+Sqr, sqr, SqrInplace, sqr_inplace = _broadcast(scal.Sqr, 'Sqr')
+Sqrt, sqrt, SqrtInplace, sqrt_inplace = _broadcast(scal.Sqrt, 'Sqrt')
+Cos, cos, CosInplace, cos_inplace = _broadcast(scal.Cos, 'Cos')
+Sin, sin, SinInplace, sin_inplace = _broadcast(scal.Sin, 'Sin')
+Tan, tan, TanInplace, tan_inplace = _broadcast(scal.Tan, 'Tan')
+Cosh, cosh, CoshInplace, cosh_inplace = _broadcast(scal.Cosh, 'Cosh')
+Sinh, sinh, SinhInplace, sinh_inplace = _broadcast(scal.Sinh, 'Sinh')
+Tanh, tanh, TanhInplace, tanh_inplace = _broadcast(scal.Tanh, 'Tanh')
 
-Sum = s2t.Sum
-sum = gof.op.constructor(Sum)
-
-Fill, fill, FillInplace, fill_inplace = broadcast(scal.Second, 'Fill')
+Fill, fill, FillInplace, fill_inplace = _broadcast(scal.Second, 'Fill')
 
 def ones_like(model):
     return fill(model, 1.0)
 def zeros_like(model):
     return fill(model, 0.0)
 
-TensorCopy, tensor_copy = broadcast(scal.Identity, 'TensorCopy', False)
+TensorCopy, tensor_copy = _broadcast(scal.Identity, 'TensorCopy', inplace_versions = False)
+
+Sum = s2t.Sum
+sum = gof.op.constructor(Sum)
+
+
+##########################
+# Arithmetics
+##########################
+
+Add, add, AddInplace, add_inplace = _broadcast(scal.Add, 'Add')
+Sub, sub, SubInplace, sub_inplace = _broadcast(scal.Sub, 'Sub')
+Mul, mul, MulInplace, mul_inplace = _broadcast(scal.Mul, 'Mul')
+Div, div, DivInplace, div_inplace = _broadcast(scal.Div, 'Div')
+Pow, pow, PowInplace, pow_inplace = _broadcast(scal.Pow, 'Pow')
 
 
 ##########################
@@ -606,15 +639,59 @@ class Subtensor(Op, Viewer):
 subtensor = gof.op.constructor(Subtensor)
 
 
-##########################
-# Arithmetics
-##########################
+class VerticalStack(Op):
+    """
+    Vertically stack two L{Tensor}s.
+    Stack two L{Tensor}s along the first axis (row wise). These
+    L{Tensor}s must have the same shape along all dimensions but the
+    first.
 
-Add, add, AddInplace, add_inplace = broadcast(scal.Add, 'Add')
-Sub, sub, SubInplace, sub_inplace = broadcast(scal.Sub, 'Sub')
-Mul, mul, MulInplace, mul_inplace = broadcast(scal.Mul, 'Mul')
-Div, div, DivInplace, div_inplace = broadcast(scal.Div, 'Div')
-Pow, pow, PowInplace, pow_inplace = broadcast(scal.Pow, 'Pow')
+    @attention: Because we use vstack as the implementation, if the
+    inputs have 1-dimension, the output will have 2-dimensions.
+    """
+    def __init__(self, x, y, **kwargs):
+        Op.__init__(self, **kwargs)
+        x = astensor(x)
+        y = astensor(y)
+        assert x.dtype == y.dtype
+        if x.broadcastable[1:] != y.broadcastable[1:]:
+            raise NotImplementedError
+        self.inputs = [x, y]
+        bcastable = (False, ) + x.broadcastable[1:]
+        self.outputs = [Tensor(x.dtype, bcastable)]
+    def impl(self, x, y):
+        assert x.ndim == y.ndim
+        # Make sure every dimension (save the first) is the same
+        for i in range(x.ndim): assert i == 0 or x.shape[i] == y.shape[i]
+
+        return numpy.vstack([x, y])
+    def grad(self, (x, y), (gz,)):
+        """
+        @todo: Make VSplit (or this grad implementation) its own L{Op},
+        that way we can do more sanity-checking::
+            assert x.ndim == y.ndim
+            # Make sure every dimension (save the first) is the same
+            for i in range(x.data.ndim): assert i == 0 or x.data.shape[i] == y.shape[i]
+            etc...
+        """
+        xs = shape(x)
+        ys = shape(y)
+        return gz[:xs[0]], gz[xs[0]:]
+vertical_stack = gof.op.constructor(VerticalStack)
+
+def horizontal_stack(x, y, **kwargs):
+    """
+    Horizontally stack two L{Tensor}s.
+    Stack two L{Tensor}s along the second axis (column wise). These
+    L{Tensor}s must have the same shape along all dimensions but the
+    second.
+
+    @note: Unlike VerticalStack, we assume that the L{Tensor}s have
+    two dimensions.
+    """
+    assert x.ndim == 2
+    assert y.ndim == 2
+    return transpose(vertical_stack(x.T, y.T, **kwargs))
 
 
 #########################
@@ -624,8 +701,7 @@ Pow, pow, PowInplace, pow_inplace = broadcast(scal.Pow, 'Pow')
 class Dot(_Op):
     nin=2
     nout=1
-    @staticmethod 
-    def broadcastable_rule(bx,by):
+    def propagate_broadcastable(self, bx, by):
         if len(bx) == 0:     # x is a scalar
             rval = by
         else:
@@ -635,20 +711,11 @@ class Dot(_Op):
                 rval = bx[:-1]
             else:            #y is a scalar
                 rval = bx
-        return rval
-    def propagate_broadcastable(self, bx, by):
-        return [self.broadcastable_rule(bx,by)]
+        return [rval]
     def impl(self, x, y):
         return numpy.dot(x, y)
     def grad(self, (x, y), (gz,)):
         return dot(gz, y.T), dot(x.T, gz)
-    if 0:
-        def c_support_code(self):
-            return blas.cblas_header_text()
-        def c_libs(self):
-            return blas.ldflags()
-        def c_impl(self, (_x, _y), (_z, )):
-            return blas.gemm_code('', '1.0', '0.0')
 dot = gof.op.constructor(Dot)
 
 class Gemm(_Op):

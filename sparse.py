@@ -320,3 +320,4 @@ def dot(x, y, grad_preserves_dense=True):
     else:
         assert y_is_sparse_result
         return transpose(Dot(y.T, x.T, grad_preserves_dense).outputs[0])
+

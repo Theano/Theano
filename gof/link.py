@@ -115,8 +115,9 @@ class PerformLinker(Linker):
     the L{Env} in the order given by L{Env.toposort}.
     """
 
-    def __init__(self, env):
+    def __init__(self, env, no_recycling = []):
         self.env = env
+        self.no_recycling = no_recycling
 
     def make_thunk(self, inplace = False, profiler = None):
         if inplace:
@@ -125,8 +126,14 @@ class PerformLinker(Linker):
             env = self.env.clone(True)
         order = env.toposort()
         thunks = [op.perform for op in order]
+        no_recycling = self.no_recycling
+        if no_recycling is True:
+            no_recycling = list(env.results())
+        no_recycling = utils.difference(no_recycling, env.inputs)
         if profiler is None:
             def f():
+                for r in no_recycling:
+                    r.data = None
                 try:
                     for thunk, op in zip(thunks, order):
                         thunk()
@@ -134,6 +141,8 @@ class PerformLinker(Linker):
                     raise_with_op(op)
         else:
             def f():
+                for r in no_recycling:
+                    r.data = None
                 def g():
                     for thunk, op in zip(thunks, order):
                         profiler.profile_op(thunk, op)
