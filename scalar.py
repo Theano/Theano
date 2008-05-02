@@ -21,7 +21,7 @@ def as_scalar(x, name = None):
         s.data = x
         return s
     if isinstance(x, int):
-        s = Scalar('int32', name = name)
+        s = Scalar('int64', name = name)
         s.data = x
         return s
     if isinstance(x, Scalar):

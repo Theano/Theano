@@ -38,7 +38,6 @@ def dfs(outputs):
     @todo: consider rewriting this function as a generator.
     """
 
-    raise Exception('this function has not been tested')
     r_set = set()
     r_list = list()
     def seek(r):
@@ -64,7 +63,7 @@ def inputs(o):
     Returns the set of inputs necessary to compute the outputs in o
     such that input.owner is None.
     """
-    return [r in dfs(o) if r.owner is None]
+    return [r for r in dfs(o) if r.owner is None]
 
 
 def results_and_orphans(i, o, except_unreachable_input=False):

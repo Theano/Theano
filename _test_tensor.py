@@ -686,6 +686,8 @@ class T_transpose(unittest.TestCase):
         verify_grad(self, TransposeInplace, [numpy.ones(3)])
 
 class T_subtensor(unittest.TestCase):
+    def setUp(self):
+        Subtensor.debug = False
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
         n = astensor(numpy.ones(()))
@@ -736,6 +738,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(tval.shape == ())
         self.failUnless(tval == 5.0)
     def test1_ok_range_infinite(self):
+        #Subtensor.debug = True
         n = astensor(numpy.ones(3)*5)
         t = n[1:]
         self.failUnless(t.owner.__class__ is Subtensor)

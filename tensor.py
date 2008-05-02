@@ -292,8 +292,10 @@ class Tensor(Result):
     T = property(lambda self: transpose(self))
 
     #SLICING
-    def __getitem__(self, item): return subtensor(self, item)
-    def __getslice__(self, *args): return subtensor(self, slice(*args))
+    def __getitem__(self, args): return Subtensor.from_idxs(self,
+            args).outputs[0]
+    def __getslice__(self, *args): return Subtensor.from_idxs(self,
+            (slice(*args),)).outputs[0]
 
     #COPYING
     def copy(self): return tensor_copy(self)
@@ -576,68 +578,132 @@ transpose_inplace = gof.op.constructor(TransposeInplace)
 def transpose(x, **kwargs):
     return transpose_inplace(tensor_copy(x), **kwargs)
 
+class Subtensor_dx(Op, Viewer):
+    """Return a tensor full of zeros, except for what was sliced from x by
+    Subtensor.
+    """
+
 class Subtensor(Op, Viewer):
-    nin = 2
-    nout = 1
+    """Return a subtensor view
+
+    This class uses a relatively complex internal representation of the inputs
+    to remember how the input tensor x should be sliced.  The instance variable
+    idxlist is a list whose elements are either integers, or slices.  The
+    integers are indexes into the inputs array, and the start/stop/step members
+    of each slice are also integer indexes into the inputs array (or None).  The
+    inputs array is the tensor x, followed by scalar integer results.
+    
+    """
     e_invalid = 'invalid index'
     debug = 0
-    def __init__(self, *args,**kwargs):
-        def as_tuple_result(obj):
-            if isinstance(obj, Result):
-                return obj
-            r = gof.result.PythonResult(None)
-            if isinstance(obj, tuple):
-                r.data = obj
-            else:
-                r.data = (obj,)
-            return r
-        def pad(tplR, N):
-            l = list(tplR.data)
-            for i in range(len(l), N):
-                l.append(slice(0,sys.maxint,1))
-            tplR.data = tuple(l)
 
+    @staticmethod
+    def from_idxs(x, idxs, **kwargs):
         if Subtensor.debug:
-            print 'Subtensor.__init__', args, kwargs
-        #Olivier says not to call this
-        #Op.__init__(self,  *args,**kwargs) 
-        #Viewer.__init__(self, *args,**kwargs)
-        t, coord = args
-        t = _as_tensor(t)
-        coord = as_tuple_result(coord)
-        if len(coord.data) > len(t.broadcastable):
-            raise ValueError(Subtensor.e_invalid)
-        # add the implicit extra unbounded slices 
-        # e.g. n[0] on a 3d tensor pads to n[0,:,:]
-        pad(coord, len(t.broadcastable))
-        broadcastable = [0 for c in coord.data if isinstance(c, slice)]
-        if Subtensor.debug:
-            print 'brdcstble', broadcastable
-            print 't', t.data
-            print 'coord', coord.data
-        self.inputs = [t, coord]
-        self.outputs = [Tensor(t.dtype, broadcastable)]
+            print idxs, sys.maxint
+
+        def asidx(i):
+            if isinstance(i, int): return scal.constant(i)
+            if isinstance(i, scal.Scalar) and ('int' in i.dtype): return i
+            raise TypeError(Subtensor.e_invalid, i)
+
+        x = _as_tensor(x)
+        idx_list = [] # like args, but with int -> scalar.constant
+        inputs = [x] # like args, but with slices flattened
+        if not isinstance(idxs, (list, tuple)):
+            idxs = (idxs,)
+
+        for idx in idxs:
+            try:
+                ai = asidx(idx)
+                idx_list.append(len(inputs))
+                inputs.append(ai)
+            except TypeError:
+                if isinstance(idx, slice):
+                    start = None if idx.start is None else asidx(idx.start)
+                    stop  = None if idx.stop  is None else asidx(idx.stop)
+                    step  = None if idx.step  is None else asidx(idx.step)
+
+                    # If we get here, then everything got turned (successfully)
+                    # into a scal.Scalar (with integer dtype) or None
+                    if start:
+                        startpos = len(inputs)
+                        inputs.append(start)
+                    else:
+                        startpos = None
+
+                    if stop:
+                        stoppos = len(inputs)
+                        inputs.append(stop)
+                    else:
+                        stoppos = None
+
+                    if step:
+                        steppos = len(inputs)
+                        inputs.append(step)
+                    else:
+                        steppos = None
+                    idx_list.append(slice(startpos, stoppos, steppos))
+                else:
+                    raise
+
+        assert len(idxs) == len(idx_list)
+        return Subtensor( inputs, idx_list, **kwargs)
+
+    def __init__(self, inputs, idx_list, **kwargs):
+
+        if len(idx_list) > len(inputs[0].broadcastable):
+            raise ValueError(Subtensor.e_invalid, 
+                    (len(idx_list), len(inputs[0].broadcastable)))
+
+        #infer the broadcasting pattern
+        padded = list(idx_list) \
+            + [slice(0,sys.maxint,1)] * (len(inputs[0].broadcastable) - len(idx_list)) 
+        broadcastable = [False for p in padded if isinstance(p, slice)]
+
+        Op.__init__(self, **kwargs) 
+        self.inputs = inputs
+        self.outputs = [Tensor(self.inputs[0].dtype, broadcastable)]
+        self.idx_list = idx_list
+
     def view_map(self): 
         return {self.out: [self.inputs[0]]}
+
     def perform(self):
         x = self.inputs[0].data
-        c = self.inputs[1].data
-        if Subtensor.debug:
-            print 'perform: x', x
-            print 'perform: c', c
-        if len(c) == 1:
-            self.outputs[0].data = x.__getitem__(c[0])
+        cdata = []
+        for c in self.idx_list:
+            if isinstance(c, slice):
+                cdata.append(slice(
+                    None if c.start is None else self.inputs[c.start].data, 
+                    None if c.stop is None else self.inputs[c.stop].data, 
+                    None if c.step is None else self.inputs[c.step].data))
+            else:
+                d = self.inputs[c].data
+                assert 'int' in str(d.dtype)
+                cdata.append(d)
+        if len(cdata) > 1:
+            cdata = tuple(cdata) #there's a diff between tuples and lists here...
         else:
-            self.outputs[0].data = x.__getitem__(c)
-    def grad(self, (x,), (gz,)):
+            cdata = cdata[0]
+
+        self.outputs[0].data = x.__getitem__(cdata)
+        if Subtensor.debug:
+            print self.inputs[0].data, cdata, self.outputs[0].data
+
+    def grad(self, inputs, (gz,)):
         # - option: allocate a potentially large matrix of zeros, and fill in
         # the appropriate elements from gz
         # - option: return a sparse matrix
         # - option: return gz, but think about how to include a special addition
         # function that works on a corresponding view of the original data
-        raise NotImplementedError() 
-subtensor = gof.op.constructor(Subtensor)
+        # - return a Subtensor_dx op, which we will optimize away.
+        return [Subtensor_dx(gz, inputs[0], *self.new_args)] + [None] * (len(inputs)-1)
 
+    def clone_with_new_inputs(self, *new_inputs):
+        assert len(self.inputs) == len(new_inputs)
+        return Subtensor(new_inputs, self.idx_list)
+        
 
 class VerticalStack(Op):
     """
