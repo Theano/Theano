@@ -182,7 +182,8 @@ class Op(object):
     #
 
     def impl(self, *args):
-        """Return output data [tuple], given input data
+        """
+        Return output data [tuple], given input data
         
         If this L{Op} has a single output (len(self.outputs)==1) then the return
         value of this function will be assigned to self.outputs[0].data.
@@ -198,7 +199,7 @@ class Op(object):
         Performs the computation associated to this L{Op} and places the
         result(s) in the output L{Result}s.
 
-        TODO: consider moving this function to the python linker.
+        @todo: consider moving this function to the python linker.
         """
         res = self.impl(*[input.data for input in self.inputs])
         if len(self.outputs) == 1:
