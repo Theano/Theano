@@ -10,9 +10,11 @@ from gof.python25 import all
 
 
 def astensor(data):
+    #This symbol is replaced when we import tensor.py, ask Olivier why.
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
 def Tensor(*inputs, **kwargs):
+    #This symbol is replaced when we import tensor.py, ask Olivier why.
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
 
