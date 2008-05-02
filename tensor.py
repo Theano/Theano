@@ -581,7 +581,48 @@ def transpose(x, **kwargs):
 class Subtensor_dx(Op, Viewer):
     """Return a tensor full of zeros, except for what was sliced from x by
     Subtensor.
+
+    @todo: pass the shape of x, rather than x itself.
+
+    @todo: add support for advanced tensor indexing (breaks current perform
+    implementation).
     """
+    def __init__(self, inputs, idx_list, **kwargs):
+        Op.__init__(self, **kwargs) 
+        self.inputs = inputs
+        self.outputs = [Tensor(inputs[0].dtype, inputs[0].broadcastable)]
+        self.idx_list = idx_list
+
+    def perform(self):
+        x = self.inputs[0]
+        gz = self.inputs[-1]
+        cdata = []
+        for c in self.idx_list:
+            if isinstance(c, slice):
+                cdata.append(slice(
+                    None if c.start is None else self.inputs[c.start].data, 
+                    None if c.stop is None else self.inputs[c.stop].data, 
+                    None if c.step is None else self.inputs[c.step].data))
+            else:
+                d = self.inputs[c].data
+                assert 'int' in str(d.dtype)
+                cdata.append(d)
+        if len(cdata) > 1:
+            cdata = tuple(cdata) #there's a diff between tuple and list here...
+        else:
+            cdata = cdata[0]
+
+        #print cdata
+        #print gz.data
+        gx = numpy.zeros_like(x.data)
+        gx[cdata] = gz.data
+        #print gx
+
+        self.outputs[0].data = gx
+
+    def clone_with_new_inputs(self, *new_inputs):
+        assert len(self.inputs) == len(new_inputs)
+        return Subtensor_dx(new_inputs, self.idx_list)
 
 class Subtensor(Op, Viewer):
     """Return a subtensor view
@@ -593,6 +634,7 @@ class Subtensor(Op, Viewer):
     of each slice are also integer indexes into the inputs array (or None).  The
     inputs array is the tensor x, followed by scalar integer results.
     
+    @todo: add support for advanced tensor indexing (in Subtensor_dx too).
     """
     e_invalid = 'invalid index'
     debug = 0
@@ -683,7 +725,7 @@ class Subtensor(Op, Viewer):
                 assert 'int' in str(d.dtype)
                 cdata.append(d)
         if len(cdata) > 1:
-            cdata = tuple(cdata) #there's a diff between tuples and lists here...
+            cdata = tuple(cdata) #there's a diff between tuple and list here...
         else:
             cdata = cdata[0]
 
@@ -692,13 +734,8 @@ class Subtensor(Op, Viewer):
             print self.inputs[0].data, cdata, self.outputs[0].data
 
     def grad(self, inputs, (gz,)):
-        # - option: allocate a potentially large matrix of zeros, and fill in
-        # the appropriate elements from gz
-        # - option: return a sparse matrix
-        # - option: return gz, but think about how to include a special addition
-        # function that works on a corresponding view of the original data
-        # - return a Subtensor_dx op, which we will optimize away.
-        return [Subtensor_dx(gz, inputs[0], *self.new_args)] + [None] * (len(inputs)-1)
+        return [Subtensor_dx(self.inputs + [gz], self.idx_list).outputs[0]]\
+                + [None] * (len(inputs)-1)
 
     def clone_with_new_inputs(self, *new_inputs):
         assert len(self.inputs) == len(new_inputs)

@@ -688,6 +688,8 @@ class T_transpose(unittest.TestCase):
 class T_subtensor(unittest.TestCase):
     def setUp(self):
         Subtensor.debug = False
+        numpy.random.seed(12353123)
+
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
         n = astensor(numpy.ones(()))
@@ -831,6 +833,31 @@ class T_subtensor(unittest.TestCase):
         tval = eval_outputs([t])
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 0))
+
+
+    def test_grad_1d(self):
+        n = astensor(numpy.random.rand(2,3))
+        z = scal.constant(0)
+        t = n[z:,z]
+        gn = gradient.grad(sum(exp(t)), n)
+        gval = eval_outputs([gn])
+        s0 = 'array([ 2.05362099,  0.        ,  0.        ])'
+        s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
+        self.failUnless(repr(gval[0,:]) == s0)
+        self.failUnless(repr(gval[1,:]) == s1)
+
+    def test_grad_0d(self):
+        n = astensor(numpy.random.rand(2,3))
+        t = n[1,0]
+        gn = gradient.grad(sum(exp(t)), n)
+        gval = eval_outputs([gn])
+        g0 = repr(gval[0,:])
+        g1 = repr(gval[1,:])
+        s0 = 'array([ 0.,  0.,  0.])'
+        s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
+        self.failUnless(g0 == s0, (g0, s0))
+        self.failUnless(g1 == s1, (g1, s1))
+
 
 
 class T_Stack(unittest.TestCase):
@@ -1448,3 +1475,4 @@ class T_stdlib(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    
