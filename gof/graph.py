@@ -6,11 +6,11 @@ from utils import object2
         
 
 def deprecated(f):
-    printme = True
+    printme = [True]
     def g(*args, **kwargs):
-        if printme:
+        if printme[0]:
             print 'gof.graph.%s deprecated: April 29' % f.__name__
-            printme = False
+            printme[0] = False
         return f(*args, **kwargs)
     return g
 
@@ -28,8 +28,6 @@ class Apply(object2):
         for input in inputs:
             if isinstance(input, Result):
                 self.inputs.append(input)
-#             elif isinstance(input, Type):
-#                 self.inputs.append(Result(input, None, None))
             else:
                 raise TypeError("The 'inputs' argument to Apply must contain Result instances, not %s" % input)
         self.outputs = []
@@ -42,12 +40,10 @@ class Apply(object2):
                 elif output.owner is not self or output.index != i:
                     raise ValueError("All output results passed to Apply must belong to it.")
                 self.outputs.append(output)
-#             elif isinstance(output, Type):
-#                 self.outputs.append(Result(output, self, i))
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
+    @deprecated
     def default_output(self):
-        print 'default_output deprecated: April 29'
         """
         Returns the default output for this Node, typically self.outputs[0].
         Depends on the value of node.op.default_output
@@ -66,6 +62,22 @@ class Apply(object2):
         return str(self)
     def __asapply__(self):
         return self
+    def clone(self):
+        return self.__class__(self.op, self.inputs, [output.clone() for output in self.outputs])
+    def clone_with_new_inputs(self, inputs, check_type = True):
+        if check_type:
+            for curr, new in zip(self.inputs, inputs):
+                if not curr.type == new.type:
+                    raise TypeError("Cannot change the type of this input.", curr, new)
+        new_node = self.clone()
+        new_node.inputs = inputs
+#         new_node.outputs = []
+#         for output in self.outputs:
+#             new_output = copy(output)
+#             new_output.owner = new_node
+#             new_node.outputs.append(new_output)
+        return new_node
+
     nin = property(lambda self: len(self.inputs))
     nout = property(lambda self: len(self.outputs))
 
@@ -77,7 +89,6 @@ class Result(object2):
         self.owner = owner
         self.index = index
         self.name = name
-
     def __str__(self):
         if self.name is not None:
             return self.name
@@ -88,22 +99,35 @@ class Result(object2):
             else:
                 return str(self.owner.op) + "." + str(self.index)
         else:
-            return "?::" + str(self.type)
+            return "<?>::" + str(self.type)
     def __repr__(self):
         return str(self)
     @deprecated
     def __asresult__(self):
         return self
+    def clone(self):
+        return self.__class__(self.type, None, None, self.name)
 
-class Constant(Result):
+class Value(Result):
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
         Result.__init__(self, type, None, None, name)
         self.data = type.filter(data)
-        self.indestructible = True
+    def __str__(self):
+        if self.name is not None:
+            return self.name
+        return "<" + str(self.data) + ">" #+ "::" + str(self.type)
+    def clone(self):
+        return self.__class__(self.type, self.data)
+
+class Constant(Value):
+    #__slots__ = ['data']
+    def __init__(self, type, data, name = None):
+        Value.__init__(self, type, data, name)
+###        self.indestructible = True
     def equals(self, other):
         # this does what __eq__ should do, but Result and Apply should always be hashable by id
-        return isinstance(other, Constant) and self.signature() == other.signature()
+        return type(other) == type(self) and self.signature() == other.signature()
     def signature(self):
         return (self.type, self.data)
     def __str__(self):
@@ -314,23 +338,12 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
         if node is None: # result is an orphan
             if copy_inputs_and_orphans:
                 cpy = copy(result)
-                cpy.owner = None
-                cpy.index = None
                 d[result] = cpy
             else:
                 d[result] = result
             return d[result]
         else:
-            new_node = copy(node)
-            new_node.inputs = [clone_helper(input) for input in node.inputs]
-            new_node.outputs = []
-            for output in node.outputs:
-                new_output = copy(output)
-                new_output.owner = new_node
-                new_node.outputs.append(new_output)
-#             new_node = Apply(node.op,
-#                              [clone_helper(input) for input in node.inputs],
-#                              [output.type for output in node.outputs])
+            new_node = node.clone_with_new_inputs([clone_helper(input) for input in node.inputs])
             d[node] = new_node
             for output, new_output in zip(node.outputs, new_node.outputs):
                 d[output] = new_output
