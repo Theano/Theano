@@ -318,8 +318,11 @@ def astensor(data, broadcastable=None, name=None):
         if name is not None and name != data.name:
             raise ValueError("Cannot rename an existing Tensor.")
         return data
+    elif isinstance(data, scal.Scalar):
+        return tensor_from_scalar(data)
+
     elif isinstance(data, Result):
-        raise TypeError("Cannot make a Tensor out of a result that is not an instance of Tensor: %s (%s)" % (data, data.__class__.__name__), data)
+        raise TypeError("Cannot make a Tensor out of a Result that is not an instance of Tensor: %s (%s)" % (data, data.__class__.__name__), data)
         
     if data is None and broadcastable is None:
         raise TypeError("Cannot make a Tensor out of None.")
@@ -442,6 +445,21 @@ class _Op(Op):
         return [rval.pop()] * self.nout
 
 
+#########################
+# Casting Operations
+#########################
+
+class TensorFromScalar(Op):
+    def __init__(self, s, **kwargs):
+        assert isinstance(s, scal.Scalar)
+        Op.__init__(self, **kwargs)
+        self.inputs = [s]
+        self.outputs = [Tensor(s.dtype, broadcastable=[])]
+    def perform(self):
+        self.outputs[0].data = self.inputs[0].data
+    def grad(self, (s,), (dt,)):
+        raise NotImplementedError('todo: ScalarFromTensor')
+tensor_from_scalar = gof.op.constructor(TensorFromScalar)
 
 ##########################
 # Unary Operations
@@ -795,6 +813,7 @@ def horizontal_stack(x, y, **kwargs):
     assert x.ndim == 2
     assert y.ndim == 2
     return transpose(vertical_stack(x.T, y.T, **kwargs))
+
 
 
 #########################

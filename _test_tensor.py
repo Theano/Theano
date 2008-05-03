@@ -1335,7 +1335,34 @@ class t_gemm(unittest.TestCase):
                 return
         self.fail()
 
+class T_tensorfromscalar(unittest.TestCase):
+    def test0(self):
+        s = scal.constant(56)
+        t = tensor_from_scalar(s)
+        self.failUnless(t.owner.__class__ is TensorFromScalar)
+        self.failUnless(t.broadcastable == (), t.broadcastable)
+        self.failUnless(t.ndim == 0, t.ndim)
+        self.failUnless(t.dtype == s.dtype)
 
+        v = eval_outputs([t])
+
+        self.failUnless(v == 56, v)
+        self.failUnless(isinstance(v, numpy.ndarray))
+        self.failUnless(v.shape == (), v.shape)
+
+    def test1(self):
+        s = scal.constant(56)
+        t = astensor(s)
+        self.failUnless(t.owner.__class__ is TensorFromScalar)
+        self.failUnless(t.broadcastable == (), t.broadcastable)
+        self.failUnless(t.ndim == 0, t.ndim)
+        self.failUnless(t.dtype == s.dtype)
+
+        v = eval_outputs([t])
+
+        self.failUnless(v == 56, v)
+        self.failUnless(isinstance(v, numpy.ndarray))
+        self.failUnless(v.shape == (), v.shape)
 
 
 def _tensor(data, broadcastable=None, name=None):
