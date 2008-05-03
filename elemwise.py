@@ -26,12 +26,12 @@ class DimShuffle(Op, Viewer):
     """
     Usage: DimShuffle(input, new_order, inplace = True)
 
-    * input: a Tensor instance
-    * new_order: a list representing the relationship between the
-                 input's dimensions and the output's dimensions. Each
-                 element of the list can either be an index or 'x'.
-    * inplace: if True, the output will be a view of the input.
-               If False, the output will be a copy of the input.
+     - input: a Tensor instance
+     - new_order: a list representing the relationship between the
+                  input's dimensions and the output's dimensions. Each
+                  element of the list can either be an index or 'x'.
+     - inplace: if True, the output will be a view of the input.
+                If False, the output will be a copy of the input.
 
     If j = new_order[i] is an index, the output's ith dimension
       will be the input's jth dimension.
@@ -44,6 +44,7 @@ class DimShuffle(Op, Viewer):
 
     Examples:
       # t<n> represents a n-d tensor
+      DimShuffle(t0, ['x']) -> make a 0d (scalar) into a 1d vector
       DimShuffle(t2, [0, 1]) -> identity
       DimShuffle(t2, [1, 0]) -> inverts the first and second dimensions
       DimShuffle(t1, ['x', 0]) -> make a row out of a 1d vector
@@ -51,6 +52,8 @@ class DimShuffle(Op, Viewer):
       DimShuffle(t3, [2, 0, 1]) -> like doing t3.transpose((2, 0, 1)) in numpy
       DimShuffle(t2, [0, 'x', 1]) -> like doing t3.reshape((t3.shape[0], 1, t3.shape[1])) in numpy
       DimShuffle(t2, [1, 'x', 0]) -> like doing t3.T.reshape((t3.shape[0], 1, t3.shape[1])) in numpy
+
+    @todo: Default value for inplace should be False! Unsafe optimizations should be explicitly enabled.
     """
     
     def __init__(self, input, new_order, inplace = True):
