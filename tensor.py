@@ -15,7 +15,7 @@ import blas # for gemm, dot
 import elemwise as s2t
 import scalar as scal
 
-from functools import partial
+from gof.python25 import partial
 
 
 class Tensor(Result):
@@ -617,10 +617,13 @@ class Subtensor_dx(Op, Viewer):
         cdata = []
         for c in self.idx_list:
             if isinstance(c, slice):
-                cdata.append(slice(
-                    None if c.start is None else self.inputs[c.start].data, 
-                    None if c.stop is None else self.inputs[c.stop].data, 
-                    None if c.step is None else self.inputs[c.step].data))
+                if c.start is None: start = None
+                else: start = self.inputs[c.start].data
+                if c.stop is None: stop = None
+                else: stop = self.inputs[c.stop].data
+                if c.step is None: step = None
+                else: step = self.inputs[c.step].data
+                cdata.append(slice(start, stop, step))
             else:
                 d = self.inputs[c].data
                 assert 'int' in str(d.dtype)
@@ -680,9 +683,12 @@ class Subtensor(Op, Viewer):
                 inputs.append(ai)
             except TypeError:
                 if isinstance(idx, slice):
-                    start = None if idx.start is None else asidx(idx.start)
-                    stop  = None if idx.stop  is None else asidx(idx.stop)
-                    step  = None if idx.step  is None else asidx(idx.step)
+                    if idx.start is None: start = None
+                    else: start = asidx(idx.start)
+                    if idx.stop  is None: stop = None
+                    else: stop = asidx(idx.stop)
+                    if idx.step  is None: step = None
+                    else: step = asidx(idx.step)
 
                     # If we get here, then everything got turned (successfully)
                     # into a scal.Scalar (with integer dtype) or None
@@ -734,10 +740,13 @@ class Subtensor(Op, Viewer):
         cdata = []
         for c in self.idx_list:
             if isinstance(c, slice):
-                cdata.append(slice(
-                    None if c.start is None else self.inputs[c.start].data, 
-                    None if c.stop is None else self.inputs[c.stop].data, 
-                    None if c.step is None else self.inputs[c.step].data))
+                if c.start is None: start = None
+                else: start = self.inputs[c.start].data
+                if c.stop is None: stop = None
+                else: stop = self.inputs[c.stop].data
+                if c.step is None: step = None
+                else: step = self.inputs[c.step].data
+                cdata.append(slice(start, stop, step))
             else:
                 d = self.inputs[c].data
                 assert 'int' in str(d.dtype)

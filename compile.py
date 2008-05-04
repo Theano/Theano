@@ -198,8 +198,10 @@ def infer_reuse_pattern(env, outputs_to_disown):
         seen.add(r)
         do_not_reuse.append(r)
         op = r.owner
-        dmap = op.destroy_map() if hasattr(op, 'destroy_map') else {}
-        vmap = op.view_map() if hasattr(op, 'view_map') else {}
+        if hasattr(op, 'destroy_map'): dmap = op.destroy_map()
+        else: dmap = {}
+        if hasattr(op, 'view_map'): vmap = op.view_map()
+        else: vmap = {}
         cat = lambda x, y: list(x) + list(y)
         for r2 in reduce(cat, dmap.values()) + reduce(cat, vmap.values()):
             accumulate(r2)

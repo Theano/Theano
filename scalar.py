@@ -4,11 +4,10 @@ import math
 
 from copy import copy
 
-from functools import partial
-
 import gof
 from gof import Result, GuardedOp, Env, utils
 
+from gof.python25 import partial
 
 def as_scalar(x, name = None):
     if isinstance(x, gof.Op):
