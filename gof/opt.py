@@ -115,7 +115,10 @@ class OpSpecificOptimizer(LocalOptimizer):
     """
 
     def add_requirements(self, env):
-        env.extend(toolbox.NodeFinder(env))
+        try:
+            env.extend(toolbox.NodeFinder())
+            env.extend(toolbox.ReplaceValidate())
+        except: pass
 
     def candidates(self, env):
         """
@@ -135,7 +138,10 @@ class OpSubOptimizer(Optimizer):
     """
 
     def add_requirements(self, env):
-        env.extend(toolbox.NodeFinder(env))
+        try:
+            env.extend(toolbox.NodeFinder())
+            env.extend(toolbox.ReplaceValidate())
+        except: pass
 
     def __init__(self, op1, op2, failure_callback = None):
         """
@@ -163,7 +169,7 @@ class OpSubOptimizer(Optimizer):
                 repl = self.op2.make_node(*node.inputs)
                 assert len(node.outputs) == len(repl.outputs)
                 for old, new in zip(node.outputs, repl.outputs):
-                    env.replace(old, new)
+                    env.replace_validate(old, new)
             except Exception, e:
                 if self.failure_callback is not None:
                     self.failure_callback(node, repl, e)
@@ -182,7 +188,10 @@ class OpRemover(Optimizer):
     """
 
     def add_requirements(self, env):
-        env.extend(toolbox.NodeFinder(env))
+        try:
+            env.extend(toolbox.NodeFinder())
+            env.extend(toolbox.ReplaceValidate())
+        except: pass
 
     def __init__(self, op, failure_callback = None):
         """

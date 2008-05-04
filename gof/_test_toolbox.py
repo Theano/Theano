@@ -59,19 +59,19 @@ def inputs():
     return x, y, z
 
 
-class _test_EquivTool(unittest.TestCase):
+# class _test_EquivTool(unittest.TestCase):
 
-    def test_straightforward(self):
-        x, y, z = inputs()
-        sx = sigmoid(x)
-        e = add(sx, sigmoid(y))
-        g = Env([x, y, z], [e])
-        g.extend(EquivTool(g))
-        assert hasattr(g, 'equiv')
-        assert g.equiv(sx) is sx
-        g.replace(sx, dot(x, z))
-        assert g.equiv(sx) is not sx
-        assert g.equiv(sx).owner.op is dot
+#     def test_straightforward(self):
+#         x, y, z = inputs()
+#         sx = sigmoid(x)
+#         e = add(sx, sigmoid(y))
+#         g = Env([x, y, z], [e])
+#         g.extend(EquivTool(g))
+#         assert hasattr(g, 'equiv')
+#         assert g.equiv(sx) is sx
+#         g.replace(sx, dot(x, z))
+#         assert g.equiv(sx) is not sx
+#         assert g.equiv(sx).owner.op is dot
 
 
 class _test_NodeFinder(unittest.TestCase):
@@ -81,7 +81,7 @@ class _test_NodeFinder(unittest.TestCase):
         e0 = dot(y, z)
         e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), e0))
         g = Env([x, y, z], [e])
-        g.extend(NodeFinder(g))
+        g.extend(NodeFinder())
         assert hasattr(g, 'get_nodes')
         for type, num in ((add, 3), (sigmoid, 3), (dot, 2)):
             if not len([x for x in g.get_nodes(type)]) == num:
@@ -100,7 +100,7 @@ class _test_NodeFinder(unittest.TestCase):
         x, y, z = inputs()
         e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), dot(y, z)))
         g = Env([x, y, z], [e])
-        g.extend(NodeFinder(g))
+        g.extend(NodeFinder())
         gen = g.get_nodes(sigmoid) # I want to get Sigmoid instances
         g.replace(e, add(x, y)) # but here I prune them all
         assert len([x for x in gen]) == 0 # the generator should not yield them

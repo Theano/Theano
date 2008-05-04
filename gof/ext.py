@@ -1,12 +1,20 @@
 
-from features import Listener, Constraint, Orderings, Tool
+#from features import Listener, Constraint, Orderings, Tool
+import utils
 from utils import AbstractFunctionError
 
 from copy import copy
 from env import InconsistencyError
 
+from toolbox import Bookkeeper
 
-class DestroyHandler(Listener, Constraint, Orderings, Tool):
+from collections import defaultdict
+
+
+
+
+
+class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
     """
     This feature ensures that an env represents a consistent data flow
     when some Ops overwrite their inputs and/or provide "views" over
@@ -27,14 +35,32 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
     This feature allows some optimizations (eg sub += for +) to be applied
     safely.
     """
-    
-    def __init__(self, env):
+
+    def __init__(self):
+        self.env = None
+
+    def on_attach(self, env):
         
+        if self.env is not None:
+            raise Exception("A DestroyHandler instance can only serve one Env.")
+        for attr in ('destroyers', 'destroy_handler'):
+            if hasattr(env, attr):
+                raise Exception("DestroyHandler feature is already present or in conflict with another plugin.")
+        
+        def __destroyers(r):
+            ret = self.destroyers.get(r, {})
+            ret = ret.keys()
+            return ret
+        env.destroyers = __destroyers
+        env.destroy_handler = self
+
+        self.env = env
+
         # For an Op that has a view_map, {output : input it is a view of}
         self.parent = {}
 
         # Reverse mapping of parent: {input : outputs that are a view of it}
-        self.children = {}
+        self.children = defaultdict(set)
 
         # {foundation : {op that destroys it : path }}
         # where foundation is a result such that (not self.parent[result])
@@ -57,25 +83,37 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         # indestructible by the user.
         self.illegal = set()
         
-        self.env = env
         self.seen = set()
+        
+        Bookkeeper.on_attach(self, env)
 
-        # Initialize the children if the inputs and orphans.
-        for input in env.orphans.union(env.inputs):
-            self.children[input] = set()
+#         # Initialize the children if the inputs and orphans.
+#         for input in env.inputs: # env.orphans.union(env.inputs):
+#             self.children[input] = set()
 
-    def publish(self):
-        """
-        Publishes the following on the env:
-         - destroyers(r) -> returns all L{Op}s that destroy the result r
-         - destroy_handler -> self
-        """
-        def __destroyers(r):
-            ret = self.destroyers.get(r, {})
-            ret = ret.keys()
-            return ret
-        self.env.destroyers = __destroyers
-        self.env.destroy_handler = self
+    def on_detach(self, env):
+        del self.parent
+        del self.children
+        del self.destroyers
+        del self.paths
+        del self.dups
+        del self.cycles
+        del self.illegal
+        del self.seen
+        self.env = None
+
+#     def publish(self):
+#         """
+#         Publishes the following on the env:
+#          - destroyers(r) -> returns all L{Op}s that destroy the result r
+#          - destroy_handler -> self
+#         """
+#         def __destroyers(r):
+#             ret = self.destroyers.get(r, {})
+#             ret = ret.keys()
+#             return ret
+#         self.env.destroyers = __destroyers
+#         self.env.destroy_handler = self
 
     def __path__(self, r):
         """
@@ -105,12 +143,12 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         """
         children = self.children[r]
         if not children:
-            return set([r])
+            return [r]
         else:
-            rval = set([r])
+            rval = [r]
             for child in children:
-                rval.update(self.__views__(child))
-        return rval
+                rval += self.__views__(child)
+        return utils.uniq(rval)
 
     def __users__(self, r):
         """
@@ -120,12 +158,12 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         is returned.
         """
         views = self.__views__(r)
-        rval = set()
+        rval = [] # set()
         for view in views:
-            for op, i in self.env.clients(view):
-                if op in self.seen:
-                    rval.update(op.outputs)
-        return rval
+            for node, i in view.clients: #self.env.clients(view):
+                if node != 'output':
+                    rval += node.outputs
+        return utils.uniq(rval)
 
     def __pre__(self, op):
         """
@@ -178,7 +216,7 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         just_remove is True, we return immediately after removing the
         cycles.
         """
-        users = self.__users__(start)
+        users = set(self.__users__(start))
         users.add(start)
         for user in users:
             for cycle in copy(self.cycles):
@@ -208,13 +246,14 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
             dmap[node.outputs[oidx]] = [node.inputs[iidx] for iidx in iidxs]
         return vmap, dmap
 
-    def on_import(self, op):
+    def on_import(self, env, op):
         """
         Recomputes the dependencies and search for inconsistencies given
         that we just added an op to the env.
         """
         
         self.seen.add(op)
+        op.deps['destroy'] = []
         view_map, destroy_map = self.get_maps(op)
 
         for input in op.inputs:
@@ -251,7 +290,7 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
             self.__detect_cycles_helper__(output, [])
 
             
-    def on_prune(self, op):
+    def on_prune(self, env, op):
         """
         Recomputes the dependencies and searches for inconsistencies to remove
         given that we just removed an op to the env.
@@ -295,6 +334,7 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
             del self.children[output]
             
         self.seen.remove(op)
+        del op.deps['destroy']
 
 
     def __add_destroyer__(self, path):
@@ -305,11 +345,18 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         foundation = path[0]
         target = path[-1]
 
-        op = target.owner
+        node = target.owner
 
         destroyers = self.destroyers.setdefault(foundation, {})
-        path = destroyers.setdefault(op, path)
+        path = destroyers.setdefault(node, path)
 
+        print "add", path
+        node.deps['destroy'] += [user.owner for user in self.__users__(foundation) if user not in node.outputs]
+
+#         for foundation, destroyers in self.destroyers.items():
+#             for op in destroyers.keys():
+#                 ords.setdefault(op, set()).update([user.owner for user in self.__users__(foundation) if user not in op.outputs])
+        
         if len(destroyers) > 1:
             self.dups.add(foundation)
 
@@ -325,10 +372,17 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
 
         foundation = path[0]
         target = path[-1]
-        op = target.owner
+        node = target.owner
+
+        print "rm", path
+        print node.deps['destroy']
+        for user in self.__users__(foundation):
+            print " -- ", user
+            if user not in node.outputs:
+                node.deps['destroy'].remove(user.owner)
 
         destroyers = self.destroyers[foundation]
-        del destroyers[op]
+        del destroyers[node]
         
         if not destroyers:
             if foundation in self.illegal:
@@ -338,14 +392,18 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
             self.dups.remove(foundation)
 
 
-    def on_rewire(self, clients, r_1, r_2):
+    def on_change_input(self, env, node, i, r, new_r):
+        if node != 'output':
+            self.on_rewire(env, [(node, i)], r, new_r)
+
+    
+    def on_rewire(self, env, clients, r_1, r_2):
         """
         Recomputes the dependencies and searches for inconsistencies to remove
         given that all the clients are moved from r_1 to r_2, clients being
         a list of (op, i) pairs such that op.inputs[i] used to be r_1 and is
         now r_2.
         """
-
         path_1 = self.__path__(r_1)
         path_2 = self.__path__(r_2)
 
@@ -396,7 +454,7 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         self.children.setdefault(r_2, set())
         self.__detect_cycles__(r_2)
 
-    def validate(self):
+    def validate(self, env):
         """
         Raises an L{InconsistencyError} on any of the following conditions:
          - Some results are destroyed by more than one L{Op}
@@ -412,9 +470,9 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
         else:
             return True
 
-    def orderings(self):
+    def orderings(self, env):
         """
-        Returns a dict of {op : set(ops that must be computed before it)} according
+        Returns a dict of {node : set(nodes that must be computed before it)} according
         to L{DestroyHandler}.
         In particular, all the users of a destroyed result have priority over the
         L{Op} that destroys the result.
@@ -424,6 +482,8 @@ class DestroyHandler(Listener, Constraint, Orderings, Tool):
             for op in destroyers.keys():
                 ords.setdefault(op, set()).update([user.owner for user in self.__users__(foundation) if user not in op.outputs])
         return ords
+
+
 
 
 class Destroyer:
@@ -493,3 +553,4 @@ def view_roots(r):
             return [r]
     else:
         return [r]
+

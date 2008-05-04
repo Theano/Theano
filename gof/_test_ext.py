@@ -2,13 +2,15 @@
 import unittest
 
 from type import Type
+import graph
 from graph import Result, as_result, Apply
 from op import Op
 from opt import PatternOptimizer, OpSubOptimizer
 
 from ext import *
 from env import Env, InconsistencyError
-from toolbox import EquivTool
+#from toolbox import EquivTool
+from toolbox import ReplaceValidate
 
 from copy import copy
 
@@ -65,8 +67,11 @@ def inputs():
 _Env = Env
 def Env(inputs, outputs, validate = True):
     e = _Env(inputs, outputs)
-    e.extend(EquivTool(e))
-    e.extend(DestroyHandler(e), validate = validate)
+    ##e.extend(EquivTool(e))
+    e.extend(DestroyHandler())
+    e.extend(ReplaceValidate())
+    if validate:
+        e.validate()
     return e
 
 
@@ -108,19 +113,19 @@ class _test_all(unittest.TestCase):
         g = Env([x,y,z], [e1, e2])
         chk = g.checkpoint()
         assert g.consistent()
-        g.replace(e1, add_in_place(x, y))
+        g.replace_validate(e1, add_in_place(x, y))
         assert g.consistent()
         try:
-            g.replace(e2, add_in_place(y, x))
+            g.replace_validate(e2, add_in_place(y, x))
             self.fail()
         except InconsistencyError:
             pass
         assert g.consistent()
         g.revert(chk)
-        g.replace(e2, add_in_place(y, x))
+        g.replace_validate(e2, add_in_place(y, x))
         assert g.consistent()
         try:
-            g.replace(e1, add_in_place(x, y))
+            g.replace_validate(e1, add_in_place(x, y))
             self.fail()
         except InconsistencyError:
             pass
@@ -136,7 +141,7 @@ class _test_all(unittest.TestCase):
         assert str(g) != "[Dot(Dot(AddInPlace(x, y), AddInPlace(y, z)), AddInPlace(z, x))]" # we don't want to see that!
         e2 = dot(dot(add_in_place(x,y), add_in_place(y,z)), add_in_place(z,x))
         try:
-            g2 = Env([x,y,z], [e2])
+            g2 = Env(*graph.clone([x,y,z], [e2]))
             self.fail()
         except InconsistencyError:
             pass
@@ -154,16 +159,18 @@ class _test_all(unittest.TestCase):
         e = dot(aip, transpose_view(x))
         g = Env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(aip, add(x, z))
+        g.replace_validate(aip, add(x, z))
         assert g.consistent()
 
     def test_usage_loop_through_views_2(self):
         x, y, z = inputs()
-        e0 = transpose_view(transpose_view(transpose_view(sigmoid(x))))
+        e0 = transpose_view(transpose_view(sigmoid(x)))
         e = dot(add_in_place(x,y), transpose_view(e0))
         g = Env([x,y,z], [e])
         assert g.consistent() # because sigmoid can do the copy
-        g.replace(e0, x, False)
+#         print g
+#         print g.destroy_handler.children
+        g.replace(e0, x)
         assert not g.consistent() # we cut off the path to the sigmoid
 
     def test_usage_loop_insert_views(self):
@@ -184,10 +191,10 @@ class _test_all(unittest.TestCase):
         chk = g.checkpoint()
         PatternOptimizer((transpose_view, (transpose_view, 'x')), 'x').optimize(g)
         assert str(g) == "[x]"
-        g.replace(g.equiv(e), add(x,y))
-        print g
+        new_e = add(x,y)
+        g.replace_validate(x, new_e)
         assert str(g) == "[Add(x, y)]"
-        g.replace(g.equiv(e), dot(add_in_place(x,y), transpose_view(x)), False)
+        g.replace(new_e, dot(add_in_place(x,y), transpose_view(x)))
         assert str(g) == "[Dot(AddInPlace(x, y), TransposeView(x))]"
         assert not g.consistent()
         g.revert(chk)
@@ -202,7 +209,7 @@ class _test_all(unittest.TestCase):
         e = add_in_place(x, y)
         g = Env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(e, add(x, y))
+        g.replace_validate(e, add(x, y))
         assert g.consistent()
 
     def test_indestructible_through_views(self):
@@ -212,7 +219,7 @@ class _test_all(unittest.TestCase):
         e = add_in_place(tv, y)
         g = Env([x,y,z], [e], False)
         assert not g.consistent()
-        g.replace(tv, sigmoid(x))
+        g.replace_validate(tv, sigmoid(x))
         assert g.consistent()
 
     def test_repair_destroy_path(self):
@@ -223,7 +230,7 @@ class _test_all(unittest.TestCase):
         e4 = add_in_place(e1, z)
         g = Env([x,y,z], [e3, e4], False)
         assert not g.consistent()
-        g.replace(e2, transpose_view(x), False)
+        g.replace(e2, transpose_view(x))
         assert not g.consistent()
 
     def test_indirect(self):
@@ -233,9 +240,9 @@ class _test_all(unittest.TestCase):
         g = Env([x,y,z], [e], False)
         assert not g.consistent()
         new_e0 = add(x, y)
-        g.replace(e0, new_e0, False)
+        g.replace(e0, new_e0)
         assert g.consistent()
-        g.replace(new_e0, add_in_place(x, y), False)
+        g.replace(new_e0, add_in_place(x, y))
         assert not g.consistent()
 
     def test_indirect_2(self):
@@ -245,12 +252,12 @@ class _test_all(unittest.TestCase):
         g = Env([x,y,z], [e], False)
         assert not g.consistent()
         new_e0 = add(e0, y)
-        g.replace(e0, new_e0, False)
+        g.replace(e0, new_e0)
         assert g.consistent()
 
 
 if __name__ == '__main__':
-    unittest.main()
-
+    #unittest.main()
+    _test_all('test_usage_loop_through_views').debug()
 
 

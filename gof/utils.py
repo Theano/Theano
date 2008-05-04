@@ -26,6 +26,8 @@ class object2(object):
         if hasattr(self, '__eq__') or hasattr(self, '__cmp__'):
             raise TypeError("unhashable object: %s" % self)
         return id(self)
+    def __ne__(self, other):
+        return not self == other
 
 class scratchpad:
     def clear(self):

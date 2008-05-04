@@ -202,7 +202,7 @@ def results_and_orphans(i, o, except_unreachable_input=False):
     """
     results = set()
     i = set(i)
-    results.update(i)
+#    results.update(i)
     incomplete_paths = []
     reached = set()
 
@@ -287,7 +287,7 @@ def orphans(i, o):
     return results_and_orphans(i, o)[1]
 
 
-def clone(i, o, copy_inputs = False):
+def clone(i, o, copy_inputs = True):
     """
     @type i: list
     @param i: input L{Result}s
@@ -299,8 +299,8 @@ def clone(i, o, copy_inputs = False):
     Copies the subgraph contained between i and o and returns the
     outputs of that copy (corresponding to o).
     """
-    equiv = clone_get_equiv(i, o)
-    return [equiv[output] for output in o]
+    equiv = clone_get_equiv(i, o, copy_inputs)
+    return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
 def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
@@ -324,7 +324,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
 
     for input in i:
         if copy_inputs_and_orphans:
-            cpy = copy(input)
+            cpy = input.clone()
             cpy.owner = None
             cpy.index = None
             d[input] = cpy
@@ -337,7 +337,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
         node = result.owner
         if node is None: # result is an orphan
             if copy_inputs_and_orphans:
-                cpy = copy(result)
+                cpy = result.clone()
                 d[result] = cpy
             else:
                 d[result] = result

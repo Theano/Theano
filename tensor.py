@@ -71,7 +71,7 @@ class Tensor(Type):
 
     def __init__(self, dtype, broadcastable):
         self.dtype = str(dtype)
-        self.broadcastable = broadcastable
+        self.broadcastable = tuple(broadcastable)
         self.dtype_specs() # error checking is done there
     
     def filter(self, data, strict = False):
