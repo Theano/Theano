@@ -6,7 +6,6 @@ compatible with gof's graph manipulation routines.
 
 import utils
 from utils import ClsInit, all_bases, all_bases_collect, AbstractFunctionError
-import graph
 
 from copy import copy
 
@@ -170,11 +169,11 @@ class Op(object):
     # String representation
     #
 
-    def __str__(self):
-        return graph.op_as_string(self.inputs, self)
-
-    def __repr__(self):
-        return str(self)
+    if 0:
+        def __str__(self):
+            return graph.op_as_string(self.inputs, self)
+        def __repr__(self):
+            return str(self)
 
 
     #

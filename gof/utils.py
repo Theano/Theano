@@ -19,6 +19,31 @@ class AbstractFunctionError(Exception):
     function has been left out of an implementation class.
     """
 
+def deprecated(filename, msg=''):
+    """Decorator which will print a warning message on the first call.
+    
+    Use it like this:
+
+    @deprecated('myfile', 'do something different...')
+    def fn_name(...)
+        ...
+
+    And it will print
+
+    WARNING myfile.fn_name deprecated. do something different...
+
+    """
+    def _deprecated(f):
+        printme = [True]
+        def g(*args, **kwargs):
+            if printme[0]:
+                print 'WARNING: %s.%s deprecated. %s'\
+                        % (filename, f.__name__, msg)
+                printme[0] = False
+            return f(*args, **kwargs)
+        return g
+    return _deprecated
+
 def uniq(seq):
     #TODO: consider building a set out of seq so that the if condition is constant time -JB
     return [x for i, x in enumerate(seq) if seq.index(x) == i]
