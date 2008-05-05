@@ -67,19 +67,19 @@ class Tensor(Result):
     # 
     # filter
     #
-    def filter(self, arr):
+    def filter(self, arg):
         """Cast to an L{numpy.ndarray} and ensure arr has correct rank and shape."""
-        if not (isinstance(arr, numpy.ndarray) \
-                and arr.dtype==self.dtype):
-            arr = numpy.asarray(arr, dtype = self.dtype)
+        if (isinstance(arg, numpy.ndarray) and arg.dtype==self.dtype):
+            arr = arg
+        else:
+            arr = numpy.asarray(arg, dtype = self.dtype)
         if len(self.broadcastable) != len(arr.shape):
             raise ValueError(Tensor.filter.E_rank,
-                    self.broadcastable,
-                    arr.shape,
-                    self.owner)
-        for b, s in zip(self.broadcastable, arr.shape):
+                    "Can't assign ndarray of rank %i to Tensor of rank %i, when filtering %s" % (len(arr.shape), len(self.broadcastable), arg))
+        for i, (b, s) in enumerate(zip(self.broadcastable, arr.shape)):
             if b and (s != 1):
-                raise ValueError(Tensor.filter.E_shape)
+                raise ValueError(Tensor.filter.E_shape,
+                        ('(dimension %i when filtering %s)'%(i, arg)))
         return arr
     # these strings are here so that tests can use them
     filter.E_rank = 'wrong rank'
