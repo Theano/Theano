@@ -299,6 +299,10 @@ class Tensor(Result):
 
     #COPYING
     def copy(self): return tensor_copy(self)
+
+    def __iter__(self): 
+        # This prevents accidental iteration via builtin.sum(self)
+        raise TypeError('Tensor does not support iteration')
     
 s2t.Tensor = Tensor
 
@@ -364,7 +368,7 @@ iscalar, fscalar = _int_float(scalar)
 scalars, iscalars, fscalars = _multi(scalar, iscalar, fscalar)
 
 def vector(name, dtype = 'float64'):
-    return Tensor(name = name, dtype = dtype, broadcastable = (False))
+    return Tensor(name = name, dtype = dtype, broadcastable = (False,))
 ivector, fvector = _int_float(vector)
 vectors, ivectors, fvectors = _multi(vector, ivector, fvector)
 
