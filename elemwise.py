@@ -9,6 +9,9 @@ import gof
 from gof.python25 import all
 
 
+# tensor depends on elemwise to provide definitions for several ops
+# but elemwise needs to make Tensor instances, so we have these as
+# placeholders and the tensor module fills them
 def as_tensor(data):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
@@ -30,11 +33,11 @@ class DimShuffle(Op):
     """
     Usage: DimShuffle(new_order, inplace = True)
 
-    * new_order: a list representing the relationship between the
-                 input's dimensions and the output's dimensions. Each
-                 element of the list can either be an index or 'x'.
-    * inplace: if True, the output will be a view of the input.
-               If False, the output will be a copy of the input.
+     - new_order: a list representing the relationship between the
+                  input's dimensions and the output's dimensions. Each
+                  element of the list can either be an index or 'x'.
+     - inplace: if True, the output will be a view of the input.
+                If False, the output will be a copy of the input.
 
     If j = new_order[i] is an index, the output's ith dimension
       will be the input's jth dimension.
@@ -47,6 +50,7 @@ class DimShuffle(Op):
 
     Examples:
       # t<n> represents a n-d tensor
+      DimShuffle(t0, ['x']) -> make a 0d (scalar) into a 1d vector
       DimShuffle(t2, [0, 1]) -> identity
       DimShuffle(t2, [1, 0]) -> inverts the first and second dimensions
       DimShuffle(t1, ['x', 0]) -> make a row out of a 1d vector
@@ -54,6 +58,8 @@ class DimShuffle(Op):
       DimShuffle(t3, [2, 0, 1]) -> like doing t3.transpose((2, 0, 1)) in numpy
       DimShuffle(t2, [0, 'x', 1]) -> like doing t3.reshape((t3.shape[0], 1, t3.shape[1])) in numpy
       DimShuffle(t2, [1, 'x', 0]) -> like doing t3.T.reshape((t3.shape[0], 1, t3.shape[1])) in numpy
+
+    @todo: Default value for inplace should be False! Unsafe optimizations should be explicitly enabled.
     """
     
     def __init__(self, input_broadcastable, new_order, inplace = True):
@@ -113,7 +119,10 @@ class DimShuffle(Op):
         return hash(self.inplace) ^ hash(self.new_order) ^ hash(self.input_broadcastable)
 
     def __str__(self):
-        return "DimShuffle{%s}" % "".join(str(x) for x in self.new_order)
+        if self.inplace:
+            return "InplaceDimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
+        else:
+            return "DimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
 
     def perform(self, node, (input, ), (storage, )):
         # drop

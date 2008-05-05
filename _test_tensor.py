@@ -572,6 +572,17 @@ def check_eq2_both(self, inputs, output, args_in, arg_out):
     val = fn(*args_in)
     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
+class T_Shape(unittest.TestCase):
+    def test_basic0(self):
+        s = shape(numpy.ones((5, 3)))
+        self.failUnless((eval_outputs([s]) == [5, 3]).all())
+    def test_basic1(self):
+        s = shape(numpy.ones((2)))
+        self.failUnless((eval_outputs([s]) == [2]).all())
+    def test_basic2(self):
+        s = shape(numpy.ones((5, 3, 10)))
+        self.failUnless((eval_outputs([s]) == [5, 3, 10]).all())
+
 class T_argmax(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(123784)
@@ -680,149 +691,197 @@ class T_transpose(unittest.TestCase):
         verify_grad(self, transpose_inplace, [numpy.random.rand(2, 3)])
         verify_grad(self, transpose_inplace, [numpy.ones(3)])
 
-# class T_subtensor(unittest.TestCase):
-#     def test0_err_invalid(self):
-#         #it is impossible to retrieve a view of a 0-d tensor
-#         n = astensor(numpy.ones(()))
-#         try:
-#             t = n[0]
-#         except ValueError, e:
-#             self.failUnless(e[0] is Subtensor.e_invalid)
-#             return
-#         self.fail()
-#     def test1_err_bounds(self):
-#         n = astensor(numpy.ones(3))
-#         t = n[7]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         try:
-#             tval = eval_outputs([t])
-#         except Exception, e:
-#             if e[0] != 'index out of bounds':
-#                 raise
-#             return
-#         self.fail()
-#     def test1_ok_range_finite(self):
-#         n = astensor(numpy.ones(3)*5)
-#         t = n[0:2]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (2,))
-#         self.failUnless(tval[1] == 5.0)
-#     def test2_ok_range_finite(self):
-#         n = astensor(numpy.ones((3,4))*5)
-#         t = n[0:2,3]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (2,))
-#         self.failUnless(tval[1] == 5.0)
-#     def test1_err_invalid(self):
-#         n = astensor(numpy.ones(1))
-#         try:
-#             t = n[0,0]
-#         except ValueError, e:
-#             self.failUnless(e[0] is Subtensor.e_invalid)
-#             return
-#         self.fail()
-#     def test1_ok_elem(self):
-#         n = astensor(numpy.ones(1)*5)
-#         t = n[0]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == ())
-#         self.failUnless(tval == 5.0)
-#     def test1_ok_range_infinite(self):
-#         n = astensor(numpy.ones(3)*5)
-#         t = n[1:]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (2,))
-#         self.failUnless(tval[1] == 5.0)
-#     def test1_ok_strided(self):
-#         n = astensor(numpy.ones(5)*5)
-#         t = n[1::2]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (2,))
-#         self.failUnless(tval[1] == 5.0)
+class T_subtensor(unittest.TestCase):
+    def setUp(self):
+        Subtensor.debug = False
+        numpy.random.seed(12353123)
 
-#         tval = eval_outputs([n[0:-1:2]]) #0 to 1 from the end stepping by 2
-#         self.failUnless(tval.shape == (2,))
-#         self.failUnless(tval[1] == 5.0)
+    def test0_err_invalid(self):
+        #it is impossible to retrieve a view of a 0-d tensor
+        n = astensor(numpy.ones(()))
+        try:
+            t = n[0]
+        except ValueError, e:
+            self.failUnless(e[0] is Subtensor.e_invalid)
+            return
+        self.fail()
+    def test1_err_bounds(self):
+        n = astensor(numpy.ones(3))
+        t = n[7]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        try:
+            tval = eval_outputs([t])
+        except Exception, e:
+            if e[0] != 'index out of bounds':
+                raise
+            return
+        self.fail()
+    def test1_ok_range_finite(self):
+        n = astensor(numpy.ones(3)*5)
+        t = n[0:2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
+    def test2_ok_range_finite(self):
+        n = astensor(numpy.ones((3,4))*5)
+        t = n[0:2,3]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
+    def test1_err_invalid(self):
+        n = astensor(numpy.ones(1))
+        try:
+            t = n[0,0]
+        except ValueError, e:
+            self.failUnless(e[0] is Subtensor.e_invalid)
+            return
+        self.fail()
+    def test1_ok_elem(self):
+        n = astensor(numpy.ones(1)*5)
+        t = n[0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == ())
+        self.failUnless(tval == 5.0)
+    def test1_ok_range_infinite(self):
+        #Subtensor.debug = True
+        n = astensor(numpy.ones(3)*5)
+        t = n[1:]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
+    def test1_ok_strided(self):
+        n = astensor(numpy.ones(5)*5)
+        t = n[1::2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
 
-#     def test2_err_bounds0(self):
-#         n = astensor(numpy.ones((2,3))*5)
-#         t = n[0,4]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         try:
-#             tval = eval_outputs([t])
-#         except IndexError, e:
-#             return
-#         self.fail()
-#     def test2_err_bounds1(self):
-#         n = astensor(numpy.ones((2,3))*5)
-#         t = n[4:5,2]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         try:
-#             tval = eval_outputs([t])
-#         except Exception, e:
-#             if e[0] != 'index out of bounds':
-#                 raise
-#     def test2_ok_elem(self):
-#         n = astensor(numpy.asarray(range(6)).reshape((2,3)))
-#         t = n[0,2]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == ())
-#         self.failUnless(numpy.all(tval == 2))
-#     def test2_ok_row(self):
-#         n = astensor(numpy.asarray(range(6)).reshape((2,3)))
-#         t = n[1]
-#         self.failIf(any(n.broadcastable))
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (3,))
-#         self.failUnless(numpy.all(tval == [3,4,5]))
+        tval = eval_outputs([n[0:-1:2]]) #0 to 1 from the end stepping by 2
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(tval[1] == 5.0)
 
-#     def test2_ok_col(self):
-#         n = astensor(numpy.ones((2,3))*5)
-#         t = n[:,0]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         self.failIf(any(n.broadcastable))
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (2,))
-#         self.failUnless(numpy.all(tval == 5.0))
+    def test2_err_bounds0(self):
+        n = astensor(numpy.ones((2,3))*5)
+        t = n[0,4]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        try:
+            tval = eval_outputs([t])
+        except IndexError, e:
+            return
+        self.fail()
+    def test2_err_bounds1(self):
+        n = astensor(numpy.ones((2,3))*5)
+        t = n[4:5,2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        try:
+            tval = eval_outputs([t])
+        except Exception, e:
+            if e[0] != 'index out of bounds':
+                raise
+    def test2_ok_elem(self):
+        n = astensor(numpy.asarray(range(6)).reshape((2,3)))
+        t = n[0,2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == ())
+        self.failUnless(numpy.all(tval == 2))
+    def test2_ok_row(self):
+        n = astensor(numpy.asarray(range(6)).reshape((2,3)))
+        t = n[1]
+        self.failIf(any(n.broadcastable))
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (3,))
+        self.failUnless(numpy.all(tval == [3,4,5]))
 
-#     def test2_ok_rows_finite(self):
-#         n = astensor(numpy.ones((4,3))*5)
-#         t = n[1:3,0]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (2,))
-#         self.failUnless(numpy.all(tval == 5.0))
+    def test2_ok_col(self):
+        n = astensor(numpy.ones((2,3))*5)
+        t = n[:,0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        self.failIf(any(n.broadcastable))
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(numpy.all(tval == 5.0))
 
-#     def test2_ok_cols_infinite(self):
-#         n = astensor(numpy.asarray(range(12)).reshape((4,3)))
-#         t = n[1,2:]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (1,))
-#         self.failUnless(numpy.all(tval == 5))
+    def test2_ok_rows_finite(self):
+        n = astensor(numpy.ones((4,3))*5)
+        t = n[1:3,0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,))
+        self.failUnless(numpy.all(tval == 5.0))
 
-#     def test2_ok_strided(self):
-#         n = astensor(numpy.asarray(range(20)).reshape((4,5)))
-#         t = n[1:4:2,1:5:2]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == (2,2))
-#         self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
+    def test2_ok_cols_infinite(self):
+        n = astensor(numpy.asarray(range(12)).reshape((4,3)))
+        t = n[1,2:]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (1,))
+        self.failUnless(numpy.all(tval == 5))
 
-#     def test3_ok_mat(self):
-#         n = astensor(numpy.asarray(range(24)).reshape((2,3,4)))
-#         t = n[0,0,0]
-#         self.failUnless(t.owner.__class__ is Subtensor)
-#         tval = eval_outputs([t])
-#         self.failUnless(tval.shape == ())
-#         self.failUnless(numpy.all(tval == 0))
+    def test2_ok_strided(self):
+        n = astensor(numpy.asarray(range(20)).reshape((4,5)))
+        t = n[1:4:2,1:5:2]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == (2,2))
+        self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
+
+    def test3_ok_mat(self):
+        n = astensor(numpy.asarray(range(24)).reshape((2,3,4)))
+        t = n[0,0,0]
+        self.failUnless(t.owner.__class__ is Subtensor)
+        tval = eval_outputs([t])
+        self.failUnless(tval.shape == ())
+        self.failUnless(numpy.all(tval == 0))
+
+
+    def test_grad_1d(self):
+        n = astensor(numpy.random.rand(2,3))
+        z = scal.constant(0)
+        t = n[z:,z]
+        gn = gradient.grad(sum(exp(t)), n)
+        gval = eval_outputs([gn])
+        s0 = 'array([ 2.05362099,  0.        ,  0.        ])'
+        s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
+        self.failUnless(repr(gval[0,:]) == s0)
+        self.failUnless(repr(gval[1,:]) == s1)
+
+    def test_grad_0d(self):
+        n = astensor(numpy.random.rand(2,3))
+        t = n[1,0]
+        gn = gradient.grad(sum(exp(t)), n)
+        gval = eval_outputs([gn])
+        g0 = repr(gval[0,:])
+        g1 = repr(gval[1,:])
+        s0 = 'array([ 0.,  0.,  0.])'
+        s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
+        self.failUnless(g0 == s0, (g0, s0))
+        self.failUnless(g1 == s1, (g1, s1))
+
+
+
+class T_Stack(unittest.TestCase):
+    def test_hstack(self):
+        a = astensor(numpy.array([[1, 2, 3], [4, 5, 6]]), broadcastable=[False,False])
+        b = astensor(numpy.array([[7], [8]]), broadcastable=[False,False])
+        s = horizontal_stack(a, b)
+        c = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]])
+        self.failUnless((eval_outputs([s]) == c).all())
+    def test_vstack(self):
+        a = astensor(numpy.array([[1, 2, 3], [4, 5, 6]]), broadcastable=[False,False])
+        b = astensor(numpy.array([[7, 8, 9]]), broadcastable=[False,False])
+        s = vertical_stack(a, b)
+        c = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        self.failUnless((eval_outputs([s]) == c).all())
+
+
+
 
 
 # class T_add(unittest.TestCase):
@@ -964,7 +1023,6 @@ class T_transpose(unittest.TestCase):
 #             self.fail()
 #         except ValueError, e:
 #             self.failUnless('shape mismatch' in str(e))
-        
 #         try:
 #             check_eq2_c(self, [a,b], Mul(a,b).out,
 #                         [numpy.ones(3), numpy.ones(4)], 1.0)
@@ -1284,7 +1342,34 @@ class t_gemm(unittest.TestCase):
                 return
         self.fail()
 
+class T_tensorfromscalar(unittest.TestCase):
+    def test0(self):
+        s = scal.constant(56)
+        t = tensor_from_scalar(s)
+        self.failUnless(t.owner.__class__ is TensorFromScalar)
+        self.failUnless(t.broadcastable == (), t.broadcastable)
+        self.failUnless(t.ndim == 0, t.ndim)
+        self.failUnless(t.dtype == s.dtype)
 
+        v = eval_outputs([t])
+
+        self.failUnless(v == 56, v)
+        self.failUnless(isinstance(v, numpy.ndarray))
+        self.failUnless(v.shape == (), v.shape)
+
+    def test1(self):
+        s = scal.constant(56)
+        t = astensor(s)
+        self.failUnless(t.owner.__class__ is TensorFromScalar)
+        self.failUnless(t.broadcastable == (), t.broadcastable)
+        self.failUnless(t.ndim == 0, t.ndim)
+        self.failUnless(t.dtype == s.dtype)
+
+        v = eval_outputs([t])
+
+        self.failUnless(v == 56, v)
+        self.failUnless(isinstance(v, numpy.ndarray))
+        self.failUnless(v.shape == (), v.shape)
 
 
 # def _tensor(data, broadcastable=None, name=None):
@@ -1424,4 +1509,8 @@ class t_gemm(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+<<<<<<< /u/breuleuo/hg/theano2/_test_tensor.py
     #AddTester('test_grad').debug()
+=======
+    
+>>>>>>> /tmp/_test_tensor.py~other.dM43H3

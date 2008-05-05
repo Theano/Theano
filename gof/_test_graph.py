@@ -1,11 +1,35 @@
 
-
+from collections import deque
 import unittest
 from graph import *
 
 from op import Op
 from type import Type
 from graph import Result
+
+def inputs(result_list):
+    """
+    @type result_list: list of L{Result}
+    @param result_list: output L{Result}s (from which to search backward through owners)
+    @returns: the list of L{Result}s with no owner, in the order found by a
+    left-recursive depth-first search started at the L{Result}s in result_list.
+
+    """
+    def expand(r):
+        if r.owner:
+            l = list(r.owner.inputs)
+            l.reverse()
+            return l
+    dfs_results = stack_search(deque(result_list), expand, 'dfs')
+    rval = [r for r in dfs_results if r.owner is None]
+    #print rval, _orig_inputs(o)
+    return rval
+
+if 1:
+    testcase = unittest.TestCase
+else:
+    testcase = object
+    realtestcase = unittest.TestCase
 
 
 
@@ -18,10 +42,10 @@ class MyType(Type):
         return isinstance(other, MyType) and other.thingy == self.thingy
 
     def __str__(self):
-        return str(self.thingy)
+        return 'R%s' % str(self.thingy)
 
     def __repr__(self):
-        return str(self.thingy)
+        return 'R%s' % str(self.thingy)
 
 def MyResult(thingy):
     return Result(MyType(thingy), None, None)
@@ -75,43 +99,44 @@ MyOp = MyOp()
 #         self.outputs = [MyResult(sum([input.thingy for input in inputs]))]
 
 
-class _test_inputs(unittest.TestCase):
+class _test_inputs(testcase):
 
     def test_straightforward(self):
         r1, r2 = MyResult(1), MyResult(2)
         node = MyOp.make_node(r1, r2)
-        assert inputs(node.outputs) == set([r1, r2])
+        assert inputs(node.outputs) == [r1, r2]
 
     def test_deep(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
-        assert inputs(node2.outputs) == set([r1, r2, r5])
+        i = inputs(node2.outputs)
+        self.failUnless(i == [r1, r2, r5], i)
 
 #     def test_unreached_inputs(self):
 #         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
-#         node = MyOp.make_node(r1, r2)
-#         node2 = MyOp.make_node(node.outputs[0], r5)
+#         op = MyOp(r1, r2)
+#         op2 = MyOp(op.outputs[0], r5)
 #         try:
 #             # function doesn't raise if we put False instead of True
-#             ro = results_and_orphans([r1, r2, node2.outputs[0]], node.outputs, True)
-#             self.fail()
+#             ro = results_and_orphans([r1, r2, op2.outputs[0]], op.outputs, True)
 #         except Exception, e:
 #             if e[0] is results_and_orphans.E_unreached:
 #                 return
-#             raise
+#         self.fail()
 
 
-class _test_orphans(unittest.TestCase):
+class _test_orphans(testcase):
 
     def test_straightforward(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
-        assert orphans([r1, r2], node2.outputs) == set([r5])
+        orph = orphans([r1, r2], node2.outputs)
+        self.failUnless(orph == [r5], orph)
     
 
-class _test_as_string(unittest.TestCase):
+class _test_as_string(testcase):
 
     leaf_formatter = lambda self, leaf: str(leaf.type)
     node_formatter = lambda self, node, argstrings: "%s(%s)" % (node.op,
@@ -125,29 +150,31 @@ class _test_as_string(unittest.TestCase):
     def test_straightforward(self):
         r1, r2 = MyResult(1), MyResult(2)
         node = MyOp.make_node(r1, r2)
-        assert self.str([r1, r2], node.outputs) == ["MyOp(1, 2)"]
+        s = self.str([r1, r2], node.outputs)
+        self.failUnless(s == ["MyOp(R1, R2)"], s)
 
     def test_deep(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
-        assert self.str([r1, r2, r5], node2.outputs) == ["MyOp(MyOp(1, 2), 5)"]
+        s = self.str([r1, r2, r5], node2.outputs)
+        self.failUnless(s == ["MyOp(MyOp(R1, R2), R5)"], s)
 
     def test_multiple_references(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], node.outputs[0])
-        assert self.str([r1, r2, r5], node2.outputs) == ["MyOp(*1 -> MyOp(1, 2), *1)"]
+        assert self.str([r1, r2, r5], node2.outputs) == ["MyOp(*1 -> MyOp(R1, R2), *1)"]
 
     def test_cutoff(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], node.outputs[0])
-        assert self.str(node.outputs, node2.outputs) == ["MyOp(3, 3)"]
-        assert self.str(node2.inputs, node2.outputs) == ["MyOp(3, 3)"]
+        assert self.str(node.outputs, node2.outputs) == ["MyOp(R3, R3)"]
+        assert self.str(node2.inputs, node2.outputs) == ["MyOp(R3, R3)"]
 
 
-class _test_clone(unittest.TestCase):
+class _test_clone(testcase):
 
     leaf_formatter = lambda self, leaf: str(leaf.type)
     node_formatter = lambda self, node, argstrings: "%s(%s)" % (node.op,
@@ -162,7 +189,7 @@ class _test_clone(unittest.TestCase):
         r1, r2 = MyResult(1), MyResult(2)
         node = MyOp.make_node(r1, r2)
         _, new = clone([r1, r2], node.outputs, False)
-        assert self.str([r1, r2], new) == ["MyOp(1, 2)"]
+        assert self.str([r1, r2], new) == ["MyOp(R1, R2)"]
 
     def test_copy(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
@@ -181,14 +208,89 @@ class _test_clone(unittest.TestCase):
         _, new = clone([r1, r2, r5], node.outputs, False)
         new_node = new[0].owner
         new_node.inputs = MyResult(7), MyResult(8)
+        assert self.str(inputs(new_node.outputs), new_node.outputs) == ["MyOp(R7, R8)"]
+        assert self.str(inputs(node.outputs), node.outputs) == ["MyOp(MyOp(R1, R2), R5)"]
 
-        assert self.str(inputs(new_node.outputs), new_node.outputs) == ["MyOp(7, 8)"]
-        assert self.str(inputs(node.outputs), node.outputs) == ["MyOp(MyOp(1, 2), 5)"]
+def prenode(obj):
+    if isinstance(obj, Result): 
+        if obj.owner:
+            return [obj.owner]
+    if isinstance(obj, Op):
+        return obj.inputs
+
+class _test_toposort(testcase):
+    def test0(self):
+        """Test a simple graph"""
+        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        o = MyOp(r1, r2)
+        o2 = MyOp(o.outputs[0], r5)
+
+        all = general_toposort(o2.outputs, prenode)
+        self.failUnless(all == [r5, r2, r1, o, o.outputs[0], o2, o2.outputs[0]], all)
+
+        all = io_toposort([r5], o2.outputs)
+        self.failUnless(all == [o, o2], all)
+
+    def test1(self):
+        """Test a graph with double dependencies"""
+        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        o = MyOp(r1, r1)
+        o2 = MyOp(o.outputs[0], r5)
+        all = general_toposort(o2.outputs, prenode)
+        self.failUnless(all == [r5, r1, o, o.outputs[0], o2, o2.outputs[0]], all)
+
+    def test2(self):
+        """Test a graph where the inputs have owners"""
+        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        o = MyOp(r1, r1)
+        r2b = o.outputs[0]
+        o2 = MyOp(r2b, r2b)
+        all = io_toposort([r2b], o2.outputs)
+        self.failUnless(all == [o2], all)
+
+        o2 = MyOp(r2b, r5)
+        all = io_toposort([r2b], o2.outputs)
+        self.failUnless(all == [o2], all)
+
+    def test3(self):
+        """Test a graph which is not connected"""
+        r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
+        o0 = MyOp(r1, r2)
+        o1 = MyOp(r3, r4)
+        all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
+        self.failUnless(all == [o1,o0], all)
+
+    def test4(self):
+        """Test inputs and outputs mixed together in a chain graph"""
+        r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
+        o0 = MyOp(r1, r2)
+        o1 = MyOp(o0.outputs[0], r1)
+        all = io_toposort([r1, o0.outputs[0]], [o0.outputs[0], o1.outputs[0]])
+        self.failUnless(all == [o1], all)
+
+    def test5(self):
+        """Test when outputs have clients"""
+        r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
+        o0 = MyOp(r1, r2)
+        o1 = MyOp(o0.outputs[0], r4)
+        all = io_toposort([], o0.outputs)
+        self.failUnless(all == [o0], all)
 
 
 
 if __name__ == '__main__':
-    unittest.main()
+    if 1:
+        #run all tests
+        unittest.main()
+    elif 1:
+        #load some TestCase classes
+        suite = unittest.TestLoader()
+        suite = suite.loadTestsFromTestCase(_test_toposort)
 
+        #run just some of them
+        unittest.TextTestRunner(verbosity=2).run(suite)
 
+    else:
+        #run just a single test
+        _test_toposort('test0').debug()
 

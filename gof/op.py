@@ -35,13 +35,14 @@ class Op(object2):
     # Python implementation #
     #########################
 
-    def impl(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage):
         """
         Calculate the function on the inputs and put the results in the
         output storage.
 
         - inputs: sequence of inputs (immutable)
-        - outputs: mutable list
+        - output_storage: list of mutable 1-element lists (do not change
+                          the length of these lists)
 
         The output_storage list might contain data. If an element of
         output_storage is not None, it is guaranteed that it was produced
@@ -50,35 +51,9 @@ class Op(object2):
         """
         raise AbstractFunctionError()
 
-
     #####################
     # C code generation #
     #####################
-
-#     def c_validate_update(self, inputs, outputs, sub):
-#         """
-#         Returns templated C code that checks that the inputs to this
-#         function can be worked on. If a failure occurs, set an
-#         Exception and insert "%(fail)s".
-        
-#         You may use the variable names defined by c_var_names() in
-#         the template.
-
-#         Note: deprecated!!
-#         @todo: Merge this with c_code.
-#         """
-#         raise AbstractFunctionError()
-
-#     def c_validate_update_cleanup(self, inputs, outputs, sub):
-#         """
-#         Clean up things allocated by L{c_validate}().
-
-#         Note: deprecated!! 
-#         @todo: Merge this with c_code.
-#         """
-#         raise AbstractFunctionError()
-#         raise AbstractFunctionError('%s.c_validate_update_cleanup ' \
-#                 % self.__class__.__name__)
 
     def c_code(self, node, name, inputs, outputs, sub):
         """Return the C implementation of an Op.
@@ -151,28 +126,3 @@ class PropertiedOp(Op):
             return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%s" % (k, v) for k, v in self.__dict__.items() if k != "name"))
 
 
-
-
-# #TODO: consider adding a flag to the base class that toggles this behaviour
-# class GuardedOp(Op):
-#     """An Op that disallows input properties to change after construction"""
-
-#     def set_input(self, i, new):
-#         old = self._inputs[i]
-#         if old is new:
-#             return
-#         try:
-#             if not old.same_properties(new):
-#                 raise TypeError("The new input must have the same properties as the previous one.")
-#         except AbstractFunctionError:
-#             pass
-#         Op.set_input(self, i, new)
-
-#     def set_inputs(self, new):
-#         if not hasattr(self, '_inputs') or self_inputs is None:
-#             Op.set_inputs(self, new)
-#         else:
-#             if not len(new) == len(self._inputs):
-#                 raise TypeError("The new inputs are not as many as the previous ones.")
-#             for i, new in enumerate(new):
-#                 self.set_input(i, new)
