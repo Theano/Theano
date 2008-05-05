@@ -10,11 +10,12 @@ from gof import Result, Op, utils, Destroyer, Viewer, AbstractFunctionError, Typ
 import gof
 
 import blas # for gemm, dot
+import gradient
 
 import elemwise as s2t
 import scalar as scal
 
-from functools import partial
+from gof.python25 import partial
 
 
 def as_tensor(x, name = None):
@@ -348,8 +349,10 @@ class _tensor_py_operators:
         args = slice(*args),
         return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Result)))
 
-    #COPYING
-    def copy(self): return tensor_copy(self)
+    def __iter__(self): 
+        # This prevents accidental iteration via builtin.sum(self)
+        raise TypeError('Tensor does not support iteration')
+    
 
 class TensorResult(Result, _tensor_py_operators):
     pass
@@ -381,9 +384,20 @@ class TensorFromScalar(Op):
     def perform(self, node, (s, ), (out, )):
         out[0] = numpy.asarray(s)
     def grad(self, (s,), (dt,)):
-        raise NotImplementedError('todo: ScalarFromTensor')
+        return [ScalarFromTensor(dt)]
 tensor_from_scalar = TensorFromScalar()
 
+class ScalarFromTensor(Op):
+    def __init__(self, s, **kwargs):
+        assert isinstance(s, Tensor)
+        Op.__init__(self, **kwargs)
+        self.inputs = [s]
+        self.outputs = [scal.Scalar(s.dtype)]
+    def perform(self):
+        self.outputs[0].data = self.inputs[0].data
+    def grad(self, (s,), (dt,)):
+        return [TensorFromScalar(dt)]
+scalar_from_tensor = gof.op.constructor(ScalarFromTensor)
 
 ##########################
 # Unary Operations
@@ -531,10 +545,13 @@ class Subtensor_dx(Op, Viewer):
         cdata = []
         for c in self.idx_list:
             if isinstance(c, slice):
-                cdata.append(slice(
-                    None if c.start is None else self.inputs[c.start].data, 
-                    None if c.stop is None else self.inputs[c.stop].data, 
-                    None if c.step is None else self.inputs[c.step].data))
+                if c.start is None: start = None
+                else: start = self.inputs[c.start].data
+                if c.stop is None: stop = None
+                else: stop = self.inputs[c.stop].data
+                if c.step is None: step = None
+                else: step = self.inputs[c.step].data
+                cdata.append(slice(start, stop, step))
             else:
                 d = self.inputs[c].data
                 assert 'int' in str(d.dtype)
@@ -663,7 +680,6 @@ class Subtensor(Op):
     def __hash__(self):
         # FIXME: this doesn't work if there are slices in the list because for some mysterious reason slice is unhashable
         return hash(tuple(self.idx_list))
-
 
 class SetSubtensor(Subtensor):
     view_map = {}
@@ -1024,4 +1040,32 @@ class Gemm(Op):
 
         """ % dict(locals(), **sub)
 gemm = Gemm()
+
+
+
+#########################
+# Gradient
+#########################
+
+def grad(cost, wrt, g_cost=None):
+    """
+    @type cost: L{Result}
+    @type wrt: L{Result} or list of L{Result}s.
+    @type g_cost: L{Result} broadcastable to size of I{cost}, or None
+    @param g_cost: an expression for the gradient through cost.  The default is
+        {{{ones_like(cost)}}}
+
+    @rtype: L{Result} or list of L{Result}s (depending upon I{wrt})
+    @return: symbolic expression of gradient of I{cost} with respect to I{wrt}.
+    If I{wrt} is a list, then return a list containing the gradient of I{cost} wrt
+    each element of the list.
+    """
+    if g_cost is None:
+        g_cost = ones_like(cost)
+    inputs = gof.graph.inputs([cost])
+    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs)
+    if isinstance(wrt, list):
+        return [gmap.get(p, None) for p in wrt]
+    else:
+        return gmap.get(wrt, None)
 

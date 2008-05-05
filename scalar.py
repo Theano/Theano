@@ -4,10 +4,9 @@ import math
 
 from copy import copy
 
-from functools import partial
-
 import gof
 from gof import PropertiedType, Op, PropertiedOp, utils, Result, Constant, Type, Apply, Env
+from gof.python25 import partial
 
 def upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)

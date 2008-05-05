@@ -258,7 +258,7 @@ class _testCase_dot(unittest.TestCase):
             y = dense_from_sparse(dot(w.T, xw))
             diff = x-y
             loss = tensor.sum(tensor.sqr(diff))
-            gw = gradient.grad(loss, w)
+            gw = tensor.grad(loss, w)
             trainfn = compile.function([x, w], [y, loss, gw])
 
             x = numpy.asarray([[1., 2], [3, 4], [2, 1]])
@@ -284,8 +284,13 @@ class _testCase_dot(unittest.TestCase):
                 y = dense_from_sparse(dot(w.T, xw))
                 diff = x-y
                 loss = tensor.sum(tensor.sqr(diff))
+<<<<<<< /u/breuleuo/hg/theano2/_test_sparse.py
                 gw = gradient.grad(loss, w)
                 trainfn = compile.function([x, w], [y, loss, gw])
+=======
+                gw = tensor.grad(loss, w)
+                trainfn = compile.Function([x, w], [y, loss, gw])
+>>>>>>> /tmp/_test_sparse.py~other.JkNMX5
 
                 x = xorig
                 w = mtype((500,3))

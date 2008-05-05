@@ -309,8 +309,6 @@ def fast_compute(*outputs):
 #     return rval
 
 
-
-
 # StateFunction([x, y], [e], (w, w + lr * bla()))
 
 

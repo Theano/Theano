@@ -1,3 +1,4 @@
+import traceback
 from tensor import *
 import tensor # for hidden symbols
 
@@ -511,7 +512,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
 
         num_grad = gradient.numeric_grad(cost_fn, pt)
 
-        symbolic_grad = gradient.grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
+        symbolic_grad = grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
         if 0:
             print '-------'
             print '----------'
@@ -846,7 +847,7 @@ class T_subtensor(unittest.TestCase):
         n = as_tensor(numpy.random.rand(2,3))
         z = scal.constant(0)
         t = n[z:,z]
-        gn = gradient.grad(sum(exp(t)), n)
+        gn = grad(sum(exp(t)), n)
         gval = eval_outputs([gn])
         s0 = 'array([ 2.05362099,  0.        ,  0.        ])'
         s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
@@ -856,7 +857,7 @@ class T_subtensor(unittest.TestCase):
     def test_grad_0d(self):
         n = as_tensor(numpy.random.rand(2,3))
         t = n[1,0]
-        gn = gradient.grad(sum(exp(t)), n)
+        gn = grad(sum(exp(t)), n)
         gval = eval_outputs([gn])
         g0 = repr(gval[0,:])
         g1 = repr(gval[1,:])
@@ -1091,7 +1092,7 @@ class _testCase_matinv(unittest.TestCase):
         # Sum of squared errors
         ssdiff = sum((diff**2.0))
 
-        g_b = gradient.grad(ssdiff, b)
+        g_b = grad(ssdiff, b)
 
         # compilation to function
         # [a,b] are the inputs, [ssdiff,g_b] are the outputs
@@ -1504,6 +1505,43 @@ class T_tensorfromscalar(unittest.TestCase):
 #         self.failUnless(tt.data == 1.0)
 #         self.failUnless(t.data == 1.0)
 #         self.failUnless(t.data is not tt.data)
+
+class _test_grad(unittest.TestCase):
+    class O(gof.op.Op):
+        def __init__(self):
+            self.inputs = [scalar('a'),scalar('c')]
+            self.outputs = [scalar('b'),scalar('d')]
+            self.gval0 = scalar('e')
+            self.gval1 = scalar('f')
+        def grad(self, (x0,x1), (gz0,gz1)):
+            return self.gval0, self.gval1
+
+    def test_1param(self):
+        """grad: Test passing a single result param"""
+        a1 = _test_grad.O()
+        self.failUnless(a1.gval0 is grad(a1.outputs[0], a1.inputs[0]))
+
+    def test_Nparam(self):
+        """grad: Test passing multiple result params"""
+        a1 = _test_grad.O()
+        g0,g1 = grad(a1.outputs[0], a1.inputs)
+        self.failUnless(a1.gval0 is g0)
+        self.failUnless(a1.gval1 is g1)
+
+    def test_1None_rval(self):
+        """grad: Test returning a single None from grad"""
+        a1 = _test_grad.O()
+        self.failUnless(None is grad(a1.outputs[0], a1.outputs[1]))
+        self.failUnless(None is grad(a1.outputs[0], 'wtf'))
+    def test_NNone_rval(self):
+        """grad: Test returning some Nones from grad"""
+        a1 = _test_grad.O()
+        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + ['wtf'])
+        self.failUnless(a1.gval0 is g0)
+        self.failUnless(a1.gval1 is g1)
+        self.failUnless(None is g2)
+
+
 
 
 
