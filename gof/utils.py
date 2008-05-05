@@ -61,6 +61,7 @@ def difference(seq1, seq2):
         # -> use O(len(seq1) * len(seq2)) algo
         return [x for x in seq1 if x not in seq2]
 
+
 def partition(f, seq):
     seqt = []
     seqf = []

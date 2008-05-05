@@ -7,10 +7,10 @@ import result, op
 
 
 __all__ = ['inputs',
-           'results_and_orphans', 'results', 'orphans',
+           'results_and_orphans', 'results', 'orphans', 'stack_search',
            'ops',
            'clone', 'clone_get_equiv',
-           'io_toposort',
+           'io_toposort', 'general_toposort',
            'default_leaf_formatter', 'default_node_formatter',
            'op_as_string',
            'as_string',
@@ -61,6 +61,8 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
         return rval_list, expand_inv
     return rval_list
 
+
+@utils.deprecated('gof.graph', 'is this function ever used?')
 def inputs(result_list):
     """
     @type result_list: list of L{Result}
@@ -79,54 +81,6 @@ def inputs(result_list):
     #print rval, _orig_inputs(o)
     return rval
 
-
-@utils.deprecated('gof.graph', 'preserving only for review')
-def _results_and_orphans(i, o, except_unreachable_input=False):
-    """
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
-
-    Returns the pair (results, orphans). The former is the set of
-    L{Result}s that are involved in the subgraph that lies between i and
-    o. This includes i, o, orphans(i, o) and all results of all
-    intermediary steps from i to o. The second element of the returned
-    pair is orphans(i, o).
-    """
-    results = set()
-    i = set(i)
-    results.update(i)
-    incomplete_paths = []
-    reached = set()
-
-    def helper(r, path):
-        if r in i:
-            reached.add(r)
-            results.update(path)
-        elif r.owner is None:
-            incomplete_paths.append(path)
-        else:
-            op = r.owner
-            for r2 in op.inputs:
-                helper(r2, path + [r2])
-
-    for output in o:
-        helper(output, [output])
-
-    orphans = set()
-    for path in incomplete_paths:
-        for r in path:
-            if r not in results:
-                orphans.add(r)
-                break
-
-    if except_unreachable_input and len(i) != len(reached):
-        raise Exception(results_and_orphans.E_unreached)
-
-    results.update(orphans)
-
-    return results, orphans
 
 def results_and_orphans(r_in, r_out, except_unreachable_input=False):
     r_in_set = set(r_in)
@@ -282,31 +236,70 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
 
     return d
 
+def general_toposort(r_out, deps):
+    """
+    @note: deps(i) should behave like a pure function (no funny business with
+    internal state)
 
+    @note: deps(i) can/should be cached by the deps function to be fast
+    """
+    deps_cache = {}
+    def _deps(io):
+        if io not in deps_cache:
+            d = deps(io)
+            if d:
+                deps_cache[io] = list(d)
+            else:
+                deps_cache[io] = d
+            return d
+        else:
+            return deps_cache[io]
+
+    assert isinstance(r_out, (tuple, list, deque))
+
+    reachable, clients = stack_search( deque(r_out), _deps, 'dfs', True)
+    sources = deque([r for r in reachable if not deps_cache.get(r, None)])
+
+    rset = set()
+    rlist = []
+    while sources:
+        node = sources.popleft()
+        if node not in rset:
+            rlist.append(node)
+            rset.add(node)
+            for client in clients.get(node, []):
+                deps_cache[client] = [a for a in deps_cache[client] if a is not node]
+                if not deps_cache[client]:
+                    sources.append(client)
+
+    if len(rlist) != len(reachable):
+        print ''
+        print reachable
+        print rlist
+
+        raise 'failed to complete topological sort of given nodes'
+
+    return rlist
+
+    
 def io_toposort(i, o, orderings = {}):
-    """
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
-    @param orderings: {op: [requirements for op]} (defaults to {})
+    iset = set(i)
+    def deps(obj):
+        rval = []
+        if obj not in iset:
+            if isinstance(obj, result.Result): 
+                if obj.owner:
+                    rval = [obj.owner]
+            if isinstance(obj, op.Op):
+                rval = list(obj.inputs)
+            rval.extend(orderings.get(obj, []))
+        else:
+            assert not orderings.get(obj, [])
+        return rval
+    topo = general_toposort(o, deps)
+    return [o for o in topo if isinstance(o, op.Op)]
 
-    @rtype: ordered list
-    @return: L{Op}s that belong in the subgraph between i and o which
-    respects the following constraints:
-     - all inputs in i are assumed to be already computed
-     - the L{Op}s that compute an L{Op}'s inputs must be computed before it
-     - the orderings specified in the optional orderings parameter must be satisfied
 
-    Note that this function does not take into account ordering information
-    related to destructive operations or other special behavior.
-    """
-    prereqs_d = copy(orderings)
-    all = ops(i, o)
-    for op in all:
-        asdf = set([input.owner for input in op.inputs if input.owner and input.owner in all])
-        prereqs_d.setdefault(op, set()).update(asdf)
-    return utils.toposort(prereqs_d)
 
 
 default_leaf_formatter = str
@@ -430,4 +423,82 @@ class Graph:
 
 
 
+if 0:
+    #these were the old implementations
+    # they were replaced out of a desire that graph search routines would not
+    # depend on the hash or id of any node, so that it would be deterministic
+    # and consistent between program executions.
+    @utils.deprecated('gof.graph', 'preserving only for review')
+    def _results_and_orphans(i, o, except_unreachable_input=False):
+        """
+        @type i: list
+        @param i: input L{Result}s
+        @type o: list
+        @param o: output L{Result}s
+
+        Returns the pair (results, orphans). The former is the set of
+        L{Result}s that are involved in the subgraph that lies between i and
+        o. This includes i, o, orphans(i, o) and all results of all
+        intermediary steps from i to o. The second element of the returned
+        pair is orphans(i, o).
+        """
+        results = set()
+        i = set(i)
+        results.update(i)
+        incomplete_paths = []
+        reached = set()
+
+        def helper(r, path):
+            if r in i:
+                reached.add(r)
+                results.update(path)
+            elif r.owner is None:
+                incomplete_paths.append(path)
+            else:
+                op = r.owner
+                for r2 in op.inputs:
+                    helper(r2, path + [r2])
+
+        for output in o:
+            helper(output, [output])
+
+        orphans = set()
+        for path in incomplete_paths:
+            for r in path:
+                if r not in results:
+                    orphans.add(r)
+                    break
+
+        if except_unreachable_input and len(i) != len(reached):
+            raise Exception(results_and_orphans.E_unreached)
+
+        results.update(orphans)
+
+        return results, orphans
+
+
+    def _io_toposort(i, o, orderings = {}):
+        """
+        @type i: list
+        @param i: input L{Result}s
+        @type o: list
+        @param o: output L{Result}s
+        @param orderings: {op: [requirements for op]} (defaults to {})
+
+        @rtype: ordered list
+        @return: L{Op}s that belong in the subgraph between i and o which
+        respects the following constraints:
+         - all inputs in i are assumed to be already computed
+         - the L{Op}s that compute an L{Op}'s inputs must be computed before it
+         - the orderings specified in the optional orderings parameter must be satisfied
+
+        Note that this function does not take into account ordering information
+        related to destructive operations or other special behavior.
+        """
+        prereqs_d = copy(orderings)
+        all = ops(i, o)
+        for op in all:
+            asdf = set([input.owner for input in op.inputs if input.owner and input.owner in all])
+            prereqs_d.setdefault(op, set()).update(asdf)
+        return utils.toposort(prereqs_d)
 
