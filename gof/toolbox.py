@@ -16,6 +16,51 @@ class Bookkeeper:
             self.on_prune(env, node)
 
 
+class Toposorter:    
+    def on_attach(self, env):
+        if hasattr(env, 'toposort'):
+            raise Exception("Toposorter feature is already present or in conflict with another plugin.")
+        env.toposort = partial(self.toposort, env)
+
+    def on_deattach(self, env):
+        del env.toposort
+
+    def toposort(self, env):
+        ords = {}
+        for feature in env._features:
+            if hasattr(feature, 'orderings'):
+                for op, prereqs in feature.orderings(env).items():
+                    ords.setdefault(op, set()).update(prereqs)
+        order = graph.io_toposort(env.inputs, env.outputs, ords)
+        return order
+
+        
+#     def supplemental_orderings(self):
+#         """
+#         Returns a dictionary of {op: set(prerequisites)} that must
+#         be satisfied in addition to the order defined by the structure
+#         of the graph (returns orderings that not related to input/output
+#         relationships).
+#         """
+#         ords = {}
+#         for feature in self._features:
+#             if hasattr(feature, 'orderings'):
+#                 for op, prereqs in feature.orderings().items():
+#                     ords.setdefault(op, set()).update(prereqs)
+#         return ords
+
+#     def toposort(self):
+#         """
+#         Returns a list of nodes in the order that they must be executed
+#         in order to preserve the semantics of the graph and respect
+#         the constraints put forward by the listeners.
+#         """
+#         ords = self.supplemental_orderings()
+#         order = graph.io_toposort(self.inputs, self.outputs, ords)
+#         return order
+
+            
+
 class History:
 
     def __init__(self):

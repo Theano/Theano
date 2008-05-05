@@ -257,7 +257,6 @@ class _test_all(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    #unittest.main()
-    _test_all('test_usage_loop_through_views').debug()
+    unittest.main()
 
 

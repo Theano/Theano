@@ -6,7 +6,7 @@ import numpy
 
 from copy import copy
 
-from gof import Result, Op, utils, Destroyer, Viewer, AbstractFunctionError, Type, Result, Constant, Apply
+from gof import Result, Op, utils, Destroyer, Viewer, AbstractFunctionError, Type, Result, Constant, Apply, Value
 import gof
 
 import blas # for gemm, dot
@@ -27,14 +27,9 @@ def as_tensor(x, name = None):
         if not isinstance(x.type, Tensor):
             raise TypeError("Result type field must be a Tensor.", x, x.type)
         return x
-    if isinstance(x, Constant):
-        if not isinstance(x.type, Tensor):
-            raise TypeError("Constant type field must be a Tensor.", x, x.type)
-        return x
     try:
         return constant(x)
     except TypeError:
-        raise
         raise TypeError("Cannot convert %s to Tensor" % x, type(x))
 # this has a different name, because _as_tensor is the function which ops use
 # to upcast their arguments... this internal-use function is a good place to put debugging stuff, better than the global astensor.
@@ -48,8 +43,17 @@ def constant(x):
         return TensorConstant(Tensor(dtype = x.dtype,
                                      broadcastable = [d == 1 for d in x.shape]), x)
     except:
-        raise
         raise TypeError("Could not convert %s to Tensor" % _x, type(_x))
+
+def value(x):
+    if not isinstance(x, numpy.ndarray):
+        x = numpy.asarray(x)
+    try:
+        return TensorValue(Tensor(dtype = x.dtype,
+                                  broadcastable = [d == 1 for d in x.shape]), x)
+    except:
+        raise TypeError("Could not convert %s to Tensor" % _x, type(_x))
+
 
 
 class Tensor(Type):
@@ -342,10 +346,14 @@ class TensorResult(Result, _tensor_py_operators):
 class TensorConstant(Constant, _tensor_py_operators):
     pass
 
+class TensorValue(Value, _tensor_py_operators):
+    pass
+
 s2t.as_tensor = as_tensor    
 s2t.Tensor = Tensor
 s2t.TensorResult = TensorResult
 s2t.TensorConstant = TensorConstant
+s2t.TensorValue = TensorValue
 
 
 

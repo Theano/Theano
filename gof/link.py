@@ -2,7 +2,7 @@
 from utils import AbstractFunctionError
 import utils
 
-from graph import Constant
+from graph import Value
 
 import sys
 import traceback
@@ -135,16 +135,20 @@ def map_storage(env, order, input_storage, output_storage):
     storage_map = {}
     for r, storage in zip(env.inputs, input_storage):
         storage_map[r] = storage
-    for orphan in env.orphans:
-        if not isinstance(orphan, Constant):
-            raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
-        storage_map[orphan] = [orphan.data]
+#     for orphan in env.orphans:
+#         if not isinstance(orphan, Constant):
+#             raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
+#         storage_map[orphan] = [orphan.data]
     if output_storage is not None:
         assert len(env.outputs) == len(output_storage)
         for r, storage in zip(env.outputs, output_storage):
             storage_map[r] = storage
     thunks = []
     for node in order:
+        for r in node.inputs:
+            if r not in storage_map:
+                assert isinstance(r, Value)
+                storage_map[r] = [r.data]
         for r in node.outputs:
             storage_map.setdefault(r, [None])
 

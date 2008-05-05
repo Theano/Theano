@@ -25,10 +25,6 @@ def as_scalar(x, name = None):
         if not isinstance(x.type, Scalar):
             raise TypeError("Result type field must be a Scalar.", x, x.type)
         return x
-    if isinstance(x, Constant):
-        if not isinstance(x.type, Scalar):
-            raise TypeError("Constant type field must be a Scalar.", x, x.type)
-        return x
     try:
         return constant(x)
     except TypeError:
@@ -582,7 +578,7 @@ tanh = Tanh(upgrade_to_float, name = 'tanh')
 class Composite(ScalarOp):
 
     def __init__(self, inputs, outputs):
-        env = Env(inputs, outputs).clone()
+        env = Env(*gof.graph.clone(inputs, outputs))
         inputs, outputs = env.inputs, env.outputs
 
         for node in env.nodes:
@@ -594,11 +590,12 @@ class Composite(ScalarOp):
                     zip(outputs,
                         ["%%(o%i)s"%i for i in range(len(outputs))]))
 
-        for orphan in env.orphans:
-            if isinstance(orphan, Constant):
-                subd[orphan] = orphan.type.c_literal(orphan.data)
-            else:
-                raise ValueError("All orphans in the env to Composite must be Constant instances.")
+        for orphan in env.results: #env.orphans:
+            if orphan.owner is None and orphan not in env.inputs:
+                if isinstance(orphan, Constant):
+                    subd[orphan] = orphan.type.c_literal(orphan.data)
+                else:
+                    raise ValueError("All orphans in the env to Composite must be Constant instances.")
 
         _c_code = "{\n"
         i = 0
@@ -611,7 +608,7 @@ class Composite(ScalarOp):
                     name = "V%%(id)s_tmp%i" % i
                     subd[output] = name
                     _c_code += "%s %s;\n" % (output.type.dtype_specs()[1], name)
-            _c_code += node.op.c_code(node.inputs,
+            _c_code += node.op.c_code(node,
                                       "%(name)s",
                                       [subd[input] for input in node.inputs],
                                       [subd[output] for output in node.outputs],
@@ -629,7 +626,7 @@ class Composite(ScalarOp):
             if r in env.inputs:
                 idx = env.inputs.index(r)
                 return lambda inputs: inputs[idx]
-            elif r in env.orphans:
+            elif r.owner is None: # in env.orphans:
                 return lambda inputs: r.data
             node = r.owner
             producers = [compose_impl(input) for input in node.inputs]

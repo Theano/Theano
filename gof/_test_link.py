@@ -2,10 +2,12 @@
 
 import unittest
 
-from graph import Result, as_result, Apply
+import graph
+from graph import Result, as_result, Apply, Constant
 from type import Type
 from op import Op
-from env import Env
+import env
+import toolbox
 
 from link import *
 
@@ -67,6 +69,10 @@ def perform_linker(env):
     lnk = PerformLinker(env)
     return lnk
 
+def Env(inputs, outputs):
+    e = env.Env(inputs, outputs)
+    return e
+
 
 class _test_PerformLinker(unittest.TestCase):
 
@@ -94,16 +100,14 @@ class _test_PerformLinker(unittest.TestCase):
 
     def test_input_output_same(self):
         x, y, z = inputs()
-        a,d = add(x,y), div(x,y)
-        e = mul(a,d)
-        fn = perform_linker(Env([e], [e])).make_function()
+        fn = perform_linker(Env([x], [x])).make_function()
         self.failUnless(1.0 is fn(1.0))
 
     def test_input_dependency0(self):
         x, y, z = inputs()
         a,d = add(x,y), div(x,y)
         e = mul(a,d)
-        fn = perform_linker(Env([x, y, a], [e])).make_function()
+        fn = perform_linker(Env(*graph.clone([x, y, a], [e]))).make_function()
         self.failUnless(fn(1.0,2.0,9.0) == 4.5)
 
     def test_skiphole(self):
@@ -111,8 +115,10 @@ class _test_PerformLinker(unittest.TestCase):
         a = add(x,y)
         r = raise_err(a)
         e = add(r,a)
-        fn = perform_linker(Env([x, y,r], [e])).make_function()
+        fn = perform_linker(Env(*graph.clone([x, y,r], [e]))).make_function()
         self.failUnless(fn(1.0,2.0,4.5) == 7.5)
+
+
 
 #     def test_disconnected_input_output(self):
 #         x,y,z = inputs()

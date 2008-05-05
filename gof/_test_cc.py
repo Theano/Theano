@@ -6,7 +6,8 @@ from cc import *
 from type import Type
 from graph import Result, as_result, Apply, Constant
 from op import Op
-from env import Env
+import env
+import toolbox
 
 class TDouble(Type):
     def filter(self, data):
@@ -123,6 +124,11 @@ def inputs():
     y = double('y')
     z = double('z')
     return x, y, z
+
+
+def Env(inputs, outputs):
+    e = env.Env(inputs, outputs)
+    return e
 
 
 class _test_CLinker(unittest.TestCase):

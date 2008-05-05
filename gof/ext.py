@@ -1,5 +1,8 @@
 
 #from features import Listener, Constraint, Orderings, Tool
+
+import graph
+
 import utils
 from utils import AbstractFunctionError
 
@@ -253,7 +256,6 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         """
         
         self.seen.add(op)
-        op.deps['destroy'] = []
         view_map, destroy_map = self.get_maps(op)
 
         for input in op.inputs:
@@ -334,7 +336,6 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
             del self.children[output]
             
         self.seen.remove(op)
-        del op.deps['destroy']
 
 
     def __add_destroyer__(self, path):
@@ -350,9 +351,6 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         destroyers = self.destroyers.setdefault(foundation, {})
         path = destroyers.setdefault(node, path)
 
-        print "add", path
-        node.deps['destroy'] += [user.owner for user in self.__users__(foundation) if user not in node.outputs]
-
 #         for foundation, destroyers in self.destroyers.items():
 #             for op in destroyers.keys():
 #                 ords.setdefault(op, set()).update([user.owner for user in self.__users__(foundation) if user not in op.outputs])
@@ -361,7 +359,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
             self.dups.add(foundation)
 
         # results marked 'indestructible' must not be destroyed.
-        if getattr(foundation, 'indestructible', False):
+        if getattr(foundation, 'indestructible', False) or isinstance(foundation, graph.Constant):
             self.illegal.add(foundation)
 
 
@@ -373,13 +371,6 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         foundation = path[0]
         target = path[-1]
         node = target.owner
-
-        print "rm", path
-        print node.deps['destroy']
-        for user in self.__users__(foundation):
-            print " -- ", user
-            if user not in node.outputs:
-                node.deps['destroy'].remove(user.owner)
 
         destroyers = self.destroyers[foundation]
         del destroyers[node]
@@ -477,6 +468,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         In particular, all the users of a destroyed result have priority over the
         L{Op} that destroys the result.
         """
+        self.validate(env)
         ords = {}
         for foundation, destroyers in self.destroyers.items():
             for op in destroyers.keys():

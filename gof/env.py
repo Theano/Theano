@@ -26,15 +26,7 @@ class Env(object): #(graph.Graph):
 
     The Env supports the replace operation which allows to replace a
     result in the subgraph by another, e.g. replace (x + x).out by (2
-    * x).out. This is the basis for optimization in omega.
-
-    Regarding inputs and orphans:
-
-    In the context of a computation graph, the inputs and orphans are
-    both results that are the source nodes of computation.  Those
-    results that are named as inputs will be assumed to contain fresh.
-    In other words, the backward search from outputs will stop at any
-    node that has been explicitly named as an input.
+    * x).out. This is the basis for optimization in theano.
     """
 
     ### Special ###
@@ -68,10 +60,6 @@ class Env(object): #(graph.Graph):
 
         self.node_locks = {}
         self.result_locks = {}
-        
-#         # List of functions that undo the replace operations performed.
-#         # e.g. to recover the initial graph one could write: for u in self.history.__reversed__(): u()
-#         self.history = []
 
 
     ### Setup a Result ###
@@ -237,99 +225,13 @@ class Env(object): #(graph.Graph):
             raise TypeError("The type of the replacement must be the same as the type of the original Result.", r, new_r)
         assert r in self.results
 
-        for node, i in r.clients:
+        for node, i in list(r.clients):
             assert node == 'output' and self.outputs[i] is r or node.inputs[i] is r
             self.change_input(node, i, new_r)
 
-#         # Save where we are so we can backtrack
-#         if consistency_check:
-#             chk = self.checkpoint()
-
-#         # The copy is required so undo can know what clients to move back!
-#         clients = copy(self.clients(r))
-
-#         # Messy checks so we know what to do if we are replacing an output
-#         # result. Note that if v is an input result, we do nothing at all for
-#         # now (it's not clear what it means to replace an input result).
-#         was_output = False
-#         if r in self.outputs:
-#             was_output = True
-#             self.outputs[self.outputs.index(r)] = new_r
-
-#         was_input = False
-#         if r in self.inputs:
-#             was_input = True
-#             self.inputs[self.inputs.index(r)] = new_r
-
-#         # The actual replacement operation occurs here. This might raise
-#         # an error.
-#         self.__move_clients__(clients, r, new_r) # not sure how to order this wrt to adjusting the outputs
-
-#         # This function undoes the replacement.
-#         def undo():
-#             # Restore self.outputs
-#             if was_output:
-#                 self.outputs[self.outputs.index(new_r)] = r
-
-#             # Restore self.inputs
-#             if was_input:
-#                 self.inputs[self.inputs.index(new_r)] = r
-
-#             # Move back the clients. This should never raise an error.
-#             self.__move_clients__(clients, new_r, r)
-
-#         self.history.append(undo)
-        
-#         if consistency_check:
-#             try:
-#                 self.validate()
-#             except InconsistencyError, e:
-#                 self.revert(chk)
-#                 raise
-
-    def replace_all(self, d):
-        """
-        For (r, new_r) in d.items(), replaces r with new_r. Checks for
-        consistency at the end and raises an InconsistencyError if the
-        graph is not consistent. If an error is raised, the graph is
-        restored to what it was before.
-        """
-        for r, new_r in d.items():
-            self.replace(r, new_r, False)
-#         chk = self.checkpoint()
-#         try:
-#             for r, new_r in d.items():
-#                 self.replace(r, new_r, False)
-#         except Exception, e:
-#             self.revert(chk)
-#             raise
-#         try:
-#             self.validate()
-#         except InconsistencyError, e:
-#             self.revert(chk)
-#             raise
-
-
-
-
-
-#     def checkpoint(self):
-#         """
-#         Returns an object that can be passed to self.revert in order to backtrack
-#         to a previous state.
-#         """
-#         return len(self.history)
-
-#     def consistent(self):
-#         """
-#         Returns True iff the subgraph is consistent and does not violate the
-#         constraints set by the listeners.
-#         """
-#         try:
-#             self.validate()
-#         except InconsistencyError:
-#             return False
-#         return True
+    def replace_all(self, pairs):
+        for r, new_r in pairs:
+            self.replace(r, new_r)
 
 
     ### features ###
@@ -385,6 +287,16 @@ class Env(object): #(graph.Graph):
 
 
     ### misc ###
+
+    def toposort(self):
+        env = self
+        ords = {}
+        for feature in env._features:
+            if hasattr(feature, 'orderings'):
+                for op, prereqs in feature.orderings(env).items():
+                    ords.setdefault(op, set()).update(prereqs)
+        order = graph.io_toposort(env.inputs, env.outputs, ords)
+        return order
     
     def nclients(self, r):
         "Same as len(self.clients(r))."
@@ -438,117 +350,9 @@ class Env(object): #(graph.Graph):
                     raise Exception("Client not in env.", result, (node, i))
                 if node.inputs[i] is not result:
                     raise Exception("Inconsistent clients list.", result, node.inputs[i])
-        
-
-#     def revert(self, checkpoint):
-#         """
-#         Reverts the graph to whatever it was at the provided
-#         checkpoint (undoes all replacements).  A checkpoint at any
-#         given time can be obtained using self.checkpoint().
-#         """
-#         while len(self.history) > checkpoint:
-#             f = self.history.pop()
-#             f()
-
-#     def supplemental_orderings(self):
-#         """
-#         Returns a dictionary of {op: set(prerequisites)} that must
-#         be satisfied in addition to the order defined by the structure
-#         of the graph (returns orderings that not related to input/output
-#         relationships).
-#         """
-#         ords = {}
-#         for feature in self._features:
-#             if hasattr(feature, 'orderings'):
-#                 for op, prereqs in feature.orderings().items():
-#                     ords.setdefault(op, set()).update(prereqs)
-#         return ords
-
-#     def toposort(self):
-#         """
-#         Returns a list of nodes in the order that they must be executed
-#         in order to preserve the semantics of the graph and respect
-#         the constraints put forward by the listeners.
-#         """
-#         ords = self.supplemental_orderings()
-#         order = graph.io_toposort(self.inputs, self.outputs, ords)
-#         return order
-
-#     def validate(self):
-#         """
-#         Raises an error if the graph is inconsistent.
-#         """
-#         self.execute_callbacks('validate')
-# #         for constraint in self._constraints.values():
-# #             constraint.validate()
-#         return True
-
-
-    ### Private interface ###
-
-#     def __move_clients__(self, clients, r, new_r):
-
-#         if not (r.type == new_r.type):
-#             raise TypeError("Cannot move clients between Results that have different types.", r, new_r)
-        
-#         # We import the new result in the fold
-#         self.__import_r__([new_r])
-
-#         for op, i in clients:
-#             op.inputs[i] = new_r
-# #         try:
-# #             # Try replacing the inputs
-# #             for op, i in clients:
-# #                 op.set_input(i, new_r)
-# #         except:
-# #             # Oops!
-# #             for op, i in clients:
-# #                 op.set_input(i, r)
-# #             self.__prune_r__([new_r])
-# #             raise
-#         self.__remove_clients__(r, clients)
-#         self.__add_clients__(new_r, clients)
-
-# #         # We import the new result in the fold
-# #         # why was this line AFTER the set_inputs???
-# #         # if we do it here then satisfy in import fucks up...
-# #         self.__import_r__([new_r])
-
-#         self.execute_callbacks('on_rewire', clients, r, new_r)
-# #         for listener in self._listeners.values():
-# #             try:
-# #                 listener.on_rewire(clients, r, new_r)
-# #             except AbstractFunctionError:
-# #                 pass
-
-#         # We try to get rid of the old one
-#         self.__prune_r__([r])
 
     def __str__(self):
         return "[%s]" % ", ".join(graph.as_string(self.inputs, self.outputs))
-
-#     def clone_get_equiv(self, clone_inputs = True):
-#         equiv = graph.clone_get_equiv(self.inputs, self.outputs, clone_inputs)
-#         new = self.__class__([equiv[input] for input in self.inputs],
-#                              [equiv[output] for output in self.outputs])
-#         for feature in self._features:
-#             new.extend(feature)
-#         return new, equiv
-
-#     def clone(self, clone_inputs = True):
-#         equiv = graph.clone_get_equiv(self.inputs, self.outputs, clone_inputs)
-#         new = self.__class__([equiv[input] for input in self.inputs],
-#                              [equiv[output] for output in self.outputs])
-#         for feature in self._features:
-#             new.extend(feature)
-#         try:
-#             new.set_equiv(equiv)
-#         except AttributeError:
-#             pass
-#         return new
-
-#     def __copy__(self):
-#         return self.clone()
 
 
 

@@ -430,11 +430,16 @@ class MergeOptimizer(Optimizer):
     are constant.
     """
 
+    def add_requirements(self, env):
+        try:
+            env.extend(toolbox.ReplaceValidate())
+        except: pass
+
     def apply(self, env):
         cid = _metadict()     #result -> result.desc()  (for constants)
         inv_cid = _metadict() #desc -> result (for constants)
-        for i, r in enumerate(env.orphans.union(env.inputs)):
-            if isinstance(r, Constant):
+        for i, r in enumerate([r for r in env.results if isinstance(r, Constant)]): #env.orphans.union(env.inputs)):
+            #if isinstance(r, Constant):
                 sig = r.signature()
                 other_r = inv_cid.get(sig, None)
                 if other_r is not None:
@@ -446,20 +451,19 @@ class MergeOptimizer(Optimizer):
         # and it's more efficient to give them an integer cid like the other Results
         cid.clear()
         inv_cid.clear()
-        for i, r in enumerate(env.orphans.union(env.inputs)):
+        for i, r in enumerate(r for r in env.results if r.owner is None):
             cid[r] = i
             inv_cid[i] = r
 
-        for node in env.io_toposort():
+        for node in graph.io_toposort(env.inputs, env.outputs):
             node_cid = (node.op, tuple([cid[input] for input in node.inputs]))
             dup = inv_cid.get(node_cid, None)
             success = False
             if dup is not None:
                 success = True
-                d = dict(zip(node.outputs, dup.outputs))
                 try:
-                    env.replace_all(d)
-                except Exception, e:
+                    env.replace_all_validate(zip(node.outputs, dup.outputs))
+                except InconsistencyError, e:
                     success = False
             if not success:
                 cid[node] = node_cid

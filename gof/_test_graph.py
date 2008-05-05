@@ -161,14 +161,14 @@ class _test_clone(unittest.TestCase):
     def test_accurate(self):
         r1, r2 = MyResult(1), MyResult(2)
         node = MyOp.make_node(r1, r2)
-        new = clone([r1, r2], node.outputs)
+        _, new = clone([r1, r2], node.outputs, False)
         assert self.str([r1, r2], new) == ["MyOp(1, 2)"]
 
     def test_copy(self):
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
-        new = clone([r1, r2, r5], node2.outputs)
+        _, new = clone([r1, r2, r5], node2.outputs, False)
         assert node2.outputs[0].type == new[0].type and node2.outputs[0] is not new[0] # the new output is like the old one but not the same object
         assert node2 is not new[0].owner # the new output has a new owner
         assert new[0].owner.inputs[1] is r5 # the inputs are not copied
@@ -178,7 +178,7 @@ class _test_clone(unittest.TestCase):
         # Checks that manipulating a cloned graph leaves the original unchanged.
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
         node = MyOp.make_node(MyOp.make_node(r1, r2).outputs[0], r5)
-        new = clone([r1, r2, r5], node.outputs)
+        _, new = clone([r1, r2, r5], node.outputs, False)
         new_node = new[0].owner
         new_node.inputs = MyResult(7), MyResult(8)
 

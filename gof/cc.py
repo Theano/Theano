@@ -1,5 +1,6 @@
 
-from graph import Constant
+import graph
+from graph import Constant, Value
 from link import Linker, LocalLinker, raise_with_op, Filter, map_storage, PerformLinker
 from copy import copy
 from utils import AbstractFunctionError
@@ -284,10 +285,11 @@ def apply_policy(policy, r, name, sub):
     @type r: L{Result}
     @return: C{policy[0](r) + policy[1](r) + ...}
     """
-    if isinstance(r, (list, tuple)):
+    if isinstance(policy, (list, tuple)):
         ret = ""
         for sub_policy in policy:
             ret += sub_policy(r, name, sub)
+        return ret
     return policy(r, name, sub)
 
 
@@ -345,7 +347,7 @@ class CLinker(Linker):
         self.outputs = env.outputs
         self.results = list(env.results)
         # The orphans field is listified to ensure a consistent order.
-        self.orphans = list(env.orphans.difference(self.outputs))
+        self.orphans = list(r for r in self.results if isinstance(r, Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
         self.temps = list(set(self.results).difference(self.inputs).difference(self.outputs).difference(self.orphans))
         self.node_order = env.toposort()
         
@@ -403,15 +405,16 @@ class CLinker(Linker):
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif result in self.orphans:
-                if not isinstance(result, Constant):
-                    raise TypeError("All orphans to CLinker must be Constant.", result)
-                try:
-                    symbol[result] = "(" + result.type.c_literal(result.data) + ")"
-                    consts.append(result)
-                    self.orphans.remove(result)
-                    continue
-                except (AbstractFunctionError, NotImplementedError):
-                    pass
+                if not isinstance(result, Value):
+                    raise TypeError("All orphans to CLinker must be Value instances.", result)
+                if isinstance(result, Constant):
+                    try:
+                        symbol[result] = "(" + result.type.c_literal(result.data) + ")"
+                        consts.append(result)
+                        self.orphans.remove(result)
+                        continue
+                    except (AbstractFunctionError, NotImplementedError):
+                        pass
                 # orphans are not inputs so we'll just get fetch them when we initialize the struct and assume they stay the same
                 policy = [[get_c_declare, get_c_extract, get_c_cleanup],
                           [get_nothing, get_nothing, get_nothing]]
@@ -428,7 +431,6 @@ class CLinker(Linker):
             elif result in self.outputs:
                 # outputs don't need to be extracted from Python, so we call c_init rather than c_extract
                 if result.type.c_is_simple() or result in no_recycling:
-                    
                     policy = [[get_nothing, get_nothing, get_nothing],
                               [get_c_declare, get_c_init, (get_c_sync, get_c_cleanup)]]
                 else:
@@ -599,7 +601,12 @@ class CLinker(Linker):
         if input_storage is None:
             input_storage = [[None] for result in self.inputs]
         if output_storage is None:
-            output_storage = [[None] for result in self.outputs]
+            map = {}
+            output_storage = []
+            for result in self.outputs:
+                if result not in map:
+                    map[result] = [None]
+                output_storage.append(map[result])
         thunk = self.cthunk_factory(error_storage,
                                     input_storage,
                                     output_storage)
@@ -642,13 +649,13 @@ class CLinker(Linker):
         if not getattr(self, 'instantiate', False):
             
             self.code_gen()
+            module_name = self.hash
 
             # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
             out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
             in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
             
             cthunk = object() # dummy so weave can get the type
-            module_name = self.hash
             mod = weave.ext_tools.ext_module(module_name)
 
             argnames = ["i%i" % i for i in xrange(len(in_storage))] \
@@ -710,8 +717,11 @@ class CLinker(Linker):
             # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
             out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
             in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
+            module_name = self.hash
+            module = __import__("%s" % (module_name), {}, {}, [module_name])
 
-        ret = module.instantiate(error_storage, *(in_storage + out_storage + [orphan.data for orphan in self.orphans]))
+        orphd = [[orphan.data] for orphan in self.orphans]
+        ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
         assert sys.getrefcount(ret) == 2 # refcount leak check
         return ret
 
@@ -751,7 +761,9 @@ class OpWiseCLinker(LocalLinker):
             node_input_storage = [storage_map[r] for r in node.inputs]
             node_output_storage = [storage_map[r] for r in node.outputs]
             try:
-                cl = CLinker(Env(node.inputs, node.outputs))
+                e = Env(*graph.clone(node.inputs, node.outputs))
+                e.toposort = lambda: e.nodes
+                cl = CLinker(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
                 thunk, node_input_filters, node_output_filters = cl.make_thunk(
                     input_storage = node_input_storage,
                     output_storage = node_output_storage)
@@ -823,7 +835,7 @@ class DualLinker(Linker):
     function.
     """
 
-    def __init__(self, env, checker = _default_checker):
+    def __init__(self, env, checker = _default_checker, no_recycling = []):
         """
         Initialize a DualLinker.
         
@@ -844,6 +856,7 @@ class DualLinker(Linker):
         """
         self.env = env
         self.checker = checker
+        self.no_recycling = no_recycling
 
     def make_thunk(self, **kwargs):
 #         if inplace:
@@ -865,8 +878,10 @@ class DualLinker(Linker):
 #         thunks2 = [c_make_thunk(op) for op in op_order_2]
 
         env = self.env
-        _f, i1, o1, thunks1, order1 = PerformLinker(env).make_all(**kwargs)
-        _f, i2, o2, thunks2, order2 = OpWiseCLinker(env).make_all(**kwargs)
+        no_recycling = self.no_recycling
+        
+        _f, i1, o1, thunks1, order1 = PerformLinker(env, no_recycling = no_recycling).make_all(**kwargs)
+        _f, i2, o2, thunks2, order2 = OpWiseCLinker(env, no_recycling = no_recycling).make_all(**kwargs)
 
         def f():
             for input1, input2 in zip(i1, i2):
@@ -874,6 +889,12 @@ class DualLinker(Linker):
                 # the copy is necessary in order for inplace ops not to interfere
                 input2.storage[0] = copy(input1.storage[0])
             for thunk1, thunk2, node1, node2 in zip(thunks1, thunks2, order1, order2):
+                for output, storage in zip(node1.outputs, thunk1.outputs):
+                    if output in no_recycling:
+                        storage[0] = None
+                for output, storage in zip(node2.outputs, thunk2.outputs):
+                    if output in no_recycling:
+                        storage[0] = None
                 try:
                     thunk1()
                     thunk2()

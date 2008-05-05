@@ -163,7 +163,6 @@ def as_apply(x):
     
 
 
-
 @deprecated
 def inputs(o):
     """
@@ -173,7 +172,6 @@ def inputs(o):
     Returns the set of inputs necessary to compute the outputs in o
     such that input.owner is None.
     """
-    print 'gof.graph.inputs deprecated: April 29'
     results = set()
     def seek(r):
         op = r.owner
@@ -187,53 +185,71 @@ def inputs(o):
     return results
 
 
-def results_and_orphans(i, o, except_unreachable_input=False):
-    """
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
+# def results_and_orphans(i, o, except_unreachable_input=False):
+#     """
+#     @type i: list
+#     @param i: input L{Result}s
+#     @type o: list
+#     @param o: output L{Result}s
 
-    Returns the pair (results, orphans). The former is the set of
-    L{Result}s that are involved in the subgraph that lies between i and
-    o. This includes i, o, orphans(i, o) and all results of all
-    intermediary steps from i to o. The second element of the returned
-    pair is orphans(i, o).
-    """
+#     Returns the pair (results, orphans). The former is the set of
+#     L{Result}s that are involved in the subgraph that lies between i and
+#     o. This includes i, o, orphans(i, o) and all results of all
+#     intermediary steps from i to o. The second element of the returned
+#     pair is orphans(i, o).
+#     """
+#     results = set()
+#     i = set(i)
+# #    results.update(i)
+#     incomplete_paths = []
+#     reached = set()
+
+#     def helper(r, path):
+#         if r in i:
+#             reached.add(r)
+#             results.update(path)
+#         elif r.owner is None:
+#             incomplete_paths.append(path)
+#         else:
+#             op = r.owner
+#             for r2 in op.inputs:
+#                 helper(r2, path + [r2])
+
+#     for output in o:
+#         helper(output, [output])
+
+#     orphans = set()
+#     for path in incomplete_paths:
+#         for r in path:
+#             if r not in results:
+#                 orphans.add(r)
+#                 break
+
+#     if except_unreachable_input and len(i) != len(reached):
+#         raise Exception(results_and_orphans.E_unreached)
+
+#     results.update(orphans)
+
+#     return results, orphans
+# results_and_orphans.E_unreached = 'there were unreachable inputs'
+
+def results_and_orphans(i, o):
     results = set()
-    i = set(i)
-#    results.update(i)
-    incomplete_paths = []
-    reached = set()
-
-    def helper(r, path):
-        if r in i:
-            reached.add(r)
-            results.update(path)
-        elif r.owner is None:
-            incomplete_paths.append(path)
-        else:
-            op = r.owner
-            for r2 in op.inputs:
-                helper(r2, path + [r2])
-
-    for output in o:
-        helper(output, [output])
-
     orphans = set()
-    for path in incomplete_paths:
-        for r in path:
-            if r not in results:
+    def helper(r):
+        if r in results:
+            return
+        results.add(r)
+        if r.owner is None:
+            if r not in i:
                 orphans.add(r)
-                break
-
-    if except_unreachable_input and len(i) != len(reached):
-        raise Exception(results_and_orphans.E_unreached)
-
-    results.update(orphans)
-
+        else:
+            for r2 in r.owner.inputs:
+                helper(r2)
+    for output in o:
+        helper(output)
     return results, orphans
-results_and_orphans.E_unreached = 'there were unreachable inputs'
+    
 
 
 def ops(i, o):
