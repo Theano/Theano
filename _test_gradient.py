@@ -238,50 +238,5 @@ class _test_grad_sources_inputs(unittest.TestCase):
         self.failUnless(g[a1.inputs[1]] == 11)
 
 
-class _test_grad(unittest.TestCase):
-    class O(gof.op.Op):
-        def __init__(self):
-            self.gval0 = gof.generic()
-            self.gval1 = gof.generic()
-        def make_node(self):
-            inputs = [gof.generic(),gof.generic()]
-            outputs = [gof.generic(),gof.generic()]
-            return gof.Apply(self, inputs, outputs)
-        def grad(self, (x0,x1), (gz0,gz1)):
-            return self.gval0, self.gval1
-
-    def test_1param(self):
-        """grad: Test passing a single result param"""
-        o = _test_grad.O()
-        a1 = o.make_node()
-        self.failUnless(o.gval0 is grad(a1.outputs[0], a1.inputs[0]))
-
-    def test_Nparam(self):
-        """grad: Test passing multiple result params"""
-        o = _test_grad.O()
-        a1 = o.make_node()
-        g0,g1 = grad(a1.outputs[0], a1.inputs)
-        self.failUnless(o.gval0 is g0)
-        self.failUnless(o.gval1 is g1)
-
-    def test_1None_rval(self):
-        """grad: Test returning a single None from grad"""
-        o = _test_grad.O()
-        a1 = o.make_node()
-        self.failUnless(None is grad(a1.outputs[0], a1.outputs[1]))
-        self.failUnless(None is grad(a1.outputs[0], 'wtf'))
-    def test_NNone_rval(self):
-        """grad: Test returning some Nones from grad"""
-        o = _test_grad.O()
-        a1 = o.make_node()
-        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + ['wtf'])
-        self.failUnless(o.gval0 is g0)
-        self.failUnless(o.gval1 is g1)
-        self.failUnless(None is g2)
-
-
-
-
-
 if __name__ == '__main__':
     unittest.main()

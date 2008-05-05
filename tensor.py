@@ -348,6 +348,9 @@ class _tensor_py_operators:
     def __getslice__(self, *args):
         args = slice(*args),
         return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Result)))
+    
+    #COPYING
+    def copy(self): return tensor_copy(self)
 
     def __iter__(self): 
         # This prevents accidental iteration via builtin.sum(self)
@@ -388,16 +391,18 @@ class TensorFromScalar(Op):
 tensor_from_scalar = TensorFromScalar()
 
 class ScalarFromTensor(Op):
-    def __init__(self, s, **kwargs):
-        assert isinstance(s, Tensor)
-        Op.__init__(self, **kwargs)
-        self.inputs = [s]
-        self.outputs = [scal.Scalar(s.dtype)]
-    def perform(self):
-        self.outputs[0].data = self.inputs[0].data
+    def make_node(self, t):
+        assert isinstance(t.type, scal.Tensor)
+        assert t.type.broadcastable == ()
+        return Apply(self,
+                     [s],
+                     [scal.Scalar(dtype = s.type.dtype).make_result()])
+    def perform(self, node, (s, ), (out, )):
+        out[0] = s.flatten()[0]
     def grad(self, (s,), (dt,)):
         return [TensorFromScalar(dt)]
-scalar_from_tensor = gof.op.constructor(ScalarFromTensor)
+scalar_from_tensor = ScalarFromTensor()
+
 
 ##########################
 # Unary Operations

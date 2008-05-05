@@ -1506,43 +1506,47 @@ class T_tensorfromscalar(unittest.TestCase):
 #         self.failUnless(t.data == 1.0)
 #         self.failUnless(t.data is not tt.data)
 
+
 class _test_grad(unittest.TestCase):
     class O(gof.op.Op):
         def __init__(self):
-            self.inputs = [scalar('a'),scalar('c')]
-            self.outputs = [scalar('b'),scalar('d')]
             self.gval0 = scalar('e')
             self.gval1 = scalar('f')
+        def make_node(self):
+            inputs = [scalar('a'),scalar('c')]
+            outputs = [scalar('b'),scalar('d')]
+            return gof.Apply(self, inputs, outputs)
         def grad(self, (x0,x1), (gz0,gz1)):
             return self.gval0, self.gval1
 
     def test_1param(self):
         """grad: Test passing a single result param"""
-        a1 = _test_grad.O()
-        self.failUnless(a1.gval0 is grad(a1.outputs[0], a1.inputs[0]))
+        o = _test_grad.O()
+        a1 = o.make_node()
+        self.failUnless(o.gval0 is grad(a1.outputs[0], a1.inputs[0]))
 
     def test_Nparam(self):
         """grad: Test passing multiple result params"""
-        a1 = _test_grad.O()
+        o = _test_grad.O()
+        a1 = o.make_node()
         g0,g1 = grad(a1.outputs[0], a1.inputs)
-        self.failUnless(a1.gval0 is g0)
-        self.failUnless(a1.gval1 is g1)
+        self.failUnless(o.gval0 is g0)
+        self.failUnless(o.gval1 is g1)
 
     def test_1None_rval(self):
         """grad: Test returning a single None from grad"""
-        a1 = _test_grad.O()
+        o = _test_grad.O()
+        a1 = o.make_node()
         self.failUnless(None is grad(a1.outputs[0], a1.outputs[1]))
         self.failUnless(None is grad(a1.outputs[0], 'wtf'))
     def test_NNone_rval(self):
         """grad: Test returning some Nones from grad"""
-        a1 = _test_grad.O()
+        o = _test_grad.O()
+        a1 = o.make_node()
         g0,g1,g2 = grad(a1.outputs[0], a1.inputs + ['wtf'])
-        self.failUnless(a1.gval0 is g0)
-        self.failUnless(a1.gval1 is g1)
+        self.failUnless(o.gval0 is g0)
+        self.failUnless(o.gval1 is g1)
         self.failUnless(None is g2)
-
-
-
 
 
 
