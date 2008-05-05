@@ -1,3 +1,4 @@
+import traceback
 from tensor import *
 import tensor # for hidden symbols
 
@@ -1428,6 +1429,7 @@ class T_tensor(unittest.TestCase):
             t.data = numpy.ones((2,7,1))
             self.fail()
         except ValueError, e:
+            #traceback.print_exc()
             self.failUnless(e[0] is Tensor.filter.E_rank)
         try:
             t.data = numpy.ones(1)
@@ -1452,6 +1454,7 @@ class T_tensor(unittest.TestCase):
             t.data = numpy.ones((1,2))
             self.fail()
         except ValueError, e:
+            #traceback.print_exc()
             self.failUnless(e[0] is Tensor.filter.E_shape)
         try:
             t.data = numpy.ones((0,1))
