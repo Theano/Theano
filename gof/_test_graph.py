@@ -126,14 +126,14 @@ class _test_inputs(testcase):
 #         self.fail()
 
 
-class _test_orphans(testcase):
+# class _test_orphans(testcase):
 
-    def test_straightforward(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
-        node = MyOp.make_node(r1, r2)
-        node2 = MyOp.make_node(node.outputs[0], r5)
-        orph = orphans([r1, r2], node2.outputs)
-        self.failUnless(orph == [r5], orph)
+#     def test_straightforward(self):
+#         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+#         node = MyOp.make_node(r1, r2)
+#         node2 = MyOp.make_node(node.outputs[0], r5)
+#         orph = orphans([r1, r2], node2.outputs)
+#         self.failUnless(orph == [r5], orph)
     
 
 class _test_as_string(testcase):
@@ -215,15 +215,15 @@ def prenode(obj):
     if isinstance(obj, Result): 
         if obj.owner:
             return [obj.owner]
-    if isinstance(obj, Op):
+    if isinstance(obj, Apply):
         return obj.inputs
 
 class _test_toposort(testcase):
     def test0(self):
         """Test a simple graph"""
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
-        o = MyOp(r1, r2)
-        o2 = MyOp(o.outputs[0], r5)
+        o = MyOp.make_node(r1, r2)
+        o2 = MyOp.make_node(o.outputs[0], r5)
 
         all = general_toposort(o2.outputs, prenode)
         self.failUnless(all == [r5, r2, r1, o, o.outputs[0], o2, o2.outputs[0]], all)
@@ -234,45 +234,45 @@ class _test_toposort(testcase):
     def test1(self):
         """Test a graph with double dependencies"""
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
-        o = MyOp(r1, r1)
-        o2 = MyOp(o.outputs[0], r5)
+        o = MyOp.make_node(r1, r1)
+        o2 = MyOp.make_node(o.outputs[0], r5)
         all = general_toposort(o2.outputs, prenode)
         self.failUnless(all == [r5, r1, o, o.outputs[0], o2, o2.outputs[0]], all)
 
     def test2(self):
         """Test a graph where the inputs have owners"""
         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
-        o = MyOp(r1, r1)
+        o = MyOp.make_node(r1, r1)
         r2b = o.outputs[0]
-        o2 = MyOp(r2b, r2b)
+        o2 = MyOp.make_node(r2b, r2b)
         all = io_toposort([r2b], o2.outputs)
         self.failUnless(all == [o2], all)
 
-        o2 = MyOp(r2b, r5)
+        o2 = MyOp.make_node(r2b, r5)
         all = io_toposort([r2b], o2.outputs)
         self.failUnless(all == [o2], all)
 
     def test3(self):
         """Test a graph which is not connected"""
         r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
-        o0 = MyOp(r1, r2)
-        o1 = MyOp(r3, r4)
+        o0 = MyOp.make_node(r1, r2)
+        o1 = MyOp.make_node(r3, r4)
         all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
         self.failUnless(all == [o1,o0], all)
 
     def test4(self):
         """Test inputs and outputs mixed together in a chain graph"""
         r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
-        o0 = MyOp(r1, r2)
-        o1 = MyOp(o0.outputs[0], r1)
+        o0 = MyOp.make_node(r1, r2)
+        o1 = MyOp.make_node(o0.outputs[0], r1)
         all = io_toposort([r1, o0.outputs[0]], [o0.outputs[0], o1.outputs[0]])
         self.failUnless(all == [o1], all)
 
     def test5(self):
         """Test when outputs have clients"""
         r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
-        o0 = MyOp(r1, r2)
-        o1 = MyOp(o0.outputs[0], r4)
+        o0 = MyOp.make_node(r1, r2)
+        o1 = MyOp.make_node(o0.outputs[0], r4)
         all = io_toposort([], o0.outputs)
         self.failUnless(all == [o0], all)
 

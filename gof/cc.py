@@ -18,26 +18,26 @@ import traceback
 def compile_dir():
     """Return the directory in which scipy.weave should store code objects.
 
-    If the environment variable OMEGA_COMPILEDIR is set, its value is returned.
-    If not, a directory of the form $HOME/.omega/compiledir_<platform Id>.
+    If the environment variable THEANO_COMPILEDIR is set, its value is returned.
+    If not, a directory of the form $HOME/.theano/compiledir_<platform Id>.
 
     As a test, this function touches the file __init__.py in the returned
     directory, and raises OSError if there's a problem.
 
-    A directory coming from OMEGA_COMPILEDIR is not created automatically, but
-    a directory in $HOME/.omega is created automatically.
+    A directory coming from THEANO_COMPILEDIR is not created automatically, but
+    a directory in $HOME/.theano is created automatically.
 
     This directory is appended to the sys.path search path before being
     returned, if the touch was successful.
     """
-    if os.getenv('OMEGA_COMPILEDIR'):
-        cachedir = os.getenv('OMEGA_COMPILEDIR')
+    if os.getenv('THEANO_COMPILEDIR'):
+        cachedir = os.getenv('THEANO_COMPILEDIR')
     else:
         # use (and possibly create) a default code cache location
         platform_id = platform.platform() + '-' + platform.processor()
         import re
         platform_id = re.sub("[\(\)\s]+", "_", platform_id)
-        cachedir = os.path.join(os.getenv('HOME'), '.omega', 'compiledir_'+platform_id)
+        cachedir = os.path.join(os.getenv('HOME'), '.theano', 'compiledir_'+platform_id)
         if not os.access(cachedir, os.R_OK | os.W_OK):
             #this may raise a number of problems, I think all of which are serious.
             os.makedirs(cachedir, 7<<6)
@@ -345,7 +345,7 @@ class CLinker(Linker):
         env = self.env
         self.inputs = env.inputs
         self.outputs = env.outputs
-        self.results = list(env.results)
+        self.results = graph.results(self.inputs, self.outputs) # list(env.results)
         # The orphans field is listified to ensure a consistent order.
         self.orphans = list(r for r in self.results if isinstance(r, Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
         self.temps = list(set(self.results).difference(self.inputs).difference(self.outputs).difference(self.orphans))
@@ -390,8 +390,8 @@ class CLinker(Linker):
         id = 1
 
         sub = dict(failure_var = failure_var)
-       
-        for result in set(self.results):
+
+        for result in self.results:
 
             # it might be possible to inline constant results as C literals
 ##            if getattr(result, 'constant', False):

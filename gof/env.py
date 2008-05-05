@@ -294,7 +294,7 @@ class Env(object): #(graph.Graph):
         for feature in env._features:
             if hasattr(feature, 'orderings'):
                 for op, prereqs in feature.orderings(env).items():
-                    ords.setdefault(op, set()).update(prereqs)
+                    ords.setdefault(op, []).extend(prereqs)
         order = graph.io_toposort(env.inputs, env.outputs, ords)
         return order
     

@@ -24,6 +24,8 @@ def as_tensor(x, name = None):
         else:
             x = x.outputs[0]
     if isinstance(x, Result):
+        if isinstance(x.type, scal.Scalar):
+            return tensor_from_scalar(x)
         if not isinstance(x.type, Tensor):
             raise TypeError("Result type field must be a Tensor.", x, x.type)
         return x
@@ -233,8 +235,8 @@ class Tensor(Type):
 
 # Easy constructors
 
-def tensor(*args):
-    return Tensor(*args).make_result()
+def tensor(*args, **kwargs):
+    return Tensor(*args, **kwargs).make_result()
 
 def _multi(*fns):
     def f2(f, names):
@@ -334,10 +336,17 @@ class _tensor_py_operators:
     T = property(lambda self: transpose(self))
 
     #SLICING
-    def __getitem__(self, args): return Subtensor.from_idxs(self,
-            args).outputs[0]
-    def __getslice__(self, *args): return Subtensor.from_idxs(self,
-            (slice(*args),)).outputs[0]
+#     def __getitem__(self, args): return Subtensor.from_idxs(self,
+#             args).outputs[0]
+#     def __getslice__(self, *args): return Subtensor.from_idxs(self,
+#             (slice(*args),)).outputs[0]
+    def __getitem__(self, args):
+        if not isinstance(args, tuple):
+            args = args,
+        return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Result)))
+    def __getslice__(self, *args):
+        args = slice(*args),
+        return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Result)))
 
     #COPYING
     def copy(self): return tensor_copy(self)
@@ -479,7 +488,8 @@ class TransposeInplace(Op):
     view_map = {0: [0]}
     
     def make_node(self, input):
-        return Apply(self, [input], [input.type()])
+        return Apply(self, [input], [tensor(dtype = input.type.dtype,
+                                            broadcastable = reversed(input.type.broadcastable))])
     
     def perform(self, node, (x, ), (z, )):
         z[0] = x.T
@@ -546,7 +556,9 @@ class Subtensor_dx(Op, Viewer):
         assert len(self.inputs) == len(new_inputs)
         return Subtensor_dx(new_inputs, self.idx_list)
 
-class Subtensor(Op, Viewer):
+
+
+class Subtensor(Op):
     """Return a subtensor view
 
     This class uses a relatively complex internal representation of the inputs
@@ -558,111 +570,152 @@ class Subtensor(Op, Viewer):
     
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
     """
-    e_invalid = 'invalid index'
+    e_invalid = 'The index list is longer than the number of dimensions of the tensor.'
     debug = 0
 
+    view_map = {0: [0]}
+
     @staticmethod
-    def from_idxs(x, idxs, **kwargs):
-        if Subtensor.debug:
-            print idxs, sys.maxint
-
-        def asidx(i):
-            if isinstance(i, int): return scal.constant(i)
-            if isinstance(i, scal.Scalar) and ('int' in i.dtype): return i
-            raise TypeError(Subtensor.e_invalid, i)
-
-        x = _as_tensor(x)
-        idx_list = [] # like args, but with int -> scalar.constant
-        inputs = [x] # like args, but with slices flattened
-        if not isinstance(idxs, (list, tuple)):
-            idxs = (idxs,)
-
+    def collapse(idxs, cond):
+        ret = []
+        def helper(entry):
+            if cond(entry):
+                ret.append(entry)
+            elif isinstance(entry, slice):
+                helper(entry.start)
+                helper(entry.stop)
+                helper(entry.step)
         for idx in idxs:
-            try:
-                ai = asidx(idx)
-                idx_list.append(len(inputs))
-                inputs.append(ai)
-            except TypeError:
-                if isinstance(idx, slice):
-                    start = None if idx.start is None else asidx(idx.start)
-                    stop  = None if idx.stop  is None else asidx(idx.stop)
-                    step  = None if idx.step  is None else asidx(idx.step)
+            helper(idx)
+        return ret
 
-                    # If we get here, then everything got turned (successfully)
-                    # into a scal.Scalar (with integer dtype) or None
-                    if start:
-                        startpos = len(inputs)
-                        inputs.append(start)
-                    else:
-                        startpos = None
+    def __init__(self, idx_list):
+        def convert(entry):
+            if isinstance(entry, gof.Result) and entry.type == scal.int64:
+                return entry.type
+            elif isinstance(entry, gof.Type) and entry == scal.int64:
+                return entry
+            elif isinstance(entry, slice):
+                a = entry.start
+                b = entry.stop
+                c = entry.step
+                return slice(convert(a) if a is not None else None,
+                             convert(b) if b is not None else None,
+                             convert(c) if c is not None else None)
+            elif isinstance(entry, int):
+                return entry
+            else:
+                raise TypeError("Invalid index type or slice for Subtensor", entry)
+        self.idx_list = map(convert, idx_list)
 
-                    if stop:
-                        stoppos = len(inputs)
-                        inputs.append(stop)
-                    else:
-                        stoppos = None
-
-                    if step:
-                        steppos = len(inputs)
-                        inputs.append(step)
-                    else:
-                        steppos = None
-                    idx_list.append(slice(startpos, stoppos, steppos))
-                else:
-                    raise
-
-        assert len(idxs) == len(idx_list)
-        return Subtensor( inputs, idx_list, **kwargs)
-
-    def __init__(self, inputs, idx_list, **kwargs):
-
-        if len(idx_list) > len(inputs[0].broadcastable):
-            raise ValueError(Subtensor.e_invalid, 
-                    (len(idx_list), len(inputs[0].broadcastable)))
+    def make_node(self, x, *inputs):
+        x = as_tensor(x)
+        inputs = tuple(map(scal.as_scalar, inputs))
+        
+        idx_list = list(self.idx_list)
+        if len(idx_list) > x.type.ndim:
+            raise ValueError(Subtensor.e_invalid,
+                             (len(idx_list), x.type.ndim))
 
         #infer the broadcasting pattern
-        padded = list(idx_list) \
-            + [slice(0,sys.maxint,1)] * (len(inputs[0].broadcastable) - len(idx_list)) 
-        broadcastable = [False for p in padded if isinstance(p, slice)]
+        padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
+        broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable) if isinstance(p, slice)]
 
-        Op.__init__(self, **kwargs) 
-        self.inputs = inputs
-        self.outputs = [Tensor(self.inputs[0].dtype, broadcastable)]
-        self.idx_list = idx_list
+        input_types = Subtensor.collapse(idx_list, lambda entry: isinstance(entry, gof.Type))
+        if len(inputs) != len(input_types):
+            raise IndexError("Not enough inputs to fill in the Subtensor template.", inputs, idx_list)
+        for input, expected_type in zip(inputs, input_types):
+            if input.type != expected_type:
+                raise TypeError("Wrong type for the Subtensor template. Expected %s, got %s." % (input.type, expected_type))
 
-    def view_map(self): 
-        return {self.out: [self.inputs[0]]}
+        return gof.Apply(self,
+                         (x, ) + inputs,
+                         [tensor(dtype = x.type.dtype,
+                                 broadcastable = broadcastable)])
 
-    def perform(self):
-        x = self.inputs[0].data
-        cdata = []
-        for c in self.idx_list:
-            if isinstance(c, slice):
-                cdata.append(slice(
-                    None if c.start is None else self.inputs[c.start].data, 
-                    None if c.stop is None else self.inputs[c.stop].data, 
-                    None if c.step is None else self.inputs[c.step].data))
+    def perform(self, node, inputs, (out, )):
+        x = inputs[0]
+        indices = list(reversed(inputs[1:]))
+
+        def convert(entry):
+            if isinstance(entry, gof.Type):
+                return indices.pop()
+            elif isinstance(entry, slice):
+                return slice(convert(entry.start),
+                             convert(entry.stop),
+                             convert(entry.step))
             else:
-                d = self.inputs[c].data
-                assert 'int' in str(d.dtype)
-                cdata.append(d)
-        if len(cdata) > 1:
-            cdata = tuple(cdata) #there's a diff between tuple and list here...
-        else:
-            cdata = cdata[0]
+                return entry
 
-        self.outputs[0].data = x.__getitem__(cdata)
-        if Subtensor.debug:
-            print self.inputs[0].data, cdata, self.outputs[0].data
+        cdata = tuple(map(convert, self.idx_list))
+        if len(cdata) == 1:
+            cdata = cdata[0]
+        out[0] = x.__getitem__(cdata)
 
     def grad(self, inputs, (gz,)):
-        return [Subtensor_dx(self.inputs + [gz], self.idx_list).outputs[0]]\
-                + [None] * (len(inputs)-1)
+        x = inputs[0]
+        rest = inputs[1:]
+        return [SetSubtensor(self.idx_list)(zeros_like(x), gz, *rest)] + [None] * len(rest)
 
-    def clone_with_new_inputs(self, *new_inputs):
-        assert len(self.inputs) == len(new_inputs)
-        return Subtensor(new_inputs, self.idx_list)
+    def __eq__(self, others):
+        return type(self) == type(other) and self.idx_list == other.idx_list
+
+    def __hash__(self):
+        # FIXME: this doesn't work if there are slices in the list because for some mysterious reason slice is unhashable
+        return hash(tuple(self.idx_list))
+
+
+class SetSubtensor(Subtensor):
+    view_map = {}
+    destroy_map = {0: [0]}
+
+    def make_node(self, x, y, *inputs):
+        x, y = map(as_tensor, [x, y])
+        inputs = tuple(map(scal.as_scalar, inputs))
         
+        idx_list = list(self.idx_list)
+        if len(idx_list) > x.type.ndim:
+            raise ValueError(Subtensor.e_invalid,
+                             (len(idx_list), x.type.ndim))
+
+        #infer the broadcasting pattern
+        padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
+        broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable) if isinstance(p, slice)]
+
+        if y.type.broadcastable != tuple(broadcastable):
+            raise TypeError("Invalid broadcastable pattern for y in SetSubtensor.make_node")
+
+        input_types = Subtensor.collapse(idx_list, lambda entry: isinstance(entry, gof.Type))
+        if len(inputs) != len(input_types):
+            raise IndexError("Not enough inputs to fill in the Subtensor template.", inputs, idx_list)
+        for input, expected_type in zip(inputs, input_types):
+            if input.type != expected_type:
+                raise TypeError("Wrong type for the Subtensor template. Expected %s, got %s." % (input.type, expected_type))
+
+        return gof.Apply(self,
+                         (x, y) + inputs,
+                         [x.type()])
+
+    def perform(self, node, inputs, (out, )):
+        x, y = inputs[:2]
+        indices = list(reversed(inputs[2:]))
+
+        def convert(entry):
+            if isinstance(entry, gof.Type):
+                return indices.pop()
+            elif isinstance(entry, slice):
+                return slice(convert(entry.start),
+                             convert(entry.stop),
+                             convert(entry.step))
+            else:
+                return entry
+
+        cdata = tuple(map(convert, self.idx_list))
+        if len(cdata) == 1:
+            cdata = cdata[0]
+        x.__setitem__(cdata, y)
+        out[0] = x
+
 
 class VerticalStack(Op):
     """

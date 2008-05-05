@@ -283,21 +283,34 @@ def inputs(result_list):
 
 
 def results_and_orphans(i, o):
-    results = set()
-    orphans = set()
-    def helper(r):
-        if r in results:
-            return
-        results.add(r)
-        if r.owner is None:
-            if r not in i:
-                orphans.add(r)
-        else:
-            for r2 in r.owner.inputs:
-                helper(r2)
-    for output in o:
-        helper(output)
+    """
+    """
+    def expand(r):
+        if r.owner and r not in i:
+            l = list(r.owner.inputs)
+            l.reverse()
+            return l
+    results = stack_search(deque(o), expand, 'dfs')
+    orphans = [r for r in results if r.owner is None and r not in i]
     return results, orphans
+
+
+#def results_and_orphans(i, o):
+#     results = set()
+#     orphans = set()
+#     def helper(r):
+#         if r in results:
+#             return
+#         results.add(r)
+#         if r.owner is None:
+#             if r not in i:
+#                 orphans.add(r)
+#         else:
+#             for r2 in r.owner.inputs:
+#                 helper(r2)
+#     for output in o:
+#         helper(output)
+#     return results, orphans
 
 
 def ops(i, o):
@@ -469,17 +482,17 @@ def io_toposort(i, o, orderings = {}):
     def deps(obj):
         rval = []
         if obj not in iset:
-            if isinstance(obj, result.Result): 
+            if isinstance(obj, Result): 
                 if obj.owner:
                     rval = [obj.owner]
-            if isinstance(obj, op.Op):
+            if isinstance(obj, Apply):
                 rval = list(obj.inputs)
             rval.extend(orderings.get(obj, []))
         else:
             assert not orderings.get(obj, [])
         return rval
     topo = general_toposort(o, deps)
-    return [o for o in topo if isinstance(o, op.Op)]
+    return [o for o in topo if isinstance(o, Apply)]
 
 
 
