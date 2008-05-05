@@ -88,18 +88,18 @@ class _test_inputs(unittest.TestCase):
         node2 = MyOp.make_node(node.outputs[0], r5)
         assert inputs(node2.outputs) == set([r1, r2, r5])
 
-    def test_unreached_inputs(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
-        node = MyOp.make_node(r1, r2)
-        node2 = MyOp.make_node(node.outputs[0], r5)
-        try:
-            # function doesn't raise if we put False instead of True
-            ro = results_and_orphans([r1, r2, node2.outputs[0]], node.outputs, True)
-            self.fail()
-        except Exception, e:
-            if e[0] is results_and_orphans.E_unreached:
-                return
-            raise
+#     def test_unreached_inputs(self):
+#         r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+#         node = MyOp.make_node(r1, r2)
+#         node2 = MyOp.make_node(node.outputs[0], r5)
+#         try:
+#             # function doesn't raise if we put False instead of True
+#             ro = results_and_orphans([r1, r2, node2.outputs[0]], node.outputs, True)
+#             self.fail()
+#         except Exception, e:
+#             if e[0] is results_and_orphans.E_unreached:
+#                 return
+#             raise
 
 
 class _test_orphans(unittest.TestCase):

@@ -176,126 +176,126 @@ class _testCase_dot(unittest.TestCase):
             w = w.todense()
             self.failUnless((z == w).all() == True)
 
-#     def test_basicSD(self):
-#         for mtype in _mtypes:
-#             x = as_sparse(mtype((500,3)))
-#             x.data[(10, 1)] = 1
-#             x.data[(20, 2)] = 2
-#             self.failUnless(_is_sparse_result(x))
+    def test_basicSD(self):
+        for mtype in _mtypes:
+            x = as_sparse(mtype((500,3)))
+            x.data[(10, 1)] = 1
+            x.data[(20, 2)] = 2
+            self.failUnless(_is_sparse_result(x))
 
-#             y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
-#             self.failUnless(_is_dense_result(y))
+            y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
+            self.failUnless(_is_dense_result(y))
 
-#             zop = dot(x,y)
-#             self.failUnless(_is_sparse_result(zop))
-#             z = compile.eval_outputs([zop])
-#             self.failUnless(_is_sparse(z))
-#             self.failUnless(z.shape == (500,2))
-#             self.failUnless(type(z) is mtype)
+            zop = dot(x,y)
+            self.failUnless(_is_sparse_result(zop))
+            z = compile.eval_outputs([zop])
+            self.failUnless(_is_sparse(z))
+            self.failUnless(z.shape == (500,2))
+            self.failUnless(type(z) is mtype)
 
-#             w = mtype((500,2))
-#             w[(10, 0)] = 3.
-#             w[(20, 0)] = 4
-#             w[(10, 1)] = 4
-#             w[(20, 1)] = 2
-#             self.failUnless(z.shape == w.shape)
-#             self.failUnless(type(z) == type(w))
-#             self.failUnless(z.dtype == w.dtype)
+            w = mtype((500,2))
+            w[(10, 0)] = 3.
+            w[(20, 0)] = 4
+            w[(10, 1)] = 4
+            w[(20, 1)] = 2
+            self.failUnless(z.shape == w.shape)
+            self.failUnless(type(z) == type(w))
+            self.failUnless(z.dtype == w.dtype)
 
-#             #self.failUnless(z == w)
-#             self.failUnless(abs(z-w).nnz == 0)
+            #self.failUnless(z == w)
+            self.failUnless(abs(z-w).nnz == 0)
 
-#             z = z.todense()
-#             w = w.todense()
-#             self.failUnless((z == w).all() == True)
+            z = z.todense()
+            w = w.todense()
+            self.failUnless((z == w).all() == True)
 
-#     def test_basicDS(self):
-#         for mtype in _mtypes:
-#             x = as_sparse(mtype((500,3)))
-#             x.data[(10, 1)] = 1
-#             x.data[(20, 2)] = 2
-#             self.failUnless(_is_sparse_result(x))
+    def test_basicDS(self):
+        for mtype in _mtypes:
+            x = as_sparse(mtype((500,3)))
+            x.data[(10, 1)] = 1
+            x.data[(20, 2)] = 2
+            self.failUnless(_is_sparse_result(x))
 
-#             y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
-#             self.failUnless(_is_dense_result(y))
+            y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
+            self.failUnless(_is_dense_result(y))
 
-#             x.data = x.data.T
-#             y.data = y.data.T
+            x.data = x.data.T
+            y.data = y.data.T
 
-# #            zop = dot(y, x)
-#             zop = transpose(dot(y, x))
-#             self.failUnless(_is_sparse_result(zop))
-#             z = compile.eval_outputs([zop])
-#             self.failUnless(_is_sparse(z))
-#             self.failUnless(z.shape == (500,2))
-# #            self.failUnless(type(z) is mtype)
+#            zop = dot(y, x)
+            zop = transpose(dot(y, x))
+            self.failUnless(_is_sparse_result(zop))
+            z = compile.eval_outputs([zop])
+            self.failUnless(_is_sparse(z))
+            self.failUnless(z.shape == (500,2))
+#            self.failUnless(type(z) is mtype)
 
-#             w = mtype((500,2))
-#             w[(10, 0)] = 3.
-#             w[(20, 0)] = 4
-#             w[(10, 1)] = 4
-#             w[(20, 1)] = 2
-#             self.failUnless(z.shape == w.shape)
-#             # Type should switch from csr to csc and vice-versa, so don't perform this test
-#             #self.failUnless(type(z) == type(w))
-#             self.failUnless(z.dtype == w.dtype)
+            w = mtype((500,2))
+            w[(10, 0)] = 3.
+            w[(20, 0)] = 4
+            w[(10, 1)] = 4
+            w[(20, 1)] = 2
+            self.failUnless(z.shape == w.shape)
+            # Type should switch from csr to csc and vice-versa, so don't perform this test
+            #self.failUnless(type(z) == type(w))
+            self.failUnless(z.dtype == w.dtype)
 
-#             # Type should switch from csr to csc and vice-versa, so don't perform this test
-#             #self.failUnless(z == w)
-#             self.failUnless(abs(z-w).nnz == 0)
+            # Type should switch from csr to csc and vice-versa, so don't perform this test
+            #self.failUnless(z == w)
+            self.failUnless(abs(z-w).nnz == 0)
 
-#             z = z.todense()
-#             w = w.todense()
-#             self.failUnless((z == w).all() == True)
+            z = z.todense()
+            w = w.todense()
+            self.failUnless((z == w).all() == True)
 
-#     def test_graph_bprop0(self):
-#         for mtype in _mtypes:
-#             x = tensor.Tensor('float64', broadcastable=[False,False], name='x')
-#             w = SparseResult('float64', _mtype_to_str[mtype])
-#             xw = dense_from_sparse(dot(w, x))
-#             y = dense_from_sparse(dot(w.T, xw))
-#             diff = x-y
-#             loss = tensor.sum(tensor.sqr(diff))
-#             gw = gradient.grad(loss, w)
-#             trainfn = compile.Function([x, w], [y, loss, gw])
+    def test_graph_bprop0(self):
+        for mtype in _mtypes:
+            x = tensor.matrix('x') #Tensor('float64', broadcastable=[False,False], name='x')
+            w = Sparse(dtype = 'float64', format = _mtype_to_str[mtype]).make_result()
+            xw = dense_from_sparse(dot(w, x))
+            y = dense_from_sparse(dot(w.T, xw))
+            diff = x-y
+            loss = tensor.sum(tensor.sqr(diff))
+            gw = gradient.grad(loss, w)
+            trainfn = compile.function([x, w], [y, loss, gw])
 
-#             x = numpy.asarray([[1., 2], [3, 4], [2, 1]])
-#             w = mtype((500,3))
-#             w[(10, 1)] = 1
-#             w[(20, 2)] = 2
-#             lr = 0.001
-#             y, origloss, gw = trainfn(x, w)
-#             for epoch in xrange(50):
-#                 y, loss, gw = trainfn(x, w)
-#                 w = w - (lr * gw)
+            x = numpy.asarray([[1., 2], [3, 4], [2, 1]])
+            w = mtype((500,3))
+            w[(10, 1)] = 1
+            w[(20, 2)] = 2
+            lr = 0.001
+            y, origloss, gw = trainfn(x, w)
+            for epoch in xrange(50):
+                y, loss, gw = trainfn(x, w)
+                w = w - (lr * gw)
 
-#             self.failUnless(origloss > loss)
-#             self.failUnless('1.0543172285' == str(loss))
+            self.failUnless(origloss > loss)
+            self.failUnless('1.0543172285' == str(loss))
 
-#     def test_graph_bprop_rand(self):
-#         for i in range(10):
-#             xorig = numpy.random.rand(3,2)
-#             for mtype in _mtypes:
-#                 x = tensor.Tensor('float64', broadcastable=[False,False], name='x')
-#                 w = SparseResult('float64', _mtype_to_str[mtype])
-#                 xw = dense_from_sparse(dot(w, x))
-#                 y = dense_from_sparse(dot(w.T, xw))
-#                 diff = x-y
-#                 loss = tensor.sum(tensor.sqr(diff))
-#                 gw = gradient.grad(loss, w)
-#                 trainfn = compile.Function([x, w], [y, loss, gw])
+    def test_graph_bprop_rand(self):
+        for i in range(10):
+            xorig = numpy.random.rand(3,2)
+            for mtype in _mtypes:
+                x = tensor.matrix('x')
+                w = Sparse(dtype = 'float64', format = _mtype_to_str[mtype]).make_result()
+                xw = dense_from_sparse(dot(w, x))
+                y = dense_from_sparse(dot(w.T, xw))
+                diff = x-y
+                loss = tensor.sum(tensor.sqr(diff))
+                gw = gradient.grad(loss, w)
+                trainfn = compile.function([x, w], [y, loss, gw])
 
-#                 x = xorig
-#                 w = mtype((500,3))
-#                 w[(10, 1)] = 1
-#                 w[(20, 2)] = 2
-#                 lr = 0.001
-#                 y, origloss, gw = trainfn(x, w)
-#                 for epoch in xrange(50):
-#                     y, loss, gw = trainfn(x, w)
-#                     w = w - (lr * gw)
+                x = xorig
+                w = mtype((500,3))
+                w[(10, 1)] = 1
+                w[(20, 2)] = 2
+                lr = 0.001
+                y, origloss, gw = trainfn(x, w)
+                for epoch in xrange(50):
+                    y, loss, gw = trainfn(x, w)
+                    w = w - (lr * gw)
 
-#                 self.failUnless(origloss > loss)
+                self.failUnless(origloss > loss)
 
 if __name__ == '__main__':
     unittest.main()
