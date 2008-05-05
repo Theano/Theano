@@ -11,6 +11,7 @@ import gof.result
 import gof.op
 
 import blas # for gemm, dot
+import gradient
 
 import elemwise as s2t
 import scalar as scal
@@ -1077,4 +1078,32 @@ class Gemm(_Op):
 
         """ % dict(locals(), **sub)
 gemm = gof.op.constructor(Gemm)
+
+
+
+#########################
+# Gradient
+#########################
+
+def grad(cost, wrt, g_cost=None):
+    """
+    @type cost: L{Result}
+    @type wrt: L{Result} or list of L{Result}s.
+    @type g_cost: L{Result} broadcastable to size of I{cost}, or None
+    @param g_cost: an expression for the gradient through cost.  The default is
+        {{{ones_like(cost)}}}
+
+    @rtype: L{Result} or list of L{Result}s (depending upon I{wrt})
+    @return: symbolic expression of gradient of I{cost} with respect to I{wrt}.
+    If I{wrt} is a list, then return a list containing the gradient of I{cost} wrt
+    each element of the list.
+    """
+    if g_cost is None:
+        g_cost = ones_like(cost)
+    inputs = gof.graph.inputs([cost])
+    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs)
+    if isinstance(wrt, list):
+        return [gmap.get(p, None) for p in wrt]
+    else:
+        return gmap.get(wrt, None)
 

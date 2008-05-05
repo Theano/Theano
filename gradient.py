@@ -108,24 +108,6 @@ def grad_sources_inputs(sources, graph_inputs):
                     gmap[r] = g_r
     return gmap
 
-def grad(cost, param, g_cost=1.0):
-    """
-    @type cost: L{Result}
-    @type param: L{Result} or list of L{Result}s.
-
-    @rtype: L{Result} or list of L{Result}s (depending upon I{param})
-    @return: symbolic expression of gradient of I{cost} wrt I{param}.
-    If I{param} is a list, then return a list containing the gradient of I{cost} wrt
-    each element of the list.
-    """
-    inputs = gof.graph.inputs([cost])
-    gmap = grad_sources_inputs([(cost, g_cost)], inputs)
-    if isinstance(param, list):
-        return [gmap.get(p, None) for p in param]
-    else:
-        return gmap.get(param, None)
-
-
 class numeric_grad:
     def __init__(self, f, pt, eps=1.0e-7):
         """Return the gradient of f at pt.

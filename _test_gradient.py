@@ -228,43 +228,6 @@ class _test_grad_sources_inputs(unittest.TestCase):
         self.failUnless(g[a1.inputs[1]] == 11)
 
 
-class _test_grad(unittest.TestCase):
-    class O(gof.op.Op):
-        def __init__(self):
-            self.inputs = [gof.result.Result(),gof.result.Result()]
-            self.outputs = [gof.result.Result(),gof.result.Result()]
-            self.gval0 = gof.result.Result()
-            self.gval1 = gof.result.Result()
-        def grad(self, (x0,x1), (gz0,gz1)):
-            return self.gval0, self.gval1
-
-    def test_1param(self):
-        """grad: Test passing a single result param"""
-        a1 = _test_grad.O()
-        self.failUnless(a1.gval0 is grad(a1.outputs[0], a1.inputs[0]))
-
-    def test_Nparam(self):
-        """grad: Test passing multiple result params"""
-        a1 = _test_grad.O()
-        g0,g1 = grad(a1.outputs[0], a1.inputs)
-        self.failUnless(a1.gval0 is g0)
-        self.failUnless(a1.gval1 is g1)
-
-    def test_1None_rval(self):
-        """grad: Test returning a single None from grad"""
-        a1 = _test_grad.O()
-        self.failUnless(None is grad(a1.outputs[0], a1.outputs[1]))
-        self.failUnless(None is grad(a1.outputs[0], 'wtf'))
-    def test_NNone_rval(self):
-        """grad: Test returning some Nones from grad"""
-        a1 = _test_grad.O()
-        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + ['wtf'])
-        self.failUnless(a1.gval0 is g0)
-        self.failUnless(a1.gval1 is g1)
-        self.failUnless(None is g2)
-
-
-
 
 def matrix():
     return tensor.Tensor('float64', [0,0])
