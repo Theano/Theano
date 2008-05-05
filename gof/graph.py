@@ -43,7 +43,8 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
         raise ValueError('mode should be bfs or dfs', mode)
     rval_set = set()
     rval_list = list()
-    start_pop = start.popleft if mode is 'bfs' else start.pop
+    if mode is 'bfs': start_pop = start.popleft
+    else: start_pop = start.pop
     expand_inv = {}
     while start:
         l = start_pop()
@@ -91,7 +92,8 @@ def results_and_orphans(r_in, r_out, except_unreachable_input=False):
         if io in r_in_set:
             return None
         try:
-            return [io.owner] if io.owner != None else None
+            if io.owner != None: return [io.owner]
+            else: return None
         except AttributeError:
             return io.inputs
     ops_and_results, dfsinv = stack_search(
