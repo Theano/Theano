@@ -124,9 +124,12 @@ class T_Function(unittest.TestCase):
     def test_orphans(self):
         gi, go = graph1()
         opt = None
-        p0 = Function(gi[0:0], go)
+        p0 = Function(gi[0:0], go, keep_locals=True)
 
-        self.failUnless(p0() == 1.0)
+        self.failUnless(p0.orphans == go, p0.orphans)
+
+        vp0 = p0()
+        self.failUnless(vp0 == 1.0, vp0)
 
         p3 = Function(gi,go)
         p2 = Function(gi[0:2], go)
