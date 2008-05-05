@@ -1,7 +1,9 @@
 
 from copy import copy
+from collections import deque
 
 import utils
+import result, op
 
 
 __all__ = ['inputs',
@@ -14,33 +16,72 @@ __all__ = ['inputs',
            'as_string',
            'Graph']
 
+is_result = lambda o: isinstance(o, result.Result)
+is_op = lambda o: isinstance(o, op.Op)
 
-is_result = utils.attr_checker('owner', 'index')
-is_op = utils.attr_checker('inputs', 'outputs')
+def stack_search(start, expand, mode='bfs', build_inv = False):
+    """Search through L{Result}s, either breadth- or depth-first
 
+    @type start: deque
+    @param start: search from these nodes
+    @type explore: function
+    @param explore: when we get to a node, add explore(node) to the list of
+                    nodes to visit.  This function should return a list, or None
 
-def inputs(o):
+    @rtype: list of L{Result}
+    @return: the list of L{Result}s in order of traversal.
+    
+    @note: a L{Result} will appear at most once in the return value, even if it
+    appears multiple times in the start parameter.  
+
+    @postcondition: every element of start is transferred to the returned list.
+    
+    @postcondition: start is empty.
+
     """
-    @type o: list
-    @param o: output L{Result}s
+    if mode not in ('bfs', 'dfs'):
+        raise ValueError('mode should be bfs or dfs', mode)
+    rval_set = set()
+    rval_list = list()
+    start_pop = start.popleft if mode is 'bfs' else start.pop
+    expand_inv = {}
+    while start:
+        l = start_pop()
+        if id(l) not in rval_set:
+            rval_list.append(l)
+            rval_set.add(id(l))
+            expand_l = expand(l)
+            if expand_l:
+                if build_inv:
+                    for r in expand_l:
+                        expand_inv.setdefault(r, []).append(l)
+                start.extend(expand_l)
+    assert len(rval_list) == len(rval_set)
+    if build_inv:
+        return rval_list, expand_inv
+    return rval_list
 
-    Returns the set of inputs necessary to compute the outputs in o
-    such that input.owner is None.
+def inputs(result_list):
     """
-    results = set()
-    def seek(r):
-        op = r.owner
-        if op is None:
-            results.add(r)
-        else:
-            for input in op.inputs:
-                seek(input)
-    for output in o:
-        seek(output)
-    return results
+    @type result_list: list of L{Result}
+    @param result_list: output L{Result}s (from which to search backward through owners)
+    @returns: the list of L{Result}s with no owner, in the order found by a
+    left-recursive depth-first search started at the L{Result}s in result_list.
+
+    """
+    def expand(r):
+        if r.owner:
+            l = list(r.owner.inputs)
+            l.reverse()
+            return l
+    dfs_results = stack_search(deque(result_list), expand, 'dfs')
+    rval = [r for r in dfs_results if r.owner is None]
+    #print rval, _orig_inputs(o)
+    return rval
 
 
-def results_and_orphans(i, o, except_unreachable_input=False):
+@utils.deprecated('gof.graph', 'preserving only for review')
+def _results_and_orphans(i, o, except_unreachable_input=False):
     """
     @type i: list
     @param i: input L{Result}s
@@ -86,6 +127,44 @@ def results_and_orphans(i, o, except_unreachable_input=False):
     results.update(orphans)
 
     return results, orphans
+
+def results_and_orphans(r_in, r_out, except_unreachable_input=False):
+    r_in_set = set(r_in)
+    class Dummy(object): pass
+    dummy = Dummy()
+    dummy.inputs = r_out
+    def expand_inputs(io):
+        if io in r_in_set:
+            return None
+        try:
+            return [io.owner] if io.owner != None else None
+        except AttributeError:
+            return io.inputs
+    ops_and_results, dfsinv = stack_search(
+            deque([dummy]),
+            expand_inputs, 'dfs', True)
+
+    if except_unreachable_input:
+        for r in r_in:
+            if r not in dfsinv:
+                raise Exception(results_and_orphans.E_unreached)
+    clients = stack_search(
+            deque(r_in), 
+            lambda io: dfsinv.get(io,None), 'dfs')
+    
+    ops_to_compute = [o for o in clients if is_op(o) and o is not dummy]
+
+    results = []
+    for o in ops_to_compute:
+        results.extend(o.inputs)
+    results.extend(r_out)
+
+    op_set = set(ops_to_compute)
+    assert len(ops_to_compute) == len(op_set)
+    orphans = [r for r in results \
+            if (r.owner not in op_set) and (r not in r_in_set)]
+    return results, orphans
+
 results_and_orphans.E_unreached = 'there were unreachable inputs'
 
 
@@ -261,6 +340,8 @@ def as_string(i, o,
     where n is an id number (ids are attributed in an unspecified order and only
     exist for viewing convenience).
     """
+
+    i = set(i)
 
     orph = orphans(i, o)
     
