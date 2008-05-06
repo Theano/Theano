@@ -110,16 +110,20 @@ class Linker:
 
 
 class Filter(object):
-    def __init__(self, type, storage, readonly = False):
+    def __init__(self, type, storage, readonly = False, strict = False):
         self.type = type
         self.storage = storage
         self.readonly = readonly
+        self.strict = strict
     def __get(self):
         return self.storage[0]
     def __set(self, value):
         if self.readonly:
             raise Exception("Cannot set readonly storage.")
-        self.storage[0] = self.type.filter(value)
+        if self.strict:
+            self.storage[0] = self.type.filter(value, strict = True)
+        else:
+            self.storage[0] = self.type.filter(value)
     data = property(__get, __set)
     def __str__(self):
         return "<" + str(self.storage[0]) + ">"

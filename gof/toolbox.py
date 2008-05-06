@@ -11,7 +11,7 @@ class Bookkeeper:
         for node in graph.io_toposort(env.inputs, env.outputs):
             self.on_import(env, node)
 
-    def on_deattach(self, env):
+    def on_detach(self, env):
         for node in graph.io_toposort(env.inputs, env.outputs):
             self.on_prune(env, node)
 
@@ -22,7 +22,7 @@ class Toposorter:
             raise Exception("Toposorter feature is already present or in conflict with another plugin.")
         env.toposort = partial(self.toposort, env)
 
-    def on_deattach(self, env):
+    def on_detach(self, env):
         del env.toposort
 
     def toposort(self, env):
@@ -73,7 +73,7 @@ class History:
         env.checkpoint = lambda: len(self.history[env])
         env.revert = partial(self.revert, env)
 
-    def on_deattach(self, env):
+    def on_detach(self, env):
         del env.checkpoint
         del env.revert
         del self.history[env]
@@ -112,7 +112,7 @@ class Validator:
                 return False
         env.consistent = consistent
 
-    def on_deattach(self, env):
+    def on_detach(self, env):
         del env.validate
         del env.consistent
 
@@ -128,9 +128,9 @@ class ReplaceValidate(History, Validator):
         env.replace_validate = partial(self.replace_validate, env)
         env.replace_all_validate = partial(self.replace_all_validate, env)
 
-    def on_deattach(self, env):
-        History.on_deattach(self, env)
-        Validator.on_deattach(self, env)
+    def on_detach(self, env):
+        History.on_detach(self, env)
+        Validator.on_detach(self, env)
         del env.replace_validate
         del env.replace_all_validate
 
@@ -162,12 +162,12 @@ class NodeFinder(dict, Bookkeeper):
         env.get_nodes = partial(self.query, env)
         Bookkeeper.on_attach(self, env)
 
-    def on_deattach(self, env):
+    def on_detach(self, env):
         if self.env is not env:
             raise Exception("This NodeFinder instance was not attached to the provided env.")
         self.env = None
         del env.get_nodes
-        Bookkeeper.on_deattach(self, env)
+        Bookkeeper.on_detach(self, env)
 
     def on_import(self, env, node):
         try:
@@ -205,9 +205,9 @@ class PrintListener(object):
         if self.active:
             print "-- attaching to: ", env
 
-    def on_deattach(self, env):
+    def on_detach(self, env):
         if self.active:
-            print "-- deattaching from: ", env
+            print "-- detaching from: ", env
 
     def on_import(self, env, node):
         if self.active:

@@ -67,12 +67,18 @@ def cloned_env(inputs, outputs):
     env = gof.env.Env(inputs, outputs)
     return env
 
-def std_env(inputs, outputs):
+def std_env(inputs, outputs, disown_inputs = False):
     inputs, outputs = gof.graph.clone(inputs, outputs)
     _mark_indestructible(outputs)
     env = gof.env.Env(inputs, outputs)
     env.extend(gof.DestroyHandler())
     env.extend(gof.ReplaceValidate())
+    env.validate()
+    for input in inputs:
+        input.destroyed_by_user = len(env.destroyers(input)) != 0
+        if not input.destroyed_by_user and not disown_inputs:
+            # prevent optimizations from destroying the inputs
+            input.indestructible = True
     return env
 
 def std_opt(env):
@@ -88,29 +94,38 @@ predefined_linkers = {
 
 class FunctionFactory:
 
-    def __init__(self, inputs, outputs, linker = 'py', optimizer = std_opt, borrow_outputs = False):
+    def __init__(self, inputs, outputs, linker = 'py', optimizer = std_opt, borrow_outputs = False, disown_inputs = False):
         if len(inputs) != len(set(inputs)):
             print >>sys.stderr, "Warning: duplicate inputs"
         for r in list(inputs) + list(outputs):
             if not isinstance(r, gof.Result):
                 raise TypeError("All inputs and outputs to FunctionFactory should be Result instances. Received:", type(r), r)
-        env = std_env(inputs, outputs)
+        env = std_env(inputs, outputs, disown_inputs = disown_inputs)
         if None is not optimizer:
             optimizer(env)
         env.validate()
         self.env = env
         linker = predefined_linkers.get(linker, linker)
+        if not callable(linker):
+            raise ValueError("'linker' parameter of FunctionFactory should be a callable that takes an env as argument " \
+                             "or one of ['py', 'c', 'c|py', 'c&py']")
         if borrow_outputs:
             self.linker = linker(env)
         else:
             self.linker = linker(env, no_recycling = infer_reuse_pattern(env, env.outputs))
             
-    def create(self, profiler = None, unpack_single = True):
+            
+    def create(self, profiler = None, unpack_single = True, strict = 'if_destroyed'):
+        if strict not in [True, False, 'if_destroyed']:
+            raise ValueError("'strict' parameter of create should be one of [True, False, 'if_destroyed']")
         if profiler is None:
             fn = self.linker.make_function(unpack_single=unpack_single)
         else:
             fn  = self.linker.make_function(unpack_single=unpack_single,
                                             profiler=profiler)
+        for env_input, fn_input in zip(self.env.inputs, fn.inputs):
+            if strict is True or (env_input.destroyed_by_user and strict == 'if_destroyed'):
+                fn_input.strict = True
         return fn
 
     def partial(self, *first, **kwargs):
@@ -123,15 +138,19 @@ def function(inputs,
              linker = 'py',
              optimizer = std_opt,
              borrow_outputs = False,
+             disown_inputs = False,
              profiler = None,
-             unpack_single = True):
+             unpack_single = True,
+             strict = 'if_destroyed'):
     ff = FunctionFactory(inputs,
                          outputs,
                          linker = linker,
                          optimizer = optimizer,
-                         borrow_outputs = borrow_outputs,)
+                         borrow_outputs = borrow_outputs,
+                         disown_inputs = disown_inputs)
     return ff.create(profiler = profiler,
-                     unpack_single = unpack_single)
+                     unpack_single = unpack_single,
+                     strict = strict)
 
 
 def eval_outputs(outputs, **kwargs):

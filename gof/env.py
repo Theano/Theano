@@ -260,9 +260,9 @@ class Env(object): #(graph.Graph):
             self._features.remove(feature)
         except:
             return
-        deattach = getattr(feature, 'on_deattach', None)
-        if deattach is not None:
-            deattach(self)
+        detach = getattr(feature, 'on_detach', None)
+        if detach is not None:
+            detach(self)
 
 
     ### callback utils ###
