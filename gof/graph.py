@@ -49,14 +49,17 @@ class Apply(object2):
         Returns the default output for this Node, typically self.outputs[0].
         Depends on the value of node.op.default_output
         """
-        do = self.op.default_output
-        if do < 0:
-            raise AttributeError("%s does not have a default output." % self.op)
-        elif do > len(self.outputs):
-            raise AttributeError("default output for %s is out of range." % self.op)
+        do = getattr(self.op, 'default_output', None)
+        if do is None:
+            if len(self.outputs) == 1:
+                return self.outputs[0]
+            else:
+                raise AttributeError("%s.default_output should be an output index." % self.op)
+        elif do < 0 or do >= len(self.outputs):
+            raise AttributeError("%s.default_output is out of range." % self.op)
         return self.outputs[do]
     out = property(default_output, 
-                   doc = "Same as self.outputs[0] if this Op's has_default_output field is True.")
+                   doc = "Shortcut to the  as self.outputs[0] if this Op's has_default_output field is True.")
     def __str__(self):
         return op_as_string(self.inputs, self)
     def __repr__(self):
@@ -561,7 +564,7 @@ def as_string(i, o,
         if r.owner is not None and r not in i and r not in orph:
             op = r.owner
             idx = op.outputs.index(r)
-            if idx == op.op.default_output:
+            if len(op.outputs) == 1:
                 idxs = ""
             else:
                 idxs = "::%i" % idx

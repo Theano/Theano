@@ -12,10 +12,11 @@ from copy import copy
 
 
 class Op(object2):
+
+    default_output = None
+    """@todo
+    """
     
-    default_output = 0
-
-
     #############
     # make_node #
     #############
