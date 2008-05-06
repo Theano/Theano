@@ -156,6 +156,15 @@ class T_Function(unittest.TestCase):
         assert eval_outputs([e]) == 14.0
         assert fast_compute(e) == 14.0
 
+    def test_closure(self):
+        x, y, z = tensor.scalars('xyz')
+        v = tensor.value(numpy.zeros(()))
+        e = x + tensor.add_inplace(v, 1)
+        f = function([x], [e])
+        assert f(1.) == 2.
+        assert f(1.) == 3.
+        assert f(1.) == 4.
+
     def test_borrow_true(self):
         x, y, z = tensor.scalars('xyz')
         e = x + y + z
