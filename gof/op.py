@@ -26,10 +26,13 @@ class Op(object2):
 
     def __call__(self, *inputs):
         node = self.make_node(*inputs)
-        if len(node.outputs) == 1:
-            return node.outputs[0]
+        if self.default_output is not None:
+            return node.outputs[self.default_output]
         else:
-            return node.outputs
+            if len(node.outputs) == 1:
+                return node.outputs[0]
+            else:
+                return node.outputs
 
 
     #########################
