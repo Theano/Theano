@@ -1,15 +1,21 @@
 
-import gof
+from gof import \
+     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, Profiler, \
+     InconsistencyError, Env, \
+     Apply, Result, Constant, Value, \
+     Op, \
+     opt, \
+     toolbox, \
+     Type, Generic, generic, \
+     object2, utils
+
+from compile import function, eval_outputs, fast_compute
+
 import tensor
-#import sparse
-import compile
+import scalar
+import sparse
 import gradient
-#import tensor_opt
-import scalar_opt
+import elemwise
 
-from compile import *
-#from tensor_opt import *
-from scalar_opt import *
-from gradient import *
-from tensor import *
-
+## import scalar_opt
+## import tensor_opt
