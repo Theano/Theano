@@ -128,6 +128,10 @@ class Value(Result):
         return "<" + str(self.data) + ">" #+ "::" + str(self.type)
     def clone(self):
         return self.__class__(self.type, self.data)
+    def __set_owner(self, value):
+        if value is not None:
+            raise ValueError("Value instances cannot have an owner.")
+    owner = property(lambda self: None, __set_owner)
 
 class Constant(Value):
     #__slots__ = ['data']
