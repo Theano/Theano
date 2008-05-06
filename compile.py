@@ -91,6 +91,9 @@ class FunctionFactory:
     def __init__(self, inputs, outputs, linker = 'py', optimizer = std_opt, borrow_outputs = False):
         if len(inputs) != len(set(inputs)):
             print >>sys.stderr, "Warning: duplicate inputs"
+        for r in list(inputs) + list(outputs):
+            if not isinstance(r, gof.Result):
+                raise TypeError("All inputs and outputs to FunctionFactory should be Result instances. Received:", type(r), r)
         env = std_env(inputs, outputs)
         if None is not optimizer:
             optimizer(env)

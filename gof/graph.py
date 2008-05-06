@@ -89,8 +89,14 @@ class Result(object2):
     #__slots__ = ['type', 'owner', 'index', 'name']
     def __init__(self, type, owner = None, index = None, name = None):
         self.type = type
+        if owner is not None and not isinstance(owner, Apply):
+            raise TypeError("owner must be an Apply instance", owner)
         self.owner = owner
+        if index is not None and not isinstance(index, int):
+            raise TypeError("index must be an int", index)
         self.index = index
+        if name is not None and not isinstance(name, str):
+            raise TypeError("name must be a string", name)
         self.name = name
     def __str__(self):
         if self.name is not None:
