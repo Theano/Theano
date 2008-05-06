@@ -231,8 +231,8 @@ class PerformLinker(LocalLinker):
         thunks = []
         input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
         for node in order:
-            node_input_storage = [storage_map[input] for input in node.inputs]
-            node_output_storage = [storage_map[output] for output in node.outputs]
+            node_input_storage = tuple(storage_map[input] for input in node.inputs)
+            node_output_storage = tuple(storage_map[output] for output in node.outputs)
             p = node.op.perform
             thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
             thunk.inputs = node_input_storage

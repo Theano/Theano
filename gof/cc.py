@@ -599,7 +599,7 @@ class CLinker(Linker):
 #             out_results = [copy(output) for output in self.outputs]
         error_storage = [None, None, None]
         if input_storage is None:
-            input_storage = [[None] for result in self.inputs]
+            input_storage = tuple([None] for result in self.inputs)
         if output_storage is None:
             map = {}
             output_storage = []
@@ -607,6 +607,8 @@ class CLinker(Linker):
                 if result not in map:
                     map[result] = [None]
                 output_storage.append(map[result])
+        input_storage = tuple(input_storage)
+        output_storage = tuple(output_storage)
         thunk = self.cthunk_factory(error_storage,
                                     input_storage,
                                     output_storage)
