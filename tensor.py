@@ -390,6 +390,19 @@ s2t.TensorConstant = TensorConstant
 s2t.TensorValue = TensorValue
 
 
+
+#########################
+# Utilities
+#########################
+
+def _elemwise(scalar_op, name):
+    straight = s2t.Elemwise(scalar_op)
+    inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
+    inplace = s2t.Elemwise(inplace_scalar_op, {0: 0})
+    return straight, inplace
+
+
+
 #########################
 # Casting Operations
 #########################
@@ -419,6 +432,28 @@ class ScalarFromTensor(Op):
     def grad(self, (s,), (dt,)):
         return [TensorFromScalar(dt)]
 scalar_from_tensor = ScalarFromTensor()
+
+
+def cast(t, dtype):
+    mapping = {'int8': convert_to_int8,
+               'int16': convert_to_int16,
+               'int32': convert_to_int32,
+               'int64': convert_to_int64,
+               'float32': convert_to_float32,
+               'float64': convert_to_float64,
+               'complex64': convert_to_complex64,
+               'complex128': convert_to_complex128}
+    return mapping[dtype](t)
+
+convert_to_int8  = s2t.Elemwise(scal.Identity(scal.specific_out(scal.int8)))
+convert_to_int16 = s2t.Elemwise(scal.Identity(scal.specific_out(scal.int16)))
+convert_to_int32 = s2t.Elemwise(scal.Identity(scal.specific_out(scal.int32)))
+convert_to_int64 = s2t.Elemwise(scal.Identity(scal.specific_out(scal.int64)))
+convert_to_float32 = s2t.Elemwise(scal.Identity(scal.specific_out(scal.float32)))
+convert_to_float64 = s2t.Elemwise(scal.Identity(scal.specific_out(scal.float64)))
+convert_to_complex64  = s2t.Elemwise(scal.Identity(scal.specific_out(scal.complex64)))
+convert_to_complex128 = s2t.Elemwise(scal.Identity(scal.specific_out(scal.complex128)))
+
 
 
 ##########################
@@ -470,12 +505,6 @@ def max(x, axis=None):
     # but when Argmax.c_impl() is in place, it should be fine.
     return argmax(x,axis)[0]
 
-
-def _elemwise(scalar_op, name):
-    straight = s2t.Elemwise(scalar_op)
-    inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-    inplace = s2t.Elemwise(inplace_scalar_op, {0: 0})
-    return straight, inplace
 
 ##########################
 # Comparison

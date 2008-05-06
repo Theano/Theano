@@ -586,6 +586,19 @@ class T_Shape(unittest.TestCase):
         s = shape(numpy.ones((5, 3, 10)))
         self.failUnless((eval_outputs([s]) == [5, 3, 10]).all())
 
+class T_Cast(unittest.TestCase):
+    def test_basic(self):
+        for type1 in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:
+            x = Tensor(dtype = type1, broadcastable = (False, )).make_result()
+            for type2, converter in zip(['int8', 'int16', 'int32', 'int64', 'float32', 'float64'],
+                                        [convert_to_int8, convert_to_int16, convert_to_int32, convert_to_int64,
+                                         convert_to_float32, convert_to_float64]):
+                y = converter(x)
+                f = function([x], [y], strict = True, linker = 'c&py')
+                a = numpy.arange(10, dtype = type1)
+                b = f(a)
+                self.failUnless(numpy.all(b == numpy.arange(10, dtype = type2)))
+
 class T_argmax(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(123784)
@@ -1624,7 +1637,7 @@ class _test_grad(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+   unittest.main()
 #    suite = unittest.TestLoader()
-#    suite = suite.loadTestsFromTestCase(T_subtensor)
+#    suite = suite.loadTestsFromTestCase(T_Cast)
 #    unittest.TextTestRunner(verbosity=2).run(suite)
