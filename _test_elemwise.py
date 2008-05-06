@@ -2,7 +2,7 @@
 import time
 import unittest
 
-from gof import Result, Op, Env, modes
+from gof import Result, Op, Env
 import gof
 
 from scalar import *
@@ -10,15 +10,6 @@ from scalar import *
 import tensor
 from elemwise import *
 
-
-# def inputs():
-#     x = modes.build(Tensor('float64', (0, 0), name = 'x'))
-#     y = modes.build(Tensor('float64', (1, 0), name = 'y'))
-#     z = modes.build(Tensor('float64', (0, 0), name = 'z'))
-#     return x, y, z
-
-# def env(inputs, outputs, validate = True, features = []):
-#     return Env(inputs, outputs, features = features, consistency_check = validate)
 
 
 class _test_DimShuffle(unittest.TestCase):
@@ -34,7 +25,6 @@ class _test_DimShuffle(unittest.TestCase):
             ib = [(entry == 1) for entry in xsh]
             x = Tensor('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
-#             print shuffle, e.owner.grad(e.owner.inputs, e.owner.outputs).owner.new_order
             f = linker(Env([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
 
@@ -58,18 +48,10 @@ class _test_Broadcast(unittest.TestCase):
             y = Tensor('float64', [(entry == 1) for entry in ysh])('y')
             e = Elemwise(add)(x, y)
             f = linker(Env([x, y], [e])).make_function()
-#             xv = numpy.array(range(numpy.product(xsh)))
-#             xv = xv.reshape(xsh)
-#             yv = numpy.array(range(numpy.product(ysh)))
-#             yv = yv.reshape(ysh)
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
 
-#             print "AAAAAAAAAAAAAAAAAA"
-#             print f(xv, yv)
-#             print zv
-#             print "BBBBBBBBBBBBBBBBBB"
             self.failUnless((f(xv, yv) == zv).all())
 
     def with_linker_inplace(self, linker):
@@ -152,12 +134,6 @@ class _test_CAReduce(unittest.TestCase):
             zv = xv
             for axis in reversed(sorted(tosum)):
                 zv = numpy.add.reduce(zv, axis)
-#             print "AAAAAAAAAAAAAAAAAA"
-#             print xsh, tosum
-#             print f(xv)
-#             print zv
-#             print f(xv) - zv
-#             print "BBBBBBBBBBBBBBBBBB"
             self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
 
     def test_perform(self):
@@ -169,79 +145,3 @@ class _test_CAReduce(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    
-# #     x = modes.build(Tensor('int32', [0, 0], name = 'x'))
-# #     y = modes.build(Tensor('int32', [0, 0], name = 'y'))
-#     from scalar import Scalar, composite
-#     x = modes.build(Tensor('float64', [0, 0], name = 'x'))
-#     y = modes.build(Tensor('float64', [0, 0], name = 'y'))
-#     xs, ys = Scalar('float64'), Scalar('float64')
-#     e = Broadcast(composite([xs, ys], [(xs * ys) + (xs / ys) * 7.0]), (x, y)).out
-#     f = gof.CLinker(env([x, y], [e])).make_function(inplace = False)
-#     size = 2000
-#     xv = numpy.random.rand(size, size)
-#     yv = numpy.random.rand(size, size)
-#     zv = numpy.random.rand(size, size)
-# #     xv = numpy.random.randint(1, 5, (1000, 1000))
-# #     yv = numpy.random.randint(1, 5, (1000, 1000))
-
-# #     t0 = time.time()
-# #     for i in xrange(100):
-# #         xv / yv
-# #     print time.time() - t0
-
-# #     t0 = time.time()
-# #     for i in xrange(10):
-# #         f(xv, yv)
-# #     print time.time() - t0
-
-# #     t0 = time.time()
-# #     for i in xrange(10):
-# #         (xv * yv) + (xv / yv) * 7.0
-# #     print time.time() - t0
-
-#     from scipy import weave
-#     import numpy
-#     t0 = time.time()
-#     for i in xrange(10):
-#         weave.blitz("zv = dot(xv, yv)", locals())
-#     print time.time() - t0
-
-    # speed ratios:
-    # add : 1
-    # mul : 1
-    # div : 2
-    # pow : 20
-
-
-
-#     def test_straightforward(self):
-#         x, y, z = inputs()
-#         e0 = CAReduce(Add, [x]).out
-# #        print e0.owner
-#         f = gof.PerformLinker(env([x], [e0])).make_function(inplace=True)
-#         assert f(numpy.ones((2, 2))) == 4.0
-##########
-
-##########
-#     def test_straightforward(self):
-#         x, y, z = inputs()
-#         e0 = Broadcast(Add, (x, y)).out
-#         f = gof.PerformLinker(env([x, y], [e0])).make_function(inplace=True)
-#         assert (f(numpy.ones((2, 2)), numpy.ones((1, 2))) == numpy.ones((2, 2))*2).all()
-# #         for result in e0.owner.grad(e0.owner.inputs, (z, )):
-# #             print env([x, y, z], [result])
-
-#     def test_c(self):
-#         x = modes.build(Tensor('float64', (0, 0), name = 'x'))
-#         y = modes.build(Tensor('float64', (0, 1), name = 'y'))
-#         z = modes.build(Tensor('float64', (0, 0), name = 'z'))
-# #        x = modes.build(Tensor('float64', (), name = 'x'))
-# #        y = modes.build(Tensor('float64', (), name = 'y'))
-# #        x, y, z = inputs()
-#         e0 = Broadcast(Add, (x, y)).out
-#         f = gof.CLinker(env([x, y], [e0])).make_function(inplace=True)
-#         print f(numpy.ones((4, 4), order = 'f'), numpy.array([[1], [2], [3], [4]]))
-# #        print f(numpy.ones(()), numpy.ones(()))
-#         assert (f(numpy.ones((2, 2)), numpy.ones((2, 1))) == numpy.ones((2, 2))*2).all()
-

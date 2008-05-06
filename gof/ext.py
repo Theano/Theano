@@ -478,50 +478,50 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
 
 
 
-class Destroyer:
-    """
-    Base class for Ops that destroy one or more of their inputs in an
-    inplace operation, use them as temporary storage, puts garbage in
-    them or anything else that invalidates the contents for use by other
-    Ops.
+# class Destroyer:
+#     """
+#     Base class for Ops that destroy one or more of their inputs in an
+#     inplace operation, use them as temporary storage, puts garbage in
+#     them or anything else that invalidates the contents for use by other
+#     Ops.
 
-    Usage of this class in an env requires DestroyHandler.
-    """
+#     Usage of this class in an env requires DestroyHandler.
+#     """
 
-    def destroyed_inputs(self):
-        raise AbstractFunctionError()
+#     def destroyed_inputs(self):
+#         raise AbstractFunctionError()
 
-    def destroy_map(self):
-        """
-        Returns the map {output: [list of destroyed inputs]}
-        While it typically means that the storage of the output is
-        shared with each of the destroyed inputs, it does necessarily
-        have to be the case.
-        """
-        # compatibility
-        return {self.out: self.destroyed_inputs()}
+#     def destroy_map(self):
+#         """
+#         Returns the map {output: [list of destroyed inputs]}
+#         While it typically means that the storage of the output is
+#         shared with each of the destroyed inputs, it does necessarily
+#         have to be the case.
+#         """
+#         # compatibility
+#         return {self.out: self.destroyed_inputs()}
     
-    __env_require__ = DestroyHandler
+#     __env_require__ = DestroyHandler
 
 
 
-class Viewer:
-    """
-    Base class for Ops that return one or more views over one or more inputs,
-    which means that the inputs and outputs share their storage. Unless it also
-    extends Destroyer, this Op does not modify the storage in any way and thus
-    the input is safe for use by other Ops even after executing this one.
-    """
+# class Viewer:
+#     """
+#     Base class for Ops that return one or more views over one or more inputs,
+#     which means that the inputs and outputs share their storage. Unless it also
+#     extends Destroyer, this Op does not modify the storage in any way and thus
+#     the input is safe for use by other Ops even after executing this one.
+#     """
 
-    def view_map(self):
-        """
-        Returns the map {output: [list of viewed inputs]}
-        It means that the output shares storage with each of the inputs
-        in the list.
-        Note: support for more than one viewed input is minimal, but
-        this might improve in the future.
-        """
-        raise AbstractFunctionError()
+#     def view_map(self):
+#         """
+#         Returns the map {output: [list of viewed inputs]}
+#         It means that the output shares storage with each of the inputs
+#         in the list.
+#         Note: support for more than one viewed input is minimal, but
+#         this might improve in the future.
+#         """
+#         raise AbstractFunctionError()
 
 
 def view_roots(r):

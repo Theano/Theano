@@ -568,36 +568,36 @@ def as_string(i, o,
 
 
 
-class Graph:
-    """
-    Object-oriented wrapper for all the functions in this module.
-    """
+# class Graph:
+#     """
+#     Object-oriented wrapper for all the functions in this module.
+#     """
 
-    def __init__(self, inputs, outputs):
-        self.inputs = inputs
-        self.outputs = outputs
+#     def __init__(self, inputs, outputs):
+#         self.inputs = inputs
+#         self.outputs = outputs
 
-    def ops(self):
-        return ops(self.inputs, self.outputs)
+#     def ops(self):
+#         return ops(self.inputs, self.outputs)
 
-    def values(self):
-        return values(self.inputs, self.outputs)
+#     def values(self):
+#         return values(self.inputs, self.outputs)
 
-    def orphans(self):
-        return orphans(self.inputs, self.outputs)
+#     def orphans(self):
+#         return orphans(self.inputs, self.outputs)
 
-    def io_toposort(self):
-        return io_toposort(self.inputs, self.outputs)
+#     def io_toposort(self):
+#         return io_toposort(self.inputs, self.outputs)
 
-    def toposort(self):
-        return self.io_toposort()
+#     def toposort(self):
+#         return self.io_toposort()
 
-    def clone(self):
-        o = clone(self.inputs, self.outputs)
-        return Graph(self.inputs, o)
+#     def clone(self):
+#         o = clone(self.inputs, self.outputs)
+#         return Graph(self.inputs, o)
 
-    def __str__(self):
-        return as_string(self.inputs, self.outputs)
+#     def __str__(self):
+#         return as_string(self.inputs, self.outputs)
 
 
 

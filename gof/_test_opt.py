@@ -3,7 +3,6 @@ import unittest
 
 from graph import Result, as_result, Apply, Constant
 from op import Op
-from ext import Destroyer
 from opt import *
 from env import Env
 from toolbox import *

@@ -16,23 +16,23 @@ class Bookkeeper:
             self.on_prune(env, node)
 
 
-class Toposorter:    
-    def on_attach(self, env):
-        if hasattr(env, 'toposort'):
-            raise Exception("Toposorter feature is already present or in conflict with another plugin.")
-        env.toposort = partial(self.toposort, env)
+# class Toposorter:    
+#     def on_attach(self, env):
+#         if hasattr(env, 'toposort'):
+#             raise Exception("Toposorter feature is already present or in conflict with another plugin.")
+#         env.toposort = partial(self.toposort, env)
 
-    def on_detach(self, env):
-        del env.toposort
+#     def on_detach(self, env):
+#         del env.toposort
 
-    def toposort(self, env):
-        ords = {}
-        for feature in env._features:
-            if hasattr(feature, 'orderings'):
-                for op, prereqs in feature.orderings(env).items():
-                    ords.setdefault(op, set()).update(prereqs)
-        order = graph.io_toposort(env.inputs, env.outputs, ords)
-        return order
+#     def toposort(self, env):
+#         ords = {}
+#         for feature in env._features:
+#             if hasattr(feature, 'orderings'):
+#                 for op, prereqs in feature.orderings(env).items():
+#                     ords.setdefault(op, set()).update(prereqs)
+#         order = graph.io_toposort(env.inputs, env.outputs, ords)
+#         return order
 
         
 #     def supplemental_orderings(self):

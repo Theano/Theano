@@ -6,7 +6,7 @@ import numpy
 
 from copy import copy
 
-from gof import Result, Op, utils, Destroyer, Viewer, AbstractFunctionError, Type, Result, Constant, Apply, Value
+from gof import Result, Op, utils, AbstractFunctionError, Type, Result, Constant, Apply, Value
 import gof
 
 import blas # for gemm, dot
@@ -574,54 +574,54 @@ transpose_inplace = TransposeInplace()
 def transpose(x, **kwargs):
     return transpose_inplace(tensor_copy(x), **kwargs)
 
-class Subtensor_dx(Op, Viewer):
-    """Return a tensor full of zeros, except for what was sliced from x by
-    Subtensor.
+# class Subtensor_dx(Op, Viewer):
+#     """Return a tensor full of zeros, except for what was sliced from x by
+#     Subtensor.
 
-    @todo: pass the shape of x, rather than x itself.
+#     @todo: pass the shape of x, rather than x itself.
 
-    @todo: add support for advanced tensor indexing (breaks current perform
-    implementation).
-    """
-    def __init__(self, inputs, idx_list, **kwargs):
-        Op.__init__(self, **kwargs) 
-        self.inputs = inputs
-        self.outputs = [Tensor(inputs[0].dtype, inputs[0].broadcastable)]
-        self.idx_list = idx_list
+#     @todo: add support for advanced tensor indexing (breaks current perform
+#     implementation).
+#     """
+#     def __init__(self, inputs, idx_list, **kwargs):
+#         Op.__init__(self, **kwargs) 
+#         self.inputs = inputs
+#         self.outputs = [Tensor(inputs[0].dtype, inputs[0].broadcastable)]
+#         self.idx_list = idx_list
 
-    def perform(self):
-        x = self.inputs[0]
-        gz = self.inputs[-1]
-        cdata = []
-        for c in self.idx_list:
-            if isinstance(c, slice):
-                if c.start is None: start = None
-                else: start = self.inputs[c.start].data
-                if c.stop is None: stop = None
-                else: stop = self.inputs[c.stop].data
-                if c.step is None: step = None
-                else: step = self.inputs[c.step].data
-                cdata.append(slice(start, stop, step))
-            else:
-                d = self.inputs[c].data
-                assert 'int' in str(d.dtype)
-                cdata.append(d)
-        if len(cdata) > 1:
-            cdata = tuple(cdata) #there's a diff between tuple and list here...
-        else:
-            cdata = cdata[0]
+#     def perform(self):
+#         x = self.inputs[0]
+#         gz = self.inputs[-1]
+#         cdata = []
+#         for c in self.idx_list:
+#             if isinstance(c, slice):
+#                 if c.start is None: start = None
+#                 else: start = self.inputs[c.start].data
+#                 if c.stop is None: stop = None
+#                 else: stop = self.inputs[c.stop].data
+#                 if c.step is None: step = None
+#                 else: step = self.inputs[c.step].data
+#                 cdata.append(slice(start, stop, step))
+#             else:
+#                 d = self.inputs[c].data
+#                 assert 'int' in str(d.dtype)
+#                 cdata.append(d)
+#         if len(cdata) > 1:
+#             cdata = tuple(cdata) #there's a diff between tuple and list here...
+#         else:
+#             cdata = cdata[0]
 
-        #print cdata
-        #print gz.data
-        gx = numpy.zeros_like(x.data)
-        gx[cdata] = gz.data
-        #print gx
+#         #print cdata
+#         #print gz.data
+#         gx = numpy.zeros_like(x.data)
+#         gx[cdata] = gz.data
+#         #print gx
 
-        self.outputs[0].data = gx
+#         self.outputs[0].data = gx
 
-    def clone_with_new_inputs(self, *new_inputs):
-        assert len(self.inputs) == len(new_inputs)
-        return Subtensor_dx(new_inputs, self.idx_list)
+#     def clone_with_new_inputs(self, *new_inputs):
+#         assert len(self.inputs) == len(new_inputs)
+#         return Subtensor_dx(new_inputs, self.idx_list)
 
 
 
