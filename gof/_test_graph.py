@@ -7,23 +7,6 @@ from op import Op
 from type import Type
 from graph import Result
 
-def inputs(result_list):
-    """
-    @type result_list: list of L{Result}
-    @param result_list: output L{Result}s (from which to search backward through owners)
-    @returns: the list of L{Result}s with no owner, in the order found by a
-    left-recursive depth-first search started at the L{Result}s in result_list.
-
-    """
-    def expand(r):
-        if r.owner:
-            l = list(r.owner.inputs)
-            l.reverse()
-            return l
-    dfs_results = stack_search(deque(result_list), expand, 'dfs')
-    rval = [r for r in dfs_results if r.owner is None]
-    #print rval, _orig_inputs(o)
-    return rval
 
 if 1:
     testcase = unittest.TestCase

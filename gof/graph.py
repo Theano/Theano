@@ -43,7 +43,6 @@ class Apply(object2):
                 self.outputs.append(output)
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
-    @deprecated
     def default_output(self):
         """
         Returns the default output for this Node, typically self.outputs[0].
@@ -165,27 +164,6 @@ def as_apply(x):
     else:
         raise TypeError("Cannot map %s to Apply" % x)
 
-@deprecated
-def inputs(o):
-    """
-    @type o: list
-    @param o: output L{Result}s
-
-    Returns the set of inputs necessary to compute the outputs in o
-    such that input.owner is None.
-    """
-    results = set()
-    def seek(r):
-        op = r.owner
-        if op is None:
-            results.add(r)
-        else:
-            for input in op.inputs:
-                seek(input)
-    for output in o:
-        seek(output)
-    return results
-
 def stack_search(start, expand, mode='bfs', build_inv = False):
     """Search through L{Result}s, either breadth- or depth-first
     @type start: deque
@@ -227,7 +205,6 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
     return rval_list
 
 
-@utils.deprecated('gof.graph', 'is this function ever used?')
 def inputs(result_list):
     """
     @type result_list: list of L{Result}
