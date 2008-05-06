@@ -886,28 +886,28 @@ class T_Stack(unittest.TestCase):
 
 
 
-# class T_add(unittest.TestCase):
+class T_add(unittest.TestCase):
 
-#     def test_complex_all_ops(self):
-#         for nbits in (64, 128):
-#             a = as_tensor(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
-#             b = as_tensor(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
-#             tests = (("+", lambda x,y: x+y),
-#                      ("-", lambda x,y: x-y),
-#                      ("*", lambda x,y: x*y),
-#                      ("/", lambda x,y: x/y))
-#             for s, fn in tests:
-#                 f = Function([a,b], [fn(a, b)], linker_cls = gof.CLinker)
-#                 self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
+    def test_complex_all_ops(self):
+        for nbits in (64, 128):
+            a = value(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
+            b = value(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
+            tests = (("+", lambda x,y: x+y),
+                     ("-", lambda x,y: x-y),
+                     ("*", lambda x,y: x*y),
+                     ("/", lambda x,y: x/y))
+            for s, fn in tests:
+                f = function([a,b], [fn(a, b)], linker = gof.CLinker)
+                self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
-#     def test_grad_scalar_l(self):
-#         verify_grad(self, Add, [numpy.asarray([3.0]), numpy.random.rand(3)])
-#     def test_grad_scalar_r(self):
-#         verify_grad(self, Add, [numpy.random.rand(3), numpy.asarray([3.0])])
-#     def test_grad_row(self):
-#         verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
-#     def test_grad_col(self):
-#         verify_grad(self, Add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+    def test_grad_scalar_l(self):
+        verify_grad(self, add, [numpy.asarray([3.0]), numpy.random.rand(3)])
+    def test_grad_scalar_r(self):
+        verify_grad(self, add, [numpy.random.rand(3), numpy.asarray([3.0])])
+    def test_grad_row(self):
+        verify_grad(self, add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+    def test_grad_col(self):
+        verify_grad(self, add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 
 # class T_abs(unittest.TestCase):
