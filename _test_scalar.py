@@ -84,27 +84,37 @@ class _test_logical(unittest.TestCase):
 
     def test_or(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker(Env([x,y], [or_(x, y)])).make_function()
+        fn = gof.DualLinker(Env([x,y], [x|y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (a or b), (a,b))
+            self.failUnless(fn(a,b) == (a|b), (a,b))
 
     def test_xor(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker(Env([x,y], [xor(x, y)])).make_function()
+        fn = gof.DualLinker(Env([x,y], [x^y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (operator.xor(a, b)), (a,b))
+            self.failUnless(fn(a,b) == (a ^ b), (a,b))
 
     def test_and(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker(Env([x,y], [and_(x, y)])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (a and b), (a,b))
+            self.failUnless(fn(a,b) == (a & b), (a,b))
+
+        x, y, z = ints('xyz')
+        fn = gof.DualLinker(Env([x,y], [x & y])).make_function()
+        for a,b in ((0,1), (0,0), (1,0), (1,1)):
+            self.failUnless(fn(a,b) == (a & b), (a,b))
     
     def test_not(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker(Env([x,y], [not_(x)])).make_function()
+        fn = gof.DualLinker(Env([x,y], [invert(x)])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.failUnless(fn(a,b) == (not a), (a,))
+            self.failUnless(fn(a,b) == ~a, (a,))
+
+        x, y, z = ints('xyz')
+        fn = gof.DualLinker(Env([x,y], [~x])).make_function()
+        for a,b in ((0,1), (0,0), (1,0), (1,1)):
+            self.failUnless(fn(a,b) == ~a, (a,))
 
 if __name__ == '__main__':
     unittest.main()

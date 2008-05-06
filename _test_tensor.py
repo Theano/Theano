@@ -1,4 +1,6 @@
 import traceback
+import operator
+
 from tensor import *
 import tensor # for hidden symbols
 
@@ -883,6 +885,81 @@ class T_Stack(unittest.TestCase):
         self.failUnless((eval_outputs([s]) == c).all())
 
 
+class _test_comparison(unittest.TestCase):
+    def test_gt(self):
+        x, y = fvector(), fvector()
+        fn = function([x,y], [x > y])
+        l = numpy.asarray([0.,-1.,1.])
+        r = numpy.asarray([0.,1.,-1.])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (l > r)), (v, (l>r)))
+
+    def test_lt(self):
+        x, y = fvector(), fvector()
+        fn = function([x,y], [x < y])
+        l = numpy.asarray([0.,-1.,1.])
+        r = numpy.asarray([0.,1.,-1.])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (l < r)), (v, (l<r)))
+
+    def test_le(self):
+        x, y = fvector(), fvector()
+        fn = function([x,y], [x <= y])
+        l = numpy.asarray([0.,-1.,1.])
+        r = numpy.asarray([0.,1.,-1.])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (l <= r)), (v, (l<=r)))
+
+    def test_ge(self):
+        x, y = fvector(), fvector()
+        fn = function([x,y], [x >= y])
+        l = numpy.asarray([0.,-1.,1.])
+        r = numpy.asarray([0.,1.,-1.])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (l >= r)), (v, (l>=r)))
+
+class _test_bitwise(unittest.TestCase):
+    def test_or(self):
+        x, y = bvector(), bvector()
+        fn = function([x,y], [x|y])
+        l = numpy.asarray([0,0,1,1])
+        r = numpy.asarray([0,1,0,1])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (operator.or_(l, r))), (l, r, v))
+
+    def test_xor(self):
+        x, y = bvector(), bvector()
+        fn = function([x,y], [x^y])
+        ix = x
+        ix ^= y
+        gn = function([x,y], [ix])
+        l = numpy.asarray([0,0,1,1])
+        r = numpy.asarray([0,1,0,1])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (operator.xor(l, r))), (l, r, v))
+        print ' '
+        print l, type(l)
+        v = gn(l, r)
+        #test the in-place stuff
+        print l, type(l)
+        print v, type(l)
+        self.failUnless(numpy.all(l == numpy.asarray([0,1,1,0])), l)
+
+    def test_and(self):
+        x, y = bvector(), bvector()
+        fn = function([x,y], [x&y])
+        l = numpy.asarray([0,0,1,1])
+        r = numpy.asarray([0,1,0,1])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
+    
+    def test_inv(self):
+        x, y = bvector(), bvector()
+        fn = function([x,y], [~x])
+        l = numpy.asarray([0,0,1,1])
+        r = numpy.asarray([0,1,0,1])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (~l)), (l, r, v))
 
 
 

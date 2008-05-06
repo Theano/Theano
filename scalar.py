@@ -183,6 +183,15 @@ class _scalar_py_operators:
     def __float__(self): return AsInt(self).out
     def __complex__(self): return AsComplex(self).out
 
+    #BITWISE
+    def __invert__(self): return invert(self) 
+    def __and__(self,other): return and_(self, other)
+    def __or__(self,other): return or_(self, other)
+    def __xor__(self,other): return xor(self, other)
+    def __rand__(self,other): return and_(other,self)
+    def __ror__(self,other): return or_(other, self)
+    def __rxor__(self,other): return xor(other, self)
+
     #COMPARISONS
     def __lt__(self,other): return lt(self, other)
     def __le__(self,other): return le(self, other)
@@ -326,21 +335,18 @@ class UnaryScalarOp(ScalarOp):
 class BinaryScalarOp(ScalarOp):
     nin = 2
 
-class UnaryLogicalOp(UnaryScalarOp):
-    def output_types(self, *input_dtypes):
-        return [int8]
-    def grad(self, inputs, output_gradients):
-        return [None]
 
-class BinaryLogicalOp(BinaryScalarOp):
+###############
+# Comparisons
+###############
+
+class LogicalComparison(BinaryScalarOp):
     def output_types(self, *input_dtypes):
         return [int8]
     def grad(self, inputs, output_gradients):
         return [None, None]
 
-
-
-class LT(BinaryLogicalOp):
+class LT(LogicalComparison):
     identity = False
     commutative = False
     associative = False
@@ -348,7 +354,7 @@ class LT(BinaryLogicalOp):
         return x < y
 lt = LT()
 
-class GT(BinaryLogicalOp):
+class GT(LogicalComparison):
     identity = False
     commutative = False
     associative = False
@@ -356,7 +362,7 @@ class GT(BinaryLogicalOp):
         return x > y
 gt = GT()
 
-class LE(BinaryLogicalOp):
+class LE(LogicalComparison):
     identity = False
     commutative = False
     associative = False
@@ -364,7 +370,7 @@ class LE(BinaryLogicalOp):
         return x <= y
 le = LE()
 
-class GE(BinaryLogicalOp):
+class GE(LogicalComparison):
     identity = False
     commutative = False
     associative = False
@@ -372,7 +378,7 @@ class GE(BinaryLogicalOp):
         return x >= y
 ge = GE()
 
-class EQ(BinaryLogicalOp):
+class EQ(LogicalComparison):
     identity = False
     commutative = True
     associative = False
@@ -380,38 +386,64 @@ class EQ(BinaryLogicalOp):
         return x == y
 eq = EQ()
 
-class OR(BinaryLogicalOp):
+####################
+# BIT-WISE OPERATORS
+####################
+
+class UnaryBitOp(UnaryScalarOp):
+    def output_types(self, *input_types):
+        for i in input_types[0]:
+            if i not in (int8, int32, int64):
+                raise TypeError('input to a BitOp must have type int8, int32 or int 64... not %s' % i)
+        return upcast_out(*input_types[0])
+    def grad(self, inputs, output_gradients):
+        return [None]
+
+class BinaryBitOp(BinaryScalarOp):
+    def output_types(self, *input_types):
+        t0, t1 = input_types[0]
+        for i in input_types[0]:
+            if i not in (int8, int32, int64):
+                raise TypeError('input to a BitOp must have type int8, int32 or int 64... not %s' % i)
+        return upcast_out(*input_types[0])
+    def grad(self, inputs, output_gradients):
+        return [None, None]
+
+class OR(BinaryBitOp):
     identity = False
     commutative = True
     associative = False
     def impl(self, x, y):
-        return (x or y)
+        return x | y
 or_ = OR()
 
-class XOR(BinaryLogicalOp):
+class XOR(BinaryBitOp):
     identity = False
     commutative = True
     associative = False
     def impl(self, x, y):
-        return operator.xor(x, y)
+        return x ^ y
 xor = XOR()
 
-
-class AND(BinaryLogicalOp):
+class AND(BinaryBitOp):
     identity = False
     commutative = True
     associative = False
     def impl(self, x, y):
-        return x and y
+        return x & y
 and_ = AND()
 
-class NOT(UnaryLogicalOp):
+class Invert(UnaryBitOp):
     identity = False
     def impl(self, x):
-        return not x
-not_ = NOT()
+        return ~x
+invert = Invert()
 
 
+
+##############
+# Arithmetic
+##############
 
 class Add(ScalarOp):
     identity = 0

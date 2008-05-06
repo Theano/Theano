@@ -252,6 +252,7 @@ def _multi(*fns):
 
 fscalar = Tensor('float32', ())
 dscalar = Tensor('float64', ())
+bscalar = Tensor('int8', ())
 iscalar = Tensor('int32', ())
 lscalar = Tensor('int64', ())
 def scalar(name = None, dtype = 'float64'):
@@ -261,6 +262,7 @@ scalars, fscalars, dscalars, iscalars, lscalars = _multi(scalar, fscalar, dscala
 
 fvector = Tensor('float32', (False, ))
 dvector = Tensor('float64', (False, ))
+bvector = Tensor('int8', (False,))
 ivector = Tensor('int32', (False, ))
 lvector = Tensor('int64', (False, ))
 def vector(name = None, dtype = 'float64'):
@@ -270,6 +272,7 @@ vectors, fvectors, dvectors, ivectors, lvectors = _multi(vector, fvector, dvecto
 
 fmatrix = Tensor('float32', (False, False))
 dmatrix = Tensor('float64', (False, False))
+bmatrix = Tensor('int8', (False, False))
 imatrix = Tensor('int32', (False, False))
 lmatrix = Tensor('int64', (False, False))
 def matrix(name = None, dtype = 'float64'):
@@ -279,6 +282,7 @@ matrices, fmatrices, dmatrices, imatrices, lmatrices = _multi(matrix, fmatrix, d
 
 frow = Tensor('float32', (True, False))
 drow = Tensor('float64', (True, False))
+brow = Tensor('int8', (True, False))
 irow = Tensor('int32', (True, False))
 lrow = Tensor('int64', (True, False))
 def row(name = None, dtype = 'float64'):
@@ -288,6 +292,7 @@ rows, frows, drows, irows, lrows = _multi(row, frow, drow, irow, lrow)
 
 fcol = Tensor('float32', (False, True))
 dcol = Tensor('float64', (False, True))
+bcol = Tensor('int8', (False, True))
 icol = Tensor('int32', (False, True))
 lcol = Tensor('int64', (False, True))
 def col(name = None, dtype = 'float64'):
@@ -311,6 +316,18 @@ class _tensor_py_operators:
     def __le__(self,other): return le(self, other)
     def __gt__(self,other): return gt(self, other)
     def __ge__(self,other): return ge(self, other)
+
+    #BITWISE
+    def __invert__(self): return invert(self) 
+    def __and__(self,other): return and_(self, other)
+    def __or__(self,other): return or_(self, other)
+    def __xor__(self,other): return xor(self, other)
+    def __rand__(self,other): return and_(other,self)
+    def __ror__(self,other): return or_(other, self)
+    def __rxor__(self,other): return xor(other, self)
+    def __iand__(self, other): return and_inplace(self, other)
+    def __ior__(self, other): return or_inplace(self, other)
+    def __ixor__(self, other): return xor_inplace(self, other)
 
     #ARITHMETIC - NORMAL
     def __add__(self,other): return add(self,other)
@@ -460,6 +477,29 @@ def _elemwise(scalar_op, name):
     inplace = s2t.Elemwise(inplace_scalar_op, {0: 0})
     return straight, inplace
 
+##########################
+# Comparison
+##########################
+
+lt, lt_inplace = _elemwise(scal.lt, 'lt')
+gt, gt_inplace = _elemwise(scal.gt, 'gt')
+le, le_inplace = _elemwise(scal.le, 'le')
+ge, ge_inplace = _elemwise(scal.ge, 'ge')
+
+
+##########################
+# Bit-wise
+##########################
+
+and_, and_inplace = _elemwise(scal.and_, 'and_')
+or_, or_inplace = _elemwise(scal.or_, 'or_')
+xor, xor_inplace = _elemwise(scal.xor, 'xor')
+invert, invert_inplace = _elemwise(scal.invert, 'invert')
+
+##########################
+# Math
+##########################
+
 _abs, abs_inplace = _elemwise(scal.abs, 'abs')
 exp, exp_inplace = _elemwise(scal.exp, 'exp')
 neg, neg_inplace = _elemwise(scal.neg, 'neg')
@@ -474,6 +514,11 @@ tan, tan_inplace = _elemwise(scal.tan, 'tan')
 cosh, cosh_inplace = _elemwise(scal.cosh, 'cosh')
 sinh, sinh_inplace = _elemwise(scal.sinh, 'sinh')
 tanh, tanh_inplace = _elemwise(scal.tanh, 'tanh')
+
+
+##########################
+# Misc
+##########################
 
 fill, fill_inplace = _elemwise(scal.second, 'fill')
 
