@@ -1,8 +1,8 @@
+import operator
+import math
+from copy import copy
 
 import numpy
-import math
-
-from copy import copy
 
 import gof
 from gof import PropertiedType, Op, PropertiedOp, utils, Result, Constant, Type, Apply, Env
@@ -325,6 +325,91 @@ class UnaryScalarOp(ScalarOp):
 
 class BinaryScalarOp(ScalarOp):
     nin = 2
+
+class UnaryLogicalOp(UnaryScalarOp):
+    def output_types(self, *input_dtypes):
+        return [int8]
+    def grad(self, inputs, output_gradients):
+        return [None]
+
+class BinaryLogicalOp(BinaryScalarOp):
+    def output_types(self, *input_dtypes):
+        return [int8]
+    def grad(self, inputs, output_gradients):
+        return [None, None]
+
+
+
+class LT(BinaryLogicalOp):
+    identity = False
+    commutative = False
+    associative = False
+    def impl(self, x, y):
+        return x < y
+lt = LT()
+
+class GT(BinaryLogicalOp):
+    identity = False
+    commutative = False
+    associative = False
+    def impl(self, x, y):
+        return x > y
+gt = GT()
+
+class LE(BinaryLogicalOp):
+    identity = False
+    commutative = False
+    associative = False
+    def impl(self, x, y):
+        return x <= y
+le = LE()
+
+class GE(BinaryLogicalOp):
+    identity = False
+    commutative = False
+    associative = False
+    def impl(self, x, y):
+        return x >= y
+ge = GE()
+
+class EQ(BinaryLogicalOp):
+    identity = False
+    commutative = True
+    associative = False
+    def impl(self, x, y):
+        return x == y
+eq = EQ()
+
+class OR(BinaryLogicalOp):
+    identity = False
+    commutative = True
+    associative = False
+    def impl(self, x, y):
+        return (x or y)
+or_ = OR()
+
+class XOR(BinaryLogicalOp):
+    identity = False
+    commutative = True
+    associative = False
+    def impl(self, x, y):
+        return operator.xor(x, y)
+xor = XOR()
+
+
+class AND(BinaryLogicalOp):
+    identity = False
+    commutative = True
+    associative = False
+    def impl(self, x, y):
+        return x and y
+and_ = AND()
+
+class NOT(UnaryLogicalOp):
+    identity = False
+    def impl(self, x):
+        return not x
+not_ = NOT()
 
 
 
