@@ -922,8 +922,8 @@ class _test_bitwise(unittest.TestCase):
     def test_or(self):
         x, y = bvector(), bvector()
         fn = function([x,y], [x|y])
-        l = numpy.asarray([0,0,1,1])
-        r = numpy.asarray([0,1,0,1])
+        l = numpy.asarray([0,0,1,1], dtype = 'int8')
+        r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (operator.or_(l, r))), (l, r, v))
 
@@ -933,31 +933,27 @@ class _test_bitwise(unittest.TestCase):
         ix = x
         ix ^= y
         gn = function([x,y], [ix])
-        l = numpy.asarray([0,0,1,1])
-        r = numpy.asarray([0,1,0,1])
+        l = numpy.asarray([0,0,1,1], dtype = 'int8')
+        r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (operator.xor(l, r))), (l, r, v))
-        print ' '
-        print l, type(l)
         v = gn(l, r)
         #test the in-place stuff
-        print l, type(l)
-        print v, type(l)
         self.failUnless(numpy.all(l == numpy.asarray([0,1,1,0])), l)
 
     def test_and(self):
         x, y = bvector(), bvector()
         fn = function([x,y], [x&y])
-        l = numpy.asarray([0,0,1,1])
-        r = numpy.asarray([0,1,0,1])
+        l = numpy.asarray([0,0,1,1], dtype = 'int8')
+        r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
     
     def test_inv(self):
         x, y = bvector(), bvector()
         fn = function([x,y], [~x])
-        l = numpy.asarray([0,0,1,1])
-        r = numpy.asarray([0,1,0,1])
+        l = numpy.asarray([0,0,1,1], dtype = 'int8')
+        r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (~l)), (l, r, v))
 
