@@ -398,7 +398,7 @@ s2t.TensorValue = TensorValue
 def _elemwise(scalar_op, name):
     straight = s2t.Elemwise(scalar_op)
     inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-    inplace = s2t.Elemwise(inplace_scalar_op, {0: 0})
+    inplace = s2t.Elemwise(inplace_scalar_op, {0: 0}, name = name)
     return straight, inplace
 
 

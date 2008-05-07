@@ -255,6 +255,12 @@ class _test_all(unittest.TestCase):
         g.replace(e0, new_e0)
         assert g.consistent()
 
+#     def test_aliased_inputs(self):
+#         x, y, z = inputs()
+#         e = add_in_place(x, transpose_view(x))
+#         g = Env([x], [e], False)
+#         assert not g.consistent()
+
 
 if __name__ == '__main__':
     unittest.main()

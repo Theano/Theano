@@ -243,9 +243,17 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         except AttributeError, AbstractFunctionError: _dmap = {}
         vmap = {}
         for oidx, iidxs in _vmap.items():
+            if oidx < 0 or oidx >= node.nout:
+                raise ValueError("In %s.view_map: output index out of range" % node.op, oidx, _vmap)
+            if any(iidx < 0 or iidx >= node.nin for iidx in iidxs):
+                raise ValueError("In %s.view_map: input index out of range" % node.op, iidxs, _vmap)
             vmap[node.outputs[oidx]] = [node.inputs[iidx] for iidx in iidxs]
         dmap = {}
         for oidx, iidxs in _dmap.items():
+            if oidx < 0 or oidx >= node.nout:
+                raise ValueError("In %s.destroy_map: output index out of range" % node.op, oidx, _dmap)
+            if any(iidx < 0 or iidx >= node.nin for iidx in iidxs):
+                raise ValueError("In %s.destroy_map: input index out of range" % node.op, iidxs, _dmap)
             dmap[node.outputs[oidx]] = [node.inputs[iidx] for iidx in iidxs]
         return vmap, dmap
 
