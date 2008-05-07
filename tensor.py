@@ -15,7 +15,7 @@ import gradient
 import elemwise as s2t
 import scalar as scal
 
-from s2t import Elemwise, DimShuffle, CAReduce
+from elemwise import Elemwise, DimShuffle, CAReduce
 
 from gof.python25 import partial
 
