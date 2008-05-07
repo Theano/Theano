@@ -1,5 +1,6 @@
 import os, sys
 import scipy.weave as weave
+import gof.utils
 
 """
 File: omega/blas.py
@@ -794,16 +795,7 @@ def blas_proto():
     }
     """
 
-def _constant(f):
-    """Return a function that always returns its first call value
-    """
-    def rval(*args, **kwargs):
-        if not hasattr(f, 'rval'):
-            f.rval = f(*args, **kwargs)
-        return f.rval
-    return rval
-
-@_constant
+@gof.utils.memoize
 def ldflags():
     """Return a list of libraries against which an Op's object file should be
     linked to benefit from a BLAS implementation.

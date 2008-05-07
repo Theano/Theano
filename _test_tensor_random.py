@@ -68,6 +68,19 @@ class T_Random(unittest.TestCase):
         self.failUnless(str(v0[0,0]).startswith('0.013259'))
         self.failUnless(str(v0[1,2]).startswith('0.753368'))
 
+    def test5(self):
+        """Test that two NumpyGenerators with the same dist compare equal"""
+
+        rng0 = RandomState(123456)
+        rng1 = RandomState(123456)
+
+        d0 = rng0.gen(('beta',{'a':0.5,'b':0.65}), (2,3,4))
+        d1 = rng1.gen(('beta',{'a':0.5,'b':0.65}), (2,3,4))
+
+        self.failUnless(d0.owner.op == d1.owner.op)
+        self.failUnless(hash(d0.owner.op) == hash(d1.owner.op))
+
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -36,6 +36,21 @@ class scratchpad:
         print "scratch" + str(self.__dict__)
 
 
+def memoize(f):
+    """Cache the return value for each tuple of arguments
+    (which must be hashable) """
+    cache = {}
+    def rval(*args, **kwargs):
+        kwtup = tuple(kwargs.items())
+        key = (args, kwtup)
+        if key not in cache:
+            val = f(*args, **kwargs)
+            cache[key] = val
+        else:
+            val = cache[key]
+        return val
+    return rval
+
 
 
 def deprecated(filename, msg=''):
