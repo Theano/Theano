@@ -195,7 +195,8 @@ class Elemwise(Op):
       Elemwise(log)(rand(3, 4, 5))
     """
 
-    def __init__(self, scalar_op, inplace_pattern = {}):
+    def __init__(self, scalar_op, inplace_pattern = {}, name = None):
+        self.name = name
         self.scalar_op = scalar_op
         self.inplace_pattern = inplace_pattern
         self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
@@ -238,10 +239,13 @@ class Elemwise(Op):
         return Apply(self, inputs, outputs)
 
     def __str__(self):
-        if self.inplace_pattern:
-            return "Broadcast{%s}%s" % (self.scalar_op, str(self.inplace_pattern))
+        if self.name is None:
+            if self.inplace_pattern:
+                return "Broadcast{%s}%s" % (self.scalar_op, str(self.inplace_pattern))
+            else:
+                return "Broadcast{%s}" % (self.scalar_op)
         else:
-            return "Broadcast{%s}" % (self.scalar_op)
+            return self.name
 
     def grad(self, inputs, ograds):
         ograds = map(as_tensor, ograds) # this shouldn't be necessary...
