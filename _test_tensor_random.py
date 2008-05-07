@@ -30,8 +30,8 @@ class T_Random(unittest.TestCase):
     def test1(self):
         rng = RandomState(12345)
 
-        f0 = compile.function([], [rng.uniform((3,))])
-        f1 = compile.function([], [rng.uniform((3,))])
+        f0 = compile.function([], [rng.gen('uniform', (3,))])
+        f1 = compile.function([], [rng.gen('uniform', (3,))])
 
         v0, v1 = f0(), f1()
 
@@ -52,7 +52,7 @@ class T_Random(unittest.TestCase):
     def test3(self):
         rng = RandomState(12345)
         template = tensor.fmatrix()
-        f0 = compile.function([template], [rng.uniform_like(template)])
+        f0 = compile.function([template], [rng.gen_like('uniform', template)])
 
         v0 = f0(numpy.zeros((2,3)))
         self.failUnless(str(v0[1,2]).startswith('0.595544'))
