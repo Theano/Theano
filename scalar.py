@@ -502,9 +502,7 @@ class Mod(BinaryScalarOp):
     def impl(self, x, y):
         return x % y
     def c_code(self, node, name, (x, y), (z, ), sub):
-        if node.inputs[0].type in int_types and node.inputs[1].type in int_types:
-            raise NotImplementedError("For integer arguments the behavior of division in C and in Python differ when the quotient is negative (to implement).")
-        return "%(z)s = %(x)s %% %(y)s;" % locals()
+        raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
     def grad(self, (x, y), (gz, )):
         return None, None
 mod = Mod(upcast_out, name = 'mod')
