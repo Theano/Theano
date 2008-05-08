@@ -7,10 +7,21 @@ import utils
 
 class Apply(utils.object2):
     """
-    Note: it is illegal for an output element to have an owner != self
+    Represents the application of an Op on input Results, producing output
+    Results. These should be instantiated by an Op's make_node function.
     """
     #__slots__ = ['op', 'inputs', 'outputs']
     def __init__(self, op, inputs, outputs):
+        """
+        Sets self.op, self.inputs, self.outputs to the respective parameter
+        in the arguments list.
+
+        The owner field of each output in the outputs list will be set to
+        self.
+
+        Note: it is illegal for an output element to have an owner that is
+        not None, unless it already points to self.
+        """
         self.op = op
         self.inputs = []
 
@@ -34,8 +45,9 @@ class Apply(utils.object2):
                 raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
     def default_output(self):
         """
-        Returns the default output for this Node, typically self.outputs[0].
-        Depends on the value of node.op.default_output
+        Returns the default output for this node. If there is only one
+        output, it will be returned. Else, it will consult the value of
+        node.op.default_output to decide which output to return.
         """
         do = getattr(self.op, 'default_output', None)
         if do is None:
@@ -47,7 +59,7 @@ class Apply(utils.object2):
             raise AttributeError("%s.default_output is out of range." % self.op)
         return self.outputs[do]
     out = property(default_output, 
-                   doc = "Shortcut to the  as self.outputs[0] if this Op's has_default_output field is True.")
+                   doc = "same as self.default_output()")
     def __str__(self):
         return op_as_string(self.inputs, self)
     def __repr__(self):
@@ -57,6 +69,14 @@ class Apply(utils.object2):
     def clone(self):
         return self.__class__(self.op, self.inputs, [output.clone() for output in self.outputs])
     def clone_with_new_inputs(self, inputs, check_type = True):
+        """
+        Returns an Apply node with the same op but different inputs. Unless
+        check_type is False, the type fields of all the inputs must be
+        equal to the current ones.
+
+        The outputs of the clone will have the same type as the outputs of
+        self.
+        """
         if check_type:
             for curr, new in zip(self.inputs, inputs):
                 if not curr.type == new.type:
@@ -65,11 +85,15 @@ class Apply(utils.object2):
         new_node.inputs = inputs
         return new_node
 
-    nin = property(lambda self: len(self.inputs))
-    nout = property(lambda self: len(self.outputs))
+    nin = property(lambda self: len(self.inputs), doc = 'same as len(self.inputs)')
+    nout = property(lambda self: len(self.outputs), doc = 'same as len(self.outputs)')
 
 
 class Result(utils.object2):
+    """
+    Represents the result of some computation (pointed to by its owner field),
+    or an input to the graph (if owner is None)
+    """
     #__slots__ = ['type', 'owner', 'index', 'name']
     def __init__(self, type, owner = None, index = None, name = None):
         self.type = type
@@ -99,6 +123,12 @@ class Result(utils.object2):
         return self.__class__(self.type, None, None, self.name)
 
 class Value(Result):
+    """
+    Result with a data field. The data field is filtered by what is
+    provided in the constructor for the Value's type field.
+
+    Its owner field is always None.
+    """
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
         Result.__init__(self, type, None, None, name)
@@ -115,6 +145,9 @@ class Value(Result):
     owner = property(lambda self: None, __set_owner)
 
 class Constant(Value):
+    """
+    Same as Value, but the data it contains cannot be modified.
+    """
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
         Value.__init__(self, type, data, name)
@@ -127,6 +160,9 @@ class Constant(Value):
         if self.name is not None:
             return self.name
         return str(self.data) #+ "::" + str(self.type)
+
+
+
 
 def stack_search(start, expand, mode='bfs', build_inv = False):
     """Search through L{Result}s, either breadth- or depth-first
