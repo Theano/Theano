@@ -1,13 +1,17 @@
 
 import unittest
 
-from graph import Result, as_result, Apply
+from graph import Result, Apply
 from type import Type
 from op import Op
-#from opt import PatternOptimizer, OpSubOptimizer
 
 from env import Env, InconsistencyError
 from toolbox import *
+
+
+def as_result(x):
+    assert isinstance(x, Result)
+    return x
 
 
 class MyType(Type):

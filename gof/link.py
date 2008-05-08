@@ -1,11 +1,8 @@
 
-from utils import AbstractFunctionError
 import utils
+import graph
 
-from graph import Value
-
-import sys
-import traceback
+import sys, traceback
 
 
 __excepthook = sys.excepthook
@@ -67,7 +64,7 @@ class Linker:
          print new_e.data # 3.0
          print e.data # 3.0 iff inplace == True (else unknown)
         """
-        raise AbstractFunctionError()
+        raise utils.AbstractFunctionError()
 
     def make_function(self, unpack_single = True, **kwargs):
         """
@@ -151,7 +148,7 @@ def map_storage(env, order, input_storage, output_storage):
     for node in order:
         for r in node.inputs:
             if r not in storage_map:
-                assert isinstance(r, Value)
+                assert isinstance(r, graph.Value)
                 storage_map[r] = [r.data]
         for r in node.outputs:
             storage_map.setdefault(r, [None])

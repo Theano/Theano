@@ -1,12 +1,17 @@
 
 import unittest
 
-from graph import Result, as_result, Apply, Constant
+from type import Type
+from graph import Result, Apply, Constant
 from op import Op
 from opt import *
 from env import Env
 from toolbox import *
 
+
+def as_result(x):
+    assert isinstance(x, Result)
+    return x
 
 
 class MyType(Type):

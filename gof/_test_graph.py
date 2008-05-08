@@ -15,6 +15,10 @@ else:
     realtestcase = unittest.TestCase
 
 
+def as_result(x):
+    assert isinstance(x, Result)
+    return x
+
 
 class MyType(Type):
 

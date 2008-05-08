@@ -1,32 +1,31 @@
 
 from copy import copy
-
 import graph
-##from features import Listener, Orderings, Constraint, Tool, uniq_features
 import utils
-from utils import AbstractFunctionError
 
 
 class InconsistencyError(Exception):
     """
-    This exception is raised by Env whenever one of the listeners marks
-    the graph as inconsistent.
+    This exception should be thrown by listeners to Env when the
+    graph's state is invalid.
     """
     pass
 
 
 
-class Env(object): #(graph.Graph):
+class Env(utils.object2):
     """
     An Env represents a subgraph bound by a set of input results and a
-    set of output results. An op is in the subgraph iff it depends on
-    the value of some of the Env's inputs _and_ some of the Env's
-    outputs depend on it. A result is in the subgraph iff it is an
-    input or an output of an op that is in the subgraph.
+    set of output results. The inputs list should contain all the inputs
+    on which the outputs depend. Results of type Value or Constant are
+    not counted as inputs.
 
     The Env supports the replace operation which allows to replace a
     result in the subgraph by another, e.g. replace (x + x).out by (2
     * x).out. This is the basis for optimization in theano.
+
+    It can also be "extended" using env.extend(some_object). See the
+    toolbox and ext modules for common extensions.
     """
 
     ### Special ###
@@ -65,12 +64,14 @@ class Env(object): #(graph.Graph):
     ### Setup a Result ###
 
     def __setup_r__(self, r):
+        # sets up r so it belongs to this env
         if hasattr(r, 'env') and r.env is not None and r.env is not self:
             raise Exception("%s is already owned by another env" % r)
         r.env = self
         r.clients = []
 
     def __setup_node__(self, node):
+        # sets up node so it belongs to this env
         if hasattr(node, 'env') and node.env is not self:
             raise Exception("%s is already owned by another env" % node)
         node.env = self
@@ -80,28 +81,27 @@ class Env(object): #(graph.Graph):
     ### clients ###
 
     def clients(self, r):
-        "Set of all the (op, i) pairs such that op.inputs[i] is r."
+        "Set of all the (node, i) pairs such that node.inputs[i] is r."
         return r.clients
 
-    def __add_clients__(self, r, all):
+    def __add_clients__(self, r, new_clients):
         """
         r -> result
-        all -> list of (op, i) pairs representing who r is an input of.
+        new_clients -> list of (node, i) pairs such that node.inputs[i] is r.
 
-        Updates the list of clients of r with all.
+        Updates the list of clients of r with new_clients.
         """
-        r.clients += all
+        r.clients += new_clients
 
-    def __remove_clients__(self, r, all, prune = True):
+    def __remove_clients__(self, r, clients_to_remove, prune = True):
         """
         r -> result
-        all -> list of (op, i) pairs representing who r is an input of.
+        clients_to_remove -> list of (op, i) pairs such that node.inputs[i] is not r anymore.
 
         Removes all from the clients list of r.
         """
-        for entry in all:
+        for entry in clients_to_remove:
             r.clients.remove(entry)
-            # remove from orphans?
         if not r.clients:
             if prune:
                 self.__prune_r__([r])
@@ -188,6 +188,15 @@ class Env(object): #(graph.Graph):
     ### change input ###
 
     def change_input(self, node, i, new_r):
+        """
+        Changes node.inputs[i] to new_r.
+
+        new_r.type == old_r.type must be True, where old_r is the
+        current value of node.inputs[i] which we want to replace.
+
+        For each feature that has a 'on_change_input' method, calls:
+          feature.on_change_input(env, node, i, old_r, new_r)
+        """
         if node == 'output':
             r = self.outputs[i]
             if not r.type == new_r.type:
@@ -214,10 +223,7 @@ class Env(object): #(graph.Graph):
     def replace(self, r, new_r):
         """
         This is the main interface to manipulate the subgraph in Env.
-        For every op that uses r as input, makes it use new_r instead.
-        This may raise an error if the new result violates type
-        constraints for one of the target nodes. In that case, no
-        changes are made.
+        For every node that uses r as input, makes it use new_r instead.
         """
         if r.env is not self:
             raise Exception("Cannot replace %s because it does not belong to this Env" % r)
@@ -238,11 +244,32 @@ class Env(object): #(graph.Graph):
     
     def extend(self, feature):
         """
-        @todo out of date
-        Adds an instance of the feature_class to this env's supported
-        features. If do_import is True and feature_class is a subclass
-        of Listener, its on_import method will be called on all the Nodes
-        already in the env.
+        Adds a feature to this env. The feature may define one
+        or more of the following methods:
+
+         - feature.on_attach(env)
+            Called by extend. The feature has great freedom in what
+            it can do with the env: it may, for example, add methods
+            to it dynicamically.
+         - feature.on_detach(env)
+            Called by remove_feature(feature).
+         - feature.on_import(env, node)*
+            Called whenever a node is imported into env, which is
+            just before the node is actually connected to the graph.
+         - feature.on_prune(env, node)*
+            Called whenever a node is pruned (removed) from the env,
+            after it is disconnected from the graph.
+         - feature.on_change_input(env, node, i, r, new_r)*
+            Called whenever node.inputs[i] is changed from r to new_r.
+            At the moment the callback is done, the change has already
+            taken place.
+         - feature.orderings(env)
+            Called by toposort. It should return a dictionary of
+            {node: predecessors} where predecessors is a list of
+            nodes that should be computed before the key node.
+
+        * If you raise an exception in the functions marked with an
+          asterisk, the state of the graph might be inconsistent.
         """
         if feature in self._features:
             return # the feature is already present
@@ -256,6 +283,11 @@ class Env(object): #(graph.Graph):
                 raise
 
     def remove_feature(self, feature):
+        """
+        Removes the feature from the graph.
+
+        Calls feature.on_detach(env) if an on_detach method is defined.
+        """
         try:
             self._features.remove(feature)
         except:
@@ -268,6 +300,11 @@ class Env(object): #(graph.Graph):
     ### callback utils ###
     
     def execute_callbacks(self, name, *args):
+        """
+        Calls
+          getattr(feature, name)(*args)
+        for each feature which has a method called after name.
+        """
         for feature in self._features:
             try:
                 fn = getattr(feature, name)
@@ -276,6 +313,11 @@ class Env(object): #(graph.Graph):
             fn(self, *args)
 
     def collect_callbacks(self, name, *args):
+        """
+        Returns a dictionary d such that:
+          d[feature] == getattr(feature, name)(*args)
+        For each feature which has a method called after name.
+        """
         d = {}
         for feature in self._features:
             try:
@@ -289,6 +331,17 @@ class Env(object): #(graph.Graph):
     ### misc ###
 
     def toposort(self):
+        """
+        Returns an ordering of the graph's Apply nodes such that:
+          - All the nodes of the inputs of a node are before that node.
+          - Satisfies the orderings provided by each feature that has
+            an 'orderings' method.
+
+        If a feature has an 'orderings' method, it will be called with
+        this env as sole argument. It should return a dictionary of
+        {node: predecessors} where predecessors is a list of nodes
+        that should be computed before the key node.
+        """
         env = self
         ords = {}
         for feature in env._features:
@@ -314,10 +367,10 @@ class Env(object): #(graph.Graph):
                 raise Exception("what the fuck")
             return node.inputs
 
-    def has_node(self, node):
-        return node in self.nodes
-
     def check_integrity(self):
+        """
+        Call this for a diagnosis if things go awry.
+        """
         nodes = graph.ops(self.inputs, self.outputs)
         if self.nodes != nodes:
             missing = nodes.difference(self.nodes)

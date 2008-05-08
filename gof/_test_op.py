@@ -3,9 +3,11 @@ import unittest
 from copy import copy
 from op import *
 from type import Type, Generic
-from graph import Apply, as_result
+from graph import Apply, Result
 
-#from result import Result
+def as_result(x):
+    assert isinstance(x, Result)
+    return x
 
 
 class MyType(Type):

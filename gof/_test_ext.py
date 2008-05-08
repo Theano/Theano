@@ -3,18 +3,20 @@ import unittest
 
 from type import Type
 import graph
-from graph import Result, as_result, Apply
+from graph import Result, Apply
 from op import Op
 from opt import PatternOptimizer, OpSubOptimizer
 
 from ext import *
 from env import Env, InconsistencyError
-#from toolbox import EquivTool
 from toolbox import ReplaceValidate
 
 from copy import copy
 
-#from _test_result import MyResult
+
+def as_result(x):
+    assert isinstance(x, Result)
+    return x
 
 
 class MyType(Type):

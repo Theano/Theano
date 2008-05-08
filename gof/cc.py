@@ -1,19 +1,23 @@
+"""
+Defines Linkers that deal with C implementations.
+"""
 
-import graph
-from graph import Constant, Value
-from link import Linker, LocalLinker, raise_with_op, Filter, map_storage, PerformLinker
+
+# Python imports
 from copy import copy
-from utils import AbstractFunctionError
-from env import Env
 import md5
-import sys
-import os
-import platform
-from scipy import weave
-import cutils
-import utils
-import traceback
 import re
+import os, sys, platform
+
+# weave import
+from scipy import weave
+
+# gof imports
+import cutils
+from env import Env
+import graph
+import link
+import utils
 
 
 def compile_dir():
@@ -192,7 +196,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         return %(failure_var)s;
         """ % sub
     
-    sub = copy(sub)
+    sub = dict(sub)
     sub.update(locals())
 
     # TODO: add some error checking to make sure storage_<x> are 1-element lists
@@ -309,7 +313,7 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
     
     name = "V%i" % id
     symbol_table[result] = name
-    sub = copy(sub)
+    sub = dict(sub)
 #    sub['name'] = name
     sub['id'] = id
     sub['fail'] = failure_code(sub)
@@ -323,13 +327,16 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
     return struct_builder, block
 
 
-class CLinker(Linker):
+class CLinker(link.Linker):
     """
-    Creates C code for an env or an Op instance, compiles it and returns
-    callables through make_thunk and make_function that make use of the
-    compiled code.
+    
+    Creates C code for an env, compiles it and returns callables
+    through make_thunk and make_function that make use of the compiled
+    code.
 
-    It can take an env or an Op as input.
+    no_recycling can contain a list of Results that belong to the env.
+    If a Result is in no_recycling, CLinker will clear the output storage
+    associated to it during the computation (to avoid reusing it).
     """
 
     def __init__(self, env, no_recycling = []):
@@ -346,7 +353,7 @@ class CLinker(Linker):
         self.outputs = env.outputs
         self.results = graph.results(self.inputs, self.outputs) # list(env.results)
         # The orphans field is listified to ensure a consistent order.
-        self.orphans = list(r for r in self.results if isinstance(r, Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
+        self.orphans = list(r for r in self.results if isinstance(r, graph.Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
         self.temps = list(set(self.results).difference(self.inputs).difference(self.outputs).difference(self.orphans))
         self.node_order = env.toposort()
         
@@ -404,15 +411,15 @@ class CLinker(Linker):
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif result in self.orphans:
-                if not isinstance(result, Value):
+                if not isinstance(result, graph.Value):
                     raise TypeError("All orphans to CLinker must be Value instances.", result)
-                if isinstance(result, Constant):
+                if isinstance(result, graph.Constant):
                     try:
                         symbol[result] = "(" + result.type.c_literal(result.data) + ")"
                         consts.append(result)
                         self.orphans.remove(result)
                         continue
-                    except (AbstractFunctionError, NotImplementedError):
+                    except (utils.AbstractFunctionError, NotImplementedError):
                         pass
                 # orphans are not inputs so we'll just get fetch them when we initialize the struct and assume they stay the same
                 policy = [[get_c_declare, get_c_extract, get_c_cleanup],
@@ -475,11 +482,11 @@ class CLinker(Linker):
 
             op = node.op
             try: behavior = op.c_code(node, name, isyms, osyms, sub)
-            except AbstractFunctionError:
+            except utils.AbstractFunctionError:
                 raise NotImplementedError("%s cannot produce C code" % op)
 
             try: cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
-            except AbstractFunctionError:
+            except utils.AbstractFunctionError:
                 cleanup = ""
             
             blocks.append(CodeBlock("", behavior, cleanup, sub))
@@ -539,7 +546,7 @@ class CLinker(Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret.append(x.c_support_code())
-            except AbstractFunctionError: pass
+            except utils.AbstractFunctionError: pass
         return ret
 
     def compile_args(self):
@@ -552,7 +559,7 @@ class CLinker(Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret += x.c_compile_args()
-            except AbstractFunctionError: pass
+            except utils.AbstractFunctionError: pass
         return ret
 
     def headers(self):
@@ -565,7 +572,7 @@ class CLinker(Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret += x.c_headers()
-            except AbstractFunctionError: pass
+            except utils.AbstractFunctionError: pass
         return ret
     
     def libraries(self):
@@ -578,25 +585,23 @@ class CLinker(Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret += x.c_libraries()
-            except AbstractFunctionError: pass
+            except utils.AbstractFunctionError: pass
         return ret
 
     def __compile__(self, input_storage = None, output_storage = None):
         """
-        @todo update
+        Compiles this linker's env.
+        
+        @type input_storage: list or None
+        @param input_storage: list of lists of length 1. In order to use
+            the thunk returned by __compile__, the inputs must be put in
+            that storage. If None, storage will be allocated.
+        @param output_storage: list of lists of length 1. The thunk returned
+            by __compile__ will put the results of the computation in these
+            lists. If None, storage will be allocated.
 
-        Compiles this linker's env. If inplace is True, it will use the
-        Results contained in the env, if it is False it will copy the
-        input and output Results.
-
-        Returns: thunk, in_results, out_results, error_storage
+        Returns: thunk, input_storage, output_storage, error_storage
         """
-#         if inplace:
-#             in_results = self.inputs
-#             out_results = self.outputs
-#         else:
-#             in_results = [copy(input) for input in self.inputs]
-#             out_results = [copy(output) for output in self.outputs]
         error_storage = [None, None, None]
         if input_storage is None:
             input_storage = tuple([None] for result in self.inputs)
@@ -612,13 +617,34 @@ class CLinker(Linker):
         thunk = self.cthunk_factory(error_storage,
                                     input_storage,
                                     output_storage)
-        return thunk, [Filter(input.type, storage) for input, storage in zip(self.env.inputs, input_storage)], \
-            [Filter(output.type, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
+        return thunk, \
+            [link.Filter(input.type, storage) for input, storage in zip(self.env.inputs, input_storage)], \
+            [link.Filter(output.type, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
             error_storage
 
-#        return thunk, [Filter(x) for x in input_storage], [Filter(x) for x in output_storage], error_storage
-
     def make_thunk(self, input_storage = None, output_storage = None):
+        """
+        Compiles this linker's env and returns a function to perform the
+        computations, as well as lists of storage cells for both the
+        inputs and outputs.
+        
+        @type input_storage: list or None
+        @param input_storage: list of lists of length 1. In order to use
+            the thunk returned by __compile__, the inputs must be put in
+            that storage. If None, storage will be allocated.
+        @param output_storage: list of lists of length 1. The thunk returned
+            by __compile__ will put the results of the computation in these
+            lists. If None, storage will be allocated.
+
+        Returns: thunk, input_storage, output_storage
+
+        The return values can be used as follows:
+          f, istor, ostor = clinker.make_thunk()
+          istor[0].data = first_input
+          istor[1].data = second_input
+          f()
+          first_output = ostor[0].data
+        """
         cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
         def execute():
             failure = cutils.run_cthunk(cthunk)
@@ -729,7 +755,7 @@ class CLinker(Linker):
 
 
 
-class OpWiseCLinker(LocalLinker):
+class OpWiseCLinker(link.LocalLinker):
     """
     Uses CLinker on the individual Ops that comprise an env and loops
     over them in Python. The result is slower than a compiled version of
@@ -739,6 +765,10 @@ class OpWiseCLinker(LocalLinker):
 
     If fallback_on_perform is True, OpWiseCLinker will use an op's
     perform method if no C version can be generated.
+
+    no_recycling can contain a list of Results that belong to the env.
+    If a Result is in no_recycling, CLinker will clear the output storage
+    associated to it during the computation (to avoid reusing it).
     """
 
     def __init__(self, env, fallback_on_perform = True, no_recycling = []):
@@ -756,7 +786,7 @@ class OpWiseCLinker(LocalLinker):
         order = env.toposort()
         no_recycling = self.no_recycling
 
-        input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
+        input_storage, output_storage, storage_map = link.map_storage(env, order, input_storage, output_storage)
 
         thunks = []
         for node in order:
@@ -772,7 +802,7 @@ class OpWiseCLinker(LocalLinker):
                 thunk.inputs = node_input_storage
                 thunk.outputs = node_output_storage
                 thunks.append(thunk)
-            except (NotImplementedError, AbstractFunctionError):
+            except (NotImplementedError, utils.AbstractFunctionError):
                 if self.fallback_on_perform:
                     p = node.op.perform
                     thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
@@ -791,27 +821,8 @@ class OpWiseCLinker(LocalLinker):
         
         f = self.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
 
-#         if profiler is None:
-#             def f():
-#                 for x in no_recycling:
-#                     x[0] = None
-#                 try:
-#                     for thunk, node in zip(thunks, order):
-#                         thunk()
-#                 except:
-#                     raise_with_op(node)
-#         else:
-#             def f():
-#                 for x in no_recycling:
-#                     x[0] = None
-#                 def g():
-#                     for thunk, node in zip(thunks, order):
-#                         profiler.profile_op(thunk, node)
-#                 profiler.profile_env(g, env)
-#             f.profiler = profiler
-
-        return f, [Filter(input.type, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [Filter(output.type, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        return f, [link.Filter(input.type, storage) for input, storage in zip(env.inputs, input_storage)], \
+            [link.Filter(output.type, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
 
 
@@ -825,7 +836,7 @@ def _default_checker(x, y):
     if x[0] != y[0]:
         raise Exception("Output mismatch.", {'performlinker': x[0], 'clinker': y[0]})
 
-class DualLinker(Linker):
+class DualLinker(link.Linker):
     """
     Runs the env in parallel using PerformLinker and CLinker.
 
@@ -841,13 +852,13 @@ class DualLinker(Linker):
         """
         Initialize a DualLinker.
         
-        The checker argument must be a function that takes two Result
-        instances. The first one passed will be the output computed by
-        PerformLinker and the second one the output computed by
-        OpWiseCLinker. The checker should compare the data fields of
-        the two results to see if they match. By default, DualLinker
-        uses ==. A custom checker can be provided to compare up to a
-        certain error tolerance.
+        The checker argument must be a function that takes two lists
+        of length 1. The first one passed will contain the output
+        computed by PerformLinker and the second one the output
+        computed by OpWiseCLinker. The checker should compare the data
+        fields of the two results to see if they match. By default,
+        DualLinker uses ==. A custom checker can be provided to
+        compare up to a certain error tolerance.
 
         If a mismatch occurs, the checker should raise an exception to
         halt the computation. If it does not, the computation will
@@ -855,35 +866,22 @@ class DualLinker(Linker):
         the problem by fiddling with the data, but it should be
         careful not to share data between the two outputs (or inplace
         operations that use them will interfere).
+
+        no_recycling can contain a list of Results that belong to the env.
+        If a Result is in no_recycling, CLinker will clear the output storage
+        associated to it during the computation (to avoid reusing it).
         """
         self.env = env
         self.checker = checker
         self.no_recycling = no_recycling
 
     def make_thunk(self, **kwargs):
-#         if inplace:
-#             env1 = self.env
-#         else:
-#             env1 = self.env.clone(True)
-#         env2, equiv = env1.clone_get_equiv(True)
-
-#         op_order_1 = env1.toposort()
-#         op_order_2 = [equiv[op.outputs[0]].owner for op in op_order_1] # we need to have the exact same order so we can compare each step
-
-#         def c_make_thunk(op):
-#             try:
-#                 return CLinker(op).make_thunk(True)[0]
-#             except AbstractFunctionError:
-#                 return op.perform
-        
-#         thunks1 = [op.perform for op in op_order_1]
-#         thunks2 = [c_make_thunk(op) for op in op_order_2]
 
         env = self.env
         no_recycling = self.no_recycling
         
-        _f, i1, o1, thunks1, order1 = PerformLinker(env, no_recycling = no_recycling).make_all(**kwargs)
-        _f, i2, o2, thunks2, order2 = OpWiseCLinker(env, no_recycling = no_recycling).make_all(**kwargs)
+        _f, i1, o1, thunks1, order1 = link.PerformLinker(env, no_recycling = no_recycling).make_all(**kwargs)
+        _f, i2, o2, thunks2, order2 =      OpWiseCLinker(env, no_recycling = no_recycling).make_all(**kwargs)
 
         def f():
             for input1, input2 in zip(i1, i2):
@@ -903,15 +901,7 @@ class DualLinker(Linker):
                     for output1, output2 in zip(thunk1.outputs, thunk2.outputs):
                         self.checker(output1, output2)
                 except:
-                    raise_with_op(node1)
-#                     exc_type, exc_value, exc_trace = sys.exc_info()
-#                     try:
-#                         trace = op1.trace
-#                     except AttributeError:
-#                         trace = ()
-#                     exc_value.__thunk_trace__ = trace
-#                     exc_value.args = exc_value.args + (op1, )
-#                     raise exc_type, exc_value, exc_trace
+                    link.raise_with_op(node1)
 
         return f, i1, o1
 

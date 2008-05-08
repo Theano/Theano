@@ -3,7 +3,7 @@
 import unittest
 
 import graph
-from graph import Result, as_result, Apply, Constant
+from graph import Result, Apply, Constant
 from type import Type
 from op import Op
 import env
@@ -13,6 +13,10 @@ from link import *
 
 #from _test_result import Double
 
+
+def as_result(x):
+    assert isinstance(x, Result)
+    return x
 
 class TDouble(Type):
     def filter(self, data):

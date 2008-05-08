@@ -1,23 +1,15 @@
 
-#from features import Listener, Constraint, Orderings, Tool
-
-import graph
-
-import utils
-from utils import AbstractFunctionError
-
-from copy import copy
-from env import InconsistencyError
-
-from toolbox import Bookkeeper
-
 from collections import defaultdict
 
+import graph
+import utils
+import toolbox
+
+from utils import AbstractFunctionError
+from env import InconsistencyError
 
 
-
-
-class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
+class DestroyHandler(toolbox.Bookkeeper):
     """
     This feature ensures that an env represents a consistent data flow
     when some Ops overwrite their inputs and/or provide "views" over
@@ -29,14 +21,16 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
     Examples:
      - (x += 1) + (x += 1) -> fails because the first += makes the second
        invalid
-     - x += transpose_view(x) -> fails because the input that is destroyed
-       depends on an input that shares the same data
      - (a += b) + (c += a) -> succeeds but we have to do c += a first
      - (a += b) + (b += c) + (c += a) -> fails because there's a cyclical
        dependency (no possible ordering)
 
     This feature allows some optimizations (eg sub += for +) to be applied
     safely.
+
+    @todo
+     - x += transpose_view(x) -> fails because the input that is destroyed
+       depends on an input that shares the same data
     """
 
     def __init__(self):
@@ -88,11 +82,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         
         self.seen = set()
         
-        Bookkeeper.on_attach(self, env)
-
-#         # Initialize the children if the inputs and orphans.
-#         for input in env.inputs: # env.orphans.union(env.inputs):
-#             self.children[input] = set()
+        toolbox.Bookkeeper.on_attach(self, env)
 
     def on_detach(self, env):
         del self.parent
@@ -104,19 +94,6 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         del self.illegal
         del self.seen
         self.env = None
-
-#     def publish(self):
-#         """
-#         Publishes the following on the env:
-#          - destroyers(r) -> returns all L{Op}s that destroy the result r
-#          - destroy_handler -> self
-#         """
-#         def __destroyers(r):
-#             ret = self.destroyers.get(r, {})
-#             ret = ret.keys()
-#             return ret
-#         self.env.destroyers = __destroyers
-#         self.env.destroy_handler = self
 
     def __path__(self, r):
         """
@@ -171,7 +148,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
     def __pre__(self, op):
         """
         Returns all results that must be computed prior to computing
-        this op.
+        this node.
         """
         rval = set()
         if op is None:
@@ -222,7 +199,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         users = set(self.__users__(start))
         users.add(start)
         for user in users:
-            for cycle in copy(self.cycles):
+            for cycle in set(self.cycles):
                 if user in cycle:
                     self.cycles.remove(cycle)
         if just_remove:
@@ -234,7 +211,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         """
         @return: (vmap, dmap) where:
          - vmap -> {output : [inputs output is a view of]}
-         - dmap -> {output : [inputs that are destroyed by the Op
+         - dmap -> {output : [inputs that are destroyed by the node
                               (and presumably returned as that output)]}
         """
         try: _vmap = node.op.view_map
@@ -260,7 +237,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
     def on_import(self, env, op):
         """
         Recomputes the dependencies and search for inconsistencies given
-        that we just added an op to the env.
+        that we just added an node to the env.
         """
         
         self.seen.add(op)
@@ -303,7 +280,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
     def on_prune(self, env, op):
         """
         Recomputes the dependencies and searches for inconsistencies to remove
-        given that we just removed an op to the env.
+        given that we just removed a node to the env.
         """
 
         view_map, destroy_map = self.get_maps(op)
@@ -400,7 +377,7 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
         """
         Recomputes the dependencies and searches for inconsistencies to remove
         given that all the clients are moved from r_1 to r_2, clients being
-        a list of (op, i) pairs such that op.inputs[i] used to be r_1 and is
+        a list of (node, i) pairs such that node.inputs[i] used to be r_1 and is
         now r_2.
         """
         path_1 = self.__path__(r_1)
@@ -483,53 +460,6 @@ class DestroyHandler(Bookkeeper): #(Listener, Constraint, Orderings, Tool):
                 ords.setdefault(op, set()).update([user.owner for user in self.__users__(foundation) if user not in op.outputs])
         return ords
 
-
-
-
-# class Destroyer:
-#     """
-#     Base class for Ops that destroy one or more of their inputs in an
-#     inplace operation, use them as temporary storage, puts garbage in
-#     them or anything else that invalidates the contents for use by other
-#     Ops.
-
-#     Usage of this class in an env requires DestroyHandler.
-#     """
-
-#     def destroyed_inputs(self):
-#         raise AbstractFunctionError()
-
-#     def destroy_map(self):
-#         """
-#         Returns the map {output: [list of destroyed inputs]}
-#         While it typically means that the storage of the output is
-#         shared with each of the destroyed inputs, it does necessarily
-#         have to be the case.
-#         """
-#         # compatibility
-#         return {self.out: self.destroyed_inputs()}
-    
-#     __env_require__ = DestroyHandler
-
-
-
-# class Viewer:
-#     """
-#     Base class for Ops that return one or more views over one or more inputs,
-#     which means that the inputs and outputs share their storage. Unless it also
-#     extends Destroyer, this Op does not modify the storage in any way and thus
-#     the input is safe for use by other Ops even after executing this one.
-#     """
-
-#     def view_map(self):
-#         """
-#         Returns the map {output: [list of viewed inputs]}
-#         It means that the output shares storage with each of the inputs
-#         in the list.
-#         Note: support for more than one viewed input is minimal, but
-#         this might improve in the future.
-#         """
-#         raise AbstractFunctionError()
 
 
 def view_roots(r):

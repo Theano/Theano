@@ -1,12 +1,14 @@
+"""
+Defines the base class for optimizations as well as a certain
+amount of useful generic optimization tools.
+"""
 
-from op import Op
-from graph import Constant
-from type import Type
+
+import graph
 from env import InconsistencyError
 import utils
 import unify
 import toolbox
-import ext
 
 
 class Optimizer:
@@ -20,9 +22,8 @@ class Optimizer:
         """
         Applies the optimization to the provided L{Env}. It may use all
         the methods defined by the L{Env}. If the L{Optimizer} needs
-        to use a certain tool, such as an L{InstanceFinder}, it should
-        set the L{__env_require__} field to a list of what needs to be
-        registered with the L{Env}.
+        to use a certain tool, such as an L{InstanceFinder}, it can do
+        so in its L{add_requirements} method.
         """
         pass
 
@@ -36,9 +37,19 @@ class Optimizer:
         self.apply(env)
 
     def __call__(self, env):
+        """
+        Same as self.optimize(env)
+        """
         return self.optimize(env)
 
     def add_requirements(self, env):
+        """
+        Add features to the env that are required to apply the optimization.
+        For example:
+          env.extend(History())
+          env.extend(MyFeature())
+          etc.
+        """
         pass
 
 
@@ -79,7 +90,7 @@ class LocalOptimizer(Optimizer):
     following two methods:
      - candidates(env) -> returns a set of ops that can be
        optimized
-     - apply_on_op(env, op) -> for each op in candidates,
+     - apply_on_node(env, node) -> for each node in candidates,
        this function will be called to perform the actual
        optimization.
     """
@@ -102,7 +113,7 @@ class LocalOptimizer(Optimizer):
         Calls self.apply_on_op(env, op) for each op in self.candidates(env).
         """
         for node in self.candidates(env):
-            if env.has_node(node):
+            if node in env.nodes:
                 self.apply_on_node(env, node)
 
 
@@ -122,7 +133,7 @@ class OpSpecificOptimizer(LocalOptimizer):
 
     def candidates(self, env):
         """
-        Returns all instances of L{self.op}.
+        Returns all nodes that have L{self.op} in their op field.
         """
         return env.get_nodes(self.op)
 
@@ -131,13 +142,22 @@ class OpSpecificOptimizer(LocalOptimizer):
 
 class OpSubOptimizer(Optimizer):
     """
-    Replaces all L{Op}s of a certain type by L{Op}s of another type that
-    take the same inputs as what they are replacing.
+    Replaces all applications of a certain op by the application of
+    another op that take the same inputs as what they are replacing.
 
     e.g. OpSubOptimizer(add, sub) ==> add(div(x, y), add(y, x)) -> sub(div(x, y), sub(y, x))
+    
+    OpSubOptimizer requires the following features:
+      - NodeFinder
+      - ReplaceValidate
     """
 
     def add_requirements(self, env):
+        """
+        Requires the following features:
+          - NodeFinder
+          - ReplaceValidate
+        """
         try:
             env.extend(toolbox.NodeFinder())
             env.extend(toolbox.ReplaceValidate())
@@ -145,9 +165,12 @@ class OpSubOptimizer(Optimizer):
 
     def __init__(self, op1, op2, failure_callback = None):
         """
-        op1 and op2 must both be Op subclasses, they must both take
-        the same number of inputs and they must both have the same
-        number of outputs.
+        op1.make_node and op2.make_node must take the same number of
+        inputs and have the same number of outputs.
+        
+        If failure_callback is not None, it will be called whenever
+        the Optimizer fails to do a replacement in the graph. The
+        arguments to the callback are: (node, replacement, exception)
         """
         self.op1 = op1
         self.op2 = op2
@@ -155,12 +178,8 @@ class OpSubOptimizer(Optimizer):
 
     def apply(self, env):
         """
-        Replaces all occurrences of self.op1 by instances of self.op2
+        Replaces all applications of self.op1 by applications of self.op2
         with the same inputs.
-        
-        If failure_callback is not None, it will be called whenever
-        the Optimizer fails to do a replacement in the graph. The
-        arguments to the callback are: (op1_instance, replacement, exception)
         """
         candidates = env.get_nodes(self.op1)
 
@@ -173,7 +192,6 @@ class OpSubOptimizer(Optimizer):
             except Exception, e:
                 if self.failure_callback is not None:
                     self.failure_callback(node, repl, e)
-                pass
 
     def str(self):
         return "%s -> %s" % (self.op1, self.op2)
@@ -183,7 +201,7 @@ class OpSubOptimizer(Optimizer):
 class OpRemover(Optimizer):
     """
     @todo untested
-    Removes all ops of a certain type by transferring each of its
+    Removes all applications of an op by transferring each of its
     outputs to the corresponding input.
     """
 
@@ -195,21 +213,19 @@ class OpRemover(Optimizer):
 
     def __init__(self, op, failure_callback = None):
         """
-        opclass is the class of the ops to remove. It must take as
-        many inputs as outputs.
+        Applications of the op must have as many inputs as outputs.
+        
+        If failure_callback is not None, it will be called whenever
+        the Optimizer fails to remove an operation in the graph. The
+        arguments to the callback are: (node, exception)
         """
         self.op = op
         self.failure_callback = failure_callback
 
     def apply(self, env):
         """
-        Removes all occurrences of self.opclass.
-        
-        If self.failure_callback is not None, it will be called whenever
-        the Optimizer fails to remove an operation in the graph. The
-        arguments to the callback are: (opclass_instance, exception)
+        Removes all applications of self.op.
         """
-        
         candidates = env.get_nodes(self.op)
 
         for node in candidates:
@@ -231,17 +247,17 @@ class PatternOptimizer(OpSpecificOptimizer):
     """
     @todo update
     
-    Replaces all occurrences of the input pattern by the output pattern::
+    Replaces all occurrences of the input pattern by the output pattern:
 
-     input_pattern ::= (OpClass, <sub_pattern1>, <sub_pattern2>, ...)
+     input_pattern ::= (op, <sub_pattern1>, <sub_pattern2>, ...)
      input_pattern ::= dict(pattern = <input_pattern>,
                             constraint = <constraint>)
      sub_pattern ::= input_pattern
      sub_pattern ::= string
-     sub_pattern ::= a Result r such that r.constant is True
+     sub_pattern ::= a Constant instance
      constraint ::= lambda env, expr: additional matching condition
      
-     output_pattern ::= (OpClass, <output_pattern1>, <output_pattern2>, ...)
+     output_pattern ::= (op, <output_pattern1>, <output_pattern2>, ...)
      output_pattern ::= string
 
     Each string in the input pattern is a variable that will be set to
@@ -253,8 +269,8 @@ class PatternOptimizer(OpSpecificOptimizer):
     pattern can.
 
     If you put a constant result in the input pattern, there will be a
-    match iff a constant result with the same value is found in its
-    place.
+    match iff a constant result with the same value and the same type
+    is found in its place.
 
     You can add a constraint to the match by using the dict(...)  form
     described above with a 'constraint' key. The constraint must be a
@@ -263,16 +279,27 @@ class PatternOptimizer(OpSpecificOptimizer):
     arbitrary criterion.
 
     Examples:
-     PatternOptimizer((Add, 'x', 'y'), (Add, 'y', 'x'))
-     PatternOptimizer((Multiply, 'x', 'x'), (Square, 'x'))
-     PatternOptimizer((Subtract, (Add, 'x', 'y'), 'y'), 'x')
-     PatternOptimizer((Power, 'x', Double(2.0, constant = True)), (Square, 'x'))
-     PatternOptimizer((Boggle, {'pattern': 'x',
-                                'constraint': lambda env, expr: expr.owner.scrabble == True}),
-                      (Scrabble, 'x'))
+     PatternOptimizer((add, 'x', 'y'), (add, 'y', 'x'))
+     PatternOptimizer((multiply, 'x', 'x'), (square, 'x'))
+     PatternOptimizer((subtract, (add, 'x', 'y'), 'y'), 'x')
+     PatternOptimizer((power, 'x', Constant(double, 2.0)), (square, 'x'))
+     PatternOptimizer((boggle, {'pattern': 'x',
+                                'constraint': lambda env, expr: expr.type == scrabble}),
+                      (scrabble, 'x'))
     """
 
     def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False, failure_callback = None):
+        """
+        Creates a PatternOptimizer that replaces occurrences of
+        in_pattern by occurrences of out_pattern.
+        
+        If failure_callback is not None, if there is a match but a
+        replacement fails to occur, the callback will be called with
+        arguments (result_to_replace, replacement, exception).
+
+        If allow_multiple_clients is False, he pattern matching will
+        fail if one of the subpatterns has more than one client.
+        """
         self.in_pattern = in_pattern
         self.out_pattern = out_pattern
         if isinstance(in_pattern, (list, tuple)):
@@ -287,15 +314,8 @@ class PatternOptimizer(OpSpecificOptimizer):
 
     def apply_on_node(self, env, node):
         """
-        Checks if the graph from op corresponds to in_pattern. If it does,
+        Checks if the graph from node corresponds to in_pattern. If it does,
         constructs out_pattern and performs the replacement.
-
-        If self.failure_callback is not None, if there is a match but a
-        replacement fails to occur, the callback will be called with
-        arguments (results_to_replace, replacement, exception).
-
-        If self.allow_multiple_clients is False, he pattern matching will fail
-        if one of the subpatterns has more than one client.
         """
         def match(pattern, expr, u, first = False):
             if isinstance(pattern, (list, tuple)):
@@ -323,7 +343,7 @@ class PatternOptimizer(OpSpecificOptimizer):
                     return False
                 else:
                     u = u.merge(expr, v)
-            elif isinstance(pattern, Constant) and isinstance(expr, Constant) and pattern.equals(expr):
+            elif isinstance(pattern, graph.Constant) and isinstance(expr, graph.Constant) and pattern.equals(expr):
                 return u
             else:
                 return False
@@ -363,28 +383,6 @@ class PatternOptimizer(OpSpecificOptimizer):
 
 
 
-# class ConstantFinder(Optimizer):
-#     """
-#     Sets as constant every orphan that is not destroyed.
-#     """
-    
-#     def apply(self, env):
-#         if env.has_feature(ext.DestroyHandler(env)):
-#             for r in env.orphans():
-#                 if not env.destroyers(r):
-#                     r.indestructible = True
-#                     r.constant = True
-# #             for r in env.inputs:
-# #                 if not env.destroyers(r):
-# #                     r.indestructible = True
-#         else:
-#             for r in env.orphans():
-#                 r.indestructible = True
-#                 r.constant = True
-# #             for r in env.inputs:
-# #                 r.indestructible = True
-
-import graph
 
 class _metadict:
     # dict that accepts unhashable keys
@@ -438,15 +436,14 @@ class MergeOptimizer(Optimizer):
     def apply(self, env):
         cid = _metadict()     #result -> result.desc()  (for constants)
         inv_cid = _metadict() #desc -> result (for constants)
-        for i, r in enumerate([r for r in env.results if isinstance(r, Constant)]): #env.orphans.union(env.inputs)):
-            #if isinstance(r, Constant):
-                sig = r.signature()
-                other_r = inv_cid.get(sig, None)
-                if other_r is not None:
-                    env.replace(r, other_r)
-                else:
-                    cid[r] = sig
-                    inv_cid[sig] = r
+        for i, r in enumerate([r for r in env.results if isinstance(r, graph.Constant)]):
+            sig = r.signature()
+            other_r = inv_cid.get(sig, None)
+            if other_r is not None:
+                env.replace(r, other_r)
+            else:
+                cid[r] = sig
+                inv_cid[sig] = r
         # we clear the dicts because the Constants signatures are not necessarily hashable
         # and it's more efficient to give them an integer cid like the other Results
         cid.clear()
@@ -483,123 +480,3 @@ def MergeOptMerge(opt):
     merger = MergeOptimizer()
     return SeqOptimizer([merger, opt, merger])
 
-
-
-### THE FOLLOWING OPTIMIZERS ARE NEITHER USED NOR TESTED BUT PROBABLY WORK AND COULD BE USEFUL ###
-
-# class MultiOptimizer(Optimizer):
-
-#     def __init__(self, **opts):
-#         self._opts = []
-#         self.ord = {}
-#         self.name_to_opt = {}
-#         self.up_to_date = True
-#         for name, opt in opts:
-#             self.register(name, opt, after = [], before = [])
-
-#     def register(self, name, opt, **relative):
-#         self.name_to_opt[name] = opt
-        
-#         after = relative.get('after', [])
-#         if not isinstance(after, (list, tuple)):
-#             after = [after]
-        
-#         before = relative.get('before', [])
-#         if not isinstance(before, (list, tuple)):
-#             before = [before]
-        
-#         self.up_to_date = False
-
-#         if name in self.ord:
-#             raise Exception("Cannot redefine optimization: '%s'" % name)
-        
-#         self.ord[name] = set(after)
-        
-#         for postreq in before:
-#             self.ord.setdefault(postreq, set()).add(name)
-
-#     def get_opts(self):
-#         if not self.up_to_date:
-#             self.refresh()
-#         return self._opts
-
-#     def refresh(self):
-#         self._opts = [self.name_to_opt[name] for name in utils.toposort(self.ord)]
-#         self.up_to_date = True
-
-#     def apply(self, env):
-#         for opt in self.opts:
-#             opt.apply(env)
-
-#     opts = property(get_opts)
-
-
-
-# class TaggedMultiOptimizer(MultiOptimizer):
-    
-#     def __init__(self, **opts):
-#         self.tags = {}
-#         MultiOptimizer.__init__(self, **opts)
-
-#     def register(self, name, opt, tags = [], **relative):
-#         tags = set(tags)
-#         tags.add(name)
-#         self.tags[opt] = tags
-#         MultiOptimizer.register(self, name, opt, **relative)
-
-#     def filter(self, whitelist, blacklist):
-#         return [opt for opt in self.opts
-#                 if self.tags[opt].intersection(whitelist)
-#                 and not self.tags[opt].intersection(blacklist)]
-
-#     def whitelist(self, *tags):
-#         return [opt for opt in self.opts if self.tags[opt].intersection(tags)]
-
-#     def blacklist(self, *tags):
-#         return [opt for opt in self.opts if not self.tags[opt].intersection(tags)]
-
-
-
-# class TagFilterMultiOptimizer(Optimizer):
-
-#     def __init__(self, all, whitelist = None, blacklist = None):
-#         self.all = all
-        
-#         if whitelist is not None:
-#             self.whitelist = set(whitelist)
-#         else:
-#             self.whitelist = None
-
-#         if blacklist is not None:
-#             self.blacklist = set(blacklist)
-#         else:
-#             self.blacklist = set()
-
-#     def use_whitelist(self, use = True):
-#         if self.whitelist is None and use:
-#             self.whitelist = set()
-
-#     def allow(self, *tags):
-#         if self.whitelist is not None:
-#             self.whitelist.update(tags)
-#         self.blacklist.difference_update(tags)
-
-#     def deny(self, *tags):
-#         if self.whitelist is not None:
-#             self.whitelist.difference_update(tags)
-#         self.blacklist.update(tags)
-
-#     def dont_care(self, *tags):
-#         if self.whitelist is not None:
-#             self.whitelist.difference_update(tags)
-#         self.blacklist.difference_update(tags)
-
-#     def opts(self):
-#         if self.whitelist is not None:
-#             return self.all.filter(self.whitelist, self.blacklist)
-#         else:
-#             return self.all.blacklist(*[tag for tag in self.blacklist])
-    
-#     def apply(self, env):
-#         for opt in self.opts():
-#             opt.apply(env)

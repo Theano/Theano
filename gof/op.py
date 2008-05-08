@@ -1,17 +1,12 @@
-
 """
 Contains the L{Op} class, which is the base interface for all operations
 compatible with gof's graph manipulation routines.
 """
 
 import utils
-from utils import AbstractFunctionError, object2
-
-from copy import copy
 
 
-
-class Op(object2):
+class Op(utils.object2):
 
     default_output = None
     """@todo
@@ -22,9 +17,19 @@ class Op(object2):
     #############
 
     def make_node(self, *inputs):
-        raise AbstractFunctionError()
+        """
+        This function should return an Apply instance representing the
+        application of this Op on the provided inputs.
+        """
+        raise utils.AbstractFunctionError()
 
     def __call__(self, *inputs):
+        """
+        Shortcut for:
+          self.make_node(*inputs).outputs[self.default_output] (if default_output is defined)
+          self.make_node(*inputs).outputs[0] (if only one output)
+          self.make_node(*inputs).outputs (if more than one output)
+        """
         node = self.make_node(*inputs)
         if self.default_output is not None:
             return node.outputs[self.default_output]
@@ -44,6 +49,7 @@ class Op(object2):
         Calculate the function on the inputs and put the results in the
         output storage.
 
+        - node: Apply instance that contains the symbolic inputs and outputs
         - inputs: sequence of inputs (immutable)
         - output_storage: list of mutable 1-element lists (do not change
                           the length of these lists)
@@ -53,7 +59,7 @@ class Op(object2):
         by a previous call to impl and impl is free to reuse it as it
         sees fit.
         """
-        raise AbstractFunctionError()
+        raise utils.AbstractFunctionError()
 
     #####################
     # C code generation #
@@ -62,9 +68,8 @@ class Op(object2):
     def c_code(self, node, name, inputs, outputs, sub):
         """Return the C implementation of an Op.
 
-        Returns templated C code that does the computation associated
-        to this L{Op}. You may assume that input validation and output
-        allocation have already been done.
+        Returns C code that does the computation associated to this L{Op},
+        given names for the inputs and outputs.
         
         @param inputs: list of strings.  There is a string for each input
                        of the function, and the string is the name of a C
@@ -80,7 +85,7 @@ class Op(object2):
                 'fail').
 
         """
-        raise AbstractFunctionError('%s.c_code' \
+        raise utils.AbstractFunctionError('%s.c_code is not defined' \
                 % self.__class__.__name__)
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
@@ -89,44 +94,33 @@ class Op(object2):
         This is a convenient place to clean up things allocated by c_code().  
         
         """
-        raise AbstractFunctionError()
+        raise utils.AbstractFunctionError()
 
     def c_compile_args(self):
         """
         Return a list of compile args recommended to manipulate this L{Op}.
         """
-        raise AbstractFunctionError()
+        raise utils.AbstractFunctionError()
 
     def c_headers(self):
         """
         Return a list of header files that must be included from C to manipulate
         this L{Op}.
         """
-        raise AbstractFunctionError()
+        raise utils.AbstractFunctionError()
 
     def c_libraries(self):
         """
         Return a list of libraries to link against to manipulate this L{Op}.
         """
-        raise AbstractFunctionError()
+        raise utils.AbstractFunctionError()
 
     def c_support_code(self):
         """
         Return utility code for use by this L{Op}. It may refer to support code
         defined for its input L{Result}s.
         """
-        raise AbstractFunctionError()
+        raise utils.AbstractFunctionError()
 
-
-class PropertiedOp(Op):
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.__dict__ == other.__dict__
-
-    def __str__(self):
-        if hasattr(self, 'name') and self.name:
-            return self.name
-        else:
-            return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%s" % (k, v) for k, v in self.__dict__.items() if k != "name"))
 
 

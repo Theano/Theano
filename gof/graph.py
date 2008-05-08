@@ -3,20 +3,9 @@ from copy import copy
 from collections import deque
 
 import utils
-from utils import object2
-        
-
-def deprecated(f):
-    printme = [True]
-    def g(*args, **kwargs):
-        if printme[0]:
-            print 'gof.graph.%s deprecated: April 29' % f.__name__
-            printme[0] = False
-        return f(*args, **kwargs)
-    return g
 
 
-class Apply(object2):
+class Apply(utils.object2):
     """
     Note: it is illegal for an output element to have an owner != self
     """
@@ -74,18 +63,13 @@ class Apply(object2):
                     raise TypeError("Cannot change the type of this input.", curr, new)
         new_node = self.clone()
         new_node.inputs = inputs
-#         new_node.outputs = []
-#         for output in self.outputs:
-#             new_output = copy(output)
-#             new_output.owner = new_node
-#             new_node.outputs.append(new_output)
         return new_node
 
     nin = property(lambda self: len(self.inputs))
     nout = property(lambda self: len(self.outputs))
 
 
-class Result(object2):
+class Result(utils.object2):
     #__slots__ = ['type', 'owner', 'index', 'name']
     def __init__(self, type, owner = None, index = None, name = None):
         self.type = type
@@ -111,9 +95,6 @@ class Result(object2):
             return "<?>::" + str(self.type)
     def __repr__(self):
         return str(self)
-    @deprecated
-    def __asresult__(self):
-        return self
     def clone(self):
         return self.__class__(self.type, None, None, self.name)
 
@@ -137,7 +118,6 @@ class Constant(Value):
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
         Value.__init__(self, type, data, name)
-###        self.indestructible = True
     def equals(self, other):
         # this does what __eq__ should do, but Result and Apply should always be hashable by id
         return type(other) == type(self) and self.signature() == other.signature()
@@ -147,32 +127,6 @@ class Constant(Value):
         if self.name is not None:
             return self.name
         return str(self.data) #+ "::" + str(self.type)
-
-@deprecated
-def as_result(x):
-    if isinstance(x, Result):
-        return x
-#     elif isinstance(x, Type):
-#         return Result(x, None, None)
-    elif hasattr(x, '__asresult__'):
-        r = x.__asresult__()
-        if not isinstance(r, Result):
-            raise TypeError("%s.__asresult__ must return a Result instance" % x, (x, r))
-        return r
-    else:
-        raise TypeError("Cannot wrap %s in a Result" % x)
-
-@deprecated
-def as_apply(x):
-    if isinstance(x, Apply):
-        return x
-    elif hasattr(x, '__asapply__'):
-        node = x.__asapply__()
-        if not isinstance(node, Apply):
-            raise TypeError("%s.__asapply__ must return an Apply instance" % x, (x, node))
-        return node
-    else:
-        raise TypeError("Cannot map %s to Apply" % x)
 
 def stack_search(start, expand, mode='bfs', build_inv = False):
     """Search through L{Result}s, either breadth- or depth-first
@@ -234,45 +188,6 @@ def inputs(result_list):
     return rval
 
 
-# def results_and_orphans(r_in, r_out, except_unreachable_input=False):
-#     r_in_set = set(r_in)
-#     class Dummy(object): pass
-#     dummy = Dummy()
-#     dummy.inputs = r_out
-#     def expand_inputs(io):
-#         if io in r_in_set:
-#             return None
-#         try:
-#             return [io.owner] if io.owner != None else None
-#         except AttributeError:
-#             return io.inputs
-#     ops_and_results, dfsinv = stack_search(
-#             deque([dummy]),
-#             expand_inputs, 'dfs', True)
-
-#     if except_unreachable_input:
-#         for r in r_in:
-#             if r not in dfsinv:
-#                 raise Exception(results_and_orphans.E_unreached)
-#     clients = stack_search(
-#             deque(r_in), 
-#             lambda io: dfsinv.get(io,None), 'dfs')
-    
-#     ops_to_compute = [o for o in clients if is_op(o) and o is not dummy]
-#     results = []
-#     for o in ops_to_compute:
-#         results.extend(o.inputs)
-#     results.extend(r_out)
-
-#     op_set = set(ops_to_compute)
-#     assert len(ops_to_compute) == len(op_set)
-#     orphans = [r for r in results \
-#             if (r.owner not in op_set) and (r not in r_in_set)]
-#     return results, orphans
-
-# results_and_orphans.E_unreached = 'there were unreachable inputs'
-
-
 def results_and_orphans(i, o):
     """
     """
@@ -284,24 +199,6 @@ def results_and_orphans(i, o):
     results = stack_search(deque(o), expand, 'dfs')
     orphans = [r for r in results if r.owner is None and r not in i]
     return results, orphans
-
-
-#def results_and_orphans(i, o):
-#     results = set()
-#     orphans = set()
-#     def helper(r):
-#         if r in results:
-#             return
-#         results.add(r)
-#         if r.owner is None:
-#             if r not in i:
-#                 orphans.add(r)
-#         else:
-#             for r2 in r.owner.inputs:
-#                 helper(r2)
-#     for output in o:
-#         helper(output)
-#     return results, orphans
 
 
 def ops(i, o):
@@ -568,123 +465,4 @@ def as_string(i, o,
             return leaf_formatter(r)
 
     return [describe(output) for output in o]
-
-
-
-
-# class Graph:
-#     """
-#     Object-oriented wrapper for all the functions in this module.
-#     """
-
-#     def __init__(self, inputs, outputs):
-#         self.inputs = inputs
-#         self.outputs = outputs
-
-#     def ops(self):
-#         return ops(self.inputs, self.outputs)
-
-#     def values(self):
-#         return values(self.inputs, self.outputs)
-
-#     def orphans(self):
-#         return orphans(self.inputs, self.outputs)
-
-#     def io_toposort(self):
-#         return io_toposort(self.inputs, self.outputs)
-
-#     def toposort(self):
-#         return self.io_toposort()
-
-#     def clone(self):
-#         o = clone(self.inputs, self.outputs)
-#         return Graph(self.inputs, o)
-
-#     def __str__(self):
-#         return as_string(self.inputs, self.outputs)
-
-
-
-
-
-
-
-if 0:
-    #these were the old implementations
-    # they were replaced out of a desire that graph search routines would not
-    # depend on the hash or id of any node, so that it would be deterministic
-    # and consistent between program executions.
-    @utils.deprecated('gof.graph', 'preserving only for review')
-    def _results_and_orphans(i, o, except_unreachable_input=False):
-        """
-        @type i: list
-        @param i: input L{Result}s
-        @type o: list
-        @param o: output L{Result}s
-
-        Returns the pair (results, orphans). The former is the set of
-        L{Result}s that are involved in the subgraph that lies between i and
-        o. This includes i, o, orphans(i, o) and all results of all
-        intermediary steps from i to o. The second element of the returned
-        pair is orphans(i, o).
-        """
-        results = set()
-        i = set(i)
-        results.update(i)
-        incomplete_paths = []
-        reached = set()
-
-        def helper(r, path):
-            if r in i:
-                reached.add(r)
-                results.update(path)
-            elif r.owner is None:
-                incomplete_paths.append(path)
-            else:
-                op = r.owner
-                for r2 in op.inputs:
-                    helper(r2, path + [r2])
-
-        for output in o:
-            helper(output, [output])
-
-        orphans = set()
-        for path in incomplete_paths:
-            for r in path:
-                if r not in results:
-                    orphans.add(r)
-                    break
-
-        if except_unreachable_input and len(i) != len(reached):
-            raise Exception(results_and_orphans.E_unreached)
-
-        results.update(orphans)
-
-        return results, orphans
-
-
-    def _io_toposort(i, o, orderings = {}):
-        """
-        @type i: list
-        @param i: input L{Result}s
-        @type o: list
-        @param o: output L{Result}s
-        @param orderings: {op: [requirements for op]} (defaults to {})
-
-        @rtype: ordered list
-        @return: L{Op}s that belong in the subgraph between i and o which
-        respects the following constraints:
-         - all inputs in i are assumed to be already computed
-         - the L{Op}s that compute an L{Op}'s inputs must be computed before it
-         - the orderings specified in the optional orderings parameter must be satisfied
-
-        Note that this function does not take into account ordering information
-        related to destructive operations or other special behavior.
-        """
-        prereqs_d = copy(orderings)
-        all = ops(i, o)
-        for op in all:
-            asdf = set([input.owner for input in op.inputs if input.owner and input.owner in all])
-            prereqs_d.setdefault(op, set()).update(asdf)
-        return utils.toposort(prereqs_d)
 
