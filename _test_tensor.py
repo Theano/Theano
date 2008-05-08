@@ -277,6 +277,32 @@ DivInplaceTester = make_broadcast_tester(op = div_inplace,
                                                      column = (rand(2, 3), rand(2, 1))),
                                          inplace = True)
 
+ModTester = make_broadcast_tester(op = mod,
+                                  expected = lambda x, y: x % y,
+                                  good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
+                                              scalar = (rand(2, 3), rand(1, 1)),
+                                              row = (rand(2, 3), rand(1, 3)),
+                                              column = (rand(2, 3), rand(2, 1)),
+                                              dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
+                                              dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3)),
+#                                               integers_positive = (randint_ranged(4, 10, (2, 3)), randint_ranged(1, 6, (2, 3))),
+#                                               integers_known_to_fail = (numpy.array(-1), numpy.array(5))
+                                              ),
+#                                               integers = (randint(2, 3), randint_nonzero(2, 3)),
+#                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
+#                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
+                                  )
+ModInplaceTester = make_broadcast_tester(op = mod_inplace,
+                                         expected = lambda x, y: x % y,
+                                         good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
+                                                     scalar = (rand(2, 3), rand(1, 1)),
+                                                     row = (rand(2, 3), rand(1, 3)),
+                                                     column = (rand(2, 3), rand(2, 1)),
+                                                     dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
+                                                     dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))
+                                                     ),
+                                         inplace = True)
+
 PowTester = make_broadcast_tester(op = pow,
                                   expected = lambda x, y: x ** y,
                                   good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),

@@ -13,6 +13,7 @@ from scipy import weave
 import cutils
 import utils
 import traceback
+import re
 
 
 def compile_dir():
@@ -69,10 +70,8 @@ class CodeBlock:
         to jump to. It should also contain a key called 'failure_var' that contains
         the name of the variable that contains the error code.
         """
-        self.declare = declare #% sub
-#        behavior_sub = copy(sub)
-#        behavior_sub['fail'] = "{%(failure_var)s = %(id)s; goto __label_%(id)i;}" % sub
-        self.behavior = behavior #% behavior_sub
+        self.declare = declare
+        self.behavior = behavior
         # the dummy is because gcc throws an error when a label's right next to a closing
         # brace (maybe there's an ignore flag for that...)
         # we need the label even if cleanup is empty because the behavior block jumps there
@@ -492,13 +491,14 @@ class CLinker(Linker):
         args = []
         args += ["storage_%s" % symbol[result] for result in utils.uniq(self.inputs + self.outputs + self.orphans)]
         
-        struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var, name = "%(name)s"))
+        struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var, name = "<<<<NAME>>>>"))
 
         # The hash calculated on the code identifies it so weave can cache properly.
         # (the hash has to be used outside of the support code because weave does not consider changes in the support code)
         hash = md5.md5(struct_code).hexdigest()
         struct_name = '__struct_compiled_op_%s' % hash
-        struct_code %= dict(name = struct_name)
+        #struct_code %= dict(name = struct_name)
+        struct_code = re.sub("<<<<NAME>>>>", struct_name, struct_code)
 
         self.struct_code = struct_code
         self.struct_name = struct_name

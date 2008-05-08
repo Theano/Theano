@@ -337,6 +337,7 @@ class _tensor_py_operators:
     def __mul__(self,other): return mul(self,other)
     def __div__(self,other): return div(self,other)
     def __pow__(self,other): return pow(self,other)
+    def __mod__(self,other): return mod(self,other)
 
     #ARITHMETIC - INPLACE
     def __iadd__(self,other): return add_inplace(self,other)
@@ -350,6 +351,7 @@ class _tensor_py_operators:
     def __rsub__(self,other): return sub(other,self)
     def __rmul__(self,other): return mul(other,self)
     def __rdiv__(self,other): return div(other,self)
+    def __rmod__(self,other): return mod(other,self)
     def __rpow__(self,other): return pow(other,self)
 
     #TRANSPOSE
@@ -572,6 +574,7 @@ add, add_inplace = _elemwise(scal.add, 'add')
 sub, sub_inplace = _elemwise(scal.sub, 'sub')
 mul, mul_inplace = _elemwise(scal.mul, 'mul')
 div, div_inplace = _elemwise(scal.div, 'div')
+mod, mod_inplace = _elemwise(scal.mod, 'mod')
 pow, pow_inplace = _elemwise(scal.pow, 'pow')
 
 

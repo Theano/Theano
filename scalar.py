@@ -203,6 +203,7 @@ class _scalar_py_operators:
     def __sub__(self,other): return sub(self,other)
     def __mul__(self,other): return mul(self,other)
     def __div__(self,other): return div(self,other)
+    def __mod__(self,other): return mod(self,other)
     def __pow__(self,other): return pow(self,other)
 
     #ARITHMETIC - RIGHT-OPERAND
@@ -210,6 +211,7 @@ class _scalar_py_operators:
     def __rsub__(self,other): return sub(other,self)
     def __rmul__(self,other): return mul(other,self)
     def __rdiv__(self,other): return div(other,self)
+    def __rmod__(self,other): return mod(other,self)
     def __rpow__(self,other): return pow(other,self)
 
 class ScalarResult(Result, _scalar_py_operators):
@@ -495,6 +497,17 @@ class Div(BinaryScalarOp):
     def grad(self, (x, y), (gz, )):
         return gz / y, -(gz * x) / (y * y)
 div = Div(upcast_out, name = 'div')
+
+class Mod(BinaryScalarOp):
+    def impl(self, x, y):
+        return x % y
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        if node.inputs[0].type in int_types and node.inputs[1].type in int_types:
+            raise NotImplementedError("For integer arguments the behavior of division in C and in Python differ when the quotient is negative (to implement).")
+        return "%(z)s = %(x)s %% %(y)s;" % locals()
+    def grad(self, (x, y), (gz, )):
+        return None, None
+mod = Mod(upcast_out, name = 'mod')
 
 class Pow(BinaryScalarOp):
     def impl(self, x, y):
