@@ -6,7 +6,7 @@ import numpy
 
 from copy import copy
 
-from gof import Result, Op, utils, AbstractFunctionError, Type, Result, Constant, Apply, Value
+from gof import Result, Op, utils, AbstractFunctionError, Type, Constant, Apply, Value
 import gof
 
 import blas # for gemm, dot
@@ -14,10 +14,13 @@ import gradient
 
 import elemwise as s2t
 import scalar as scal
-
-from elemwise import Elemwise, DimShuffle, CAReduce
-
 from gof.python25 import partial
+
+
+### set up the external interface
+from elemwise import Elemwise, DimShuffle, CAReduce
+import tensor_random as random
+
 
 
 def as_tensor(x, name = None):
@@ -516,6 +519,8 @@ lt, lt_inplace = _elemwise(scal.lt, 'lt')
 gt, gt_inplace = _elemwise(scal.gt, 'gt')
 le, le_inplace = _elemwise(scal.le, 'le')
 ge, ge_inplace = _elemwise(scal.ge, 'ge')
+eq, eq_inplace = _elemwise(scal.eq, 'eq')
+neq, neq_inplace = _elemwise(scal.neq, 'neq')
 
 
 ##########################
