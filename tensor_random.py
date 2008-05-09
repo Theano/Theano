@@ -98,7 +98,7 @@ class NumpyGenerator(gof.op.Op):
                 and self.ndim == other.ndim \
                 and self.fn == other.fn
     def __hash__(self):
-        return self.seed ^ self.ndim ^ id(self.fn)
+        return self.seed ^ self.ndim ^ hash(self.fn)
 
     def make_node(self, _shape):
         #TODO: check for constant shape, and guess the broadcastable bits
