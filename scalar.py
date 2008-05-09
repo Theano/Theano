@@ -388,6 +388,14 @@ class EQ(LogicalComparison):
         return x == y
 eq = EQ()
 
+class NEQ(LogicalComparison):
+    identity = False
+    commutative = True
+    associative = False
+    def impl(self, x, y):
+        return x != y
+neq = NEQ()
+
 ####################
 # BIT-WISE OPERATORS
 ####################

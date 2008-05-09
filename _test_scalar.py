@@ -82,6 +82,19 @@ class _test_logical(unittest.TestCase):
         for a,b in ((3.,9), (3,0.9), (3,3)):
             self.failUnless(fn(a,b) == (a>=b))
 
+    def test_eq(self):
+        x, y, z = inputs()
+        fn = gof.DualLinker(Env([x,y], [eq(x,y)])).make_function()
+        for a,b in ((3.,9), (3,0.9), (3,3)):
+            self.failUnless(fn(a,b) == (a==b))
+
+    def test_neq(self):
+        x, y, z = inputs()
+        fn = gof.DualLinker(Env([x,y], [neq(x,y)])).make_function()
+        for a,b in ((3.,9), (3,0.9), (3,3)):
+            self.failUnless(fn(a,b) == (a!=b))
+
+
     def test_or(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker(Env([x,y], [x|y])).make_function()
