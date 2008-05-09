@@ -476,7 +476,7 @@ class Shape(Op):
     def perform(self, node, (x, ), (out, )):
         out[0] = numpy.asarray(x.shape)
     def grad(self, (x,), (gz,)):
-        raise ValueError
+        return [None]
 shape = Shape()
 
 class Argmax(Op):
