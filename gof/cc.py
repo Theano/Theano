@@ -618,8 +618,8 @@ class CLinker(link.Linker):
                                     input_storage,
                                     output_storage)
         return thunk, \
-            [link.Filter(input.type, storage) for input, storage in zip(self.env.inputs, input_storage)], \
-            [link.Filter(output.type, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
+            [link.Filter(input, storage) for input, storage in zip(self.env.inputs, input_storage)], \
+            [link.Filter(output, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
             error_storage
 
     def make_thunk(self, input_storage = None, output_storage = None):
@@ -821,8 +821,8 @@ class OpWiseCLinker(link.LocalLinker):
         
         f = self.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
 
-        return f, [link.Filter(input.type, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [link.Filter(output.type, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        return f, [link.Filter(input, storage) for input, storage in zip(env.inputs, input_storage)], \
+            [link.Filter(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
 
 

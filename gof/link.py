@@ -35,7 +35,7 @@ def raise_with_op(op, exc_info = None):
         exc_info = sys.exc_info()
     exc_type, exc_value, exc_trace = exc_info
     try:
-        trace = op.trace
+        trace = op.tag.trace
     except AttributeError:
         trace = ()
     exc_value.__thunk_trace__ = trace
@@ -107,20 +107,24 @@ class Linker:
 
 
 class Filter(object):
-    def __init__(self, type, storage, readonly = False, strict = False):
-        self.type = type
+    def __init__(self, r, storage, readonly = False, strict = False, trace = ()):
+        self.r = r
+        self.type = r.type
         self.storage = storage
         self.readonly = readonly
         self.strict = strict
     def __get(self):
         return self.storage[0]
     def __set(self, value):
-        if self.readonly:
-            raise Exception("Cannot set readonly storage.")
-        if self.strict:
-            self.storage[0] = self.type.filter(value, strict = True)
-        else:
-            self.storage[0] = self.type.filter(value)
+        try:
+            if self.readonly:
+                raise Exception("Cannot set readonly storage.")
+            if self.strict:
+                self.storage[0] = self.type.filter(value, strict = True)
+            else:
+                self.storage[0] = self.type.filter(value)
+        except:
+            raise_with_op(self.r)
     data = property(__get, __set)
     def __str__(self):
         return "<" + str(self.storage[0]) + ">"
@@ -245,8 +249,8 @@ class PerformLinker(LocalLinker):
 
         f = self.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
   
-        return f, [Filter(input.type, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [Filter(output.type, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        return f, [Filter(input, storage) for input, storage in zip(env.inputs, input_storage)], \
+            [Filter(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
 
 #        return f, env.inputs, env.outputs

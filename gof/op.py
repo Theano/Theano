@@ -4,6 +4,7 @@ compatible with gof's graph manipulation routines.
 """
 
 import utils
+import traceback
 
 
 class Op(utils.object2):
@@ -31,6 +32,7 @@ class Op(utils.object2):
           self.make_node(*inputs).outputs (if more than one output)
         """
         node = self.make_node(*inputs)
+        node.tag.trace = traceback.extract_stack()[:-1]
         if self.default_output is not None:
             return node.outputs[self.default_output]
         else:
