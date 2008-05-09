@@ -24,6 +24,7 @@ class Apply(utils.object2):
         """
         self.op = op
         self.inputs = []
+        self.tag = utils.scratchpad()
 
         ## filter inputs to make sure each element is a Result
         for input in inputs:
@@ -67,7 +68,14 @@ class Apply(utils.object2):
     def __asapply__(self):
         return self
     def clone(self):
-        return self.__class__(self.op, self.inputs, [output.clone() for output in self.outputs])
+#         cp = copy(self)
+#         cp.outputs = [output.clone() for output in self.outputs]
+#         for output in cp.outputs:
+#             output.owner = cp
+#         return cp
+        cp = self.__class__(self.op, self.inputs, [output.clone() for output in self.outputs])
+        cp.tag = copy(self.tag)
+        return cp
     def clone_with_new_inputs(self, inputs, check_type = True):
         """
         Returns an Apply node with the same op but different inputs. Unless
@@ -96,6 +104,7 @@ class Result(utils.object2):
     """
     #__slots__ = ['type', 'owner', 'index', 'name']
     def __init__(self, type, owner = None, index = None, name = None):
+        self.tag = utils.scratchpad()
         self.type = type
         if owner is not None and not isinstance(owner, Apply):
             raise TypeError("owner must be an Apply instance", owner)
@@ -120,7 +129,10 @@ class Result(utils.object2):
     def __repr__(self):
         return str(self)
     def clone(self):
-        return self.__class__(self.type, None, None, self.name)
+        #return copy(self)
+        cp = self.__class__(self.type, None, None, self.name)
+        cp.tag = copy(self.tag)
+        return cp
 
 class Value(Result):
     """

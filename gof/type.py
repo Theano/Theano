@@ -3,6 +3,7 @@ import copy
 import utils
 from utils import AbstractFunctionError, object2
 from graph import Result
+import traceback
 
 
 ########
@@ -23,10 +24,13 @@ class Type(object2):
         raise AbstractFunctionError()
     
     def make_result(self, name = None):
-        return Result(self, name = name)
+        r = Result(self, name = name)
+        return r
     
     def __call__(self, name = None):
-        return self.make_result(name)
+        r = self.make_result(name)
+        r.tag.trace = traceback.extract_stack()[:-1]
+        return r
         
     def c_is_simple(self):
         """
