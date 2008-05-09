@@ -44,9 +44,11 @@ def as_tensor(x, name = None):
 _as_tensor = as_tensor
 
 
-def constant(x):
-    if not isinstance(x, numpy.ndarray):
-        x = numpy.asarray(x)
+def constant(_x):
+    if not isinstance(_x, numpy.ndarray):
+        x = numpy.asarray(_x)
+    else:
+        x = _x
     try:
         return TensorConstant(Tensor(dtype = x.dtype,
                                      broadcastable = [d == 1 for d in x.shape]), x)
