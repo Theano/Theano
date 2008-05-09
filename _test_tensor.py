@@ -957,6 +957,22 @@ class _test_comparison(unittest.TestCase):
         v = fn(l, r)
         self.failUnless(numpy.all(v == (l >= r)), (v, (l>=r)))
 
+    def test_eq(self):
+        x, y = fvector(), fvector()
+        fn = function([x,y], [eq(x,y)])
+        l = numpy.asarray([0.,-1.,1.])
+        r = numpy.asarray([0.,1.,-1.])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (l == r)), (v, (l==r)))
+
+    def test_neq(self):
+        x, y = fvector(), fvector()
+        fn = function([x,y], [neq(x, y)])
+        l = numpy.asarray([0.,-1.,1.])
+        r = numpy.asarray([0.,1.,-1.])
+        v = fn(l, r)
+        self.failUnless(numpy.all(v == (l != r)), (v, (l!=r)))
+
 class _test_bitwise(unittest.TestCase):
     def test_or(self):
         x, y = bvector(), bvector()
