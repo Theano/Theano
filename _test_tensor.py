@@ -759,6 +759,16 @@ class T_subtensor(unittest.TestCase):
                 raise
             return
         self.fail()
+    def test1_err_subslice(self):
+        n = as_tensor(numpy.ones(3))
+        try:
+            t = n[slice(0,slice(1,2,None),None)]
+        except Exception, e:
+            if e[0] != Subtensor.e_indextype:
+                raise
+            return
+        self.fail()
+
     def test1_ok_range_finite(self):
         n = as_tensor(numpy.ones(3)*5)
         t = n[0:2]
@@ -922,6 +932,16 @@ class T_Stack(unittest.TestCase):
         s = vertical_stack(a, b)
         c = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
         self.failUnless((eval_outputs([s]) == c).all())
+
+    def test_vstack_grad(self):
+        a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
+        b = as_tensor(numpy.array([[7, 8, 9]]))
+        s = vertical_stack(a, b)
+        ga,gb = grad(sum(vertical_stack(a,b)), [a,b])
+
+        gval = eval_outputs([ga, gb])
+        self.failUnless(numpy.all(gval[0] == 1.0))
+        self.failUnless(numpy.all(gval[1] == 1.0))
 
 
 class _test_comparison(unittest.TestCase):
@@ -1679,7 +1699,10 @@ class _test_grad(unittest.TestCase):
 
 
 if __name__ == '__main__':
-   unittest.main()
-#    suite = unittest.TestLoader()
-#    suite = suite.loadTestsFromTestCase(T_Cast)
-#    unittest.TextTestRunner(verbosity=2).run(suite)
+    if 0:
+        unittest.main()
+    else:
+        suite = unittest.TestLoader()
+        #suite = suite.loadTestsFromTestCase(T_subtensor)
+        suite = suite.loadTestsFromTestCase(T_Stack)
+        unittest.TextTestRunner(verbosity=2).run(suite)
