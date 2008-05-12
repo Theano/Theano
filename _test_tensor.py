@@ -625,60 +625,60 @@ class T_Cast(unittest.TestCase):
                 b = f(a)
                 self.failUnless(numpy.all(b == numpy.arange(10, dtype = type2)))
 
-class T_argmax(unittest.TestCase):
+class T_max_and_argmax(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(123784)
-        Argmax.debug = 0
+        MaxAndArgmax.debug = 0
 
     def test0(self):
         n = as_tensor(5.0)
-        v,i = eval_outputs(argmax(n))
+        v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(v == 5.0)
         self.failUnless(i == 0)
 
     def test1(self):
         n = as_tensor([1,2,3,2,-6])
-        v,i = eval_outputs(argmax(n))
+        v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(v == 3)
         self.failUnless(i == 2)
 
     def test2(self):
         n = as_tensor(numpy.random.rand(2,3))
-        v,i = eval_outputs(argmax(n))
+        v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(numpy.all(i == [0,1]))
     def test2b(self):
         n = as_tensor(numpy.random.rand(2,3))
-        v,i = eval_outputs(argmax(n,0))
+        v,i = eval_outputs(max_and_argmax(n,0))
         self.failUnless(numpy.all(i == [0,1,1]))
     def test2_invalid(self):
         n = as_tensor(numpy.random.rand(2,3))
         try:
-            eval_outputs(argmax(n,3))
+            eval_outputs(max_and_argmax(n,3))
         except ValueError, e:
             return
         self.fail()
     def test2_invalid_neg(self):
         n = as_tensor(numpy.random.rand(2,3))
         try:
-            eval_outputs(argmax(n,-3))
+            eval_outputs(max_and_argmax(n,-3))
         except ValueError, e:
             return
         self.fail()
     def test2_valid_neg(self):
         n = as_tensor(numpy.random.rand(2,3))
-        v,i = eval_outputs(argmax(n,-1))
+        v,i = eval_outputs(max_and_argmax(n,-1))
         self.failUnless(v.shape == (2,))
-        v,i = eval_outputs(argmax(n,-2))
+        v,i = eval_outputs(max_and_argmax(n,-2))
         self.failUnless(v.shape == (3,))
     def test3(self):
         n = as_tensor(numpy.random.rand(2,3,4))
-        v,i = eval_outputs(argmax(n,0))
+        v,i = eval_outputs(max_and_argmax(n,0))
         self.failUnless(v.shape == (3,4))
         self.failUnless(i.shape == (3,4))
-        v,i = eval_outputs(argmax(n,1))
+        v,i = eval_outputs(max_and_argmax(n,1))
         self.failUnless(v.shape == (2,4))
         self.failUnless(i.shape == (2,4))
-        v,i = eval_outputs(argmax(n,2))
+        v,i = eval_outputs(max_and_argmax(n,2))
         self.failUnless(v.shape == (2,3))
         self.failUnless(i.shape == (2,3))
 

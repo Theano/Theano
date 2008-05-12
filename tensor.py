@@ -484,11 +484,12 @@ class Shape(Op):
         return [None]
 shape = Shape()
 
-class Argmax(Op):
+class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis"""
     nin=2 # tensor, axis
     nout=2 # max val, max idx
     E_axis = 'invalid axis'
+    
     def make_node(self, x, axis=None):
         x = _as_tensor(x)
         if axis is None:
@@ -502,17 +503,29 @@ class Argmax(Op):
     def perform(self, node, (x, axis), (max, max_idx)):
         max[0] = numpy.max(x, axis)
         max_idx[0] = numpy.argmax(x, axis)
-argmax = Argmax()
+max_and_argmax = MaxAndArgmax()
+
+
 
 def max(x, axis=None):
+    """Return indexes of maximum elements obtained by iterating over given axis
+
+    Default axis is the last one.
+    """
+    # In python (using MaxAndArgmax.perform()) this leads to an wasteful
+    # implementation that goes through the data twice instead of once
+    # but when Argmax.c_impl() is in place, it should be fine.
+    return max_and_argmax(x,axis)[0]
+
+def argmax(x, axis=None):
     """Return maximum elements obtained by iterating over given axis
 
     Default axis is the last one.
     """
-    # In python (using Argmax.perform()) this leads to an wasteful
+    # In python (using MaxAndArgmax.perform()) this leads to an wasteful
     # implementation that goes through the data twice instead of once
     # but when Argmax.c_impl() is in place, it should be fine.
-    return argmax(x,axis)[0]
+    return max_and_argmax(x,axis)[1]
 
 
 ##########################
