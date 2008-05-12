@@ -29,40 +29,65 @@ def TensorConstant(*inputs, **kwargs):
 ### DimShuffle ###
 ##################
 
+
 class DimShuffle(Op):
     """
-    Usage: DimShuffle(new_order, inplace = True)
+    Allows to reorder the dimensions of a tensor or insert or remove
+    broadcastable dimensions.
 
-     - new_order: a list representing the relationship between the
-                  input's dimensions and the output's dimensions. Each
-                  element of the list can either be an index or 'x'.
-     - inplace: if True, the output will be a view of the input.
-                If False, the output will be a copy of the input.
-
-    If j = new_order[i] is an index, the output's ith dimension
-      will be the input's jth dimension.
-    If new_order[i] is 'x', the output's ith dimension will
-      be 1 and Broadcast operations will be allowed to do broadcasting
-      over that dimension.
-
-    If input.broadcastable[i] == False then i must be found in new_order.
-    Broadcastable dimensions, on the other hand, can be discarded.
+    In the following examples, 'x' means that we insert a broadcastable
+    dimension and a numerical index represents the dimension of the same
+    rank in the tensor passed to perform.
 
     Examples:
-      # t<n> represents a n-d tensor
-      DimShuffle(t0, ['x']) -> make a 0d (scalar) into a 1d vector
-      DimShuffle(t2, [0, 1]) -> identity
-      DimShuffle(t2, [1, 0]) -> inverts the first and second dimensions
-      DimShuffle(t1, ['x', 0]) -> make a row out of a 1d vector
-      DimShuffle(t1, [0, 'x']) -> make a column out of a 1d vector
-      DimShuffle(t3, [2, 0, 1]) -> like doing t3.transpose((2, 0, 1)) in numpy
-      DimShuffle(t2, [0, 'x', 1]) -> like doing t3.reshape((t3.shape[0], 1, t3.shape[1])) in numpy
-      DimShuffle(t2, [1, 'x', 0]) -> like doing t3.T.reshape((t3.shape[0], 1, t3.shape[1])) in numpy
+      DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
-    @todo: Default value for inplace should be False! Unsafe optimizations should be explicitly enabled.
+       This op will only work on 3d tensors with no broadcastable
+       dimensions.  The first dimension will be broadcastable,
+       then we will have the third dimension of the input tensor as
+       the second of the resulting tensor, etc. If the tensor has
+       shape (20, 30, 40), the resulting tensor will have dimensions
+       (1, 40, 1, 20, 30). (AxBxC tensor is mapped to 1xCx1xAxB tensor)
+       
+      DimShuffle((True, False), [1])
+
+       This op will only work on 2d tensors with the first dimension broadcastable.
+       The second dimension of the input tensor will be the first dimension of
+       the resulting tensor. If the tensor has shape (1, 20), the resulting tensor
+       will have shape (20, ).
+
+    More examples:
+      DimShuffle((), ['x']) -> make a 0d (scalar) into a 1d vector
+      DimShuffle((False, False), [0, 1]) -> identity
+      DimShuffle((False, False), [1, 0]) -> inverts the first and second dimensions
+      DimShuffle((False,), ['x', 0]) -> make a row out of a 1d vector (N to 1xN)
+      DimShuffle((False,), [0, 'x']) -> make a column out of a 1d vector (N to Nx1)
+      DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
+      DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
+      DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
     """
     
-    def __init__(self, input_broadcastable, new_order, inplace = True):
+    def __init__(self, input_broadcastable, new_order, inplace = False):
+        """
+        Usage: DimShuffle(input_broadcastable, new_order, inplace = False)
+
+        - input_broadcastable: the expected broadcastable pattern of the
+                               input
+        - new_order: a list representing the relationship between the
+                     input's dimensions and the output's dimensions. Each
+                     element of the list can either be an index or 'x'.
+        - inplace: if True, the output will be a view of the input.
+                   If False, the output will be a copy of the input.
+
+        If j = new_order[i] is an index, the output's ith dimension
+          will be the input's jth dimension.
+        If new_order[i] is 'x', the output's ith dimension will
+          be 1 and Broadcast operations will be allowed to do broadcasting
+          over that dimension.
+
+        If input.broadcastable[i] == False then i must be found in new_order.
+        Broadcastable dimensions, on the other hand, can be discarded.
+        """
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
         new_order = tuple(new_order)
@@ -110,6 +135,7 @@ class DimShuffle(Op):
         return Apply(self, [input], [output])
         
     def __eq__(self, other):
+        # it's probably not necessary to compare input_broadcastable
         return type(self) == type(other) \
             and self.inplace == other.inplace \
             and self.new_order == other.new_order \
@@ -165,14 +191,6 @@ class Elemwise(Op):
     """
     Generalizes a scalar op to tensors.
     
-    Usage: Elemwise(scalar_op, inplace_pattern = {})
-
-    * scalar_op: an instance of a subclass of scalar.ScalarOp which works uniquely on
-                 scalars
-    * inplace_pattern: a dictionary that maps the index of an output to the
-                       index of an input so the output is calculated inplace using
-                       the input's storage.
-
     All the inputs must have the same number of dimensions. When the
     Op is performed, for each dimension, each input's size for that
     dimension must be the same. As a special case, it can also be 1
@@ -181,9 +199,10 @@ class Elemwise(Op):
     along that dimension to match the size of the others.
 
     The dtypes of the outputs mirror those of the scalar Op that is
-    being generalized to tensors. However, if the calculations for an
-    output are done inplace on an input, it will keep the same dtype
-    as the input (in a nutshell, int + float -> float but int += float -> int)
+    being generalized to tensors. In particular, if the calculations
+    for an output are done inplace on an input, the output type must
+    be the same as the corresponding input type (see the doc of
+    scalar.ScalarOp to get help about controlling the output type)
 
     Examples:
       Elemwise(add) # represents + on tensors (x + y)
@@ -196,6 +215,15 @@ class Elemwise(Op):
     """
 
     def __init__(self, scalar_op, inplace_pattern = {}, name = None):
+        """
+        Usage: Elemwise(scalar_op, inplace_pattern = {})
+        
+        * scalar_op: an instance of a subclass of scalar.ScalarOp which works uniquely on
+                     scalars
+        * inplace_pattern: a dictionary that maps the index of an output to the
+                           index of an input so the output is calculated inplace using
+                           the input's storage.
+        """
         self.name = name
         self.scalar_op = scalar_op
         self.inplace_pattern = inplace_pattern
@@ -206,6 +234,11 @@ class Elemwise(Op):
             self.ufunc = None
 
     def make_node(self, *inputs):
+        """
+        If the inputs have different number of dimensions, their shape
+        is left-completed to the greatest number of dimensions with 1s
+        using DimShuffle.
+        """
         inputs = map(as_tensor, inputs)        
         shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
 
@@ -418,69 +451,6 @@ class Elemwise(Op):
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
-         
-
-
-# def make_broadcast(scalar_opclass, inplace_pattern = {}, name = None, module_name = None):
-#     scalar_name = scalar_opclass.__name__
-#     if name is None:
-#         name = scalar_name
-#     if module_name is None:
-#         module_name = 'elemwise.make_broadcast(%s, %s, %s)' % (scalar_name, inplace_pattern, repr(name))
-#         name = "New"
-        
-#     previous_doc = Broadcast.__doc__
-
-#     scalar_doc = scalar_opclass.__doc__ or ""
-#     if scalar_doc:
-#         scalar_doc = """
-#     %(scalar_name)s documentation:
-#         %(scalar_doc)s
-#         """ % locals()
-
-#     doc = """
-#     Usage: %(name)s(*inputs)
-#     Equivalent to: Broadcast(scalar.%(scalar_name)s, inputs, %(inplace_pattern)s)
-
-#     Performs Scalar %(scalar_name)s on each element of the
-#     input tensors.
-#     %(scalar_doc)s
-#     Documention for Broadcast:
-#     ==================================================
-#     %(previous_doc)s
-#     ==================================================
-#     """ % locals()
-
-#     class New(Broadcast):
-#         __doc__ = doc
-#         def __init__(self, *inputs):
-#             Broadcast.__init__(self, scalar_opclass, inputs, inplace_pattern)
-#         def clone_with_new_inputs(self, *new_inputs):
-#             return New(*new_inputs)
-#         @classmethod
-#         def desc(cls):
-#             return (Broadcast, scalar_opclass, tuple(inplace_pattern.items()))
-#     New.__name__ = name
-#     New.__module__ = module_name
-#     return New
-
-# def wrap_broadcast(op):
-#     def instantiate(*inputs):
-#         inputs = map(astensor, inputs)
-        
-#         target_length = max([len(input.broadcastable) for input in inputs])
-#         args = []
-#         for input in inputs:
-#             length = len(input.broadcastable)
-#             difference = target_length - length
-#             if not difference:
-#                 args.append(input)
-#             else:
-#                 args.append(DimShuffle(input, ['x']*difference + range(length)).out)
-#         return op(*args)
-#     instantiate.__name__ = "instantiate{%s}" % op.__name__
-#     instantiate.__doc__ = op.__doc__
-#     return instantiate
 
 
 
@@ -490,17 +460,8 @@ class Elemwise(Op):
 
 class CAReduce(Op):
     """
-    Usage: CAReduce(scalar_opclass, inputs, axis = None)
-
-    * scalar_opclass: a binary scalar op with only one output.
-                      It will be instantiated as such:
-                      scalar_opclass.__init__([Scalar(t.dtype) for t in inputs])
-                      It must be commutative and associative.
-    * inputs: list of Tensor instances
-    * axis: - the dimension along which we want to reduce
-            - list of dimensions that we want to reduce
-            - if None, all dimensions are reduced
-
+    Reduces a scalar operation along the specified axis(es).
+    
     The output will have the same shape as the input minus the reduced
     dimensions. It will contain the result of accumulating all values
     over the reduced dimensions using the specified scalar op.
@@ -511,15 +472,25 @@ class CAReduce(Op):
      CAReduce(_or) -> any # not lazy
      CAReduce(_and) -> all # not lazy
 
-    In order to optimize memory usage patterns, L{CAReduce} makes zero
-    guarantees on the order in which it iterates over the dimensions
-    and the elements of the array(s). Therefore, to ensure consistent
-    results, the scalar operation represented by the reduction must be
-    both commutative and associative (eg add, multiply, binary
-    or/and/xor - but not subtract, divide or power).
+    In order to (eventually) optimize memory usage patterns,
+    L{CAReduce} makes zero guarantees on the order in which it
+    iterates over the dimensions and the elements of the
+    array(s). Therefore, to ensure consistent results, the scalar
+    operation represented by the reduction must be both commutative
+    and associative (eg add, multiply, binary or/and/xor - but not
+    subtract, divide or power).
     """
 
     def __init__(self, scalar_op, axis = None):
+        """
+        Usage: CAReduce(scalar_op, axis = None)
+
+        * scalar_op: a binary scalar op with only one output.
+                     It must be commutative and associative.
+        * axis: - the dimension along which we want to reduce
+                - list of dimensions that we want to reduce
+                - if None, all dimensions are reduced
+        """
         if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
         self.scalar_op = scalar_op
@@ -575,7 +546,6 @@ class CAReduce(Op):
         if axis == ():
             op = Elemwise(scalar.identity)
             return op._c_all(op.make_node(input), name, inames, onames, sub)
-#            return Broadcast(scalar.Identity, (input, ))._c_all(inames, onames, sub)
 
         order1 = [i for i in xrange(input.type.ndim) if i not in axis]
         order = order1 + list(axis)
@@ -622,66 +592,22 @@ class CAReduce(Op):
         else:
             all_code = [("", "")] * nnested + [(task0_decl, "")] + [("", "")] * (len(axis) - 2) + [("", code1), ""]
         
-#         if nnested:
-#             all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
-#         else:
-#             all_code = [code]
-
-#        print [order, range(nnested) + ['x'] * len(axis)]
-        
         loop = cgen.make_loop([order, range(nnested) + ['x'] * len(axis)], [idtype, odtype], all_code, sub)
         return decl, checks, alloc, loop
         
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
-#        print code
         return code
-        
-        
 
-# def make_reduce(scalar_opclass, name = None):
-#     if getattr(scalar_opclass, 'commutative', False) \
-#             and getattr(scalar_opclass, 'associative', False):
-#         reducer = CAReduce
-#     else:
-#         raise NotImplementedError("The scalar op class to reduce must be commutative and associative.")
-
-#     scalar_name = scalar_opclass.__name__
-#     if name is None:
-#         name = "Reduce" + scalar_name
-#     previous_doc = reducer.__doc__
-
-#     doc = """
-#     Usage: %(name)s(input, axis)
-#     Equivalent to: CAReduce(%(scalar_name)s, input, axis)
-
-#     Reduces the input over the specified axis.
-
-#     Documention for CAReduce:
-#     ==================================================
-#     %(previous_doc)s
-#     ==================================================
-#     """ % locals()
-
-#     class New(reducer):
-#         __doc__ = doc
-#         def __init__(self, *inputs, **kwargs):
-#             reducer.__init__(self, scalar_opclass, inputs, kwargs.get('axis', None))
-#         def clone_with_new_inputs(self, *new_inputs):
-#             return New(*new_inputs, **dict(axis = self.axis))
-#         def __str__(self):
-#             input = self.inputs[0]
-#             if len(input.broadcastable) == len(self.axis):
-#                 return "%s(%s)" % (self.__class__.__name__,
-#                                    str(input))
-#             else:
-#                 return "%s(%s, axis = %s)" % (self.__class__.__name__,
-#                                               str(input),
-#                                               self.axis)
-#     New.__name__ = name
-#     return New
 
 class Sum(CAReduce):
+    """
+    Sums all the values of a tensor along the specified axis(es).
+
+    Equivalent to CAReduce(scalar.add, axis = axis), with the
+    difference that this defines the gradient of sum wrt its tensor
+    input.
+    """
     def __init__(self, axis = None):
         CAReduce.__init__(self, scalar.add, axis)
 
@@ -701,16 +627,6 @@ class Sum(CAReduce):
                 new_dims.append(i)
                 i += 1
         return Elemwise(scalar.second)(x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
-
-
-# def reduce(op):
-#     if getattr(op, 'commutative', True) and getattr(op, 'associative', True):
-#         reducer = CAReduce
-#     else:
-#         raise NotImplementedError("The scalar op class to reduce must be commutative and associative.")
-#     def instantiate(*inputs):
-#         return reducer(op, inputs, axis)
-#     return instantiate
 
 
 
