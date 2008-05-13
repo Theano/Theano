@@ -45,8 +45,12 @@ class Scalar(Type):
     
     def filter(self, data, strict = False):
         py_type = self.dtype_specs()[0]
-        if strict: assert isinstance(data, py_type)
-        return py_type(data)
+        if strict and not isinstance(data, py_type):
+            raise TypeError("%s expected a %s" % (self, self.dtype), data)
+        try:
+            return py_type(data)
+        except Exception, e:
+            raise TypeError("Could not convert to %s" % self.dtype, e)
 
     def __eq__(self, other):
         return type(self) == type(other) and other.dtype == self.dtype
