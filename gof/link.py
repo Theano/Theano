@@ -3,6 +3,7 @@ import utils
 import graph
 
 import sys, traceback
+from copy import copy
 
 
 __excepthook = sys.excepthook
@@ -209,26 +210,6 @@ class PerformLinker(LocalLinker):
         order = env.toposort()
         no_recycling = self.no_recycling
 
-#        input_storage = [[None] for input in env.inputs]
-#        output_storage = [[None] for output in env.outputs]
-        
-#         storage_map = {}
-#         for r, storage in zip(env.inputs, input_storage):
-#             storage_map[r] = storage
-#         for orphan in env.orphans:
-#             if not isinstance(orphan, Constant):
-#                 raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
-#             storage_map[orphan] = [orphan.data]
-
-#         thunks = []
-#         for node in order:
-#             node_input_storage = [storage_map[input] for input in node.inputs]
-#             node_output_storage = [storage_map.setdefault(r, [None]) for r in node.outputs]
-#             p = node.op.perform
-#             thunks.append(lambda p = p, i = node_input_storage, o = node_output_storage: p([x[0] for x in i], o))
-
-#         output_storage = [storage_map[r] for r in env.outputs]
-
         thunks = []
         input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
         for node in order:
@@ -253,53 +234,81 @@ class PerformLinker(LocalLinker):
             [Filter(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
 
-#        return f, env.inputs, env.outputs
 
 
+class MetaLinker(Linker):
+    """
+    Can run several linkers in parallel. They should all be LocalLinkers
+    and they should all return the same order. A wrapper function must
+    be provided to execute the thunks, inspect the nodes, etc.
 
+    The outputs of the first linker will be returned.
+    """
 
-# class PerformLinker(Linker):
-#     """
-#     Basic L{Linker} subclass that calls the perform method on each L{Op} in
-#     the L{Env} in the order given by L{Env.toposort}.
-#     """
+    def __init__(self, env, linkers, wrapper, no_recycling = []):
+        """
+        Initialize a MetaLinker.
 
-#     def __init__(self, env, no_recycling = []):
-#         self.env = env
-#         self.no_recycling = no_recycling
+        wrapper will be called like
+         wrapper(i, node, thunk1, thunk2, ...)
 
-#     def make_thunk(self, inplace = False, profiler = None):
-#         if inplace:
-#             env = self.env
-#         else:
-#             env = self.env.clone(True)
-#         order = env.toposort()
-#         thunks = [op.perform for op in order]
-#         no_recycling = self.no_recycling
-#         if no_recycling is True:
-#             no_recycling = list(env.results())
-#         no_recycling = utils.difference(no_recycling, env.inputs)
-#         if profiler is None:
-#             def f():
-#                 for r in no_recycling:
-#                     r.data = None
-#                 try:
-#                     for thunk, op in zip(thunks, order):
-#                         thunk()
-#                 except:
-#                     raise_with_op(op)
-#         else:
-#             def f():
-#                 for r in no_recycling:
-#                     r.data = None
-#                 def g():
-#                     for thunk, op in zip(thunks, order):
-#                         profiler.profile_op(thunk, op)
-#                 profiler.profile_env(g, env)
-#             f.profiler = profiler
-            
-                
-#         return f, env.inputs, env.outputs
+        One thunk for each linker. wrapper will be executed for each operation
+        in order.
+
+        no_recycling can contain a list of Results that belong to the env.
+        If a Result is in no_recycling, CLinker will clear the output storage
+        associated to it during the computation (to avoid reusing it).
+        """
+        self.env = env
+        self.linkers = linkers
+        self.wrapper = wrapper
+        self.no_recycling = no_recycling
+
+    def pre(self, order, thunk_groups):
+        pass
+
+    def make_thunk(self, **kwargs):
+
+        env = self.env
+        no_recycling = self.no_recycling
+
+        fns, input_lists, output_lists, thunk_lists, order_lists = zip(*[linker(env, no_recycling = no_recycling).make_all(**kwargs)
+                                                                         for linker in self.linkers])
+
+        order_list0 = order_lists[0]
+        for order_list in order_lists[1:]:
+            if not order_list0 == order_list:
+                raise Exception("All linkers to MetaLinker should execute operations in the same order.")
+
+        inputs0 = input_lists[0]
+        outputs0 = output_lists[0]
+
+        thunk_groups = zip(*thunk_lists)
+        order = [x[0] for x in zip(*order_lists)]
+
+        to_reset = []
+        for thunks, node in zip(thunk_groups, order):
+            for j, output in enumerate(node.outputs):
+                if output in no_recycling:
+                    for thunk in thunks:
+                        to_reset.append(thunk.outputs[j])
+
+        wrapper = self.wrapper
+        pre = self.pre
+        def f():
+            for inputs in input_lists[1:]:
+                for input1, input2 in zip(inputs0, inputs):
+                    input2.storage[0] = copy(input1.storage[0])
+            for x in to_reset:
+                x[0] = None
+            pre(inputs, order, thunk_groups)
+            for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
+                try:
+                    wrapper(i, node, *thunks)
+                except:
+                    raise_with_op(node)
+        
+        return f, inputs0, outputs0
 
 
 
