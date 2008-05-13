@@ -264,7 +264,7 @@ class MetaLinker(Linker):
         self.wrapper = wrapper
         self.no_recycling = no_recycling
 
-    def pre(self, order, thunk_groups):
+    def pre(self, f, inputs, order, thunk_groups):
         pass
 
     def make_thunk(self, **kwargs):
@@ -272,11 +272,15 @@ class MetaLinker(Linker):
         You can pass an alternate env to use with the 'alt_env'
         option.
 
+        The 'wrapf' option must be a function that will be used
+        to wrap the thunk (eg to add methods to it).
+
         The rest of the options will be passed to all the linkers
         associated with this MetaLinker.
         """
 
         env = kwargs.pop("alt_env", self.env)
+        wrapf = kwargs.pop("wrapf", None)
         no_recycling = self.no_recycling
 
         fns, input_lists, output_lists, thunk_lists, order_lists = zip(*[linker(env, no_recycling = no_recycling).make_all(**kwargs)
@@ -308,12 +312,15 @@ class MetaLinker(Linker):
                     input2.storage[0] = copy(input1.storage[0])
             for x in to_reset:
                 x[0] = None
-            pre(inputs, order, thunk_groups)
+            pre(f, [input.data for input in input_lists[0]], order, thunk_groups)
             for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
                 try:
-                    wrapper(i, node, *thunks)
+                    wrapper(f, i, node, *thunks)
                 except:
                     raise_with_op(node)
+
+        if wrapf is not None:
+            f = wrapf(f)
         
         return f, inputs0, outputs0
 

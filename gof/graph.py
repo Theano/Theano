@@ -241,7 +241,7 @@ def results_and_orphans(i, o):
     """
     def expand(r):
         if r.owner and r not in i:
-            l = list(r.owner.inputs)
+            l = list(r.owner.inputs) + list(r.owner.outputs)
             l.reverse()
             return l
     results = stack_search(deque(o), expand, 'dfs')
@@ -316,7 +316,7 @@ def clone(i, o, copy_inputs = True):
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(i, o, copy_inputs_and_orphans = False):
+def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
     """
     @type i: list
     @param i: input L{Result}s

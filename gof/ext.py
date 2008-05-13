@@ -10,6 +10,36 @@ from env import InconsistencyError
 
 
 class DestroyHandler(toolbox.Bookkeeper):
+
+    def __init__(self):
+        self.map = {}
+
+    def on_attach(self, env):
+        dh = self.map.setdefault(env, DestroyHandlerHelper())
+        dh.on_attach(env)
+
+    def on_detach(self, env):
+        self.map[env].on_detach(env)
+
+    def on_import(self, env, op):
+        self.map[env].on_import(env, op)
+
+    def on_prune(self, env, op):
+        self.map[env].on_prune(env, op)
+    
+    def on_change_input(self, env, node, i, r, new_r):
+        self.map[env].on_change_input(env, node, i, r, new_r)
+
+    def validate(self, env):
+        self.map[env].validate(env)
+
+    def orderings(self, env):
+        return self.map[env].orderings(env)
+
+
+
+
+class DestroyHandlerHelper(toolbox.Bookkeeper):
     """
     This feature ensures that an env represents a consistent data flow
     when some Ops overwrite their inputs and/or provide "views" over

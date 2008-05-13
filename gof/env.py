@@ -384,8 +384,8 @@ class Env(utils.object2):
                     raise Exception("Input of node should belong to the env.", result, (node, i))
                 if (node, i) not in result.clients:
                     raise Exception("Inconsistent clients list.", (node, i), result.clients)
-        results = graph.results(self.inputs, self.outputs)
-        if self.results != results:
+        results = set(graph.results(self.inputs, self.outputs))
+        if set(self.results) != results:
             missing = results.difference(self.results)
             excess = self.results.difference(results)
             raise Exception("The results are inappropriately cached. missing, in excess: ", missing, excess)
@@ -414,9 +414,11 @@ class Env(utils.object2):
         return self.clone_get_equiv()[0]
 
     def clone_get_equiv(self):
-        g, equiv = graph.clone_get_equiv(self.inputs, self.outputs)
+        equiv = graph.clone_get_equiv(self.inputs, self.outputs)
+        self.check_integrity()
         e = Env([equiv[i] for i in self.inputs],
                 [equiv[o] for o in self.outputs])
+        e.check_integrity()
         for feature in self._features:
             e.extend(feature)
         return e, equiv
