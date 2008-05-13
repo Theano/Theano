@@ -784,7 +784,7 @@ class Subtensor(Op):
         cdata = tuple(map(convert, self.idx_list))
         if len(cdata) == 1:
             cdata = cdata[0]
-        out[0] = x.__getitem__(cdata)
+        out[0] = numpy.asarray(x.__getitem__(cdata))
 
     def grad(self, inputs, (gz,)):
         x = inputs[0]
