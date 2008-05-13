@@ -629,4 +629,3 @@ class Sum(CAReduce):
         return Elemwise(scalar.second)(x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
 
 
-
