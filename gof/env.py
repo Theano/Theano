@@ -408,6 +408,18 @@ class Env(utils.object2):
         return "[%s]" % ", ".join(graph.as_string(self.inputs, self.outputs))
 
 
+    ### clone ###
+
+    def clone(self):
+        return self.clone_get_equiv()[0]
+
+    def clone_get_equiv(self):
+        g, equiv = graph.clone_get_equiv(self.inputs, self.outputs)
+        e = Env([equiv[i] for i in self.inputs],
+                [equiv[o] for o in self.outputs])
+        for feature in self._features:
+            e.extend(feature)
+        return e, equiv
 
 
 

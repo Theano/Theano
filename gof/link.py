@@ -268,8 +268,15 @@ class MetaLinker(Linker):
         pass
 
     def make_thunk(self, **kwargs):
+        """
+        You can pass an alternate env to use with the 'alt_env'
+        option.
 
-        env = self.env
+        The rest of the options will be passed to all the linkers
+        associated with this MetaLinker.
+        """
+
+        env = kwargs.pop("alt_env", self.env)
         no_recycling = self.no_recycling
 
         fns, input_lists, output_lists, thunk_lists, order_lists = zip(*[linker(env, no_recycling = no_recycling).make_all(**kwargs)
