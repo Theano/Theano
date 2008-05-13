@@ -386,6 +386,7 @@ class _tensor_py_operators:
     def __iter__(self): 
         # This prevents accidental iteration via builtin.sum(self)
         raise TypeError('Tensor does not support iteration')
+        
     
 
 class TensorResult(Result, _tensor_py_operators):
@@ -482,7 +483,7 @@ class Shape(Op):
     """
     def make_node(self, x):
         x = as_tensor(x)
-        return Apply(self, [x], [ivector()])
+        return Apply(self, [x], [lvector()])
     def perform(self, node, (x, ), (out, )):
         out[0] = numpy.asarray(x.shape)
     def grad(self, (x,), (gz,)):
@@ -629,58 +630,12 @@ class TransposeInplace(Op):
         %(z)s = transposed;
         """ % locals()
 
+    def __str__(self):
+        return "TransposeView"
+
 transpose_inplace = TransposeInplace()
 def transpose(x, **kwargs):
     return transpose_inplace(tensor_copy(x), **kwargs)
-
-# class Subtensor_dx(Op, Viewer):
-#     """Return a tensor full of zeros, except for what was sliced from x by
-#     Subtensor.
-
-#     @todo: pass the shape of x, rather than x itself.
-
-#     @todo: add support for advanced tensor indexing (breaks current perform
-#     implementation).
-#     """
-#     def __init__(self, inputs, idx_list, **kwargs):
-#         Op.__init__(self, **kwargs) 
-#         self.inputs = inputs
-#         self.outputs = [Tensor(inputs[0].dtype, inputs[0].broadcastable)]
-#         self.idx_list = idx_list
-
-#     def perform(self):
-#         x = self.inputs[0]
-#         gz = self.inputs[-1]
-#         cdata = []
-#         for c in self.idx_list:
-#             if isinstance(c, slice):
-#                 if c.start is None: start = None
-#                 else: start = self.inputs[c.start].data
-#                 if c.stop is None: stop = None
-#                 else: stop = self.inputs[c.stop].data
-#                 if c.step is None: step = None
-#                 else: step = self.inputs[c.step].data
-#                 cdata.append(slice(start, stop, step))
-#             else:
-#                 d = self.inputs[c].data
-#                 assert 'int' in str(d.dtype)
-#                 cdata.append(d)
-#         if len(cdata) > 1:
-#             cdata = tuple(cdata) #there's a diff between tuple and list here...
-#         else:
-#             cdata = cdata[0]
-
-#         #print cdata
-#         #print gz.data
-#         gx = numpy.zeros_like(x.data)
-#         gx[cdata] = gz.data
-#         #print gx
-
-#         self.outputs[0].data = gx
-
-#     def clone_with_new_inputs(self, *new_inputs):
-#         assert len(self.inputs) == len(new_inputs)
-#         return Subtensor_dx(new_inputs, self.idx_list)
 
 
 
@@ -789,7 +744,7 @@ class Subtensor(Op):
         cdata = tuple(map(convert, self.idx_list))
         if len(cdata) == 1:
             cdata = cdata[0]
-        out[0] = x.__getitem__(cdata)
+        out[0] = numpy.asarray(x.__getitem__(cdata))
 
     def grad(self, inputs, (gz,)):
         x = inputs[0]
@@ -802,6 +757,16 @@ class Subtensor(Op):
     def __hash__(self):
         # FIXME: this doesn't work if there are slices in the list because for some mysterious reason slice is unhashable
         return hash(tuple(self.idx_list))
+
+    def __str__(self):
+        indices = []
+        for entry in self.idx_list:
+            if isinstance(entry, slice):
+                indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
+            else:
+                indices.append(str(entry))
+        return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
+
 
 class SetSubtensor(Subtensor):
     view_map = {}
@@ -942,6 +907,8 @@ class Dot(Op):
         z[0] = numpy.dot(x, y)
     def grad(self, (x, y), (gz,)):
         return dot(gz, y.T), dot(x.T, gz)
+    def __str__(self):
+        return "Dot"
 dot = Dot()
 
 class Gemm(Op):

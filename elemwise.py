@@ -274,9 +274,9 @@ class Elemwise(Op):
     def __str__(self):
         if self.name is None:
             if self.inplace_pattern:
-                return "Broadcast{%s}%s" % (self.scalar_op, str(self.inplace_pattern))
+                return "Elemwise{%s}%s" % (self.scalar_op, str(self.inplace_pattern))
             else:
-                return "Broadcast{%s}" % (self.scalar_op)
+                return "Elemwise{%s}" % (self.scalar_op)
         else:
             return self.name
 
@@ -627,6 +627,12 @@ class Sum(CAReduce):
                 new_dims.append(i)
                 i += 1
         return Elemwise(scalar.second)(x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
+
+    def __str__(self):
+        if self.axis is None:
+            return "Sum"
+        else:
+            return "Sum{%s}" % ", ".join(map(str, self.axis))
 
 
 
