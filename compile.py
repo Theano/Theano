@@ -26,7 +26,7 @@ default_optimizer = _DefaultOptimizer()
         
 def _mark_indestructible(results):
     for r in results:
-        r.indestructible = True
+        r.tag.indestructible = True
 
 def linker_cls_python_and_c(env, **kwargs):
     """Use this as the linker_cls argument to Function.__init__ to compare
@@ -78,7 +78,7 @@ def std_env(inputs, outputs, disown_inputs = False):
         input.destroyed_by_user = len(env.destroyers(input)) != 0
         if not input.destroyed_by_user and not disown_inputs:
             # prevent optimizations from destroying the inputs
-            input.indestructible = True
+            input.tag.indestructible = True
     return env
 
 def std_opt(env):

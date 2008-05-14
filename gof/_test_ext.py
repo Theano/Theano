@@ -205,9 +205,9 @@ class _test_all(unittest.TestCase):
 
     def test_indestructible(self):
         x, y, z = inputs()
-        x.indestructible = True
+        x.tag.indestructible = True
         x = copy(x)
-        assert x.indestructible  # checking if indestructible survives the copy!
+        assert x.tag.indestructible  # checking if indestructible survives the copy!
         e = add_in_place(x, y)
         g = Env([x,y,z], [e], False)
         assert not g.consistent()
@@ -216,7 +216,7 @@ class _test_all(unittest.TestCase):
 
     def test_indestructible_through_views(self):
         x, y, z = inputs()
-        x.indestructible = True
+        x.tag.indestructible = True
         tv = transpose_view(x)
         e = add_in_place(tv, y)
         g = Env([x,y,z], [e], False)

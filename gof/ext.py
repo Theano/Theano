@@ -374,7 +374,7 @@ class DestroyHandlerHelper(toolbox.Bookkeeper):
             self.dups.add(foundation)
 
         # results marked 'indestructible' must not be destroyed.
-        if getattr(foundation, 'indestructible', False) or isinstance(foundation, graph.Constant):
+        if getattr(foundation.tag, 'indestructible', False) or isinstance(foundation, graph.Constant):
             self.illegal.add(foundation)
 
 
