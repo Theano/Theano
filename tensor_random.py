@@ -120,4 +120,26 @@ class NumpyGenerator(gof.op.Op):
                     (shape, self.ndim) )
         output_storage[0][0] = self.fn(rng, size=shape)
 
+def uniform(seed, template, low=0.,high=1.):
+    """
+    Return a multivariate uniform(low,high)
+    random variable in a tensor of the same shape as template
+    (template can either be a tensor or a shape tuple). Each element of the
+    resulting tensor is sampled independently. low and high can
+    be scalars or have the same shape as the template (or broadcastable
+    to it).
+    """
+    return RandomState(seed).gen_like(('uniform',{'low':low,'high':high}),template)
+
+def binomial(seed, template, n=1, p=0.5):
+    """
+    Return a multivariate binomial(n,p) random variable in a tensor of the same shape as template
+    (template can either be a tensor or a shape tuple). Each element of the
+    resulting tensor is sampled independently. low and high can
+    be scalars or have the same shape as the template (or broadcastable
+    to it).
+    """
+    return RandomState(seed).gen_like(('binomial',{'n':n,'p':p}),template)
+
+
 
