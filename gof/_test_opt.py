@@ -3,7 +3,7 @@ import unittest
 
 from type import Type
 from graph import Result, Apply, Constant
-from op import Op
+from op import Op, Macro
 from opt import *
 from env import Env
 from toolbox import *
@@ -412,6 +412,38 @@ class _test_MergeOptimizer(unittest.TestCase):
 #         ConstantFinder().optimize(g)
 #         assert not getattr(x, 'constant', False) and z.constant
 #         MergeOptimizer().optimize(g)
+
+
+
+class _test_ExpandMacro(unittest.TestCase):
+
+    def test_straightforward(self):
+        class Macro1(Macro):
+            def make_node(self, x, y):
+                return Apply(self, [x, y], [MyType()()])
+            def expand(self, node):
+                return [op1(y, x)]
+        x, y, z = inputs()
+        e = Macro1()(x, y)
+        g = Env([x, y], [e])
+        print g
+        expand_macros.optimize(g)
+        print g
+        
+    def test_loopy(self):
+        class Macro1(Macro):
+            def make_node(self, x, y):
+                return Apply(self, [x, y], [MyType()()])
+            def expand(self, node):
+                return [Macro1()(y, x)]
+        x, y, z = inputs()
+        e = Macro1()(x, y)
+        g = Env([x, y], [e])
+        print g
+        #expand_macros.optimize(g)
+        TopDownOptimizer(ExpandMacro(), ignore_newtrees = True).optimize(g)
+        print g
+        
 
 
 

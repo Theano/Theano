@@ -25,11 +25,11 @@ class _test_DimShuffle(unittest.TestCase):
             ib = [(entry == 1) for entry in xsh]
             x = Tensor('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
-            f = linker(Env([x], [e])).make_function()
+            f = copy(linker).accept(Env([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
 
     def test_perform(self):
-        self.with_linker(gof.PerformLinker)
+        self.with_linker(gof.PerformLinker())
 
 
 class _test_Broadcast(unittest.TestCase):
@@ -47,7 +47,7 @@ class _test_Broadcast(unittest.TestCase):
             x = Tensor('float64', [(entry == 1) for entry in xsh])('x')
             y = Tensor('float64', [(entry == 1) for entry in ysh])('y')
             e = Elemwise(add)(x, y)
-            f = linker(Env([x, y], [e])).make_function()
+            f = copy(linker).accept(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
@@ -66,7 +66,7 @@ class _test_Broadcast(unittest.TestCase):
             x = Tensor('float64', [(entry == 1) for entry in xsh])('x')
             y = Tensor('float64', [(entry == 1) for entry in ysh])('y')
             e = Elemwise(Add(transfer_type(0)), {0:0})(x, y)
-            f = linker(Env([x, y], [e])).make_function()
+            f = copy(linker).accept(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
@@ -76,22 +76,22 @@ class _test_Broadcast(unittest.TestCase):
             self.failUnless((xv == zv).all())
 
     def test_perform(self):
-        self.with_linker(gof.PerformLinker)
+        self.with_linker(gof.PerformLinker())
 
     def test_c(self):
-        self.with_linker(gof.CLinker)
+        self.with_linker(gof.CLinker())
 
     def test_perform_inplace(self):
-        self.with_linker_inplace(gof.PerformLinker)
+        self.with_linker_inplace(gof.PerformLinker())
 
     def test_c_inplace(self):
-        self.with_linker_inplace(gof.CLinker)
+        self.with_linker_inplace(gof.CLinker())
 
     def test_fill(self):
         x = Tensor('float64', [0, 0])('x')
         y = Tensor('float64', [1, 1])('y')
         e = Elemwise(Second(transfer_type(0)), {0:0})(x, y)
-        f = gof.CLinker(Env([x, y], [e])).make_function()
+        f = gof.CLinker().accept(Env([x, y], [e])).make_function()
         xv = numpy.ones((5, 5))
         yv = numpy.random.rand(1, 1)
         f(xv, yv)
@@ -101,7 +101,7 @@ class _test_Broadcast(unittest.TestCase):
         x = Tensor('float64', [0, 0, 0, 0, 0])('x')
         y = Tensor('float64', [0, 0, 0, 0, 0])('y')
         e = Elemwise(add)(x, y)
-        f = gof.CLinker(Env([x, y], [e])).make_function()
+        f = gof.CLinker().accept(Env([x, y], [e])).make_function()
         xv = numpy.random.rand(2, 2, 2, 2, 2)
         yv = numpy.random.rand(2, 2, 2, 2, 2).transpose(4, 0, 3, 1, 2)
         zv = xv + yv
@@ -110,7 +110,7 @@ class _test_Broadcast(unittest.TestCase):
     def test_same_inputs(self):
         x = Tensor('float64', [0, 0])('x')
         e = Elemwise(add)(x, x)
-        f = gof.CLinker(Env([x], [e])).make_function()
+        f = gof.CLinker().accept(Env([x], [e])).make_function()
         xv = numpy.random.rand(2, 2)
         zv = xv + xv
         assert (f(xv) == zv).all()
@@ -129,7 +129,7 @@ class _test_CAReduce(unittest.TestCase):
             x = Tensor('float64', [(entry == 1) for entry in xsh])('x')
             e = CAReduce(add, axis = tosum)(x)
             if tosum is None: tosum = range(len(xsh))
-            f = linker(Env([x], [e])).make_function()
+            f = copy(linker).accept(Env([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             zv = xv
             for axis in reversed(sorted(tosum)):
@@ -137,10 +137,10 @@ class _test_CAReduce(unittest.TestCase):
             self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
 
     def test_perform(self):
-        self.with_linker(gof.PerformLinker)
+        self.with_linker(gof.PerformLinker())
 
     def test_c(self):
-        self.with_linker(gof.CLinker)
+        self.with_linker(gof.CLinker())
         
 
 if __name__ == '__main__':

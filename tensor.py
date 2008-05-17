@@ -253,6 +253,11 @@ def tensor(*args, **kwargs):
 
 def _multi(*fns):
     def f2(f, names):
+        if isinstance(names, int):
+            if names == 1:
+                return f()
+            else:
+                return [f() for i in xrange(names)]
         if len(names) == 1:
             return f(names)
         else:
@@ -639,6 +644,7 @@ def transpose(x, **kwargs):
 
 
 
+
 class Subtensor(Op):
     """Return a subtensor view
 
@@ -908,7 +914,7 @@ class Dot(Op):
     def grad(self, (x, y), (gz,)):
         return dot(gz, y.T), dot(x.T, gz)
     def __str__(self):
-        return "Dot"
+        return "dot"
 dot = Dot()
 
 class Gemm(Op):
@@ -1135,6 +1141,14 @@ gemm = Gemm()
 #########################
 # Gradient
 #########################
+
+class SGrad(gof.Op):
+    def make_node(self, cost, wrt):
+        return Apply(self, [cost, wrt], [wrt.type()])
+    def expand(self, r):
+        cost, wrt = r.owner.inputs
+        return grad(cost, wrt)
+sgrad = SGrad()
 
 def grad(cost, wrt, g_cost=None):
     """

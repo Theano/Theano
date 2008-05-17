@@ -56,7 +56,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 try:
                     f = function(inputrs, node.outputs,
-                                 linker = lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
+                                 linker = 'c&py', ##lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
                                  unpack_single = False,
                                  optimizer = None)
                 except:
@@ -115,7 +115,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 try:
                     f = function(inputrs, node.outputs,
-                                 linker = lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
+                                 linker = 'c&py', #lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
                                  unpack_single = False,
                                  optimizer = None)
                 except:
@@ -1045,7 +1045,7 @@ class T_add(unittest.TestCase):
                      ("*", lambda x,y: x*y),
                      ("/", lambda x,y: x/y))
             for s, fn in tests:
-                f = function([a,b], [fn(a, b)], linker = gof.CLinker)
+                f = function([a,b], [fn(a, b)], linker = 'c')
                 self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
@@ -1354,9 +1354,9 @@ class t_gemm(unittest.TestCase):
             else:
                 self.failIf(numpy.all(z_orig == z))
 
-        cmp_linker(copy(z), a, x, y, b, gof.cc.OpWiseCLinker)
-        cmp_linker(copy(z), a, x, y, b, gof.cc.CLinker)
-        cmp_linker(copy(z), a, x, y, b, gof.link.PerformLinker)
+        cmp_linker(copy(z), a, x, y, b, 'c|py')
+        cmp_linker(copy(z), a, x, y, b, 'c')
+        cmp_linker(copy(z), a, x, y, b, 'py')
 
     def test0a(self): 
         Gemm.debug = True
@@ -1456,7 +1456,7 @@ class t_gemm(unittest.TestCase):
         B = self.rand(4,5)[:,:4]
         C = self.rand(4,5)[:,:4]
         
-        def t(z,x,y,a=1.0, b=0.0,l=gof.cc.OpWiseCLinker,dt='float64'):
+        def t(z,x,y,a=1.0, b=0.0,l='c|py',dt='float64'):
             z,a,x,y,b = [numpy.asarray(p,dtype=dt) for p in z,a,x,y,b]
             z_orig = z.copy()
             z_after = self._gemm(z, a, x, y, b)
@@ -1699,7 +1699,7 @@ class _test_grad(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    if 0:
+    if 1:
         unittest.main()
     else:
         suite = unittest.TestLoader()

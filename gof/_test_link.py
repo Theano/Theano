@@ -70,7 +70,7 @@ def inputs():
     return x, y, z
 
 def perform_linker(env):
-    lnk = PerformLinker(env)
+    lnk = PerformLinker().accept(env)
     return lnk
 
 def Env(inputs, outputs):

@@ -11,6 +11,23 @@ def _zip(*lists):
     else:
         return zip(*lists)
 
+
+
+# x = ivector()
+# y = ivector()
+# e = x + y
+
+# f = Formula(x = x, y = y, e = e)
+
+# y = x + x
+# g = Formula(x=x,y=y)
+
+# x2 = x + x
+# g = Formula(x=x, x2=x2)
+
+
+
+
 class Formula(utils.object2):
     
     def __init__(self, symtable_d = {}, **symtable_kwargs):
@@ -257,10 +274,22 @@ class Formulas(utils.object2):
 
 
 
+
+
 # class Test(Formulas):
 #     x = T.ivector()
 #     y = T.ivector()
 #     e = x + y + 21
+
+# x = T.ivector()
+# y = T.ivector()
+# e = x + y + 21
+
+# f1 = Formula(x = x, y = y, e = e)
+
+# Test() -> f1.clone()
+
+
 
 # f = Test()
 # print f
@@ -314,6 +343,8 @@ class Formulas(utils.object2):
 #          *[Update().rename_regex({'param(.*)': ('%s\\1' % param.name)}) for param in forward.get_all('(weight|bias).*')])
 # sg = g.__str__()
 # print unicode(g)
+
+
 
 
 

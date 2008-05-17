@@ -32,6 +32,8 @@ class object2(object):
 class scratchpad:
     def clear(self):
         self.__dict__.clear()
+    def __update__(self, other):
+        self.__dict__.update(other.__dict__)
     def __str__(self):
         print "scratch" + str(self.__dict__)
 

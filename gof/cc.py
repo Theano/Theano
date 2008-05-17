@@ -339,10 +339,16 @@ class CLinker(link.Linker):
     associated to it during the computation (to avoid reusing it).
     """
 
-    def __init__(self, env, no_recycling = []):
+    def __init__(self):
+        self.env = None
+
+    def accept(self, env, no_recycling = []):
+        if self.env is not None and self.env is not env:
+            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
         self.env = env
         self.fetch_results()
         self.no_recycling = no_recycling
+        return self
 
     def fetch_results(self):
         """
@@ -771,10 +777,16 @@ class OpWiseCLinker(link.LocalLinker):
     associated to it during the computation (to avoid reusing it).
     """
 
-    def __init__(self, env, fallback_on_perform = True, no_recycling = []):
-        self.env = env
+    def __init__(self, fallback_on_perform = True):
+        self.env = None
         self.fallback_on_perform = fallback_on_perform
+
+    def accept(self, env, no_recycling = []):
+        if self.env is not None and self.env is not env:
+            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+        self.env = env
         self.no_recycling = no_recycling
+        return self
 
     def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
         return self.make_all(profiler = profiler,
@@ -795,7 +807,7 @@ class OpWiseCLinker(link.LocalLinker):
             try:
                 e = Env(*graph.clone(node.inputs, node.outputs))
                 e.toposort = lambda: e.nodes
-                cl = CLinker(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
+                cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
                 thunk, node_input_filters, node_output_filters = cl.make_thunk(
                     input_storage = node_input_storage,
                     output_storage = node_output_storage)
@@ -848,7 +860,7 @@ class DualLinker(link.Linker):
     function.
     """
 
-    def __init__(self, env, checker = _default_checker, no_recycling = []):
+    def __init__(self, checker = _default_checker):
         """
         Initialize a DualLinker.
         
@@ -871,17 +883,23 @@ class DualLinker(link.Linker):
         If a Result is in no_recycling, CLinker will clear the output storage
         associated to it during the computation (to avoid reusing it).
         """
-        self.env = env
+        self.env = None
         self.checker = checker
+
+    def accept(self, env, no_recycling = []):
+        if self.env is not None and self.env is not env:
+            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+        self.env = env
         self.no_recycling = no_recycling
+        return self
 
     def make_thunk(self, **kwargs):
 
         env = self.env
         no_recycling = self.no_recycling
         
-        _f, i1, o1, thunks1, order1 = link.PerformLinker(env, no_recycling = no_recycling).make_all(**kwargs)
-        _f, i2, o2, thunks2, order2 =      OpWiseCLinker(env, no_recycling = no_recycling).make_all(**kwargs)
+        _f, i1, o1, thunks1, order1 = link.PerformLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
+        _f, i2, o2, thunks2, order2 =      OpWiseCLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
 
         def f():
             for input1, input2 in zip(i1, i2):
