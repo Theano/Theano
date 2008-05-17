@@ -196,9 +196,15 @@ class PerformLinker(LocalLinker):
     the L{Env} in the order given by L{Env.toposort}.
     """
 
-    def __init__(self, env, no_recycling = []):
+    def __init__(self):
+        self.env = None
+
+    def accept(self, env, no_recycling = []):
+        if self.env is not None and self.env is not env:
+            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
         self.env = env
         self.no_recycling = no_recycling
+        return self
 
     def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
         return self.make_all(profiler = profiler,
