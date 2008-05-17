@@ -295,9 +295,9 @@ class Formulas(utils.object2):
 #     return 1.0 / (1.0 + T.exp(-x))
 
 class Update(Formulas):
-    param = T.matrix()
-    lr, cost = T.scalars(2)
-    param_update = param - lr * T.sgrad(cost, param)
+   param = T.matrix()
+   lr, cost = T.scalars(2)
+   param_update = param - lr * T.sgrad(cost, param)
 
 class SumSqrDiff(Formulas):
     target, output = T.rows(2)
