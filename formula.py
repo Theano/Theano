@@ -294,26 +294,26 @@ class Formulas(utils.object2):
 # def sigmoid(x):
 #     return 1.0 / (1.0 + T.exp(-x))
 
-class Update(Formulas):
-   param = T.matrix()
-   lr, cost = T.scalars(2)
-   param_update = param - lr * T.sgrad(cost, param)
+#class Update(Formulas):
+#    param = T.matrix()
+#    lr, cost = T.scalars(2)
+#    param_update = param - lr * T.sgrad(cost, param)
 
-class SumSqrDiff(Formulas):
-    target, output = T.rows(2)
-    cost = T.sum((target - output)**2)
+#class SumSqrDiff(Formulas):
+#     target, output = T.rows(2)
+#     cost = T.sum((target - output)**2)
 
-class Layer(Formulas):
-    input, bias = T.rows(2)
-    weights = T.matrix()
-    input2 = T.tanh(bias + T.dot(input, weights))
+# class Layer(Formulas):
+#     input, bias = T.rows(2)
+#     weights = T.matrix()
+#     input2 = T.tanh(bias + T.dot(input, weights))
 
-forward = Layer()*2
-g = glue(forward.rename(input3 = 'output'),
-         SumSqrDiff().rename(target = 'input1'),
-         *[Update().rename_regex({'param(.*)': ('%s\\1' % param.name)}) for param in forward.get_all('(weight|bias).*')])
-sg = g.__str__()
-print unicode(g)
+# forward = Layer()*2
+# g = glue(forward.rename(input3 = 'output'),
+#          SumSqrDiff().rename(target = 'input1'),
+#          *[Update().rename_regex({'param(.*)': ('%s\\1' % param.name)}) for param in forward.get_all('(weight|bias).*')])
+# sg = g.__str__()
+# print unicode(g)
 
 
 
