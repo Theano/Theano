@@ -9,6 +9,7 @@ from env import InconsistencyError
 import utils
 import unify
 import toolbox
+import op
 
 
 class Optimizer:
@@ -479,4 +480,70 @@ def MergeOptMerge(opt):
     """
     merger = MergeOptimizer()
     return SeqOptimizer([merger, opt, merger])
+
+
+
+
+
+class LocalOptimizer:
+
+    def applies(self, node):
+        raise utils.AbstractFunctionError()
+
+    def transform(self, node):
+        raise utils.AbstractFunctionError()
+
+
+class ExpandMacro:
+
+    def applies(self, node):
+        return isinstance(node.op, op.Macro)
+
+    def transform(self, node):
+        return node.op.expand(node)
+
+
+from collections import deque
+
+class TopDownOptimizer(Optimizer):
+
+    def __init__(self, local_opt, ignore_newtrees = False):
+        self.local_opt = local_opt
+        self.ignore_newtrees = ignore_newtrees
+
+    def apply(self, env):
+        ignore_newtrees = self.ignore_newtrees
+        q = deque()
+        class Updater:
+            def on_attach(self, env):
+                for node in graph.io_toposort(env.inputs, env.outputs):
+                    q.appendleft(node)
+            if not ignore_newtrees:
+                def on_import(self, env, node):
+                    q.appendleft(node)
+            def on_prune(self, env, node):
+                if node is not current_node:
+                    q.remove(node)
+        u = Updater()
+        env.extend(u)
+        while q:
+            node = q.popleft()
+            current_node = node
+            if not self.local_opt.applies(node):
+                continue
+            replacements = self.local_opt.transform(node)
+            for output, replacement in zip(node.outputs, replacements):
+                env.replace_validate(output, replacement)
+        env.remove_feature(u)
+
+    def add_requirements(self, env):
+        try:
+            env.extend(toolbox.ReplaceValidate())
+        except: pass
+
+expand_macros = TopDownOptimizer(ExpandMacro())
+
+
+
+
 
