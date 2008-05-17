@@ -126,3 +126,15 @@ class Op(utils.object2):
 
 
 
+class Macro(Op):
+    """
+    Abstract Op which does not have an implementation but can be expanded
+    into a computable graph with its expand() method.
+    """
+
+    def expand(self, *outputs):
+        """
+        Returns a node representing the expansion of this macro.
+        """
+        raise utils.AbstractFunctionError()
+
