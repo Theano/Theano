@@ -2,6 +2,7 @@
 from copy import copy
 import graph
 import utils
+import toolbox
 
 
 class InconsistencyError(Exception):
@@ -273,14 +274,13 @@ class Env(utils.object2):
         """
         if feature in self._features:
             return # the feature is already present
-        self._features.append(feature)
         attach = getattr(feature, 'on_attach', None)
         if attach is not None:    
             try:
                 attach(self)
-            except:
-                self._features.pop()
-                raise
+            except toolbox.AlreadyThere:
+                return
+        self._features.append(feature)
 
     def remove_feature(self, feature):
         """

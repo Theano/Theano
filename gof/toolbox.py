@@ -3,6 +3,10 @@ from functools import partial
 import graph
 
 
+class AlreadyThere(Exception):
+    pass
+
+
 class Bookkeeper:
     
     def on_attach(self, env):
@@ -21,7 +25,7 @@ class History:
 
     def on_attach(self, env):
         if hasattr(env, 'checkpoint') or hasattr(env, 'revert'):
-            raise Exception("History feature is already present or in conflict with another plugin.")
+            raise AlreadyThere("History feature is already present or in conflict with another plugin.")
         self.history[env] = []
         env.checkpoint = lambda: len(self.history[env])
         env.revert = partial(self.revert, env)
@@ -55,7 +59,7 @@ class Validator:
 
     def on_attach(self, env):
         if hasattr(env, 'validate'):
-            raise Exception("Validator feature is already present or in conflict with another plugin.")
+            raise AlreadyThere("Validator feature is already present or in conflict with another plugin.")
         env.validate = lambda: env.execute_callbacks('validate')
         def consistent():
             try:
@@ -77,7 +81,7 @@ class ReplaceValidate(History, Validator):
         Validator.on_attach(self, env)
         for attr in ('replace_validate', 'replace_all_validate'):            
             if hasattr(env, attr):
-                raise Exception("ReplaceValidate feature is already present or in conflict with another plugin.")
+                raise AlreadyThere("ReplaceValidate feature is already present or in conflict with another plugin.")
         env.replace_validate = partial(self.replace_validate, env)
         env.replace_all_validate = partial(self.replace_all_validate, env)
 
@@ -110,7 +114,7 @@ class NodeFinder(dict, Bookkeeper):
         if self.env is not None:
             raise Exception("A NodeFinder instance can only serve one Env.")
         if hasattr(env, 'get_nodes'):
-            raise Exception("NodeFinder is already present or in conflict with another plugin.")
+            raise AlreadyThere("NodeFinder is already present or in conflict with another plugin.")
         self.env = env
         env.get_nodes = partial(self.query, env)
         Bookkeeper.on_attach(self, env)
@@ -143,10 +147,7 @@ class NodeFinder(dict, Bookkeeper):
         except TypeError:
             raise TypeError("%s in unhashable and cannot be queried by the optimizer" % op)
         all = list(all)
-        while all:
-            next = all.pop()
-            if next in env.nodes:
-                yield next
+        return all
 
 
 class PrintListener(object):

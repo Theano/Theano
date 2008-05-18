@@ -72,7 +72,7 @@ class DestroyHandlerHelper(toolbox.Bookkeeper):
             raise Exception("A DestroyHandler instance can only serve one Env.")
         for attr in ('destroyers', 'destroy_handler'):
             if hasattr(env, attr):
-                raise Exception("DestroyHandler feature is already present or in conflict with another plugin.")
+                raise toolbox.AlreadyThere("DestroyHandler feature is already present or in conflict with another plugin.")
         
         def __destroyers(r):
             ret = self.destroyers.get(r, {})

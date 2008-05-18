@@ -10,7 +10,8 @@ from toolbox import *
 
 
 def as_result(x):
-    assert isinstance(x, Result)
+    if not isinstance(x, Result):
+        raise TypeError("not a Result", x)
     return x
 
 
@@ -69,6 +70,9 @@ def inputs():
     return x, y, z
 
 
+PatternOptimizer = lambda p1, p2, ign=False: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+TopoPatternOptimizer = lambda p1, p2, ign=True: TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+
 class _test_PatternOptimizer(unittest.TestCase):
     
     def test_replace_output(self):
@@ -116,13 +120,14 @@ class _test_PatternOptimizer(unittest.TestCase):
         assert str(g) == "[Op1(Op1(y, x), z)]"
 
     def test_no_recurse(self):
-        # if the out pattern is an acceptable in pattern,
+        # if the out pattern is an acceptable in pattern
+        # and that the ignore_newtrees flag is True,
         # it should do the replacement and stop
         x, y, z = inputs()
         e = op1(op2(x, y), z)
         g = Env([x, y, z], [e])
         PatternOptimizer((op2, '1', '2'),
-                         (op2, '2', '1')).optimize(g)
+                         (op2, '2', '1'), ign=True).optimize(g)
         assert str(g) == "[Op1(Op2(y, x), z)]"
 
     def test_multiple(self):
@@ -157,20 +162,19 @@ class _test_PatternOptimizer(unittest.TestCase):
         e = op1(op1(op1(x)))
         g = Env([x, y, z], [e])
         PatternOptimizer((op1, '1'),
-                         (op2, (op1, '1'))).optimize(g)
+                         (op2, (op1, '1')), ign=True).optimize(g)
         assert str(g) == "[Op2(Op1(Op2(Op1(Op2(Op1(x))))))]"
 
-#     def test_ambiguous(self):
-#         # this test is known to fail most of the time
-#         # the reason is that PatternOptimizer doesn't go through
-#         # the ops in topological order. The order is random and
-#         # it does not visit ops that it creates.
-#         x, y, z = inputs()
-#         e = op1(op1(op1(op1(op1(x)))))
-#         g = Env([x, y, z], [e])
-#         PatternOptimizer((op1, (op1, '1')),
-#                          (op1, '1')).optimize(g)
-#         assert str(g) == "[Op1(x)]"
+    def test_ambiguous(self):
+        # this test should always work with TopoOptimizer and the
+        # ignore_newtrees flag set to False. Behavior with ignore_newtrees
+        # = True or with other NavigatorOptimizers may differ.
+        x, y, z = inputs()
+        e = op1(op1(op1(op1(op1(x)))))
+        g = Env([x, y, z], [e])
+        TopoPatternOptimizer((op1, (op1, '1')),
+                             (op1, '1'), ign=False).optimize(g)
+        assert str(g) == "[Op1(x)]"
 
     def test_constant_unification(self):
         x = Constant(MyType(), 2, name = 'x')
@@ -186,7 +190,7 @@ class _test_PatternOptimizer(unittest.TestCase):
         x, y, z = inputs()
         e = op4(op1(op2(x, y)), op1(op1(x, y)))
         g = Env([x, y, z], [e])
-        def constraint(env, r):
+        def constraint(r):
             # Only replacing if the input is an instance of Op2
             return r.owner.op == op2
         PatternOptimizer((op1, {'pattern': '1',
@@ -206,7 +210,7 @@ class _test_PatternOptimizer(unittest.TestCase):
         x, y, z = inputs()
         e = op2(op1(x, x), op1(x, y))
         g = Env([x, y, z], [e])
-        def constraint(env, r):
+        def constraint(r):
             # Only replacing if the input is an instance of Op2
             return r.owner.inputs[0] is not r.owner.inputs[1]
         PatternOptimizer({'pattern': (op1, 'x', 'y'),
@@ -262,6 +266,9 @@ class _test_PatternOptimizer(unittest.TestCase):
 #                              (op3, '2', '1')).optimize(g)
 #         assert str(g) == "[Op1(Op3(y, x), Op2(OpZ(y, z)))]"
 
+
+OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
+OpSubOptimizer = lambda op1, op2: OpKeyOptimizer(OpSub(op1, op2))
 
 class _test_OpSubOptimizer(unittest.TestCase):
     
@@ -413,7 +420,20 @@ class _test_MergeOptimizer(unittest.TestCase):
 #         assert not getattr(x, 'constant', False) and z.constant
 #         MergeOptimizer().optimize(g)
 
-
+reenter = Exception("Re-Entered")
+class LoopyMacro(Macro):
+    def __init__(self):
+        self.counter = 0
+    def make_node(self, x, y):
+        return Apply(self, [x, y], [MyType()()])
+    def expand(self, node):
+        x, y = node.inputs
+        if self.counter > 0:
+            raise reenter
+        self.counter += 1
+        return [self(y, x)]
+    def __str__(self):
+        return "loopy_macro"
 
 class _test_ExpandMacro(unittest.TestCase):
 
@@ -423,26 +443,31 @@ class _test_ExpandMacro(unittest.TestCase):
                 return Apply(self, [x, y], [MyType()()])
             def expand(self, node):
                 return [op1(y, x)]
+            def __str__(self):
+                return "macro"
         x, y, z = inputs()
         e = Macro1()(x, y)
         g = Env([x, y], [e])
-        print g
         expand_macros.optimize(g)
-        print g
+        assert str(g) == "[Op1(y, x)]"
         
-    def test_loopy(self):
-        class Macro1(Macro):
-            def make_node(self, x, y):
-                return Apply(self, [x, y], [MyType()()])
-            def expand(self, node):
-                return [Macro1()(y, x)]
+    def test_loopy_1(self):
         x, y, z = inputs()
-        e = Macro1()(x, y)
+        e = LoopyMacro()(x, y)
         g = Env([x, y], [e])
-        print g
-        #expand_macros.optimize(g)
-        TopDownOptimizer(ExpandMacro(), ignore_newtrees = True).optimize(g)
-        print g
+        TopoOptimizer(ExpandMacro(), ignore_newtrees = True).optimize(g)
+        assert str(g) == "[loopy_macro(y, x)]"
+
+    def test_loopy_2(self):
+        x, y, z = inputs()
+        e = LoopyMacro()(x, y)
+        g = Env([x, y], [e])
+        try:
+            TopoOptimizer(ExpandMacro(), ignore_newtrees = False).optimize(g)
+            self.fail("should not arrive here")
+        except Exception, e:
+            if e is not reenter:
+                raise
         
 
 
