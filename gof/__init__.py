@@ -15,7 +15,7 @@ from link import \
     Linker, LocalLinker, PerformLinker, MetaLinker, Profiler
 
 from op import \
-    Op, Macro
+    Op, Macro, Dispatch
 
 from opt import \
     Optimizer, SeqOptimizer, \
@@ -23,7 +23,7 @@ from opt import \
     LocalOptimizer, LocalOptGroup, LocalOpKeyOptGroup, \
     ExpandMacro, OpSub, OpRemove, PatternSub, \
     NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer, \
-    expand_macros
+    ExpandMacros
 
 from toolbox import \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder, PrintListener

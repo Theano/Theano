@@ -22,7 +22,7 @@ class Op(utils.object2):
         This function should return an Apply instance representing the
         application of this Op on the provided inputs.
         """
-        raise utils.AbstractFunctionError()
+        raise utils.AbstractFunctionError(self)
 
     def __call__(self, *inputs):
         """
@@ -61,7 +61,7 @@ class Op(utils.object2):
         by a previous call to impl and impl is free to reuse it as it
         sees fit.
         """
-        raise utils.AbstractFunctionError()
+        raise utils.AbstractFunctionError(self)
 
     #####################
     # C code generation #
@@ -132,9 +132,42 @@ class Macro(Op):
     into a computable graph with its expand() method.
     """
 
-    def expand(self, *outputs):
+    def expand(self, node):
         """
         Returns a node representing the expansion of this macro.
         """
         raise utils.AbstractFunctionError()
+
+
+
+class Dispatch(Macro):
+    """
+    Dispatches inputs to one of a list of candidate ops.
+    Tries each candidate in order.
+    """
+
+    def __init__(self, name, candidates):
+        if not isinstance(name, str):
+            raise TypeError("name should be a string, not:", name, type(name))
+        self.candidates = candidates
+        self.name = name
+
+    def __node(self, *inputs):
+        for candidate in self.candidates:
+            try:
+                return candidate.make_node(*inputs)
+            except:
+                continue
+        raise TypeError("No suitable candidate found for %s(%s)" % (self, inputs))
+
+    def make_node(self, *inputs):
+        node = self.__node(*inputs)
+        node.op = self
+        return node
+
+    def expand(self, node):
+        return self.__node(*node.inputs)
+
+    def __str__(self):
+        return self.name
 
