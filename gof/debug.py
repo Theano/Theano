@@ -1,8 +1,7 @@
 
 import link
-
-
 from functools import partial
+
 
 class DebugException(Exception):
     pass

@@ -29,11 +29,6 @@ def TensorConstant(*inputs, **kwargs):
 ### DimShuffle ###
 ##################
 
-## TODO: rule-based version of DimShuffle
-## would allow for Transpose, LComplete, RComplete, etc.
-## Can be optimized into DimShuffle later on.
-
-
 class ShuffleRule(Macro):
     """
     ABSTRACT Op - it has no perform and no c_code
@@ -41,20 +36,30 @@ class ShuffleRule(Macro):
     Apply ExpandMacros to this node to obtain
     an equivalent DimShuffle which can be performed.
     """
-    def __init__(self, rule = None, name = None):
+    level = 1
+    def __init__(self, rule = None, inplace = False, name = None):
         if rule is not None:
             self.rule = rule
+        self.inplace = inplace
+        if inplace:
+            self.view_map = {0: [0]}
         self.name = name
     def make_node(self, input, *models):
         pattern = self.rule(input.type.broadcastable, *(model.type.broadcastable for model in models))
+        ib = input.type.broadcastable
         return gof.Apply(self,
                          (input,) + models,
                          [Tensor(dtype = input.type.dtype,
-                                 broadcastable = [x == 'x' for x in pattern]).make_result()])
-    def expand(self, r):
-        input, models = r.owner.inputs[0], r.owner.inputs[1:]
+                                 broadcastable = [x == 'x' or ib[x] for x in pattern]).make_result()])
+    def expand(self, node):
+        input, models = node.inputs[0], node.inputs[1:]
         new_order = self.rule(input.type.broadcastable, *(model.type.broadcastable for model in models))
-        return DimShuffle(input.type.broadcastable, new_order)(input)
+        #print new_order, node.outputs[0].type, DimShuffle(input.type.broadcastable, new_order)(input).type, node.outputs[0].type == DimShuffle(input.type.broadcastable, new_order)(input).type
+        
+        if list(new_order) == range(input.type.ndim) and self.inplace:
+            return [input]
+        else:
+            return [DimShuffle(input.type.broadcastable, new_order, self.inplace)(input)]
     def __eq__(self, other):
         return type(self) == type(other) and self.rule == other.rule
     def __hash__(self, other):
@@ -66,10 +71,13 @@ class ShuffleRule(Macro):
             return "ShuffleRule{%s}" % self.role
 
 _transpose = ShuffleRule(rule = lambda input: range(len(input)-1, -1, -1),
+                        inplace = True,
                          name = 'transpose')
 lcomplete = ShuffleRule(rule = lambda input, *models: ['x']*(max([0]+map(len,models))-len(input)) + range(len(input)),
+                        inplace = True,
                         name = 'lcomplete')
 rcomplete = ShuffleRule(rule = lambda input, *models: range(len(input)) + ['x']*(max(map(len,models))-len(input)),
+                        inplace = True,
                         name = 'rcomplete')
 
 
@@ -170,7 +178,7 @@ class DimShuffle(Op):
         ob = []
         for value in self.new_order:
             if value == 'x':
-                ob.append(1)
+                ob.append(True)
             else:
                 ob.append(ib[value])
         
@@ -304,8 +312,10 @@ class Elemwise(Op):
         shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
+
         if len(inputs) > 1:
             inputs = [lcomplete(input, *inputs) for input in inputs]
+
 #         args = []
 #         for input in inputs:
 #             length = input.type.ndim
@@ -316,7 +326,7 @@ class Elemwise(Op):
 #                 # TODO: use LComplete instead
 #                 args.append(DimShuffle(input.type.broadcastable, ['x']*difference + range(length))(input))
 #         inputs = args
-
+ 
         try:
             assert len(set([len(input.type.broadcastable) for input in inputs])) == 1
         except (AssertionError, AttributeError):

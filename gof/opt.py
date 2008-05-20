@@ -30,14 +30,14 @@ class Optimizer:
         """
         pass
 
-    def optimize(self, env):
+    def optimize(self, env, *args, **kwargs):
         """
         This is meant as a shortcut to::
           env.satisfy(opt)
           opt.apply(env)
         """
         self.add_requirements(env)
-        self.apply(env)
+        self.apply(env, *args, **kwargs)
 
     def __call__(self, env):
         """
@@ -218,8 +218,14 @@ class LocalOpKeyOptGroup(LocalOptGroup):
 
 class ExpandMacro(LocalOptimizer):
 
+    def __init__(self, filter = None):
+        if filter is None:
+            self.filter = lambda node: True
+        else:
+            self.filter = filter
+
     def transform(self, node):
-        if not isinstance(node.op, op.Macro):
+        if not isinstance(node.op, op.Macro) or not self.filter(node):
             return False
         return node.op.expand(node)
 
@@ -466,7 +472,7 @@ class NavigatorOptimizer(Optimizer):
 
     def process_node(self, env, node):
         replacements = self.local_opt.transform(node)
-        if replacements is False:
+        if replacements is False or replacements is None:
             return
         repl_pairs = zip(node.outputs, replacements)
         try:
@@ -490,13 +496,15 @@ class TopoOptimizer(NavigatorOptimizer):
         self.order = order
         NavigatorOptimizer.__init__(self, local_opt, ignore_newtrees, failure_callback)
 
-    def apply(self, env):
-        q = deque(graph.io_toposort(env.inputs, env.outputs))
+    def apply(self, env, start_from = None):
+        if start_from is None: start_from = env.outputs
+        q = deque(graph.io_toposort(env.inputs, start_from))
         def importer(node):
             q.append(node)
         def pruner(node):
             if node is not current_node:
-                q.remove(node)
+                try: q.remove(node)
+                except ValueError: pass
         
         u = self.attach_updater(env, importer, pruner)
         try:
@@ -529,7 +537,8 @@ class OpKeyOptimizer(NavigatorOptimizer):
             if node.op == op: q.append(node)
         def pruner(node):
             if node is not current_node and node.op == op:
-                q.remove(node)
+                try: q.remove(node)
+                except ValueError: pass
         u = self.attach_updater(env, importer, pruner)
         try:
             while q:
@@ -554,7 +563,10 @@ class OpKeyOptimizer(NavigatorOptimizer):
 ### Pre-defined optimizers ###
 ##############################
 
-expand_macros = TopoOptimizer(ExpandMacro(), ignore_newtrees = False)
+def ExpandMacros(filter = None):
+    return TopoOptimizer(ExpandMacro(filter = filter),
+                         order = 'in_to_out',
+                         ignore_newtrees = False)
 
 
 

@@ -83,7 +83,7 @@ class DimShufflePrinter:
             raise TypeError("Can only print DimShuffle.")
         elif isinstance(r.owner.op, ShuffleRule):
             #print r, r.owner.op
-            new_r = r.owner.op.expand(r)
+            new_r = r.owner.op.expand(r.owner)
             #print new_r.owner, isinstance(new_r.owner.op, ShuffleRule)
             return self.process(new_r, pstate)
         elif isinstance(r.owner.op, DimShuffle):
@@ -163,16 +163,6 @@ class PPrinter:
         return cp
 
 
-# class ExtendedPPrinter:
-
-#     def __init__(self, pprinter, leaf_pprinter):
-#         self.pprinter = pprinter
-#         self.leaf_pprinter = pprinter
-
-#     def process(self, r, pstate = None):
-        
-
-
 
 from tensor import *
 from elemwise import Sum, ShuffleRule
@@ -194,18 +184,18 @@ pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle), DimS
 pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, ShuffleRule), DimShufflePrinter())
 
 
-print pp.process(x + y * z)
-print pp.process((x + y) * z)
-print pp.process(x * (y * z))
-print pp.process(x / (y / z) / x)
-print pp.process((x ** y) ** z)
-print pp.process(-x+y)
-print pp.process(-x*y)
-print pp.process(sum(x))
-print pp.process(sum(x * 10))
+# print pp.process(x + y * z)
+# print pp.process((x + y) * z)
+# print pp.process(x * (y * z))
+# print pp.process(x / (y / z) / x)
+# print pp.process((x ** y) ** z)
+# print pp.process(-x+y)
+# print pp.process(-x*y)
+# print pp.process(sum(x))
+# print pp.process(sum(x * 10))
 
-a = Tensor(broadcastable=(False,False,False), dtype='float64')('alpha')
-print a.type
-print pp.process(DimShuffle((False,)*2, [1, 0])(x) + a)
+# a = Tensor(broadcastable=(False,False,False), dtype='float64')('alpha')
+# print a.type
+# print pp.process(DimShuffle((False,)*2, [1, 0])(x) + a)
 
-print pp.process(x / (y * z))
+# print pp.process(x / (y * z))
