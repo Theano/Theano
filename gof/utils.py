@@ -34,8 +34,9 @@ class scratchpad:
         self.__dict__.clear()
     def __update__(self, other):
         self.__dict__.update(other.__dict__)
+        return self
     def __str__(self):
-        print "scratch" + str(self.__dict__)
+        return "scratch" + str(self.__dict__)
 
 
 def memoize(f):

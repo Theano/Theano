@@ -245,26 +245,6 @@ class _test_PatternOptimizer(unittest.TestCase):
 #         PatternOptimizer((op4, (op1, 'x', 'y'), (op1, 'x', 'y')),
 #                          (op3, 'x', 'y')).optimize(g)
 #         assert str(g) == "[Op3(x, y)]"
-        
-
-# class _test_PatternDescOptimizer(unittest.TestCase):
-    
-#     def test_replace_output(self):
-#         # replacing the whole graph
-#         x, y, z = inputs()
-#         e = op1(op2(x, y), z)
-#         g = env([x, y, z], [e])
-#         PatternDescOptimizer((Op1, (Op2, '1', '2'), '3'),
-#                              (Op4, '3', '2')).optimize(g)
-#         assert str(g) == "[Op4(z, y)]"
-
-#     def test_eq(self):
-#         x, y, z = inputs()
-#         e = op1(op_y(x, y, 37, 88), op2(op_y(y, z, 1, 7)))
-#         g = env([x, y, z], [e])
-#         PatternDescOptimizer((op_z, '1', '2'),
-#                              (op3, '2', '1')).optimize(g)
-#         assert str(g) == "[Op1(Op3(y, x), Op2(OpZ(y, z)))]"
 
 
 OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
@@ -384,42 +364,6 @@ class _test_MergeOptimizer(unittest.TestCase):
 
 
 
-# class _test_ConstantFinder(unittest.TestCase):
-
-#     def test_straightforward(self):
-#         x, y, z = inputs()
-#         y.data = 2
-#         z.data = 2
-#         e = op1(x, y, z)
-#         g = env([x], [e])
-#         ConstantFinder().optimize(g)
-#         assert y.constant and z.constant
-#         MergeOptimizer().optimize(g)
-#         assert str(g) == "[Op1(x, y, y)]" \
-#             or str(g) == "[Op1(x, z, z)]"
-
-#     def test_deep(self):
-#         x, y, z = inputs()
-#         y.data = 2
-#         z.data = 2
-#         e = op1(op2(x, y), op2(x, y), op2(x, z))
-#         g = env([x], [e])
-#         ConstantFinder().optimize(g)
-#         assert y.constant and z.constant
-#         MergeOptimizer().optimize(g)
-#         assert str(g) == "[Op1(*1 -> Op2(x, y), *1, *1)]" \
-#             or str(g) == "[Op1(*1 -> Op2(x, z), *1, *1)]"
-
-#     def test_destroyed_orphan_not_constant(self):
-#         x, y, z = inputs()
-#         y.data = 2
-#         z.data = 2
-#         e = op_d(x, op2(y, z)) # here x is destroyed by op_d
-#         g = env([y], [e])
-#         ConstantFinder().optimize(g)
-#         assert not getattr(x, 'constant', False) and z.constant
-#         MergeOptimizer().optimize(g)
-
 reenter = Exception("Re-Entered")
 class LoopyMacro(Macro):
     def __init__(self):
@@ -448,7 +392,7 @@ class _test_ExpandMacro(unittest.TestCase):
         x, y, z = inputs()
         e = Macro1()(x, y)
         g = Env([x, y], [e])
-        expand_macros.optimize(g)
+        ExpandMacros().optimize(g)
         assert str(g) == "[Op1(y, x)]"
         
     def test_loopy_1(self):

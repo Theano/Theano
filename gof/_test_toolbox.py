@@ -100,14 +100,15 @@ class _test_NodeFinder(unittest.TestCase):
             if not len([x for x in g.get_nodes(type)]) == num:
                 self.fail((type, num))
 
-    def test_robustness(self):
-        x, y, z = inputs()
-        e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), dot(y, z)))
-        g = Env([x, y, z], [e])
-        g.extend(NodeFinder())
-        gen = g.get_nodes(sigmoid) # I want to get Sigmoid instances
-        g.replace(e, add(x, y)) # but here I prune them all
-        assert len([x for x in gen]) == 0 # the generator should not yield them
+#     def test_robustness(self):
+#         # this test used to make sense to have, but it doesn't work like that anymore
+#         x, y, z = inputs()
+#         e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), dot(y, z)))
+#         g = Env([x, y, z], [e])
+#         g.extend(NodeFinder())
+#         gen = g.get_nodes(sigmoid) # I want to get Sigmoid instances
+#         g.replace(e, add(x, y)) # but here I prune them all
+#         assert len([x for x in gen]) == 0 # the generator should not yield them
 
 
 
