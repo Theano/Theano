@@ -174,7 +174,7 @@ class DimShuffle(Op):
     def make_node(self, input):
         ib = tuple(input.type.broadcastable)
         if not ib == self.input_broadcastable:
-            raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (ib, self.input_broadcastable))
+            raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (self.input_broadcastable, ib))
         ob = []
         for value in self.new_order:
             if value == 'x':
@@ -327,10 +327,10 @@ class Elemwise(Op):
 #                 args.append(DimShuffle(input.type.broadcastable, ['x']*difference + range(length))(input))
 #         inputs = args
  
-        try:
-            assert len(set([len(input.type.broadcastable) for input in inputs])) == 1
-        except (AssertionError, AttributeError):
-            raise TypeError("All inputs to a Broadcast subclass must be Tensor instances and their broadcastable fields must all have the same length.", inputs)
+#         try:
+#             assert len(set([len(input.type.broadcastable) for input in inputs])) == 1
+#         except (AssertionError, AttributeError):
+#             raise TypeError("All inputs to a Broadcast subclass must be Tensor instances and their broadcastable fields must all have the same length.", inputs)
 
         out_broadcastables = [[all(bcast) for bcast in zip(*[input.type.broadcastable for input in inputs])]] * shadow.nout
         inplace_pattern = self.inplace_pattern

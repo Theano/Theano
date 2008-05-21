@@ -2,7 +2,7 @@
 import time
 import unittest
 
-from gof import Result, Op, Env
+from gof import Result, Op
 import gof
 
 from scalar import *
@@ -11,6 +11,10 @@ import tensor
 from elemwise import *
 
 
+def Env(i, o):
+    e = gof.Env(i, o)
+    gof.ExpandMacros().optimize(e)
+    return e
 
 class _test_DimShuffle(unittest.TestCase):
 
