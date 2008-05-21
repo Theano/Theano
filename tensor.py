@@ -18,7 +18,7 @@ from gof.python25 import partial
 
 
 ### set up the external interface
-from elemwise import Elemwise, DimShuffle, CAReduce
+from elemwise import Elemwise, ShuffleRule, DimShuffle, CAReduce, Sum
 import tensor_random as random
 
 
