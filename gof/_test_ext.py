@@ -5,13 +5,16 @@ from type import Type
 import graph
 from graph import Result, Apply
 from op import Op
-from opt import PatternOptimizer, OpSubOptimizer
+from opt import *
 
 from ext import *
 from env import Env, InconsistencyError
 from toolbox import ReplaceValidate
 
 from copy import copy
+
+PatternOptimizer = lambda p1, p2, ign=True: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+OpSubOptimizer = lambda op1, op2, fail=keep_going, ign=True: TopoOptimizer(OpSub(op1, op2), ignore_newtrees=ign, failure_callback = fail)
 
 
 def as_result(x):
@@ -34,11 +37,13 @@ def MyResult(name):
 
 class MyOp(Op):
 
-    def __init__(self, nin, name, vmap = {}, dmap = {}):
+    def __init__(self, nin, name, vmap = {}, dmap = {}, nout = 1, tolerate_same = []):
         self.nin = nin
+        self.nout = nout
         self.name = name
         self.destroy_map = dmap
         self.view_map = vmap
+        self.tolerate_same = tolerate_same
     
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
@@ -46,7 +51,7 @@ class MyOp(Op):
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
-        outputs = [MyResult(self.name + "_R")]
+        outputs = [MyResult(self.name + "_R") for i in xrange(self.nout)]
         return Apply(self, inputs, outputs)
 
     def __str__(self):
@@ -57,6 +62,7 @@ sigmoid = MyOp(1, 'Sigmoid')
 transpose_view = MyOp(1, 'TransposeView', vmap = {0: [0]})
 add = MyOp(2, 'Add')
 add_in_place = MyOp(2, 'AddInPlace', dmap = {0: [0]})
+add_in_place_2 = MyOp(2, 'AddInPlace', dmap = {0: [0]}, tolerate_same = [(0, 1)])
 dot = MyOp(2, 'Dot')
 
 
@@ -81,8 +87,8 @@ class FailureWatch:
     # when passed to OpSubOptimizer or PatternOptimizer, counts the number of failures
     def __init__(self):
         self.failures = 0
-    def __call__(self, op1, op2, exception):
-        assert isinstance(exception, InconsistencyError)
+    def __call__(self, exc, nav, pairs):
+        assert isinstance(exc, InconsistencyError)
         self.failures += 1
 
 
@@ -257,11 +263,46 @@ class _test_all(unittest.TestCase):
         g.replace(e0, new_e0)
         assert g.consistent()
 
-#     def test_aliased_inputs(self):
-#         x, y, z = inputs()
-#         e = add_in_place(x, transpose_view(x))
-#         g = Env([x], [e], False)
-#         assert not g.consistent()
+    def test_aliased_inputs(self):
+        x, y, z = inputs()
+        e = add_in_place(x, x)
+        g = Env([x], [e], False)
+        assert not g.consistent()
+
+    def test_aliased_inputs2(self):
+        x, y, z = inputs()
+        e = add_in_place(x, transpose_view(x))
+        g = Env([x], [e], False)
+        assert not g.consistent()
+
+    def test_aliased_inputs_tolerate(self):
+        x, y, z = inputs()
+        e = add_in_place_2(x, x)
+        g = Env([x], [e], False)
+        assert g.consistent()
+
+    def test_aliased_inputs_tolerate2(self):
+        x, y, z = inputs()
+        e = add_in_place_2(x, transpose_view(x))
+        g = Env([x], [e], False)
+        assert not g.consistent()
+
+    def test_aliased_inputs_replacement(self):
+        x, y, z = inputs()
+        tv = transpose_view(x)
+        tvv = transpose_view(tv)
+        sx = sigmoid(x)
+        e = add_in_place(x, tv)
+        g = Env([x, y], [e], False)
+        assert not g.consistent()
+        g.replace(tv, sx)
+        assert g.consistent()
+        g.replace(sx, tv)
+        assert not g.consistent()
+        g.replace(tv, tvv)
+        assert not g.consistent()
+        g.replace(tv, sx)
+        assert g.consistent()
 
 
 if __name__ == '__main__':

@@ -38,7 +38,6 @@ class DestroyHandler(toolbox.Bookkeeper):
 
 
 
-
 class DestroyHandlerHelper(toolbox.Bookkeeper):
     """
     This feature ensures that an env represents a consistent data flow
@@ -168,7 +167,7 @@ class DestroyHandlerHelper(toolbox.Bookkeeper):
         is returned.
         """
         views = self.__views__(r)
-        rval = [] # set()
+        rval = list(r.owner.outputs) if r.owner else [] # set()
         for view in views:
             for node, i in view.clients: #self.env.clients(view):
                 if node != 'output':
@@ -183,21 +182,37 @@ class DestroyHandlerHelper(toolbox.Bookkeeper):
         rval = set()
         if op is None:
             return rval
-        keep_going = False
-        for input in op.inputs:
+        dmap = getattr(op.op, 'destroy_map', {})
+        dinputs = reduce(list.__add__, dmap.values(), [])
+        d_found = {}
+        nd_found = {}
+        for i, input in enumerate(op.inputs):
             # Get the basic result the input is a view of.
-            foundation = self.__path__(input)[0]
+            path = self.__path__(input)
+            foundation = path[0]
             destroyers = self.destroyers.get(foundation, set())
-            if destroyers:
-                keep_going = True
             # Is this op destroying the foundation? If yes,
             # all users of the foundation must be computed before
             # we overwrite its contents.
-            if op in destroyers:
+            if op in destroyers and i in dinputs:
+                d_found[foundation] = i
                 users = self.__users__(foundation)
                 rval.update(users)
+            else:
+                nd_found[foundation] = i
         rval.update(op.inputs) # obviously
-        rval.difference_update(op.outputs) # this op's outputs will always be in the users
+        intersection = set(d_found.keys()).intersection(set(nd_found.keys()))
+        if not intersection:
+            rval.difference_update(op.outputs) # this op's outputs will always be in the users
+        else:
+            allowed = getattr(op.op, 'tolerate_same', [])
+            for item in intersection:
+                i, j = d_found[item], nd_found[item]
+                pair = i, j
+                if not (op.inputs[i] is op.inputs[j] and (pair in allowed or tuple(reversed(pair)) in allowed)):
+                    break
+            else:
+                rval.difference_update(op.outputs)
         return rval
 
     def __detect_cycles_helper__(self, r, seq):
