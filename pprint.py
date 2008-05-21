@@ -1,5 +1,7 @@
 
+import tensor as T
 import gof
+from copy import copy
 
 
 class PrinterState(gof.utils.scratchpad):
@@ -31,8 +33,6 @@ class OperatorPrinter:
         outer_assoc = getattr(pstate, 'assoc', 'none')
         if outer_precedence > self.precedence:
             parenthesize = True
-        #elif outer_assoc != self.assoc:
-        #    parenthesize = True
         else:
             parenthesize = False
         input_strings = []
@@ -81,12 +81,10 @@ class DimShufflePrinter:
     def process(self, r, pstate):
         if r.owner is None:
             raise TypeError("Can only print DimShuffle.")
-        elif isinstance(r.owner.op, ShuffleRule):
-            #print r, r.owner.op
-            new_r = r.owner.op.expand(r.owner)
-            #print new_r.owner, isinstance(new_r.owner.op, ShuffleRule)
-            return self.process(new_r, pstate)
-        elif isinstance(r.owner.op, DimShuffle):
+        elif isinstance(r.owner.op, T.ShuffleRule):
+            new_r = r.owner.op.expand(r.owner)[0]
+            return pstate.pprinter.process(new_r, pstate)
+        elif isinstance(r.owner.op, T.DimShuffle):
             ord = r.owner.op.new_order
             return self.__p(ord, pstate, r.owner.inputs[0])            
         else:
@@ -112,26 +110,6 @@ class LeafPrinter:
             return greek[r.name]
         else:
             return str(r)
-
-
-special = dict(middle_dot = u"\u00B7",
-               big_sigma = u"\u03A3")
-
-greek = dict(alpha    = u"\u03B1",
-             beta     = u"\u03B2",
-             gamma    = u"\u03B3",
-             delta    = u"\u03B4",
-             epsilon  = u"\u03B5")
-
-
-ppow = OperatorPrinter('**', 0, 'right')
-pmul = OperatorPrinter('*', -1, 'either')
-pdiv = OperatorPrinter('/', -1, 'left')
-padd = OperatorPrinter('+', -2, 'either')
-psub = OperatorPrinter('-', -2, 'left')
-pdot = OperatorPrinter(special['middle_dot'], -1, 'left')
-psum = OperatorPrinter(special['big_sigma']+' ', -2, 'left')
-plog = FunctionPrinter('log')
 
 
 class PPrinter:
@@ -163,39 +141,41 @@ class PPrinter:
         return cp
 
 
+special = dict(middle_dot = u"\u00B7",
+               big_sigma = u"\u03A3")
 
-from tensor import *
-from elemwise import Sum, ShuffleRule
-
-x, y, z = matrices('xyz')
-
-pp = PPrinter()
-pp.assign(lambda pstate, r: True, DefaultPrinter())
-pp.assign(add, padd)
-pp.assign(mul, pmul)
-pp.assign(sub, psub)
-pp.assign(neg, psub)
-pp.assign(div, pdiv)
-pp.assign(pow, ppow)
-pp.assign(dot, pdot)
-pp.assign(Sum(), FunctionPrinter('sum'))
-pp.assign(sgrad, FunctionPrinter('d'))
-pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle), DimShufflePrinter())
-pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, ShuffleRule), DimShufflePrinter())
+greek = dict(alpha    = u"\u03B1",
+             beta     = u"\u03B2",
+             gamma    = u"\u03B3",
+             delta    = u"\u03B4",
+             epsilon  = u"\u03B5")
 
 
-# print pp.process(x + y * z)
-# print pp.process((x + y) * z)
-# print pp.process(x * (y * z))
-# print pp.process(x / (y / z) / x)
-# print pp.process((x ** y) ** z)
-# print pp.process(-x+y)
-# print pp.process(-x*y)
-# print pp.process(sum(x))
-# print pp.process(sum(x * 10))
+ppow = OperatorPrinter('**', 1, 'right')
+pneg = OperatorPrinter('-',  0, 'either')
+pmul = OperatorPrinter('*', -1, 'either')
+pdiv = OperatorPrinter('/', -1, 'left')
+padd = OperatorPrinter('+', -2, 'either')
+psub = OperatorPrinter('-', -2, 'left')
+pdot = OperatorPrinter(special['middle_dot'], -1, 'left')
+psum = OperatorPrinter(special['big_sigma']+' ', -2, 'left')
+plog = FunctionPrinter('log')
 
-# a = Tensor(broadcastable=(False,False,False), dtype='float64')('alpha')
-# print a.type
-# print pp.process(DimShuffle((False,)*2, [1, 0])(x) + a)
+def make_default_pp():
+    pp = PPrinter()
+    pp.assign(lambda pstate, r: True, DefaultPrinter())
+    pp.assign(T.add, padd)
+    pp.assign(T.mul, pmul)
+    pp.assign(T.sub, psub)
+    pp.assign(T.neg, pneg)
+    pp.assign(T.div, pdiv)
+    pp.assign(T.pow, ppow)
+    pp.assign(T.dot, pdot)
+    pp.assign(T.Sum(), FunctionPrinter('sum'))
+    pp.assign(T.grad, FunctionPrinter('d'))
+    pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.DimShuffle), DimShufflePrinter())
+    pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.ShuffleRule), DimShufflePrinter())
+    return pp
 
-# print pp.process(x / (y * z))
+pp = make_default_pp()
+
