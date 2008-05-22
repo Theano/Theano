@@ -104,9 +104,6 @@ class FunctionFactory:
             if not isinstance(r, gof.Result):
                 raise TypeError("All inputs and outputs to FunctionFactory should be Result instances. Received:", type(r), r)
         env = std_env(inputs, outputs, disown_inputs = disown_inputs)
-        gof.ExpandMacros().optimize(env)
-        #gof.ExpandMacros(lambda node: getattr(node.op, 'level', 0) <= 1).optimize(env)
-        #gof.ExpandMacros(lambda node: node.op.level == 2).optimize(env)
         if None is not optimizer:
             optimizer(env)
         env.validate()

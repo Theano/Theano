@@ -91,10 +91,8 @@ class _test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs([False]*1, [False]*2, [False]*3)
         e = x + y + z
         g = Env([x, y, z], [e])
-        gof.ExpandMacros().optimize(g)
         self.failUnless(str(g) == "[add(InplaceDimShuffle{x,0,1}(add(InplaceDimShuffle{x,0}(x), y)), z)]", str(g))
         lift_dimshuffle.optimize(g)
-        gof.ExpandMacros().optimize(g)
         self.failUnless(str(g) == "[add(add(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle{x,0,1}(y)), z)]", str(g))
 
 

@@ -169,7 +169,6 @@ def make_default_pp():
     pp.assign(T.pow, ppow)
     pp.assign(T.dot, pdot)
     pp.assign(T.Sum(), FunctionPrinter('sum'))
-    pp.assign(T.grad, FunctionPrinter('d'))
     pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.DimShuffle), DimShufflePrinter())
     return pp
 

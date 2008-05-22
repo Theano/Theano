@@ -15,15 +15,14 @@ from link import \
     Linker, LocalLinker, PerformLinker, MetaLinker, Profiler
 
 from op import \
-    Op, Macro, Dispatch
+    Op
 
 from opt import \
     Optimizer, SeqOptimizer, \
     MergeOptimizer, MergeOptMerge, \
     LocalOptimizer, LocalOptGroup, LocalOpKeyOptGroup, \
-    ExpandMacro, OpSub, OpRemove, PatternSub, \
-    NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer, \
-    ExpandMacros
+    OpSub, OpRemove, PatternSub, \
+    NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer
 
 from toolbox import \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder, PrintListener

@@ -1142,19 +1142,7 @@ gemm = Gemm()
 # Gradient
 #########################
 
-class Grad(gof.Macro):
-    level = 2
-    def make_node(self, cost, wrt):
-        if not isinstance(wrt, list):
-            wrt = [wrt]
-        return Apply(self, [cost] + wrt, [_wrt.type() for _wrt in wrt])
-    def expand(self, node):
-        cost, wrt = node.inputs[0], node.inputs[1:]
-        g = exec_grad(cost, wrt)
-        return g
-grad = Grad()
-
-def exec_grad(cost, wrt, g_cost=None):
+def grad(cost, wrt, g_cost=None):
     """
     @type cost: L{Result}
     @type wrt: L{Result} or list of L{Result}s.

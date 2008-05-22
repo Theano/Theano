@@ -3,7 +3,7 @@ import unittest
 
 from type import Type
 from graph import Result, Apply, Constant
-from op import Op, Macro
+from op import Op
 from opt import *
 from env import Env
 from toolbox import *
@@ -362,57 +362,6 @@ class _test_MergeOptimizer(unittest.TestCase):
 #         strg = str(g)
 #         self.failUnless(strg == '[*1 -> OpD(Op1(x, y), z), *1]', strg)
 
-
-
-reenter = Exception("Re-Entered")
-class LoopyMacro(Macro):
-    def __init__(self):
-        self.counter = 0
-    def make_node(self, x, y):
-        return Apply(self, [x, y], [MyType()()])
-    def expand(self, node):
-        x, y = node.inputs
-        if self.counter > 0:
-            raise reenter
-        self.counter += 1
-        return [self(y, x)]
-    def __str__(self):
-        return "loopy_macro"
-
-class _test_ExpandMacro(unittest.TestCase):
-
-    def test_straightforward(self):
-        class Macro1(Macro):
-            def make_node(self, x, y):
-                return Apply(self, [x, y], [MyType()()])
-            def expand(self, node):
-                return [op1(y, x)]
-            def __str__(self):
-                return "macro"
-        x, y, z = inputs()
-        e = Macro1()(x, y)
-        g = Env([x, y], [e])
-        ExpandMacros().optimize(g)
-        assert str(g) == "[Op1(y, x)]"
-        
-    def test_loopy_1(self):
-        x, y, z = inputs()
-        e = LoopyMacro()(x, y)
-        g = Env([x, y], [e])
-        TopoOptimizer(ExpandMacro(), ignore_newtrees = True).optimize(g)
-        assert str(g) == "[loopy_macro(y, x)]"
-
-    def test_loopy_2(self):
-        x, y, z = inputs()
-        e = LoopyMacro()(x, y)
-        g = Env([x, y], [e])
-        try:
-            TopoOptimizer(ExpandMacro(), ignore_newtrees = False).optimize(g)
-            self.fail("should not arrive here")
-        except Exception, e:
-            if e is not reenter:
-                raise
-        
 
 
 

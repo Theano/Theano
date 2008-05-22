@@ -2,7 +2,7 @@
 import elemwise_cgen as cgen
 
 import numpy
-from gof import Op, Macro, Apply
+from gof import Op, Apply
 import scalar
 from scalar import Scalar
 import gof

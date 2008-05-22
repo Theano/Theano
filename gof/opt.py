@@ -214,20 +214,6 @@ class LocalOpKeyOptGroup(LocalOptGroup):
         return [opt.op_key() for opt in self.opts]
 
 
-class ExpandMacro(LocalOptimizer):
-
-    def __init__(self, filter = None):
-        if filter is None:
-            self.filter = lambda node: True
-        else:
-            self.filter = filter
-
-    def transform(self, node):
-        if not isinstance(node.op, op.Macro) or not self.filter(node):
-            return False
-        return node.op.expand(node)
-
-
 class OpSub(LocalOptimizer):
     """
     Replaces the application of a certain op by the application of
@@ -561,12 +547,3 @@ class OpKeyOptimizer(NavigatorOptimizer):
 def keep_going(exc, nav, repl_pairs):
     pass
 
-
-##############################
-### Pre-defined optimizers ###
-##############################
-
-def ExpandMacros(filter = None):
-    return TopoOptimizer(ExpandMacro(filter = filter),
-                         order = 'in_to_out',
-                         ignore_newtrees = False)

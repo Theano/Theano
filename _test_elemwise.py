@@ -13,7 +13,6 @@ from elemwise import *
 
 def Env(i, o):
     e = gof.Env(i, o)
-    gof.ExpandMacros().optimize(e)
     return e
 
 class _test_DimShuffle(unittest.TestCase):

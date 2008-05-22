@@ -540,8 +540,8 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
 
         num_grad = gradient.numeric_grad(cost_fn, pt)
 
-        #symbolic_grad = exec_grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
-        symbolic_grad = grad.make_node(cost, tensor_pt).outputs
+        symbolic_grad = grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
+
         if 0:
             print '-------'
             print '----------'
@@ -899,7 +899,7 @@ class T_subtensor(unittest.TestCase):
         n = as_tensor(numpy.random.rand(2,3))
         z = scal.constant(0)
         t = n[z:,z]
-        gn = exec_grad(sum(exp(t)), n)
+        gn = grad(sum(exp(t)), n)
         gval = eval_outputs([gn])
         s0 = 'array([ 2.05362099,  0.        ,  0.        ])'
         s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
@@ -909,7 +909,7 @@ class T_subtensor(unittest.TestCase):
     def test_grad_0d(self):
         n = as_tensor(numpy.random.rand(2,3))
         t = n[1,0]
-        gn = exec_grad(sum(exp(t)), n)
+        gn = grad(sum(exp(t)), n)
         gval = eval_outputs([gn])
         g0 = repr(gval[0,:])
         g1 = repr(gval[1,:])
@@ -938,7 +938,7 @@ class T_Stack(unittest.TestCase):
         a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
         b = as_tensor(numpy.array([[7, 8, 9]]))
         s = vertical_stack(a, b)
-        ga,gb = exec_grad(sum(vertical_stack(a,b)), [a,b])
+        ga,gb = grad(sum(vertical_stack(a,b)), [a,b])
 
         gval = eval_outputs([ga, gb])
         self.failUnless(numpy.all(gval[0] == 1.0))
@@ -1672,13 +1672,13 @@ class _test_grad(unittest.TestCase):
         """grad: Test passing a single result param"""
         o = _test_grad.O()
         a1 = o.make_node()
-        self.failUnless(o.gval0 is exec_grad(a1.outputs[0], a1.inputs[0]))
+        self.failUnless(o.gval0 is grad(a1.outputs[0], a1.inputs[0]))
 
     def test_Nparam(self):
         """grad: Test passing multiple result params"""
         o = _test_grad.O()
         a1 = o.make_node()
-        g0,g1 = exec_grad(a1.outputs[0], a1.inputs)
+        g0,g1 = grad(a1.outputs[0], a1.inputs)
         self.failUnless(o.gval0 is g0)
         self.failUnless(o.gval1 is g1)
 
@@ -1686,13 +1686,13 @@ class _test_grad(unittest.TestCase):
         """grad: Test returning a single None from grad"""
         o = _test_grad.O()
         a1 = o.make_node()
-        self.failUnless(None is exec_grad(a1.outputs[0], a1.outputs[1]))
-        self.failUnless(None is exec_grad(a1.outputs[0], 'wtf'))
+        self.failUnless(None is grad(a1.outputs[0], a1.outputs[1]))
+        self.failUnless(None is grad(a1.outputs[0], 'wtf'))
     def test_NNone_rval(self):
         """grad: Test returning some Nones from grad"""
         o = _test_grad.O()
         a1 = o.make_node()
-        g0,g1,g2 = exec_grad(a1.outputs[0], a1.inputs + ['wtf'])
+        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + ['wtf'])
         self.failUnless(o.gval0 is g0)
         self.failUnless(o.gval1 is g1)
         self.failUnless(None is g2)
