@@ -81,9 +81,6 @@ class DimShufflePrinter:
     def process(self, r, pstate):
         if r.owner is None:
             raise TypeError("Can only print DimShuffle.")
-        elif isinstance(r.owner.op, T.ShuffleRule):
-            new_r = r.owner.op.expand(r.owner)[0]
-            return pstate.pprinter.process(new_r, pstate)
         elif isinstance(r.owner.op, T.DimShuffle):
             ord = r.owner.op.new_order
             return self.__p(ord, pstate, r.owner.inputs[0])            
@@ -174,7 +171,6 @@ def make_default_pp():
     pp.assign(T.Sum(), FunctionPrinter('sum'))
     pp.assign(T.grad, FunctionPrinter('d'))
     pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.DimShuffle), DimShufflePrinter())
-    pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.ShuffleRule), DimShufflePrinter())
     return pp
 
 pp = make_default_pp()
