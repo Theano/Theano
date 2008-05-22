@@ -488,7 +488,7 @@ class NavigatorOptimizer(Optimizer):
 
 class TopoOptimizer(NavigatorOptimizer):
 
-    def __init__(self, local_opt, order = 'out_to_in', ignore_newtrees = False, failure_callback = None):
+    def __init__(self, local_opt, order = 'in_to_out', ignore_newtrees = False, failure_callback = None):
         if order not in ['out_to_in', 'in_to_out']:
             raise ValueError("order must be 'out_to_in' or 'in_to_out'")
         self.order = order
@@ -516,6 +516,7 @@ class TopoOptimizer(NavigatorOptimizer):
         except:
             self.detach_updater(env, u)
             raise
+        
 
 
 class OpKeyOptimizer(NavigatorOptimizer):

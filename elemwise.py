@@ -313,19 +313,19 @@ class Elemwise(Op):
 
         target_length = max([input.type.ndim for input in inputs])
 
-        if len(inputs) > 1:
-            inputs = [lcomplete(input, *inputs) for input in inputs]
+#         if len(inputs) > 1:
+#             inputs = [lcomplete(input, *inputs) for input in inputs]
 
-#         args = []
-#         for input in inputs:
-#             length = input.type.ndim
-#             difference = target_length - length
-#             if not difference:
-#                 args.append(input)
-#             else:
-#                 # TODO: use LComplete instead
-#                 args.append(DimShuffle(input.type.broadcastable, ['x']*difference + range(length))(input))
-#         inputs = args
+        args = []
+        for input in inputs:
+            length = input.type.ndim
+            difference = target_length - length
+            if not difference:
+                args.append(input)
+            else:
+                # TODO: use LComplete instead
+                args.append(DimShuffle(input.type.broadcastable, ['x']*difference + range(length), inplace = True)(input))
+        inputs = args
  
 #         try:
 #             assert len(set([len(input.type.broadcastable) for input in inputs])) == 1

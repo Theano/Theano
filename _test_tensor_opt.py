@@ -13,6 +13,7 @@ import numpy
 #import scalar_opt
 
 
+
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = Tensor(broadcastable = xbc, dtype = 'float64')('x')
     y = Tensor(broadcastable = ybc, dtype = 'float64')('y')
@@ -92,10 +93,8 @@ class _test_dimshuffle_lift(unittest.TestCase):
         g = Env([x, y, z], [e])
         gof.ExpandMacros().optimize(g)
         self.failUnless(str(g) == "[add(InplaceDimShuffle{x,0,1}(add(InplaceDimShuffle{x,0}(x), y)), z)]", str(g))
-        print g
         lift_dimshuffle.optimize(g)
         gof.ExpandMacros().optimize(g)
-        print g
         self.failUnless(str(g) == "[add(add(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle{x,0,1}(y)), z)]", str(g))
 
 
