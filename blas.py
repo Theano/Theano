@@ -2,6 +2,7 @@ import os, sys
 import scipy.weave as weave
 import gof.utils
 
+
 """
 File: omega/blas.py
 
