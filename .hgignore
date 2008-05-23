@@ -1,5 +1,5 @@
 syntax: glob
-
+*.pyo
 *~
 \#*\#
 compiled/*.cpp
