@@ -34,6 +34,9 @@ class MyType(Type):
 def MyResult(name):
     return Result(MyType(), None, None, name = name)
 
+def MyValue(data):
+    return graph.Value(MyType(), data = data)
+
 
 class MyOp(Op):
 
@@ -303,6 +306,33 @@ class _test_all(unittest.TestCase):
         assert not g.consistent()
         g.replace(tv, sx)
         assert g.consistent()
+
+    def test_value_repl(self):
+        x, y, z = inputs()
+        sy = sigmoid(y)
+        e = add_in_place(x, sy)
+        g = Env([x,y], [e], False)
+        assert g.consistent()
+        g.replace(sy, MyValue("abc"))
+        assert g.consistent()
+
+    def test_value_repl_2(self):
+        x, y, z = inputs()
+        sy = sigmoid(y)
+        e = add_in_place(x, sy)
+        g = Env([x,y], [e], False)
+        assert g.consistent()
+        g.replace(sy, transpose_view(MyValue("abc")))
+        assert g.consistent()
+
+    def test_misc_2(self):
+        x, y, z = inputs()
+        tv = transpose_view(x)
+        e = add_in_place(x, tv)
+        g = Env([x,y], [e], False)
+        assert not g.consistent()
+        g.replace(tv, x)
+        assert not g.consistent()
 
 
 if __name__ == '__main__':

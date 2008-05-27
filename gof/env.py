@@ -120,6 +120,8 @@ class Env(utils.object2):
         for r in results:
             if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
                 raise TypeError("Undeclared input", r)
+            if not getattr(r, 'env', None) is self:
+                self.__setup_r__(r)
             self.results.add(r)
 
     def __import__(self, node, check = True):
