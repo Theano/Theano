@@ -757,7 +757,7 @@ class Subtensor(Op):
         rest = inputs[1:]
         return [SetSubtensor(self.idx_list)(zeros_like(x), gz, *rest)] + [None] * len(rest)
 
-    def __eq__(self, others):
+    def __eq__(self, other):
         return type(self) == type(other) and self.idx_list == other.idx_list
 
     def __hash__(self):
