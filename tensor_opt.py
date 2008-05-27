@@ -4,6 +4,17 @@ from elemwise import Elemwise, DimShuffle
 import scalar
 
 
+gemm_pattern_1 = theano.gof.PatternSub((T.sub_inplace,
+                                        'd',
+                                        (T.mul,
+                                         dict(pattern = (T.DimShuffle((), ['x', 'x'], inplace = True), 'a'),
+                                              allow_multiple_clients = True),
+                                         (T.dot, 'b', 'c'))),
+                                       (T.gemm, 'd', 'a', 'b', 'c', T.constant(-1.0)),
+                                       allow_multiple_clients = False)
+
+
+
 class InplaceOptimizer(gof.Optimizer):
     """
     Usage: inplace_optimizer.optimize(env)
