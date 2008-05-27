@@ -232,7 +232,10 @@ class Env(utils.object2):
             raise Exception("Cannot replace %s because it does not belong to this Env" % r)
         if not r.type == new_r.type:
             raise TypeError("The type of the replacement must be the same as the type of the original Result.", r, new_r)
-        assert r in self.results
+        if r not in self.results:
+            # this result isn't in the graph... don't raise an exception here, just return silently
+            # because it makes it easier to implement some optimizations for multiple-output ops
+            return
 
         for node, i in list(r.clients):
             assert node == 'output' and self.outputs[i] is r or node.inputs[i] is r
