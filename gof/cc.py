@@ -788,11 +788,6 @@ class OpWiseCLinker(link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
-        return self.make_all(profiler = profiler,
-                             input_storage = input_storage,
-                             output_storage = output_storage)[:3]
-    
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
         env = self.env
         order = env.toposort()

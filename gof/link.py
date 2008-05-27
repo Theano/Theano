@@ -166,6 +166,10 @@ def map_storage(env, order, input_storage, output_storage):
 
 
 class LocalLinker(Linker):
+    """
+    Useful base class for L{Linker}s which keep all nodes in the graph, and run a
+    thunk associated with each node.
+    """
     def streamline(self, env, thunks, order, no_recycling = [], profiler = None):        
         if profiler is None:
             def f():
@@ -187,7 +191,21 @@ class LocalLinker(Linker):
             f.profiler = profiler
         return f
 
-
+    def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
+        return self.make_all(profiler = profiler,
+                             input_storage = input_storage,
+                             output_storage = output_storage)[:3]
+    
+    def make_all(self, profiler, input_storage, output_storage):
+        # By convention, subclasses of LocalLinker should implement this function!
+        # 
+        # This function should return a tuple of 5 things
+        # 1. function to run the program
+        # 2. input storage
+        # 3. output storage
+        # 4. thunks: list of nodes' functions in the order they will be run by the function in (1)
+        # 5. order: list of nodes, in the order they will be run by the function in (1)
+        raise AbstractFunctionError
 
 
 class PerformLinker(LocalLinker):
@@ -206,11 +224,6 @@ class PerformLinker(LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
-        return self.make_all(profiler = profiler,
-                             input_storage = input_storage,
-                             output_storage = output_storage)[:3]
-    
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
         env = self.env
         order = env.toposort()
@@ -242,9 +255,11 @@ class PerformLinker(LocalLinker):
 
 
 
-class MetaLinker(Linker):
+class WrapLinker(Linker):
     """
-    Can run several linkers in parallel. They should all be LocalLinkers
+    This class makes it easier to run several L{LocalLinker}s in parallel, and
+    offers some control over how each thunk is run.
+
     and they should all return the same order. A wrapper function must
     be provided to execute the thunks, inspect the nodes, etc.
 
@@ -253,17 +268,36 @@ class MetaLinker(Linker):
 
     def __init__(self, env, linkers, wrapper, no_recycling = []):
         """
-        Initialize a MetaLinker.
+        Initialize a WrapLinker.
 
-        wrapper will be called like
-         wrapper(i, node, thunk1, thunk2, ...)
+        @type env: gof.Env
+        @param env: the env which we will link
 
-        One thunk for each linker. wrapper will be executed for each operation
-        in order.
+        @type linkers: list of L{LocalLinker} subclasses, whose make_all()
+        method returns thunks in the same order.
 
-        no_recycling can contain a list of Results that belong to the env.
-        If a Result is in no_recycling, CLinker will clear the output storage
-        associated to it during the computation (to avoid reusing it).
+        @param linkers: for each node in the graph, each linker will provide a
+        thunk.  This class makes it possible to iterate over each linker's
+        program in parallel.
+
+        @type wrapper: lambda (i, i_node, i_thunk1, i_thunk2, ...) : None
+
+        @param wrapper: do some user-defined action for the i'th element of the
+        program.  i_thunk<n> is the thunk returned by the n'th linker.  (If you
+        want to run the program, make sure to call the necessary thunks in this
+        function.)
+
+        @type no_recycling: a list of Results that belong to env.  
+
+        @param no_recycling: If a Result is in no_recycling, L{WrapLinker} will clear
+        the output storage associated to it (for each linker in linkers) during
+        the computation to avoid reusing it.
+        
+        @note: 
+        This linker ensures that each linker has its own storage for
+        inputs and outputs and intermediate results.  There is no interference
+        between linkers.
+
         """
         self.env = env
         self.linkers = linkers
@@ -274,28 +308,19 @@ class MetaLinker(Linker):
         pass
 
     def make_thunk(self, **kwargs):
-        """
-        You can pass an alternate env to use with the 'alt_env'
-        option.
-
-        The 'wrapf' option must be a function that will be used
-        to wrap the thunk (eg to add methods to it).
-
-        The rest of the options will be passed to all the linkers
-        associated with this MetaLinker.
-        """
-
-        env = kwargs.pop("alt_env", self.env)
-        wrapf = kwargs.pop("wrapf", None)
         no_recycling = self.no_recycling
 
-        fns, input_lists, output_lists, thunk_lists, order_lists = zip(*[linker(env, no_recycling = no_recycling).make_all(**kwargs)
-                                                                         for linker in self.linkers])
+        instantiated_linkers = [linker(self.env, no_recycling = no_recycling)\
+                .make_all(**kwargs)
+                for linker in self.linkers]
+
+        fns, input_lists, output_lists, thunk_lists, order_lists \
+                = zip(*instantiated_linkers)
 
         order_list0 = order_lists[0]
         for order_list in order_lists[1:]:
             if not order_list0 == order_list:
-                raise Exception("All linkers to MetaLinker should execute operations in the same order.")
+                raise Exception("All linkers to WrapLinker should execute operations in the same order.")
 
         inputs0 = input_lists[0]
         outputs0 = output_lists[0]
@@ -321,13 +346,10 @@ class MetaLinker(Linker):
             pre(f, [input.data for input in input_lists[0]], order, thunk_groups)
             for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
                 try:
-                    wrapper(f, i, node, *thunks)
+                    wrapper(i, node, *thunks)
                 except:
                     raise_with_op(node)
 
-        if wrapf is not None:
-            f = wrapf(f)
-        
         return f, inputs0, outputs0
 
 

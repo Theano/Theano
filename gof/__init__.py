@@ -12,7 +12,7 @@ from graph import \
     Apply, Result, Constant, Value
 
 from link import \
-    Linker, LocalLinker, PerformLinker, MetaLinker, Profiler
+    Linker, LocalLinker, PerformLinker, WrapLinker, Profiler
 
 from op import \
     Op
