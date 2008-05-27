@@ -260,18 +260,22 @@ class WrapLinker(Linker):
     This class makes it easier to run several L{LocalLinker}s in parallel, and
     offers some control over how each thunk is run.
 
-    and they should all return the same order. A wrapper function must
-    be provided to execute the thunks, inspect the nodes, etc.
+    A wrapper function must be provided, and it can be used to execute the
+    thunks, inspect the nodes, print stuff out, etc.
 
+    @note:
     The outputs of the first linker will be returned.
+
+    @note:
+    This linker ensures that each linker has its own storage for
+    inputs and outputs and intermediate results.  There is no interference
+    between linkers.
+
     """
 
-    def __init__(self, env, linkers, wrapper, no_recycling = []):
+    def __init__(self, linkers, wrapper):
         """
         Initialize a WrapLinker.
-
-        @type env: gof.Env
-        @param env: the env which we will link
 
         @type linkers: list of L{LocalLinker} subclasses, whose make_all()
         method returns thunks in the same order.
@@ -287,22 +291,27 @@ class WrapLinker(Linker):
         want to run the program, make sure to call the necessary thunks in this
         function.)
 
+        """
+        self.linkers = linkers
+        self.wrapper = wrapper
+
+    def accept(self, env, no_recycling = []):
+        """
+        @type env: gof.Env
+        @param env: the env which we will link
+
         @type no_recycling: a list of Results that belong to env.  
 
         @param no_recycling: If a Result is in no_recycling, L{WrapLinker} will clear
         the output storage associated to it (for each linker in linkers) during
         the computation to avoid reusing it.
         
-        @note: 
-        This linker ensures that each linker has its own storage for
-        inputs and outputs and intermediate results.  There is no interference
-        between linkers.
-
         """
         self.env = env
-        self.linkers = linkers
-        self.wrapper = wrapper
         self.no_recycling = no_recycling
+        for l in self.linkers:
+            l.accept(env, no_recycling)
+        return self
 
     def pre(self, f, inputs, order, thunk_groups):
         pass
@@ -310,12 +319,10 @@ class WrapLinker(Linker):
     def make_thunk(self, **kwargs):
         no_recycling = self.no_recycling
 
-        instantiated_linkers = [linker(self.env, no_recycling = no_recycling)\
-                .make_all(**kwargs)
-                for linker in self.linkers]
+        make_all = [l.make_all(**kwargs) for l in self.linkers]
 
         fns, input_lists, output_lists, thunk_lists, order_lists \
-                = zip(*instantiated_linkers)
+                = zip(*make_all)
 
         order_list0 = order_lists[0]
         for order_list in order_lists[1:]:

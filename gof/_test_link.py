@@ -122,6 +122,40 @@ class _test_PerformLinker(unittest.TestCase):
         fn = perform_linker(Env(*graph.clone([x, y,r], [e]))).make_function()
         self.failUnless(fn(1.0,2.0,4.5) == 7.5)
 
+def wrap_linker(env, linkers, wrapper):
+    lnk = WrapLinker(linkers, wrapper).accept(env)
+    return lnk
+class _test_WrapLinker(unittest.TestCase):
+
+    def test0(self):
+        nodes = []
+        def wrap(i, node, th):
+            nodes.append(node.op)
+            
+        x, y, z = inputs()
+        e = mul(add(x, y), div(x, y))
+        fn, i, o = wrap_linker(Env([x, y, z], [e]), [PerformLinker()], wrap).make_thunk()
+        i[0].data = 1
+        i[1].data = 2
+        fn()
+        self.failUnless(nodes == [div, add, mul], nodes)
+        self.failUnless(o[0].data is None)
+
+    def test1(self):
+        nodes = []
+        def wrap(i, node, th):
+            nodes.append(node.op)
+            th()
+
+        x, y, z = inputs()
+        e = mul(add(x, y), div(x, y))
+        fn, i, o = wrap_linker(Env([x, y, z], [e]), [PerformLinker()], wrap).make_thunk()
+        i[0].data = 1
+        i[1].data = 2
+        fn()
+        self.failUnless(nodes == [div, add, mul], nodes)
+        self.failUnless(o[0].data == 1.5, o[0].data)
+        
 
 
 #     def test_disconnected_input_output(self):
