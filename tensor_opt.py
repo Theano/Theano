@@ -2,9 +2,10 @@
 import gof
 from elemwise import Elemwise, DimShuffle
 import scalar
+import tensor as T
 
 
-gemm_pattern_1 = theano.gof.PatternSub((T.sub_inplace,
+gemm_pattern_1 = gof.PatternSub((T.sub_inplace,
                                         'd',
                                         (T.mul,
                                          dict(pattern = (T.DimShuffle((), ['x', 'x'], inplace = True), 'a'),
