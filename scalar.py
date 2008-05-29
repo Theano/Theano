@@ -670,7 +670,7 @@ class Tan(UnaryScalarOp):
     def impl(self, x):
         return math.tan(x)
     def grad(self, (x, ), (gz, )):
-        return gz / (cos(x) ** 2),
+        return gz / sqr(cos(x)),
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = tan(%(x)s);" % locals()
 tan = Tan(upgrade_to_float, name = 'tan')
@@ -707,7 +707,7 @@ class Tanh(UnaryScalarOp):
     def impl(self, x):
         return math.tanh(x)
     def grad(self, (x, ), (gz, )):
-        return gz * (1 - tanh(x)**2),
+        return gz * (1 - sqr(tanh(x))),
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = tanh(%(x)s);" % locals()
 tanh = Tanh(upgrade_to_float, name = 'tanh')
