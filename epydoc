@@ -7,7 +7,7 @@
 # The list of objects to document.  Objects can be named using
 # dotted names, module filenames, or package directory names.
 # Alases for this option include "objects" and "values".
-modules: *.py, gof/*.py, joseph/*.py, pylearn/*.py, scipy, numpy
+modules: *.py, gof/*.py, theano/*.py, theano/gof/*.py, joseph/*.py, pylearn/*.py, scipy, numpy
 
 # The type of output that should be generated.  Should be one
 # of: html, text, latex, dvi, ps, pdf.
@@ -84,7 +84,7 @@ name: Theano
 css: white
 
 # The documented project's URL.
-url: http://lgcm.iro.umontreal.ca:8000/theano/
+url: http://lgcm.iro.umontreal.ca/theano/
 
 # HTML code for the project link in the navigation bar.  If left
 # unspecified, the project link will be generated based on the
