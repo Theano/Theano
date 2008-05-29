@@ -2,6 +2,17 @@
 import gof
 from elemwise import Elemwise, DimShuffle
 import scalar
+import tensor as T
+
+
+gemm_pattern_1 = gof.PatternSub((T.sub_inplace,
+                                 'd',
+                                 (T.mul,
+                                  dict(pattern = (T.DimShuffle((), ['x', 'x'], inplace = True), 'a'),
+                                       allow_multiple_clients = True),
+                                  (T.dot, 'b', 'c'))),
+                                (T.gemm, 'd', 'a', 'b', 'c', T.constant(-1.0)),
+                                allow_multiple_clients = False)
 
 
 class InplaceOptimizer(gof.Optimizer):

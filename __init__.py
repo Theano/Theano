@@ -16,6 +16,6 @@ import scalar
 import sparse
 import gradient
 import elemwise
+import tensor_opt
 
 ## import scalar_opt
-## import tensor_opt

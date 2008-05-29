@@ -156,7 +156,7 @@ class numeric_grad:
     @staticmethod
     def abs_rel_err(a,b,eps=1.0e-10):
         """Return a small number when a and b are close, relative to how big they are"""
-        return abs( (a-b) / (a+b+eps))
+        return abs(a-b) / (abs(a)+abs(b)+eps)
 
     def max_err(self, g_pt):
         """Return the biggest relative error between g_pt and self.gf"""
