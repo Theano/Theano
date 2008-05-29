@@ -272,6 +272,12 @@ class Elemwise(Op):
         outputs = [Tensor(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
         return Apply(self, inputs, outputs)
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.scalar_op == other.scalar_op and self.inplace_pattern == other.inplace_pattern
+
+    def __hash__(self):
+        return hash(self.scalar_op) ^ hash(self.inplace_pattern)
+
     def __str__(self):
         if self.name is None:
             if self.inplace_pattern:
