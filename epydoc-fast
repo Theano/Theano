@@ -128,7 +128,7 @@ separate-classes: no
 # in the output.  Graphs are generated using the Graphviz "dot"
 # executable.  Graph types include: "classtree", "callgraph",
 # "umlclass".  Use "all" to include all graph types
-graph: classtree
+#graph: classtree
 
 # The path to the Graphviz "dot" executable, used to generate
 # graphs.
