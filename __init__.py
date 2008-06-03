@@ -12,6 +12,7 @@ from gof import \
 from compile import function, eval_outputs, fast_compute
 
 import tensor
+import tensor_random
 import scalar
 import sparse
 import gradient

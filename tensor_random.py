@@ -14,31 +14,6 @@ class RandomState(object):
     instances returned by gen(), gen_like()
     @type seed: int
     """
-    @staticmethod
-    def _fn_from_dist(dist, cache={}):
-        """Return a function from a distribution description
-
-        @param dist: identifier of a sampling distribution.
-        @type dist: callable or str or tuple(str, dict)
-
-        @param cache: The optional cache argument implements a closure, which ensures that
-        multiple requests for the same sampling function will get the same
-        sampling function. L{NumpyGenerator}.__hash__ depends on this.
-
-        @type cache: dict
-        """
-        if callable(dist):
-            return dist
-        if isinstance(dist, str):
-            return getattr(numpy.random.RandomState, dist)
-
-        name, kwargs = dist
-        key = (name, tuple(kwargs.items()))
-        if key not in cache:
-            fn = getattr(numpy.random.RandomState, name)
-            fn = functools.partial(fn, **kwargs)
-            cache[key] = fn
-        return cache[key]
 
     def __init__(self, seed):
         self.seed = seed
@@ -68,6 +43,54 @@ class RandomState(object):
         self.seed += 1
         fn = RandomState._fn_from_dist(dist)
         return NumpyGenerator(self.seed-1, x.type.ndim, fn)(tensor.shape(x))
+
+    def uniform_like(self, template, low=0.,high=1.):
+        """
+        Return a multivariate uniform(low,high)
+        random variable in a tensor of the same shape as template
+        (template can either be a tensor or a shape tuple). Each element of the
+        resulting tensor is sampled independently. low and high can
+        be scalars or have the same shape as the template (or broadcastable
+        to it).
+        """
+        return self.gen_like(('uniform',{'low':low,'high':high}),template)
+
+    def binomial_like(self, template, n=1, p=0.5):
+        """
+        Return a multivariate binomial(n,p) random variable in a tensor of the same shape as template
+        (template can either be a tensor or a shape tuple). Each element of the
+        resulting tensor is sampled independently. low and high can
+        be scalars or have the same shape as the template (or broadcastable
+        to it).
+        """
+        return self.gen_like(('binomial',{'n':n,'p':p}),template)
+
+    @staticmethod
+    def _fn_from_dist(dist, cache={}):
+        """Return a function from a distribution description
+
+        @param dist: identifier of a sampling distribution.
+        @type dist: callable or str or tuple(str, dict)
+
+        @param cache: The optional cache argument implements a closure, which ensures that
+        multiple requests for the same sampling function will get the same
+        sampling function. L{NumpyGenerator}.__hash__ depends on this.
+
+        @type cache: dict
+        """
+        if callable(dist):
+            return dist
+        if isinstance(dist, str):
+            return getattr(numpy.random.RandomState, dist)
+
+        name, kwargs = dist
+        key = (name, tuple(kwargs.items()))
+        if key not in cache:
+            fn = getattr(numpy.random.RandomState, name)
+            fn = functools.partial(fn, **kwargs)
+            cache[key] = fn
+        return cache[key]
+
 
 class NumpyGenerator(gof.op.Op):
     """Supply a sequence of random tensors of a given shape, from a given
@@ -119,27 +142,4 @@ class NumpyGenerator(gof.op.Op):
             raise ValueError('shape argument %s had the wrong length (!=%i)' %
                     (shape, self.ndim) )
         output_storage[0][0] = self.fn(rng, size=shape)
-
-def uniform(seed, template, low=0.,high=1.):
-    """
-    Return a multivariate uniform(low,high)
-    random variable in a tensor of the same shape as template
-    (template can either be a tensor or a shape tuple). Each element of the
-    resulting tensor is sampled independently. low and high can
-    be scalars or have the same shape as the template (or broadcastable
-    to it).
-    """
-    return RandomState(seed).gen_like(('uniform',{'low':low,'high':high}),template)
-
-def binomial(seed, template, n=1, p=0.5):
-    """
-    Return a multivariate binomial(n,p) random variable in a tensor of the same shape as template
-    (template can either be a tensor or a shape tuple). Each element of the
-    resulting tensor is sampled independently. low and high can
-    be scalars or have the same shape as the template (or broadcastable
-    to it).
-    """
-    return RandomState(seed).gen_like(('binomial',{'n':n,'p':p}),template)
-
-
 
