@@ -133,7 +133,7 @@ class NumpyGenerator(gof.op.Op):
         return gof.Apply(op = self, inputs = inputs, outputs = outputs)
 
     def grad(self, inputs, grad_outputs):
-        return [None]
+        return [None, None]
 
     def perform(self, node, input_storage, output_storage):
         rng = input_storage[0]
