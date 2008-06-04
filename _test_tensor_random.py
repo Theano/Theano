@@ -83,14 +83,14 @@ class T_Random(unittest.TestCase):
     def test6(self):
 
         x = tensor.vector()
-        u = uniform(9999,x,0.,10.)
+        u = RandomState(9999).uniform_like(x,0.,10.)
         fu = compile.function([x],[u])
         res1 = fu(numpy.zeros((3)))
         res2 = fu(numpy.zeros((3)))
         self.failUnless(str(res1[0]).startswith('8.23389'))
         self.failUnless(str(res2[0]).startswith('5.45926'))
 
-        b = binomial(121212,x,1,0.8)
+        b = RandomState(121212).binomial_like(x,1,0.8)
         fb = compile.function([x],[b])
         res1 = fb(numpy.zeros((10)))
         res2 = fb(numpy.zeros((10)))
