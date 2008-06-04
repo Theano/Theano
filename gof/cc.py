@@ -757,7 +757,8 @@ class CLinker(link.Linker):
 
         orphd = [[orphan.data] for orphan in self.orphans]
         ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
-        assert sys.getrefcount(ret) == 2 # refcount leak check
+        #win pdb add 3 ref count, so we disable it by default.
+        #assert sys.getrefcount(ret) == 2 # refcount leak check
         return ret
 
 
