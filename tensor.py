@@ -592,7 +592,32 @@ def ones_like(model):
 def zeros_like(model):
     return fill(model, 0.0)
 
+class Zeros(gof.Op):
+    def __init__(self, ndim, dtype = 'float64'):
+        self.ndim = ndim
+        self.dtype = dtype
+        self.type = Tensor(dtype = dtype,
+                           broadcastable = (False,)*ndim)
+
+    def make_node(self, dims):
+        return gof.Apply(self, [dims], [self.type()])
+
+    def perform(self, node, (dims,), (out,)):
+        out[0] = numpy.zeros(dims, dtype = self.dtype)
+
+    def grad(self, (dims,), (gout,)):
+        return None,
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.ndim == other.ndim and self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.ndim) ^ hash(self.dtype)
+
+
+
 tensor_copy = elemwise.Elemwise(scal.identity)
+identity = elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]})
 
 def sum(input, axis = None):
     return elemwise.Sum(axis)(input)
