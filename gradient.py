@@ -76,7 +76,7 @@ def grad_sources_inputs(sources, graph_inputs):
 
         new_input_arg = []
         for input in input_arg:
-            if input in dinputs:
+            if input in dinputs and hasattr(input, 'copy'):
                 new_input_arg.append(input.copy())
             else:
                 new_input_arg.append(input)
