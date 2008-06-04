@@ -44,7 +44,7 @@ def raise_with_op(op, exc_info = None):
     raise exc_type, exc_value, exc_trace
 
 
-class Linker:
+class Linker(object):
 
     def make_thunk(self):
         """
@@ -219,7 +219,8 @@ class PerformLinker(LocalLinker):
 
     def accept(self, env, no_recycling = []):
         if self.env is not None and self.env is not env:
-            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+            return type(self)().accept(env, no_recycling)
+            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
         self.env = env
         self.no_recycling = no_recycling
         return self
@@ -292,6 +293,7 @@ class WrapLinker(Linker):
         function.)
 
         """
+        self.env = None
         self.linkers = linkers
         self.wrapper = wrapper
 
@@ -307,10 +309,12 @@ class WrapLinker(Linker):
         the computation to avoid reusing it.
         
         """
+        if self.env is not None and self.env is not env:
+            return type(self)(self.linkers, self.wrapper).accept(env, no_recycling)
+
         self.env = env
         self.no_recycling = no_recycling
-        for l in self.linkers:
-            l.accept(env, no_recycling)
+        self.linkers = [linker.accept(env, no_recycling) for linker in self.linkers]
         return self
 
     def pre(self, f, inputs, order, thunk_groups):
@@ -350,7 +354,7 @@ class WrapLinker(Linker):
                     input2.storage[0] = copy(input1.storage[0])
             for x in to_reset:
                 x[0] = None
-            pre(f, [input.data for input in input_lists[0]], order, thunk_groups)
+            pre(self, [input.data for input in input_lists[0]], order, thunk_groups)
             for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
                 try:
                     wrapper(i, node, *thunks)

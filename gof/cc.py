@@ -344,7 +344,8 @@ class CLinker(link.Linker):
 
     def accept(self, env, no_recycling = []):
         if self.env is not None and self.env is not env:
-            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+            return type(self)().accept(env, no_recycling)
+            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
         self.env = env
         self.fetch_results()
         self.no_recycling = no_recycling
@@ -783,7 +784,8 @@ class OpWiseCLinker(link.LocalLinker):
 
     def accept(self, env, no_recycling = []):
         if self.env is not None and self.env is not env:
-            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+            return type(self)(self.fallback_on_perform).accept(env, no_recycling)
+            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
         self.env = env
         self.no_recycling = no_recycling
         return self
@@ -883,7 +885,8 @@ class DualLinker(link.Linker):
 
     def accept(self, env, no_recycling = []):
         if self.env is not None and self.env is not env:
-            raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+            return type(self)(self.checker).accept(env, no_recycling)
+            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
         self.env = env
         self.no_recycling = no_recycling
         return self
