@@ -70,15 +70,17 @@ def cloned_env(inputs, outputs):
     env = gof.env.Env(inputs, outputs)
     return env
 
-def std_env(inputs, outputs, disown_inputs = False):
+def std_env(inputs, outputs, disown_inputs = False,
+            use_destroy_handler = True):
     inputs, outputs = gof.graph.clone(inputs, outputs)
     _mark_indestructible(outputs)
     env = gof.env.Env(inputs, outputs)
-    env.extend(gof.DestroyHandler())
+    if use_destroy_handler:
+        env.extend(gof.DestroyHandler())
     env.extend(gof.ReplaceValidate())
     env.validate()
     for input in inputs:
-        input.destroyed_by_user = len(env.destroyers(input)) != 0
+        input.destroyed_by_user = use_destroy_handler and len(env.destroyers(input)) != 0
         if not input.destroyed_by_user and not disown_inputs:
             # prevent optimizations from destroying the inputs
             input.tag.indestructible = True
@@ -97,13 +99,15 @@ predefined_linkers = {
 
 class FunctionFactory:
 
-    def __init__(self, inputs, outputs, linker = 'py', optimizer = std_opt, borrow_outputs = False, disown_inputs = False):
+    def __init__(self, inputs, outputs, linker = 'py', optimizer = std_opt, borrow_outputs = False, disown_inputs = False,
+                 use_destroy_handler = True):
         if len(inputs) != len(set(inputs)):
             print >>sys.stderr, "Warning: duplicate inputs"
         for r in list(inputs) + list(outputs):
             if not isinstance(r, gof.Result):
                 raise TypeError("All inputs and outputs to FunctionFactory should be Result instances. Received:", type(r), r)
-        env = std_env(inputs, outputs, disown_inputs = disown_inputs)
+        env = std_env(inputs, outputs, disown_inputs = disown_inputs,
+                      use_destroy_handler = use_destroy_handler)
         if None is not optimizer:
             optimizer(env)
         env.validate()
@@ -144,13 +148,15 @@ def function(inputs,
              disown_inputs = False,
              profiler = None,
              unpack_single = True,
-             strict = 'if_destroyed'):
+             strict = 'if_destroyed',
+             use_destroy_handler = True):
     ff = FunctionFactory(inputs,
                          outputs,
                          linker = linker,
                          optimizer = optimizer,
                          borrow_outputs = borrow_outputs,
-                         disown_inputs = disown_inputs)
+                         disown_inputs = disown_inputs,
+                         use_destroy_handler = use_destroy_handler)
     return ff.create(profiler = profiler,
                      unpack_single = unpack_single,
                      strict = strict)
