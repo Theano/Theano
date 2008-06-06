@@ -50,7 +50,7 @@ class Scalar(Type):
         try:
             return py_type(data)
         except Exception, e:
-            raise TypeError("Could not convert to %s" % self.dtype, e)
+            raise TypeError("Could not convert %s (value=%s) to %s" % (type(data), data, self.dtype), e)
 
     def __eq__(self, other):
         return type(self) == type(other) and other.dtype == self.dtype
