@@ -912,36 +912,89 @@ def horizontal_stack(x, y):
 #########################
 
 class Dot(Op):
+    """Compute matrix-matrix, matrix-vector products and vector inner-products.
+
+    """
     def make_node(self, *inputs):
         inputs = map(as_tensor, inputs)
-        if len(inputs) != 2:
-            raise TypeError("Wrong number of inputs for %s (got %i, expected 2)" % self)
-        i_broadcastables = [input.type.broadcastable for input in inputs]
-        i_dtypes = [input.type.dtype for input in inputs]
 
-        bx, by = i_broadcastables
-        if len(bx) == 0:     # x is a scalar
-            bz = by
+        numpy_semantics = 0
+        if numpy_semantics:
+            #numpy defines dot for tensor pairs with any rank
+            if len(inputs) != 2:
+                raise TypeError("Wrong number of inputs for %s (got %i, expected 2)" % self)
+            i_broadcastables = [input.type.broadcastable for input in inputs]
+            bx, by = i_broadcastables
+            if len(bx) == 0:     # x is a scalar
+                bz = by
+            else:
+                if len(by) >= 2: #y is a matrix or tensor
+                    bz = bx[:-1] + by[:-2] + by[-1:]
+                elif len(by)==1: #y is vector
+                    bz = bx[:-1]
+                else:            #y is a scalar
+                    bz = bx
         else:
-            if len(by) >= 2: #y is a matrix or tensor
-                bz = bx[:-1] + by[:-2] + by[-1:]
-            elif len(by)==1: #y is vector
-                bz = bx[:-1]
-            else:            #y is a scalar
-                bz = bx
-        o_broadcastables = [bz]
-        o_dtypes = [scal.upcast(*i_dtypes)]
+            x, y = inputs
+            nx = x.type.ndim
+            ny = y.type.ndim
 
-        outputs = [tensor(t, b) for b, t in zip(o_broadcastables, o_dtypes)]
+            if nx not in (1,2): raise TypeError('not matrix or vector', x)
+            if ny not in (1,2): raise TypeError('not matrix or vector', y)
+            
+            if nx == 2 and ny == 2:
+                bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
+            elif nx == 1 and ny == 2:
+                bz = [y.type.broadcastable[1]]
+            elif nx == 2 and ny == 1:
+                bz = [x.type.broadcastable[0]]
+            else:
+                bz = []
 
+        i_dtypes = [input.type.dtype for input in inputs]
+        outputs = [tensor(scal.upcast(*i_dtypes), bz)]
         return Apply(self, inputs, outputs)
+
     def perform(self, node, (x, y), (z, )):
         z[0] = numpy.dot(x, y)
     def grad(self, (x, y), (gz,)):
+        if gz.type.ndim == 0:
+            return gz * y, gz * x
+        if x.type.ndim == 1 and y.type.ndim > 1:
+            return dot(gz, y.T), outer(x.T, gz)
+        if x.type.ndim > 1 and y.type.ndim == 1:
+            return outer(gz, y.T), dot(x.T, gz)
         return dot(gz, y.T), dot(x.T, gz)
     def __str__(self):
         return "dot"
 dot = Dot()
+
+class Outer(Op):
+    """ Compute vector-vector outer product
+    """
+    def make_node(self, *inputs):
+        inputs = map(as_tensor, inputs)
+
+        x, y = inputs
+        nx = x.type.ndim
+        ny = y.type.ndim
+
+        if nx != 1: raise TypeError('not vector', x)
+        if ny != 1: raise TypeError('not vector', y)
+        
+        bz = [x.type.broadcastable[0], y.type.broadcastable[0]]
+
+        i_dtypes = [input.type.dtype for input in inputs]
+        outputs = [tensor(scal.upcast(*i_dtypes), bz)]
+        return Apply(self, inputs, outputs)
+
+    def perform(self, node, (x, y), (z, )):
+        z[0] = numpy.outer(x, y)
+    def grad(self, (x, y), (gz,)):
+        return dot(gz, y), dot(x, gz) #no transposing necessary
+    def __str__(self):
+        return "outer"
+outer = Outer()
 
 class Gemm(Op):
     E_rank = 'gemm only works for rank 2'
