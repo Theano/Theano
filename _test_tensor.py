@@ -1282,22 +1282,22 @@ class t_dot(unittest.TestCase):
         self.failUnless(tz.shape == nz.shape)
         self.failUnless(_approx_eq(nz, tz))
 
-    def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
-    def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
-    def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
-    def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
-    def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
+    #def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
+    #def test_dot_0d_1d(self): self.cmp_dot(1.1, self.rand(5))
+    #def test_dot_0d_2d(self): self.cmp_dot(3.0, self.rand(6,7))
+    #def test_dot_0d_3d(self): self.cmp_dot(3.0, self.rand(8,6,7))
+    #def test_dot_1d_0d(self): self.cmp_dot(self.rand(5), 1.1 )
     def test_dot_1d_1d(self): self.cmp_dot(self.rand(5), self.rand(5))
     def test_dot_1d_2d(self): self.cmp_dot(self.rand(6), self.rand(6,7))
-    def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
-    def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
+    #def test_dot_1d_3d(self): self.cmp_dot(self.rand(6), self.rand(8,6,7))
+    #def test_dot_2d_0d(self): self.cmp_dot(self.rand(5,6), 1.0)
     def test_dot_2d_1d(self): self.cmp_dot(self.rand(5,6), self.rand(6))
     def test_dot_2d_2d(self): self.cmp_dot(self.rand(5,6), self.rand(6,7))
-    def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
-    def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
-    def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
-    def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
-    def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
+    #def test_dot_2d_3d(self): self.cmp_dot(self.rand(5,6), self.rand(8,6,7))
+    #def test_dot_3d_0d(self): self.cmp_dot(self.rand(4,5,6), 1.0)
+    #def test_dot_3d_1d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6))
+    #def test_dot_3d_2d(self): self.cmp_dot(self.rand(4,5,6), self.rand(6,7))
+    #def test_dot_3d_3d(self): self.cmp_dot(self.rand(4,5,6), self.rand(8,6,7))
 
     def not_aligned(self, x, y):
         z = dot(x,y)
@@ -1310,16 +1310,22 @@ class t_dot(unittest.TestCase):
 
     def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
     def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
-    def test_align_1_3(self): self.not_aligned(self.rand(5), self.rand(6,4,7))
+    #def test_align_1_3(self): self.not_aligned(self.rand(5), self.rand(6,4,7))
     def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6))
     def test_align_2_1(self): self.not_aligned(self.rand(5,4), self.rand(6,7))
-    def test_align_2_3(self): self.not_aligned(self.rand(5,4), self.rand(6,7,8))
-    def test_align_3_1(self): self.not_aligned(self.rand(5,4,3), self.rand(6))
-    def test_align_3_2(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7))
-    def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
+    #def test_align_2_3(self): self.not_aligned(self.rand(5,4), self.rand(6,7,8))
+    #def test_align_3_1(self): self.not_aligned(self.rand(5,4,3), self.rand(6))
+    #def test_align_3_2(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7))
+    #def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
 
     def test_grad(self):
+        #verify_grad(self, dot, [self.rand(2,3,4), self.rand(4)])
         verify_grad(self, dot, [self.rand(2,3), self.rand(3,2)])
+        verify_grad(self, dot, [self.rand(2), self.rand(2,3)])
+        verify_grad(self, dot, [self.rand(3,2), self.rand(2)])
+        verify_grad(self, dot, [self.rand(2), self.rand(2)])
+        #verify_grad(self, dot, [self.rand(), self.rand(2)])
+        #verify_grad(self, dot, [self.rand(), self.rand(2,5)])
 
 class t_gemm(unittest.TestCase):
     def setUp(self):
@@ -1703,7 +1709,8 @@ if __name__ == '__main__':
     if 1:
         unittest.main()
     else:
+        testcase =  t_dot
+
         suite = unittest.TestLoader()
-        #suite = suite.loadTestsFromTestCase(T_subtensor)
-        suite = suite.loadTestsFromTestCase(T_Stack)
+        suite = suite.loadTestsFromTestCase(testcase)
         unittest.TextTestRunner(verbosity=2).run(suite)
