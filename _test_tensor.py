@@ -1692,16 +1692,24 @@ class _test_grad(unittest.TestCase):
         """grad: Test returning a single None from grad"""
         o = _test_grad.O()
         a1 = o.make_node()
-        self.failUnless(None is grad(a1.outputs[0], a1.outputs[1]))
-        self.failUnless(None is grad(a1.outputs[0], 'wtf'))
+        g = grad(a1.outputs[0], a1.outputs[1])
+        self.failUnless(isinstance(g, TensorConstant))
+        self.failUnless(g.data == 0)
+        try:
+            grad(a1.outputs[0], 'wtf')
+        except AttributeError, e:
+            return
+        self.fail()
+
     def test_NNone_rval(self):
         """grad: Test returning some Nones from grad"""
         o = _test_grad.O()
         a1 = o.make_node()
-        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + ['wtf'])
+        g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')])
         self.failUnless(o.gval0 is g0)
         self.failUnless(o.gval1 is g1)
-        self.failUnless(None is g2)
+        self.failUnless(isinstance(g2, TensorConstant))
+        self.failUnless(g2.data == 0)
 
 
 
@@ -1714,3 +1722,4 @@ if __name__ == '__main__':
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
         unittest.TextTestRunner(verbosity=2).run(suite)
+

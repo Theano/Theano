@@ -1232,14 +1232,23 @@ def grad(cost, wrt, g_cost=None):
     @rtype: L{Result} or list of L{Result}s (depending upon I{wrt})
     @return: symbolic expression of gradient of I{cost} with respect to I{wrt}.
     If I{wrt} is a list, then return a list containing the gradient of I{cost} wrt
-    each element of the list.
+    each element of the list.  If an element of I{wrt} is not differentiable
+    with respect to the output, then a L{TensorConstant} with an appropriate
+    kind of zero is returned.
+
     """
     if g_cost is None:
         g_cost = ones_like(cost)
     inputs = gof.graph.inputs([cost])
     gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs)
+
+    def zero(p):
+        return TensorConstant(
+                Tensor(dtype = p.type.dtype, broadcastable = []),
+                numpy.asarray(0, dtype=p.type.dtype))
+
     if isinstance(wrt, list):
-        return [gmap.get(p, None) for p in wrt]
+        return [gmap.get(p, zero(p)) for p in wrt]
     else:
-        return gmap.get(wrt, None)
+        return gmap.get(wrt, zero(wrt))
 
