@@ -69,7 +69,7 @@ def numpy_wrapper(f):
         for thunk in thunks:
             for output in thunk.outputs:
                 if hasattr(output, 'dtype'):
-                    if f(output)):
+                    if f(output):
                         raise Exception('uh oh', (thunk, output))
     return wrapper
 
