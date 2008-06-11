@@ -640,7 +640,7 @@ class CLinker(link.Linker):
           first_output = ostor[0].data
         """
         cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
-        return _execute(cthunk, self.init_tasks, self.tasks), in_storage, out_storage
+        return _execute(cthunk, self.init_tasks, self.tasks, error_storage), in_storage, out_storage
     
     def cthunk_factory(self, error_storage, in_storage, out_storage):
         """
@@ -737,13 +737,13 @@ class CLinker(link.Linker):
         return ret
 
 
-def _execute(cthunk, init_tasks, tasks):
-    def find_task(self, failure_code):
+def _execute(cthunk, init_tasks, tasks, error_storage):
+    def find_task(failure_code):
         """
         Maps a failure code to the task that is associated to it.
         """
         failure_code -= 1
-        n = len(self.init_tasks)
+        n = len(init_tasks)
         # note that the failure code is distributed in two lists
         if failure_code < 2 * n:
             return [init_tasks, tasks][failure_code % 2][failure_code/2]
