@@ -62,20 +62,21 @@ def cmp_outputs(i, node, *thunks):
             for out0, outN in zip(th0.outputs, th.outputs):
                 my_check_equal(out0[0], outN[0])
 
+#TODO: better name for 'f'
 def numpy_wrapper(f):
     def wrapper(i, node, *thunks):
         """WrapLinker wrapper: raise an exception if a NaN is found in outputs
         """
         for thunk in thunks:
             for output in thunk.outputs:
-                if hasattr(output, 'dtype'):
-                    if f(output):
-                        raise Exception('uh oh', (thunk, output))
+                if hasattr(output[0], 'dtype'):
+                    if f(output[0]):
+                        raise Exception('uh oh', (i, node, thunk, output[0]))
     return wrapper
 
 numpy_any_isinf = numpy_wrapper(lambda a:numpy.any(numpy.isinf(a)))
 numpy_any_isnan = numpy_wrapper(lambda a:numpy.any(numpy.isnan(a)))
-numpy_all_isfinite = numpy_wrapper(lambda a:numpy.all(numpy.isfinite(a)))
+numpy_notall_isfinite = numpy_wrapper(lambda a: not numpy.all(numpy.isfinite(a)))
 
 def run_all(i, node, *thunks):
     """WrapLinker wrapper: run the thunks
