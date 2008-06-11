@@ -21,7 +21,7 @@ import utils
 
 
 def compile_dir():
-    """Return the directory in which scipy.weave should store code objects.
+    """Return the directory (name) in which scipy.weave should store code objects.
 
     If the environment variable THEANO_COMPILEDIR is set, its value is returned.
     If not, a directory of the form $HOME/.theano/compiledir_<platform Id>.
@@ -29,11 +29,11 @@ def compile_dir():
     As a test, this function touches the file __init__.py in the returned
     directory, and raises OSError if there's a problem.
 
-    A directory coming from THEANO_COMPILEDIR is not created automatically, but
-    a directory in $HOME/.theano is created automatically.
+    The returned directory is created automatically using os.makedirs.
 
     This directory is appended to the sys.path search path before being
     returned, if the touch was successful.
+
     """
     if os.getenv('THEANO_COMPILEDIR'):
         cachedir = os.getenv('THEANO_COMPILEDIR')
@@ -43,9 +43,8 @@ def compile_dir():
         import re
         platform_id = re.sub("[\(\)\s]+", "_", platform_id)
         cachedir = os.path.join(os.getenv('HOME'), '.theano', 'compiledir_'+platform_id)
-        if not os.access(cachedir, os.R_OK | os.W_OK):
-            #this may raise a number of problems, I think all of which are serious.
-            os.makedirs(cachedir, 7<<6)
+    if not os.access(cachedir, os.R_OK | os.W_OK):
+        os.makedirs(cachedir, 7<<6) #read-write-execute for this user only
     cachedir_init = cachedir+'/__init__.py'
     touch = os.system('touch '+cachedir_init)
     if touch:
