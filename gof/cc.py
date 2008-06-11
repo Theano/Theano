@@ -821,8 +821,8 @@ class OpWiseCLinker(link.LocalLinker):
 
                 try:
                     cl = self.__cache__.get(desc)
-                except:
-                    print "harmless warning: failed to hash %s" % node
+                except Exception, exc:
+                    print "harmless warning: failed to hash %s: %s" % (node, exc)
                     cl = None
                 if cl is None:
                     cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])

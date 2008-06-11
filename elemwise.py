@@ -520,7 +520,10 @@ class CAReduce(Op):
         return type(self) == type(other) and self.scalar_op == other.scalar_op and self.axis == other.axis
 
     def __hash__(self):
-        return hash(self.scalar_op) ^ hash(self.axis)
+        if self.axis is None:
+            return hash(self.scalar_op)
+        else:
+            return hash(self.scalar_op) ^ hash(tuple(self.axis))
     
     def __str__(self):
         if self.axis is not None:
