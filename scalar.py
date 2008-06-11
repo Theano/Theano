@@ -323,10 +323,12 @@ class ScalarOp(Op):
         raise AbstractFunctionError()
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.output_types_preference == other.output_types_preference
+        return type(self) == type(other) \
+            and getattr(self, 'output_types_preference', None) \
+            == getattr(other, 'output_types_preference', None)
 
     def __hash__(self):
-        return hash(self.output_types_preference)
+        return hash(getattr(self, 'output_types_preference', 0))
 
     def __str__(self):
         if hasattr(self, 'name') and self.name:
@@ -805,3 +807,9 @@ class Composite(ScalarOp):
                  **sub)
         d['name'] = name
         return self._c_code % d
+
+    def __eq__(self, other):
+        return self is other
+
+    def __hash__(self):
+        return id(self)

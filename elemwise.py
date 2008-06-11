@@ -140,7 +140,7 @@ class DimShuffle(Op):
             and self.new_order == other.new_order \
             and self.input_broadcastable == other.input_broadcastable
 
-    def __hash__(self, other):
+    def __hash__(self):
         return hash(self.inplace) ^ hash(self.new_order) ^ hash(self.input_broadcastable)
 
     def __str__(self):
@@ -276,7 +276,7 @@ class Elemwise(Op):
         return type(self) == type(other) and self.scalar_op == other.scalar_op and self.inplace_pattern == other.inplace_pattern
 
     def __hash__(self):
-        return hash(self.scalar_op) ^ hash(self.inplace_pattern)
+        return hash(self.scalar_op) ^ hash(tuple(self.inplace_pattern.items()))
 
     def __str__(self):
         if self.name is None:

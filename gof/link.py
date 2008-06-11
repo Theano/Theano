@@ -164,32 +164,32 @@ def map_storage(env, order, input_storage, output_storage):
     return input_storage, output_storage, storage_map
 
 
+def streamline(env, thunks, order, no_recycling = [], profiler = None):        
+    if profiler is None:
+        def f():
+            for x in no_recycling:
+                x[0] = None
+            try:
+                for thunk, node in zip(thunks, order):
+                    thunk()
+            except:
+                raise_with_op(node)
+    else:
+        def f():
+            for x in no_recycling:
+                x[0] = None
+            def g():
+                for thunk, node in zip(thunks, order):
+                    profiler.profile_node(thunk, node)
+            profiler.profile_env(g, env)
+        f.profiler = profiler
+    return f
 
 class LocalLinker(Linker):
     """
     Useful base class for L{Linker}s which keep all nodes in the graph, and run a
     thunk associated with each node.
     """
-    def streamline(self, env, thunks, order, no_recycling = [], profiler = None):        
-        if profiler is None:
-            def f():
-                for x in no_recycling:
-                    x[0] = None
-                try:
-                    for thunk, node in zip(thunks, order):
-                        thunk()
-                except:
-                    raise_with_op(node)
-        else:
-            def f():
-                for x in no_recycling:
-                    x[0] = None
-                def g():
-                    for thunk, node in zip(thunks, order):
-                        profiler.profile_node(thunk, node)
-                profiler.profile_env(g, env)
-            f.profiler = profiler
-        return f
 
     def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
         return self.make_all(profiler = profiler,
@@ -248,7 +248,7 @@ class PerformLinker(LocalLinker):
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
-        f = self.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
+        f = streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
   
         return f, [Filter(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [Filter(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
