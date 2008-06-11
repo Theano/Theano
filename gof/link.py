@@ -164,7 +164,11 @@ def map_storage(env, order, input_storage, output_storage):
     return input_storage, output_storage, storage_map
 
 
-def streamline(env, thunks, order, no_recycling = [], profiler = None):        
+def streamline(env, thunks, order, no_recycling = [], profiler = None):
+    def clear():
+        for thunk in thunks:
+            for output in thunk.outputs:
+                output[0] = None
     if profiler is None:
         def f():
             for x in no_recycling:
@@ -183,6 +187,7 @@ def streamline(env, thunks, order, no_recycling = [], profiler = None):
                     profiler.profile_node(thunk, node)
             profiler.profile_env(g, env)
         f.profiler = profiler
+    f.clear = clear
     return f
 
 class LocalLinker(Linker):
