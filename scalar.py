@@ -64,9 +64,13 @@ class Scalar(Type):
                     'float64': (numpy.float64, 'npy_float64', 'PyFloat_Check', 'PyFloat_AsDouble', 'PyFloat_FromDouble'),
                     'complex128': (numpy.complex128, 'theano_complex128', 'PyComplex_Check', 'PyComplex_AsCComplex', 'PyComplex_FromCComplex'),
                     'complex64': (numpy.complex64, 'theano_complex64', None, None, None),
+                    'uint8':  (numpy.uint8, 'npy_uint8', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
                     'int8':  (numpy.int8, 'npy_int8', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
+                    'uint16':  (numpy.uint16, 'npy_uint16', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
                     'int16': (numpy.int16, 'npy_int16', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
+                    'uint32':  (numpy.uint32, 'npy_uint32', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
                     'int32': (numpy.int32, 'npy_int32', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
+                    'uint64':  (numpy.uint64, 'npy_uint64', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong'),
                     'int64': (numpy.int64, 'npy_int64', 'PyInt_Check', 'PyInt_AsLong', 'PyInt_FromLong')
                     }[self.dtype]
         except KeyError:

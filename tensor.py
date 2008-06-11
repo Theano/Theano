@@ -117,9 +117,13 @@ class Tensor(Type):
         try:
             return {'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                     'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
+                    'uint8': (int, 'npy_uint8', 'NPY_UINT8'),
                     'int8': (int, 'npy_int8', 'NPY_INT8'),
+                    'uint16': (int, 'npy_uint16', 'NPY_UINT16'),
                     'int16': (int, 'npy_int16', 'NPY_INT16'),
+                    'uint32': (int, 'npy_uint32', 'NPY_UINT32'),
                     'int32': (int, 'npy_int32', 'NPY_INT32'),
+                    'uint64': (int, 'npy_uint64', 'NPY_UINT64'),
                     'int64': (int, 'npy_int64', 'NPY_INT64'),
                     'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
                     'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')}[self.dtype]
