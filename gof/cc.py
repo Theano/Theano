@@ -810,6 +810,7 @@ class OpWiseCLinker(link.LocalLinker):
             try:
                 e = Env(*graph.clone(node.inputs, node.outputs))
                 e.toposort = lambda: e.nodes
+
                 if any(isinstance(input, graph.Value) for input in node.inputs):
                     desc = None
                 else:
@@ -817,12 +818,19 @@ class OpWiseCLinker(link.LocalLinker):
                             tuple(input.type for input in node.inputs),
                             tuple(input.type for input in node.inputs),
                             tuple(output in no_recycling for output in node.outputs))
-                if desc in self.__cache__:
-                    cl = self.__cache__[desc]
-                else:
+
+                try:
+                    cl = self.__cache__.get(desc)
+                except:
+                    print "harmless warning: failed to hash %s" % node
+                    cl = None
+                if cl is None:
                     cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
                     if desc is not None:
-                        self.__cache__[desc] = cl
+                        try:
+                            self.__cache__[desc] = cl
+                        except:
+                            pass
                     
                 thunk, node_input_filters, node_output_filters = cl.make_thunk(
                     input_storage = node_input_storage,
