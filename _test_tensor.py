@@ -1058,6 +1058,16 @@ class T_add(unittest.TestCase):
     def test_grad_col(self):
         verify_grad(self, add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
+class T_exp(unittest.TestCase):
+
+    def test_grad_0(self):
+        verify_grad(self, exp, [
+            numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
+            [ 2.04832468,  0.50791564, -1.58892269]])])
+    def test_grad_1(self):
+        verify_grad(self, exp_inplace, [
+            numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
+            [ 2.04832468,  0.50791564, -1.58892269]])])
 
 # class T_abs(unittest.TestCase):
 #     def test_impl(self):
@@ -1711,7 +1721,19 @@ class _test_grad(unittest.TestCase):
         self.failUnless(isinstance(g2, TensorConstant))
         self.failUnless(g2.data == 0)
 
+class T_op_cache(unittest.TestCase):
 
+    def test0(self):
+        """trigger bug in ticket #162"""
+        lr = constant(0.011)
+        v = matrix()
+        v.name = 'v'
+        gv = fill(v/v, 1.0)/v - (fill(v/v, 1.0) * v) / (v*v)
+        fn_py = function([v], [gv], linker = 'py')
+        fn_c_or_py = function([v], [gv], linker = 'c|py')
+
+        a = numpy.random.rand(5,2)
+        self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 if __name__ == '__main__':
     if 1:
@@ -1722,4 +1744,5 @@ if __name__ == '__main__':
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
         unittest.TextTestRunner(verbosity=2).run(suite)
+
 
