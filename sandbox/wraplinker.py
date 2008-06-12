@@ -20,7 +20,6 @@ def cmp_outputs(i, node, *thunks):
     #TODO: consider factoring this out (and maybe passing args explicitly
     # instead of by closure)
     def my_check_equal(x, y):
-        x, y = x[0], y[0]
         if type(x) != type(y):
             raise MisMatch("Output type mismatch", (x, y))
 
