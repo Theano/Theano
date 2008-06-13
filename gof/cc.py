@@ -46,9 +46,13 @@ def compile_dir():
     if not os.access(cachedir, os.R_OK | os.W_OK):
         os.makedirs(cachedir, 7<<6) #read-write-execute for this user only
     cachedir_init = cachedir+'/__init__.py'
-    touch = os.system('touch '+cachedir_init)
-    if touch:
-        raise OSError('touch %s returned %i' % (cachedir_init, touch))
+    # PROBLEM: sometimes touch returns -1 for no reason, the simple hack below
+    # solved the problem, but weird...
+    #touch = os.system('touch '+cachedir_init)
+    #if touch :
+        #raise OSError('touch %s returned %i' % (cachedir_init, touch))
+    hack = open(cachedir_init,'w')
+    hack.close()
 
     if cachedir not in sys.path:
         sys.path.append(cachedir)
