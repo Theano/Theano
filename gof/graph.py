@@ -341,7 +341,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
     @param copy_inputs_and_orphans: if True, the inputs and the orphans
          will be replaced in the cloned graph by copies available
          in the equiv dictionary returned by the function
-         (copy_inputs_and_orphans defaults to False)
+         (copy_inputs_and_orphans defaults to True)
 
     @rtype: a dictionary
     @return: equiv mapping each L{Result} and L{Op} in the
