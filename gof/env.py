@@ -78,6 +78,28 @@ class Env(utils.object2):
         node.env = self
         node.deps = {}
 
+    def disown(self):
+        """
+        Cleans up all of this Env's nodes and results so they are not
+        associated with this Env anymore.
+        
+        The Env should not be used anymore after disown is called.
+
+        This may not clean everything this Env's features set in the
+        nodes and results. If there are no features, this should set
+        them back to what they were originally.
+        """
+        for node in self.nodes:
+            del node.env
+            del node.deps
+        for result in self.results:
+            del result.env
+            del result.clients
+        self.nodes = set()
+        self.results = set()
+        self.inputs = None
+        self.outputs = None
+
 
     ### clients ###
 

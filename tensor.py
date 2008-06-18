@@ -626,6 +626,17 @@ identity = elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]})
 def sum(input, axis = None):
     return elemwise.Sum(axis)(input)
 
+def mean(input, axis = None):
+    s = sum(input, axis)
+    shp = shape(input)
+    if axis is None:
+        axis = range(input.type.ndim)
+    elif isinstance(axis, int):
+        axis = [axis]
+    for i in axis:
+        s = s / shp[i]
+    return s
+
 
 ##########################
 # Arithmetics
