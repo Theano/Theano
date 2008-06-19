@@ -188,13 +188,15 @@ class OpFromGraph(gof.Op):
     function and the resulting Op's perform will do the same operation as
       function(inputs, outputs, **kwargs)
 
-    Take note that the following arguments will be forcefully set to
-    a particular value:
+    Take note that the following options, if provided, must take the
+    value(s) listed below:
       unpack_single = False
       borrow_outputs = False
     """
     
     def __init__(self, inputs, outputs, **kwargs):
+        if kwargs.get('borrow_outputs') or kwargs.get('unpack_single'):
+            raise ValueError('The borrow_outputs and unpack_single options cannot be True')
         kwargs['unpack_single'] = False
         kwargs['borrow_outputs'] = False
         self.fn = function(inputs, outputs, **kwargs)

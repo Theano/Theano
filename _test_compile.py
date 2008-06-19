@@ -127,7 +127,36 @@ class T_fast_compute(unittest.TestCase):
         e = x*x + y*y + z*z
         assert fast_compute(e) == 14.0
         assert compile._fcache[(e, )]() == 14.0
-        
+
+
+import tensor as T
+import numpy as N
+class T_OpFromGraph(unittest.TestCase):
+
+    def test_straightforward(self):
+        x, y, z = T.matrices('xyz')
+        e = x + y * z
+        op = OpFromGraph([x, y, z], [e], linker='c|py')
+        f = op(x, y, z) - op(y, z, x)
+        fn = function([x, y, z], [f])
+        xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
+        assert numpy.all(8.0 == fn(xv, yv, zv))
+        assert numpy.all(8.0 == fn(xv, yv, zv))
+    
+    def test_size_changes(self):
+        x, y, z = T.matrices('xyz')
+        e = T.dot(x, y)
+        op = OpFromGraph([x, y], [e], linker='c|py')
+        f = op(x, op(y, z))
+        fn = function([x, y, z], [f])
+        xv, yv, zv = N.ones((2, 3)), N.ones((3, 4))*3, N.ones((4, 5))*5
+        res = fn(xv, yv, zv)
+        assert res.shape == (2, 5)
+        assert numpy.all(180.0 == res)
+        res = fn(xv, yv, zv)
+        assert res.shape == (2, 5)
+        assert numpy.all(180.0 == res)
+
         
 
 if __name__ == '__main__':
