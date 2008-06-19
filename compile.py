@@ -181,11 +181,12 @@ def fast_compute(*outputs):
 
 class OpFromGraph(gof.Op):
     """
-    This create an Op from a list of input results and a list of output
+    This create an L{Op} from a list of input results and a list of output
     results.
 
-    The signature is the same as the signature of FunctionFactory and/or
-    function and the resulting Op's perform will do the same operation as
+    The signature is the same as the signature of L{FunctionFactory}
+    and/or function and the resulting L{Op}'s perform will do the same
+    operation as::
       function(inputs, outputs, **kwargs)
 
     Take note that the following arguments will be forcefully set to
