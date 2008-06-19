@@ -181,17 +181,26 @@ def fast_compute(*outputs):
 
 class OpFromGraph(gof.Op):
     """
-    This create an Op from a list of input results and a list of output
+    This create an L{Op} from a list of input results and a list of output
     results.
 
-    The signature is the same as the signature of FunctionFactory and/or
-    function and the resulting Op's perform will do the same operation as
+    The signature is the same as the signature of L{FunctionFactory}
+    and/or function and the resulting L{Op}'s perform will do the same
+    operation as::
       function(inputs, outputs, **kwargs)
 
     Take note that the following options, if provided, must take the
     value(s) listed below:
       unpack_single = False
       borrow_outputs = False
+
+    Example:
+      x, y, z = tensor.scalars('xyz')
+      e = x + y * z
+      op = OpFromGraph([x, y, z], [e], linker='c')
+      # op behaves like a normal theano op
+      e2 = op(x, y, z) + op(z, y, x)
+      fn = function([x, y, z], [e2])
     """
     
     def __init__(self, inputs, outputs, **kwargs):
