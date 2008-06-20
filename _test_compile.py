@@ -156,6 +156,16 @@ class T_OpFromGraph(unittest.TestCase):
         res = fn(xv, yv, zv)
         assert res.shape == (2, 5)
         assert numpy.all(180.0 == res)
+    
+    def test_grad(self):
+        x, y, z = T.matrices('xyz')
+        e = x + y * z
+        op = OpFromGraph([x, y, z], [e], linker='c|py')
+        f = op(x, y, z)
+        f = f - T.grad(f, y)
+        fn = function([x, y, z], [f])
+        xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
+        assert numpy.all(11.0 == fn(xv, yv, zv))
 
         
 

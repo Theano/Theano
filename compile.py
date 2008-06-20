@@ -204,13 +204,25 @@ class OpFromGraph(gof.Op):
     """
     
     def __init__(self, inputs, outputs, **kwargs):
+        do_grad = kwargs.pop('do_grad', True)
         if kwargs.get('borrow_outputs') or kwargs.get('unpack_single'):
             raise ValueError('The borrow_outputs and unpack_single options cannot be True')
         kwargs['unpack_single'] = False
         kwargs['borrow_outputs'] = False
         self.fn = function(inputs, outputs, **kwargs)
+        self.inputs = inputs
+        self.outputs = outputs
         self.input_types = [input.type for input in inputs]
         self.output_types = [output.type for output in outputs]
+        if do_grad:
+            import gradient as G
+            output_grads = [t() for t in self.output_types]
+            gd = G.grad_sources_inputs(zip(self.outputs, output_grads), self.inputs)
+            gs = map(gd.get, self.inputs)
+            self.grad_ops = [OpFromGraph(inputs + output_grads,
+                                         [g],
+                                         do_grad = False)
+                             for g in gs]
 
     def make_node(self, *inputs):
         for input, type in zip(inputs, self.input_types):
@@ -224,6 +236,12 @@ class OpFromGraph(gof.Op):
         results = self.fn(*inputs)
         for output, result in zip(outputs, results):
             output[0] = result
+
+    def grad(self, inputs, output_grads):
+        if hasattr(self, 'grad_ops'):
+            return [go(*(inputs + output_grads)) for go in self.grad_ops]
+        else:
+            raise NotImplementedError
 
 
 
