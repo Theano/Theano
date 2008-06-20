@@ -160,7 +160,7 @@ class T_OpFromGraph(unittest.TestCase):
     def test_grad(self):
         x, y, z = T.matrices('xyz')
         e = x + y * z
-        op = OpFromGraph([x, y, z], [e], linker='c|py')
+        op = OpFromGraph([x, y, z], [e], linker='c|py', grad_depth = 2)
         f = op(x, y, z)
         f = f - T.grad(f, y)
         fn = function([x, y, z], [f])
