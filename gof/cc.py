@@ -826,7 +826,7 @@ class OpWiseCLinker(link.LocalLinker):
                 try:
                     cl = self.__cache__.get(desc)
                 except Exception, exc:
-                    print >> sys.stderr, "INFO: failed to hash %s: %s. Node will not be cached." % (node, exc)
+                    #print >> sys.stderr, "INFO: failed to hash %s: %s. Node will not be cached." % (node, exc)
                     cl = None
                 if cl is None:
                     cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
