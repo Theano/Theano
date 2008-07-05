@@ -395,7 +395,7 @@ class _tensor_py_operators:
     def __iter__(self): 
         # This prevents accidental iteration via builtin.sum(self)
         raise TypeError('Tensor does not support iteration. '
-        'Maybe you are using builtin.sum instead of theano.tensor.sum?')
+        'Maybe you are using builtin.sum instead of theano.tensor.sum? (Maybe .max?)')
         
     
 
