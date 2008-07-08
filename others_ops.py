@@ -1,4 +1,4 @@
-## This file contain new ops that are not currently integrated in the core of threano. 
+## This file contain ops that are not currently integrated in the core of threano. 
 ## Not all of those ops have been throughtfully tested.
 
 from theano.scalar import *
