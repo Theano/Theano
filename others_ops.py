@@ -1,5 +1,5 @@
 ## This file contain ops that are not currently integrated in the core of threano. 
-## Not all of those ops have been throughtfully tested.
+## Not all of those ops have been thoroughly tested.
 
 from theano.scalar import *
 import theano.tensor as T
@@ -71,6 +71,9 @@ class Prepend_scalar_to_each_row(Op):
     def grad(self, (val, mat), (goutput,)):
         return goutput[:,0], goutput[:,1:]
 
+prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
+prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
+prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
 
 class solve(Op):
     """
