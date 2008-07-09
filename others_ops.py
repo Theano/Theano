@@ -29,8 +29,12 @@ class Prepend_scalar_constant_to_each_row(Op):
             output[0]=numpy.empty((mat.shape[0],mat.shape[1]+1),dtype=mat.dtype)
             out=output[0]
         else:
+            if output[0].shape!=new_shape:
+                try:
+                    output[0].resize(new_shape)
+                except:
+                    output[0]=numpy.empty(new_shape, dtype=mat.dtype)
             out=output[0]
-            assert out.shape==(mat.shape[0],mat.shape[1]+1)
 
         out[:,0].fill(self.val.data)
         out[:,1:]=mat
