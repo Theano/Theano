@@ -54,12 +54,17 @@ class Prepend_scalar_to_each_row(Op):
         return node
 
     def perform(self, node, (val,mat), (output, )):
+        new_shape=(mat.shape[0],mat.shape[1]+1)
         if output[0] == None:
-            output[0]=numpy.empty((mat.shape[0],mat.shape[1]+1),dtype=mat.dtype)
+            output[0]=numpy.empty(new_shape,dtype=mat.dtype)
             out=output[0]
         else:
+            if output[0].shape!=new_shape:
+                try:
+                    output[0].resize(new_shape)
+                except:
+                    output[0]=numpy.empty(new_shape, dtype=mat.dtype)
             out=output[0]
-            assert out.shape==(mat.shape[0],mat.shape[1]+1)
         out[:,0].fill(val)
         out[:,1:]=mat
 
