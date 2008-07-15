@@ -6,7 +6,7 @@ Defines Linkers that deal with C implementations.
 # Python imports
 from copy import copy
 import md5
-import re
+import re #for set_compiledir
 import os, sys, platform
 
 # weave import
@@ -19,45 +19,52 @@ import graph
 import link
 import utils
 
+def set_compiledir(path=None):
+    """Set the directory into which theano will compile code objects
 
-def compile_dir():
-    """Return the directory (name) in which scipy.weave should store code objects.
+    @param path: an absolute path or relative path. An argument of None will
+    trigger one of two default paths: firstly an environment variable called
+    'THEANO_COMPILEDIR' will be sought; failing that, an architecture-specific
+    directory will be chosen within $HOME/.theano.
 
-    If the environment variable THEANO_COMPILEDIR is set, its value is returned.
-    If not, a directory of the form $HOME/.theano/compiledir_<platform Id>.
+    @type path: string or None
 
-    As a test, this function touches the file __init__.py in the returned
-    directory, and raises OSError if there's a problem.
+    @return: None
 
-    The returned directory is created automatically using os.makedirs.
-
-    This directory is appended to the sys.path search path before being
-    returned, if the touch was successful.
+    @note:  This function will create the path (recursively) as a folder if it
+    is not present, not readable, or not writable.  New folders will be created
+    with mode 0700.
 
     """
-    if os.getenv('THEANO_COMPILEDIR'):
-        cachedir = os.getenv('THEANO_COMPILEDIR')
-    else:
-        # use (and possibly create) a default code cache location
-        platform_id = platform.platform() + '-' + platform.processor()
-        import re
-        platform_id = re.sub("[\(\)\s]+", "_", platform_id)
-        cachedir = os.path.join(os.getenv('HOME'), '.theano', 'compiledir_'+platform_id)
-    if not os.access(cachedir, os.R_OK | os.W_OK):
-        os.makedirs(cachedir, 7<<6) #read-write-execute for this user only
-    cachedir_init = cachedir+'/__init__.py'
-    # PROBLEM: sometimes touch returns -1 for no reason, the simple hack below
-    # solved the problem, but weird...
-    #touch = os.system('touch '+cachedir_init)
-    #if touch :
-        #raise OSError('touch %s returned %i' % (cachedir_init, touch))
-    hack = open(cachedir_init,'w')
-    hack.close()
+    # N.B. The path is stored as an attribute of this function
 
-    if cachedir not in sys.path:
-        sys.path.append(cachedir)
-    return cachedir
+    if path is None:
+        # we need to set the default, which can come from one of two places
+        if os.getenv('THEANO_COMPILEDIR'):
+            path = os.getenv('THEANO_COMPILEDIR')
+        else:
+            platform_id = platform.platform() + '-' + platform.processor()
+            platform_id = re.sub("[\(\)\s]+", "_", platform_id)
+            path = os.path.join(os.getenv('HOME'), '.theano', 'compiledir_'+platform_id)
 
+    if not os.access(path, os.R_OK | os.W_OK):
+        os.makedirs(path, 7<<6) #read-write-execute for this user only
+
+    # PROBLEM: sometimes the first approach based on os.system('touch')
+    # returned -1 for an unknown reason; the alternate approach here worked
+    # in all cases... it was weird.
+    open(os.path.join(path, '__init__.py'), 'w').close()
+
+    set_compiledir.compiledir = path
+
+def get_compiledir():
+    """Return the directory where theano code objects should be compiled
+
+    @rtype: string
+    """
+    if not hasattr(set_compiledir, 'compiledir'):
+        set_compiledir()
+    return set_compiledir.compiledir
 
 
 class CodeBlock:
@@ -723,7 +730,8 @@ class CLinker(link.Linker):
                 instantiate.customize.add_library(lib)
 
             mod.add_function(instantiate)
-            mod.compile(location = compile_dir())
+            #mod.compile(location = compile_dir())
+            mod.compile(location = get_compiledir())
             module = __import__("%s" % (module_name), {}, {}, [module_name])
 
             self.instantiate = module.instantiate
