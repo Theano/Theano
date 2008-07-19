@@ -395,7 +395,7 @@ class _tensor_py_operators:
     def __iter__(self): 
         # This prevents accidental iteration via builtin.sum(self)
         raise TypeError('Tensor does not support iteration. '
-        'Maybe you are using builtin.sum instead of theano.tensor.sum?')
+        'Maybe you are using builtin.sum instead of theano.tensor.sum? (Maybe .max?)')
         
     
 
@@ -519,6 +519,18 @@ class MaxAndArgmax(Op):
     def perform(self, node, (x, axis), (max, max_idx)):
         max[0] = numpy.max(x, axis)
         max_idx[0] = numpy.argmax(x, axis)
+    def grad(self, (x, axis), (g_max, g_max_idx)):
+        # @warning: This only works if axis is 0, else the max is
+        # broadcasted wrong in the call to eq.
+        # @note: This function should work correctly for L{vector}s.
+#        (x, y), (gz, gw)
+#        gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
+#        gMax * dMax/dx + gArgMax * dArgMax/dx, gMax * dMax/daxis + gArgMax * dArgMax/daxis
+#       g_max has one less dimension than x, so you need to complete g_max to x's shape
+#        when axis=0 the broadcasting mechanism does it automatically
+        assert axis.data == 0
+        g_x = eq(max(x, axis), x) * g_max
+        return g_x, None
 max_and_argmax = MaxAndArgmax()
 
 
