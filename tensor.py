@@ -1012,6 +1012,13 @@ class Outer(Op):
 outer = Outer()
 
 class Gemm(Op):
+"""
+ In-place generalization of matrix product (dot):
+
+ z = gemm(z,a,x,y,b) 
+with a,b scalars, is equivalent to 
+ z = b*z + a*dot(x,y) 
+"""
     E_rank = 'gemm only works for rank 2'
     E_scalar = 'gemm requires scalar argument'
     E_z_uniq = 'argument z aliased to x or y'
