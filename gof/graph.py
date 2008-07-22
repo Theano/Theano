@@ -165,7 +165,7 @@ class Value(Result):
             return self.name
         return "<" + str(self.data) + ">" #+ "::" + str(self.type)
     def clone(self):
-        return self.__class__(self.type, self.data, self.name)
+        return self.__class__(self.type, copy(self.data), self.name)
     def __set_owner(self, value):
         if value is not None:
             raise ValueError("Value instances cannot have an owner.")

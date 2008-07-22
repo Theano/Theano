@@ -33,7 +33,7 @@ class Optimizer:
     def optimize(self, env, *args, **kwargs):
         """
         This is meant as a shortcut to::
-          env.satisfy(opt)
+          opt.add_requirements(env)
           opt.apply(env)
         """
         self.add_requirements(env)
