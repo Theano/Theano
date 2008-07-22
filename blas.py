@@ -809,7 +809,7 @@ def ldflags():
             try:
                 t0, t1, t2 = t[0:3]
                 assert t0 == '-'
-            except e:
+            except:
                 raise ValueError('invalid token in THEANO_BLAS_LDFLAGS', t)
             if t1 == 'L':
                 raise ValueError('library dir not allowed in THEANO_BLAS_LDFLAGS', t)
