@@ -66,7 +66,7 @@ class SeqOptimizer(Optimizer, list):
     def __init__(self, *opts):
         if len(opts) == 1 and isinstance(opts[0], (list, tuple)):
             opts = opts[0]
-        list.__init__(opts)
+        self[:] = opts
 
     def apply(self, env):
         """
