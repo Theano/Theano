@@ -1024,12 +1024,25 @@ class Outer(Op):
 outer = Outer()
 
 class Gemm(Op):
-    """
- In-place generalization of matrix product (dot):
+    """In-place version of matrix-matrix multiplication (with accumulation):
 
- z = gemm(z,a,x,y,b) 
-with a,b scalars, is equivalent to 
- z = b*z + a*dot(x,y) 
+    When a and b are scalars and x, y, and z are matrices, then
+
+        gemm(z,a,x,y,b) 
+
+    is similar to 
+
+        b*z + a*dot(x,y) 
+
+    The difference between the two is that the top form is destructive on z,
+    whereas the bottom form is not.  Gemm works in-place on the storage
+    associated with z, and the L{Result} returned by Gemm has a storage that
+    will be aliased to the storage of the z argument. Because of this in-place
+    computation, an L{Apply} of this op will destroy the L{Result} z on
+    which it operates.  (See L{DestructiveOps} for an explanation of what
+    destroying means in the context of theano graphs. See L{BlasLapackSupport} for
+    more optimized linear algebra operations.)
+
     """
     E_rank = 'gemm only works for rank 2'
     E_scalar = 'gemm requires scalar argument'
