@@ -584,6 +584,7 @@ invert, invert_inplace = _elemwise(scal.invert, 'invert')
 _abs, abs_inplace = _elemwise(scal.abs, 'abs')
 exp, exp_inplace = _elemwise(scal.exp, 'exp')
 neg, neg_inplace = _elemwise(scal.neg, 'neg')
+inv, inv_inplace = _elemwise(scal.inv, 'inv')
 log, log_inplace = _elemwise(scal.log, 'log')
 log2, log2_inplace = _elemwise(scal.log2, 'log2')
 sgn, sgn_inplace = _elemwise(scal.sgn, 'sgn')
@@ -619,7 +620,11 @@ class Zeros(gof.Op):
         return gof.Apply(self, [dims], [self.type()])
 
     def perform(self, node, (dims,), (out,)):
-        out[0] = numpy.zeros(dims, dtype = self.dtype)
+        if out[0] is not None:
+            out[0].resize(dims, refcheck = 0)
+            out[0].fill(0)
+        else:
+            out[0] = numpy.zeros(dims, dtype = self.dtype)
 
     def grad(self, (dims,), (gout,)):
         return None,
