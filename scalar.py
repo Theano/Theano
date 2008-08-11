@@ -598,7 +598,7 @@ class Sgn(UnaryScalarOp):
         #casting is done by compiler
         #TODO: use copysign
         return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
-sgn = Sgn(same_out, name = 'abs')
+sgn = Sgn(same_out, name = 'sgn')
 
 class Inv(UnaryScalarOp):
     def impl(self, x):
