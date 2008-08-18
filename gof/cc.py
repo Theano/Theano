@@ -189,9 +189,9 @@ def struct_gen(args, struct_builders, blocks, sub):
             PyObject* err_msg = NULL;
             PyObject* err_traceback = NULL;
             PyErr_Fetch(&err_type, &err_msg, &err_traceback);
-            if (!err_type) err_type = Py_None;
-            if (!err_msg) err_msg = Py_None;
-            if (!err_traceback) err_traceback = Py_None;
+            if (!err_type) {err_type = Py_None; Py_XINCREF(Py_None);}
+            if (!err_msg) {err_msg = Py_None; Py_XINCREF(Py_None);}
+            if (!err_traceback) {err_traceback = Py_None; Py_XINCREF(Py_None);}
             PyObject* old_err_type = PyList_GET_ITEM(__ERROR, 0);
             PyObject* old_err_msg = PyList_GET_ITEM(__ERROR, 1);
             PyObject* old_err_traceback = PyList_GET_ITEM(__ERROR, 2);
@@ -265,6 +265,7 @@ def get_c_declare(r, name, sub):
 def get_c_init(r, name, sub):
     pre = "" """
     py_%(name)s = Py_None;
+    Py_XINCREF(py_%(name)s);
     """ % locals()
     return pre + r.type.c_init(name, sub)
 
@@ -711,8 +712,11 @@ class CLinker(link.Linker):
 
             void %(struct_name)s_destructor(void* executor, void* self) {
                 //printf("doing cleanup\\n");
+                //fflush(stdout);
                 ((%(struct_name)s*)self)->cleanup();
                 free(self);
+                //printf("done cleanup\\n");
+                //fflush(stdout);
             }
             """ % dict(struct_name = self.struct_name)
 

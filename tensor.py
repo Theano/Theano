@@ -171,7 +171,6 @@ class Tensor(Type):
             // with nasty segfaults, so this is public service.
             PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
             %(fail)s
-            //%(name)s = NULL;
         }
         else if (!PyArray_Check(py_%(name)s)) {
             PyErr_SetString(PyExc_ValueError, "expected an ndarray");
@@ -196,15 +195,14 @@ class Tensor(Type):
     
     def c_sync(self, name, sub):
         return """
+        Py_XDECREF(py_%(name)s);
         if (!%(name)s) {
-            Py_XDECREF(py_%(name)s);
             py_%(name)s = Py_None;
         }
         else if ((void*)py_%(name)s != (void*)%(name)s) {
-            Py_XDECREF(py_%(name)s);
             py_%(name)s = (PyObject*)%(name)s;
-            Py_XINCREF(py_%(name)s);
         }
+        Py_XINCREF(py_%(name)s);
         """ % locals()
 
     def c_headers(self):
@@ -606,11 +604,11 @@ tanh, tanh_inplace = _elemwise(scal.tanh, 'tanh')
 fill, fill_inplace = _elemwise(scal.second, 'fill')
 
 def ones_like(model):
-    return Ones(model.type.ndim)(shape(model))
-    #return fill(model, 1.0)
+    #return Ones(model.type.ndim)(shape(model))
+    return fill(model, 1.0)
 def zeros_like(model):
-    return Zeros(model.type.ndim)(shape(model))
-    #return fill(model, 0.0)
+    #return Zeros(model.type.ndim)(shape(model))
+    return fill(model, 0.0)
 
 class Filler(gof.Op):
     def __init__(self, value, ndim, dtype = 'float64'):
@@ -914,6 +912,21 @@ class SetSubtensor(Subtensor):
             cdata = cdata[0]
         x.__setitem__(cdata, y)
         out[0] = x
+
+
+class MakeVector(Op):
+    def __init__(self, stype):
+        self.stype = stype
+    def make_node(self, *inputs):
+        assert all(a.type == self.stype for a in inputs)
+        return Apply(self, inputs, [Tensor(broadcastable = (False,),
+                                           dtype = self.stype.dtype)()])
+    def perform(self, inputs, (out,)):
+        return numpy.asarray([i[0] for i in inputs])
+    def grad(self, inputs, (gout,)):
+        return [None]*len(inputs)
+
+make_lvector = MakeVector(lscalar)
 
 
 class VerticalStack(Op):
