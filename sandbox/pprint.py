@@ -3,7 +3,7 @@ from .. import tensor as T
 from .. import scalar as S
 from .. import gof
 from copy import copy
-
+import sys
 
 
 class PrinterState(gof.utils.scratchpad):
@@ -157,10 +157,25 @@ class SubtensorPrinter:
                     sidxs.append(str(entry))
                 elif isinstance(entry, S.Scalar):
                     sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))
+                elif isinstance(entry, slice):
+                    sidxs.append("%s:%s%s" % ("" if entry.start is None or entry.start == 0 else entry.start,
+                                              "" if entry.stop is None or entry.stop == sys.maxint else entry.stop,
+                                              "" if entry.step is None else ":%s" % entry.step))
             return "%s[%s]" % (pstate.clone(precedence = 1000).pprinter.process(input),
                                ", ".join(sidxs))
         else:
             raise TypeError("Can only print Subtensor.")
+
+
+class MakeVectorPrinter:
+
+    def process(self, r, pstate):
+        if r.owner is None:
+            raise TypeError("Can only print make_vector.")
+        elif isinstance(r.owner.op, T.MakeVector):
+            return "[%s]" % ", ".join(pstate.clone(precedence = 1000).pprinter.process(input) for input in r.owner.inputs)
+        else:
+            raise TypeError("Can only print make_vector.")
 
 
 class DefaultPrinter:
@@ -269,6 +284,8 @@ def pprinter():
     pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.Subtensor), SubtensorPrinter())
     pp.assign(T.shape, MemberPrinter('shape'))
     pp.assign(T.fill, FunctionPrinter('fill'))
+    pp.assign(T.vertical_stack, FunctionPrinter('vstack'))
+    pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.MakeVector), MakeVectorPrinter())
     return pp
 
 pp = pprinter()
