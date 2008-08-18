@@ -56,6 +56,16 @@ class Optimizer:
         pass
 
 
+class FromFunctionOptimizer(Optimizer):
+    def __init__(self, fn):
+        self.apply = fn
+    def add_requirements(self, env):
+        env.extend(gof.toolbox.ReplaceValidate)
+
+def optimizer(f):
+    return FromFunctionOptimizer(f)
+
+
 
 class SeqOptimizer(Optimizer, list):
     """
@@ -137,6 +147,7 @@ class MergeOptimizer(Optimizer):
             sig = r.signature()
             other_r = inv_cid.get(sig, None)
             if other_r is not None:
+                if r.name: other_r.name = r.name
                 env.replace_validate(r, other_r)
             else:
                 cid[r] = sig
@@ -155,8 +166,12 @@ class MergeOptimizer(Optimizer):
             success = False
             if dup is not None:
                 success = True
+                pairs = zip(node.outputs, dup.outputs)
+                for output, new_output in pairs:
+                    if output.name and not new_output.name:
+                        new_output.name = output.name
                 try:
-                    env.replace_all_validate(zip(node.outputs, dup.outputs))
+                    env.replace_all_validate(pairs)
                 except InconsistencyError, e:
                     success = False
             if not success:
@@ -189,17 +204,27 @@ class LocalOptimizer(utils.object2):
         raise utils.AbstractFunctionError()
 
 
+class FromFunctionLocalOptimizer(LocalOptimizer):
+    def __init__(self, fn):
+        self.transform = fn
+    def add_requirements(self, env):
+        env.extend(gof.toolbox.ReplaceValidate)
+
+def local_optimizer(f):
+    return FromFunctionLocalOptimizer(f)
+
+
 class LocalOptGroup(LocalOptimizer):
 
-    def __init__(self, optimizers):
+    def __init__(self, *optimizers):
         self.opts = optimizers
-        self.reentrant = any(getattr(opt, 'reentrant', True), optimizers)
-        self.retains_inputs = all(getattr(opt, 'retains_inputs', False), optimizers)
+        self.reentrant = any(getattr(opt, 'reentrant', True) for opt in optimizers)
+        self.retains_inputs = all(getattr(opt, 'retains_inputs', False) for opt in optimizers)
 
     def transform(self, node):
         for opt in self.opts:
             repl = opt.transform(node)
-            if repl is not False:
+            if repl:
                 return repl
 
 
@@ -546,4 +571,44 @@ class OpKeyOptimizer(NavigatorOptimizer):
 
 def keep_going(exc, nav, repl_pairs):
     pass
+
+
+#################
+### Utilities ###
+#################
+
+def _check_chain(r, chain):
+    chain = list(reversed(chain))
+    while chain:
+        elem = chain.pop()
+        if elem is None:
+            if not r.owner is None:
+                return False
+        elif r.owner is None:
+            return False
+        elif isinstance(elem, op.Op):
+            if not r.owner.op == elem:
+                return False
+        else:
+            try:
+                if issubclass(elem, op.Op) and not isinstance(r.owner.op, elem):
+                    return False
+            except TypeError:
+                return False
+        if chain:
+            r = r.owner.inputs[chain.pop()]
+    return r
+
+def check_chain(r, *chain):
+    if isinstance(r, graph.Apply):
+        r = r.outputs[0]
+    return _check_chain(r, reduce(list.__iadd__, ([x, 0] for x in chain)))
+
+
+
+
+
+
+
+
 

@@ -382,17 +382,17 @@ class Env(utils.object2):
         "Same as len(self.clients(r))."
         return len(self.clients(r))
 
-    def edge(self, r):
-        return r in self.inputs or r in self.orphans
+#     def edge(self, r):
+#         return r in self.inputs or r in self.orphans
 
-    def follow(self, r):
-        node = r.owner
-        if self.edge(r):
-            return None
-        else:
-            if node is None:
-                raise Exception("what the fuck")
-            return node.inputs
+#     def follow(self, r):
+#         node = r.owner
+#         if self.edge(r):
+#             return None
+#         else:
+#             if node is None:
+#                 raise Exception("what the fuck")
+#             return node.inputs
 
     def check_integrity(self):
         """

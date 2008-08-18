@@ -18,9 +18,9 @@ from op import \
     Op
 
 from opt import \
-    Optimizer, SeqOptimizer, \
+    Optimizer, optimizer, SeqOptimizer, \
     MergeOptimizer, MergeOptMerge, \
-    LocalOptimizer, LocalOptGroup, LocalOpKeyOptGroup, \
+    LocalOptimizer, local_optimizer, LocalOptGroup, LocalOpKeyOptGroup, \
     OpSub, OpRemove, PatternSub, \
     NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer
 

@@ -237,6 +237,7 @@ class Elemwise(Op):
         is left-completed to the greatest number of dimensions with 1s
         using DimShuffle.
         """
+
         inputs = map(as_tensor, inputs)        
         shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
 
@@ -303,11 +304,10 @@ class Elemwise(Op):
             if node is None:
                 # the gradient contains a constant, translate it as
                 # an equivalent Tensor of size 1 and proper number of dimensions
-                b = [1] * nd
                 res = TensorConstant(Tensor(dtype = r.type.dtype,
-                                            broadcastable = b),
-                                     numpy.asarray(r.data).reshape(b))
-                return res
+                                            broadcastable = ()),
+                                     numpy.asarray(r.data)) # .reshape(b)
+                return DimShuffle((), ['x']*nd, inplace = True)(res)
             new_r = Elemwise(node.op, {})(*[transform(input) for input in node.inputs])
             return new_r
         ret = []
