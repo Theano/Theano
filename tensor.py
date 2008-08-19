@@ -646,6 +646,9 @@ Zeros = functools.partial(Filler, 0)
 Ones = functools.partial(Filler, 1)
 
 def zero():
+    """
+    Return a scalar zero, e.g. for initializing sums.
+    """
     return Zeros(0)([])
 
 def one():
