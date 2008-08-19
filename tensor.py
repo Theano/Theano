@@ -23,7 +23,6 @@ from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 import tensor_random as random
 
 
-
 def as_tensor(x, name = None):
     if isinstance(x, gof.Apply):
         if len(x.outputs) != 1:
@@ -619,6 +618,7 @@ class Filler(gof.Op):
                            broadcastable = (False,)*ndim)
 
     def make_node(self, dims):
+        dims = as_tensor(dims)
         return gof.Apply(self, [dims], [self.type()])
 
     def perform(self, node, (dims,), (out,)):
@@ -645,6 +645,11 @@ class Filler(gof.Op):
 Zeros = functools.partial(Filler, 0)
 Ones = functools.partial(Filler, 1)
 
+def zero():
+    return Zeros(0)([])
+
+def one():
+    return Ones(0)([])
 
 
 tensor_copy = elemwise.Elemwise(scal.identity)
