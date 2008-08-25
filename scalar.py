@@ -615,6 +615,9 @@ class Log(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         return gz / x,
     def c_code(self, node, name, (x, ), (z, ), sub):
+        #todo: the version using log2 seems to be very slightly faster
+        # on some machines for some reason, check if it's worth switching
+        #return "%(z)s = log2(%(x)s) * 0.69314718055994529;" % locals()
         return "%(z)s = log(%(x)s);" % locals()
 log = Log(upgrade_to_float, name = 'log')
 
