@@ -12,3 +12,4 @@ pull.sh
 *.so
 *.sw?
 core.*
+*.orig
