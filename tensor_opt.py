@@ -378,7 +378,10 @@ class Canonizer(gof.LocalOptimizer):
             return self.reciprocal(self.merge_num_denum(denum, []))
         if not ld:
             if ln == 1:
-                return num[0]
+                if isinstance(num[0], N.ndarray):
+                    return T.as_tensor(num[0])
+                else:
+                    return num[0]
             else:
                 return self.main(*num)
         return self.inverse(self.merge_num_denum(num, []),
