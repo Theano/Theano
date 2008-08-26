@@ -5,11 +5,11 @@ from cc import \
 from env import \
     InconsistencyError, Env
 
-from ext import \
-    DestroyHandler, view_roots
+from destroyhandler import \
+    DestroyHandler 
 
 from graph import \
-    Apply, Result, Constant, Value
+    Apply, Result, Constant, Value, view_roots
 
 from link import \
     Linker, LocalLinker, PerformLinker, WrapLinker, Profiler
