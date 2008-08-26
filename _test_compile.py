@@ -167,7 +167,75 @@ class T_OpFromGraph(unittest.TestCase):
         xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
         assert numpy.all(11.0 == fn(xv, yv, zv))
 
-        
+
+class T_state(unittest.TestCase):
+
+    def test_accumulator():
+        """Test low-level interface with state."""
+        x = T.scalar('x')
+        s = T.scalar('s')
+
+        fn, states = theano.function_states(inputs = [x], outputs = [], states = [(s, 0, s+x)])
+
+        sum = 0
+        for inc in [1, 4, 5,23, -324]:
+            sum += inc
+            fn(inc)
+            assert sum == states[0].value
+
+    def test_perceptron():
+        """Test high-level state interface."""
+
+        mu0 = numpy.array([1.0,0.0])
+        mu1 = numpy.array([0.0,0.1])
+        si0 = numpy.ones_like(mu0) #unit variance
+        si1 = numpy.ones_like(mu1) #unit variance
+
+        #implicit internal state
+        label = T.random.bernoulli(0.5) 
+
+        #implicit internal state for each DiagGaussian
+        x = label * T.random.DiagGaussian(mu0, si0) \
+                + (1 - label) * T.random.DiagGaussian(mu1,si1)
+
+        w = T.tensor.dvector()
+        b = T.tensor.dscalar()
+        lr = 0.01
+
+        decision = dot(x,w) + b > 0
+        new_w = w + neq(label, decision) * lr * x
+        new_b = b + neq(label, decision) * (label * (-lr) + (1-label)*lr)
+
+        init_w = numpy.array([0.0, 0.0])
+        init_b = 0.0
+
+        io_stream = T.function([], [label, x])
+
+        perceptron_learn = T.function([x, label], [decision], 
+                state={
+                    'w':(w, init_w, update_w),
+                    'b':(b, init_b, update_b),
+                    'lr':(lr, 0.01)})
+
+        perceptron_use = T.function([x], [decision],
+                state={
+                    'w':(w, perceptron_learn.shared['w']),
+                    'b':(b, perceptron_learn.shared['b'])})
+
+        errs = 0
+        for i in xrange(100):
+            il, ix = io_stream()
+
+            d0 = perceptron_use(ix)
+            d1 = perceptron_learn(ix, il)
+
+            assert d0 == d1
+
+            errs += (d0 != d1)
+
+            print d0
+        print 'errs =', errs 
+
 
 if __name__ == '__main__':
 
