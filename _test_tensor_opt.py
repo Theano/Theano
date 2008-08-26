@@ -102,6 +102,19 @@ from theano.tensor import *
 
 from theano.sandbox  import pprint
 
+class _test_greedy_distribute(unittest.TestCase):
+    def test_main(self):
+        a, b, c, d, x, y, z = matrices('abcdxyz')
+        e = (a/z + b/x) * x * z
+        g = Env([a,b,c,d,x,y,z], [e])
+        print pprint.pp.process(g.outputs[0])
+        mul_canonizer.optimize(g)
+        gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
+        gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor), order = 'out_to_in').optimize(g)
+        print pprint.pp.process(g.outputs[0])
+        
+
+
 class _test_canonize(unittest.TestCase):
 
     def test_muldiv(self):
