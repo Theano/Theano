@@ -497,7 +497,7 @@ def clone_with_equiv(i, o, d, missing_input_policy = 'fail', orphan_policy = 'co
     return [d[input] for input in i], [d[output] for output in o]
 
 
-def general_toposort(r_out, deps):
+def general_toposort(r_out, deps, debug_print = False):
     """
     @note: deps(i) should behave like a pure function (no funny business with
     internal state)
@@ -534,11 +534,11 @@ def general_toposort(r_out, deps):
                     sources.append(client)
 
     if len(rlist) != len(reachable):
-        print ''
-        print reachable
-        print rlist
-
-        raise 'failed to complete topological sort of given nodes'
+        if debug_print:
+            print ''
+            print reachable
+            print rlist
+        raise ValueError('graph contains cycles')
 
     return rlist
 
@@ -643,4 +643,27 @@ def as_string(i, o,
             return leaf_formatter(r)
 
     return [describe(output) for output in o]
+
+
+def view_roots(r):
+    """
+    Utility function that returns the leaves of a search through
+    consecutive view_map()s.
+    """
+    owner = r.owner
+    if owner is not None:
+        try:
+            view_map = owner.op.view_map
+            view_map = dict([(owner.outputs[o], i) for o, i in view_map.items()])
+        except AttributeError:
+            return [r]
+        if r in view_map:
+            answer = []
+            for i in view_map[r]:
+                answer += view_roots(owner.inputs[i])
+            return answer
+        else:
+            return [r]
+    else:
+        return [r]
 
