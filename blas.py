@@ -814,9 +814,10 @@ def ldflags():
             if t1 == 'L':
                 raise ValueError('library dir not allowed in THEANO_BLAS_LDFLAGS', t)
         rval = [token[2:] for token in tokens]
-        return rval
     else:
-        return ['blas']
+        rval = ['blas']
+    #print "blas linking against", rval
+    return rval
 
 def gemm_code(check_ab, a_init, b_init):
     mod = '%'
