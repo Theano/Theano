@@ -511,7 +511,8 @@ DotTester = make_tester(name = 'DotTester',
 #      rationale: it's tricky, and necessary everytime you want to verify
 #      gradient numerically
 
-def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001):
+def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001,
+        linker='c&py'):
     """testcase.failUnless( analytic gradient matches finite-diff gradient) """
     pt = [numpy.asarray(p) for p in pt]
 
@@ -529,14 +530,14 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
             # we could make loop over outputs making random projections R for each,
             # but this doesn't handle the case where not all the outputs are
             # differentiable... so I leave this as TODO for now -JB.
-        o_fn = function(tensor_pt, o_outputs)
+        o_fn = function(tensor_pt, o_outputs, linker=linker)
         o_fn_out = o_fn(*pt)
         random_projection = rng.rand(*o_fn_out.shape)
         t_r = as_tensor(random_projection)
 
         #random projection of o onto t_r
         cost = sum(t_r * o_outputs[0])
-        cost_fn = function(tensor_pt, [cost])
+        cost_fn = function(tensor_pt, [cost], linker=linker)
 
         num_grad = gradient.numeric_grad(cost_fn, pt)
 
@@ -548,7 +549,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
             for op in gof.graph.io_toposort(tensor_pt, symbolic_grad):
                 print op
 
-        grad_fn = function(tensor_pt, symbolic_grad)
+        grad_fn = function(tensor_pt, symbolic_grad,linker=linker)
         
         analytic_grad = grad_fn(*pt)
         if not isinstance(analytic_grad, (list, tuple)):
