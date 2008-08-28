@@ -191,7 +191,7 @@ class Tensor(Type):
             Py_XDECREF(%(name)s);
         }
         """ % locals()
-    
+
     def c_sync(self, name, sub):
         return """
         Py_XDECREF(py_%(name)s);
@@ -1026,7 +1026,7 @@ class Dot(Op):
 
             if nx not in (1,2): raise TypeError('not matrix or vector', x)
             if ny not in (1,2): raise TypeError('not matrix or vector', y)
-            
+
             if nx == 2 and ny == 2:
                 bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
             elif nx == 1 and ny == 2:
@@ -1041,7 +1041,7 @@ class Dot(Op):
         return Apply(self, inputs, outputs)
 
     def perform(self, node, (x, y), (z, )):
-        z[0] = numpy.dot(x, y)
+        z[0] = numpy.asarray(numpy.dot(x, y))
     def grad(self, (x, y), (gz,)):
         if gz.type.ndim == 0:
             return gz * y, gz * x
