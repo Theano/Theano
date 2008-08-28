@@ -30,7 +30,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
         grad = good
 
     _op, _expected, _checks, _good, _bad_build, _bad_runtime, _grad = op, expected, checks, good, bad_build, bad_runtime, grad
-    
+
     class Checker(unittest.TestCase):
 
         op = _op
@@ -67,7 +67,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                     raise type, exc_value, traceback
 
                 expecteds = self.expected(*inputs)
-                
+
                 try:
                     results = f(*inputs)
                 except:
@@ -129,7 +129,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                     results = f(*inputs)
                 except:
                     return
-                
+
                 self.fail("Test %s::%s: Successful call on the following bad inputs: %s"
                           % (self.op, testname, inputs))
 
@@ -148,7 +148,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
     Checker.__name__ = name
     return Checker
-            
+
 
 rand = lambda *shape: 2 * numpy.random.rand(*shape) - 1
 randint = lambda *shape: numpy.random.random_integers(-5, 5, shape)
@@ -513,7 +513,7 @@ DotTester = make_tester(name = 'DotTester',
 
 def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001,
         linker='c&py'):
-    """testcase.failUnless( analytic gradient matches finite-diff gradient) """
+    """testcase.failUnless(analytic gradient matches finite-diff gradient)"""
     pt = [numpy.asarray(p) for p in pt]
 
     for test_num in xrange(n_tests):
@@ -550,7 +550,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
                 print op
 
         grad_fn = function(tensor_pt, symbolic_grad,linker=linker)
-        
+
         analytic_grad = grad_fn(*pt)
         if not isinstance(analytic_grad, (list, tuple)):
             analytic_grad = [analytic_grad]
@@ -697,7 +697,7 @@ class T_transpose(unittest.TestCase):
         #test aliasing
         tval += 55.0
         self.failUnless(n.data == 1.0)
-        
+
     def test1(self):
         n = as_tensor(numpy.ones(5))
         t = transpose(n)
@@ -708,7 +708,7 @@ class T_transpose(unittest.TestCase):
         #test aliasing
         tval += 55.0
         self.failUnless(n.data[0] == 1.0)
-        
+
     def test2(self):
         n = as_tensor(numpy.ones((5,3)))
         t = transpose(n)
@@ -749,7 +749,7 @@ class T_subtensor(unittest.TestCase):
             self.failUnless(e[0] is Subtensor.e_invalid)
             return
         self.fail()
-        
+
     def test1_err_bounds(self):
         n = as_tensor(numpy.ones(3))
         t = n[7]
@@ -1025,7 +1025,7 @@ class _test_bitwise(unittest.TestCase):
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
-    
+
     def test_inv(self):
         x, y = bvector(), bvector()
         fn = function([x,y], [~x])
@@ -1473,7 +1473,7 @@ class t_gemm(unittest.TestCase):
         A = self.rand(4,5)[:,:4]
         B = self.rand(4,5)[:,:4]
         C = self.rand(4,5)[:,:4]
-        
+
         def t(z,x,y,a=1.0, b=0.0,l='c|py',dt='float64'):
             z,a,x,y,b = [numpy.asarray(p,dtype=dt) for p in z,a,x,y,b]
             z_orig = z.copy()
