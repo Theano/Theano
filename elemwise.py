@@ -47,7 +47,7 @@ class DimShuffle(Op):
        the second of the resulting tensor, etc. If the tensor has
        shape (20, 30, 40), the resulting tensor will have dimensions
        (1, 40, 1, 20, 30). (AxBxC tensor is mapped to 1xCx1xAxB tensor)
-       
+
       DimShuffle((True, False), [1])
 
        This op will only work on 2d tensors with the first dimension broadcastable.
@@ -65,7 +65,7 @@ class DimShuffle(Op):
       DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
       DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
     """
-    
+
     def __init__(self, input_broadcastable, new_order, inplace = False):
         """
         Usage: DimShuffle(input_broadcastable, new_order, inplace = False)
@@ -128,11 +128,11 @@ class DimShuffle(Op):
                 ob.append(True)
             else:
                 ob.append(ib[value])
-        
+
         output = Tensor(dtype = input.type.dtype,
                         broadcastable = ob).make_result()
         return Apply(self, [input], [output])
-        
+
     def __eq__(self, other):
         # it's probably not necessary to compare input_broadcastable
         return type(self) == type(other) \
@@ -188,7 +188,7 @@ class DimShuffle(Op):
 class Elemwise(Op):
     """
     Generalizes a scalar op to tensors.
-    
+
     All the inputs must have the same number of dimensions. When the
     Op is performed, for each dimension, each input's size for that
     dimension must be the same. As a special case, it can also be 1
@@ -215,7 +215,7 @@ class Elemwise(Op):
     def __init__(self, scalar_op, inplace_pattern = {}, name = None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
-        
+
         * scalar_op: an instance of a subclass of scalar.ScalarOp which works uniquely on
                      scalars
         * inplace_pattern: a dictionary that maps the index of an output to the
@@ -238,7 +238,7 @@ class Elemwise(Op):
         using DimShuffle.
         """
 
-        inputs = map(as_tensor, inputs)        
+        inputs = map(as_tensor, inputs)
         shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
@@ -254,7 +254,7 @@ class Elemwise(Op):
                 args.append(DimShuffle(input.type.broadcastable, ['x']*difference + range(length), inplace = True)(input))
         inputs = args
 
-#         # Following conditions should always be true? 
+#         # Following conditions should always be true?
 #         try:
 #             assert len(set([len(input.type.broadcastable) for input in inputs])) == 1
 #         except (AssertionError, AttributeError):
@@ -317,7 +317,7 @@ class Elemwise(Op):
                 ret.append(None)
                 continue
             r = transform(scalar_igrad)
-            
+
             # list of all the dimensions that are broadcastable for that input so we
             # can sum over them
             # todo: only count dimensions that were effectively broadcasted
@@ -382,7 +382,7 @@ class Elemwise(Op):
 
         inames = gof.utils.uniq(inames)
         inputs = gof.utils.uniq(node.inputs)
-        
+
         defines = ""
         undefs = ""
         dmap = dict([(node.outputs[i], [node.inputs[o]]) for i, o in self.inplace_pattern.items()])
@@ -402,7 +402,7 @@ class Elemwise(Op):
             aliased_outputs, aliased_onames = aliased
         else:
             aliased_outputs, aliased_onames = [], []
-        
+
         orders = [[x and 'x' or i for i, x in enumerate(input.type.broadcastable)] for input in inputs]
         nnested = len(orders[0])
         sub = dict(sub)
@@ -419,7 +419,7 @@ class Elemwise(Op):
             alloc += cgen.make_declare([range(nnested)], [odtype], dict(sub, lv0 = oname))
             alloc += cgen.make_alloc(orders, odtype, sub)
             alloc += cgen.make_checks([range(nnested)], [odtype], dict(sub, lv0 = oname))
-        
+
         for output, oname in zip(aliased_outputs, aliased_onames):
             iname = inames[inputs.index(dmap[output][0])]
             alloc += """
@@ -454,7 +454,7 @@ class Elemwise(Op):
             all_code = [code]
         loop = cgen.make_loop(orders + [range(nnested)] * len(real_onames), idtypes + list(real_odtypes), all_code, sub)
         return decl, checks, alloc, loop
-        
+
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
@@ -468,7 +468,7 @@ class Elemwise(Op):
 class CAReduce(Op):
     """
     Reduces a scalar operation along the specified axis(es).
-    
+
     The output will have the same shape as the input minus the reduced
     dimensions. It will contain the result of accumulating all values
     over the reduced dimensions using the specified scalar op.
@@ -506,7 +506,7 @@ class CAReduce(Op):
         else:
             self.axis = axis
         self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
-    
+
     def make_node(self, input):
         input = as_tensor(input)
         axis = self.axis
@@ -524,13 +524,13 @@ class CAReduce(Op):
             return hash(self.scalar_op)
         else:
             return hash(self.scalar_op) ^ hash(tuple(self.axis))
-    
+
     def __str__(self):
         if self.axis is not None:
             return "Reduce{%s}{%s}" % (self.scalar_op, ", ".join(str(x) for x in self.axis))
         else:
             return "Reduce{%s}" % self.scalar_op
-        
+
     def perform(self, node, (input, ), (output, )):
         axis = self.axis
         if axis is None:
@@ -551,7 +551,7 @@ class CAReduce(Op):
 
         iname = inames[0]
         oname = onames[0]
-        
+
         idtype = input.type.dtype_specs()[1]
         odtype = output.type.dtype_specs()[1]
 
@@ -565,7 +565,7 @@ class CAReduce(Op):
 
         order1 = [i for i in xrange(input.type.ndim) if i not in axis]
         order = order1 + list(axis)
-        
+
         nnested = len(order1)
 
         sub = dict(sub)
@@ -607,10 +607,10 @@ class CAReduce(Op):
             all_code = [("", "")] * nnested + [(task0_decl, code1), ""]
         else:
             all_code = [("", "")] * nnested + [(task0_decl, "")] + [("", "")] * (len(axis) - 2) + [("", code1), ""]
-        
+
         loop = cgen.make_loop([order, range(nnested) + ['x'] * len(axis)], [idtype, odtype], all_code, sub)
         return decl, checks, alloc, loop
-        
+
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
