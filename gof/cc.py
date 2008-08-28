@@ -140,7 +140,7 @@ def struct_gen(args, struct_builders, blocks, sub):
      * sub -> dictionary used to template the struct.
        * failure_var -> must contain a variable name to use for
          the failure code.
-    
+
     In a nutshell, this returns code for a struct that represents
     a function with state. The state's initialization and destruction
     are handled by struct_builders and the actual behavior of the
@@ -173,7 +173,7 @@ def struct_gen(args, struct_builders, blocks, sub):
     storage_incref = "\n".join(["Py_XINCREF(%s);" % arg for arg in args])
     # decrements the storage's refcount in the destructor
     storage_decref = "\n".join(["Py_XDECREF(this->%s);" % arg for arg in args])
-    
+
     args_names = ", ".join(args)
     args_decl = ", ".join(["PyObject* %s" % arg for arg in args])
 
@@ -205,7 +205,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         // The failure code is returned to index what code block failed.
         return %(failure_var)s;
         """ % sub
-    
+
     sub = dict(sub)
     sub.update(locals())
 
@@ -217,7 +217,7 @@ def struct_gen(args, struct_builders, blocks, sub):
 
         %(storage_decl)s
         %(struct_decl)s
-        
+
         %(name)s() {}
         ~%(name)s(void) {
             cleanup();
@@ -321,7 +321,7 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
         to the table.
     sub -> dictionary for use by L{CodeBlock}.
     """
-    
+
     name = "V%i" % id
     symbol_table[result] = name
     sub = dict(sub)
@@ -340,7 +340,7 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
 
 class CLinker(link.Linker):
     """
-    
+
     Creates C code for an env, compiles it and returns callables
     through make_thunk and make_function that make use of the compiled
     code.
@@ -374,7 +374,7 @@ class CLinker(link.Linker):
         self.orphans = list(r for r in self.results if isinstance(r, graph.Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
         self.temps = list(set(self.results).difference(self.inputs).difference(self.outputs).difference(self.orphans))
         self.node_order = env.toposort()
-        
+
     def code_gen(self):
         """
         Generates code for a struct that does the computation of the env and
@@ -395,7 +395,7 @@ class CLinker(link.Linker):
         no_recycling = self.no_recycling
 
         env = self.env
-        
+
         consts = []
 
         symbol = {}
@@ -469,7 +469,7 @@ class CLinker(link.Linker):
             # each Result generates two CodeBlocks, one to declare/initialize/destroy struct variables
             # and the other to declare/extract/cleanup each time the function is run.
             # Typically, only one of the two actually does anything (see all the possible combinations above)
-            
+
             init_tasks.append((result, 'init', id))
             init_blocks.append(builder)
 
@@ -479,7 +479,7 @@ class CLinker(link.Linker):
             id += 2
 
         for node in self.node_order:
-            
+
             # We populate sub with a mapping from the variable names specified by the op's c_var_names
             # method to the actual variable names that we will use.
 ##            ivnames, ovnames = op.c_var_names()
@@ -506,7 +506,7 @@ class CLinker(link.Linker):
             try: cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
             except utils.AbstractFunctionError:
                 cleanup = ""
-            
+
             blocks.append(CodeBlock("", behavior, cleanup, sub))
             tasks.append((node, 'code', id))
             id += 1
@@ -515,7 +515,7 @@ class CLinker(link.Linker):
         # must only be passed once because they are mapped to the same name.
         args = []
         args += ["storage_%s" % symbol[result] for result in utils.uniq(self.inputs + self.outputs + self.orphans)]
-        
+
         struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var, name = "<<<<NAME>>>>"))
 
         # The hash calculated on the code identifies it so weave can cache properly.
@@ -535,12 +535,12 @@ class CLinker(link.Linker):
         self.blocks = blocks
         self.tasks = tasks
         all = self.inputs + self.outputs + self.orphans
-        
+
         # List of indices that should be ignored when passing the arguments
         # (basically, everything that the previous call to uniq eliminated)
         self.dupidx = [i for i, x in enumerate(all) if all.count(x) > 1 and all.index(x) != i]
         return self.struct_code
-    
+
     def support_code(self):
         """
         Returns a list of support code strings that are needed by
@@ -580,7 +580,7 @@ class CLinker(link.Linker):
             try: ret += x.c_headers()
             except utils.AbstractFunctionError: pass
         return ret
-    
+
     def libraries(self):
         """
         Returns a list of libraries that are needed by one
@@ -597,7 +597,7 @@ class CLinker(link.Linker):
     def __compile__(self, input_storage = None, output_storage = None):
         """
         Compiles this linker's env.
-        
+
         @type input_storage: list or None
         @param input_storage: list of lists of length 1. In order to use
             the thunk returned by __compile__, the inputs must be put in
@@ -633,7 +633,7 @@ class CLinker(link.Linker):
         Compiles this linker's env and returns a function to perform the
         computations, as well as lists of storage cells for both the
         inputs and outputs.
-        
+
         @type input_storage: list or None
         @param input_storage: list of lists of length 1. In order to use
             the thunk returned by __compile__, the inputs must be put in
@@ -653,7 +653,7 @@ class CLinker(link.Linker):
         """
         cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
         return _execute(cthunk, self.init_tasks, self.tasks, error_storage), in_storage, out_storage
-    
+
     def cthunk_factory(self, error_storage, in_storage, out_storage):
         """
         error_storage -> list of length 3
@@ -669,14 +669,14 @@ class CLinker(link.Linker):
 
         # check if we already compiled this
         if not getattr(self, 'instantiate', False):
-            
+
             self.code_gen()
             module_name = self.hash
 
             # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
             out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
             in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
-            
+
             cthunk = object() # dummy so weave can get the type
             mod = weave.ext_tools.ext_module(module_name)
 
@@ -739,7 +739,7 @@ class CLinker(link.Linker):
             module = __import__("%s" % (module_name), {}, {}, [module_name])
 
             self.instantiate = module.instantiate
-        else:            
+        else:
             # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
             out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
             in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
@@ -778,7 +778,7 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
             exc_value.__thunk_trace__ = trace # this can be used to retrieve the location the Op was declared
             raise exc_type, exc_value, exc_trace
     return execute
-    
+
 
 
 class OpWiseCLinker(link.LocalLinker):
@@ -798,7 +798,7 @@ class OpWiseCLinker(link.LocalLinker):
     """
 
     __cache__ = {}
-    
+
     def __init__(self, fallback_on_perform = True):
         self.env = None
         self.fallback_on_perform = fallback_on_perform
@@ -847,7 +847,7 @@ class OpWiseCLinker(link.LocalLinker):
                             self.__cache__[desc] = cl
                         except:
                             pass
-                    
+
                 thunk, node_input_filters, node_output_filters = cl.make_thunk(
                     input_storage = node_input_storage,
                     output_storage = node_output_storage)
@@ -872,7 +872,7 @@ class OpWiseCLinker(link.LocalLinker):
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
         f = link.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
-        
+
         return f, [link.Filter(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [link.Filter(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
@@ -903,7 +903,7 @@ class DualLinker(link.Linker):
     def __init__(self, checker = _default_checker):
         """
         Initialize a DualLinker.
-        
+
         The checker argument must be a function that takes two lists
         of length 1. The first one passed will contain the output
         computed by PerformLinker and the second one the output
@@ -938,7 +938,7 @@ class DualLinker(link.Linker):
 
         env = self.env
         no_recycling = self.no_recycling
-        
+
         _f, i1, o1, thunks1, order1 = link.PerformLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
         _f, i2, o2, thunks2, order2 =      OpWiseCLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
 
