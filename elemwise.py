@@ -603,10 +603,13 @@ class CAReduce(Op):
         }
         """ % locals()
 
-        if len(axis) == 1:
-            all_code = [("", "")] * nnested + [(task0_decl, code1), ""]
+        if nnested:
+            if len(axis) == 1:
+                all_code = [("", "")] * nnested + [(task0_decl, code1), ""]
+            else:
+                all_code = [("", "")] * nnested + [(task0_decl, "")] + [("", "")] * (len(axis) - 2) + [("", code1), ""]
         else:
-            all_code = [("", "")] * nnested + [(task0_decl, "")] + [("", "")] * (len(axis) - 2) + [("", code1), ""]
+            all_code = [task0_decl + code1]
         
         loop = cgen.make_loop([order, range(nnested) + ['x'] * len(axis)], [idtype, odtype], all_code, sub)
         return decl, checks, alloc, loop
