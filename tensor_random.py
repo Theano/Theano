@@ -91,8 +91,13 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
     return f
 
 
-uniform = random_function(numpy.random.RandomState.uniform, 'float64', 0.0, 1.0)
+RS = numpy.random.RandomState
 
+# we need to provide defaults for all the functions in order to infer the argument types...
+uniform = random_function(RS.uniform, 'float64', 0.0, 1.0)
+binomial = random_function(RS.binomial, 'int64', 1, 0.5)
+normal = random_function(RS.normal, 'float64', 0.0, 1.0)
+random_integers = random_function(RS.random_integers, 'int64', 0, 1)
 
 
 # T = tensor
@@ -105,6 +110,17 @@ uniform = random_function(numpy.random.RandomState.uniform, 'float64', 0.0, 1.0)
 # f = compile.function([r, x, y], [z])
 
 # print f(numpy.random.RandomState(1000), [[-1, -1], [-10, -10]], [[10, 1], [10, 1]])
+
+
+# T = tensor
+# import compile
+
+# r = gof.generic()
+# shp = (2, 7)
+# r2, z = binomial(r, shp)
+# f = compile.function([r], [z])
+
+# print f(numpy.random.RandomState(1000))
 
 
 
