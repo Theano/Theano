@@ -1,5 +1,315 @@
 """Convenient driver of graph construction, optimization, and linking."""
 
+
+import numpy
+import gof
+import sys
+from copy import copy
+import tensor_opt
+
+
+
+# class Supervisor:
+
+#     def __init__(self, protected):
+#         self.protected = protected
+    
+#     def validate(self, env):
+#         if not hasattr(env, 'destroyers'):
+#             return True
+#         for r in self.protected + env.outputs:
+#             if env.destroyers(r):
+#                 raise gof.InconsistencyError("Trying to destroy a protected Result.")
+
+
+
+
+# class State(object):
+#     def __init__(self, variable, new_state = None):
+#         self.variable = variable
+#         if new_state is None:
+#             self.new_state = variable
+#         else:
+#             self.new_state = new_state
+
+# class StateContainer(object):
+#     def __init__(self, data):
+#         self.data = data
+
+# def env_with_state(normal_inputs, normal_outputs, states, accept_inplace = False):
+#     state_inputs = [s.variable for s in states]
+#     state_outputs = [s.new_state for s in states]
+#     inputs = normal_inputs + state_inputs
+#     outputs = normal_outputs + state_outputs
+#     inputs, outputs = gof.graph.clone(inputs, outputs)
+#     env = gof.env.Env(inputs, outputs)
+#     for node in env.nodes:
+#         if getattr(node.op, 'destroy_map', None):
+#             if not accept_inplace:
+#                 raise TypeError("Graph must not contain inplace operations", node)
+#             else:
+#                 env.extend(gof.DestroyHandler())
+#                 break
+#     env.extend(Supervisor(normal_inputs))
+#     return env
+
+# def function_with_state(fn, state_containers, unpack_single = True):
+#     n = len(state_containers)
+#     nin = len(fn.inputs)
+#     nout = len(fn.outputs)
+#     if n == 0:
+#         if unpack_single and nin == 1:
+#             return lambda *inputs: fn(*inputs)[0]
+#         else:
+#             return fn
+#     def f(*inputs):
+#         results = fn(*(list(inputs) + [c.data for c in state_containers]))
+#         for c, d in zip(state_containers, results[-n:]):
+#             c.data = d
+#         results = results[:-n]
+#         if unpack_single and len(results) == 1:
+#             return results[0]
+#         else:
+#             return results
+
+
+# def check_equal(x, y):
+#     x, y = x[0], y[0]
+#     if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
+#         if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
+#             raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
+#     else:
+#         if x != y:
+#                 raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
+
+# def infer_reuse_pattern(env, outputs_to_disown):
+#     do_not_reuse = list()
+#     seen = set()
+#     def walk(r):
+#         if r.owner is None or r in seen:
+#             return
+#         seen.add(r)
+#         do_not_reuse.append(r)
+#         node = r.owner
+#         op = node.op
+#         dmap = op.destroy_map if hasattr(op, 'destroy_map') else {}
+#         vmap = op.view_map if hasattr(op, 'view_map') else {}
+#         for l in dmap.values() + vmap.values():
+#             for i in l:
+#                 walk(node.inputs[i])
+#     for output in outputs_to_disown:
+#         walk(output)
+#     return do_not_reuse
+
+
+
+# predefined_linkers = {
+#     'py'   : gof.PerformLinker(),
+#     'c'    : gof.CLinker(),
+#     'c|py' : gof.OpWiseCLinker(),
+#     'c&py' : gof.DualLinker(checker = check_equal)
+#     }
+
+# default_linker = 'c|py'
+
+
+# predefined_optimizers = {
+#     None    : lambda env: None,
+#     'merge' : gof.MergeOptimizer(),
+#     'math'  : gof.MergeOptMerge(tensor_opt.math_optimizer)
+#     }
+
+# default_optimizer = 'merge'
+
+
+# class FunctionFactory:
+
+#     def __init__(self,
+#                  inputs,
+#                  outputs,
+#                  states = [],
+#                  linker = default_linker,
+#                  optimizer = default_optimizer,
+#                  borrow_outputs = False,
+#                  accept_inplace = False):
+
+#         self.states = states
+#         inputs, outputs = list(inputs), list(outputs)
+
+#         # Error checking
+#         for r in inputs + outputs:
+#             if not isinstance(r, gof.Result):
+#                 raise TypeError("All inputs and outputs to FunctionFactory should be Result instances. Received:", type(r), r)
+#         for state in states:
+#             if not isinstance(state, State):
+#                 raise TypeError("All states must be State instances", type(state), state)
+#         if len(inputs) != len(set(inputs)):
+#             print >>sys.stderr, "Warning: duplicate inputs"
+
+#         # make the env
+#         env = env_with_state(inputs, outputs, states, accept_inplace)
+#         self.env = env
+
+#         # optimize the env
+#         optimizer = predefined_optimizers.get(optimizer, optimizer)
+#         optimizer(env)
+
+#         # initialize the linker
+#         linker = copy(predefined_linkers.get(linker, linker))
+#         if not hasattr(linker, 'accept'):
+#             raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
+#                              "or one of %s" % predefined_linkers.keys())
+
+#         if borrow_outputs:
+#             self.linker = linker.accept(env)
+#         else:
+#             self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, env.outputs))
+
+
+#     def create(self, 
+#                states = [], 
+#                profiler = None, 
+#                unpack_single = True, 
+#                strict = 'if_destroyed'):
+
+#         # Error checking
+#         if strict not in [True, False, 'if_destroyed']:
+#             raise ValueError("'strict' parameter of create should be one of [True, False, 'if_destroyed']")
+#         if len(states) != len(self.states):
+#             raise ValueError("not the right number of state initializers (expected %i, got %i)" % (len(self.states), len(states)))
+
+#         # Get a function instance
+#         if profiler is None:
+#             # some linkers may not support profilers, so we avoid passing the option altogether
+#             _fn = self.linker.make_function(unpack_single = False)
+#         else:
+#             _fn  = self.linker.make_function(unpack_single = False,
+#                                              profiler = profiler)
+#         fn = function_with_state(_fn, states, unpack_single)
+
+#         # Make the inputs strict accordingly to the specified policy
+#         for env_input, fn_input in zip(self.env.inputs, _fn.inputs):
+#             if strict is True or (strict == 'if_destroyed' and self.env.destroyers(env_input)):
+#                 fn_input.strict = True
+#         return fn
+
+
+
+# def function(inputs,
+#              outputs,
+#              states = [],
+#              linker = default_linker,
+#              optimizer = default_optimizer,
+#              borrow_outputs = False,
+#              accept_inplace = False,
+#              profiler = None,
+#              unpack_single = True,
+#              strict = 'if_destroyed'):
+    
+#     ff = FunctionFactory(inputs,
+#                          outputs,
+#                          states = [s[0] for s in states],
+#                          linker = linker,
+#                          optimizer = optimizer,
+#                          borrow_outputs = borrow_outputs)
+#     return ff.create(states = [s[1] for s in states],
+#                      profiler = profiler,
+#                      unpack_single = unpack_single,
+#                      strict = strict)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import numpy
 import gof
 import sys
@@ -252,6 +562,10 @@ class OpFromGraph(gof.Op):
         else:
             raise NotImplementedError
 
+
+
+
+#########################aaaaaaaaaaa
 
 
 

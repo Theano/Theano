@@ -20,7 +20,6 @@ from gof.python25 import partial
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
-import tensor_random as random
 
 
 def as_tensor(x, name = None):
@@ -926,15 +925,26 @@ class MakeVector(Op):
     def __init__(self, stype):
         self.stype = stype
     def make_node(self, *inputs):
+        inputs = map(as_tensor, inputs)
         assert all(a.type == self.stype for a in inputs)
         return Apply(self, inputs, [Tensor(broadcastable = (False,),
                                            dtype = self.stype.dtype)()])
-    def perform(self, inputs, (out,)):
-        return numpy.asarray([i[0] for i in inputs])
+    def perform(self, node, inputs, (out,)):
+        out[0] = numpy.asarray(inputs)
     def grad(self, inputs, (gout,)):
         return [None]*len(inputs)
 
 make_lvector = MakeVector(lscalar)
+
+def get_vector_length(v):
+    if isinstance(v, gof.Constant) and v.type.ndim == 1:
+        return len(v.data)
+    elif v.owner and isinstance(v.owner.op, MakeVector):
+        return len(v.owner.inputs)
+    elif v.owner and v.owner.op == shape:
+        return v.owner.inputs[0].type.ndim
+    else:
+        return None
 
 
 class VerticalStack(Op):
