@@ -9,6 +9,19 @@ import tensor
 
 PatternOptimizer = lambda p1, p2, ign=True: gof.OpKeyOptimizer(gof.PatternSub(p1, p2), ignore_newtrees=ign)
 
+def checkfor(testcase, fn, E):
+    try:
+        fn()
+    except Exception, e:
+        if isinstance(e, E):
+            # we got the exception we wanted
+            return
+        else:
+            # we did not get the exception we wanted
+            raise
+    # fn worked, but it shouldn't have
+    testcase.fail()
+
 
 def graph1(): # (x+y) * (x/z)
     x, y, z = floats('xyz')
@@ -169,7 +182,174 @@ class T_OpFromGraph(unittest.TestCase):
         assert numpy.all(11.0 == fn(xv, yv, zv))
 
 
-class T_state(unittest.TestCase):
+class T_function(unittest.TestCase):
+    def test_empty(self):
+        fn = function([], []) #ok
+        self.failunless(fn() == [])
+
+    def test_missing_inputs(self):
+
+        raise NotImplementedError()
+        MissingInputException = None
+
+        def fn():
+            x,s = T.scalars('xs')
+            fn = function([], [x])
+        checkfor(self, fn, MissingInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
+            fn = function([s], [x])
+        checkfor(self, fn, MissingInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
+            fn = function([s], x)
+        checkfor(self, fn, MissingInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
+            fn = function([s], Out(x))
+        checkfor(self, fn, MissingInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
+            fn = function([In(x, update=s+x)], x)
+        checkfor(self, fn, MissingInputException)
+
+        def fn():
+            x,s = T.scalars('xs')
+            fn = function([In(x, update=mul(s,s)+x)], x)
+        checkfor(self, fn, MissingInputException)
+
+    def test_input_anon_singleton(self):
+        x,s = T.scalars('xs')
+        fn = function([s,x], [x+s])
+        self.failUnless(fn(2,3) == [5])
+        # no state
+        self.failUnless(fn(2,3) == [5])
+
+    def test_input_anon_unpack(self):
+        x,s = T.scalars('xs')
+        fn = function([s,x], x+s)
+        self.failUnless(fn(2,3) == 5)
+
+    def test_eq(self):
+
+        x,s = T.scalars('xs')
+        xx,ss = T.scalars('xs')
+
+        f = function([x,s], x+s)
+        ff = function([xx,ss], xx+ss)
+
+        self.failUnless( f == ff)
+        self.failUnless( f != function([x,s], x-s))
+        self.failUnless( ff != function([x,s], x-s))
+
+    def test_naming_rule0(self):
+        x,s = T.scalars('xs')
+        f = function([x,s], x/s)
+        self.failUnless(f(1,2) == 0.5)
+        self.failUnless(f(2,1) == 2.0)
+        self.failUnless(f(s=2,x=1) == 0.5)
+        self.failUnless(f(x=2,s=1) == 2.0)
+        self.failUnless(f(2, s=1) == 2.0)
+        checkfor(self, lambda :f(2, x=2.0), TypeError) #got multiple values for keyword argument 'x'
+        checkfor(self, lambda :f(x=1), TypeError) #takes exactly 2 non-keyword arguments (1 given)
+        checkfor(self, lambda :f(s=1), TypeError) #takes exactly 2 non-keyword arguments (0 given)
+
+    def test_naming_rule1(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+        f = function([a, s], a/s)
+        self.failUnless(f(1,2) == 0.5)
+        self.failUnless(f(2,1) == 2.0)
+        self.failUnless(f(2, s=1) == 2.0)
+        checkfor(self, lambda:f(q=2,s=1), TypeError) #got unexpected keyword argument 'q'
+        checkfor(self, lambda:f(a=2,s=1), TypeError) #got unexpected keyword argument 'a'
+
+    def test_naming_rule2(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+
+        #x's name is ignored because it is followed by anonymous parameter a.
+        f = function([x, a, s], a/s)
+        self.failUnless(f(9,1,2) == 0.5)
+        self.failUnless(f(9,2,1) == 2.0)
+        self.failUnless(f(9,2, s=1) == 2.0)
+        checkfor(self, lambda:f(x=9,a=2,s=1), TypeError) #got unexpected keyword argument 'x'
+        checkfor(self, lambda:f(5.0,x=9), TypeError) #got unexpected keyword argument 'x'
+
+    def test_naming_rule3(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+
+        #x's name is not ignored (as in test_naming_rule2) because a has a default value.
+        f = function([x, In(a, value=1.0), s], a/s+x)
+        self.failUnless(f(9,2,4) == 9.5) #can specify all args in order
+        self.failUnless(f(9,2,s=4) == 9.5) # can give s as kwarg
+        self.failUnless(f(9,s=4) == 9.25) # can give s as kwarg, get default a
+        self.failUnless(f(x=9,s=4) == 9.25) # can give s as kwarg, omit a, x as kw
+        checkfor(self, lambda:f(x=9,a=2,s=4), TypeError) #got unexpected keyword argument 'a'
+        checkfor(self, lambda:f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
+        checkfor(self, lambda:f(x=9), TypeError) #takes exactly 3 non-keyword arguments (1 given)
+
+    def test_naming_rule4(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+
+        f = function([x, In(a, value=1.0,name='a'), s], a/s+x)
+
+        self.failUnless(f(9,2,4) == 9.5) #can specify all args in order
+        self.failUnless(f(9,2,s=4) == 9.5) # can give s as kwarg
+        self.failUnless(f(9,s=4) == 9.25) # can give s as kwarg, get default a
+        self.failUnless(f(9,a=2,s=4) == 9.5) # can give s as kwarg, a as kwarg
+        self.failUnless(f(x=9,a=2, s=4) == 9.5) # can give all kwargs
+        self.failUnless(f(x=9,s=4) == 9.25) # can give all kwargs
+        checkfor(self, lambda:f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
+        checkfor(self, lambda:f(5.0,x=9), TypeError) #got multiple values for keyword argument 'x'
+
+    def test_state_acces(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+
+        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x)], s+a*x)
+
+        self.failUnless(f.a == 1.0)
+        self.failUnless(f.state[a] is f.a)
+
+        self.failUnless(f.s == 0.0)
+        self.failUnless(f.state[s] is f.s)
+
+        self.failUnless(f(3.0) == 3.0)
+        self.failUnless(f(3.0,a=2.0) == 9.0) #3.0 + 2*3.0
+
+        self.failUnless(f.a == 1.0) #state hasn't changed permanently, we just overrode it last line
+        self.failUnless(f.s == 9.0)
+
+        f.a = 5.0
+        self.failUnless(f.a == 5.0)
+        self.failUnless(f.state[a] is f.a)
+        self.failUnless(f(3.0) == 24.0) #9 + 3*5
+        self.failUnless(f.s == 24.0)
+        self.failUnless(f.state[s] is f.s)
+
+    def test_same_names(self):
+        a,x,s = T.scalars('xxx')
+        #implicit names would cause error.  What do we do?
+        f = function([a, x, s], a+x+s)
+        raise NotImplementedError()
+
+    def test_weird_names(self):
+        a,x,s = T.scalars('xxx')
+        
+        checkfor(self, lambda:function([In(a,name=[])],[]), UnhashableName)
+
+        f = function([In(a,name=set(['adsf',())], value=1.0),
+            In(x,name=(), value=2.0),
+            In(s,name=T.scalar(), value=3.0)], a+x+s)
+
+
     def test_accumulator(self):
         """Test low-level interface with state."""
         x = T.scalar('x')
