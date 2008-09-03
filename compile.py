@@ -9,6 +9,118 @@ import tensor_opt
 
 
 
+predefined_linkers = {
+    'py'   : gof.PerformLinker(),
+    'c'    : gof.CLinker(),
+    'c|py' : gof.OpWiseCLinker(),
+    'c&py' : gof.DualLinker(checker = check_equal)
+    }
+
+default_linker = 'c|py'
+
+
+predefined_optimizers = {
+    None    : lambda env: None,
+    'merge' : gof.MergeOptimizer(),
+    'math'  : gof.MergeOptMerge(tensor_opt.math_optimizer)
+    }
+
+default_optimizer = 'merge'
+
+
+class Mode(object):
+    
+    def __init__(self, linker = default_linker, optimizer = default_optimizer):
+        self.provided_linker = linker
+        self.provided_optimizer = optimizer
+        if isinstance(linker, str) or linker is None:
+            linker = predefined_linkers[linker]
+        self.linker = linker
+        if isinstance(optimizer, str) or optimizer is None:
+            linker = predefined_optimizers[optimizer]
+        self.optimizer = optimizer
+
+    def __str__(self):
+        return "Mode(linker = %s, optimizer = %s)" % (self.provided_linker, self.provided_optimizer)
+
+
+predefined_modes = {
+    'SANITY_CHECK'            : Mode('c&py', 'math'),
+    'FAST_COMPILE'            : Mode('py', None),
+    'FAST_RUN'                : Mode('c|py', 'math'),
+    'EXPENSIVE_OPTIMIZATIONS' : Mode('c|py', 'math')
+    }
+
+default_mode = 'FAST_RUN'
+
+
+
+
+class In(object):
+
+    def __init__(self, result, name=None, value=None, update=None, mutable=False, autoname=True):
+        """
+        result: a Result instance. 
+            This will be assigned a value before running the function,
+            not computed from its owner.
+        
+        name: Any type. (If autoname=True, defaults to result.name). 
+            If name is a valid Python identifier, this input can be set by kwarg, and its value
+            can be accessed by self.<name>.
+           
+        value: literal or Container
+            This is the default value of the Input.
+
+        update: Result instance
+            value (see previous) will be replaced with this expression result after each function call.
+
+        mutable: Bool (requires value)
+            True: permit the compiled function to modify the python object being used as the default value.
+            False: do not permit the compiled function to modify the python object being used as the default value.
+
+        autoname: Bool
+            See the name option.
+        """
+        self.result = result
+        self.name = result.name if (autoname and name is None) else name
+        self.value = value
+        self.update = update
+        self.mutable = mutable
+            
+
+
+class Out(object):
+    
+    def __init__(self, result, borrow=False):
+        """
+        borrow: set this to True to indicate that a reference to 
+                function's internal storage is OK.  A value returned 
+                for this output might be clobbered by running the 
+                function again, but the function might be faster.
+        """
+        self.result = result
+        self.borrow = borrow
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # class Supervisor:
 
 #     def __init__(self, protected):
@@ -102,24 +214,6 @@ import tensor_opt
 #     return do_not_reuse
 
 
-
-# predefined_linkers = {
-#     'py'   : gof.PerformLinker(),
-#     'c'    : gof.CLinker(),
-#     'c|py' : gof.OpWiseCLinker(),
-#     'c&py' : gof.DualLinker(checker = check_equal)
-#     }
-
-# default_linker = 'c|py'
-
-
-# predefined_optimizers = {
-#     None    : lambda env: None,
-#     'merge' : gof.MergeOptimizer(),
-#     'math'  : gof.MergeOptMerge(tensor_opt.math_optimizer)
-#     }
-
-# default_optimizer = 'merge'
 
 
 # class FunctionFactory:
