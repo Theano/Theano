@@ -603,7 +603,7 @@ class CAReduce(Op):
         }
         """ % locals()
 
-        if nnested:
+        if node.inputs[0].type.ndim:
             if len(axis) == 1:
                 all_code = [("", "")] * nnested + [(task0_decl, code1), ""]
             else:
