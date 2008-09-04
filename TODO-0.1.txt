@@ -1,0 +1,66 @@
+TODO
+
+* Fix pylearn.org redirect
+
+CODE
+    * Automatic Op documentation listing
+    * Implement RNG
+    * Implement state
+    * 0.2: Verbose mode for compile.function
+
+EPYDOC
+
+TRAC
+    * Add a "Rename page" plugin
+    * CoreTutorial:
+        * In 0.2, rewrite as developer documentation of how theano.function works
+        * For the time being, take the basic structure and make a
+        "how theano.function works page", to be written, then remove
+        CoreTutorial page.
+    * When implementation of state is done, CompileFunction should be re-read.
+    * Fix timestamp macro
+        * Make sure [[Timestamp]] give us the timestamp when the timestamp was added
+        * If behavior is different, then remove all instances of Timestamp
+    * FrequentlyAskedQuestions
+        * Move out of user docs, since it is not necessary
+    * In the getting started page, make sure to have a link to the mailing lists.
+    * GraphStructures
+        * Needs an introduction.
+        * Go over and make sure all documentation is current.
+        * Need a short version of the page: What is a Graph, for Users
+        * Longer version: Graph documentation, for Developers
+    * Make sure we have a good sequential list of articles for newbies.
+        * WhatWhyHow, merged with WhatIsTheano
+        * Simple tutorial / walkthrough / cookbook
+            * Use Tensor always, don't bother with Scalars
+        * InstallationNotes
+        * TerminologyGlossary
+        === Maybe the following is more detailed user documentation, but not necessarily for newbies
+        * What is a graph?
+        * What is an Op?
+        * How to Make Tensors
+        * IntroToTypes
+        * IntroToOps
+    * GraphOptimization
+        Rewrite. (Assigned to Pascal)
+    * HowToDebug
+    * HowToMakeOps
+    * Fix up InstallationNotes page
+    * Make a page TipsForSpeed
+        * How to enable optimizations
+        * How to have the correct BLAS library. [see installation page]
+        * [Don't actually write this page, just indicate what should be written.]
+    * OpWishList
+    * ProposalCCodeGen
+    * RandomNumbers
+    * TensorVsScalar
+    * Read over all "polished documentation" and make sure it looks good
+    * Home page
+        * Make sure that all wiki pages are included in the home page
+        * Give a better summary of each wiki page
+        * Section
+            User docs
+            Dev docs
+            Proposals + discussions
+            Historical proposals + discussion
+    * Package 0.1 documentation, so we are free to update it
