@@ -1,5 +1,8 @@
 TODO
 
+* Go over TRAC bugs
+* Add DOCUMENTME to code
+
 * Fix pylearn.org redirect
 
 CODE
@@ -7,6 +10,8 @@ CODE
     * Implement RNG
     * Implement state
     * 0.2: Verbose mode for compile.function
+
+    * Go over sandbox and figure out what is still relevant
 
 EPYDOC
 
