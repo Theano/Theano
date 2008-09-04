@@ -103,16 +103,69 @@ class Out(object):
 
 
 
+class CompiledStuff(object):
+    #aka FunctionFactory
+
+
+class Function(object):
+
+    def __init__(self, input, output, mode):
+
+        # this class is important in overriding the square-bracket notation:
+        #     fn.property[x]
+        # self reference is available via the closure on the class
+        class ValueProperty(object):
+
+            def __getitem__(self, item):
+                raise NotImplementedError()
+
+            def __setitem__(self, item, value):
+                raise NotImplementedError()
+
+        # this class is important in overriding the square-bracket notation:
+        #     fn.container[x]
+        # self reference is available via the closure on the class
+        class ContainerProperty(object):
+
+            def __getitem__(self, item):
+                raise NotImplementedError()
+
+            def __setitem__(self, item, value):
+                raise NotImplementedError()
+
+        self._value = ValueProperty()
+        self._container = ContainerProperty()
+
+    
+    value = property(
+            lambda self: self._value,
+            None, #not setable
+            doc="""TODOC""")
+    container = property(
+            lambda self: self._container,
+            None,
+            doc="""TODOC""")
 
 
 
+def function(input, output, mode='FAST_RUN', autoname_input=True):
 
+    # create a subclass of Function for the given arguments.
+    class F(Function):
+        pass
 
+    if autoname_input:
+        # name the inputs according to the autoname feature
+        raise NotImplementedError()
 
+    # add all input names as properties of F
+    # if there is a name collision:
+    # - raise ValueError
+    # - return message suggesting to rename or disable autoname (if it was enabled)
+    raise NotImplementedError()
 
-
-
-
+    # return an instance of this new Function subclass
+    return F(input, output, mode)
 
 
 
