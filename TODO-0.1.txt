@@ -26,8 +26,6 @@ TRAC
     * Fix timestamp macro
         * Make sure [[Timestamp]] give us the timestamp when the timestamp was added
         * If behavior is different, then remove all instances of Timestamp
-    * FrequentlyAskedQuestions
-        * Move out of user docs, since it is not necessary
     * In the getting started page, make sure to have a link to the mailing lists.
     * GraphStructures
         * Needs an introduction.
