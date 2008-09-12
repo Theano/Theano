@@ -8,19 +8,26 @@ import utils
 class Apply(utils.object2):
     """
     Represents the application of an Op on input Results, producing output
-    Results. These should be instantiated by an Op's make_node function.
+    Results. 
+    
+    This class should be instantiated by an Op's make_node function.
     """
-    #__slots__ = ['op', 'inputs', 'outputs']
+
     def __init__(self, op, inputs, outputs):
         """
-        Sets self.op, self.inputs, self.outputs to the respective parameter
-        in the arguments list.
+        Initialize self.{op, inputs, outputs}
 
-        The owner field of each output in the outputs list will be set to
-        self.
+        @param op: initialize self.op
+        @param inputs: initialize self.inputs
+        @param outputs: initialize self.outputs
+        @type op: Op instance
+        @type inputs: list of Result instances
+        @type outputs: list of Result instances
 
-        Note: it is illegal for an output element to have an owner that is
-        not None, unless it already points to self.
+        @note: The owner field of each output in the outputs list will be set to self.
+
+        @note: If an output element has an owner that is neither None nor self, then a
+        ValueError exception will be raised.
         """
         self.op = op
         self.inputs = []
@@ -44,12 +51,17 @@ class Apply(utils.object2):
                 self.outputs.append(output)
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
+
     def default_output(self):
+        """Returns the default output for this node.
+        
+        @rtype: Result instance 
+        @return: an element of self.outputs, typically self.outputs[0].
+
+        @note: may raise AttributeError self.op.default_output is out of range, or if there are
+        multiple outputs and self.op.default_output does not exist.
         """
-        Returns the default output for this node. If there is only one
-        output, it will be returned. Else, it will consult the value of
-        node.op.default_output to decide which output to return.
-        """
+        
         do = getattr(self.op, 'default_output', None)
         if do is None:
             if len(self.outputs) == 1:
@@ -59,32 +71,42 @@ class Apply(utils.object2):
         elif do < 0 or do >= len(self.outputs):
             raise AttributeError("%s.default_output is out of range." % self.op)
         return self.outputs[do]
+
     out = property(default_output, 
-                   doc = "same as self.default_output()")
+                   doc = "alias for self.default_output()")
+
     def __str__(self):
         return op_as_string(self.inputs, self)
+
     def __repr__(self):
         return str(self)
+
     def __asapply__(self):
         return self
+
     def clone(self):
-#         cp = copy(self)
-#         cp.outputs = [output.clone() for output in self.outputs]
-#         for output in cp.outputs:
-#             output.owner = cp
-#         return cp
+        """Duplicate this Apply instance with inputs = self.inputs.
+
+        @return: a new Apply instance (or subclass instance) with new outputs.
+
+        @note: tags are copied from self to the returned instance.
+        """
         cp = self.__class__(self.op, self.inputs, [output.clone() for output in self.outputs])
         cp.tag = copy(self.tag)
         return cp
-    def clone_with_new_inputs(self, inputs, strict = True):
-        """
-        Returns an Apply node with the same op but different inputs. Unless
-        strict is False, the type fields of all the inputs must be
-        equal to the current ones.
 
-        If strict is True, the outputs of the clone will have the same type as
-        the outputs of self. Else, it depends on the types of the new inputs
-        and the behavior of the op wrt that.
+    def clone_with_new_inputs(self, inputs, strict = True):
+        """Duplicate this Apply instance in a new graph.
+
+        @param inputs: list of Result instances to use as inputs.
+
+        @type strict: Bool
+        @param strict: If True, the type fields of all the inputs must be equal to the current
+        ones, and returned outputs are guaranteed to have the same types as self.outputs.
+        If False, then there's no guarantee that the clone's outputs will have the same types
+        as self.outputs, and cloning may not even be possible (it depends on the Op).
+
+        @returns: an Apply instance with the same op but different outputs.
         """
 #         if check_type:
 #             for curr, new in zip(self.inputs, inputs):
@@ -108,6 +130,7 @@ class Apply(utils.object2):
             new_node.inputs = inputs
         return new_node
 
+    #convenience properties
     nin = property(lambda self: len(self.inputs), doc = 'same as len(self.inputs)')
     nout = property(lambda self: len(self.outputs), doc = 'same as len(self.outputs)')
 
