@@ -15,14 +15,14 @@ from collections import deque
 
 
 class Optimizer:
-    """
+    """WRITEME
     An L{Optimizer} can be applied to an L{Env} to transform it.
     It can represent an optimization or in general any kind
     of transformation you could apply to an L{Env}.
     """
 
     def apply(self, env):
-        """
+        """WRITEME
         Applies the optimization to the provided L{Env}. It may use all
         the methods defined by the L{Env}. If the L{Optimizer} needs
         to use a certain tool, such as an L{InstanceFinder}, it can do
@@ -31,7 +31,7 @@ class Optimizer:
         pass
 
     def optimize(self, env, *args, **kwargs):
-        """
+        """WRITEME
         This is meant as a shortcut to::
           opt.add_requirements(env)
           opt.apply(env)
@@ -40,13 +40,13 @@ class Optimizer:
         self.apply(env, *args, **kwargs)
 
     def __call__(self, env):
-        """
+        """WRITEME
         Same as self.optimize(env)
         """
         return self.optimize(env)
 
     def add_requirements(self, env):
-        """
+        """WRITEME
         Add features to the env that are required to apply the optimization.
         For example:
           env.extend(History())
@@ -57,29 +57,33 @@ class Optimizer:
 
 
 class FromFunctionOptimizer(Optimizer):
+    """WRITEME"""
     def __init__(self, fn):
         self.apply = fn
     def add_requirements(self, env):
+        """WRITEME"""
         env.extend(gof.toolbox.ReplaceValidate)
 
 def optimizer(f):
+    """WRITEME"""
     return FromFunctionOptimizer(f)
 
 
 
 class SeqOptimizer(Optimizer, list):
-    """
+    """WRITEME
     Takes a list of L{Optimizer} instances and applies them
     sequentially.
     """
 
     def __init__(self, *opts):
+        """WRITEME"""
         if len(opts) == 1 and isinstance(opts[0], (list, tuple)):
             opts = opts[0]
         self[:] = opts
 
     def apply(self, env):
-        """
+        """WRITEME
         Applies each L{Optimizer} in self in turn.
         """
         for optimizer in self:
@@ -94,6 +98,7 @@ class SeqOptimizer(Optimizer, list):
 
 
 class _metadict:
+    """WRITEME"""
     # dict that accepts unhashable keys
     # uses an associative list
     # for internal use only
@@ -130,7 +135,7 @@ class _metadict:
 
 
 class MergeOptimizer(Optimizer):
-    """
+    """WRITEME
     Merges parts of the graph that are identical, i.e. parts that
     take the same inputs and carry out the asme computations so we
     can avoid doing them more than once. Also merges results that
@@ -184,7 +189,7 @@ class MergeOptimizer(Optimizer):
 
 
 def MergeOptMerge(opt):
-    """
+    """WRITEME
     Returns an Optimizer that merges the graph then applies the
     optimizer in opt and then merges the graph again in case the
     opt introduced additional similarities.
@@ -199,22 +204,26 @@ def MergeOptMerge(opt):
 ########################
 
 class LocalOptimizer(utils.object2):
+    """WRITEME"""
 
     def transform(self, node):
         raise utils.AbstractFunctionError()
 
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
+    """WRITEME"""
     def __init__(self, fn):
         self.transform = fn
     def add_requirements(self, env):
         env.extend(gof.toolbox.ReplaceValidate)
 
 def local_optimizer(f):
+    """WRITEME"""
     return FromFunctionLocalOptimizer(f)
 
 
 class LocalOptGroup(LocalOptimizer):
+    """WRITEME"""
 
     def __init__(self, *optimizers):
         self.opts = optimizers
@@ -229,6 +238,7 @@ class LocalOptGroup(LocalOptimizer):
 
 
 class LocalOpKeyOptGroup(LocalOptGroup):
+    """WRITEME"""
 
     def __init__(self, optimizers):
         if any(not hasattr(opt, 'op_key'), optimizers):
@@ -240,7 +250,7 @@ class LocalOpKeyOptGroup(LocalOptGroup):
 
 
 class OpSub(LocalOptimizer):
-    """
+    """WRITEME
     Replaces the application of a certain op by the application of
     another op that take the same inputs as what they are replacing.
 
@@ -277,7 +287,7 @@ class OpSub(LocalOptimizer):
 
 
 class OpRemove(LocalOptimizer):
-    """
+    """WRITEME
     Removes all applications of an op by transferring each of its
     outputs to the corresponding input.
     """
@@ -304,7 +314,7 @@ class OpRemove(LocalOptimizer):
 
 
 class PatternSub(LocalOptimizer):
-    """
+    """WRITEME
     @todo update
     
     Replaces all occurrences of the input pattern by the output pattern:
@@ -448,6 +458,7 @@ class PatternSub(LocalOptimizer):
 
 
 class NavigatorOptimizer(Optimizer):
+    """WRITEME"""
 
     def __init__(self, local_opt, ignore_newtrees = 'auto', failure_callback = None):
         self.local_opt = local_opt
@@ -498,6 +509,7 @@ class NavigatorOptimizer(Optimizer):
 
 
 class TopoOptimizer(NavigatorOptimizer):
+    """WRITEME"""
 
     def __init__(self, local_opt, order = 'in_to_out', ignore_newtrees = False, failure_callback = None):
         if order not in ['out_to_in', 'in_to_out']:
@@ -531,6 +543,7 @@ class TopoOptimizer(NavigatorOptimizer):
 
 
 class OpKeyOptimizer(NavigatorOptimizer):
+    """WRITEME"""
 
     def __init__(self, local_opt, ignore_newtrees = False, failure_callback = None):
         if not hasattr(local_opt, 'op_key'):
@@ -570,6 +583,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
 
 
 def keep_going(exc, nav, repl_pairs):
+    """WRITEME"""
     pass
 
 
@@ -578,6 +592,7 @@ def keep_going(exc, nav, repl_pairs):
 #################
 
 def _check_chain(r, chain):
+    """WRITEME"""
     chain = list(reversed(chain))
     while chain:
         elem = chain.pop()
@@ -600,6 +615,7 @@ def _check_chain(r, chain):
     return r
 
 def check_chain(r, *chain):
+    """WRITEME"""
     if isinstance(r, graph.Apply):
         r = r.outputs[0]
     return _check_chain(r, reduce(list.__iadd__, ([x, 0] for x in chain)))

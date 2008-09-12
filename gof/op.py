@@ -11,6 +11,7 @@ class Op(utils.object2):
 
     default_output = None
     """@todo
+    WRITEME
     """
     
     #############

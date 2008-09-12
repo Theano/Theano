@@ -7,7 +7,6 @@ from graph import Result, Apply
 from op import Op
 from opt import *
 
-from ext import *
 import destroyhandler
 from env import Env, InconsistencyError
 from toolbox import ReplaceValidate

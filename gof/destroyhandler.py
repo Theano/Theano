@@ -1,3 +1,4 @@
+"""WRITEME"""
 from collections import defaultdict
 
 import toolbox
@@ -5,9 +6,12 @@ import graph
 
 from env import InconsistencyError
 
-class ProtocolError(Exception): pass
+class ProtocolError(Exception): 
+    """WRITEME"""
+    pass
 
 class DestroyHandler(toolbox.Bookkeeper):
+    """WRITEME"""
 
     def __init__(self):
         self.map = {}
@@ -36,6 +40,8 @@ class DestroyHandler(toolbox.Bookkeeper):
 
 
 class DestroyHandlerHelper2(toolbox.Bookkeeper):
+    """WRITEME"""
+
     def __init__(self):
         self.env = None
 

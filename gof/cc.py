@@ -68,7 +68,7 @@ def get_compiledir():
 
 
 class CodeBlock:
-    """
+    """WRITEME
     Represents a computation unit composed of declare, behavior, and cleanup.
     @ivar declare: C code that declares variables for use by the computation
     @ivar behavior: C code that performs the computation
@@ -94,11 +94,12 @@ class CodeBlock:
 
 
 def failure_code(sub):
+    """WRITEME"""
     return "{%(failure_var)s = %(id)s; goto __label_%(id)i;}" % sub
 
 
 def code_gen(blocks):
-    """
+    """WRITEME
     From a list of L{CodeBlock} instances, returns a string that executes them
     all in sequence. eg for C{(decl1, task1, cleanup1)} and C{(decl2, task2, cleanup2)}
     the returned string will be of the form::
@@ -126,7 +127,7 @@ def code_gen(blocks):
 
 
 def struct_gen(args, struct_builders, blocks, sub):
-    """
+    """WRITEME
     Generates a struct conforming to the following specifications:
      * args -> all of the PyObject* type, stored in the struct
        they represent the storage and must be length 1 python lists.
@@ -253,16 +254,18 @@ def struct_gen(args, struct_builders, blocks, sub):
 # with handling of the py_<name> variable.
 
 def get_nothing(r, name, sub):
-    ""
+    """WRITEME"""
     return ""
 
 def get_c_declare(r, name, sub):
+    """WRITEME"""
     pre = """
     PyObject* py_%(name)s;
     """ % locals()
     return pre + r.type.c_declare(name, sub)
 
 def get_c_init(r, name, sub):
+    """WRITEME"""
     pre = "" """
     py_%(name)s = Py_None;
     Py_XINCREF(py_%(name)s);
@@ -270,6 +273,7 @@ def get_c_init(r, name, sub):
     return pre + r.type.c_init(name, sub)
 
 def get_c_extract(r, name, sub):
+    """WRITEME"""
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     Py_XINCREF(py_%(name)s);
@@ -277,12 +281,14 @@ def get_c_extract(r, name, sub):
     return pre + r.type.c_extract(name, sub)
 
 def get_c_cleanup(r, name, sub):
+    """WRITEME"""
     post = """
     Py_XDECREF(py_%(name)s);
     """ % locals()
     return r.type.c_cleanup(name, sub) + post
 
 def get_c_sync(r, name, sub):
+    """WRITEME"""
     return """
     if (!%(failure_var)s) {
       %(sync)s
@@ -294,7 +300,7 @@ def get_c_sync(r, name, sub):
     """ % dict(sync = r.type.c_sync(name, sub), name = name, **sub)
 
 def apply_policy(policy, r, name, sub):
-    """
+    """WRITEME
     @param policy: list of functions that map a L{Result} to a string, or a single such function
     @type r: L{Result}
     @return: C{policy[0](r) + policy[1](r) + ...}
@@ -309,7 +315,7 @@ def apply_policy(policy, r, name, sub):
 
 
 def struct_result_codeblocks(result, policies, id, symbol_table, sub):
-    """
+    """WRITEME
     result -> a Result
     policies -> a pair of tuples ((declare_policy, behavior_policy, cleanup_policy), -- at construction
                                   (declare_policy, behavior_policy, cleanup_policy)) -- at execution
@@ -339,7 +345,7 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
 
 
 class CLinker(link.Linker):
-    """
+    """WRITEME
 
     Creates C code for an env, compiles it and returns callables
     through make_thunk and make_function that make use of the compiled
@@ -354,6 +360,7 @@ class CLinker(link.Linker):
         self.env = None
 
     def accept(self, env, no_recycling = []):
+        """WRITEME"""
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
@@ -363,7 +370,7 @@ class CLinker(link.Linker):
         return self
 
     def fetch_results(self):
-        """
+        """WRITEME
         Fills the inputs, outputs, results, orphans, temps and node_order fields.
         """
         env = self.env
@@ -376,7 +383,7 @@ class CLinker(link.Linker):
         self.node_order = env.toposort()
 
     def code_gen(self):
-        """
+        """WRITEME
         Generates code for a struct that does the computation of the env and
         stores it in the struct_code field of the instance.
 
@@ -542,7 +549,7 @@ class CLinker(link.Linker):
         return self.struct_code
 
     def support_code(self):
-        """
+        """WRITEME
         Returns a list of support code strings that are needed by
         one or more Results or Ops. The support code from Results is
         added before the support code from Ops.
@@ -556,7 +563,7 @@ class CLinker(link.Linker):
         return ret
 
     def compile_args(self):
-        """
+        """WRITEME
         Returns a list of compile args that are needed by one
         or more Results or Ops.
 
@@ -569,7 +576,7 @@ class CLinker(link.Linker):
         return ret
 
     def headers(self):
-        """
+        """WRITEME
         Returns a list of headers that are needed by one
         or more Results or Ops.
 
@@ -582,7 +589,7 @@ class CLinker(link.Linker):
         return ret
 
     def libraries(self):
-        """
+        """WRITEME
         Returns a list of libraries that are needed by one
         or more Results or Ops.
 
@@ -595,7 +602,7 @@ class CLinker(link.Linker):
         return ret
 
     def __compile__(self, input_storage = None, output_storage = None):
-        """
+        """WRITEME
         Compiles this linker's env.
 
         @type input_storage: list or None
@@ -629,7 +636,7 @@ class CLinker(link.Linker):
             error_storage
 
     def make_thunk(self, input_storage = None, output_storage = None):
-        """
+        """WRITEME
         Compiles this linker's env and returns a function to perform the
         computations, as well as lists of storage cells for both the
         inputs and outputs.
@@ -655,7 +662,7 @@ class CLinker(link.Linker):
         return _execute(cthunk, self.init_tasks, self.tasks, error_storage), in_storage, out_storage
 
     def cthunk_factory(self, error_storage, in_storage, out_storage):
-        """
+        """WRITEME
         error_storage -> list of length 3
         in_storage -> list of lists of length 1, one per input
         out_storage -> list of lists of length 1, one per output
@@ -754,6 +761,7 @@ class CLinker(link.Linker):
 
 
 def _execute(cthunk, init_tasks, tasks, error_storage):
+    """WRITEME"""
     def find_task(failure_code):
         """
         Maps a failure code to the task that is associated to it.
@@ -782,7 +790,7 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
 
 
 class OpWiseCLinker(link.LocalLinker):
-    """
+    """WRITEME
     Uses CLinker on the individual Ops that comprise an env and loops
     over them in Python. The result is slower than a compiled version of
     the whole env, but saves on compilation time because small changes
@@ -881,7 +889,7 @@ class OpWiseCLinker(link.LocalLinker):
 
 
 def _default_checker(x, y):
-    """
+    """WRITEME
     Default checker for DualLinker. This checks that the
     results contain the same data using ==.
     """
@@ -889,7 +897,7 @@ def _default_checker(x, y):
         raise Exception("Output mismatch.", {'performlinker': x[0], 'clinker': y[0]})
 
 class DualLinker(link.Linker):
-    """
+    """WRITEME
     Runs the env in parallel using PerformLinker and CLinker.
 
     The thunk/function produced by DualLinker uses PerformLinker as the

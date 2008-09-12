@@ -1,4 +1,6 @@
 
+"""WRITEME"""
+
 from copy import copy
 import graph
 import utils
@@ -15,7 +17,7 @@ class InconsistencyError(Exception):
 
 
 class Env(utils.object2):
-    """
+    """ WRITEME
     An Env represents a subgraph bound by a set of input results and a
     set of output results. The inputs list should contain all the inputs
     on which the outputs depend. Results of type Value or Constant are
@@ -35,6 +37,8 @@ class Env(utils.object2):
         """
         Create an Env which operates on the subgraph bound by the inputs and outputs
         sets.
+        
+        WRITEME
         """
 
         self._features = []
@@ -79,7 +83,7 @@ class Env(utils.object2):
         node.deps = {}
 
     def disown(self):
-        """
+        """ WRITEME
         Cleans up all of this Env's nodes and results so they are not
         associated with this Env anymore.
         
@@ -104,11 +108,12 @@ class Env(utils.object2):
     ### clients ###
 
     def clients(self, r):
-        "Set of all the (node, i) pairs such that node.inputs[i] is r."
+        """WRITEME
+        Set of all the (node, i) pairs such that node.inputs[i] is r."""
         return r.clients
 
     def __add_clients__(self, r, new_clients):
-        """
+        """ WRITEME
         r -> result
         new_clients -> list of (node, i) pairs such that node.inputs[i] is r.
 
@@ -117,7 +122,7 @@ class Env(utils.object2):
         r.clients += new_clients
 
     def __remove_clients__(self, r, clients_to_remove, prune = True):
-        """
+        """ WRITEME
         r -> result
         clients_to_remove -> list of (op, i) pairs such that node.inputs[i] is not r anymore.
 
@@ -213,7 +218,7 @@ class Env(utils.object2):
     ### change input ###
 
     def change_input(self, node, i, new_r):
-        """
+        """WRITEME
         Changes node.inputs[i] to new_r.
 
         new_r.type == old_r.type must be True, where old_r is the
@@ -246,7 +251,7 @@ class Env(utils.object2):
     ### replace ###
     
     def replace(self, r, new_r):
-        """
+        """ WRITEME
         This is the main interface to manipulate the subgraph in Env.
         For every node that uses r as input, makes it use new_r instead.
         """
@@ -264,6 +269,7 @@ class Env(utils.object2):
             self.change_input(node, i, new_r)
 
     def replace_all(self, pairs):
+        """WRITEME"""
         for r, new_r in pairs:
             self.replace(r, new_r)
 
@@ -271,7 +277,7 @@ class Env(utils.object2):
     ### features ###
     
     def extend(self, feature):
-        """
+        """WRITEME
         Adds a feature to this env. The feature may define one
         or more of the following methods:
 
@@ -310,7 +316,7 @@ class Env(utils.object2):
         self._features.append(feature)
 
     def remove_feature(self, feature):
-        """
+        """WRITEME
         Removes the feature from the graph.
 
         Calls feature.on_detach(env) if an on_detach method is defined.
@@ -327,7 +333,7 @@ class Env(utils.object2):
     ### callback utils ###
     
     def execute_callbacks(self, name, *args):
-        """
+        """WRITEME
         Calls
           getattr(feature, name)(*args)
         for each feature which has a method called after name.
@@ -340,7 +346,7 @@ class Env(utils.object2):
             fn(self, *args)
 
     def collect_callbacks(self, name, *args):
-        """
+        """WRITEME
         Returns a dictionary d such that:
           d[feature] == getattr(feature, name)(*args)
         For each feature which has a method called after name.
@@ -358,7 +364,7 @@ class Env(utils.object2):
     ### misc ###
 
     def toposort(self):
-        """
+        """WRITEME
         Returns an ordering of the graph's Apply nodes such that:
           - All the nodes of the inputs of a node are before that node.
           - Satisfies the orderings provided by each feature that has
@@ -379,7 +385,7 @@ class Env(utils.object2):
         return order
     
     def nclients(self, r):
-        "Same as len(self.clients(r))."
+        """WRITEME Same as len(self.clients(r))."""
         return len(self.clients(r))
 
 #     def edge(self, r):
@@ -395,7 +401,7 @@ class Env(utils.object2):
 #             return node.inputs
 
     def check_integrity(self):
-        """
+        """WRITEME
         Call this for a diagnosis if things go awry.
         """
         nodes = graph.ops(self.inputs, self.outputs)
@@ -438,9 +444,11 @@ class Env(utils.object2):
     ### clone ###
 
     def clone(self):
+        """WRITEME"""
         return self.clone_get_equiv()[0]
 
     def clone_get_equiv(self):
+        """WRITEME"""
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
         self.check_integrity()
         e = Env([equiv[i] for i in self.inputs],

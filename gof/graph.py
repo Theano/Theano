@@ -1,4 +1,4 @@
-
+"""Node classes (Apply, Result) and expression graph algorithms."""
 from copy import copy
 from collections import deque
 
@@ -137,11 +137,32 @@ class Apply(utils.object2):
 
 class Result(utils.object2):
     """
-    Represents the result of some computation (pointed to by its owner field),
-    or an input to the graph (if owner is None)
+    A variable in a theano expression graph.
+
+    A Result which is the output of a symbolic computation has a reference to the Apply
+    instance to which it belongs (property: owner) and the position of itself in the owner's
+    output list (property: index).
+
+    A Result which is not the output of a symbolic computation will have an owner == None.
     """
     #__slots__ = ['type', 'owner', 'index', 'name']
     def __init__(self, type, owner = None, index = None, name = None):
+        """Initialize type, owner, index, name.
+
+        @type type: a Type instance
+        @param type: the type governs the kind of data that can be associated with this
+        variable
+
+        @type owner: None or Apply instance
+        @param owner: the Apply instance which computes the value for this variable
+
+        @type index: None or int
+        @param index: the position of this Result in owner.outputs
+
+        @type name: None or str
+        @param name: a string for pretty-printing and debugging
+
+        """
         self.tag = utils.scratchpad()
         self.type = type
         if owner is not None and not isinstance(owner, Apply):
@@ -167,6 +188,14 @@ class Result(utils.object2):
     def __repr__(self):
         return str(self)
     def clone(self):
+        """Return a new Result like self.
+
+        @rtype: Result instance
+        @return: a new Result instance (or subclass instance) with no owner or index.
+
+        @note: tags are copied to the returned instance.
+        @note: name is copied to the returned instance.
+        """
         #return copy(self)
         cp = self.__class__(self.type, None, None, self.name)
         cp.tag = copy(self.tag)
@@ -174,13 +203,18 @@ class Result(utils.object2):
 
 class Value(Result):
     """
-    Result with a data field. The data field is filtered by what is
+    Result with a default 'data' field.
+    The data field is filtered by what is
     provided in the constructor for the Value's type field.
 
     Its owner field is always None.
     """
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
+        """Initialize self.
+
+        WRITEME
+        """
         Result.__init__(self, type, None, None, name)
         self.data = type.filter(data)
     def __str__(self):
@@ -188,6 +222,7 @@ class Value(Result):
             return self.name
         return "<" + str(self.data) + ">" #+ "::" + str(self.type)
     def clone(self):
+        """WRITEME"""
         return self.__class__(self.type, copy(self.data), self.name)
     def __set_owner(self, value):
         if value is not None:
@@ -218,7 +253,7 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
     """Search through L{Result}s, either breadth- or depth-first
     @type start: deque
     @param start: search from these nodes
-    @type explore: function
+    @type explore: callable
     @param explore: when we get to a node, add explore(node) to the list of
                     nodes to visit.  This function should return a list, or None
     @rtype: list of L{Result}
@@ -256,7 +291,8 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
 
 
 def inputs(result_list):
-    """
+    """Return the inputs required to compute the given Results.
+
     @type result_list: list of L{Result}
     @param result_list: output L{Result}s (from which to search backward through owners)
     @returns: the list of L{Result}s with no owner, in the order found by a
@@ -275,7 +311,7 @@ def inputs(result_list):
 
 
 def results_and_orphans(i, o):
-    """
+    """WRITEME
     """
     def expand(r):
         if r.owner and r not in i:
@@ -288,7 +324,8 @@ def results_and_orphans(i, o):
 
 
 def ops(i, o):
-    """
+    """ WRITEME
+
     @type i: list
     @param i: input L{Result}s
     @type o: list
@@ -309,7 +346,8 @@ def ops(i, o):
 
 
 def results(i, o):
-    """
+    """ WRITEME
+
     @type i: list
     @param i: input L{Result}s
     @type o: list
@@ -323,7 +361,8 @@ def results(i, o):
 
 
 def orphans(i, o):
-    """
+    """ WRITEME
+
     @type i: list
     @param i: input L{Result}s
     @type o: list
@@ -339,7 +378,8 @@ def orphans(i, o):
 
 
 def clone(i, o, copy_inputs = True):
-    """
+    """ WRITEME
+
     @type i: list
     @param i: input L{Result}s
     @type o: list
@@ -355,7 +395,8 @@ def clone(i, o, copy_inputs = True):
 
 
 def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
-    """
+    """ WRITEME
+
     @type i: list
     @param i: input L{Result}s
     @type o: list
@@ -400,7 +441,8 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
     return d
 
 def general_toposort(r_out, deps, debug_print = False):
-    """
+    """ WRITEME
+
     @note: deps(i) should behave like a pure function (no funny business with
     internal state)
 
@@ -446,6 +488,8 @@ def general_toposort(r_out, deps, debug_print = False):
 
 
 def io_toposort(i, o, orderings = {}):
+    """WRITEME
+    """
     iset = set(i)
     def deps(obj):
         rval = []
@@ -470,6 +514,7 @@ default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.op,
 def op_as_string(i, op,
                  leaf_formatter = default_leaf_formatter,
                  node_formatter = default_node_formatter):
+    """WRITEME"""
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
     return node_formatter(op, strs)
 
@@ -477,7 +522,8 @@ def op_as_string(i, op,
 def as_string(i, o,
               leaf_formatter = default_leaf_formatter,
               node_formatter = default_node_formatter):
-    """
+    """WRITEME
+
     @type i: list
     @param i: input L{Result}s
     @type o: list
@@ -549,6 +595,8 @@ def view_roots(r):
     """
     Utility function that returns the leaves of a search through
     consecutive view_map()s.
+
+    WRITEME
     """
     owner = r.owner
     if owner is not None:

@@ -1,4 +1,4 @@
-
+"""WRITEME"""
 import utils
 import graph
 
@@ -8,7 +8,7 @@ from copy import copy
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):
-    """
+    """WRITEME
     This function is meant to replace excepthook and do some
     special work if the exception value has a __thunk_trace__
     field. In that case, it retrieves the field, which should
@@ -32,6 +32,7 @@ sys.excepthook = thunk_hook
 
 
 def raise_with_op(op, exc_info = None):
+    """WRITEME"""
     if exc_info is None:
         exc_info = sys.exc_info()
     exc_type, exc_value, exc_trace = exc_info
@@ -45,6 +46,7 @@ def raise_with_op(op, exc_info = None):
 
 
 class Linker(object):
+    """WRITEME"""
 
     def make_thunk(self):
         """
@@ -108,6 +110,7 @@ class Linker(object):
 
 
 class Filter(object):
+    """WRITEME"""
     def __init__(self, r, storage, readonly = False, strict = False, trace = ()):
         self.r = r
         self.type = r.type
@@ -134,6 +137,7 @@ class Filter(object):
 
 
 def map_storage(env, order, input_storage, output_storage):
+    """WRITEME"""
     if input_storage is None:
         input_storage = [[None] for input in env.inputs]
     else:
@@ -165,6 +169,7 @@ def map_storage(env, order, input_storage, output_storage):
 
 
 def streamline(env, thunks, order, no_recycling = [], profiler = None):
+    """WRITEME"""
     def clear():
         for thunk in thunks:
             for output in thunk.outputs:
@@ -191,7 +196,7 @@ def streamline(env, thunks, order, no_recycling = [], profiler = None):
     return f
 
 class LocalLinker(Linker):
-    """
+    """WRITEME
     Useful base class for L{Linker}s which keep all nodes in the graph, and run a
     thunk associated with each node.
     """
@@ -214,7 +219,7 @@ class LocalLinker(Linker):
 
 
 class PerformLinker(LocalLinker):
-    """
+    """WRITEME
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
     the L{Env} in the order given by L{Env.toposort}.
     """
@@ -262,7 +267,7 @@ class PerformLinker(LocalLinker):
 
 
 class WrapLinker(Linker):
-    """
+    """ WRITEME
     This class makes it easier to run several L{LocalLinker}s in parallel, and
     offers some control over how each thunk is run.
 
@@ -373,6 +378,7 @@ class WrapLinker(Linker):
 import time
 
 class Stats:
+    """WRITEME"""
     def __init__(self):
         self.ncalls = 0
         self.time = 0
@@ -384,7 +390,7 @@ class Stats:
     def inc_time_failures(self, v): self.time_failures += v
 
 class Profiler:
-    """
+    """WRITEME
     Collects performance statistics on a function on a per-L{Op}
     or per-L{Op}-class basis.
     """
@@ -404,6 +410,7 @@ class Profiler:
         self.by_class = by_class
 
     def profile_env(self, f, env):
+        """WRITEME"""
         stats = self.stats.setdefault('TOTAL', Stats())
         n, t = stats.inc_ncalls, stats.inc_time
         failed = False
@@ -423,6 +430,7 @@ class Profiler:
             raise ety, eva, etr
 
     def profile_op(self, f, op):
+        """WRITEME"""
         if self.by_class:
             entry = op.__class__
         else:
@@ -449,6 +457,7 @@ class Profiler:
 
 
     def print_stats(self, sort_by = 'time'):
+        """WRITEME"""
         
         def compare_fn((op1, stat1), (op2, stat2)):
             x1 = getattr(stat2, sort_by)
