@@ -12,7 +12,7 @@ from graph import \
     Apply, Result, Constant, Value, view_roots
 
 from link import \
-    Linker, LocalLinker, PerformLinker, WrapLinker, Profiler
+    Filter, Linker, LocalLinker, PerformLinker, WrapLinker, Profiler
 
 from op import \
     Op

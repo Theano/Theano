@@ -49,6 +49,9 @@ class Type(object2):
         """
         raise AbstractFunctionError()
 
+    def c_init(self, name, sub):
+        raise AbstractFunctionError()
+
     def c_extract(self, name, sub):
         """
         The code returned from this function must be templated using

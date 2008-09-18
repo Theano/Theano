@@ -108,7 +108,7 @@ class Linker(object):
 
 
 class Filter(object):
-    def __init__(self, r, storage, readonly = False, strict = False, trace = ()):
+    def __init__(self, r, storage, readonly = False, strict = False):
         self.r = r
         self.type = r.type
         self.storage = storage
@@ -127,6 +127,7 @@ class Filter(object):
         except:
             raise_with_op(self.r)
     data = property(__get, __set)
+    value = property(__get, __set)
     def __str__(self):
         return "<" + str(self.storage[0]) + ">"
     def __repr__(self):
