@@ -4,7 +4,7 @@ import tensor
 import numpy
 import functools
 
-#from compile import State
+from compile import SymbolicInputKit, SymbolicInput
 from copy import copy
 
 class RandomFunction(gof.Op):
@@ -18,7 +18,7 @@ class RandomFunction(gof.Op):
         """
         self.fn = fn
         self.outtype = outtype
-        self.args = map(tensor.as_tensor, args)
+        self.args = tuple(tensor.as_tensor(arg) for arg in args)
         self.inplace = kwargs.pop('inplace', False)
         if self.inplace:
             self.destroy_map = {0: [0]}
@@ -100,31 +100,6 @@ normal = random_function(RS.normal, 'float64', 0.0, 1.0)
 random_integers = random_function(RS.random_integers, 'int64', 0, 1)
 
 
-
-# T = tensor
-# import compile
-
-# x, y = T.matrices('xy')
-# r = gof.generic()
-# shp = T.make_lvector(2, 2, 2)
-# r2, z = uniform(r, shp, x, y)
-# f = compile.function([r, x, y], [z])
-
-# print f(numpy.random.RandomState(1000), [[-1, -1], [-10, -10]], [[10, 1], [10, 1]])
-
-
-# T = tensor
-# import compile
-
-# r = gof.generic()
-# shp = (2, 7)
-# r2, z = binomial(r, shp)
-# f = compile.function([r], [z])
-
-# print f(numpy.random.RandomState(1000))
-
-
-
 @gof.local_optimizer
 def random_make_inplace(node):
     op = node.op
@@ -132,21 +107,37 @@ def random_make_inplace(node):
         return RandomFunction(op.fn, op.outtype, *op.args, **dict(inplace=True)).make_node(*node.inputs).outputs
 
 
-# class RandomState(StateCollection):
-    
-#     def __init__(self, name = None):
-#         self.states = []
-#         self.name = name
+import sys
+from functools import partial
+from collections import deque
 
-#     def gen(self, op, *args, **kwargs):
-#         r = gof.Generic()
-#         new_r, out = op(*args, **kwargs)
-#         state = State(r, new_r)
-#         self.states.append(state)
-#         return out
+class RandomKit(SymbolicInputKit):
 
-#     def make_states(self, init):
-#         return [Container(numpy.random.RandomState(0)) for state in self.states]
+    def gen(self, op, *args, **kwargs):
+        r = gof.generic()
+        new_r, out = op(r, *args, **kwargs)
+        self.add_input(SymbolicInput(r, update = new_r))
+        out.rng = r
+        return out
+
+    def distribute(self, value, indices, containers):
+        rg = partial(numpy.random.RandomState(value).randint, sys.maxint)
+        elems = deque(zip(indices, containers))
+        i = 0
+        while elems:
+            index, container = elems.popleft()
+            while i <= index:
+                curr = rg()
+                i += 1
+            rs = numpy.random.RandomState(int(curr))
+            container.data = rs
+
+    def binomial(self, *args, **kwargs):
+        return self.gen(binomial, *args, **kwargs)
+
+rk = RandomKit('rk')
+
+
 
 
 
