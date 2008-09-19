@@ -356,13 +356,13 @@ class FunctionMaker(object):
         """
         Create a FunctionMaker for the specified inputs, outputs and mode.
 
-        inputs -> a list of SymbolicInput instances
-        outputs -> a list of SymbolicOutput instances
+        @param inputs: a list of SymbolicInput instances
+        @param outputs: a list of SymbolicOutput instances
                    outputs may also be a single Result (not a list), in which
                    case the functions produced by FunctionMaker will return
                    their output value directly
-        mode -> a Mode instance telling FunctionMaker how to optimize and link
-        accept_inplace -> True iff it is acceptable to have inplace operations
+        @param mode: a Mode instance telling FunctionMaker how to optimize and link
+        @param accept_inplace: True iff it is acceptable to have inplace operations
                           in the graph from the inputs to the outputs
         """
 
