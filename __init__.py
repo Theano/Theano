@@ -1,3 +1,16 @@
+"""
+
+WRITEME: Some module-level documentation.
+
+Here is how to make a link into the wiki: check out the 
+:wiki:`DefineGraph()`
+
+:wiki:`Connection.cursor()`
+ page.
+
+"""
+
+__docformat__ = "restructuredtext en"
 
 from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, Profiler, \

@@ -1,0 +1,3 @@
+DefineGraph	DefineGraph
+DefineTensorResult	DefineTensor#TensorResult
+Connection.cursor()	NothingInvalid.html

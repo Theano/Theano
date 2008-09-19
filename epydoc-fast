@@ -121,6 +121,12 @@ separate-classes: no
 # Use this URL prefix to configure the string returned for external API.
 #external-api-root: epydoc:http://epydoc.sourceforge.net/api
 
+### EXTERNAL WIKI REFERENCES
+external-api: wiki
+external-api-root: wiki:http://lgcm.iro.umontreal.ca/theano/wiki/
+# this works when epydoc is run from the parent directory of this file
+external-api-file: wiki:theano/wiki.idx
+
 
 ### Graph options
 
