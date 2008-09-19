@@ -1342,6 +1342,9 @@ def grad(cost, wrt, g_cost=None):
     kind of zero is returned.
 
     """
+    if not isinstance(cost, TensorResult):
+        raise TypeError('In tensor.grad(), cost argument should be a TensorResult.', cost)
+
     if g_cost is None:
         g_cost = ones_like(cost)
     inputs = gof.graph.inputs([cost])
