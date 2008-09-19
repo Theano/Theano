@@ -113,11 +113,16 @@ from collections import deque
 
 class RandomKit(SymbolicInputKit):
 
+    def __init__(self, name, value = None):
+        super(RandomKit, self).__init__(name)
+        self.value = value
+
     def gen(self, op, *args, **kwargs):
         r = gof.generic()
         new_r, out = op(r, *args, **kwargs)
         self.add_input(SymbolicInput(r, update = new_r))
         out.rng = r
+        out.auto = self
         return out
 
     def distribute(self, value, indices, containers):
@@ -135,7 +140,18 @@ class RandomKit(SymbolicInputKit):
     def binomial(self, *args, **kwargs):
         return self.gen(binomial, *args, **kwargs)
 
-rk = RandomKit('rk')
+    def uniform(self, *args, **kwargs):
+        return self.gen(uniform, *args, **kwargs)
+
+    def normal(self, *args, **kwargs):
+        return self.gen(normal, *args, **kwargs)
+
+    def random_integers(self, *args, **kwargs):
+        return self.gen(random_integers, *args, **kwargs)
+
+
+
+rk = RandomKit('rk', 0xBAD5EED)
 
 
 
