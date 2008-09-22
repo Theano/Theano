@@ -23,7 +23,7 @@ verbosity: 1
 
 # A boolean value indicating that Epydoc should show a tracaback
 # in case of unexpected error. By default don't show tracebacks
-debug: 0
+debug: 1
 
 # If True, don't try to use colors or cursor control when doing
 # textual output. The default False assumes a rich text prompt
@@ -122,7 +122,7 @@ separate-classes: no
 #external-api-root: epydoc:http://epydoc.sourceforge.net/api
 external-api: wiki
 external-api-root: wiki:http://lgcm.iro.umontreal.ca/theano/wiki/
-external-api-file: wiki:theano/wiki.idx
+external-api-file: wiki:wiki.idx
 
 external-api: doc
 external-api-root: doc:http://lgcm.iro.umontreal.ca/doc/
@@ -134,7 +134,7 @@ external-api-file: doc:doc/doc.idx
 # in the output.  Graphs are generated using the Graphviz "dot"
 # executable.  Graph types include: "classtree", "callgraph",
 # "umlclass".  Use "all" to include all graph types
-graph: classtree
+graph: 
 
 # The path to the Graphviz "dot" executable, used to generate
 # graphs.

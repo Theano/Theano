@@ -1,5 +1,6 @@
 #!/bin/bash
 
+mkdir -p html/api
 epydoc --config local.epydoc
 
 cd doc
