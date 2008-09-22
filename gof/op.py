@@ -1,6 +1,8 @@
-"""
-Contains the `Op` class, which is the base interface for all operations
-compatible with `gof`'s :doc:`graph` manipulation routines.
+""" Defines base clases `Op` and `Op_clinker`.
+
+The `Op` class is the base interface for all operations
+compatible with `gof`'s :doc:`graph` routines.
+
 """
 
 __docformat__ = "restructuredtext en"
@@ -9,7 +11,141 @@ import utils
 import traceback
 
 
-class Op(utils.object2):
+class Op_clinker(utils.object2):
+    """
+    Interface definition for `Op` subclasses compiled by `CLinker`.
+
+    A subclass should implement
+
+    WRITEME: structure of automatically generated C code.
+
+    """
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        """Required: Return the C implementation of an Op.
+
+        Returns C code that does the computation associated to this L{Op},
+        given names for the inputs and outputs.
+        
+        :Parameters:
+         `node`: Apply instance
+           WRITEME
+         `name`: WRITEME
+           WRITEME
+         `inputs`: list of strings
+           There is a string for each input of the function, and the string is the name of a C
+           `PyObject` variable pointing to that input.
+         `outputs`: list of strings
+           Each string is the name of a `PyObject` pointer where the Op should store its
+           results.  The `CLinker` guarantees that on entry to this code block, each pointer
+           is either NULL or is unchanged from the end of the previous execution.
+         `sub`: dict of strings
+           extra symbols defined in `CLinker` sub symbols (such as 'fail').
+           WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: the subclass does not override this method
+
+        """
+        raise utils.AbstractFunctionError('%s.c_code is not defined' \
+                % self.__class__.__name__)
+
+    def c_code_cleanup(self, node, name, inputs, outputs, sub):
+        """Optional: Return C code to run after c_code, whether it failed or not.
+
+        QUESTION: is this function optional?
+
+        This is a convenient place to clean up things allocated by c_code().  
+        
+        :Parameters:
+         `node`: Apply instance
+           WRITEME
+         `name`: WRITEME
+           WRITEME
+         `inputs`: list of strings
+           There is a string for each input of the function, and the string is the name of a C
+           `PyObject` variable pointing to that input.
+         `outputs`: list of strings
+           Each string is the name of a `PyObject` pointer where the Op should store its
+           results.  The `CLinker` guarantees that on entry to this code block, each pointer
+           is either NULL or is unchanged from the end of the previous execution.
+         `sub`: dict of strings
+           extra symbols defined in `CLinker` sub symbols (such as 'fail').
+           WRITEME
+        
+        WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: the subclass does not override this method
+
+        """
+        raise utils.AbstractFunctionError()
+
+    def c_compile_args(self):
+        """Optional: Return a list of recommended gcc compiler arguments.
+
+        QUESTION: is this function optional?
+        
+        This is only a hint.
+
+        EXAMPLE
+
+        WRITEME
+        """
+        raise utils.AbstractFunctionError()
+
+    def c_headers(self):
+        """Optional: Return a list of header files that must be included to compile the C code.
+
+        A subclass should override this method.
+
+        EXAMPLE
+
+        WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: the subclass does not override this method
+
+        """
+        raise utils.AbstractFunctionError()
+
+    def c_libraries(self):
+        """Optional: Return a list of libraries to link against to manipulate this `Op`.
+
+        A subclass should override this method.
+
+        WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: the subclass does not override this method
+
+        """
+        raise utils.AbstractFunctionError()
+
+    def c_support_code(self):
+        """Optional: Return support code for use by the code that is returned by `c_code`.
+        
+        Support code is inserted into the C code at global scope.
+
+        A subclass should override this method.
+
+        WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: the subclass does not override this method
+
+        """
+        raise utils.AbstractFunctionError()
+
+
+#TODO: 
+# This is a somewhat ugly use of inheritance because Op is an abstract interface that has
+# nothing to do with code generation.
+# 
+# Better would be for Op subclasses wanting to work with the CLinker to have a second
+# inheritance from Op_clinker.
+
+class Op(Op_clinker):
     """
     An :term:`Op` is a type of operation.
 
@@ -118,76 +254,4 @@ class Op(utils.object2):
         """
         raise utils.AbstractFunctionError(self)
 
-    #####################
-    # C code generation #
-    #####################
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        """Contract: Return the C implementation of an Op.
-
-        Returns C code that does the computation associated to this L{Op},
-        given names for the inputs and outputs.
-        
-        :Parameters:
-         `node`: Apply instance
-           WRITEME
-         `name`: WRITEME
-           WRITEME
-         `inputs`: list of strings
-           There is a string for each input of the function, and the string is the name of a C
-           `PyObject` variable pointing to that input.
-         `outputs`: list of strings
-           Each string is the name of a `PyObject` pointer where the Op should store its
-           results.  The `CLinker` guarantees that on entry to this code block, each pointer
-           is either NULL or is unchanged from the end of the previous execution.
-         `sub`: dict of strings
-           extra symbols defined in `CLinker` sub symbols (such as 'fail').
-           WRITEME
-
-        """
-        raise utils.AbstractFunctionError('%s.c_code is not defined' \
-                % self.__class__.__name__)
-
-    def c_code_cleanup(self, node, name, inputs, outputs, sub):
-        """Code to be run after c_code, whether it failed or not.
-
-        This is a convenient place to clean up things allocated by c_code().  
-        
-        WRITEME
-        """
-        raise utils.AbstractFunctionError()
-
-    def c_compile_args(self):
-        """
-        Return a list of compile args recommended to manipulate this L{Op}.
-
-        WRITEME
-        """
-        raise utils.AbstractFunctionError()
-
-    def c_headers(self):
-        """
-        Return a list of header files that must be included from C to manipulate
-        this L{Op}.
-
-        WRITEME
-        """
-        raise utils.AbstractFunctionError()
-
-    def c_libraries(self):
-        """
-        Return a list of libraries to link against to manipulate this L{Op}.
-
-        WRITEME
-        """
-        raise utils.AbstractFunctionError()
-
-    def c_support_code(self):
-        """
-        Return utility code for use by this L{Op}. It may refer to support code
-        defined for its input L{Result}s.
-
-        WRITEME
-        """
-        raise utils.AbstractFunctionError()
 
