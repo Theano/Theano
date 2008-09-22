@@ -10,9 +10,12 @@ compiling it.
 It can replace simple expressions with faster or more numerically stable implementations.
 
 To learn more, check out:
-- Joseph Turian's n00b walk through (:wiki:`UserBasic`)
-- an introduction to extending theano (:wiki:`UserAdvanced`)
+- Joseph Turian's n00b walk through ( :wiki:`UserBasic` )
+
+- an introduction to extending theano ( :wiki:`UserAdvanced` )
+
 - Terminology Glossary (:wiki:`TerminologyGlossary`)
+
 - Index of Howto documents (:wiki:`HowtoIndex`)
 
 """
