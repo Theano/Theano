@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APIRST2HTML=~/bin/apirst2html.py
+APIRST2HTML=apirst2html.py
 
 EPYDOC_ARGS='--external-api=api --external-api-file=api:../html/api/api-objects.txt --external-api-root=api:epydoc/'
 
