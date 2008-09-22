@@ -17,7 +17,7 @@ To learn more, check out:
 
 - Terminology Glossary (:wiki:`glossary`)
 
-- Index of Howto documents (:wiki:`HowtoIndex`)
+- Index of Howto documents (:wiki:`IndexHowto`)
 
 """
 
