@@ -1,3 +1,6 @@
+"""Defines the `Type` class."""
+
+__docformat__ = "restucturedtext en"
 
 import copy
 import utils
@@ -10,50 +13,62 @@ import traceback
 # Type #
 ########
 
-class Type(object2):
+class CLinkerType(object):
+    """Interface specification for Types that can be arguments to a `CLinkerOp`.
 
-    def filter(self, data, strict = False):
-        """
-        Return data or an appropriately wrapped data. Raise an
-        exception if the data is not of an acceptable type.
+    A CLinkerType instance is mainly reponsible  for providing the C code that
+    interfaces python objects with a C `CLinkerOp` implementation.
 
-        If strict is True, the data returned must be the same
-        as the data passed as an argument. If it is False, filter
-        may cast it to the appropriate type.
-        """
-        raise AbstractFunctionError()
-    
-    def make_result(self, name = None):
-        r = Result(self, name = name)
-        return r
-    
-    def __call__(self, name = None):
-        r = self.make_result(name)
-        r.tag.trace = traceback.extract_stack()[:-1]
-        return r
-        
+    See WRITEME for a general overview of code generation by `CLinker`.
+
+    """
+
     def c_is_simple(self):
-        """
-        A hint to tell the compiler that this type is a builtin C
-        type or a small struct and that its memory footprint is
-        negligible.
+        """Optional: Return True for small or builtin C types.
+
+        A hint to tell the compiler that this type is a builtin C type or a
+        small struct and that its memory footprint is negligible.  Simple
+        objects may be passed on the stack.
+
         """
         return False
 
     def c_literal(self, data):
+        """Optional: WRITEME
+
+        :Parameters:
+         - `data`: WRITEME
+            WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+        
+        """
         raise AbstractFunctionError()
     
     def c_declare(self, name, sub):
-        """
-        Declares variables that will be instantiated by L{c_extract}.
+        """Required: Return c code to declare variables that will be
+        instantiated by `c_extract`.
+
+        Example: WRITEME
+
+        :Parameters:
+         - `name`: WRITEME
+            WRITEME
+         - `sub`: WRITEME
+            WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
         """
         raise AbstractFunctionError()
 
     def c_extract(self, name, sub):
-        """
+        """Required: Return c code to extract a PyObject * instance.
+
         The code returned from this function must be templated using
         "%(name)s", representing the name that the caller wants to
-        call this L{Result}. The Python object self.data is in a
+        call this `Result`. The Python object self.data is in a
         variable called "py_%(name)s" and this code must set the
         variables declared by c_declare to something representative
         of py_%(name)s. If the data is improper, set an appropriate
@@ -61,43 +76,90 @@ class Type(object2):
 
         @todo: Point out that template filling (via sub) is now performed
         by this function. --jpt
+
+        WRITEME
+
+        :Parameters:
+         - `name`: WRITEME
+            WRITEME
+         - `sub`: WRITEME
+            WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+
         """
         raise AbstractFunctionError()
     
     def c_cleanup(self, name, sub):
-        """
-        This returns C code that should deallocate whatever
-        L{c_extract} allocated or decrease the reference counts. Do
-        not decrease py_%(name)s's reference count.
+        """Optional: Return c code to clean up after `c_extract`.
+
+        This returns C code that should deallocate whatever `c_extract`
+        allocated or decrease the reference counts. Do not decrease
+        py_%(name)s's reference count.
+
+        WRITEME
+
+        :Parameters:
+         - `name`: WRITEME
+            WRITEME
+         - `sub`: WRITEME
+            WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+
         """
         raise AbstractFunctionError()
 
     def c_sync(self, name, sub):
-        """
+        """Required: Return c code to pack C types back into a PyObject.
+
         The code returned from this function must be templated using "%(name)s",
-        representing the name that the caller wants to call this Result.
-        The returned code may set "py_%(name)s" to a PyObject* and that PyObject*
+        representing the name that the caller wants to call this Result.  The
+        returned code may set "py_%(name)s" to a PyObject* and that PyObject*
         will be accessible from Python via result.data. Do not forget to adjust
         reference counts if "py_%(name)s" is changed from its original value.
+
+        :Parameters:
+         - `name`: WRITEME
+            WRITEME
+         - `sub`: WRITEME
+            WRITEME
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+
         """
         raise AbstractFunctionError()
 
     def c_compile_args(self):
-        """
-        Return a list of compile args recommended to manipulate this L{Result}.
+        """Optional: Return a list of compile args recommended to compile the
+        code returned by other methods in this class.
+
+        WRITEME: example of formatting for -I, -L, -f args.
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+
         """
         raise AbstractFunctionError()
 
     def c_headers(self):
-        """
-        Return a list of header files that must be included from C to manipulate
-        this L{Result}.
+        """Optional: Return a list of header files required by code returned by
+        this class.
+
+        WRITEME: example of local file, standard file.
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+
         """
         raise AbstractFunctionError()
 
     def c_libraries(self):
-        """
-        Return a list of libraries to link against to manipulate this L{Result}.
+        """Optional: Return a list of libraries required by code returned by
+        this class.
 
         For example: return ['gsl', 'gslcblas', 'm', 'fftw3', 'g2c'].
 
@@ -105,16 +167,118 @@ class Type(object2):
         variable LD_LIBRARY_PATH.  No option is provided for an Op to provide an
         extra library directory because this would change the linking path for
         other Ops in a potentially disasterous way.
+
+        QUESTION: What about via the c_compile_args? a -L option is allowed no?
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+
         """
         raise AbstractFunctionError()
 
     def c_support_code(self):
-        """
-        Return utility code for use by this L{Result} or L{Op}s manipulating this
-        L{Result}.
+        """Optional: Return utility code for use by a `Result` or `Op` to be
+        included at global scope prior to the rest of the code for this class.
+
+        QUESTION: How many times will this support code be emitted for a graph
+        with many instances of the same type?
+
+        :Exceptions:
+         - `AbstractFunctionError`: Subclass does not implement this method
+
         """
         raise AbstractFunctionError()
 
+class PureType(object):
+    """Interface specification for result type instances.
+
+    A Type instance is mainly reponsible for two things:
+
+    - creating `Result` instances (conventionally, `__call__` does this), and
+
+    - filtering a value assigned to a `Result` so that the value conforms to restrictions
+      imposed by the type (also known as casting, this is done by `filter`),
+
+    """
+
+    def filter(self, data, strict = False):
+        """Required: Return data or an appropriately wrapped/converted data.
+        
+        Subclass implementation should raise a TypeError exception if the data is not of an
+        acceptable type.
+
+        If strict is True, the data returned must be the same as the data passed as an
+        argument. If it is False, filter may cast it to an appropriate type.
+
+        :Exceptions:
+         - `AbstractFunctionError`: subclass doesn't implement this function.
+
+        """
+        raise AbstractFunctionError()
+    
+    def make_result(self, name = None):
+        """Return a new `Result` instance of Type `self`.
+
+        :Parameters:
+         - `name`: None or str
+            A pretty string for printing and debugging.
+
+        """
+        r = Result(self, name = name)
+        return r
+    
+    def __call__(self, name = None):
+        """Return a new `Result` instance of Type `self`.
+
+        :Parameters:
+         - `name`: None or str
+            A pretty string for printing and debugging.
+
+        """
+        r = self.make_result(name)
+        r.tag.trace = traceback.extract_stack()[:-1]
+        return r
+
+
+
+class Type(object2, PureType, CLinkerType):
+    """Convenience wrapper combining `PureType` and `CLinkerType`.
+
+    Theano comes with several subclasses of {{{theano.type}}} such as:
+
+    - `Generic`: for any python type
+
+    - `Tensor`: for numpy.ndarray
+
+    - `Sparse`: for scipy.sparse
+
+    But you are encouraged to write your own, as described in WRITEME.
+
+    In the following code:
+    .. code-block:: python
+       # Note: tensor.fvector is a Type (subtype Tensor) instance
+       # Declare a symbolic floating-point vector using __call__
+       b = tensor.fvector()
+
+       # Create a second Result with the same Type instance
+       c = tensor.fvector()
+
+
+     Whenever you create a symbolic variable in theano (technically, `Result`) it will contain
+     a reference to a Type instance.  
+     That reference is typically constant during the lifetime of the Result.
+     Many variables can refer to a single Type instance, as do b and c above.
+     The Type instance defines the kind of value which might end up in that variable when executing a
+     `Function`.  In this sense, theano is like a strongly-typed language because the types are
+     included in the graph before the values.  In
+     our example above, b is a Result which is guaranteed to corresond to a
+     numpy.ndarray of rank 1 when we try to do some computations with it.
+
+     Many `Op` instances will raise an exception if they are applied to inputs with incorrect
+     types.  Type references are also useful to do type-checking in pattern-based optimizations.
+
+    
+    """
 
 class SingletonType(Type):
     __instance = None
