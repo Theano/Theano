@@ -1,7 +1,23 @@
 """
-WRITEME: Some module-level documentation.
+Theano is an optimizing compiler in Python, built to evaluate complicated expressions
+(especially matrix-valued ones) as quickly as possible. 
+Theano compiles expression graphs (see :doc:`graph` ) that are built by Python code.
+The expressions in these graphs are called `Apply` nodes and the variables in these graphs are called `Result` nodes.
 
-Here is how to make a link into the wiki: check out the :wiki:`DefineGraph()`.
+You compile a graph by calling `function`, which takes a graph, and returns a callable object.
+One of theano's most important features is that `function` can transform your graph before
+compiling it.
+It can replace simple expressions with faster or more numerically stable implementations.
+
+To learn more, check out:
+
+- Joseph Turian's n00b walk through ( :wiki:`UserBasic` )
+
+- an introduction to extending theano ( :wiki:`UserAdvanced` )
+
+- Terminology Glossary (:wiki:`glossary`)
+
+- Index of Howto documents (:wiki:`IndexHowto`)
 
 """
 

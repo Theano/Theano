@@ -1,7 +1,8 @@
-""" Defines base clases `Op` and `Op_clinker`.
+"""Defines base classes `Op`, `PureOp`, and `CLinkerOp`
 
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
+
 
 """
 
@@ -11,20 +12,20 @@ import utils
 import traceback
 
 
-class Op_clinker(utils.object2):
+class CLinkerOp(object):
     """
     Interface definition for `Op` subclasses compiled by `CLinker`.
 
-    A subclass should implement
+    A subclass should implement WRITEME.
 
-    WRITEME: structure of automatically generated C code.
+    WRITEME: structure of automatically generated C code.  Put this in doc/code_structure.txt
 
     """
 
     def c_code(self, node, name, inputs, outputs, sub):
         """Required: Return the C implementation of an Op.
 
-        Returns C code that does the computation associated to this L{Op},
+        Returns C code that does the computation associated to this `Op`,
         given names for the inputs and outputs.
         
         :Parameters:
@@ -137,15 +138,7 @@ class Op_clinker(utils.object2):
         """
         raise utils.AbstractFunctionError()
 
-
-#TODO: 
-# This is a somewhat ugly use of inheritance because Op is an abstract interface that has
-# nothing to do with code generation.
-# 
-# Better would be for Op subclasses wanting to work with the CLinker to have a second
-# inheritance from Op_clinker.
-
-class Op(Op_clinker):
+class PureOp(object):
     """
     An :term:`Op` is a type of operation.
 
@@ -160,9 +153,6 @@ class Op(Op_clinker):
     - making `Apply` instances, which mean "apply this type of operation to some particular inputs" (via `make_node`),
 
     - performing the calculation of outputs from given inputs (via the `perform`),
-
-    - producing c code to perform calculation of outputs from inputs (via `c_code`, 
-      `c_code_cleanup`, `c_support_code`, `c_headers`, `c_libraries`, `c_compile_args`)
 
     - [optionally] building gradient-calculating graphs (via `grad`).
 
@@ -186,7 +176,7 @@ class Op(Op_clinker):
 
     def make_node(self, *inputs):
         """
-        Contract: return an Apply instance representing the
+        Required: return an Apply instance representing the
         application of this Op to the provided inputs.
 
         All subclasses should over-ride this function.
@@ -198,8 +188,7 @@ class Op(Op_clinker):
         raise utils.AbstractFunctionError(self)
 
     def __call__(self, *inputs):
-        """
-        Return some or all output[s] of `make_node`.  
+        """Optional: Return some or all output[s] of `make_node`.  
 
         It is called by code such as:
 
@@ -232,7 +221,7 @@ class Op(Op_clinker):
 
     def perform(self, node, inputs, output_storage):
         """
-        Contract:  Calculate the function on the inputs and put the results in the
+        Required:  Calculate the function on the inputs and put the results in the
         output storage.  Return None.
 
         :Parameters:
@@ -254,4 +243,6 @@ class Op(Op_clinker):
         """
         raise utils.AbstractFunctionError(self)
 
-
+class Op(utils.object2, PureOp, CLinkerOp): 
+    """Convenience class to bundle `PureOp` and `CLinkerOp`"""
+    pass

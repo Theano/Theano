@@ -1,3 +1,8 @@
-DefineGraph	DefineGraph
-DefineTensorResult	DefineTensor#TensorResult
-Connection.cursor()	NothingInvalid.html
+wiki.DefineGraph	DefineGraph
+wiki.DefineTensorResult	DefineTensor#TensorResult
+wiki.HowtoList	HowtoList
+wiki.UserBasic	UserBasic
+wiki.UserAdvanced	UserAdvanced
+wiki.TerminologyGlossary	TerminologyGlossary
+wiki.glossary	TerminologyGlossary
+wiki.IndexHowto	IndexHowto
