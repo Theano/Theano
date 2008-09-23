@@ -3,6 +3,7 @@
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 
+
 """
 
 __docformat__ = "restructuredtext en"
