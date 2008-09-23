@@ -46,7 +46,7 @@ for module in [tensor]:
 
         if isOp(symbol):
             print ""
-            print "- `%s.%s`" % (module.__name__, symbol_name)
+            print "- :api:`%s.%s`" % (module.__name__, symbol_name)
             docstring = getattr(symbol, '__doc__', "")
 
             if not docstring: 
