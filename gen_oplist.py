@@ -1,8 +1,39 @@
+import sys
 import gof
 import tensor
 
 def isOp(thing):
     return hasattr(thing, 'perform')
+
+def chomp(s):
+    """interpret and left-align a docstring"""
+
+    if 'subtensor' in s: 
+        debug = 0
+    else:
+        debug = 0
+
+    r = []
+    leadspace = True
+    for c in s:
+        if leadspace and c in ' \n\t':
+            continue
+        else:
+            leadspace = False
+
+        if c == '\n':
+            if debug:
+                print >> sys.stderr, 'breaking'
+            break
+        if c == '\t': 
+            c = ' ';
+        r.append(c)
+
+    if debug: 
+        print >> sys.stderr, r
+
+    return "".join(r)
+
 
 for module in [tensor]:
     title = 'Ops in module: `%s`' % module.__name__
@@ -21,8 +52,10 @@ for module in [tensor]:
             if not docstring: 
                 print 'No documentation'
             elif len(docstring) < 50:
-                print docstring
+                print chomp(docstring)
             else:
-                print docstring[:40], "..."
-
+                print chomp(docstring[:40]), "..."
+    # a little trailing whitespace
+    print ""
+    print ""
 
