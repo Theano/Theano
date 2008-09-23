@@ -179,15 +179,21 @@ class Tensor(Type):
         """Hash equal for same kinds of Tensor"""
         return hash(self.dtype) ^ hash(self.broadcastable)
 
-    # this read-only property is the preferred way to get the number of
-    # dimensions
     ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
+    """Number of dimensions
+
+    This read-only property is the preferred way to get the number of dimensions
+    of a `Tensor`.
+    
+    """
 
     def make_result(self, name = None):
         """Return a `TensorResult` of this type
+
         :Parameters:
          - `name`: str
            A pretty name to identify this `Result` when printing and debugging
+
        """
         return TensorResult(self, name = name)
 
