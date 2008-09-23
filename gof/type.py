@@ -1,6 +1,6 @@
 """Defines the `Type` class."""
 
-__docformat__ = "restucturedtext en"
+__docformat__ = "restructuredtext en"
 
 import copy
 import utils
@@ -281,6 +281,7 @@ class Type(object2, PureType, CLinkerType):
     """
 
 class SingletonType(Type):
+    """WRITEME"""
     __instance = None
     def __new__(cls):
         if cls.__instance is None:
@@ -293,6 +294,13 @@ class SingletonType(Type):
 class Generic(SingletonType):
     """
     Represents a generic Python object.
+
+    This class implements the `PureType` and `CLinkerType` interfaces for generic PyObject
+    instances. 
+
+    EXAMPLE of what this means, or when you would use this type.
+
+    WRITEME
     """
     
     def filter(self, data, strict = False):
@@ -325,6 +333,7 @@ generic = Generic()
 
 
 class PropertiedType(Type):
+    """WRITEME"""
 
     def __eq__(self, other):
         return type(self) == type(other) and self.__dict__ == other.__dict__
