@@ -16,5 +16,13 @@ for module in [tensor]:
         if isOp(symbol):
             print ""
             print "- `%s.%s`" % (module.__name__, symbol_name)
+            docstring = getattr(symbol, '__doc__', "")
+
+            if not docstring: 
+                print 'No documentation'
+            elif len(docstring) < 50:
+                print docstring
+            else:
+                print docstring[:40], "..."
 
 
