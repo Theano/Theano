@@ -1,4 +1,7 @@
-"""A L{Result} to store L{numpy.ndarray} with basic accompanying L{Op}s"""
+"""A `Type` and `Op` classes to work with numpy.ndarrays symbolically."""
+
+__docformat__ = "restructuredtext en"
+
 import sys # for sys.maxint
 import inspect
 import functools
@@ -24,7 +27,27 @@ import tensor_random as random
 
 
 def as_tensor(x, name = None):
+    """Return `x`, transformed into a `Tensor`
+
+    This function is often used by `make_node` methods of `Op` subclasses to
+    turn ndarrays, numbers, `Scalar` instances, `Apply` instances and `Tensor`
+    instances into valid input list elemnts.
+
+    :Parameters:
+     - `x`: Apply instance, Result instance, numpy.ndarray, or number
+       This thing will be transformed into a `Result` in a sensible way.  An
+       ndarray argument will not be copied, but a list of numbers will be copied
+       to make an ndarray.
+     - `name`: str or None
+       If a new `Result` instance is created, it will be named with this string.
+
+    :Exceptions:
+     - `ValueError`: raised if an `Apply` with no default output is fetched
+     - `TypeError`: raised if `x` cannot be converted to a Tensor Result
+
+    """
     if isinstance(x, gof.Apply):
+        #TODO: use Apply's default output mechanism
         if len(x.outputs) != 1:
             raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", x)
         else:
@@ -39,56 +62,74 @@ def as_tensor(x, name = None):
         return constant(x)
     except TypeError:
         raise TypeError("Cannot convert %s to Tensor" % x, type(x))
+
 # this has a different name, because _as_tensor is the function which ops use
 # to upcast their arguments... this internal-use function is a good place to put debugging stuff, better than the global astensor.
 _as_tensor = as_tensor
 
 
-def constant(_x):
-    if not isinstance(_x, numpy.ndarray):
-        x = numpy.asarray(_x)
+def constant(x):
+    """Return a symbolic `Constant` with value `x`
+    
+    :Exceptions:
+     - `TypeError`: `x` could not be converted to a numpy.ndarray
+    """
+    if isinstance(x, numpy.ndarray):
+        x_ = x
     else:
-        x = _x
+        x_ = numpy.asarray(x)
     try:
-        return TensorConstant(Tensor(dtype = x.dtype,
-                                     broadcastable = [d == 1 for d in x.shape]), x)
+        return TensorConstant(Tensor(dtype = x_.dtype,
+                                     broadcastable = [d == 1 for d in x_.shape]), x_)
     except:
-        raise TypeError("Could not convert %s to Tensor" % _x, type(_x))
+        raise TypeError("Could not convert %s to Tensor" % x, type(x))
 
 def value(x):
-    if not isinstance(x, numpy.ndarray):
-        x = numpy.asarray(x)
+    """Return a symbolic `Value` with default value `x`
+    
+    :Exceptions:
+     - `TypeError`: `x` could not be converted to a numpy.ndarray
+    """
+    if isinstance(x, numpy.ndarray):
+        x_ = x
+    else:
+        x_ = numpy.asarray(x)
     try:
-        return TensorValue(Tensor(dtype = x.dtype,
-                                  broadcastable = [d == 1 for d in x.shape]), x)
+        return TensorValue(Tensor(dtype = x_.dtype,
+                                  broadcastable = [d == 1 for d in x_.shape]), x_)
     except:
-        raise TypeError("Could not convert %s to Tensor" % _x, type(_x))
+        raise TypeError("Could not convert %s to Tensor" % x, type(x))
 
 
 
 class Tensor(Type):
-    """
-    L{Type} representing L{numpy.ndarray} in Theano.
-
-    @todo: At some point we should document a glossary, such as terms like
-    broadcasting and shape.
-    
-    @type dtype: numpy dtype string such as 'int64' or 'float64' (among others)
-    @type broadcastable: tuple or list or array of boolean values, whose length
-      is the number of dimensions of the L{ndarray} represented by this Type.
-    @ivar broadcastable: Each element of the broadcastable vector tells us
-      something about the corresponding dimension:
-        - False means the dimension can be anything.
-        - True means  the dimension must be 1. Also, this dimension will be considered
-          for L{broadcasting}, as described and implemented in Numpy.
-    """
+    """Symbolic `Type` representing a numpy.ndarray value."""
 
     def __init__(self, dtype, broadcastable):
+        """Initialize self.dtype and self.broadcastable.
+
+        :Parameters:
+         - `dtype`: str corresponding to numpy dtype (e.g., 'int64')
+           The value (ndarray) associated to a `Result` of this `Type` will have
+           this dtype.
+         - `broadcastable`: tuple, list, or array of boolean values
+           This argument serves two purposes.  First, the True elements of this
+           list indicate the dimensions where the shape of an associated value
+           must be 1.  Secondly, the length of this list is the number of
+           dimensions that an associated value must have.  See
+           :doc:`broadcasting` for an explanation of how this list is used.
+
+        """
         self.dtype = str(dtype)
         self.broadcastable = tuple(broadcastable)
         self.dtype_specs() # error checking is done there
     
     def filter(self, data, strict = False):
+        """Convert `data` to something which can be associated to a `TensorResult`.
+
+        This function is not meant to be called in user code.  It is for
+        `Linker` instances to use when running a compiled graph.
+        """
         _data = data
         if strict:
             if not isinstance(data, numpy.ndarray):
@@ -107,10 +148,10 @@ class Tensor(Type):
         return data
 
     def dtype_specs(self):
-        """Return python - C type correspondance tuple for self.data
-
-        Return a tuple (python type, c type, numpy typenum) that corresponds to
-        L{self.dtype}.  It is for use in C code generation.
+        """Return a tuple (python type, c type, numpy typenum) that corresponds to
+        self.dtype.
+        
+        This function is used internally as part of C code generation.
         """
         #TODO: add more type correspondances for e.g. int32, int64, float32,
         #complex64, etc.
@@ -131,14 +172,23 @@ class Tensor(Type):
             raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
 
     def __eq__(self, other):
+        """Compare True iff other is the same kind of Tensor"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
     def __hash__(self):
+        """Hash equal for same kinds of Tensor"""
         return hash(self.dtype) ^ hash(self.broadcastable)
 
-    ndim = property(lambda self: len(self.broadcastable), doc = "read-only access to the number of dimensions")
+    # this read-only property is the preferred way to get the number of
+    # dimensions
+    ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
 
     def make_result(self, name = None):
+        """Return a `TensorResult` of this type
+        :Parameters:
+         - `name`: str
+           A pretty name to identify this `Result` when printing and debugging
+       """
         return TensorResult(self, name = name)
 
     def __str__(self):
@@ -148,6 +198,7 @@ class Tensor(Type):
         return "Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub):
+        """Override `CLinkerOp.c_declare` """
         return """
         PyArrayObject* %(name)s;
         int type_num_%(name)s;
@@ -155,12 +206,14 @@ class Tensor(Type):
         """ % dict(sub, name = name, dtype = self.dtype_specs()[1])
 
     def c_init(self, name, sub):
+        """Override `CLinkerOp.c_init` """
         return """
         %(name)s = NULL;
         type_num_%(name)s = %(type_num)s;
         """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
 
     def c_extract(self, name, sub):
+        """Override `CLinkerOp.c_extract` """
         return """
         %(name)s = NULL;
         type_num_%(name)s = %(type_num)s;
@@ -186,6 +239,7 @@ class Tensor(Type):
         """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
 
     def c_cleanup(self, name, sub):
+        """Override `CLinkerOp.c_cleanup` """
         return """
         if (%(name)s) {
             Py_XDECREF(%(name)s);
@@ -193,6 +247,7 @@ class Tensor(Type):
         """ % locals()
 
     def c_sync(self, name, sub):
+        """Override `CLinkerOp.c_sync` """
         return """
         Py_XDECREF(py_%(name)s);
         if (!%(name)s) {
@@ -205,12 +260,14 @@ class Tensor(Type):
         """ % locals()
 
     def c_headers(self):
+        """Override `CLinkerOp.c_headers` """
         return []
 
     def c_libraries(self):
         return []
 
     def c_support_code(cls):
+        """Override `CLinkerOp.c_support_code` """
         template = """
         struct theano_complex%(nbits)s : public npy_complex%(nbits)s
         {
