@@ -264,17 +264,17 @@ class Type(object2, PureType, CLinkerType):
        c = tensor.fvector()
 
 
-     Whenever you create a symbolic variable in theano (technically, `Result`) it will contain
-     a reference to a Type instance.  That reference is typically constant during the lifetime
-     of the Result.  Many variables can refer to a single Type instance, as do b and c above.
-     The Type instance defines the kind of value which might end up in that variable when
-     executing a `Function`.  In this sense, theano is like a strongly-typed language because
-     the types are included in the graph before the values.  In our example above, b is a
-     Result which is guaranteed to corresond to a numpy.ndarray of rank 1 when we try to do
-     some computations with it.
+    Whenever you create a symbolic variable in theano (technically, `Result`) it will contain a
+    reference to a Type instance.  That reference is typically constant during the lifetime of
+    the Result.  Many variables can refer to a single Type instance, as do b and c above.  The
+    Type instance defines the kind of value which might end up in that variable when executing
+    a `Function`.  In this sense, theano is like a strongly-typed language because the types
+    are included in the graph before the values.  In our example above, b is a Result which is
+    guaranteed to corresond to a numpy.ndarray of rank 1 when we try to do some computations
+    with it.
 
-     Many `Op` instances will raise an exception if they are applied to inputs with incorrect
-     types.  Type references are also useful to do type-checking in pattern-based optimizations.
+    Many `Op` instances will raise an exception if they are applied to inputs with incorrect
+    types.  Type references are also useful to do type-checking in pattern-based optimizations.
 
     
     """
