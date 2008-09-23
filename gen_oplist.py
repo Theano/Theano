@@ -50,11 +50,12 @@ for module in [tensor]:
             docstring = getattr(symbol, '__doc__', "")
 
             if not docstring: 
-                print 'No documentation'
+                print " ", 'No documentation'
             elif len(docstring) < 50:
-                print chomp(docstring)
+                print " ", chomp(docstring)
             else:
-                print chomp(docstring[:40]), "..."
+                print " ", chomp(docstring[:40]), "..."
+
     # a little trailing whitespace
     print ""
     print ""
