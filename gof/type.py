@@ -240,6 +240,9 @@ class PureType(object):
         return r
 
 
+_nothing = """
+       """
+
 
 class Type(object2, PureType, CLinkerType):
     """Convenience wrapper combining `PureType` and `CLinkerType`.
@@ -254,15 +257,14 @@ class Type(object2, PureType, CLinkerType):
 
     But you are encouraged to write your own, as described in WRITEME.
 
-    In the following code:
+    The following following code illustrates the use of a Type instance, here tensor.fvector:
+
     .. python::
-       # Note: tensor.fvector is a Type (subtype Tensor) instance
-       # Declare a symbolic floating-point vector using __call__
-       b = tensor.fvector()
+        # Declare a symbolic floating-point vector using __call__
+        b = tensor.fvector()
 
-       # Create a second Result with the same Type instance
-       c = tensor.fvector()
-
+        # Create a second Result with the same Type instance
+        c = tensor.fvector()
 
     Whenever you create a symbolic variable in theano (technically, `Result`) it will contain a
     reference to a Type instance.  That reference is typically constant during the lifetime of
@@ -276,7 +278,6 @@ class Type(object2, PureType, CLinkerType):
     Many `Op` instances will raise an exception if they are applied to inputs with incorrect
     types.  Type references are also useful to do type-checking in pattern-based optimizations.
 
-    
     """
 
 class SingletonType(Type):
