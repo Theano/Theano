@@ -45,52 +45,56 @@ def chomp(s):
     return "".join(r)
 
 
-import scalar, sparse, tensor
+def generate():
+    """Generate the op list"""
+    import scalar, sparse, tensor
 
-print_title("Theano Op List", "~")
-print ""
-print ".. contents:: "
-print ""
-
-for module in [scalar, sparse, tensor]:
-    print_title('module: `%s`' % module.__name__, '=')
-
-    print_title('Op Classes', '-')
-
-    for symbol_name in dir(module):
-
-        symbol = getattr(module, symbol_name)
-
-        if isOpClass(symbol):
-            print ""
-            print "- :api:`%s.%s`" % (symbol.__module__, symbol_name)
-            docstring = getattr(symbol, '__doc__', "")
-
-            if not docstring: 
-                print " ", '(no doc)'
-            elif len(docstring) < 50:
-                print " ", chomp(docstring)
-            else:
-                print " ", chomp(docstring[:40]), "..."
-    # a little trailing whitespace
+    print_title("Theano Op List", "~")
+    print ""
+    print ".. contents:: "
     print ""
 
-    print_title('Op Constructors', '-')
-    for symbol_name in dir(module):
+    for module in [scalar, sparse, tensor]:
+	print_title('module: `%s`' % module.__name__, '=')
 
-        symbol = getattr(module, symbol_name)
+	print_title('Op Classes', '-')
 
-        if isOpConstructor(symbol, module):
-            print ""
-            print "- :api:`%s.%s`" % (symbol.__module__, symbol_name)
-            docstring = getattr(symbol, '__doc__', "")
+	for symbol_name in dir(module):
 
-            if not docstring: 
-                print " ", 'No documentation'
-            elif len(docstring) < 50:
-                print " ", chomp(docstring)
-            else:
-                print " ", chomp(docstring[:40]), "..."
-    # a little trailing whitespace
-    print ""
+	    symbol = getattr(module, symbol_name)
 
+	    if isOpClass(symbol):
+		print ""
+		print "- :api:`%s.%s`" % (symbol.__module__, symbol_name)
+		docstring = getattr(symbol, '__doc__', "")
+
+		if not docstring: 
+		    print " ", '(no doc)'
+		elif len(docstring) < 50:
+		    print " ", chomp(docstring)
+		else:
+		    print " ", chomp(docstring[:40]), "..."
+	# a little trailing whitespace
+	print ""
+
+	print_title('Op Constructors', '-')
+	for symbol_name in dir(module):
+
+	    symbol = getattr(module, symbol_name)
+
+	    if isOpConstructor(symbol, module):
+		print ""
+		print "- :api:`%s.%s`" % (symbol.__module__, symbol_name)
+		docstring = getattr(symbol, '__doc__', "")
+
+		if not docstring: 
+		    print " ", 'No documentation'
+		elif len(docstring) < 50:
+		    print " ", chomp(docstring)
+		else:
+		    print " ", chomp(docstring[:40]), "..."
+	# a little trailing whitespace
+	print ""
+
+if __name__ == "__main__":
+    generate()
