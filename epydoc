@@ -12,21 +12,19 @@ if os.path.exists(os.path.join(sys.path[0], 'epydoc.py')):
 from epydoc import docintrospecter 
 from epydoc.apidoc import RoutineDoc
 
-from gof import Op
+from theano.gof import Op
 
 def applicability_test(value):
-   if 'elemwise.Elemwise object' in str(value):
-       print value.__name__
-       return True
-   return False # isinstance(value, float)
+    return isinstance(value, Op)
 
 def introspecter(value, value_doc, module_name):
-    print value
-    try:
-        value_doc.specialize_to(RoutineDoc)
-        print 'Yay!', value
-    except:
-	print value
+    value_doc.specialize_to(RoutineDoc)
+#     print value
+#     try:
+#         value_doc.specialize_to(RoutineDoc)
+#         print 'Yay!', value
+#     except:
+# 	print value
 
 docintrospecter.register_introspecter(applicability_test, introspecter, priority=-1)
 
