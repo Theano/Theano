@@ -288,9 +288,6 @@ class Elemwise(Op):
         else:
             return self.name
 
-    def __repr__(self):
-        return self.__str__()
-
     def grad(self, inputs, ograds):
         ograds = map(as_tensor, ograds) # this shouldn't be necessary...
         scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
