@@ -12,21 +12,13 @@ if os.path.exists(os.path.join(sys.path[0], 'epydoc.py')):
 from epydoc import docintrospecter 
 from epydoc.apidoc import RoutineDoc
 
-from theano.gof import Op
-
-def applicability_test(value):
-    return isinstance(value, Op)
-
-def introspecter(value, value_doc, module_name):
+def specialize_to_RoutineDoc(value, value_doc, module_name):
     value_doc.specialize_to(RoutineDoc)
-#     print value
-#     try:
-#         value_doc.specialize_to(RoutineDoc)
-#         print 'Yay!', value
-#     except:
-# 	print value
 
-docintrospecter.register_introspecter(applicability_test, introspecter, priority=-1)
+docintrospecter.register_introspecter(
+        lambda value: getattr(value, '__epydoc_asRoutine', False), 
+        specialize_to_RoutineDoc, 
+        priority=-1)
 
 from epydoc.cli import cli
 cli()

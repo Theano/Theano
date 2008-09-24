@@ -11,7 +11,7 @@ mkdir -p html/api && mkdir -p html/doc
 python __init__.py
 
 if [ " $1" != " rst" ]; then
-epydoc --config local.epydoc
+./epydoc --config local.epydoc
 fi
 
 if [ " $1" != " epydoc" ]; then
