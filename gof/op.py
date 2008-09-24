@@ -29,18 +29,18 @@ class CLinkerOp(object):
         given names for the inputs and outputs.
         
         :Parameters:
-         `node`: Apply instance
+         `node` : Apply instance
            WRITEME
-         `name`: WRITEME
+         `name` : WRITEME
            WRITEME
-         `inputs`: list of strings
+         `inputs` : list of strings
            There is a string for each input of the function, and the string is the name of a C
            `PyObject` variable pointing to that input.
-         `outputs`: list of strings
+         `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
            results.  The `CLinker` guarantees that on entry to this code block, each pointer
            is either NULL or is unchanged from the end of the previous execution.
-         `sub`: dict of strings
+         `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
 
@@ -59,18 +59,18 @@ class CLinkerOp(object):
         This is a convenient place to clean up things allocated by c_code().  
         
         :Parameters:
-         `node`: Apply instance
+         `node` : Apply instance
            WRITEME
-         `name`: WRITEME
+         `name` : WRITEME
            WRITEME
-         `inputs`: list of strings
+         `inputs` : list of strings
            There is a string for each input of the function, and the string is the name of a C
            `PyObject` variable pointing to that input.
-         `outputs`: list of strings
+         `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
            results.  The `CLinker` guarantees that on entry to this code block, each pointer
            is either NULL or is unchanged from the end of the previous execution.
-         `sub`: dict of strings
+         `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
         
@@ -225,11 +225,11 @@ class PureOp(object):
         output storage.  Return None.
 
         :Parameters:
-         `node`: Apply instance 
+         `node` : Apply instance 
             contains the symbolic inputs and outputs
-         `inputs`: list
+         `inputs` : list
             sequence of inputs (immutable)
-         `output_storage`: list
+         `output_storage` : list
              list of mutable 1-element lists (do not change the length of these lists)
 
         The `output_storage` list might contain data. If an element of

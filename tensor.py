@@ -493,8 +493,15 @@ def _elemwise(scalar_op, name):
     straight = elemwise.Elemwise(scalar_op, name = name)
     inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
     inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = name+"_inplace")
-    _constructor_list.append(straight) 
+
     # don't add the inplace versions, they aren't supposed to be part of the user interface
+    _constructor_list.append(straight) 
+    
+    # This is here so that gen_oplist can detect which module declared these variables.
+
+    straight.__module__ = 'tensor'
+    inplace.__module__ = 'tensor'
+
     return straight, inplace
 
 
@@ -542,14 +549,33 @@ def cast(t, dtype):
                'complex128': convert_to_complex128}
     return mapping[dtype](t)
 
-convert_to_int8  = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8)))
-convert_to_int16 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16)))
-convert_to_int32 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32)))
-convert_to_int64 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64)))
-convert_to_float32 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32)))
-convert_to_float64 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64)))
-convert_to_complex64  = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64)))
-convert_to_complex128 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128)))
+def _conversion(f):
+    f.__module__ = 'tensor'
+    return f
+
+convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))
+"""Cast to 8-bit integer"""
+
+convert_to_int16 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16))))
+"""Cast to 16-bit integer"""
+
+convert_to_int32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32))))
+"""Cast to 32-bit integer"""
+
+convert_to_int64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64))))
+"""Cast to 64-bit integer"""
+
+convert_to_float32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32))))
+"""Cast to single-precision floating point"""
+
+convert_to_float64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64))))
+"""Cast to double-precision floating point"""
+
+convert_to_complex64  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64))))
+"""Cast to single-precision complex"""
+
+convert_to_complex128 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128))))
+"""Cast to double-precision complex"""
 
 
 
