@@ -508,6 +508,29 @@ def _elemwise(scalar_op, name, doc_prefix=''):
 
     return straight, inplace
 
+def _epydoc_cheat(real_symbol_value):
+    """Replace the value associated with a function symbol"""
+    def decorator(f):
+        return real_symbol_value
+    return decorator
+
+def _scal_elemwise(symbol):
+    """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
+    symbolname = symbol.__name__
+    inplace = symbolname.endswith('_inplace')
+
+    if inplace:
+        scalar_op = getattr(scal, symbolname[1:-len('_inplace')])
+        inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
+        rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=symbolname)
+    else:
+        scalar_op = getattr(scal, symbolname)
+        rval = elemwise.Elemwise(scalar_op, name=symbolname)
+
+    if getattr(symbol, '__doc__', ''):
+        rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
+
+    return rval
 
 
 #########################
@@ -674,93 +697,109 @@ def _elemwise_macro_inplace(scalar_op, *args):
     inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0})
     return inplace(*args)
 
+@_scal_elemwise
 def lt(a, b):
     """a < b"""
     return _elemwise_macro(scal.lt, a, b)
 
+@_scal_elemwise
 def _lt_inplace(a,b):
     """a < b (inplace on a)"""
     return _elemwise_macro_inplace(scal.lt, a, b)
 
+@_scal_elemwise
 def gt(a, b):
     """a > b"""
-    return _elemwise_macro(scal.gt, a, b)
 
+@_scal_elemwise
 def _gt_inplace(a,b):
     """a > b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.gt, a, b)
 
+@_scal_elemwise
 def le(a, b):
     """a <= b"""
-    return _elemwise_macro(scal.le, a, b)
 
+@_scal_elemwise
 def _le_inplace(a,b):
     """a <= b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.le, a, b)
 
+@_scal_elemwise
 def ge(a, b):
     """a >= b"""
-    return _elemwise_macro(scal.ge, a, b)
 
+@_scal_elemwise
 def _ge_inplace(a,b):
     """a >= b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.ge, a, b)
 
+@_scal_elemwise
 def eq(a, b):
     """a == b"""
-    return _elemwise_macro(scal.eq, a, b)
 
+@_scal_elemwise
 def _eq_inplace(a,b):
     """a == b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.eq, a, b)
 
+@_scal_elemwise
 def neq(a, b):
     """a != b"""
-    return _elemwise_macro(scal.neq, a, b)
 
+@_scal_elemwise
 def _neq_inplace(a,b):
     """a != b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.neq, a, b)
 
 
 ##########################
 # Bit-wise
 ##########################
 
+@_scal_elemwise
 def and_(a,b):
     """bitwise a & b"""
-    return _elemwise_macro(scal.and_, a, b)
+
+@_scal_elemwise
 def _and__inplace(a,b):
     """bitwise a & b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.and_, a, b)
 
+@_scal_elemwise
 def or_(a,b):
     """bitwise a | b"""
-    return _elemwise_macro(scal.or_, a, b)
+
+@_scal_elemwise
 def _or__inplace(a,b):
     """bitwise a | b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.or_, a, b)
 
-def xor_(a,b):
+@_scal_elemwise
+def xor(a,b):
     """bitwise a ^ b"""
-    return _elemwise_macro(scal.xor_, a, b)
-def _xor__inplace(a,b):
-    """bitwise a ^ b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.xor_, a, b)
 
-def invert_(a,b):
-    """bitwise a ~ b"""
-    return _elemwise_macro(scal.invert, a, b)
-def _invert__inplace(a,b):
-    """bitwise a ~ b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.invert, a, b)
+@_scal_elemwise
+def _xor_inplace(a,b):
+    """bitwise a ^ b (inplace on a)"""
+
+@_scal_elemwise
+def invert(a):
+    """bitwise ~a"""
+
+@_scal_elemwise
+def _invert_inplace(a):
+    """bitwise ~a (inplace on a)"""
 
 ##########################
 # Math
 ##########################
 
-_abs, _abs_inplace = _elemwise(scal.abs, 'abs',
-    """absolute value (elemwise)""")
+@_scal_elemwise
+def _abs(*a):
+    """|a|
+
+    _abs has a leading underscore because abs() is a builtin.  TensorResult overloads the
+    __abs__ operator so that this function is called when you type abs(a).
+
+    """
+
+@_scal_elemwise
+def __abs_inplace(a):
+    """|a| (inplace on a)"""
 
 exp, _exp_inplace = _elemwise(scal.exp, 'exp',
     """exponential (elemwise)""")

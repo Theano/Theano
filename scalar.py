@@ -586,7 +586,7 @@ class Abs(UnaryScalarOp):
             return "%(z)s = fabs(%(x)s);" % locals()
         #complex, other?
         raise NotImplementedError('type not supported', type)
-abs = Abs(same_out)
+_abs = Abs(same_out)
 
 class Sgn(UnaryScalarOp):
     def impl(self, x):
