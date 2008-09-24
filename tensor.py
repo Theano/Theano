@@ -691,25 +691,13 @@ def argmax(x, axis=None):
 # Comparison
 ##########################
 
-def _elemwise_macro(scalar_op, *args):
-    straight = elemwise.Elemwise(scalar_op)
-    return straight(*args)
-
-def _elemwise_macro_inplace(scalar_op, *args):
-    #construct an inplace version of the scalar op
-    inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-    inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0})
-    return inplace(*args)
-
 @_scal_elemwise
 def lt(a, b):
     """a < b"""
-    return _elemwise_macro(scal.lt, a, b)
 
 @_scal_elemwise
 def _lt_inplace(a,b):
     """a < b (inplace on a)"""
-    return _elemwise_macro_inplace(scal.lt, a, b)
 
 @_scal_elemwise
 def gt(a, b):
@@ -805,55 +793,120 @@ def _abs(*a):
 def __abs_inplace(a):
     """|a| (inplace on a)"""
 
-exp, _exp_inplace = _elemwise(scal.exp, 'exp',
-    """exponential (elemwise)""")
+@_scal_elemwise
+def exp(a):
+    """e^a"""
+@_scal_elemwise
+def _exp_inplace(a):
+    """e^a (inplace on a)"""
 
-neg, _neg_inplace = _elemwise(scal.neg, 'neg',
-    """negative (elemwise)""")
+@_scal_elemwise
+def neg(a):
+    """-a"""
+@_scal_elemwise
+def _neg_inplace(a):
+    """-a (inplace on a)"""
 
-inv, _inv_inplace = _elemwise(scal.inv, 'inv',
-    """multiplicative inverse (elemwise)""")
+@_scal_elemwise
+def inv(a):
+    """1.0/a (inplace on a)"""
+@_scal_elemwise
+def _inv_inplace(a):
+    """1.0/a (inplace on a)"""
 
-log, _log_inplace = _elemwise(scal.log, 'log',
-    """logarithm base-e (elemwise)""")
+@_scal_elemwise
+def log(a):
+    """base e logarithm of a"""
+@_scal_elemwise
+def _log_inplace(a):
+    """base e logarithm of a (inplace on a)"""
 
-log2, _log2_inplace = _elemwise(scal.log2, 'log2',
-    """logarithm base-2 (elemwise)""")
+@_scal_elemwise
+def log2(a):
+    """base 2 logarithm of a"""
+@_scal_elemwise
+def _log2_inplace(a):
+    """base 2 logarithm of a (inplace on a)"""
 
-sgn, _sgn_inplace = _elemwise(scal.sgn, 'sgn',
-    """sign (elemwise)""")
+@_scal_elemwise
+def sgn(a):
+    """sign of a"""
+@_scal_elemwise
+def _sgn_inplace(a):
+    """sign of `a` (inplace on `a`)"""
 
-sqr, _sqr_inplace = _elemwise(scal.sqr, 'sqr',
-    """square (elemwise)""")
+@_scal_elemwise
+def sqr(a):
+    """square of a"""
+@_scal_elemwise
+def _sqr_inplace(a):
+    """square of `a` (inplace on `a`)"""
 
-sqrt, _sqrt_inplace = _elemwise(scal.sqrt, 'sqrt',
-    """square root (elemwise)""")
+@_scal_elemwise
+def sqrt(a):
+    """square root of a"""
+@_scal_elemwise
+def _sqrt_inplace(a):
+    """square root of `a` (inplace on `a`)"""
 
-cos, _cos_inplace = _elemwise(scal.cos, 'cos',
-    """cosine (elemwise)""")
+@_scal_elemwise
+def cos(a):
+    """cosine of a"""
+@_scal_elemwise
+def _cos_inplace(a):
+    """cosine of `a` (inplace on `a`)"""
 
-sin, _sin_inplace = _elemwise(scal.sin, 'sin',
-    """sine (elemwise)""")
+@_scal_elemwise
+def sin(a):
+    """sine of a"""
+@_scal_elemwise
+def _sin_inplace(a):
+    """sine of `a` (inplace on `a`)"""
 
-tan, _tan_inplace = _elemwise(scal.tan, 'tan',
-    """tan = sin/cos (elemwise)""")
+@_scal_elemwise
+def tan(a):
+    """tangent of a"""
+@_scal_elemwise
+def _tan_inplace(a):
+    """tangent of `a` (inplace on `a`)"""
 
-cosh, _cosh_inplace = _elemwise(scal.cosh, 'cosh',
-    """hyperbolic cosine (elemwise)""")
+@_scal_elemwise
+def cosh(a):
+    """hyperbolic cosine of a"""
+@_scal_elemwise
+def _cosh_inplace(a):
+    """hyperbolic cosine of `a` (inplace on `a`)"""
 
-sinh, _sinh_inplace = _elemwise(scal.sinh, 'sinh',
-    """hyperbolic sine (elemwise)""")
+@_scal_elemwise
+def sinh(a):
+    """hyperbolic sine of a"""
+@_scal_elemwise
+def _sinh_inplace(a):
+    """hyperbolic sine of `a` (inplace on `a`)"""
 
-tanh, _tanh_inplace = _elemwise(scal.tanh, 'tanh',
-    """hyperbolic tangent (elemwise)""")
+@_scal_elemwise
+def tanh(a):
+    """hyperbolic tangent of a"""
+@_scal_elemwise
+def _tanh_inplace(a):
+    """hyperbolic tangent of `a` (inplace on `a`)"""
 
 
 ##########################
 # Misc
 ##########################
 
-fill, _fill_inplace = _elemwise(scal.second, 'fill',
-    """fill WRITEME (elemwise)""")
+#fill, _fill_inplace = _elemwise(scal.second, 'fill',
+    #"""fill WRITEME (elemwise)""")
+@_scal_elemwise
+def second(a, b):
+    """Create a matrix by filling the shape of a with b"""
+@_scal_elemwise
+def _second_inplace(a):
+    """Fill `a` with `b`"""
+
+fill = second
+_fill_inplace = _second_inplace
 
 @constructor
 def ones_like(model):
@@ -920,11 +973,13 @@ def one():
     return Ones(0)([])
 
 
-tensor_copy = elemwise.Elemwise(scal.identity)
-"""Copy a tensor"""
+@_epydoc_cheat(elemwise.Elemwise(scal.identity))
+def tensor_copy(a):
+    """Create a duplicate of `a` (with duplicated storage)"""
 
-identity = elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]})
-"""Do nothing (elemwise)"""
+@_epydoc_cheat(elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]}))
+def view(a):
+    """Create a duplicate of `a` (with shared storage)"""
 
 @constructor
 def sum(input, axis = None):
@@ -969,23 +1024,47 @@ repeat = Repeat()
 # Arithmetics
 ##########################
 
-add, _add_inplace = _elemwise(scal.add, 'add', 
-    """addition (element-wise)""")
+@_scal_elemwise
+def add(a, b):
+    """elementwise addition"""
+@_scal_elemwise
+def _add_inplace(a, b):
+    """elementwise addition (inplace on `a`)"""
 
-sub, _sub_inplace = _elemwise(scal.sub, 'sub',
-    """subtraction (elemwise)""")
+@_scal_elemwise
+def sub(a, b):
+    """elementwise subtraction"""
+@_scal_elemwise
+def _sub_inplace(a, b):
+    """elementwise subtraction (inplace on `a`)"""
 
-mul, _mul_inplace = _elemwise(scal.mul, 'mul',
-    """multiplication (elemwise)""")
+@_scal_elemwise
+def mul(a, b):
+    """elementwise multiplication"""
+@_scal_elemwise
+def _mul_inplace(a, b):
+    """elementwise multiplication (inplace on `a`)"""
 
-div, _div_inplace = _elemwise(scal.div, 'div',
-    """division (elemwise)""")
+@_scal_elemwise
+def div(a, b):
+    """elementwise division"""
+@_scal_elemwise
+def _div_inplace(a, b):
+    """elementwise division (inplace on `a`)"""
 
-mod, _mod_inplace = _elemwise(scal.mod, 'mod',
-    """modulo (elemwise)""")
+@_scal_elemwise
+def mod(a, b):
+    """elementwise modulo"""
+@_scal_elemwise
+def _mod_inplace(a, b):
+    """elementwise modulo (inplace on `a`)"""
 
-pow, _pow_inplace = _elemwise(scal.pow, 'pow',
-    """raise to given exponent (elemwise)""")
+@_scal_elemwise
+def pow(a, b):
+    """elementwise power"""
+@_scal_elemwise
+def _pow_inplace(a, b):
+    """elementwise power (inplace on `a`)"""
 
 
 ##########################
