@@ -1,9 +1,16 @@
 import sys
 import gof
-import tensor
 
-def isOp(thing):
-    return hasattr(thing, 'perform')
+def isOpClass(thing):
+    return hasattr(thing, 'perform') and not isinstance(thing, gof.Op)
+
+def isOpConstructor(thing, module):
+    return hasattr(thing, 'perform') and isinstance(thing, gof.Op)\
+            or thing in getattr(module, '_constructor_list', [])
+
+def print_title(title_string, under_char):
+    print title_string
+    print under_char * len(title_string)
 
 def chomp(s):
     """interpret and left-align a docstring"""
@@ -35,16 +42,43 @@ def chomp(s):
     return "".join(r)
 
 
-for module in [tensor]:
-    title = 'Ops in module: `%s`' % module.__name__
-    print title
-    print '-' * len(title)
+import elemwise, scalar, sparse, tensor
+
+print_title("Theano Op List", "~")
+print ""
+print ".. contents:: "
+print ""
+
+for module in [elemwise, scalar, sparse, tensor]:
+    print_title('module: `%s`' % module.__name__, '=')
+
+    print_title('Op Classes', '-')
 
     for symbol_name in dir(module):
 
         symbol = getattr(module, symbol_name)
 
-        if isOp(symbol):
+        if isOpClass(symbol) and symbol.__module__ == module.__name__:
+            print ""
+            print "- :api:`%s.%s`" % (module.__name__, symbol_name)
+            docstring = getattr(symbol, '__doc__', "")
+
+            if not docstring: 
+                print " ", '(no doc)'
+            elif len(docstring) < 50:
+                print " ", chomp(docstring)
+            else:
+                print " ", chomp(docstring[:40]), "..."
+    # a little trailing whitespace
+    print ""
+
+    print_title('Op Constructors', '-')
+    for symbol_name in dir(module):
+
+        symbol = getattr(module, symbol_name)
+
+        if isOpConstructor(symbol, module) \
+                and symbol.__module__ == module.__name__:
             print ""
             print "- :api:`%s.%s`" % (module.__name__, symbol_name)
             docstring = getattr(symbol, '__doc__', "")
@@ -55,8 +89,6 @@ for module in [tensor]:
                 print " ", chomp(docstring)
             else:
                 print " ", chomp(docstring[:40]), "..."
-
     # a little trailing whitespace
-    print ""
     print ""
 
