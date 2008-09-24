@@ -20,7 +20,7 @@ def in2out(*local_opts):
 
 # gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)
 # Transforms d -= a * dot(b, c) into gemm(d, -a, b, c, 1.0)
-gemm_pattern_1 = gof.PatternSub((T.sub_inplace,
+gemm_pattern_1 = gof.PatternSub((T._sub_inplace,
                                  'd',
                                  (T.mul,
                                   dict(pattern = (T.DimShuffle((), ['x', 'x'], inplace = True), 'a'),

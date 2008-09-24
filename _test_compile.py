@@ -77,7 +77,7 @@ class T_Function(unittest.TestCase):
     def test_closure(self):
         x, y, z = tensor.scalars('xyz')
         v = tensor.value(numpy.zeros(()))
-        e = x + tensor.add_inplace(v, 1)
+        e = x + tensor._add_inplace(v, 1)
         f = function([x], [e])
         assert f(1.) == 2.
         assert f(1.) == 3.
@@ -109,7 +109,7 @@ class T_Function(unittest.TestCase):
     def test_borrow_false_through_inplace(self):
         x, y, z = tensor.scalars('xyz')
         # if borrow_outputs is False, we must not reuse the temporary created for x+y
-        e = tensor.add_inplace(x + y, z)
+        e = tensor._add_inplace(x + y, z)
         for linker in 'py c c|py c&py'.split():
             f = function([x, y, z], [e], borrow_outputs = False, linker = linker)
             res1 = f(1.0, 2.0, 3.0)

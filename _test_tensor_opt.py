@@ -3,12 +3,12 @@
 
 import unittest
 
-from theano import gof
-from theano.tensor_opt import *
-from theano import tensor
-from theano.tensor import Tensor
-from theano.gof import Env
-from theano.elemwise import DimShuffle
+import gof
+from tensor_opt import *
+import tensor
+from tensor import Tensor
+from gof import Env
+from elemwise import DimShuffle
 import numpy
 #import scalar_opt
 
@@ -43,7 +43,7 @@ def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
 #     def test_user_inplace(self):
 #         x, y, z = inputs()
 #         e0 = x + y
-#         e1 = tensor.mul_inplace(x, y)
+#         e1 = tensor._mul_inplace(x, y)
 #         g = Env([x, y], [e0, e1])
 #         self.failUnless(str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, y)]")
 #         inplace_optimizer.optimize(g)
@@ -52,7 +52,7 @@ def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
 #     def test_inplace_on_second_argument(self):
 #         x, y, z = inputs()
 #         e0 = x + y
-#         e1 = tensor.mul_inplace(x, z)
+#         e1 = tensor._mul_inplace(x, z)
 #         g = Env([x, y], [e0, e1])
 #         self.failUnless(str(g) == "[Broadcast{Add}(x, y), Broadcast{Mul}{0: 0}(x, z)]")
 #         inplace_optimizer.optimize(g)
@@ -98,9 +98,9 @@ class _test_dimshuffle_lift(unittest.TestCase):
 
 
 
-from theano.tensor import *
+from tensor import *
 
-from theano.sandbox  import pprint
+from sandbox  import pprint
 
 class _test_greedy_distribute(unittest.TestCase):
     def test_main(self):
@@ -279,8 +279,8 @@ class _test_canonize(unittest.TestCase):
 
 # #     def test_inplace(self):
 # #         x, y, z = inputs()
-# #         #e = tensor.add_inplace(x, y + z)
-# #         e = x + tensor.add_inplace(y, z)
+# #         #e = tensor._add_inplace(x, y + z)
+# #         e = x + tensor._add_inplace(y, z)
 # #         g = Env([x, y, z], [e])
 # #         opt = CliqueOptimizer(through_broadcast = False,
 # #                               scalar_optimizer = None,
