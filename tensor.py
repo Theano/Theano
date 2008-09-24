@@ -490,7 +490,7 @@ elemwise.TensorValue = TensorValue
 # Utilities
 #########################
 
-def _elemwise(scalar_op, name):
+def _elemwise(scalar_op, name, doc_prefix=''):
     straight = elemwise.Elemwise(scalar_op, name = name)
     inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
     inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = name+"_inplace")
@@ -502,6 +502,9 @@ def _elemwise(scalar_op, name):
 
     straight.__module__ = 'tensor'
     inplace.__module__ = 'tensor'
+
+    if doc_prefix:
+        straight.__doc__ = doc_prefix + '\n' + straight.__doc__
 
     return straight, inplace
 
@@ -700,20 +703,20 @@ invert, invert_inplace = _elemwise(scal.invert, 'invert')
 # Math
 ##########################
 
-_abs, abs_inplace = _elemwise(scal.abs, 'abs')
-"""absolute value (elemwise)"""
+_abs, abs_inplace = _elemwise(scal.abs, 'abs', 
+    """absolute value (elemwise)""")
 
-exp, exp_inplace = _elemwise(scal.exp, 'exp')
-"""exponential (elemwise)"""
+exp, exp_inplace = _elemwise(scal.exp, 'exp',
+    """exponential (elemwise)""")
 
-neg, neg_inplace = _elemwise(scal.neg, 'neg')
-"""negative (elemwise)"""
+neg, neg_inplace = _elemwise(scal.neg, 'neg',
+    """negative (elemwise)""")
 
-inv, inv_inplace = _elemwise(scal.inv, 'inv')
-"""multiplicative inverse (elemwise)"""
+inv, inv_inplace = _elemwise(scal.inv, 'inv',
+    """multiplicative inverse (elemwise)""")
 
-log, log_inplace = _elemwise(scal.log, 'log')
-"""logarithm base-e (elemwise)"""
+log, log_inplace = _elemwise(scal.log, 'log',
+    """logarithm base-e (elemwise)""")
 
 log2, log2_inplace = _elemwise(scal.log2, 'log2')
 """logarithm base-2 (elemwise)"""
@@ -867,8 +870,7 @@ repeat = Repeat()
 # Arithmetics
 ##########################
 
-add, add_inplace = _elemwise(scal.add, 'add')
-"""addition (elemwise)"""
+add, add_inplace = _elemwise(scal.add, 'add', 'addition (element-wise)')
 
 sub, sub_inplace = _elemwise(scal.sub, 'sub')
 """subtraction (elemwise)"""
