@@ -1,3 +1,5 @@
+"""script to generate doc/oplist.txt """
+__docformat__ = "restructuredtext en"
 import sys
 import gof
 
@@ -11,6 +13,7 @@ def isOpConstructor(thing, module):
 def print_title(title_string, under_char):
     print title_string
     print under_char * len(title_string)
+    print ""
 
 def chomp(s):
     """interpret and left-align a docstring"""
@@ -42,14 +45,14 @@ def chomp(s):
     return "".join(r)
 
 
-import elemwise, scalar, sparse, tensor
+import scalar, sparse, tensor
 
 print_title("Theano Op List", "~")
 print ""
 print ".. contents:: "
 print ""
 
-for module in [elemwise, scalar, sparse, tensor]:
+for module in [scalar, sparse, tensor]:
     print_title('module: `%s`' % module.__name__, '=')
 
     print_title('Op Classes', '-')
@@ -58,9 +61,9 @@ for module in [elemwise, scalar, sparse, tensor]:
 
         symbol = getattr(module, symbol_name)
 
-        if isOpClass(symbol) and symbol.__module__ == module.__name__:
+        if isOpClass(symbol):
             print ""
-            print "- :api:`%s.%s`" % (module.__name__, symbol_name)
+            print "- :api:`%s.%s`" % (symbol.__module__, symbol_name)
             docstring = getattr(symbol, '__doc__', "")
 
             if not docstring: 
@@ -77,10 +80,9 @@ for module in [elemwise, scalar, sparse, tensor]:
 
         symbol = getattr(module, symbol_name)
 
-        if isOpConstructor(symbol, module) \
-                and symbol.__module__ == module.__name__:
+        if isOpConstructor(symbol, module):
             print ""
-            print "- :api:`%s.%s`" % (module.__name__, symbol_name)
+            print "- :api:`%s.%s`" % (symbol.__module__, symbol_name)
             docstring = getattr(symbol, '__doc__', "")
 
             if not docstring: 
