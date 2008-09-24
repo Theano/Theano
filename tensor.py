@@ -477,6 +477,7 @@ class TensorConstant(Constant, _tensor_py_operators):
 class TensorValue(Value, _tensor_py_operators):
     pass
 
+#QUESTION: why are we doing this!?
 elemwise.as_tensor = as_tensor    
 elemwise.Tensor = Tensor
 elemwise.TensorResult = TensorResult
@@ -661,11 +662,22 @@ def argmax(x, axis=None):
 ##########################
 
 lt, lt_inplace = _elemwise(scal.lt, 'lt')
+"""less than (elemwise)"""
+
 gt, gt_inplace = _elemwise(scal.gt, 'gt')
+"""greater than (elemwise)"""
+
 le, le_inplace = _elemwise(scal.le, 'le')
+"""less than, or equal to (elemwise)"""
+
 ge, ge_inplace = _elemwise(scal.ge, 'ge')
+"""greater than, or equal to (elemwise)"""
+
 eq, eq_inplace = _elemwise(scal.eq, 'eq')
+"""equal to (elemwise)"""
+
 neq, neq_inplace = _elemwise(scal.neq, 'neq')
+"""not equal to (elemwise)"""
 
 
 ##########################
@@ -673,29 +685,65 @@ neq, neq_inplace = _elemwise(scal.neq, 'neq')
 ##########################
 
 and_, and_inplace = _elemwise(scal.and_, 'and_')
+"""bitwise AND (elemwise)"""
+
 or_, or_inplace = _elemwise(scal.or_, 'or_')
+"""bitwise OR (elemwise)"""
+
 xor, xor_inplace = _elemwise(scal.xor, 'xor')
+"""bitwise XOR (elemwise)"""
+
 invert, invert_inplace = _elemwise(scal.invert, 'invert')
+"""bitwise NOT (elemwise)"""
 
 ##########################
 # Math
 ##########################
 
 _abs, abs_inplace = _elemwise(scal.abs, 'abs')
+"""absolute value (elemwise)"""
+
 exp, exp_inplace = _elemwise(scal.exp, 'exp')
+"""exponential (elemwise)"""
+
 neg, neg_inplace = _elemwise(scal.neg, 'neg')
+"""negative (elemwise)"""
+
 inv, inv_inplace = _elemwise(scal.inv, 'inv')
+"""multiplicative inverse (elemwise)"""
+
 log, log_inplace = _elemwise(scal.log, 'log')
+"""logarithm base-e (elemwise)"""
+
 log2, log2_inplace = _elemwise(scal.log2, 'log2')
+"""logarithm base-2 (elemwise)"""
+
 sgn, sgn_inplace = _elemwise(scal.sgn, 'sgn')
+"""sign (elemwise)"""
+
 sqr, sqr_inplace = _elemwise(scal.sqr, 'sqr')
+"""square (elemwise)"""
+
 sqrt, sqrt_inplace = _elemwise(scal.sqrt, 'sqrt')
+"""square root (elemwise)"""
+
 cos, cos_inplace = _elemwise(scal.cos, 'cos')
+"""cosine (elemwise)"""
+
 sin, sin_inplace = _elemwise(scal.sin, 'sin')
+"""sine (elemwise)"""
+
 tan, tan_inplace = _elemwise(scal.tan, 'tan')
+"""tan = sin/cos (elemwise)"""
+
 cosh, cosh_inplace = _elemwise(scal.cosh, 'cosh')
+"""hyperbolic cosine (elemwise)"""
+
 sinh, sinh_inplace = _elemwise(scal.sinh, 'sinh')
+"""hyperbolic sine (elemwise)"""
+
 tanh, tanh_inplace = _elemwise(scal.tanh, 'tanh')
+"""hyperbolic tangent (elemwise)"""
 
 
 ##########################
@@ -703,18 +751,22 @@ tanh, tanh_inplace = _elemwise(scal.tanh, 'tanh')
 ##########################
 
 fill, fill_inplace = _elemwise(scal.second, 'fill')
+"""fill WRITEME (elemwise)"""
 
 @constructor
 def ones_like(model):
+    """WRITEME"""
     #return Ones(model.type.ndim)(shape(model))
     return fill(model, 1.0)
 
 @constructor
 def zeros_like(model):
+    """WRITEME"""
     #return Zeros(model.type.ndim)(shape(model))
     return fill(model, 0.0)
 
 class Filler(gof.Op):
+    """WRITEME"""
     def __init__(self, value, ndim, dtype = 'float64'):
         self.value = value
         self.ndim = ndim
@@ -748,7 +800,10 @@ class Filler(gof.Op):
         return hash(self.ndim) ^ hash(self.dtype)
 
 Zeros = functools.partial(Filler, 0)
+"""WRITEME"""
+
 Ones = functools.partial(Filler, 1)
+"""WRITEME"""
 
 @constructor
 def zero():
@@ -759,18 +814,24 @@ def zero():
 
 @constructor
 def one():
+    """WRITEME"""
     return Ones(0)([])
 
 
 tensor_copy = elemwise.Elemwise(scal.identity)
+"""Copy a tensor"""
+
 identity = elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]})
+"""Do nothing (elemwise)"""
 
 @constructor
 def sum(input, axis = None):
+    """WRITEME"""
     return elemwise.Sum(axis)(input)
 
 @constructor
 def mean(input, axis = None):
+    """WRITEME"""
     s = sum(input, axis)
     shp = shape(input)
     if axis is None:
@@ -807,11 +868,22 @@ repeat = Repeat()
 ##########################
 
 add, add_inplace = _elemwise(scal.add, 'add')
+"""addition (elemwise)"""
+
 sub, sub_inplace = _elemwise(scal.sub, 'sub')
+"""subtraction (elemwise)"""
+
 mul, mul_inplace = _elemwise(scal.mul, 'mul')
+"""multiplication (elemwise)"""
+
 div, div_inplace = _elemwise(scal.div, 'div')
+"""division (elemwise)"""
+
 mod, mod_inplace = _elemwise(scal.mod, 'mod')
+"""modulo (elemwise)"""
+
 pow, pow_inplace = _elemwise(scal.pow, 'pow')
+"""raise to given exponent (elemwise)"""
 
 
 ##########################
@@ -844,7 +916,10 @@ class TransposeInplace(Op):
         return "TransposeView"
 
 transpose_inplace = TransposeInplace()
+"""WRITEME"""
+
 def transpose(x, **kwargs):
+    """WRITEME"""
     return transpose_inplace(tensor_copy(x), **kwargs)
 
 
@@ -980,6 +1055,7 @@ class Subtensor(Op):
 
 
 class SetSubtensor(Subtensor):
+    """WRITEME"""
     view_map = {}
     destroy_map = {0: [0]}
 
@@ -1032,6 +1108,7 @@ class SetSubtensor(Subtensor):
 
 
 class MakeVector(Op):
+    """WRITEME"""
     def __init__(self, stype):
         self.stype = stype
     def make_node(self, *inputs):
@@ -1044,6 +1121,7 @@ class MakeVector(Op):
         return [None]*len(inputs)
 
 make_lvector = MakeVector(lscalar)
+"""WRITEME"""
 
 
 class VerticalStack(Op):
