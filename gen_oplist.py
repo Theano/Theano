@@ -1,4 +1,4 @@
-"""script to generate doc/oplist.txt """
+"""script to generate doc/oplist.txt, which compiles to :doc:`oplist`. """
 __docformat__ = "restructuredtext en"
 import sys
 import gof
