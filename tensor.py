@@ -682,9 +682,6 @@ def _lt_inplace(a,b):
     """asdfasdf inplace!"""
     return _elemwise_macro_inplace(scal.lt, a, b)
 
-lt, _lt_inplace = _elemwise(scal.lt, 'lt',
-    """less than (elemwise)""")
-
 gt, _gt_inplace = _elemwise(scal.gt, 'gt',
     """greater than (elemwise)""")
 
