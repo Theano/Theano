@@ -21,9 +21,16 @@ def _numpy_checker(x, y):
     Used in DualLinker to compare C version with Python version.
     """
     x, y = x[0], y[0]
-    if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
+    if x.dtype != y.dtype or x.shape != y.shape or numpy.any(numpy.abs(x - y) > 1e-10):
         raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
 
+def safe_make_node(op, *inputs):
+    """Emulate the behaviour of make_node when op is a function instead of an Op instance."""
+    node = op(*inputs)
+    if isinstance(node, list):
+        return node[0].owner
+    else:
+        return node.owner
 
 def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}):
     if grad is True:
@@ -46,7 +53,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    node = self.op.make_node(*inputrs)
+                    #node = self.op.make_node(*inputrs)
+                    node = safe_make_node(self.op, *inputrs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while making a node with inputs %s" \
@@ -80,7 +88,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 if not isinstance(expecteds, (list, tuple)):
                     expecteds = (expecteds, )
                 for i, (result, expected) in enumerate(zip(results, expecteds)):
-                    if result.dtype != expected.dtype or result.shape != expected.shape or numpy.any(abs(result - expected) > 1e-10):
+                    if result.dtype != expected.dtype or result.shape != expected.shape or \
+                            numpy.any(numpy.abs(result - expected) > 1e-10):
                         self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s."
                                   % (self.op, testname, i, inputs, expected, result))
 
@@ -94,7 +103,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    node = self.op.make_node(*inputrs)
+                    node = safe_make_node(self.op,*inputrs)
                 except:
                     return
                 self.fail("Test %s::%s: %s was successfully instantiated on the following bad inputs: %s"
@@ -105,7 +114,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    node = self.op.make_node(*inputrs)
+                    node = safe_make_node(self.op,*inputrs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a node with inputs %s" \
@@ -340,8 +349,8 @@ AbsTester = make_broadcast_tester(op = tensor._abs,
                                   expected = lambda x: abs(x),
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-AbsInplaceTester = make_broadcast_tester(op = tensor._abs_inplace,
-                                         expected = lambda x: abs(x),
+AbsInplaceTester = make_broadcast_tester(op = tensor.__abs_inplace,
+                                         expected = lambda x: numpy.abs(x),
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
@@ -519,7 +528,9 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
     for test_num in xrange(n_tests):
 #        tensor_pt = [as_tensor(p,name='input %i'%i) for i,p in enumerate(pt)]
         tensor_pt = [constant(p).type('input %i'%i) for i,p in enumerate(pt)]
-        o = op.make_node(*[tpt.copy() for tpt in tensor_pt])
+        #o = op.make_node(*[tpt.copy() for tpt in tensor_pt])
+        o = safe_make_node(op, *[tpt.copy() for tpt in tensor_pt])
+        
         if hasattr(o, 'outputs'):
             o_outputs = o.outputs
         else:
