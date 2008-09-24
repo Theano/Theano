@@ -59,7 +59,9 @@ def generate():
 
 	print_title('Op Classes', '-')
 
-	for symbol_name in dir(module):
+        symbol_name_list = [s for s in dir(module) if not s[0] == '_']
+
+	for symbol_name in symbol_name_list:
 
 	    symbol = getattr(module, symbol_name)
 
@@ -78,7 +80,7 @@ def generate():
 	print ""
 
 	print_title('Op Constructors', '-')
-	for symbol_name in dir(module):
+	for symbol_name in symbol_name_list:
 
 	    symbol = getattr(module, symbol_name)
 
