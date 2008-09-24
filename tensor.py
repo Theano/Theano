@@ -675,44 +675,85 @@ def _elemwise_macro_inplace(scalar_op, *args):
     return inplace(*args)
 
 def lt(a, b):
-    """asdfasdf"""
+    """a < b"""
     return _elemwise_macro(scal.lt, a, b)
 
 def _lt_inplace(a,b):
-    """asdfasdf inplace!"""
+    """a < b (inplace on a)"""
     return _elemwise_macro_inplace(scal.lt, a, b)
 
-gt, _gt_inplace = _elemwise(scal.gt, 'gt',
-    """greater than (elemwise)""")
+def gt(a, b):
+    """a > b"""
+    return _elemwise_macro(scal.gt, a, b)
 
-le, _le_inplace = _elemwise(scal.le, 'le',
-    """less than, or equal to (elemwise)""")
+def _gt_inplace(a,b):
+    """a > b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.gt, a, b)
 
-ge, _ge_inplace = _elemwise(scal.ge, 'ge',
-    """greater than, or equal to (elemwise)""")
+def le(a, b):
+    """a <= b"""
+    return _elemwise_macro(scal.le, a, b)
 
-eq, _eq_inplace = _elemwise(scal.eq, 'eq',
-    """equal to (elemwise)""")
+def _le_inplace(a,b):
+    """a <= b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.le, a, b)
 
-neq, _neq_inplace = _elemwise(scal.neq, 'neq',
-    """not equal to (elemwise)""")
+def ge(a, b):
+    """a >= b"""
+    return _elemwise_macro(scal.ge, a, b)
+
+def _ge_inplace(a,b):
+    """a >= b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.ge, a, b)
+
+def eq(a, b):
+    """a == b"""
+    return _elemwise_macro(scal.eq, a, b)
+
+def _eq_inplace(a,b):
+    """a == b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.eq, a, b)
+
+def neq(a, b):
+    """a != b"""
+    return _elemwise_macro(scal.neq, a, b)
+
+def _neq_inplace(a,b):
+    """a != b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.neq, a, b)
 
 
 ##########################
 # Bit-wise
 ##########################
 
-and_, _and_inplace = _elemwise(scal.and_, 'and_',
-    """bitwise AND (elemwise)""")
+def and_(a,b):
+    """bitwise a & b"""
+    return _elemwise_macro(scal.and_, a, b)
+def _and__inplace(a,b):
+    """bitwise a & b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.and_, a, b)
 
-or_, _or_inplace = _elemwise(scal.or_, 'or_',
-    """bitwise OR (elemwise)""")
+def or_(a,b):
+    """bitwise a | b"""
+    return _elemwise_macro(scal.or_, a, b)
+def _or__inplace(a,b):
+    """bitwise a | b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.or_, a, b)
 
-xor, _xor_inplace = _elemwise(scal.xor, 'xor',
-    """bitwise XOR (elemwise)""")
+def xor_(a,b):
+    """bitwise a ^ b"""
+    return _elemwise_macro(scal.xor_, a, b)
+def _xor__inplace(a,b):
+    """bitwise a ^ b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.xor_, a, b)
 
-invert, _invert_inplace = _elemwise(scal.invert, 'invert',
-    """bitwise NOT (elemwise)""")
+def invert_(a,b):
+    """bitwise a ~ b"""
+    return _elemwise_macro(scal.invert, a, b)
+def _invert__inplace(a,b):
+    """bitwise a ~ b (inplace on a)"""
+    return _elemwise_macro_inplace(scal.invert, a, b)
 
 ##########################
 # Math
