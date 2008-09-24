@@ -664,6 +664,24 @@ def argmax(x, axis=None):
 # Comparison
 ##########################
 
+def _elemwise_macro(scalar_op, *args):
+    straight = elemwise.Elemwise(scalar_op)
+    return straight(*args)
+
+def _elemwise_macro_inplace(scalar_op, *args):
+    #construct an inplace version of the scalar op
+    inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
+    inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0})
+    return inplace(*args)
+
+def lt(a, b):
+    """asdfasdf"""
+    return _elemwise_macro(scal.lt, a, b)
+
+def _lt_inplace(a,b):
+    """asdfasdf inplace!"""
+    return _elemwise_macro_inplace(scal.lt, a, b)
+
 lt, _lt_inplace = _elemwise(scal.lt, 'lt',
     """less than (elemwise)""")
 
