@@ -1418,7 +1418,6 @@ def concatenate(tensors, axis=0):
     if not hasattr(concatenate, 'obj'):
         concatenate.obj = Concatenate()
     return concatenate.obj(axis, *tensors)
->>>>>>> /tmp/tensor.py~other.Lj6QeV
 
 class VerticalStack(Op):
     """

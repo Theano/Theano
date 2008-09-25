@@ -100,7 +100,7 @@ class _test_dimshuffle_lift(unittest.TestCase):
 
 from tensor import *
 
-from sandbox  import pprint
+#from sandbox import pprint
 
 class _test_greedy_distribute(unittest.TestCase):
     def test_main(self):
