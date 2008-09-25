@@ -508,8 +508,17 @@ def _elemwise(scalar_op, name, doc_prefix=''):
 
     return straight, inplace
 
-def _epydoc_cheat(real_symbol_value):
-    """Replace the value associated with a function symbol"""
+def _redefine(real_symbol_value):
+    """Replace the value associated with a function symbol.
+    
+    This is useful to trick epydoc into doing what we want.  It's a hack.
+    """
+    def decorator(f):
+        return real_symbol_value
+    return decorator
+
+def _redefine_asRoutine(real_symbol_value):
+    real_symbol_value.__epydoc_asRoutine = True
     def decorator(f):
         return real_symbol_value
     return decorator
@@ -532,7 +541,7 @@ def _scal_elemwise(symbol):
 
     #for the meaning of this see the ./epydoc script
     # it makes epydoc display rval as if it were a function, not an object
-    rval.__epydoc_asRoutine = True
+    rval.__epydoc_asRoutine = symbol
 
     return rval
 
@@ -580,13 +589,14 @@ def cast(t, dtype):
                'complex128': convert_to_complex128}
     return mapping[dtype](t)
 
-def _conversion(f):
-    f.__module__ = 'tensor'
-    return f
+def _conversion(real_value):
+    def decorator(f):
+        return real_value
+    return decorator
 
 convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))
 """Cast to 8-bit integer"""
-
+    
 convert_to_int16 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16))))
 """Cast to 16-bit integer"""
 
@@ -627,7 +637,9 @@ class Shape(Op):
         out[0] = numpy.asarray(x.shape)
     def grad(self, (x,), (gz,)):
         return [None]
-shape = Shape()
+@_redefine_asRoutine(Shape())
+def shape(a):
+    pass
 
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis"""
@@ -660,8 +672,9 @@ class MaxAndArgmax(Op):
         assert axis.data == 0
         g_x = eq(max(x, axis), x) * g_max
         return g_x, None
-max_and_argmax = MaxAndArgmax()
-
+@_redefine_asRoutine(MaxAndArgmax())
+def max_and_argmax(a):
+    pass
 
 
 @constructor
@@ -781,24 +794,24 @@ def _invert_inplace(a):
 ##########################
 
 @_scal_elemwise
-def _abs(*a):
-    """|a|
+def _abs(a):
+    """|`a`|
 
     _abs has a leading underscore because abs() is a builtin.  TensorResult overloads the
-    __abs__ operator so that this function is called when you type abs(a).
+    `TensorResult.__abs__` operator so that this function is called when you type abs(a).
 
     """
 
 @_scal_elemwise
 def __abs_inplace(a):
-    """|a| (inplace on a)"""
+    """|`a`| (inplace on `a`)"""
 
 @_scal_elemwise
 def exp(a):
-    """e^a"""
+    """e^`a`"""
 @_scal_elemwise
 def _exp_inplace(a):
-    """e^a (inplace on a)"""
+    """e^`a` (inplace on `a`)"""
 
 @_scal_elemwise
 def neg(a):
@@ -973,11 +986,11 @@ def one():
     return Ones(0)([])
 
 
-@_epydoc_cheat(elemwise.Elemwise(scal.identity))
+@_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
 
-@_epydoc_cheat(elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]}))
+@_redefine(elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]}))
 def view(a):
     """Create a duplicate of `a` (with shared storage)"""
 
