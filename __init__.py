@@ -1,6 +1,7 @@
 
 from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, Profiler, \
+     Container, \
      InconsistencyError, Env, \
      Apply, Result, Constant, Value, \
      Op, \
@@ -10,6 +11,8 @@ from gof import \
      object2, utils
 
 from compile import \
+    SymbolicInput, SymbolicInputKit, In, \
+    SymbolicOutput, Out, \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
     FunctionMaker, function, OpFromGraph #, eval_outputs, fast_compute
