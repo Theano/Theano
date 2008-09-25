@@ -8,6 +8,10 @@ from sparse import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
 from sparse import _mtypes, _mtype_to_str
 
 import random
+import gof
+
+def eval_outputs(outputs):
+    return compile.function([], outputs)()[0]
 
 class T_transpose(unittest.TestCase):
     def setUp(self):
@@ -23,7 +27,7 @@ class T_transpose(unittest.TestCase):
         self.failUnless(ta.type.dtype == 'float64', ta.type.dtype)
         self.failUnless(ta.type.format == 'csr', ta.type.format)
 
-        vta = compile.eval_outputs([ta])
+        vta = eval_outputs([ta])
         self.failUnless(vta.shape == (3,5))
     def test_transpose_csr(self):
         a = as_sparse(sparse.csr_matrix(sparse.speye(5,3)))
@@ -34,7 +38,7 @@ class T_transpose(unittest.TestCase):
         self.failUnless(ta.type.dtype == 'float64', ta.type.dtype)
         self.failUnless(ta.type.format == 'csc', ta.type.format)
 
-        vta = compile.eval_outputs([ta])
+        vta = eval_outputs([ta])
         self.failUnless(vta.shape == (3,5))
 
 class T_Add(unittest.TestCase):
@@ -60,7 +64,7 @@ class T_Add(unittest.TestCase):
             self.failUnless(apb.type.format == aR.type.format, apb.type.format)
             self.failUnless(apb.type.format == bR.type.format, apb.type.format)
 
-            val = compile.eval_outputs([apb])
+            val = eval_outputs([apb])
             self.failUnless(val.shape == (3,2))
             self.failUnless(numpy.all(val.todense() == (a + b).todense()))
             self.failUnless(numpy.all(val.todense() == numpy.array([[1., 2], [3, 4], [5, 6]])))
@@ -85,7 +89,7 @@ class T_Add(unittest.TestCase):
             self.failUnless(apb.type.dtype == aR.type.dtype, apb.type.dtype)
             self.failUnless(apb.type.dtype == bR.type.dtype, apb.type.dtype)
 
-            val = compile.eval_outputs([apb])
+            val = eval_outputs([apb])
             self.failUnless(val.shape == (3, 2))
             self.failUnless(numpy.all(val == (a + b)))
             self.failUnless(numpy.all(val == numpy.array([[1., 2], [3, 4], [5, 6]])))
@@ -110,7 +114,7 @@ class T_Add(unittest.TestCase):
             self.failUnless(apb.type.dtype == aR.type.dtype, apb.type.dtype)
             self.failUnless(apb.type.dtype == bR.type.dtype, apb.type.dtype)
 
-            val = compile.eval_outputs([apb])
+            val = eval_outputs([apb])
             self.failUnless(val.shape == (3, 2))
             self.failUnless(numpy.all(val == (a + b)))
             self.failUnless(numpy.all(val == numpy.array([[1., 2], [3, 4], [5, 6]])))
@@ -122,14 +126,14 @@ class T_conversion(unittest.TestCase):
     def test0(self):
         a = tensor.as_tensor(numpy.random.rand(5))
         s = csc_from_dense(a)
-        val = compile.eval_outputs([s])
+        val = eval_outputs([s])
         self.failUnless(str(val.dtype)=='float64')
         self.failUnless(val.format == 'csc')
 
     def test1(self):
         a = tensor.as_tensor(numpy.random.rand(5))
         s = csr_from_dense(a)
-        val = compile.eval_outputs([s])
+        val = eval_outputs([s])
         self.failUnless(str(val.dtype)=='float64')
         self.failUnless(val.format == 'csr')
 
@@ -138,7 +142,7 @@ class T_conversion(unittest.TestCase):
             s = t((2,5))
             d = dense_from_sparse(s)
             s[0,0] = 1.0
-            val = compile.eval_outputs([d])
+            val = eval_outputs([d])
             self.failUnless(str(val.dtype)=='float64')
             self.failUnless(numpy.all(val[0] == [1,0,0,0,0]))
 
@@ -159,7 +163,7 @@ class _testCase_dot(unittest.TestCase):
 
             zop = dot(x,xT)
             self.failUnless(_is_sparse_result(zop))
-            z = compile.eval_outputs([zop])
+            z = eval_outputs([zop])
             self.failUnless(_is_sparse(z))
             self.failUnless(z.shape == (500,500))
             self.failUnless(type(z) is mtype)
@@ -190,7 +194,7 @@ class _testCase_dot(unittest.TestCase):
 
             zop = dot(x,y)
             self.failUnless(_is_sparse_result(zop))
-            z = compile.eval_outputs([zop])
+            z = eval_outputs([zop])
             self.failUnless(_is_sparse(z))
             self.failUnless(z.shape == (500,2))
             self.failUnless(type(z) is mtype)
@@ -227,7 +231,7 @@ class _testCase_dot(unittest.TestCase):
 #            zop = dot(y, x)
             zop = transpose(dot(y, x))
             self.failUnless(_is_sparse_result(zop))
-            z = compile.eval_outputs([zop])
+            z = eval_outputs([zop])
             self.failUnless(_is_sparse(z))
             self.failUnless(z.shape == (500,2))
 #            self.failUnless(type(z) is mtype)

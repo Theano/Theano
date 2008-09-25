@@ -12,6 +12,7 @@ import toolbox
 import op
 from copy import copy
 from collections import deque
+import destroyhandler as dh
 
 
 class Optimizer:
@@ -60,7 +61,7 @@ class FromFunctionOptimizer(Optimizer):
     def __init__(self, fn):
         self.apply = fn
     def add_requirements(self, env):
-        env.extend(gof.toolbox.ReplaceValidate)
+        env.extend(toolbox.ReplaceValidate())
 
 def optimizer(f):
     return FromFunctionOptimizer(f)
@@ -208,7 +209,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
     def __init__(self, fn):
         self.transform = fn
     def add_requirements(self, env):
-        env.extend(gof.toolbox.ReplaceValidate)
+        env.extend(toolbox.ReplaceValidate())
 
 def local_optimizer(f):
     return FromFunctionLocalOptimizer(f)
@@ -607,6 +608,21 @@ def check_chain(r, *chain):
 
 
 
+
+############
+### Misc ###
+############
+
+class PureThenInplaceOptimizer(Optimizer):
+
+    def __init__(self, pure, inplace):
+        self.pure = pure
+        self.inplace = inplace
+
+    def apply(self, env):
+        self.pure(env)
+        env.extend(dh.DestroyHandler())
+        self.inplace(env)
 
 
 

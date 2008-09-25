@@ -624,8 +624,8 @@ class CLinker(link.Linker):
                                     input_storage,
                                     output_storage)
         return thunk, \
-            [link.Filter(input, storage) for input, storage in zip(self.env.inputs, input_storage)], \
-            [link.Filter(output, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
+            [link.Container(input, storage) for input, storage in zip(self.env.inputs, input_storage)], \
+            [link.Container(output, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
             error_storage
 
     def make_thunk(self, input_storage = None, output_storage = None):
@@ -873,8 +873,8 @@ class OpWiseCLinker(link.LocalLinker):
 
         f = link.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
 
-        return f, [link.Filter(input, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [link.Filter(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
+            [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
 
 
@@ -940,6 +940,7 @@ class DualLinker(link.Linker):
         no_recycling = self.no_recycling
 
         _f, i1, o1, thunks1, order1 = link.PerformLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
+        kwargs.pop('input_storage', None)
         _f, i2, o2, thunks2, order2 =      OpWiseCLinker().accept(env, no_recycling = no_recycling).make_all(**kwargs)
 
         def f():

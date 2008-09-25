@@ -140,7 +140,7 @@ class Result(utils.object2):
             else:
                 return str(self.owner.op) + "." + str(self.index)
         else:
-            return "<?>::" + str(self.type)
+            return "<%s>" % str(self.type)
     def __repr__(self):
         return str(self)
     def clone(self):
