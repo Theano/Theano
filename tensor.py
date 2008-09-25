@@ -1362,9 +1362,10 @@ class Concatenate(Op):
         out[0] = numpy.concatenate(tensors, axis = axis)
 
     def grad(self, axis_and_tensors, (gz,)):
+        raise RuntimeError, 'Not working yet'
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
-        n_dims = len(shape(tensors[0]))
         sizes_along_axis = [shape(x)[axis] for x in tensors]
+        n_dims = len(shape(tensors[0]))
         idx = [0]
         for s in sizes_along_axis:
             idx.append(idx[-1] + s)
