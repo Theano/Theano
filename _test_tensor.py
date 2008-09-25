@@ -635,7 +635,7 @@ class T_Cast(unittest.TestCase):
                                         [convert_to_int8, convert_to_int16, convert_to_int32, convert_to_int64,
                                          convert_to_float32, convert_to_float64]):
                 y = converter(x)
-                f = function([x], y, strict = True, mode = default_mode)
+                f = function([compile.In(x, strict = True)], y, mode = default_mode)
                 a = numpy.arange(10, dtype = type1)
                 b = f(a)
                 self.failUnless(numpy.all(b == numpy.arange(10, dtype = type2)))

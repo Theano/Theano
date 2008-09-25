@@ -86,7 +86,7 @@ class Scalar(Type):
         return str(self.dtype)
 
     def __repr__(self):
-        return "Scalar{%s}" % self.dtype
+        return "Scalar(%s)" % self.dtype
 
     def c_literal(self, data):
         if 'complex' in self.dtype:
@@ -257,7 +257,7 @@ class transfer_type:
         assert type(i) == int
         self.i = i
     def __call__(self, *types):
-        return types[self.i]
+        return types[self.i],
 class specific_out:
     def __init__(self, *spec):
         self.spec = spec
@@ -284,7 +284,7 @@ class ScalarOp(Op):
         self.name = name
         if output_types_preference is not None:
             if not callable(output_types_preference):
-                raise TypeError("Expected a callable for the 'output_types_preference' argument to %s." % self.__class__)
+                raise TypeError("Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" % (self.__class__, output_types_preference))
             self.output_types_preference = output_types_preference
 
     def make_node(self, *inputs):

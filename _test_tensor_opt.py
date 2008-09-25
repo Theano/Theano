@@ -107,11 +107,11 @@ class _test_greedy_distribute(unittest.TestCase):
         a, b, c, d, x, y, z = matrices('abcdxyz')
         e = (a/z + b/x) * x * z
         g = Env([a,b,c,d,x,y,z], [e])
-        print pprint.pp.process(g.outputs[0])
+        ##print pprint.pp.process(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor), order = 'out_to_in').optimize(g)
-        print pprint.pp.process(g.outputs[0])
+        ##print pprint.pp.process(g.outputs[0])
         
 
 
@@ -131,10 +131,10 @@ class _test_canonize(unittest.TestCase):
 #        e = x / y / x
         e = (x / x) * (y / y)
         g = Env([x, y, z, a, b, c, d], [e])
-        print pprint.pp.process(g.outputs[0])
+        ##print pprint.pp.process(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
-        print pprint.pp.process(g.outputs[0])
+        ##print pprint.pp.process(g.outputs[0])
         
 #     def test_plusmin(self):
 #         x, y, z = inputs()
