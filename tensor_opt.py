@@ -7,6 +7,7 @@ import tensor as T
 import numpy as N
 import operator
 import itertools
+import sys
 
 
 # Utilities
@@ -40,8 +41,7 @@ dot_to_gemm = gof.PatternSub((T.dot, 'a', 'b'),
                              allow_multiple_clients = False)
 
 
-@gof.optimizer
-def insert_inplace_optimizer(self, env):
+def _insert_inplace_optimizer(env):
     """
     Usage: inplace_optimizer.optimize(env)
     
@@ -66,14 +66,16 @@ def insert_inplace_optimizer(self, env):
             for candidate_input in candidate_inputs:
                 inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
                 try:
-                    new = Elemwise(op.scalar_op, inplace_pattern).make_node(op.inputs)
-                    env.replace_all_validate(dict(zip(node.outputs, new.outputs)))
-                except:
+                    new = Elemwise(op.scalar_op, inplace_pattern).make_node(*node.inputs)
+                    env.replace_all_validate(zip(node.outputs, new.outputs))
+                except Exception, e:
                     continue
                 candidate_inputs.remove(candidate_input)
                 node = new
                 baseline = inplace_pattern
                 break
+insert_inplace_optimizer = gof.optimizer(_insert_inplace_optimizer)
+
 
 inplace_optimizer = gof.SeqOptimizer(out2in(gemm_pattern_1),
                                      out2in(dot_to_gemm),

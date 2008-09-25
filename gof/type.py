@@ -63,6 +63,9 @@ class CLinkerType(object):
         """
         raise AbstractFunctionError()
 
+    def c_init(self, name, sub):
+        raise AbstractFunctionError()
+
     def c_extract(self, name, sub):
         """Required: Return c code to extract a PyObject * instance.
 

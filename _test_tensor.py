@@ -6,7 +6,7 @@ import tensor # for hidden symbols
 
 import unittest
 from copy import copy
-from compile import function, FunctionFactory, eval_outputs
+import compile
 import gradient
 import gof, gof.graph
 from gof.python25 import any
@@ -14,6 +14,21 @@ import gof
 from gof.utils import AbstractFunctionError
 
 from elemwise import DimShuffle
+
+
+default_mode = compile.Mode(optimizer = None,
+                            linker = 'c&py')
+
+def function(inputs, outputs, mode = default_mode):
+    return compile.function(inputs, outputs, mode = mode, accept_inplace = True)
+
+
+def eval_outputs(outputs, mode = default_mode):
+    results = function([], outputs, mode = mode)()
+    if len(results) == 1:
+        return results[0]
+    return results
+
 
 def _numpy_checker(x, y):
     """
@@ -64,9 +79,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 try:
                     f = function(inputrs, node.outputs,
-                                 linker = 'c&py', ##lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
-                                 unpack_single = False,
-                                 optimizer = None)
+                                 mode = default_mode, ##lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
+                                 )
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
@@ -124,9 +138,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 try:
                     f = function(inputrs, node.outputs,
-                                 linker = 'c&py', #lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
-                                 unpack_single = False,
-                                 optimizer = None)
+                                 mode = default_mode, #lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
+                                 )
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
@@ -541,14 +554,14 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
             # we could make loop over outputs making random projections R for each,
             # but this doesn't handle the case where not all the outputs are
             # differentiable... so I leave this as TODO for now -JB.
-        o_fn = function(tensor_pt, o_outputs, linker=linker)
+        o_fn = function(tensor_pt, o_outputs[0], mode=compile.Mode(optimizer = None, linker = linker))
         o_fn_out = o_fn(*pt)
         random_projection = rng.rand(*o_fn_out.shape)
         t_r = as_tensor(random_projection)
 
         #random projection of o onto t_r
         cost = sum(t_r * o_outputs[0])
-        cost_fn = function(tensor_pt, [cost], linker=linker)
+        cost_fn = function(tensor_pt, cost, mode=compile.Mode(optimizer = None, linker = linker))
 
         num_grad = gradient.numeric_grad(cost_fn, pt)
 
@@ -560,7 +573,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
             for op in gof.graph.io_toposort(tensor_pt, symbolic_grad):
                 print op
 
-        grad_fn = function(tensor_pt, symbolic_grad,linker=linker)
+        grad_fn = function(tensor_pt, symbolic_grad, mode=compile.Mode(optimizer = None, linker = linker))
 
         analytic_grad = grad_fn(*pt)
         if not isinstance(analytic_grad, (list, tuple)):
@@ -595,24 +608,24 @@ def _approx_eq(a,b,eps=1.0e-9):
     return  True
 _approx_eq.debug = 0
 
-def check_eq(self, node_in, node_out, arg_in, arg_out):
-    fn = Function([node_in], [node_out])
-    self.failUnless( numpy.all(fn(arg_in) == arg_out), (arg_in, arg_out))
+# def check_eq(self, node_in, node_out, arg_in, arg_out):
+#     fn = Function([node_in], node_out)
+#     self.failUnless( numpy.all(fn(arg_in) == arg_out), (arg_in, arg_out))
 
-def check_eq2(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output])
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, output)
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
-def check_eq2_c(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output], linker_cls = gof.CLinker)
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2_c(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, [output], linker_cls = gof.CLinker)
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
-def check_eq2_both(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output], linker_cls = lambda env: gof.DualLinker(env, _numpy_checker))
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2_both(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, [output], linker_cls = lambda env: gof.DualLinker(env, _numpy_checker))
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
 class T_Shape(unittest.TestCase):
     def test_basic0(self):
@@ -633,7 +646,7 @@ class T_Cast(unittest.TestCase):
                                         [convert_to_int8, convert_to_int16, convert_to_int32, convert_to_int64,
                                          convert_to_float32, convert_to_float64]):
                 y = converter(x)
-                f = function([x], [y], strict = True, linker = 'c&py')
+                f = function([compile.In(x, strict = True)], y, mode = default_mode)
                 a = numpy.arange(10, dtype = type1)
                 b = f(a)
                 self.failUnless(numpy.all(b == numpy.arange(10, dtype = type2)))
@@ -701,7 +714,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones(()))
         t = transpose(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
 
@@ -713,7 +726,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones(5))
         t = transpose(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
         #test aliasing
@@ -724,7 +737,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones((5,3)))
         t = transpose(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == (3,5))
         #test aliasing
@@ -736,7 +749,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones((5,3,2)))
         t = tensor._transpose_inplace(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == (2,3,5))
         #test aliasing
@@ -960,7 +973,7 @@ class T_Stack(unittest.TestCase):
 class _test_comparison(unittest.TestCase):
     def test_gt(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x > y])
+        fn = function([x,y], x > y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -968,7 +981,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_lt(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x < y])
+        fn = function([x,y], x < y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -976,7 +989,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_le(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x <= y])
+        fn = function([x,y], x <= y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -984,7 +997,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_ge(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x >= y])
+        fn = function([x,y], x >= y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -992,7 +1005,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_eq(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [eq(x,y)])
+        fn = function([x,y], eq(x,y))
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1000,7 +1013,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_neq(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [neq(x, y)])
+        fn = function([x,y], neq(x, y))
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1009,7 +1022,7 @@ class _test_comparison(unittest.TestCase):
 class _test_bitwise(unittest.TestCase):
     def test_or(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [x|y])
+        fn = function([x,y], x|y)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1017,10 +1030,10 @@ class _test_bitwise(unittest.TestCase):
 
     def test_xor(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [x^y])
+        fn = function([x,y], x^y)
         ix = x
         ix ^= y
-        gn = function([x,y], [ix])
+        gn = function([x,y], ix)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1031,7 +1044,7 @@ class _test_bitwise(unittest.TestCase):
 
     def test_and(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [x&y])
+        fn = function([x,y], x&y)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1039,7 +1052,7 @@ class _test_bitwise(unittest.TestCase):
 
     def test_inv(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [~x])
+        fn = function([x,y], ~x)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1058,7 +1071,7 @@ class T_add(unittest.TestCase):
                      ("*", lambda x,y: x*y),
                      ("/", lambda x,y: x/y))
             for s, fn in tests:
-                f = function([a,b], [fn(a, b)], linker = 'c')
+                f = function([a,b], fn(a, b), mode = compile.Mode(optimizer = None, linker = 'c'))
                 self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
@@ -1324,7 +1337,7 @@ class t_dot(unittest.TestCase):
     def not_aligned(self, x, y):
         z = dot(x,y)
         try:
-            tz = eval_outputs([z])
+            tz = eval_outputs([z], mode = compile.Mode(optimizer = None, linker = 'py'))
         except ValueError, e:
             self.failUnless(e[0].split()[1:4] == ['are', 'not', 'aligned'], e)
             return
@@ -1370,7 +1383,7 @@ class t_gemm(unittest.TestCase):
             z_orig = z.copy()
             tz,ta,tx,ty,tb = [as_tensor(p).type() for p in z,a,x,y,b]
 
-            f = function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker=l)
+            f = function([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode=compile.Mode(optimizer = None, linker = l))
             new_z = f(z,a,x,y,b)
             z_after = self._gemm(z_orig, a, x, y, b)
 
@@ -1492,7 +1505,7 @@ class t_gemm(unittest.TestCase):
 
             tz,ta,tx,ty,tb = [value(p) for p in z,a,x,y,b]
 
-            f = function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker=l)
+            f = function([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
             f(z, a, x, y, b)
             self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z))
             f(z.T, a, y.T, x.T, b)
@@ -1741,8 +1754,8 @@ class T_op_cache(unittest.TestCase):
         v = matrix()
         v.name = 'v'
         gv = fill(v/v, 1.0)/v - (fill(v/v, 1.0) * v) / (v*v)
-        fn_py = function([v], [gv], linker = 'py')
-        fn_c_or_py = function([v], [gv], linker = 'c|py')
+        fn_py = function([v], gv, mode = compile.Mode(optimizer = None, linker = 'py'))
+        fn_c_or_py = function([v], gv, compile.Mode(optimizer = None, linker = 'c|py'))
 
         a = numpy.random.rand(5,2)
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))

@@ -27,6 +27,7 @@ __docformat__ = "restructuredtext en"
 
 from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, Profiler, \
+     Container, \
      InconsistencyError, Env, \
      Apply, Result, Constant, Value, \
      Op, \
@@ -35,7 +36,12 @@ from gof import \
      Type, Generic, generic, \
      object2, utils
 
-from compile import function, eval_outputs, fast_compute, OpFromGraph
+from compile import \
+    SymbolicInput, SymbolicInputKit, In, \
+    SymbolicOutput, Out, \
+    Mode, \
+    predefined_modes, predefined_linkers, predefined_optimizers, \
+    FunctionMaker, function, OpFromGraph #, eval_outputs, fast_compute
 
 import tensor
 import tensor_random

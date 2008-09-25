@@ -1,6 +1,7 @@
 """WRITEME"""
 import utils
 import graph
+from type import Type
 
 import sys, traceback
 from copy import copy
@@ -109,27 +110,32 @@ class Linker(object):
         return execute
 
 
-class Filter(object):
-    """WRITEME"""
-    def __init__(self, r, storage, readonly = False, strict = False, trace = ()):
-        self.r = r
-        self.type = r.type
+class Container(object):
+    def __init__(self, r, storage, readonly = False, strict = False, name = None):
+        #self.r = r
+        if isinstance(r, Type):
+            self.type = r
+        else:
+            self.type = r.type
+        self.name = name or r.name
         self.storage = storage
         self.readonly = readonly
         self.strict = strict
     def __get(self):
         return self.storage[0]
     def __set(self, value):
+        if self.readonly:
+            raise Exception("Cannot set readonly storage: %s" % self.name)
         try:
-            if self.readonly:
-                raise Exception("Cannot set readonly storage.")
             if self.strict:
                 self.storage[0] = self.type.filter(value, strict = True)
             else:
                 self.storage[0] = self.type.filter(value)
-        except:
-            raise_with_op(self.r)
+        except Exception, e:
+            e.args = e.args + (self.name,)
+            raise
     data = property(__get, __set)
+    value = property(__get, __set)
     def __str__(self):
         return "<" + str(self.storage[0]) + ">"
     def __repr__(self):
@@ -260,8 +266,8 @@ class PerformLinker(LocalLinker):
 
         f = streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
   
-        return f, [Filter(input, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [Filter(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        return f, [Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
+            [Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
 
 
@@ -333,7 +339,9 @@ class WrapLinker(Linker):
     def make_thunk(self, **kwargs):
         no_recycling = self.no_recycling
 
-        make_all = [l.make_all(**kwargs) for l in self.linkers]
+        make_all = [self.linkers[0].make_all(**kwargs)]
+        kwargs.pop('input_storage', None)
+        make_all += [l.make_all(**kwargs) for l in self.linkers[1:]]
 
         fns, input_lists, output_lists, thunk_lists, order_lists \
                 = zip(*make_all)

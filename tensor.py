@@ -23,7 +23,6 @@ from gof.python25 import partial
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
-import tensor_random as random
 
 
 _constructor_list = []
@@ -113,7 +112,7 @@ def value(x):
 class Tensor(Type):
     """Symbolic `Type` representing a numpy.ndarray value."""
 
-    def __init__(self, dtype, broadcastable):
+    def __init__(self, dtype, broadcastable, name = None):
         """Initialize self.dtype and self.broadcastable.
 
         :Parameters:
@@ -126,11 +125,13 @@ class Tensor(Type):
            must be 1.  Secondly, the length of this list is the number of
            dimensions that an associated value must have.  See
            :doc:`broadcasting` for an explanation of how this list is used.
-
+         - `name`: str
+           Optional name for this type.
         """
         self.dtype = str(dtype)
         self.broadcastable = tuple(broadcastable)
         self.dtype_specs() # error checking is done there
+        self.name = name
     
     def filter(self, data, strict = False):
         """Convert `data` to something which can be associated to a `TensorResult`.
@@ -206,10 +207,21 @@ class Tensor(Type):
         return TensorResult(self, name = name)
 
     def __str__(self):
-        return "%s(%s)" % (str(self.dtype), str(self.broadcastable))
+        if self.name:
+            return self.name
+        else:
+            b = self.broadcastable
+            #bcast = str(self.broadcastable)
+            bcast = {(): 'scalar',
+                     (False,): 'vector',
+                     (False, True): 'col',
+                     (True, False): 'row',
+                     (False, False): 'matrix'}.get(b, "%iD" % len(b) if not any(b) else str(b))
+            return "Tensor(%s, %s)" % (str(self.dtype), bcast)
 
     def __repr__(self):
-        return "Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
+        return str(self)
+        #"Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub):
         """Override `CLinkerOp.c_declare` """
@@ -1305,11 +1317,12 @@ class MakeVector(Op):
     def __init__(self, stype):
         self.stype = stype
     def make_node(self, *inputs):
+        inputs = map(as_tensor, inputs)
         assert all(a.type == self.stype for a in inputs)
         return Apply(self, inputs, [Tensor(broadcastable = (False,),
                                            dtype = self.stype.dtype)()])
-    def perform(self, inputs, (out,)):
-        return numpy.asarray([i[0] for i in inputs])
+    def perform(self, node, inputs, (out,)):
+        out[0] = numpy.asarray(inputs)
     def grad(self, inputs, (gout,)):
         return [None]*len(inputs)
 
@@ -1374,6 +1387,16 @@ class Concatenate(Op):
                 [slice(None)] * (n_dims - axis - 1)] \
                 for k in range(len(sizes_along_axis))]
 
+def get_vector_length(v):
+    if isinstance(v, gof.Constant) and v.type.ndim == 1:
+        return len(v.data)
+    elif v.owner and isinstance(v.owner.op, MakeVector):
+        return len(v.owner.inputs)
+    elif v.owner and v.owner.op == shape:
+        return v.owner.inputs[0].type.ndim
+    else:
+        return None
+
 def concatenate(tensors, axis=0):
     """
     Convenience function to concatenate `Tensor`s along the given axis.
@@ -1395,6 +1418,7 @@ def concatenate(tensors, axis=0):
     if not hasattr(concatenate, 'obj'):
         concatenate.obj = Concatenate()
     return concatenate.obj(axis, *tensors)
+>>>>>>> /tmp/tensor.py~other.Lj6QeV
 
 class VerticalStack(Op):
     """
