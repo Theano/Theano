@@ -512,13 +512,6 @@ import copy_reg
 import cPickle
 
 def _pickle_FunctionMaker(fm):
-#     print "aaaaaaaaaaaaa"
-#     print '1', repr(cPickle.dumps(fm.inputs))
-#     print '2', repr(cPickle.dumps(fm.outputs))
-#     print fm.mode
-#     print '3', repr(cPickle.dumps(fm.mode))
-#     print '4', repr(cPickle.dumps(fm.accept_inplace))
-#     print "bbbbbbbbbbbbb"
     return (_constructor_FunctionMaker, (fm.inputs, fm.outputs, fm.mode, fm.accept_inplace))
 
 def _constructor_FunctionMaker(*args):
@@ -674,14 +667,6 @@ class Function(object):
 
     def __setitem__(self, item, value):
         self.value[item] = value
-
-#     def __getstate__(self):
-#         d = dict(maker = self.maker,
-#                  defaults = self.defaults,
-#                  state = [x.data for x in self.input_storage])
-#         return d
-
-#     def __setstate__(self, d):
         
     
     def __copy__(self):
@@ -840,32 +825,6 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
 
     fn = FunctionMaker(inputs, outputs, mode, accept_inplace = accept_inplace).create([getattr(input, 'value', None) for input in inputs])
 
-#     # create a subclass of Function for the given arguments.
-#     class F(Function):
-#         pass
-
-#     # add all input names as properties of F
-#     def _get(name, self):
-#         return self[name]
-#     def _set(name, self, value):
-#         self[name] = value
-#     def _err(name, self):
-#         raise TypeError("Ambiguous name: %s - please check the names of the inputs of your function for duplicates." % name)
-#     seen = set()
-#     for input in inputs:
-#         name = input.name
-#         if name:
-#             if name in seen:
-#                 f = property(partial(_err, input.name), partial(_err, input.name))
-#                 setattr(F, input.name, f)
-#             elif not hasattr(F, name):
-#                 f = property(partial(_get, input.name), partial(_set, input.name))
-#                 setattr(F, input.name, f)
-#                 seen.add(input.name)
-#             else:
-#                 pass
-
-#     fn.__class__ = F
     return fn
 
 
@@ -904,10 +863,6 @@ class OpFromGraph(gof.Op):
     """
     
     def __init__(self, inputs, outputs, grad_depth = 1, **kwargs):
-#         if kwargs.get('borrow_outputs') or kwargs.get('unpack_single'):
-#             raise ValueError('The borrow_outputs and unpack_single options cannot be True')
-#         kwargs['unpack_single'] = False
-#         kwargs['borrow_outputs'] = False
         self.fn = function(inputs, outputs, **kwargs)
         self.inputs = inputs
         self.outputs = outputs
