@@ -589,10 +589,9 @@ def cast(t, dtype):
                'complex128': convert_to_complex128}
     return mapping[dtype](t)
 
+#to be removed as we get the epydoc routine-documenting thing going -JB 20080924
 def _conversion(real_value):
-    def decorator(f):
-        return real_value
-    return decorator
+    return real_value
 
 convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))
 """Cast to 8-bit integer"""
