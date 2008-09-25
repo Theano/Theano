@@ -7,17 +7,12 @@
 # The list of objects to document.  Objects can be named using
 # dotted names, module filenames, or package directory names.
 # Alases for this option include "objects" and "values".
-modules: *.py, gof/__init__.py,
-    gof/a*,
-    gof/c*,
-    gof/d*,
-    gof/e*,
-    gof/g*,
-    gof/l*,
-    gof/o*,
-    gof/p*,
-    gof/t*,
-    gof/u*
+modules: __init__.py,
+    [a-z]*.py,
+    [A-Z]*.py,
+    gof/__init__.py,
+    gof/[a-z]*.py,
+    gof/[A-Z]*.py
 
 # The type of output that should be generated.  Should be one
 # of: html, text, latex, dvi, ps, pdf.

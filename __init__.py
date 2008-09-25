@@ -19,6 +19,8 @@ To learn more, check out:
 
 - Index of Howto documents (:wiki:`IndexHowto`)
 
+- Op List (:doc:`oplist`)
+
 """
 
 __docformat__ = "restructuredtext en"

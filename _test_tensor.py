@@ -21,9 +21,16 @@ def _numpy_checker(x, y):
     Used in DualLinker to compare C version with Python version.
     """
     x, y = x[0], y[0]
-    if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
+    if x.dtype != y.dtype or x.shape != y.shape or numpy.any(numpy.abs(x - y) > 1e-10):
         raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
 
+def safe_make_node(op, *inputs):
+    """Emulate the behaviour of make_node when op is a function instead of an Op instance."""
+    node = op(*inputs)
+    if isinstance(node, list):
+        return node[0].owner
+    else:
+        return node.owner
 
 def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}):
     if grad is True:
@@ -46,7 +53,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    node = self.op.make_node(*inputrs)
+                    #node = self.op.make_node(*inputrs)
+                    node = safe_make_node(self.op, *inputrs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while making a node with inputs %s" \
@@ -80,7 +88,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 if not isinstance(expecteds, (list, tuple)):
                     expecteds = (expecteds, )
                 for i, (result, expected) in enumerate(zip(results, expecteds)):
-                    if result.dtype != expected.dtype or result.shape != expected.shape or numpy.any(abs(result - expected) > 1e-10):
+                    if result.dtype != expected.dtype or result.shape != expected.shape or \
+                            numpy.any(numpy.abs(result - expected) > 1e-10):
                         self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s."
                                   % (self.op, testname, i, inputs, expected, result))
 
@@ -94,7 +103,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    node = self.op.make_node(*inputrs)
+                    node = safe_make_node(self.op,*inputrs)
                 except:
                     return
                 self.fail("Test %s::%s: %s was successfully instantiated on the following bad inputs: %s"
@@ -105,7 +114,7 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    node = self.op.make_node(*inputrs)
+                    node = safe_make_node(self.op,*inputrs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a node with inputs %s" \
@@ -204,7 +213,7 @@ AddTester = make_broadcast_tester(op = add,
                                               **_good_broadcast_binary_normal),
                                   bad_build = _bad_build_broadcast_binary_normal,
                                   bad_runtime = _bad_runtime_broadcast_binary_normal)
-AddInplaceTester = make_broadcast_tester(op = add_inplace,
+AddInplaceTester = make_broadcast_tester(op = tensor._add_inplace,
                                          expected = lambda x, y: x + y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
@@ -218,7 +227,7 @@ SubTester = make_broadcast_tester(op = sub,
                                   bad_runtime = _bad_runtime_broadcast_binary_normal,
                                   grad = _grad_broadcast_binary_normal)
 
-SubInplaceTester = make_broadcast_tester(op = sub_inplace,
+SubInplaceTester = make_broadcast_tester(op = tensor._sub_inplace,
                                          expected = lambda x, y: x - y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
@@ -236,7 +245,7 @@ MulTester = make_broadcast_tester(op = mul,
                                   grad = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
                                               four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
                                               **_grad_broadcast_binary_normal))
-MulInplaceTester = make_broadcast_tester(op = mul_inplace,
+MulInplaceTester = make_broadcast_tester(op = tensor._mul_inplace,
                                          expected = lambda x, y: x * y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
@@ -262,7 +271,7 @@ DivTester = make_broadcast_tester(op = div,
                                               scalar = (rand(2, 3), rand(1, 1)),
                                               row = (rand(2, 3), rand(1, 3)),
                                               column = (rand(2, 3), rand(2, 1))))
-DivInplaceTester = make_broadcast_tester(op = div_inplace,
+DivInplaceTester = make_broadcast_tester(op = tensor._div_inplace,
                                          expected = lambda x, y: x / y,
                                          good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                                      scalar = (rand(2, 3), rand(1, 1)),
@@ -292,7 +301,7 @@ ModTester = make_broadcast_tester(op = mod,
 #                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
                                   )
-ModInplaceTester = make_broadcast_tester(op = mod_inplace,
+ModInplaceTester = make_broadcast_tester(op = tensor._mod_inplace,
                                          expected = lambda x, y: x % y,
                                          good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                                      scalar = (rand(2, 3), rand(1, 1)),
@@ -315,7 +324,7 @@ PowTester = make_broadcast_tester(op = pow,
                                               row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
                                               column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))))
                                   )
-PowInplaceTester = make_broadcast_tester(op = pow_inplace,
+PowInplaceTester = make_broadcast_tester(op = tensor._pow_inplace,
                                          expected = lambda x, y: x ** y,
                                          good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
                                                      scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
@@ -340,8 +349,8 @@ AbsTester = make_broadcast_tester(op = tensor._abs,
                                   expected = lambda x: abs(x),
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-AbsInplaceTester = make_broadcast_tester(op = abs_inplace,
-                                         expected = lambda x: abs(x),
+AbsInplaceTester = make_broadcast_tester(op = tensor.__abs_inplace,
+                                         expected = lambda x: numpy.abs(x),
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
@@ -350,7 +359,7 @@ NegTester = make_broadcast_tester(op = neg,
                                   expected = lambda x: -x,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-NegInplaceTester = make_broadcast_tester(op = neg_inplace,
+NegInplaceTester = make_broadcast_tester(op = tensor._neg_inplace,
                                          expected = lambda x: -x,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
@@ -359,7 +368,7 @@ NegInplaceTester = make_broadcast_tester(op = neg_inplace,
 SgnTester = make_broadcast_tester(op = sgn,
                                   expected = numpy.sign,
                                   good = _good_broadcast_unary_normal)
-SgnInplaceTester = make_broadcast_tester(op = sgn_inplace,
+SgnInplaceTester = make_broadcast_tester(op = tensor._sgn_inplace,
                                          expected = numpy.sign,
                                          good = _good_broadcast_unary_normal,
                                          inplace = True)
@@ -368,7 +377,7 @@ SqrTester = make_broadcast_tester(op = sqr,
                                   expected = numpy.square,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-SqrInplaceTester = make_broadcast_tester(op = sqr_inplace,
+SqrInplaceTester = make_broadcast_tester(op = tensor._sqr_inplace,
                                          expected = numpy.square,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
@@ -378,7 +387,7 @@ ExpTester = make_broadcast_tester(op = exp,
                                   expected = numpy.exp,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-ExpInplaceTester = make_broadcast_tester(op = exp_inplace,
+ExpInplaceTester = make_broadcast_tester(op = tensor._exp_inplace,
                                          expected = numpy.exp,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
@@ -394,7 +403,7 @@ LogTester = make_broadcast_tester(op = log,
                                   expected = numpy.log,
                                   good = _good_broadcast_unary_positive,
                                   grad = _grad_broadcast_unary_positive)
-LogInplaceTester = make_broadcast_tester(op = log_inplace,
+LogInplaceTester = make_broadcast_tester(op = tensor._log_inplace,
                                          expected = numpy.log,
                                          good = _good_broadcast_unary_positive,
                                          grad = _grad_broadcast_unary_positive,
@@ -404,7 +413,7 @@ Log2Tester = make_broadcast_tester(op = log2,
                                    expected = numpy.log2,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
-Log2InplaceTester = make_broadcast_tester(op = log2_inplace,
+Log2InplaceTester = make_broadcast_tester(op = tensor._log2_inplace,
                                           expected = numpy.log2,
                                           good = _good_broadcast_unary_positive,
                                           grad = _grad_broadcast_unary_positive,
@@ -414,7 +423,7 @@ SqrtTester = make_broadcast_tester(op = sqrt,
                                    expected = numpy.sqrt,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
-SqrtInplaceTester = make_broadcast_tester(op = sqrt_inplace,
+SqrtInplaceTester = make_broadcast_tester(op = tensor._sqrt_inplace,
                                           expected = numpy.sqrt,
                                           good = _good_broadcast_unary_positive,
                                           grad = _grad_broadcast_unary_positive,
@@ -432,7 +441,7 @@ SinTester = make_broadcast_tester(op = sin,
                                   expected = numpy.sin,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
-SinInplaceTester = make_broadcast_tester(op = sin_inplace,
+SinInplaceTester = make_broadcast_tester(op = tensor._sin_inplace,
                                          expected = numpy.sin,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
@@ -442,7 +451,7 @@ CosTester = make_broadcast_tester(op = cos,
                                   expected = numpy.cos,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
-CosInplaceTester = make_broadcast_tester(op = cos_inplace,
+CosInplaceTester = make_broadcast_tester(op = tensor._cos_inplace,
                                          expected = numpy.cos,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
@@ -454,7 +463,7 @@ TanTester = make_broadcast_tester(op = tan,
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
                                   grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)))
-TanInplaceTester = make_broadcast_tester(op = tan_inplace,
+TanInplaceTester = make_broadcast_tester(op = tensor._tan_inplace,
                                          expected = numpy.tan,
                                          good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                                      shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
@@ -467,7 +476,7 @@ CoshTester = make_broadcast_tester(op = cosh,
                                    expected = numpy.cosh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-CoshInplaceTester = make_broadcast_tester(op = cosh_inplace,
+CoshInplaceTester = make_broadcast_tester(op = tensor._cosh_inplace,
                                           expected = numpy.cosh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
@@ -477,7 +486,7 @@ SinhTester = make_broadcast_tester(op = sinh,
                                    expected = numpy.sinh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-SinhInplaceTester = make_broadcast_tester(op = sinh_inplace,
+SinhInplaceTester = make_broadcast_tester(op = tensor._sinh_inplace,
                                           expected = numpy.sinh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
@@ -487,7 +496,7 @@ TanhTester = make_broadcast_tester(op = tanh,
                                    expected = numpy.tanh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-TanhInplaceTester = make_broadcast_tester(op = tanh_inplace,
+TanhInplaceTester = make_broadcast_tester(op = tensor._tanh_inplace,
                                           expected = numpy.tanh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
@@ -519,7 +528,9 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, to
     for test_num in xrange(n_tests):
 #        tensor_pt = [as_tensor(p,name='input %i'%i) for i,p in enumerate(pt)]
         tensor_pt = [constant(p).type('input %i'%i) for i,p in enumerate(pt)]
-        o = op.make_node(*[tpt.copy() for tpt in tensor_pt])
+        #o = op.make_node(*[tpt.copy() for tpt in tensor_pt])
+        o = safe_make_node(op, *[tpt.copy() for tpt in tensor_pt])
+        
         if hasattr(o, 'outputs'):
             o_outputs = o.outputs
         else:
@@ -689,7 +700,7 @@ class T_transpose(unittest.TestCase):
     def test0(self):
         n = as_tensor(numpy.ones(()))
         t = transpose(n)
-        self.failUnless(t.owner.op == transpose_inplace)
+        self.failUnless(t.owner.op == tensor._transpose_inplace)
         f = function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
@@ -701,7 +712,7 @@ class T_transpose(unittest.TestCase):
     def test1(self):
         n = as_tensor(numpy.ones(5))
         t = transpose(n)
-        self.failUnless(t.owner.op == transpose_inplace)
+        self.failUnless(t.owner.op == tensor._transpose_inplace)
         f = function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
@@ -712,7 +723,7 @@ class T_transpose(unittest.TestCase):
     def test2(self):
         n = as_tensor(numpy.ones((5,3)))
         t = transpose(n)
-        self.failUnless(t.owner.op == transpose_inplace)
+        self.failUnless(t.owner.op == tensor._transpose_inplace)
         f = function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == (3,5))
@@ -723,8 +734,8 @@ class T_transpose(unittest.TestCase):
     def test3(self):
         """Test transpose of tensor, inplace version"""
         n = as_tensor(numpy.ones((5,3,2)))
-        t = transpose_inplace(n)
-        self.failUnless(t.owner.op == transpose_inplace)
+        t = tensor._transpose_inplace(n)
+        self.failUnless(t.owner.op == tensor._transpose_inplace)
         f = function([n], [t])
         tval = f(n.data)
         self.failUnless(tval.shape == (2,3,5))
@@ -732,8 +743,8 @@ class T_transpose(unittest.TestCase):
         tval += 55.0
         self.failUnless(n.data[0,0,0] == 56.0)
     def test_grad(self):
-        verify_grad(self, transpose_inplace, [numpy.random.rand(2, 3)])
-        verify_grad(self, transpose_inplace, [numpy.ones(3)])
+        verify_grad(self, tensor._transpose_inplace, [numpy.random.rand(2, 3)])
+        verify_grad(self, tensor._transpose_inplace, [numpy.ones(3)])
 
 class T_subtensor(unittest.TestCase):
     def setUp(self):
@@ -1066,7 +1077,7 @@ class T_exp(unittest.TestCase):
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
     def test_grad_1(self):
-        verify_grad(self, exp_inplace, [
+        verify_grad(self, tensor._exp_inplace, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
 
@@ -1434,7 +1445,7 @@ class t_gemm(unittest.TestCase):
         Z = as_tensor(self.rand(2,2))
         A = as_tensor(self.rand(2,2))
         try:
-            gemm(Z, 1.0, A, transpose_inplace(Z), 1.0)
+            gemm(Z, 1.0, A, tensor._transpose_inplace(Z), 1.0)
         except ValueError, e:
             if e[0] == Gemm.E_z_uniq:
                 return
@@ -1444,7 +1455,7 @@ class t_gemm(unittest.TestCase):
         Z = as_tensor(self.rand(2,2))
         A = as_tensor(self.rand(2,2))
         try:
-            gemm(Z, 1.0, transpose_inplace(Z), A, 1.0)
+            gemm(Z, 1.0, tensor._transpose_inplace(Z), A, 1.0)
         except ValueError, e:
             if e[0] == Gemm.E_z_uniq:
                 return

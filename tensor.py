@@ -1,4 +1,7 @@
-"""A L{Result} to store L{numpy.ndarray} with basic accompanying L{Op}s"""
+"""A `Type` and `Op` classes to work with numpy.ndarrays symbolically."""
+
+__docformat__ = "restructuredtext en"
+
 import sys # for sys.maxint
 import inspect
 import functools
@@ -23,8 +26,36 @@ from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 import tensor_random as random
 
 
+_constructor_list = []
+"""List of functions to be listed as op constructors in the oplist (`gen_oplist`, doc/oplist.txt)."""
+def constructor(f):
+    """Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt)."""
+    _constructor_list.append(f)
+    return f
+
+
 def as_tensor(x, name = None):
+    """Return `x`, transformed into a `Tensor`
+
+    This function is often used by `make_node` methods of `Op` subclasses to
+    turn ndarrays, numbers, `Scalar` instances, `Apply` instances and `Tensor`
+    instances into valid input list elemnts.
+
+    :Parameters:
+     - `x`: Apply instance, Result instance, numpy.ndarray, or number
+       This thing will be transformed into a `Result` in a sensible way.  An
+       ndarray argument will not be copied, but a list of numbers will be copied
+       to make an ndarray.
+     - `name`: str or None
+       If a new `Result` instance is created, it will be named with this string.
+
+    :Exceptions:
+     - `ValueError`: raised if an `Apply` with no default output is fetched
+     - `TypeError`: raised if `x` cannot be converted to a Tensor Result
+
+    """
     if isinstance(x, gof.Apply):
+        #TODO: use Apply's default output mechanism
         if len(x.outputs) != 1:
             raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", x)
         else:
@@ -39,56 +70,74 @@ def as_tensor(x, name = None):
         return constant(x)
     except TypeError:
         raise TypeError("Cannot convert %s to Tensor" % x, type(x))
+
 # this has a different name, because _as_tensor is the function which ops use
 # to upcast their arguments... this internal-use function is a good place to put debugging stuff, better than the global astensor.
 _as_tensor = as_tensor
 
 
-def constant(_x):
-    if not isinstance(_x, numpy.ndarray):
-        x = numpy.asarray(_x)
+def constant(x):
+    """Return a symbolic `Constant` with value `x`
+    
+    :Exceptions:
+     - `TypeError`: `x` could not be converted to a numpy.ndarray
+    """
+    if isinstance(x, numpy.ndarray):
+        x_ = x
     else:
-        x = _x
+        x_ = numpy.asarray(x)
     try:
-        return TensorConstant(Tensor(dtype = x.dtype,
-                                     broadcastable = [d == 1 for d in x.shape]), x)
+        return TensorConstant(Tensor(dtype = x_.dtype,
+                                     broadcastable = [d == 1 for d in x_.shape]), x_)
     except:
-        raise TypeError("Could not convert %s to Tensor" % _x, type(_x))
+        raise TypeError("Could not convert %s to Tensor" % x, type(x))
 
 def value(x):
-    if not isinstance(x, numpy.ndarray):
-        x = numpy.asarray(x)
+    """Return a symbolic `Value` with default value `x`
+    
+    :Exceptions:
+     - `TypeError`: `x` could not be converted to a numpy.ndarray
+    """
+    if isinstance(x, numpy.ndarray):
+        x_ = x
+    else:
+        x_ = numpy.asarray(x)
     try:
-        return TensorValue(Tensor(dtype = x.dtype,
-                                  broadcastable = [d == 1 for d in x.shape]), x)
+        return TensorValue(Tensor(dtype = x_.dtype,
+                                  broadcastable = [d == 1 for d in x_.shape]), x_)
     except:
-        raise TypeError("Could not convert %s to Tensor" % _x, type(_x))
+        raise TypeError("Could not convert %s to Tensor" % x, type(x))
 
 
 
 class Tensor(Type):
-    """
-    L{Type} representing L{numpy.ndarray} in Theano.
-
-    @todo: At some point we should document a glossary, such as terms like
-    broadcasting and shape.
-    
-    @type dtype: numpy dtype string such as 'int64' or 'float64' (among others)
-    @type broadcastable: tuple or list or array of boolean values, whose length
-      is the number of dimensions of the L{ndarray} represented by this Type.
-    @ivar broadcastable: Each element of the broadcastable vector tells us
-      something about the corresponding dimension:
-        - False means the dimension can be anything.
-        - True means  the dimension must be 1. Also, this dimension will be considered
-          for L{broadcasting}, as described and implemented in Numpy.
-    """
+    """Symbolic `Type` representing a numpy.ndarray value."""
 
     def __init__(self, dtype, broadcastable):
+        """Initialize self.dtype and self.broadcastable.
+
+        :Parameters:
+         - `dtype`: str corresponding to numpy dtype (e.g., 'int64')
+           The value (ndarray) associated to a `Result` of this `Type` will have
+           this dtype.
+         - `broadcastable`: tuple, list, or array of boolean values
+           This argument serves two purposes.  First, the True elements of this
+           list indicate the dimensions where the shape of an associated value
+           must be 1.  Secondly, the length of this list is the number of
+           dimensions that an associated value must have.  See
+           :doc:`broadcasting` for an explanation of how this list is used.
+
+        """
         self.dtype = str(dtype)
         self.broadcastable = tuple(broadcastable)
         self.dtype_specs() # error checking is done there
     
     def filter(self, data, strict = False):
+        """Convert `data` to something which can be associated to a `TensorResult`.
+
+        This function is not meant to be called in user code.  It is for
+        `Linker` instances to use when running a compiled graph.
+        """
         _data = data
         if strict:
             if not isinstance(data, numpy.ndarray):
@@ -107,10 +156,10 @@ class Tensor(Type):
         return data
 
     def dtype_specs(self):
-        """Return python - C type correspondance tuple for self.data
-
-        Return a tuple (python type, c type, numpy typenum) that corresponds to
-        L{self.dtype}.  It is for use in C code generation.
+        """Return a tuple (python type, c type, numpy typenum) that corresponds to
+        self.dtype.
+        
+        This function is used internally as part of C code generation.
         """
         #TODO: add more type correspondances for e.g. int32, int64, float32,
         #complex64, etc.
@@ -131,14 +180,29 @@ class Tensor(Type):
             raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
 
     def __eq__(self, other):
+        """Compare True iff other is the same kind of Tensor"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
     def __hash__(self):
+        """Hash equal for same kinds of Tensor"""
         return hash(self.dtype) ^ hash(self.broadcastable)
 
-    ndim = property(lambda self: len(self.broadcastable), doc = "read-only access to the number of dimensions")
+    ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
+    """Number of dimensions
+
+    This read-only property is the preferred way to get the number of dimensions
+    of a `Tensor`.
+    
+    """
 
     def make_result(self, name = None):
+        """Return a `TensorResult` of this type
+
+        :Parameters:
+         - `name`: str
+           A pretty name to identify this `Result` when printing and debugging
+
+       """
         return TensorResult(self, name = name)
 
     def __str__(self):
@@ -148,6 +212,7 @@ class Tensor(Type):
         return "Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub):
+        """Override `CLinkerOp.c_declare` """
         return """
         PyArrayObject* %(name)s;
         int type_num_%(name)s;
@@ -155,12 +220,14 @@ class Tensor(Type):
         """ % dict(sub, name = name, dtype = self.dtype_specs()[1])
 
     def c_init(self, name, sub):
+        """Override `CLinkerOp.c_init` """
         return """
         %(name)s = NULL;
         type_num_%(name)s = %(type_num)s;
         """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
 
     def c_extract(self, name, sub):
+        """Override `CLinkerOp.c_extract` """
         return """
         %(name)s = NULL;
         type_num_%(name)s = %(type_num)s;
@@ -186,6 +253,7 @@ class Tensor(Type):
         """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
 
     def c_cleanup(self, name, sub):
+        """Override `CLinkerOp.c_cleanup` """
         return """
         if (%(name)s) {
             Py_XDECREF(%(name)s);
@@ -193,6 +261,7 @@ class Tensor(Type):
         """ % locals()
 
     def c_sync(self, name, sub):
+        """Override `CLinkerOp.c_sync` """
         return """
         Py_XDECREF(py_%(name)s);
         if (!%(name)s) {
@@ -205,12 +274,14 @@ class Tensor(Type):
         """ % locals()
 
     def c_headers(self):
+        """Override `CLinkerOp.c_headers` """
         return []
 
     def c_libraries(self):
         return []
 
     def c_support_code(cls):
+        """Override `CLinkerOp.c_support_code` """
         template = """
         struct theano_complex%(nbits)s : public npy_complex%(nbits)s
         {
@@ -344,9 +415,9 @@ class _tensor_py_operators:
     def __rand__(self,other): return and_(other,self)
     def __ror__(self,other): return or_(other, self)
     def __rxor__(self,other): return xor(other, self)
-    def __iand__(self, other): return and_inplace(self, other)
-    def __ior__(self, other): return or_inplace(self, other)
-    def __ixor__(self, other): return xor_inplace(self, other)
+    def __iand__(self, other): return _and_inplace(self, other)
+    def __ior__(self, other): return _or_inplace(self, other)
+    def __ixor__(self, other): return _xor_inplace(self, other)
 
     #ARITHMETIC - NORMAL
     def __add__(self,other): return add(self,other)
@@ -357,11 +428,11 @@ class _tensor_py_operators:
     def __mod__(self,other): return mod(self,other)
 
     #ARITHMETIC - INPLACE
-    def __iadd__(self,other): return add_inplace(self,other)
-    def __isub__(self,other): return sub_inplace(self,other)
-    def __imul__(self,other): return mul_inplace(self,other)
-    def __idiv__(self,other): return div_inplace(self,other)
-    def __ipow__(self,other): return pow_inplace(self,other)
+    def __iadd__(self,other): return _add_inplace(self,other)
+    def __isub__(self,other): return _sub_inplace(self,other)
+    def __imul__(self,other): return _mul_inplace(self,other)
+    def __idiv__(self,other): return _div_inplace(self,other)
+    def __ipow__(self,other): return _pow_inplace(self,other)
 
     #ARITHMETIC - RIGHT-OPERAND
     def __radd__(self,other): return add(other,self)
@@ -406,6 +477,7 @@ class TensorConstant(Constant, _tensor_py_operators):
 class TensorValue(Value, _tensor_py_operators):
     pass
 
+#QUESTION: why are we doing this!?
 elemwise.as_tensor = as_tensor    
 elemwise.Tensor = Tensor
 elemwise.TensorResult = TensorResult
@@ -418,12 +490,60 @@ elemwise.TensorValue = TensorValue
 # Utilities
 #########################
 
-def _elemwise(scalar_op, name):
+def _elemwise(scalar_op, name, doc_prefix=''):
     straight = elemwise.Elemwise(scalar_op, name = name)
     inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-    inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = name+"_inplace")
+    inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = '_'+name+"_inplace")
+
+    # don't add the inplace versions, they aren't supposed to be part of the user interface
+    _constructor_list.append(straight) 
+    
+    # This is here so that gen_oplist can detect which module declared these variables.
+
+    straight.__module__ = 'tensor'
+    inplace.__module__ = 'tensor'
+
+    if doc_prefix:
+        straight.__doc__ = doc_prefix + '\n' + straight.__doc__
+
     return straight, inplace
 
+def _redefine(real_symbol_value):
+    """Replace the value associated with a function symbol.
+    
+    This is useful to trick epydoc into doing what we want.  It's a hack.
+    """
+    def decorator(f):
+        return real_symbol_value
+    return decorator
+
+def _redefine_asRoutine(real_symbol_value):
+    real_symbol_value.__epydoc_asRoutine = True
+    def decorator(f):
+        return real_symbol_value
+    return decorator
+
+def _scal_elemwise(symbol):
+    """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
+    symbolname = symbol.__name__
+    inplace = symbolname.endswith('_inplace')
+
+    if inplace:
+        scalar_op = getattr(scal, symbolname[1:-len('_inplace')])
+        inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
+        rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=symbolname)
+    else:
+        scalar_op = getattr(scal, symbolname)
+        rval = elemwise.Elemwise(scalar_op, name=symbolname)
+
+    if getattr(symbol, '__doc__', False):
+        rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
+
+    #for the meaning of this see the ./epydoc script
+    # it makes epydoc display rval as if it were a function, not an object
+    rval.__epydoc_asRoutine = symbol
+
+    return rval
 
 
 #########################
@@ -457,6 +577,7 @@ class ScalarFromTensor(Op):
 scalar_from_tensor = ScalarFromTensor()
 
 
+@constructor
 def cast(t, dtype):
     mapping = {'int8': convert_to_int8,
                'int16': convert_to_int16,
@@ -468,14 +589,33 @@ def cast(t, dtype):
                'complex128': convert_to_complex128}
     return mapping[dtype](t)
 
-convert_to_int8  = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8)))
-convert_to_int16 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16)))
-convert_to_int32 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32)))
-convert_to_int64 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64)))
-convert_to_float32 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32)))
-convert_to_float64 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64)))
-convert_to_complex64  = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64)))
-convert_to_complex128 = elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128)))
+#to be removed as we get the epydoc routine-documenting thing going -JB 20080924
+def _conversion(real_value):
+    return real_value
+
+convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))
+"""Cast to 8-bit integer"""
+    
+convert_to_int16 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16))))
+"""Cast to 16-bit integer"""
+
+convert_to_int32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32))))
+"""Cast to 32-bit integer"""
+
+convert_to_int64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64))))
+"""Cast to 64-bit integer"""
+
+convert_to_float32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32))))
+"""Cast to single-precision floating point"""
+
+convert_to_float64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64))))
+"""Cast to double-precision floating point"""
+
+convert_to_complex64  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64))))
+"""Cast to single-precision complex"""
+
+convert_to_complex128 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128))))
+"""Cast to double-precision complex"""
 
 
 
@@ -496,7 +636,9 @@ class Shape(Op):
         out[0] = numpy.asarray(x.shape)
     def grad(self, (x,), (gz,)):
         return [None]
-shape = Shape()
+@_redefine_asRoutine(Shape())
+def shape(a):
+    pass
 
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis"""
@@ -529,10 +671,12 @@ class MaxAndArgmax(Op):
         assert axis.data == 0
         g_x = eq(max(x, axis), x) * g_max
         return g_x, None
-max_and_argmax = MaxAndArgmax()
+@_redefine_asRoutine(MaxAndArgmax())
+def max_and_argmax(a):
+    pass
 
 
-
+@constructor
 def max(x, axis=None):
     """Return indexes of maximum elements obtained by iterating over given axis
 
@@ -543,6 +687,7 @@ def max(x, axis=None):
     # but when Argmax.c_impl() is in place, it should be fine.
     return max_and_argmax(x,axis)[0]
 
+@constructor
 def argmax(x, axis=None):
     """Return maximum elements obtained by iterating over given axis
 
@@ -558,58 +703,237 @@ def argmax(x, axis=None):
 # Comparison
 ##########################
 
-lt, lt_inplace = _elemwise(scal.lt, 'lt')
-gt, gt_inplace = _elemwise(scal.gt, 'gt')
-le, le_inplace = _elemwise(scal.le, 'le')
-ge, ge_inplace = _elemwise(scal.ge, 'ge')
-eq, eq_inplace = _elemwise(scal.eq, 'eq')
-neq, neq_inplace = _elemwise(scal.neq, 'neq')
+@_scal_elemwise
+def lt(a, b):
+    """a < b"""
+
+@_scal_elemwise
+def _lt_inplace(a,b):
+    """a < b (inplace on a)"""
+
+@_scal_elemwise
+def gt(a, b):
+    """a > b"""
+
+@_scal_elemwise
+def _gt_inplace(a,b):
+    """a > b (inplace on a)"""
+
+@_scal_elemwise
+def le(a, b):
+    """a <= b"""
+
+@_scal_elemwise
+def _le_inplace(a,b):
+    """a <= b (inplace on a)"""
+
+@_scal_elemwise
+def ge(a, b):
+    """a >= b"""
+
+@_scal_elemwise
+def _ge_inplace(a,b):
+    """a >= b (inplace on a)"""
+
+@_scal_elemwise
+def eq(a, b):
+    """a == b"""
+
+@_scal_elemwise
+def _eq_inplace(a,b):
+    """a == b (inplace on a)"""
+
+@_scal_elemwise
+def neq(a, b):
+    """a != b"""
+
+@_scal_elemwise
+def _neq_inplace(a,b):
+    """a != b (inplace on a)"""
 
 
 ##########################
 # Bit-wise
 ##########################
 
-and_, and_inplace = _elemwise(scal.and_, 'and_')
-or_, or_inplace = _elemwise(scal.or_, 'or_')
-xor, xor_inplace = _elemwise(scal.xor, 'xor')
-invert, invert_inplace = _elemwise(scal.invert, 'invert')
+@_scal_elemwise
+def and_(a,b):
+    """bitwise a & b"""
+
+@_scal_elemwise
+def _and__inplace(a,b):
+    """bitwise a & b (inplace on a)"""
+
+@_scal_elemwise
+def or_(a,b):
+    """bitwise a | b"""
+
+@_scal_elemwise
+def _or__inplace(a,b):
+    """bitwise a | b (inplace on a)"""
+
+@_scal_elemwise
+def xor(a,b):
+    """bitwise a ^ b"""
+
+@_scal_elemwise
+def _xor_inplace(a,b):
+    """bitwise a ^ b (inplace on a)"""
+
+@_scal_elemwise
+def invert(a):
+    """bitwise ~a"""
+
+@_scal_elemwise
+def _invert_inplace(a):
+    """bitwise ~a (inplace on a)"""
 
 ##########################
 # Math
 ##########################
 
-_abs, abs_inplace = _elemwise(scal.abs, 'abs')
-exp, exp_inplace = _elemwise(scal.exp, 'exp')
-neg, neg_inplace = _elemwise(scal.neg, 'neg')
-inv, inv_inplace = _elemwise(scal.inv, 'inv')
-log, log_inplace = _elemwise(scal.log, 'log')
-log2, log2_inplace = _elemwise(scal.log2, 'log2')
-sgn, sgn_inplace = _elemwise(scal.sgn, 'sgn')
-sqr, sqr_inplace = _elemwise(scal.sqr, 'sqr')
-sqrt, sqrt_inplace = _elemwise(scal.sqrt, 'sqrt')
-cos, cos_inplace = _elemwise(scal.cos, 'cos')
-sin, sin_inplace = _elemwise(scal.sin, 'sin')
-tan, tan_inplace = _elemwise(scal.tan, 'tan')
-cosh, cosh_inplace = _elemwise(scal.cosh, 'cosh')
-sinh, sinh_inplace = _elemwise(scal.sinh, 'sinh')
-tanh, tanh_inplace = _elemwise(scal.tanh, 'tanh')
+@_scal_elemwise
+def _abs(a):
+    """|`a`|
+
+    _abs has a leading underscore because abs() is a builtin.  TensorResult overloads the
+    `TensorResult.__abs__` operator so that this function is called when you type abs(a).
+
+    """
+
+@_scal_elemwise
+def __abs_inplace(a):
+    """|`a`| (inplace on `a`)"""
+
+@_scal_elemwise
+def exp(a):
+    """e^`a`"""
+@_scal_elemwise
+def _exp_inplace(a):
+    """e^`a` (inplace on `a`)"""
+
+@_scal_elemwise
+def neg(a):
+    """-a"""
+@_scal_elemwise
+def _neg_inplace(a):
+    """-a (inplace on a)"""
+
+@_scal_elemwise
+def inv(a):
+    """1.0/a (inplace on a)"""
+@_scal_elemwise
+def _inv_inplace(a):
+    """1.0/a (inplace on a)"""
+
+@_scal_elemwise
+def log(a):
+    """base e logarithm of a"""
+@_scal_elemwise
+def _log_inplace(a):
+    """base e logarithm of a (inplace on a)"""
+
+@_scal_elemwise
+def log2(a):
+    """base 2 logarithm of a"""
+@_scal_elemwise
+def _log2_inplace(a):
+    """base 2 logarithm of a (inplace on a)"""
+
+@_scal_elemwise
+def sgn(a):
+    """sign of a"""
+@_scal_elemwise
+def _sgn_inplace(a):
+    """sign of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def sqr(a):
+    """square of a"""
+@_scal_elemwise
+def _sqr_inplace(a):
+    """square of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def sqrt(a):
+    """square root of a"""
+@_scal_elemwise
+def _sqrt_inplace(a):
+    """square root of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def cos(a):
+    """cosine of a"""
+@_scal_elemwise
+def _cos_inplace(a):
+    """cosine of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def sin(a):
+    """sine of a"""
+@_scal_elemwise
+def _sin_inplace(a):
+    """sine of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def tan(a):
+    """tangent of a"""
+@_scal_elemwise
+def _tan_inplace(a):
+    """tangent of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def cosh(a):
+    """hyperbolic cosine of a"""
+@_scal_elemwise
+def _cosh_inplace(a):
+    """hyperbolic cosine of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def sinh(a):
+    """hyperbolic sine of a"""
+@_scal_elemwise
+def _sinh_inplace(a):
+    """hyperbolic sine of `a` (inplace on `a`)"""
+
+@_scal_elemwise
+def tanh(a):
+    """hyperbolic tangent of a"""
+@_scal_elemwise
+def _tanh_inplace(a):
+    """hyperbolic tangent of `a` (inplace on `a`)"""
 
 
 ##########################
 # Misc
 ##########################
 
-fill, fill_inplace = _elemwise(scal.second, 'fill')
+#fill, _fill_inplace = _elemwise(scal.second, 'fill',
+    #"""fill WRITEME (elemwise)""")
+@_scal_elemwise
+def second(a, b):
+    """Create a matrix by filling the shape of a with b"""
+@_scal_elemwise
+def _second_inplace(a):
+    """Fill `a` with `b`"""
 
+fill = second
+_fill_inplace = _second_inplace
+
+@constructor
 def ones_like(model):
+    """WRITEME"""
     #return Ones(model.type.ndim)(shape(model))
     return fill(model, 1.0)
+
+@constructor
 def zeros_like(model):
+    """WRITEME"""
     #return Zeros(model.type.ndim)(shape(model))
     return fill(model, 0.0)
 
 class Filler(gof.Op):
+    """WRITEME"""
     def __init__(self, value, ndim, dtype = 'float64'):
         self.value = value
         self.ndim = ndim
@@ -643,25 +967,40 @@ class Filler(gof.Op):
         return hash(self.ndim) ^ hash(self.dtype)
 
 Zeros = functools.partial(Filler, 0)
-Ones = functools.partial(Filler, 1)
+"""WRITEME"""
 
+Ones = functools.partial(Filler, 1)
+"""WRITEME"""
+
+@constructor
 def zero():
     """
     Return a scalar zero, e.g. for initializing sums.
     """
     return Zeros(0)([])
 
+@constructor
 def one():
+    """WRITEME"""
     return Ones(0)([])
 
 
-tensor_copy = elemwise.Elemwise(scal.identity)
-identity = elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]})
+@_redefine(elemwise.Elemwise(scal.identity))
+def tensor_copy(a):
+    """Create a duplicate of `a` (with duplicated storage)"""
 
+@_redefine(elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]}))
+def view(a):
+    """Create a duplicate of `a` (with shared storage)"""
+
+@constructor
 def sum(input, axis = None):
+    """WRITEME"""
     return elemwise.Sum(axis)(input)
 
+@constructor
 def mean(input, axis = None):
+    """WRITEME"""
     s = sum(input, axis)
     shp = shape(input)
     if axis is None:
@@ -697,12 +1036,47 @@ repeat = Repeat()
 # Arithmetics
 ##########################
 
-add, add_inplace = _elemwise(scal.add, 'add')
-sub, sub_inplace = _elemwise(scal.sub, 'sub')
-mul, mul_inplace = _elemwise(scal.mul, 'mul')
-div, div_inplace = _elemwise(scal.div, 'div')
-mod, mod_inplace = _elemwise(scal.mod, 'mod')
-pow, pow_inplace = _elemwise(scal.pow, 'pow')
+@_scal_elemwise
+def add(a, b):
+    """elementwise addition"""
+@_scal_elemwise
+def _add_inplace(a, b):
+    """elementwise addition (inplace on `a`)"""
+
+@_scal_elemwise
+def sub(a, b):
+    """elementwise subtraction"""
+@_scal_elemwise
+def _sub_inplace(a, b):
+    """elementwise subtraction (inplace on `a`)"""
+
+@_scal_elemwise
+def mul(a, b):
+    """elementwise multiplication"""
+@_scal_elemwise
+def _mul_inplace(a, b):
+    """elementwise multiplication (inplace on `a`)"""
+
+@_scal_elemwise
+def div(a, b):
+    """elementwise division"""
+@_scal_elemwise
+def _div_inplace(a, b):
+    """elementwise division (inplace on `a`)"""
+
+@_scal_elemwise
+def mod(a, b):
+    """elementwise modulo"""
+@_scal_elemwise
+def _mod_inplace(a, b):
+    """elementwise modulo (inplace on `a`)"""
+
+@_scal_elemwise
+def pow(a, b):
+    """elementwise power"""
+@_scal_elemwise
+def _pow_inplace(a, b):
+    """elementwise power (inplace on `a`)"""
 
 
 ##########################
@@ -734,9 +1108,12 @@ class TransposeInplace(Op):
     def __str__(self):
         return "TransposeView"
 
-transpose_inplace = TransposeInplace()
+_transpose_inplace = TransposeInplace()
+"""WRITEME"""
+
 def transpose(x, **kwargs):
-    return transpose_inplace(tensor_copy(x), **kwargs)
+    """WRITEME"""
+    return _transpose_inplace(tensor_copy(x), **kwargs)
 
 
 
@@ -871,6 +1248,7 @@ class Subtensor(Op):
 
 
 class SetSubtensor(Subtensor):
+    """WRITEME"""
     view_map = {}
     destroy_map = {0: [0]}
 
@@ -923,6 +1301,7 @@ class SetSubtensor(Subtensor):
 
 
 class MakeVector(Op):
+    """WRITEME"""
     def __init__(self, stype):
         self.stype = stype
     def make_node(self, *inputs):
@@ -935,6 +1314,7 @@ class MakeVector(Op):
         return [None]*len(inputs)
 
 make_lvector = MakeVector(lscalar)
+"""WRITEME"""
 
 class Concatenate(Op):
     """

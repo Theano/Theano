@@ -2,6 +2,7 @@ syntax: glob
 *.pyo
 *~
 \#*\#
+doc/oplist.txt
 compiled/*.cpp
 cutils_ext.cpp
 html
