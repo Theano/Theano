@@ -146,41 +146,41 @@ import tensor as T
 import random
 import numpy as N
 
-# class T_OpFromGraph(unittest.TestCase):
+class T_OpFromGraph(unittest.TestCase):
 
-#     def test_straightforward(self):
-#         x, y, z = T.matrices('xyz')
-#         e = x + y * z
-#         op = OpFromGraph([x, y, z], [e], linker='c|py')
-#         f = op(x, y, z) - op(y, z, x)
-#         fn = function([x, y, z], [f])
-#         xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
-#         assert numpy.all(8.0 == fn(xv, yv, zv))
-#         assert numpy.all(8.0 == fn(xv, yv, zv))
+    def test_straightforward(self):
+        x, y, z = T.matrices('xyz')
+        e = x + y * z
+        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN')
+        f = op(x, y, z) - op(y, z, x)
+        fn = function([x, y, z], f)
+        xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
+        assert numpy.all(8.0 == fn(xv, yv, zv))
+        assert numpy.all(8.0 == fn(xv, yv, zv))
     
-#     def test_size_changes(self):
-#         x, y, z = T.matrices('xyz')
-#         e = T.dot(x, y)
-#         op = OpFromGraph([x, y], [e], linker='c|py')
-#         f = op(x, op(y, z))
-#         fn = function([x, y, z], [f])
-#         xv, yv, zv = N.ones((2, 3)), N.ones((3, 4))*3, N.ones((4, 5))*5
-#         res = fn(xv, yv, zv)
-#         assert res.shape == (2, 5)
-#         assert numpy.all(180.0 == res)
-#         res = fn(xv, yv, zv)
-#         assert res.shape == (2, 5)
-#         assert numpy.all(180.0 == res)
+    def test_size_changes(self):
+        x, y, z = T.matrices('xyz')
+        e = T.dot(x, y)
+        op = OpFromGraph([x, y], [e], mode='FAST_RUN')
+        f = op(x, op(y, z))
+        fn = function([x, y, z], f)
+        xv, yv, zv = N.ones((2, 3)), N.ones((3, 4))*3, N.ones((4, 5))*5
+        res = fn(xv, yv, zv)
+        assert res.shape == (2, 5)
+        assert numpy.all(180.0 == res)
+        res = fn(xv, yv, zv)
+        assert res.shape == (2, 5)
+        assert numpy.all(180.0 == res)
     
-#     def test_grad(self):
-#         x, y, z = T.matrices('xyz')
-#         e = x + y * z
-#         op = OpFromGraph([x, y, z], [e], linker='c|py', grad_depth = 2)
-#         f = op(x, y, z)
-#         f = f - T.grad(f, y)
-#         fn = function([x, y, z], [f])
-#         xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
-#         assert numpy.all(11.0 == fn(xv, yv, zv))
+    def test_grad(self):
+        x, y, z = T.matrices('xyz')
+        e = x + y * z
+        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN', grad_depth = 2)
+        f = op(x, y, z)
+        f = f - T.grad(f, y)
+        fn = function([x, y, z], f)
+        xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
+        assert numpy.all(11.0 == fn(xv, yv, zv))
 
 
 class T_function(unittest.TestCase):
@@ -303,24 +303,19 @@ class T_function(unittest.TestCase):
 
         f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x)], s+a*x)
 
-        self.failUnless(f.a == 1.0)
-        self.failUnless(f.value[a] is f.a)
-
-        self.failUnless(f.s == 0.0)
-        self.failUnless(f.value[s] is f.s)
+        self.failUnless(f[a] == 1.0)
+        self.failUnless(f[s] == 0.0)
 
         self.failUnless(f(3.0) == 3.0)
         self.failUnless(f(3.0,a=2.0) == 9.0) #3.0 + 2*3.0
 
-        self.failUnless(f.a == 1.0) #state hasn't changed permanently, we just overrode it last line
-        self.failUnless(f.s == 9.0)
+        self.failUnless(f[a] == 1.0) #state hasn't changed permanently, we just overrode it last line
+        self.failUnless(f[s] == 9.0)
 
-        f.a = 5.0
-        self.failUnless(f.a == 5.0)
-        self.failUnless(f.value[a] is f.a)
+        f[a] = 5.0
+        self.failUnless(f[a] == 5.0)
         self.failUnless(f(3.0) == 24.0) #9 + 3*5
-        self.failUnless(f.s == 24.0)
-        self.failUnless(f.value[s] is f.s)
+        self.failUnless(f[s] == 24.0)
 
     def test_same_names(self):
         a,x,s = T.scalars('xxx')
@@ -370,112 +365,112 @@ class T_function(unittest.TestCase):
         g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s], update=s-a*x, mutable=True)], s+a*x)
 
         f(1, 2)
-        self.failUnless(f.s == 2)
-        self.failUnless(g.s == 2)
+        self.failUnless(f[s] == 2)
+        self.failUnless(g[s] == 2)
         g(1, 2)
-        self.failUnless(f.s == 0)
-        self.failUnless(g.s == 0)
+        self.failUnless(f[s] == 0)
+        self.failUnless(g[s] == 0)
 
 
-class T_function_examples(unittest.TestCase):
-    def test_accumulator(self):
-        """Test low-level interface with state."""
-        x = T.scalar('x')
-        s = T.scalar('s')
+# class T_function_examples(unittest.TestCase):
+#     def test_accumulator(self):
+#         """Test low-level interface with state."""
+#         x = T.scalar('x')
+#         s = T.scalar('s')
 
-        fn, states = program_states(inputs = [x], outputs = [], states = [(s, 0, s+x)])
+#         fn, states = program_states(inputs = [x], outputs = [], states = [(s, 0, s+x)])
 
-        sum = 0
-        for inc in [1, 4, 5,23, -324]:
-            sum += inc
-            fn.run([inc], states)
-            assert sum == states[0].value
+#         sum = 0
+#         for inc in [1, 4, 5,23, -324]:
+#             sum += inc
+#             fn.run([inc], states)
+#             assert sum == states[0].value
 
 
-    def test_misc0(self):
+#     def test_misc0(self):
 
-        fn_inc, states_inc = function_states(\
-                inputs = [x], outputs = [], states = [(s, 0, s+x)])
+#         fn_inc, states_inc = function_states(\
+#                 inputs = [x], outputs = [], states = [(s, 0, s+x)])
 
-        fn_inc2, states_inc2 = function_states(\
-                inputs = [x], outputs = [], states = [(s, 0, s+x)])
+#         fn_inc2, states_inc2 = function_states(\
+#                 inputs = [x], outputs = [], states = [(s, 0, s+x)])
 
-        fn_inc_copy = copy.copy(fn_inc) #USE fn copy
+#         fn_inc_copy = copy.copy(fn_inc) #USE fn copy
 
-        # run() is like __call__, but requires an explicit state argument
+#         # run() is like __call__, but requires an explicit state argument
 
-        fn_inc.run([5], states_inc) #run on own state object
-        fn_inc2.run([3], states_inc) #run on compatible state object
-        assert states_inc[0].value == 8
+#         fn_inc.run([5], states_inc) #run on own state object
+#         fn_inc2.run([3], states_inc) #run on compatible state object
+#         assert states_inc[0].value == 8
 
-        states_inc_copy = copy.copy(states_inc) #USE state copy
-        fn_inc_copy.run([2], states_inc_copy)
-        assert states_inc[0].value == 10   #compatible
+#         states_inc_copy = copy.copy(states_inc) #USE state copy
+#         fn_inc_copy.run([2], states_inc_copy)
+#         assert states_inc[0].value == 10   #compatible
 
-        fn_dec, states_dec = function_states(\
-                inputs = [x], outputs = [], states = [((s, s-x), states_inc[0])])
+#         fn_dec, states_dec = function_states(\
+#                 inputs = [x], outputs = [], states = [((s, s-x), states_inc[0])])
 
-        try:
-            fn_inc.run([5], states_dec) # wrong kind of state for given program
-            self.fail("fn accepted an invalid state argument")
-        except SpecificException:
-            raise NotImplementedError() #TODO
-        except Exception:
-            self.fail("fn accepted an invalid state argument")
+#         try:
+#             fn_inc.run([5], states_dec) # wrong kind of state for given program
+#             self.fail("fn accepted an invalid state argument")
+#         except SpecificException:
+#             raise NotImplementedError() #TODO
+#         except Exception:
+#             self.fail("fn accepted an invalid state argument")
 
-    def test_perceptron(self):
-        """Test high-level state interface."""
+#     def test_perceptron(self):
+#         """Test high-level state interface."""
 
-        mu0 = numpy.array([1.0,0.0])
-        mu1 = numpy.array([0.0,0.1])
-        si0 = numpy.ones_like(mu0) #unit variance
-        si1 = numpy.ones_like(mu1) #unit variance
+#         mu0 = numpy.array([1.0,0.0])
+#         mu1 = numpy.array([0.0,0.1])
+#         si0 = numpy.ones_like(mu0) #unit variance
+#         si1 = numpy.ones_like(mu1) #unit variance
 
-        #implicit internal state
-        r_state = random.random_state()
-        label = r_state.bernoulli(0.5) 
+#         #implicit internal state
+#         r_state = random.random_state()
+#         label = r_state.bernoulli(0.5) 
 
-        #implicit internal state for each DiagGaussian
-        x = label * DiagGaussian(mu0, si0, state=r_state) \
-                + (1 - label) * random.DiagGaussian(mu1, si1, state=r_state)
+#         #implicit internal state for each DiagGaussian
+#         x = label * DiagGaussian(mu0, si0, state=r_state) \
+#                 + (1 - label) * random.DiagGaussian(mu1, si1, state=r_state)
 
-        w = T.tensor.dvector()
-        b = T.tensor.dscalar()
-        lr = 0.01
+#         w = T.tensor.dvector()
+#         b = T.tensor.dscalar()
+#         lr = 0.01
 
-        decision = dot(x,w) + b > 0
-        new_w = w + neq(label, decision) * lr * x
-        new_b = b + neq(label, decision) * (label * (-lr) + (1-label)*lr)
+#         decision = dot(x,w) + b > 0
+#         new_w = w + neq(label, decision) * lr * x
+#         new_b = b + neq(label, decision) * (label * (-lr) + (1-label)*lr)
 
-        init_w = numpy.array([0.0, 0.0])
-        init_b = 0.0
+#         init_w = numpy.array([0.0, 0.0])
+#         init_b = 0.0
 
-        io_stream = T.function([], [label, x], state={'seed':(r_state, 42)})
+#         io_stream = T.function([], [label, x], state={'seed':(r_state, 42)})
 
-        perceptron_learn = T.function([x, label], [decision], 
-                state={
-                    'w':((w, update_w), init_w),
-                    'b':((b, update_b), init_b),
-                    'lr':(lr, 0.01)})
+#         perceptron_learn = T.function([x, label], [decision], 
+#                 state={
+#                     'w':((w, update_w), init_w),
+#                     'b':((b, update_b), init_b),
+#                     'lr':(lr, 0.01)})
 
-        perceptron_use = T.function([x], [decision],
-                state={
-                    'w':(w, perceptron_learn.shared['w']),
-                    'b':(b, perceptron_learn.shared['b'])})
+#         perceptron_use = T.function([x], [decision],
+#                 state={
+#                     'w':(w, perceptron_learn.shared['w']),
+#                     'b':(b, perceptron_learn.shared['b'])})
 
-        errs = 0
-        for i in xrange(100):
-            il, ix = io_stream()
+#         errs = 0
+#         for i in xrange(100):
+#             il, ix = io_stream()
 
-            d0 = perceptron_use(ix)
-            d1 = perceptron_learn(ix, il)
+#             d0 = perceptron_use(ix)
+#             d1 = perceptron_learn(ix, il)
 
-            assert d0 == d1
+#             assert d0 == d1
 
-            errs += (d0 != d1)
+#             errs += (d0 != d1)
 
-            print d0
-        print 'errs =', errs 
+#             print d0
+#         print 'errs =', errs 
 
 
 # class T_dict_interface(unittest.TestCase):
@@ -540,7 +535,7 @@ class T_function_examples(unittest.TestCase):
 
 if __name__ == '__main__':
 
-    if 0:
+    if 1:
         unittest.main()
     else:
         testcases = []

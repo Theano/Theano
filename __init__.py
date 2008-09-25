@@ -9,7 +9,10 @@ from gof import \
      Type, Generic, generic, \
      object2, utils
 
-from compile import FunctionMaker, function, OpFromGraph #, eval_outputs, fast_compute
+from compile import \
+    Mode, \
+    predefined_modes, predefined_linkers, predefined_optimizers, \
+    FunctionMaker, function, OpFromGraph #, eval_outputs, fast_compute
 
 import tensor
 import tensor_random

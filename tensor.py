@@ -82,10 +82,11 @@ class Tensor(Type):
           for L{broadcasting}, as described and implemented in Numpy.
     """
 
-    def __init__(self, dtype, broadcastable):
+    def __init__(self, dtype, broadcastable, name = None):
         self.dtype = str(dtype)
         self.broadcastable = tuple(broadcastable)
         self.dtype_specs() # error checking is done there
+        self.name = name
     
     def filter(self, data, strict = False):
         _data = data
@@ -141,10 +142,21 @@ class Tensor(Type):
         return TensorResult(self, name = name)
 
     def __str__(self):
-        return "%s(%s)" % (str(self.dtype), str(self.broadcastable))
+        if self.name:
+            return self.name
+        else:
+            b = self.broadcastable
+            #bcast = str(self.broadcastable)
+            bcast = {(): 'scalar',
+                     (False,): 'vector',
+                     (False, True): 'col',
+                     (True, False): 'row',
+                     (False, False): 'matrix'}.get(b, "%iD" % len(b) if not any(b) else str(b))
+            return "Tensor(%s, %s)" % (str(self.dtype), bcast)
 
     def __repr__(self):
-        return "Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
+        return str(self)
+        #"Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub):
         return """

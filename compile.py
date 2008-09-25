@@ -64,7 +64,9 @@ default_linker = 'c|py'
 predefined_optimizers = {
     None    : lambda env: None,
     'merge' : gof.MergeOptimizer(),
-    'math'  : gof.MergeOptMerge(tensor_opt.math_optimizer)
+    'math'  : gof.MergeOptMerge(
+        gof.PureThenInplaceOptimizer(tensor_opt.math_optimizer,
+                                     tensor_opt.inplace_optimizer))
     }
 
 default_optimizer = 'merge'
@@ -87,6 +89,12 @@ class Mode(object):
     """
     
     def __init__(self, linker = default_linker, optimizer = default_optimizer):
+        self.__setstate__((linker, optimizer))
+
+    def __getstate__(self):
+        return (self.provided_linker, self.provided_optimizer)
+
+    def __setstate__(self, (linker, optimizer)):
         self.provided_linker = linker
         self.provided_optimizer = optimizer
         if isinstance(linker, str) or linker is None:
@@ -104,9 +112,9 @@ class Mode(object):
 # string as the key
 predefined_modes = {
     'SANITY_CHECK'            : Mode('c&py', 'math'),
-    'FAST_COMPILE'            : Mode('py', None),
+    'FAST_COMPILE'            : Mode('py', 'merge'),
     'FAST_RUN'                : Mode('c|py', 'math'),
-    'EXPENSIVE_OPTIMIZATIONS' : Mode('c|py', 'math')
+    'EXPENSIVE_OPTIMIZATIONS' : Mode('c|py', 'math'),
     }
 
 default_mode = 'FAST_RUN'
@@ -134,17 +142,22 @@ class SymbolicInput(object):
         True: permit the compiled function to modify the python object being passed as the input
         False: do not permit the compiled function to modify the python object being passed as the input.
 
+    strict: Bool (default: False)
+        True: means that the value you pass for this input must have exactly the right type
+        False: the value you pass for this input may be casted automatically to the proper type
+
     autoname: Bool (default: True)
         See the name option.
     """
 
-    def __init__(self, result, name=None, update=None, mutable=None, autoname=True):
+    def __init__(self, result, name=None, update=None, mutable=None, strict=False, autoname=True):
         self.result = result
         self.name = result.name if (autoname and name is None) else name
         if self.name is not None and not isinstance(self.name, str):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
         self.mutable = mutable if (mutable is not None) else (update is not None)
+        self.strict = strict
 
     def __str__(self):
         if self.update:
@@ -168,6 +181,8 @@ class SymbolicInputKit(object):
     """
 
     def __init__(self, name):
+        if not isinstance(name, str):
+            raise TypeError('naem must be a string (got: %s)' % name)
         self.name = name
         self.sinputs = []
         self.results = []
@@ -234,11 +249,15 @@ class In(SymbolicInput):
         True: permit the compiled function to modify the python object being passed as the input
         False: do not permit the compiled function to modify the python object being passed as the input.
 
+    strict: Bool (default: False)
+        True: means that the value you pass for this input must have exactly the right type
+        False: the value you pass for this input may be casted automatically to the proper type
+
     autoname: Bool (default: True)
         See the name option.
     """
-    def __init__(self, result, name=None, value=None, update=None, mutable=None, autoname=True):
-        super(In, self).__init__(result, name, update, mutable, autoname)
+    def __init__(self, result, name=None, value=None, update=None, mutable=None, strict=False, autoname=True):
+        super(In, self).__init__(result, name, update, mutable, strict, autoname)
         self.value = value
 
 
@@ -352,7 +371,7 @@ class FunctionMaker(object):
         else:
             raise TypeError("Unknown output type:", type(output), output)
 
-    def __init__(self, inputs, outputs, mode = 'FAST_RUN', accept_inplace = True):
+    def __init__(self, inputs, outputs, mode = 'FAST_RUN', accept_inplace = False):
         """
         Create a FunctionMaker for the specified inputs, outputs and mode.
 
@@ -407,6 +426,8 @@ class FunctionMaker(object):
         self.expanded_inputs = expanded_inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
+        self.mode = mode
+        self.accept_inplace = accept_inplace
 
     def create(self, defaults = None, trustme = False):
         """
@@ -427,12 +448,12 @@ class FunctionMaker(object):
         for (input, indices, subinputs), default in zip(self.indices, defaults):
             __default = default
 
-            # If the default is a gof.Filter, this means we want to share
+            # If the default is a gof.Container, this means we want to share
             # the same storage. This is done by appending default.storage
             # to input_storage
-            if isinstance(default, gof.Filter):
+            if isinstance(default, gof.Container):
                 if indices is not None:
-                    raise TypeError("Cannot take a Filter instance as default for a SymbolicInputKit.")
+                    raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
                 input_storage.append(default.storage)
                 default = None
             # If the input is a SymbolicInputKit, it represents more than
@@ -464,7 +485,7 @@ class FunctionMaker(object):
                 # back into the storage as it would defeat the point of updating it. We
                 # always do this policy.
                 if default is None:
-                    if trustme or isinstance(__default, gof.Filter):
+                    if trustme or isinstance(__default, gof.Container):
                         _defaults.append((False, False, default))
                     else:
                         # This might catch some bugs early
@@ -487,7 +508,27 @@ class FunctionMaker(object):
         return fn
 
 
+import copy_reg
+import cPickle
+
+def _pickle_FunctionMaker(fm):
+    return (_constructor_FunctionMaker, (fm.inputs, fm.outputs, fm.mode, fm.accept_inplace))
+
+def _constructor_FunctionMaker(*args):
+    return FunctionMaker(*args)
+
+copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
+
+
+def _pickle_slice(s):
+    return (slice, (s.start, s.stop, s.step))
+
+copy_reg.pickle(slice, _pickle_slice)
+
+
+
 from functools import partial
+
 
 DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries
 class Function(object):
@@ -498,8 +539,8 @@ class Function(object):
     def __init__(self, fn, input_storage, output_storage, indices, outputs, defaults, unpack_single, maker):
         """
         fn -> a function returned by some linker's make_thunk method
-        input_storage -> list of Filter instances used by fn to fetch the inputs
-        output_storage -> list of Filter instances used by fn to store the outputs in
+        input_storage -> list of Container instances used by fn to fetch the inputs
+        output_storage -> list of Container instances used by fn to store the outputs in
         indices -> list of (SymbolicInput|SymbolicInputKit, indices, [SymbolicInput,...]), one tuple for each input
         defaults -> list of (required (bool), refeed (bool), value), one tuple for each input
             required -> whether this input is required or optional
@@ -531,6 +572,8 @@ class Function(object):
         for i, ((input, indices, sinputs), (required, refeed, value)) in enumerate(zip(self.indices, defaults)):
             if indices is None: # this is true iff input is not a SymbolicInputKit
                 c = containers[0]
+                if input.strict:
+                    c.strict = True
                 if value is not None:
                     # always initialize the storage
                     c.data = value
@@ -591,7 +634,7 @@ class Function(object):
                     raise TypeError("Unknown input or state: %s" % item)
                 if s is DUPLICATE:
                     raise TypeError("Ambiguous name: %s - please check the names of the inputs of your function for duplicates." % item)
-                if isinstance(s, gof.Filter):
+                if isinstance(s, gof.Container):
                     return s.value
                 else:
                     raise NotImplementedError
@@ -602,7 +645,7 @@ class Function(object):
                     raise TypeError("Unknown input or state: %s" % item)
                 if s is DUPLICATE:
                     raise TypeError("Ambiguous name: %s - please check the names of the inputs of your function for duplicates." % item)
-                if isinstance(s, gof.Filter):
+                if isinstance(s, gof.Container):
                     s.value = value
                     s.provided += 1
                 else:
@@ -624,6 +667,7 @@ class Function(object):
 
     def __setitem__(self, item, value):
         self.value[item] = value
+        
     
     def __copy__(self):
         defaults = [default for _1, _2, default in self.defaults]
@@ -676,6 +720,26 @@ class Function(object):
         None,
         doc="""TODOC""")
 
+
+def _pickle_Function(f):
+    ins = list(f.input_storage)
+    defaults = []
+    for (input, indices, inputs), (required, refeed, default) in zip(f.indices, f.defaults):
+        if isinstance(input, SymbolicInputKit):
+            defaults.append(default)
+            ins[:len(indices)] = []
+        else:
+            defaults.append(ins[0])
+            del ins[0]
+    return (_constructor_Function, (f.maker, defaults, [x.data for x in f.input_storage]))
+
+def _constructor_Function(maker, defaults, data):
+    f = maker.create(defaults, trustme = True)
+    for container, x in zip(f.input_storage, data):
+        container.data = x
+    return f
+
+copy_reg.pickle(Function, _pickle_Function)
 
 
 def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
@@ -759,34 +823,8 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
     inputs = map(wrap_in, inputs)
     outputs = map(wrap_out, outputs) if isinstance(outputs, (list, tuple)) else wrap_out(outputs)
 
-    # create a subclass of Function for the given arguments.
-    class F(Function):
-        pass
-
     fn = FunctionMaker(inputs, outputs, mode, accept_inplace = accept_inplace).create([getattr(input, 'value', None) for input in inputs])
 
-    # add all input names as properties of F
-    def _get(name, self):
-        return self[name]
-    def _set(name, self, value):
-        self[name] = value
-    def _err(name, self):
-        raise TypeError("Ambiguous name: %s - please check the names of the inputs of your function for duplicates." % name)
-    seen = set()
-    for input in inputs:
-        name = input.name
-        if name:
-            if name in seen:
-                f = property(partial(_err, input.name), partial(_err, input.name))
-                setattr(F, input.name, f)
-            elif not hasattr(F, name):
-                f = property(partial(_get, input.name), partial(_set, input.name))
-                setattr(F, input.name, f)
-                seen.add(input.name)
-            else:
-                pass
-
-    fn.__class__ = F
     return fn
 
 
@@ -825,10 +863,6 @@ class OpFromGraph(gof.Op):
     """
     
     def __init__(self, inputs, outputs, grad_depth = 1, **kwargs):
-        if kwargs.get('borrow_outputs') or kwargs.get('unpack_single'):
-            raise ValueError('The borrow_outputs and unpack_single options cannot be True')
-        kwargs['unpack_single'] = False
-        kwargs['borrow_outputs'] = False
         self.fn = function(inputs, outputs, **kwargs)
         self.inputs = inputs
         self.outputs = outputs
