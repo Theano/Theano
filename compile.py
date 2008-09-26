@@ -807,10 +807,19 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
                     if name is not None: input.name = name
                     input.value = value
                     return input
-                        
+            else:
+                raise TypeError("The input specification is not valid: %s" % input)
+
+            if not isinstance(result, gof.Result):
+                raise TypeError("Unknown input type: %s, expected Result instance" % type(result), result)
+            if update is not None and not isinstance(update, gof.Result):
+                raise TypeError("Unknown update type: %s, expected Result instance" % type(update), update)
+            if value is not None and isinstance(value, (gof.Result, SymbolicInput)):
+                raise TypeError("The value for input %s should not be a Result or SymbolicInput instance (got: %s)" % (result, value))
+
             return In(result, name=name, value=value, update=update)
         else:
-            raise TypeError("Unknown input type:", type(input), input)
+            raise TypeError("Unknown input type: %s, expected Result instance" % type(input), input)
 
     def wrap_out(output):
         if isinstance(output, SymbolicOutput):
