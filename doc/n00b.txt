@@ -1,5 +1,5 @@
 =============
-N00b Tutorial
+n00b Tutorial
 =============
 
 .. contents::
@@ -68,7 +68,7 @@ try to do something really crazy you'll see an exception right away.
 .. _symbolic graph: WRITEME.html
 
 To actually use our graph for computation, we have to compile (or build) it into
-a function_ `f`.    The compiled function is actually capable of performing
+a function `f`.    The compiled function is actually capable of performing
 computation.  So after we have built f, we use it to compute the value of y from
 a `value input` x.  Some argument checking is only possible at run-time, so if
 you ask for impossible things (i.e. logarithm of a negative number, sum of
