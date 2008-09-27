@@ -1,0 +1,43 @@
+=====================================
+Theano Project Documentation Overview
+=====================================
+
+Using Theano
+============
+
+- First of all, read the `n00b guide`_.
+
+- Join `theano-users`_.
+
+- Familiarize yourself with our `glossary of terminology`_.
+
+- Consult some of the `Howto`_ recipes on the wiki.
+
+.. _Howto: 
+.. _theano-users: http://groups.google.com/group/theano-users?pli=1
+.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
+.. _n00b guide: n00b.html
+.. _glossary of terminology: glossary.html
+
+Extending Theano
+================
+
+- `Get Started as a Developer <DevStartGuide.html>`__ by setting up mercurial, getting a few accounts,
+  setting up your environment, and getting some background in mercurial, python,
+  and numpy.
+
+- Join `theano-dev`_ to participate in development discussion.
+
+- Keep an eye on the `Mercurial Changelog <http://pylearn.org/hg/theano>`__.
+
+- Pick a task from the `task list`_.
+
+- Read about `How Theano Works <UserAdvanced.html>`__.
+
+- Browse `Theano's API <../api/>`__.
+
+- Send us your work as a patch to `theano-dev`_ or commit directly to the trunk.
+
+.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
+.. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
+.. _reStructuredText: http://docutils.sourceforge.net/rst.html

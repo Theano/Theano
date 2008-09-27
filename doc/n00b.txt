@@ -1,0 +1,168 @@
+=============
+N00b Tutorial
+=============
+
+.. contents::
+
+*This documentation is still in-progress. 20080919*
+
+Introduction
+============
+
+Great. You know `What theano is`_, and you've even `installed it`_.
+But how do you use it?
+
+.. _`What theano is`: http://lgcm.iro.umontreal.ca/theano/wiki/WhatIsTheano
+.. _`installed it`: http://lgcm.iro.umontreal.ca/theano/wiki/InstallationNotes
+
+If you have never used Theano before, we recommend you read over this tutorial start-to-finish. This will give you a sense of what you can do with Theano, and how.
+Afterwards, we encourage you to read the documentation in accompanying links, which will allow you to understand the underlying concepts behind Theano better.
+
+Scalar example
+==============
+
+In the following example, we will build a function `f(x) = x + 1.5`. We will then evaluate that function
+
+.. code-block:: python
+
+    import theano
+    import theano.tensor as tensor
+
+    # Declare a symbolic constant
+    c = tensor.constant(1.5)
+
+    # Declare a symbolic floating-point scalar
+    x = tensor.fscalar()
+
+    # The symbolic result y is computed by adding x to c
+    y = x + c
+
+    # f is a function we build to compute output y given input x.
+    # f(x) = y
+    #      = x + c
+    #      = x + 1.5
+    f = theano.function([x], [y])
+
+    # We now bind 2.5 to an internal copy of x and evaluate an internal y,
+    # which we return.
+    # We assert that 4.0 == f(2.5) = 2.5 + 1.5
+    assert 4.0 == f(2.5)
+
+In the example above, `c`, `x`, and `y` are each a ''symbolic'' result_. They
+are symbolic because they stand for variables and have a type_, but
+do not necessarily store actual values.  Not yet, at least.  (To give them
+values, we will have to `evaluate` them.  More on this below.)
+
+.. _result: WRITEME.html
+.. _type: WRITEME.html
+
+Since we are using the addition operator (`x + c`) here on symbolic results, the
+output `y` is also symbolic.  The `+` corresponds to an ''operation'' in theano
+terminology, or ''op'' for short.
+
+We use these results and ops to construct a `symbolic graph`_.  The graph is
+symbolic because we declare what it computes, but do not actually perform any
+computation.  Some type-checking is done on while we build our graphs, so if you
+try to do something really crazy you'll see an exception right away.
+
+.. _symbolic graph: WRITEME.html
+
+To actually use our graph for computation, we have to compile (or build) it into
+a function_ `f`.    The compiled function is actually capable of performing
+computation.  So after we have built f, we use it to compute the value of y from
+a `value input` x.  Some argument checking is only possible at run-time, so if
+you ask for impossible things (i.e. logarithm of a negative number, sum of
+matrices with different shapes) then you will get exceptions from the compiled
+function.  These exceptions can be tricky to understand, but we feel your pain
+and we are working hard to make these problems errors easier to fix.
+
+
+*TODO: Is concrete the opposite of symbolic? Do we actually have a term for this?*
+
+*TODO: Go over TerminologyGlossary and make sure we touch on / link to most basic concepts in the above.*
+
+*It would be worth thinking through the order in which these terms should be introduced.
+Can we inline the text?'''*
+
+*Note: Theano has two types of [DefineScalar scalar].*
+
+Matrix example
+==============
+
+In the following example, we will build a function to evaluate the dot product `f(x) = dot(x, w)`.
+
+*TODO: Are there ways we can nicely format the matrix math?*
+
+.. code-block:: python
+
+    import theano
+    import theano.tensor as tensor
+
+    # Define the symbolic results
+    x_sym = tensor.matrix()
+    w_sym = tensor.matrix()
+    y_sym = tensor.dot(x_sym, w_sym)
+
+    f = theano.function([x_sym, w_sym], [y_sym])
+
+    from numpy import asarray
+
+    # Now, choose concrete x and w values.
+
+    # x = [[1 2 3]
+    #      [4 5 6]]
+    x = asarray([[1, 2, 3], [4, 5, 6]])
+
+    # w = [[ 1  2]
+    #      [-1 -2]
+    #      [ 3  3]]
+    w = asarray([[1, 2], [-1, -2], [3, 3]])
+
+    # f(x, w) = [[  8.   7.]
+    #             [ 17.  16.]]
+    # .all() checks the equality over all matrix entries.
+    assert (f(x, w) == asarray([[8, 7], [17, 16]])).all()
+
+*TODO: Explain the matrix and other interesting things going on here.*
+
+
+*TODO: Explain that we have a lot of numpy functionality reimplemented. Link to numpy docs and say familiarity won't hurt. Also link to list of available ops.*
+
+Broadcasting example
+====================
+
+Broadcasting is a subtle and important concept in numpy, which I don't
+completely understand.  Regardless, here is an example of how broadcasting
+works.
+
+*WRITEME: Extend to above example to add a vector.*
+
+Gradient example
+================
+
+We are going to write some gradient-based learning code.
+You may now wish to review some
+`matrix conventions <http://pylearn.org/pylearn/wiki/MatrixConventions>`__.
+(Hint: Each row is a training instance, each column is a feature dimension.)
+
+*WRITEME: A simple logistic regression example.*
+
+State example
+=============
+
+*WRITEME: A simple logistic regression example, with implicit weights.*
+
+
+Summary
+=======
+
+
+*TODO: Rewrite above examples to use doctest strings?*
+
+*TODO: Go through above and link all terms, either to wiki documentation or to
+epydoc documentation.*
+
+*TODO: I would be useful to actually have example files like this in the source
+code. The question is how to automatically extract the source files and inline
+them into this documentation.*
+

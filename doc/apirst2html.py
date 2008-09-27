@@ -41,8 +41,8 @@ from docutils.core import publish_cmdline, default_description
 try:
     # .. code-block:: python should look nice with this
     import pygments_code_block_directive
-except:
-    print >> sys.stderr, "failed to get pygments"
+except Exception, e:
+    print >> sys.stderr, "Failed to import pygments", e
 
 description = ('Generates (X)HTML documents with API documentation links.  '
                 + default_description)

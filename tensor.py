@@ -31,7 +31,10 @@ from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 __oplist_constructor_list = []
 """List of functions to be listed as op constructors in the oplist (`gen_oplist`, doc/oplist.txt)."""
 def constructor(f):
-    """Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt)."""
+    """Add `f` to :doc:`oplist`.
+    
+    Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt).
+    """
     __oplist_constructor_list.append(f)
     return f
 def __oplist_tag(thing, tag):
