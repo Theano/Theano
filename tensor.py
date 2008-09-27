@@ -28,12 +28,16 @@ import compile
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
 
-_constructor_list = []
+__oplist_constructor_list = []
 """List of functions to be listed as op constructors in the oplist (`gen_oplist`, doc/oplist.txt)."""
 def constructor(f):
     """Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt)."""
-    _constructor_list.append(f)
+    __oplist_constructor_list.append(f)
     return f
+def __oplist_tag(thing, tag):
+    tags = getattr(thing, '__oplist_tags', [])
+    tags.append(tag)
+    thing.__oplist_tags = tags
 
 
 def as_tensor(x, name = None):
@@ -539,11 +543,12 @@ def _elemwise(scalar_op, name, doc_prefix=''):
 
     return straight, inplace
 
-def _redefine(real_symbol_value):
+def _redefine(real_symbol_value, module='tensor'):
     """Replace the value associated with a function symbol.
     
     This is useful to trick epydoc into doing what we want.  It's a hack.
     """
+    real_symbol_value.__module__ = 'tensor'
     def decorator(f):
         return real_symbol_value
     return decorator
@@ -573,6 +578,7 @@ def _scal_elemwise(symbol):
     #for the meaning of this see the ./epydoc script
     # it makes epydoc display rval as if it were a function, not an object
     rval.__epydoc_asRoutine = symbol
+    rval.__module__ = 'tensor'
 
     return rval
 
@@ -622,6 +628,8 @@ def cast(t, dtype):
 
 #to be removed as we get the epydoc routine-documenting thing going -JB 20080924
 def _conversion(real_value):
+    __oplist_tag(real_value, 'casting')
+    real_value.__module__='tensor'
     return real_value
 
 convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))

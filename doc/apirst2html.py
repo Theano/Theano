@@ -29,12 +29,21 @@ except:
 # real ``epydoc`` package.  So remove ``sys.path[0]``, which contains the
 # directory of the script.
 import sys, os.path
-script_path = os.path.abspath(sys.path[0])
-sys.path = [p for p in sys.path if os.path.abspath(p) != script_path]
+
+# I leave this in place actually, so that I can import pygments_code_block_directive
+
+#script_path = os.path.abspath(sys.path[0])
+#sys.path = [p for p in sys.path if os.path.abspath(p) != script_path]
 
 import epydoc.docwriter.xlink as xlink
 
 from docutils.core import publish_cmdline, default_description
+try:
+    # .. code-block:: python should look nice with this
+    import pygments_code_block_directive
+except:
+    print >> sys.stderr, "failed to get pygments"
+
 description = ('Generates (X)HTML documents with API documentation links.  '
                 + default_description)
 publish_cmdline(reader=xlink.ApiLinkReader(), writer_name='html',
