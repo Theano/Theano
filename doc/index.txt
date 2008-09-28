@@ -2,25 +2,37 @@
 Theano Project Documentation Overview
 =====================================
 
+Documentation is divided broadly into two kinds: user documentation and
+developer documentation.  
+`Using Theano` covers how to *use* what is already in the Theano library to
+build graphs and evaluate them.
+`Hacking Theano` introduces you to what's under the hood.  If you want to extend Theano
+to handle new data and expression types, this documentation is for you.
+
 Using Theano
 ============
 
-- First of all, read the `n00b guide`_.
+- First of all, read the `n00b guide`_.  It is a cut-and-paste, tutorial-style intro to what Theano can do.
+
+- Familiarize yourself with the `glossary of terminology`_.
 
 - Join `theano-users`_.
 
-- Familiarize yourself with our `glossary of terminology`_.
+- Learn to use the typelist_, and the oplist_.  These are the building blocks
+  of theano expression graphs.
 
-- Consult some of the `Howto`_ recipes on the wiki.
+- Browse through some of the `Howto`_ recipes on the wiki.
 
 .. _Howto: 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
 .. _n00b guide: n00b.html
 .. _glossary of terminology: glossary.html
+.. _typelist: typelist.html
+.. _oplist: oplist.html
 
-Extending Theano
-================
+Hacking Theano
+==============
 
 - `Get Started as a Developer <DevStartGuide.html>`__ by setting up mercurial, getting a few accounts,
   setting up your environment, and getting some background in mercurial, python,
@@ -28,13 +40,16 @@ Extending Theano
 
 - Join `theano-dev`_ to participate in development discussion.
 
-- Keep an eye on the `Mercurial Changelog <http://pylearn.org/hg/theano>`__.
-
-- Pick a task from the `task list`_.
+- Pick a task from the `task list`_, or suggest one on `theano-users`_.
+  Features/ideas are generally discussed on `theano-users`_.   Technical
+  discussions of how to actually implement something should be on
+  `theano-dev`_.
 
 - Read about `How Theano Works <UserAdvanced.html>`__.
 
 - Browse `Theano's API <../api/>`__.
+
+- Keep an eye on the `Mercurial Changelog <http://pylearn.org/hg/theano>`__.
 
 - Send us your work as a patch to `theano-dev`_ or commit directly to the trunk.
 
