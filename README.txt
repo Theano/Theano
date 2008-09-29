@@ -185,7 +185,7 @@ All tests should pass.
 Using Theano
 ============
 
-Now that you've got theano installed and running, check out the `n00b tutorial <n00b.html>`__ for how to use it.
+Now that you've got theano installed and running, check out the `n00b tutorial <doc/n00b.html>`__ for how to use it.
 
 
 Getting Help
