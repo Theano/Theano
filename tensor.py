@@ -1397,7 +1397,7 @@ class Split(Op):
             raise ValueError('In Split.perform(), len(splits) != len_splits.', 
                     (len(splits), self.len_splits))
          
-        # Checking is done, lets roll the splitting algorithm!
+        # Checking is done, let's roll the splitting algorithm!
         # Basically we step along the given axis of x, extracting subtensors of size splits[i]
         # as we go along.
 

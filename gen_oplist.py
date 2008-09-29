@@ -3,11 +3,20 @@ __docformat__ = "restructuredtext en"
 import sys
 import gof
 
-def print_title(title_string, under_char):
+def print_title(title_string, under_char, over_char=''):
+    l = len(title_string)
+    if over_char:
+        print over_char * l
+
     print title_string
-    print under_char * len(title_string)
+
+    if under_char:
+        print under_char * l
+
     print ""
 
+def print_hline():
+    print '-' * 80
 
 class Entry:
     """Structure for generating the oplist file"""
@@ -105,11 +114,6 @@ def search_entries(module_list):
     return ops, constructors
 
 def print_entries(ops, constructors):
-    print_title("Theano Op List", "~")
-    print ""
-    print ".. contents:: "
-    print ""
-
     tags = {}
     for o in ops + constructors:
         for t in o.tags:
@@ -139,5 +143,19 @@ if __name__ == "__main__":
     """Generate the op list"""
     import scalar, sparse, tensor
 
+    print_title("Op List", "~", "~")
+    print """
+This page lists the `Op Classes` and `constructors` that are provided by the Theano library.
+`Op Classes` drive from :api:`Op`, whereas `constructors` are typically `Op Class` instances, but may be true Python functions.
+
+In the future, this list may distinguish `constructors` that are Op instances from true Python functions.
+
+"""
+    print_hline()
+    print ""
+    print ".. contents:: "
+    print ""
+
     ops, constructors = search_entries([scalar, sparse, tensor])
+
     print_entries(ops, constructors)

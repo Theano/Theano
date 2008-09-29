@@ -24,20 +24,21 @@ if [ " $1" != " epydoc" ]; then
 
     #generate the index & readme files
     echo "$APIRST2HTML $EPYDOC_ARGS index.txt html/index.html..."
-    $APIRST2HTML $EPYDOC_ARGS --stylesheet=style.css index.txt html/index.html
+    $APIRST2HTML -stg $EPYDOC_ARGS --stylesheet=style.css index.txt html/index.html
     echo "$APIRST2HTML $EPYDOC_ARGS README.txt html/README.html..."
-    $APIRST2HTML $EPYDOC_ARGS --stylesheet=style.css README.txt html/README.html
+    $APIRST2HTML -stg $EPYDOC_ARGS --stylesheet=style.css README.txt html/README.html
 
     #generate the oplist in ReST format
     echo "gen oplist..."
     python gen_oplist.py > doc/oplist.txt
+    python gen_typelist.py > doc/typelist.txt
 
     #generate html files for all the ReST documents in doc/
     echo "gen doc/*.txt..."
     for RST in doc/*.txt;  do
         BASENAME=$(basename $RST .txt)
         echo "gen doc/$BASENAME.txt..."
-        $APIRST2HTML $EPYDOC_ARGS --stylesheet=../style.css doc/$BASENAME.txt html/doc/$BASENAME.html
+        $APIRST2HTML -stg $EPYDOC_ARGS --stylesheet=../style.css doc/$BASENAME.txt html/doc/$BASENAME.html
     done
 fi
 
