@@ -60,7 +60,7 @@ When you install a package, only the package name can be imported directly. If y
 .. _basicnumpy: http://lgcm.iro.umontreal.ca/theano/wiki/BasicNumpy
 
 
-.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - TRAC_
+.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - `Task List`_
 
 .. |THEANO| image:: http://lgcm.iro.umontreal.ca/theano/chrome/site/theano_logo.png
    :target: http://pylearn.org/auto_theano
@@ -75,5 +75,6 @@ When you install a package, only the package name can be imported directly. If y
 .. _Documentation: index.html
 .. _Wiki: http://pylearn.org/theano
 .. _TRAC: http://trac.edgewall.org/
+.. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
 

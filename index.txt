@@ -103,7 +103,7 @@ The snapshots usually contain *more features* and *fewer bugs* than the
    :align: middle
    :class: borderless
 
-.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - TRAC_
+.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - `Task List`_
 
 .. _Download: README.html#downloading-theano
 .. _Documentation: doc/index.html
