@@ -85,7 +85,7 @@ There are no stable releases yet.
 
 Get the source and run the auto-tests like this:
 
-.. code-block::
+.. code-block:: bash
     
     hg clone http://pylearn.org/hg/theano theano
     cd theano
@@ -93,7 +93,7 @@ Get the source and run the auto-tests like this:
 
 To update your library to the latest on pylearn.org, change directory (`cd`) to this `theano` folder and type
 
-.. code-block::
+.. code-block:: bash
 
     hg pull -u
 
@@ -153,7 +153,7 @@ Tips for running on a cluster
 
 Use something like the following in your .bashrc:
 
-.. code-block::
+.. code-block:: bash
 
     #use the intel math-kernel library for BLAS routines
     THEANO_BLAS_LDFLAGS=-lmkl
@@ -174,7 +174,7 @@ Running the Test Suite
 
 Test your installation by running the autotests.  Type at the shell:
 
-.. code-block::
+.. code-block:: bash
 
     cd theano
     python2.5 autotest.py
