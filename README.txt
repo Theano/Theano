@@ -194,3 +194,18 @@ Getting Help
 If these installation instructions don't work, search the theano-users archive for similar cases.  If you don't find a solution, write to theano-users and explain the situation.
 
 
+.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - TRAC_
+
+.. _README: README.html
+.. _Download: README.html#downloading-theano
+.. _Documentation: doc/index.html
+.. _Wiki: http://pylearn.org/theano
+.. _TRAC: http://trac.edgewall.org/
+
+.. |THEANO| image:: http://lgcm.iro.umontreal.ca/theano/chrome/site/theano_logo.png
+   :target: http://pylearn.org/auto_theano
+   :alt: THEANO
+   :align: top
+   :class: borderless
+   :width: 60
+   :height: 18

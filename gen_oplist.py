@@ -159,3 +159,8 @@ In the future, this list may distinguish `constructors` that are Op instances fr
     ops, constructors = search_entries([scalar, sparse, tensor])
 
     print_entries(ops, constructors)
+
+    print ""
+
+    for line in open("doc/header.txt"):
+        print line[:-1]

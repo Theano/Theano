@@ -103,6 +103,19 @@ The snapshots usually contain *more features* and *fewer bugs* than the
    :align: middle
    :class: borderless
 
+.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - TRAC_
+
+.. _Download: README.html#downloading-theano
+.. _Documentation: doc/index.html
+.. _Wiki: http://pylearn.org/theano
+
+.. |THEANO| image:: http://lgcm.iro.umontreal.ca/theano/chrome/site/theano_logo.png
+   :target: http://pylearn.org/auto_theano
+   :alt: THEANO
+   :align: top
+   :class: borderless
+   :width: 60
+   :height: 18
 
 ..
    Local Variables:
