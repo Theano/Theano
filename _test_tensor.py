@@ -983,26 +983,6 @@ class T_Join_and_Split(unittest.TestCase):
         verify_grad(self, lambda a, b: join(1,a,b), [v, 2*v])
 
 
-class T_Concatenate(unittest.TestCase):
-    def test_concatenate(self):
-        a_n = numpy.array([[1, 2, 3], [4, 5, 6]])
-        b_n = numpy.array([[7], [8]])
-        s = concatenate((as_tensor(a_n), as_tensor(b_n)), axis = 1)
-        c = numpy.concatenate((a_n, b_n), axis = 1)
-        self.failUnless((eval_outputs([s]) == c).all())
-
-    def test_concatenate_grad(self):
-        return  # Not working yet
-        a_n = numpy.array([[1, 2, 3], [4, 5, 6]])
-        b_n = numpy.array([[7], [8]])
-        a = as_tensor(a_n)
-        b = as_tensor(b_n)
-        s = concatenate((a, b), axis = 1)
-        ga, gb = grad(sum(s), [a, b])
-        gval = eval_outputs([ga, gb])
-        self.failUnless(numpy.all(gval[0] == 1.0))
-        self.failUnless(numpy.all(gval[1] == 1.0))
-
 class _test_comparison(unittest.TestCase):
     def test_gt(self):
         x, y = fvector(), fvector()
