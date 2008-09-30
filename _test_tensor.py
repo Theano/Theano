@@ -1775,7 +1775,7 @@ class T_op_cache(unittest.TestCase):
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 if __name__ == '__main__':
-    if 0:
+    if 1:
         unittest.main()
     else:
         testcase =  AbsInplaceTester
