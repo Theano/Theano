@@ -12,9 +12,9 @@ import gof, gof.graph
 from gof.python25 import any
 import gof
 from gof.utils import AbstractFunctionError
+import tensor_opt
 
 from elemwise import DimShuffle
-
 
 default_mode = compile.Mode(optimizer = None,
                             linker = 'c&py')
@@ -1776,6 +1776,10 @@ class T_op_cache(unittest.TestCase):
 
 if __name__ == '__main__':
     if 1:
+        if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
+            default_mode = compile.Mode(linker = 'c&py',
+                                        optimizer = 'math')
+            sys.argv[1:] = sys.argv[2:]
         unittest.main()
     else:
         testcase =  DotTester

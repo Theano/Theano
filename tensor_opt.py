@@ -128,7 +128,7 @@ def local_dimshuffle_lift(node):
         else:
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
 
-dimshuffle_lift = gof.TopoOptimizer(local_dimshuffle_lift, order = 'out_to_in')
+dimshuffle_lift = out2in(local_dimshuffle_lift)
 
 
 #################
@@ -504,10 +504,10 @@ def local_mul_to_neg(node):
     else:
         return False
 
-neg_to_mul = gof.TopoOptimizer(gof.LocalOptGroup(local_neg_to_mul), order = 'out_to_in')
-mul_to_neg = gof.TopoOptimizer(gof.LocalOptGroup(local_mul_to_neg), order = 'out_to_in')
+neg_to_mul = out2in(gof.LocalOptGroup(local_neg_to_mul))
+mul_to_neg = out2in(gof.LocalOptGroup(local_mul_to_neg))
 
-mul_canonizer = gof.TopoOptimizer(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink), order = 'in_to_out')
+mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
 
 
 def add_calculate(num, denum, aslist = False):
@@ -520,7 +520,7 @@ def add_calculate(num, denum, aslist = False):
     return v
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
-add_canonizer = gof.TopoOptimizer(gof.LocalOptGroup(local_add_canonizer, local_fill_cut, local_fill_sink), order = 'in_to_out')
+add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut, local_fill_sink))
 
 
 ##################
