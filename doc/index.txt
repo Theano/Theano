@@ -4,10 +4,16 @@ Theano Project Documentation Overview
 
 Documentation is divided broadly into two kinds: user documentation and
 developer documentation.  
-`Using Theano` covers how to *use* what is already in the Theano library to
-build graphs and evaluate them.
-`Hacking Theano` introduces you to what's under the hood.  If you want to extend Theano
-to handle new data and expression types, this documentation is for you.
+
+- `Using Theano` covers how to *use* what is already in the Theano library to
+  build graphs and evaluate them.
+
+- `Extending Theano` introduces how Theano works and explains how to add new
+  data and expression types, as well as optimizations to accompany them.
+
+- `Hacking Theano` introduces you to what's under the hood: the compilation
+  process, the Env, C code generation.
+
 
 Using Theano
 ============
@@ -31,6 +37,18 @@ Using Theano
 .. _typelist: typelist.html
 .. _oplist: oplist.html
 
+Extending Theano
+================
+
+- Read about `How Theano Works <UserAdvanced.html>`__.  This introduces the
+  major interface data structures: Op, Type, Result, Apply.
+
+- How to make a new Op.
+
+- How to make a new Optimization.
+
+- How to make a new data Type.
+
 Hacking Theano
 ==============
 
@@ -44,8 +62,6 @@ Hacking Theano
   Features/ideas are generally discussed on `theano-users`_.   Technical
   discussions of how to actually implement something should be on
   `theano-dev`_.
-
-- Read about `How Theano Works <UserAdvanced.html>`__.
 
 - Browse `Theano's API <../api/>`__.
 
