@@ -1,11 +1,11 @@
 ======
 Theano
 ======
----------------------------------------------------------------
-An optimizing compiler for matrix valued expressions in Python
----------------------------------------------------------------
+-------------------------------------------------------------------
+A python library for manipulating and evaluating matrix expressions
+-------------------------------------------------------------------
 
-Theano is an optimizing compiler in Python, built to evaluate complicated
+Theano is a library in Python, built to evaluate complicated
 expressions (especially matrix-valued ones) as quickly as possible.
 It was written at LISA_ to explore techniques for machine learning.
 Our project uses the name to honour the ancient Greek mathematician. 
