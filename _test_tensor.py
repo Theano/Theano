@@ -533,64 +533,6 @@ DotTester = make_tester(name = 'DotTester',
 #      rationale: it's tricky, and necessary everytime you want to verify
 #      gradient numerically
 
-def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001,
-        linker='c&py'):
-    """testcase.failUnless(analytic gradient matches finite-diff gradient)"""
-    pt = [numpy.asarray(p) for p in pt]
-
-    for test_num in xrange(n_tests):
-#        tensor_pt = [as_tensor(p,name='input %i'%i) for i,p in enumerate(pt)]
-        tensor_pt = [constant(p).type('input %i'%i) for i,p in enumerate(pt)]
-        #o = op.make_node(*[tpt.copy() for tpt in tensor_pt])
-        o = safe_make_node(op, *[tpt.copy() for tpt in tensor_pt])
-        
-        if hasattr(o, 'outputs'):
-            o_outputs = o.outputs
-        else:
-            o_outputs = o
-
-        if len(o_outputs) > 1:
-            raise NotImplementedError('cant (yet) autotest gradient of op with multiple outputs')
-            # we could make loop over outputs making random projections R for each,
-            # but this doesn't handle the case where not all the outputs are
-            # differentiable... so I leave this as TODO for now -JB.
-        o_fn = function(tensor_pt, o_outputs[0], mode=compile.Mode(optimizer = None, linker = linker))
-        o_fn_out = o_fn(*pt)
-        random_projection = rng.rand(*o_fn_out.shape)
-        t_r = as_tensor(random_projection)
-
-        #random projection of o onto t_r
-        cost = sum(t_r * o_outputs[0])
-        cost_fn = function(tensor_pt, cost, mode=compile.Mode(optimizer = None, linker = linker))
-
-        num_grad = gradient.numeric_grad(cost_fn, pt)
-
-        symbolic_grad = grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
-
-        if 0:
-            print '-------'
-            print '----------'
-            for op in gof.graph.io_toposort(tensor_pt, symbolic_grad):
-                print op
-
-        grad_fn = function(tensor_pt, symbolic_grad, mode=compile.Mode(optimizer = None, linker = linker))
-
-        analytic_grad = grad_fn(*pt)
-        if not isinstance(analytic_grad, (list, tuple)):
-            analytic_grad = [analytic_grad]
-
-#         if num_grad.max_err(analytic_grad) > 1.0e-4:
-#             print "aaaaaaaaaa"
-#             print gof.Env(tensor_pt, [cost])
-#             print gof.Env(tensor_pt, symbolic_grad)
-#             print analytic_grad
-#             print num_grad.gf
-#             print num_grad.max_err(analytic_grad)
-#             print "bbbbbbbbbb"
-
-        if num_grad.max_err(analytic_grad) > 1.0e-4:
-            raise Exception(verify_grad.E_grad)
-verify_grad.E_grad = 'gradient error exceeded tolerance'
 
 
 #useful mostly for unit tests
@@ -945,29 +887,100 @@ class T_subtensor(unittest.TestCase):
 
 
 
-class T_Stack(unittest.TestCase):
-    def test_hstack(self):
-        a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_tensor(numpy.array([[7], [8]]))
-        s = horizontal_stack(a, b)
-        c = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]])
-        self.failUnless((eval_outputs([s]) == c).all())
-    def test_vstack(self):
+class T_Join_and_Split(unittest.TestCase):
+    """
+    Split is tested by each verify_grad method.
+    """
+
+    class Join1(Op):
+        def make_node(self, *inputs):
+            inputs = [as_tensor(t) for t in inputs]
+            outputs = [lscalar()] + [i.type() for i in inputs]
+            return Apply(self, inputs, outputs)
+        def perform(self, node, inputs, outputs):
+            outputs[0][0] = 1
+            for i,o in zip(inputs, outputs[1:]):
+                o[0] = i.copy()
+        def grad(self, inputs, g_outputs):
+            return g_outputs[1:]
+
+    def setUp(self):
+        Join.debug = False
+
+    def test_join_scalar(self):
+        a = as_tensor(1)
+        b = as_tensor(2)
+        try:
+            s = join(0, a, b)
+        except:
+            return
+        self.fail()
+
+    def test_stack_scalar(self):
+        a = as_tensor(1)
+        b = as_tensor(2)
+        c = as_tensor(3)
+        s = stack(a, b, c)
+
+        want = numpy.array([1, 2, 3])
+        self.failUnless((eval_outputs([s]) == want).all())
+
+
+    def test_join_vector(self):
+        a = as_tensor(numpy.array([1, 2, 3]))
+        b = as_tensor(numpy.array([7, 8, 9]))
+
+        s = join(0, a, b)
+        want = numpy.array([1, 2, 3, 7, 8, 9])
+        self.failUnless((eval_outputs([s]) == want).all())
+
+    def test_stack_vector(self):
+        a = as_tensor(numpy.array([1, 2, 3]))
+        b = as_tensor(numpy.array([7, 8, 9]))
+
+        s = stack(a, b)
+        want = numpy.array([[1, 2, 3],[ 7, 8, 9]])
+        self.failUnless((eval_outputs([s]) == want).all())
+
+    def test_join_matrix0(self):
         a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
         b = as_tensor(numpy.array([[7, 8, 9]]))
-        s = vertical_stack(a, b)
-        c = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        self.failUnless((eval_outputs([s]) == c).all())
+        s = join(0, a, b)
 
-    def test_vstack_grad(self):
-        a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_tensor(numpy.array([[7, 8, 9]]))
-        s = vertical_stack(a, b)
-        ga,gb = grad(sum(vertical_stack(a,b)), [a,b])
+        want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9]])
+        self.failUnless((eval_outputs([s]) == want).all())
 
-        gval = eval_outputs([ga, gb])
-        self.failUnless(numpy.all(gval[0] == 1.0))
-        self.failUnless(numpy.all(gval[1] == 1.0))
+    def test_join_matrix1(self):
+        av=numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        bv= numpy.array([[7], [8]],dtype='float32')
+        a = as_tensor(av)
+        b = as_tensor(bv)
+        s = join(1, a, b)
+        want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
+        self.failUnless((eval_outputs([s]) == want).all())
+
+        verify_grad(self, lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+
+    def test_join_matrixV(self):
+        """variable join axis"""
+        v = numpy.array([[1., 2., 3.], [4., 5., 6.]])
+        a = as_tensor(v.copy())
+        b = as_tensor(v.copy())
+        ax = lscalar()
+        s = join(ax, a, b)
+
+        f = function([ax], [s])
+
+        want = numpy.array([[1, 2, 3], [4, 5, 6] ,[1, 2, 3], [4, 5, 6]])
+        got = f(0)
+        self.failUnless((got == want).all(), (got, want))
+
+        want = numpy.array([[ 1, 2, 3, 1, 2, 3], [4, 5, 6, 4, 5, 6]])
+        got = f(1)
+        self.failUnless((got == want).all(), (got, want))
+
+        verify_grad(self, lambda a, b: join(0,a,b), [v, 2*v])
+        verify_grad(self, lambda a, b: join(1,a,b), [v, 2*v])
 
 
 class _test_comparison(unittest.TestCase):
@@ -1761,10 +1774,10 @@ class T_op_cache(unittest.TestCase):
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 if __name__ == '__main__':
-    if 1:
+    if 0:
         unittest.main()
     else:
-        testcase =  t_dot
+        testcase =  AbsInplaceTester
 
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)

@@ -1,12 +1,15 @@
 """Convenient driver of graph construction, optimization, and linking."""
 
+import copy_reg
+import cPickle
+
+from functools import partial
+
 
 import numpy
 import gof
 import sys
 from copy import copy
-import tensor_opt
-
 
 def check_equal(x, y):
     """
@@ -57,6 +60,12 @@ predefined_linkers = {
 
 default_linker = 'c|py'
 
+def register_linker(name, linker):
+    """Add a `Linker` which can be referred to by `name` in `Mode`."""
+    if name in predefined_linkers:
+        raise ValueError('Linker name already taken: %s' % name)
+    predefined_linkers[name] = linker
+
 
 # If a string is passed as the optimizer argument in the constructor
 # for Mode, it will be used as the key to retrieve the real optimizer
@@ -64,12 +73,14 @@ default_linker = 'c|py'
 predefined_optimizers = {
     None    : lambda env: None,
     'merge' : gof.MergeOptimizer(),
-    'math'  : gof.MergeOptMerge(
-        gof.PureThenInplaceOptimizer(tensor_opt.math_optimizer,
-                                     tensor_opt.inplace_optimizer))
     }
-
 default_optimizer = 'merge'
+
+def register_optimizer(name, opt):
+    """Add a `Optimizer` which can be referred to by `name` in `Mode`."""
+    if name in predefined_optimizers:
+        raise ValueError('Optimizer name already taken: %s' % name)
+    predefined_optimizers[name] = opt
 
 
 class Mode(object):
@@ -110,15 +121,14 @@ class Mode(object):
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
-predefined_modes = {
-    'SANITY_CHECK'            : Mode('c&py', 'math'),
-    'FAST_COMPILE'            : Mode('py', 'merge'),
-    'FAST_RUN'                : Mode('c|py', 'math'),
-    'EXPENSIVE_OPTIMIZATIONS' : Mode('c|py', 'math'),
-    }
+predefined_modes = {'FAST_COMPILE': Mode('py', 'merge')} 
+default_mode = 'FAST_COMPILE'
 
-default_mode = 'FAST_RUN'
-
+def register_mode(name, mode):
+    """Add a `Mode` which can be referred to by `name` in `function`."""
+    if name in predefined_modes:
+        raise ValueError('Mode name already taken: %s' % name)
+    predefined_modes[name] = mode
 
 
 
@@ -508,9 +518,6 @@ class FunctionMaker(object):
         return fn
 
 
-import copy_reg
-import cPickle
-
 def _pickle_FunctionMaker(fm):
     return (_constructor_FunctionMaker, (fm.inputs, fm.outputs, fm.mode, fm.accept_inplace))
 
@@ -526,8 +533,6 @@ def _pickle_slice(s):
 copy_reg.pickle(slice, _pickle_slice)
 
 
-
-from functools import partial
 
 
 DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries

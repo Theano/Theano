@@ -2,6 +2,7 @@
 
 __docformat__ = "restructuredtext en"
 
+import __builtin__
 import sys # for sys.maxint
 import inspect
 import functools
@@ -20,17 +21,26 @@ import elemwise
 import scalar as scal
 from gof.python25 import partial
 
+import compile
+
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
 
-_constructor_list = []
+__oplist_constructor_list = []
 """List of functions to be listed as op constructors in the oplist (`gen_oplist`, doc/oplist.txt)."""
 def constructor(f):
-    """Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt)."""
-    _constructor_list.append(f)
+    """Add `f` to :doc:`oplist`.
+    
+    Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt).
+    """
+    __oplist_constructor_list.append(f)
     return f
+def __oplist_tag(thing, tag):
+    tags = getattr(thing, '__oplist_tags', [])
+    tags.append(tag)
+    thing.__oplist_tags = tags
 
 
 def as_tensor(x, name = None):
@@ -91,7 +101,7 @@ def constant(x):
     except:
         raise TypeError("Could not convert %s to Tensor" % x, type(x))
 
-def value(x):
+def value(x, name=None):
     """Return a symbolic `Value` with default value `x`
     
     :Exceptions:
@@ -102,8 +112,12 @@ def value(x):
     else:
         x_ = numpy.asarray(x)
     try:
-        return TensorValue(Tensor(dtype = x_.dtype,
+        if name is None:
+            return TensorValue(Tensor(dtype = x_.dtype,
                                   broadcastable = [d == 1 for d in x_.shape]), x_)
+        else:
+            return TensorValue(Tensor(dtype = x_.dtype,
+                                  broadcastable = [d == 1 for d in x_.shape]), x_, name=name)
     except:
         raise TypeError("Could not convert %s to Tensor" % x, type(x))
 
@@ -203,7 +217,7 @@ class Tensor(Type):
          - `name`: str
            A pretty name to identify this `Result` when printing and debugging
 
-       """
+        """
         return TensorResult(self, name = name)
 
     def __str__(self):
@@ -481,6 +495,18 @@ class _tensor_py_operators:
         raise TypeError('Tensor does not support iteration. '
         'Maybe you are using builtin.sum instead of theano.tensor.sum? (Maybe .max?)')
         
+
+    # CONVENIENT ACCESS TO TYPE PROPERTIES
+    ndim = property(lambda self: self.type.ndim)
+    """The rank of this tensor."""
+    broadcastable = property(lambda self: self.type.broadcastable)
+    """The broadcastable signature of this tensor.
+
+    See :doc:`broadcasting` for details.
+    
+    """
+    dtype = property(lambda self: self.type.dtype)
+    """ The dtype of this tensor.  """
     
 
 class TensorResult(Result, _tensor_py_operators):
@@ -523,11 +549,12 @@ def _elemwise(scalar_op, name, doc_prefix=''):
 
     return straight, inplace
 
-def _redefine(real_symbol_value):
+def _redefine(real_symbol_value, module='tensor'):
     """Replace the value associated with a function symbol.
     
     This is useful to trick epydoc into doing what we want.  It's a hack.
     """
+    real_symbol_value.__module__ = 'tensor'
     def decorator(f):
         return real_symbol_value
     return decorator
@@ -557,6 +584,7 @@ def _scal_elemwise(symbol):
     #for the meaning of this see the ./epydoc script
     # it makes epydoc display rval as if it were a function, not an object
     rval.__epydoc_asRoutine = symbol
+    rval.__module__ = 'tensor'
 
     return rval
 
@@ -606,6 +634,8 @@ def cast(t, dtype):
 
 #to be removed as we get the epydoc routine-documenting thing going -JB 20080924
 def _conversion(real_value):
+    __oplist_tag(real_value, 'casting')
+    real_value.__module__='tensor'
     return real_value
 
 convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))
@@ -1314,32 +1344,101 @@ class SetSubtensor(Subtensor):
         x.__setitem__(cdata, y)
         out[0] = x
 
+class Split(Op):
+    """Partition a `TensorResult` along some axis.
 
-class MakeVector(Op):
-    """WRITEME"""
-    def __init__(self, stype):
-        self.stype = stype
-    def make_node(self, *inputs):
-        inputs = map(as_tensor, inputs)
-        assert all(a.type == self.stype for a in inputs)
-        return Apply(self, inputs, [Tensor(broadcastable = (False,),
-                                           dtype = self.stype.dtype)()])
-    def perform(self, node, inputs, (out,)):
-        out[0] = numpy.asarray(inputs)
-    def grad(self, inputs, (gout,)):
-        return [None]*len(inputs)
+    .. python::
+        
+        x = vector()
+        splits = lvector()
+        # you have to declare right away how many split_points there will be.
+        ra, rb, rc = split(x, axis=0, points=splits, n_splits=3)  
 
-make_lvector = MakeVector(lscalar)
-"""WRITEME"""
+        f = compile([x, splits], [ra, rb, rc])
 
-class Concatenate(Op):
+        a, b, c = f([0,1,2,3,4,5,6], [3, 2, 1])
+
+        #a == [0,1,2]
+        #b == [3, 4]
+        #c == [5]
+
     """
-    Concatenate two L{Tensor}s along the given axis.
-    These L{Tensor}s must have the same shape along all dimensions other than
-    this axis.
+
+    len_splits = None
+    """A Split instance will have this many outputs, and require that the splits argument to
+    `perform` have exactly this many elements.
+    """
+
+    def __init__(self, len_splits):
+        self.len_splits = int(len_splits)
+    
+    def make_node(self, x, axis, splits):
+        """WRITEME"""
+        x = as_tensor(x)
+        axis = as_tensor(axis)
+        splits = as_tensor(splits)
+
+        if splits.type != lvector: 
+            raise TypeError('splits must have type tensor.lvector', splits.type)
+        if axis.type != lscalar: 
+            raise TypeError('axis must have type lscalar', axis.type)
+
+        inputs = [x, axis, splits]
+        outputs = [x.type() for i in xrange(self.len_splits)]
+
+        return Apply(self, inputs, outputs)
+
+
+    def perform(self, node, (x, axis, splits), outputs):
+        """WRITEME"""
+        try:
+            len_along_axis = x.shape[axis]
+        except :
+            raise ValueError('Split.perform() with axis=(%s) is invalid for x.shape==(%s)'
+                    %(axis, x.shape))
+        if len(splits) != self.len_splits:
+            raise ValueError('In Split.perform(), len(splits) != len_splits.', 
+                    (len(splits), self.len_splits))
+         
+        # Checking is done, let's roll the splitting algorithm!
+        # Basically we step along the given axis of x, extracting subtensors of size splits[i]
+        # as we go along.
+
+        general_key = [slice(None, None, None) for s in x.shape]
+        lower_idx = 0
+        for i in xrange(self.len_splits):
+            upper_idx = lower_idx + splits[i]
+            general_key[axis] = slice(lower_idx, upper_idx, None)
+            outputs[i][0] = x.__getitem__(general_key).copy()
+            lower_idx = upper_idx
+
+    def grad(self, (x, axis, splits), g_outputs):
+        """Join the gradients along the axis that was used to split x."""
+        return [join(axis, *g_outputs), None, None]
+
+class Join(Op):
+    """
+    Concatenate two `TensorResult`s along some axis.
+
+    These tensors must have the same shape along all dimensions other than this axis.
+    Of course, TensorResult instances don't have a shape, so this error can't be caught until
+    runtime.  See `perform()`.
+
+    .. python::
+        
+        x, y, z = tensor.matrix(), tensor.matrix(), tensor.matrix()
+        u = tensor.vector()
+
+        r = join(0, x, y, z)
+        c = join(1, x, y, z)
+        join(2, x, y, z)     # WRONG: the axis has to be an index into the shape
+        join(0, x, y)        # WRONG: tensors have to have the same rank to be joined
     """
 
     def make_node(self, *axis_and_tensors):
+        """
+        WRITEME
+        """
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         as_tensor_args= [as_tensor(x) for x in tensors]
         dtypes = [x.type.dtype for x in as_tensor_args]
@@ -1367,20 +1466,39 @@ class Concatenate(Op):
             bcastable[:] = as_tensor_args[0].type.broadcastable
             bcastable[axis] = False
 
-        inputs = [scal.as_scalar(axis)] + as_tensor_args
+        inputs = [as_tensor(axis)] + as_tensor_args
+        if inputs[0].type != lscalar: 
+            raise TypeError('Axis could not be cast to lscalar', axis)
 
         outputs = [tensor(dtype = dtypes[0],
                           broadcastable = bcastable)]
         return Apply(self, inputs, outputs)
 
     def perform(self, node, axis_and_tensors, (out, )):
+        """
+        WRITEME
+        """
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         out[0] = numpy.concatenate(tensors, axis = axis)
 
     def grad(self, axis_and_tensors, (gz,)):
+        """ The gradient wrt a join op is a `Split`, used to partition the gradient along the
+        `axis` which was used for joining.
+        """
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
-        n_dims = len(shape(tensors[0]))
+        if 'float' in tensors[0].dtype or 'complex' in tensors[0].dtype:
+            # assume that this isn't differentiable
+            split = Split(len(tensors))
+            return [None] + split(gz, axis, stack(*[shape(x)[axis] for x in tensors]))
+        else:
+            # assume that this isn't differentiable
+            return [None] * (1 + len(tensors)) 
+
+    def _native_grad(self, axis_and_tensors, (gz,)):
+        """WRITEME"""
+        axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         sizes_along_axis = [shape(x)[axis] for x in tensors]
+        n_dims = len(shape(tensors[0]))
         idx = [0]
         for s in sizes_along_axis:
             idx.append(idx[-1] + s)
@@ -1390,91 +1508,172 @@ class Concatenate(Op):
                 [slice(None)] * (n_dims - axis - 1)] \
                 for k in range(len(sizes_along_axis))]
 
-def get_vector_length(v):
-    if isinstance(v, gof.Constant) and v.type.ndim == 1:
-        return len(v.data)
-    elif v.owner and isinstance(v.owner.op, MakeVector):
-        return len(v.owner.inputs)
-    elif v.owner and v.owner.op == shape:
-        return v.owner.inputs[0].type.ndim
-    else:
-        return None
+    def vec_length(self, node):
+        assert isinstance(node.owner.op, Join)
+        if node.ndim != 1:
+            raise TypeError('argument must be symbolic vector')
+        inputs = node.owner.inputs
+        axis, tensors = inputs[0], inputs[1]
+        # if v is a vector, axis must be 0
+        # the question is whether all the inputs are broadcastable.
+        if all(i.broadcastable[0] for i in tensors):
+            return len(tensors)
 
-def concatenate(tensors, axis=0):
+@_redefine_asRoutine(Join())
+def join(axis, *tensors):
     """
     Convenience function to concatenate `Tensor`s along the given axis.
-    The `axis` parameter may either be an integer or an object that can be
-    converted to a scalar using `as_scalar`(`axis`). In the former case,
-    the axis is fixed at construction, while in the latter it may vary over
-    time depending on the value of the `axis` variable.
+
+    :Parameters:
+     - `tensors` : list of tensors (or list-like)
+       A list of tensors to be concatenated along the given axis.
+     - `axis` : int (symbolic or literal)
+       On which dimension should the tensors be joined?  The `axis` must be a valid index into
+       the shape of the tensors to be concatenated.
+       The `axis` parameter may either be an integer or an object that can be converted to a
+       scalar using `as_scalar`(`axis`). In the former case, the axis is fixed at construction,
+       while in the latter it may vary over time depending on the value of the `axis` variable.
+
+    The shapes of the tensors to be concatenated must be all identical, except in the dimension
+    (`axis`) on which they are to be joined.
+
+    """
+
+@constructor
+def leftpad_shape(tensor, n_ones):
+    """Reshape `tensor` by left-padding the shape with `n_ones` 1s"""
+    pattern = ['x']*n_ones + [i for i in range(tensor.type.ndim)]
+    return DimShuffle(tensor.broadcastable, pattern)(tensor)
+
+@constructor
+def stack(*tensors):
+    """Insert the arguments as slices into a tensor of 1 rank greater.
+    EXAMPLE
+    """
+    return join(0, *[leftpad_shape(t, 1) for t in tensors])
+
+@constructor
+def concatenate(tensor_list, axis=0):
+    """Alias for `join`(axis, *tensor_list).
+    
+    This function is similar to `join`, but uses the signature of numpy's concatenate function.
+
+    This function 
+    :Exceptions:
+     - `TypeError` : the tensor_list must be a tuple or list
+
     """
     # Check someone did not make the common mistake to do something like:
     #   c = concatenate(x, y)
     # instead of
     #   c = concatenate((x, y))
-    if not isinstance(tensors, (tuple, list)):
+    if not isinstance(tensor_list, (tuple, list)):
         raise TypeError("The 'tensors' argument must be either a tuple "
                 "or a list, make sure you did not forget () or [] around "
                 "arguments of concatenate.", tensors)
-    # Ensure we only create one instance of 'Concatenate', to simplify the
-    # merging job.
-    if not hasattr(concatenate, 'obj'):
-        concatenate.obj = Concatenate()
-    return concatenate.obj(axis, *tensors)
+    return join(axis, *tensor_list)
 
-class VerticalStack(Op):
-    """
-    Vertically stack two L{Tensor}s.
-    Stack two L{Tensor}s along the first axis (row wise). These
-    L{Tensor}s must have the same shape along all dimensions but the
-    first.
+def get_vector_length(v):
+    """Return the run-time length of a symbolic vector.
 
-    @attention: Because we use vstack as the implementation, if the
-    inputs have 1-dimension, the output will have 2-dimensions.
+    :Parameters:
+     - `v` : A rank-1 Tensor result.
+
+    :Exceptions:
+     - `TypeError` : `v` hasn't the proper type.
+     - `ValueError` : No special case applies, the length is not known.
+    
+    In general this is not possible, but for a number of special cases the length can be
+    determined at compile / graph-construction time.  This function implements these special
+    cases.
+
     """
-    def make_node(self, x, y):
-        x = as_tensor(x)
-        y = as_tensor(y)
-        assert x.type.dtype == y.type.dtype
-        if x.type.broadcastable[1:] != y.type.broadcastable[1:]:
-            raise NotImplementedError
-        inputs = [x, y]
-        bcastable = (False, ) + x.type.broadcastable[1:]
-        outputs = [tensor(dtype = x.type.dtype,
-                          broadcastable = bcastable)]
-        return Apply(self, inputs, outputs)
-    def perform(self, node, (x, y), (out, )):
-        assert x.ndim == y.ndim
-        # Make sure every dimension (save the first) is the same
-        for i in range(x.ndim): assert i == 0 or x.shape[i] == y.shape[i]
-        out[0] = numpy.vstack([x, y])
-    def grad(self, (x, y), (gz,)):
+    if v.ndim != 1:
+        raise TypeError('argument must be symbolic vector')
+    if isinstance(v, gof.Constant) and v.type.ndim == 1:
+        return len(v.data)
+    if v.owner and isinstance(v.owner.op, join):
+        try:
+            return join.vec_length(v)
+        except:
+            pass
+    if v.owner and v.owner.op == shape:
+        return v.owner.inputs[0].type.ndim
+    raise ValueError("length not known")
+
+if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() and join().
+    class VerticalStack(Op):
         """
-        @todo: Make VSplit (or this grad implementation) its own L{Op},
-        that way we can do more sanity-checking::
+        Vertically stack two L{Tensor}s.
+        Stack two L{Tensor}s along the first axis (row wise). These
+        L{Tensor}s must have the same shape along all dimensions but the
+        first.
+
+        @attention: Because we use vstack as the implementation, if the
+        inputs have 1-dimension, the output will have 2-dimensions.
+        """
+        def make_node(self, x, y):
+            x = as_tensor(x)
+            y = as_tensor(y)
+            assert x.type.dtype == y.type.dtype
+            if x.type.broadcastable[1:] != y.type.broadcastable[1:]:
+                raise NotImplementedError
+            inputs = [x, y]
+            bcastable = (False, ) + x.type.broadcastable[1:]
+            outputs = [tensor(dtype = x.type.dtype,
+                              broadcastable = bcastable)]
+            return Apply(self, inputs, outputs)
+        def perform(self, node, (x, y), (out, )):
             assert x.ndim == y.ndim
             # Make sure every dimension (save the first) is the same
-            for i in range(x.data.ndim): assert i == 0 or x.data.shape[i] == y.shape[i]
-            etc...
+            for i in range(x.ndim): assert i == 0 or x.shape[i] == y.shape[i]
+            out[0] = numpy.vstack([x, y])
+        def grad(self, (x, y), (gz,)):
+            """
+            @todo: Make VSplit (or this grad implementation) its own L{Op},
+            that way we can do more sanity-checking::
+                assert x.ndim == y.ndim
+                # Make sure every dimension (save the first) is the same
+                for i in range(x.data.ndim): assert i == 0 or x.data.shape[i] == y.shape[i]
+                etc...
+            """
+            xs = shape(x)
+            ys = shape(y)
+            return gz[:xs[0]], gz[xs[0]:]
+    vertical_stack = VerticalStack()
+
+    def horizontal_stack(x, y):
         """
-        xs = shape(x)
-        ys = shape(y)
-        return gz[:xs[0]], gz[xs[0]:]
-vertical_stack = VerticalStack()
+        Horizontally stack two L{Tensor}s.
+        Stack two L{Tensor}s along the second axis (column wise). These
+        L{Tensor}s must have the same shape along all dimensions but the
+        second.
 
-def horizontal_stack(x, y):
-    """
-    Horizontally stack two L{Tensor}s.
-    Stack two L{Tensor}s along the second axis (column wise). These
-    L{Tensor}s must have the same shape along all dimensions but the
-    second.
+        @note: Unlike VerticalStack, we assume that the L{Tensor}s have
+        two dimensions.
+        """
+        assert x.type.ndim == 2
+        assert y.type.ndim == 2
+        return transpose(vertical_stack(x.T, y.T))
+    class MakeVector(Op):
+        """WRITEME"""
+        def __init__(self, stype):
+            self.stype = stype
+        def make_node(self, *inputs):
+            inputs = map(as_tensor, inputs)
+            assert all(a.type == self.stype for a in inputs)
+            return Apply(self, inputs, [Tensor(broadcastable = (False,),
+                                               dtype = self.stype.dtype)()])
+        def perform(self, node, inputs, (out,)):
+            out[0] = numpy.asarray(inputs)
+        def grad(self, inputs, (gout,)):
+            return [None]*len(inputs)
 
-    @note: Unlike VerticalStack, we assume that the L{Tensor}s have
-    two dimensions.
-    """
-    assert x.type.ndim == 2
-    assert y.type.ndim == 2
-    return transpose(vertical_stack(x.T, y.T))
+    make_lvector = MakeVector(lscalar)
+    """WRITEME"""
+
+else:
+    pass
 
 
 #########################
@@ -1844,4 +2043,147 @@ def grad(cost, wrt, g_cost=None):
         return [gmap.get(p, zero(p)) for p in wrt]
     else:
         return gmap.get(wrt, zero(wrt))
+
+class numeric_grad:
+    """WRITEME"""
+    def __init__(self, f, pt, eps=1.0e-7):
+        """Return the gradient of f at pt.
+        
+        This function computes the gradient by a one-sided finite differences of a
+        fixed step size (eps).
+        
+        It is assumed that f(...) will return a scalar.
+        It is assumed that all f's inputs are numpy.ndarray objects.
+        """
+
+        def prod(inputs):
+            rval = 1
+            for i in inputs:
+                rval *= i
+            return rval
+
+        packed_pt = False
+        if not isinstance(pt, (list, tuple)):
+            pt = [pt]
+            packed_pt = True
+
+        apt = [numpy.array(p) for p in pt]
+
+        shapes = [p.shape for p in apt]
+        dtypes = [str(p.dtype) for p in apt]
+
+        if not dtypes == [dtypes[0]] * len(apt):
+            raise TypeError('All function arguments must have same dtype')
+
+        total_size = __builtin__.sum(prod(sh) for sh in shapes)
+
+        #create un-initialized memory
+        x = numpy.ndarray((total_size,), dtype=dtypes[0])
+        gx = numpy.ndarray((total_size,), dtype=dtypes[0])
+
+        #set up aliases so that apt[i] is backed by memory in x
+        # and self.gf is backed by memory in gx
+        cur_pos = 0
+        self.gf = []
+        for i,p in enumerate(apt):
+            p_size = prod(p.shape)
+            # set up alias
+            apt[i] = x[cur_pos:cur_pos+p_size].reshape(p.shape)
+            self.gf.append(gx[cur_pos:cur_pos+p_size].reshape(p.shape))
+            # initialize with p's value
+            apt[i][:] = p
+            cur_pos += p_size
+
+        f_x = f(*[p.copy() for p in apt])
+
+        # now iterate over the elements of x, and call f on apt.
+        x_copy = x.copy()
+        for i in xrange(total_size):
+            x[:] = x_copy
+
+            x[i] += eps
+            f_eps = f(*apt)
+            gx[i] = numpy.asarray((f_eps - f_x)/eps)
+
+        if packed_pt:
+            self.gf = self.gf[0]
+
+    @staticmethod
+    def abs_rel_err(a,b,eps=1.0e-10):
+        """Return a small number when a and b are close, relative to how big they are"""
+        return abs(a-b) / (abs(a)+abs(b)+eps)
+
+    def max_err(self, g_pt):
+        """Return the biggest relative error between g_pt and self.gf"""
+        assert len(g_pt) == len(self.gf)
+        errs = []
+        for a, b in zip(g_pt, self.gf):
+            errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
+        return numpy.max(errs)
+
+def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0.0001,
+        linker='c&py'):
+    """ WRITEME
+    
+    testcase.failUnless(analytic gradient matches finite-diff gradient)
+    
+    """
+    pt = [numpy.array(p) for p in pt]
+
+    #print "PT", pt
+
+    def function(inputs, output):
+        return compile.function(inputs, output, 
+                mode=compile.Mode(optimizer = None, linker = linker), 
+                accept_inplace=True)
+
+    for test_num in xrange(n_tests):
+        tensor_pt = [value(p.copy(), name='input %i'%i) for i,p in enumerate(pt)]
+        
+        #op can be either a function or an actual Op instance
+        #print "OP", op
+        #print "TENSOR PT", tensor_pt
+        o_output = op(*tensor_pt) 
+
+        if isinstance(o_output,list) > 1:
+            raise NotImplementedError('cant (yet) autotest gradient of op with multiple outputs')
+            # we could make loop over outputs making random projections R for each,
+            # but this doesn't handle the case where not all the outputs are
+            # differentiable... so I leave this as TODO for now -JB.
+        o_fn = function(tensor_pt, o_output)
+        #print "PT B", pt
+        o_fn_out = o_fn(*[p.copy() for p in pt])
+        #print "PT C", pt
+        random_projection = rng.rand(*o_fn_out.shape)
+        t_r = as_tensor(random_projection)
+
+        #random projection of o onto t_r
+        cost = sum(t_r * o_output)
+        cost_fn = function(tensor_pt, cost)
+
+        num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
+
+        symbolic_grad = grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
+
+        if 0:
+            print '----------'
+            for op in gof.graph.io_toposort(tensor_pt, symbolic_grad):
+                print op
+
+        grad_fn = function(tensor_pt, symbolic_grad)
+
+        #print "PT D", pt
+        analytic_grad = grad_fn(*pt)
+        
+        #print "PT Z", pt
+        if not isinstance(analytic_grad, (list, tuple)):
+            analytic_grad = [analytic_grad]
+
+        max_err = num_grad.max_err(analytic_grad)
+        if  max_err > tol:
+            #print 'analytic grad', analytic_grad
+            #print 'numeric grad', num_grad.gf
+            raise Exception(verify_grad.E_grad, (max_err, tol))
+verify_grad.E_grad = 'gradient error exceeded tolerance'
+"""This error is raised when a gradient is calculated, but incorrect."""
 
