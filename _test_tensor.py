@@ -6,7 +6,7 @@ import tensor # for hidden symbols
 
 import unittest
 from copy import copy
-from compile import function, FunctionFactory, eval_outputs
+import compile
 import gradient
 import gof, gof.graph
 from gof.python25 import any
@@ -14,6 +14,21 @@ import gof
 from gof.utils import AbstractFunctionError
 
 from elemwise import DimShuffle
+
+
+default_mode = compile.Mode(optimizer = None,
+                            linker = 'c&py')
+
+def function(inputs, outputs, mode = default_mode):
+    return compile.function(inputs, outputs, mode = mode, accept_inplace = True)
+
+
+def eval_outputs(outputs, mode = default_mode):
+    results = function([], outputs, mode = mode)()
+    if len(results) == 1:
+        return results[0]
+    return results
+
 
 def _numpy_checker(x, y):
     """
@@ -64,9 +79,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 try:
                     f = function(inputrs, node.outputs,
-                                 linker = 'c&py', ##lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
-                                 unpack_single = False,
-                                 optimizer = None)
+                                 mode = default_mode, ##lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
+                                 )
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
@@ -124,9 +138,8 @@ def make_tester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 try:
                     f = function(inputrs, node.outputs,
-                                 linker = 'c&py', #lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
-                                 unpack_single = False,
-                                 optimizer = None)
+                                 mode = default_mode, #lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
+                                 )
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
@@ -520,64 +533,6 @@ DotTester = make_tester(name = 'DotTester',
 #      rationale: it's tricky, and necessary everytime you want to verify
 #      gradient numerically
 
-def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=0.0000001, tol=0.0001,
-        linker='c&py'):
-    """testcase.failUnless(analytic gradient matches finite-diff gradient)"""
-    pt = [numpy.asarray(p) for p in pt]
-
-    for test_num in xrange(n_tests):
-#        tensor_pt = [as_tensor(p,name='input %i'%i) for i,p in enumerate(pt)]
-        tensor_pt = [constant(p).type('input %i'%i) for i,p in enumerate(pt)]
-        #o = op.make_node(*[tpt.copy() for tpt in tensor_pt])
-        o = safe_make_node(op, *[tpt.copy() for tpt in tensor_pt])
-        
-        if hasattr(o, 'outputs'):
-            o_outputs = o.outputs
-        else:
-            o_outputs = o
-
-        if len(o_outputs) > 1:
-            raise NotImplementedError('cant (yet) autotest gradient of op with multiple outputs')
-            # we could make loop over outputs making random projections R for each,
-            # but this doesn't handle the case where not all the outputs are
-            # differentiable... so I leave this as TODO for now -JB.
-        o_fn = function(tensor_pt, o_outputs, linker=linker)
-        o_fn_out = o_fn(*pt)
-        random_projection = rng.rand(*o_fn_out.shape)
-        t_r = as_tensor(random_projection)
-
-        #random projection of o onto t_r
-        cost = sum(t_r * o_outputs[0])
-        cost_fn = function(tensor_pt, [cost], linker=linker)
-
-        num_grad = gradient.numeric_grad(cost_fn, pt)
-
-        symbolic_grad = grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
-
-        if 0:
-            print '-------'
-            print '----------'
-            for op in gof.graph.io_toposort(tensor_pt, symbolic_grad):
-                print op
-
-        grad_fn = function(tensor_pt, symbolic_grad,linker=linker)
-
-        analytic_grad = grad_fn(*pt)
-        if not isinstance(analytic_grad, (list, tuple)):
-            analytic_grad = [analytic_grad]
-
-#         if num_grad.max_err(analytic_grad) > 1.0e-4:
-#             print "aaaaaaaaaa"
-#             print gof.Env(tensor_pt, [cost])
-#             print gof.Env(tensor_pt, symbolic_grad)
-#             print analytic_grad
-#             print num_grad.gf
-#             print num_grad.max_err(analytic_grad)
-#             print "bbbbbbbbbb"
-
-        if num_grad.max_err(analytic_grad) > 1.0e-4:
-            raise Exception(verify_grad.E_grad)
-verify_grad.E_grad = 'gradient error exceeded tolerance'
 
 
 #useful mostly for unit tests
@@ -595,24 +550,24 @@ def _approx_eq(a,b,eps=1.0e-9):
     return  True
 _approx_eq.debug = 0
 
-def check_eq(self, node_in, node_out, arg_in, arg_out):
-    fn = Function([node_in], [node_out])
-    self.failUnless( numpy.all(fn(arg_in) == arg_out), (arg_in, arg_out))
+# def check_eq(self, node_in, node_out, arg_in, arg_out):
+#     fn = Function([node_in], node_out)
+#     self.failUnless( numpy.all(fn(arg_in) == arg_out), (arg_in, arg_out))
 
-def check_eq2(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output])
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, output)
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
-def check_eq2_c(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output], linker_cls = gof.CLinker)
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2_c(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, [output], linker_cls = gof.CLinker)
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
-def check_eq2_both(self, inputs, output, args_in, arg_out):
-    fn = Function(inputs, [output], linker_cls = lambda env: gof.DualLinker(env, _numpy_checker))
-    val = fn(*args_in)
-    self.failUnless( numpy.all(val == arg_out), (val, arg_out))
+# def check_eq2_both(self, inputs, output, args_in, arg_out):
+#     fn = Function(inputs, [output], linker_cls = lambda env: gof.DualLinker(env, _numpy_checker))
+#     val = fn(*args_in)
+#     self.failUnless( numpy.all(val == arg_out), (val, arg_out))
 
 class T_Shape(unittest.TestCase):
     def test_basic0(self):
@@ -633,7 +588,7 @@ class T_Cast(unittest.TestCase):
                                         [convert_to_int8, convert_to_int16, convert_to_int32, convert_to_int64,
                                          convert_to_float32, convert_to_float64]):
                 y = converter(x)
-                f = function([x], [y], strict = True, linker = 'c&py')
+                f = function([compile.In(x, strict = True)], y, mode = default_mode)
                 a = numpy.arange(10, dtype = type1)
                 b = f(a)
                 self.failUnless(numpy.all(b == numpy.arange(10, dtype = type2)))
@@ -701,7 +656,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones(()))
         t = transpose(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
 
@@ -713,7 +668,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones(5))
         t = transpose(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == n.data.shape)
         #test aliasing
@@ -724,7 +679,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones((5,3)))
         t = transpose(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == (3,5))
         #test aliasing
@@ -736,7 +691,7 @@ class T_transpose(unittest.TestCase):
         n = as_tensor(numpy.ones((5,3,2)))
         t = tensor._transpose_inplace(n)
         self.failUnless(t.owner.op == tensor._transpose_inplace)
-        f = function([n], [t])
+        f = function([n], t)
         tval = f(n.data)
         self.failUnless(tval.shape == (2,3,5))
         #test aliasing
@@ -932,29 +887,101 @@ class T_subtensor(unittest.TestCase):
 
 
 
-class T_Stack(unittest.TestCase):
-    def test_hstack(self):
-        a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_tensor(numpy.array([[7], [8]]))
-        s = horizontal_stack(a, b)
-        c = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]])
-        self.failUnless((eval_outputs([s]) == c).all())
-    def test_vstack(self):
+class T_Join_and_Split(unittest.TestCase):
+    """
+    Split is tested by each verify_grad method.
+    """
+
+    class Join1(Op):
+        def make_node(self, *inputs):
+            inputs = [as_tensor(t) for t in inputs]
+            outputs = [lscalar()] + [i.type() for i in inputs]
+            return Apply(self, inputs, outputs)
+        def perform(self, node, inputs, outputs):
+            outputs[0][0] = 1
+            for i,o in zip(inputs, outputs[1:]):
+                o[0] = i.copy()
+        def grad(self, inputs, g_outputs):
+            return g_outputs[1:]
+
+    def setUp(self):
+        Join.debug = False
+
+    def test_join_scalar(self):
+        a = as_tensor(1)
+        b = as_tensor(2)
+        try:
+            s = join(0, a, b)
+        except:
+            return
+        self.fail()
+
+    def test_stack_scalar(self):
+        a = as_tensor(1)
+        b = as_tensor(2)
+        c = as_tensor(3)
+        s = stack(a, b, c)
+
+        want = numpy.array([1, 2, 3])
+        self.failUnless((eval_outputs([s]) == want).all())
+
+
+    def test_join_vector(self):
+        a = as_tensor(numpy.array([1, 2, 3]))
+        b = as_tensor(numpy.array([7, 8, 9]))
+
+        s = join(0, a, b)
+        want = numpy.array([1, 2, 3, 7, 8, 9])
+        self.failUnless((eval_outputs([s]) == want).all())
+
+    def test_stack_vector(self):
+        a = as_tensor(numpy.array([1, 2, 3]))
+        b = as_tensor(numpy.array([7, 8, 9]))
+
+        s = stack(a, b)
+        want = numpy.array([[1, 2, 3],[ 7, 8, 9]])
+        self.failUnless((eval_outputs([s]) == want).all())
+
+    def test_join_matrix0(self):
         a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
         b = as_tensor(numpy.array([[7, 8, 9]]))
-        s = vertical_stack(a, b)
-        c = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        self.failUnless((eval_outputs([s]) == c).all())
+        s = join(0, a, b)
 
-    def test_vstack_grad(self):
-        a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_tensor(numpy.array([[7, 8, 9]]))
-        s = vertical_stack(a, b)
-        ga,gb = grad(sum(vertical_stack(a,b)), [a,b])
+        want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9]])
+        self.failUnless((eval_outputs([s]) == want).all())
 
-        gval = eval_outputs([ga, gb])
-        self.failUnless(numpy.all(gval[0] == 1.0))
-        self.failUnless(numpy.all(gval[1] == 1.0))
+    def test_join_matrix1(self):
+        av=numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        bv= numpy.array([[7], [8]],dtype='float32')
+        a = as_tensor(av)
+        b = as_tensor(bv)
+        s = join(1, a, b)
+        want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
+        self.failUnless((eval_outputs([s]) == want).all())
+
+        verify_grad(self, lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+
+    def test_join_matrixV(self):
+        """variable join axis"""
+        v = numpy.array([[1., 2., 3.], [4., 5., 6.]])
+        a = as_tensor(v.copy())
+        b = as_tensor(v.copy())
+        ax = lscalar()
+        s = join(ax, a, b)
+
+        f = function([ax], [s])
+
+        want = numpy.array([[1, 2, 3], [4, 5, 6] ,[1, 2, 3], [4, 5, 6]])
+        got = f(0)
+        self.failUnless((got == want).all(), (got, want))
+
+        want = numpy.array([[ 1, 2, 3, 1, 2, 3], [4, 5, 6, 4, 5, 6]])
+        got = f(1)
+        self.failUnless((got == want).all(), (got, want))
+
+        verify_grad(self, lambda a, b: join(0,a,b), [v, 2*v])
+        verify_grad(self, lambda a, b: join(1,a,b), [v, 2*v])
+
 
 class T_Concatenate(unittest.TestCase):
     def test_concatenate(self):
@@ -979,7 +1006,7 @@ class T_Concatenate(unittest.TestCase):
 class _test_comparison(unittest.TestCase):
     def test_gt(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x > y])
+        fn = function([x,y], x > y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -987,7 +1014,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_lt(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x < y])
+        fn = function([x,y], x < y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -995,7 +1022,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_le(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x <= y])
+        fn = function([x,y], x <= y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1003,7 +1030,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_ge(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [x >= y])
+        fn = function([x,y], x >= y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1011,7 +1038,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_eq(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [eq(x,y)])
+        fn = function([x,y], eq(x,y))
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1019,7 +1046,7 @@ class _test_comparison(unittest.TestCase):
 
     def test_neq(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], [neq(x, y)])
+        fn = function([x,y], neq(x, y))
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1028,7 +1055,7 @@ class _test_comparison(unittest.TestCase):
 class _test_bitwise(unittest.TestCase):
     def test_or(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [x|y])
+        fn = function([x,y], x|y)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1036,10 +1063,10 @@ class _test_bitwise(unittest.TestCase):
 
     def test_xor(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [x^y])
+        fn = function([x,y], x^y)
         ix = x
         ix ^= y
-        gn = function([x,y], [ix])
+        gn = function([x,y], ix)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1050,7 +1077,7 @@ class _test_bitwise(unittest.TestCase):
 
     def test_and(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [x&y])
+        fn = function([x,y], x&y)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1058,7 +1085,7 @@ class _test_bitwise(unittest.TestCase):
 
     def test_inv(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], [~x])
+        fn = function([x,y], ~x)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1077,7 +1104,7 @@ class T_add(unittest.TestCase):
                      ("*", lambda x,y: x*y),
                      ("/", lambda x,y: x/y))
             for s, fn in tests:
-                f = function([a,b], [fn(a, b)], linker = 'c')
+                f = function([a,b], fn(a, b), mode = compile.Mode(optimizer = None, linker = 'c'))
                 self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
@@ -1343,7 +1370,7 @@ class t_dot(unittest.TestCase):
     def not_aligned(self, x, y):
         z = dot(x,y)
         try:
-            tz = eval_outputs([z])
+            tz = eval_outputs([z], mode = compile.Mode(optimizer = None, linker = 'py'))
         except ValueError, e:
             self.failUnless(e[0].split()[1:4] == ['are', 'not', 'aligned'], e)
             return
@@ -1389,7 +1416,7 @@ class t_gemm(unittest.TestCase):
             z_orig = z.copy()
             tz,ta,tx,ty,tb = [as_tensor(p).type() for p in z,a,x,y,b]
 
-            f = function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker=l)
+            f = function([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode=compile.Mode(optimizer = None, linker = l))
             new_z = f(z,a,x,y,b)
             z_after = self._gemm(z_orig, a, x, y, b)
 
@@ -1511,7 +1538,7 @@ class t_gemm(unittest.TestCase):
 
             tz,ta,tx,ty,tb = [value(p) for p in z,a,x,y,b]
 
-            f = function([tz,ta,tx,ty,tb], [gemm(tz,ta,tx,ty,tb)], linker=l)
+            f = function([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
             f(z, a, x, y, b)
             self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z))
             f(z.T, a, y.T, x.T, b)
@@ -1760,17 +1787,17 @@ class T_op_cache(unittest.TestCase):
         v = matrix()
         v.name = 'v'
         gv = fill(v/v, 1.0)/v - (fill(v/v, 1.0) * v) / (v*v)
-        fn_py = function([v], [gv], linker = 'py')
-        fn_c_or_py = function([v], [gv], linker = 'c|py')
+        fn_py = function([v], gv, mode = compile.Mode(optimizer = None, linker = 'py'))
+        fn_c_or_py = function([v], gv, compile.Mode(optimizer = None, linker = 'c|py'))
 
         a = numpy.random.rand(5,2)
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 if __name__ == '__main__':
-    if 1:
+    if 0:
         unittest.main()
     else:
-        testcase =  T_Concatenate
+        testcase =  AbsInplaceTester
 
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)

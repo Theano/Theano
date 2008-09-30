@@ -7,6 +7,8 @@ import tensor as T
 import numpy as N
 import operator
 import itertools
+import sys
+import compile  #to register the optimizer built by this file
 
 
 # Utilities
@@ -31,17 +33,17 @@ gemm_pattern_1 = gof.PatternSub((T._sub_inplace,
 
 # gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)
 # Transforms dot(a, b) into gemm(zeros(2)(hstack(shape(a)[:1], shape(b)[1:])), 1.0, a, b, 1.0)
+# The construction of the 'gemm' node may fail if, for example, a and b are not both matrices.
 dot_to_gemm = gof.PatternSub((T.dot, 'a', 'b'),
                              (T.gemm, (T.Zeros(2),
-                                       (T.vertical_stack,
+                                       (T.stack,
                                         (T.Subtensor([slice(0, 1)]), (T.shape, 'a')),
                                         (T.Subtensor([slice(1, 2)]), (T.shape, 'b')))),
                               T.constant(1.0), 'a', 'b', T.constant(1.0)),
                              allow_multiple_clients = False)
 
 
-@gof.optimizer
-def insert_inplace_optimizer(self, env):
+def _insert_inplace_optimizer(env):
     """
     Usage: inplace_optimizer.optimize(env)
     
@@ -66,14 +68,16 @@ def insert_inplace_optimizer(self, env):
             for candidate_input in candidate_inputs:
                 inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
                 try:
-                    new = Elemwise(op.scalar_op, inplace_pattern).make_node(op.inputs)
-                    env.replace_all_validate(dict(zip(node.outputs, new.outputs)))
-                except:
+                    new = Elemwise(op.scalar_op, inplace_pattern).make_node(*node.inputs)
+                    env.replace_all_validate(zip(node.outputs, new.outputs))
+                except Exception, e:
                     continue
                 candidate_inputs.remove(candidate_input)
                 node = new
                 baseline = inplace_pattern
                 break
+insert_inplace_optimizer = gof.optimizer(_insert_inplace_optimizer)
+
 
 inplace_optimizer = gof.SeqOptimizer(out2in(gemm_pattern_1),
                                      out2in(dot_to_gemm),
@@ -229,7 +233,15 @@ def local_subtensor_make_vector(node):
 
     If the index or slice is constant.
     """
-    if not opt.check_chain(node, T.Subtensor, T.MakeVector):
+    if not opt.check_chain(node, T.Subtensor, T.Join):
+        return False
+    
+    joined_r = node.inputs[0]
+
+    try: 
+        #check that join is being used to join scalars
+        veclen = T.join.vec_length(joined_r)
+    except:
         return False
 
     idxlist = node.op.idx_list
@@ -642,6 +654,16 @@ def _math_optimizer():
 
 math_optimizer = _math_optimizer()
 
+compile.register_optimizer('math', 
+        gof.MergeOptMerge(
+            gof.PureThenInplaceOptimizer(
+                math_optimizer,
+                inplace_optimizer)))
+
+
+compile.register_mode('SANITY_CHECK', compile.Mode('c&py', 'math'))
+compile.register_mode('FAST_RUN', compile.Mode('c|py', 'math'))
+compile.register_mode('EXPENSIVE_OPTIMIZATIONS', compile.Mode('c|py', 'math'))
 
 
 # @gof.local_optimizer

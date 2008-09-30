@@ -184,7 +184,7 @@ class Result(utils.object2):
             else:
                 return str(self.owner.op) + "." + str(self.index)
         else:
-            return "<?>::" + str(self.type)
+            return "<%s>" % str(self.type)
     def __repr__(self):
         return str(self)
     def clone(self):
@@ -422,8 +422,6 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
         else:
             d[input] = input
 
-
-
     for apply in io_toposort(i, o):
         for input in apply.inputs:
             if input not in d:
@@ -437,6 +435,10 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
         d[apply] = new_apply
         for output, new_output in zip(apply.outputs, new_apply.outputs):
             d[output] = new_output
+
+    for output in o:
+        if output not in d:
+            d[output] = output.clone()
 
     return d
 

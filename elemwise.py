@@ -7,6 +7,7 @@ import scalar
 from scalar import Scalar
 import gof
 from gof.python25 import all
+from copy import copy
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -230,6 +231,15 @@ class Elemwise(Op):
             self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin, scalar_op.nout)
         else:
             self.ufunc = None
+
+    def __getstate__(self):
+        d = copy(self.__dict__)
+        d.pop('ufunc')
+        return d
+    
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
 
     def make_node(self, *inputs):
         """
