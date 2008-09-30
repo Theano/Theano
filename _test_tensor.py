@@ -522,7 +522,8 @@ DotTester = make_tester(name = 'DotTester',
                         expected = lambda x, y: numpy.dot(x, y),
                         checks = {},
                         good = dict(correct1 = (rand(5, 7), rand(7, 5)),
-                                    correct2 = (rand(5, 7), rand(7, 9))),
+                                    correct2 = (rand(5, 7), rand(7, 9)),
+                                    correct3 = (rand(5, 7), rand(7))),
                         bad_build = dict(),
                         bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
                                            bad2 = (rand(5, 7), rand(8, 3))))
@@ -1777,7 +1778,7 @@ if __name__ == '__main__':
     if 1:
         unittest.main()
     else:
-        testcase =  AbsInplaceTester
+        testcase =  DotTester
 
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
