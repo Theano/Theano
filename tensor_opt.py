@@ -1,4 +1,8 @@
 
+# TODO: intelligent merge for mul/add
+# TODO: 0*x -> 0
+
+
 import gof
 from gof import opt
 from elemwise import Elemwise, DimShuffle
@@ -14,10 +18,14 @@ import compile  #to register the optimizer built by this file
 # Utilities
 
 def out2in(*local_opts):
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts), order = 'out_to_in')
+    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+                             order = 'out_to_in',
+                             failure_callback = lambda exc,opt,pairs: None)
 
 def in2out(*local_opts):
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts), order = 'in_to_out')
+    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+                             order = 'in_to_out',
+                             failure_callback = lambda exc,opt,pairs: None)
 
 
 # gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)

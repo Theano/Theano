@@ -983,7 +983,6 @@ class T_Join_and_Split(unittest.TestCase):
         verify_grad(self, lambda a, b: join(1,a,b), [v, 2*v])
 
 
-
 class _test_comparison(unittest.TestCase):
     def test_gt(self):
         x, y = fvector(), fvector()

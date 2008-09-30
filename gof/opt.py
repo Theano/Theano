@@ -491,7 +491,14 @@ class NavigatorOptimizer(Optimizer):
             env.remove_feature(u)
 
     def process_node(self, env, node):
-        replacements = self.local_opt.transform(node)
+        try:
+            replacements = self.local_opt.transform(node)
+        except Exception, e:
+            if self.failure_callback is not None:
+                self.failure_callback(e, self, [(x, None) for x in node.outputs])
+                return
+            else:
+                raise
         if replacements is False or replacements is None:
             return
         repl_pairs = zip(node.outputs, replacements)

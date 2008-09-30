@@ -3,6 +3,7 @@ syntax: glob
 *~
 \#*\#
 doc/oplist.txt
+doc/typelist.txt
 compiled/*.cpp
 cutils_ext.cpp
 html
