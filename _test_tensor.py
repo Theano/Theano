@@ -537,14 +537,15 @@ DotTester = make_tester(name = 'DotTester',
 
 
 #useful mostly for unit tests
-def _approx_eq(a,b,eps=1.0e-9):
+def _approx_eq(a,b,eps=1.0e-4):
     a = numpy.asarray(a)
     b = numpy.asarray(b)
     if a.shape != b.shape:
         if _approx_eq.debug:
             print a.shape, b.shape
         return False
-    if numpy.max(numpy.abs(a-b)) >= eps:
+    abs_rel_err = numeric_grad.abs_rel_err(a,b)
+    if numpy.max(abs_rel_err) >= eps:
         if _approx_eq.debug:
             print a, b
         return False
@@ -862,7 +863,6 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 0))
 
-
     def test_grad_1d(self):
         n = as_tensor(numpy.random.rand(2,3))
         z = scal.constant(0)
@@ -873,7 +873,6 @@ class T_subtensor(unittest.TestCase):
         s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
         self.failUnless(repr(gval[0,:]) == s0)
         self.failUnless(repr(gval[1,:]) == s1)
-
     def test_grad_0d(self):
         n = as_tensor(numpy.random.rand(2,3))
         t = n[1,0]
@@ -1521,7 +1520,8 @@ class t_gemm(unittest.TestCase):
 
             f = function([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
             f(z, a, x, y, b)
-            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z))
+            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
+
             f(z.T, a, y.T, x.T, b)
             self.failUnless(_approx_eq(z_after, z))
 

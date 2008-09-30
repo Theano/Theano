@@ -372,6 +372,7 @@ def _multi(*fns):
 fscalar = Tensor('float32', ())
 dscalar = Tensor('float64', ())
 bscalar = Tensor('int8', ())
+wscalar = Tensor('int16', ())
 iscalar = Tensor('int32', ())
 lscalar = Tensor('int64', ())
 def scalar(name = None, dtype = 'float64'):
@@ -379,9 +380,13 @@ def scalar(name = None, dtype = 'float64'):
     return type(name)
 scalars, fscalars, dscalars, iscalars, lscalars = _multi(scalar, fscalar, dscalar, iscalar, lscalar)
 
+int_types = bscalar, wscalar, iscalar, lscalar
+float_types = fscalar, dscalar
+
 fvector = Tensor('float32', (False, ))
 dvector = Tensor('float64', (False, ))
 bvector = Tensor('int8', (False,))
+wvector = Tensor('int16', (False,))
 ivector = Tensor('int32', (False, ))
 lvector = Tensor('int64', (False, ))
 def vector(name = None, dtype = 'float64'):
@@ -389,9 +394,13 @@ def vector(name = None, dtype = 'float64'):
     return type(name)
 vectors, fvectors, dvectors, ivectors, lvectors = _multi(vector, fvector, dvector, ivector, lvector)
 
+int_vector_types = bvector, wvector, ivector, lvector
+float_vector_types = fvector, dvector
+
 fmatrix = Tensor('float32', (False, False))
 dmatrix = Tensor('float64', (False, False))
 bmatrix = Tensor('int8', (False, False))
+wmatrix = Tensor('int16', (False, False))
 imatrix = Tensor('int32', (False, False))
 lmatrix = Tensor('int64', (False, False))
 def matrix(name = None, dtype = 'float64'):
@@ -399,9 +408,13 @@ def matrix(name = None, dtype = 'float64'):
     return type(name)
 matrices, fmatrices, dmatrices, imatrices, lmatrices = _multi(matrix, fmatrix, dmatrix, imatrix, lmatrix)
 
+int_matrix_types = bmatrix, wmatrix, imatrix, lmatrix
+float_matrix_types = fmatrix, dmatrix
+
 frow = Tensor('float32', (True, False))
 drow = Tensor('float64', (True, False))
 brow = Tensor('int8', (True, False))
+wrow = Tensor('int16', (True, False))
 irow = Tensor('int32', (True, False))
 lrow = Tensor('int64', (True, False))
 def row(name = None, dtype = 'float64'):
@@ -412,6 +425,7 @@ rows, frows, drows, irows, lrows = _multi(row, frow, drow, irow, lrow)
 fcol = Tensor('float32', (False, True))
 dcol = Tensor('float64', (False, True))
 bcol = Tensor('int8', (False, True))
+wcol = Tensor('int16', (False, True))
 icol = Tensor('int32', (False, True))
 lcol = Tensor('int64', (False, True))
 def col(name = None, dtype = 'float64'):
@@ -1378,9 +1392,9 @@ class Split(Op):
         axis = as_tensor(axis)
         splits = as_tensor(splits)
 
-        if splits.type != lvector: 
+        if splits.type not in int_vector_types: 
             raise TypeError('splits must have type tensor.lvector', splits.type)
-        if axis.type != lscalar: 
+        if axis.type not in int_types: 
             raise TypeError('axis must have type lscalar', axis.type)
 
         inputs = [x, axis, splits]
@@ -1467,8 +1481,8 @@ class Join(Op):
             bcastable[axis] = False
 
         inputs = [as_tensor(axis)] + as_tensor_args
-        if inputs[0].type != lscalar: 
-            raise TypeError('Axis could not be cast to lscalar', axis)
+        if inputs[0].type not in int_types: 
+            raise TypeError('Axis could not be cast to an integer type', axis, inputs[0].type, int_types)
 
         outputs = [tensor(dtype = dtypes[0],
                           broadcastable = bcastable)]
@@ -1509,6 +1523,7 @@ class Join(Op):
                 for k in range(len(sizes_along_axis))]
 
     def vec_length(self, node):
+        """Guess the length of a Join Result"""
         assert isinstance(node.owner.op, Join)
         if node.ndim != 1:
             raise TypeError('argument must be symbolic vector')
@@ -1518,6 +1533,7 @@ class Join(Op):
         # the question is whether all the inputs are broadcastable.
         if all(i.broadcastable[0] for i in tensors):
             return len(tensors)
+        raise ValueError("could not determine vector length")
 
 @_redefine_asRoutine(Join())
 def join(axis, *tensors):
