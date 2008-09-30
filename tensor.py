@@ -337,12 +337,15 @@ def tensor(*args, **kwargs):
     return Tensor(*args, **kwargs).make_result()
 
 def _multi(*fns):
-    def f2(f, names):
+    def f2(f, *names):
         if isinstance(names, int):
             if names == 1:
                 return f()
             else:
                 return [f() for i in xrange(names)]
+        if isinstance(names, tuple):
+            if len(names) == 1:
+                names = names[0]
         if len(names) == 1:
             return f(names)
         else:
