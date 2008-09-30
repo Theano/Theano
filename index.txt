@@ -50,7 +50,6 @@ The snapshots usually contain *more features* and *fewer bugs* than the
 
 .. class:: credits
 
-    Docs by docutils_ and epydoc_.
     Project by Mercurial_ and TRAC_.
     Powered by Python_ and SciPy_.
     Coded at the LISA_ lab.
