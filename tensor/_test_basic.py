@@ -1,20 +1,19 @@
 import traceback
 import operator
 
-from tensor import *
-import tensor # for hidden symbols
+from theano.tensor import *
+from theano.tensor import basic as tensor # for hidden symbols
 
 import unittest
 from copy import copy
-import compile
-import gradient
+from theano import compile
+from theano import gradient
 import gof, gof.graph
-from gof.python25 import any
-import gof
-from gof.utils import AbstractFunctionError
-import tensor_opt
+from theano.gof.python25 import any
+from theano import gof
+from theano.gof.utils import AbstractFunctionError
 
-from elemwise import DimShuffle
+from theano.tensor.elemwise import DimShuffle
 
 default_mode = compile.Mode(optimizer = None,
                             linker = 'c&py')

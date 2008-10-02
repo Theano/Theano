@@ -47,9 +47,13 @@ if __name__ == '__main__':
     elif len(sys.argv)>2:
         printUsage()
 
-    try:
-        os.system('cd gof; %s autotest.py %s' % (sys.argv[1],debugparam))
-    except IndexError, e:
-        os.system('cd gof; python autotest.py %s' % debugparam)
+    if len(sys.argv) >= 2:
+        cmd = sys.argv[1]
+    else:
+        cmd = 'python'
+
+    for dir in 'gof compile scalar tensor sparse'.split():
+        os.system('cd %s; %s autotest.py %s' % (dir, cmd, debugparam))
     test_root_dir(debugparam!="")
+
 

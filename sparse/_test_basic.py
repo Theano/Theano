@@ -1,14 +1,14 @@
-from sparse import *
+from theano.sparse import *
 
 import unittest
-from .. import compile
-from .. import gradient
+from theano import compile
+from theano import gradient
 
-from basic import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
-from basic import _mtypes, _mtype_to_str
+from theano.sparse.basic import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
+from theano.sparse.basic import _mtypes, _mtype_to_str
 
 import random
-from .. import gof
+from theano import gof
 
 def eval_outputs(outputs):
     return compile.function([], outputs)()[0]

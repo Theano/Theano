@@ -2,9 +2,9 @@
 
 import unittest
 
-from tensor_random import *
+from theano.tensor.raw_random import *
 
-import compile
+from theano import compile
 
 def Uniform(s, n):
     return NumpyGenerator(s, n, numpy.random.RandomState.uniform)

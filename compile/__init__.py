@@ -1,4 +1,4 @@
 
-#import function
+import function_module
 
-from function import *
+from function_module import *

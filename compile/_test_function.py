@@ -1,10 +1,14 @@
 import unittest
 import gof, gof.opt
 
-import compile
-from compile import *
-from scalar import *
-import tensor
+from theano import compile
+from theano.compile.function_module import *
+from theano.scalar import *
+
+from theano import tensor
+from theano import tensor as T
+import random
+import numpy as N
 
 
 PatternOptimizer = lambda p1, p2, ign=True: gof.OpKeyOptimizer(gof.PatternSub(p1, p2), ignore_newtrees=ign)
@@ -142,9 +146,6 @@ def checkfor(testcase, fn, E):
 #         assert compile._fcache[(e, )]() == 14.0
 
 
-import tensor as T
-import random
-import numpy as N
 
 class T_OpFromGraph(unittest.TestCase):
 

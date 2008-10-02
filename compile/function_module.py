@@ -882,7 +882,7 @@ class OpFromGraph(gof.Op):
         self.input_types = [input.type for input in inputs]
         self.output_types = [output.type for output in outputs]
         if grad_depth > 0:
-            import gradient as G
+            from theano import gradient as G
             output_grads = [t() for t in self.output_types]
             gd = G.grad_sources_inputs(zip(self.outputs, output_grads), self.inputs)
             gs = map(gd.get, self.inputs)

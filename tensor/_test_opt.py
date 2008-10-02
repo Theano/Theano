@@ -4,11 +4,11 @@
 import unittest
 
 import gof
-from tensor_opt import *
-import tensor
-from tensor import Tensor
-from gof import Env
-from elemwise import DimShuffle
+from theano.tensor.opt import *
+from theano import tensor
+from theano.tensor import Tensor
+from theano.gof import Env
+from theano.tensor.elemwise import DimShuffle
 import numpy
 #import scalar_opt
 
@@ -98,7 +98,7 @@ class _test_dimshuffle_lift(unittest.TestCase):
 
 
 
-from tensor import *
+from theano.tensor import *
 
 #from sandbox import pprint
 

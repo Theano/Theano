@@ -1,10 +1,10 @@
 
 import unittest
 
-from ..gof import Result, Op, Env
-from .. import gof
+from theano.gof import Result, Op, Env
+from theano import gof
 
-from basic import *
+from theano.scalar.basic import *
 
 
 def inputs():

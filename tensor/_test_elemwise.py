@@ -2,13 +2,13 @@
 import time
 import unittest
 
-from gof import Result, Op
-import gof
+from theano.gof import Result, Op
+from theano import gof
 
-from scalar import *
+from theano.scalar import *
 
-import tensor
-from elemwise import *
+from theano import tensor
+from theano.tensor.elemwise import *
 
 
 def Env(i, o):
