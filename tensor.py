@@ -1212,7 +1212,7 @@ class Subtensor(Op):
 
     def __init__(self, idx_list):
         def convert(entry, slice_ok=True):
-            scal_types =[scal.int64, scal.int32, scal.int16, scal.int8]
+            scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
             tensor_types = [bscalar, iscalar, lscalar]
             if isinstance(entry, gof.Result) and entry.type in scal_types:
                 return entry.type
@@ -2059,7 +2059,7 @@ def grad(cost, wrt, g_cost=None):
                 Tensor(dtype = p.type.dtype, broadcastable = []),
                 numpy.asarray(0, dtype=p.type.dtype))
 
-    if isinstance(wrt, list):
+    if isinstance(wrt, (list, tuple)):
         return [gmap.get(p, zero(p)) for p in wrt]
     else:
         return gmap.get(wrt, zero(wrt))
