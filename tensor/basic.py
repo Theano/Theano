@@ -8,20 +8,19 @@ import inspect
 import functools
 
 import numpy
-
 from copy import copy
 
-from gof import Result, Op, utils, AbstractFunctionError, Type, Constant, Apply, Value
-import gof
+from .. import gof
+from ..gof import Result, Op, utils, AbstractFunctionError, Type, Constant, Apply, Value
 
 import blas # for gemm, dot
-import gradient
+from .. import gradient
 
 import elemwise
-import scalar as scal
-from gof.python25 import partial
+from .. import scalar as scal
+from ..gof.python25 import partial
 
-import compile
+from .. import compile
 
 
 ### set up the external interface

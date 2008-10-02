@@ -3,16 +3,16 @@
 # TODO: 0*x -> 0
 
 
-import gof
-from gof import opt
+from .. import gof
+from ..gof import opt
 from elemwise import Elemwise, DimShuffle
-import scalar
-import tensor as T
+from .. import scalar
+import basic as T
 import numpy as N
 import operator
 import itertools
 import sys
-import compile  #to register the optimizer built by this file
+from .. import compile  #to register the optimizer built by this file
 
 
 # Utilities

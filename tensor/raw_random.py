@@ -1,10 +1,10 @@
 """Random number generation for Theano graphs."""
-import gof
-import tensor
+from .. import gof
+import basic as tensor
 import numpy
 import functools
 
-from compile import SymbolicInputKit, SymbolicInput
+from ..compile import SymbolicInputKit, SymbolicInput
 from copy import copy
 
 class RandomFunction(gof.Op):

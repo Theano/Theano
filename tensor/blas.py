@@ -1,6 +1,6 @@
 import os, sys
 import scipy.weave as weave
-import gof.utils
+from ..gof import utils
 
 
 """
@@ -796,7 +796,7 @@ def blas_proto():
     }
     """
 
-@gof.utils.memoize
+@utils.memoize
 def ldflags():
     """Return a list of libraries against which an Op's object file should be
     linked to benefit from a BLAS implementation.

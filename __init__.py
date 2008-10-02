@@ -44,12 +44,9 @@ from compile import \
     FunctionMaker, function, OpFromGraph #, eval_outputs, fast_compute
 
 import tensor
-import tensor_random
 import scalar
 import sparse
 import gradient
-import elemwise
-import tensor_opt
 
 ## import scalar_opt
 

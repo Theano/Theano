@@ -2,11 +2,11 @@
 import elemwise_cgen as cgen
 
 import numpy
-from gof import Op, Apply
-import scalar
-from scalar import Scalar
-import gof
-from gof.python25 import all
+from .. import gof
+from ..gof import Op, Apply
+from .. import scalar
+from ..scalar import Scalar
+from ..gof.python25 import all
 from copy import copy
 
 
