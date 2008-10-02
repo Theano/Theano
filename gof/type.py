@@ -195,7 +195,7 @@ class CLinkerType(object):
 class PureType(object):
     """Interface specification for result type instances.
 
-    A Type instance is mainly reponsible for two things:
+    A :term:`Type` instance is mainly reponsible for two things:
 
     - creating `Result` instances (conventionally, `__call__` does this), and
 

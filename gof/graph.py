@@ -1,4 +1,13 @@
-"""Node classes (Apply, Result) and expression graph algorithms."""
+"""
+Node classes (`Apply`, `Result`) and expression graph algorithms.
+
+To read about what theano graphs are from a user perspective, have a look at
+`graph.html <../doc/graph.html>`__.
+
+"""
+
+__docformat__ = "restructuredtext en"
+
 from copy import copy
 from collections import deque
 
@@ -7,27 +16,49 @@ import utils
 
 class Apply(utils.object2):
     """
-    Represents the application of an Op on input Results, producing output
-    Results. 
+    An :term:`Apply` instance is a node in an expression graph which represents the application
+    of an `Op` to some input `Result` nodes, producing some output `Result` nodes.
     
-    This class should be instantiated by an Op's make_node function.
+    This class is typically instantiated by an Op's make_node() function, which is typically
+    called by that Op's __call__() function.
+
+    An Apply instance serves as a simple structure with three important attributes:
+
+    - :literal:`inputs` :  a list of `Result` nodes that represent the arguments of the expression,
+
+    - :literal:`outputs` : a list of `Result` nodes that represent the result of the expression, and
+
+    - :literal:`op` : an `Op` instance that determines the nature of the expression being applied.
+
+    The driver `compile.function` uses Apply's inputs attribute together with Result's owner
+    attribute to search the expression graph and determine which inputs are necessary to
+    compute the function's outputs.
+
+    A `Linker` uses the Apply instance's `op` field to compute the results.
+
+    Comparing with the Python language, an `Apply` instance is theano's version of a function
+    call (or expression instance) whereas `Op` is theano's version of a function definition.
+
     """
 
     def __init__(self, op, inputs, outputs):
-        """
-        Initialize self.{op, inputs, outputs}
+        """Initialize attributes
 
-        @param op: initialize self.op
-        @param inputs: initialize self.inputs
-        @param outputs: initialize self.outputs
-        @type op: Op instance
-        @type inputs: list of Result instances
-        @type outputs: list of Result instances
+        :Parameters:
+         `op` : `Op` instance
+           initialize self.op
+         `inputs` : list of Result instances
+           initialize self.inputs
+         `outputs` : list of Result instances
+           initialize self.outputs
 
-        @note: The owner field of each output in the outputs list will be set to self.
+        :note:
+            The owner field of each output in the outputs list will be set to self.
 
-        @note: If an output element has an owner that is neither None nor self, then a
-        ValueError exception will be raised.
+        :note:
+            If an output element has an owner that is neither None nor self, then a ValueError
+            exception will be raised.
+
         """
         self.op = op
         self.inputs = []
@@ -55,11 +86,16 @@ class Apply(utils.object2):
     def default_output(self):
         """Returns the default output for this node.
         
-        @rtype: Result instance 
-        @return: an element of self.outputs, typically self.outputs[0].
+        :rtype:
+            Result instance 
 
-        @note: may raise AttributeError self.op.default_output is out of range, or if there are
-        multiple outputs and self.op.default_output does not exist.
+        :return:
+            an element of self.outputs, typically self.outputs[0].
+
+        :note:
+            may raise AttributeError self.op.default_output is out of range, or if there are
+            multiple outputs and self.op.default_output does not exist.
+
         """
         
         do = getattr(self.op, 'default_output', None)
@@ -74,6 +110,7 @@ class Apply(utils.object2):
 
     out = property(default_output, 
                    doc = "alias for self.default_output()")
+    """Alias for self.default_output()"""
 
     def __str__(self):
         return op_as_string(self.inputs, self)
@@ -87,9 +124,11 @@ class Apply(utils.object2):
     def clone(self):
         """Duplicate this Apply instance with inputs = self.inputs.
 
-        @return: a new Apply instance (or subclass instance) with new outputs.
+        :return:
+            a new Apply instance (or subclass instance) with new outputs.
 
-        @note: tags are copied from self to the returned instance.
+        :note:
+            tags are copied from self to the returned instance.
         """
         cp = self.__class__(self.op, self.inputs, [output.clone() for output in self.outputs])
         cp.tag = copy(self.tag)
@@ -98,23 +137,19 @@ class Apply(utils.object2):
     def clone_with_new_inputs(self, inputs, strict = True):
         """Duplicate this Apply instance in a new graph.
 
-        @param inputs: list of Result instances to use as inputs.
+        :param inputs: list of Result instances to use as inputs.
 
-        @type strict: Bool
-        @param strict: If True, the type fields of all the inputs must be equal to the current
-        ones, and returned outputs are guaranteed to have the same types as self.outputs.
-        If False, then there's no guarantee that the clone's outputs will have the same types
-        as self.outputs, and cloning may not even be possible (it depends on the Op).
+        :type strict: Bool
 
-        @returns: an Apply instance with the same op but different outputs.
+        :param strict: 
+            If True, the type fields of all the inputs must be equal to the current ones, and
+            returned outputs are guaranteed to have the same types as self.outputs.  If False,
+            then there's no guarantee that the clone's outputs will have the same types as
+            self.outputs, and cloning may not even be possible (it depends on the Op).
+
+        :returns: an Apply instance with the same op but different outputs.
+
         """
-#         if check_type:
-#             for curr, new in zip(self.inputs, inputs):
-#                 if not curr.type == new.type:
-#                     raise TypeError("Cannot change the type of this input.", curr, new)
-#         new_node = self.clone()
-#         new_node.inputs = inputs
-#         return new_node
         remake_node = False
         for curr, new in zip(self.inputs, inputs):
             if not curr.type == new.type:
@@ -132,35 +167,93 @@ class Apply(utils.object2):
 
     #convenience properties
     nin = property(lambda self: len(self.inputs), doc = 'same as len(self.inputs)')
+    """property: Number of inputs"""
+
     nout = property(lambda self: len(self.outputs), doc = 'same as len(self.outputs)')
+    """property: Number of outputs"""
 
 
 class Result(utils.object2):
     """
-    A variable in a theano expression graph.
+    A :term:`Result` is a node in an expression graph that represents a variable.
 
-    A Result which is the output of a symbolic computation has a reference to the Apply
-    instance to which it belongs (property: owner) and the position of itself in the owner's
-    output list (property: index).
+    The inputs and outputs of every `Apply` are `Result` instances.
+    The input and output arguments to create a `function` are also `Result` instances.
+    A `Result` is like a strongly-typed variable in some other languages; each `Result` contains a
+    reference to a `Type` instance that defines the kind of value the `Result` can take in a
+    computation.
 
-    A Result which is not the output of a symbolic computation will have an owner == None.
+    A `Result` is a container for four important attributes:
+
+    - :literal:`type` a `Type` instance defining the kind of value this `Result` can have,
+
+    - :literal:`owner` either None (for graph roots) or the `Apply` instance of which `self` is an output,
+
+    - :literal:`index` the integer such that :literal:`owner.outputs[index] is this_result` (ignored if `owner` is None)
+
+    - :literal:`name` a string to use in pretty-printing and debugging.
+
+    There are a few kinds of Results to be aware of: A Result which is the output of a symbolic
+    computation has a reference to the Apply instance to which it belongs (property: owner) and
+    the position of itself in the owner's output list (property: index).
+
+    - `Result` (this base type) is typically the output of a symbolic computation,
+    
+    - `Value` (a subclass) adds a default :literal:`value`, and requires that owner == None
+
+    - `Constant` (a subclass) which adds a default and un-replacable :literal:`value`, and
+      requires that owner == None
+
+    A Result which is the output of a symbolic computation will have an owner != None.
+
+    Code Example
+    ============
+
+    .. python::
+
+        import theano
+        from theano import tensor
+
+        a = tensor.constant(1.5)        # declare a symbolic constant
+        b = tensor.fscalar()            # declare a symbolic floating-point scalar
+
+        c = a + b                       # create a simple expression
+
+        f = theano.function([b], [c])   # this works because a has a value associated with it already
+
+        assert 4.0 == f(2.5)            # bind 2.5 to an internal copy of b and evaluate an internal c
+
+        theano.function([a], [c])       # compilation error because b (required by c) is undefined
+
+        theano.function([a,b], [c])     # compilation error because a is constant, it can't be an input
+
+        d = tensor.value(1.5)           # create a value similar to the constant 'a'
+        e = d + b
+        theano.function([d,b], [e])     # this works.  d's default value of 1.5 is ignored.
+
+    The python variables :literal:`a,b,c` all refer to instances of type `Result`.
+    The `Result` refered to by `a` is also an instance of `Constant`.
+
+    `compile.function` uses each `Apply` instance's `inputs` attribute
+    together with each Result's `owner` field to determine which inputs are necessary to compute the function's outputs.
+
     """
     #__slots__ = ['type', 'owner', 'index', 'name']
     def __init__(self, type, owner = None, index = None, name = None):
         """Initialize type, owner, index, name.
 
-        @type type: a Type instance
-        @param type: the type governs the kind of data that can be associated with this
-        variable
+        :type type: a Type instance
+        :param type: 
+            the type governs the kind of data that can be associated with this variable
 
-        @type owner: None or Apply instance
-        @param owner: the Apply instance which computes the value for this variable
+        :type owner: None or Apply instance
+        :param owner: the Apply instance which computes the value for this variable
 
-        @type index: None or int
-        @param index: the position of this Result in owner.outputs
+        :type index: None or int
+        :param index: the position of this Result in owner.outputs
 
-        @type name: None or str
-        @param name: a string for pretty-printing and debugging
+        :type name: None or str
+        :param name: a string for pretty-printing and debugging
 
         """
         self.tag = utils.scratchpad()
@@ -175,6 +268,7 @@ class Result(utils.object2):
             raise TypeError("name must be a string", name)
         self.name = name
     def __str__(self):
+        """WRITEME"""
         if self.name is not None:
             return self.name
         if self.owner is not None:
@@ -190,11 +284,11 @@ class Result(utils.object2):
     def clone(self):
         """Return a new Result like self.
 
-        @rtype: Result instance
-        @return: a new Result instance (or subclass instance) with no owner or index.
+        :rtype: Result instance
+        :return: a new Result instance (or subclass instance) with no owner or index.
 
-        @note: tags are copied to the returned instance.
-        @note: name is copied to the returned instance.
+        :note: tags are copied to the returned instance.
+        :note: name is copied to the returned instance.
         """
         #return copy(self)
         cp = self.__class__(self.type, None, None, self.name)
@@ -203,21 +297,30 @@ class Result(utils.object2):
 
 class Value(Result):
     """
-    Result with a default 'data' field.
-    The data field is filtered by what is
-    provided in the constructor for the Value's type field.
+    A :term:`Value` is a `Result` with a default value.
 
-    Its owner field is always None.
+    Its owner field is always None. And since it has a default value, a `Value` instance need
+    not be named as an input to `compile.function`.
+
+    This kind of node is useful because when a value is known at compile time, more
+    optimizations are possible.
+
     """
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
         """Initialize self.
 
+        :note: 
+            The data field is filtered by what is provided in the constructor for the Value's
+            type field.
+
         WRITEME
+
         """
         Result.__init__(self, type, None, None, name)
         self.data = type.filter(data)
     def __str__(self):
+        """WRITEME"""
         if self.name is not None:
             return self.name
         return "<" + str(self.data) + ">" #+ "::" + str(self.type)
@@ -225,13 +328,20 @@ class Value(Result):
         """WRITEME"""
         return self.__class__(self.type, copy(self.data), self.name)
     def __set_owner(self, value):
+        """WRITEME
+
+        :Exceptions:
+         - `ValueError`: if `value` is not `None`
+        """
         if value is not None:
             raise ValueError("Value instances cannot have an owner.")
     owner = property(lambda self: None, __set_owner)
 
 class Constant(Value):
     """
-    Same as Value, but the data it contains cannot be modified.
+    A :term:`Constant` is a `Value` that cannot be changed at runtime.
+
+    Constant nodes make eligible numerous optimizations: constant inlining in C code, constant folding, etc.
     """
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
@@ -250,20 +360,24 @@ class Constant(Value):
 
 
 def stack_search(start, expand, mode='bfs', build_inv = False):
-    """Search through L{Result}s, either breadth- or depth-first
-    @type start: deque
-    @param start: search from these nodes
-    @type explore: callable
-    @param explore: when we get to a node, add explore(node) to the list of
-                    nodes to visit.  This function should return a list, or None
-    @rtype: list of L{Result}
-    @return: the list of L{Result}s in order of traversal.
-    
-    @note: a L{Result} will appear at most once in the return value, even if it
-    appears multiple times in the start parameter.  
+    """Search through a graph, either breadth- or depth-first
 
-    @postcondition: every element of start is transferred to the returned list.
-    @postcondition: start is empty.
+    :type start: deque
+    :param start: search from these nodes
+    :type expand: callable
+    :param expand: 
+        when we get to a node, add expand(node) to the list of nodes to visit.  This function
+        should return a list, or None
+    :rtype: list of `Result` or `Apply` instances (depends on `expend`)
+    :return: the list of nodes in order of traversal.
+    
+    :note:
+        a node will appear at most once in the return value, even if it appears multiple times
+        in the start parameter.  
+
+    :postcondition: every element of start is transferred to the returned list.
+    :postcondition: start is empty.
+
     """
 
     if mode not in ('bfs', 'dfs'):
@@ -293,10 +407,13 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
 def inputs(result_list):
     """Return the inputs required to compute the given Results.
 
-    @type result_list: list of L{Result}
-    @param result_list: output L{Result}s (from which to search backward through owners)
-    @returns: the list of L{Result}s with no owner, in the order found by a
-    left-recursive depth-first search started at the L{Result}s in result_list.
+    :type result_list: list of `Result` instances
+    :param result_list:
+        output `Result` instances from which to search backward through owners
+    :rtype: list of `Result` instances
+    :returns: 
+        input nodes with no owner, in the order found by a left-recursive depth-first search
+        started at the nodes in `result_list`.
 
     """
     def expand(r):
@@ -326,15 +443,15 @@ def results_and_orphans(i, o):
 def ops(i, o):
     """ WRITEME
 
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
+    :type i: list
+    :param i: input L{Result}s
+    :type o: list
+    :param o: output L{Result}s
 
-    Returns the set of ops that are contained within the subgraph
-    that lies between i and o, including the owners of the L{Result}s in
-    o and intermediary ops between i and o, but not the owners of the
-    L{Result}s in i.
+    :returns:
+        the set of ops that are contained within the subgraph that lies between i and o,
+        including the owners of the L{Result}s in o and intermediary ops between i and o, but
+        not the owners of the L{Result}s in i.
     """
     ops = set()
     results, orphans = results_and_orphans(i, o)
@@ -348,14 +465,14 @@ def ops(i, o):
 def results(i, o):
     """ WRITEME
 
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
+    :type i: list
+    :param i: input L{Result}s
+    :type o: list
+    :param o: output L{Result}s
 
-    Returns the set of Results that are involved in the subgraph
-    that lies between i and o. This includes i, o, orphans(i, o)
-    and all values of all intermediary steps from i to o.
+    :returns:
+        the set of Results that are involved in the subgraph that lies between i and o. This
+        includes i, o, orphans(i, o) and all values of all intermediary steps from i to o.
     """
     return results_and_orphans(i, o)[0]
 
@@ -363,14 +480,14 @@ def results(i, o):
 def orphans(i, o):
     """ WRITEME
 
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
+    :type i: list
+    :param i: input L{Result}s
+    :type o: list
+    :param o: output L{Result}s
 
-    Returns the set of Results which one or more Results in o depend
-    on but are neither in i nor in the subgraph that lies between
-    i and o.
+    :returns:
+        the set of Results which one or more Results in o depend on but are neither in i nor in
+        the subgraph that lies between i and o.
 
     e.g. orphans([x], [(x+y).out]) => [y]
     """
@@ -380,12 +497,12 @@ def orphans(i, o):
 def clone(i, o, copy_inputs = True):
     """ WRITEME
 
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
-    @type copy_inputs: bool
-    @param copy_inputs: if True, the inputs will be copied (defaults to False)
+    :type i: list
+    :param i: input L{Result}s
+    :type o: list
+    :param o: output L{Result}s
+    :type copy_inputs: bool
+    :param copy_inputs: if True, the inputs will be copied (defaults to False)
 
     Copies the subgraph contained between i and o and returns the
     outputs of that copy (corresponding to o).
@@ -397,19 +514,20 @@ def clone(i, o, copy_inputs = True):
 def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
     """ WRITEME
 
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
-    @type copy_inputs_and_orphans: bool
-    @param copy_inputs_and_orphans: if True, the inputs and the orphans
-         will be replaced in the cloned graph by copies available
-         in the equiv dictionary returned by the function
-         (copy_inputs_and_orphans defaults to True)
+    :type i: list
+    :param i: input L{Result}s
+    :type o: list
+    :param o: output L{Result}s
+    :type copy_inputs_and_orphans: bool
+    :param copy_inputs_and_orphans: 
+        if True, the inputs and the orphans will be replaced in the cloned graph by copies
+        available in the equiv dictionary returned by the function (copy_inputs_and_orphans
+        defaults to True)
 
-    @rtype: a dictionary
-    @return: equiv mapping each L{Result} and L{Op} in the
-    graph delimited by i and o to a copy (akin to deepcopy's memo).
+    :rtype: a dictionary
+    :return:
+        equiv mapping each L{Result} and L{Op} in the graph delimited by i and o to a copy
+        (akin to deepcopy's memo).
     """
 
     d = {}
@@ -443,12 +561,13 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
     return d
 
 def general_toposort(r_out, deps, debug_print = False):
-    """ WRITEME
+    """WRITEME
 
-    @note: deps(i) should behave like a pure function (no funny business with
-    internal state)
+    :note: 
+        deps(i) should behave like a pure function (no funny business with internal state)
 
-    @note: deps(i) can/should be cached by the deps function to be fast
+    :note: 
+        deps(i) can/should be cached by the deps function to be fast
     """
     deps_cache = {}
     def _deps(io):
@@ -526,21 +645,24 @@ def as_string(i, o,
               node_formatter = default_node_formatter):
     """WRITEME
 
-    @type i: list
-    @param i: input L{Result}s
-    @type o: list
-    @param o: output L{Result}s
-    @type leaf_formatter: function
-    @param leaf_formatter: takes a L{Result} and returns a string to describe it
-    @type node_formatter: function
-    @param node_formatter: takes an L{Op} and the list of strings
-    corresponding to its arguments and returns a string to describe it
+    :type i: list
+    :param i: input `Result` s
+    :type o: list
+    :param o: output `Result` s
+    :type leaf_formatter: function
+    :param leaf_formatter: takes a `Result`  and returns a string to describe it
+    :type node_formatter: function
+    :param node_formatter: 
+        takes an `Op`  and the list of strings corresponding to its arguments and returns a
+        string to describe it
 
-    Returns a string representation of the subgraph between i and o. If the same
-    op is used by several other ops, the first occurrence will be marked as
-    '*n -> description' and all subsequent occurrences will be marked as '*n',
-    where n is an id number (ids are attributed in an unspecified order and only
-    exist for viewing convenience).
+    :rtype: str
+    :returns:
+        Returns a string representation of the subgraph between i and o. If the same op is used
+        by several other ops, the first occurrence will be marked as :literal:`*n ->
+        description` and all subsequent occurrences will be marked as :literal:`*n`, where n is
+        an id number (ids are attributed in an unspecified order and only exist for viewing
+        convenience).
     """
 
     i = set(i)
