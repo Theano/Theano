@@ -33,7 +33,7 @@ Using Theano
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
 .. _n00b guide: n00b.html
-.. _glossary of terminology: glossary.html
+.. _glossary of terminology: ../api/term-index.html
 .. _typelist: typelist.html
 .. _oplist: oplist.html
 
