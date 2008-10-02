@@ -156,7 +156,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         self.debug_all_apps.remove(app)
 
         #UPDATE self.clients
-        for i, input in enumerate(app.inputs):
+        for i, input in enumerate(set(app.inputs)):
             del self.clients[input][app]
 
         if getattr(app.op, 'destroy_map', {}):

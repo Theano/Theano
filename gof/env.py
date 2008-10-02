@@ -227,6 +227,7 @@ class Env(utils.object2):
         For each feature that has a 'on_change_input' method, calls:
           feature.on_change_input(env, node, i, old_r, new_r)
         """
+        # TODO: ERROR HANDLING FOR LISTENERS (should it complete the change or revert it?)
         if node == 'output':
             r = self.outputs[i]
             if not r.type == new_r.type:

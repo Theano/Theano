@@ -1,6 +1,7 @@
 
 from functools import partial
 import graph
+import sys
 
 
 class AlreadyThere(Exception):
@@ -97,7 +98,12 @@ class ReplaceValidate(History, Validator):
     def replace_all_validate(self, env, replacements):
         chk = env.checkpoint()
         for r, new_r in replacements:
-            env.replace(r, new_r)
+            try:
+                env.replace(r, new_r)
+            except Exception, e:
+                print >>sys.stderr, "<<!! BUG IN ENV.REPLACE OR A LISTENER !!>>", type(e), e
+                env.revert(chk) # this might fail; env.replace should never raise an exception (it kinda needs better internal error handling)
+                raise
         try:
             env.validate()
         except:
