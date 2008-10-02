@@ -1,14 +1,14 @@
 from sparse import *
 
 import unittest
-import compile
-import gradient
+from .. import compile
+from .. import gradient
 
-from sparse import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
-from sparse import _mtypes, _mtype_to_str
+from basic import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
+from basic import _mtypes, _mtype_to_str
 
 import random
-import gof
+from .. import gof
 
 def eval_outputs(outputs):
     return compile.function([], outputs)()[0]

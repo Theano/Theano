@@ -1,10 +1,10 @@
 
 import unittest
 
-from gof import Result, Op, Env
-import gof
+from ..gof import Result, Op, Env
+from .. import gof
 
-from scalar import *
+from basic import *
 
 
 def inputs():

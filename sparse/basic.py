@@ -9,9 +9,8 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 import numpy
 from scipy import sparse
 
-import gof
-import gof.op
-import tensor
+from .. import gof
+from .. import tensor
 
 
 """ Types of sparse matrices to use for testing """

@@ -5,9 +5,8 @@ import cPickle
 
 from functools import partial
 
-
 import numpy
-import gof
+from .. import gof
 import sys
 from copy import copy
 
