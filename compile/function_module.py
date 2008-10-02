@@ -10,18 +10,9 @@ from .. import gof
 import sys
 from copy import copy
 
-def check_equal(x, y):
-    """
-    Returns True iff x[0] and y[0] are equal (checks the dtype and
-    shape if x and y are numpy.ndarray instances). Used internally.
-    """
-    x, y = x[0], y[0]
-    if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
-        if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
-            raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
-    else:
-        if x != y:
-            raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
+from mode import *
+from io import *
+
 
 def infer_reuse_pattern(env, outputs_to_disown):
     """
@@ -46,246 +37,6 @@ def infer_reuse_pattern(env, outputs_to_disown):
     for output in outputs_to_disown:
         walk(output)
     return do_not_reuse
-
-# If a string is passed as the linker argument in the constructor for
-# Mode, it will be used as the key to retrieve the real linker in this
-# dictionary
-predefined_linkers = {
-    'py'   : gof.PerformLinker(),
-    'c'    : gof.CLinker(),
-    'c|py' : gof.OpWiseCLinker(),
-    'c&py' : gof.DualLinker(checker = check_equal)
-    }
-
-default_linker = 'c|py'
-
-def register_linker(name, linker):
-    """Add a `Linker` which can be referred to by `name` in `Mode`."""
-    if name in predefined_linkers:
-        raise ValueError('Linker name already taken: %s' % name)
-    predefined_linkers[name] = linker
-
-
-# If a string is passed as the optimizer argument in the constructor
-# for Mode, it will be used as the key to retrieve the real optimizer
-# in this dictionary
-predefined_optimizers = {
-    None    : lambda env: None,
-    'merge' : gof.MergeOptimizer(),
-    }
-default_optimizer = 'merge'
-
-def register_optimizer(name, opt):
-    """Add a `Optimizer` which can be referred to by `name` in `Mode`."""
-    if name in predefined_optimizers:
-        raise ValueError('Optimizer name already taken: %s' % name)
-    predefined_optimizers[name] = opt
-
-
-class Mode(object):
-    """
-    The Mode represents a way to optimize and then link a computation
-    graph.
-
-     * optimizer -> a structure of type Optimizer. An Optimizer may
-       simplify the math, put similar computations together, improve
-       numerical stability and various other improvements.
-     * linker -> a structure of type Linker. A Linker decides which
-       implementations to use (C or Python, for example) and how to
-       string them together to perform the computation.
-
-    See predefined_linkers, predefined_optimizers and also
-    predefined_modes.
-    """
-    
-    def __init__(self, linker = default_linker, optimizer = default_optimizer):
-        self.__setstate__((linker, optimizer))
-
-    def __getstate__(self):
-        return (self.provided_linker, self.provided_optimizer)
-
-    def __setstate__(self, (linker, optimizer)):
-        self.provided_linker = linker
-        self.provided_optimizer = optimizer
-        if isinstance(linker, str) or linker is None:
-            linker = predefined_linkers[linker]
-        self.linker = linker
-        if isinstance(optimizer, str) or optimizer is None:
-            optimizer = predefined_optimizers[optimizer]
-        self.optimizer = optimizer
-
-    def __str__(self):
-        return "Mode(linker = %s, optimizer = %s)" % (self.provided_linker, self.provided_optimizer)
-
-# If a string is passed as the mode argument in function or
-# FunctionMaker, the Mode will be taken from this dictionary using the
-# string as the key
-predefined_modes = {'FAST_COMPILE': Mode('py', 'merge')} 
-default_mode = 'FAST_COMPILE'
-
-def register_mode(name, mode):
-    """Add a `Mode` which can be referred to by `name` in `function`."""
-    if name in predefined_modes:
-        raise ValueError('Mode name already taken: %s' % name)
-    predefined_modes[name] = mode
-
-
-
-class SymbolicInput(object):
-    """
-    Represents a symbolic input for use with function or FunctionMaker.
-
-    result: a Result instance. 
-        This will be assigned a value before running the function,
-        not computed from its owner.
-
-    name: Any type. (If autoname=True, defaults to result.name). 
-        If name is a valid Python identifier, this input can be set by kwarg, and its value
-        can be accessed by self.<name>.
-
-    update: Result instance (default: None)
-        value (see previous) will be replaced with this expression result after each function call.
-        If update is None, the update will be the default value of the input.
-
-    mutable: Bool (default: False if update is None, True if update is not None)
-        True: permit the compiled function to modify the python object being passed as the input
-        False: do not permit the compiled function to modify the python object being passed as the input.
-
-    strict: Bool (default: False)
-        True: means that the value you pass for this input must have exactly the right type
-        False: the value you pass for this input may be casted automatically to the proper type
-
-    autoname: Bool (default: True)
-        See the name option.
-    """
-
-    def __init__(self, result, name=None, update=None, mutable=None, strict=False, autoname=True):
-        self.result = result
-        self.name = result.name if (autoname and name is None) else name
-        if self.name is not None and not isinstance(self.name, str):
-            raise TypeError("name must be a string! (got: %s)" % self.name)
-        self.update = update
-        self.mutable = mutable if (mutable is not None) else (update is not None)
-        self.strict = strict
-
-    def __str__(self):
-        if self.update:
-            return "In(%s -> %s)" % (self.result, self.update)
-        else:
-            return "In(%s)" % self.result
-
-    def __repr__(self):
-        return str(self)
-
-
-class SymbolicInputKit(object):
-    """
-    Represents a group ("kit") of SymbolicInputs. If fed into function or
-    FunctionMaker, only the inputs which are needed to compile the function
-    properly will be taken.
-
-    A SymbolicInputKit provides the distribute function in order to set or
-    initialize several inputs from a single value. Specialized Kits should
-    override it.
-    """
-
-    def __init__(self, name):
-        if not isinstance(name, str):
-            raise TypeError('naem must be a string (got: %s)' % name)
-        self.name = name
-        self.sinputs = []
-        self.results = []
-
-    def add_input(self, sinput):
-        """
-        Add a SymbolicInput to this SymbolicInputKit. It will be given the
-        next available index.
-        """
-        self.sinputs.append(sinput)
-        self.results.append(sinput.result)
-
-    def distribute(self, value, indices, containers):
-        """
-        Given a list of indices corresponding to SymbolicInputs in this kit
-        as well as a corresponding list of containers, initialize all the
-        containers using the provided value.
-        """
-        raise NotImplementedError
-
-    def complete(self, inputs):
-        """
-        Given inputs (a list of Result instances), checks through all
-        the SymbolicInputs in the kit and return a sorted list of
-        indices and a list of their corresponding SymbolicInputs such
-        that each of them represents some result in the inputs list.
-
-        Not all the provided inputs will have a corresponding
-        SymbolicInput in the kit.
-        """
-        ret = []
-        for input in inputs:
-            try:
-                i = self.results.index(input)
-                ret.append((i, self.sinputs[i]))
-            except ValueError:
-                pass
-        ret.sort()
-        return zip(*ret)
-
-
-class In(SymbolicInput):
-    """
-    Represents a symbolic input for use with function or FunctionMaker.
-
-    result: a Result instance. 
-        This will be assigned a value before running the function,
-        not computed from its owner.
-
-    name: Any type. (If autoname=True, defaults to result.name). 
-        If name is a valid Python identifier, this input can be set by kwarg, and its value
-        can be accessed by self.<name>.
-
-    value: Any type.
-        The initial/default value for this input. If update is None, this input acts just like
-        an argument with a default value in Python. If update is not None, changes to this
-        value will "stick around", whether due to an update or a user's explicit action.
-
-    update: Result instance (default: None)
-        value (see previous) will be replaced with this expression result after each function call.
-        If update is None, the update will be the default value of the input.
-
-    mutable: Bool (default: False if update is None, True if update is not None)
-        True: permit the compiled function to modify the python object being passed as the input
-        False: do not permit the compiled function to modify the python object being passed as the input.
-
-    strict: Bool (default: False)
-        True: means that the value you pass for this input must have exactly the right type
-        False: the value you pass for this input may be casted automatically to the proper type
-
-    autoname: Bool (default: True)
-        See the name option.
-    """
-    def __init__(self, result, name=None, value=None, update=None, mutable=None, strict=False, autoname=True):
-        super(In, self).__init__(result, name, update, mutable, strict, autoname)
-        self.value = value
-
-
-class SymbolicOutput(object):
-    """
-    Represents a symbolic output for use with function or FunctionMaker.
-
-    borrow: set this to True to indicate that a reference to
-            function's internal storage may be returned. A value
-            returned for this output might be clobbered by running
-            the function again, but the function might be faster.
-    """
-    
-    def __init__(self, result, borrow=False):
-        self.result = result
-        self.borrow = borrow
-
-Out = SymbolicOutput
-
 
 
 class Supervisor:
@@ -341,198 +92,9 @@ def std_env(input_specs, output_specs, accept_inplace = False):
     return env, map(SymbolicOutput, updates)
 
 
-class FunctionMaker(object):
-
-    @staticmethod
-    def wrap_in(input):
-        if isinstance(input, (SymbolicInput, SymbolicInputKit)):
-            return input
-        elif isinstance(input, gof.Result):
-            # r -> SymbolicInput(result=r)
-            return SymbolicInput(input)
-        elif isinstance(input, (list, tuple)):
-            # (r, u) -> SymbolicInput(result=r, update=u)
-            if len(input) == 2:
-                return SymbolicInput(input[0], update = input[1])
-            else:
-                raise TypeError("Expected two elements in the list or tuple.", input)
-        else:
-            raise TypeError("Unknown input type:", type(input), input)
-
-    @staticmethod
-    def expand_in(sinput, rinputs):
-        # For SymbolicInputKits, this extracts a list of SymbolicInput instances
-        # and corresponding indices such that these SymbolicInputs are representative
-        # of some of the Result instances in inputs.
-        # For SymbolicInput, this returns None as the list of indices and a list with
-        # just the SymbolicInput.
-        if isinstance(sinput, SymbolicInputKit):
-            return sinput.complete(rinputs)
-        elif isinstance(sinput, SymbolicInput):
-            return [None, [sinput]]
-
-    @staticmethod
-    def wrap_out(output):
-        if isinstance(output, SymbolicOutput):
-            return output
-        elif isinstance(output, gof.Result):
-            return SymbolicOutput(output)
-        else:
-            raise TypeError("Unknown output type:", type(output), output)
-
-    def __init__(self, inputs, outputs, mode = 'FAST_RUN', accept_inplace = False):
-        """
-        Create a FunctionMaker for the specified inputs, outputs and mode.
-
-        @param inputs: a list of SymbolicInput instances
-        @param outputs: a list of SymbolicOutput instances
-                   outputs may also be a single Result (not a list), in which
-                   case the functions produced by FunctionMaker will return
-                   their output value directly
-        @param mode: a Mode instance telling FunctionMaker how to optimize and link
-        @param accept_inplace: True iff it is acceptable to have inplace operations
-                          in the graph from the inputs to the outputs
-        """
-
-        # Handle the case where inputs and/or outputs is a single Result (not in a list)
-        unpack_single = False
-        if not isinstance(outputs, (list, tuple)):
-            unpack_single = True
-            outputs = [outputs]
-        if not isinstance(inputs, (list, tuple)):
-            inputs = [inputs]
-
-        # Wrap them in In or Out instances if needed.
-        inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
-        _inputs = gof.graph.inputs([o.result for o in outputs])
-        indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
-        expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
-
-        # make the env
-        env, additional_outputs = std_env(expanded_inputs, outputs, accept_inplace)
-        self.env = env
-
-        # Fetch the mode and then the optimizer and linker
-        mode = predefined_modes.get(mode, mode)
-        optimizer, linker = mode.optimizer, copy(mode.linker)
-
-        # optimize the env
-        optimizer(env)
-
-        # initialize the linker
-        if not hasattr(linker, 'accept'):
-            raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
-                             "or one of %s" % predefined_linkers.keys())
-
-        no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
-        if not no_borrow:
-            self.linker = linker.accept(env)
-        else:
-            self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
-        
-        self.indices = indices
-        self.inputs = inputs
-        self.expanded_inputs = expanded_inputs
-        self.outputs = outputs
-        self.unpack_single = unpack_single
-        self.mode = mode
-        self.accept_inplace = accept_inplace
-
-    def create(self, defaults = None, trustme = False):
-        """
-        Create a function.
-
-        defaults -> a list matching the inputs list and providing default values
-                    if the default for an input is None, then that input is a
-                    required input. For an input with an update, the default
-                    acts as initialization.
-        trustme -> disables some exceptions, used internally
-        """
-        if defaults is None:
-            defaults = [None]*len(self.inputs)
-        input_storage = [] # list of independent one-element lists, will be passed to the linker
-        _defaults = []
-
-        # The following loop is to fill in the input_storage and _defaults lists.
-        for (input, indices, subinputs), default in zip(self.indices, defaults):
-            __default = default
-
-            # If the default is a gof.Container, this means we want to share
-            # the same storage. This is done by appending default.storage
-            # to input_storage
-            if isinstance(default, gof.Container):
-                if indices is not None:
-                    raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
-                input_storage.append(default.storage)
-                default = None
-            # If the input is a SymbolicInputKit, it represents more than
-            # one storage unit. The indices and subinputs lists represent which
-            # of the kit's inputs are active in this graph, so we make as many
-            # storage units as needed
-            elif isinstance(input, SymbolicInputKit):
-                input_storage += [[None] for i in indices]
-            # Normal case: one new, independent storage unit
-            else:
-                input_storage.append([None])
-
-            # Filling _defaults. Each entry is a tuple of three elements:
-            # (required, refeed, value)
-            # - required means that the user must provide a value when calling the function
-            # - refeed means that we want to put the default back in the storage after each function call
-            # - value is the value that will be put in the storage initially
-
-            # Even though a SymbolicInputKit represents more than one input,
-            # we still only have one entry for the defaults list.
-            if isinstance(input, SymbolicInputKit):
-                if default is None:
-                    _defaults.append((True, True, None))
-                else:
-                    _defaults.append((False, False, default))
-            elif input.update is not None:
-                # If the input has an update, then (logically) it is not required since
-                # it is just a parameter and of course we don't want to refeed the default
-                # back into the storage as it would defeat the point of updating it. We
-                # always do this policy.
-                if default is None:
-                    if trustme or isinstance(__default, gof.Container):
-                        _defaults.append((False, False, default))
-                    else:
-                        # This might catch some bugs early
-                        raise ValueError("A default (initial) value is required for an input which can update itself.", input)
-                else:
-                    _defaults.append((False, False, default))
-            else:
-                if default is None:
-                    # No default, so this is a required input. Nothing to feed back, initial value is None.
-                    _defaults.append((True, False, None))
-                else:
-                    # Default value. It is not required, but we want to put it back into the storage
-                    # everytime so it behaves like most programming languages' default values
-                    _defaults.append((False, True, default))
-        defaults = _defaults
-
-        # Get a function instance
-        _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage)
-        fn = Function(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self)
-        return fn
-
-
-def _pickle_FunctionMaker(fm):
-    return (_constructor_FunctionMaker, (fm.inputs, fm.outputs, fm.mode, fm.accept_inplace))
-
-def _constructor_FunctionMaker(*args):
-    return FunctionMaker(*args)
-
-copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
-
-
-def _pickle_slice(s):
-    return (slice, (s.start, s.stop, s.step))
-
-copy_reg.pickle(slice, _pickle_slice)
-
-
-
+###
+### Function
+###
 
 DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries
 class Function(object):
@@ -724,6 +286,7 @@ class Function(object):
         None,
         doc="""TODOC""")
 
+# pickling/deepcopy support for Function
 
 def _pickle_Function(f):
     ins = list(f.input_storage)
@@ -745,6 +308,252 @@ def _constructor_Function(maker, defaults, data):
 
 copy_reg.pickle(Function, _pickle_Function)
 
+
+
+###
+### SanityCheckFunction
+###
+
+class SanityCheckFunction(Function):
+
+    def __init__(self, others, check_equal, *args, **kwargs):
+        super(SanityCheckFunction, self).__init__(*args, **kwargs)
+        self.others = others
+        self.check_equal = check_equal
+
+    def __setitem__(self, item, value):
+        super(SanityCheckFunction, self).__setitem__(item, value)
+        for fn in self.others:
+            fn[item] = value
+
+    def __call__(self, *args, **kwargs):
+        results = super(SanityCheckFunction, self).__call__(*args, **kwargs)
+        all_outputs = [copy(c.value) for c in self.output_storage] # we keep a copy to make sure it's not overwritten
+        for fn in self.others:
+            fn(*args, **kwargs)
+            # This checks all output storage (this includes state variables that we updated)
+            # This is ok because the results of a call stick around in their storage
+            for i, (r1, c2) in enumerate(zip(all_outputs, fn.output_storage)):
+                r2 = c2.value
+                if not self.check_equal(r1, r2):
+                    name = c2.name
+                    raise ValueError("Result #%i%s using %s and %s differs."
+                                     % (i,
+                                        " (%s)" % name if name else "",
+                                        self.maker.mode,
+                                        fn.maker.mode),
+                                     r1, r2)
+        return results
+
+
+
+###
+### FunctionMaker
+###
+
+class FunctionMaker(object):
+
+    @staticmethod
+    def wrap_in(input):
+        if isinstance(input, (SymbolicInput, SymbolicInputKit)):
+            return input
+        elif isinstance(input, gof.Result):
+            # r -> SymbolicInput(result=r)
+            return SymbolicInput(input)
+        elif isinstance(input, (list, tuple)):
+            # (r, u) -> SymbolicInput(result=r, update=u)
+            if len(input) == 2:
+                return SymbolicInput(input[0], update = input[1])
+            else:
+                raise TypeError("Expected two elements in the list or tuple.", input)
+        else:
+            raise TypeError("Unknown input type:", type(input), input)
+
+    @staticmethod
+    def expand_in(sinput, rinputs):
+        # For SymbolicInputKits, this extracts a list of SymbolicInput instances
+        # and corresponding indices such that these SymbolicInputs are representative
+        # of some of the Result instances in inputs.
+        # For SymbolicInput, this returns None as the list of indices and a list with
+        # just the SymbolicInput.
+        if isinstance(sinput, SymbolicInputKit):
+            return sinput.complete(rinputs)
+        elif isinstance(sinput, SymbolicInput):
+            return [None, [sinput]]
+
+    @staticmethod
+    def wrap_out(output):
+        if isinstance(output, SymbolicOutput):
+            return output
+        elif isinstance(output, gof.Result):
+            return SymbolicOutput(output)
+        else:
+            raise TypeError("Unknown output type:", type(output), output)
+
+    def __init__(self, inputs, outputs, mode = 'FAST_RUN', accept_inplace = False, function_builder = Function):
+        """
+        Create a FunctionMaker for the specified inputs, outputs and mode.
+
+        @param inputs: a list of SymbolicInput instances
+        @param outputs: a list of SymbolicOutput instances
+                   outputs may also be a single Result (not a list), in which
+                   case the functions produced by FunctionMaker will return
+                   their output value directly
+        @param mode: a Mode instance telling FunctionMaker how to optimize and link
+        @param accept_inplace: True iff it is acceptable to have inplace operations
+                          in the graph from the inputs to the outputs
+        """
+
+        # Handle the case where inputs and/or outputs is a single Result (not in a list)
+        unpack_single = False
+        if not isinstance(outputs, (list, tuple)):
+            unpack_single = True
+            outputs = [outputs]
+        if not isinstance(inputs, (list, tuple)):
+            inputs = [inputs]
+
+        # Wrap them in In or Out instances if needed.
+        inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
+        _inputs = gof.graph.inputs([o.result for o in outputs])
+        indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
+        expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
+
+        # make the env
+        env, additional_outputs = std_env(expanded_inputs, outputs, accept_inplace)
+        self.env = env
+
+        # Fetch the mode and then the optimizer and linker
+        mode = predefined_modes.get(mode, mode)
+        optimizer, linker = mode.optimizer, copy(mode.linker)
+
+        # optimize the env
+        optimizer(env)
+
+        # initialize the linker
+        if not hasattr(linker, 'accept'):
+            raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
+                             "or one of %s" % predefined_linkers.keys())
+
+        no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
+        if not no_borrow:
+            self.linker = linker.accept(env)
+        else:
+            self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
+        
+        self.indices = indices
+        self.inputs = inputs
+        self.expanded_inputs = expanded_inputs
+        self.outputs = outputs
+        self.unpack_single = unpack_single
+        self.mode = mode
+        self.accept_inplace = accept_inplace
+        self.function_builder = function_builder
+
+    def create(self, defaults = None, trustme = False):
+        """
+        Create a function.
+
+        defaults -> a list matching the inputs list and providing default values
+                    if the default for an input is None, then that input is a
+                    required input. For an input with an update, the default
+                    acts as initialization.
+        trustme -> disables some exceptions, used internally
+        """
+        if defaults is None:
+            defaults = [None]*len(self.inputs)
+        input_storage = [] # list of independent one-element lists, will be passed to the linker
+        _defaults = []
+
+        # The following loop is to fill in the input_storage and _defaults lists.
+        for (input, indices, subinputs), default in zip(self.indices, defaults):
+            __default = default
+
+            # If the default is a gof.Container, this means we want to share
+            # the same storage. This is done by appending default.storage
+            # to input_storage
+            if isinstance(default, gof.Container):
+                if indices is not None:
+                    raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
+                input_storage.append(default.storage)
+                default = None
+            # If the input is a SymbolicInputKit, it represents more than
+            # one storage unit. The indices and subinputs lists represent which
+            # of the kit's inputs are active in this graph, so we make as many
+            # storage units as needed
+            elif isinstance(input, SymbolicInputKit):
+                input_storage += [[None] for i in indices]
+            # Normal case: one new, independent storage unit
+            else:
+                input_storage.append([None])
+
+            # Filling _defaults. Each entry is a tuple of three elements:
+            # (required, refeed, value)
+            # - required means that the user must provide a value when calling the function
+            # - refeed means that we want to put the default back in the storage after each function call
+            # - value is the value that will be put in the storage initially
+
+            # Even though a SymbolicInputKit represents more than one input,
+            # we still only have one entry for the defaults list.
+            if isinstance(input, SymbolicInputKit):
+                if default is None:
+                    _defaults.append((True, True, None))
+                else:
+                    _defaults.append((False, False, default))
+            elif input.update is not None:
+                # If the input has an update, then (logically) it is not required since
+                # it is just a parameter and of course we don't want to refeed the default
+                # back into the storage as it would defeat the point of updating it. We
+                # always do this policy.
+                if default is None:
+                    if trustme or isinstance(__default, gof.Container):
+                        _defaults.append((False, False, default))
+                    else:
+                        # This might catch some bugs early
+                        raise ValueError("A default (initial) value is required for an input which can update itself.", input)
+                else:
+                    _defaults.append((False, False, default))
+            else:
+                if default is None:
+                    # No default, so this is a required input. Nothing to feed back, initial value is None.
+                    _defaults.append((True, False, None))
+                else:
+                    # Default value. It is not required, but we want to put it back into the storage
+                    # everytime so it behaves like most programming languages' default values
+                    _defaults.append((False, True, default))
+        defaults = _defaults
+
+        # Get a function instance
+        _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage)
+        fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self)
+        return fn
+
+
+def _pickle_FunctionMaker(fm):
+    return (_constructor_FunctionMaker, (fm.inputs, fm.outputs, fm.mode, fm.accept_inplace))
+
+def _constructor_FunctionMaker(*args):
+    return FunctionMaker(*args)
+
+copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
+
+
+def _pickle_slice(s):
+    return (slice, (s.start, s.stop, s.step))
+
+copy_reg.pickle(slice, _pickle_slice)
+
+
+
+
+def check_equal_numpy(x, y):
+    """
+    Returns True iff x and y are equal (checks the dtype and
+    shape if x and y are numpy.ndarray instances).
+    """
+    if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
+        return x.dtype == y.dtype and x.shape == y.shape and numpy.any(abs(x - y) < 1e-10)
+    else:
+        return x == y
 
 def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
     """
@@ -836,81 +645,27 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
     inputs = map(wrap_in, inputs)
     outputs = map(wrap_out, outputs) if isinstance(outputs, (list, tuple)) else wrap_out(outputs)
 
-    fn = FunctionMaker(inputs, outputs, mode, accept_inplace = accept_inplace).create([getattr(input, 'value', None) for input in inputs])
+    defaults = [getattr(input, 'value', None) for input in inputs]
+ 
+    if isinstance(mode, (list, tuple)): # "mode comparison" semantics
+        if not mode:
+            raise ValueError("Please provide at least one mode.")
+        elif len(mode) == 1:
+            mode = mode[0]
+        else:
+            def dup_defaults():
+                return [copy(default.value) if isinstance(default, gof.Container) else copy(default)
+                        for default in defaults]
+            makers = [FunctionMaker(inputs, outputs, m, accept_inplace = accept_inplace) for m in mode[1:]]
+            fns = [maker.create(dup_defaults(), trustme = True) for maker in makers]
+            builder = partial(SanityCheckFunction, fns, check_equal_numpy)
+            maker1 = FunctionMaker(inputs, outputs, mode[0], accept_inplace = accept_inplace, function_builder = builder)
+            fn = maker1.create(defaults)
+            return fn
+
+    fn = FunctionMaker(inputs, outputs, mode, accept_inplace = accept_inplace).create(defaults)
 
     return fn
 
 
-
-
-
-
-class OpFromGraph(gof.Op):
-    """
-    This create an L{Op} from a list of input results and a list of output
-    results.
-
-    The signature is the same as the signature of L{FunctionFactory}
-    and/or function and the resulting L{Op}'s perform will do the same
-    operation as::
-      function(inputs, outputs, **kwargs)
-
-    Take note that the following options, if provided, must take the
-    value(s) listed below:
-      unpack_single = False
-      borrow_outputs = False
-
-    OpFromGraph takes an additional input, grad_depth. If grad_depth
-    is n, OpFromGraph will make special Ops for gradients up to the
-    nth level, allowing the user to differentiate this op up to n
-    times. The parameter defaults to 1. If grad_depth == 0, the op
-    will not be differentiable.
-
-    Example:
-      x, y, z = tensor.scalars('xyz')
-      e = x + y * z
-      op = OpFromGraph([x, y, z], [e], linker='c')
-      # op behaves like a normal theano op
-      e2 = op(x, y, z) + op(z, y, x)
-      fn = function([x, y, z], [e2])
-    """
-    
-    def __init__(self, inputs, outputs, grad_depth = 1, **kwargs):
-        self.fn = function(inputs, outputs, **kwargs)
-        self.inputs = inputs
-        self.outputs = outputs
-        self.input_types = [input.type for input in inputs]
-        self.output_types = [output.type for output in outputs]
-        if grad_depth > 0:
-            from theano import gradient as G
-            output_grads = [t() for t in self.output_types]
-            gd = G.grad_sources_inputs(zip(self.outputs, output_grads), self.inputs)
-            gs = map(gd.get, self.inputs)
-            self.grad_ops = []
-            for g in gs:
-                if g is None:
-                    self.grad_ops.append(lambda *args: None)
-                else:
-                    self.grad_ops.append(OpFromGraph(inputs + output_grads,
-                                                     [g],
-                                                     grad_depth = grad_depth - 1))
-
-    def make_node(self, *inputs):
-        for input, type in zip(inputs, self.input_types):
-            if not type == input.type:
-                raise TypeError("Wrong type, expected %s but got %s" % type, input.type)
-        return gof.Apply(self,
-                         inputs,
-                         [type() for type in self.output_types])
-
-    def perform(self, node, inputs, outputs):
-        results = self.fn(*inputs)
-        for output, result in zip(outputs, results):
-            output[0] = result
-
-    def grad(self, inputs, output_grads):
-        if hasattr(self, 'grad_ops'):
-            return [go(*(inputs + output_grads)) for go in self.grad_ops]
-        else:
-            raise NotImplementedError
 
