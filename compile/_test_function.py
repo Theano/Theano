@@ -1,5 +1,5 @@
 import unittest
-import gof, gof.opt
+from theano import gof
 
 from theano import compile
 from theano.compile.function_module import *
