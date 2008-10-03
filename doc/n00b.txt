@@ -172,7 +172,7 @@ training by simple gradient descent.
         # REGRESSION MODEL AND COSTS TO MINIMIZE
 
         prediction = T.softmax(T.dot(x, w) + b)
-        cross_entropy = T.sum(y * T.log(prediction) + (1-y) * T.log(1.0 - prediction), axis=1)
+        cross_entropy = T.sum(y * T.log(prediction), axis=1)
         cost = T.sum(cross_entropy) + l2_coef * T.sum(T.sum(w*w))
 
         # GET THE GRADIENTS NECESSARY TO FIT OUR PARAMETERS
