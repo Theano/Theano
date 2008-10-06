@@ -135,7 +135,7 @@ external-api-file: wiki:wiki.idx doc:doc/doc.idx
 # in the output.  Graphs are generated using the Graphviz "dot"
 # executable.  Graph types include: "classtree", "callgraph",
 # "umlclass".  Use "all" to include all graph types
-graph: 
+graph: all
 
 # The path to the Graphviz "dot" executable, used to generate
 # graphs.
