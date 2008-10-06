@@ -8,7 +8,7 @@ import unittest
 from copy import copy
 from theano import compile
 from theano import gradient
-import gof, gof.graph
+from theano import gof
 from theano.gof.python25 import any
 from theano import gof
 from theano.gof.utils import AbstractFunctionError

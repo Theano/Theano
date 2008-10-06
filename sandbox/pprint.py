@@ -1,7 +1,7 @@
 
-from theano import tensor as T
-from theano import scalar as S
-from theano import gof
+from .. import tensor as T
+from .. import scalar as S
+from .. import gof
 from copy import copy
 import sys
 

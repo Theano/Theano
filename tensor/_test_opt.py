@@ -3,7 +3,7 @@
 
 import unittest
 
-import gof
+from theano import gof
 from theano.tensor.opt import *
 from theano import tensor
 from theano.tensor import Tensor
