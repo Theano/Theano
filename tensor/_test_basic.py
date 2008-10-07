@@ -970,18 +970,21 @@ class T_Join_and_Split(unittest.TestCase):
     def test_join_matrix1_using_vertical_stack(self):
         a = as_tensor(numpy.array([[1, 2, 3], [4, 5, 6]]))
         b = as_tensor(numpy.array([[7, 8, 9]]))
-        s = vertical_stack(a, b)
+        c = as_tensor(numpy.array([[9, 8, 7]]))
+        s = vertical_stack(a, b, c)
 
-        want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9]])
+        want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9], [9, 8, 7]])
         self.failUnless((eval_outputs([s]) == want).all())
 
     def test_join_matrix1_using_horizontal_stack(self):
         av=numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
-        bv= numpy.array([[7], [8]],dtype='float32')
+        bv=numpy.array([[7], [8]],dtype='float32')
+        cv=numpy.array([[3, 2, 1], [6, 5, 4]], dtype='float32')
         a = as_tensor(av)
         b = as_tensor(bv)
-        s = horizontal_stack(a, b)
-        want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
+        c = as_tensor(cv)
+        s = horizontal_stack(a, b, c)
+        want = numpy.array([[1, 2, 3, 7, 3, 2, 1], [4, 5, 6, 8, 6, 5, 4]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
 
         verify_grad(self, lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)

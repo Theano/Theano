@@ -1647,18 +1647,15 @@ def horizontal_stack(*args):
     Stack two L{Tensor}s along the second axis (column wise). These
     L{Tensor}s must have the same shape along all dimensions but the
     second.
-
-    @note: Unlike VerticalStack, we assume that the L{Tensor}s have
-    two dimensions.
     """
-    for arg in args:
-        assert arg.type.ndim == 2
+    assert len(args) >= 2
+    for arg in args: assert arg.type.ndim == 2
     return concatenate(args, axis=1)
 
 @constructor
 def vertical_stack(*args):
-    for arg in args:
-        assert arg.type.ndim == 2
+    assert len(args) >= 2
+    for arg in args: assert arg.type.ndim == 2
     return concatenate(args, axis=0)
 
 if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() and join().
