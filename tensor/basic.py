@@ -1651,14 +1651,14 @@ def horizontal_stack(*args):
     @note: Unlike VerticalStack, we assume that the L{Tensor}s have
     two dimensions.
     """
-    assert x.type.ndim == 2
-    assert y.type.ndim == 2
-    return concatenate([x,y], axis=1)
+    for arg in args:
+        assert arg.type.ndim == 2
+    return concatenate(args, axis=1)
 
 @constructor
 def vertical_stack(*args):
-    assert x.type.ndim == 2
-    assert y.type.ndim == 2
+    for arg in args:
+        assert arg.type.ndim == 2
     return concatenate(args, axis=0)
 
 if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() and join().
