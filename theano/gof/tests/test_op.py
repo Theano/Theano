@@ -1,5 +1,4 @@
 
-import unittest
 from copy import copy
 from theano.gof.op import *
 from theano.gof.type import Type, Generic
@@ -38,7 +37,7 @@ class MyOp(Op):
 MyOp = MyOp()
 
 
-class _test_Op(unittest.TestCase):
+class TestOp:
 
     # Sanity tests
     def test_sanity_0(self):

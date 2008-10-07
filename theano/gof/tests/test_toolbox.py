@@ -1,6 +1,4 @@
 
-import unittest
-
 from theano.gof.graph import Result, Apply
 from theano.gof.type import Type
 from theano.gof.op import Op
@@ -63,22 +61,8 @@ def inputs():
     return x, y, z
 
 
-# class _test_EquivTool(unittest.TestCase):
 
-#     def test_straightforward(self):
-#         x, y, z = inputs()
-#         sx = sigmoid(x)
-#         e = add(sx, sigmoid(y))
-#         g = Env([x, y, z], [e])
-#         g.extend(EquivTool(g))
-#         assert hasattr(g, 'equiv')
-#         assert g.equiv(sx) is sx
-#         g.replace(sx, dot(x, z))
-#         assert g.equiv(sx) is not sx
-#         assert g.equiv(sx).owner.op is dot
-
-
-class _test_NodeFinder(unittest.TestCase):
+class TestNodeFinder:
 
     def test_straightforward(self):
         x, y, z = inputs()
@@ -89,7 +73,7 @@ class _test_NodeFinder(unittest.TestCase):
         assert hasattr(g, 'get_nodes')
         for type, num in ((add, 3), (sigmoid, 3), (dot, 2)):
             if not len([x for x in g.get_nodes(type)]) == num:
-                self.fail((type, num))
+                raise Exception("Expected: %i times %s" % (num, type))
         new_e0 = add(y, z)
         assert e0.owner in g.get_nodes(dot)
         assert new_e0.owner not in g.get_nodes(add)
@@ -98,21 +82,7 @@ class _test_NodeFinder(unittest.TestCase):
         assert new_e0.owner in g.get_nodes(add)
         for type, num in ((add, 4), (sigmoid, 3), (dot, 1)):
             if not len([x for x in g.get_nodes(type)]) == num:
-                self.fail((type, num))
+                raise Exception("Expected: %i times %s" % (num, type))
 
-#     def test_robustness(self):
-#         # this test used to make sense to have, but it doesn't work like that anymore
-#         x, y, z = inputs()
-#         e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), dot(y, z)))
-#         g = Env([x, y, z], [e])
-#         g.extend(NodeFinder())
-#         gen = g.get_nodes(sigmoid) # I want to get Sigmoid instances
-#         g.replace(e, add(x, y)) # but here I prune them all
-#         assert len([x for x in gen]) == 0 # the generator should not yield them
-
-
-
-if __name__ == '__main__':
-    unittest.main()
 
     

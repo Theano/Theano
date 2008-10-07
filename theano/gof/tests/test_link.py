@@ -1,7 +1,4 @@
 
-
-import unittest
-
 from theano.gof import graph
 from theano.gof.graph import Result, Apply, Constant
 from theano.gof.type import Type
@@ -78,7 +75,7 @@ def Env(inputs, outputs):
     return e
 
 
-class _test_PerformLinker(unittest.TestCase):
+class TestPerformLinker:
 
     def test_thunk(self):
         x, y, z = inputs()
@@ -105,14 +102,14 @@ class _test_PerformLinker(unittest.TestCase):
     def test_input_output_same(self):
         x, y, z = inputs()
         fn = perform_linker(Env([x], [x])).make_function()
-        self.failUnless(1.0 is fn(1.0))
+        assert 1.0 is fn(1.0)
 
     def test_input_dependency0(self):
         x, y, z = inputs()
         a,d = add(x,y), div(x,y)
         e = mul(a,d)
         fn = perform_linker(Env(*graph.clone([x, y, a], [e]))).make_function()
-        self.failUnless(fn(1.0,2.0,9.0) == 4.5)
+        assert fn(1.0,2.0,9.0) == 4.5
 
     def test_skiphole(self):
         x,y,z = inputs()
@@ -120,14 +117,16 @@ class _test_PerformLinker(unittest.TestCase):
         r = raise_err(a)
         e = add(r,a)
         fn = perform_linker(Env(*graph.clone([x, y,r], [e]))).make_function()
-        self.failUnless(fn(1.0,2.0,4.5) == 7.5)
+        assert fn(1.0,2.0,4.5) == 7.5
+
 
 def wrap_linker(env, linkers, wrapper):
     lnk = WrapLinker(linkers, wrapper).accept(env)
     return lnk
-class _test_WrapLinker(unittest.TestCase):
 
-    def test0(self):
+class TestWrapLinker:
+
+    def test_0(self):
         nodes = []
         def wrap(i, node, th):
             nodes.append(node.op)
@@ -138,10 +137,10 @@ class _test_WrapLinker(unittest.TestCase):
         i[0].data = 1
         i[1].data = 2
         fn()
-        self.failUnless(nodes == [div, add, mul], nodes)
-        self.failUnless(o[0].data is None)
+        assert nodes == [div, add, mul]
+        assert o[0].data is None
 
-    def test1(self):
+    def test_1(self):
         nodes = []
         def wrap(i, node, th):
             nodes.append(node.op)
@@ -153,44 +152,8 @@ class _test_WrapLinker(unittest.TestCase):
         i[0].data = 1
         i[1].data = 2
         fn()
-        self.failUnless(nodes == [div, add, mul], nodes)
-        self.failUnless(o[0].data == 1.5, o[0].data)
-        
-
-
-#     def test_disconnected_input_output(self):
-#         x,y,z = inputs()
-#         a = add(x,y)
-#         a.data = 3.0 # simulate orphan calculation
-#         fn = perform_linker(env([z], [a])).make_function(inplace=True)
-#         self.failUnless(fn(1.0) == 3.0)
-#         self.failUnless(fn(2.0) == 3.0)
-
-#     def test_thunk_inplace(self):
-#         x, y, z = inputs()
-#         e = mul(add(x, y), div(x, y))
-#         fn, i, o = perform_linker(Env([x, y, z], [e])).make_thunk(True)
-#         fn()
-#         assert e.data == 1.5
-
-#     def test_thunk_not_inplace(self):
-#         x, y, z = inputs()
-#         e = mul(add(x, y), div(x, y))
-#         fn, i, o = perform_linker(env([x, y, z], [e])).make_thunk(False)
-#         fn()
-#         assert o[0].data == 1.5
-#         assert e.data != 1.5
-
-#     def test_function(self):
-#         x, y, z = inputs()
-#         e = mul(add(x, y), div(x, y))
-#         fn = perform_linker(env([x, y, z], [e])).make_function()
-#         assert fn(1.0, 2.0, 3.0) == 1.5
-#         assert e.data != 1.5 # not inplace
-
-
-if __name__ == '__main__':
-    unittest.main()
+        assert nodes == [div, add, mul]
+        assert o[0].data == 1.5
         
 
 

@@ -1,6 +1,4 @@
 
-import unittest
-
 from theano.gof.type import Type
 from theano.gof.graph import Result, Apply, Constant
 from theano.gof.op import Op
@@ -73,7 +71,7 @@ def inputs():
 PatternOptimizer = lambda p1, p2, ign=False: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 TopoPatternOptimizer = lambda p1, p2, ign=True: TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 
-class _test_PatternOptimizer(unittest.TestCase):
+class TestPatternOptimizer:
     
     def test_replace_output(self):
         # replacing the whole graph
@@ -250,7 +248,7 @@ class _test_PatternOptimizer(unittest.TestCase):
 OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
 OpSubOptimizer = lambda op1, op2: OpKeyOptimizer(OpSub(op1, op2))
 
-class _test_OpSubOptimizer(unittest.TestCase):
+class TestOpSubOptimizer:
     
     def test_straightforward(self):
         x, y, z = inputs()
@@ -267,7 +265,7 @@ class _test_OpSubOptimizer(unittest.TestCase):
         assert str(g) == "[Op1(Op2(x), Op4(y), Op4(z))]"
 
 
-class _test_MergeOptimizer(unittest.TestCase):
+class TestMergeOptimizer:
 
     def test_straightforward(self):
         x, y, z = inputs()
@@ -330,42 +328,6 @@ class _test_MergeOptimizer(unittest.TestCase):
         g = Env([x, y, z], [e1])
         MergeOptimizer().optimize(g)
         strg = str(g)
-        self.failUnless(strg == '[Op1(y, y)]' or strg == '[Op1(z, z)]', strg)
-
-#     def test_identical_constant_args_with_destroymap(self):
-#         x, y, z = inputs()
-#         y.data = 2.0
-#         y.constant = False
-#         z.data = 2.0
-#         z.constant = True
-#         e1 = op_d(y, z)
-#         g = env([x, y, z], [e1])
-#         MergeOptimizer().optimize(g)
-#         strg = str(g)
-#         self.failUnless(strg == '[OpD(y, z)]', strg)
-
-#     def test_merge_with_destroyer_1(self):
-#         x, y, z = inputs()
-#         e1 = op_d(op1(x,y), y)
-#         e2 = op_d(op1(x,y), z)
-#         g = env([x, y, z], [e1,e2])
-#         MergeOptimizer().optimize(g)
-#         strg = str(g)
-#         self.failUnless(strg == '[OpD(Op1(x, y), y), OpD(Op1(x, y), z)]', strg)
-
-#     def test_merge_with_destroyer_2(self):
-#         x, y, z = inputs()
-#         e1 = op_d(op1(x,y), z)
-#         e2 = op_d(op1(x,y), z)
-#         g = env([x, y, z], [e1,e2])
-#         MergeOptimizer().optimize(g)
-#         strg = str(g)
-#         self.failUnless(strg == '[*1 -> OpD(Op1(x, y), z), *1]', strg)
-
-
-
-
-if __name__ == '__main__':
-    unittest.main()
+        assert strg == '[Op1(y, y)]' or strg == '[Op1(z, z)]'
 
 

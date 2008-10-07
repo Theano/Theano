@@ -135,77 +135,76 @@ def Env(inputs, outputs):
     return e
 
 
-class _test_CLinker(unittest.TestCase):
+################
+# Test CLinker #
+################
 
-    def test_straightforward(self):
-        x, y, z = inputs()
-        e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = CLinker().accept(Env([x, y, z], [e]))
-        fn = lnk.make_function()
-        self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
+def test_clinker_straightforward():
+    x, y, z = inputs()
+    e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+    lnk = CLinker().accept(Env([x, y, z], [e]))
+    fn = lnk.make_function()
+    assert fn(2.0, 2.0, 2.0) == 2.0
 
-#     def test_orphan(self):
-#         x, y, z = inputs()
-#         z = Constant(tdouble, 4.12345678)
-#         e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-#         lnk = CLinker(Env([x, y], [e]))
-#         fn = lnk.make_function()
-#         self.failUnless(abs(fn(2.0, 2.0) + 0.12345678) < 1e-9)
-#         print lnk.code_gen()
-#         self.failUnless("4.12345678" not in lnk.code_gen()) # we do not expect the number to be inlined
+def test_clinker_literal_inlining():
+    x, y, z = inputs()
+    z = Constant(tdouble, 4.12345678)
+    e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+    lnk = CLinker().accept(Env([x, y], [e]))
+    fn = lnk.make_function()
+    assert abs(fn(2.0, 2.0) + 0.12345678) < 1e-9
+    code = lnk.code_gen()
+    print "=== Code generated ==="
+    print code
+    assert "4.12345678" in code # we expect the number to be inlined
 
-    def test_literal_inlining(self):
-        x, y, z = inputs()
-        z = Constant(tdouble, 4.12345678)
-        e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = CLinker().accept(Env([x, y], [e]))
-        fn = lnk.make_function()
-        self.failUnless(abs(fn(2.0, 2.0) + 0.12345678) < 1e-9)
-        self.failUnless("4.12345678" in lnk.code_gen()) # we expect the number to be inlined
+def test_clinker_single_node():
+    x, y, z = inputs()
+    node = add.make_node(x, y)
+    lnk = CLinker().accept(Env(node.inputs, node.outputs))
+    fn = lnk.make_function()
+    assert fn(2.0, 7.0) == 9
 
-    def test_single_node(self):
-        x, y, z = inputs()
-        node = add.make_node(x, y)
-        lnk = CLinker().accept(Env(node.inputs, node.outputs))
-        fn = lnk.make_function()
-        self.failUnless(fn(2.0, 7.0) == 9)
-    
-    def test_dups(self):
-        # Testing that duplicate inputs are allowed.
-        x, y, z = inputs()
-        e = add(x, x)
-        lnk = CLinker().accept(Env([x, x], [e]))
-        fn = lnk.make_function()
-        self.failUnless(fn(2.0, 2.0) == 4)
-        # note: for now the behavior of fn(2.0, 7.0) is undefined
+def test_clinker_dups():
+    # Testing that duplicate inputs are allowed.
+    x, y, z = inputs()
+    e = add(x, x)
+    lnk = CLinker().accept(Env([x, x], [e]))
+    fn = lnk.make_function()
+    assert fn(2.0, 2.0) == 4
+    # note: for now the behavior of fn(2.0, 7.0) is undefined
 
-    def test_dups_inner(self):
-        # Testing that duplicates are allowed inside the graph
-        x, y, z = inputs()
-        e = add(mul(y, y), add(x, z))
-        lnk = CLinker().accept(Env([x, y, z], [e]))
-        fn = lnk.make_function()
-        self.failUnless(fn(1.0, 2.0, 3.0) == 8.0)
+def test_clinker_dups_inner():
+    # Testing that duplicates are allowed inside the graph
+    x, y, z = inputs()
+    e = add(mul(y, y), add(x, z))
+    lnk = CLinker().accept(Env([x, y, z], [e]))
+    fn = lnk.make_function()
+    assert fn(1.0, 2.0, 3.0) == 8.0
     
 
 
-class _test_OpWiseCLinker(unittest.TestCase):
+######################
+# Test OpWiseCLinker #
+######################
 
-    def test_straightforward(self):
-        x, y, z = inputs()
-        e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
-        lnk = OpWiseCLinker().accept(Env([x, y, z], [e]))
-        fn = lnk.make_function()
-        self.failUnless(fn(2.0, 2.0, 2.0) == 2.0)
+def test_opwiseclinker_straightforward():
+    x, y, z = inputs()
+    e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+    lnk = OpWiseCLinker().accept(Env([x, y, z], [e]))
+    fn = lnk.make_function()
+    assert fn(2.0, 2.0, 2.0) == 2.0
 
-    def test_constant(self):
-        x, y, z = inputs()
-        x = Constant(tdouble, 7.2, name = 'x')
-        e = add(mul(x, y), mul(y, z))
-        lnk = OpWiseCLinker().accept(Env([y, z], [e]))
-        fn = lnk.make_function()
-        res = fn(1.5, 3.0)
-        self.failUnless(res == 15.3, res)
+def test_opwiseclinker_constant():
+    x, y, z = inputs()
+    x = Constant(tdouble, 7.2, name = 'x')
+    e = add(mul(x, y), mul(y, z))
+    lnk = OpWiseCLinker().accept(Env([y, z], [e]))
+    fn = lnk.make_function()
+    res = fn(1.5, 3.0)
+    assert res == 15.3
+
+
 
 
 class MyExc(Exception):
@@ -215,49 +214,34 @@ def _my_checker(x, y):
         raise MyExc("Output mismatch.", {'performlinker': x[0], 'clinker': y[0]})
 
 
-class _test_DualLinker(unittest.TestCase):
+###################
+# Test DualLinker #
+###################
 
-    def test_straightforward(self):
-        x, y, z = inputs()
-        e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
-        lnk = DualLinker(checker = _my_checker).accept(Env([x, y, z], [e]))
-        fn = lnk.make_function()
-        res = fn(7.2, 1.5, 3.0)
-        self.failUnless(res == 15.3, res)
+def test_duallinker_straightforward():
+    x, y, z = inputs()
+    e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
+    lnk = DualLinker(checker = _my_checker).accept(Env([x, y, z], [e]))
+    fn = lnk.make_function()
+    res = fn(7.2, 1.5, 3.0)
+    assert res == 15.3
 
-    def test_mismatch(self):
-        x, y, z = inputs()
-        e = sub(mul(x, y), mul(y, z)) # sub is correct in C but erroneous in Python
-        g = Env([x, y, z], [e])
-        lnk = DualLinker(checker = _my_checker).accept(g)
-        fn = lnk.make_function()
+def test_duallinker_mismatch():
+    x, y, z = inputs()
+    e = sub(mul(x, y), mul(y, z)) # sub is correct in C but erroneous in Python
+    g = Env([x, y, z], [e])
+    lnk = DualLinker(checker = _my_checker).accept(g)
+    fn = lnk.make_function()
 
-        self.failUnless(CLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -4.0) # good
-        self.failUnless(OpWiseCLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -4.0) # good
-        self.failUnless(PerformLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -10.0) # (purposely) wrong
-        
-        try:
-            # this runs OpWiseCLinker and PerformLinker in parallel and feeds
-            # results of matching operations to _my_checker to verify that they
-            # are the same.
-            res = fn(1.0, 2.0, 3.0)
-            self.fail()
-        except MyExc, e:
-            pass
-        else:
-            self.fail()
+    assert CLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -4.0 # good
+    assert OpWiseCLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -4.0 # good
+    assert PerformLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -10.0 # (purposely) wrong
 
-#     def test_orphan(self):
-#         x, y, z = inputs()
-#         x = Constant(tdouble, 7.2, name = 'x')
-#         e = add(mul(x, y), mul(y, z)) # add and mul are correct in C and in Python
-#         lnk = DualLinker(Env([y, z], [e]), checker = _my_checker)
-#         fn = lnk.make_function()
-#         res = fn(1.5, 3.0)
-#         self.failUnless(res == 15.3, res)
-
-
-
-        
-if __name__ == '__main__':
-    unittest.main()
+    try:
+        # this runs OpWiseCLinker and PerformLinker in parallel and feeds
+        # results of matching operations to _my_checker to verify that they
+        # are the same.
+        res = fn(1.0, 2.0, 3.0)
+        raise Exception("An exception should have been raised here!")
+    except MyExc, e:
+        pass
