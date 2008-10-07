@@ -1,11 +1,13 @@
 
 import unittest, os, sys, traceback, commands
-
+sys.path[0:0] = [os.path.realpath("..")]
 
 def test_module(module_path, debugmode = False):
     files = commands.getoutput("find %s -name test_*.py" % module_path)
     suite = None
+    tocut = len("/".join(module_path.split("/")[:-1])) + 1
     for file in files.split("\n"):
+        file = file[tocut:]
         try:
             module = __import__(file[:-3])
         except Exception, e:
@@ -46,6 +48,6 @@ if __name__ == '__main__':
     elif len(sys.argv)>2:
         printUsage()
 
-    test_module("theano")
+    test_module(os.path.realpath("../theano"))
 
 
