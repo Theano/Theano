@@ -273,7 +273,7 @@ class SoftmaxWithBiasDx(theano.Op):
         }
         if (%(dy)s->dimensions[0] != %(sm)s->dimensions[0])
         {
-            PyErr_SetString(PyExc_ValueError, "dimension mismatch");
+            PyErr_SetString(PyExc_ValueError, "dy.shape[0] != sm.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)
@@ -548,10 +548,14 @@ class CrossentropySoftmax1HotWithBiasDx (theano.Op):
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if ((%(dnll)s->dimensions[0] != %(sm)s->dimensions[0])
-            || (%(dnll)s->dimensions[0] != %(y_idx)s->dimensions[0]))
+        if (%(dnll)s->dimensions[0] != %(sm)s->dimensions[0])
         {
-            PyErr_SetString(PyExc_ValueError, "dimension mismatch");
+            PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != sm.shape[0]");
+            %(fail)s;
+        }
+        if (%(dnll)s->dimensions[0] != %(y_idx)s->dimensions[0])
+        {
+            PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != y_idx.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)
