@@ -1388,7 +1388,11 @@ class Split(Op):
 
     def __init__(self, len_splits):
         self.len_splits = int(len_splits)
-    
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.len_splits == other.len_splits)
+ 
     def make_node(self, x, axis, splits):
         """WRITEME"""
         x = as_tensor(x)
