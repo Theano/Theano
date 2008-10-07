@@ -335,6 +335,36 @@ class T_function(unittest.TestCase):
         self.failUnless(f[s] == 0)
         self.failUnless(g[s] == 0)
 
+    def test_shared_state1(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+
+        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s])], s+a*x)
+
+        f(1, 2)
+        self.failUnless(f[s] == 2)
+        self.failUnless(g[s] == 2)
+        f(1, 2)
+        g(1, 2)
+        self.failUnless(f[s] == 4)
+        self.failUnless(g[s] == 4)
+
+    def test_shared_state2(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+
+        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x,
+            mutable=False)], s+a*x)
+        g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s])], s+a*x)
+
+        f(1, 2)
+        self.failUnless(f[s] == 2)
+        self.failUnless(g[s] == 2)
+        f(1, 2)
+        g(1, 2)
+        self.failUnless(f[s] == 4)
+        self.failUnless(g[s] == 4)
 
 # class T_function_examples(unittest.TestCase):
 #     def test_accumulator(self):
