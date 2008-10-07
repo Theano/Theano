@@ -1640,6 +1640,27 @@ def get_vector_length(v):
         return v.owner.inputs[0].type.ndim
     raise ValueError("length not known")
 
+@constructor
+def horizontal_stack(*args):
+    """
+    Horizontally stack two L{Tensor}s.
+    Stack two L{Tensor}s along the second axis (column wise). These
+    L{Tensor}s must have the same shape along all dimensions but the
+    second.
+
+    @note: Unlike VerticalStack, we assume that the L{Tensor}s have
+    two dimensions.
+    """
+    assert x.type.ndim == 2
+    assert y.type.ndim == 2
+    return concatenate([x,y], axis=1)
+
+@constructor
+def vertical_stack(*args):
+    assert x.type.ndim == 2
+    assert y.type.ndim == 2
+    return concatenate(args, axis=0)
+
 if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() and join().
     class VerticalStack(Op):
         """
@@ -1681,19 +1702,6 @@ if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() a
             return gz[:xs[0]], gz[xs[0]:]
     vertical_stack = VerticalStack()
 
-    def horizontal_stack(x, y):
-        """
-        Horizontally stack two L{Tensor}s.
-        Stack two L{Tensor}s along the second axis (column wise). These
-        L{Tensor}s must have the same shape along all dimensions but the
-        second.
-
-        @note: Unlike VerticalStack, we assume that the L{Tensor}s have
-        two dimensions.
-        """
-        assert x.type.ndim == 2
-        assert y.type.ndim == 2
-        return transpose(vertical_stack(x.T, y.T))
     class MakeVector(Op):
         """WRITEME"""
         def __init__(self, stype):
