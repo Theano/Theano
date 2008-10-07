@@ -1394,7 +1394,7 @@ class Split(Op):
                 self.len_splits == other.len_splits)
 
     def __hash__(self):
-        return 76612131345 ^ len(self.len_splits)
+        return hash(Split) ^ self.len_splits
  
     def make_node(self, x, axis, splits):
         """WRITEME"""
@@ -2161,7 +2161,7 @@ class numeric_grad:
         return numpy.max(errs)
 
 def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0.0001,
-        linker='c&py'):
+        mode=compile.Mode(optimizer=None, linker='c&py')):
     """ WRITEME
     
     testcase.failUnless(analytic gradient matches finite-diff gradient)
@@ -2172,9 +2172,8 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
     #print "PT", pt
 
     def function(inputs, output):
-        return compile.function(inputs, output, 
-                mode=compile.Mode(optimizer = None, linker = linker), 
-                accept_inplace=True)
+        f = compile.function(inputs, output, mode=mode, accept_inplace=True)
+        return f
 
     for test_num in xrange(n_tests):
         tensor_pt = [value(p.copy(), name='input %i'%i) for i,p in enumerate(pt)]

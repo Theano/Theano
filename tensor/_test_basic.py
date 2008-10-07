@@ -28,6 +28,13 @@ def eval_outputs(outputs, mode = default_mode):
         return results[0]
     return results
 
+_public_verify_grad = verify_grad
+def verify_grad(*args, **kwargs):
+    assert 'mode' not in kwargs
+    kwargs['mode'] = default_mode
+    r =  _public_verify_grad(*args, **kwargs)
+    return r
+
 
 def _numpy_checker(x, y):
     """
@@ -1774,14 +1781,14 @@ class T_op_cache(unittest.TestCase):
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 if __name__ == '__main__':
+    if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
+        default_mode = compile.Mode(linker = 'c&py',
+                                    optimizer = 'math')
+        sys.argv[1:] = sys.argv[2:]
     if 1:
-        if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
-            default_mode = compile.Mode(linker = 'c&py',
-                                        optimizer = 'math')
-            sys.argv[1:] = sys.argv[2:]
         unittest.main()
     else:
-        testcase =  DotTester
+        testcase =  T_Join_and_Split
 
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
