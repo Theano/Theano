@@ -1,12 +1,12 @@
 
 import unittest
 
-from graph import Result, Apply
-from type import Type
-from op import Op
+from theano.gof.graph import Result, Apply
+from theano.gof.type import Type
+from theano.gof.op import Op
 
-from env import Env, InconsistencyError
-from toolbox import *
+from theano.gof.env import Env, InconsistencyError
+from theano.gof.toolbox import *
 
 
 def as_result(x):

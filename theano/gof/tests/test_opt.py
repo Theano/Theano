@@ -1,12 +1,12 @@
 
 import unittest
 
-from type import Type
-from graph import Result, Apply, Constant
-from op import Op
-from opt import *
-from env import Env
-from toolbox import *
+from theano.gof.type import Type
+from theano.gof.graph import Result, Apply, Constant
+from theano.gof.op import Op
+from theano.gof.opt import *
+from theano.gof.env import Env
+from theano.gof.toolbox import *
 
 
 def as_result(x):

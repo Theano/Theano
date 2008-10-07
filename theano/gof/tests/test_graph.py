@@ -1,11 +1,11 @@
 
 from collections import deque
 import unittest
-from graph import *
+from theano.gof.graph import *
 
-from op import Op
-from type import Type
-from graph import Result
+from theano.gof.op import Op
+from theano.gof.type import Type
+from theano.gof.graph import Result
 
 
 if 1:

@@ -1,34 +1,33 @@
-import unittest, os, sys, traceback
 
-def test_root_dir(debugmode=False):
+import unittest, os, sys, traceback, commands
+
+
+def test_module(module_path, debugmode = False):
+    files = commands.getoutput("find %s -name test_*.py" % module_path)
     suite = None
-    filenames = os.listdir('.')
-    for filename in filenames:
-        if filename[-3:] == '.py' and filename[0:5] == '_test':
-            #print >>sys.stderr, 'Loading', modname
-            modname = filename[0:-3]
-
-            try:
-                module = __import__(modname)
-            except Exception, e:
-                print >>sys.stderr, "===================================================="
-                print >>sys.stderr, "Failed to load %s.py" % modname
-                print >>sys.stderr, "===================================================="
-                traceback.print_exc()
-                print >>sys.stderr, "===================================================="
-                continue
-                
-            tests = unittest.TestLoader().loadTestsFromModule(module)
-            if tests.countTestCases() > 0:
-                print >>sys.stderr, 'Testing', modname
-                if suite is None:
-                    suite = tests
-                else:
-                    suite.addTests(tests)
+    for file in files.split("\n"):
+        try:
+            module = __import__(file[:-3])
+        except Exception, e:
+            print >>sys.stderr, "===================================================="
+            print >>sys.stderr, "Failed to load %s" % file
+            print >>sys.stderr, "===================================================="
+            traceback.print_exc()
+            print >>sys.stderr, "===================================================="
+            continue
+        
+        tests = unittest.TestLoader().loadTestsFromModule(module)
+        if tests.countTestCases() > 0:
+            print >>sys.stderr, 'Testing', file
+            if suite is None:
+                suite = tests
+            else:
+                suite.addTests(tests)
     if debugmode:
         suite.debug()
     else:
         unittest.TextTestRunner(verbosity=1).run(suite)
+
 
 if __name__ == '__main__':
 
@@ -47,13 +46,6 @@ if __name__ == '__main__':
     elif len(sys.argv)>2:
         printUsage()
 
-    if len(sys.argv) >= 2:
-        cmd = sys.argv[1]
-    else:
-        cmd = 'python'
-
-    for dir in 'gof compile scalar tensor sparse'.split():
-        os.system('cd %s; %s autotest.py %s' % (dir, cmd, debugparam))
-    test_root_dir(debugparam!="")
+    test_module("theano")
 
 

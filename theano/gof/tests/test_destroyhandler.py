@@ -1,15 +1,15 @@
 
 import unittest
 
-from type import Type
-import graph
-from graph import Result, Apply
-from op import Op
-from opt import *
+from theano.gof.type import Type
+from theano.gof import graph
+from theano.gof.graph import Result, Apply
+from theano.gof.op import Op
+from theano.gof.opt import *
 
-import destroyhandler
-from env import Env, InconsistencyError
-from toolbox import ReplaceValidate
+from theano.gof import destroyhandler
+from theano.gof.env import Env, InconsistencyError
+from theano.gof.toolbox import ReplaceValidate
 
 from copy import copy
 

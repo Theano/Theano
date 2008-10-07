@@ -1,9 +1,9 @@
 
 import unittest
 from copy import copy
-from op import *
-from type import Type, Generic
-from graph import Apply, Result
+from theano.gof.op import *
+from theano.gof.type import Type, Generic
+from theano.gof.graph import Apply, Result
 
 def as_result(x):
     assert isinstance(x, Result)

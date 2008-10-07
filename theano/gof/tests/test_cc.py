@@ -1,13 +1,13 @@
 
 import unittest
 
-from link import PerformLinker, Profiler
-from cc import *
-from type import Type
-from graph import Result, Apply, Constant
-from op import Op
-import env
-import toolbox
+from theano.gof.link import PerformLinker, Profiler
+from theano.gof.cc import *
+from theano.gof.type import Type
+from theano.gof.graph import Result, Apply, Constant
+from theano.gof.op import Op
+from theano.gof import env
+from theano.gof import toolbox
 
 def as_result(x):
     assert isinstance(x, Result)

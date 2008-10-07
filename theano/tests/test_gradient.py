@@ -4,10 +4,10 @@
 #
 import unittest
 import numpy
-import gof
+from theano import gof
 
-from gradient import *
-import gradient
+from theano.gradient import *
+from theano import gradient
 
 class _test_grad_sources_inputs(unittest.TestCase):
     def test_retNone1(self): 

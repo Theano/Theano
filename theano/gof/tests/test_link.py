@@ -2,14 +2,14 @@
 
 import unittest
 
-import graph
-from graph import Result, Apply, Constant
-from type import Type
-from op import Op
-import env
-import toolbox
+from theano.gof import graph
+from theano.gof.graph import Result, Apply, Constant
+from theano.gof.type import Type
+from theano.gof.op import Op
+from theano.gof import env
+from theano.gof import toolbox
 
-from link import *
+from theano.gof.link import *
 
 #from _test_result import Double
 

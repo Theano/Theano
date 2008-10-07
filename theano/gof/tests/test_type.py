@@ -1,6 +1,6 @@
 
 import unittest
-from type import *
+from theano.gof.type import *
 
 
 # todo: test generic
