@@ -87,16 +87,6 @@ If we had wanted a more brute-force approach to graph construction, we could hav
 Note how the call to `Apply` modifies the `owner` and `index` fields of the `Result` s passed as outputs to point to itself and the rank they occupy in the output list. This whole machinery builds a DAG (Directed Acyclic Graph) representing the computation, a graph that theano can compile and optimize.
 
 
-.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - `Task List`_
-
-.. |THEANO| image:: http://lgcm.iro.umontreal.ca/theano/chrome/site/theano_logo.png
-   :target: http://pylearn.org/auto_theano
-   :alt: THEANO
-   :align: top
-   :class: borderless
-   :width: 60
-   :height: 18
-
 .. _README: ../README.html
 .. _Download: ../README.html#downloading-theano
 .. _Documentation: index.html

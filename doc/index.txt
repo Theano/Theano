@@ -1,0 +1,87 @@
+
+======
+Theano
+======
+
+.. toctree::
+   :maxdepth: 2
+
+   README
+   doc/index
+
+-------------------------------------------------------------------
+A python library for manipulating and evaluating matrix expressions
+-------------------------------------------------------------------
+
+Theano is a library in Python, built to evaluate complicated
+expressions (especially matrix-valued ones) as quickly as possible.
+It was written at LISA_ to explore techniques for machine learning.
+Our project uses the name to honour the ancient Greek mathematician. 
+
+--------------------------------------------------------------------------------
+
+.. _not in the normal sense: :wiki:`WhatIsTheano`
+
+Overview
+========
+
+**To get up & running quickly** see README_.
+
+All **documentation** can be reached from the `Theano Project Documentation Overview`_.
+
+As developers of an open source project, we rely on **feedback** for
+determining what features to implement, and what documentation needs to be
+improved.  The best forum for feedback is the theano-users_ mailing list.
+
+All **discussion** about theano also takes place on the theano-users_ mailing list.
+
+If you find a **bug**, please file a `bug report`_ or send email to
+the theano-users_ mailing list.  **Patch** submissions should be
+sent to theano-dev_.
+
+We welcome all kinds of **contributions**.  Our `task list`_ is
+full of interesting ideas awaiting a champion.  If you have any
+questions regarding how to extend Theano, please feel free to ask on
+the Theano-dev_ mailing list.
+
+Theano is in active development and should be considered **experimental**.
+APIs are subject to change at any time.
+
+
+Download
+========
+
+We recommend that you use the `latest snapshot`_,
+Better yet, use `mercurial`_ to keep your installation fresh.
+The snapshots usually contain *more features* and *fewer bugs* than the
+"official" releases |---| they're not only for developers!
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
+
+.. |---| unicode:: U+02014 .. em dash
+   :trim:
+.. _latest snapshot: http://pylearn.org/hg/theano/archive/tip.tar.gz
+.. _bug report: http://lgcm.iro.umontreal.ca/theano/newticket
+.. _theano-users: http://groups.google.com/group/theano-users?pli=1
+.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
+.. _reStructuredText: rst.html
+.. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
+.. _README: README.html
+.. _Quick-Start: README.html#quick-start
+
+.. _Theano Project Documentation Overview: doc/index.html
+.. _Mercurial: http://www.selenic.com/mercurial/wiki/
+.. _docutils: http://docutils.sourceforge.net
+.. _epydoc: http://epydoc.sourceforge.net/
+.. _scipy: http://scipy.org/
+.. _Python: http://www.python.org/
+.. _TRAC: http://trac.edgewall.org/
+.. _LISA:  http://www.iro.umontreal.ca/rubrique.php3?id_rubrique=27
+

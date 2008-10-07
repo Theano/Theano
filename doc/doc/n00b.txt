@@ -237,16 +237,6 @@ code. The question is how to automatically extract the source files and inline
 them into this documentation.*
 
 
-.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - `Task List`_
-
-.. |THEANO| image:: http://lgcm.iro.umontreal.ca/theano/chrome/site/theano_logo.png
-   :target: http://pylearn.org/auto_theano
-   :alt: THEANO
-   :align: top
-   :class: borderless
-   :width: 60
-   :height: 18
-
 .. _README: ../README.html
 .. _Download: ../README.html#downloading-theano
 .. _Documentation: index.html

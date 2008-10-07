@@ -194,18 +194,9 @@ Getting Help
 If these installation instructions don't work, search the theano-users archive for similar cases.  If you don't find a solution, write to theano-users and explain the situation.
 
 
-.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - `Task List`_
-
 .. _README: README.html
 .. _Download: README.html#downloading-theano
 .. _Documentation: doc/index.html
 .. _Wiki: http://pylearn.org/theano
 .. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
-.. |THEANO| image:: http://lgcm.iro.umontreal.ca/theano/chrome/site/theano_logo.png
-   :target: http://pylearn.org/auto_theano
-   :alt: THEANO
-   :align: top
-   :class: borderless
-   :width: 60
-   :height: 18
