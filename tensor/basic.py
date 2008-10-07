@@ -1388,7 +1388,14 @@ class Split(Op):
 
     def __init__(self, len_splits):
         self.len_splits = int(len_splits)
-    
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.len_splits == other.len_splits)
+
+    def __hash__(self):
+        return 76612131345 ^ len(self.len_splits)
+ 
     def make_node(self, x, axis, splits):
         """WRITEME"""
         x = as_tensor(x)
@@ -1582,7 +1589,7 @@ def stack(*tensors):
     """Insert the arguments as slices into a tensor of 1 rank greater.
     EXAMPLE
     """
-    return join(0, *[leftpad_shape(t, 1) for t in tensors])
+    return join(0, *[shape_padleft(t, 1) for t in tensors])
 
 @constructor
 def concatenate(tensor_list, axis=0):
