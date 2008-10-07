@@ -1,5 +1,11 @@
 
+from compiledir import *
+import sys
+
+
+
 try:
+    sys.path.append(get_compiledir())
     from cutils_ext import *
 
 except ImportError:
@@ -27,6 +33,5 @@ except ImportError:
     fun =weave.ext_tools.ext_function('run_cthunk', single_runner, ['cthunk'])
     fun.customize.add_extra_compile_arg('--permissive')
     mod.add_function(fun)
-    mod.compile()
-
+    mod.compile(location = get_compiledir())
     from cutils_ext import *
