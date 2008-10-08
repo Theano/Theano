@@ -567,7 +567,7 @@ def _redefine(real_symbol_value, module='tensor'):
     
     This is useful to trick epydoc into doing what we want.  It's a hack.
     """
-    real_symbol_value.__module__ = 'tensor'
+    real_symbol_value.__module__ = 'tensor.basic'
     def decorator(f):
         return real_symbol_value
     return decorator

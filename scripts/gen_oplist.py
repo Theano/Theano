@@ -1,22 +1,25 @@
 """script to generate doc/oplist.txt, which compiles to :doc:`oplist`. """
 __docformat__ = "restructuredtext en"
-import sys
+import sys, os
+theano_path = os.path.realpath("%s/.." % sys.path[0])
+sys.path[0:0] = [theano_path]
+
 from theano import gof
 
-def print_title(title_string, under_char, over_char=''):
+def print_title(file, title_string, under_char, over_char=''):
     l = len(title_string)
     if over_char:
-        print over_char * l
+        print >>file, over_char * l
 
-    print title_string
+    print >>file, title_string
 
     if under_char:
-        print under_char * l
+        print >>file, under_char * l
 
-    print ""
+    print >>file, ""
 
-def print_hline():
-    print '-' * 80
+def print_hline(file):
+    print >>file, '-' * 80
 
 class Entry:
     """Structure for generating the oplist file"""
@@ -31,7 +34,7 @@ class Entry:
         self.name = name
         self.module = symbol.__module__ #current_module.__name__ # symbol.__module__
         self.docstring = symbol.__doc__
-        self.tags = ['module:%s' % current_module.__name__] + getattr(symbol, '__oplist_tags', [])
+        self.tags = ['%s' % current_module.__name__] + getattr(symbol, '__oplist_tags', [])
 
     def mini_desc(self, maxlen=50):
         """Return a short description of the op"""
@@ -73,7 +76,7 @@ class Entry:
         else:
             return "%s ..."% chomp(self.docstring[:maxlen-minmax])
 
-    apilink = property(lambda self: ":api:`%s.%s`"% (self.module, self.name))
+    apilink = property(lambda self: ":api:`%s <%s.%s>`"% (self.name, self.module, self.name))
     """Return the ReST link into the epydoc of this symbol"""
 
 class EntryOp(Entry):
@@ -126,51 +129,63 @@ def search_entries(module_list, ops = None, constructors = None, seen = None):
 
     return ops, constructors
 
-def print_entries(ops, constructors):
+def print_entries(file, ops, constructors):
     tags = {}
     for o in ops + constructors:
         for t in o.tags:
             tags.setdefault(t, []).append(o)
 
     for t in tags:
-        print_title(t, '=')
+        print_title(file, t, '=')
 
         tagged_ops = [op for op in tags[t] if isinstance(op, EntryOp)]
         if len(tagged_ops):
-            print_title('Op Classes', '-')
+            print_title(file, 'Op Classes', '-')
             for op in tagged_ops:
-                print "- %s" % op.apilink
-                print "  %s" % op.mini_desc()
-                print ""
+                print >>file, "- %s" % op.apilink
+                print >>file, "  %s" % op.mini_desc()
+                print >>file, ""
 
         tagged_ops = [op for op in tags[t] if isinstance(op, EntryConstructor)]
         if len(tagged_ops):
-            print_title('Op Constructors', '-')
+            print_title(file, 'Op Constructors', '-')
             for op in tagged_ops:
-                print "- %s" % op.apilink
-                print "  %s" % op.mini_desc()
-                print ""
+                print >>file, "- %s" % op.apilink
+                print >>file, "  %s" % op.mini_desc()
+                print >>file, ""
 
 
-if __name__ == "__main__":
-    """Generate the op list"""
-    import theano
+def print_file(file):
 
-    print_title("Op List", "~", "~")
-    print """
+    print_title(file, "Op List", "~", "~")
+    print >>file, """
 This page lists the `Op Classes` and `constructors` that are provided by the Theano library.
 `Op Classes` drive from :api:`Op`, whereas `constructors` are typically `Op Class` instances, but may be true Python functions.
 
 In the future, this list may distinguish `constructors` that are Op instances from true Python functions.
 
 """
-    print_hline()
-    print ""
-    print ".. contents:: "
-    print ""
+    print_hline(file)
+    print >>file, ""
+    print >>file, ".. contents:: "
+    print >>file, ""
 
     ops, constructors = search_entries([theano])
 
-    print_entries(ops, constructors)
+    print_entries(file, ops, constructors)
 
-    print ""
+    print >>file, ""
+    
+
+import theano
+
+if __name__ == "__main__":
+    """Generate the op list"""
+
+    if len(sys.argv) >= 2:
+        file = open(sys.argv[1], 'w')
+    else:
+        file = sys.stdout
+
+    print_file(file)
+

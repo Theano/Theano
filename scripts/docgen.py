@@ -59,6 +59,16 @@ if __name__ == '__main__':
 
     throot = "/".join(sys.path[0].split("/")[:-1])
 
+    import gen_oplist
+    print 'Generating oplist...'
+    gen_oplist.print_file(open('%s/doc/doc/oplist.txt' % throot, 'w'))
+    print 'oplist done!'
+
+    import gen_typelist
+    print 'Generating typelist...'
+    gen_typelist.print_file(open('%s/doc/doc/typelist.txt' % throot, 'w'))
+    print 'typelist done!'
+
     os.chdir(throot)
 
     def mkdir(path):
@@ -81,6 +91,6 @@ if __name__ == '__main__':
     if len(sys.argv) == 1 or sys.argv[1] != 'epydoc':
         import sphinx
         sys.path[0:0] = [os.path.realpath('doc')]
-        sphinx.main(['', 'doc', 'html'])
+        sphinx.main(['', '-E', 'doc', 'html'])
 
 

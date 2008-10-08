@@ -36,7 +36,7 @@ master_doc = 'index'
 
 # General substitutions.
 project = 'theano'
-copyright = '2008, Olivier Breuleux, James Bergstra'
+copyright = '2008, LISA lab'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
