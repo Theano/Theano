@@ -548,16 +548,22 @@ copy_reg.pickle(slice, _pickle_slice)
 
 
 
+__checkers = []
 
-def check_equal_numpy(x, y):
-    """
-    Returns True iff x and y are equal (checks the dtype and
-    shape if x and y are numpy.ndarray instances).
-    """
-    if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
-        return x.dtype == y.dtype and x.shape == y.shape and numpy.any(abs(x - y) < 1e-10)
-    else:
-        return x == y
+def check_equal(x, y):
+    for checker in __checkers:
+        try:
+            return checker(x, y)
+        except:
+            continue
+    return x == y
+    #raise Exception('No checker for equality between %s and %s' % (x, y))
+
+def register_checker(checker):
+    __checkers.insert(0, checker)
+
+
+
 
 def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
     """
@@ -663,7 +669,7 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
                         for default in defaults]
             makers = [FunctionMaker(inputs, outputs, m, accept_inplace = accept_inplace) for m in mode[1:]]
             fns = [maker.create(dup_defaults(), trustme = True) for maker in makers]
-            builder = partial(SanityCheckFunction, fns, check_equal_numpy)
+            builder = partial(SanityCheckFunction, fns, check_equal)
             maker1 = FunctionMaker(inputs, outputs, mode[0], accept_inplace = accept_inplace, function_builder = builder)
             fn = maker1.create(defaults)
     else:

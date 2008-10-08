@@ -27,6 +27,21 @@ from .. import compile
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
 
+
+def check_equal_numpy(x, y):
+    """
+    Returns True iff x and y are equal (checks the dtype and
+    shape if x and y are numpy.ndarray instances).
+    """
+    if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
+        return x.dtype == y.dtype and x.shape == y.shape and numpy.any(abs(x - y) < 1e-10)
+    else:
+        return x == y
+
+compile.register_checker(check_equal_numpy)
+
+
+
 __oplist_constructor_list = []
 """List of functions to be listed as op constructors in the oplist (`gen_oplist`, doc/oplist.txt)."""
 def constructor(f):
