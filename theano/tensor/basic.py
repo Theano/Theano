@@ -648,7 +648,7 @@ def cast(t, dtype):
 #to be removed as we get the epydoc routine-documenting thing going -JB 20080924
 def _conversion(real_value):
     __oplist_tag(real_value, 'casting')
-    real_value.__module__='tensor'
+    real_value.__module__='tensor.basic'
     return real_value
 
 convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))

@@ -1,7 +1,7 @@
 """script to generate doc/oplist.txt, which compiles to :doc:`oplist`. """
 __docformat__ = "restructuredtext en"
 import sys
-import gof
+from theano import gof
 
 def print_title(title_string, under_char, over_char=''):
     l = len(title_string)
@@ -94,15 +94,25 @@ class EntryConstructor(Entry):
         Entry.__init__(self, symbol, name, module)
 
 
-def search_entries(module_list):
-    ops = []
-    constructors = []
+def search_entries(module_list, ops = None, constructors = None, seen = None):
+    if ops is None: ops = []
+    if constructors is None: constructors = []
+    if seen is None: seen = set()
+    modules = []
 
     for module in module_list:
         symbol_name_list = [s for s in dir(module) if not s[0] == '_']
-
+        
 	for symbol_name in symbol_name_list:
 	    symbol = getattr(module, symbol_name)
+            try:
+                if symbol in seen:
+                    continue
+                seen.add(symbol)
+            except TypeError:
+                pass
+            if type(symbol) == type(module): # module
+                modules.append(symbol)
             try:
                 ops.append(EntryOp(symbol, symbol_name, module))
             except TypeError:
@@ -110,6 +120,9 @@ def search_entries(module_list):
                     constructors.append(EntryConstructor(symbol, symbol_name, module))
                 except TypeError:
                     pass
+
+    for symbol in modules:
+        search_entries([symbol], ops, constructors, seen)
 
     return ops, constructors
 
@@ -141,7 +154,7 @@ def print_entries(ops, constructors):
 
 if __name__ == "__main__":
     """Generate the op list"""
-    import scalar, sparse, tensor
+    import theano
 
     print_title("Op List", "~", "~")
     print """
@@ -156,11 +169,8 @@ In the future, this list may distinguish `constructors` that are Op instances fr
     print ".. contents:: "
     print ""
 
-    ops, constructors = search_entries([scalar, sparse, tensor])
+    ops, constructors = search_entries([theano])
 
     print_entries(ops, constructors)
 
     print ""
-
-    for line in open("doc/header.txt"):
-        print line[:-1]

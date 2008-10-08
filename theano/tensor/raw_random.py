@@ -64,6 +64,20 @@ class RandomFunction(gof.Op):
         return hash(self.fn) ^ hash(self.outtype) ^ hash(self.args) ^ hash(self.inplace)
 
 
+__oplist_constructor_list = []
+"""List of functions to be listed as op constructors in the oplist (`gen_oplist`, doc/oplist.txt)."""
+def constructor(f):
+    """Add `f` to :doc:`oplist`.
+    
+    Make `f` appear as a constructor in the oplist (`gen_oplist`, doc/oplist.txt).
+    """
+    __oplist_constructor_list.append(f)
+    return f
+def __oplist_tag(thing, tag):
+    tags = getattr(thing, '__oplist_tags', [])
+    tags.append(tag)
+    thing.__oplist_tags = tags
+
 def random_function(fn, dtype, *rfargs, **rfkwargs):
     """
     Returns a wrapper around RandomFunction which automatically infers the number 
@@ -76,6 +90,7 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
     - make_lvector(x, y, z, ...)
     - constants
     """
+    @constructor
     def f(ndim, *args, **kwargs):
         if isinstance(ndim, int):
             r, shape, args = args[0], args[1], args[2:]
@@ -94,10 +109,48 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
 RS = numpy.random.RandomState
 
 # we need to provide defaults for all the functions in order to infer the argument types...
+
 uniform = random_function(RS.uniform, 'float64', 0.0, 1.0)
+uniform.__doc__ = """
+Usage: uniform(random_state, size, low=0.0, high=1.0)
+Sample from a uniform distribution between low and high.
+
+If the size argument is ambiguous on the number of
+dimensions, the first argument may be a plain integer
+to supplement the missing information.
+"""
+
 binomial = random_function(RS.binomial, 'int64', 1, 0.5)
+binomial.__doc__ = """
+Usage: binomial(random_state, size, n=1, prob=0.5)
+Sample n times with probability of success prob for each trial,
+return the number of successes.
+
+If the size argument is ambiguous on the number of
+dimensions, the first argument may be a plain integer
+to supplement the missing information.
+"""
+
 normal = random_function(RS.normal, 'float64', 0.0, 1.0)
+normal.__doc__ = """
+Usage: normal(random_state, size, avg=0.0, std=1.0)
+Sample from a normal distribution centered on avg with
+the specified standard deviation (std)
+
+If the size argument is ambiguous on the number of
+dimensions, the first argument may be a plain integer
+to supplement the missing information.
+"""
+
 random_integers = random_function(RS.random_integers, 'int64', 0, 1)
+random_integers.__doc__ = """
+Usage: random_integers(random_state, size, low=0, high=1)
+Sample a random integer between low and high, both inclusive.
+
+If the size argument is ambiguous on the number of
+dimensions, the first argument may be a plain integer
+to supplement the missing information.
+"""
 
 
 @gof.local_optimizer
