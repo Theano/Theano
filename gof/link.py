@@ -111,7 +111,19 @@ class Linker(object):
 
 
 class Container(object):
+    """WRITEME
+    """
     def __init__(self, r, storage, readonly = False, strict = False, name = None):
+        """WRITEME
+
+        :Parameters:
+         `r`: 
+         `storage`: 
+         `readonly`: 
+         `strict`: 
+         `name`: 
+
+        """
         if not isinstance(storage, list) or not len(storage) >= 1:
             raise TypeError("storage must be a list of length at least one")
         #self.r = r
