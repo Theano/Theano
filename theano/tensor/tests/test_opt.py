@@ -61,7 +61,7 @@ def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
 
 ds = lambda x, y: DimShuffle(x.type.broadcastable, y)(x)
 
-class _test_dimshuffle_lift(unittest.TestCase):
+class test_dimshuffle_lift(unittest.TestCase):
 
     def test_double_transpose(self):
         x, y, z = inputs()
@@ -102,7 +102,7 @@ from theano.tensor import *
 
 #from sandbox import pprint
 
-class _test_greedy_distribute(unittest.TestCase):
+class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
         a, b, c, d, x, y, z = matrices('abcdxyz')
         e = (a/z + b/x) * x * z
@@ -115,7 +115,7 @@ class _test_greedy_distribute(unittest.TestCase):
         
 
 
-class _test_canonize(unittest.TestCase):
+class test_canonize(unittest.TestCase):
 
     def test_muldiv(self):
         x, y, z = matrices('xyz')

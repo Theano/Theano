@@ -15,7 +15,7 @@ def Env(i, o):
     e = gof.Env(i, o)
     return e
 
-class _test_DimShuffle(unittest.TestCase):
+class test_DimShuffle(unittest.TestCase):
 
     def with_linker(self, linker):
         for xsh, shuffle, zsh in [((2, 3), (1, 'x', 0), (3, 1, 2)),
@@ -35,7 +35,7 @@ class _test_DimShuffle(unittest.TestCase):
         self.with_linker(gof.PerformLinker())
 
 
-class _test_Broadcast(unittest.TestCase):
+class test_Broadcast(unittest.TestCase):
 
     def with_linker(self, linker):
         for xsh, ysh in [((3, 5), (3, 5)),
@@ -119,7 +119,7 @@ class _test_Broadcast(unittest.TestCase):
         assert (f(xv) == zv).all()
 
 
-class _test_CAReduce(unittest.TestCase):
+class test_CAReduce(unittest.TestCase):
 
     def with_linker(self, linker):
         for xsh, tosum in [((5, 6), None),
