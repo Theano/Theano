@@ -1,0 +1,96 @@
+================================================
+Graph: interconnected Apply and Result instances
+================================================
+
+In theano, a graph is an implicit concept, not a class or an instance.
+When we create `Results` and then `apply` `operations` to them to make more `Results`, we build a bi-partite, directed, acyclic graph.
+Results point to `Apply` instances (via their `owner` attribute) and `Apply` instances point to `Results` (via their `inputs` and `outputs` fields).
+
+To see how `Result`, `Type`, `Apply`, and `Op` all work together, compare the following code fragment and illustration.
+
+.. code-block:: python
+
+    x = matrix('x')
+    y = matrix('y')
+    z = x + y
+
+.. image:: http://lgcm.iro.umontreal.ca/theano/attachment/wiki/GraphStructures/apply.png?format=raw
+
+Arrows represent references (python's pointers), the blue box is an Apply instance, red boxes are `Result` nodes, green circles are `Op` instances, purple boxes are `Type` instances.
+
+Two examples
+============
+
+Here's how to build a graph the convenient way...
+
+.. code-block:: python
+
+    from theano.tensor import *
+
+    # create 3 Results with owner = None
+    x = matrix('x')
+    y = matrix('y')
+    z = matrix('z')
+
+    # create 2 Results (one for 'e', one intermediate for y*z)
+    # create 2 Apply instances (one for '+', one for '*')
+    e = x + y * z
+
+Long example
+============
+
+The example above uses several syntactic shortcuts.
+If we had wanted a more brute-force approach to graph construction, we could have typed this.
+
+.. code-block:: python
+
+    from theano.tensor import *
+
+    # We instantiate a type that represents a matrix of doubles
+    float64_matrix = Tensor(dtype = 'float64',              # double
+                            broadcastable = (False, False)) # matrix
+
+    # We make the Result instances we need.
+    x = Result(type = float64_matrix, name = 'x')
+    y = Result(type = float64_matrix, name = 'y')
+    z = Result(type = float64_matrix, name = 'z')
+
+    # This is the Result that we want to symbolically represents y*z
+    mul_result = Result(type = float64_matrix)
+    assert mul_result.owner is None
+
+    # We instantiate a symbolic multiplication
+    node_mul = Apply(op = mul,
+                     inputs = [y, z],
+                     outputs = [mul_result])
+    assert mul_result.owner is node_mul and mul_result.index == 0 # these fields are set by Apply
+
+    # This is the Result that we want to symbolically represents x+(y*z)
+    add_result = Result(type = float64_matrix)
+    assert add_result.owner is None
+
+    # We instantiate a symbolic addition
+    node_add = Apply(op = add,
+                     inputs = [x, mul_result],
+                     outputs = [add_result])
+    assert add_result.owner is node_add and add_result.index == 0 # these fields are set by Apply
+
+    e = add_result
+
+    # We have access to x, y and z through pointers
+    assert e.owner.inputs[0] is x
+    assert e.owner.inputs[1] is mul_result
+    assert e.owner.inputs[1].owner.inputs[0] is y
+    assert e.owner.inputs[1].owner.inputs[1] is z
+
+
+Note how the call to `Apply` modifies the `owner` and `index` fields of the `Result` s passed as outputs to point to itself and the rank they occupy in the output list. This whole machinery builds a DAG (Directed Acyclic Graph) representing the computation, a graph that theano can compile and optimize.
+
+
+.. _README: ../README.html
+.. _Download: ../README.html#downloading-theano
+.. _Documentation: index.html
+.. _Wiki: http://pylearn.org/theano
+.. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
+
+
