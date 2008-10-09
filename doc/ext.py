@@ -1,4 +1,5 @@
 
+import sys
 import re
 import os
 from docutils import nodes, utils
@@ -59,9 +60,12 @@ def create_api_role(name, problematic):
 
 def setup(app):
 
-    xlink.set_api_file('api', os.path.join(app.outdir, 'api', 'api-objects.txt'))
-    xlink.set_api_root('api', os.path.join(app.outdir, 'api', ''))
-    #xlink.create_api_role('api', True)
-    create_api_role('api', True)
+    try:
+        xlink.set_api_file('api', os.path.join(app.outdir, 'api', 'api-objects.txt'))
+        xlink.set_api_root('api', os.path.join(app.outdir, 'api', ''))
+        #xlink.create_api_role('api', True)
+        create_api_role('api', True)
+    except IOError:
+        print >>sys.stderr, 'WARNING: Could not find api file! API links will not work.'
 
     app.add_role("wiki", role_fn)

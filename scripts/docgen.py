@@ -54,10 +54,24 @@ docintrospecter.register_introspecter(
     priority=-1)
 
 
+import getopt
+from collections import defaultdict
 
 if __name__ == '__main__':
 
     throot = "/".join(sys.path[0].split("/")[:-1])
+
+    options = defaultdict(bool)
+    options.update(dict([x, y or True] for x, y in getopt.getopt(sys.argv[1:], 'o:', ['epydoc', 'rst', 'help'])[0]))
+    if options['--help']:
+        print 'Usage: %s [OPTIONS]' % sys.argv[0]
+        print '  -o <dir>: output the html files in the specified dir'
+        print '  --rst: only compile the doc (requires sphinx)'
+        print '  --epydoc: only compile the api documentation (requires epydoc)'
+        print '  --help: this help'
+        sys.exit(0)
+
+    options['--all'] = not (bool(options['--epydoc']) ^ bool(options['--rst']))
 
     import gen_oplist
     print 'Generating oplist...'
@@ -69,28 +83,28 @@ if __name__ == '__main__':
     gen_typelist.print_file(open('%s/doc/doc/typelist.txt' % throot, 'w'))
     print 'typelist done!'
 
-    os.chdir(throot)
-
     def mkdir(path):
         try:
             os.mkdir(path)
         except OSError:
             pass
 
-    mkdir("html")
-    mkdir("html/doc")
-    mkdir("html/api")
+    outdir = options['-o'] or (throot + '/html')
+    mkdir(outdir)
+    os.chdir(outdir)
+    mkdir("doc")
+    mkdir("api")
 
-    if len(sys.argv) == 1 or sys.argv[1] != 'rst':
+    if options['--all'] or options['--epydoc']:
         from epydoc.cli import cli
-        sys.path[0:0] = os.path.realpath('.')
-        sys.argv[:] = ['', '--config', 'doc/api/epydoc.conf', '-o', 'html/api']
+        sys.path[0:0] = throot
+        sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot, '-o', 'api']
         cli()
 #        os.system("epydoc --config doc/api/epydoc.conf -o html/api")
 
-    if len(sys.argv) == 1 or sys.argv[1] != 'epydoc':
+    if options['--all'] or options['--rst']:
         import sphinx
-        sys.path[0:0] = [os.path.realpath('doc')]
-        sphinx.main(['', '-E', 'doc', 'html'])
+        sys.path[0:0] = [os.path.join(throot, 'doc')]
+        sphinx.main(['', '-E', os.path.join(throot, 'doc'), '.'])
 
 
