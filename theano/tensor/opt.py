@@ -8,6 +8,7 @@ from ..gof import opt
 from elemwise import Elemwise, DimShuffle
 from .. import scalar
 import basic as T
+import inplace as I
 import numpy as N
 import operator
 import itertools
@@ -30,7 +31,7 @@ def in2out(*local_opts):
 
 # gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)
 # Transforms d -= a * dot(b, c) into gemm(d, -a, b, c, 1.0)
-gemm_pattern_1 = gof.PatternSub((T._sub_inplace,
+gemm_pattern_1 = gof.PatternSub((I.sub_inplace,
                                  'd',
                                  (T.mul,
                                   dict(pattern = (T.DimShuffle((), ['x', 'x'], inplace = True), 'a'),

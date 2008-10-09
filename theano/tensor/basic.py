@@ -450,7 +450,7 @@ cols, fcols, dcols, icols, lcols = _multi(col, fcol, dcol, icol, lcol)
 
 class _tensor_py_operators:
     #UNARY
-    def __abs__(self): return _abs(self)
+    def __abs__(self): return abs_(self)
     def __neg__(self): return neg(self)
 
     #CASTS
@@ -472,9 +472,9 @@ class _tensor_py_operators:
     def __rand__(self,other): return and_(other,self)
     def __ror__(self,other): return or_(other, self)
     def __rxor__(self,other): return xor(other, self)
-    def __iand__(self, other): return _and_inplace(self, other)
-    def __ior__(self, other): return _or_inplace(self, other)
-    def __ixor__(self, other): return _xor_inplace(self, other)
+#     def __iand__(self, other): return _and_inplace(self, other)
+#     def __ior__(self, other): return _or_inplace(self, other)
+#     def __ixor__(self, other): return _xor_inplace(self, other)
 
     #ARITHMETIC - NORMAL
     def __add__(self,other): return add(self,other)
@@ -484,12 +484,12 @@ class _tensor_py_operators:
     def __pow__(self,other): return pow(self,other)
     def __mod__(self,other): return mod(self,other)
 
-    #ARITHMETIC - INPLACE
-    def __iadd__(self,other): return _add_inplace(self,other)
-    def __isub__(self,other): return _sub_inplace(self,other)
-    def __imul__(self,other): return _mul_inplace(self,other)
-    def __idiv__(self,other): return _div_inplace(self,other)
-    def __ipow__(self,other): return _pow_inplace(self,other)
+#     #ARITHMETIC - INPLACE
+#     def __iadd__(self,other): return _add_inplace(self,other)
+#     def __isub__(self,other): return _sub_inplace(self,other)
+#     def __imul__(self,other): return _mul_inplace(self,other)
+#     def __idiv__(self,other): return _div_inplace(self,other)
+#     def __ipow__(self,other): return _pow_inplace(self,other)
 
     #ARITHMETIC - RIGHT-OPERAND
     def __radd__(self,other): return add(other,self)
@@ -562,7 +562,7 @@ elemwise.TensorValue = TensorValue
 def _elemwise(scalar_op, name, doc_prefix=''):
     straight = elemwise.Elemwise(scalar_op, name = name)
     inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-    inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = '_'+name+"_inplace")
+    inplace = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name = name+"_inplace")
 
     # don't add the inplace versions, they aren't supposed to be part of the user interface
     _constructor_list.append(straight) 
@@ -599,7 +599,7 @@ def _scal_elemwise(symbol):
     inplace = symbolname.endswith('_inplace')
 
     if inplace:
-        scalar_op = getattr(scal, symbolname[1:-len('_inplace')])
+        scalar_op = getattr(scal, symbolname[:-len('_inplace')])
         inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
         rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=symbolname)
     else:
@@ -781,48 +781,24 @@ def lt(a, b):
     """a < b"""
 
 @_scal_elemwise
-def _lt_inplace(a,b):
-    """a < b (inplace on a)"""
-
-@_scal_elemwise
 def gt(a, b):
     """a > b"""
-
-@_scal_elemwise
-def _gt_inplace(a,b):
-    """a > b (inplace on a)"""
 
 @_scal_elemwise
 def le(a, b):
     """a <= b"""
 
 @_scal_elemwise
-def _le_inplace(a,b):
-    """a <= b (inplace on a)"""
-
-@_scal_elemwise
 def ge(a, b):
     """a >= b"""
-
-@_scal_elemwise
-def _ge_inplace(a,b):
-    """a >= b (inplace on a)"""
 
 @_scal_elemwise
 def eq(a, b):
     """a == b"""
 
 @_scal_elemwise
-def _eq_inplace(a,b):
-    """a == b (inplace on a)"""
-
-@_scal_elemwise
 def neq(a, b):
     """a != b"""
-
-@_scal_elemwise
-def _neq_inplace(a,b):
-    """a != b (inplace on a)"""
 
 
 ##########################
@@ -834,147 +810,85 @@ def and_(a,b):
     """bitwise a & b"""
 
 @_scal_elemwise
-def _and__inplace(a,b):
-    """bitwise a & b (inplace on a)"""
-
-@_scal_elemwise
 def or_(a,b):
     """bitwise a | b"""
-
-@_scal_elemwise
-def _or__inplace(a,b):
-    """bitwise a | b (inplace on a)"""
 
 @_scal_elemwise
 def xor(a,b):
     """bitwise a ^ b"""
 
 @_scal_elemwise
-def _xor_inplace(a,b):
-    """bitwise a ^ b (inplace on a)"""
-
-@_scal_elemwise
 def invert(a):
     """bitwise ~a"""
-
-@_scal_elemwise
-def _invert_inplace(a):
-    """bitwise ~a (inplace on a)"""
 
 ##########################
 # Math
 ##########################
 
 @_scal_elemwise
-def _abs(a):
+def abs_(a):
     """|`a`|
 
-    _abs has a leading underscore because abs() is a builtin.  TensorResult overloads the
-    `TensorResult.__abs__` operator so that this function is called when you type abs(a).
+    TensorResult overloads the `TensorResult.__abs__` operator so that
+    this function is called when you type abs(a).
 
     """
 
 @_scal_elemwise
-def __abs_inplace(a):
-    """|`a`| (inplace on `a`)"""
-
-@_scal_elemwise
 def exp(a):
     """e^`a`"""
-@_scal_elemwise
-def _exp_inplace(a):
-    """e^`a` (inplace on `a`)"""
 
 @_scal_elemwise
 def neg(a):
     """-a"""
-@_scal_elemwise
-def _neg_inplace(a):
-    """-a (inplace on a)"""
 
 @_scal_elemwise
 def inv(a):
-    """1.0/a (inplace on a)"""
-@_scal_elemwise
-def _inv_inplace(a):
     """1.0/a (inplace on a)"""
 
 @_scal_elemwise
 def log(a):
     """base e logarithm of a"""
-@_scal_elemwise
-def _log_inplace(a):
-    """base e logarithm of a (inplace on a)"""
 
 @_scal_elemwise
 def log2(a):
     """base 2 logarithm of a"""
-@_scal_elemwise
-def _log2_inplace(a):
-    """base 2 logarithm of a (inplace on a)"""
 
 @_scal_elemwise
 def sgn(a):
     """sign of a"""
-@_scal_elemwise
-def _sgn_inplace(a):
-    """sign of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def sqr(a):
     """square of a"""
-@_scal_elemwise
-def _sqr_inplace(a):
-    """square of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def sqrt(a):
     """square root of a"""
-@_scal_elemwise
-def _sqrt_inplace(a):
-    """square root of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def cos(a):
     """cosine of a"""
-@_scal_elemwise
-def _cos_inplace(a):
-    """cosine of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def sin(a):
     """sine of a"""
-@_scal_elemwise
-def _sin_inplace(a):
-    """sine of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def tan(a):
     """tangent of a"""
-@_scal_elemwise
-def _tan_inplace(a):
-    """tangent of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def cosh(a):
     """hyperbolic cosine of a"""
-@_scal_elemwise
-def _cosh_inplace(a):
-    """hyperbolic cosine of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def sinh(a):
     """hyperbolic sine of a"""
-@_scal_elemwise
-def _sinh_inplace(a):
-    """hyperbolic sine of `a` (inplace on `a`)"""
 
 @_scal_elemwise
 def tanh(a):
     """hyperbolic tangent of a"""
-@_scal_elemwise
-def _tanh_inplace(a):
-    """hyperbolic tangent of `a` (inplace on `a`)"""
 
 
 ##########################
@@ -986,12 +900,8 @@ def _tanh_inplace(a):
 @_scal_elemwise
 def second(a, b):
     """Create a matrix by filling the shape of a with b"""
-@_scal_elemwise
-def _second_inplace(a):
-    """Fill `a` with `b`"""
 
 fill = second
-_fill_inplace = _second_inplace
 
 @constructor
 def ones_like(model):
@@ -1112,44 +1022,26 @@ repeat = Repeat()
 @_scal_elemwise
 def add(a, b):
     """elementwise addition"""
-@_scal_elemwise
-def _add_inplace(a, b):
-    """elementwise addition (inplace on `a`)"""
 
 @_scal_elemwise
 def sub(a, b):
     """elementwise subtraction"""
-@_scal_elemwise
-def _sub_inplace(a, b):
-    """elementwise subtraction (inplace on `a`)"""
 
 @_scal_elemwise
 def mul(a, b):
     """elementwise multiplication"""
-@_scal_elemwise
-def _mul_inplace(a, b):
-    """elementwise multiplication (inplace on `a`)"""
 
 @_scal_elemwise
 def div(a, b):
     """elementwise division"""
-@_scal_elemwise
-def _div_inplace(a, b):
-    """elementwise division (inplace on `a`)"""
 
 @_scal_elemwise
 def mod(a, b):
     """elementwise modulo"""
-@_scal_elemwise
-def _mod_inplace(a, b):
-    """elementwise modulo (inplace on `a`)"""
 
 @_scal_elemwise
 def pow(a, b):
     """elementwise power"""
-@_scal_elemwise
-def _pow_inplace(a, b):
-    """elementwise power (inplace on `a`)"""
 
 
 ##########################
@@ -1182,7 +1074,6 @@ class TransposeInplace(Op):
         return "TransposeView"
 
 _transpose_inplace = TransposeInplace()
-"""WRITEME"""
 
 def transpose(x, **kwargs):
     """WRITEME"""

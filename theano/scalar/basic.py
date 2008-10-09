@@ -183,7 +183,7 @@ complex_types = complex64, complex128
 class _scalar_py_operators:
 
     #UNARY
-    def __abs__(self): return _abs(self)
+    def __abs__(self): return abs_(self)
     def __neg__(self): return neg(self)
 
     #CASTS
@@ -587,7 +587,7 @@ class Abs(UnaryScalarOp):
             return "%(z)s = fabs(%(x)s);" % locals()
         #complex, other?
         raise NotImplementedError('type not supported', type)
-_abs = Abs(same_out)
+abs_ = Abs(same_out)
 
 class Sgn(UnaryScalarOp):
     def impl(self, x):

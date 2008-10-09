@@ -147,7 +147,7 @@ class T_conversion(unittest.TestCase):
             self.failUnless(numpy.all(val[0] == [1,0,0,0,0]))
 
 
-class _testCase_dot(unittest.TestCase):
+class test_dot(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(44)
 

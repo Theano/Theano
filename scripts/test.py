@@ -4,7 +4,7 @@ theano_path = os.path.realpath("%s/.." % sys.path[0])
 sys.path[0:0] = [theano_path]
 
 def test_module(module_path, debugmode = False):
-    files = commands.getoutput("find %s -name _test_*.py" % module_path)
+    files = commands.getoutput("find %s -name test_*.py" % module_path)
     suite = None
     tocut = len("/".join(module_path.split("/")[:-1])) + 1
     for file in files.split("\n"):

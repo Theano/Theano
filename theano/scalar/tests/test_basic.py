@@ -11,7 +11,7 @@ def inputs():
     return floats('xyz')
 
 
-class _test_ScalarOps(unittest.TestCase):
+class test_ScalarOps(unittest.TestCase):
 
     def test_straightforward(self):
         x, y, z = inputs()
@@ -21,7 +21,7 @@ class _test_ScalarOps(unittest.TestCase):
         assert fn(1.0, 2.0) == 1.5
 
 
-class _test_composite(unittest.TestCase):
+class test_composite(unittest.TestCase):
 
     def test_straightforward(self):
         x, y, z = inputs()
@@ -57,7 +57,7 @@ class _test_composite(unittest.TestCase):
         assert fn(1.0, 2.0, 3.0) == [6.0, 7.0, 0.5]
 
 
-class _test_logical(unittest.TestCase):
+class test_logical(unittest.TestCase):
     def test_gt(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(Env([x,y], [x > y])).make_function()

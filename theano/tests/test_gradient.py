@@ -9,7 +9,7 @@ from theano import gof
 from theano.gradient import *
 from theano import gradient
 
-class _test_grad_sources_inputs(unittest.TestCase):
+class test_grad_sources_inputs(unittest.TestCase):
     def test_retNone1(self): 
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
