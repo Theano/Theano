@@ -32,7 +32,7 @@ class Entry:
     def __init__(self, symbol, name, current_module):
         self.symbol = symbol
         self.name = name
-        self.module = symbol.__module__ #current_module.__name__ # symbol.__module__
+        self.module = symbol.__module__ # current_module.__name__ # symbol.__module__
         self.docstring = symbol.__doc__
         self.tags = ['%s' % current_module.__name__] + getattr(symbol, '__oplist_tags', [])
 
