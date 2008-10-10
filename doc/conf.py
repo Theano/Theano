@@ -158,7 +158,7 @@ htmlhelp_basename = 'theanodoc'
 # (source start file, target name, title, author, document class [howto/manual]).
 latex_documents = [
   ('index', 'theano.tex', 'theano Documentation',
-   'Olivier Breuleux, James Bergstra', 'manual'),
+   'LISA lab', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
