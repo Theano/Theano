@@ -72,7 +72,6 @@ class RandomFunction(gof.Op):
         return hash(self.fn) ^ hash(self.outtype) ^ hash(self.args) ^ hash(self.inplace)
 
     def __getstate__(self):
-        print self.state
         return self.state
 
     def __setstate__(self, state):
