@@ -258,10 +258,6 @@ class CompositeInstance(object):
             ##self.__items__[item] = value
             raise TypeError('Cannot set item %s' % item)
 
-    def initialize(self, init):
-        for i, initv in enumerate(init):
-            self[i] = initv
-
 class Composite(Component):
 
     def resolve(self, name):
@@ -325,8 +321,13 @@ class Composite(Component):
 
 
 class ComponentListInstance(CompositeInstance):
+
     def __str__(self):
         return '[%s]' % ', '.join(map(str, self.__items__))
+
+    def initialize(self, init):
+        for i, initv in enumerate(init):
+            self[i] = initv
 
 class ComponentList(Composite):
 
@@ -407,10 +408,6 @@ class ModuleInstance(CompositeInstance):
             self.__items__[item] = value
             return
         super(ModuleInstance, self).__setitem__(item, value)
-
-    def initialize(self, init = {}, **kwinit):
-        for name, value in chain(init.iteritems(), kwinit.iteritems()):
-            self[name] = value
     
     def __str__(self):
         strings = []
@@ -533,9 +530,6 @@ class FancyModuleInstance(ModuleInstance):
             raise AttributeError('%s has no %s attribute.' % (self.__class__, attr))
 
     def __setattr__(self, attr, value):
-        if attr in dir(self) or attr in dir(self.__class__):
-            # man this sucks
-            self.__dict__[attr] = value
         try:
             self[attr] = value
         except:
