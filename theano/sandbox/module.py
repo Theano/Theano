@@ -71,6 +71,9 @@ class Component(object):
     def __str__(self):
         return self.__class__.__name__
 
+    def pretty(self):
+        raise NotImplementedError
+
     def __get_name__(self):
         return self._name
 
@@ -103,6 +106,10 @@ class External(Component):
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.r)
 
+    def pretty(self):
+        rval = 'External :: %s' % self.r.type
+        return rval
+
 
 
 class Member(Component):
@@ -128,8 +135,21 @@ class Member(Component):
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.r)
 
+    def pretty(self):
+        rval = 'Member :: %s' % self.r.type
+        return rval
+
+#     def pretty(self, header = False, **kwargs):
+#         cr = '\n    ' if header else '\n'
+#         rval = ''
+#         if header:
+#             rval += 'Member:%s' % cr
+#         rval += '%s :: %s' % ((self.r.name if self.r.name else '<unnamed>'), self.r.type)
+#         return rval
 
 
+
+from theano.sandbox import pprint
 class Method(Component):
 
     def __init__(self, inputs, outputs, updates = {}, **kwupdates):
@@ -205,6 +225,19 @@ class Method(Component):
                                       value = get_storage(input, True))]
         inputs += [(kit, get_storage(kit, True)) for kit in self.kits]
         return compile.function(inputs, outputs, mode)
+
+    def pretty(self, header = True, **kwargs):
+        self.resolve_all()
+#         cr = '\n    ' if header else '\n'
+#         rval = ''
+#         if header:
+#             rval += "Method(%s):" % ", ".join(map(str, self.inputs))
+        if self.inputs:
+            rval = 'inputs: %s\n' % ", ".join(map(str, self.inputs))
+        else:
+            rval = ''
+        rval += pprint.pp.process_graph(self.inputs, self.outputs, self.updates, False)
+        return rval
 
     def __str__(self):
         return "Method(%s -> %s%s%s)" % \
@@ -350,6 +383,16 @@ class ComponentList(Composite):
     def __str__(self):
         return str(self._components)
 
+    def pretty(self, header = True, **kwargs):
+        cr = '\n    ' #if header else '\n'
+        strings = []
+        #if header:
+        #    rval += "ComponentList:"
+        for i, c in self.components_map():
+            strings.append('%i:%s%s' % (i, cr, c.pretty().replace('\n', cr)))
+            #rval += cr + '%i -> %s' % (i, c.pretty(header = True, **kwargs).replace('\n', cr))
+        return '\n'.join(strings)
+
     def __set_name__(self, name):
         super(ComponentList, self).__set_name__(name)
         for i, member in enumerate(self._components):
@@ -405,6 +448,21 @@ class Module(Composite):
             raise TypeError('Module may only contain Components.', value, type(value))
         value.bind(self, item)
         self._components[item] = value
+
+    def pretty(self, header = True, **kwargs):
+        cr = '\n    ' #if header else '\n'
+        strings = []
+#         if header:
+#             rval += "Module:"
+        for name, component in self.components_map():
+            if name.startswith('_'):
+                continue
+            strings.append('%s:%s%s' % (name, cr, component.pretty().replace('\n', cr)))
+        strings.sort()
+        return '\n'.join(strings)
+
+    def __str__(self):
+        return "Module(%s)" % ', '.join(x for x in sorted(map(str, self._components)) if x[0] != '_')
 
     def __set_name__(self, name):
         super(Module, self).__set_name__(name)
@@ -463,6 +521,12 @@ class FancyModule(Module):
         return rval
 
     def __setattr__(self, attr, value):
+        if attr == 'parent':
+            self.__dict__[attr] = value
+            return
+        elif attr == 'name':
+            self.__set_name__(value)
+            return
         value = self.__wrapper__(value)
         try:
             self[attr] = value
@@ -579,9 +643,20 @@ if __name__ == '__main__':
 
     mod.whatever = 123
 
-    print mod._components
+    mod2 = RModule()
+    mod2.submodule = mod
+
+    #print mod._components
+    #print mod
+    #print mod.inc.pretty()
+    print mod2.pretty()
 
     inst = mod.make(s = 2, list = [900, 9000])
+
+    print '---'
+    print inst.test1()
+    print '---'
+
 
     inst.seed(10)
     print inst.test1()

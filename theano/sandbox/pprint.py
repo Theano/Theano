@@ -227,17 +227,39 @@ class PPrinter:
         cp.assign(condition, printer)
         return cp
 
-    def process_graph(self, inputs, outputs):
-        strings = ["inputs: " + ", ".join(map(str, inputs))]
+    def process_graph(self, inputs, outputs, updates = {}, display_inputs = False):
+        if not isinstance(inputs, (list, tuple)): inputs = [inputs]
+        if not isinstance(outputs, (list, tuple)): outputs = [outputs]
+        current = None
+        if display_inputs:
+            strings = [(0, "inputs: " + ", ".join(map(str, list(inputs) + updates.keys())))]
+        else:
+            strings = []
         pprinter = self.clone_assign(lambda pstate, r: r.name is not None and r is not current,
                                      LeafPrinter())
-        for node in gof.graph.io_toposort(inputs, outputs):
+        inv_updates = dict((b, a) for (a, b) in updates.iteritems())
+        i = 1
+        for node in gof.graph.io_toposort(list(inputs) + updates.keys(),
+                                          list(outputs) + updates.values()):
             for output in node.outputs:
+                if output in inv_updates:
+                    name = str(inv_updates[output])
+                    strings.append((i + 1000, "%s <- %s" % (name, pprinter.process(output))))
+                    i += 1
                 if output.name is not None or output in outputs:
-                    name = 'outputs[%i]' % outputs.index(output) if output.name is None else output.name
+                    name = 'out[%i]' % outputs.index(output) if output.name is None else output.name
                     current = output
-                    strings.append("%s = %s" % (name, pprinter.process(output)))
-        return "\n".join(strings)
+                    try:
+                        idx = 2000 + outputs.index(output)
+                    except ValueError:
+                        idx = i
+                    if len(outputs) == 1 and outputs[0] is output:
+                        strings.append((idx, "return %s" % pprinter.process(output)))
+                    else:
+                        strings.append((idx, "%s = %s" % (name, pprinter.process(output))))
+                    i += 1
+        strings.sort()
+        return "\n".join(s[1] for s in strings)
 
 
 
@@ -261,6 +283,8 @@ psub = OperatorPrinter('-', -2, 'left')
 pdot = OperatorPrinter(special['middle_dot'], -1, 'left')
 psum = OperatorPrinter(special['big_sigma']+' ', -2, 'left')
 
+from ..tensor import inplace as I
+
 def pprinter():
     pp = PPrinter()
     pp.assign(lambda pstate, r: True, DefaultPrinter())
@@ -276,16 +300,16 @@ def pprinter():
     pp.assign(T.tensor_copy, IgnorePrinter())
     pp.assign(T.log, FunctionPrinter('log'))
     pp.assign(T.tanh, FunctionPrinter('tanh'))
-    pp.assign(T.transpose_inplace, MemberPrinter('T'))
-    pp.assign(T._abs, PatternPrinter(('|%(0)s|', -1000)))
+    pp.assign(I.transpose_inplace, MemberPrinter('T'))
+    pp.assign(T.abs_, PatternPrinter(('|%(0)s|', -1000)))
     pp.assign(T.sgn, FunctionPrinter('sgn'))
     pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.Filler) and r.owner.op.value == 0, FunctionPrinter('seros'))
     pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.Filler) and r.owner.op.value == 1, FunctionPrinter('ones'))
     pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.Subtensor), SubtensorPrinter())
     pp.assign(T.shape, MemberPrinter('shape'))
     pp.assign(T.fill, FunctionPrinter('fill'))
-    pp.assign(T.vertical_stack, FunctionPrinter('vstack'))
-    pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.MakeVector), MakeVectorPrinter())
+    #pp.assign(T.vertical_stack, FunctionPrinter('vstack'))
+    #pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.MakeVector), MakeVectorPrinter())
     return pp
 
 pp = pprinter()
