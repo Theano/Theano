@@ -213,6 +213,8 @@ class PPrinter:
     def process(self, r, pstate = None):
         if pstate is None:
             pstate = PrinterState(pprinter = self)
+        elif isinstance(pstate, dict):
+            pstate = PrinterState(pprinter = self, **pstate)
         for condition, printer in self.printers:
             if condition(pstate, r):
                 return printer.process(r, pstate)
@@ -313,4 +315,8 @@ def pprinter():
     return pp
 
 pp = pprinter()
+
+pp2 = pprinter()
+pp2.assign(lambda pstate, r: hasattr(pstate, 'target') and pstate.target is not r and r.name is not None,
+           LeafPrinter())
 

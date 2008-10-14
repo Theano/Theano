@@ -32,11 +32,9 @@ class AllocationError(Exception):
 
 class Component(object):
 
-    def __new__(cls, *args, **kwargs):
-        self = object.__new__(cls)
-        self._name = ''
-        self.parent = None
-        return self
+    def __init__(self):
+        self.__dict__['_name'] = ''
+        self.__dict__['parent'] = None
 
     def bind(self, parent, name):
         if self.bound():
@@ -85,11 +83,28 @@ class Component(object):
 
 
 
-class External(Component):
+class _RComponent(Component):
 
     def __init__(self, r):
+        super(_RComponent, self).__init__()
         self.r = r
         self.owns_name = r.name is None
+
+    def __set_name__(self, name):
+        super(_RComponent, self).__set_name__(name)
+        if self.owns_name:
+            self.r.name = name
+
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.r)
+
+    def pretty(self):
+        rval = '%s :: %s' % (self.__class__.__name__, self.r.type)
+        return rval
+
+
+
+class External(_RComponent):
 
     def allocate(self, memo):
         # nothing to allocate
@@ -98,24 +113,15 @@ class External(Component):
     def build(self, mode, memo):
         return None
 
-    def __set_name__(self, name):
-        super(External, self).__set_name__(name)
-        if self.owns_name:
-            self.r.name = name
-
-    def __str__(self):
-        return "%s(%s)" % (self.__class__.__name__, self.r)
-
     def pretty(self):
-        rval = 'External :: %s' % self.r.type
+        rval = super(External, self).pretty()
+        if self.r.owner:
+            rval += '\n= %s' % (pprint.pp2.process(self.r, dict(target = self.r)))
         return rval
 
 
 
-class Member(Component):
-
-    def __init__(self, r):
-        self.r = r
+class Member(_RComponent):
 
     def allocate(self, memo):
         r = self.r
@@ -128,31 +134,13 @@ class Member(Component):
     def build(self, mode, memo):
         return memo[self.r]
 
-    def __set_name__(self, name):
-        super(Member, self).__set_name__(name)
-        self.r.name = name
-
-    def __str__(self):
-        return "%s(%s)" % (self.__class__.__name__, self.r)
-
-    def pretty(self):
-        rval = 'Member :: %s' % self.r.type
-        return rval
-
-#     def pretty(self, header = False, **kwargs):
-#         cr = '\n    ' if header else '\n'
-#         rval = ''
-#         if header:
-#             rval += 'Member:%s' % cr
-#         rval += '%s :: %s' % ((self.r.name if self.r.name else '<unnamed>'), self.r.type)
-#         return rval
-
 
 
 from theano.sandbox import pprint
 class Method(Component):
 
     def __init__(self, inputs, outputs, updates = {}, **kwupdates):
+        super(Method, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
         self.updates = dict(updates, **kwupdates)
@@ -264,8 +252,11 @@ class CompositeInstance(object):
         x = self.__items__[item]
         if isinstance(x, gof.Container):
             x.value = value
-        else:
+        elif hasattr(x, 'initialize'):
             x.initialize(value)
+        else:
+            ##self.__items__[item] = value
+            raise TypeError('Cannot set item %s' % item)
 
     def initialize(self, init):
         for i, initv in enumerate(init):
@@ -328,11 +319,19 @@ class Composite(Component):
     def __setitem__(self, item, value):
         self.set(item, value)
 
+    def __iter__(self):
+        return (c.r if isinstance(c, (External, Member)) else c for c in self.components())
 
+
+
+class ComponentListInstance(CompositeInstance):
+    def __str__(self):
+        return '[%s]' % ', '.join(map(str, self.__items__))
 
 class ComponentList(Composite):
 
     def __init__(self, *_components):
+        super(ComponentList, self).__init__()
         if len(_components) == 1 and isinstance(_components[0], (list, tuple)):
             _components = _components[0]
         self._components = []
@@ -360,7 +359,7 @@ class ComponentList(Composite):
 
     def build(self, mode, memo):
         builds = [c.build(mode, memo) for c in self._components]
-        return CompositeInstance(self, builds)
+        return ComponentListInstance(self, builds)
 
     def get(self, item):
         return self._components[item]
@@ -401,6 +400,7 @@ class ComponentList(Composite):
 
 
 class ModuleInstance(CompositeInstance):
+    __hide__ = []
 
     def __setitem__(self, item, value):
         if item not in self.__items__:
@@ -411,11 +411,23 @@ class ModuleInstance(CompositeInstance):
     def initialize(self, init = {}, **kwinit):
         for name, value in chain(init.iteritems(), kwinit.iteritems()):
             self[name] = value
+    
+    def __str__(self):
+        strings = []
+        for k, v in sorted(self.__items__.iteritems()):
+            if isinstance(v, gof.Container):
+                v = v.value
+            if not k.startswith('_') and not callable(v) and not k in self.__hide__:
+                pre = '%s: ' % k
+                strings.append('%s%s' % (pre, str(v).replace('\n', '\n' + ' '*len(pre))))
+        return '{%s}' % '\n'.join(strings).replace('\n', '\n ')
+
 
 class Module(Composite):
     __instance_type__ = ModuleInstance
 
     def __init__(self, components = {}, **kwcomponents):
+        super(Module, self).__init__()
         components = dict(components, **kwcomponents)
         self._components = components
 
@@ -489,20 +501,41 @@ def wrap(x):
 register_wrapper(lambda x: isinstance(x, gof.Result),
                  lambda x: External(x))
 
-register_wrapper(lambda x: isinstance(x, list) and all(isinstance(r, Component) for r in x),
+register_wrapper(lambda x: isinstance(x, (list, tuple)) and all(isinstance(r, Component) for r in x),
                  lambda x: ComponentList(*x))
 
-register_wrapper(lambda x: isinstance(x, list) \
+register_wrapper(lambda x: isinstance(x, (list, tuple)) \
                      and all(isinstance(r, gof.Result) and not r.owner for r in x),
                  lambda x: ComponentList(*map(Member, x)))
 
 
+class Curry:
+    def __init__(self, obj, name, arg):
+        self.obj = obj
+        self.name = name
+        self.meth = getattr(self.obj, self.name)
+        self.arg = arg
+    def __call__(self, *args, **kwargs):
+        self.meth(self.arg, *args, **kwargs)
+    def __getstate__(self):
+        return [self.obj, self.name, self.arg]
+    def __setstate__(self, state):
+        self.obj, self.name, self.arg = state
+        self.meth = getattr(self.obj, self.name)
+    
+
 class FancyModuleInstance(ModuleInstance):
 
     def __getattr__(self, attr):
-        return self[attr]
+        try:
+            return self[attr]
+        except KeyError:
+            raise AttributeError('%s has no %s attribute.' % (self.__class__, attr))
 
     def __setattr__(self, attr, value):
+        if attr in dir(self) or attr in dir(self.__class__):
+            # man this sucks
+            self.__dict__[attr] = value
         try:
             self[attr] = value
         except:
@@ -515,7 +548,10 @@ class FancyModule(Module):
         return wrap(x)
 
     def __getattr__(self, attr):
-        rval = self[attr]
+        try:
+            rval = self[attr]
+        except KeyError:
+            raise AttributeError('%s has no %s attribute.' % (self.__class__, attr))
         if isinstance(rval, (External, Member)):
             return rval.r
         return rval
@@ -540,7 +576,7 @@ class FancyModule(Module):
         inst = super(FancyModule, self).build(mode, memo)
         for method in dir(self):
             if method.startswith('_instance_'):
-                setattr(inst, method[10:], partial(getattr(self, method), inst))
+                setattr(inst, method[10:], Curry(self, method, inst))
         return inst
 
     def _instance_initialize(self, inst, init = {}, **kwinit):
@@ -552,6 +588,7 @@ class FancyModule(Module):
 class KitComponent(Component):
     
     def __init__(self, kit):
+        super(KitComponent, self).__init__()
         self.kit = kit
 
     def allocate(self, memo):
@@ -572,7 +609,7 @@ class KitComponent(Component):
         return memo[self.kit]
 
 
-from theano import tensor as T
+from .. import tensor as T
 class RModule(FancyModule):
 
     def __init__(self, components = {}, **kwcomponents):
@@ -603,81 +640,3 @@ class RModule(FancyModule):
 
 
 
-
-if __name__ == '__main__':
-    from theano import tensor as T
-
-    x, y = T.scalars('xy')
-    s = T.scalar()
-    s1, s2, s3 = T.scalars('s1', 's2', 's3')
-    #rterm = T.random.random_integers(T.shape(s), 100, 1000)
-
-    # print T.random.sinputs
-
-    # f = compile.function([x, 
-    #                       ((s, s + x + rterm), 10),
-    #                       (T.random, 10)],
-    #                      s + x)
-
-
-    # print f[s]
-    # print f(10)
-    # print f[s]
-
-
-
-    mod = RModule()
-    mod.s = Member(s)
-    #mod.list = ComponentList(Member(s1), Member(s2))
-    #mod.list = [Member(s1), Member(s2)]
-    mod.list = [s1, s2]
-    mod.inc = Method(x, s + x,
-                     s = mod.s + x + mod.random.random_integers((), 100, 1000))
-    mod.dec = Method(x, s - x,
-                     s = s - x)
-    mod.sadd = Method([], s1 + mod.list[1])
-
-    m = mod.random.normal([], 1., 1.)
-    mod.test1 = Method([], m)
-    mod.test2 = Method([], m)
-
-    mod.whatever = 123
-
-    mod2 = RModule()
-    mod2.submodule = mod
-
-    #print mod._components
-    #print mod
-    #print mod.inc.pretty()
-    print mod2.pretty()
-
-    inst = mod.make(s = 2, list = [900, 9000])
-
-    print '---'
-    print inst.test1()
-    print '---'
-
-
-    inst.seed(10)
-    print inst.test1()
-    print inst.test1()
-    print inst.test2()
-    inst.seed(10)
-    print inst.test1()
-    print inst.test2()
-
-    print inst.s
-    inst.seed(10)
-    inst.inc(3)
-    print inst.s
-    inst.dec(4)
-    print inst.s
-
-    print inst.list[0]
-    print inst.list[1]
-
-    inst.list = [1, 2]
-
-    print inst.sadd()
-    inst.initialize(list = [10, -17])
-    print inst.sadd()

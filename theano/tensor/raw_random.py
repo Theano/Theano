@@ -7,6 +7,9 @@ import functools
 from ..compile import SymbolicInputKit, SymbolicInput
 from copy import copy
 
+
+RS = numpy.random.RandomState
+
 class RandomFunction(gof.Op):
 
     def __init__(self, fn, outtype, *args, **kwargs):
@@ -16,12 +19,7 @@ class RandomFunction(gof.Op):
         args: a list of default arguments for the function
         kwargs: if the 'inplace' key is there, its value will be used to determine if the op operates inplace or not
         """
-        self.fn = fn
-        self.outtype = outtype
-        self.args = tuple(tensor.as_tensor(arg) for arg in args)
-        self.inplace = kwargs.pop('inplace', False)
-        if self.inplace:
-            self.destroy_map = {0: [0]}
+        self.__setstate__([fn, outtype, args, kwargs])
 
     def make_node(self, r, shape, *args):
         """
@@ -54,7 +52,14 @@ class RandomFunction(gof.Op):
         if not self.inplace:
             r = copy(r)
         rout[0] = r
-        out[0] = self.fn(r, *(args + [shape]))
+        rval = self.fn(r, *(args + [shape]))
+        if not isinstance(rval, numpy.ndarray):
+            out[0] = numpy.asarray(rval)
+        else:
+            out[0] = rval
+
+    def grad(self, inputs, outputs):
+        return [None] * len(inputs)
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -65,6 +70,22 @@ class RandomFunction(gof.Op):
 
     def __hash__(self):
         return hash(self.fn) ^ hash(self.outtype) ^ hash(self.args) ^ hash(self.inplace)
+
+    def __getstate__(self):
+        print self.state
+        return self.state
+
+    def __setstate__(self, state):
+        self.state = state
+        fn, outtype, args, kwargs = state
+        self.fn = getattr(RS, fn) if isinstance(fn, str) else fn
+        self.outtype = outtype
+        self.args = tuple(tensor.as_tensor(arg) for arg in args)
+        self.inplace = kwargs.pop('inplace', False)
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    
 
 
 __oplist_constructor_list = []
@@ -112,11 +133,9 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
     return f
 
 
-RS = numpy.random.RandomState
-
 # we need to provide defaults for all the functions in order to infer the argument types...
 
-uniform = random_function(RS.uniform, 'float64', 0.0, 1.0)
+uniform = random_function('uniform', 'float64', 0.0, 1.0)
 uniform.__doc__ = """
 Usage: uniform(random_state, size, low=0.0, high=1.0)
 Sample from a uniform distribution between low and high.
@@ -126,7 +145,7 @@ dimensions, the first argument may be a plain integer
 to supplement the missing information.
 """
 
-binomial = random_function(RS.binomial, 'int64', 1, 0.5)
+binomial = random_function('binomial', 'int64', 1, 0.5)
 binomial.__doc__ = """
 Usage: binomial(random_state, size, n=1, prob=0.5)
 Sample n times with probability of success prob for each trial,
@@ -137,7 +156,7 @@ dimensions, the first argument may be a plain integer
 to supplement the missing information.
 """
 
-normal = random_function(RS.normal, 'float64', 0.0, 1.0)
+normal = random_function('normal', 'float64', 0.0, 1.0)
 normal.__doc__ = """
 Usage: normal(random_state, size, avg=0.0, std=1.0)
 Sample from a normal distribution centered on avg with
@@ -148,7 +167,7 @@ dimensions, the first argument may be a plain integer
 to supplement the missing information.
 """
 
-random_integers = random_function(RS.random_integers, 'int64', 0, 1)
+random_integers = random_function('random_integers', 'int64', 0, 1)
 random_integers.__doc__ = """
 Usage: random_integers(random_state, size, low=0, high=1)
 Sample a random integer between low and high, both inclusive.
