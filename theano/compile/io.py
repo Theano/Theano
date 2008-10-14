@@ -99,6 +99,8 @@ class SymbolicInputKit(object):
             except ValueError:
                 pass
         ret.sort()
+        if not ret:
+            return [[], []]
         return zip(*ret)
 
 

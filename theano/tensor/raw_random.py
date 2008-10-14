@@ -32,7 +32,10 @@ class RandomFunction(gof.Op):
              out -> the random numbers we generated
         """
         args = map(tensor.as_tensor, args)
-        shape = tensor.as_tensor(shape)
+        if shape == () or shape == []:
+            shape = tensor.lvector()
+        else:
+            shape = tensor.as_tensor(shape)
         assert shape.type == tensor.lvector
         assert len(args) <= len(self.args)
         args += (None,) * (len(self.args) - len(args))
@@ -96,7 +99,10 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
             r, shape, args = args[0], args[1], args[2:]
         else:
             r, shape, args = ndim, args[0], args[1:]
-            shape = tensor.as_tensor(shape)
+            if shape == () or shape == []:
+                shape = tensor.TensorConstant(type = tensor.lvector, data = shape)
+            else:
+                shape = tensor.as_tensor(shape)
             ndim = tensor.get_vector_length(shape)
             if ndim is None:
                 raise ValueError('Cannot infer the number of dimensions from the shape argument.')

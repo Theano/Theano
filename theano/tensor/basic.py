@@ -366,11 +366,11 @@ def tensor(*args, **kwargs):
 
 def _multi(*fns):
     def f2(f, *names):
-        if isinstance(names, int):
+        if names and isinstance(names[0], int):
             if names == 1:
                 return f()
             else:
-                return [f() for i in xrange(names)]
+                return [f() for i in xrange(names[0])]
         if isinstance(names, tuple):
             if len(names) == 1:
                 names = names[0]
@@ -1537,7 +1537,7 @@ def get_vector_length(v):
         raise TypeError('argument must be symbolic vector')
     if isinstance(v, gof.Constant) and v.type.ndim == 1:
         return len(v.data)
-    if v.owner and isinstance(v.owner.op, join):
+    if v.owner and isinstance(v.owner.op, Join):
         try:
             return join.vec_length(v)
         except:

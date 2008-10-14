@@ -258,9 +258,9 @@ class Function(object):
         # Check if inputs are missing or if inputs were set more than once
         for c in self.input_storage:
             if c.required and not c.provided:
-                raise TypeError("Missing required input: %s" % self.inv_finder[c].result)
+                raise TypeError("Missing required input: %s" % getattr(self.inv_finder[c], 'result', self.inv_finder[c]))
             if c.provided > 1:
-                raise TypeError("Multiple values for input: %s" % self.inv_finder[c].result)
+                raise TypeError("Multiple values for input: %s" % getattr(self.inv_finder[c], 'result', self.inv_finder[c]))
         # Do the actual work
         self.fn()
         outputs = [x.data for x in self.output_storage]
@@ -351,6 +351,7 @@ class SanityCheckFunction(Function):
 ### FunctionMaker
 ###
 
+NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):
 
     @staticmethod
@@ -404,6 +405,7 @@ class FunctionMaker(object):
                           in the graph from the inputs to the outputs
         """
 
+
         # Handle the case where inputs and/or outputs is a single Result (not in a list)
         unpack_single = False
         if not isinstance(outputs, (list, tuple)):
@@ -414,7 +416,7 @@ class FunctionMaker(object):
 
         # Wrap them in In or Out instances if needed.
         inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
-        _inputs = gof.graph.inputs([o.result for o in outputs])
+        _inputs = gof.graph.inputs([o.result for o in outputs] + [i.update for i in inputs if getattr(i, 'update', False)])
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
 
@@ -482,7 +484,17 @@ class FunctionMaker(object):
                 # one storage unit. The indices and subinputs lists represent which
                 # of the kit's inputs are active in this graph, so we make as many
                 # storage units as needed
-                input_storage += [[None] for i in indices]
+                if isinstance(default, (list, tuple)) \
+                        and all(isinstance(x, gof.Container) for x in default):
+                    if len(default) == len(indices):
+                        input_storage += [x.storage for x in default]
+                    elif len(default) > len(indices):
+                        input_storage += [default[i].storage for i in indices]
+                    else:
+                        raise ValueError('Not enough storage for SymbolicInputKit', input, indices, default)
+                    default = NODEFAULT
+                else:
+                    input_storage += [[None] for i in indices]
             else:
                 # Normal case: one new, independent storage unit
                 input_storage.append([None])
@@ -496,6 +508,8 @@ class FunctionMaker(object):
             # Even though a SymbolicInputKit represents more than one input,
             # we still only have one entry for the defaults list.
             if isinstance(input, SymbolicInputKit):
+                if default is NODEFAULT:
+                    _defaults.append((False, False, None))
                 if default is None:
                     _defaults.append((True, True, None))
                 else:
