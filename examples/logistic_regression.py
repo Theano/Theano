@@ -79,21 +79,40 @@ class LogisticRegression2(module.FancyModule):
 
 
 if __name__ == '__main__':
-    lrc = LogisticRegression2()
+    if 1:
+        lrc = LogisticRegressionN()
 
-    lr = lrc.make(10, mode=theano.Mode('c|py', 'merge')) #'FAST_RUN')
+        #lr = lrc.make(10, 2, mode='FAST_RUN')
+        lr = lrc.make(10, 2, mode=theano.Mode('c|py', 'merge')) #'FAST_RUN')
 
-    data_x = N.random.randn(5, 10)
-    data_y = (N.random.randn(5, 1) > 0)
+        data_x = N.random.randn(5, 10)
+        data_y = (N.random.randn(5) > 0)
 
-    for i in xrange(10000):
-        xe = lr.update(data_x, data_y)
-        if i % 100 == 0:
-            print i, xe
+        for i in xrange(10000):
+            xe = lr.update(data_x, data_y)
+            if i % 100 == 0:
+                print i, xe
 
-    print
-    print 'TRAINED MODEL:'
-    print lr
+        print
+        print 'TRAINED MODEL:'
+        print lr
+
+    if 0:
+        lrc = LogisticRegression2()
+
+        lr = lrc.make(10, mode=theano.Mode('c|py', 'merge')) #'FAST_RUN')
+
+        data_x = N.random.randn(5, 10)
+        data_y = (N.random.randn(5, 1) > 0)
+
+        for i in xrange(10000):
+            xe = lr.update(data_x, data_y)
+            if i % 100 == 0:
+                print i, xe
+
+        print
+        print 'TRAINED MODEL:'
+        print lr
 
 
 
