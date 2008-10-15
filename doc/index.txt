@@ -1,95 +1,87 @@
-=====================================
-Theano Project Documentation Overview
-=====================================
 
-Documentation is divided broadly into two kinds: user documentation and
-developer documentation.  
+======
+Theano
+======
 
-- `Using Theano` covers how to *use* what is already in the Theano library to
-  build graphs and evaluate them.
+.. toctree::
+   :maxdepth: 2
 
-- `Extending Theano` introduces how Theano works and explains how to add new
-  data and expression types, as well as optimizations to accompany them.
+   README
+   doc/index
 
-- `Hacking Theano` introduces you to what's under the hood: the compilation
-  process, the Env, C code generation.
+-------------------------------------------------------------------
+A python library for manipulating and evaluating matrix expressions
+-------------------------------------------------------------------
+
+Theano is a library in Python, built to evaluate complicated
+expressions (especially matrix-valued ones) as quickly as possible.
+It was written at LISA_ to explore techniques for machine learning.
+Our project uses the name to honour the ancient Greek mathematician. 
+
+--------------------------------------------------------------------------------
+
+.. _not in the normal sense: :wiki:`WhatIsTheano`
+
+Overview
+========
+
+**To get up & running quickly** see README_.
+
+All **documentation** can be reached from the `Theano Project Documentation Overview`_.
+
+As developers of an open source project, we rely on **feedback** for
+determining what features to implement, and what documentation needs to be
+improved.  The best forum for feedback is the theano-users_ mailing list.
+
+All **discussion** about theano also takes place on the theano-users_ mailing list.
+
+If you find a **bug**, please file a `bug report`_ or send email to
+the theano-users_ mailing list.  **Patch** submissions should be
+sent to theano-dev_.
+
+We welcome all kinds of **contributions**.  Our `task list`_ is
+full of interesting ideas awaiting a champion.  If you have any
+questions regarding how to extend Theano, please feel free to ask on
+the Theano-dev_ mailing list.
+
+Theano is in active development and should be considered **experimental**.
+APIs are subject to change at any time.
 
 
-Using Theano
-============
+Download
+========
 
-- First of all, read the `n00b guide`_.  It is a cut-and-paste, tutorial-style intro to what Theano can do.
+We recommend that you use the `latest snapshot`_,
+Better yet, use `mercurial`_ to keep your installation fresh.
+The snapshots usually contain *more features* and *fewer bugs* than the
+"official" releases |---| they're not only for developers!
 
-- Familiarize yourself with the `glossary of terminology`_.
 
-- Join `theano-users`_.
+Indices and tables
+==================
 
-- Learn to use the typelist_, and the oplist_.  These are the building blocks
-  of theano expression graphs.
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
 
-- Browse through some of the `Howto`_ recipes on the wiki.
 
-.. _Howto: 
+.. |---| unicode:: U+02014 .. em dash
+   :trim:
+.. _latest snapshot: http://pylearn.org/hg/theano/archive/tip.tar.gz
+.. _bug report: http://lgcm.iro.umontreal.ca/theano/newticket
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
-.. _n00b guide: n00b.html
-.. _glossary of terminology: ../api/term-index.html
-.. _typelist: typelist.html
-.. _oplist: oplist.html
-
-Extending Theano
-================
-
-- Read about `How Theano Works <UserAdvanced.html>`__.  This introduces the
-  major interface data structures: Op, Type, Result, Apply.
-
-- How to make a new Op.
-
-- How to make a new Optimization.
-
-- How to make a new data Type.
-
-Hacking Theano
-==============
-
-- `Get Started as a Developer <DevStartGuide.html>`__ by setting up mercurial, getting a few accounts,
-  setting up your environment, and getting some background in mercurial, python,
-  and numpy.
-
-- Join `theano-dev`_ to participate in development discussion.
-
-- Pick a task from the `task list`_, or suggest one on `theano-users`_.
-  Features/ideas are generally discussed on `theano-users`_.   Technical
-  discussions of how to actually implement something should be on
-  `theano-dev`_.
-
-- Browse `Theano's API <../api/>`__.
-
-- Keep an eye on the `Mercurial Changelog <http://pylearn.org/hg/theano>`__.
-
-- Send us your work as a patch to `theano-dev`_ or commit directly to the trunk.
-
-.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
+.. _reStructuredText: rst.html
 .. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
-.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _README: README.html
+.. _Quick-Start: README.html#quick-start
 
-
-.. header:: |THEANO| - README_ - Download_ - Documentation_ - Wiki_ - `Task List`_
-
-.. |THEANO| image:: http://lgcm.iro.umontreal.ca/theano/chrome/site/theano_logo.png
-   :target: http://pylearn.org/auto_theano
-   :alt: THEANO
-   :align: top
-   :class: borderless
-   :width: 60
-   :height: 18
-
-.. _README: ../README.html
-.. _Download: ../README.html#downloading-theano
-.. _Documentation: index.html
-.. _Wiki: http://pylearn.org/theano
+.. _Theano Project Documentation Overview: doc/index.html
+.. _Mercurial: http://www.selenic.com/mercurial/wiki/
+.. _docutils: http://docutils.sourceforge.net
+.. _epydoc: http://epydoc.sourceforge.net/
+.. _scipy: http://scipy.org/
+.. _Python: http://www.python.org/
 .. _TRAC: http://trac.edgewall.org/
-.. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
-
-
+.. _LISA:  http://www.iro.umontreal.ca/rubrique.php3?id_rubrique=27
 
