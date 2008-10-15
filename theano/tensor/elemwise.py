@@ -350,6 +350,15 @@ class Elemwise(Op):
         return ret
 
     def perform(self, node, inputs, output_storage):
+        maxsize = max(len(input.shape) for input in inputs)
+        for dims in zip(*[[(1, True)]*(maxsize - len(input.shape)) + zip(input.shape, sinput.type.broadcastable)
+                          for input, sinput in zip(inputs, node.inputs)]):
+            if max(d for d,b in dims) != 1 and (1, False) in dims:
+                raise ValueError('Dimension mismatch; shapes are %s' %
+                                 ', '.join('(%s)' % ', '.join('*' if b else str(d)
+                                                              for d, b in zip(input.shape, sinput.type.broadcastable))
+                                           for input, sinput in zip(inputs, node.inputs)))
+                # Other mismatches will be caught by the ufunc
         if not self.inplace_pattern:
             for output, storage in zip(node.outputs, output_storage):
                 odat = storage[0]

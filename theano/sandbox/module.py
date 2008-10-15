@@ -207,7 +207,7 @@ class Method(Component):
                    for k, v in self.updates.iteritems()]
         outputs = self.outputs
         _inputs = [x.result for x in inputs]
-        for input in gof.graph.inputs(outputs if isinstance(outputs, (list, tuple)) else [outputs]
+        for input in gof.graph.inputs((list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
             if input not in _inputs and not isinstance(input, gof.Value):

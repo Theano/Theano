@@ -14,7 +14,7 @@ class LogisticRegressionN(module.FancyModule):
             #self.component is the LogisticRegressionTemplate instance that built this guy.
 
             self.w = N.random.randn(n_in, n_out)
-            self.b = N.random.randn( n_out)
+            self.b = N.random.randn(n_out)
             self.lr = 0.01
 
     def __init__(self, x = None, targ = None):
@@ -47,12 +47,13 @@ class LogisticRegression2(module.FancyModule):
             self.w = N.random.randn(n_in,1)
             self.b = N.random.randn(1)
             self.lr = 0.01
+            self.__hide__ = ['params']
 
     def __init__(self, x = None, targ = None):
         super(LogisticRegression2, self).__init__() #boilerplate
 
         self.x = x if x is not None else T.matrix()
-        self.targ = targ if targ is not None else T.lvector()
+        self.targ = targ if targ is not None else T.lcol()
 
         self.w = module.Member(T.dmatrix())   #automatically names
         self.b = module.Member(T.dvector())   #automatically names
@@ -62,27 +63,38 @@ class LogisticRegression2(module.FancyModule):
         self.params = [self.w, self.b]
 
         y = nnet_ops.sigmoid(T.dot(self.x, self.w))
-        xent_elem = self.targ * T.log(y) - (1.0 - self.targ) *T.log(1.0 - y)
+        xent_elem = -self.targ * T.log(y) - (1.0 - self.targ) * T.log(1.0 - y)
         xent = T.sum(xent_elem)
+
+        self.y = y
+        self.xent_elem = xent_elem
+        self.xent = xent
 
         gparams = T.grad(xent, self.params)
 
-        self.update = module.Method([self.x, self.targ], [xent, self.w, gparams[0]],
-                updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gparams)))
+        self.update = module.Method([self.x, self.targ], xent,
+                                    updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gparams)))
         self.apply = module.Method([self.x], T.argmax(T.dot(self.x, self.w) + self.b, axis=1))
 
+
+
 if __name__ == '__main__':
-    lr = LogisticRegression2().make(10, mode='FAST_COMPILE')
+    lrc = LogisticRegression2()
 
-    data_x = N.random.randn(10, 10)
-    data_y = (N.random.randn(10) > 0)
+    lr = lrc.make(10, mode=theano.Mode('c|py', 'merge')) #'FAST_RUN')
 
+    data_x = N.random.randn(5, 10)
+    data_y = (N.random.randn(5, 1) > 0)
 
-    print lr.params
-    print lr.w.shape
-    for i in xrange(10):
+    for i in xrange(10000):
         xe = lr.update(data_x, data_y)
-        print N.sum(xe), lr.w.shape
-        
+        if i % 100 == 0:
+            print i, xe
+
+    print
+    print 'TRAINED MODEL:'
+    print lr
+
+
 
 
