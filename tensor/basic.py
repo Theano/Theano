@@ -1769,7 +1769,11 @@ class Dot(Op):
         return Apply(self, inputs, outputs)
 
     def perform(self, node, (x, y), (z, )):
-        z[0] = numpy.asarray(numpy.dot(x, y))
+        try:
+            z[0] = numpy.asarray(numpy.dot(x, y))
+        except ValueError, e:
+            e.args = e.args + (x.shape, y.shape)
+            raise 
     def grad(self, (x, y), (gz,)):
         if gz.type.ndim == 0:
             return gz * y, gz * x
