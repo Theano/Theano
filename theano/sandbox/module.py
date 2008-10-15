@@ -51,16 +51,17 @@ class Component(object):
     def build(self, mode, memo):
         raise NotImplementedError
 
-    def make(self, mode = 'FAST_RUN', init = None, **kwinit):
+    def make_no_init(self, mode='FAST_COMPILE'):
         memo = {}
         self.allocate(memo)
         rval = self.build(mode, memo)
-        if init and kwinit:
-            rval.initialize(init, **kwinit)
-        elif init:
-            rval.initialize(init)
-        elif kwinit:
-            rval.initialize(**kwinit)
+        return rval
+
+    def make(self, *args, **kwargs):
+        mode = kwargs.pop('mode', 'FAST_COMPILE')
+        rval = self.make_no_init(mode)
+        if hasattr(rval, 'initialize'):
+            rval.initialize(*args, **kwargs)
         return rval
 
     def __repr__(self):
@@ -532,7 +533,7 @@ class FancyModuleInstance(ModuleInstance):
     def __setattr__(self, attr, value):
         try:
             self[attr] = value
-        except:
+        except KeyError:
             self.__dict__[attr] = value
 
 class FancyModule(Module):
