@@ -404,7 +404,7 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
     return rval_list
 
 
-def inputs(result_list):
+def inputs(result_list, blockers = None):
     """Return the inputs required to compute the given Results.
 
     :type result_list: list of `Result` instances
@@ -417,7 +417,7 @@ def inputs(result_list):
 
     """
     def expand(r):
-        if r.owner:
+        if r.owner and (not blockers or r not in blockers):
             l = list(r.owner.inputs)
             l.reverse()
             return l

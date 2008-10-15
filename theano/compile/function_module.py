@@ -510,7 +510,7 @@ class FunctionMaker(object):
             if isinstance(input, SymbolicInputKit):
                 if default is NODEFAULT:
                     _defaults.append((False, False, None))
-                if default is None:
+                elif default is None:
                     _defaults.append((True, True, None))
                 else:
                     _defaults.append((False, False, default))

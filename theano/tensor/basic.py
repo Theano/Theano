@@ -1994,8 +1994,13 @@ def grad(cost, wrt, g_cost=None):
                 Tensor(dtype = p.type.dtype, broadcastable = []),
                 numpy.asarray(0, dtype=p.type.dtype))
 
-    if hasattr(wrt, '__iter__'): # isinstance(wrt, (list, tuple)):
-        return [gmap.get(p, zero(p)) for p in wrt]
+    try:
+        it = iter(wrt)
+    except:
+        it = None
+
+    if it: #hasattr(wrt, '__iter__'): # isinstance(wrt, (list, tuple)):
+        return [gmap.get(p, zero(p)) for p in it]
     else:
         return gmap.get(wrt, zero(wrt))
 
