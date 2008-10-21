@@ -184,6 +184,9 @@ def map_storage(env, order, input_storage, output_storage):
                 storage_map[r] = [r.data]
         for r in node.outputs:
             storage_map.setdefault(r, [None])
+    for r in env.outputs:
+        if isinstance(r, graph.Constant):
+            storage_map.setdefault(r, [r.data])
 
     if output_storage is None:
         output_storage = [storage_map[r] for r in env.outputs]
