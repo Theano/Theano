@@ -331,3 +331,46 @@ class TestMergeOptimizer:
         assert strg == '[Op1(y, y)]' or strg == '[Op1(z, z)]'
 
 
+
+class TestEquilibrium(object):
+
+    def test_1(self):
+        x, y, z = map(MyResult, 'xyz')
+        e = op3(op4(x, y))
+        g = Env([x, y, z], [e])
+        print g
+        opt = EquilibriumOptimizer(
+            [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
+             PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
+             PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
+             ],
+            max_use_ratio = 10)
+        opt.optimize(g)
+        print g
+        assert str(g) == '[Op2(x, y)]'
+
+    def test_low_use_ratio(self):
+        x, y, z = map(MyResult, 'xyz')
+        e = op3(op4(x, y))
+        g = Env([x, y, z], [e])
+        print g
+        sys.stderr = sys.stdout # display pesky warnings along with stdout
+        opt = EquilibriumOptimizer(
+            [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
+             PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
+             PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
+             ],
+            max_use_ratio = 1. / len(g.nodes)) # each opt can only be applied once
+        opt.optimize(g)
+        print g
+        assert str(g) == '[Op4(x, y)]'
+
+
+
+
+
+
+
+
+
+

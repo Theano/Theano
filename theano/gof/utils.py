@@ -38,6 +38,10 @@ class scratchpad:
     def __str__(self):
         return "scratch" + str(self.__dict__)
 
+class D:
+    def __init__(self, **d):
+        self.__dict__.update(d)
+
 
 def memoize(f):
     """Cache the return value for each tuple of arguments
