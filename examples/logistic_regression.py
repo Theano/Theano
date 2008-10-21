@@ -3,7 +3,7 @@ sys.path.insert(0, '..')
 import theano
 from theano import tensor as T
 from theano.tensor import nnet_ops
-from theano.sandbox import module
+from theano.compile import module
 from theano.sandbox import pprint
 
 import numpy as N

@@ -1,12 +1,12 @@
 
-import theano
-from theano import gof, compile
+from .. import gof
 from collections import defaultdict
 from itertools import chain
 from functools import partial
-from theano.gof.utils import scratchpad
 from copy import copy
-
+import mode
+import function_module as F
+#from ..sandbox import pprint
 
 
 def join(*args):
@@ -137,7 +137,6 @@ class Member(_RComponent):
 
 
 
-from theano.sandbox import pprint
 class Method(Component):
 
     def __init__(self, inputs, outputs, updates = {}, kits = [], **kwupdates):
@@ -197,13 +196,13 @@ class Method(Component):
                 else:
                     return gof.Container(r, storage = [None])
         inputs = self.inputs
-        inputs = [compile.In(result = input,
-                             value = get_storage(input))
+        inputs = [mode.In(result = input,
+                          value = get_storage(input))
                   for input in inputs]
-        inputs += [compile.In(result = k,
-                              update = v,
-                              value = get_storage(k, True),
-                              strict = True)
+        inputs += [mode.In(result = k,
+                           update = v,
+                           value = get_storage(k, True),
+                           strict = True)
                    for k, v in self.updates.iteritems()]
         outputs = self.outputs
         _inputs = [x.result for x in inputs]
@@ -211,10 +210,10 @@ class Method(Component):
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
             if input not in _inputs and not isinstance(input, gof.Value):
-                inputs += [compile.In(result = input,
-                                      value = get_storage(input, True))]
+                inputs += [mode.In(result = input,
+                                   value = get_storage(input, True))]
         inputs += [(kit, get_storage(kit, True)) for kit in self.kits]
-        return compile.function(inputs, outputs, mode)
+        return F.function(inputs, outputs, mode)
 
     def pretty(self, **kwargs):
         self.resolve_all()
@@ -625,32 +624,6 @@ class KitComponent(Component):
 
     def build(self, mode, memo):
         return memo[self.kit]
-
-
-from .. import tensor as T
-class RModule(FancyModule):
-
-    def __init__(self, components = {}, **kwcomponents):
-        super(RModule, self).__init__(components, **kwcomponents)
-        self.random = T.RandomKit('rkit')
-        self._components['_rkit'] = KitComponent(self.random)
-
-    def __wrapper__(self, x):
-        x = wrap(x)
-        if isinstance(x, Method):
-            x.kits += [self.random]
-        return x
-
-    def _instance_seed(self, inst, seed, recursive = True):
-        if recursive:
-            for path, c in self.flat_components_map(True):
-                if isinstance(c, RModule):
-                    inst2 = inst
-                    for name in path:
-                        inst2 = inst2[name]
-                    c._rkit.kit.distribute(seed, xrange(len(inst._rkit)), inst2._rkit)
-        else:
-            self._rkit.kit.distribute(seed, xrange(len(inst._rkit)), inst._rkit)
 
 
 

@@ -5,7 +5,7 @@ import opt
 
 import raw_random
 from raw_random import \
-    RandomKit
+    RandomKit, RModule
 
 random = RandomKit('random')
 

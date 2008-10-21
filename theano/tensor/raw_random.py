@@ -4,6 +4,7 @@ import basic as tensor
 import numpy
 import functools
 
+from .. import compile
 from ..compile import SymbolicInputKit, SymbolicInput
 from copy import copy
 
@@ -231,3 +232,26 @@ class RandomKit(SymbolicInputKit):
 rk = RandomKit('rk', 0xBAD5EED)
 
 
+class RModule(compile.FancyModule):
+
+    def __init__(self, components = {}, **kwcomponents):
+        super(RModule, self).__init__(components, **kwcomponents)
+        self.random = T.RandomKit('rkit')
+        self._components['_rkit'] = KitComponent(self.random)
+
+    def __wrapper__(self, x):
+        x = wrap(x)
+        if isinstance(x, compile.Method):
+            x.kits += [self.random]
+        return x
+
+    def _instance_seed(self, inst, seed, recursive = True):
+        if recursive:
+            for path, c in self.flat_components_map(True):
+                if isinstance(c, RModule):
+                    inst2 = inst
+                    for name in path:
+                        inst2 = inst2[name]
+                    c._rkit.kit.distribute(seed, xrange(len(inst._rkit)), inst2._rkit)
+        else:
+            self._rkit.kit.distribute(seed, xrange(len(inst._rkit)), inst._rkit)
