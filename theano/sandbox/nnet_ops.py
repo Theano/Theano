@@ -416,7 +416,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(theano.Op):
         if g_sm is not None or g_am is not None:
             raise NotImplementedError()
         nll, sm = crossentropy_softmax_1hot_with_bias(x, b, y_idx)
-        dx = CrossentropySoftmax1HotWithBiasDx()(g_nll, sm, y_idx)
+        #dx = CrossentropySoftmax1HotWithBiasDx()(g_nll, sm, y_idx)
+        dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, sm, y_idx)
         db = tensor.sum(dx, axis = [0])
         return dx, db, None
 
@@ -596,6 +597,9 @@ class CrossentropySoftmax1HotWithBiasDx (theano.Op):
 
 crossentropy_softmax_argmax_1hot_with_bias = \
     CrossentropySoftmaxArgmax1HotWithBias()
+
+crossentropy_softmax_1hot_with_bias_dx = \
+    CrossentropySoftmax1HotWithBiasDx()
 
 def crossentropy_softmax_1hot_with_bias(x, b, y_idx, **kwargs):
     return crossentropy_softmax_argmax_1hot_with_bias(x, b, y_idx, **kwargs)[0:2]

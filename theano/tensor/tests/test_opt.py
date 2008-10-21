@@ -9,6 +9,7 @@ from theano import tensor
 from theano.tensor import Tensor
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
+from theano.sandbox import pprint
 import numpy
 #import scalar_opt
 
@@ -129,12 +130,13 @@ class test_canonize(unittest.TestCase):
 #        e = (a * b) / (b * c) / (c * d)
 #        e = 2 * x / 2
 #        e = x / y / x
-        e = (x / x) * (y / y)
+#        e = (x / x) * (y / y)
+        e = (-1 * x) / y / (-2 * z)
         g = Env([x, y, z, a, b, c, d], [e])
-        ##print pprint.pp.process(g.outputs[0])
+        print pprint.pp.process(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
-        ##print pprint.pp.process(g.outputs[0])
+        print pprint.pp.process(g.outputs[0])
         
 #     def test_plusmin(self):
 #         x, y, z = inputs()

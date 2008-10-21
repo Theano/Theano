@@ -88,7 +88,7 @@ class FunctionPrinter:
             raise TypeError("function %s cannot represent a result with no associated operation" % self.names)
         idx = node.outputs.index(output)
         name = self.names[idx]
-        return "%s(%s)" % (name, ", ".join([pprinter.process(input, pstate.clone(precedence = -1000))
+        return "%s(%s)" % (name, ", ".join([pprinter.process(input, pstate.clone(precedence = 1000))
                                             for input in node.inputs]))
 
 class MemberPrinter:
@@ -123,8 +123,8 @@ class DimShufflePrinter:
 
     def __p(self, new_order, pstate, r):
         if new_order != () and  new_order[0] == 'x':
-            return "%s" % self.__p(new_order[1:], pstate, r)
-#            return "[%s]" % self.__p(new_order[1:], pstate, r)
+#            return "%s" % self.__p(new_order[1:], pstate, r)
+            return "[%s]" % self.__p(new_order[1:], pstate, r)
         if list(new_order) == range(r.type.ndim):
             return pstate.pprinter.process(r)
         if list(new_order) == list(reversed(range(r.type.ndim))):
@@ -161,7 +161,7 @@ class SubtensorPrinter:
                     sidxs.append("%s:%s%s" % ("" if entry.start is None or entry.start == 0 else entry.start,
                                               "" if entry.stop is None or entry.stop == sys.maxint else entry.stop,
                                               "" if entry.step is None else ":%s" % entry.step))
-            return "%s[%s]" % (pstate.clone(precedence = 1000).pprinter.process(input),
+            return "%s[%s]" % (pstate.pprinter.process(input, pstate.clone(precedence = 1000)),
                                ", ".join(sidxs))
         else:
             raise TypeError("Can only print Subtensor.")
@@ -173,7 +173,7 @@ class MakeVectorPrinter:
         if r.owner is None:
             raise TypeError("Can only print make_vector.")
         elif isinstance(r.owner.op, T.MakeVector):
-            return "[%s]" % ", ".join(pstate.clone(precedence = 1000).pprinter.process(input) for input in r.owner.inputs)
+            return "[%s]" % ", ".join(pstate.pprinter.process(input, pstate.clone(precedence = 1000)) for input in r.owner.inputs)
         else:
             raise TypeError("Can only print make_vector.")
 
@@ -311,7 +311,7 @@ def pprinter():
     pp.assign(T.shape, MemberPrinter('shape'))
     pp.assign(T.fill, FunctionPrinter('fill'))
     #pp.assign(T.vertical_stack, FunctionPrinter('vstack'))
-    #pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.MakeVector), MakeVectorPrinter())
+    pp.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, T.MakeVector), MakeVectorPrinter())
     return pp
 
 pp = pprinter()

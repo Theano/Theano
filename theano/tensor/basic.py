@@ -1198,8 +1198,11 @@ class Subtensor(Op):
         return type(self) == type(other) and self.idx_list == other.idx_list
 
     def __hash__(self):
-        # FIXME: this doesn't work if there are slices in the list because for some mysterious reason slice is unhashable
-        return hash(tuple(self.idx_list))
+        idx_list = tuple((entry.start, entry.stop, entry.step)
+                         if isinstance(entry, slice)
+                         else entry
+                         for entry in self.idx_list)
+        return hash(idx_list)
 
     def __str__(self):
         indices = []
@@ -1605,25 +1608,26 @@ if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() a
             return gz[:xs[0]], gz[xs[0]:]
     vertical_stack = VerticalStack()
 
-    class MakeVector(Op):
-        """WRITEME"""
-        def __init__(self, stype):
-            self.stype = stype
-        def make_node(self, *inputs):
-            inputs = map(as_tensor, inputs)
-            assert all(a.type == self.stype for a in inputs)
-            return Apply(self, inputs, [Tensor(broadcastable = (False,),
-                                               dtype = self.stype.dtype)()])
-        def perform(self, node, inputs, (out,)):
-            out[0] = numpy.asarray(inputs)
-        def grad(self, inputs, (gout,)):
-            return [None]*len(inputs)
-
-    make_lvector = MakeVector(lscalar)
-    """WRITEME"""
-
 else:
     pass
+
+
+class MakeVector(Op):
+    """WRITEME"""
+    def __init__(self, stype):
+        self.stype = stype
+    def make_node(self, *inputs):
+        inputs = map(as_tensor, inputs)
+        assert all(a.type == self.stype for a in inputs)
+        return Apply(self, inputs, [Tensor(broadcastable = (False,),
+                                           dtype = self.stype.dtype)()])
+    def perform(self, node, inputs, (out,)):
+        out[0] = numpy.asarray(inputs)
+    def grad(self, inputs, (gout,)):
+        return [None]*len(inputs)
+
+make_lvector = MakeVector(lscalar)
+"""WRITEME"""
 
 
 #########################

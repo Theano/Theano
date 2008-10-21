@@ -53,7 +53,7 @@ class Supervisor:
             return True
         for r in self.protected + list(env.outputs):
             if env.destroyers(r):
-                raise gof.InconsistencyError("Trying to destroy a protected Result.")
+                raise gof.InconsistencyError("Trying to destroy a protected Result.", r)
 
 
 def std_env(input_specs, output_specs, accept_inplace = False):
@@ -88,7 +88,7 @@ def std_env(input_specs, output_specs, accept_inplace = False):
                 break
 
     # We need to protect all immutable inputs from inplace operations.
-    env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not spec.mutable))
+    env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
     return env, map(SymbolicOutput, updates)
 
 

@@ -87,17 +87,25 @@ def _insert_inplace_optimizer(env):
                 break
 insert_inplace_optimizer = gof.optimizer(_insert_inplace_optimizer)
 
+inplace_optimizer = gof.InplaceOptimizer(
+    gof.SeqOptimizer(out2in(gemm_pattern_1),
+                     out2in(dot_to_gemm),
+                     insert_inplace_optimizer,
+                     failure_callback = gof.keep_going))
+compile.optdb.register('inplace', inplace_optimizer, 99, 'fast_run')
 
-inplace_optimizer = gof.SeqOptimizer(out2in(gemm_pattern_1),
-                                     out2in(dot_to_gemm),
-                                     insert_inplace_optimizer)
 
+def register_canonicalize(lopt, *tags, **kwargs):
+    compile.optdb['canonicalize'].register((kwargs and kwargs.pop('name')) or lopt.__name__, lopt, 'fast_run', *tags)
+
+def register_specialize(lopt, *tags, **kwargs):
+    compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or lopt.__name__, lopt, 'fast_run', *tags)
 
 ######################
 # DimShuffle lifters #
 ######################
 
-@gof.local_optimizer
+@gof.local_optimizer([None, None])
 def local_dimshuffle_lift(node):
     """
     "Lifts" DimShuffle through Elemwise operations and merges
@@ -129,14 +137,15 @@ def local_dimshuffle_lift(node):
         else:
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
 
-dimshuffle_lift = out2in(local_dimshuffle_lift)
+register_canonicalize(local_dimshuffle_lift)
+
 
 
 #################
 # Shape lifters #
 #################
 
-@gof.local_optimizer
+@gof.local_optimizer([T.shape, None])
 def local_shape_lift_elemwise(node):
     """
     shape(elemwise_op(..., x, ...)) -> shape(x)
@@ -155,7 +164,10 @@ def local_shape_lift_elemwise(node):
 
     return False
 
-@gof.local_optimizer
+register_canonicalize(local_shape_lift_elemwise)
+
+
+@gof.local_optimizer([T.shape, None])
 def local_shape_lift_sum(node):
     """
     shape(sum{n}(x)) -> [shape(x)[0], ..., shape(x)[n-1], shape(x)[n+1], ...]
@@ -173,7 +185,10 @@ def local_shape_lift_sum(node):
     return T.make_lvector.make_node(*(ish[i] for i in xrange(input.type.ndim) if i not in axis)).outputs
 #    return T.vertical_stack.make_node(ish[:axis], ish[axis+1:]).outputs
 
-@gof.local_optimizer
+register_canonicalize(local_shape_lift_sum)
+
+
+@gof.local_optimizer([T.shape, T.dot])
 def local_shape_lift_dot(node):
     """
     shape(dot(a, b)) -> [shape(a)[0], shape(b)[1]]
@@ -183,9 +198,12 @@ def local_shape_lift_dot(node):
     a, b = node.inputs[0].owner.inputs
     return T.make_lvector.make_node(T.shape(a)[0], T.shape(b)[1]).outputs
 
-local_shape_lift = opt.LocalOptGroup(local_shape_lift_elemwise,
-                                     local_shape_lift_sum,
-                                     local_shape_lift_dot)
+register_canonicalize(local_shape_lift_dot)
+
+
+# local_shape_lift = opt.LocalOptGroup(local_shape_lift_elemwise,
+#                                      local_shape_lift_sum,
+#                                      local_shape_lift_dot)
 
 
 ################
@@ -201,7 +219,7 @@ def encompasses_broadcastable(b1, b2):
 def merge_broadcastables(broadcastables):
     return [all(bcast) for bcast in zip(*broadcastables)]
 
-@gof.local_optimizer
+@gof.local_optimizer([T.fill, None])
 def local_fill_lift(node):
     """
     fill(f(a), b) -> fill(a, b)
@@ -217,10 +235,10 @@ def local_fill_lift(node):
 
     mb, fb = model.type.broadcastable, filling.type.broadcastable
     if model.type.dtype == filling.type.dtype and encompasses_broadcastable(fb, mb):
-        return [filling]
+        return False# [filling]
 
     parent = model.owner
-    if parent is None:
+    if parent is None or not isinstance(parent, T.Elemwise):
         return False
     for input in parent.inputs:
         if input.type == model.type:
@@ -228,13 +246,15 @@ def local_fill_lift(node):
 
     return False
 
+register_canonicalize(local_fill_lift)
+
 
 ##################
 # Subtensor opts #
 ##################
 
 
-@gof.local_optimizer
+@gof.local_optimizer([None, None])
 def local_subtensor_make_vector(node):
     """
     [a,b,c][0] -> a
@@ -242,7 +262,7 @@ def local_subtensor_make_vector(node):
 
     If the index or slice is constant.
     """
-    if not opt.check_chain(node, T.Subtensor, T.Join):
+    if not opt.check_chain(node, T.Subtensor, T.MakeVector):
         return False
     
     joined_r = node.inputs[0]
@@ -263,13 +283,15 @@ def local_subtensor_make_vector(node):
         return T.make_vector(*(node.owner.inputs[0].owner.inputs.__getslice__(idx)))
     except TypeError:
         return False
-        
+
+register_canonicalize(local_subtensor_make_vector)
+
 
 ##################
 # Middleman cuts #
 ##################
 
-@gof.local_optimizer
+@gof.local_optimizer([None, T.fill])
 def local_fill_cut(node):
     """
     f(fill(a,b), c) -> f(b, c)
@@ -301,7 +323,10 @@ def local_fill_cut(node):
         return False
     return node.op.make_node(*new_inputs).outputs
 
-@gof.local_optimizer
+register_canonicalize(local_fill_cut)
+
+
+@gof.local_optimizer([None, T.fill])
 def local_fill_sink(node):
     """
     f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
@@ -322,6 +347,8 @@ def local_fill_sink(node):
     for model in models:
         c = T.fill(model, c)
     return [c]
+
+register_canonicalize(local_fill_sink)
 
 
 ################
@@ -367,15 +394,23 @@ class Canonizer(gof.LocalOptimizer):
       2 * x / 2 -> x
     """
 
-    def __init__(self, main, inverse, reciprocal, calculate):
+    def __init__(self, main, inverse, reciprocal, calculate, use_reciprocal = True):
         self.main = main
         self.inverse = inverse
         self.reciprocal = reciprocal
         self.calculate = calculate
+        self.use_reciprocal = use_reciprocal
+
+    def tracks(self):
+        #return [[None], [None, None], [None]*3, [None]*4, [None]*5]
+        return [[self.main, None], [self.inverse, None], [self.reciprocal, None]]
 
     def get_num_denum(self, input):
         if input.owner is None or input.owner.op not in [self.main, self.inverse, self.reciprocal]:
-            return [input], []
+            if input.owner and isinstance(input.owner.op, T.DimShuffle):
+                return self.get_num_denum(input.owner.inputs[0])
+            else:
+                return [input], []
         num = []
         denum = []
         parent = input.owner
@@ -396,7 +431,10 @@ class Canonizer(gof.LocalOptimizer):
         if not ln and not ld:
             return T.as_tensor(self.calculate([], []))
         if not ln:
-            return self.reciprocal(self.merge_num_denum(denum, []))
+            if self.use_reciprocal:
+                return self.reciprocal(self.merge_num_denum(denum, []))
+            else:
+                ln = [self.calculate([], [], aslist = False)]
         if not ld:
             if ln == 1:
                 if isinstance(num[0], gof.Result):
@@ -444,10 +482,13 @@ class Canonizer(gof.LocalOptimizer):
                 dcc += 1
                 denum.remove(v)
                 denumct.append(ct)
-        ct = self.calculate(numct, denumct, aslist = True)
+        if self.use_reciprocal:
+            ct = self.calculate(numct, denumct, aslist = True)
+        else:
+            ct = [self.calculate(numct, denumct, aslist = False)]
 #         if len(ct) and ncc == 1 and dcc == 0:
 #             return orig_num, orig_denum
-        if orig_num and ct == self.get_constant(orig_num[0]):
+        if orig_num and N.all(ct == self.get_constant(orig_num[0])):
             return orig_num, orig_denum
         return ct + num, denum
 
@@ -471,13 +512,20 @@ class Canonizer(gof.LocalOptimizer):
         num, denum = list(orig_num), list(orig_denum)
         num, denum = self.simplify(num, denum)
 
-        if not reorg and orig_num == num and orig_denum == denum:
+        def same(x, y):
+            return len(x) == len(y) and all(N.all(xe == ye) for xe, ye in zip(x, y))
+
+        if not reorg and same(orig_num, num) and same(orig_denum, denum):
             return False
 
         new = self.merge_num_denum(num, denum)
         if new.type != out.type:
-            new = T.fill(out, new)
+            #new = T.fill(out, new)
+            new = T.fill(out, T.Elemwise(scalar.Identity(scalar.specific_out(getattr(scalar, out.type.dtype))))(new))
         return [new]
+
+    def __str__(self):
+        return getattr(self, 'name', 'Canonizer(%s, %s, %s)' % (self.main, self.inverse, self.reciprocal))
 
 
 def mul_calculate(num, denum, aslist = False):
@@ -489,26 +537,40 @@ def mul_calculate(num, denum, aslist = False):
             return [v]
     return v
 
-local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate)
+local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate, False)
 
-@gof.local_optimizer
+@gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):
     if node.op == T.neg:
-        return [-1.0 * node.inputs[0]]
+        return [-1 * node.inputs[0]]
     else:
         return False
 
-@gof.local_optimizer
+@gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
-    if node.op == T.mul and local_mul_canonizer.get_constant(node.inputs[0]) == -1.0:
+    if node.op == T.mul and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == -1.0):
         return [-local_mul_canonizer.merge_num_denum(node.inputs[1:], [])]
     else:
         return False
 
-neg_to_mul = out2in(gof.LocalOptGroup(local_neg_to_mul))
-mul_to_neg = out2in(gof.LocalOptGroup(local_mul_to_neg))
+@gof.local_optimizer([T.div])
+def local_div_to_inv(node):
+    if node.op == T.div and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
+        return [T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))]
+    else:
+        return False
+
+register_canonicalize(local_neg_to_mul)
+register_specialize(local_mul_to_neg)
+register_specialize(local_div_to_inv)
+register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
+
+
+# neg_to_mul = out2in(gof.LocalOptGroup(local_neg_to_mul))
+# mul_to_neg = out2in(gof.LocalOptGroup(local_mul_to_neg))
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
+
 
 
 def add_calculate(num, denum, aslist = False):
@@ -522,6 +584,8 @@ def add_calculate(num, denum, aslist = False):
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
 add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut, local_fill_sink))
+
+register_canonicalize(local_add_canonizer, name = 'local_add_canonizer')
 
 
 ##################
@@ -583,7 +647,8 @@ def attempt_distribution(factor, num, denum):
             list(itertools.starmap(local_mul_canonizer.merge_num_denum, pos_pairs)),
             list(itertools.starmap(local_mul_canonizer.merge_num_denum, neg_pairs))), num, denum
 
-@gof.local_optimizer
+@gof.local_optimizer([T.mul, T.add, T.mul], [T.mul, T.sub, T.mul],
+                     [T.mul, T.add, T.div], [T.mul, T.sub, T.div])
 def local_greedy_distributor(node):
     """
     This optimization tries to apply distributivity of multiplication
@@ -638,41 +703,48 @@ def local_greedy_distributor(node):
 
     return [local_mul_canonizer.merge_num_denum(new_num, new_denum)]
 
+register_canonicalize(local_greedy_distributor)
 
 
 
 
-def _math_optimizer():
-    pass_1 = in2out(local_fill_sink)
-    pass_2 = out2in(local_dimshuffle_lift, local_shape_lift, local_fill_lift)#, local_fill_cut)
-    pass_3 = out2in(local_subtensor_make_vector, local_fill_cut)
+
+# def _math_optimizer():
+#     pass_1 = in2out(local_fill_sink)
+#     pass_2 = out2in(local_dimshuffle_lift, local_shape_lift, local_fill_lift)#, local_fill_cut)
+#     pass_3 = out2in(local_subtensor_make_vector, local_fill_cut)
     
-    canonizer = in2out(local_add_canonizer,
-                       local_mul_canonizer,
-                       local_fill_sink)
+#     canonizer = in2out(local_add_canonizer,
+#                        local_mul_canonizer,
+#                        local_fill_sink)
 
-    pass_4 = out2in(local_greedy_distributor)
+#     pass_4 = out2in(local_greedy_distributor)
 
-    return gof.SeqOptimizer(pass_1,
-                            pass_2,
-                            pass_3,
-                            neg_to_mul,
-                            canonizer,
-                            pass_4,
-                            mul_to_neg)
+#     return gof.SeqOptimizer(pass_1,
+#                             pass_2,
+#                             pass_3,
+#                             neg_to_mul,
+#                             canonizer,
+#                             pass_4,
+#                             mul_to_neg)
 
-math_optimizer = _math_optimizer()
-
-compile.register_optimizer('math', 
-        gof.MergeOptMerge(
-            gof.PureThenInplaceOptimizer(
-                math_optimizer,
-                inplace_optimizer)))
+# math_optimizer = _math_optimizer()
 
 
-compile.register_mode('SANITY_CHECK', compile.Mode('c&py', 'math'))
-compile.register_mode('FAST_RUN', compile.Mode('c|py', 'math'))
-compile.register_mode('EXPENSIVE_OPTIMIZATIONS', compile.Mode('c|py', 'math'))
+
+
+
+
+# compile.register_optimizer('math', 
+#         gof.MergeOptMerge(
+#             gof.PureThenInplaceOptimizer(
+#                 math_optimizer,
+#                 inplace_optimizer)))
+
+
+# compile.register_mode('SANITY_CHECK', compile.Mode('c&py', 'math'))
+# compile.register_mode('FAST_RUN', compile.Mode('c|py', 'math'))
+# compile.register_mode('EXPENSIVE_OPTIMIZATIONS', compile.Mode('c|py', 'math'))
 
 
 # @gof.local_optimizer

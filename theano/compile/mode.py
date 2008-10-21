@@ -16,6 +16,9 @@ def check_equal(x, y):
             raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
 
 
+
+
+
 # If a string is passed as the linker argument in the constructor for
 # Mode, it will be used as the key to retrieve the real linker in this
 # dictionary
@@ -35,12 +38,22 @@ def register_linker(name, linker):
     predefined_linkers[name] = linker
 
 
+
+
+
 # If a string is passed as the optimizer argument in the constructor
 # for Mode, it will be used as the key to retrieve the real optimizer
 # in this dictionary
+OPT_FAST_RUN = gof.Query(include = ['fast_run'])
+OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
+OPT_FAST_COMPILE = gof.Query(include = ['fast_compile'])
+
 predefined_optimizers = {
     None    : lambda env: None,
     'merge' : gof.MergeOptimizer(),
+    'fast_run' : OPT_FAST_RUN,
+    'fast_run_stable' : OPT_FAST_RUN_STABLE,
+    'fast_compile' : OPT_FAST_COMPILE
     }
 default_optimizer = 'merge'
 
@@ -49,6 +62,12 @@ def register_optimizer(name, opt):
     if name in predefined_optimizers:
         raise ValueError('Optimizer name already taken: %s' % name)
     predefined_optimizers[name] = opt
+
+optdb = gof.SequenceDB()
+optdb.register('merge1', gof.MergeOptimizer(), 0, 'fast_run', 'fast_compile')
+optdb.register('canonicalize', gof.EquilibriumDB(), 1, 'fast_run')
+optdb.register('specialize', gof.EquilibriumDB(), 2, 'fast_run')
+optdb.register('merge2', gof.EquilibriumDB(), 100, 'fast_run')
 
 
 class Mode(object):
@@ -81,15 +100,32 @@ class Mode(object):
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
+        if isinstance(optimizer, gof.Query):
+            self.provided_optimizer = optimizer
+            optimizer = optdb.query(optimizer)
         self.optimizer = optimizer
 
     def __str__(self):
         return "Mode(linker = %s, optimizer = %s)" % (self.provided_linker, self.provided_optimizer)
 
+    def including(self, *tags):
+        return Mode(self.provided_linker, self.provided_optimizer.including(*tags))
+
+    def excluding(self, *tags):
+        return Mode(self.provided_linker, self.provided_optimizer.excluding(*tags))
+
+    def requiring(self, *tags):
+        return Mode(self.provided_linker, self.provided_optimizer.requiring(*tags))
+
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
-predefined_modes = {'FAST_COMPILE': Mode('py', 'merge')}
+
+FAST_COMPILE = Mode('py', 'fast_compile')
+FAST_RUN = Mode('c|py', 'fast_run')
+
+predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
+                    'FAST_RUN': FAST_RUN}
 default_mode = 'FAST_COMPILE'
 
 def register_mode(name, mode):

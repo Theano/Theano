@@ -4,6 +4,7 @@ import theano
 from theano import tensor as T
 from theano.sandbox import nnet_ops
 from theano.sandbox import module
+from theano.sandbox import pprint
 
 import numpy as N
 
@@ -32,6 +33,10 @@ class LogisticRegressionN(module.FancyModule):
 
         xent, y = nnet_ops.crossentropy_softmax_1hot(
                 T.dot(self.x, self.w) + self.b, self.targ)
+        xent = T.sum(xent)
+
+        self.y = y
+        self.xent = xent
 
         gparams = T.grad(xent, self.params)
 
@@ -75,15 +80,25 @@ class LogisticRegression2(module.FancyModule):
         self.update = module.Method([self.x, self.targ], xent,
                                     updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gparams)))
         self.apply = module.Method([self.x], T.argmax(T.dot(self.x, self.w) + self.b, axis=1))
-
+        
 
 
 if __name__ == '__main__':
+    pprint.pp.assign(nnet_ops.crossentropy_softmax_1hot_with_bias_dx, pprint.FunctionPrinter('xsoftmaxdx'))
+    pprint.pp.assign(nnet_ops.crossentropy_softmax_argmax_1hot_with_bias, pprint.FunctionPrinter('nll', 'softmax', 'argmax'))
     if 1:
         lrc = LogisticRegressionN()
 
-        #lr = lrc.make(10, 2, mode='FAST_RUN')
-        lr = lrc.make(10, 2, mode=theano.Mode('c|py', 'merge')) #'FAST_RUN')
+        print '================'
+        print lrc.update.pretty()
+        print '================'
+        print lrc.update.pretty(mode = theano.Mode('py', 'fast_run'))
+        print '================'
+
+#        sys.exit(0)
+
+        lr = lrc.make(10, 2, mode=theano.Mode('py', 'fast_run'))
+        #lr = lrc.make(10, 2, mode=theano.Mode('py', 'merge')) #'FAST_RUN')
 
         data_x = N.random.randn(5, 10)
         data_y = (N.random.randn(5) > 0)

@@ -70,7 +70,7 @@ class Component(object):
     def __str__(self):
         return self.__class__.__name__
 
-    def pretty(self):
+    def pretty(self, **kwargs):
         raise NotImplementedError
 
     def __get_name__(self):
@@ -99,7 +99,7 @@ class _RComponent(Component):
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.r)
 
-    def pretty(self):
+    def pretty(self, **kwargs):
         rval = '%s :: %s' % (self.__class__.__name__, self.r.type)
         return rval
 
@@ -114,7 +114,7 @@ class External(_RComponent):
     def build(self, mode, memo):
         return None
 
-    def pretty(self):
+    def pretty(self, **kwargs):
         rval = super(External, self).pretty()
         if self.r.owner:
             rval += '\n= %s' % (pprint.pp2.process(self.r, dict(target = self.r)))
@@ -216,7 +216,7 @@ class Method(Component):
         inputs += [(kit, get_storage(kit, True)) for kit in self.kits]
         return compile.function(inputs, outputs, mode)
 
-    def pretty(self, header = True, **kwargs):
+    def pretty(self, **kwargs):
         self.resolve_all()
 #         cr = '\n    ' if header else '\n'
 #         rval = ''
@@ -226,7 +226,20 @@ class Method(Component):
             rval = 'inputs: %s\n' % ", ".join(map(str, self.inputs))
         else:
             rval = ''
-        rval += pprint.pp.process_graph(self.inputs, self.outputs, self.updates, False)
+        mode = kwargs.pop('mode', None)
+        inputs, outputs, updates = self.inputs, self.outputs if isinstance(self.outputs, (list, tuple)) else [self.outputs], self.updates
+        if mode:
+            nin = len(inputs)
+            nout = len(outputs)
+            k, v = zip(*updates.items()) if updates else ((), ())
+            nup = len(k)
+            eff_in = tuple(inputs) + tuple(k)
+            eff_out = tuple(outputs) + tuple(v)
+            env = gof.Env(*gof.graph.clone(eff_in + tuple(gof.graph.inputs(eff_out)),
+                                           eff_out))
+            mode.optimizer.optimize(env)
+            inputs, outputs, updates = env.inputs[:nin], env.outputs[:nout], dict(zip(env.inputs[nin:], env.outputs[nout:]))
+        rval += pprint.pp.process_graph(inputs, outputs, updates, False)
         return rval
 
     def __str__(self):
@@ -395,13 +408,13 @@ class ComponentList(Composite):
     def __str__(self):
         return str(self._components)
 
-    def pretty(self, header = True, **kwargs):
+    def pretty(self, **kwargs):
         cr = '\n    ' #if header else '\n'
         strings = []
         #if header:
         #    rval += "ComponentList:"
         for i, c in self.components_map():
-            strings.append('%i:%s%s' % (i, cr, c.pretty().replace('\n', cr)))
+            strings.append('%i:%s%s' % (i, cr, c.pretty(**kwargs).replace('\n', cr)))
             #rval += cr + '%i -> %s' % (i, c.pretty(header = True, **kwargs).replace('\n', cr))
         return '\n'.join(strings)
 
@@ -469,7 +482,7 @@ class Module(Composite):
         value.bind(self, item)
         self._components[item] = value
 
-    def pretty(self, header = True, **kwargs):
+    def pretty(self, **kwargs):
         cr = '\n    ' #if header else '\n'
         strings = []
 #         if header:
@@ -477,7 +490,7 @@ class Module(Composite):
         for name, component in self.components_map():
             if name.startswith('_'):
                 continue
-            strings.append('%s:%s%s' % (name, cr, component.pretty().replace('\n', cr)))
+            strings.append('%s:%s%s' % (name, cr, component.pretty(**kwargs).replace('\n', cr)))
         strings.sort()
         return '\n'.join(strings)
 
