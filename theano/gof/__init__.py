@@ -22,8 +22,13 @@ from opt import \
     MergeOptimizer, MergeOptMerge, \
     LocalOptimizer, local_optimizer, LocalOptGroup, LocalOpKeyOptGroup, \
     OpSub, OpRemove, PatternSub, \
-    NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer, \
-    PureThenInplaceOptimizer
+    NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer, EquilibriumOptimizer, \
+    keep_going, \
+    InplaceOptimizer, PureThenInplaceOptimizer
+
+from optdb import \
+    DB, Query, \
+    EquilibriumDB, SequenceDB
 
 from toolbox import \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder, PrintListener
