@@ -256,6 +256,10 @@ class Method(Component):
                               dict(self.updates),
                               list(self.kits))
 
+    def __call__(self, *args, **kwargs):
+        raise TypeError("'Method' object is not callable"
+                "  (Hint: compile your module first.  See Component.make())")
+
 
 
 class CompositeInstance(object):
