@@ -1,8 +1,11 @@
 ## This file contain ops that are not currently integrated in the core of threano. 
 ## Not all of those ops have been thoroughly tested.
 
-import theano
-from theano import tensor, scalar
+#from theano import tensor, scalar
+from .. import gof
+from .. import scalar
+import basic as tensor
+import elemwise
 import numpy
 
 ############
@@ -33,7 +36,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
                    : 1.0 /(1.0+exp(-%(x)s));""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
-sigmoid = tensor.Elemwise(scalar_sigmoid, name='sigmoid')
+sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
 class ScalarSoftplus(scalar.UnaryScalarOp):
     @staticmethod
@@ -57,7 +60,7 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
                    : log1p(exp(%(x)s));""" % locals()
         raise NotImplementedError('only floating point x is implemented')
 scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
-softplus = tensor.Elemwise(scalar_softplus, name='softplus')
+softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
 
 ############
@@ -66,7 +69,7 @@ softplus = tensor.Elemwise(scalar_softplus, name='softplus')
 #
 
 
-class SoftmaxWithBias(theano.Op):
+class SoftmaxWithBias(gof.Op):
     """
     An L{Op} for the output of neural-net multiclass classifiers.
 
@@ -80,7 +83,7 @@ class SoftmaxWithBias(theano.Op):
     nin = 2
     nout = 1
     def __init__(self, **kwargs):
-        theano.Op.__init__(self, **kwargs)
+        gof.Op.__init__(self, **kwargs)
 
     def make_node(self, x, b):
         x = tensor.as_tensor(x)
@@ -93,7 +96,7 @@ class SoftmaxWithBias(theano.Op):
             raise ValueError('b must be 1-d tensor of floats')
 
         sm = x.type.make_result()
-        return theano.Apply(self, [x, b], [sm])
+        return gof.Apply(self, [x, b], [sm])
 
     def perform(self, node, input_storage, output_storage):
         x, b = input_storage
@@ -232,18 +235,18 @@ class SoftmaxWithBias(theano.Op):
 softmax_with_bias = SoftmaxWithBias()
 
 
-class SoftmaxWithBiasDx(theano.Op):
+class SoftmaxWithBiasDx(gof.Op):
     nin = 2
     nout = 1
     """Gradient wrt x of the SoftmaxWithBias Op"""
 
     def __init__(self, **kwargs):
-        theano.Op.__init__(self, **kwargs)
+        gof.Op.__init__(self, **kwargs)
 
     def make_node(self, dy, sm, **kwargs):
         dy = tensor.as_tensor(dy)
         sm = tensor.as_tensor(sm)
-        return theano.Apply(self, [dy, sm], [sm.type.make_result()])
+        return gof.Apply(self, [dy, sm], [sm.type.make_result()])
 
     def perform(self, node, input_storage, output_storage):
         dy, sm = input_storage
@@ -317,7 +320,7 @@ def softmax(x, **kwargs):
     return softmax_with_bias(x, b, **kwargs)
 
 
-class CrossentropySoftmaxArgmax1HotWithBias(theano.Op):
+class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     """A special compound L{Op} for the output of neural-net classifiers.
 
     @type x: is a matrix of floats (32 or 64)
@@ -343,7 +346,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(theano.Op):
     nin=3
     nout=3
     def __init__(self, **kwargs):
-        theano.Op.__init__(self, **kwargs)
+        gof.Op.__init__(self, **kwargs)
 
     def make_node(self, x, b, y_idx):
         x = tensor.as_tensor(x)
@@ -365,7 +368,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(theano.Op):
 #        nll = Tensor(x.dtype, y.broadcastable)
         sm = x.type.make_result()
         am = y_idx.type.make_result()
-        return theano.Apply(self, [x, b, y_idx], [nll, sm, am])
+        return gof.Apply(self, [x, b, y_idx], [nll, sm, am])
     def perform(self, node, input_storage, output_storage):
         """
         The math, where x is an input vector, and t is a target index:
@@ -503,17 +506,17 @@ class CrossentropySoftmaxArgmax1HotWithBias(theano.Op):
         code_template = ''.join(self.c_code_template())
         return code_template % dict(locals(), **sub)
 
-class CrossentropySoftmax1HotWithBiasDx (theano.Op):
+class CrossentropySoftmax1HotWithBiasDx (gof.Op):
     nin=3
     nout=1
     """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
     def __init__(self, **kwargs):
-        theano.Op.__init__(self,**kwargs)
+        gof.Op.__init__(self,**kwargs)
     def make_node(self, dy, sm, y_idx,**kwargs):
         dy = tensor.as_tensor(dy)
         sm = tensor.as_tensor(sm)
         y_idx = tensor.as_tensor(y_idx)
-        return theano.Apply(self, [dy, sm, y_idx],[sm.type.make_result()])
+        return gof.Apply(self, [dy, sm, y_idx],[sm.type.make_result()])
     def perform(self, node, input_storage, output_storage):
         dy,sm,y_idx = input_storage
         dx = numpy.zeros_like(sm)
@@ -609,7 +612,7 @@ def crossentropy_softmax_1hot(x, y_idx, **kwargs):
     return crossentropy_softmax_1hot_with_bias(x, b, y_idx, **kwargs)
 
 
-class MultinomialCrossentropy1Hot(theano.Op):
+class MultinomialCrossentropy1Hot(gof.Op):
     pass
 
 
@@ -625,7 +628,7 @@ def binary_crossentropy(output, target):
 
 
 
-class Prepend_scalar_constant_to_each_row(theano.Op):
+class Prepend_scalar_constant_to_each_row(gof.Op):
     def __init__(self, val = 0):
         if isinstance(val, float):
             val = scalar.constant(val)
@@ -633,14 +636,14 @@ class Prepend_scalar_constant_to_each_row(theano.Op):
 
     def make_node(self, mat):
         #check type of input
-        if not isinstance(mat,theano.Result) or not mat.type==tensor.matrix().type:
+        if not isinstance(mat,gof.Result) or not mat.type==tensor.matrix().type:
             raise TypeError("Expected a matrix as input")
         x = tensor.as_tensor(mat)
         y = tensor.as_tensor(self.val)
         if x.type.dtype != y.type.dtype:
             TypeError("the value to prepend don't have the same type as the matrix")
 
-        node = theano.Apply(op=self, inputs=[mat], outputs=[tensor.matrix()])
+        node = gof.Apply(op=self, inputs=[mat], outputs=[tensor.matrix()])
         return node
 
     def perform(self, node, (mat, ), (output, )):
@@ -662,19 +665,19 @@ class Prepend_scalar_constant_to_each_row(theano.Op):
     def grad(self, (mat,), (goutput,)):
         return goutput[:,1:]
 
-class Prepend_scalar_to_each_row(theano.Op):
+class Prepend_scalar_to_each_row(gof.Op):
     def make_node(self, val, mat):
         #check type of input
         if isinstance(val, float):
             val = scalar.constant(val)
-        if not isinstance(mat,theano.Result) or not mat.type==tensor.matrix().type:
+        if not isinstance(mat,gof.Result) or not mat.type==tensor.matrix().type:
             raise TypeError("Expected a matrix as input")
         x = tensor.as_tensor(mat)
         y = tensor.as_tensor(val)
         if x.type.dtype != y.type.dtype:
             TypeError("the value to prepend don't have the same type as the matrix")
 
-        node = theano.Apply(op=self, inputs=[val,mat], outputs=[tensor.matrix()])
+        node = gof.Apply(op=self, inputs=[val,mat], outputs=[tensor.matrix()])
         return node
 
     def perform(self, node, (val,mat), (output, )):
@@ -699,7 +702,7 @@ prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
 prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
 
-class solve(theano.Op):
+class solve(gof.Op):
     """
     Find the solution to the linear equation Ax=b,
     where A is a 2d matrix and b is a 1d or 2d matrix.
@@ -707,12 +710,12 @@ class solve(theano.Op):
     """
 
     def make_node(self, A, b):
-        if not isinstance(A, theano.Result) or not A.type==tensor.matrix().type:
+        if not isinstance(A, gof.Result) or not A.type==tensor.matrix().type:
             raise TypeError("We expected that A had a matrix type")
-        if not isinstance(B, theano.Result) or not B.type==tensor.matrix().type:
+        if not isinstance(B, gof.Result) or not B.type==tensor.matrix().type:
             raise TypeError("We expected that B had a matrix type")
 
-        node = theano.Apply(op=self, inputs=[A, B], outputs=[tensor.matrix()])
+        node = gof.Apply(op=self, inputs=[A, B], outputs=[tensor.matrix()])
         return node
 
     def perform(self, node, (A, B), (output, )):

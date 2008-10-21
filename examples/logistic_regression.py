@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '..')
 import theano
 from theano import tensor as T
-from theano.sandbox import nnet_ops
+from theano.tensor import nnet_ops
 from theano.sandbox import module
 from theano.sandbox import pprint
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
 #        sys.exit(0)
 
-        lr = lrc.make(10, 2, mode=theano.Mode('py', 'fast_run'))
+        lr = lrc.make(10, 2, mode=theano.Mode('c|py', 'fast_run'))
         #lr = lrc.make(10, 2, mode=theano.Mode('py', 'merge')) #'FAST_RUN')
 
         data_x = N.random.randn(5, 10)
