@@ -252,17 +252,26 @@ def upcast_out(*types):
     return Scalar(dtype = Scalar.upcast(*types)),
 def same_out(type):
     return type,
-class transfer_type:
-    def __init__(self, i):
-        assert type(i) == int
-        self.i = i
+class transfer_type(gof.utils.object2):
+    def __init__(self, *transfer):
+        assert all(type(x) == int for x in transfer)
+        self.transfer = transfer
     def __call__(self, *types):
-        return types[self.i],
-class specific_out:
+        upcast = upcast_out(*types)
+        return [upcast if i is None else types[i] for i in self.transfer]
+    def __eq__(self, other):
+        return type(self) == type(other) and self.transfer == other.transfer
+    def __hash__(self):
+        return hash(self.transfer)
+class specific_out(gof.utils.object2):
     def __init__(self, *spec):
         self.spec = spec
     def __call__(self, *types):
         return self.spec
+    def __eq__(self, other):
+        return type(self) == type(other) and self.spec == other.spec
+    def __hash__(self):
+        return hash(self.spec)
 def int_out(*types):
     return int64,
 def float_out(*types):
@@ -328,9 +337,10 @@ class ScalarOp(Op):
         raise AbstractFunctionError()
 
     def __eq__(self, other):
-        return type(self) == type(other) \
+        test =  type(self) == type(other) \
             and getattr(self, 'output_types_preference', None) \
             == getattr(other, 'output_types_preference', None)
+        return test
 
     def __hash__(self):
         return hash(getattr(self, 'output_types_preference', 0))

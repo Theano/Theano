@@ -2,6 +2,8 @@
 from basic import _scal_elemwise, _transpose_inplace
 from .. import scalar as scal
 import elemwise
+from .. import printing
+from ..printing import pprint
 
 def _scal_inplace(symbol):
     """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
@@ -24,6 +26,16 @@ def _scal_inplace(symbol):
     rval.__epydoc_asRoutine = symbol
     rval.__module__ = 'theano.tensor.inplace'
 
+    def chk(pstate, r):
+        if not r.owner:
+            return False
+        op = r.owner.op
+#         print op, rval, r.owner and op == rval
+#         print op.inplace_pattern, rval.inplace_pattern, op.inplace_pattern == rval.inplace_pattern
+#         print op.scalar_op, rval.scalar_op, op.scalar_op == rval.scalar_op
+        return r.owner.op == rval
+
+    pprint.assign(chk, printing.FunctionPrinter(symbolname.replace('_inplace', '=')))
     return rval
 
 
@@ -132,6 +144,8 @@ def second_inplace(a):
     """Fill `a` with `b`"""
 
 fill_inplace = second_inplace
+pprint.assign(fill_inplace, printing.FunctionPrinter('fill='))
+
 
 @_scal_inplace
 def add_inplace(a, b):
@@ -157,7 +171,17 @@ def mod_inplace(a, b):
 def pow_inplace(a, b):
     """elementwise power (inplace on `a`)"""
 
+pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
+pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))
+pprint.assign(sub_inplace, printing.OperatorPrinter('-=', -2, 'left'))
+pprint.assign(neg_inplace, printing.OperatorPrinter('-=',  0, 'either'))
+pprint.assign(div_inplace, printing.OperatorPrinter('/=', -1, 'left'))
+pprint.assign(pow_inplace, printing.OperatorPrinter('**=', 1, 'right'))
+
+
 transpose_inplace = _transpose_inplace
 """WRITEME"""
+
+pprint.assign(transpose_inplace, printing.MemberPrinter('T'))
 
 

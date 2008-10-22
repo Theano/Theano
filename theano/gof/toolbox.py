@@ -101,7 +101,7 @@ class ReplaceValidate(History, Validator):
             try:
                 env.replace(r, new_r)
             except Exception, e:
-                if not 'The type of the replacement must be the same' in str(e) or not 'does not belong to this Env' in str(e):
+                if 'The type of the replacement must be the same' not in str(e) and 'does not belong to this Env' not in str(e):
                     print >>sys.stderr, "<<!! BUG IN ENV.REPLACE OR A LISTENER !!>>", type(e), e
                 env.revert(chk) # this might fail if the error is in a listener: (env.replace kinda needs better internal error handling)
                 raise

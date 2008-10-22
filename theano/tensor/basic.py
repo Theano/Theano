@@ -20,7 +20,8 @@ import elemwise
 from .. import scalar as scal
 from ..gof.python25 import partial
 
-from .. import compile
+from .. import compile, printing
+from ..printing import pprint
 
 
 ### set up the external interface
@@ -614,6 +615,8 @@ def _scal_elemwise(symbol):
     rval.__epydoc_asRoutine = symbol
     rval.__module__ = 'tensor'
 
+    pprint.assign(rval, printing.FunctionPrinter(symbolname))
+
     return rval
 
 
@@ -661,33 +664,34 @@ def cast(t, dtype):
     return mapping[dtype](t)
 
 #to be removed as we get the epydoc routine-documenting thing going -JB 20080924
-def _conversion(real_value):
+def _conversion(real_value, name):
     __oplist_tag(real_value, 'casting')
     real_value.__module__='tensor.basic'
+    pprint.assign(real_value, printing.FunctionPrinter(name))
     return real_value
 
-convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))))
+convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))), 'int8')
 """Cast to 8-bit integer"""
     
-convert_to_int16 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16))))
+convert_to_int16 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16))), 'int16')
 """Cast to 16-bit integer"""
 
-convert_to_int32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32))))
+convert_to_int32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32))), 'int32')
 """Cast to 32-bit integer"""
 
-convert_to_int64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64))))
+convert_to_int64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64))), 'int64')
 """Cast to 64-bit integer"""
 
-convert_to_float32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32))))
+convert_to_float32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32))), 'float32')
 """Cast to single-precision floating point"""
 
-convert_to_float64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64))))
+convert_to_float64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64))), 'float64')
 """Cast to double-precision floating point"""
 
-convert_to_complex64  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64))))
+convert_to_complex64  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64))), 'complex64')
 """Cast to single-precision complex"""
 
-convert_to_complex128 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128))))
+convert_to_complex128 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128))), 'complex128')
 """Cast to double-precision complex"""
 
 
@@ -712,6 +716,9 @@ class Shape(Op):
 @_redefine_asRoutine(Shape())
 def shape(a):
     pass
+
+pprint.assign(shape, printing.MemberPrinter('shape'))
+
 
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis"""
@@ -834,6 +841,9 @@ def abs_(a):
 
     """
 
+pprint.assign(abs_, printing.PatternPrinter(('|%(0)s|', -1000)))
+
+
 @_scal_elemwise
 def exp(a):
     """e^`a`"""
@@ -902,6 +912,8 @@ def second(a, b):
     """Create a matrix by filling the shape of a with b"""
 
 fill = second
+pprint.assign(fill, printing.FunctionPrinter('fill'))
+
 
 @constructor
 def ones_like(model):
@@ -967,10 +979,15 @@ def one():
     """WRITEME"""
     return Ones(0)([])
 
+pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
+pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
+
 
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
+pprint.assign(tensor_copy, printing.IgnorePrinter())
+
 
 @_redefine(elemwise.Elemwise(scal.identity, inplace_pattern = {0: [0]}))
 def view(a):
@@ -980,6 +997,9 @@ def view(a):
 def sum(input, axis = None):
     """WRITEME"""
     return elemwise.Sum(axis)(input)
+
+pprint.assign(Sum(), printing.FunctionPrinter('sum'))
+
 
 @constructor
 def mean(input, axis = None):
@@ -1042,6 +1062,14 @@ def mod(a, b):
 @_scal_elemwise
 def pow(a, b):
     """elementwise power"""
+
+pprint.assign(add, printing.OperatorPrinter('+', -2, 'either'))
+pprint.assign(mul, printing.OperatorPrinter('*', -1, 'either'))
+pprint.assign(sub, printing.OperatorPrinter('-', -2, 'left'))
+pprint.assign(neg, printing.OperatorPrinter('-',  0, 'either'))
+pprint.assign(div, printing.OperatorPrinter('/', -1, 'left'))
+pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
+
 
 
 ##########################
@@ -1212,6 +1240,36 @@ class Subtensor(Op):
             else:
                 indices.append(str(entry))
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
+
+
+
+class SubtensorPrinter:
+
+    def process(self, r, pstate):
+        if r.owner is None:
+            raise TypeError("Can only print Subtensor.")
+        elif isinstance(r.owner.op, Subtensor):
+            idxs = r.owner.op.idx_list
+            inputs = list(r.owner.inputs)
+            input = inputs.pop()
+            sidxs = []
+            inbrack_pstate = pstate.clone(precedence = -1000)
+            for entry in idxs:
+                if isinstance(entry, int):
+                    sidxs.append(str(entry))
+                elif isinstance(entry, scal.Scalar):
+                    sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))
+                elif isinstance(entry, slice):
+                    sidxs.append("%s:%s%s" % ("" if entry.start is None or entry.start == 0 else entry.start,
+                                              "" if entry.stop is None or entry.stop == sys.maxint else entry.stop,
+                                              "" if entry.step is None else ":%s" % entry.step))
+            return "%s[%s]" % (pstate.pprinter.process(input, pstate.clone(precedence = 1000)),
+                               ", ".join(sidxs))
+        else:
+            raise TypeError("Can only print Subtensor.")
+
+pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), SubtensorPrinter())
+
 
 
 class SetSubtensor(Subtensor):
@@ -1474,6 +1532,11 @@ def join(axis, *tensors):
 
     """
 
+pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
+              printing.FunctionPrinter('join'))
+
+
+
 @constructor
 def shape_padleft(tensor, n_ones):
     """Reshape `tensor` by left-padding the shape with `n_ones` 1s
@@ -1630,6 +1693,21 @@ make_lvector = MakeVector(lscalar)
 """WRITEME"""
 
 
+class MakeVectorPrinter:
+
+    def process(self, r, pstate):
+        if r.owner is None:
+            raise TypeError("Can only print make_vector.")
+        elif isinstance(r.owner.op, MakeVector):
+            return "[%s]" % ", ".join(pstate.pprinter.process(input, pstate.clone(precedence = 1000)) for input in r.owner.inputs)
+        else:
+            raise TypeError("Can only print make_vector.")
+
+pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
+
+
+
+
 #########################
 # Linalg : Dot
 #########################
@@ -1696,6 +1774,7 @@ class Dot(Op):
     def __str__(self):
         return "dot"
 dot = Dot()
+pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'], -1, 'left'))
 
 class Outer(Op):
     """ Compute vector-vector outer product
@@ -1963,6 +2042,8 @@ class Gemm(Op):
         """ % dict(locals(), **sub)
 gemm = Gemm()
 
+
+pprint.assign(gemm, printing.FunctionPrinter('gemm'))
 
 
 #########################

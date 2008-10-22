@@ -6,6 +6,8 @@ from .. import gof
 from ..gof import Op, Apply
 from .. import scalar
 from ..scalar import Scalar
+from .. import printing
+from ..printing import pprint
 from ..gof.python25 import all
 from copy import copy
 
@@ -180,6 +182,31 @@ class DimShuffle(Op):
             if v != 'x':
                 grad_order[v] = i
         return DimShuffle(gz.type.broadcastable, grad_order)(gz),
+
+
+
+class DimShufflePrinter:
+
+    def __p(self, new_order, pstate, r):
+        if new_order != () and  new_order[0] == 'x':
+#            return "%s" % self.__p(new_order[1:], pstate, r)
+            return "[%s]" % self.__p(new_order[1:], pstate, r)
+        if list(new_order) == range(r.type.ndim):
+            return pstate.pprinter.process(r)
+        if list(new_order) == list(reversed(range(r.type.ndim))):
+            return "%s.T" % pstate.pprinter.process(r)
+        return "DimShuffle{%s}(%s)" % (", ".join(map(str, new_order)), pstate.pprinter.process(r))
+
+    def process(self, r, pstate):
+        if r.owner is None:
+            raise TypeError("Can only print DimShuffle.")
+        elif isinstance(r.owner.op, DimShuffle):
+            ord = r.owner.op.new_order
+            return self.__p(ord, pstate, r.owner.inputs[0])            
+        else:
+            raise TypeError("Can only print DimShuffle.")
+
+pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle), DimShufflePrinter())
 
 
 ################

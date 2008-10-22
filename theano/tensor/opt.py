@@ -31,7 +31,7 @@ def in2out(*local_opts):
 
 # gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)
 # Transforms d -= a * dot(b, c) into gemm(d, -a, b, c, 1.0)
-gemm_pattern_1 = gof.PatternSub((I.sub_inplace,
+gemm_pattern_1 = gof.PatternSub((T.sub,
                                  'd',
                                  (T.mul,
                                   dict(pattern = (T.DimShuffle((), ['x', 'x'], inplace = True), 'a'),
@@ -77,7 +77,10 @@ def _insert_inplace_optimizer(env):
             for candidate_input in candidate_inputs:
                 inplace_pattern = dict(baseline, **{candidate_output: candidate_input})
                 try:
-                    new = Elemwise(op.scalar_op, inplace_pattern).make_node(*node.inputs)
+                    new = Elemwise(
+                        op.scalar_op.__class__(
+                            scalar.transfer_type(*[inplace_pattern.get(i, None) for i in xrange(len(node.outputs))])),
+                        inplace_pattern).make_node(*node.inputs)
                     env.replace_all_validate(zip(node.outputs, new.outputs))
                 except Exception, e:
                     continue
@@ -89,7 +92,7 @@ insert_inplace_optimizer = gof.optimizer(_insert_inplace_optimizer)
 
 inplace_optimizer = gof.InplaceOptimizer(
     gof.SeqOptimizer(out2in(gemm_pattern_1),
-                     out2in(dot_to_gemm),
+                     #out2in(dot_to_gemm),
                      insert_inplace_optimizer,
                      failure_callback = gof.keep_going))
 compile.optdb.register('inplace', inplace_optimizer, 99, 'fast_run')
@@ -537,7 +540,7 @@ def mul_calculate(num, denum, aslist = False):
             return [v]
     return v
 
-local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate, False)
+local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate)
 
 @gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):

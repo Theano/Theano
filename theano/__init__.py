@@ -41,12 +41,18 @@ from compile import \
     SymbolicOutput, Out, \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
-    FunctionMaker, function, OpFromGraph #, eval_outputs, fast_compute
+    FunctionMaker, function, OpFromGraph, \
+    Component, External, Member, KitComponent, Method, \
+    Composite, ComponentList, Module, FancyModule
+
+from printing import \
+    pprint, pp
 
 import tensor
 import scalar
 import sparse
 import gradient
+
 
 ## import scalar_opt
 

@@ -1,12 +1,12 @@
 
 from .. import gof
+from ..printing import pprint
 from collections import defaultdict
 from itertools import chain
 from functools import partial
 from copy import copy
-import mode
+import io
 import function_module as F
-#from ..sandbox import pprint
 
 
 def join(*args):
@@ -117,7 +117,7 @@ class External(_RComponent):
     def pretty(self, **kwargs):
         rval = super(External, self).pretty()
         if self.r.owner:
-            rval += '\n= %s' % (pprint.pp2.process(self.r, dict(target = self.r)))
+            rval += '\n= %s' % (pprint(self.r, dict(target = self.r)))
         return rval
 
 
@@ -196,13 +196,15 @@ class Method(Component):
                 else:
                     return gof.Container(r, storage = [None])
         inputs = self.inputs
-        inputs = [mode.In(result = input,
-                          value = get_storage(input))
+        inputs = [io.In(result = input,
+                        value = get_storage(input),
+                        mutable = False)
                   for input in inputs]
-        inputs += [mode.In(result = k,
-                           update = v,
-                           value = get_storage(k, True),
-                           strict = True)
+        inputs += [io.In(result = k,
+                         update = v,
+                         value = get_storage(k, True),
+                         mutable = True,
+                         strict = True)
                    for k, v in self.updates.iteritems()]
         outputs = self.outputs
         _inputs = [x.result for x in inputs]
@@ -210,8 +212,9 @@ class Method(Component):
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
             if input not in _inputs and not isinstance(input, gof.Value):
-                inputs += [mode.In(result = input,
-                                   value = get_storage(input, True))]
+                inputs += [io.In(result = input,
+                                 value = get_storage(input, True),
+                                 mutable = False)]
         inputs += [(kit, get_storage(kit, True)) for kit in self.kits]
         return F.function(inputs, outputs, mode)
 
@@ -234,11 +237,14 @@ class Method(Component):
             nup = len(k)
             eff_in = tuple(inputs) + tuple(k)
             eff_out = tuple(outputs) + tuple(v)
-            env = gof.Env(*gof.graph.clone(eff_in + tuple(gof.graph.inputs(eff_out)),
+            supp_in = tuple(gof.graph.inputs(eff_out))
+            env = gof.Env(*gof.graph.clone(eff_in + supp_in,
                                            eff_out))
+            sup = F.Supervisor(set(env.inputs).difference(env.inputs[len(inputs):len(eff_in)]))
+            env.extend(sup)
             mode.optimizer.optimize(env)
             inputs, outputs, updates = env.inputs[:nin], env.outputs[:nout], dict(zip(env.inputs[nin:], env.outputs[nout:]))
-        rval += pprint.pp.process_graph(inputs, outputs, updates, False)
+        rval += pprint(inputs, outputs, updates, False)
         return rval
 
     def __str__(self):

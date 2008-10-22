@@ -102,11 +102,18 @@ class Mode(object):
             optimizer = predefined_optimizers[optimizer]
         if isinstance(optimizer, gof.Query):
             self.provided_optimizer = optimizer
-            optimizer = optdb.query(optimizer)
-        self.optimizer = optimizer
+        self._optimizer = optimizer
 
     def __str__(self):
         return "Mode(linker = %s, optimizer = %s)" % (self.provided_linker, self.provided_optimizer)
+
+    def __get_optimizer(self):
+        if isinstance(self._optimizer, gof.Query):
+            return optdb.query(self._optimizer)
+        else:
+            return self._optimizer
+
+    optimizer = property(__get_optimizer)
 
     def including(self, *tags):
         return Mode(self.provided_linker, self.provided_optimizer.including(*tags))
