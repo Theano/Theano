@@ -33,7 +33,7 @@ class LogisticRegressionN(module.FancyModule):
 
         self.params = [self.w, self.b]
 
-        xent, y = nnet_ops.crossentropy_softmax_1hot(
+        xent, y = nnet.crossentropy_softmax_1hot(
                 T.dot(self.x, self.w) + self.b, self.targ)
         xent = T.sum(xent)
 
@@ -69,7 +69,7 @@ class LogisticRegression2(module.FancyModule):
 
         self.params = [self.w, self.b]
 
-        y = nnet_ops.sigmoid(T.dot(self.x, self.w))
+        y = nnet.sigmoid(T.dot(self.x, self.w))
         xent_elem = -self.targ * T.log(y) - (1.0 - self.targ) * T.log(1.0 - y)
         xent = T.sum(xent_elem)
 
@@ -86,8 +86,8 @@ class LogisticRegression2(module.FancyModule):
 
 
 if __name__ == '__main__':
-    pprint.assign(nnet_ops.crossentropy_softmax_1hot_with_bias_dx, printing.FunctionPrinter('xsoftmaxdx'))
-    pprint.assign(nnet_ops.crossentropy_softmax_argmax_1hot_with_bias, printing.FunctionPrinter('nll', 'softmax', 'argmax'))
+    pprint.assign(nnet.crossentropy_softmax_1hot_with_bias_dx, printing.FunctionPrinter('xsoftmaxdx'))
+    pprint.assign(nnet.crossentropy_softmax_argmax_1hot_with_bias, printing.FunctionPrinter('nll', 'softmax', 'argmax'))
     if 1:
         lrc = LogisticRegressionN()
 
