@@ -6,7 +6,7 @@ from theano import gof
 import test_basic as TT
 import numpy
 
-from theano.tensor.nnet_ops import *
+from theano.tensor.nnet import *
 
 
 class T_sigmoid(unittest.TestCase):

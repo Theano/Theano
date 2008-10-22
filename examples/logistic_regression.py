@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '..')
 import theano
 from theano import tensor as T
-from theano.tensor import nnet_ops
+from theano.tensor import nnet
 from theano.compile import module
 from theano import printing, pprint
 from theano import compile

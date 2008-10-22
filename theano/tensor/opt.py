@@ -485,7 +485,7 @@ class Canonizer(gof.LocalOptimizer):
                 dcc += 1
                 denum.remove(v)
                 denumct.append(ct)
-        if self.use_reciprocal:
+        if self.use_reciprocal or num:
             ct = self.calculate(numct, denumct, aslist = True)
         else:
             ct = [self.calculate(numct, denumct, aslist = False)]
@@ -540,7 +540,7 @@ def mul_calculate(num, denum, aslist = False):
             return [v]
     return v
 
-local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate)
+local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate, False)
 
 @gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):
