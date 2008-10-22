@@ -214,7 +214,7 @@ class SparseFromDense(gof.op.Op):
     def __eq__(self, other):
         return type(self) == type(other) and self.format == other.format
     def __hash__(self):
-        return hash(self.format)
+        return hash(self.format) ^ hash(DenseFromSparse)
 csr_from_dense = SparseFromDense('csr')
 csc_from_dense = SparseFromDense('csc')
 
