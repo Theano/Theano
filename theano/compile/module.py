@@ -412,7 +412,15 @@ class ComponentList(Composite):
             c = Member(c)
         elif not isinstance(c, Component):
             raise TypeError('ComponentList may only contain Components.', c, type(c))
-        self._components.append(c)        
+        self._components.append(c)
+
+    def __add__(self, other):
+        if isinstance(other, (list, tuple)):
+            return ComponentList(self._components + list(other))
+
+    def __radd__(self, other):
+        if isinstance(other, (list, tuple)):
+            return ComponentList(list(other) + self._components)
 
     def __str__(self):
         return str(self._components)
