@@ -9,7 +9,7 @@ from theano import tensor
 from theano.tensor import Tensor
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
-from theano.sandbox import pprint
+from theano import pprint
 import numpy
 #import scalar_opt
 
@@ -114,11 +114,11 @@ class test_greedy_distribute(unittest.TestCase):
         a, b, c, d, x, y, z = matrices('abcdxyz')
         e = (a/z + b/x) * x * z
         g = Env([a,b,c,d,x,y,z], [e])
-        ##print pprint.pp.process(g.outputs[0])
+        ##print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor), order = 'out_to_in').optimize(g)
-        ##print pprint.pp.process(g.outputs[0])
+        ##print pprint(g.outputs[0])
         
 
 
@@ -139,10 +139,10 @@ class test_canonize(unittest.TestCase):
 #        e = (x / x) * (y / y)
         e = (-1 * x) / y / (-2 * z)
         g = Env([x, y, z, a, b, c, d], [e])
-        print pprint.pp.process(g.outputs[0])
+        print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
-        print pprint.pp.process(g.outputs[0])
+        print pprint(g.outputs[0])
         
 #     def test_plusmin(self):
 #         x, y, z = inputs()
