@@ -486,7 +486,7 @@ class ModuleInstance(CompositeInstance):
 
 
 class Module(Composite):
-    __instance_type__ = ModuleInstance
+    InstanceType = ModuleInstance
 
     def __init__(self, components = {}, **kwcomponents):
         super(Module, self).__init__()
@@ -507,7 +507,7 @@ class Module(Composite):
         return self._components.iteritems()
 
     def build(self, mode, memo):
-        inst = self.__instance_type__(self, {})
+        inst = self.InstanceType(self, {})
         for name, c in self._components.iteritems():
             x = c.build(mode, memo)
             if x is not None:
@@ -601,7 +601,7 @@ class FancyModuleInstance(ModuleInstance):
             self.__dict__[attr] = value
 
 class FancyModule(Module):
-    __instance_type__ = FancyModuleInstance
+    InstanceType = FancyModuleInstance
     
     def __wrapper__(self, x):
         return wrap(x)

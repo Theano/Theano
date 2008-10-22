@@ -11,7 +11,7 @@ import numpy as N
 
 
 class LogisticRegressionN(module.FancyModule):
-    class __instance_type__(module.FancyModuleInstance):
+    class InstanceType(module.FancyModuleInstance):
         def initialize(self, n_in, n_out):
             #self.component is the LogisticRegressionTemplate instance that built this guy.
 
@@ -47,7 +47,7 @@ class LogisticRegressionN(module.FancyModule):
         self.apply = module.Method([self.x], T.argmax(T.dot(self.x, self.w) + self.b, axis=1))
 
 class LogisticRegression2(module.FancyModule):
-    class __instance_type__(module.FancyModuleInstance):
+    class InstanceType(module.FancyModuleInstance):
         def initialize(self, n_in):
             #self.component is the LogisticRegressionTemplate instance that built this guy.
 
