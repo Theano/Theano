@@ -28,7 +28,8 @@ def canonicalize(name):
 class AllocationError(Exception):
     pass
 
-
+class BindError(Exception):
+    pass
 
 class Component(object):
 
@@ -36,11 +37,20 @@ class Component(object):
         self.__dict__['_name'] = ''
         self.__dict__['parent'] = None
 
-    def bind(self, parent, name):
+    def bind(self, parent, name, dup_ok=True):
         if self.bound():
-            raise Exception("%s is already bound to %s as %s" % (self, self.parent, self.name))
+            if dup_ok:
+                try:
+                    return self.dup().bind(parent, name, False)
+                except BindError, e:
+                    #TODO: Add a hint that this could be caused by a buggy dup() that doesn't
+                    #follow it's contract
+                    raise
+            else:
+                raise BindError("%s is already bound to %s as %s" % (self, self.parent, self.name))
         self.parent = parent
         self.name = join(parent.name, name)
+        return self
 
     def bound(self):
         return self.parent is not None
@@ -103,6 +113,8 @@ class _RComponent(Component):
         rval = '%s :: %s' % (self.__class__.__name__, self.r.type)
         return rval
 
+    def dup(self):
+        return self.__class__(self.r)
 
 
 class External(_RComponent):
@@ -146,9 +158,10 @@ class Method(Component):
         self.updates = dict(updates, **kwupdates)
         self.kits = list(kits)
 
-    def bind(self, parent, name):
-        super(Method, self).bind(parent, name)
-        self.resolve_all()
+    def bind(self, parent, name, dup_ok=True):
+        rval = super(Method, self).bind(parent, name, dup_ok=dup_ok)
+        rval.resolve_all()
+        return rval
 
     def resolve(self, name):
         if not self.bound():
@@ -254,7 +267,7 @@ class Method(Component):
              "; " if self.updates else "",
              ", ".join("%s <= %s" % (old, new) for old, new in self.updates.iteritems()))
 
-    def __copy__(self):
+    def dup(self):
         self.resolve_all()
         return self.__class__(list(self.inputs),
                               list(self.outputs) if isinstance(outputs, list) else outputs,
@@ -404,7 +417,7 @@ class ComponentList(Composite):
             value = Member(value)
         elif not isinstance(value, Component):
             raise TypeError('ComponentList may only contain Components.', value, type(value))
-        value.bind(self, str(item))
+        value = value.bind(self, str(item))
         self._components[item] = value
 
     def append(self, c):
@@ -416,11 +429,19 @@ class ComponentList(Composite):
 
     def __add__(self, other):
         if isinstance(other, (list, tuple)):
-            return ComponentList(self._components + list(other))
+            return ComponentList(self._components + map(wrap,other))
+        elif isinstance(other, ComponentList):
+            return ComponentList(self._components + other._components)
+        else:
+            return NotImplemented
 
     def __radd__(self, other):
         if isinstance(other, (list, tuple)):
-            return ComponentList(list(other) + self._components)
+            return ComponentList(map(wrap,other) + self._components)
+        elif isinstance(other, ComponentList):
+            return ComponentList(other._components + self._components)
+        else:
+            return NotImplemented
 
     def __str__(self):
         return str(self._components)
@@ -440,6 +461,8 @@ class ComponentList(Composite):
         for i, member in enumerate(self._components):
             member.name = '%s.%i' % (name, i)
 
+    def dup(self):
+        return self.__class__(*[c.dup() for c in self._components])
 
 
 class ModuleInstance(CompositeInstance):
@@ -496,7 +519,7 @@ class Module(Composite):
     def set(self, item, value):
         if not isinstance(value, Component):
             raise TypeError('Module may only contain Components.', value, type(value))
-        value.bind(self, item)
+        value = value.bind(self, item)
         self._components[item] = value
 
     def pretty(self, **kwargs):
