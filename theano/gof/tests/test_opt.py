@@ -44,16 +44,22 @@ class MyOp(Op):
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return self.name
+
     def __eq__(self, other):
         return self is other or isinstance(other, MyOp) and self.x is not None and self.x == other.x
 
     def __hash__(self):
         return self.x if self.x is not None else id(self)
 
+
 op1 = MyOp('Op1')
 op2 = MyOp('Op2')
 op3 = MyOp('Op3')
 op4 = MyOp('Op4')
+op5 = MyOp('Op5')
+op6 = MyOp('Op6')
 op_d = MyOp('OpD', {0: [0]})
 
 op_y = MyOp('OpY', x = 1)
@@ -347,6 +353,22 @@ class TestEquilibrium(object):
             max_use_ratio = 10)
         opt.optimize(g)
         print g
+        assert str(g) == '[Op2(x, y)]'
+
+    def test_2(self):
+        x, y, z = map(MyResult, 'xyz')
+        e = op1(op1(op3(x, y)))
+        g = Env([x, y, z], [e])
+        print g
+        opt = EquilibriumOptimizer(
+            [PatternSub((op1, (op2, 'x', 'y')), (op4, 'x', 'y')),
+             PatternSub((op3, 'x', 'y'), (op4, 'x', 'y')),
+             PatternSub((op4, 'x', 'y'), (op5, 'x', 'y')),
+             PatternSub((op5, 'x', 'y'), (op6, 'x', 'y')),
+             PatternSub((op6, 'x', 'y'), (op2, 'x', 'y'))
+             ],
+            max_use_ratio = 10)
+        opt.optimize(g)
         assert str(g) == '[Op2(x, y)]'
 
     def test_low_use_ratio(self):

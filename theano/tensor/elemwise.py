@@ -189,8 +189,8 @@ class DimShufflePrinter:
 
     def __p(self, new_order, pstate, r):
         if new_order != () and  new_order[0] == 'x':
-#            return "%s" % self.__p(new_order[1:], pstate, r)
-            return "[%s]" % self.__p(new_order[1:], pstate, r)
+            return "%s" % self.__p(new_order[1:], pstate, r)
+#            return "[%s]" % self.__p(new_order[1:], pstate, r)
         if list(new_order) == range(r.type.ndim):
             return pstate.pprinter.process(r)
         if list(new_order) == list(reversed(range(r.type.ndim))):

@@ -237,6 +237,8 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
         return self._tracks
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
+    def __str__(self):
+        return getattr(self, 'name', '<FromFunctionLocalOptimizer instance>')
 
 def local_optimizer(*tracks):
     def decorator(f):
@@ -492,6 +494,9 @@ class PatternSub(LocalOptimizer):
                 return str(pattern)
         return "%s -> %s" % (pattern_to_str(self.in_pattern), pattern_to_str(self.out_pattern))
 
+    def __repr__(self):
+        return str(self)
+
 
 
 ##################
@@ -512,7 +517,7 @@ class NavigatorOptimizer(Optimizer):
             self.ignore_newtrees = ignore_newtrees
         self.failure_callback = failure_callback
 
-    def attach_updater(self, env, importer, pruner):
+    def attach_updater(self, env, importer, pruner, chin = None):
         if self.ignore_newtrees:
             importer = None
         
@@ -526,6 +531,10 @@ class NavigatorOptimizer(Optimizer):
             if pruner is not None:
                 def on_prune(self, env, node):
                     pruner(node)
+            if chin is not None:
+                def on_change_input(self, env, node, i, r, new_r):
+                    chin(node, i, r, new_r)
+                    
         u = Updater()
         env.extend(u)
         return u
@@ -728,9 +737,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             for node in nodes:
                 candidates = filter(node, depth)
             depth += 1
+            _nodes = nodes
             nodes = reduce(list.__iadd__,
                            [reduce(list.__iadd__,
-                                   [[n for n, i in out.clients] for out in node.outputs],
+                                   [[n for n, i in out.clients if not isinstance(n, str)] for out in node.outputs],
                                    []) for node in nodes],
                            [])
             candidates = tracks
@@ -746,12 +756,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             runs = None
 
         def importer(node):
+            #print 'IMPORTING', node
             self.backtrack(node, tasks)
         def pruner(node):
             try:
                 del tasks[node]
             except KeyError:
                 pass
+        def chin(node, i, r, new_r):
+            if new_r.owner and not r.clients:
+                self.backtrack(new_r.owner, tasks)
 
 #         # == NOT IDEAL == #
 #         for node in env.nodes:
@@ -761,7 +775,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         for node in env.nodes:
             tasks[node].extend(lopt for track, i, lopt in self.fetch_tracks0(node.op))
 
-        u = self.attach_updater(env, importer, pruner)
+        u = self.attach_updater(env, importer, pruner, chin)
         while tasks:
             for node in tasks.iterkeys():
                 todo = tasks.pop(node)
@@ -806,6 +820,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
 def keep_going(exc, nav, repl_pairs):
     """WRITEME"""
+    print exc, nav, repl_pairs
     pass
 
 

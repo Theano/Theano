@@ -92,7 +92,6 @@ insert_inplace_optimizer = gof.optimizer(_insert_inplace_optimizer)
 
 inplace_optimizer = gof.InplaceOptimizer(
     gof.SeqOptimizer(out2in(gemm_pattern_1),
-                     #out2in(dot_to_gemm),
                      insert_inplace_optimizer,
                      failure_callback = gof.keep_going))
 compile.optdb.register('inplace', inplace_optimizer, 99, 'fast_run')
@@ -491,7 +490,7 @@ class Canonizer(gof.LocalOptimizer):
             ct = [self.calculate(numct, denumct, aslist = False)]
 #         if len(ct) and ncc == 1 and dcc == 0:
 #             return orig_num, orig_denum
-        if orig_num and N.all(ct == self.get_constant(orig_num[0])):
+        if orig_num and len(numct) == 1 and ct and N.all(ct == self.get_constant(orig_num[0])):
             return orig_num, orig_denum
         return ct + num, denum
 
@@ -707,6 +706,20 @@ def local_greedy_distributor(node):
     return [local_mul_canonizer.merge_num_denum(new_num, new_denum)]
 
 register_canonicalize(local_greedy_distributor)
+
+
+
+@gof.local_optimizer([None])
+def constant_folding(node):
+    for input in node.inputs:
+        if not isinstance(input, gof.Constant):
+            return False
+    storage = [[None] for output in node.outputs]
+    node.op.perform(node, [x.data for x in node.inputs], storage)
+    return [gof.Constant(output.type, s[0]) for s, output in zip(storage, node.outputs)]
+
+register_canonicalize(constant_folding)
+
 
 
 
