@@ -271,7 +271,7 @@ class Method(Component):
     def dup(self):
         self.resolve_all()
         return self.__class__(list(self.inputs),
-                              list(self.outputs) if isinstance(outputs, list) else outputs,
+                              list(self.outputs) if isinstance(self.outputs, list) else self.outputs,
                               dict(self.updates),
                               list(self.kits))
 
