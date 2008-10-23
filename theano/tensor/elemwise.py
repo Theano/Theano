@@ -9,7 +9,7 @@ from ..scalar import Scalar
 from .. import printing
 from ..printing import pprint
 from ..gof.python25 import all
-from copy import copy
+from copy import copy, deepcopy
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -561,6 +561,15 @@ class CAReduce(Op):
         output = Tensor(dtype = input.type.dtype,
                         broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
         return Apply(self, [input], [output])
+
+    def __getstate__(self):
+        d = copy(self.__dict__)
+        d.pop('ufunc')
+        return d
+    
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self.ufunc = numpy.frompyfunc(self.scalar_op.impl, 2, 1)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.scalar_op == other.scalar_op and self.axis == other.axis
