@@ -236,11 +236,11 @@ class RModule(compile.FancyModule):
 
     def __init__(self, components = {}, **kwcomponents):
         super(RModule, self).__init__(components, **kwcomponents)
-        self.random = T.RandomKit('rkit')
-        self._components['_rkit'] = KitComponent(self.random)
+        self.random = RandomKit('rkit')
+        self._components['_rkit'] = compile.KitComponent(self.random)
 
     def __wrapper__(self, x):
-        x = wrap(x)
+        x = compile.module.wrap(x)
         if isinstance(x, compile.Method):
             x.kits += [self.random]
         return x
