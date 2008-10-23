@@ -9,6 +9,7 @@ from ..printing import pprint
 import basic as tensor
 import elemwise
 import numpy
+import opt
 
 ############
 #
@@ -733,3 +734,16 @@ class solve(gof.Op):
         raise NotImplementedError()
 
 
+
+
+logsigm_to_softplus = gof.PatternSub(
+    (tensor.log, (sigmoid, 'x')),
+    (tensor.neg, (softplus, (tensor.neg, 'x'))),
+    allow_multiple_clients = True)
+log1msigm_to_softplus = gof.PatternSub(
+    (tensor.log, (tensor.sub, tensor.constant([[1.0]]), (sigmoid, 'x'))),
+    (tensor.neg, (softplus, 'x')),
+    allow_multiple_clients = True)
+
+opt.register_specialize(logsigm_to_softplus, name = 'logsigm_to_softplus')
+opt.register_specialize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')

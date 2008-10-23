@@ -348,7 +348,7 @@ class Constant(Value):
         Value.__init__(self, type, data, name)
     def equals(self, other):
         # this does what __eq__ should do, but Result and Apply should always be hashable by id
-        return type(other) == type(self) and self.signature() == other.signature()
+        return isinstance(other, Constant) and self.signature() == other.signature()
     def signature(self):
         return (self.type, self.data)
     def __str__(self):
