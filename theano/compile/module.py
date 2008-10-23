@@ -491,7 +491,7 @@ class Module(Composite):
     def __init__(self, components = {}, **kwcomponents):
         super(Module, self).__init__()
         components = dict(components, **kwcomponents)
-        self._components = components
+        self.__dict__['_components'] = components
 
     def resolve(self, name):
         name = canonicalize(name)
@@ -589,6 +589,8 @@ class Curry:
 class FancyModuleInstance(ModuleInstance):
 
     def __getattr__(self, attr):
+        if attr == '__items__' and '__items__' not in self.__dict__:
+            self.__dict__['__items__'] = {}
         try:
             return self[attr]
         except KeyError:
@@ -607,6 +609,8 @@ class FancyModule(Module):
         return wrap(x)
 
     def __getattr__(self, attr):
+        if attr == '_components' and '_components' not in self.__dict__:
+            self.__dict__['_components'] = {}
         try:
             rval = self[attr]
         except KeyError:
@@ -616,12 +620,13 @@ class FancyModule(Module):
         return rval
 
     def __setattr__(self, attr, value):
-        if attr == 'parent':
+        if attr in ('parent', '_components'):
             self.__dict__[attr] = value
             return
         elif attr == 'name':
             self.__set_name__(value)
             return
+            
         value = self.__wrapper__(value)
         try:
             self[attr] = value

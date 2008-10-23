@@ -155,6 +155,9 @@ class SymbolicOutput(object):
         self.result = result
         self.borrow = borrow
 
+    def __str__(self):
+        return "Out(%s)" % self.result
+
 Out = SymbolicOutput
 
 

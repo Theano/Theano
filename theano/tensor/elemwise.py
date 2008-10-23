@@ -262,6 +262,7 @@ class Elemwise(Op):
     def __getstate__(self):
         d = copy(self.__dict__)
         d.pop('ufunc')
+        d.pop('__epydoc_asRoutine', None)
         return d
     
     def __setstate__(self, d):
