@@ -94,7 +94,7 @@ inplace_optimizer = gof.InplaceOptimizer(
     gof.SeqOptimizer(out2in(gemm_pattern_1),
                      insert_inplace_optimizer,
                      failure_callback = gof.warn))
-compile.optdb.register('inplace', inplace_optimizer, 99, 'fast_run')
+compile.optdb.register('inplace_opt', inplace_optimizer, 99, 'fast_run', 'inplace')
 
 
 def register_canonicalize(lopt, *tags, **kwargs):

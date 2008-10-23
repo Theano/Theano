@@ -4,6 +4,7 @@ import basic as tensor
 import numpy
 import functools
 
+import opt
 from .. import compile
 from ..compile import SymbolicInputKit, SymbolicInput
 from copy import copy
@@ -178,11 +179,14 @@ to supplement the missing information.
 """
 
 
-@gof.local_optimizer
+@gof.local_optimizer([None])
 def random_make_inplace(node):
     op = node.op
     if isinstance(op, RandomFunction) and not op.inplace:
         return RandomFunction(op.fn, op.outtype, *op.args, **dict(inplace=True)).make_node(*node.inputs).outputs
+
+compile.optdb.register('random_make_inplace', opt.in2out(random_make_inplace), 99, 'fast_run', 'inplace')
+
 
 
 import sys
