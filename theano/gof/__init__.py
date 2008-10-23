@@ -23,7 +23,7 @@ from opt import \
     LocalOptimizer, local_optimizer, LocalOptGroup, LocalOpKeyOptGroup, \
     OpSub, OpRemove, PatternSub, \
     NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer, EquilibriumOptimizer, \
-    keep_going, \
+    keep_going, warn, \
     InplaceOptimizer, PureThenInplaceOptimizer
 
 from optdb import \

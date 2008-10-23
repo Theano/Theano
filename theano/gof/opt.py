@@ -820,8 +820,13 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
 def keep_going(exc, nav, repl_pairs):
     """WRITEME"""
-    print exc, nav, repl_pairs
     pass
+
+
+import traceback
+def warn(exc, nav, repl_pairs):
+    """WRITEME"""
+    traceback.print_exc()
 
 
 #################

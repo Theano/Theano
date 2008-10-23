@@ -98,7 +98,7 @@ class EquilibriumDB(DB):
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
-        return opt.EquilibriumOptimizer(opts, max_depth = 5, max_use_ratio = 10, failure_callback = opt.keep_going)
+        return opt.EquilibriumOptimizer(opts, max_depth = 5, max_use_ratio = 10, failure_callback = opt.warn)
 
 
 class SequenceDB(DB):
@@ -115,6 +115,6 @@ class SequenceDB(DB):
         opts = super(SequenceDB, self).query(*tags, **kwtags)
         opts = list(opts)
         opts.sort(key = lambda obj: self.__priority__[obj.name])
-        return opt.SeqOptimizer(opts, failure_callback = opt.keep_going)
+        return opt.SeqOptimizer(opts, failure_callback = opt.warn)
 
 
