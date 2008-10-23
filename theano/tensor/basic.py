@@ -869,6 +869,10 @@ def sgn(a):
     """sign of a"""
 
 @_scal_elemwise
+def iround(a):
+    """int(round(a))"""
+
+@_scal_elemwise
 def sqr(a):
     """square of a"""
 

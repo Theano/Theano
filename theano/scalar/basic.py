@@ -574,15 +574,6 @@ class Identity(UnaryScalarOp):
         return gz,
 identity = Identity(same_out, name = 'identity')
 
-class Neg(UnaryScalarOp):
-    def impl(self, x):
-        return -x
-    def grad(self, (x, ), (gz, )):
-        return -gz,
-    def c_code(self, node, name, (x, ), (z, ), sub):
-        return "%(z)s = -%(x)s;" % locals()
-neg = Neg(same_out, name = 'neg')
-
 class Abs(UnaryScalarOp):
     #TODO: for complex input, output is some flavour of float
     def impl(self, x):
@@ -610,6 +601,24 @@ class Sgn(UnaryScalarOp):
         #TODO: use copysign
         return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
 sgn = Sgn(same_out, name = 'sgn')
+
+class IRound(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.asarray(numpy.round(x), dtype = 'int64')
+    def grad(self, (x, ), (gz, )):
+        return gz * sgn(x),
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        return "%(z)s = round(%(x)s);" % locals()
+iround = IRound(int_out)
+
+class Neg(UnaryScalarOp):
+    def impl(self, x):
+        return -x
+    def grad(self, (x, ), (gz, )):
+        return -gz,
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        return "%(z)s = -%(x)s;" % locals()
+neg = Neg(same_out, name = 'neg')
 
 class Inv(UnaryScalarOp):
     def impl(self, x):
