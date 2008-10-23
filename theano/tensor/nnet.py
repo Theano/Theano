@@ -4,6 +4,8 @@
 #from theano import tensor, scalar
 from .. import gof
 from .. import scalar
+from .. import printing
+from ..printing import pprint
 import basic as tensor
 import elemwise
 import numpy
@@ -38,6 +40,9 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
+pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
+
+
 class ScalarSoftplus(scalar.UnaryScalarOp):
     @staticmethod
     def static_impl(x):
@@ -61,6 +66,8 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         raise NotImplementedError('only floating point x is implemented')
 scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
 softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
+
+pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 
 
 ############
@@ -624,7 +631,7 @@ def binary_crossentropy(output, target):
     @todo: This is essentially duplicated as cost.cross_entropy
     @warning: OUTPUT and TARGET are reversed in cost.cross_entropy
     """
-    return -(target * tensor.log(output) + (1 - target) * tensor.log(1 - output))
+    return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
 
 
 
