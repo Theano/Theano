@@ -135,8 +135,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         # add this symbol to the forward and backward maps
         for o_idx, i_idx_list in getattr(app.op, 'view_map', {}).items():
             if len(i_idx_list) > 1:
-                #destroying this output invalidates multiple inputs
-                raise NotImplementedError()
+                raise NotImplementedError('destroying this output invalidates multiple inputs', (app.op))
             o = app.outputs[o_idx]
             i = app.inputs[i_idx_list[0]]
             self.view_i[o] = i
