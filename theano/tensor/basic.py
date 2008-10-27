@@ -180,7 +180,7 @@ class Tensor(Type):
         else:
             data = numpy.asarray(data, dtype = self.dtype)
         if not self.ndim == data.ndim:
-            raise TypeError("Wrong number of dimensions: expected %s, got %s." % (self.ndim, data.ndim), _data)
+            raise TypeError("Wrong number of dimensions: expected %s, got %s with shape %s." % (self.ndim, data.ndim, data.shape), data)
         if any(b and d != 1 for d, b in zip(data.shape, self.broadcastable)):
             raise TypeError("Non-unit value on shape on a broadcastable dimension.", data.shape, self.broadcastable)
         return data
