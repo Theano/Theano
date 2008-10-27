@@ -758,7 +758,8 @@ def max_and_argmax(a):
 
 @constructor
 def max(x, axis=None):
-    """Return indexes of maximum elements obtained by iterating over given axis
+    """
+    Return maximum elements obtained by iterating over given axis
 
     Default axis is the last one.
     """
@@ -769,7 +770,8 @@ def max(x, axis=None):
 
 @constructor
 def argmax(x, axis=None):
-    """Return maximum elements obtained by iterating over given axis
+    """
+    Return indexes of maximum elements obtained by iterating over given axis
 
     Default axis is the last one.
     """
