@@ -336,8 +336,8 @@ class Composite(Component):
         for name, component in self.components_map():
             path2 = path + [name]
             if isinstance(component, Composite):
-                for name, x in component.flat_components_map(include_self, path2):
-                    yield path2, x
+                for fullpath, x in component.flat_components_map(include_self, path2):
+                    yield fullpath, x
             else:
                 yield path2, component
 
@@ -578,7 +578,7 @@ class Curry:
         self.meth = getattr(self.obj, self.name)
         self.arg = arg
     def __call__(self, *args, **kwargs):
-        self.meth(self.arg, *args, **kwargs)
+        return self.meth(self.arg, *args, **kwargs)
     def __getstate__(self):
         return [self.obj, self.name, self.arg]
     def __setstate__(self, state):
