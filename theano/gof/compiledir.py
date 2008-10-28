@@ -32,7 +32,7 @@ def set_compiledir(path=None):
             path = os.path.join(os.getenv('HOME'), '.theano', 'compiledir_'+platform_id)
 
     if not os.access(path, os.R_OK | os.W_OK):
-        os.makedirs(path, 7<<6) #read-write-execute for this user only
+        os.makedirs(path, 0770) #read-write-execute for this user only
 
     # PROBLEM: sometimes the first approach based on os.system('touch')
     # returned -1 for an unknown reason; the alternate approach here worked
