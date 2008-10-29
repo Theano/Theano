@@ -619,6 +619,20 @@ def crossentropy_softmax_1hot(x, y_idx, **kwargs):
     b = tensor.zeros_like(x[0,:])
     return crossentropy_softmax_1hot_with_bias(x, b, y_idx, **kwargs)
 
+def crossentropy_softmax_max_and_argmax_1hot_with_bias(x, b, y_idx, **kwargs):
+    """
+    @return: The cross-entropy, the softmax output, the max probability, and the argmax index
+    @todo: Since we are recomputing the argmax, we might as well assert that it is correct.
+    @todo: Make this entire function is
+    unnecessary? e.g. CrossentropySoftmaxArgmax1HotWithBias should return
+    the appropriate information (i.e. the max probability)?
+    """
+    (xent, softmax) = crossentropy_softmax_1hot_with_bias(x, b, y_idx, **kwargs)
+    (max_pr, argmax) = tensor.max_and_argmax(softmax)
+    return (xent, softmax, max_pr, argmax)
+def crossentropy_softmax_max_and_argmax_1hot(x, y_idx, **kwargs):
+    b = tensor.zeros_like(x[0,:])
+    return crossentropy_softmax_max_and_argmax_1hot_with_bias(x, b, y_idx, **kwargs)
 
 class MultinomialCrossentropy1Hot(gof.Op):
     pass
