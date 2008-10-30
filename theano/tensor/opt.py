@@ -23,10 +23,11 @@ def out2in(*local_opts):
                              order = 'out_to_in',
                              failure_callback = lambda exc,opt,pairs: None)
 
-def in2out(*local_opts):
+def in2out(*local_opts, **kwargs):
     return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
                              order = 'in_to_out',
-                             failure_callback = lambda exc,opt,pairs: None)
+                             failure_callback = lambda exc,opt,pairs: None,
+                             **kwargs)
 
 
 # gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)

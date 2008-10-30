@@ -36,6 +36,8 @@ def check_equal_numpy(x, y):
     """
     if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
         return x.dtype == y.dtype and x.shape == y.shape and numpy.any(abs(x - y) < 1e-10)
+    elif isinstance(x, numpy.random.RandomState) and isinstance(y, numpy.random.RandomState):
+        return all(numpy.all(a==b) for a, b in zip(x.__getstate__(), y.__getstate__()))
     else:
         return x == y
 
