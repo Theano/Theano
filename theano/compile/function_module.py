@@ -293,8 +293,12 @@ def _pickle_Function(f):
     defaults = []
     for (input, indices, inputs), (required, refeed, default) in zip(f.indices, f.defaults):
         if isinstance(input, SymbolicInputKit):
-            defaults.append(default)
-            ins[:len(indices)] = []
+            li = len(indices)
+            if not default:
+                defaults.append(ins[:li])
+            else:
+                defaults.append(default)
+            ins[:li] = []
         else:
             defaults.append(ins[0])
             del ins[0]
