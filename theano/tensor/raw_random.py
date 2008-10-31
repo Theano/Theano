@@ -56,7 +56,7 @@ class RandomFunction(gof.Op):
         rout[0] = r
         rval = self.fn(r, *(args + [shape]))
         if not isinstance(rval, numpy.ndarray):
-            out[0] = numpy.asarray(rval)
+            out[0] = numpy.asarray(rval, dtype = node.outputs[0].type.dtype)
         else:
             out[0] = rval
 
