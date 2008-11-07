@@ -551,7 +551,7 @@ class FunctionMaker(object):
 
 
 def _pickle_FunctionMaker(fm):
-    return (_constructor_FunctionMaker, (fm.inputs, fm.outputs, fm.mode, fm.accept_inplace))
+    return (_constructor_FunctionMaker, (fm.inputs, fm.outputs[0] if fm.unpack_single else fm.outputs, fm.mode, fm.accept_inplace))
 
 def _constructor_FunctionMaker(*args):
     return FunctionMaker(*args)

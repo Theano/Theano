@@ -301,7 +301,7 @@ class CompositeInstance(object):
             x.initialize(value)
         else:
             ##self.__items__[item] = value
-            raise TypeError('Cannot set item %s' % item)
+            raise KeyError('Cannot set item %s' % item)
 
 class Composite(Component):
 
