@@ -7,7 +7,7 @@ Theano Project Documentation Overview
 
    *
 
-Documentation is divided broadly into two kinds: user documentation and
+Documentation is broadly divided into two kinds: user documentation and
 developer documentation.  
 
 - `Using Theano` covers how to *use* what is already in the Theano library to
