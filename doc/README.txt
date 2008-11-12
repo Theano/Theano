@@ -65,7 +65,7 @@ Software Requirements
 
 - python 2.5
 
-- SciPy (specifically numpy, sparse, weave).  Numpy version >= 1.1 fixes memory leak.
+- SciPy (specifically numpy, sparse, weave).  Numpy version >= 1.1 fixes memory leak. Numpy version >=1.2 fixes more memory leak.
 
 - docutils, pygments (optional, to build documentation)
 
