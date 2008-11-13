@@ -246,6 +246,7 @@ class LocalLinker(Linker):
 
 class PerformLinker(LocalLinker):
     """WRITEME
+
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
     the L{Env} in the order given by L{Env.toposort}.
     """
@@ -254,6 +255,13 @@ class PerformLinker(LocalLinker):
         self.env = None
 
     def accept(self, env, no_recycling = []):
+        """
+        :param env: a PerformLinker can have accepted one Env instance at a time.
+        
+        :param no_recycling: WRITEME
+
+        :returns: self (WHY? Who calls this function?)
+        """
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
@@ -262,6 +270,14 @@ class PerformLinker(LocalLinker):
         return self
 
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
+        """
+        :param profiler: WRITEME
+        :param input_storage: WRITEME
+        :param output_storage: WRITEME
+
+        :returns: WRITEME (or see: SOMETHING)
+
+        """
         env = self.env
         order = env.toposort()
         no_recycling = self.no_recycling
