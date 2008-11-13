@@ -20,7 +20,7 @@ def canonicalize(name):
     def convert(x):
         try:
             return int(x)
-        except (ValueError, TypeError):
+        except ValueError:
             return x
     return map(convert, name)
 
@@ -446,6 +446,9 @@ class ComponentList(Composite):
 
     def __str__(self):
         return str(self._components)
+
+    def __len__(self):
+        return len(self._components)
 
     def pretty(self, **kwargs):
         cr = '\n    ' #if header else '\n'
