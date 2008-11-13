@@ -713,7 +713,7 @@ class Shape(Op):
         x = as_tensor(x)
         return Apply(self, [x], [lvector()])
     def perform(self, node, (x, ), (out, )):
-        out[0] = numpy.asarray(x.shape)
+        out[0] = numpy.asarray(x.shape, dtype = 'int64')
     def grad(self, (x,), (gz,)):
         return [None]
 @_redefine_asRoutine(Shape())

@@ -55,8 +55,9 @@ class RandomFunction(gof.Op):
             r = copy(r)
         rout[0] = r
         rval = self.fn(r, *(args + [shape]))
-        if not isinstance(rval, numpy.ndarray):
-            out[0] = numpy.asarray(rval, dtype = node.outputs[0].type.dtype)
+        if not isinstance(rval, numpy.ndarray) \
+               or str(rval.dtype) != node.outputs[1].type.dtype:
+            out[0] = numpy.asarray(rval, dtype = node.outputs[1].type.dtype)
         else:
             out[0] = rval
 
