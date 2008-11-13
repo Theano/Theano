@@ -21,7 +21,7 @@ from .. import scalar as scal
 from ..gof.python25 import partial
 
 from .. import compile, printing
-from ..printing import pprint
+from ..printing import pprint, Print
 
 
 ### set up the external interface
@@ -456,10 +456,11 @@ class _tensor_py_operators:
     def __abs__(self): return abs_(self)
     def __neg__(self): return neg(self)
 
-    #CASTS
-    def __int__(self): return AsInt(self).out
-    def __float__(self): return AsInt(self).out
-    def __complex__(self): return AsComplex(self).out
+    #CASTS 
+    #### REMOVED THESE BECAUSE PYTHON appears to require __int__ to return an int. -JB 20081112
+    #def __int__(self): return convert_to_int32(self)
+    #def __float__(self): return convert_to_float64(self)
+    #def __complex__(self): return convert_to_complex128(self)
 
     #COMPARISONS
     def __lt__(self,other): return lt(self, other)
@@ -1012,6 +1013,10 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 @constructor
 def mean(input, axis = None):
     """WRITEME"""
+    if str(input.dtype).startswith('int'):
+        # we need to cast eventually anyway, and this helps
+        # to prevents overflow
+        input = convert_to_float64(input)
     s = sum(input, axis)
     shp = shape(input)
     if axis is None:
