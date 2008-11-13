@@ -447,6 +447,9 @@ class ComponentList(Composite):
     def __str__(self):
         return str(self._components)
 
+    def __len__(self):
+        return len(self._components)
+
     def pretty(self, **kwargs):
         cr = '\n    ' #if header else '\n'
         strings = []
