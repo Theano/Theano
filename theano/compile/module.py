@@ -20,7 +20,7 @@ def canonicalize(name):
     def convert(x):
         try:
             return int(x)
-        except ValueError:
+        except (ValueError, TypeError):
             return x
     return map(convert, name)
 
