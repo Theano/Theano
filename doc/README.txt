@@ -83,13 +83,13 @@ There are no stable releases yet.
 
 *To get the source via mercurial,* you must have `mercurial <http://www.selenic.com/mercurial/wiki/>`__ installed.
 
-Get the source and run the auto-tests like this:
+Get the source and run the tests like this:
 
 .. code-block:: bash
     
     hg clone http://pylearn.org/hg/theano theano
     cd theano
-    python autotest.py
+    nosetest
 
 To update your library to the latest on pylearn.org, change directory (`cd`) to this `theano` folder and type
 
