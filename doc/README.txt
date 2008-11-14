@@ -172,14 +172,16 @@ Use something like the following in your .bashrc:
 Running the Test Suite
 ======================
 
-Test your installation by running the autotests.  Type at the shell:
+Test your installation by running the tests.  Type at the shell:
 
 .. code-block:: bash
 
     cd theano
-    python2.5 autotest.py
+    nosetests
 
 All tests should pass.
+
+python-nose must be installed. On red-hat or fedora core: sudo yum install python-nose.noarch
 
 
 Using Theano
