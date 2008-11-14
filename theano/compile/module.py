@@ -875,6 +875,9 @@ class Module(ComponentDict):
         for name, value in chain(init.iteritems(), kwinit.iteritems()):
             inst[name] = value
 
+FancyModule = Module
+FancyModuleInstance = ModuleInstance
+
 
 class KitComponent(Component):
     """
