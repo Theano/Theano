@@ -238,7 +238,7 @@ class RandomKit(SymbolicInputKit):
 rk = RandomKit('rk', 0xBAD5EED)
 
 
-class RModule(compile.FancyModule):
+class RModule(compile.Module):
 
     def __init__(self, components = {}, **kwcomponents):
         super(RModule, self).__init__(components, **kwcomponents)
