@@ -12,7 +12,7 @@ import random
 import numpy as N
 from theano.compile import module as M
 
-class RegressionLayer(M.FancyModule):
+class RegressionLayer(M.Module):
     def __init__(self, input = None, target = None, regularize = True):
         super(RegressionLayer, self).__init__() #boilerplate
         # MODEL CONFIGURATION
@@ -91,7 +91,7 @@ class T_function_module(unittest.TestCase):
         assert plus10() == 9
 
     def test_Klass_basic_example2(self):
-        m = M.FancyModule()
+        m = M.Module()
         n = T.scalar('n')
         m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
         m.inc = M.Method(n, [], c = m.c + n) # m.c <= m.c + n
@@ -125,14 +125,14 @@ class T_function_module(unittest.TestCase):
 
     def test_Klass_nesting_example2(self):
         def make_incdec_module():
-            m = M.FancyModule()
+            m = M.Module()
             n = T.scalar('n')
             m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
             m.inc = M.Method(n, [], c = m.c + n) # m.c <= m.c + n
             m.dec = M.Method(n, [], c = m.c - n) # k.c <= k.c - n
             return m
 
-        m = M.FancyModule()
+        m = M.Module()
         m.incdec1 = make_incdec_module()
         m.incdec2 = make_incdec_module()
         m.sum = M.Method([], m.incdec1.c + m.incdec2.c)
@@ -201,8 +201,8 @@ class T_function_module(unittest.TestCase):
         assert sum() == 4 # -2 + 6
 
     def test_Klass_basic_example2_more(self):
-        m = M.FancyModule()
-        m2 = M.FancyModule()
+        m = M.Module()
+        m2 = M.Module()
         m2.name="m2" # for better error
         #top level don't have name, but other have auto name.
         
