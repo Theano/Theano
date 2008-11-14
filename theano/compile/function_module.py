@@ -592,10 +592,10 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
       The return value of the returned function will match the format of this
       argument (either the value itself or a list of one or more return values)
     mode -> a descriptive string or a Mode instance; descriptive strings can be one of:
-      * SANITY_CHECK
-      * FAST_COMPILE
-      * FAST_RUN (default)
-      * EXPENSIVE_OPTIMIZATION
+      * SANITY_CHECK TODO: NotImplemented
+      * FAST_COMPILE (apply only optimization that are fast to apply)
+      * FAST_RUN (default) (optimize without too much time)
+      * EXPENSIVE_OPTIMIZATION TODO: NotImplemented
     accept_inplace -> True iff the graph can contain inplace operations
       prior to the optimization phase (default is False)
 
