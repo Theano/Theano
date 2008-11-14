@@ -55,8 +55,9 @@ class RandomFunction(gof.Op):
             r = copy(r)
         rout[0] = r
         rval = self.fn(r, *(args + [shape]))
-        if not isinstance(rval, numpy.ndarray):
-            out[0] = numpy.asarray(rval, dtype = node.outputs[0].type.dtype)
+        if not isinstance(rval, numpy.ndarray) \
+               or str(rval.dtype) != node.outputs[1].type.dtype:
+            out[0] = numpy.asarray(rval, dtype = node.outputs[1].type.dtype)
         else:
             out[0] = rval
 
@@ -237,7 +238,7 @@ class RandomKit(SymbolicInputKit):
 rk = RandomKit('rk', 0xBAD5EED)
 
 
-class RModule(compile.FancyModule):
+class RModule(compile.Module):
 
     def __init__(self, components = {}, **kwcomponents):
         super(RModule, self).__init__(components, **kwcomponents)

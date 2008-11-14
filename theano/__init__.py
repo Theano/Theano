@@ -44,7 +44,9 @@ from compile import \
     predefined_modes, predefined_linkers, predefined_optimizers, \
     FunctionMaker, function, OpFromGraph, \
     Component, External, Member, KitComponent, Method, \
-    Composite, ComponentList, Module, FancyModule
+    Composite, ComponentList, ComponentDict, Module
+
+FancyModule = Module
 
 from printing import \
     pprint, pp

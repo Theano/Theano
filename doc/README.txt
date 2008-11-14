@@ -73,6 +73,8 @@ Software Requirements
 
 - g++, python-dev (optional, to compile generated C code)
 
+- nose, for testing
+
 -  `psyco <http://psyco.sourceforge.net/>`__ can make your python code much faster, if you are on a 32-bit x86 architecture.  If you use compiled C code, this can be less important.
 
 Downloading Theano
@@ -89,7 +91,7 @@ Get the source and run the tests like this:
     
     hg clone http://pylearn.org/hg/theano theano
     cd theano
-    nosetest
+    nosetests
 
 To update your library to the latest on pylearn.org, change directory (`cd`) to this `theano` folder and type
 

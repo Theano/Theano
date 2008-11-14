@@ -1,8 +1,31 @@
-
+"""Pretty-printing graphs, and the 'Print' Op.
+"""
 import gof
 from copy import copy
 import sys
 
+from gof import Op, Apply
+
+class Print(Op):
+    """This identity-like Op has the side effect of printing a message followed by its inputs
+    when it runs.
+    """
+    def __init__(self,message=""):
+        self.message=message
+        self.view_map={0:[0]}
+
+    def make_node(self,xin):
+        xout = xin.type.make_result()
+        return Apply(op = self, inputs = [xin], outputs=[xout])
+
+    def perform(self,node,inputs,output_storage):
+        xin, = inputs
+        xout, = output_storage
+        xout[0] = xin
+        print self.message,xin
+
+    def grad(self,input,output_gradients):
+        return output_gradients
 
 class PrinterState(gof.utils.scratchpad):
     
@@ -231,4 +254,5 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target') and pstate.target is n
               LeafPrinter())
 
 pp = pprint
+
 
