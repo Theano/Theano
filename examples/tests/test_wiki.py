@@ -48,10 +48,11 @@ class RegressionLayer(M.Module):
         self.apply = M.Method(input, self.prediction)
     def params(self):
         return self.w, self.b
-    def initialize(self, obj, input_size = None, target_size = None, **init):
+    def _instance_initialize(self, obj, input_size = None, target_size = None, **init):
         # obj is an "instance" of this module holding values for each member and
         # functions for each method
-        super(RegressionLayer, self).initialize(obj, **init)
+        #super(RegressionLayer, self).initialize(obj, **init)
+
         # here we call the superclass's initialize method, which takes all the name: value
         # pairs in init and sets the property with that name to the provided value
         # this covers setting stepsize, l2_coef; w and b can be set that way too
@@ -60,6 +61,7 @@ class RegressionLayer(M.Module):
             sz = (input_size, target_size)
             obj.w = N.random.uniform(size = sz, low = -0.5, high = 0.5)
             obj.b = N.zeros(target_size)
+            obj.stepsize = 0.01
     def build_regularization(self):
         return T.zero() # no regularization!
 
@@ -69,7 +71,8 @@ class SoftmaxXERegression(RegressionLayer):
     def build_prediction(self):
         return NN.softmax(self.activation)
     def build_classification_cost(self, target):
-        self.classification_cost_matrix = target * T.log(self.prediction) + (1 - target) * T.log(1 - self.prediction)
+        #self.classification_cost_matrix = target * T.log(self.prediction) + (1 - target) * T.log(1 - self.prediction)
+        self.classification_cost_matrix = (target - self.prediction)**2
         self.classification_costs = -T.sum(self.classification_cost_matrix, axis=1)
         return T.sum(self.classification_costs)
     def build_regularization(self):
@@ -145,27 +148,28 @@ class T_function_module(unittest.TestCase):
 
     def test_Klass_Advanced_example(self):
         model_module = SoftmaxXERegression(regularize = False)
-        model = model_module.make(input_size = 4,
+
+        model = model_module.make(input_size = 10,
                                   target_size = 1,
                                   stepsize = 0.1)
         data_x = N.random.randn(4, 10)
-        data_y = [ [x] for x in N.random.randn(4) > 0]
+        data_y = [ [int(x)] for x in N.random.randn(4) > 0]
         print data_x
         print
         print data_y
-        for i in xrange(10000):
+        for i in xrange(1000):
             xe = model.update(data_x, data_y)
             if i % 100 == 0:
                 print i, xe
 
-        for inputs, targets in my_training_set():
-            print "cost:", model.update(inputs, targets)
+        #for inputs, targets in my_training_set():
+            #print "cost:", model.update(inputs, targets)
 
 
         print "final weights:", model.w
         print "final biases:", model.b
 
-        print "some prediction:", model.prediction(some_inputs)
+        #print "some prediction:", model.prediction(some_inputs)
 
 
     def test_Klass_extending_klass_methods(self):
