@@ -131,7 +131,7 @@ class Container(object):
             self.type = r
         else:
             self.type = r.type
-        self.name = name or r.name
+        self.name = r.name if name is None else name
         self.storage = storage
         self.readonly = readonly
         self.strict = strict
@@ -149,7 +149,7 @@ class Container(object):
             else:
                 self.storage[0] = self.type.filter(value)
         except Exception, e:
-            e.args = e.args + (self.name,)
+            e.args = e.args + (('Container name "%s"' % self.name),)
             raise
     data = property(__get, __set)
     value = property(__get, __set)
@@ -160,11 +160,33 @@ class Container(object):
 
 
 def map_storage(env, order, input_storage, output_storage):
-    """WRITEME"""
+    """Ensure there is storage for inputs, outputs, and interior nodes.
+
+    :param env: The current env.  This function uses the inputs and outputs attributes.
+    :param order: an iterable over Apply instances (in program running order)
+    :param input_storage: None or existing input storage (see below)
+    :param output_storage: None or existing output storage (see below)
+
+    :rtype: 3-tuple
+    :returns: (list of storage for inputs, list of storage for outputs, and the `storage_map`)
+    
+
+    This function iterates over the nodes in `order` and ensures that for every
+    input and output `Result`, there is a unique storage container.  This is
+    returned as a dictionary Result->storage called the `storage_map`.
+
+    This function also returns `input_storage` which is a list of storages corresponding to env.inputs.
+    This function also returns `output_storage` which is a list of storages corresponding to env.outputs.
+
+    """
+    #each Apply argument's data is stored in a list of length 1 (these lists act like pointers)
+
+    # input_storage is a list of data-containers for the inputs.
     if input_storage is None:
         input_storage = [[None] for input in env.inputs]
     else:
         assert len(env.inputs) == len(input_storage)
+
     storage_map = {}
     for r, storage in zip(env.inputs, input_storage):
         storage_map[r] = storage
@@ -172,10 +194,12 @@ def map_storage(env, order, input_storage, output_storage):
 #         if not isinstance(orphan, Constant):
 #             raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
 #         storage_map[orphan] = [orphan.data]
+
     if output_storage is not None:
         assert len(env.outputs) == len(output_storage)
         for r, storage in zip(env.outputs, output_storage):
             storage_map[r] = storage
+
     thunks = []
     for node in order:
         for r in node.inputs:
@@ -196,10 +220,6 @@ def map_storage(env, order, input_storage, output_storage):
 
 def streamline(env, thunks, order, no_recycling = [], profiler = None):
     """WRITEME"""
-    def clear():
-        for thunk in thunks:
-            for output in thunk.outputs:
-                output[0] = None
     if profiler is None:
         def f():
             for x in no_recycling:
@@ -218,7 +238,6 @@ def streamline(env, thunks, order, no_recycling = [], profiler = None):
                     profiler.profile_node(thunk, node)
             profiler.profile_env(g, env)
         f.profiler = profiler
-    f.clear = clear
     return f
 
 class LocalLinker(Linker):
@@ -260,7 +279,7 @@ class PerformLinker(LocalLinker):
         
         :param no_recycling: WRITEME
 
-        :returns: self (WHY? Who calls this function?)
+        :returns: self (TODO: WHY? Who calls this function?)
         """
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
@@ -275,7 +294,7 @@ class PerformLinker(LocalLinker):
         :param input_storage: WRITEME
         :param output_storage: WRITEME
 
-        :returns: WRITEME (or see: SOMETHING)
+        :returns: function to run all nodes, list of input containers, list of output containers, list of thunks (for all of program), list of nodes (for all of program)
 
         """
         env = self.env
@@ -288,18 +307,24 @@ class PerformLinker(LocalLinker):
             node_input_storage = tuple(storage_map[input] for input in node.inputs)
             node_output_storage = tuple(storage_map[output] for output in node.outputs)
             p = node.op.perform
+            # Thunk is meant to be called without arguments.
+            # The arguments are given in the lambda expression so that they are saved in the lambda expression.
+            # Using the closure in a simple way didn't work.
             thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
             thunk.inputs = node_input_storage
             thunk.outputs = node_output_storage
             thunk.perform = p
             thunks.append(thunk)
 
-        if no_recycling is True:
+        if no_recycling is True: 
+            #True is like some special code for *everything*.
+            #FunctionMaker always passes a list I think   -JB
             no_recycling = storage_map.values()
             no_recycling = utils.difference(no_recycling, input_storage)
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
+        # The function that actually runs your program is one of the f's in streamline.
         f = streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
   
         return f, [Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \

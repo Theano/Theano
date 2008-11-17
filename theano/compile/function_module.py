@@ -19,6 +19,8 @@ def infer_reuse_pattern(env, outputs_to_disown):
     Given an env and a list of results, returns the list of all
     results which may share the same underlying data storage as any of
     the specified results. Used internally by function, FunctionMaker.
+
+    This list is also refered to as no_recycling sometimes.
     """
     do_not_reuse = list()
     seen = set()
@@ -130,14 +132,14 @@ class Function(object):
             input.distribute(value, indices, cs)
             for c in cs:
                 c.provided += 1
-        def set(c, v):
+        def assign(c, v):
             c.data = v
 
         setters = []
         # Initialize the storage
         for i, ((input, indices, sinputs), (required, refeed, value)) in enumerate(zip(self.indices, defaults)):
             if indices is None: # this is true iff input is not a SymbolicInputKit
-                c = containers[0]
+                c = containers[0]  #containers is being used as a stack. Here we pop off the next one.
                 if input.strict:
                     c.strict = True
                 if value is not None:
@@ -155,7 +157,7 @@ class Function(object):
                 finder[input.name] = c if input.name not in finder else DUPLICATE
                 # inv_finder maps the container to the input (useful for one error message)
                 inv_finder[c] = input
-                setters.append(partial(set, c))
+                setters.append(partial(assign, c))
                 containers[:1] = []
             else:
                 # The input is a SymbolicInputKit, so we take as many containers as the Kit provides inputs
@@ -440,11 +442,12 @@ class FunctionMaker(object):
             raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
                              "or one of %s" % predefined_linkers.keys())
 
+        #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
         no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
-        if not no_borrow:
-            self.linker = linker.accept(env)
-        else:
+        if no_borrow:
             self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
+        else:
+            self.linker = linker.accept(env)
         
         self.indices = indices
         self.inputs = inputs

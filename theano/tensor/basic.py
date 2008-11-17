@@ -1559,6 +1559,11 @@ def shape_padleft(tensor, n_ones):
 
     pattern = ['x']*n_ones + [i for i in range(tensor.type.ndim)]
     return DimShuffle(tensor.broadcastable, pattern)(tensor)
+@constructor
+def rightpad_shape(tensor, n_ones):
+    """Reshape `tensor` by right-padding the shape with `n_ones` 1s"""
+    pattern = [i for i in range(tensor.type.ndim)] + ['x']*n_ones
+    return DimShuffle(tensor.broadcastable, pattern)(tensor)
 
 @constructor
 def shape_padright(tensor, n_ones):

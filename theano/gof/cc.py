@@ -756,7 +756,7 @@ class OpWiseCLinker(link.LocalLinker):
 
     no_recycling can contain a list of Results that belong to the env.
     If a Result is in no_recycling, CLinker will clear the output storage
-    associated to it during the computation (to avoid reusing it).
+    associated to it prior to computation (to avoid reusing it).
     """
 
     __cache__ = {}
