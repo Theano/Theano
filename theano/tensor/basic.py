@@ -2220,7 +2220,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
         t_r = as_tensor(random_projection)
 
         #random projection of o onto t_r
-        cost = sum(t_r * o_output)
+        cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
         cost_fn = function(tensor_pt, cost)
 
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)

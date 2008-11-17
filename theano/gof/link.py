@@ -217,6 +217,13 @@ def map_storage(env, order, input_storage, output_storage):
 
     return input_storage, output_storage, storage_map
 
+def clear_storage_thunk(stg):
+    """This is useful for inserting thunks that zero-out storage, which allows memory to be freed by gc."""
+    def thunk():
+        stg[0] = None
+    thunk.outputs = []
+    thunk.inputs = [stg]
+    return thunk
 
 def streamline(env, thunks, order, no_recycling = [], profiler = None):
     """WRITEME"""
@@ -270,8 +277,10 @@ class PerformLinker(LocalLinker):
     the L{Env} in the order given by L{Env.toposort}.
     """
 
-    def __init__(self):
+    def __init__(self, allow_gc=False):
+        #TODO: set allow_gc = True by default, when it works with the c&py linker
         self.env = None
+        self.allow_gc = allow_gc
 
     def accept(self, env, no_recycling = []):
         """
@@ -302,7 +311,20 @@ class PerformLinker(LocalLinker):
         no_recycling = self.no_recycling
 
         thunks = []
+        new_order = []
+
         input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
+
+        #for freeing memory
+        if self.allow_gc:
+            last_user = {}
+            computed = set()
+            for node in order:
+                for idx, input in enumerate(node.inputs):
+                    last_user[input] = (node, idx)
+                for output in node.outputs:
+                    computed.add(output)
+        
         for node in order:
             node_input_storage = tuple(storage_map[input] for input in node.inputs)
             node_output_storage = tuple(storage_map[output] for output in node.outputs)
@@ -315,6 +337,20 @@ class PerformLinker(LocalLinker):
             thunk.outputs = node_output_storage
             thunk.perform = p
             thunks.append(thunk)
+            new_order.append(node)
+
+            if self.allow_gc:
+                for idx, input in enumerate(node.inputs):
+                    if input not in computed:
+                        continue
+                    if input in env.outputs:
+                        continue
+                    if (node, idx) == last_user[input]:
+                        #print '... zeroing', id(storage_map[input])
+                        thunks.append(clear_storage_thunk(storage_map[input]))
+                        new_order.append(node)
+
+
 
         if no_recycling is True: 
             #True is like some special code for *everything*.
@@ -325,11 +361,11 @@ class PerformLinker(LocalLinker):
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
         # The function that actually runs your program is one of the f's in streamline.
-        f = streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
+        f = streamline(env, thunks, new_order, no_recycling = no_recycling, profiler = profiler)
   
         return f, [Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
-            thunks, order
+            thunks, new_order
 
 
 

@@ -133,7 +133,7 @@ class TestWrapLinker:
             
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
-        fn, i, o = wrap_linker(Env([x, y, z], [e]), [PerformLinker()], wrap).make_thunk()
+        fn, i, o = wrap_linker(Env([x, y, z], [e]), [PerformLinker(allow_gc=False)], wrap).make_thunk()
         i[0].data = 1
         i[1].data = 2
         fn()
@@ -148,7 +148,7 @@ class TestWrapLinker:
 
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
-        fn, i, o = wrap_linker(Env([x, y, z], [e]), [PerformLinker()], wrap).make_thunk()
+        fn, i, o = wrap_linker(Env([x, y, z], [e]), [PerformLinker(allow_gc=False)], wrap).make_thunk()
         i[0].data = 1
         i[1].data = 2
         fn()
