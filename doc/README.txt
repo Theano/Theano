@@ -65,13 +65,15 @@ Software Requirements
 
 - python 2.5
 
-- SciPy (specifically numpy, sparse, weave).  Numpy version >= 1.1 fixes memory leak.
+- SciPy (specifically numpy, sparse, weave).  Numpy version >= 1.1 fixes memory leak. Numpy version >=1.2 fixes more memory leak.
 
 - docutils, pygments (optional, to build documentation)
 
 - mercurial (optional, to download the source)
 
 - g++, python-dev (optional, to compile generated C code)
+
+- nose, for testing
 
 -  `psyco <http://psyco.sourceforge.net/>`__ can make your python code much faster, if you are on a 32-bit x86 architecture.  If you use compiled C code, this can be less important.
 
@@ -83,13 +85,13 @@ There are no stable releases yet.
 
 *To get the source via mercurial,* you must have `mercurial <http://www.selenic.com/mercurial/wiki/>`__ installed.
 
-Get the source and run the auto-tests like this:
+Get the source and run the tests like this:
 
 .. code-block:: bash
     
     hg clone http://pylearn.org/hg/theano theano
     cd theano
-    python autotest.py
+    nosetests
 
 To update your library to the latest on pylearn.org, change directory (`cd`) to this `theano` folder and type
 
@@ -172,14 +174,16 @@ Use something like the following in your .bashrc:
 Running the Test Suite
 ======================
 
-Test your installation by running the autotests.  Type at the shell:
+Test your installation by running the tests.  Type at the shell:
 
 .. code-block:: bash
 
     cd theano
-    python2.5 autotest.py
+    nosetests
 
 All tests should pass.
+
+python-nose must be installed. On red-hat or fedora core: sudo yum install python-nose.noarch
 
 
 Using Theano

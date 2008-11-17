@@ -25,7 +25,7 @@ Our project uses the name to honour the ancient Greek mathematician.
 Overview
 ========
 
-**To get up & running quickly** see README_.
+**To get up and running quickly** see README_.
 
 All **documentation** can be reached from the `Theano Project Documentation Overview`_.
 

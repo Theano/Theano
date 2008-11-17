@@ -21,7 +21,7 @@ from .. import scalar as scal
 from ..gof.python25 import partial
 
 from .. import compile, printing
-from ..printing import pprint
+from ..printing import pprint, Print
 
 
 ### set up the external interface
@@ -456,10 +456,11 @@ class _tensor_py_operators:
     def __abs__(self): return abs_(self)
     def __neg__(self): return neg(self)
 
-    #CASTS
-    def __int__(self): return AsInt(self).out
-    def __float__(self): return AsInt(self).out
-    def __complex__(self): return AsComplex(self).out
+    #CASTS 
+    #### REMOVED THESE BECAUSE PYTHON appears to require __int__ to return an int. -JB 20081112
+    #def __int__(self): return convert_to_int32(self)
+    #def __float__(self): return convert_to_float64(self)
+    #def __complex__(self): return convert_to_complex128(self)
 
     #COMPARISONS
     def __lt__(self,other): return lt(self, other)
@@ -712,7 +713,7 @@ class Shape(Op):
         x = as_tensor(x)
         return Apply(self, [x], [lvector()])
     def perform(self, node, (x, ), (out, )):
-        out[0] = numpy.asarray(x.shape)
+        out[0] = numpy.asarray(x.shape, dtype = 'int64')
     def grad(self, (x,), (gz,)):
         return [None]
 @_redefine_asRoutine(Shape())
@@ -1012,6 +1013,10 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 @constructor
 def mean(input, axis = None):
     """WRITEME"""
+    if str(input.dtype).startswith('int'):
+        # we need to cast eventually anyway, and this helps
+        # to prevents overflow
+        input = convert_to_float64(input)
     s = sum(input, axis)
     shp = shape(input)
     if axis is None:
@@ -1553,6 +1558,11 @@ def shape_padleft(tensor, n_ones):
     """
 
     pattern = ['x']*n_ones + [i for i in range(tensor.type.ndim)]
+    return DimShuffle(tensor.broadcastable, pattern)(tensor)
+@constructor
+def rightpad_shape(tensor, n_ones):
+    """Reshape `tensor` by right-padding the shape with `n_ones` 1s"""
+    pattern = [i for i in range(tensor.type.ndim)] + ['x']*n_ones
     return DimShuffle(tensor.broadcastable, pattern)(tensor)
 
 @constructor
@@ -2210,7 +2220,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
         t_r = as_tensor(random_projection)
 
         #random projection of o onto t_r
-        cost = sum(t_r * o_output)
+        cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
         cost_fn = function(tensor_pt, cost)
 
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
