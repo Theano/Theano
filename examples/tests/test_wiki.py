@@ -28,7 +28,7 @@ class Blah(M.ModuleInstance):
 
     def __eq__(self, other):
         if not isinstance(other.component, SoftmaxXERegression1) and not isinstance(other.component, SoftmaxXERegression2):
-            return NotImplemented
+            raise NotImplemented
         #we compare the member.
         if (self.w==other.w).all() and (self.b==other.b).all() and self.stepsize == other.stepsize:
             return True
@@ -80,7 +80,6 @@ class RegressionLayer1(M.Module):
         return T.zero() # no regularization!
 
 class RegressionLayer2(M.Module):
-    InstanceType=Blah
     def __init__(self, input = None, target = None, regularize = True):
         super(RegressionLayer2, self).__init__() #boilerplate
         # MODEL CONFIGURATION
@@ -116,7 +115,8 @@ class RegressionLayer2(M.Module):
         self.apply = M.Method(input, self.prediction)
     def params(self):
         return self.w, self.b
-    def _instance_initialize(self, obj, input_size = None, target_size = None, **init):
+    def _instance_initialize(self, obj, input_size = None, target_size = None, 
+                             seed = 1827, **init):
         # obj is an "instance" of this module holding values for each member and
         # functions for each method
         #super(RegressionLayer, self).initialize(obj, **init)
@@ -127,7 +127,8 @@ class RegressionLayer2(M.Module):
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
-            obj.w = N.random.uniform(size = sz, low = -0.5, high = 0.5)
+            rng = N.random.RandomState(seed)
+            obj.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             obj.b = N.zeros(target_size)
             obj.stepsize = 0.01
     def build_regularization(self):
