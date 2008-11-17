@@ -125,7 +125,7 @@ class SoftmaxWithBias(gof.Op):
         return dx, db
 
     def c_headers(self):
-        return ['<iostream>']
+        return ['<iostream> <math>']
 
     @staticmethod
     def c_code_template():
@@ -214,7 +214,7 @@ class SoftmaxWithBias(gof.Op):
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
             }
-            if ( (0.0 == sum) || (isinf(sum)))
+            if ( (0.0 == sum) || (std::isinf(sum)))
             {
                 //that was our best...
                 %(fail)s;
