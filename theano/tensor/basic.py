@@ -1589,7 +1589,7 @@ def concatenate(tensor_list, axis=0):
     if not isinstance(tensor_list, (tuple, list)):
         raise TypeError("The 'tensors' argument must be either a tuple "
                 "or a list, make sure you did not forget () or [] around "
-                "arguments of concatenate.", tensors)
+                "arguments of concatenate.", tensor_list)
     return join(axis, *tensor_list)
 
 def get_vector_length(v):
