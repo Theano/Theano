@@ -1,3 +1,12 @@
+/*
+ *
+ * g++ -O2 -ffast-math -I$PUB_PREFIX/include aa.cc -o aa.x -lgsl -lgslcblas 
+ *
+ * g++ -O2 -ffast-math -I$PUB_PREFIX/include aa.cc -o aa.x -L$PUB_PREFIX/lib -lgsl -lcblas -lgoto -lgfortran 
+ *
+ * ./aa.x 10 5 7 1000
+ *
+ * */
 #include <cassert>
 #include <cstdlib>
 #include <cstdio>
@@ -5,15 +14,22 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_blas.h>
 
-typedef float real;
+#include <time.h>
+#include <sys/time.h>
+
+double pytime(const struct timeval * tv)
+{
+    return (double) tv->tv_sec + (double) tv->tv_usec / 1000000.0;
+}
 
 int main(int argc, char **argv)
 {
-    assert(argc == 4);
+    assert(argc == 5);
 
     int neg = strtol(argv[1], 0, 0);
     int nout = strtol(argv[2], 0, 0);
     int nhid = strtol(argv[3], 0, 0);
+    int niter = strtol(argv[4], 0, 0);
     double lr = 0.01;
     gsl_rng * rng = gsl_rng_alloc (gsl_rng_taus);
     gsl_rng_set(rng, 234);
@@ -41,8 +57,11 @@ int main(int argc, char **argv)
 //
 //
 
+    struct timeval tv0, tv1;
+
+    gettimeofday(&tv0, 0);
     double err = 0.0;
-    for (int iter = 0; iter < 1000; ++iter)
+    for (int iter = 0; iter < niter; ++iter)
     {
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, x, w, 0.0, xw);
 
@@ -87,8 +106,9 @@ int main(int argc, char **argv)
         }
 
     }
+    gettimeofday(&tv1, 0);
 
-    fprintf(stdout, "%lf\n", 0.5 * err);
+    fprintf(stdout, "took = %lfs  to get err %lf\n", pytime(&tv1) - pytime(&tv0), 0.5 * err);
     //skip freeing
     return 0;
 }
