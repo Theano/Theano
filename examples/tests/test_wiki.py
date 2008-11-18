@@ -1,15 +1,9 @@
 import unittest
-from theano import gof
 
-from theano import compile
-from theano.compile.function_module import *
-from theano.scalar import *
 import theano
-from theano import tensor
+import numpy as N
 from theano import tensor as T
 from theano.tensor import nnet as NN
-import random
-import numpy as N
 from theano.compile import module as M
 
 class Blah(M.ModuleInstance):
