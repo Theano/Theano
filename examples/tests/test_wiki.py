@@ -175,6 +175,9 @@ class T_function_module(unittest.TestCase):
         m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
         m.inc = M.Method(n, [], c = m.c + n) # m.c <= m.c + n
         m.dec = M.Method(n, [], c = m.c - n) # k.c <= k.c - n
+        m.dec = M.Method(n, [], updates = {c: m.c - n})
+        m.dec = M.Method(n, [], updates = {m.c: m.c - n})
+        #m.dec = M.Method(n, [], m.c = m.c - n) #python don't suppor this syntax
         m.plus10 = M.Method([], m.c + 10) # m.c is always accessible since it is a member of this mlass
         inst = m.make(c = 0) # here, we make an "instance" of the module with c initialized to 0
         assert inst.c == 0
