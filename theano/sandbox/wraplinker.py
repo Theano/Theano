@@ -103,7 +103,7 @@ def DualLinker(linkers):
 
 
 class ProfileMode(Mode):
-    def __init__(self, local_linker, optimizer=None):
+    def __init__(self, linker, optimizer=None):
         local_time = [0.0]
         apply_time = {}
         op_time = {}
@@ -121,31 +121,34 @@ class ProfileMode(Mode):
         self.apply_time = apply_time
         self.op_time = op_time
 
-        linker = WrapLinkerMany([local_linker], [blah])
+        wrap_linker = WrapLinkerMany([linker], [blah])
         if optimizer:
-            Mode.__init__(self, linker, optimizer)
+            super(ProfileMode, self).__init__(wrap_linker, optimizer)
         else:
-            Mode.__init__(self, linker)
+            super(ProfileMode, self).__init__(wrap_linker)
 
     def print_summary(self):
         local_time = self.local_time[0]
         apply_time = self.apply_time
         op_time = self.op_time
 
-        print 'local_time', local_time
-        print 'apply-wise times'
+        print ''
+        print 'ProfileMode.print_summary()'
+        print '---------------------------'
+        print ''
+        print 'local_time', local_time, '(Time spent running thunks)'
+        print 'Apply-wise summary: <fraction of local_time spent at this position> (<Apply position>, <Apply Op name>)'
         atimes = [(t/local_time, (a[0], str(a[1]))) for a, t in apply_time.items()]
         atimes.sort()
         atimes.reverse()
         for t,a in atimes[:15]:
             print '  ', t, a
-        print '   ...'  #show that we are ignoring applies that don't take much time
-        print 'op-wise times'
+        print '   ... (ignoring %i other Apply instances)'%max(0, len(atimes)-15)
+        print 'Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>'
         otimes = [(t/local_time, a) for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         for t,a in otimes[:15]:
             print '  ', t, a
-        print '   ...'  #show that we are ignoring applies that don't take much time
-        print sum(t for a,t in op_time.items())
+        print '   ... (ignoring %i other kinds Ops)'%max(0, len(otimes)-15)
 

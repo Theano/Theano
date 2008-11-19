@@ -686,7 +686,15 @@ class CLinker(link.Linker):
                 instantiate.customize.add_support_code(support_code)
             instantiate.customize.add_support_code(self.struct_code)
             instantiate.customize.add_support_code(static)
-            instantiate.customize.add_extra_compile_arg("-w")
+            for extra_arg in ("-w", #-w means supress all warnings
+                    ):
+                    #"-O3", 
+                    #"-ffast-math",
+                    #"-fprefetch-loop-arrays",
+                    #"-ftree-vect-loop-version",
+                    #"-ftree-loop-optimize",
+                    #"-ftree-vectorize"):
+                instantiate.customize.add_extra_compile_arg(extra_arg)
             for arg in self.compile_args():
                 instantiate.customize.add_extra_compile_arg(arg)
             for header in self.headers():

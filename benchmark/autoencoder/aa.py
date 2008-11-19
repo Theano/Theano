@@ -9,6 +9,7 @@ import theano.tensor as T
 import theano.sandbox
 import theano.sandbox.wraplinker
 from theano.compile import module, Mode
+from theano.sandbox.wraplinker import ProfileMode
 
 if 0:
     class Opt(object):
@@ -184,7 +185,8 @@ class M(module.Module):
 
 mod = M()
 #m = mod.make(mode='FAST_RUN')
-m = mod.make(mode=Mode(optimizer='fast_run', linker=linker()))
+mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+m = mod.make(mode=mode)
 
 neg, nout, nhid, niter = [int(a) for a in sys.argv[1:]]
 rng = numpy.random.RandomState(342)
@@ -198,4 +200,5 @@ t = time.time()
 for i in xrange(niter):
     err = m.step(x)
 print 'time: ',time.time() - t, 'err: ', err
+mode.print_summary()
 
