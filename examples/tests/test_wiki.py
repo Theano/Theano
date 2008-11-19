@@ -271,25 +271,6 @@ class T_function_module(unittest.TestCase):
         test += model.update([[0,1,0,0]], [[1,0]])
         assert model.sum == test
 
-
-
-        def make_incdec_function():
-            n, c = T.scalars('nc')
-            inc = theano.function([n, ((c, c + n), 0)], [])
-            dec = theano.function([n, ((c, c - n), inc.container[c])], [])
-            return inc,dec
-
-
-        inc1, dec1 = make_incdec_function()
-        inc2, dec2 = make_incdec_function()
-        a, b = T.scalars('ab')
-        sum = theano.function([(a, inc1.container['c']), (b, inc2.container['c'])], a + b)
-        inc1(2)
-        dec1(4)
-        inc2(6)
-        assert inc1['c'] == -2 and inc2['c'] == 6
-        assert sum() == 4 # -2 + 6
-
     def test_Klass_basic_example2_more(self):
         m = M.Module()
         m2 = M.Module()
