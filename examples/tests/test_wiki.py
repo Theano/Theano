@@ -156,8 +156,8 @@ class SoftmaxXERegression2(RegressionLayer2):
         return self.l2_coef * T.sum(self.w * self.w)
 
 
-class T_function_module(unittest.TestCase):
-    def test_Klass_basic_example1(self):
+class T_test_wiki_module(unittest.TestCase):
+    def test_Module_basic_example1(self):
         n, c = T.scalars('nc')
         inc = theano.function([n, ((c, c + n), 0)], [])
         dec = theano.function([n, ((c, c - n), inc.container[c])], []) # we need to pass inc's container in order to share
@@ -169,7 +169,7 @@ class T_function_module(unittest.TestCase):
         assert inc[c] == -1 and dec[c] == inc[c]
         assert plus10() == 9
 
-    def test_Klass_basic_example2(self):
+    def test_Module_basic_example2(self):
         m = M.Module()
         n = T.scalar('n')
         m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
@@ -187,7 +187,7 @@ class T_function_module(unittest.TestCase):
         assert inst.c == -1
         assert inst.plus10() == 9
 
-    def test_Klass_nesting_example1(self):
+    def test_Module_nesting_example1(self):
         def make_incdec_function():
             n, c = T.scalars('nc')
             inc = theano.function([n, ((c, c + n), 0)], [])
@@ -205,7 +205,7 @@ class T_function_module(unittest.TestCase):
         assert inc1['c'] == -2 and inc2['c'] == 6
         assert sum() == 4 # -2 + 6
 
-    def test_Klass_nesting_example2(self):
+    def test_Module_nesting_example2(self):
         def make_incdec_module():
             m = M.Module()
             n = T.scalar('n')
@@ -225,7 +225,7 @@ class T_function_module(unittest.TestCase):
         assert inst.incdec1.c == -2 and inst.incdec2.c == 6
         assert inst.sum() == 4 # -2 + 6
 
-    def test_Klass_Advanced_example(self):
+    def test_Module_Advanced_example(self):
         data_x = N.random.randn(4, 10)
         data_y = [ [int(x)] for x in N.random.randn(4) > 0]
 #        print data_x
@@ -233,8 +233,8 @@ class T_function_module(unittest.TestCase):
 #        print data_y
         def test(model):
             model = model.make(input_size = 10,
-                                      target_size = 1,
-                                      stepsize = 0.1)
+                               target_size = 1,
+                               stepsize = 0.1)
             for i in xrange(1000):
                 xe = model.update(data_x, data_y)
                 if i % 100 == 0:
@@ -257,21 +257,21 @@ class T_function_module(unittest.TestCase):
         print m1==m2
         assert m2==m1 and m1==m2
 
-    def test_Klass_extending_klass_methods(self):
+    def test_Module_extending_klass_methods(self):
         model_module = SoftmaxXERegression1(regularize = False)
         model_module.sum = M.Member(T.scalar()) # we add a module member to hold the sum
         model_module.update.updates.update(sum = model_module.sum + model_module.cost) # now update will also update sum!
 
         model = model_module.make(input_size = 4,
-                                 target_size = 2,
-                                 stepsize = 0.1,
-                                 sum = 0) # we mustn't forget to initialize the sum
+                                  target_size = 2,
+                                  stepsize = 0.1,
+                                  sum = 0) # we mustn't forget to initialize the sum
 
         test = model.update([[0,0,1,0]], [[0,1]]) 
         test += model.update([[0,1,0,0]], [[1,0]])
         assert model.sum == test
 
-    def test_Klass_basic_example2_more(self):
+    def test_Module_basic_example2_more(self):
         m = M.Module()
         m2 = M.Module()
         m2.name="m2" # for better error
