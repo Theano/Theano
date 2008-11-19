@@ -8,7 +8,7 @@ import theano
 import theano.tensor as T
 import theano.sandbox
 import theano.sandbox.wraplinker
-from theano.compile import module
+from theano.compile import module, Mode
 
 if 0:
     class Opt(object):
@@ -130,32 +130,30 @@ if 0:
 
                 self.merge(env)
 
-    def linker(print_prog=False):
-        if 1:
-            print 'wtf?'
-            #return theano.gof.OpWiseCLinker()
-            imap = {None:'-'}
-            def blah(i, node, thunk):
-                imap[node] = str(i)
-                if print_prog:# and node.op.__class__ is T.DimShuffle:
-                    if False and  node.op == T.DimShuffle((), ['x', 'x'], inplace = True):
-                        print node.op == T.DimShuffle((), ['x', 'x'], inplace = True),
-                        print node.inputs[0], type(node.inputs[0]), 
-                        print node.inputs[0].equals(T.constant(2)), 
-                    outputs = node.outputs
-                    inputs = theano.gof.graph.inputs(outputs)
-                    print 'node ', i, node,
-                    print ':'.join([imap[inp.owner] for inp in node.inputs])
-                    #print theano.sandbox.pprint.pp.process_graph(inputs, outputs)
-                    
-            return theano.sandbox.wraplinker.WrapLinkerMany(
-                    [theano.gof.OpWiseCLinker()],
-                    [theano.sandbox.wraplinker.run_all
-                        ,blah
-                        #,theano.sandbox.wraplinker.numpy_notall_isfinite
-                        ])
-        else:
-            return theano.gof.OpWiseCLinker()
+def linker(print_prog=True):
+    if 1:
+        imap = {None:'-'}
+        def blah(i, node, thunk):
+            imap[node] = str(i)
+            if print_prog:# and node.op.__class__ is T.DimShuffle:
+                if False and  node.op == T.DimShuffle((), ['x', 'x'], inplace = True):
+                    print node.op == T.DimShuffle((), ['x', 'x'], inplace = True),
+                    print node.inputs[0], type(node.inputs[0]), 
+                    print node.inputs[0].equals(T.constant(2)), 
+                outputs = node.outputs
+                inputs = theano.gof.graph.inputs(outputs)
+                print 'node ', i, node,
+                print ':'.join([imap[inp.owner] for inp in node.inputs])
+                #print theano.sandbox.pprint.pp.process_graph(inputs, outputs)
+                
+        return theano.sandbox.wraplinker.WrapLinkerMany(
+                [theano.gof.OpWiseCLinker()],
+                [theano.sandbox.wraplinker.run_all
+                    ,blah
+                    #,theano.sandbox.wraplinker.numpy_notall_isfinite
+                    ])
+    else:
+        return theano.gof.OpWiseCLinker()
 
 
 class M(module.Module):
@@ -167,11 +165,14 @@ class M(module.Module):
         self.a = module.Member(T.vector('a')) # hid bias
         self.b = module.Member(T.vector('b')) # output bias
 
-        hid = T.tanh(T.dot(x, self.w) + self.a)
+        self.hid = T.tanh(T.dot(x, self.w) + self.a)
+        hid = self.hid
 
-        out = T.tanh(T.dot(hid, self.w.T) + self.b)
+        self.out = T.tanh(T.dot(hid, self.w.T) + self.b)
+        out = self.out
 
-        err = 0.5 * T.sum((out - x)**2)
+        self.err = 0.5 * T.sum((out - x)**2)
+        err = self.err
 
         params = [self.w, self.a, self.b]
 
@@ -182,7 +183,8 @@ class M(module.Module):
         self.step = module.Method([x], err, updates=dict(updates))
 
 mod = M()
-m = mod.make(mode='FAST_RUN')
+#m = mod.make(mode='FAST_RUN')
+m = mod.make(mode=Mode(optimizer='fast_run', linker=linker()))
 
 neg, nout, nhid, niter = [int(a) for a in sys.argv[1:]]
 rng = numpy.random.RandomState(342)

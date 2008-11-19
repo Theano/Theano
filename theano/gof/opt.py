@@ -15,6 +15,7 @@ from collections import deque, defaultdict
 import destroyhandler as dh
 import sys
 
+_optimizer_idx = [0]
 
 class Optimizer(object):
     """WRITEME
@@ -22,6 +23,12 @@ class Optimizer(object):
     It can represent an optimization or in general any kind
     of transformation you could apply to an L{Env}.
     """
+
+    def __hash__(self):
+        if not hasattr(self, '_optimizer_idx'):
+            self._optimizer_idx = _optimizer_idx[0]
+            _optimizer_idx[0] += 1
+        return self._optimizer_idx
 
     def apply(self, env):
         """WRITEME
@@ -72,6 +79,7 @@ def optimizer(f):
 
 
 class SeqOptimizer(Optimizer, list):
+    #inherit from Optimizer first to get Optimizer.__hash__
     """WRITEME
     Takes a list of L{Optimizer} instances and applies them
     sequentially.
@@ -99,13 +107,13 @@ class SeqOptimizer(Optimizer, list):
                     raise
 
     def __eq__(self, other):
+        #added to override the list's __eq__ implementation
         return id(self) == id(other)
 
     def __neq__(self, other):
+        #added to override the list's __neq__ implementation
         return id(self) != id(other)
 
-    def __hash__(self):
-        return hash(id(self))
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -221,7 +229,7 @@ def MergeOptMerge(opt):
 ### Local Optimizers ###
 ########################
 
-class LocalOptimizer(utils.object2):
+class LocalOptimizer(Optimizer, utils.object2):
     """WRITEME"""
 
     def transform(self, node):
