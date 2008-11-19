@@ -28,6 +28,7 @@ int main(int argc, char **argv)
 
     int neg = strtol(argv[1], 0, 0);
     int nout = strtol(argv[2], 0, 0);
+    int nin = nout;
     int nhid = strtol(argv[3], 0, 0);
     int niter = strtol(argv[4], 0, 0);
     double lr = 0.01;
@@ -35,8 +36,8 @@ int main(int argc, char **argv)
     gsl_rng_set(rng, 234);
 
 
-    gsl_matrix * x = gsl_matrix_alloc(neg, nout);
-    gsl_matrix * w = gsl_matrix_alloc(nout, nhid);
+    gsl_matrix * x = gsl_matrix_alloc(neg, nin);
+    gsl_matrix * w = gsl_matrix_alloc(nin, nhid);
     gsl_vector * a = gsl_vector_alloc(nhid);
     gsl_vector * b = gsl_vector_alloc(nout);
     gsl_matrix * xw = gsl_matrix_alloc(neg, nhid);
@@ -59,11 +60,17 @@ int main(int argc, char **argv)
 
     struct timeval tv0, tv1;
 
+    struct timeval tdot0, tdot1;
+    double time_of_dot = 0.0;
+
     gettimeofday(&tv0, 0);
     double err = 0.0;
     for (int iter = 0; iter < niter; ++iter)
     {
+        gettimeofday(&tdot0, 0);
         gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, x, w, 0.0, xw);
+        gettimeofday(&tdot1, 0);
+        time_of_dot += pytime(&tdot1) - pytime(&tdot0);
 
         for (int i = 0; i < neg; ++i)
             for (int j = 0; j < nhid; ++j)
@@ -72,7 +79,10 @@ int main(int argc, char **argv)
                 hid->data[i*nhid+j] = tanh(act);
             }
 
+        gettimeofday(&tdot0, 0);
         gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, hid, w, 0.0, hidwt);
+        gettimeofday(&tdot1, 0);
+        time_of_dot += pytime(&tdot1) - pytime(&tdot0);
 
         for (int i = 0; i < nout; ++i) g_b->data[i] = 0.0;
         err = 0.0;
@@ -90,8 +100,11 @@ int main(int argc, char **argv)
 
         if (1)
         {
+        gettimeofday(&tdot0, 0);
             gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, g_hidwt, w, 0.0, g_hid);
             gsl_blas_dgemm(CblasTrans, CblasNoTrans, 1.0, g_hidwt, hid, 0.0, g_w);
+        gettimeofday(&tdot1, 0);
+        time_of_dot += pytime(&tdot1) - pytime(&tdot0);
             
 
             for (int i = 0; i < neg; ++i)
@@ -101,14 +114,19 @@ int main(int argc, char **argv)
                     a->data[j] -= lr * g_hid->data[i*nhid+j];
                 }
 
+        gettimeofday(&tdot0, 0);
             gsl_blas_dgemm(CblasTrans, CblasNoTrans, -lr, x, g_hid, 1.0, w);
+        gettimeofday(&tdot1, 0);
+        time_of_dot += pytime(&tdot1) - pytime(&tdot0);
             for (int i = 0; i < nout*nhid; ++i) w->data[i] -= lr * g_w->data[i];
         }
 
     }
     gettimeofday(&tv1, 0);
 
-    fprintf(stdout, "took = %lfs  to get err %lf\n", pytime(&tv1) - pytime(&tv0), 0.5 * err);
+    double total_time = pytime(&tv1) - pytime(&tv0);
+    fprintf(stdout, "took = %lfs  to get err %lf\n", total_time, 0.5 * err);
+    fprintf(stdout, "... of which %.2lfs was spent in dgemm (fraction: %.2lf)\n", time_of_dot, time_of_dot / total_time);
     //skip freeing
     return 0;
 }

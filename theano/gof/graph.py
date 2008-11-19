@@ -13,6 +13,7 @@ from collections import deque
 
 import utils
 
+_creation_idx = [0]
 
 class Apply(utils.object2):
     """
@@ -120,6 +121,13 @@ class Apply(utils.object2):
 
     def __asapply__(self):
         return self
+
+    def __hash__(self):
+        if not hasattr(self, '_creation_idx'):
+            self._creation_idx = _creation_idx[0]
+            _creation_idx[0] += 1
+        return self._creation_idx
+
 
     def clone(self):
         """Duplicate this Apply instance with inputs = self.inputs.
@@ -567,7 +575,10 @@ def general_toposort(r_out, deps, debug_print = False):
         deps(i) should behave like a pure function (no funny business with internal state)
 
     :note: 
-        deps(i) can/should be cached by the deps function to be fast
+        deps(i) will be cached by this function (to be fast)
+
+    :note:
+        The order of the return value list is determined by the order of nodes returned by the deps() function.
     """
     deps_cache = {}
     def _deps(io):
@@ -611,8 +622,9 @@ def general_toposort(r_out, deps, debug_print = False):
 def io_toposort(i, o, orderings = {}):
     """WRITEME
     """
+    #the inputs are used only here in the function that decides what 'predecessors' to explore
     iset = set(i)
-    def deps(obj):
+    def deps(obj): 
         rval = []
         if obj not in iset:
             if isinstance(obj, Result): 

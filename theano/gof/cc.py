@@ -736,6 +736,7 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
         else:
             return tasks[failure_code - n]
     def execute():
+        execute.cthunk = cthunk
         failure = cutils.run_cthunk(cthunk)
         if failure:
             task, taskname, id = find_task(failure)

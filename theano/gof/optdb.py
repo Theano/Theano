@@ -18,7 +18,7 @@ class DB(object):
         # N.B. obj is not an instance of class Optimizer.
         # It is an instance of a DB.In the tests for example,
         # this is not always the case.
-        if not isinstance(obj, (DB, opt.Optimizer)):
+        if not isinstance(obj, (DB, opt.Optimizer, opt.LocalOptimizer)):
             raise Exception('wtf', obj)
             
         obj.name = name

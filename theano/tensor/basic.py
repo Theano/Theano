@@ -1089,36 +1089,41 @@ pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 # View Operations
 ##########################
 
-class TransposeInplace(Op):
-    view_map = {0: [0]}
-    
-    def make_node(self, input):
-        return Apply(self, [input], [tensor(dtype = input.type.dtype,
-                                            broadcastable = reversed(input.type.broadcastable))])
-    
-    def perform(self, node, (x, ), (z, )):
-        z[0] = x.T
-    
-    def grad(self, (x,), (gz,)):
-        return transpose(gz),
-    
-    def c_code(self, node, name, (x, ), (z, ), sub):
-        return """
-        PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
-        if (%(z)s) {
-            Py_XDECREF(%(z)s);
-        }
-        %(z)s = transposed;
-        """ % locals()
+if 0:
+    class _TransposeInplace(Op):
+        view_map = {0: [0]}
+        
+        def make_node(self, input):
+            return Apply(self, [input], [tensor(dtype = input.type.dtype,
+                                                broadcastable = reversed(input.type.broadcastable))])
+        
+        def perform(self, node, (x, ), (z, )):
+            z[0] = x.T
+        
+        def grad(self, (x,), (gz,)):
+            return transpose(gz),
+        
+        def c_code(self, node, name, (x, ), (z, ), sub):
+            return """
+            PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
+            if (%(z)s) {
+                Py_XDECREF(%(z)s);
+            }
+            %(z)s = transposed;
+            """ % locals()
 
-    def __str__(self):
-        return "TransposeView"
+        def __str__(self):
+            return "TransposeView"
 
-_transpose_inplace = TransposeInplace()
+    _transpose_inplace = _TransposeInplace()
+
+    def _old_transpose(x, **kwargs):
+        """WRITEME"""
+        return _transpose_inplace(tensor_copy(x), **kwargs)
 
 def transpose(x, **kwargs):
-    """WRITEME"""
-    return _transpose_inplace(tensor_copy(x), **kwargs)
+    dims = range(x.ndim-1, -1, -1)
+    return DimShuffle(x.broadcastable, dims, inplace=True)(tensor_copy(x))
 
 
 
