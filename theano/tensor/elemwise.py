@@ -181,7 +181,7 @@ class DimShuffle(Op):
         for i, v in enumerate(self.new_order):
             if v != 'x':
                 grad_order[v] = i
-        return DimShuffle(gz.type.broadcastable, grad_order)(gz),
+        return [DimShuffle(gz.type.broadcastable, grad_order, inplace=True)(Elemwise(scalar.identity)(gz))]
 
 
 

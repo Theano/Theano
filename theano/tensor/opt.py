@@ -50,7 +50,8 @@ dot_to_gemm = gof.PatternSub((T.dot, 'a', 'b'),
                                         (T.Subtensor([slice(0, 1)]), (T.shape, 'a')),
                                         (T.Subtensor([slice(1, 2)]), (T.shape, 'b')))),
                               T.constant(1.0), 'a', 'b', T.constant(1.0)),
-                             allow_multiple_clients = False)
+                              allow_multiple_clients = False)
+
 
 
 def _insert_inplace_optimizer(env):
@@ -216,6 +217,13 @@ register_canonicalize(local_shape_lift_dot)
 ################
 
 def encompasses_broadcastable(b1, b2):
+    """
+    Returns True if the broadcastable patterns b1 and b2 are such that b2 is
+    broadcasted to b1's shape and not the opposite.
+
+    :param b1: the broadcastable attribute of a tensor type
+    :param b2: the broadcastable attribute of a tensor type
+    """
     if len(b1) < len(b2):
         return False
     b1 = b1[-len(b2):]
@@ -330,6 +338,7 @@ def local_fill_cut(node):
 
 register_canonicalize(local_fill_cut)
 
+register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy' )
 
 @gof.local_optimizer([None, T.fill])
 def local_fill_sink(node):
@@ -550,6 +559,7 @@ def local_neg_to_mul(node):
         return [-1 * node.inputs[0]]
     else:
         return False
+register_canonicalize(local_neg_to_mul)
 
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
@@ -557,6 +567,7 @@ def local_mul_to_neg(node):
         return [-local_mul_canonizer.merge_num_denum(node.inputs[1:], [])]
     else:
         return False
+register_specialize(local_mul_to_neg)
 
 @gof.local_optimizer([T.div])
 def local_div_to_inv(node):
@@ -564,10 +575,57 @@ def local_div_to_inv(node):
         return [T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))]
     else:
         return False
-
-register_canonicalize(local_neg_to_mul)
-register_specialize(local_mul_to_neg)
 register_specialize(local_div_to_inv)
+
+@gof.local_optimizer([T.inv])
+def local_inv_canon(node):
+    if node.op == T.inv:
+        return [T.pow(node.inputs[0], -1.0)]
+    else:
+        return False
+register_canonicalize(local_inv_canon)
+
+@gof.local_optimizer([T.pow])
+def local_pow_canonicalize(node):
+    if node.op == T.pow:
+        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 1.0):
+            return [T.fill(node.inputs[1], node.inputs[0])]
+        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 0.0):
+            #extra fills here are to make sure the size of the output stays constant.
+            return [T.fill(node.inputs[0], T.fill(node.inputs[1], 1.0))]
+    else:
+        return False
+register_canonicalize(local_pow_canonicalize)
+
+@gof.local_optimizer([T.pow])
+def local_pow_specialize(node):
+    #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
+    if node.op == T.pow:
+        #the idea here is that we have pow(x, y)
+        xsym = node.inputs[0]
+        ysym = node.inputs[1]
+        y = local_mul_canonizer.get_constant(ysym)
+        if (y is not None) \
+                and encompasses_broadcastable(xsym.type.broadcastable, ysym.type.broadcastable):
+            if N.all(y == 2.0):
+                return [T.sqr(xsym)]
+            if N.all(y == 1.0):
+                return [xsym]
+            if N.all(y == 0.0):
+                return [T.fill(xsym, 1.0)]
+            if N.all(y == 0.5):
+                return [T.sqrt(xsym)]
+            if N.all(y == -0.5):
+                return [T.inv(T.sqrt(xsym))]
+            if N.all(y == -1.0):
+                return [T.inv(xsym)]
+            if N.all(y == -2.0):
+                return [T.inv(T.sqr(xsym))]
+    else:
+        return False
+register_specialize(local_pow_specialize)
+
+
 register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
 

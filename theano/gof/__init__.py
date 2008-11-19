@@ -23,11 +23,12 @@ from op import \
 from opt import \
     Optimizer, optimizer, SeqOptimizer, \
     MergeOptimizer, MergeOptMerge, \
-    LocalOptimizer, local_optimizer, LocalOptGroup, LocalOpKeyOptGroup, \
+    LocalOptimizer, local_optimizer, LocalOptGroup, \
     OpSub, OpRemove, PatternSub, \
-    NavigatorOptimizer, TopoOptimizer, OpKeyOptimizer, EquilibriumOptimizer, \
+    NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer, \
     keep_going, warn, \
     InplaceOptimizer, PureThenInplaceOptimizer
+    #LocalOpKeyOptGroup, OpKeyOptimizer
 
 from optdb import \
     DB, Query, \
