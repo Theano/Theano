@@ -625,6 +625,37 @@ def local_pow_specialize(node):
         return False
 register_specialize(local_pow_specialize)
 
+if 0: #TODO: replace this with a c version of any InplaceDimShuffle
+    class _TransposeInplace(T.Op):
+        view_map = {0: [0]}
+        
+        def make_node(self, input):
+            return T.Apply(self, [input], 
+                    [T.tensor(dtype = input.type.dtype,
+                        broadcastable = reversed(input.type.broadcastable))])
+        
+        def perform(self, node, (x, ), (z, )):
+            z[0] = x.T
+        
+        def c_code(self, node, name, (x, ), (z, ), sub):
+            return """
+            PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
+            if (%(z)s) {
+                Py_XDECREF(%(z)s);
+            }
+            %(z)s = transposed;
+            """ % locals()
+
+        def __str__(self):
+            return "_TransposeInplace"
+    _transpose_inplace = _TransposeInplace()
+
+    @gof.local_optimizer([T.DimShuffle([False,False],[1,0],inplace=True)])
+    def local_dimshuffle_transposeinplace(node):
+        if node.op == T.DimShuffle([False,False],[1,0],inplace=True):
+            return [_transpose_inplace(node.inputs[0])]
+        return False
+    register_specialize(local_dimshuffle_transposeinplace)
 
 register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
