@@ -205,10 +205,8 @@ class DimShuffle(Op):
 
 
         if self.inplace:
-            print "INPLACE"
             get_base = ['{ PyArrayObject * base = %(input)s', 'Py_INCREF((PyObject*)base)']
         else:
-            print "NOT INPLACE"
             get_base = [('{ PyArrayObject * base = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
                     '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
 
