@@ -12,14 +12,20 @@ class Blah(M.ModuleInstance):
 #        super(Blah, self)
     def initialize(self,input_size = None, target_size = None, seed = 1827, 
                    **init):
+        #super(Blah, self)#TODO: don't work
+        M.default_initialize(self,**init)#equivalent to previous line.
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
             rng = N.random.RandomState(seed)
             self.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             self.b = N.zeros(target_size)
-            self.stepsize = 0.01
-
+            #self.stepsize = 0.01#overwrite the value
+            if not hasattr(self,"stepsize"):
+                self.stepsize = 0.01
+        #we call super after as we want the parameter to superseed the default value.
+        #super(Blah, self)#don't overwrite the value.
+        #M.default_initialize(self,**init)#equivalent to previous line.
     def __eq__(self, other):
         if not isinstance(other.component, SoftmaxXERegression1) and not isinstance(other.component, SoftmaxXERegression2):
             raise NotImplemented
@@ -113,18 +119,22 @@ class RegressionLayer2(M.Module):
                              seed = 1827, **init):
         # obj is an "instance" of this module holding values for each member and
         # functions for each method
-        #super(RegressionLayer, self).initialize(obj, **init)
 
-        # here we call the superclass's initialize method, which takes all the name: value
+        # here we call the default initialize method, which takes all the name: value
         # pairs in init and sets the property with that name to the provided value
         # this covers setting stepsize, l2_coef; w and b can be set that way too
+        M.default_initialize(obj,**init)#will not overwrite the value!
+
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
             rng = N.random.RandomState(seed)
             obj.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             obj.b = N.zeros(target_size)
-            obj.stepsize = 0.01
+            #obj.stepsize = 0.01#would owerrite the value!
+            if not hasattr(obj,"stepsize"):
+                obj.stepsize = 0.01
+        #M.default_initialize(obj,**init)#will not overwrite the value!
     def build_regularization(self):
         return T.zero() # no regularization!
 
@@ -219,6 +229,7 @@ class T_test_wiki_module(unittest.TestCase):
         m.incdec2 = make_incdec_module()
         m.sum = M.Method([], m.incdec1.c + m.incdec2.c)
         inst = m.make(incdec1 = dict(c=0), incdec2 = dict(c=0))
+        assert inst.incdec1.c==0 and inst.incdec2.c==0
         inst.incdec1.inc(2)
         inst.incdec1.dec(4)
         inst.incdec2.inc(6)
@@ -228,13 +239,13 @@ class T_test_wiki_module(unittest.TestCase):
     def test_Module_Advanced_example(self):
         data_x = N.random.randn(4, 10)
         data_y = [ [int(x)] for x in N.random.randn(4) > 0]
-#        print data_x
-#        print
-#        print data_y
         def test(model):
             model = model.make(input_size = 10,
                                target_size = 1,
                                stepsize = 0.1)
+            print model.stepsize
+            self.failUnless( model.w.shape == (10,1) and model.b.shape == (1,))
+            assert model.stepsize == 0.1
             for i in xrange(1000):
                 xe = model.update(data_x, data_y)
                 if i % 100 == 0:
@@ -257,7 +268,7 @@ class T_test_wiki_module(unittest.TestCase):
         print m1==m2
         assert m2==m1 and m1==m2
 
-    def test_Module_extending_klass_methods(self):
+    def test_Module_extending_module_methods(self):
         model_module = SoftmaxXERegression1(regularize = False)
         model_module.sum = M.Member(T.scalar()) # we add a module member to hold the sum
         model_module.update.updates.update(sum = model_module.sum + model_module.cost) # now update will also update sum!
@@ -266,6 +277,9 @@ class T_test_wiki_module(unittest.TestCase):
                                   target_size = 2,
                                   stepsize = 0.1,
                                   sum = 0) # we mustn't forget to initialize the sum
+        print model.stepsize
+        self.failUnless( model.w.shape == (4,2) and model.b.shape == (2,))
+        assert model.stepsize == 0.1
 
         test = model.update([[0,0,1,0]], [[0,1]]) 
         test += model.update([[0,1,0,0]], [[1,0]])
