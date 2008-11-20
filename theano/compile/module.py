@@ -664,6 +664,10 @@ class ComponentList(Composite):
         return self.__class__(*[c.dup() for c in self._components])
 
 
+def default_initialize(self, init = {}, **kwinit):
+    for k, initv in dict(init, **kwinit).iteritems():
+        self[k] = initv
+
 class ComponentDictInstance(CompositeInstance):
     """
     ComponentDictInstance is meant to be instantiated by ComponentDict.
