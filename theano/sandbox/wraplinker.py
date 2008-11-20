@@ -171,13 +171,15 @@ class ProfileMode(Mode):
                 %(max(0, len(atimes)-15), sum(t for t, a in atimes[15:]))
 
 
+        n_ops_to_print = 20
         print 'Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>'
         otimes = [(t/local_time, a, self.op_cimpl[a]) for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
-        for t,a,ci in otimes[:15]:
+        for t,a,ci in otimes[:n_ops_to_print]:
             print '\t%.3f\t%s %s' % (t, '*' if ci else ' ', a)
         print '   ... (remaining %i Ops account for %.2f of the runtime)'\
-                %(max(0, len(otimes)-15), sum(t for t, a, ci in otimes[15:]))
+                %(max(0, len(otimes)-n_ops_to_print), sum(t for t, a, ci in
+                    otimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
 

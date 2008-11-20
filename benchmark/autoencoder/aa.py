@@ -213,6 +213,7 @@ def local_sub_to_gemm(node):
             #TODO: we actually want to get any scalar here, not necessrily a constant
             mulleft_const = opt.local_mul_canonizer.get_constant(mulleft)
             if mulleft_const is not None:
+                assert mulleft_const.size() == 1
                 mulleft_const = mulleft_const.flatten()[0]
                 #subleft - (mulleft_const * ?)
                 if mulright.owner and (mulright.owner.op == T.add):
@@ -422,8 +423,10 @@ class M(module.Module):
         self.step = module.Method([x], err, updates=dict(updates))
 
 mod = M()
-#mode = 'FAST_RUN'
-mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+mode = 'FAST_RUN'
+#mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+mode = Mode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker(nice_errors=True))
+mode = Mode(optimizer='fast_run', linker='c')
 print mod.pretty(mode=mode)
 m = mod.make(mode=mode)
 
@@ -443,6 +446,6 @@ try:
     mode.print_summary()
     pass
 except:
-    raise
+    pass
 
 

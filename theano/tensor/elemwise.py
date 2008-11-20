@@ -103,16 +103,18 @@ class DimShuffle(Op):
         for i, b in enumerate(input_broadcastable):
             if i not in new_order:
                 # we want to drop this dimension because it's not a value in new_order
-                if b == 1:
+                if b == 1: # 1 aka True
                     self.drop.append(i)
                 else:
                     # we cannot drop non-broadcastable dimensions
-                    raise NotImplementedError("You cannot drop a non-broadcastable dimension.")
+                    raise ValueError("You cannot drop a non-broadcastable dimension.")
             else:
                 i2j[i] = j
                 j += 1
 
         # transposition of non-broadcastable dimensions
+        # This is how the dimensions will be permuted, without accounting for the extra
+        # 'x' broadcastable dimensions to insert.
         self.shuffle = [i2j[x] for x in new_order if x != 'x']
 
         # list of dimensions of the output that are broadcastable and were not in the original input
@@ -144,7 +146,8 @@ class DimShuffle(Op):
             and self.input_broadcastable == other.input_broadcastable
 
     def __hash__(self):
-        return hash(self.inplace) ^ hash(self.new_order) ^ hash(self.input_broadcastable)
+        return hash(type(self)) ^ hash(self.inplace) \
+                ^ hash(self.new_order) ^ hash(self.input_broadcastable)
 
     def __str__(self):
         if self.inplace:
@@ -174,6 +177,73 @@ class DimShuffle(Op):
             res = numpy.copy(res)
 
         storage[0] = res
+
+    def c_code(self, node, name, (input,), (res,), sub):
+        def statements(lst):
+            return ';\n'.join(lst) + ';'
+
+        nd_in = len(self.input_broadcastable)
+        nd_out = len(self.new_order)
+
+        check_input_nd = [('if (%(input)s->nd != ' + str(nd_in) + ')'
+                '{PyErr_SetString(PyExc_NotImplementedError, "input nd"); %(fail)s;}')]
+
+        clear_output = ['if (%(res)s) {Py_XDECREF(%(res)s);}']
+
+        shape_statements = ['npy_intp dimensions[%i]'%nd_out]
+        shape_statements += [('dimensions['+str(i)+'] = %(input)s->dimensions['+str(o)+']')
+            if o != 'x' else
+            ('dimensions['+str(i)+'] = 1')
+            for i, o in enumerate(self.new_order)]
+
+
+        strides_statements = ['npy_intp strides[%i]'%nd_out]
+        strides_statements += [('strides['+str(i)+'] = %(input)s->strides['+str(o)+']')
+            if o != 'x' else
+            ('strides['+str(i)+'] = 0')
+            for i, o in enumerate(self.new_order)]
+
+
+        if self.inplace:
+            print "INPLACE"
+            get_base = ['{ PyArrayObject * base = %(input)s', 'Py_INCREF((PyObject*)base)']
+        else:
+            print "NOT INPLACE"
+            get_base = [('{ PyArrayObject * base = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
+                    '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
+
+        alloc_output = [('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
+                    '' + str(nd_out) + ', dimensions, '
+                    'PyArray_TYPE(base), strides, '
+                    'base->data, base->descr->elsize, '
+                    'PyArray_FLAGS(base), NULL)'),
+                '%(res)s->base = (PyObject*)base',
+                '}']
+
+        full_code = statements(check_input_nd 
+                + clear_output
+                + shape_statements 
+                + strides_statements
+                + get_base
+                + alloc_output)
+
+        if 0:
+            print 'C_CODE'
+            print ''
+            print self
+            print "IN BROAD", self.input_broadcastable
+            print "NEW ORDER", self.new_order
+            print "SHUFFLE", self.shuffle
+            print "AUGMENT", self.augment
+            print '------------'
+            print ''
+            print full_code
+
+            if 0:
+                import sys
+                sys.exit()
+
+        return full_code % dict(locals(), **sub)
 
     def grad(self, (x, ), (gz, )):
         gz = as_tensor(gz)

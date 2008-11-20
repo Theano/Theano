@@ -686,14 +686,15 @@ class CLinker(link.Linker):
                 instantiate.customize.add_support_code(support_code)
             instantiate.customize.add_support_code(self.struct_code)
             instantiate.customize.add_support_code(static)
-            for extra_arg in ("-w", #-w means supress all warnings
-                    ):
-                    #"-O3", 
-                    #"-ffast-math",
+            for extra_arg in (
+                    "-O2", 
+                    "-ffast-math",
                     #"-fprefetch-loop-arrays",
                     #"-ftree-vect-loop-version",
                     #"-ftree-loop-optimize",
                     #"-ftree-vectorize"):
+                    "-w" #-w means supress all warnings
+                    ):
                 instantiate.customize.add_extra_compile_arg(extra_arg)
             for arg in self.compile_args():
                 instantiate.customize.add_extra_compile_arg(arg)
@@ -736,7 +737,6 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
         else:
             return tasks[failure_code - n]
     def execute():
-        execute.cthunk = cthunk
         failure = cutils.run_cthunk(cthunk)
         if failure:
             task, taskname, id = find_task(failure)
@@ -748,6 +748,7 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
             exc_value = exc_type(_exc_value, task)
             exc_value.__thunk_trace__ = trace # this can be used to retrieve the location the Op was declared
             raise exc_type, exc_value, exc_trace
+    execute.cthunk = cthunk
     return execute
 
 
@@ -770,9 +771,12 @@ class OpWiseCLinker(link.LocalLinker):
 
     __cache__ = {}
 
-    def __init__(self, fallback_on_perform = True):
+    def __init__(self, 
+            fallback_on_perform = True, 
+            nice_errors = True):
         self.env = None
         self.fallback_on_perform = fallback_on_perform
+        self.nice_errors = nice_errors
 
     def accept(self, env, no_recycling = []):
         if self.env is not None and self.env is not env:
@@ -842,12 +846,13 @@ class OpWiseCLinker(link.LocalLinker):
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
-        f = link.streamline(env, thunks, order, no_recycling = no_recycling, profiler = profiler)
+        f = link.streamline(env, thunks, order, 
+                no_recycling = no_recycling, 
+                nice_errors = self.nice_errors)
 
         return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
-
 
 
 
