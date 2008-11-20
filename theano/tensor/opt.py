@@ -50,7 +50,8 @@ dot_to_gemm = gof.PatternSub((T.dot, 'a', 'b'),
                                         (T.Subtensor([slice(0, 1)]), (T.shape, 'a')),
                                         (T.Subtensor([slice(1, 2)]), (T.shape, 'b')))),
                               T.constant(1.0), 'a', 'b', T.constant(1.0)),
-                             allow_multiple_clients = False)
+                              allow_multiple_clients = False)
+
 
 
 def _insert_inplace_optimizer(env):
@@ -216,6 +217,13 @@ register_canonicalize(local_shape_lift_dot)
 ################
 
 def encompasses_broadcastable(b1, b2):
+    """
+    Returns True if the broadcastable patterns b1 and b2 are such that b2 is
+    broadcasted to b1's shape and not the opposite.
+
+    :param b1: the broadcastable attribute of a tensor type
+    :param b2: the broadcastable attribute of a tensor type
+    """
     if len(b1) < len(b2):
         return False
     b1 = b1[-len(b2):]
@@ -330,6 +338,7 @@ def local_fill_cut(node):
 
 register_canonicalize(local_fill_cut)
 
+register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy' )
 
 @gof.local_optimizer([None, T.fill])
 def local_fill_sink(node):
@@ -550,6 +559,7 @@ def local_neg_to_mul(node):
         return [-1 * node.inputs[0]]
     else:
         return False
+register_canonicalize(local_neg_to_mul)
 
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
@@ -557,6 +567,7 @@ def local_mul_to_neg(node):
         return [-local_mul_canonizer.merge_num_denum(node.inputs[1:], [])]
     else:
         return False
+register_specialize(local_mul_to_neg)
 
 @gof.local_optimizer([T.div])
 def local_div_to_inv(node):
@@ -564,10 +575,88 @@ def local_div_to_inv(node):
         return [T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))]
     else:
         return False
-
-register_canonicalize(local_neg_to_mul)
-register_specialize(local_mul_to_neg)
 register_specialize(local_div_to_inv)
+
+@gof.local_optimizer([T.inv])
+def local_inv_canon(node):
+    if node.op == T.inv:
+        return [T.pow(node.inputs[0], -1.0)]
+    else:
+        return False
+register_canonicalize(local_inv_canon)
+
+@gof.local_optimizer([T.pow])
+def local_pow_canonicalize(node):
+    if node.op == T.pow:
+        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 1.0):
+            return [T.fill(node.inputs[1], node.inputs[0])]
+        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 0.0):
+            #extra fills here are to make sure the size of the output stays constant.
+            return [T.fill(node.inputs[0], T.fill(node.inputs[1], 1.0))]
+    else:
+        return False
+register_canonicalize(local_pow_canonicalize)
+
+@gof.local_optimizer([T.pow])
+def local_pow_specialize(node):
+    #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
+    if node.op == T.pow:
+        #the idea here is that we have pow(x, y)
+        xsym = node.inputs[0]
+        ysym = node.inputs[1]
+        y = local_mul_canonizer.get_constant(ysym)
+        if (y is not None) \
+                and encompasses_broadcastable(xsym.type.broadcastable, ysym.type.broadcastable):
+            if N.all(y == 2.0):
+                return [T.sqr(xsym)]
+            if N.all(y == 1.0):
+                return [xsym]
+            if N.all(y == 0.0):
+                return [T.fill(xsym, 1.0)]
+            if N.all(y == 0.5):
+                return [T.sqrt(xsym)]
+            if N.all(y == -0.5):
+                return [T.inv(T.sqrt(xsym))]
+            if N.all(y == -1.0):
+                return [T.inv(xsym)]
+            if N.all(y == -2.0):
+                return [T.inv(T.sqr(xsym))]
+    else:
+        return False
+register_specialize(local_pow_specialize)
+
+if 0: #TODO: replace this with a c version of any InplaceDimShuffle
+    class _TransposeInplace(T.Op):
+        view_map = {0: [0]}
+        
+        def make_node(self, input):
+            return T.Apply(self, [input], 
+                    [T.tensor(dtype = input.type.dtype,
+                        broadcastable = reversed(input.type.broadcastable))])
+        
+        def perform(self, node, (x, ), (z, )):
+            z[0] = x.T
+        
+        def c_code(self, node, name, (x, ), (z, ), sub):
+            return """
+            PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
+            if (%(z)s) {
+                Py_XDECREF(%(z)s);
+            }
+            %(z)s = transposed;
+            """ % locals()
+
+        def __str__(self):
+            return "_TransposeInplace"
+    _transpose_inplace = _TransposeInplace()
+
+    @gof.local_optimizer([T.DimShuffle([False,False],[1,0],inplace=True)])
+    def local_dimshuffle_transposeinplace(node):
+        if node.op == T.DimShuffle([False,False],[1,0],inplace=True):
+            return [_transpose_inplace(node.inputs[0])]
+        return False
+    register_specialize(local_dimshuffle_transposeinplace)
+
 register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
 
@@ -724,6 +813,248 @@ def constant_folding(node):
 register_canonicalize(constant_folding)
 
 
+#################
+#  BLAS-related
+#################
+import blas
+
+class _Dot22(gof.Op):
+    """Compute a matrix-matrix product.
+    This is a specialization of the more general Dot()
+    """
+    def make_node(self, x, y):
+        assert x.type in T.float_matrix_types #makes sure x is a matrix
+        assert y.type == x.type               #makes sure y is a matrix
+        bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
+        outputs = [T.tensor(x.type.dtype, bz)]
+        return gof.Apply(self, [x,y], outputs)
+
+    def perform(self, node, (x, y), (z, )):
+        try:
+            z[0] = numpy.asarray(numpy.dot(x, y))
+        except ValueError, e:
+            # The error raised by numpy has no shape information, we mean to add that
+            e.args = e.args + (x.shape, y.shape)
+            raise
+    def __str__(self):
+        return "_dot22"
+    def c_support_code(self):
+        #return blas.cblas_header_text()
+        mod_str = """
+        #ifndef MOD
+        #define MOD %
+        #endif
+        """
+        return blas.blas_proto() + mod_str
+    def c_headers(self):
+        return ['<iostream>']
+    def c_libraries(self):
+        return blas.ldflags()
+    def c_code(self, node, name, (_x, _y), (_z, ), sub):
+        return """
+        int unit = 0;
+
+        int type_num = %(_x)s->descr->type_num;
+        int type_size = %(_x)s->descr->elsize; // in bytes
+
+        npy_intp* Nx = %(_x)s->dimensions;
+        npy_intp* Ny = %(_y)s->dimensions;
+        npy_intp* Nz = 0; //%(_z)s->dimensions;
+
+        npy_intp* Sx = %(_x)s->strides;
+        npy_intp* Sy = %(_y)s->strides;
+        npy_intp* Sz = 0;//%(_z)s->strides;
+
+        //strides for x, y, z in dimensions 0, 1
+        int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
+
+        if ((NULL == %(_z)s)
+            || (%(_z)s->dimensions[0] != %(_x)s->dimensions[0])
+            || (%(_z)s->dimensions[1] != %(_y)s->dimensions[1]))
+        {
+            if (NULL != %(_z)s) Py_XDECREF(%(_z)s);
+            npy_intp dims[2];
+            dims[0] = %(_x)s->dimensions[0];
+            dims[1] = %(_y)s->dimensions[1];
+            %(_z)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_x)s);
+            if(!%(_z)s) {
+                PyErr_SetString(PyExc_MemoryError, "failed to alloc dot22 output");
+                %(fail)s
+            }
+        }
+        Nz = %(_z)s->dimensions;
+        Sz = %(_z)s->strides;
+
+        if (%(_x)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
+        if (%(_y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
+        if (%(_z)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
+
+        if ((%(_x)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_x)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
+
+        if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_y)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
+
+        if ((%(_z)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_z)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
+
+        if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
+            ||(%(_x)s->descr->type_num != %(_z)s->descr->type_num))
+        { PyErr_SetString(PyExc_NotImplementedError, "type(z), type(y), type(z) are not all the same"); %(fail)s; }
+
+        if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
+        {
+            PyErr_SetString(PyExc_ValueError, "Input dimensions do not agree");
+            %(fail)s;
+        }
+        if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] MOD type_size) || (Sx[1] MOD type_size)
+           || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
+           || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
+        {
+            PyErr_SetString(PyExc_ValueError, "stride is not multiple of element size"); %(fail)s;
+        }
+
+        /*
+        encode the stride structure of _x,_y,_z into a single integer
+        */
+        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 8;
+        unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
+        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 0;
+
+        /* create appropriate strides for malformed matrices that are row or column
+         * vectors
+         */
+        sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
+        sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
+        sy_0 = (Ny[0] > 1) ? Sy[0]/type_size : Ny[1];
+        sy_1 = (Ny[1] > 1) ? Sy[1]/type_size : Ny[0];
+        sz_0 = (Nz[0] > 1) ? Sz[0]/type_size : Nz[1];
+        sz_1 = (Nz[1] > 1) ? Sz[1]/type_size : Nz[0];
+
+        switch (type_num)
+        {
+            case PyArray_FLOAT:
+            {
+                float a = 1.0;
+                float b = 0.0;
+                float* x = (float*)PyArray_DATA(%(_x)s);
+                float* y = (float*)PyArray_DATA(%(_y)s);
+                float* z = (float*)PyArray_DATA(%(_z)s);
+                char N = 'N';
+                char T = 'T';
+                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                switch(unit)
+                {
+                    case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x100: sgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x010: sgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x110: sgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x001: sgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x101: sgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x011: sgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+                    case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
+                };
+                #undef REAL
+            }
+            break;
+            case PyArray_DOUBLE:
+            {
+                double a = 1.0;
+                double b = 0.0;
+                double* x = (double*)PyArray_DATA(%(_x)s);
+                double* y = (double*)PyArray_DATA(%(_y)s);
+                double* z = (double*)PyArray_DATA(%(_z)s);
+                char N = 'N';
+                char T = 'T';
+                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                switch(unit)
+                {
+                    case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+                    case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
+                };
+                #undef REAL
+            }
+            break;
+        }
+        """ % dict(locals(), **sub)
+_dot22 = _Dot22()
+
+@gof.local_optimizer([T.dot])
+def local_dot_to_dot22(node):
+    if node.op == T.dot:
+        return [_dot22(*node.inputs)]
+    else:
+        return False
+register_specialize(local_dot_to_dot22)
+
+@gof.local_optimizer([T.sub])
+def local_sub_to_gemm(node):
+    """This is a massive beast for recognizing all the ways that a subtraction could be
+    replaced by a GEMM
+    """
+    if node.op == T.sub:
+        subleft, subright = node.inputs
+        #EXPRESSION: subleft - subright
+        if subright.owner and (subright.owner.op == _dot22):
+            dotleft, dotright = subright.owner.inputs
+            return [T.gemm(subleft, -1.0, dotleft, dotright, 1.0)]
+        if subright.owner and (subright.owner.op == T.mul):
+            mulleft, mulright = subright.owner.inputs
+            #EXPRESSION: subleft - (mulleft * mulright)
+            
+            #TODO: we actually want to get any scalar here, not necessrily a constant
+            mulleft_const = local_mul_canonizer.get_constant(mulleft)
+            if mulleft_const is not None and mulleft_const.size == 1:
+                mulleft_const = mulleft_const.flatten()[0]
+                #EXPRESSION: subleft - (mulleft_const * ?)
+                if mulright.owner and (mulright.owner.op == T.add):
+                    #EXPRESSION: subleft - (mulleft_const * (? + ?))
+                    addleft, addright = mulright.owner.inputs
+                    if addright.owner and addright.owner.op == T.DimShuffle([False,False], [1,0]):
+                        #EXPRESSION: subleft - (mulleft_const * (? + ?.T))
+                        raise NotImplementedError()
+                    if addright.owner and addright.owner.op == T.DimShuffle([False,False], [1,0], inplace=True):
+                        #EXPRESSION: subleft - (mulleft_const * (? + ?.T))
+                        transposed = addright.owner.inputs[0]
+                        if transposed.owner and transposed.owner.op == _dot22:
+                            x, y = transposed.owner.inputs
+                            #EXPRESSION: subleft - (mulleft_const * (addleft + dot(x, y).T))
+                            if addleft.owner and addleft.owner.op == _dot22:
+                                u, v = addleft.owner.inputs
+                                #EXPRESSION: subleft - (mulleft_const * (dot(u,v) + dot(x, y).T))
+                                return [T.gemm(
+                                    T.gemm(subleft, -mulleft_const, y.T, x.T, 1.0),
+                                    -mulleft_const, u, v, 1.0)]
+
+                if mulright.owner and (mulright.owner.op == _dot22):
+                    dotleft, dotright = mulright.owner.inputs
+                    #EXPRESSION: subleft - (mulleft_const * dot(dotleft, dotright))
+                    return [T.gemm(subleft, -mulleft_const, dotleft, dotright, 1.0)]
+
+            mulright_const = local_mul_canonizer.get_constant(mulright)
+            if mulright_const is not None and mulright_const.size == 1:
+                mulright_const = mulright_const.flatten()[0]
+                #EXPRESSION: subleft - (? * mulright_const)
+
+                if mulleft.owner and (mulleft.owner.op == _dot22):
+                    dotleft, dotright = mulleft.owner.inputs
+                    #EXPRESSION: subleft - (dot(dotleft, dotright) * mulright_const)
+                    return [T.gemm(subleft, -mulright_const, dotleft, dotright, 1.0)]
+    return False
+register_specialize(local_sub_to_gemm)
 
 
 

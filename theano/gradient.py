@@ -2,6 +2,7 @@ import gof #, gof.result
 import numpy #for numeric_grad
 
 from gof.python25 import all
+import gof.utils
 
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
@@ -55,17 +56,17 @@ def grad_sources_inputs(sources, graph_inputs):
             else:
                 gmap[r] = g_r
 
-    graph_outputs = gmap.keys()
-    
+    graph_outputs = gof.utils.uniq([r for r,g in sources])
+
     if graph_inputs is None:
         graph_inputs = gof.graph.inputs(graph_outputs)
-        
+
     for node in gof.graph.io_toposort(graph_inputs, graph_outputs).__reversed__():
         g_outputs = [gmap.get(o,None) for o in node.outputs]
 
         #if all output gradients are None, continue
         if all(map(lambda x:x is None, g_outputs)): continue
-        
+
         output_arg = g_outputs
         input_arg = node.inputs
 

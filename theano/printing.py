@@ -235,17 +235,27 @@ class PPrinter:
         else:
             raise TypeError('Not enough arguments to call.')
 
+use_ascii = True
 
+if use_ascii:
+    special = dict(middle_dot = "\dot",
+                   big_sigma = "\Sigma")
 
+    greek = dict(alpha    = "\alpha",
+                 beta     = "\beta",
+                 gamma    = "\gamma",
+                 delta    = "\delta",
+                 epsilon  = "\epsilon")
+else:
 
-special = dict(middle_dot = u"\u00B7",
-               big_sigma = u"\u03A3")
+    special = dict(middle_dot = u"\u00B7",
+                   big_sigma = u"\u03A3")
 
-greek = dict(alpha    = u"\u03B1",
-             beta     = u"\u03B2",
-             gamma    = u"\u03B3",
-             delta    = u"\u03B4",
-             epsilon  = u"\u03B5")
+    greek = dict(alpha    = u"\u03B1",
+                 beta     = u"\u03B2",
+                 gamma    = u"\u03B3",
+                 delta    = u"\u03B4",
+                 epsilon  = u"\u03B5")
 
 
 pprint = PPrinter()

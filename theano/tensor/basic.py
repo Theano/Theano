@@ -1089,38 +1089,9 @@ pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 # View Operations
 ##########################
 
-class TransposeInplace(Op):
-    view_map = {0: [0]}
-    
-    def make_node(self, input):
-        return Apply(self, [input], [tensor(dtype = input.type.dtype,
-                                            broadcastable = reversed(input.type.broadcastable))])
-    
-    def perform(self, node, (x, ), (z, )):
-        z[0] = x.T
-    
-    def grad(self, (x,), (gz,)):
-        return transpose(gz),
-    
-    def c_code(self, node, name, (x, ), (z, ), sub):
-        return """
-        PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
-        if (%(z)s) {
-            Py_XDECREF(%(z)s);
-        }
-        %(z)s = transposed;
-        """ % locals()
-
-    def __str__(self):
-        return "TransposeView"
-
-_transpose_inplace = TransposeInplace()
-
 def transpose(x, **kwargs):
-    """WRITEME"""
-    return _transpose_inplace(tensor_copy(x), **kwargs)
-
-
+    dims = range(x.ndim-1, -1, -1)
+    return DimShuffle(x.broadcastable, dims, inplace=True)(tensor_copy(x))
 
 
 class Subtensor(Op):
@@ -1781,6 +1752,7 @@ class Dot(Op):
             # The error raised by numpy has no shape information, we mean to add that
             e.args = e.args + (x.shape, y.shape)
             raise
+
     def grad(self, (x, y), (gz,)):
         if gz.type.ndim == 0:
             return gz * y, gz * x

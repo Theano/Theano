@@ -5,6 +5,7 @@ from type import Type
 
 import sys, traceback
 from copy import copy
+from cutils import run_cthunk
 
 
 __excepthook = sys.excepthook
@@ -225,9 +226,27 @@ def clear_storage_thunk(stg):
     thunk.inputs = [stg]
     return thunk
 
-def streamline(env, thunks, order, no_recycling = [], profiler = None):
-    """WRITEME"""
-    if profiler is None:
+def streamline(env, thunks, order, no_recycling = [], profiler = None, nice_errors = True):
+    """WRITEME
+
+    :param env:
+
+    :param thunks: the list of program instructions
+
+    :param order: the list of apply instances that gave rise to the thunks (same order as thunks)
+
+    :param no_recycling: storage elements that cannot be 'recycled' by repeatedly executing the
+    program.  These storage elements are cleared before re-running.
+    
+    :param profiler: deprecated
+
+    :param nice_errors: run in such a way that the double-traceback is printed.  This costs a
+    bit of performance in the inner python loop.
+    """
+    if profiler is not None: 
+        raise NotImplementedError()
+
+    if nice_errors:
         def f():
             for x in no_recycling:
                 x[0] = None
@@ -237,14 +256,13 @@ def streamline(env, thunks, order, no_recycling = [], profiler = None):
             except:
                 raise_with_op(node)
     else:
+        # don't worry about raise_with_op, just go a little faster.
+        #there is a mix of python and c thunks
         def f():
             for x in no_recycling:
                 x[0] = None
-            def g():
-                for thunk, node in zip(thunks, order):
-                    profiler.profile_node(thunk, node)
-            profiler.profile_env(g, env)
-        f.profiler = profiler
+            for thunk in thunks:
+                thunk()
     return f
 
 class LocalLinker(Linker):

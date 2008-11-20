@@ -375,7 +375,7 @@ class TestEquilibrium(object):
         x, y, z = map(MyResult, 'xyz')
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
-        print g
+        print 'before', g
         sys.stderr = sys.stdout # display pesky warnings along with stdout
         opt = EquilibriumOptimizer(
             [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
@@ -384,7 +384,7 @@ class TestEquilibrium(object):
              ],
             max_use_ratio = 1. / len(g.nodes)) # each opt can only be applied once
         opt.optimize(g)
-        print g
+        print 'after', g
         assert str(g) == '[Op4(x, y)]'
 
 

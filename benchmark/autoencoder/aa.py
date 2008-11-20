@@ -10,6 +10,13 @@ import theano.sandbox
 import theano.sandbox.wraplinker
 from theano.compile import module, Mode
 from theano.sandbox.wraplinker import ProfileMode
+from theano import gof, Op, Apply
+
+from theano.tensor import blas, opt
+
+# numpy: aa_numpy.py
+# c : aa.cc
+
 
 if 0:
     class Opt(object):
@@ -131,7 +138,7 @@ if 0:
 
                 self.merge(env)
 
-def linker(print_prog=True):
+def print_graph_linker(print_prog=True):
     if 1:
         imap = {None:'-'}
         def blah(i, node, thunk):
@@ -146,7 +153,6 @@ def linker(print_prog=True):
                 print 'node ', i, node,
                 print ':'.join([imap[inp.owner] for inp in node.inputs])
                 #print theano.sandbox.pprint.pp.process_graph(inputs, outputs)
-                
         return theano.sandbox.wraplinker.WrapLinkerMany(
                 [theano.gof.OpWiseCLinker()],
                 [theano.sandbox.wraplinker.run_all
@@ -184,8 +190,11 @@ class M(module.Module):
         self.step = module.Method([x], err, updates=dict(updates))
 
 mod = M()
-#m = mod.make(mode='FAST_RUN')
-mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+mode = 'FAST_RUN'
+#mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+mode = Mode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker(nice_errors=True))
+mode = Mode(optimizer='fast_run', linker='c')
+print mod.pretty(mode=mode)
 m = mod.make(mode=mode)
 
 neg, nout, nhid, niter = [int(a) for a in sys.argv[1:]]
@@ -200,5 +209,10 @@ t = time.time()
 for i in xrange(niter):
     err = m.step(x)
 print 'time: ',time.time() - t, 'err: ', err
-mode.print_summary()
+try:
+    mode.print_summary()
+    pass
+except:
+    pass
+
 
