@@ -12,20 +12,15 @@ class Blah(M.ModuleInstance):
 #        super(Blah, self)
     def initialize(self,input_size = None, target_size = None, seed = 1827, 
                    **init):
-        #super(Blah, self)#TODO: don't work
-        M.default_initialize(self,**init)#equivalent to previous line.
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
             rng = N.random.RandomState(seed)
             self.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             self.b = N.zeros(target_size)
-            #self.stepsize = 0.01#overwrite the value
-            if not hasattr(self,"stepsize"):
-                self.stepsize = 0.01
-        #we call super after as we want the parameter to superseed the default value.
-        #super(Blah, self)#don't overwrite the value.
-        #M.default_initialize(self,**init)#equivalent to previous line.
+            self.stepsize = 0.01
+        #we call default_initialize after as we want the parameter to superseed the default value.
+        M.default_initialize(self,**init)#equivalent to previous line.
     def __eq__(self, other):
         if not isinstance(other.component, SoftmaxXERegression1) and not isinstance(other.component, SoftmaxXERegression2):
             raise NotImplemented
@@ -119,22 +114,18 @@ class RegressionLayer2(M.Module):
                              seed = 1827, **init):
         # obj is an "instance" of this module holding values for each member and
         # functions for each method
-
-        # here we call the default initialize method, which takes all the name: value
-        # pairs in init and sets the property with that name to the provided value
-        # this covers setting stepsize, l2_coef; w and b can be set that way too
-        M.default_initialize(obj,**init)#will not overwrite the value!
-
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
             rng = N.random.RandomState(seed)
             obj.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             obj.b = N.zeros(target_size)
-            #obj.stepsize = 0.01#would owerrite the value!
-            if not hasattr(obj,"stepsize"):
-                obj.stepsize = 0.01
-        #M.default_initialize(obj,**init)#will not overwrite the value!
+            obj.stepsize = 0.01
+        # here we call the default_initialize method, which takes all the name: value
+        # pairs in init and sets the property with that name to the provided value
+        # this covers setting stepsize, l2_coef; w and b can be set that way too
+        # we call it after as we want the parameter to superseed the default value.
+        M.default_initialize(obj,**init)
     def build_regularization(self):
         return T.zero() # no regularization!
 
@@ -318,21 +309,5 @@ class T_test_wiki_module(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
-    if 0:
-        unittest.main()
-    elif 1:
-        module = __import__("test_wiki")
-        tests = unittest.TestLoader().loadTestsFromModule(module)
-        tests.debug()
-    else:
-        testcases = []
-        testcases.append(T_function_module)
-
-        #<testsuite boilerplate>
-        testloader = unittest.TestLoader()
-        suite = unittest.TestSuite()
-        for testcase in testcases:
-            suite.addTest(testloader.loadTestsFromTestCase(testcase))
-        unittest.TextTestRunner(verbosity=2).run(suite)
-        #</boilerplate>
+    from theano.tests import main
+    main("test_wiki")
