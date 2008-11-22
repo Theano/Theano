@@ -1,5 +1,5 @@
 
-from basic import _scal_elemwise #, _transpose_inplace
+from .basic import _scal_elemwise #, _transpose_inplace
 from .. import scalar as scal
 import elemwise
 from .. import printing
