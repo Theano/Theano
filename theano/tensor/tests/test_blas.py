@@ -1,6 +1,6 @@
 
 import theano.tensor as T
-from ..gof import Env
+from ...gof import Env
 import numpy
 from theano.tensor.blas import *
 from theano.tensor.blas import _as_scalar, _dot22

@@ -19,7 +19,8 @@ class Blah(M.ModuleInstance):
             self.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             self.b = N.zeros(target_size)
             self.stepsize = 0.01
-
+        #we call default_initialize after as we want the parameter to superseed the default value.
+        M.default_initialize(self,**init)#equivalent to previous line.
     def __eq__(self, other):
         if not isinstance(other.component, SoftmaxXERegression1) and not isinstance(other.component, SoftmaxXERegression2):
             raise NotImplemented
@@ -113,11 +114,6 @@ class RegressionLayer2(M.Module):
                              seed = 1827, **init):
         # obj is an "instance" of this module holding values for each member and
         # functions for each method
-        #super(RegressionLayer, self).initialize(obj, **init)
-
-        # here we call the superclass's initialize method, which takes all the name: value
-        # pairs in init and sets the property with that name to the provided value
-        # this covers setting stepsize, l2_coef; w and b can be set that way too
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
@@ -125,6 +121,11 @@ class RegressionLayer2(M.Module):
             obj.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             obj.b = N.zeros(target_size)
             obj.stepsize = 0.01
+        # here we call the default_initialize method, which takes all the name: value
+        # pairs in init and sets the property with that name to the provided value
+        # this covers setting stepsize, l2_coef; w and b can be set that way too
+        # we call it after as we want the parameter to superseed the default value.
+        M.default_initialize(obj,**init)
     def build_regularization(self):
         return T.zero() # no regularization!
 
@@ -219,6 +220,7 @@ class T_test_wiki_module(unittest.TestCase):
         m.incdec2 = make_incdec_module()
         m.sum = M.Method([], m.incdec1.c + m.incdec2.c)
         inst = m.make(incdec1 = dict(c=0), incdec2 = dict(c=0))
+        assert inst.incdec1.c==0 and inst.incdec2.c==0
         inst.incdec1.inc(2)
         inst.incdec1.dec(4)
         inst.incdec2.inc(6)
@@ -228,13 +230,13 @@ class T_test_wiki_module(unittest.TestCase):
     def test_Module_Advanced_example(self):
         data_x = N.random.randn(4, 10)
         data_y = [ [int(x)] for x in N.random.randn(4) > 0]
-#        print data_x
-#        print
-#        print data_y
         def test(model):
             model = model.make(input_size = 10,
                                target_size = 1,
                                stepsize = 0.1)
+            print model.stepsize
+            self.failUnless( model.w.shape == (10,1) and model.b.shape == (1,))
+            assert model.stepsize == 0.1
             for i in xrange(1000):
                 xe = model.update(data_x, data_y)
                 if i % 100 == 0:
@@ -257,7 +259,7 @@ class T_test_wiki_module(unittest.TestCase):
         print m1==m2
         assert m2==m1 and m1==m2
 
-    def test_Module_extending_klass_methods(self):
+    def test_Module_extending_module_methods(self):
         model_module = SoftmaxXERegression1(regularize = False)
         model_module.sum = M.Member(T.scalar()) # we add a module member to hold the sum
         model_module.update.updates.update(sum = model_module.sum + model_module.cost) # now update will also update sum!
@@ -266,6 +268,9 @@ class T_test_wiki_module(unittest.TestCase):
                                   target_size = 2,
                                   stepsize = 0.1,
                                   sum = 0) # we mustn't forget to initialize the sum
+        print model.stepsize
+        self.failUnless( model.w.shape == (4,2) and model.b.shape == (2,))
+        assert model.stepsize == 0.1
 
         test = model.update([[0,0,1,0]], [[0,1]]) 
         test += model.update([[0,1,0,0]], [[1,0]])
@@ -304,21 +309,5 @@ class T_test_wiki_module(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
-    if 0:
-        unittest.main()
-    elif 1:
-        module = __import__("test_wiki")
-        tests = unittest.TestLoader().loadTestsFromModule(module)
-        tests.debug()
-    else:
-        testcases = []
-        testcases.append(T_function_module)
-
-        #<testsuite boilerplate>
-        testloader = unittest.TestLoader()
-        suite = unittest.TestSuite()
-        for testcase in testcases:
-            suite.addTest(testloader.loadTestsFromTestCase(testcase))
-        unittest.TextTestRunner(verbosity=2).run(suite)
-        #</boilerplate>
+    from theano.tests import main
+    main("test_wiki")
