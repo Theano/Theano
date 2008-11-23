@@ -505,9 +505,30 @@ class Canonizer(gof.LocalOptimizer):
             return False
 
         new = self.merge_num_denum(num, denum)
-        if new.type != out.type:
+        if new.dtype != out.dtype:
             #new = T.fill(out, new)
-            new = T.fill(out, T.Elemwise(scalar.Identity(scalar.specific_out(getattr(scalar, out.type.dtype))))(new))
+            elem_op = T.Elemwise(scalar.Identity(scalar.specific_out(getattr(scalar, out.type.dtype))))
+            new = T.fill(out, elem_op(new))
+        if new.broadcastable != out.broadcastable:
+            #this case is tricky... we need to provide exactly the same kind of broadcastable
+            #pattern, but only if legal...
+            dlen = len(new.broadcastable) - len(out.broadcastable)
+
+            if dlen > 0:
+                #try to take the leading ranks of new.broadcastable, which should be broadcastable
+                # ranks
+                #if this means skipping over nonbroadcastable ranks, then DimShuffle will fail
+                dimshuffle_op = T.DimShuffle(new.broadcastable, 
+                        range(dlen, len(new.broadcastable)))
+                new = dimshuffle_op(new)
+            elif dlen < 0:
+                #we have to boost up a scalar or something
+                dimshuffle_op = T.DimShuffle(new.broadcastable, 
+                        ['x' for x in range(-dlen)] + range(0, len(new.broadcastable)))
+                new = dimshuffle_op(new)
+
+        # if our if's above worked, this should be true. OTW investigate.
+        assert new.type == out.type
         return [new]
 
     def __str__(self):
@@ -616,9 +637,9 @@ def local_mul_specialize(node):
                 new_inputs.append(input)
         if len(new_inputs) < len(node.inputs):
             if len(new_inputs) == 0:
-                newval = -1 if neg else 1
+                newval = -y.flatten()[0] if neg else y.flatten()[0]
                 return [T.TensorConstant(T.Tensor(dtype=node.outputs[0].type.dtype,
-                    broadcastable = ()), N.asarray(newval))]
+                    broadcastable = [True] * node.outputs[0].ndim), N.asarray(newval))]
 
             if len(new_inputs) == 1:
                 return [-new_inputs[0]] if neg else new_inputs

@@ -635,6 +635,13 @@ class NavigatorOptimizer(Optimizer):
         except Exception, e:
             if self.failure_callback is not None:
                 self.failure_callback(e, self, repl_pairs)
+
+                #DEBUG DONT PUSH
+                #print lopt 
+                #print dir(lopt)
+                #raise
+                #END
+
                 return False
             else:
                 raise

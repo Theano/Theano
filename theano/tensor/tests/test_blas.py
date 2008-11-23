@@ -3,7 +3,7 @@ import theano.tensor as T
 from ...gof import Env
 import numpy
 from theano.tensor.blas import *
-from theano.tensor.blas import _as_scalar, _dot22
+from theano.tensor.blas import _as_scalar, _dot22, _is_real_matrix
 from unittest import TestCase
 from copy import copy
 
@@ -222,6 +222,11 @@ class t_as_scalar(TestCase):
         self.failUnless(None == _as_scalar(a))
         self.failUnless(None == _as_scalar(T.DimShuffle([False, False], [0,'x', 1])(a)))
 
+class T_real_matrix(TestCase):
+    def test0(self):
+        self.failUnless(_is_real_matrix(T.DimShuffle([False,False], [1, 0])(T.dmatrix())))
+        self.failUnless(not _is_real_matrix(T.DimShuffle([False], ['x', 0])(T.dvector())))
+
 class T_gemm_opt(TestCase):
     """This test suite ensures that Gemm is inserted where it belongs, and that the resulting
     functions compute the same things as the originals."""
@@ -298,6 +303,8 @@ class T_gemm_opt(TestCase):
         u,v = T.dvector(), T.dvector()
 
         f = function([a, u, v], a + T.dot(u,v), mode='FAST_RUN')
-
-        print f.maker.env.nodes
+        self.failIf(gemm in [n.op for n in f.maker.env.nodes])
+        
+        f = function([a, u, X,Y], a * u + T.dot(X,Y), mode='FAST_RUN')
+        self.failIf(gemm in [n.op for n in f.maker.env.nodes])
 

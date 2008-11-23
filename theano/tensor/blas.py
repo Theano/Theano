@@ -361,7 +361,7 @@ class Dot22(GemmRelated):
     def make_node(self, x, y):
         assert _is_real_matrix(x)
         assert y.type == x.type               #makes sure y is a matrix
-        bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
+        bz = [False, False]
         outputs = [T.tensor(x.type.dtype, bz)]
         return Apply(self, [x,y], outputs)
 
@@ -435,8 +435,9 @@ def _as_scalar(res):
         return None
 
 def _is_real_matrix(res):
-    return res.type in T.float_matrix_types\
-            and res.broadcastable == (False, False)
+    return res.type in T.float_matrix_types \
+            and res.broadcastable[0] == False \
+            and res.broadcastable[1] == False #cope with tuple vs. list
 
 def _as_isolated_scalar_times_matrix(res):
     if _is_a(res, T.mul, 1):
