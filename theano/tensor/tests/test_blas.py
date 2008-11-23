@@ -292,3 +292,12 @@ class T_gemm_opt(TestCase):
         self.just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y) + T.dot(X,Y)])
         self.just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) + b * T.dot(X,Y)])
 
+
+    def test_vector_stuff(self):
+        X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
+        u,v = T.dvector(), T.dvector()
+
+        f = function([a, u, v], a + T.dot(u,v), mode='FAST_RUN')
+
+        print f.maker.env.nodes
+

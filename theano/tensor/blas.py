@@ -411,7 +411,9 @@ _dot22 = Dot22()
 @local_optimizer([T.dot])
 def local_dot_to_dot22(node):
     if node.op == T.dot:
-        return [_dot22(*node.inputs)]
+        x,y = node.inputs
+        if x.type in T.float_matrix_types and y.type == x.type:
+            return [_dot22(*node.inputs)]
     else:
         return False
 register_specialize(local_dot_to_dot22)
@@ -536,8 +538,7 @@ def local_add_to_gemm(node):
             tmp = _as_isolated_scalar_times_matrix(input)
             sM_list.append(tmp if tmp is not None else (1.0,input))
 
-        #print sM_list
-        if len(node.inputs) == 2:
+        if len(sM_list) == 2:
             sL, mL = sM_list[0]
             sR, mR = sM_list[1]
             return beta_L_plus_alpha_M(sL, mL, sR, mR)
