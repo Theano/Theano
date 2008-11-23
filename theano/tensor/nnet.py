@@ -217,6 +217,7 @@ class SoftmaxWithBias(gof.Op):
             if ( (0.0 == sum) || (std::isinf(sum)))
             {
                 //that was our best...
+                PyErr_SetString(PyExc_ValueError, "softmax is impossible!");
                 %(fail)s;
             }
 
@@ -600,6 +601,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             }
             if (y_i >= %(dx)s->dimensions[1])
             {
+                PyErr_SetString(PyExc_ValueError, "y_i >= dx dimensions[1]");
                 %(fail)s;
             }
             dx_i[y_i * Sdx] -= dnll_i;
