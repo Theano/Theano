@@ -194,6 +194,7 @@ mode = 'FAST_RUN'
 #mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
 mode = Mode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker(nice_errors=True))
 mode = Mode(optimizer='fast_run', linker='c')
+mode = Mode(optimizer='fast_run', linker='c|py')
 print mod.pretty(mode=mode)
 m = mod.make(mode=mode)
 
