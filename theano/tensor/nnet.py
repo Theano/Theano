@@ -203,6 +203,7 @@ class SoftmaxWithBias(gof.Op):
             for (j = 0; j < Nx[1]; ++j)
             {
                 double row_ij = x_i[j * Sx] +  b_i[j * Sb];
+//                std::cout << "1" << row_ij << "\\n";
                 row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
             }
@@ -210,14 +211,23 @@ class SoftmaxWithBias(gof.Op):
             for (j = 0; j < Nx[1]; ++j)
             {
                 double row_ij = x_i[j * Sx] +  b_i[j * Sb];
+//                std::cout << "2" << row_ij << "\\n";
                 double sm_ij = exp(row_ij - row_max);
+//                std::cout << "3" << sm_ij << "\\n";
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
             }
-            if ( (0.0 == sum) || (std::isinf(sum)))
+            if (std::isinf(sum))
             {
                 //that was our best...
-                PyErr_SetString(PyExc_ValueError, "softmax is impossible!");
+                PyErr_SetString(PyExc_ValueError, "softmax is impossible (inf)!");
+                %(fail)s;
+            }
+
+            if (0.0 == sum)
+            {
+                //that was our best...
+                PyErr_SetString(PyExc_ValueError, "softmax is impossible (zero)!");
                 %(fail)s;
             }
 
