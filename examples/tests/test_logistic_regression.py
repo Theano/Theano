@@ -50,21 +50,6 @@ class test_logistic_regression_example(unittest.TestCase):
         train(lr3)
         train(lr4)
 
-#        print 'lr1',lr1
-        print 'lr2',lr2
-        def assert_equal(l1,l2):
-            if not (numpy.abs(l1.b-l2.b)<1e-8).all():
-                print numpy.abs(l1.b-l2.b)<1e-10
-                print numpy.abs(l1.b-l2.b)
-                self.fail()
-            if not (numpy.abs(l1.w-l2.w)<1e-8).all():
-                print numpy.abs(l1.w-l2.w)<1e-10
-                print numpy.abs(l1.w-l2.w)
-                self.fail()
-            assert l1.lr==l2.lr
-        assert_equal(lr1,lr2)
-        assert_equal(lr1,lr3)
-        assert_equal(lr1,lr4)
         assert lr1==lr2
         assert lr1==lr3
         assert lr1==lr4
