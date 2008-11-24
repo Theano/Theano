@@ -12,11 +12,12 @@ import numpy as N
 
 class LogisticRegressionN(module.FancyModule):
     class InstanceType(module.FancyModuleInstance):
-        def initialize(self, n_in, n_out):
+        def initialize(self, n_in, n_out, seed = None):
             #self.component is the LogisticRegressionTemplate instance that built this guy.
-
-            self.w = N.random.randn(n_in, n_out)
-            self.b = N.random.randn(n_out)
+            rng = N.random.RandomState(seed)
+            
+            self.w = rng.randn(n_in, n_out)
+            self.b = rng.randn(n_out)
             self.lr = 0.01
             self.__hide__ = ['params']
 
@@ -48,14 +49,16 @@ class LogisticRegressionN(module.FancyModule):
 
 class LogisticRegression2(module.FancyModule):
     class InstanceType(module.FancyModuleInstance):
-        def initialize(self, n_in):
+        def initialize(self, n_in, seed = 1827):
             #self.component is the LogisticRegressionTemplate instance that built this guy.
 
-            self.w = N.random.randn(n_in,1)
-            self.b = N.random.randn(1)
+            rng = N.random.RandomState(seed)
+            
+            self.w = rng.randn(n_in, 1)
+            self.b = rng.randn(1)
             self.lr = 0.01
             self.__hide__ = ['params']
-
+            
     def __init__(self, x = None, targ = None):
         super(LogisticRegression2, self).__init__() #boilerplate
 
