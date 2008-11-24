@@ -2,6 +2,7 @@
 from basic import *
 
 import opt
+import blas
 
 import raw_random
 from raw_random import \

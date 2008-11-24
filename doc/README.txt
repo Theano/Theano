@@ -89,8 +89,9 @@ Get the source and run the tests like this:
 
 .. code-block:: bash
     
-    hg clone http://pylearn.org/hg/theano theano
-    cd theano
+    hg clone http://pylearn.org/hg/theano Theano
+    ln -s Theano/theano <someplace on your PYTHONPATH>/theano
+    cd Theano
     nosetests
 
 To update your library to the latest on pylearn.org, change directory (`cd`) to this `theano` folder and type

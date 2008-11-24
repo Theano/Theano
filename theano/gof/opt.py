@@ -15,6 +15,10 @@ from collections import deque, defaultdict
 import destroyhandler as dh
 import sys
 
+_optimizer_idx = [0]
+
+def _list_of_nodes(env):
+    return graph.io_toposort(env.inputs, env.outputs)
 
 class Optimizer(object):
     """WRITEME
@@ -22,6 +26,12 @@ class Optimizer(object):
     It can represent an optimization or in general any kind
     of transformation you could apply to an L{Env}.
     """
+
+    def __hash__(self):
+        if not hasattr(self, '_optimizer_idx'):
+            self._optimizer_idx = _optimizer_idx[0]
+            _optimizer_idx[0] += 1
+        return self._optimizer_idx
 
     def apply(self, env):
         """WRITEME
@@ -66,12 +76,13 @@ class FromFunctionOptimizer(Optimizer):
         env.extend(toolbox.ReplaceValidate())
 
 def optimizer(f):
-    """WRITEME"""
+    """decorator for FromFunctionOptimizer"""
     return FromFunctionOptimizer(f)
 
 
 
 class SeqOptimizer(Optimizer, list):
+    #inherit from Optimizer first to get Optimizer.__hash__
     """WRITEME
     Takes a list of L{Optimizer} instances and applies them
     sequentially.
@@ -99,13 +110,13 @@ class SeqOptimizer(Optimizer, list):
                     raise
 
     def __eq__(self, other):
+        #added to override the list's __eq__ implementation
         return id(self) == id(other)
 
     def __neq__(self, other):
+        #added to override the list's __neq__ implementation
         return id(self) != id(other)
 
-    def __hash__(self):
-        return hash(id(self))
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -129,6 +140,10 @@ class _metadict:
         try:
             self.d[item] = value
         except:
+            for i, (key,val) in enumerate(self.l):
+                if key == item:
+                    self.l[i] = (item, value)
+                    return
             self.l.append((item, value))
     def get(self, item, default):
         try:
@@ -183,7 +198,7 @@ class MergeOptimizer(Optimizer):
             cid[r] = i
             inv_cid[i] = r
 
-        for node in graph.io_toposort(env.inputs, env.outputs):
+        for node in _list_of_nodes(env):
             node_cid = (node.op, tuple([cid[input] for input in node.inputs]))
             dup = inv_cid.get(node_cid, None)
             success = False
@@ -221,10 +236,33 @@ def MergeOptMerge(opt):
 ### Local Optimizers ###
 ########################
 
-class LocalOptimizer(utils.object2):
-    """WRITEME"""
+class LocalOptimizer(object):
+    """A class for node-based optimizations.
+
+    Instances should implement the transform function, 
+    and be passed to configure a env-based Optimizer instance.
+    """
+
+    def __hash__(self):
+        if not hasattr(self, '_optimizer_idx'):
+            self._optimizer_idx = _optimizer_idx[0]
+            _optimizer_idx[0] += 1
+        return self._optimizer_idx
 
     def transform(self, node):
+        """Transform a subgraph whose output is `node`.
+
+        Subclasses should implement this function so that it returns one of two
+        kinds of things:
+
+        - False to indicate that no optimization can be applied to this `node`; or
+
+        - <list of results> to use in place of `node`'s outputs in the greater graph.
+
+        :type node: an Apply instance
+
+        """
+
         raise utils.AbstractFunctionError()
 
 
@@ -264,7 +302,7 @@ class LocalOptGroup(LocalOptimizer):
                 return repl
 
 
-class LocalOpKeyOptGroup(LocalOptGroup):
+class _LocalOpKeyOptGroup(LocalOptGroup):
     """WRITEME"""
 
     def __init__(self, optimizers):
@@ -507,9 +545,29 @@ class PatternSub(LocalOptimizer):
 
 
 class NavigatorOptimizer(Optimizer):
-    """WRITEME"""
+    """Abstract class
+    
+    """
 
     def __init__(self, local_opt, ignore_newtrees = 'auto', failure_callback = None):
+        """
+        :param local_opt:  a LocalOptimizer to apply over a Env.
+        :param ignore_newtrees: 
+            - True: new subgraphs returned by an optimization is not a candidate for optimization
+            - False: new subgraphs returned by an optimization is a candidate for optimization
+            - 'auto': let the local_opt set this parameter via its 'reentrant' attribute.
+        :param failure_callback:
+            a function that takes (exception, navigator, [(old, new),
+            (old,new),...]) and we call it if there's an exception.
+              
+            If the trouble is from local_opt.transform(), the new variables will be 'None'.
+
+            If the trouble is from validation (the new types don't match for
+            example) then the new variables will be the ones created by
+            transform().
+
+            If this parameter is None, then exceptions are not caught here (raised normally).
+        """
         self.local_opt = local_opt
         if ignore_newtrees == 'auto':
             self.ignore_newtrees = not getattr(local_opt, 'reentrant', True)
@@ -518,9 +576,18 @@ class NavigatorOptimizer(Optimizer):
         self.failure_callback = failure_callback
 
     def attach_updater(self, env, importer, pruner, chin = None):
+        """Install some Env listeners to help the navigator deal with the ignore_trees-related functionality.
+
+        :param importer: function that will be called whenever when optimizations add stuff to the graph.
+        :param pruner: function to be called when optimizations remove stuff from graph.
+        :param chin: "on change input" called whenever an node's inputs change.
+
+        :returns: The Env plugin that handles the three tasks.  Keep this around so that you can detach later!
+
+        """
         if self.ignore_newtrees:
             importer = None
-        
+
         if importer is None and pruner is None:
             return None
 
@@ -534,12 +601,18 @@ class NavigatorOptimizer(Optimizer):
             if chin is not None:
                 def on_change_input(self, env, node, i, r, new_r):
                     chin(node, i, r, new_r)
-                    
+
         u = Updater()
         env.extend(u)
         return u
 
     def detach_updater(self, env, u):
+        """Undo the work of attach_updater.
+
+        :param u: a return-value of attach_updater
+
+        :returns: None.
+        """
         if u is not None:
             env.remove_feature(u)
 
@@ -562,6 +635,13 @@ class NavigatorOptimizer(Optimizer):
         except Exception, e:
             if self.failure_callback is not None:
                 self.failure_callback(e, self, repl_pairs)
+
+                #DEBUG DONT PUSH
+                #print lopt 
+                #print dir(lopt)
+                #raise
+                #END
+
                 return False
             else:
                 raise
@@ -602,7 +682,7 @@ class TopoOptimizer(NavigatorOptimizer):
         except:
             self.detach_updater(env, u)
             raise
-        
+        self.detach_updater(env, u)
 
 
 class OpKeyOptimizer(NavigatorOptimizer):
@@ -634,6 +714,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
         except:
             self.detach_updater(env, u)
             raise
+        self.detach_updater(env, u)
 
     def add_requirements(self, env):
         """
@@ -646,176 +727,67 @@ class OpKeyOptimizer(NavigatorOptimizer):
 
 
 
-# class EquilibriumOptimizer(NavigatorOptimizer):
-#     """WRITEME"""
-
-#     def __init__(self, local_optimizers, failure_callback = None):
-#         NavigatorOptimizer.__init__(self, local_opt, ignore_newtrees, failure_callback)
-    
-#     def apply(self, env):
-#         op = self.local_opt.op_key()
-#         if isinstance(op, (list, tuple)):
-#             q = reduce(list.__iadd__, map(env.get_nodes, op))
-#         else:
-#             q = list(env.get_nodes(op))
-#         def importer(node):
-#             if node.op == op: q.append(node)
-#         def pruner(node):
-#             if node is not current_node and node.op == op:
-#                 try: q.remove(node)
-#                 except ValueError: pass
-#         u = self.attach_updater(env, importer, pruner)
-#         try:
-#             while q:
-#                 node = q.pop()
-#                 current_node = node
-#                 self.process_node(env, node)
-#         except:
-#             self.detach_updater(env, u)
-#             raise
-
-
 from utils import D
 
 class EquilibriumOptimizer(NavigatorOptimizer):
-
     def __init__(self,
                  local_optimizers,
                  failure_callback = None,
                  max_depth = None,
                  max_use_ratio = None):
+        """
+        :param max_use_ratio: each optimizer can be applied at most (size of graph * this number)
+
+        """
 
         super(EquilibriumOptimizer, self).__init__(
             None,
-            ignore_newtrees = False,
+            ignore_newtrees = True,
             failure_callback = failure_callback)
 
         self.local_optimizers = local_optimizers
         self.max_depth = max_depth
         self.max_use_ratio = max_use_ratio
 
-        self.tracks = defaultdict(list)
-        self.tracks0 = defaultdict(list)
-        max_depth = 0
-        for lopt in local_optimizers:
-            tracks = lopt.tracks()
-            for track in tracks:
-                max_depth = max(max_depth, len(track))
-                if self.max_depth is not None and max_depth > self.max_depth:
-                    raise ValueError('One of the local optimizers exceeds the maximal depth.')
-                for i, op in enumerate(track):
-                    if i == 0:
-                        self.tracks0[op].append((track, i, lopt))
-                    self.tracks[op].append((track, i, lopt))
+    def apply(self, env, start_from = None):
+        if start_from is None:
+            start_from = env.outputs
+        changed = True
+        max_use_abort = False
+        process_count = {}
 
-    def fetch_tracks(self, op):
-        return self.tracks[op] + self.tracks[None]
+        while changed and not max_use_abort:
+            changed = False
 
-    def fetch_tracks0(self, op):
-        return self.tracks0[op] + self.tracks0[None]
+            q = deque(graph.io_toposort(env.inputs, start_from))
 
-    def backtrack(self, node, tasks):
-        candidates = self.fetch_tracks(node.op)
-        tracks = []
-        def filter(node, depth):
-            new_candidates = []
-            for candidate in candidates:
-                track, i, lopt = candidate
-                if i < depth:
-                    pass
-                elif track[i-depth] in (None, node.op):
-                    if i == depth:
-                        tasks[node].append(lopt)
-                    else:
-                        tracks.append(candidate)
-                else:
-                    new_candidates.append(candidate)
-            return new_candidates
-        depth = 0
-        nodes = [node]
-        while candidates:
-            for node in nodes:
-                candidates = filter(node, depth)
-            depth += 1
-            _nodes = nodes
-            nodes = reduce(list.__iadd__,
-                           [reduce(list.__iadd__,
-                                   [[n for n, i in out.clients if not isinstance(n, str)] for out in node.outputs],
-                                   []) for node in nodes],
-                           [])
-            candidates = tracks
-            tracks = []
-
-    def apply(self, env):
-        tasks = defaultdict(list)
-        
-        if self.max_use_ratio is not None:
-            max_uses = self.max_use_ratio * len(env.nodes)
-            runs = defaultdict(int)
-        else:
-            runs = None
-
-        def importer(node):
-            #print 'IMPORTING', node
-            self.backtrack(node, tasks)
-        def pruner(node):
-            try:
-                del tasks[node]
-            except KeyError:
-                pass
-        def chin(node, i, r, new_r):
-            if new_r.owner and not r.clients:
-                self.backtrack(new_r.owner, tasks)
-
-#         # == NOT IDEAL == #
-#         for node in env.nodes:
-#             importer(node)
-
-        
-        for node in env.nodes:
-            tasks[node].extend(lopt for track, i, lopt in self.fetch_tracks0(node.op))
-
-        u = self.attach_updater(env, importer, pruner, chin)
-        while tasks:
-            for node in tasks.iterkeys():
-                todo = tasks.pop(node)
-                break
-            for lopt in todo:
-                if runs is not None and runs[lopt] >= max_uses:
-                    print >>sys.stderr, 'Warning: optimization exceeded its maximal use ratio: %s, %s' % (lopt, max_uses)
-                    continue
-                success = self.process_node(env, node, lopt)
-                if success:
-                    if runs is not None: runs[lopt] += 1
-                    break
-        self.detach_updater(env, u)
-
-#     def match(self, node, candidates):
-#         candidates[:] = [candidate
-#                          for candidate in candidates
-#                          if candidate.current.op is None or candidate.current.op == node.op]
-#         for candidate in candidates:
-#             if candidate.current.inputs is not None:
-#                 for in1, in2 in zip(candidate.current.inputs, node.inputs):
-#                     if isinstance(in1, str):
-#                         candidate.match[in1] = in2
-#         for client in node.clients:
+            max_use = len(q) * self.max_use_ratio
+            def importer(node):
+                q.append(node)
+            def pruner(node):
+                if node is not current_node:
+                    try: q.remove(node)
+                    except ValueError: pass
             
-
-#         op = node.op
-#         patterns = self.pattern_base[(depth, op)].union(self.pattern_base[(depth, WILDCARD)])
-#         if not patterns:
-#             return patterns
-#         return self.match(node, depth + 1).intersection(patterns)
-
-
-#     def backtrack(self, node, q):
-#         for node2, i in node.clients:
-#             op2 = node2.op
-
-
-
-
+            u = self.attach_updater(env, importer, pruner)
+            try:
+                while q:
+                    node = q.pop()
+                    current_node = node
+                    for lopt in self.local_optimizers:
+                        process_count.setdefault(lopt, 0)
+                        if process_count[lopt] > max_use:
+                            max_use_abort = True
+                        else:
+                            lopt_change = self.process_node(env, node, lopt)
+                            process_count[lopt] += 1 if lopt_change else 0
+                            changed |= lopt_change
+            except:
+                self.detach_updater(env, u)
+                raise
+            self.detach_updater(env, u)
+        if max_use_abort:
+            print >> sys.stderr, "WARNING: EquilibriumOptimizer max'ed out"
 
 
 def keep_going(exc, nav, repl_pairs):
@@ -892,8 +864,6 @@ class PureThenInplaceOptimizer(Optimizer):
         self.pure(env)
         env.extend(dh.DestroyHandler())
         self.inplace(env)
-
-
 
 
 

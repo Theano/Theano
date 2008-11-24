@@ -13,7 +13,6 @@ from copy import copy
 from .. import gof
 from ..gof import Result, Op, utils, AbstractFunctionError, Type, Constant, Apply, Value
 
-import blas # for gemm, dot
 from .. import gradient
 
 import elemwise
@@ -403,6 +402,8 @@ scalars, fscalars, dscalars, iscalars, lscalars = _multi(scalar, fscalar, dscala
 
 int_types = bscalar, wscalar, iscalar, lscalar
 float_types = fscalar, dscalar
+int_scalar_types = int_types
+float_scalar_types = float_types
 
 fvector = Tensor('float32', (False, ))
 dvector = Tensor('float64', (False, ))
@@ -1101,38 +1102,9 @@ pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 # View Operations
 ##########################
 
-class TransposeInplace(Op):
-    view_map = {0: [0]}
-    
-    def make_node(self, input):
-        return Apply(self, [input], [tensor(dtype = input.type.dtype,
-                                            broadcastable = reversed(input.type.broadcastable))])
-    
-    def perform(self, node, (x, ), (z, )):
-        z[0] = x.T
-    
-    def grad(self, (x,), (gz,)):
-        return transpose(gz),
-    
-    def c_code(self, node, name, (x, ), (z, ), sub):
-        return """
-        PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
-        if (%(z)s) {
-            Py_XDECREF(%(z)s);
-        }
-        %(z)s = transposed;
-        """ % locals()
-
-    def __str__(self):
-        return "TransposeView"
-
-_transpose_inplace = TransposeInplace()
-
 def transpose(x, **kwargs):
-    """WRITEME"""
-    return _transpose_inplace(tensor_copy(x), **kwargs)
-
-
+    dims = range(x.ndim-1, -1, -1)
+    return DimShuffle(x.broadcastable, dims, inplace=True)(tensor_copy(x))
 
 
 class Subtensor(Op):
@@ -1749,6 +1721,10 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, MakeVector), 
 #########################
 # Linalg : Dot
 #########################
+#
+# For BLAS-related ops see blas.py
+#
+# TODO: Dotinv should go here, Eigs, Svd, etc.
 
 class Dot(Op):
     """Compute matrix-matrix, matrix-vector products and vector inner-products.
@@ -1801,6 +1777,7 @@ class Dot(Op):
             # The error raised by numpy has no shape information, we mean to add that
             e.args = e.args + (x.shape, y.shape)
             raise
+
     def grad(self, (x, y), (gz,)):
         if gz.type.ndim == 0:
             return gz * y, gz * x
@@ -1840,249 +1817,6 @@ class Outer(Op):
     def __str__(self):
         return "outer"
 outer = Outer()
-
-class Gemm(Op):
-    """In-place version of matrix-matrix multiplication (with accumulation):
-
-    When a and b are scalars and x, y, and z are matrices, then
-
-        gemm(z,a,x,y,b) 
-
-    is similar to 
-
-        b*z + a*dot(x,y) 
-
-    The difference between the two is that the top form is destructive on z,
-    whereas the bottom form is not.  Gemm works in-place on the storage
-    associated with z, and the L{Result} returned by Gemm has a storage that
-    will be aliased to the storage of the z argument. Because of this in-place
-    computation, an L{Apply} of this op will destroy the L{Result} z on
-    which it operates.  (See L{DestructiveOps} for an explanation of what
-    destroying means in the context of theano graphs. See L{BlasLapackSupport} for
-    more optimized linear algebra operations.)
-
-    """
-    E_rank = 'gemm only works for rank 2'
-    E_scalar = 'gemm requires scalar argument'
-    E_z_uniq = 'argument z aliased to x or y'
-    destroy_map = {0: [0]}
-    def make_node(self, *inputs):
-        inputs = map(as_tensor, inputs)
-        if len(inputs) != 5:
-            raise TypeError("Wrong number of inputs for %s (expected 5, got %s)" % (self, len(inputs)))
-        z, a, x, y, b = inputs
-        zr, xr, yr = [set(gof.view_roots(i)) for i in z,x,y]
-        if zr.intersection(xr):
-            raise ValueError(Gemm.E_z_uniq, (z, x))
-        if zr.intersection(yr):
-            raise ValueError(Gemm.E_z_uniq, (z, y))
-        bz, ba, bx, by, bb = [r.type.broadcastable for r in inputs]
-        if len(bz) != 2: raise ValueError(Gemm.E_rank, len(bz))
-        if len(bx) != 2: raise ValueError(Gemm.E_rank, len(bx))
-        if len(by) != 2: raise ValueError(Gemm.E_rank, len(by))
-        if len(ba): raise ValueError(Gemm.E_scalar, ba)
-        if len(bb): raise ValueError(Gemm.E_scalar, bb)
-        output = z.type()
-        return Apply(self, inputs, [output])
-    def perform(self, node, (z, a, x, y, b), (zout, )):
-        assert a.shape == ()
-        assert b.shape == ()
-        if z.shape == ():
-            z.itemset(z*a + b*numpy.dot(x,y))
-            zout[0] = z
-        else:
-            if b == 0.0:
-                if a == 1.0:
-                    z[:] = numpy.dot(x,y)
-                elif a == -1.0:
-                    z[:] = -numpy.dot(x,y)
-                else:
-                    z[:] = a * numpy.dot(x,y)
-            elif b == 1.0:
-                if a == 1.0:
-                    z += numpy.dot(x,y)
-                elif a == -1.0:
-                    z -= numpy.dot(x,y)
-                else:
-                    z += a * numpy.dot(x,y)
-            else:
-                z *= b
-                z += a * numpy.dot(x,y)
-            zout[0] = z
-    def grad(self, (z, a, x, y, b), (gz,)):
-        raise NotImplementedError()
-
-    def c_support_code(self):
-        #return blas.cblas_header_text()
-        mod_str = """
-        #ifndef MOD
-        #define MOD %
-        #endif
-        """
-        return blas.blas_proto() + mod_str
-    def c_headers(self):
-        return ['<iostream>']
-    def c_libraries(self):
-        return blas.ldflags()
-    def c_code(self, node, name, (_z, _a, _x, _y, _b), (_zout, ), sub):
-        return """
-        int unit = 0;
-
-        int type_num = %(_x)s->descr->type_num;
-        int type_size = %(_x)s->descr->elsize; // in bytes
-
-        npy_intp* Nx = %(_x)s->dimensions;
-        npy_intp* Ny = %(_y)s->dimensions;
-        npy_intp* Nz = %(_z)s->dimensions;
-
-        npy_intp* Sx = %(_x)s->strides;
-        npy_intp* Sy = %(_y)s->strides;
-        npy_intp* Sz = %(_z)s->strides;
-
-        //strides for x, y, z in dimensions 0, 1
-        int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
-
-        if (%(_zout)s != %(_z)s)
-        {
-            if (%(_zout)s)
-            {
-                Py_DECREF(%(_zout)s);
-            }
-            %(_zout)s = %(_z)s;
-            Py_INCREF(%(_zout)s);
-        }
-
-        if (%(_x)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
-        if (%(_y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
-        if (%(_z)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
-
-        if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_a)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(a) is not double or float"); %(fail)s;}
-
-        if ((%(_b)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_b)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(b) is not double or float"); %(fail)s;}
-
-        if ((%(_x)s->descr->type_num != PyArray_DOUBLE) 
-            && (%(_x)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
-
-        if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
-            && (%(_y)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
-
-        if ((%(_z)s->descr->type_num != PyArray_DOUBLE) 
-            && (%(_z)s->descr->type_num != PyArray_FLOAT))
-        {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
-
-        if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
-            ||(%(_x)s->descr->type_num != %(_z)s->descr->type_num))
-        { PyErr_SetString(PyExc_NotImplementedError, "type(z), type(y), type(z) are not all the same"); %(fail)s; }
-
-        if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
-        {
-            PyErr_SetString(PyExc_ValueError, "Input dimensions do not agree");
-            %(fail)s;
-        }
-        if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] MOD type_size) || (Sx[1] MOD type_size)
-           || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
-           || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
-        {
-            PyErr_SetString(PyExc_ValueError, "stride is not multiple of element size"); %(fail)s;
-        }
-
-        /*
-        encode the stride structure of _x,_y,_z into a single integer
-        */
-        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 8;
-        unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
-        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 0;
-
-        /* create appropriate strides for malformed matrices that are row or column
-         * vectors
-         */
-        sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
-        sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
-        sy_0 = (Ny[0] > 1) ? Sy[0]/type_size : Ny[1];
-        sy_1 = (Ny[1] > 1) ? Sy[1]/type_size : Ny[0];
-        sz_0 = (Nz[0] > 1) ? Sz[0]/type_size : Nz[1];
-        sz_1 = (Nz[1] > 1) ? Sz[1]/type_size : Nz[0];
-
-        switch (type_num)
-        {
-            case PyArray_FLOAT:
-            {
-                #define REAL float
-                float a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
-                ? (REAL)(((float*)%(_a)s->data)[0])
-                : (REAL)(((double*)%(_a)s->data)[0]);
-                float b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
-                (REAL)(((float*)%(_b)s->data)[0])
-                : (REAL)(((double*)%(_b)s->data)[0]);
-
-                float* x = (float*)PyArray_DATA(%(_x)s);
-                float* y = (float*)PyArray_DATA(%(_y)s);
-                float* z = (float*)PyArray_DATA(%(_z)s);
-                char N = 'N';
-                char T = 'T';
-                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
-                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
-                switch(unit)
-                {
-                    case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x100: sgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x010: sgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x110: sgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x001: sgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x101: sgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x011: sgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
-                    case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
-                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
-                };
-                #undef REAL
-            }
-            break;
-            case PyArray_DOUBLE:
-            {
-                #define REAL double
-
-                double a = (%(_a)s->descr->type_num == PyArray_FLOAT) 
-                ? (REAL)(((float*)%(_a)s->data)[0])
-                : (REAL)(((double*)%(_a)s->data)[0]);
-                double b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
-                (REAL)(((float*)%(_b)s->data)[0])
-                : (REAL)(((double*)%(_b)s->data)[0]);
-                double* x = (double*)PyArray_DATA(%(_x)s);
-                double* y = (double*)PyArray_DATA(%(_y)s);
-                double* z = (double*)PyArray_DATA(%(_z)s);
-                char N = 'N';
-                char T = 'T';
-                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
-                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
-                switch(unit)
-                {
-                    case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
-                    case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
-                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
-                };
-                #undef REAL
-            }
-            break;
-        }
-
-        """ % dict(locals(), **sub)
-gemm = Gemm()
-
-
-pprint.assign(gemm, printing.FunctionPrinter('gemm'))
-
 
 #########################
 # Gradient

@@ -1,4 +1,5 @@
-
+"""Tensor optimizations addressing the ops in basic.py
+"""
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 
@@ -29,28 +30,6 @@ def in2out(*local_opts, **kwargs):
                              failure_callback = lambda exc,opt,pairs: None,
                              **kwargs)
 
-
-# gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)
-# Transforms d -= a * dot(b, c) into gemm(d, -a, b, c, 1.0)
-gemm_pattern_1 = gof.PatternSub((T.sub,
-                                 'd',
-                                 (T.mul,
-                                  dict(pattern = (T.DimShuffle((), ['x', 'x'], inplace = True), 'a'),
-                                       allow_multiple_clients = True),
-                                  (T.dot, 'b', 'c'))),
-                                (T.gemm, 'd', (T.neg, 'a'), 'b', 'c', T.constant(1.0)),
-                                allow_multiple_clients = False)
-
-# gemm: (d,a,b,c,s) -> d = d*s + a*dot(b,c)
-# Transforms dot(a, b) into gemm(zeros(2)(hstack(shape(a)[:1], shape(b)[1:])), 1.0, a, b, 1.0)
-# The construction of the 'gemm' node may fail if, for example, a and b are not both matrices.
-dot_to_gemm = gof.PatternSub((T.dot, 'a', 'b'),
-                             (T.gemm, (T.Zeros(2),
-                                       (T.stack,
-                                        (T.Subtensor([slice(0, 1)]), (T.shape, 'a')),
-                                        (T.Subtensor([slice(1, 2)]), (T.shape, 'b')))),
-                              T.constant(1.0), 'a', 'b', T.constant(1.0)),
-                             allow_multiple_clients = False)
 
 
 def _insert_inplace_optimizer(env):
@@ -90,12 +69,6 @@ def _insert_inplace_optimizer(env):
                 baseline = inplace_pattern
                 break
 insert_inplace_optimizer = gof.optimizer(_insert_inplace_optimizer)
-
-inplace_optimizer = gof.InplaceOptimizer(
-    gof.SeqOptimizer(out2in(gemm_pattern_1),
-                     insert_inplace_optimizer,
-                     failure_callback = gof.warn))
-compile.optdb.register('inplace_opt', inplace_optimizer, 99, 'fast_run', 'inplace')
 
 
 def register_canonicalize(lopt, *tags, **kwargs):
@@ -216,6 +189,13 @@ register_canonicalize(local_shape_lift_dot)
 ################
 
 def encompasses_broadcastable(b1, b2):
+    """
+    Returns True if the broadcastable patterns b1 and b2 are such that b2 is
+    broadcasted to b1's shape and not the opposite.
+
+    :param b1: the broadcastable attribute of a tensor type
+    :param b2: the broadcastable attribute of a tensor type
+    """
     if len(b1) < len(b2):
         return False
     b1 = b1[-len(b2):]
@@ -330,6 +310,7 @@ def local_fill_cut(node):
 
 register_canonicalize(local_fill_cut)
 
+register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy' )
 
 @gof.local_optimizer([None, T.fill])
 def local_fill_sink(node):
@@ -524,9 +505,30 @@ class Canonizer(gof.LocalOptimizer):
             return False
 
         new = self.merge_num_denum(num, denum)
-        if new.type != out.type:
+        if new.dtype != out.dtype:
             #new = T.fill(out, new)
-            new = T.fill(out, T.Elemwise(scalar.Identity(scalar.specific_out(getattr(scalar, out.type.dtype))))(new))
+            elem_op = T.Elemwise(scalar.Identity(scalar.specific_out(getattr(scalar, out.type.dtype))))
+            new = T.fill(out, elem_op(new))
+        if new.broadcastable != out.broadcastable:
+            #this case is tricky... we need to provide exactly the same kind of broadcastable
+            #pattern, but only if legal...
+            dlen = len(new.broadcastable) - len(out.broadcastable)
+
+            if dlen > 0:
+                #try to take the leading ranks of new.broadcastable, which should be broadcastable
+                # ranks
+                #if this means skipping over nonbroadcastable ranks, then DimShuffle will fail
+                dimshuffle_op = T.DimShuffle(new.broadcastable, 
+                        range(dlen, len(new.broadcastable)))
+                new = dimshuffle_op(new)
+            elif dlen < 0:
+                #we have to boost up a scalar or something
+                dimshuffle_op = T.DimShuffle(new.broadcastable, 
+                        ['x' for x in range(-dlen)] + range(0, len(new.broadcastable)))
+                new = dimshuffle_op(new)
+
+        # if our if's above worked, this should be true. OTW investigate.
+        assert new.type == out.type
         return [new]
 
     def __str__(self):
@@ -550,6 +552,7 @@ def local_neg_to_mul(node):
         return [-1 * node.inputs[0]]
     else:
         return False
+register_canonicalize(local_neg_to_mul)
 
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
@@ -557,6 +560,7 @@ def local_mul_to_neg(node):
         return [-local_mul_canonizer.merge_num_denum(node.inputs[1:], [])]
     else:
         return False
+register_specialize(local_mul_to_neg)
 
 @gof.local_optimizer([T.div])
 def local_div_to_inv(node):
@@ -564,10 +568,120 @@ def local_div_to_inv(node):
         return [T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))]
     else:
         return False
-
-register_canonicalize(local_neg_to_mul)
-register_specialize(local_mul_to_neg)
 register_specialize(local_div_to_inv)
+
+@gof.local_optimizer([T.inv])
+def local_inv_canon(node):
+    if node.op == T.inv:
+        return [T.pow(node.inputs[0], -1.0)]
+    else:
+        return False
+register_canonicalize(local_inv_canon)
+
+@gof.local_optimizer([T.pow])
+def local_pow_canonicalize(node):
+    if node.op == T.pow:
+        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 1.0):
+            return [T.fill(node.inputs[1], node.inputs[0])]
+        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 0.0):
+            #extra fills here are to make sure the size of the output stays constant.
+            return [T.fill(node.inputs[0], T.fill(node.inputs[1], 1.0))]
+    else:
+        return False
+register_canonicalize(local_pow_canonicalize)
+
+@gof.local_optimizer([T.pow])
+def local_pow_specialize(node):
+    #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
+    if node.op == T.pow:
+        #the idea here is that we have pow(x, y)
+        xsym = node.inputs[0]
+        ysym = node.inputs[1]
+        y = local_mul_canonizer.get_constant(ysym)
+        if (y is not None) \
+                and encompasses_broadcastable(xsym.type.broadcastable, ysym.type.broadcastable):
+            if N.all(y == 2.0):
+                return [T.sqr(xsym)]
+            if N.all(y == 1.0):
+                return [xsym]
+            if N.all(y == 0.0):
+                return [T.fill(xsym, 1.0)]
+            if N.all(y == 0.5):
+                return [T.sqrt(xsym)]
+            if N.all(y == -0.5):
+                return [T.inv(T.sqrt(xsym))]
+            if N.all(y == -1.0):
+                return [T.inv(xsym)]
+            if N.all(y == -2.0):
+                return [T.inv(T.sqr(xsym))]
+    else:
+        return False
+register_specialize(local_pow_specialize)
+
+@gof.local_optimizer([T.mul])
+def local_mul_specialize(node):
+    #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
+    if node.op == T.mul:
+        #the idea here is that we have pow(x, y)
+        neg = False
+        new_inputs = []
+        for input in node.inputs:
+            y = local_mul_canonizer.get_constant(input)
+            if N.all(y == 1.0):
+                continue
+            elif N.all(y == -1.0):
+                neg ^= True #toggles
+            elif N.all(y == 0.0):
+                return [input]
+            else:
+                new_inputs.append(input)
+        if len(new_inputs) < len(node.inputs):
+            if len(new_inputs) == 0:
+                newval = -y.flatten()[0] if neg else y.flatten()[0]
+                return [T.TensorConstant(T.Tensor(dtype=node.outputs[0].type.dtype,
+                    broadcastable = [True] * node.outputs[0].ndim), N.asarray(newval))]
+
+            if len(new_inputs) == 1:
+                return [-new_inputs[0]] if neg else new_inputs
+            else:
+                return [-T.mul(*new_inputs)] if neg else \
+                        [T.mul(*new_inputs)] 
+    else:
+        return False
+register_specialize(local_mul_specialize)
+
+if 0: #TODO: replace this with a c version of any InplaceDimShuffle
+    class _TransposeInplace(T.Op):
+        view_map = {0: [0]}
+        
+        def make_node(self, input):
+            return T.Apply(self, [input], 
+                    [T.tensor(dtype = input.type.dtype,
+                        broadcastable = reversed(input.type.broadcastable))])
+        
+        def perform(self, node, (x, ), (z, )):
+            z[0] = x.T
+        
+        def c_code(self, node, name, (x, ), (z, ), sub):
+            return """
+            PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
+            if (%(z)s) {
+                Py_XDECREF(%(z)s);
+            }
+            %(z)s = transposed;
+            """ % locals()
+
+        def __str__(self):
+            return "_TransposeInplace"
+    _transpose_inplace = _TransposeInplace()
+
+    @gof.local_optimizer([T.DimShuffle([False,False],[1,0],inplace=True)])
+    def local_dimshuffle_transposeinplace(node):
+        if node.op == T.DimShuffle([False,False],[1,0],inplace=True):
+            return [_transpose_inplace(node.inputs[0])]
+        return False
+    register_specialize(local_dimshuffle_transposeinplace)
+
 register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
 
@@ -724,8 +838,10 @@ def constant_folding(node):
 register_canonicalize(constant_folding)
 
 
-
-
+inplace_matrix_transpose = T.DimShuffle([False,False], [1,0], inplace=True)
+local_transposed_dot = gof.PatternSub((inplace_matrix_transpose, (T.dot, 'x', 'y')),
+        (T.dot, (inplace_matrix_transpose, 'y'), (inplace_matrix_transpose, 'x')))
+register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 
 
 # def _math_optimizer():

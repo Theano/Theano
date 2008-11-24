@@ -1,5 +1,5 @@
 
-from basic import _scal_elemwise, _transpose_inplace
+from .basic import _scal_elemwise #, _transpose_inplace
 from .. import scalar as scal
 import elemwise
 from .. import printing
@@ -183,9 +183,11 @@ pprint.assign(div_inplace, printing.OperatorPrinter('/=', -1, 'left'))
 pprint.assign(pow_inplace, printing.OperatorPrinter('**=', 1, 'right'))
 
 
-transpose_inplace = _transpose_inplace
-"""WRITEME"""
+def transpose_inplace(x, **kwargs):
+    """Perform a transpose on a tensor without copying the underlying storage"""
+    dims = range(x.ndim-1, -1, -1)
+    return elemwise.DimShuffle(x.broadcastable, dims, inplace=True)(x)
 
-pprint.assign(transpose_inplace, printing.MemberPrinter('T'))
+#pprint.assign(transpose_inplace, printing.MemberPrinter('T'))
 
 

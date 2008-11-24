@@ -4,16 +4,31 @@ import opt
 
 
 class DB(object):
+    def __hash__(self):
+        if not hasattr(self, '_optimizer_idx'):
+            self._optimizer_idx = opt._optimizer_idx[0]
+            opt._optimizer_idx[0] += 1
+        return self._optimizer_idx
 
     def __init__(self):
         self.__db__ = defaultdict(set)
+        self._names = set()
 
     def register(self, name, obj, *tags):
+        # N.B. obj is not an instance of class Optimizer.
+        # It is an instance of a DB.In the tests for example,
+        # this is not always the case.
+        if not isinstance(obj, (DB, opt.Optimizer, opt.LocalOptimizer)):
+            raise Exception('wtf', obj)
+            
         obj.name = name
         if name in self.__db__:
             raise ValueError('The name of the object cannot be an existing tag or the name of another existing object.', obj, name)
         self.__db__[name] = set([obj])
+        self._names.add(name)
         for tag in tags:
+            if tag in self._names:
+                raise ValueError('The tag of the object collides with a name.', obj, tag)
             self.__db__[tag].add(obj)
 
     def __query__(self, q):
