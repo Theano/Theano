@@ -12,13 +12,23 @@ import numpy as N
 
 class LogisticRegressionN(module.FancyModule):
     class InstanceType(module.FancyModuleInstance):
-        def initialize(self, n_in, n_out):
+        def initialize(self, n_in, n_out, seed = None):
             #self.component is the LogisticRegressionTemplate instance that built this guy.
-
-            self.w = N.random.randn(n_in, n_out)
-            self.b = N.random.randn(n_out)
+            rng = N.random.RandomState(seed)
+            
+            self.w = rng.randn(n_in, n_out)
+            self.b = rng.randn(n_out)
             self.lr = 0.01
             self.__hide__ = ['params']
+        def __eq__(self, other):
+            if not isinstance(other.component, LogisticRegressionN) and not isinstance(other.component, LogisticRegression2):
+                raise NotImplemented
+         #we compare the member.
+            if (N.abs(self.w-other.w)<1e-8).all() and (N.abs(self.b-other.b)<1e-8).all() and self.lr == other.lr:
+                return True
+            return False
+        def __hash__(self):
+            raise NotImplemented
 
     def __init__(self, x = None, targ = None):
         super(LogisticRegressionN, self).__init__() #boilerplate
@@ -48,13 +58,24 @@ class LogisticRegressionN(module.FancyModule):
 
 class LogisticRegression2(module.FancyModule):
     class InstanceType(module.FancyModuleInstance):
-        def initialize(self, n_in):
+        def initialize(self, n_in, seed = 1827):
             #self.component is the LogisticRegressionTemplate instance that built this guy.
 
-            self.w = N.random.randn(n_in,1)
-            self.b = N.random.randn(1)
+            rng = N.random.RandomState(seed)
+            
+            self.w = rng.randn(n_in, 1)
+            self.b = rng.randn(1)
             self.lr = 0.01
             self.__hide__ = ['params']
+        def __eq__(self, other):
+            if not isinstance(other.component, LogisticRegressionN) and not isinstance(other.component, LogisticRegression2):
+                raise NotImplemented
+         #we compare the member.
+            if (N.abs(self.w-other.w)<1e-8).all() and (N.abs(self.b-other.b)<1e-8).all() and self.lr == other.lr:
+                return True
+            return False
+        def __hash__(self):
+            raise NotImplemented 
 
     def __init__(self, x = None, targ = None):
         super(LogisticRegression2, self).__init__() #boilerplate
@@ -85,7 +106,7 @@ class LogisticRegression2(module.FancyModule):
         
 
 
-if __name__ == '__main__':
+def main():
     pprint.assign(nnet.crossentropy_softmax_1hot_with_bias_dx, printing.FunctionPrinter('xsoftmaxdx'))
     pprint.assign(nnet.crossentropy_softmax_argmax_1hot_with_bias, printing.FunctionPrinter('nll', 'softmax', 'argmax'))
     if 1:
@@ -135,6 +156,8 @@ if __name__ == '__main__':
         print 'TRAINED MODEL:'
         print lr
 
+if __name__ == '__main__':
+    main()
 
 
 
