@@ -85,7 +85,7 @@ class LogisticRegression2(module.FancyModule):
         
 
 
-if __name__ == '__main__':
+def main():
     pprint.assign(nnet.crossentropy_softmax_1hot_with_bias_dx, printing.FunctionPrinter('xsoftmaxdx'))
     pprint.assign(nnet.crossentropy_softmax_argmax_1hot_with_bias, printing.FunctionPrinter('nll', 'softmax', 'argmax'))
     if 1:
@@ -135,6 +135,8 @@ if __name__ == '__main__':
         print 'TRAINED MODEL:'
         print lr
 
+if __name__ == '__main__':
+    main()
 
 
 
