@@ -15,11 +15,13 @@ def join(*args):
     join('a', 'b', 'c') => 'a.b.c'
     """
     return ".".join(arg for arg in args if arg)
+
 def split(sym, n=-1):
     """
     Gets the names from their joined representation
-    split('a.b.c') => 'a', 'b', 'c'
+    split('a.b.c') => ['a', 'b', 'c']
     Returns the n first names, if n==-1 returns all of them.
+    split('a.b.c',1) => ['a', 'b.c']
     """
     return sym.split('.', n)
 
@@ -27,6 +29,7 @@ def canonicalize(name):
     """
     Splits the name and converts each name to the
     right type (e.g. "2" -> 2)
+    [Fred: why we return the right type? Why int only?]
     """
     if isinstance(name, str):
         name = split(name)
@@ -48,6 +51,7 @@ class BindError(Exception):
     """
     Exception raised when a Component is already bound and we try to
     bound it again.
+    see Component.bind() help for more information.
     """
     pass
 
@@ -103,6 +107,7 @@ class Component(object):
         """
         Populates the memo dictionary with Result -> Container
         pairings.
+        [Fred: what memo mean?]
         """
         raise NotImplementedError
 
@@ -112,6 +117,7 @@ class Component(object):
         and taking the containers in the memo dictionary.
 
         A Component which builds nothing may return None.
+        [Fred: why a Component would build nothing? Method? Member should always build something to my understanding]
         """
         raise NotImplementedError
 
@@ -180,11 +186,11 @@ class _RComponent(Component):
     def __init__(self, r):
         super(_RComponent, self).__init__()
         self.r = r
-        self.owns_name = r.name is None
+        self.owns_name = r.name is None #Fred: is not? else the choise of owns_name is bad.
 
     def __set_name__(self, name):
         super(_RComponent, self).__set_name__(name)
-        if self.owns_name:
+        if self.owns_name:# Fred: why only if it don't have name?
             self.r.name = name
 
     def __str__(self):
@@ -195,7 +201,7 @@ class _RComponent(Component):
         return rval
 
     def dup(self):
-        return self.__class__(self.r)
+        return self.__class__(self.r)#Fred: this don't dup the results? Is that normal?
 
 
 class External(_RComponent):
@@ -260,7 +266,7 @@ class Method(Component):
         Composite which holds references to Members, the Method may
         use them without declaring them in the inputs, outputs or
         updates list.
-
+        [Fred: what are kits? not defined in this file]
         inputs, outputs or updates may be strings. In that case, they
         will be resolved in the Composite which is the parent of this
         Method.

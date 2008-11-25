@@ -1,20 +1,17 @@
-import unittest
+import unittest,sys
 
 def main(modulename):
+    debug = False
+
     if 0:
         unittest.main()
-    elif 1:
+    elif len(sys.argv)==2 and sys.argv[1]=="--debug":
         module = __import__(modulename)
         tests = unittest.TestLoader().loadTestsFromModule(module)
         tests.debug()
+    elif len(sys.argv)==1:
+        module = __import__(modulename)
+        tests = unittest.TestLoader().loadTestsFromModule(module)
+        unittest.TextTestRunner(verbosity=2).run(tests)
     else:
-        testcases = []
-        testcases.append(T_function_module)
-
-        #<testsuite boilerplate>
-        testloader = unittest.TestLoader()
-        suite = unittest.TestSuite()
-        for testcase in testcases:
-            suite.addTest(testloader.loadTestsFromTestCase(testcase))
-        unittest.TextTestRunner(verbosity=2).run(suite)
-        #</boilerplate>
+        print "options: [--debug]"
