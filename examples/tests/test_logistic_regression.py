@@ -99,4 +99,4 @@ class test_logistic_regression_example(unittest.TestCase):
 
 if __name__ == '__main__':
     from theano.tests import main
-    main("test_logistic_regression")
+    main(__file__)

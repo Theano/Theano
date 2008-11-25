@@ -310,4 +310,4 @@ class T_test_wiki_module(unittest.TestCase):
 
 if __name__ == '__main__':
     from theano.tests import main
-    main("test_wiki")
+    main(__file__)
