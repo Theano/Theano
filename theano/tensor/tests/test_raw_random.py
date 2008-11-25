@@ -1,103 +1,66 @@
 ## TODO: REDO THESE TESTS
 
 import unittest
+import numpy as N
 
 from theano.tensor.raw_random import *
 
-from theano import compile
+from theano import tensor
 
-def Uniform(s, n):
-    return NumpyGenerator(s, n, numpy.random.RandomState.uniform)
+from theano import compile, gof
 
-class T_Random:#(unittest.TestCase):
-    def test0(self):
+def test_state_propagation():
+    x = tensor.vector()
+    rk = RandomKit('rk', 1000)
+    f = compile.function([x, (rk, [gof.Container(r = gof.generic, storage = [123], name='bla')])], rk.binomial(tensor.shape(x)), mode='FAST_COMPILE')
+    f['rk'] = 9873456
+    
+    rvals = [f([1,2,3,4,6, 7, 8]) for i in xrange(5)]
+    print rvals
+    for i in xrange(5-1):
+        for j in xrange(i+1, 5):
+            assert not N.all(rvals[i] == rvals[j])
 
-        rng = Uniform(12345, 2)
+def test_B():
+    """Test that random numbers change from call to call!
+    
+    Also, make sure that the seeding strategy doesn't change without failing a test.
 
-        r0 = rng((2,3))
-        r1 = rng((2,3))
+    Random numbers can't be too random or experiments aren't repeatable.  Email theano-dev
+    before updating the `rvals` in this test.
+    """
+    class B(RModule):
+        def __init__(self):
+            super(B, self).__init__(self)
 
-        f0 = compile.function([], [r0])
-        f1 = compile.function([], [r1])
+            self.x = compile.Member(tensor.dvector())
+            self.r = self.random.uniform(tensor.shape(self.x))
 
-        v0 = f0()
-        self.failUnless(v0.shape == (2,3))
-        self.failUnless(str(v0[0,0]).startswith('0.929616'))
-        self.failUnless(str(v0[1,2]).startswith('0.595544'))
-        v1 = f1()
-        self.failUnless(numpy.all(v0 == v1))
-        v1 = f1()
-        self.failUnless(numpy.all(v0 != v1))
+            self.f = compile.Method([self.x], self.r)
+    class E(RModule):
+        def __init__(self):
+            super(E, self).__init__(self)
+            self.b = B()
+            self.f = compile.Method([self.b.x], self.b.r)
 
-    def test1(self):
-        rng = RandomState(12345)
+    b = E()
+    m = b.make(mode='FAST_COMPILE')
 
-        f0 = compile.function([], [rng.gen('uniform', (3,))])
-        f1 = compile.function([], [rng.gen('uniform', (3,))])
+    m.seed(1000)
+    #print m.f(N.ones(5))
+    #print m.f(N.ones(5))
+    #print m.f(N.ones(5))
+    rvals = ["0.0655889727823 0.566937256035 0.486897708861 0.939594224804 0.731948448071",
+        "0.407174827663 0.450046718267 0.454825370073 0.874814293401 0.828759935744",
+        "0.573194634066 0.746015418896 0.864696705461 0.8405810785 0.540268740918",
+        "0.924477905238 0.96687901023 0.306490321744 0.654349923901 0.789402591813",
+        "0.513182053208 0.0426565286449 0.0723651478047 0.454308519009 0.86151064181"]
 
-        v0, v1 = f0(), f1()
 
-        self.failUnless(v0.shape == (3,))
-        self.failUnless(numpy.all(v0 != v1))
+    for i in xrange(5):
+        s = " ".join([str(n) for n in m.f(N.ones(5))])
+        assert s == rvals[i]
 
-    def test2(self):
-        x = tensor.ivector()
-
-        f0 = compile.function([x], [Uniform(123, 1)(x)])
-        f1 = compile.function([x], [Uniform(123, 1)(x)])
-
-        v0, v1 = f0([3]), f1([7])
-
-        self.failUnless(v0.shape == (3,))
-        self.failUnless(numpy.all(v0 == v1[:3]))
-
-    def test3(self):
-        rng = RandomState(12345)
-        template = tensor.fmatrix()
-        f0 = compile.function([template], [rng.gen_like('uniform', template)])
-
-        v0 = f0(numpy.zeros((2,3)))
-        self.failUnless(str(v0[1,2]).startswith('0.595544'))
-
-    def test4(self):
-        rng = RandomState(123455)
-        template = tensor.fmatrix()
-        f0 = compile.function([template],
-                [rng.gen_like(('beta',{'a':0.5,'b':0.65}), template)])
-
-        v0 = f0(numpy.zeros((2,3)))
-        self.failUnless(v0.shape == (2,3))
-        self.failUnless(str(v0[0,0]).startswith('0.013259'))
-        self.failUnless(str(v0[1,2]).startswith('0.753368'))
-
-    def test5(self):
-        """Test that two NumpyGenerators with the same dist compare equal"""
-
-        rng0 = RandomState(123456)
-        rng1 = RandomState(123456)
-
-        d0 = rng0.gen(('beta',{'a':0.5,'b':0.65}), (2,3,4))
-        d1 = rng1.gen(('beta',{'a':0.5,'b':0.65}), (2,3,4))
-
-        self.failUnless(d0.owner.op == d1.owner.op)
-        self.failUnless(hash(d0.owner.op) == hash(d1.owner.op))
-
-    def test6(self):
-
-        x = tensor.vector()
-        u = RandomState(9999).uniform_like(x,0.,10.)
-        fu = compile.function([x],[u])
-        res1 = fu(numpy.zeros((3)))
-        res2 = fu(numpy.zeros((3)))
-        self.failUnless(str(res1[0]).startswith('8.23389'))
-        self.failUnless(str(res2[0]).startswith('5.45926'))
-
-        b = RandomState(121212).binomial_like(x,1,0.8)
-        fb = compile.function([x],[b])
-        res1 = fb(numpy.zeros((10)))
-        res2 = fb(numpy.zeros((10)))
-        self.failUnless(list(res1) == [1,0,1,1,1,1,1,1,1,1])
-        self.failUnless(list(res2) == [1,1,0,1,1,1,0,0,1,1])
 
 if __name__ == '__main__':
     unittest.main()

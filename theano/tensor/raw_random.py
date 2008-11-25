@@ -9,6 +9,7 @@ from .. import compile
 from ..compile import SymbolicInputKit, SymbolicInput
 from copy import copy
 
+import sys
 
 RS = numpy.random.RandomState
 
@@ -50,6 +51,7 @@ class RandomFunction(gof.Op):
 
     def perform(self, node, inputs, (rout, out)):
         r, shape, args = inputs[0], inputs[1], inputs[2:]
+        r_orig = r
         assert self.outtype.ndim == len(shape)
         if not self.inplace:
             r = copy(r)
@@ -252,12 +254,23 @@ class RModule(compile.Module):
         return x
 
     def _instance_seed(self, inst, seed, recursive = True):
+        seedgen = numpy.random.RandomState(seed)
         if recursive:
+            #Here, we recurse through all the components (inst2) contained in (inst)
+            #and seeds each subcomponent that is an RModule
+            
+            
             for path, c in self.flat_components_map(True):
                 if isinstance(c, RModule):
                     inst2 = inst
                     for name in path:
                         inst2 = inst2[name]
-                    c._rkit.kit.distribute(seed, xrange(len(inst._rkit)), inst2._rkit)
+                    # A Kit (c._rkit.kit) contains a list of io.SymbolicIn instances
+                    # and the distribute method takes a value (seed), a list of indices
+                    # and a list of corresponding gof.Container instances. In this
+                    # situation it will reseed all the rngs using the containers
+                    # associated to them.
+                    c._rkit.kit.distribute(seedgen.random_integers(sys.maxint-1),
+                                           xrange(len(inst2._rkit)), inst2._rkit)
         else:
-            self._rkit.kit.distribute(seed, xrange(len(inst._rkit)), inst._rkit)
+            self._rkit.kit.distribute(seedgen.random_integers(sys.maxint-1), xrange(len(inst._rkit)), inst._rkit)

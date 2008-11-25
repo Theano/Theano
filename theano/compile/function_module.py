@@ -616,6 +616,17 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
     Out instance if necessary:
 
     * a Result instance r will be upgraded like Out(r)
+
+
+    Random Numbers
+    --------------
+
+    If your computation involves random numbers, then you have to pass the `RandomKit` as an
+    input argument.  That RandomKit must have a name to be able to seed the generator.  To seed
+    the generator, use the __getitem__ method: 
+    
+        f[<kitname>] = seed   #re-seed the elements of a RandomKit
+
     """
 
     def wrap_in(input):

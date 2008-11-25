@@ -188,7 +188,7 @@ class QuadraticDenoisingAA(T.RModule):
             obj.qfilters = [R.uniform(size = sz, low = -inf, high = inf) * qfilter_relscale \
                     for qf in self.qfilters]
         if seed is not None:
-            obj.seed(seed)
+            obj.seed(seed, recursive=True)
 
         obj.lr = lr
 
@@ -438,7 +438,7 @@ def create(window_size=3,
         concatenated_representation_size=7, 
         lr=0.01, 
         seed=123, 
-        noise_level=0.01, 
+        noise_level=0.2, 
         qfilter_relscale=0.1, 
         compile_mode=None):
     """ Create a convolutional model. """
@@ -457,40 +457,36 @@ def create(window_size=3,
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
     return model
 
+from theano import gof
+JTEST = theano.compile.mode.optdb.query(*sys.argv[2:])
+print 'JTEST', JTEST
+theano.compile.register_optimizer('JTEST', JTEST)
 
-from unittest import TestCase
 
-class T_bla(TestCase):
-    def test0(self):
-        optimizer = 'fast_compile'
-        m = create(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
+if __name__ == '__main__':
+    optimizer = eval(sys.argv[1])
+    m = create(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
+    prog_str = []
+    for i, node in enumerate(m.finetuning_update.maker.env.toposort()):
+        #print '   ', i, node
+        prog_str.append(str(node))
+    print "PROGRAM LEN %i HASH %i"% (len(m.finetuning_update.maker.env.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
 
-        N.random.seed = 8324
+    rng = N.random.RandomState(23904)
 
-        inputs = [N.random.rand(1,9) for i in 1,2,3]
-        targets = N.asarray([0])
+    inputs = [rng.rand(10,9) for i in 1,2,3]
+    targets = N.asarray([0,3,4,2,3,4,4,2,1,0])
+    #print inputs
 
-            
-        print 'unsupervised phase'
+    print 'UNSUPERVISED PHASE'
+    for i in xrange(10):
+        for i in xrange(10):
+            m.pretraining_update(*inputs)
         print m.pretraining_update(*inputs)
-        print m.pretraining_update(*inputs)
-        print m.pretraining_update(*inputs)
-        print m.pretraining_update(*inputs)
-        print m.pretraining_update(*inputs)
-        print 'FINETUNING GRAPH'
-        for i, node in enumerate(m.finetuning_update.maker.env.toposort()):
-            print '   ', i, node
-        print """SUPERVISED PHASE COSTS (fast_compile):
-        2.07944154168
-        2.07818967136
-        2.07693824526
-        2.07568725592
-        2.07443669587"""
+    print 'FINETUNING GRAPH'
+    print 'SUPERVISED PHASE COSTS (%s)'%optimizer
+    for i in xrange(10):
+        for i in xrange(10):
+            m.finetuning_update(*(inputs + [targets])) #the 0 is the target
+        print m.finetuning_update(*(inputs + [targets])) #the 0 is the target
 
-        print 'SUPERVISED PHASE COSTS (%s)'%optimizer
-        print m.finetuning_update(*(inputs + [targets])) #the 0 is the target
-        print m.finetuning_update(*(inputs + [targets])) #the 0 is the target
-        print m.finetuning_update(*(inputs + [targets])) #the 0 is the target
-        print m.finetuning_update(*(inputs + [targets])) #the 0 is the target
-        print m.finetuning_update(*(inputs + [targets])) #the 0 is the target
-        self.fail('just failing to get stdout and stderr')

@@ -240,14 +240,14 @@ class Member(_RComponent):
         if memo and r in memo:
             return memo[r]
         rval = gof.Container(r, storage = [None])
-        memo[r] = rval
-        return rval
+        memo[r] = io.In(result = r, value = rval, mutable = False)
+        return memo[r]
 
     def build(self, mode, memo):
         """
         Returns the Container associated to this Member's Result.
         """
-        return memo[self.r]
+        return memo[self.r].value
 
 
 
@@ -344,17 +344,17 @@ class Method(Component):
                                           ' Verify that it is indeed a Member of the'
                                           ' enclosing module or of one of its submodules.' % (r, self))
                 else:
-                    return gof.Container(r, storage = [None])
+                    return io.In(result = r, value = gof.Container(r, storage = [None]), mutable = False)
         # Wrap the inputs in In instances.
         inputs = self.inputs
         inputs = [io.In(result = input,
-                        value = get_storage(input),
+                        value = get_storage(input).value,
                         mutable = False)
                   for input in inputs]
         # Add the members to update to the inputs.
         inputs += [io.In(result = k,
                          update = v,
-                         value = get_storage(k, not allocate_all),
+                         value = get_storage(k, not allocate_all).value,
                          mutable = True,
                          strict = True)
                    for k, v in self.updates.iteritems()]
@@ -367,14 +367,14 @@ class Method(Component):
             if input not in _inputs and not isinstance(input, gof.Value):
                 # Add this input to the inputs; we require that storage already exists for them,
                 # but otherwise they are immutable.
-                inputs += [io.In(result = input,
-                                 value = get_storage(input, not allocate_all),
-                                 mutable = False)]
+                storage = get_storage(input, not allocate_all)
+                inputs.append(storage)
         # Add the kits to the input. The kit should be associated in
         # memo to a list of Containers. theano.function handles that
         # case by picking only the needed Containers from the list, so
         # here we can just delegate to theano.function.
-        inputs += [(kit, get_storage(kit, not allocate_all)) for kit in self.kits]
+
+        #inputs += [(kit, get_storage(kit, not allocate_all)) for kit in self.kits]
         return F.function(inputs, outputs, mode)
 
     def pretty(self, **kwargs):
@@ -392,19 +392,6 @@ class Method(Component):
             einputs, eoutputs = f.maker.env.inputs, f.maker.env.outputs
             updates = dict(((k, v) for k, v in zip(einputs[len(inputs):], eoutputs[len(outputs):])))
             inputs, outputs = einputs[:len(inputs)], eoutputs[:len(outputs)]
-#             nin = len(inputs)
-#             nout = len(outputs)
-#             k, v = zip(*updates.items()) if updates else ((), ())
-#             nup = len(k)
-#             eff_in = tuple(inputs) + tuple(k)
-#             eff_out = tuple(outputs) + tuple(v)
-#             supp_in = tuple(gof.graph.inputs(eff_out))
-#             env = gof.Env(*gof.graph.clone(eff_in + supp_in,
-#                                            eff_out))
-#             sup = F.Supervisor(set(env.inputs).difference(env.inputs[len(inputs):len(eff_in)]))
-#             env.extend(sup)
-#             mode.optimizer.optimize(env)
-#             inputs, outputs, updates = env.inputs[:nin], env.outputs[:nout], dict(zip(env.inputs[nin:], env.outputs[nout:]))
         rval += pprint(inputs, outputs, updates, False)
         return rval
 
@@ -898,21 +885,15 @@ class KitComponent(Component):
         the memo that maps the SymbolicInputKit to the list of
         Containers.
         """
-        kit = self.kit
-        if kit in memo:
-            return memo[kit]
-        containers = []
-        for input in kit.sinputs:
+        for input in self.kit.sinputs:
             r = input.result
             if r not in memo:
-                memo[r] = gof.Container(r, storage = [None])
-            containers.append(memo[r])
-            #containers.append(gof.Container(r, storage = [None]))
-        memo[kit] = containers
-        return containers
+                input = copy(input)
+                input.value = gof.Container(r, storage = [None])
+                memo[r] = input
 
     def build(self, mode, memo):
-        return memo[self.kit]
+        return [memo[i.result].value for i in self.kit.sinputs]
 
 
 
