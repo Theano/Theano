@@ -1,4 +1,4 @@
-"""Defines the `Type` class."""
+"""WRITEME Defines the `Type` class."""
 
 __docformat__ = "restructuredtext en"
 
