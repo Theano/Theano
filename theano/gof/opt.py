@@ -265,6 +265,11 @@ class LocalOptimizer(object):
 
         raise utils.AbstractFunctionError()
 
+    def add_requirements(self, env):
+        """If this local optimization wants to add some requirements to the env,
+        This is the place to do it."""
+        env.extend(toolbox.ReplaceValidate())
+
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
@@ -273,8 +278,6 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
         self._tracks = tracks
     def tracks(self):
         return self._tracks
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
     def __str__(self):
         return getattr(self, 'name', '<FromFunctionLocalOptimizer instance>')
 
@@ -551,7 +554,7 @@ class NavigatorOptimizer(Optimizer):
 
     def __init__(self, local_opt, ignore_newtrees = 'auto', failure_callback = None):
         """
-        :param local_opt:  a LocalOptimizer to apply over a Env.
+        :param local_opt:  a LocalOptimizer to apply over a Env (or None is Ok too).
         :param ignore_newtrees: 
             - True: new subgraphs returned by an optimization is not a candidate for optimization
             - False: new subgraphs returned by an optimization is a candidate for optimization
@@ -617,6 +620,24 @@ class NavigatorOptimizer(Optimizer):
             env.remove_feature(u)
 
     def process_node(self, env, node, lopt = None):
+        """
+        This function will use `lopt` to `transform` the `node`.  The `transform` method will
+        return either False or a list of Results that are intended to replace `node.outputs`.
+
+        If the env accepts the replacement, then the optimization is successful, and this
+        function returns True.
+
+        If there are no replacement candidates or the env rejects the replacements, this
+        function returns False.
+
+        :param env:  an Env
+        :param node: an Apply instance in `env`
+        :param lopt: a LocalOptimizer instance that may have a better idea for how to compute
+        node's outputs.
+        :rtype: Bool
+        :returns: True iff the `node`'s outputs were replaced in the `env`.
+
+        """
         lopt = lopt or self.local_opt
         try:
             replacements = lopt.transform(node)
@@ -633,23 +654,21 @@ class NavigatorOptimizer(Optimizer):
             env.replace_all_validate(repl_pairs)
             return True
         except Exception, e:
+            # This means the replacements were rejected by the env.
+            #
+            # This is not supposed to happen.  The default failure_callback will print a
+            # traceback as a warning.
             if self.failure_callback is not None:
                 self.failure_callback(e, self, repl_pairs)
-
-                #DEBUG DONT PUSH
-                #print lopt 
-                #print dir(lopt)
-                #raise
-                #END
-
                 return False
             else:
                 raise
 
     def add_requirements(self, env):
+        super(NavigatorOptimizer, self).add_requirements(env)
         env.extend(toolbox.ReplaceValidate())
-
-
+        if self.local_opt:
+            self.local_opt.add_requirements(env)
 
 class TopoOptimizer(NavigatorOptimizer):
     """WRITEME"""
@@ -722,7 +741,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
           - NodeFinder
           - ReplaceValidate
         """
-        NavigatorOptimizer.add_requirements(self, env)
+        super(OpKeyOptimizer, self).add_requirements(env)
         env.extend(toolbox.NodeFinder())
 
 

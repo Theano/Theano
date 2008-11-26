@@ -20,15 +20,14 @@ from link import \
 from op import \
     Op
 
-from opt import \
-    Optimizer, optimizer, SeqOptimizer, \
-    MergeOptimizer, MergeOptMerge, \
-    LocalOptimizer, local_optimizer, LocalOptGroup, \
-    OpSub, OpRemove, PatternSub, \
-    NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer, \
-    keep_going, warn, \
-    InplaceOptimizer, PureThenInplaceOptimizer
-    #LocalOpKeyOptGroup, OpKeyOptimizer
+from opt import (Optimizer, optimizer, SeqOptimizer,
+    MergeOptimizer, MergeOptMerge, 
+    LocalOptimizer, local_optimizer, LocalOptGroup, 
+    OpSub, OpRemove, PatternSub, 
+    NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer, 
+    keep_going, warn, 
+    InplaceOptimizer, PureThenInplaceOptimizer, 
+    OpKeyOptimizer)
 
 from optdb import \
     DB, Query, \

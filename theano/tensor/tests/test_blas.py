@@ -3,9 +3,12 @@ import theano.tensor as T
 from ...gof import Env
 import numpy
 from theano.tensor.blas import *
-from theano.tensor.blas import _as_scalar, _dot22, _is_real_matrix
+from theano.tensor.blas import _dot22, res_is_a
 from unittest import TestCase
 from copy import copy
+
+_as_scalar = GemmLocalOptimizer._as_scalar
+_is_real_matrix = GemmLocalOptimizer._is_real_matrix
 
 from theano import In, Out
 from .test_basic import (_approx_eq, as_tensor, function,
@@ -185,6 +188,15 @@ class t_gemm(TestCase):
                 return
         self.fail()
 
+def test_res_is_a():
+    X,Y,Z,a,b = XYZab()
+
+    assert not res_is_a(a, T.sqrt)
+    assert not res_is_a(a+a, T.sqrt)
+    assert res_is_a(T.sqrt(a+a), T.sqrt)
+
+    #leave the maxclients  stuff untested because it requires being in an env.
+
 class t_as_scalar(TestCase):
     def test0(self):
         """Test that it works on scalar constants"""
@@ -227,85 +239,167 @@ class T_real_matrix(TestCase):
         self.failUnless(_is_real_matrix(T.DimShuffle([False,False], [1, 0])(T.dmatrix())))
         self.failUnless(not _is_real_matrix(T.DimShuffle([False], ['x', 0])(T.dvector())))
 
-if JOSEPHS_BUG_SOLVED:
-    class T_gemm_opt(TestCase):
-        """This test suite ensures that Gemm is inserted where it belongs, and that the resulting
-        functions compute the same things as the originals."""
-        def XYZab(self):
-            return T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
+def fail(msg):
+    print 'FAIL', msg
+    assert False
 
-        def just_gemm(self, i, o, ishapes = [(4,3), (3,5), (4,5), (), ()]):
-            def on_fail():
-                for node in f.maker.env.toposort():
-                    print 'GRAPH', node
-                self.fail()
+"""This test suite ensures that Gemm is inserted where it belongs, and that the resulting
+functions compute the same things as the originals."""
+def XYZab():
+    return T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
 
-            f = function([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
-            for node in f.maker.env.nodes:
-                if node.op == T.dot: on_fail()
-                if node.op == _dot22: on_fail()
-            g = function(i, o, mode='FAST_COMPILE')
-            for node in g.maker.env.nodes:
-                if node.op == gemm: on_fail()
+class Failure(Exception):
+    pass
 
-            rng = numpy.random.RandomState(234)
-            r0 = f(*[rng.randn(*sh) for sh in ishapes])
-            rng = numpy.random.RandomState(234)
-            r1 = g(*[rng.randn(*sh) for sh in ishapes])
-            if numpy.max(numpy.abs(r0[0] - r1[0])) > 1.0e-8:
-                self.fail()
+class Warning(Exception): 
+    pass
 
-        def test0(self):
-            """Many subgraphs whose dots can be eliminated"""
-            X,Y,Z,a,b = self.XYZab()
+def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()]):
+    try:
+        f = function([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
+        for node in f.maker.env.nodes:
+            if node.op == T.dot: raise Warning('dot in graph')
+            if node.op == _dot22: raise Warning('_dot22 in graph')
+        g = function(i, o, mode=compile.Mode(linker='py', optimizer=None))
+        for node in g.maker.env.nodes:
+            if node.op == gemm: raise Warning('gemm in graph')
 
-            self.just_gemm([X,Y,Z,a,b], [T.dot(X,Y) * a + Z * b])
-            self.just_gemm([X,Y,Z,a,b], [a * T.dot(X,Y) + b * Z])
-            self.just_gemm([X,Y,Z,a,b], [b * Z + a * T.dot(X,Y)])
-            self.just_gemm([X,Y,Z,a,b], [T.dot(X,Y) * a - Z * b])
-            self.just_gemm([X,Y,Z,a,b], [a * T.dot(X,Y) - b * Z])
-            self.just_gemm([X,Y,Z,a,b], [b * Z - a * T.dot(X,Y)])
-
-            #with transposes (transposes should be pushed through dot in canonicalize)
-            self.just_gemm([X,Y,Z,a,b], [b * Z.T - a * T.dot(Y.T,X.T)])
-            self.just_gemm([X,Y,Z,a,b], [b * Z.T + a * b * T.dot(X,Y).T])
-
-            #with N multiplications instead of just one
-            self.just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) * b])
-            self.just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y)])
-            self.just_gemm([X,Y,Z,a,b], [Z*b + T.dot(X,Y)])
-            self.just_gemm([X,Y,Z,a,b], [Z + a*b*a*T.dot(X,Y)])
-            self.just_gemm([X,Y,Z,a,b], [(b * b) * Z * a - (a * a) * T.dot(X,Y) * b])
-            self.just_gemm([X,Y,Z,a,b], [Z - T.dot(X,Y)])
-            self.just_gemm([X,Y,Z,a,b], [Z*b - T.dot(X,Y)])
-            self.just_gemm([X,Y,Z,a,b], [Z - a*b*a*T.dot(X,Y)])
-
-            # with > 2 terms in the overall addition
-            self.just_gemm([X,Y,Z,a,b], [Z + Z + T.dot(X,Y) + Z])
-
-        def test_double_gemm(self):
-            """This is the pattern that shows up in the autoencoder"""
-            X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
-            R, S, c = T.dmatrix(), T.dmatrix(), T.dscalar()
-
-            self.just_gemm([X,Y,Z,a,b, R, S, c], [Z *c + a * T.dot(X,Y) + b * T.dot(R,S).T],
-                    ishapes=[(4,3), (3,5), (4,5), (), (), (5,9), (9,4), ()])
-
-        def wishlist(self):
-            X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
-
-            #with >2 additions of the same T.dot(X,Y term
-            self.just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y) + T.dot(X,Y)])
-            self.just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) + b * T.dot(X,Y)])
+        rng = numpy.random.RandomState(234)
+        r0 = f(*[rng.randn(*sh) for sh in ishapes])
+        rng = numpy.random.RandomState(234)
+        r1 = g(*[rng.randn(*sh) for sh in ishapes])
+        max_abs_err = numpy.max(numpy.abs(r0[0] - r1[0]))
+        if  max_abs_err > 1.0e-8:
+            raise Failure('GEMM is computing the wrong output. max_rel_err =', max_abs_err)
+    except Failure:
+        for node in f.maker.env.toposort():
+            print 'GRAPH', node
+        raise
+    except Warning:
+        for node in f.maker.env.toposort():
+            print 'GRAPH', node
 
 
-        def test_vector_stuff(self):
-            X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
-            u,v = T.dvector(), T.dvector()
+def test_gemm_opt0():
+    """Many subgraphs whose dots can be eliminated"""
+    X,Y,Z,a,b = XYZab()
 
-            f = function([a, u, v], a + T.dot(u,v), mode='FAST_RUN')
-            self.failIf(gemm in [n.op for n in f.maker.env.nodes])
-            
-            f = function([a, u, X,Y], a * u + T.dot(X,Y), mode='FAST_RUN')
-            self.failIf(gemm in [n.op for n in f.maker.env.nodes])
+    just_gemm([X,Y,Z,a,b], [T.dot(X,Y) * a + Z * b])
+    just_gemm([X,Y,Z,a,b], [a * T.dot(X,Y) + b * Z])
+    just_gemm([X,Y,Z,a,b], [b * Z + a * T.dot(X,Y)])
+    just_gemm([X,Y,Z,a,b], [T.dot(X,Y) * a - Z * b])
+    just_gemm([X,Y,Z,a,b], [a * T.dot(X,Y) - b * Z])
+    just_gemm([X,Y,Z,a,b], [b * Z - a * T.dot(X,Y)])
+
+    #with transposes (transposes should be pushed through dot in canonicalize)
+    just_gemm([X,Y,Z,a,b], [b * Z.T - a * T.dot(Y.T,X.T)])
+    just_gemm([X,Y,Z,a,b], [b * Z.T + a * b * T.dot(X,Y).T])
+
+    #with N multiplications instead of just one
+    just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) * b])
+    just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y)])
+    just_gemm([X,Y,Z,a,b], [Z*b + T.dot(X,Y)])
+    just_gemm([X,Y,Z,a,b], [Z + a*b*a*T.dot(X,Y)])
+    just_gemm([X,Y,Z,a,b], [(b * b) * Z * a - (a * a) * T.dot(X,Y) * b])
+    just_gemm([X,Y,Z,a,b], [Z - T.dot(X,Y)])
+    just_gemm([X,Y,Z,a,b], [Z*b - T.dot(X,Y)])
+    just_gemm([X,Y,Z,a,b], [Z - a*b*a*T.dot(X,Y)])
+
+
+def test_gemm_opt_double_gemm():
+    """This is the pattern that shows up in the autoencoder"""
+    X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
+    R, S, c = T.dmatrix(), T.dmatrix(), T.dscalar()
+
+    just_gemm([X,Y,Z,a,b, R, S, c], [Z *c + a * T.dot(X,Y) + b * T.dot(R,S).T],
+            ishapes=[(4,3), (3,5), (4,5), (), (), (5,9), (9,4), ()])
+
+    ishapes=[(4,3), (3,5), (4,5), (), (), (5,9), (9,4), ()]
+    i = [X,Y,Z,a,b, R, S, c]
+    o = [a * T.dot(X,Y) + gemm(Z, b, S.T, R.T, 1.0)]
+    try:
+        f = function([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
+        for node in f.maker.env.nodes:
+            if node.op == T.dot: raise Failure('dot in graph')
+            if node.op == _dot22: raise Failure('_dot22 in graph')
+        g = function(i, o, mode=compile.Mode(linker='py', optimizer=None))
+        #for node in g.maker.env.nodes:
+        #    if node.op == gemm: raise Failure('gemm in graph')
+
+        rng = numpy.random.RandomState(234)
+        r0 = f(*[rng.randn(*sh) for sh in ishapes])
+        rng = numpy.random.RandomState(234)
+        r1 = g(*[rng.randn(*sh) for sh in ishapes])
+        max_abs_err = numpy.max(numpy.abs(r0[0] - r1[0]))
+        if  max_abs_err > 1.0e-8:
+            raise Failure('GEMM is computing the wrong output. max_rel_err =', max_abs_err)
+    except Failure:
+        for node in f.maker.env.toposort():
+            print 'GRAPH', node
+        raise
+
+def wishlist_gemm_opt():
+    X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
+
+    #with >2 additions of the same T.dot(X,Y term
+    just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y) + T.dot(X,Y)])
+    just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) + b * T.dot(X,Y)])
+
+def test_gemm_with_vector():
+    """Many subgraphs whose dots can be eliminated.
+    This adds a vector two the previous test, which triggers the long-sought GEMM bug.
+    """
+    X,Y,Z,a,b = XYZab()
+    v = T.vector()
+    def my_just_gemm(o):
+        i = [X,Y,Z,a,b,v]
+        ishapes = [(4,3), (3,5), (4,5), (), (), (5,)]
+        rval = just_gemm(i, o, ishapes=ishapes)
+
+    my_just_gemm([v + T.dot(X,Y) * a + Z * b])
+    my_just_gemm([v + a * T.dot(X,Y) + b * Z])
+    my_just_gemm([v + b * Z + a * T.dot(X,Y)])
+    my_just_gemm([v + T.dot(X,Y) * a - Z * b])
+    my_just_gemm([v + a * T.dot(X,Y) - b * Z])
+    my_just_gemm([v + b * Z - a * T.dot(X,Y)])
+
+    #with N multiplications instead of just one
+    my_just_gemm([v + (b * b) * Z * a + (a * a) * T.dot(X,Y) * b])
+    my_just_gemm([v + Z + T.dot(X,Y)])
+    my_just_gemm([v + Z*b + T.dot(X,Y)])
+    my_just_gemm([v + Z + a*b*a*T.dot(X,Y)])
+    my_just_gemm([v + (b * b) * Z * a - (a * a) * T.dot(X,Y) * b])
+    my_just_gemm([Z - T.dot(X,Y) + v])
+    my_just_gemm([Z*b - T.dot(X,Y) + v])
+    my_just_gemm([Z - a*b*a*T.dot(X,Y) + v])
+
+def test_gemm_opt_vector_stuff():
+    X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
+    u,v = T.dvector(), T.dvector()
+
+    f = function([a, u, v], a + T.dot(u,v), mode='FAST_RUN')
+    if gemm in [n.op for n in f.maker.env.nodes]:
+        raise Failure('gemm in graph')
+    
+    f = function([a, u, X,Y], a * u + T.dot(X,Y), mode='FAST_RUN')
+    if (gemm in [n.op for n in f.maker.env.nodes]):
+        raise Failure('gemm in graph')
+
+def test_inplace0():
+    #should fail to insert gemm because gemm would create cycles
+    X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
+    R, S, c = T.dmatrix(), T.dmatrix(), T.dscalar()
+
+    f = function([X,Y,Z,a,b, R, S, c],
+            [Z * (Z *c + a * T.dot(X,Y) + b * T.dot(R,S).T)], mode='FAST_RUN')
+    if (gemm in [n.op for n in f.maker.env.nodes]):
+        raise Failure('gemm in graph')
+
+def test_inplace1():
+    X,Y,Z,a,b = XYZab()
+    # with > 2 terms in the overall addition
+    f = function([X,Y,Z,a,b],
+            [Z + Z + T.dot(X,Y)], mode='FAST_RUN')
+    if (gemm in [n.op for n in f.maker.env.nodes]):
+        raise Failure('gemm in graph')
 

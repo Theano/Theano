@@ -63,11 +63,20 @@ def register_optimizer(name, opt):
         raise ValueError('Optimizer name already taken: %s' % name)
     predefined_optimizers[name] = opt
 
+class AddDestroyHandler(gof.Optimizer):
+    def apply(self, env):
+        pass
+    def add_requirements(self, env):
+        super(AddDestroyHandler, self).add_requirements(env)
+        env.extend(gof.DestroyHandler())
+
 optdb = gof.SequenceDB()
 optdb.register('merge1', gof.MergeOptimizer(), 0, 'fast_run', 'fast_compile')
 optdb.register('canonicalize', gof.EquilibriumDB(), 1, 'fast_run')
 optdb.register('specialize', gof.EquilibriumDB(), 2, 'fast_run')
-optdb.register('merge2', gof.EquilibriumDB(), 100, 'fast_run')
+optdb.register('merge2', gof.EquilibriumDB(), 49, 'fast_run')
+optdb.register('add_destroy_handler', AddDestroyHandler(), 49.5, 'fast_run', 'inplace')
+optdb.register('merge3', gof.EquilibriumDB(), 100, 'fast_run')
 
 
 class Mode(object):

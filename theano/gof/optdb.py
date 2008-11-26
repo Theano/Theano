@@ -13,6 +13,8 @@ class DB(object):
     def __init__(self):
         self.__db__ = defaultdict(set)
         self._names = set()
+        self.name = None #will be reset by register 
+        #(via obj.name by the thing doing the registering)
 
     def register(self, name, obj, *tags):
         # N.B. obj is not an instance of class Optimizer.
@@ -21,6 +23,8 @@ class DB(object):
         if not isinstance(obj, (DB, opt.Optimizer, opt.LocalOptimizer)):
             raise Exception('wtf', obj)
             
+        if self.name is not None:
+            tags = tags + (self.name,)
         obj.name = name
         if name in self.__db__:
             raise ValueError('The name of the object cannot be an existing tag or the name of another existing object.', obj, name)
@@ -118,9 +122,10 @@ class EquilibriumDB(DB):
 
 class SequenceDB(DB):
 
-    def __init__(self):
+    def __init__(self, failure_callback = opt.warn):
         super(SequenceDB, self).__init__()
         self.__priority__ = {}
+        self.failure_callback = failure_callback
 
     def register(self, name, obj, priority, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
@@ -130,6 +135,6 @@ class SequenceDB(DB):
         opts = super(SequenceDB, self).query(*tags, **kwtags)
         opts = list(opts)
         opts.sort(key = lambda obj: self.__priority__[obj.name])
-        return opt.SeqOptimizer(opts, failure_callback = opt.warn)
+        return opt.SeqOptimizer(opts, failure_callback = self.failure_callback)
 
 

@@ -1,23 +1,20 @@
 """Ops and optimizations for using BLAS function calls to evaluate linear algebra expressions"""
 
-import os, sys
+import os, sys, traceback
 import numpy
 
-from ..gof import (utils, Op, Apply, view_roots, PatternSub, 
-        InplaceOptimizer, SeqOptimizer, warn, local_optimizer)
+from ..gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
+        SeqOptimizer, warn, local_optimizer, LocalOptimizer, OpKeyOptimizer, 
+        InconsistencyError)
 from ..printing import pprint, FunctionPrinter
 from .opt import register_specialize, out2in, insert_inplace_optimizer
 
 import basic as T
-from ..tensor import as_tensor
 
 #NB: this clobbers the builtin 'compile' symbol
 from .. import compile  #to register the optimizer built by this file 
 
 from .blas_headers import cblas_header_text, blas_header_text
-
-JOSEPHS_BUG_SOLVED = False
-
 
 @utils.memoize
 def ldflags():
@@ -270,7 +267,7 @@ class Gemm(GemmRelated):
     E_z_uniq = 'argument z aliased to x or y'
     destroy_map = {0: [0]}
     def make_node(self, *inputs):
-        inputs = map(as_tensor, inputs)
+        inputs = map(T.as_tensor, inputs)
         if len(inputs) != 5:
             raise TypeError("Wrong number of inputs for %s (expected 5, got %s)" % (self, len(inputs)))
         z, a, x, y, b = inputs
@@ -348,19 +345,215 @@ class Gemm(GemmRelated):
         #undef REAL
         """
 
-    def c_code(self, node, name, (_z, _a, _x, _y, _b), (_zout, ), sub):
+    def c_code(self, node, name, (_z, _a, _x, _y, _b), (_zout, ), sub): #DEBUG
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
 gemm = Gemm()
 
 pprint.assign(gemm, FunctionPrinter('gemm'))
 
+def res_is_a(node, op, maxclients=None):
+    return node.owner \
+            and node.owner.op == op \
+            and (len(node.clients) <= maxclients if maxclients is not None else True)
+
+class GemmLocalOptimizer(LocalOptimizer):
+    """This is a massive beast for recognizing all the ways that a subtraction could be
+    replaced by a GEMM
+
+    It depends on `local_transposed_dot` to canonicalize the graph a bit by swapping
+    dot(a,b).T -> dot(b.T, a.T)
+    """
+
+    def __init__(self):
+        super(LocalOptimizer, self).__init__()
+
+    def op_key(self):
+        return [T.add, T.sub]
+
+    def add_requirements(self, env):
+        super(GemmLocalOptimizer,self).add_requirements(env)
+        env.extend(DestroyHandler())
+
+    def transform(self, node):
+        _as_scalar, _is_real_matrix, _as_isolated_scalar_times_matrix, beta_L_plus_alpha_M\
+                = (GemmLocalOptimizer._as_scalar, 
+                        GemmLocalOptimizer._is_real_matrix, 
+                        GemmLocalOptimizer._as_isolated_scalar_times_matrix, 
+                        GemmLocalOptimizer.beta_L_plus_alpha_M)
+        if node.op == T.sub:
+            L, R = node.inputs
+            if not _is_real_matrix(L):
+                return False
+            if not _is_real_matrix(R):
+                return False
+
+            tmp = _as_isolated_scalar_times_matrix(L)
+            try:
+                sL, mL = tmp
+            except:
+                sL, mL = 1.0, L
+
+            tmp = _as_isolated_scalar_times_matrix(R)
+            try:
+                sR, mR = tmp
+            except:
+                sR, mR = 1.0, R
+            rval = beta_L_plus_alpha_M(sL, mL, -sR, mR)
+            return rval
+        if node.op == T.add:
+            sM_list = []
+            other_inputs = []
+            for input in node.inputs:
+                tmp = _as_isolated_scalar_times_matrix(input)
+                if tmp:
+                    sM_list.append(tmp)
+                elif _is_real_matrix(input):
+                    sM_list.append((1.0, input))
+                else:
+                    other_inputs.append(input)
+
+            if len(sM_list) == 2:
+                (sL, mL), (sR, mR) = sM_list
+                gemm_of_sM_list = beta_L_plus_alpha_M(sL, mL, sR, mR)
+                if gemm_of_sM_list: 
+                    #we turned the two candidates into a gemm
+                    # now we have to add the other_inputs and return the replacement graph
+                    if other_inputs:
+                        return [T.add(*(other_inputs + gemm_of_sM_list))]
+                    else:
+                        return gemm_of_sM_list
+            else:
+                for i in xrange(len(sM_list) - 1):
+                    for j in xrange(i+1, len(sM_list)):
+                        sL, mL = sM_list[i]
+                        sR, mR = sM_list[j]
+                        gemm_of_sM_list = beta_L_plus_alpha_M(sL, mL, sR, mR)
+                        if gemm_of_sM_list:
+                            assert len(gemm_of_sM_list) == 1
+                            inputs_without_ij = \
+                                    [input for k, input in enumerate(node.inputs) if k not in (i,j)]
+                            return [T.add( *(inputs_without_ij + gemm_of_sM_list + other_inputs))]
+        return False
+
+    @staticmethod
+    def failure_callback(exc, nav, repl_pairs):
+        """WRITEME"""
+        if not isinstance(exc, InconsistencyError):
+            traceback.print_exc()
+        else:
+            print 'GEMM caused cycle, forget it.'
+
+    @staticmethod
+    def _as_scalar(res):
+        """Return None or a TensorResult whose type is in T.float_scalar_types"""
+        if res.owner and isinstance(res.owner.op, T.DimShuffle):
+            return GemmLocalOptimizer._as_scalar(res.owner.inputs[0])
+        elif res.type in T.float_scalar_types:
+            return res
+        elif isinstance(res, T.Constant) and res.data.size == 1:
+            return res.data.flatten()[0]
+        else:
+            return None
+
+    @staticmethod
+    def _is_real_matrix(res):
+        return res.type in T.float_matrix_types \
+                and res.broadcastable[0] == False \
+                and res.broadcastable[1] == False #cope with tuple vs. list
+
+    @staticmethod
+    def _as_isolated_scalar_times_matrix(res):
+        _as_scalar, _is_real_matrix, _as_isolated_scalar_times_matrix, beta_L_plus_alpha_M\
+                = (GemmLocalOptimizer._as_scalar, 
+                        GemmLocalOptimizer._is_real_matrix, 
+                        GemmLocalOptimizer._as_isolated_scalar_times_matrix, 
+                        GemmLocalOptimizer.beta_L_plus_alpha_M)
+        if res_is_a(res, T.mul, 1):
+            if len(res.owner.inputs) == 2:
+                L, R = res.owner.inputs
+                sL = _as_scalar(L)
+                sR = _as_scalar(R)
+                if (sL is not None) and _is_real_matrix(R):
+                    return (sL, R)
+                if (sR is not None) and _is_real_matrix(L):
+                    return (sR, L)
+            else:
+                scalars = []
+                matrices = []
+                for input in res.owner.inputs:
+                    scalar_input = _as_scalar(input)
+                    if scalar_input is not None:
+                        scalars.append(scalar_input)
+                    elif _is_real_matrix(input):
+                        matrices.append(input)
+                    else:
+                        return None
+                if len(matrices) == 1:
+                    rval = (T.mul(*scalars), matrices[0])
+                    return rval
+
+    @staticmethod
+    def beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
+        #print 'BETA L + ALPHA M', beta, L, alpha, M, recurse_flip
+        #EXPRESSION: (beta * L) + (alpha * M)
+        if True:
+            if res_is_a(L, T.sqrt):
+                print 'CLIENTS OF L', L, L.clients
+
+        if res_is_a(M, _dot22, 1):
+            Ml, Mr = M.owner.inputs
+            rval = [gemm(L, alpha, Ml, Mr, beta)]
+            print 'GEMM 0', rval, beta, L, alpha, M
+            return rval
+
+        if False and res_is_a(M, gemm, 1):
+            #EXPRESSION: (beta * L) + (alpha * (gemm(G, a, u, v, b)))
+            #EXPRESSION: (beta * L) + alpha * (b * G) + alpha * a * dot(u, v)
+            G, a, u, v, b = M.owner.inputs
+            #print 'GEMM', G, L
+
+            if res_is_a(G, _dot22, 1):
+                #EXPRESSION: (beta * L) + (alpha * (gemm(dot(x,y), a, u, v, b)))
+                x, y = G.owner.inputs
+
+                #EXPRESSION: (beta * L) + (alpha * ((b*dot(x,y) + (a * dot(u, v)))))
+                #EXPRESSION: (beta * L) + (alpha*b*dot(x,y)) + (alpha * a * dot(u, v))
+                rval = [gemm(gemm(L, alpha * b, x, y, beta), alpha * a, u, v, 1.0)]
+                print 'GEMM 1', rval
+                return rval
+            if (G is L):
+                #EXPRESSION: (beta * L) + (alpha*b*L) + (alpha * a * dot(u, v))
+                rval = [gemm(L, alpha*a, u, v, alpha * b + beta)]
+                print 'GEMM 2', rval
+                return rval
+            if (1.0 != alpha):
+                #at the very least, move the alpha inside the gemm
+                rval = [beta * L + gemm(G, alpha * a, u, v, alpha * b)]
+                print 'GEMM 3', rval
+                return rval
+
+        if recurse_flip:
+            return GemmLocalOptimizer.beta_L_plus_alpha_M(alpha, M, beta, L, recurse_flip = False)
+        else:
+            return False
+
+#I think that three passes should suffice to catch all the GEMMs.
+# TODO: This could be an equilibriumOptmizer, but I don't know how to combine an OpKeyOptimizer and
+# an EquilibriumOptimizer.
+compile.optdb.register('inplace_gemm_0', OpKeyOptimizer(GemmLocalOptimizer(), 
+    failure_callback=GemmLocalOptimizer.failure_callback), 70.00, 'fast_run', 'inplace')
+compile.optdb.register('inplace_gemm_1', OpKeyOptimizer(GemmLocalOptimizer(), 
+    failure_callback=GemmLocalOptimizer.failure_callback), 70.01, 'fast_run', 'inplace')
+compile.optdb.register('inplace_gemm_2', OpKeyOptimizer(GemmLocalOptimizer(), 
+    failure_callback=GemmLocalOptimizer.failure_callback), 70.02, 'fast_run', 'inplace')
+
 class Dot22(GemmRelated):
     """Compute a matrix-matrix product.
     This is a specialization of the more general Dot()
     """
     def make_node(self, x, y):
-        assert _is_real_matrix(x)
+        assert GemmLocalOptimizer._is_real_matrix(x)
         assert y.type == x.type               #makes sure y is a matrix
         bz = [False, False]
         outputs = [T.tensor(x.type.dtype, bz)]
@@ -404,7 +597,7 @@ class Dot22(GemmRelated):
                 double a = 1.0;
                 double b = 0.0;
         """
-    def c_code(self, node, name, (_x, _y), (_z, ), sub):
+    def c_code(self, node, name, (_x, _y), (_z, ), sub): #DEBUG
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
 _dot22 = Dot22()
@@ -413,158 +606,9 @@ _dot22 = Dot22()
 def local_dot_to_dot22(node):
     if node.op == T.dot:
         x,y = node.inputs
-        if _is_real_matrix(x) and y.type == x.type:
+        if GemmLocalOptimizer._is_real_matrix(x) and y.type == x.type:
             return [_dot22(*node.inputs)]
     else:
         return False
-if JOSEPHS_BUG_SOLVED:
-    register_specialize(local_dot_to_dot22)
-
-def _is_a(node, op, maxclients=None):
-    return node.owner \
-            and node.owner.op == op \
-            and len(node.clients) <= maxclients if maxclients is not None else True
-
-def _as_scalar(res):
-    """Return None or a TensorResult whose type is in T.float_scalar_types"""
-    if res.owner and isinstance(res.owner.op, T.DimShuffle):
-        return _as_scalar(res.owner.inputs[0])
-    elif res.type in T.float_scalar_types:
-        return res
-    elif isinstance(res, T.Constant) and res.data.size == 1:
-        return res.data.flatten()[0]
-    else:
-        return None
-
-def _is_real_matrix(res):
-    return res.type in T.float_matrix_types \
-            and res.broadcastable[0] == False \
-            and res.broadcastable[1] == False #cope with tuple vs. list
-
-def _as_isolated_scalar_times_matrix(res):
-    if _is_a(res, T.mul, 1):
-        if len(res.owner.inputs) == 2:
-            L, R = res.owner.inputs
-            sL = _as_scalar(L)
-            sR = _as_scalar(R)
-            if (sL is not None) and _is_real_matrix(R):
-                return (sL, R)
-            if (sR is not None) and _is_real_matrix(L):
-                return (sR, L)
-        else:
-            scalars = []
-            matrices = []
-            for input in res.owner.inputs:
-                scalar_input = _as_scalar(input)
-                if scalar_input is not None:
-                    scalars.append(scalar_input)
-                elif _is_real_matrix(input):
-                    matrices.append(input)
-                else:
-                    return None
-            if len(matrices) == 1:
-                rval = (T.mul(*scalars), matrices[0])
-                return rval
-
-
-def beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
-    #print 'BETA L + ALPHA M', beta, L, alpha, M, recurse_flip
-    #EXPRESSION: (beta * L) + (alpha * M)
-    if _is_a(M, _dot22, 1):
-        Ml, Mr = M.owner.inputs
-        rval = [gemm(L, alpha, Ml, Mr, beta)]
-        return rval
-
-    if _is_a(M, gemm, 1):
-        #EXPRESSION: (beta * L) + (alpha * (gemm(G, a, u, v, b)))
-        #EXPRESSION: (beta * L) + alpha * (b * G) + alpha * a * dot(u, v)
-        G, a, u, v, b = M.owner.inputs
-        #print 'GEMM', G, L
-
-        if _is_a(G, _dot22, 1):
-            #EXPRESSION: (beta * L) + (alpha * (gemm(dot(x,y), a, u, v, b)))
-            x, y = G.owner.inputs
-
-            #EXPRESSION: (beta * L) + (alpha * ((b*dot(x,y) + (a * dot(u, v)))))
-            #EXPRESSION: (beta * L) + (alpha*b*dot(x,y)) + (alpha * a * dot(u, v))
-            #print 'GEMM 1', G, L
-            rval = [gemm(gemm(L, alpha * b, x, y, beta), alpha * a, u, v, 1.0)]
-            return rval
-        elif G is L:
-            #EXPRESSION: (beta * L) + (alpha*b*L) + (alpha * a * dot(u, v))
-            rval = [gemm(L, alpha*a, u, v, alpha * b + beta)]
-            #print 'GEMM 2', rval
-            return rval
-        elif 1.0 != alpha:
-            #at the very least, move the alpha inside the gemm
-            rval = [beta * L + gemm(G, alpha * a, u, v, alpha * b)]
-            #print 'GEMM 3', G, L
-            return rval
-
-    if recurse_flip:
-        return beta_L_plus_alpha_M(alpha, M, beta, L, recurse_flip = False)
-    else:
-        return False
-
-@local_optimizer([T.sub])
-def local_sub_to_gemm(node):
-    if node.op == T.sub:
-        L, R = node.inputs
-        if not _is_real_matrix(L):
-            return False
-        if not _is_real_matrix(R):
-            return False
-
-        tmp = _as_isolated_scalar_times_matrix(L)
-        try:
-            sL, mL = tmp
-        except:
-            sL, mL = 1.0, L
-
-        tmp = _as_isolated_scalar_times_matrix(R)
-        try:
-            sR, mR = tmp
-        except:
-            sR, mR = 1.0, R
-        rval = beta_L_plus_alpha_M(sL, mL, -sR, mR)
-        return rval
-    return False
-if JOSEPHS_BUG_SOLVED:
-    register_specialize(local_sub_to_gemm)
-
-@local_optimizer([T.add])
-def local_add_to_gemm(node):
-    """This is a massive beast for recognizing all the ways that a subtraction could be
-    replaced by a GEMM
-
-    It depends on `local_transposed_dot` to canonicalize the graph a bit by swapping
-    dot(a,b).T -> dot(b.T, a.T)
-    """
-    if node.op == T.add:
-        sM_list = []
-        for input in node.inputs:
-            tmp = _as_isolated_scalar_times_matrix(input)
-            if tmp:
-                sM_list.append(tmp)
-            elif _is_real_matrix(input):
-                sM_list.append((1.0, input))
-
-        if len(sM_list) == 2:
-            sL, mL = sM_list[0]
-            sR, mR = sM_list[1]
-            return beta_L_plus_alpha_M(sL, mL, sR, mR)
-        else:
-            for i in xrange(len(sM_list) - 1):
-                for j in xrange(i+1, len(sM_list)):
-                    sL, mL = sM_list[i]
-                    sR, mR = sM_list[j]
-                    rval = beta_L_plus_alpha_M(sL, mL, sR, mR)
-                    if rval:
-                        assert len(rval) == 1
-                        inputs_without_ij = \
-                                [input for k, input in enumerate(node.inputs) if k not in (i,j)]
-                        return [T.add( *(inputs_without_ij + rval))]
-    return False
-if JOSEPHS_BUG_SOLVED:
-    register_specialize(local_add_to_gemm)
+register_specialize(local_dot_to_dot22)
 

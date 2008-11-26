@@ -155,14 +155,14 @@ class QuadraticDenoisingAA(T.RModule):
         updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gradients))
 
         # INTERFACE METHODS
-        self.update = theano.Method(self.input, self.ncost, updates)
-        self.compute_cost = theano.Method(self.input, self.cost)
-        self.noisify = theano.Method(self.input, self.corrupted_input)
-        self.reconstruction = theano.Method(self.input, self.output)
-        self.representation = theano.Method(self.input, self.hidden)
-        self.reconstruction_through_noise = theano.Method(self.input, [self.corrupted_input, self.noutput])
+        #self.update = theano.Method(self.input, self.ncost, updates)
+        #self.compute_cost = theano.Method(self.input, self.cost)
+        #self.noisify = theano.Method(self.input, self.corrupted_input)
+        #self.reconstruction = theano.Method(self.input, self.output)
+        #self.representation = theano.Method(self.input, self.hidden)
+        #self.reconstruction_through_noise = theano.Method(self.input, [self.corrupted_input, self.noutput])
 
-        self.validate = theano.Method(self.input, [self.cost, self.output])
+        #self.validate = theano.Method(self.input, [self.cost, self.output])
 
     def _instance_initialize(self, obj, input_size, hidden_size, seed, lr, qfilter_relscale):
         """
@@ -291,16 +291,16 @@ class Module_Nclass(module.FancyModule):
 
         #define the apply method
         self.pred = T.argmax(linear_output, axis=1)
-        self.apply = module.Method([self.input], self.pred)
+        #self.apply = module.Method([self.input], self.pred)
 
-        self.validate = module.Method([self.input, self.targ], [self.cost, self.argmax, self.max_pr])
-        self.softmax_output = module.Method([self.input], self.softmax_unsupervised)
+        #self.validate = module.Method([self.input, self.targ], [self.cost, self.argmax, self.max_pr])
+        #self.softmax_output = module.Method([self.input], self.softmax_unsupervised)
 
         if self.params:
             gparams = T.grad(sum_xent, self.params)
 
-            self.update = module.Method([self.input, self.targ], sum_xent,
-                    updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gparams)))
+            #self.update = module.Method([self.input, self.targ], sum_xent,
+                    #updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gparams)))
 
 class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
     #initialize is called by Module.make
@@ -366,11 +366,6 @@ class ConvolutionalMLP(module.FancyModule):
                         )
         )
 
-#        to_update = []
-#        all_kits = []
-#        input_update = self.input_representations[0].update
-#        input_update.resolve_all()
-
         for i in self.inputs[1:]:
             self.input_representations.append(
                             QDAA(
@@ -411,11 +406,17 @@ class ConvolutionalMLP(module.FancyModule):
                         ] + self.hidden.qfilters
         input_pretraining_cost = sum(i.ncost for i in self.input_representations)
         hidden_pretraining_cost = self.hidden.ncost
-        input_pretraining_gradients = T.grad(input_pretraining_cost, input_pretraining_params)
+        input_pretraining_gradients = T.grad(input_pretraining_cost,
+                input_pretraining_params)
         hidden_pretraining_gradients = T.grad(hidden_pretraining_cost, hidden_pretraining_params)
-        pretraining_updates = dict((p, p - self.lr * g) for p, g in zip(input_pretraining_params, input_pretraining_gradients) +
-                                                                    zip(hidden_pretraining_params, hidden_pretraining_gradients))
-        self.pretraining_update = module.Method(self.inputs, [input_pretraining_cost, hidden_pretraining_cost], pretraining_updates)
+        pretraining_updates = \
+                dict((p, p - self.lr * g) for p, g in \
+                zip(input_pretraining_params, input_pretraining_gradients) \
+                + zip(hidden_pretraining_params, hidden_pretraining_gradients))
+
+        self.pretraining_update = module.Method(self.inputs, 
+                [input_pretraining_cost, hidden_pretraining_cost], 
+                pretraining_updates)
 
         finetuning_params = \
                         [self.input_representations[0].w1, self.input_representations[0].b1] + self.input_representations[0].qfilters + \
@@ -426,9 +427,8 @@ class ConvolutionalMLP(module.FancyModule):
         finetuning_updates = dict((p, p - self.lr * g) for p, g in zip(finetuning_params, finetuning_gradients))
         self.finetuning_update = module.Method(self.inputs + [self.targ], self.output.cost, finetuning_updates)
 
-
-        self.validate = module.Method(self.inputs + [self.targ], [self.output.cost, self.output.argmax, self.output.max_pr])
-        self.softmax_output = module.Method(self.inputs, self.output.softmax_unsupervised)
+        #self.validate = module.Method(self.inputs + [self.targ], [self.output.cost, self.output.argmax, self.output.max_pr])
+        #self.softmax_output = module.Method(self.inputs, self.output.softmax_unsupervised)
 
 def create(window_size=3, 
         input_dimension=9, 
@@ -462,15 +462,21 @@ JTEST = theano.compile.mode.optdb.query(*sys.argv[2:])
 print 'JTEST', JTEST
 theano.compile.register_optimizer('JTEST', JTEST)
 
-
 if __name__ == '__main__':
     optimizer = eval(sys.argv[1])
     m = create(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
     prog_str = []
-    for i, node in enumerate(m.finetuning_update.maker.env.toposort()):
-        #print '   ', i, node
+    idx_of_node = {}
+    for i, node in enumerate(m.pretraining_update.maker.env.toposort()):
+        idx_of_node[node] = i
+        if False and i > -1:
+            print '   ', i, node, [(ii, idx_of_node.get(ii.owner, 'IN')) for ii in node.inputs]
         prog_str.append(str(node))
-    print "PROGRAM LEN %i HASH %i"% (len(m.finetuning_update.maker.env.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
+    #print input_pretraining_gradients[4].owner.inputs
+    #print input_pretraining_gradients[4].owner.inputs[1].owner.inputs
+    #sys.exit()
+
+    print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.env.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
 
     rng = N.random.RandomState(23904)
 

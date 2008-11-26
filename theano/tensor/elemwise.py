@@ -316,7 +316,7 @@ class Elemwise(Op):
                      scalars
         * inplace_pattern: a dictionary that maps the index of an output to the
                            index of an input so the output is calculated inplace using
-                           the input's storage.
+                           the input's storage. (Just like destroymap, but without the lists.)
         """
         self.name = name
         self.scalar_op = scalar_op
@@ -357,16 +357,21 @@ class Elemwise(Op):
                 args.append(input)
             else:
                 # TODO: use LComplete instead
-                args.append(DimShuffle(input.type.broadcastable, ['x']*difference + range(length), inplace = True)(input))
+                args.append(DimShuffle(
+                    input.type.broadcastable, 
+                    ['x']*difference + range(length),
+                    inplace = True)(input))
         inputs = args
 
-#         # Following conditions should always be true?
-#         try:
-#             assert len(set([len(input.type.broadcastable) for input in inputs])) == 1
-#         except (AssertionError, AttributeError):
-#             raise TypeError("All inputs to a Broadcast subclass must be Tensor instances and their broadcastable fields must all have the same length.", inputs)
+        #HERE: all the broadcast dims have the same length now
 
+        #cleverness: we iterate over the first, second, third broadcast flag of all inputs in
+        #parallel... the all() gives us each output broadcastable bit in turn.
+
+        #it is multiplied by nout because Elemwise supports multiple outputs (nout of them)
         out_broadcastables = [[all(bcast) for bcast in zip(*[input.type.broadcastable for input in inputs])]] * shadow.nout
+
+        #inplace_pattern maps output idx -> input idx
         inplace_pattern = self.inplace_pattern
         if inplace_pattern:
             for overwriter, overwritten in inplace_pattern.items():
@@ -374,21 +379,32 @@ class Elemwise(Op):
                     if ib and not ob:
                         raise ValueError("Operation cannot be done inplace on an input with broadcasted dimensions.")
         out_dtypes = [o.type.dtype for o in shadow.outputs]
-        if any(inputs[i].type.dtype != out_dtypes[o] for i, o in inplace_pattern.items()):
-            raise TypeError("Cannot do an inplace operation on incompatible data types.", [i.type.dtype for i in inputs], out_dtypes)
+        if any(inputs[i].type.dtype != out_dtypes[o] for o, i in inplace_pattern.items()):
+            raise TypeError("Cannot do an inplace operation on incompatible data types.", 
+                    ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern))
         outputs = [Tensor(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
         return Apply(self, inputs, outputs)
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.scalar_op == other.scalar_op and self.inplace_pattern == other.inplace_pattern
+        if type(self) == type(other):
+            items = self.inplace_pattern.items()
+            other_items = other.inplace_pattern.items()
+            items.sort()
+            other_items.sort()
+            return self.scalar_op == other.scalar_op and items == other_items
+        return False
 
     def __hash__(self):
-        return hash(self.scalar_op) ^ hash(tuple(self.inplace_pattern.items()))
+        items = self.inplace_pattern.items()
+        items.sort()
+        return hash(self.scalar_op) ^ hash(tuple(items))
 
     def __str__(self):
         if self.name is None:
             if self.inplace_pattern:
-                return "Elemwise{%s}%s" % (self.scalar_op, str(self.inplace_pattern))
+                items = self.inplace_pattern.items()
+                items.sort()
+                return "Elemwise{%s}%s" % (self.scalar_op, str(items))
             else:
                 return "Elemwise{%s}" % (self.scalar_op)
         else:
@@ -467,6 +483,7 @@ class Elemwise(Op):
                 storage[0] = odat
         else:
             for i, (output, storage) in enumerate(zip(node.outputs, output_storage)):
+                #i is an output idx
                 if i in self.inplace_pattern:
                     odat = inputs[self.inplace_pattern[i]]
                 else:
@@ -500,7 +517,7 @@ class Elemwise(Op):
 
         defines = ""
         undefs = ""
-        dmap = dict([(node.outputs[i], [node.inputs[o]]) for i, o in self.inplace_pattern.items()])
+        dmap = dict([(node.outputs[o], [node.inputs[i]]) for o, i in self.inplace_pattern.items()])
 
         idtypes = [input.type.dtype_specs()[1] for input in inputs]
 

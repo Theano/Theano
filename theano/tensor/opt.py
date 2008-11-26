@@ -5,7 +5,7 @@
 
 
 from .. import gof
-from ..gof import opt
+from ..gof import opt, InconsistencyError
 from elemwise import Elemwise, DimShuffle
 from .. import scalar
 import basic as T
@@ -32,7 +32,8 @@ def in2out(*local_opts, **kwargs):
 
 
 
-def _insert_inplace_optimizer(env):
+@gof.optimizer
+def insert_inplace_optimizer(env):
     """
     Usage: inplace_optimizer.optimize(env)
     
@@ -59,17 +60,18 @@ def _insert_inplace_optimizer(env):
                 try:
                     new = Elemwise(
                         op.scalar_op.__class__(
-                            scalar.transfer_type(*[inplace_pattern.get(i, None) for i in xrange(len(node.outputs))])),
+                            scalar.transfer_type(
+                                *[inplace_pattern.get(i, None) \
+                                        for i in xrange(len(node.outputs))])),
                         inplace_pattern).make_node(*node.inputs)
                     env.replace_all_validate(zip(node.outputs, new.outputs))
-                except Exception, e:
+                except (ValueError, TypeError, InconsistencyError), e:
                     continue
                 candidate_inputs.remove(candidate_input)
                 node = new
                 baseline = inplace_pattern
                 break
-insert_inplace_optimizer = gof.optimizer(_insert_inplace_optimizer)
-
+compile.optdb.register('inplace_opt', insert_inplace_optimizer, 75, 'fast_run', 'inplace') 
 
 def register_canonicalize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
@@ -310,7 +312,7 @@ def local_fill_cut(node):
 
 register_canonicalize(local_fill_cut)
 
-register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy' )
+#register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy' ) #DEBUG
 
 @gof.local_optimizer([None, T.fill])
 def local_fill_sink(node):
@@ -650,38 +652,6 @@ def local_mul_specialize(node):
         return False
 register_specialize(local_mul_specialize)
 
-if 0: #TODO: replace this with a c version of any InplaceDimShuffle
-    class _TransposeInplace(T.Op):
-        view_map = {0: [0]}
-        
-        def make_node(self, input):
-            return T.Apply(self, [input], 
-                    [T.tensor(dtype = input.type.dtype,
-                        broadcastable = reversed(input.type.broadcastable))])
-        
-        def perform(self, node, (x, ), (z, )):
-            z[0] = x.T
-        
-        def c_code(self, node, name, (x, ), (z, ), sub):
-            return """
-            PyArrayObject* transposed = (PyArrayObject*)PyArray_Transpose(%(x)s, NULL);
-            if (%(z)s) {
-                Py_XDECREF(%(z)s);
-            }
-            %(z)s = transposed;
-            """ % locals()
-
-        def __str__(self):
-            return "_TransposeInplace"
-    _transpose_inplace = _TransposeInplace()
-
-    @gof.local_optimizer([T.DimShuffle([False,False],[1,0],inplace=True)])
-    def local_dimshuffle_transposeinplace(node):
-        if node.op == T.DimShuffle([False,False],[1,0],inplace=True):
-            return [_transpose_inplace(node.inputs[0])]
-        return False
-    register_specialize(local_dimshuffle_transposeinplace)
-
 register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
 
@@ -843,288 +813,4 @@ local_transposed_dot = gof.PatternSub((inplace_matrix_transpose, (T.dot, 'x', 'y
         (T.dot, (inplace_matrix_transpose, 'y'), (inplace_matrix_transpose, 'x')))
 register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 
-
-# def _math_optimizer():
-#     pass_1 = in2out(local_fill_sink)
-#     pass_2 = out2in(local_dimshuffle_lift, local_shape_lift, local_fill_lift)#, local_fill_cut)
-#     pass_3 = out2in(local_subtensor_make_vector, local_fill_cut)
-    
-#     canonizer = in2out(local_add_canonizer,
-#                        local_mul_canonizer,
-#                        local_fill_sink)
-
-#     pass_4 = out2in(local_greedy_distributor)
-
-#     return gof.SeqOptimizer(pass_1,
-#                             pass_2,
-#                             pass_3,
-#                             neg_to_mul,
-#                             canonizer,
-#                             pass_4,
-#                             mul_to_neg)
-
-# math_optimizer = _math_optimizer()
-
-
-
-
-
-
-# compile.register_optimizer('math', 
-#         gof.MergeOptMerge(
-#             gof.PureThenInplaceOptimizer(
-#                 math_optimizer,
-#                 inplace_optimizer)))
-
-
-# compile.register_mode('SANITY_CHECK', compile.Mode('c&py', 'math'))
-# compile.register_mode('FAST_RUN', compile.Mode('c|py', 'math'))
-# compile.register_mode('EXPENSIVE_OPTIMIZATIONS', compile.Mode('c|py', 'math'))
-
-
-# @gof.local_optimizer
-# def local_clique_fusion(node):
-#     aaaaaaaaaaaaaaaaaaaaaaa
-
-
-
-
-
-
-
-
-
-
-# def find_cliques(env, through_broadcast = False):
-#     """
-#     Usage: find_cliques(env, through_broadcast = False)
-
-#     Returns a list of pairs where each pair contains a list
-#     of inputs and a list of outputs such that Env(inputs, outputs)
-#     contains nothing but Broadcast Ops.
-
-#     If through_broadcast is False, the cliques will only be
-#     allowed to broadcast over the inputs, which means, for
-#     example, that vector operations will not be mixed with
-#     matrix operations.
-#     """
-
-#     def seek_from(r):
-#         # walks through the graph until it encounters a
-#         # non-Broadcast operation or (if through_broadcast
-#         # is False) a Result which needs to be broadcasted.
-        
-#         op = r.owner
-#         if env.edge(r) \
-#                 or not isinstance(op, Broadcast) \
-#                 or len(op.outputs) > 1:
-#             # todo: handle multiple-output broadcast ops
-#             #       (needs to update the clique's outputs)
-#             return None
-
-#         ret = set()
-
-#         if not through_broadcast:
-#             # check each dimension over all the inputs - if the broadcastable
-#             # fields are not all 0 or all 1 for a particular dimension, then
-#             # broadcasting will be performed along it on the inputs where the
-#             # value is 1 and we will stop.
-#             if any(any(bc) and not all(bc)
-#                    for bc in zip(*[input.broadcastable for input in op.inputs])):
-#                 ret.update(op.inputs)
-#                 return ret
-        
-#         for input in op.inputs:
-#             res = seek_from(input)
-#             if res is None:
-#                 # input is a leaf of our search
-#                 ret.add(input)
-#             else:
-#                 ret.update(res)
-        
-#         return ret
-    
-#     cliques = []
-
-#     def find_cliques_helper(r):
-#         if env.edge(r):
-#             return
-#         clique_inputs = seek_from(r)
-#         if clique_inputs is None:
-#             # Not in a clique, keep going
-#             op = r.owner
-#             if op is not None:
-#                 for input in op.inputs:
-#                     find_cliques_helper(input)
-#         else:
-#             # We found a clique, add it to the list and
-#             # jump to the leaves.
-#             cliques.append((clique_inputs, [r]))
-#             for input in clique_inputs:
-#                 find_cliques_helper(input)
-
-#     for output in env.outputs:
-#         find_cliques_helper(output)
-
-#     # todo: merge the cliques if possible
-
-#     return cliques
-
-
-# class CliqueOptimizer(opt.Optimizer):
-#     """
-#     Usage: CliqueOptimizer(through_broadcast = False,
-#                            scalar_optimizer = None,
-#                            make_composite = False).optimize(env)
-
-#     Finds cliques of Broadcast operations in the env and does either
-#     or both of two things:
-    
-#     * Apply scalar_optimizer on the clique as if the clique was a
-#       group of scalar operations. scalar_optimizer can be any optimization
-#       which applies on scalars. If it is None, no optimization is done.
-#     * Replace the clique with a single Op, optimized to perform the
-#       computations properly. If make_composite is False, no such replacement
-#       is done.
-
-#     Note: it is recommended to run the lift_dimshuffle optimization before
-#     this one.
-#     """
-
-#     def __init__(self, through_broadcast = False, scalar_optimizer = None, make_composite = False):
-#         self.through_broadcast = through_broadcast
-#         self.scalar_optimizer = scalar_optimizer
-#         self.make_composite = make_composite
-
-#     def apply(self, env):
-#         if self.scalar_optimizer is None and not self.make_composite:
-#             # there's nothing to do with the cliques...
-#             return
-        
-#         cliques = find_cliques(env, self.through_broadcast)
-#         opt = self.scalar_optimizer
-
-#         def build_scalar_clique(r, env, equiv):
-#             # Maps a clique of Broadcast Ops to a clique of Scalar Ops with the same
-#             # structure and equivalent operations. equiv contains the mapping.
-#             if r in equiv:
-#                 return equiv[r]
-#             op = r.owner
-#             if env.edge(r):
-#                 # For each leave we make a Scalar of the corresponding dtype
-#                 s = scalar.Scalar(dtype = r.dtype)
-#                 _r = r
-#                 if isinstance(r.owner, DimShuffle) and all(x == 'x' for x in r.owner.new_order):
-#                     _r = r.owner.inputs[0]
-#                 if (getattr(r, 'constant', False) or getattr(_r, 'constant', False)) \
-#                        and _r.broadcastable == ():
-#                     # If we have a constant tensor we map it to a constant scalar.
-#                     s.data = _r.data
-#                     s.constant = True
-#                 equiv[r] = s
-#                 return s
-#             s_op = op.scalar_opclass(*[build_scalar_clique(input, env, equiv) for input in op.inputs])
-#             equiv[op] = s_op
-#             for output, s_output in zip(op.outputs, s_op.outputs):
-#                 equiv[output] = s_output
-#             return equiv[r]
-
-#         for c_in, c_out in cliques:
-#             equiv = dict()
-#             g = Env(c_in, c_out)
-#             for output in c_out:
-#                 build_scalar_clique(output, g, equiv)
-#             s_g = Env([equiv[r] for r in g.inputs],
-#                       [equiv[r] for r in g.outputs])
-#             if opt is not None:
-#                 equiv2 = dict() # reverse mapping, from Scalar Op to Tensor Op
-#                 for k, v in equiv.items():
-#                     equiv2[v] = k
-#                 def transform(op, equiv):
-#                     # We get a scalar op and we return an equivalent op on tensors.
-#                     return Broadcast(op.__class__, [equiv[input] for input in op.inputs])
-#                 s_g.add_feature(sync_to(env, equiv2, transform)) # Any change to s_g will now be transferred to g
-#                 opt.optimize(s_g)
-#             if self.make_composite:
-#                 def follow_inplace(r):
-#                     # Tries to find the earliest r2 in g such that r destroys r2
-#                     # If no such r2 is found, returns None
-#                     op = r.owner
-#                     if op is None or r in g.inputs or r in g.orphans():
-#                         return None
-#                     assert isinstance(op, Broadcast)
-#                     destroyed = op.destroy_map().get(r, None)
-#                     if destroyed is None:
-#                         return None
-#                     else:
-#                         r2 = destroyed[0]
-#                         ret = follow_inplace(r2)
-#                         if ret is None:
-#                             return r2
-#                         else:
-#                             return ret
-#                 inplace_pattern = {}
-#                 for i, output in enumerate(g.outputs):
-#                     destroyed = follow_inplace(output)
-#                     if destroyed is not None and destroyed in g.inputs:
-#                         # we transfer the inplace operation only if it is
-#                         # an input that is destroyed
-#                         inplace_pattern[i] = g.inputs.index(destroyed)
-#                 C = scalar.composite(s_g.inputs, s_g.outputs)
-#                 ec = Broadcast(C, g.inputs, inplace_pattern = inplace_pattern)
-#                 env.replace_all(dict((o, eco) for o, eco in zip(c_out, ec.outputs)))
-
-
-# def sync_to(target, equiv, transform):
-#     """
-#     Usage: sync_to(target, equiv, transform)
-#     * target: an Env
-#     * equiv: a dictionary that maps results and ops to results and ops
-#              in target
-#     * transform: a function that takes (op, equiv) as inputs and
-#                  returns a new op.
-    
-#     Returns a Feature that can be added to an Env and mirrors all
-#     modifications to that env with modifications to the target env.
-#     """
-
-#     class Synchronize(gof.Listener, gof.Constraint):
-
-#         def __init__(self, source):
-#             self.source = source
-#             self.target = target
-#             self.equiv = equiv
-#             self.transform = transform
-#             self.inconsistencies = []
-
-#         def on_import(self, op1):
-#             if op1 not in self.equiv:
-#                 op2 = self.transform(op1, self.equiv)
-#                 self.equiv[op1] = op2
-#                 for o1, o2 in zip(op1.outputs, op2.outputs):
-#                     self.equiv[o1] = o2
-
-#         def on_prune(self, op1):
-#             if op1 in self.equiv:
-#                 op2 = self.equiv[op1]
-#                 del self.equiv[op1]
-#                 for o1, o2 in zip(op1.outputs, op2.outputs):
-#                     del self.equiv[o1]
-
-#         def on_rewire(self, clients1, r1, new_r1):
-#             if (new_r1, r1) in self.inconsistencies:
-#                 self.inconsistencies.remove((new_r1, r1))
-#                 return
-#             if not self.source.clients(r1):
-#                 try:
-#                     target.replace(self.equiv[r1], self.equiv[new_r1])
-#                 except:
-#                     self.inconsistencies.append((r1, new_r1))
-
-#         def validate(self):
-#             if self.inconsistencies:
-#                 raise InconsistencyError("Could not synchronize when replacing the following pairs: %s" % self.inconsistencies)
-#             return True
-
-#     return Synchronize
 
