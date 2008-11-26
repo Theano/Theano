@@ -105,9 +105,13 @@ class Component(object):
 
     def allocate(self, memo):
         """
-        Populates the memo dictionary with Result -> Container
-        pairings.
-        [Fred: what memo mean?]
+        Populates the memo dictionary with gof.Result -> io.In
+        pairings. The value field of the In instance should contain a
+        gof.Container instance. The memo dictionary is meant to tell
+        the build method of Components where the values associated to
+        certain results are stored and how they should behave if they
+        are implicit inputs to a Method (needed to compute its
+        output(s) but not in the inputs or updates lists).
         """
         raise NotImplementedError
 
@@ -116,8 +120,8 @@ class Component(object):
         Makes an instance of this Component using the mode provided
         and taking the containers in the memo dictionary.
 
-        A Component which builds nothing may return None.
-        [Fred: why a Component would build nothing? Method? Member should always build something to my understanding]
+        A Component which builds nothing, such as External or
+        Temporary, may return None.
         """
         raise NotImplementedError
 
@@ -160,6 +164,17 @@ class Component(object):
         """
         raise NotImplementedError
 
+    def dup(self):
+        """
+        Returns a Component identical to this one, but which is not
+        bound to anything and does not retain the original's name.
+
+        This is useful to make Components that are slight variations
+        of another or to have Components that behave identically but
+        are accessed in different ways.
+        """
+        raise NotImplementedError()
+
     def __get_name__(self):
         """
         Getter for self.name
@@ -186,11 +201,19 @@ class _RComponent(Component):
     def __init__(self, r):
         super(_RComponent, self).__init__()
         self.r = r
-        self.owns_name = r.name is None #Fred: is not? else the choise of owns_name is bad.
+        # If self.owns_name is True, then the name of the result
+        # may be adjusted when the name of the Component is. Else,
+        # the result will always keep its original name. The component
+        # will only be allowed to own a result's name if it has no
+        # original name to begin with. This allows the user to opt out
+        # of the automatic naming scheme if he or she wants to. It is
+        # also usually the case that a Result used in more than one
+        # Component should only retain the first name it gets.
+        self.owns_name = r.name is None
 
     def __set_name__(self, name):
         super(_RComponent, self).__set_name__(name)
-        if self.owns_name:# Fred: why only if it don't have name?
+        if self.owns_name:
             self.r.name = name
 
     def __str__(self):
@@ -201,7 +224,7 @@ class _RComponent(Component):
         return rval
 
     def dup(self):
-        return self.__class__(self.r)#Fred: this don't dup the results? Is that normal?
+        return self.__class__(self.r)
 
 
 class External(_RComponent):
@@ -262,11 +285,13 @@ class Method(Component):
     def __init__(self, inputs, outputs, updates = {}, kits = [], **kwupdates):
         """
         Method is a declaration of a function. It contains inputs,
-        outputs, updates and kits. If the Method is part of a
-        Composite which holds references to Members, the Method may
-        use them without declaring them in the inputs, outputs or
-        updates list.
-        [Fred: what are kits? not defined in this file]
+        outputs and updates. If the Method is part of a Composite
+        which holds references to Members, the Method may use them
+        without declaring them in the inputs, outputs or updates list.
+
+        [TODO: remove references to kits, for they are not really
+        needed anymore]
+
         inputs, outputs or updates may be strings. In that case, they
         will be resolved in the Composite which is the parent of this
         Method.
@@ -351,13 +376,13 @@ class Method(Component):
                                           ' enclosing module or of one of its submodules.' % (r, self))
                 else:
                     return io.In(result = r, value = gof.Container(r, storage = [None]), mutable = False)
-        # Wrap the inputs in In instances.
+        # Wrap the inputs in In instances. TODO: allow the inputs to _be_ In instances
         inputs = self.inputs
         inputs = [io.In(result = input,
                         value = get_storage(input).value,
                         mutable = False)
                   for input in inputs]
-        # Add the members to update to the inputs.
+        # Add the members to update to the inputs. TODO: see above
         inputs += [io.In(result = k,
                          update = v,
                          value = get_storage(k, not allocate_all).value,
@@ -375,12 +400,7 @@ class Method(Component):
                 # but otherwise they are immutable.
                 storage = get_storage(input, not allocate_all)
                 inputs.append(storage)
-        # Add the kits to the input. The kit should be associated in
-        # memo to a list of Containers. theano.function handles that
-        # case by picking only the needed Containers from the list, so
-        # here we can just delegate to theano.function.
 
-        #inputs += [(kit, get_storage(kit, not allocate_all)) for kit in self.kits]
         return F.function(inputs, outputs, mode)
 
     def pretty(self, **kwargs):
