@@ -312,7 +312,7 @@ def local_fill_cut(node):
 
 register_canonicalize(local_fill_cut)
 
-#register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy' ) #DEBUG
+register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy' )
 
 @gof.local_optimizer([None, T.fill])
 def local_fill_sink(node):
