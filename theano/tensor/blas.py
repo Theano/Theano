@@ -442,7 +442,8 @@ class GemmLocalOptimizer(LocalOptimizer):
         if not isinstance(exc, InconsistencyError):
             traceback.print_exc()
         else:
-            print 'GEMM caused cycle, forget it.'
+            #print 'GEMM caused cycle, forget it.'
+            pass
 
     @staticmethod
     def _as_scalar(res):
@@ -497,16 +498,15 @@ class GemmLocalOptimizer(LocalOptimizer):
     def beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
         #print 'BETA L + ALPHA M', beta, L, alpha, M, recurse_flip
         #EXPRESSION: (beta * L) + (alpha * M)
-        if True:
-            if res_is_a(L, T.sqrt):
-                print 'CLIENTS OF L', L, L.clients
 
         if res_is_a(M, _dot22, 1):
             Ml, Mr = M.owner.inputs
             rval = [gemm(L, alpha, Ml, Mr, beta)]
-            print 'GEMM 0', rval, beta, L, alpha, M
+            #print 'GEMM 0', rval, beta, L, alpha, M
             return rval
 
+        # this is False'd out because of inadequate testing.  
+        # TODO see ticket #237
         if False and res_is_a(M, gemm, 1):
             #EXPRESSION: (beta * L) + (alpha * (gemm(G, a, u, v, b)))
             #EXPRESSION: (beta * L) + alpha * (b * G) + alpha * a * dot(u, v)

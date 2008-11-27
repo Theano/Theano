@@ -457,13 +457,7 @@ def create(window_size=3,
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
     return model
 
-from theano import gof
-JTEST = theano.compile.mode.optdb.query(*sys.argv[2:])
-print 'JTEST', JTEST
-theano.compile.register_optimizer('JTEST', JTEST)
-
-if __name__ == '__main__':
-    optimizer = eval(sys.argv[1])
+def test_naacl_model(optimizer='fast_run'):
     m = create(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
     prog_str = []
     idx_of_node = {}
@@ -488,11 +482,24 @@ if __name__ == '__main__':
     for i in xrange(10):
         for i in xrange(10):
             m.pretraining_update(*inputs)
-        print m.pretraining_update(*inputs)
+        s0, s1 = [str(i) for i in m.pretraining_update(*inputs)]
+        print s0, s1
+    if s0 + ' ' + s1 != '0.315775007436 0.132479386981':
+        raise ValueError('pretraining update values do not match')
     print 'FINETUNING GRAPH'
     print 'SUPERVISED PHASE COSTS (%s)'%optimizer
     for i in xrange(10):
         for i in xrange(10):
-            m.finetuning_update(*(inputs + [targets])) #the 0 is the target
-        print m.finetuning_update(*(inputs + [targets])) #the 0 is the target
+            m.finetuning_update(*(inputs + [targets]))
+        s0 = str(m.finetuning_update(*(inputs + [targets])))
+        print s0
+    if s0 != '15.8609933666':
+        raise ValueError('finetuning values do not match')
 
+if __name__ == '__main__':
+    from theano import gof
+    JTEST = theano.compile.mode.optdb.query(*sys.argv[2:])
+    print 'JTEST', JTEST
+    theano.compile.register_optimizer('JTEST', JTEST)
+    optimizer = eval(sys.argv[1])
+    test_naacl_model(optimizer)

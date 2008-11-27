@@ -1,4 +1,4 @@
-
+import traceback
 import theano.tensor as T
 from ...gof import Env
 import numpy
@@ -258,11 +258,11 @@ def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()]):
     try:
         f = function([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
         for node in f.maker.env.nodes:
-            if node.op == T.dot: raise Warning('dot in graph')
-            if node.op == _dot22: raise Warning('_dot22 in graph')
+            if node.op == T.dot: raise Warning('dot not changed to gemm in graph')
+            if node.op == _dot22: raise Warning('_dot22 not changed to gemm in graph')
         g = function(i, o, mode=compile.Mode(linker='py', optimizer=None))
         for node in g.maker.env.nodes:
-            if node.op == gemm: raise Warning('gemm in graph')
+            if node.op == gemm: raise Exception('gemm in original graph')
 
         rng = numpy.random.RandomState(234)
         r0 = f(*[rng.randn(*sh) for sh in ishapes])
@@ -275,9 +275,11 @@ def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()]):
         for node in f.maker.env.toposort():
             print 'GRAPH', node
         raise
-    except Warning:
-        for node in f.maker.env.toposort():
-            print 'GRAPH', node
+    except Warning, e:
+        #for node in f.maker.env.toposort():
+        #    print 'GRAPH', node
+        print 'WARNING:', e
+        #traceback.print_exc()
 
 
 def test_gemm_opt0():
