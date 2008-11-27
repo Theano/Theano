@@ -484,7 +484,7 @@ def test_naacl_model(optimizer='fast_run'):
             m.pretraining_update(*inputs)
         s0, s1 = [str(i) for i in m.pretraining_update(*inputs)]
         print s0, s1
-    if s0 + ' ' + s1 != '0.315775007436 0.132479386981':
+    if s0 + ' ' + s1 != '0.402187608584 0.0744508017774':
         raise ValueError('pretraining update values do not match')
     print 'FINETUNING GRAPH'
     print 'SUPERVISED PHASE COSTS (%s)'%optimizer
@@ -493,7 +493,7 @@ def test_naacl_model(optimizer='fast_run'):
             m.finetuning_update(*(inputs + [targets]))
         s0 = str(m.finetuning_update(*(inputs + [targets])))
         print s0
-    if s0 != '15.8609933666':
+    if s0 != '15.6512776369':
         raise ValueError('finetuning values do not match')
 
 if __name__ == '__main__':
