@@ -10,9 +10,9 @@ class Print(Op):
     """This identity-like Op has the side effect of printing a message followed by its inputs
     when it runs.
     """
+    view_map={0:[0]}
     def __init__(self,message=""):
         self.message=message
-        self.view_map={0:[0]}
 
     def make_node(self,xin):
         xout = xin.type.make_result()
