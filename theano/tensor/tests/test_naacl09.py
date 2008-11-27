@@ -324,8 +324,8 @@ class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
 #                layer.lr = lr
 
         for i in self.input_representations:
-#            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, seed=R.random_integers(sys.maxint-1), noise_level=noise_level, qfilter_relscale=qfilter_relscale)
-            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, noise_level=noise_level, seed=R.random_integers(sys.maxint-1), lr=lr, qfilter_relscale=qfilter_relscale)
+#            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, seed=R.random_integers(2**30), noise_level=noise_level, qfilter_relscale=qfilter_relscale)
+            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, noise_level=noise_level, seed=R.random_integers(2**30), lr=lr, qfilter_relscale=qfilter_relscale)
 
         for i in self.input_representations[1:]:
             assert (i.w1 == self.input_representations[0].w1).all()
@@ -334,9 +334,9 @@ class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
             assert (i.b2 == self.input_representations[0].b2).all()
             assert all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters)) 
 
-        self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size), hidden_size=self.hidden_representation_size, noise_level=noise_level, seed=R.random_integers(sys.maxint-1), lr=lr, qfilter_relscale=qfilter_relscale)
+        self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size), hidden_size=self.hidden_representation_size, noise_level=noise_level, seed=R.random_integers(2**30), lr=lr, qfilter_relscale=qfilter_relscale)
 
-        self.output.initialize(n_in=self.hidden_representation_size, n_out=self.output_size, lr=lr, seed=R.random_integers(sys.maxint-1))
+        self.output.initialize(n_in=self.hidden_representation_size, n_out=self.output_size, lr=lr, seed=R.random_integers(2**30))
  
 class ConvolutionalMLP(module.FancyModule):
     InstanceType = ConvolutionalMLPInstance

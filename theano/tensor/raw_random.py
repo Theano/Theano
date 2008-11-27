@@ -212,7 +212,7 @@ class RandomKit(SymbolicInputKit):
         return out
 
     def distribute(self, value, indices, containers):
-        rg = partial(numpy.random.RandomState(value).randint, sys.maxint)
+        rg = partial(numpy.random.RandomState(value).randint, 2**32)
         elems = deque(zip(indices, containers))
         i = 0
         while elems:
@@ -270,7 +270,7 @@ class RModule(compile.Module):
                     # and a list of corresponding gof.Container instances. In this
                     # situation it will reseed all the rngs using the containers
                     # associated to them.
-                    c._rkit.kit.distribute(seedgen.random_integers(sys.maxint-1),
+                    c._rkit.kit.distribute(seedgen.random_integers(2**31),
                                            xrange(len(inst2._rkit)), inst2._rkit)
         else:
-            self._rkit.kit.distribute(seedgen.random_integers(sys.maxint-1), xrange(len(inst._rkit)), inst._rkit)
+            self._rkit.kit.distribute(seedgen.random_integers(2**31), xrange(len(inst._rkit)), inst._rkit)
