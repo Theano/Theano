@@ -281,7 +281,7 @@ def local_inplace_setsubtensor(node):
     if isinstance(node.op, T.SetSubtensor) and not node.op.inplace:
         new_op = T.SetSubtensor(node.op.idx_list, inplace=True)
         new_node = new_op(*node.inputs)
-        return new_node.outputs
+        return [new_node]
     return False
 compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor), 60, 'fast_run', 'inplace') #DEBUG
 
