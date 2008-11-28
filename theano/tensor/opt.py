@@ -5,7 +5,7 @@
 
 
 from .. import gof
-from ..gof import opt, InconsistencyError
+from ..gof import opt, InconsistencyError, TopoOptimizer
 from elemwise import Elemwise, DimShuffle
 from .. import scalar
 import basic as T
@@ -273,6 +273,17 @@ def local_subtensor_make_vector(node):
 
 register_canonicalize(local_subtensor_make_vector)
 
+#after priority 50 Destructive inplace operations
+#gemm is the first one now, at priority 70
+
+@gof.local_optimizer([None])
+def local_inplace_setsubtensor(node):
+    if isinstance(node.op, T.SetSubtensor) and not node.op.inplace:
+        new_op = T.SetSubtensor(node.op.idx_list, inplace=True)
+        new_node = new_op(*node.inputs)
+        return new_node.outputs
+    return False
+compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor), 60, 'fast_run', 'inplace') #DEBUG
 
 ##################
 # Middleman cuts #
