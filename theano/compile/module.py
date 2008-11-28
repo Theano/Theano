@@ -268,7 +268,7 @@ class Member(_RComponent):
         r = self.r
         if memo and r in memo:
             return memo[r]
-        rval = gof.Container(r, storage = [None])
+        rval = gof.Container(r, storage = [getattr(r, 'data', None)])
         memo[r] = io.In(result = r, value = rval, mutable = False)
         return memo[r]
 
