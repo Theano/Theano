@@ -1,5 +1,6 @@
 from theano.compile.module import *
 import theano.tensor as T
+import sys
 
 def test_whats_up_with_submembers():
     class Blah(FancyModule):
