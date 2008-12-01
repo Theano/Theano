@@ -214,6 +214,9 @@ class Tensor(Type):
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s" % (self.__class__.__name__, self.dtype))
 
+    def to_scalar_type(self):
+        return scal.Scalar(dtype = self.dtype)
+
     def __eq__(self, other):
         """Compare True iff other is the same kind of Tensor"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable

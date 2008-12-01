@@ -120,8 +120,8 @@ class Component(object):
         Makes an instance of this Component using the mode provided
         and taking the containers in the memo dictionary.
 
-        A Component which builds nothing, such as External or
-        Temporary, may return None.
+        A Component which builds nothing, such as External, may return
+        None.
         """
         raise NotImplementedError
 
@@ -248,7 +248,6 @@ class External(_RComponent):
         if self.r.owner:
             rval += '\n= %s' % (pprint(self.r, dict(target = self.r)))
         return rval
-
 
 
 class Member(_RComponent):

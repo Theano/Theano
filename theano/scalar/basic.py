@@ -747,6 +747,7 @@ class Composite(ScalarOp):
 
     def __init__(self, inputs, outputs):
         env = Env(*gof.graph.clone(inputs, outputs))
+        gof.MergeOptimizer().optimize(env)
         inputs, outputs = env.inputs, env.outputs
 
         for node in env.nodes:

@@ -832,9 +832,507 @@ def constant_folding(node):
 register_canonicalize(constant_folding)
 
 
+#################
+#  BLAS-related
+#################
+import blas
+
+class _Dot22(gof.Op):
+    """Compute a matrix-matrix product.
+    This is a specialization of the more general Dot()
+    """
+    def make_node(self, x, y):
+        assert x.type in T.float_matrix_types #makes sure x is a matrix
+        assert y.type == x.type               #makes sure y is a matrix
+        bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
+        outputs = [T.tensor(x.type.dtype, bz)]
+        return gof.Apply(self, [x,y], outputs)
+
+    def perform(self, node, (x, y), (z, )):
+        try:
+            z[0] = numpy.asarray(numpy.dot(x, y))
+        except ValueError, e:
+            # The error raised by numpy has no shape information, we mean to add that
+            e.args = e.args + (x.shape, y.shape)
+            raise
+    def __str__(self):
+        return "_dot22"
+    def c_support_code(self):
+        #return blas.cblas_header_text()
+        mod_str = """
+        #ifndef MOD
+        #define MOD %
+        #endif
+        """
+        return blas.blas_proto() + mod_str
+    def c_headers(self):
+        return ['<iostream>']
+    def c_libraries(self):
+        return blas.ldflags()
+    def c_code(self, node, name, (_x, _y), (_z, ), sub):
+        return """
+        int unit = 0;
+
+        int type_num = %(_x)s->descr->type_num;
+        int type_size = %(_x)s->descr->elsize; // in bytes
+
+        npy_intp* Nx = %(_x)s->dimensions;
+        npy_intp* Ny = %(_y)s->dimensions;
+        npy_intp* Nz = 0; //%(_z)s->dimensions;
+
+        npy_intp* Sx = %(_x)s->strides;
+        npy_intp* Sy = %(_y)s->strides;
+        npy_intp* Sz = 0;//%(_z)s->strides;
+
+        //strides for x, y, z in dimensions 0, 1
+        int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
+
+        if ((NULL == %(_z)s)
+            || (%(_z)s->dimensions[0] != %(_x)s->dimensions[0])
+            || (%(_z)s->dimensions[1] != %(_y)s->dimensions[1]))
+        {
+            if (NULL != %(_z)s) Py_XDECREF(%(_z)s);
+            npy_intp dims[2];
+            dims[0] = %(_x)s->dimensions[0];
+            dims[1] = %(_y)s->dimensions[1];
+            %(_z)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_x)s);
+            if(!%(_z)s) {
+                PyErr_SetString(PyExc_MemoryError, "failed to alloc dot22 output");
+                %(fail)s
+            }
+        }
+        Nz = %(_z)s->dimensions;
+        Sz = %(_z)s->strides;
+
+        if (%(_x)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
+        if (%(_y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
+        if (%(_z)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(z) != 2"); %(fail)s;}
+
+        if ((%(_x)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_x)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
+
+        if ((%(_y)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_y)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
+
+        if ((%(_z)s->descr->type_num != PyArray_DOUBLE) 
+            && (%(_z)s->descr->type_num != PyArray_FLOAT))
+        {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
+
+        if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
+            ||(%(_x)s->descr->type_num != %(_z)s->descr->type_num))
+        { PyErr_SetString(PyExc_NotImplementedError, "type(z), type(y), type(z) are not all the same"); %(fail)s; }
+
+        if ((Nx[0] != Nz[0]) || (Nx[1] != Ny[0]) || (Ny[1] != Nz[1]))
+        {
+            PyErr_SetString(PyExc_ValueError, "Input dimensions do not agree");
+            %(fail)s;
+        }
+        if ((Sx[0] < 1) || (Sx[1] < 1) || (Sx[0] MOD type_size) || (Sx[1] MOD type_size)
+           || (Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
+           || (Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size))
+        {
+            PyErr_SetString(PyExc_ValueError, "stride is not multiple of element size"); %(fail)s;
+        }
+
+        /*
+        encode the stride structure of _x,_y,_z into a single integer
+        */
+        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 8;
+        unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
+        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 0;
+
+        /* create appropriate strides for malformed matrices that are row or column
+         * vectors
+         */
+        sx_0 = (Nx[0] > 1) ? Sx[0]/type_size : Nx[1];
+        sx_1 = (Nx[1] > 1) ? Sx[1]/type_size : Nx[0];
+        sy_0 = (Ny[0] > 1) ? Sy[0]/type_size : Ny[1];
+        sy_1 = (Ny[1] > 1) ? Sy[1]/type_size : Ny[0];
+        sz_0 = (Nz[0] > 1) ? Sz[0]/type_size : Nz[1];
+        sz_1 = (Nz[1] > 1) ? Sz[1]/type_size : Nz[0];
+
+        switch (type_num)
+        {
+            case PyArray_FLOAT:
+            {
+                float a = 1.0;
+                float b = 0.0;
+                float* x = (float*)PyArray_DATA(%(_x)s);
+                float* y = (float*)PyArray_DATA(%(_y)s);
+                float* z = (float*)PyArray_DATA(%(_z)s);
+                char N = 'N';
+                char T = 'T';
+                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                switch(unit)
+                {
+                    case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x100: sgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x010: sgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x110: sgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x001: sgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x101: sgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x011: sgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+                    case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
+                };
+                #undef REAL
+            }
+            break;
+            case PyArray_DOUBLE:
+            {
+                double a = 1.0;
+                double b = 0.0;
+                double* x = (double*)PyArray_DATA(%(_x)s);
+                double* y = (double*)PyArray_DATA(%(_y)s);
+                double* z = (double*)PyArray_DATA(%(_z)s);
+                char N = 'N';
+                char T = 'T';
+                int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
+                //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                switch(unit)
+                {
+                    case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
+                    case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
+                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
+                };
+                #undef REAL
+            }
+            break;
+        }
+        """ % dict(locals(), **sub)
+_dot22 = _Dot22()
+
+@gof.local_optimizer([T.dot])
+def local_dot_to_dot22(node):
+    if node.op == T.dot:
+        return [_dot22(*node.inputs)]
+    else:
+        return False
+register_specialize(local_dot_to_dot22)
+
+@gof.local_optimizer([T.sub])
+def local_sub_to_gemm(node):
+    """This is a massive beast for recognizing all the ways that a subtraction could be
+    replaced by a GEMM
+    """
+    if node.op == T.sub:
+        subleft, subright = node.inputs
+        #EXPRESSION: subleft - subright
+        if subright.owner and (subright.owner.op == _dot22):
+            dotleft, dotright = subright.owner.inputs
+            return [T.gemm(subleft, -1.0, dotleft, dotright, 1.0)]
+        if subright.owner and (subright.owner.op == T.mul):
+            mulleft, mulright = subright.owner.inputs
+            #EXPRESSION: subleft - (mulleft * mulright)
+            
+            #TODO: we actually want to get any scalar here, not necessrily a constant
+            mulleft_const = local_mul_canonizer.get_constant(mulleft)
+            if mulleft_const is not None and mulleft_const.size == 1:
+                mulleft_const = mulleft_const.flatten()[0]
+                #EXPRESSION: subleft - (mulleft_const * ?)
+                if mulright.owner and (mulright.owner.op == T.add):
+                    #EXPRESSION: subleft - (mulleft_const * (? + ?))
+                    addleft, addright = mulright.owner.inputs
+                    if addright.owner and addright.owner.op == T.DimShuffle([False,False], [1,0]):
+                        #EXPRESSION: subleft - (mulleft_const * (? + ?.T))
+                        #raise NotImplementedError()
+                        return False
+                    if addright.owner and addright.owner.op == T.DimShuffle([False,False], [1,0], inplace=True):
+                        #EXPRESSION: subleft - (mulleft_const * (? + ?.T))
+                        transposed = addright.owner.inputs[0]
+                        if transposed.owner and transposed.owner.op == _dot22:
+                            x, y = transposed.owner.inputs
+                            #EXPRESSION: subleft - (mulleft_const * (addleft + dot(x, y).T))
+                            if addleft.owner and addleft.owner.op == _dot22:
+                                u, v = addleft.owner.inputs
+                                #EXPRESSION: subleft - (mulleft_const * (dot(u,v) + dot(x, y).T))
+                                return [T.gemm(
+                                    T.gemm(subleft, -mulleft_const, y.T, x.T, 1.0),
+                                    -mulleft_const, u, v, 1.0)]
+
+                if mulright.owner and (mulright.owner.op == _dot22):
+                    dotleft, dotright = mulright.owner.inputs
+                    #EXPRESSION: subleft - (mulleft_const * dot(dotleft, dotright))
+                    return [T.gemm(subleft, -mulleft_const, dotleft, dotright, 1.0)]
+
+            mulright_const = local_mul_canonizer.get_constant(mulright)
+            if mulright_const is not None and mulright_const.size == 1:
+                mulright_const = mulright_const.flatten()[0]
+                #EXPRESSION: subleft - (? * mulright_const)
+
+                if mulleft.owner and (mulleft.owner.op == _dot22):
+                    dotleft, dotright = mulleft.owner.inputs
+                    #EXPRESSION: subleft - (dot(dotleft, dotright) * mulright_const)
+                    return [T.gemm(subleft, -mulright_const, dotleft, dotright, 1.0)]
+    return False
+register_specialize(local_sub_to_gemm)
+
+
 inplace_matrix_transpose = T.DimShuffle([False,False], [1,0], inplace=True)
 local_transposed_dot = gof.PatternSub((inplace_matrix_transpose, (T.dot, 'x', 'y')),
         (T.dot, (inplace_matrix_transpose, 'y'), (inplace_matrix_transpose, 'x')))
 register_canonicalize(local_transposed_dot, name='local_transposed_dot')
+
+# ###############
+# # Loop fusion #
+# ###############
+
+# def make_composite(inputs, outputs):
+#     scalar_inputs = [scalar.Scalar(dtype = i.type.dtype)() for i in inputs]
+#     def transform(r):
+#         if r in inputs:
+#             return scalar_inputs[inputs.index(r)]
+#         node = r.owner
+#         if node is None:
+#             if isinstance(r, gof.Constant):
+#                 if r.data.size == 1:
+#                     return gof.Constant(scalar.Scalar(dtype = r.type.dtype), r.data)
+#                 else:
+#                     return scalar.Scalar(dtype = r.type.dtype)
+#             else:
+#                 print r, inputs
+#                 raise Exception('bluh')
+#                 #return scalar.Scalar(dtype = r.type.dtype)
+#         elif isinstance(node.op, DimShuffle):
+#             new_r = transform(node.inputs[0])
+#         elif isinstance(node.op, Elemwise):
+#             new_r = node.op.scalar_op(*map(transform, node.inputs))
+#         else:
+#             raise Exception('bluh2')
+#         return new_r
+#     scalar_outputs = map(transform, outputs)
+#     return scalar.Composite(scalar_inputs, scalar_outputs)
+
+# def loop_fusion(env):
+
+#     def grab(node, out, seen, grabbed, inputs, outputs):
+#         if node in grabbed:
+#             return True
+#         if node is None or isinstance(node, str) or node in seen:
+#             return False
+#         seen.add(node)
+#         if node and isinstance(node.op, Elemwise) and node.outputs[0].type.broadcastable == out.type.broadcastable:
+#             grabbed.add(node)
+#             for output in node.outputs:
+#                 output_is_temp = True
+#                 for node2, i in output.clients:
+#                     grab(node2, out, seen, grabbed, inputs, outputs)
+#                     if node2 not in grabbed:
+#                         output_is_temp = False
+#                 if not output_is_temp:
+#                     outputs.add(output)
+#             for input in node.inputs:
+#                 node2 = input.owner
+#                 grab(node2, out, seen, grabbed, inputs, outputs)
+#                 if node2 not in grabbed:
+#                     inputs.add(input)
+#             return True
+#         elif node and isinstance(node.op, DimShuffle):
+#             input = node.inputs[0]
+#             if node.op.new_order[-input.type.ndim:] == range(input.type.ndim):
+#                 inputs.add(input)
+#                 grabbed.add(node)
+#             return True
+#             #return grab(node.inputs[0].owner, out, seen, grabbed, inputs, outputs)
+#         else:
+#             return False
+                
+#     #for node in list(env.toposort()): # reversed(list(env.toposort())):
+#     for node in reversed(list(env.toposort())):
+#         if node in env.nodes and isinstance(node.op, Elemwise):
+#             inputs = set()
+#             outputs = set() # set(node.outputs)
+#             out = node.outputs[0]
+#             grab(node, out, set(), set(), inputs, outputs)
+#             if inputs == set(node.inputs) and outputs == set(node.outputs):
+#                 continue
+#             print 'AAAAAAAAAAA', [__i in outputs for __i in inputs]
+#             inputs, outputs = list(inputs), list(outputs)
+#             composite = make_composite(inputs, outputs)
+#             #print composite
+#             #print gof.Env(*gof.graph.clone(inputs, outputs))
+#             new_node = Elemwise(composite).make_node(*inputs)
+#             print 'yea!!!!!', len(new_node.inputs), len(new_node.outputs)
+#             print new_node.outputs[0].type, outputs[0].type
+#             env.replace_all_validate(zip(outputs, new_node.outputs))
+#             print env
+#             gof.graph.io_toposort(env.inputs, env.outputs)
+
+
+
+
+
+
+
+
+
+
+            
+
+# compile.optdb.register('merge1.5', gof.MergeOptimizer(), 97, 'fast_run')
+# loop_fusion = gof.optimizer(loop_fusion)
+# compile.optdb.register('loop_fusion', loop_fusion, 98, 'fast_run')
+
+
+
+
+
+
+
+
+
+
+
+#     def grab_up(input, out, seen, inputs, outputs):
+#         if input in seen:
+#             return
+#         seen.add(input)
+#         node = input.owner
+#         if node and isinstance(node.op, Elemwise) and input.type.broadcastable == out.type.broadcastable:
+#             for input in node.inputs:
+#                 grab_up(input, out, seen, inputs, outputs)
+#             for output in node.outputs:
+#                 grab_down(output, out, seen, inputs, outputs)
+#         elif node and isinstance(node.op, DimShuffle):
+#             grab_up(node.inputs[0], out, seen, inputs, outputs)
+#         else:
+#             inputs.add(input)
+
+#     def grab_down(r, out, seen, inputs, outputs):
+#         for node, i in r.clients:
+#             if isinstance(node, str):
+#                 outputs.add(r)
+#             elif isinstance(node.op, Elemwise) and node.outputs[0].type.broadcastable == out.type.broadcastable:
+#                 for input in node.inputs:
+#                     grab_up(input, out, seen, inputs, outputs)
+#                 for output in node.outputs:
+#                     grab_down(output, out, seen, inputs, outputs)
+#             else:
+#                 outputs.add(r)
+                
+#     for node in reversed(list(env.toposort())):
+#         if node in env.nodes and isinstance(node.op, Elemwise):
+#             inputs = set()
+#             outputs = set(node.outputs)
+#             out = node.outputs[0]
+#             for input in node.inputs:
+#                 grab_up(input, out, set(), inputs, outputs)
+#             if inputs == set(node.inputs) and outputs == set(node.outputs):
+#                 continue
+#             print 'AAAAAAAAAAA', [__i in outputs for __i in inputs]
+#             inputs, outputs = list(inputs), list(outputs)
+#             composite = make_composite(inputs, outputs)
+#             print composite
+#             print gof.Env(*gof.graph.clone(inputs, outputs))
+#             new_node = Elemwise(composite).make_node(*inputs)
+#             print 'yea!!!!!', len(new_node.inputs), len(new_node.outputs)
+#             env.replace_all_validate(zip(outputs, new_node.outputs))
+
+
+# add(mul(input, neg(softplus(neg(*2 -> add(<Tensor(float64, matrix)>, InplaceDimShuffle{x,0}(b2)))))), mul(*1 -> sub([[ 1.]], input), neg(softplus(*2))))
+# sub(neg(mul(input, Elemwise{sub}([[ 1.]], *3 -> Elemwise{scalar_sigmoid}(*2)))), neg(mul(*1, *3)))
+
+
+
+# #     for input in node.inputs:
+# #         i, o = grab_up(input, out)
+# #         inputs += i
+# #         outputs += o
+
+# # aaaaaaaaaaaaaaa
+# #             i, o = [], []
+# #             for output in node.outputs:
+# #                 results = grab_down(output, out)
+# # #                 if results is None:
+# # #                     return [input], []
+# #                 i += results[0]
+# #                 o += results[1]
+# #             return i, o
+
+
+
+
+#             inputs = []
+#             scalar_inputs = []
+#             these_inputs = []
+#             change = False
+#             for input in node.inputs:
+#                 owner = input.owner
+#                 if input.type.broadcastable == node.outputs[0].type.broadcastable \
+#                         and owner and isinstance(owner.op, Elemwise):
+#                     new_inputs = [i.type.to_scalar_type()() for i in owner.inputs]
+#                     inputs += owner.inputs
+#                     scalar_inputs += new_inputs
+#                     these_inputs.append(owner.op.scalar_op(*new_inputs))
+#                     change = True
+#                 #elif 
+#                 else:
+#                     inputs.append(input)
+#                     scalar_input = input.type.to_scalar_type()()
+#                     scalar_inputs.append(scalar_input)
+#                     these_inputs.append(scalar_input)
+#             if not change:
+#                 return False
+#             scalar_outputs = node.op.scalar_op.make_node(*these_inputs).outputs
+#             new_scalar_op = scalar.Composite(scalar_inputs, scalar_outputs)
+#             new_op = Elemwise(new_scalar_op)
+#             new_node = new_op.make_node(*inputs)
+#             ##print 'changed:', node, new_node.inputs
+#             ##print 'new!!', new_node
+#             print 'ding!', [input.type.broadcastable for input in new_node.inputs]
+#             return new_node.outputs
+
+
+
+# @gof.local_optimizer([None, None])
+# def local_loop_fusion(node):
+#     if not isinstance(node.op, Elemwise):
+#         return False
+#     ##print 'looking at:', node
+#     inputs = []
+#     scalar_inputs = []
+#     these_inputs = []
+#     change = False
+#     for input in node.inputs:
+#         owner = input.owner
+#         if input.type.broadcastable == node.outputs[0].type.broadcastable \
+#                 and owner and isinstance(owner.op, Elemwise):
+#             new_inputs = [i.type.to_scalar_type()() for i in owner.inputs]
+#             inputs += owner.inputs
+#             scalar_inputs += new_inputs
+#             these_inputs.append(owner.op.scalar_op(*new_inputs))
+#             change = True
+#         #elif 
+#         else:
+#             inputs.append(input)
+#             scalar_input = input.type.to_scalar_type()()
+#             scalar_inputs.append(scalar_input)
+#             these_inputs.append(scalar_input)
+#     if not change:
+#         return False
+#     scalar_outputs = node.op.scalar_op.make_node(*these_inputs).outputs
+#     new_scalar_op = scalar.Composite(scalar_inputs, scalar_outputs)
+#     new_op = Elemwise(new_scalar_op)
+#     new_node = new_op.make_node(*inputs)
+#     ##print 'changed:', node, new_node.inputs
+#     ##print 'new!!', new_node
+#     print 'ding!', [input.type.broadcastable for input in new_node.inputs]
+#     return new_node.outputs
+
+# loop_fusion = gof.EquilibriumOptimizer([local_loop_fusion], max_depth = 3, max_use_ratio = 1)
+# compile.optdb.register('loop_fusion', loop_fusion, 98, 'fast_run')
+
+
+
+
 
 
