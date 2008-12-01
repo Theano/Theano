@@ -407,7 +407,14 @@ class Canonizer(gof.LocalOptimizer):
     def get_num_denum(self, input):
         if input.owner is None or input.owner.op not in [self.main, self.inverse, self.reciprocal]:
             if input.owner and isinstance(input.owner.op, T.DimShuffle):
-                return self.get_num_denum(input.owner.inputs[0])
+                dsn = input.owner
+                dsop = dsn.op
+                dsi0 = dsn.inputs[0]
+                compatible_order = ('x',) * (input.type.ndim - dsi0.type.ndim) + tuple(range(dsi0.type.ndim))
+                if dsop.new_order == compatible_order:
+                    return self.get_num_denum(input.owner.inputs[0])
+                else:
+                    return [input], []
             else:
                 return [input], []
         num = []
@@ -507,6 +514,8 @@ class Canonizer(gof.LocalOptimizer):
         elif op == self.reciprocal:
             reorg = len(iops.intersection([self.inverse, self.reciprocal])) != 0
 
+        assert len(node.outputs) == 1
+
         orig_num, orig_denum = self.get_num_denum(node.outputs[0])
         num, denum = list(orig_num), list(orig_denum)
         num, denum = self.simplify(num, denum)
@@ -522,6 +531,7 @@ class Canonizer(gof.LocalOptimizer):
             #new = T.fill(out, new)
             elem_op = T.Elemwise(scalar.Identity(scalar.specific_out(getattr(scalar, out.type.dtype))))
             new = T.fill(out, elem_op(new))
+
         if new.broadcastable != out.broadcastable:
             #this case is tricky... we need to provide exactly the same kind of broadcastable
             #pattern, but only if legal...
@@ -541,7 +551,10 @@ class Canonizer(gof.LocalOptimizer):
                 new = dimshuffle_op(new)
 
         # if our if's above worked, this should be true. OTW investigate.
-        assert new.type == out.type
+        if new.type != out.type:
+            print >> sys.stderr, 'CANONIZE FAILED: new out = ', new, out
+            assert new.type == out.type
+
         return [new]
 
     def __str__(self):

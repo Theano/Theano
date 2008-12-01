@@ -335,7 +335,10 @@ class Elemwise(Op):
     
     def __setstate__(self, d):
         self.__dict__.update(d)
-        self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
+        if self.scalar_op.nin > 0:
+            self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
+        else:
+            self.ufunc = None
 
     def make_node(self, *inputs):
         """
@@ -498,7 +501,13 @@ class Elemwise(Op):
         # the first (faster) version leads to segfaults
         ufunc_args = inputs # + output_storage
         ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
-        results = ufunc(*ufunc_args)
+        
+        try:
+            results = ufunc(*ufunc_args)
+        except:
+            errormsg = 'Failed calling ufunc for op', self.scalar_op,\
+                        'for params of shape', [arg.shape for arg in ufunc_args]
+            raise Exception, errormsg
         if ufunc.nout == 1: results = [results]
         for result, storage in zip(results, output_storage):
             if storage[0].shape:
