@@ -112,16 +112,16 @@ class Linker(object):
 
 
 class Container(object):
-    """WRITEME
+    """WRITEME[Fred: fill the WRITEME I need it! Event if is partial.]
     """
     def __init__(self, r, storage, readonly = False, strict = False, name = None):
         """WRITEME
 
         :Parameters:
-         `r`: 
+         `r`: a result
          `storage`: 
          `readonly`: 
-         `strict`: 
+         `strict`: if True, we don't allow type casting.
          `name`: 
 
         """
