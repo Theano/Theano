@@ -333,10 +333,28 @@ class SanityCheckFunction(Function):
             fn[item] = value
 
     def __call__(self, *args, **kwargs):
+
+        for fn in self.others:
+            for stor1, stor2 in zip(self.input_storage, fn.input_storage):
+                stor2.value = copy(stor1.value)
+
         results = super(SanityCheckFunction, self).__call__(*args, **kwargs)
+
         all_outputs = [copy(c.value) for c in self.output_storage] # we keep a copy to make sure it's not overwritten
         for fn in self.others:
             fn(*args, **kwargs)
+
+            for i, (c1, c2, input) in enumerate(zip(self.input_storage, fn.input_storage, self.maker.inputs)):
+                if not input.mutable:
+                    if not self.check_equal(c1.value, c2.value):
+                        name = c2.name
+                        raise ValueError("Input #%i%s using %s and %s differs."
+                                         % (i,
+                                            " (%s)" % name if name else "",
+                                            self.maker.mode,
+                                            fn.maker.mode),
+                                         c1.value, c2.value)
+
             # This checks all output storage (this includes state variables that we updated)
             # This is ok because the results of a call stick around in their storage
             for i, (r1, c2) in enumerate(zip(all_outputs, fn.output_storage)):
@@ -689,6 +707,7 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
+    mode = predefined_modes.get(mode, mode)
     if isinstance(mode, (list, tuple)): # "mode comparison" semantics
         if not mode:
             raise ValueError("Please provide at least one mode.")

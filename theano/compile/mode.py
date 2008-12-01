@@ -139,9 +139,12 @@ class Mode(object):
 
 FAST_COMPILE = Mode('py', 'fast_compile')
 FAST_RUN = Mode('c|py', 'fast_run')
+SANITY_CHECK = [Mode('c|py', None),
+                Mode('c|py', 'fast_run')]
 
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
-                    'FAST_RUN': FAST_RUN}
+                    'FAST_RUN': FAST_RUN,
+                    'SANITY_CHECK': SANITY_CHECK}
 default_mode = 'FAST_COMPILE'
 
 def register_mode(name, mode):
