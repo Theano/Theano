@@ -574,6 +574,14 @@ class Elemwise(Op):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
 
+# def elemwise_to_scal(env):
+#     mapping = {}
+#     inputs = []
+#     outputs = []
+#     for node in env.io_toposort():
+#         if not isinstance(node.op, Elemwise):
+#             raise TypeError('All ops in the graph must be Elemwise.')
+
 
 
 ################
