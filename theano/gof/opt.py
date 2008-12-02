@@ -178,29 +178,38 @@ class MergeOptimizer(Optimizer):
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
 
-    def apply(self, env):
-        cid = _metadict()     #result -> result.desc()  (for constants)
-        inv_cid = _metadict() #desc -> result (for constants)
-        for i, r in enumerate([r for r in env.results if isinstance(r, graph.Constant)]):
-            sig = r.signature()
-            other_r = inv_cid.get(sig, None)
-            if other_r is not None:
-                if r.name: other_r.name = r.name
-                env.replace_validate(r, other_r)
+    def apply_constant_merge(self, env):
+        const_sig = _metadict()     # result -> result.signature()  (for constants)
+        const_sig_inv = _metadict() # signature -> result (for constants)
+        for i, c in enumerate([r for r in env.results if isinstance(r, graph.Constant)]):
+            sig = c.signature()
+            other_c = const_sig_inv.get(sig, None)
+            if other_c is not None:
+                # multiple names will clobber each other.. 
+                # we adopt convention to keep the last name
+                if c.name:  
+                    other_c.name = c.name
+                env.replace_validate(c, other_c)
             else:
-                cid[r] = sig
-                inv_cid[sig] = r
+                #this is a new constant
+                const_sig[c] = sig
+                const_sig_inv[sig] = c
+
+    def apply_node_merge(self, env):
         # we clear the dicts because the Constants signatures are not necessarily hashable
-        # and it's more efficient to give them an integer cid like the other Results
-        cid.clear()
-        inv_cid.clear()
+        # and it's more efficient to give them an integer like the other Results
+
+        symbol_idx = {}       #result -> int
+        symbol_idx_inv = {}   #int -> result (inverse of symbol_idx)
+
+        #add all graph sources to the symbol_idx dictionaries (arbitrary order)
         for i, r in enumerate(r for r in env.results if r.owner is None):
-            cid[r] = i
-            inv_cid[i] = r
+            symbol_idx[r] = i
+            symbol_idx_inv[i] = r
 
         for node in _list_of_nodes(env):
-            node_cid = (node.op, tuple([cid[input] for input in node.inputs]))
-            dup = inv_cid.get(node_cid, None)
+            node_cid = (node.op, tuple([symbol_idx[input] for input in node.inputs]))
+            dup = symbol_idx_inv.get(node_cid, None)
             success = False
             if dup is not None:
                 success = True
@@ -213,12 +222,17 @@ class MergeOptimizer(Optimizer):
                 except InconsistencyError, e:
                     success = False
             if not success:
-                cid[node] = node_cid
-                inv_cid[node_cid] = node
+                symbol_idx[node] = node_cid
+                symbol_idx_inv[node_cid] = node
                 for i, output in enumerate(node.outputs):
                     ref = (i, node_cid)
-                    cid[output] = ref
-                    inv_cid[ref] = output
+                    symbol_idx[output] = ref
+                    symbol_idx_inv[ref] = output
+
+    #TODO: Consider splitting this into a separate optimizer (SeqOptimizer)
+    def apply(self, env):
+        self.apply_constant_merge(env)
+        self.apply_node_merge(env)
 
 
 def MergeOptMerge(opt):

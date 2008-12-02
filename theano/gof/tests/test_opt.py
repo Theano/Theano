@@ -337,7 +337,6 @@ class TestMergeOptimizer:
         assert strg == '[Op1(y, y)]' or strg == '[Op1(z, z)]'
 
 
-
 class TestEquilibrium(object):
 
     def test_1(self):

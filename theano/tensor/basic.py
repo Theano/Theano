@@ -105,7 +105,7 @@ def as_tensor(x, name = None):
 _as_tensor = as_tensor
 
 
-def constant(x):
+def constant(x, name=None):
     """Return a symbolic `Constant` with value `x`
     
     :Exceptions:
@@ -117,7 +117,7 @@ def constant(x):
         x_ = numpy.asarray(x)
     try:
         return TensorConstant(Tensor(dtype = x_.dtype,
-                                     broadcastable = [d == 1 for d in x_.shape]), x_)
+                                     broadcastable = [d == 1 for d in x_.shape]), x_, name=name)
     except:
         raise TypeError("Could not convert %s to Tensor" % x, type(x))
 
@@ -554,11 +554,22 @@ class _tensor_py_operators:
 class TensorResult(Result, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Result` class."""
 
+class TensorConstantSignature(tuple):
+    def __eq__(self, other):
+        (a, b), (x,y) = self, other
+        #N.B. compare shape to ensure no broadcasting in ==
+        return (x == a) and (b.shape == y.shape) and (numpy.all(b == y)) 
+    def __hash__(self):
+        a, b = self
+        return hash(type(self)) ^ hash(a) ^ hash(b.shape)
+
 class TensorConstant(Constant, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Constant` class.
     
     To create a TensorConstant, use the `constant` function in this module.
     """
+    def signature(self):
+        return TensorConstantSignature((self.type, self.data))
 
 class TensorValue(Value, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Value` class.

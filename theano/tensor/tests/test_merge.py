@@ -1,0 +1,76 @@
+import numpy
+from theano.gof.type import Type
+from theano.gof.graph import Result, Apply, Constant
+from theano.gof.op import Op
+from theano.gof.opt import *
+from theano.gof.env import Env
+from theano.gof.toolbox import *
+import theano.tensor.basic as T
+
+def as_result(x):
+    if not isinstance(x, Result):
+        raise TypeError("not a Result", x)
+    return x
+class MyType(Type):
+
+    def filter(self, data):
+        return data
+
+    def __eq__(self, other):
+        return isinstance(other, MyType)
+
+class MyOp(Op):
+
+    def __init__(self, name, dmap = {}, x = None):
+        self.name = name
+        self.destroy_map = dmap
+        self.x = x
+    
+    def make_node(self, *inputs):
+        inputs = map(as_result, inputs)
+        for input in inputs:
+            if not isinstance(input.type, MyType):
+                raise Exception("Error 1")
+        outputs = [MyType()()]
+        return Apply(self, inputs, outputs)
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    def __eq__(self, other):
+        return self is other or isinstance(other, MyOp) and self.x is not None and self.x == other.x
+
+    def __hash__(self):
+        return self.x if self.x is not None else id(self)
+op1 = MyOp('Op1')
+
+
+def test_merge_with_weird_eq():
+    """numpy arrays don't compare equal like other python objects"""
+
+    #SCALAR CASE
+    x = T.constant(numpy.asarray(1), name='x')
+    y = T.constant(numpy.asarray(1), name='y')
+    g = Env([x, y], [x+y])
+    MergeOptimizer().optimize(g)
+
+    assert len(g.nodes) == 1
+    node = list(g.nodes)[0]
+    assert len(node.inputs) == 2
+    assert node.inputs[0] is node.inputs[1]
+
+    #NONSCALAR CASE
+    # This was created to test TensorConstantSignature
+    x = T.constant(numpy.ones(5), name='x')
+    y = T.constant(numpy.ones(5), name='y')
+    g = Env([x, y], [x+y])
+    MergeOptimizer().optimize(g)
+
+    assert len(g.nodes) == 1
+    node = list(g.nodes)[0]
+    assert len(node.inputs) == 2
+    assert node.inputs[0] is node.inputs[1]
+
