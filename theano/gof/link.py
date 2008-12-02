@@ -296,7 +296,7 @@ class PerformLinker(LocalLinker):
     """
 
     def __init__(self, allow_gc=False):
-        #TODO: set allow_gc = True by default, when it works with the c&py linker
+        #TODO: set allow_gc = True by default, when it works with the OpWiseCLinker
         self.env = None
         self.allow_gc = allow_gc
 
