@@ -394,7 +394,8 @@ class Elemwise(Op):
             other_items = other.inplace_pattern.items()
             items.sort()
             other_items.sort()
-            return self.scalar_op == other.scalar_op and items == other_items
+            rval = (self.scalar_op == other.scalar_op) and (items == other_items)
+            return rval
         return False
 
     def __hash__(self):
