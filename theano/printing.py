@@ -8,11 +8,19 @@ from gof import Op, Apply
 
 class Print(Op):
     """This identity-like Op has the side effect of printing a message followed by its inputs
-    when it runs.
+    when it runs. Default behaviour is to print the __str__ representation. Optionally, one 
+    can pass a list of the input member functions to execute, or attributes to print.
+    
+    @type message: String
+    @param message: string to preprend to the output
+    @type attrs: list of Strings
+    @param attrs: list of input node attributes or member functions to print. Functions are
+    identified through callable(), executed and their return value printed.
     """
     view_map={0:[0]}
-    def __init__(self,message=""):
+    def __init__(self,message="", attrs=("__str__",)):
         self.message=message
+        self.attrs=attrs
 
     def make_node(self,xin):
         xout = xin.type.make_result()
@@ -22,7 +30,9 @@ class Print(Op):
         xin, = inputs
         xout, = output_storage
         xout[0] = xin
-        print self.message,xin
+        for attr in self.attrs:
+            temp = getattr(xin, attr)
+            print self.message, attr,'=', temp() if callable(temp) else temp
 
     def grad(self,input,output_gradients):
         return output_gradients

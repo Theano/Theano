@@ -1582,6 +1582,132 @@ class T_op_cache(unittest.TestCase):
         a = numpy.random.rand(5,2)
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
+
+def test_reshape():
+
+    a = dvector()
+    b = dmatrix()
+
+    c = reshape(a, [2,3])
+
+    #basic
+    f = function([a], c, mode='FAST_COMPILE')
+    assert numpy.all(f(numpy.asarray([0,1,2,3,4,5])) == numpy.asarray([[0,1,2], [3,4,5]]))
+
+    #test that it works without inplace operations
+    a_val = numpy.asarray([0,1,2,3,4,5])
+    a_val_copy = numpy.asarray([0,1,2,3,4,5])
+    b_val = numpy.asarray([[0,1,2],[3,4,5]])
+
+    f_sub = function([a,b], c-b, mode='FAST_COMPILE')
+    assert numpy.all(f_sub(a_val, b_val) == 0.0)
+    assert numpy.all(a_val == a_val_copy)
+
+    #test that it works with inplace operations
+    a_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
+    a_val_copy = numpy.asarray([0,1,2,3,4,5], dtype='float64')
+    b_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+
+    f_sub = function([a,b], c-b, mode=compile.Mode(optimizer='fast_run', linker='c|py'))
+    assert numpy.all(f_sub(a_val, b_val) == 0.0)
+    assert numpy.all(a_val == a_val_copy)
+
+    # verify gradient
+    tensor.verify_grad(None, Reshape(2), [a_val,numpy.asarray([2,3], dtype='float64')])
+
+
+def test_flatten():
+    """ Flatten always returns a copy of the array. There is no danger with in-place
+    operations and thus no need to test it."""
+
+    a = dmatrix()
+    c = flatten(a)
+    f = function([a], c, mode='FAST_COMPILE')
+    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+    c_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
+    assert numpy.all(f(a_val)==c_val)
+    f = function([a], c, mode='FAST_RUN')
+    assert numpy.all(f(a_val)==c_val)
+
+    tensor.verify_grad(None, Flatten(), [a_val])
+
+
+# TODO: write test case for Tile Op
+def test_tile():
+    pass 
+
+
+class test_tensordot(unittest.TestCase):
+
+    def test0(self):
+
+        for mod in 'FAST_COMPILE', 'FAST_RUN', default_mode:
+
+            # test vector-vector
+            avec = dvector()
+            bvec = dvector()
+            axes = ((0,),(0,))
+            c = tensordot(axes)(avec, bvec)
+            f1 = function([avec,bvec],c, mode=mod)
+            aval = numpy.random.rand(5);
+            bval = numpy.random.rand(5);
+            self.failUnless(numpy.tensordot(aval,bval,axes) == \
+                            f1(aval,bval))
+            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+
+            # test matrix-vector
+            bmat = dmatrix()
+            axes = ((0,),(1,))
+            c = tensordot(axes)(avec, bmat)
+            f2 = function([avec,bmat],c, mode=mod)
+            aval = numpy.random.rand(5);
+            bval = numpy.random.rand(8,5);
+            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                      f2(aval,bval)))
+            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+
+            # test matrix-matrix
+            amat = dmatrix()
+            axes = ((1,),(0,))
+            c = tensordot(axes)(amat, bmat)
+            f3 = function([amat,bmat],c, mode=mod)
+            aval = numpy.random.rand(4,7);
+            bval = numpy.random.rand(7,9);
+            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                      f3(aval,bval)))
+            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+
+            # test ndarray-matrix, sum over one dim of matrix
+            atens = Tensor('float64', broadcastable=(False,)*4)()
+            axes = ((2,),(1,))
+            c = tensordot(axes)(atens, bmat)
+            f4 = function([atens,bmat],c, mode=mod)
+            aval = numpy.random.rand(1,2,3,4);
+            bval = numpy.random.rand(2,3);
+            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                      f4(aval,bval)))
+            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+
+            # test ndarray-ndarray
+            atens = Tensor('float64', broadcastable=(False,)*4)()
+            btens = Tensor('float64', broadcastable=(False,)*3)()
+            axes = ((1,3),(0,2))
+            c = tensordot(axes)(atens, btens)
+            f5 = function([atens,btens],c, mode=mod)
+            aval = numpy.random.rand(4,3,5,2);
+            bval = numpy.random.rand(3,4,2);
+            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                      f5(aval,bval)))
+            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+            
+            axes = (axes[1],axes[0])
+            c = tensordot(axes)(btens, atens)
+            f6 = function([btens,atens],c, mode=mod)
+            self.failUnless(numpy.all(numpy.tensordot(bval,aval,axes) == \
+                                      f6(bval,aval)))
+            tensor.verify_grad(None, TensorDot(axes), [bval,aval])
+
+
 if __name__ == '__main__':
     if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
         default_mode = compile.Mode(linker = 'c&py',

@@ -79,6 +79,7 @@ def as_tensor(x, name = None):
      - `TypeError`: raised if `x` cannot be converted to a Tensor Result
 
     """
+
     if isinstance(x, gof.Apply):
         #TODO: use Apply's default output mechanism
         if len(x.outputs) != 1:
@@ -1659,6 +1660,8 @@ def get_vector_length(v):
     cases.
 
     """
+    if not isinstance(v, gof.Result):
+        v = constant(v)
     if v.ndim != 1:
         raise TypeError('argument must be symbolic vector')
     if isinstance(v, gof.Constant) and v.type.ndim == 1:
@@ -1766,6 +1769,106 @@ class MakeVectorPrinter:
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
 
 
+class Reshape(Op):
+    """Perform a reshape operation of the input x to the new shape shp.
+    The number of dimensions to which to reshape to (ndim) must be known at graph 
+    build time."""
+    view_map = {0: [0]} #output 0 is potentially aliased to inputs [0]
+    def __init__(self, ndim):
+        self.ndim = ndim
+    def __eq__(self, other):
+        return (type(other) is Reshape) and (other.ndim == self.ndim)
+    def __hash__(self):
+        return hash(Reshape) ^ hash(self.ndim)
+    def make_node(self, x, shp):
+        x = as_tensor(x)
+        shp = as_tensor(shp)
+        return gof.Apply(self, [x, shp], [tensor(x.type.dtype, [False]*self.ndim)])
+    def perform(self, node, (x, shp), (out,)):
+        if (len(shp) != self.ndim):
+            raise ValueError('shape argument to Reshape.perform has incorrect length %i'
+                    ', should be %i' % (len(shp), self.ndim), shp)
+        try:
+            out[0] = numpy.reshape(x, shp)
+        except:
+            raise ValueError('Cannot reshape input of shape %s to shape %s' % (x.shape,shp))
+    def grad(self, (x, shp), (g_out,)):
+        return [reshape(g_out, shape(x), ndim=x.ndim), None]
+
+def reshape(x, newshape, ndim=None):
+    if not hasattr(reshape, 'op'):
+        reshape.op = {}
+    if ndim is None:
+        ndim = get_vector_length(newshape)
+    if ndim not in reshape.op:
+        reshape.op[ndim] = Reshape(ndim)
+    return reshape.op[ndim](x, newshape)
+
+
+class Flatten(Op):
+    """Flattens the input node"""
+    #Could be done as a reshape, but this is more direct.
+    #TODO: optimize reshape(x, prod(shape(x))) -> flatten(x)
+    def __init__(self, ldim=None):
+        self.ldim = ldim
+    def make_node(self, x):
+        x = as_tensor(x)
+        outdim = 1 if self.ldim is None else x.ndim - self.ldim +1
+        return gof.Apply(self, [x], [tensor(x.type.dtype, (False,)*outdim)])
+    def perform(self, node, (x,), (out,)):
+        # flatten the entire tensor or just the last ldim dimensions
+        out[0] = x.flatten() if self.ldim is None else\
+                 x.reshape(numpy.r_[x.shape[:-self.ldim],\
+                           numpy.prod(x.shape[-self.ldim:])])
+    def grad(self, (x,), (g_out,)):
+        return [reshape(g_out, shape(x), x.ndim)]
+
+def flatten(ldim=None): return Flatten(ldim)
+
+class TileGrad(Op):
+    """Calculates the gradient of the Tile Op"""
+    #this is so weird, I can't think of how to make this a general thing.
+    def make_node(self, x, reps, g_out):
+        return gof.Apply(self, [x, reps, g_out], [x.type()])
+    def perform(self, node, (x, reps, g_out), (gx,)):
+        xsh = x.shape
+        if len(reps)==2 and reps[1] == 1 and len(x.shape) == 1:
+            gx[0] = numpy.sum(g_out, axis=0)
+        else:
+            raise NotImplementedError('x.shape, reps combination not supported',
+                    (x.shape, reps))
+tilegrad = TileGrad()
+
+
+class Tile(Op):
+    """Tiles its input according to reps. Reps is of same dimension as x
+    and contains the number of times to tile x in each dimension"""
+    def __init__(self, ndim):
+        self.ndim = ndim
+    def __eq__(self, other):
+        return (type(other) is Tile) and (other.ndim == self.ndim)
+    def __hash__(self):
+        return hash(Tile) ^ hash(self.ndim)
+
+    def make_node(self, x, reps):
+        x = as_tensor(x)
+        reps = as_tensor(reps)
+        return gof.Apply(self, [x, reps], [tensor(x.type.dtype, [False,] * self.ndim)])
+    def perform(self, node, (x, reps), (out,)):
+        out[0] = numpy.tile(x, reps)
+        if len(out[0].shape) != self.ndim:
+            raise ValueError('Tile.perform produced incorrect shape')
+    def grad(self, (x, reps), (g_out,)):
+        return [tilegrad(x, reps, g_out), None]
+
+def tile(x, reps, ndim=None):
+    if not hasattr(tile, 'op'):
+        tile.op = {}
+    ndim = len(reps) if ndim is None else ndim #not sure if len(shp) is going to work.
+    if ndim not in tile.op:
+        tile.op[ndim] = Tile(ndim)
+    return tile.op[ndim](x, reps)
+
 
 
 #########################
@@ -1834,12 +1937,88 @@ class Dot(Op):
         if x.type.ndim == 1 and y.type.ndim > 1:
             return dot(gz, y.T), outer(x.T, gz)
         if x.type.ndim > 1 and y.type.ndim == 1:
-            return outer(gz, y.T), dot(x.T, gz)
+            return outer(gz, y.T), dot(x.T, gz) 
         return dot(gz, y.T), dot(x.T, gz)
     def __str__(self):
         return "dot"
 dot = Dot()
 pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'], -1, 'left'))
+
+#########################
+# Linalg : TensorDot
+#########################
+class TensorDotGrad(Op):
+    def __init__(self, axes):
+        self.axes = axes;
+
+    def make_node(self, x, y, gz):
+        assert isinstance(x, Result)
+        assert isinstance(y, Result)
+        assert isinstance(gz, Result)
+        gx = x.type()
+        gy = y.type()
+        return Apply(self, [x,y,gz], [gx, gy])
+
+    def perform(self, node, (x, y, gz), (gx,gy)):
+
+        sum_over_y = range(y.ndim)
+        [sum_over_y.remove(q) for q in self.axes[1]]
+        sum_over_x = range(x.ndim)
+        [sum_over_x.remove(q) for q in self.axes[0]]
+
+        _gx = numpy.tensordot(gz, y, [range(x.ndim-len(self.axes[0]),gz.ndim), sum_over_y])
+        idx = numpy.hstack((sum_over_x, self.axes[0]))
+        newshapex = numpy.zeros(x.ndim)
+        newshapex[[newpos for newpos in idx]] = [i for i in range(x.ndim)]
+        gx[0] = numpy.transpose(_gx, newshapex)
+        assert str(gx[0].dtype) == 'float64'
+
+        _gy = numpy.tensordot(x, gz, [sum_over_x, range(x.ndim-len(self.axes[0]))])
+        idy = numpy.hstack((self.axes[1], sum_over_y))
+        newshapey = numpy.zeros(y.ndim)
+        newshapey[[newpos for newpos in idy]] = [i for i in range(y.ndim)]
+        gy[0] = numpy.transpose(_gy, newshapey)
+        assert str(gy[0].dtype) == 'float64'
+
+tensordot_grad = TensorDotGrad
+
+class TensorDot(Op):
+    """Compute tensor-tensor products over the given axes. See numpy documentation for details.
+
+    """
+
+    def __init__(self, axes):
+        self.axes = axes;
+
+    def make_node(self, x, y):
+
+        axesdim = numpy.size(self.axes)/2
+        x, y = map(as_tensor, [x, y])
+
+        if axesdim > x.type.ndim or axesdim > y.type.ndim:
+            raise TypeError('Cannot sum over more dimensions than input. %i > %i,%i' %
+                    axesdim, x.type.ndim, y.type.ndim)
+       
+        outdim = x.type.ndim + y.type.ndim - 2*axesdim
+        output = tensor(dtype=x.dtype, broadcastable=[None]*outdim);
+        return Apply(self, inputs=[x,y], outputs=[output,])
+
+    def perform(self, node, (x, y), (z,)):
+        try:
+            z[0] = numpy.asarray(numpy.tensordot(x, y, self.axes))
+            assert str(z[0].dtype) == 'float64'
+        except ValueError, e:
+            # The error raised by numpy has no shape information, we mean to add that
+            e.args = e.args + (x.shape, y.shape, self.axes)
+            raise
+
+    def grad(self, (x, y), (gz,)):
+        gx, gy = tensordot_grad(self.axes)(x, y, gz)
+        return [gx, gy]
+    
+    def __str__(self):
+        return "tensordot"
+tensordot = TensorDot
 
 class Outer(Op):
     """ Compute vector-vector outer product
@@ -1988,11 +2167,17 @@ class numeric_grad:
             errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
         return numpy.max(errs)
 
+# TODO: remove testcase parameter as it is not used... and useless (forces you to
+# run your testcases from a unittest.TestCase class = not necessary)
 def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0.0001,
         mode=compile.Mode(optimizer=None, linker='c&py')):
     """ WRITEME
     
     testcase.failUnless(analytic gradient matches finite-diff gradient)
+
+    :param pt: the list of numpy.ndarrays to use as inputs to the op
+    :param op: something that behaves like an Op instance.
+    :param testcase: the thing to call `fail` on if things go awry.
     
     """
     pt = [numpy.array(p) for p in pt]
@@ -2050,6 +2235,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
             #print 'analytic grad', analytic_grad
             #print 'numeric grad', num_grad.gf
             raise Exception(verify_grad.E_grad, (max_err, tol))
+
 verify_grad.E_grad = 'gradient error exceeded tolerance'
 """This error is raised when a gradient is calculated, but incorrect."""
 
