@@ -123,6 +123,9 @@ class DimShuffle(Op):
         if self.inplace:
             self.view_map = {0: [0]}
 
+        self._hashval = hash(type(self)) ^ hash(self.inplace) \
+                ^ hash(self.new_order) ^ hash(self.input_broadcastable)
+
     def make_node(self, input):
         ib = tuple(input.type.broadcastable)
         if not ib == self.input_broadcastable:
@@ -146,8 +149,7 @@ class DimShuffle(Op):
             and self.input_broadcastable == other.input_broadcastable
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace) \
-                ^ hash(self.new_order) ^ hash(self.input_broadcastable)
+        return self._hashval
 
     def __str__(self):
         if self.inplace:
@@ -327,6 +329,12 @@ class Elemwise(Op):
         else:
             self.ufunc = None
 
+        #precompute the hash of this node
+        items = self.inplace_pattern.items()
+        items.sort()
+        tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
+        self._hashval = hash(self.scalar_op) ^ hash(tuple_items)
+
     def __getstate__(self):
         d = copy(self.__dict__)
         d.pop('ufunc')
@@ -399,9 +407,7 @@ class Elemwise(Op):
         return False
 
     def __hash__(self):
-        items = self.inplace_pattern.items()
-        items.sort()
-        return hash(self.scalar_op) ^ hash(tuple(items))
+        return self._hashval
 
     def __str__(self):
         if self.name is None:

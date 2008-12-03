@@ -773,10 +773,12 @@ class OpWiseCLinker(link.LocalLinker):
 
     def __init__(self, 
             fallback_on_perform = True, 
+            allow_gc = True,
             nice_errors = True):
         self.env = None
         self.fallback_on_perform = fallback_on_perform
         self.nice_errors = nice_errors
+        self.allow_gc = allow_gc
 
     def accept(self, env, no_recycling = []):
         if self.env is not None and self.env is not env:
@@ -792,6 +794,11 @@ class OpWiseCLinker(link.LocalLinker):
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(env, order, input_storage, output_storage)
+        if self.allow_gc:
+            computed, last_user = link.gc_helper(order)
+            post_thunk_old_storage = []
+        else:
+            post_thunk_old_storage = None
 
         thunks = []
         for node in order:
@@ -840,6 +847,11 @@ class OpWiseCLinker(link.LocalLinker):
                 else:
                     raise
 
+            if self.allow_gc:
+                post_thunk_old_storage.append([storage_map[input] 
+                    for input in node.inputs
+                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
+
         if no_recycling is True:
             no_recycling = storage_map.values()
             no_recycling = utils.difference(no_recycling, input_storage)
@@ -847,8 +859,11 @@ class OpWiseCLinker(link.LocalLinker):
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
         f = link.streamline(env, thunks, order, 
+                post_thunk_old_storage,
                 no_recycling = no_recycling, 
                 nice_errors = self.nice_errors)
+
+        f.allow_gc = self.allow_gc
 
         return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \

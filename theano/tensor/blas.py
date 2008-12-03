@@ -358,8 +358,8 @@ def res_is_a(node, op, maxclients=None):
             and (len(node.clients) <= maxclients if maxclients is not None else True)
 
 class GemmLocalOptimizer(LocalOptimizer):
-    """This is a massive beast for recognizing all the ways that a subtraction could be
-    replaced by a GEMM
+    """This is a massive beast for recognizing all the ways that a subtraction or addition
+    could be replaced by a GEMM
 
     It depends on `local_transposed_dot` to canonicalize the graph a bit by swapping
     dot(a,b).T -> dot(b.T, a.T)

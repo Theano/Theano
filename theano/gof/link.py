@@ -111,18 +111,20 @@ class Linker(object):
         return execute
 
 
+#TODO: Move this class to the compile module, where it is used (and for which it exists).
 class Container(object):
-    """WRITEME[Fred: fill the WRITEME I need it! Event if is partial.]
+    """This class joins a result with its computed value. 
+    It is used in linkers, especially for the inputs and outputs of a Function.
     """
     def __init__(self, r, storage, readonly = False, strict = False, name = None):
         """WRITEME
 
         :Parameters:
          `r`: a result
-         `storage`: 
-         `readonly`: 
+         `storage`: a list of length 1, whose element is the value for `r`
+         `readonly`: True indicates that this should not be setable by Function[r] = val
          `strict`: if True, we don't allow type casting.
-         `name`: 
+         `name`: A string (for pretty-printing?)
 
         """
         if not isinstance(storage, list) or not len(storage) >= 1:
@@ -226,7 +228,7 @@ def clear_storage_thunk(stg):
     thunk.inputs = [stg]
     return thunk
 
-def streamline(env, thunks, order, no_recycling = [], profiler = None, nice_errors = True):
+def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling = [], profiler = None, nice_errors = True):
     """WRITEME
 
     :param env:
@@ -234,6 +236,10 @@ def streamline(env, thunks, order, no_recycling = [], profiler = None, nice_erro
     :param thunks: the list of program instructions
 
     :param order: the list of apply instances that gave rise to the thunks (same order as thunks)
+
+    :param post_thunk_old_storage: a list (corresponding to thunks, order) whose elements are
+    lists of storage cells, that should be cleared after running the corresponding thunk.  A
+    value of None disables this functionality
 
     :param no_recycling: storage elements that cannot be 'recycled' by repeatedly executing the
     program.  These storage elements are cleared before re-running.
@@ -246,8 +252,28 @@ def streamline(env, thunks, order, no_recycling = [], profiler = None, nice_erro
     if profiler is not None: 
         raise NotImplementedError()
 
-    if nice_errors:
-        def f():
+    if len(thunks) != len(order):
+        raise ValueError('Length of thunks and order must match', 
+                (len(thunks), len(order)))
+
+    if post_thunk_old_storage:
+        if len(thunks) != len(post_thunk_old_storage):
+            raise ValueError('Length of thunks and post_thunk_old_storage must match', 
+                    (len(thunks), len(post_thunk_old_storage)))
+
+        def streamline_default_f():
+                for x in no_recycling:
+                    x[0] = None
+                try:
+                    for thunk, node, old_storage in zip(thunks, order, post_thunk_old_storage):
+                        thunk()
+                        for old_s in old_storage:
+                            old_s[0] = None
+                except:
+                    raise_with_op(node)
+        f = streamline_default_f
+    elif nice_errors:
+        def streamline_nice_errors_f():
             for x in no_recycling:
                 x[0] = None
             try:
@@ -255,14 +281,16 @@ def streamline(env, thunks, order, no_recycling = [], profiler = None, nice_erro
                     thunk()
             except:
                 raise_with_op(node)
+        f = streamline_nice_errors_f
     else:
         # don't worry about raise_with_op, just go a little faster.
         #there is a mix of python and c thunks
-        def f():
+        def streamline_fast_f():
             for x in no_recycling:
                 x[0] = None
             for thunk in thunks:
                 thunk()
+        f = streamline_fast_f
     return f
 
 class LocalLinker(Linker):
@@ -287,7 +315,26 @@ class LocalLinker(Linker):
         # 5. order: list of nodes, in the order they will be run by the function in (1)
         raise AbstractFunctionError
 
+def gc_helper(node_list):
+    """
+    :param node_list: list of Apply instances in program execution order
 
+    :rtype: a 2-tuple
+    :returns: FIRST, the set of Result instances which are computed by node_list, and SECOND a
+    dictionary that maps each Result instance to a the last node to use Result as an input.
+    
+    This is used to allow garbage collection within graphs.
+    """
+    #for freeing memory
+    last_user = {}
+    computed = set()
+    for node in node_list:
+        for input in node.inputs:
+            last_user[input] = node
+        for output in node.outputs:
+            computed.add(output)
+    return computed, last_user
+        
 class PerformLinker(LocalLinker):
     """WRITEME
 
@@ -295,7 +342,7 @@ class PerformLinker(LocalLinker):
     the L{Env} in the order given by L{Env.toposort}.
     """
 
-    def __init__(self, allow_gc=False):
+    def __init__(self, allow_gc=True):
         #TODO: set allow_gc = True by default, when it works with the OpWiseCLinker
         self.env = None
         self.allow_gc = allow_gc
@@ -325,24 +372,19 @@ class PerformLinker(LocalLinker):
 
         """
         env = self.env
-        order = env.toposort()
+        order = list(env.toposort())
         no_recycling = self.no_recycling
 
         thunks = []
-        new_order = []
 
         input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
 
-        #for freeing memory
         if self.allow_gc:
-            last_user = {}
-            computed = set()
-            for node in order:
-                for idx, input in enumerate(node.inputs):
-                    last_user[input] = (node, idx)
-                for output in node.outputs:
-                    computed.add(output)
-        
+            computed, last_user = gc_helper(order)
+            post_thunk_old_storage = []
+        else:
+            post_thunk_old_storage = None
+
         for node in order:
             node_input_storage = tuple(storage_map[input] for input in node.inputs)
             node_output_storage = tuple(storage_map[output] for output in node.outputs)
@@ -355,37 +397,40 @@ class PerformLinker(LocalLinker):
             thunk.outputs = node_output_storage
             thunk.perform = p
             thunks.append(thunk)
-            new_order.append(node)
 
             if self.allow_gc:
-                for idx, input in enumerate(node.inputs):
-                    if input not in computed:
-                        continue
-                    if input in env.outputs:
-                        continue
-                    if (node, idx) == last_user[input]:
-                        #print '... zeroing', id(storage_map[input])
-                        thunks.append(clear_storage_thunk(storage_map[input]))
-                        new_order.append(node)
+                post_thunk_old_storage.append([storage_map[input] 
+                    for input in node.inputs
+                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
 
-
+            if 0: # -JB 20081202
+                if self.allow_gc:
+                    for idx, input in enumerate(node.inputs):
+                        if input not in computed:
+                            continue
+                        if input in env.outputs:
+                            continue
+                        if (node, idx) == last_user[input]:
+                            #print '... zeroing', id(storage_map[input])
+                            thunks.append(clear_storage_thunk(storage_map[input]))
+                            new_order.append(node)
 
         if no_recycling is True: 
-            #True is like some special code for *everything*.
-            #FunctionMaker always passes a list I think   -JB
+            # True seems like some special code for *everything*?? -JB
+            # FunctionMaker always passes a list I think   -JB
             no_recycling = storage_map.values()
             no_recycling = utils.difference(no_recycling, input_storage)
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
         # The function that actually runs your program is one of the f's in streamline.
-        f = streamline(env, thunks, new_order, no_recycling = no_recycling, profiler = profiler)
+        f = streamline(env, thunks, order, post_thunk_old_storage, no_recycling = no_recycling, profiler = profiler)
   
+        f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
+
         return f, [Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
-            thunks, new_order
-
-
+            thunks, order
 
 class WrapLinker(Linker):
     """ WRITEME

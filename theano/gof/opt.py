@@ -18,7 +18,7 @@ import sys
 _optimizer_idx = [0]
 
 def _list_of_nodes(env):
-    return graph.io_toposort(env.inputs, env.outputs)
+    return list(graph.io_toposort(env.inputs, env.outputs))
 
 class Optimizer(object):
     """WRITEME
@@ -195,7 +195,7 @@ class MergeOptimizer(Optimizer):
                 const_sig[c] = sig
                 const_sig_inv[sig] = c
 
-    def apply_node_merge(self, env):
+    def exptime_apply_node_merge(self, env):
         # we clear the dicts because the Constants signatures are not necessarily hashable
         # and it's more efficient to give them an integer like the other Results
 
@@ -209,6 +209,7 @@ class MergeOptimizer(Optimizer):
 
         for node in _list_of_nodes(env):
             node_cid = (node.op, tuple([symbol_idx[input] for input in node.inputs]))
+            print 'NODE', node, node_cid
             dup = symbol_idx_inv.get(node_cid, None)
             success = False
             if dup is not None:
@@ -228,6 +229,52 @@ class MergeOptimizer(Optimizer):
                     ref = (i, node_cid)
                     symbol_idx[output] = ref
                     symbol_idx_inv[ref] = output
+    
+    def apply_node_merge(self, env):
+        # we clear the dicts because the Constants signatures are not necessarily hashable
+        # and it's more efficient to give them an integer like the other Results
+
+        nodes_seen = set()
+
+        for node in _list_of_nodes(env):
+            #
+            # these asserts ensure that the env has set the clients field properly the clients
+            # should at least contain `node` itself!
+            #
+            assert len(node.inputs[0].clients) > 0 
+            assert (node,0) in node.inputs[0].clients
+            merge_candidates = [c for (c,i) in node.inputs[0].clients if c in nodes_seen]
+            nodes_seen.add(node)
+            #print 'NODE', node, merge_candidates, node.inputs[0].clients
+            for candidate in merge_candidates:
+                inputs_match = all(node_in is cand_in for node_in, cand_in in zip(node.inputs, candidate.inputs))
+                if inputs_match and node.op == candidate.op:
+                    assert node is not candidate
+                    #
+                    #transfer clients from node to candidate
+                    #
+                    success = True
+                    assert len(node.outputs) == len(candidate.outputs)
+                    pairs = zip(node.outputs, candidate.outputs)
+
+                    #transfer names
+                    for node_output, cand_output in pairs:
+                        #clobber old name with new one
+                        #it's arbitrary... one of the names has to go
+                        if node_output.name:
+                            cand_output.name = node_output.name
+                    try:
+                        env.replace_all_validate(pairs)
+                    except InconsistencyError, e:
+                        success = False
+
+                    if success:
+                        #break out of the candidate loop
+                        break
+                    else:
+                        #try the next candidate
+                        pass
+
 
     #TODO: Consider splitting this into a separate optimizer (SeqOptimizer)
     def apply(self, env):

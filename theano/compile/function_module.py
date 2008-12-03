@@ -265,7 +265,22 @@ class Function(object):
                 raise TypeError("Multiple values for input: %s" % getattr(self.inv_finder[c], 'result', self.inv_finder[c]))
         # Do the actual work
         self.fn()
+
+        # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
+
+        #remove internal references to required inputs
+        #these can't be re-used anyway
+        for x in self.input_storage:
+            if c.required:
+                c.storage[0] = None
+
+        # if we are allowing garbage collection, remove the input and output reference from the internal
+        # storage cells
+        if getattr(self.fn, 'allow_gc', False):
+            for x in self.output_storage:
+                x.storage[0] = None  #WARNING: This circumvents the 'readonly' attribute in x
+
         # Update the inputs that have an update function
         for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
             if input.update:

@@ -832,66 +832,6 @@ def constant_folding(node):
 register_canonicalize(constant_folding)
 
 
-from blas import _dot22
-
-@gof.local_optimizer([T.sub])
-def local_sub_to_gemm(node):
-    """This is a massive beast for recognizing all the ways that a subtraction could be
-    replaced by a GEMM
-    """
-    if node.op == T.sub:
-        subleft, subright = node.inputs
-        #EXPRESSION: subleft - subright
-        if subright.owner and (subright.owner.op == _dot22):
-            dotleft, dotright = subright.owner.inputs
-            return [T.gemm(subleft, -1.0, dotleft, dotright, 1.0)]
-        if subright.owner and (subright.owner.op == T.mul):
-            mulleft, mulright = subright.owner.inputs
-            #EXPRESSION: subleft - (mulleft * mulright)
-            
-            #TODO: we actually want to get any scalar here, not necessrily a constant
-            mulleft_const = local_mul_canonizer.get_constant(mulleft)
-            if mulleft_const is not None and mulleft_const.size == 1:
-                mulleft_const = mulleft_const.flatten()[0]
-                #EXPRESSION: subleft - (mulleft_const * ?)
-                if mulright.owner and (mulright.owner.op == T.add):
-                    #EXPRESSION: subleft - (mulleft_const * (? + ?))
-                    addleft, addright = mulright.owner.inputs
-                    if addright.owner and addright.owner.op == T.DimShuffle([False,False], [1,0]):
-                        #EXPRESSION: subleft - (mulleft_const * (? + ?.T))
-                        #raise NotImplementedError()
-                        return False
-                    if addright.owner and addright.owner.op == T.DimShuffle([False,False], [1,0], inplace=True):
-                        #EXPRESSION: subleft - (mulleft_const * (? + ?.T))
-                        transposed = addright.owner.inputs[0]
-                        if transposed.owner and transposed.owner.op == _dot22:
-                            x, y = transposed.owner.inputs
-                            #EXPRESSION: subleft - (mulleft_const * (addleft + dot(x, y).T))
-                            if addleft.owner and addleft.owner.op == _dot22:
-                                u, v = addleft.owner.inputs
-                                #EXPRESSION: subleft - (mulleft_const * (dot(u,v) + dot(x, y).T))
-                                return [T.gemm(
-                                    T.gemm(subleft, -mulleft_const, y.T, x.T, 1.0),
-                                    -mulleft_const, u, v, 1.0)]
-
-                if mulright.owner and (mulright.owner.op == _dot22):
-                    dotleft, dotright = mulright.owner.inputs
-                    #EXPRESSION: subleft - (mulleft_const * dot(dotleft, dotright))
-                    return [T.gemm(subleft, -mulleft_const, dotleft, dotright, 1.0)]
-
-            mulright_const = local_mul_canonizer.get_constant(mulright)
-            if mulright_const is not None and mulright_const.size == 1:
-                mulright_const = mulright_const.flatten()[0]
-                #EXPRESSION: subleft - (? * mulright_const)
-
-                if mulleft.owner and (mulleft.owner.op == _dot22):
-                    dotleft, dotright = mulleft.owner.inputs
-                    #EXPRESSION: subleft - (dot(dotleft, dotright) * mulright_const)
-                    return [T.gemm(subleft, -mulright_const, dotleft, dotright, 1.0)]
-    return False
-register_specialize(local_sub_to_gemm)
-
-
 inplace_matrix_transpose = T.DimShuffle([False,False], [1,0], inplace=True)
 local_transposed_dot = gof.PatternSub((inplace_matrix_transpose, (T.dot, 'x', 'y')),
         (T.dot, (inplace_matrix_transpose, 'y'), (inplace_matrix_transpose, 'x')))

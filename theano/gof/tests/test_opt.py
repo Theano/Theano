@@ -48,10 +48,13 @@ class MyOp(Op):
         return self.name
 
     def __eq__(self, other):
-        return self is other or isinstance(other, MyOp) and self.x is not None and self.x == other.x
+        #rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x and self.name == other.name)
+        rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x)
+        return rval
 
     def __hash__(self):
-        return self.x if self.x is not None else id(self)
+        #return hash(self.x if self.x is not None else id(self)) ^ hash(self.name)
+        return hash(self.x if self.x is not None else id(self)) 
 
 
 op1 = MyOp('Op1')
@@ -238,7 +241,8 @@ class TestPatternOptimizer:
         g = Env([x, y, z], [e])
         PatternOptimizer((op1, (op_z, '1', '2'), '3'),
                          (op4, '3', '2')).optimize(g)
-        assert str(g) == "[Op4(z, y)]"
+        str_g = str(g)
+        assert str_g == "[Op4(z, y)]"
 
 #     def test_multi_ingraph(self):
 #         # known to fail
