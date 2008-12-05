@@ -575,7 +575,7 @@ local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate, False)
 @gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):
     if node.op == T.neg:
-        return [-1 * node.inputs[0]]
+        return [T.mul(-1, node.inputs[0])]
     else:
         return False
 register_canonicalize(local_neg_to_mul)
