@@ -394,10 +394,13 @@ class Method(Component):
         for input in gof.graph.inputs((list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
-            if input not in _inputs and not isinstance(input, gof.Value):
+            if input not in _inputs:
                 # Add this input to the inputs; we require that storage already exists for them,
                 # but otherwise they are immutable.
-                storage = get_storage(input, not allocate_all)
+                if isinstance(input, gof.Value):
+                    storage = get_storage(input)
+                else:
+                    storage = get_storage(input, not allocate_all)
                 inputs.append(storage)
 
         return F.function(inputs, outputs, mode)
