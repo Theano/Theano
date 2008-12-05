@@ -399,6 +399,7 @@ class Method(Component):
                 # but otherwise they are immutable.
                 if isinstance(input, gof.Value):
                     storage = get_storage(input)
+                    storage.value = input.data
                 else:
                     storage = get_storage(input, not allocate_all)
                 inputs.append(storage)
