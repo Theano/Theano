@@ -407,7 +407,7 @@ class FunctionMaker(object):
             else:
                 raise TypeError("Expected two elements in the list or tuple.", input)
         else:
-            raise TypeError("Unknown input type:", type(input), input)
+            raise TypeError("Unknown input type: %s (%s), expected Result instance", type(input), input)
 
     @staticmethod
     def expand_in(sinput, rinputs):
@@ -428,7 +428,7 @@ class FunctionMaker(object):
         elif isinstance(output, gof.Result):
             return SymbolicOutput(output)
         else:
-            raise TypeError("Unknown output type:", type(output), output)
+            raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
     def __init__(self, inputs, outputs, mode = 'FAST_RUN', accept_inplace = False, function_builder = Function):
         """
@@ -709,16 +709,8 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
         else:
             raise TypeError("Unknown input type: %s, expected Result instance" % type(input), input)
 
-    def wrap_out(output):
-        if isinstance(output, SymbolicOutput):
-            return output
-        elif isinstance(output, gof.Result):
-            return SymbolicOutput(output)
-        else:
-            raise TypeError("Unknown output type: %s (%s)" % (type(output), output))
-
     inputs = map(wrap_in, inputs)
-    outputs = map(wrap_out, outputs) if isinstance(outputs, (list, tuple)) else wrap_out(outputs)
+    outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
