@@ -397,7 +397,7 @@ class Method(Component):
             if input not in _inputs:
                 # Add this input to the inputs; we require that storage already exists for them,
                 # but otherwise they are immutable.
-                if isinstance(input, gof.Value):
+                if isinstance(input, gof.Value): # and not isinstance(input, gof.Constant):
                     storage = get_storage(input)
                     storage.value = input.data
                 else:
