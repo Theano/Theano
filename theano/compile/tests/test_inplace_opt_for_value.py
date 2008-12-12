@@ -3,7 +3,7 @@ import numpy as N
 from theano import Op, Apply, tensor as T, Module, Member, Method, Mode, compile
 from theano.gof import OpSub, TopoOptimizer
 
-from minimizer import make_minimizer # minimizer
+from pylearn.algorithms.minimizer import make_minimizer # minimizer
 from theano.printing import Print
 #import sgd #until Olivier's module-import thing works better
 
@@ -14,7 +14,7 @@ from theano.printing import Print
 from theano.compile import module
 from theano import tensor as T
 
-from minimizer import minimizer_factory
+from pylearn.algorithms.minimizer import minimizer_factory
 
 class StochasticGradientDescent(module.FancyModule):
     """Fixed stepsize gradient descent"""
@@ -189,7 +189,7 @@ def test_example_rnn():
     n_vis = 5
     n_out = 3
     n_hid = 4
-    rnn_module = ExampleRNN(n_vis, n_hid, n_out, minimizer_fn)
+    rnn_module = ExampleRNN(n_vis, minimizer_fn)
 
     rnn = rnn_module.make(mode='FAST_RUN')
 
