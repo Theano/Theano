@@ -39,28 +39,38 @@ class T_test_module(unittest.TestCase):
         m1.make()
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED1"
 
-    def test_members_in_list_or_dict(self):
-        """Test that a Member which is only included via a list or dictionary is still treated as if it
+    def test_members_in_list_tuple_or_dict(self):
+        """Test that a Member which is only included via a list, tuple or dictionary is still treated as if it
         were a toplevel attribute
-        Fred: toplevel attribute? toplevel member?
+        Fred: toplevel attribute? do you mean as a toplevel member? m1.x=x work as m1.lx=[x]?
+        Fred: why list,tuple of result are casted to member?
+        Fred: why no wrapper for dict? Should I add one?
         """
 
-        x=T.dscalar()
-        y=Member(T.dscalar())
-        m1=Module()
-        m1.lx=[x]
-        m1.ly=[y]
-        m1.dx={"x":x}
-        m1.dy={"y":y}
-        m1.x=x
-        m1.y=y
-        inst=m1.make()
-        print m1
-        print inst
-        assert inst.lx
-        assert inst.ly
-        self.assertRaises(AttributeError, inst.__getattr__, x)
-        self.assertRaises(AttributeError, inst.__getattr__, y)#FRED why this raise an exception?
+        def local_test(x,y):
+            m1=Module()
+            m1.lx=[x]#cast Result]
+            m1.ly=[y]
+            m1.dx={"x":x}
+            m1.dy={"y":y}
+            m1.tx=(x,)
+            m1.ty=(y,)
+            m1.x=x
+            m1.y=y
+            inst=m1.make()
+            assert inst.lx
+            assert inst.ly
+            assert inst.tx
+            assert inst.ty
+            inst.y # we don't assert just make the look up as with T.dscalar it return None
+            # but it don't return None for value and constant
+            self.assertRaises(AttributeError, inst.__getattr__, "x")
+            self.assertRaises(AttributeError, inst.__getattr__, "dx")
+            self.assertRaises(AttributeError, inst.__getattr__, "dy")
+
+        local_test(T.dscalar(),Member(T.dscalar()))
+        local_test(T.value(1),Member(T.value(2)))
+        local_test(T.constant(1),Member(T.constant(2)))
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED2"
         
     def test_method_in_list_or_dict(self):
@@ -119,3 +129,13 @@ class T_test_module(unittest.TestCase):
         """Test that Module.make(self) can take the same list of Modes that function can, so we can
         debug modules"""
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+
+    def test_member_value(self):
+        """Test that module Members of Value work correctly. As Result?"""
+        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+
+    def test_member_constant(self):
+        """Test that module Members of Constant work correctly.
+        As Result with more optimization?"""
+        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+
