@@ -21,11 +21,12 @@ class AbstractFunctionError(Exception):
 
 class object2(object):
     __slots__ = []
-    def __hash__(self):
-        # this fixes silent-error-prone new-style class behavior
-        if hasattr(self, '__eq__') or hasattr(self, '__cmp__'):
-            raise TypeError("unhashable object: %s" % self)
-        return id(self)
+    if 0:
+        def __hash__(self):
+            # this fixes silent-error-prone new-style class behavior
+            if hasattr(self, '__eq__') or hasattr(self, '__cmp__'):
+                raise TypeError("unhashable object: %s" % self)
+            return id(self)
     def __ne__(self, other):
         return not self == other
 

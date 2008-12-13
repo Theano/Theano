@@ -21,6 +21,9 @@ class MyType(Type):
     def __eq__(self, other):
         return isinstance(other, MyType)
 
+    def __hash__(self):
+        return hash(MyType)
+
 
 def MyResult(name):
     return Result(MyType(), None, None, name = name)

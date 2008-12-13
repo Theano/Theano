@@ -1616,7 +1616,7 @@ def test_reshape():
     tensor.verify_grad(None, Reshape(2), [a_val,numpy.asarray([2,3], dtype='float64')])
 
 
-def test_flatten():
+def test_flatten_outdimNone():
     """ Flatten always returns a copy of the array. There is no danger with in-place
     operations and thus no need to test it."""
 
@@ -1631,9 +1631,57 @@ def test_flatten():
 
     tensor.verify_grad(None, Flatten(), [a_val])
 
+def test_flatten_outdim1():
+    a = dmatrix()
+    c = flatten(a, 1)
+    f = function([a], c, mode='FAST_COMPILE')
+    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+    c_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
+    assert numpy.all(f(a_val)==c_val)
+    f = function([a], c, mode='FAST_RUN')
+    assert numpy.all(f(a_val)==c_val)
 
+    tensor.verify_grad(None, Flatten(1), [a_val])
+
+def test_flatten_outdim2():
+    a = dmatrix()
+    c = flatten(a, 2)
+    f = function([a], c, mode='FAST_COMPILE')
+    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+    assert numpy.all(f(a_val)==a_val)
+    f = function([a], c, mode='FAST_RUN')
+    assert numpy.all(f(a_val)==a_val)
+
+    tensor.verify_grad(None, Flatten(2), [a_val])
+
+def test_flatten_outdim2_of_3():
+    a = Tensor('float64', (False, False, False))()
+    c = flatten(a, 2)
+    f = function([a], c, mode='FAST_COMPILE')
+    a_val = numpy.asarray([[[0,1],[2,3]], [[4,5],[6,7]]], dtype='float64')
+    c_val = numpy.asarray([[0,1,2,3], [4,5,6,7]], dtype='float64')
+    assert numpy.all(f(a_val)==c_val)
+    f = function([a], c, mode='FAST_RUN')
+    assert numpy.all(f(a_val)==c_val)
+
+    tensor.verify_grad(None, Flatten(2), [a_val])
+
+def test_flatten_outdim_invalid():
+    a = dmatrix()
+    try:
+        c = flatten(a, 3)
+        assert False
+    except ValueError:
+        pass
+    try:
+        c = flatten(a, 0)
+        assert False
+    except ValueError:
+        pass
+        
 # TODO: write test case for Tile Op
 def test_tile():
+    print >> sys.stderr, "WARNING: No testcase for Tile"
     pass 
 
 
