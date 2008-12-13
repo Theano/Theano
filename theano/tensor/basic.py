@@ -1819,7 +1819,7 @@ class Flatten(Op):
         return hash(type(self))^hash(self.outdim)
     def make_node(self, x):
         t_x = as_tensor(x)
-        if self.outdim < 1 or self.outdim > x.ndim:
+        if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
             raise ValueError('invalid output ndimensions(%i) for tensor of rank %i' %(self.outdim, t_x.ndim))
         return gof.Apply(self, [t_x], [tensor(x.type.dtype, (False,)*self.outdim)])
     def perform(self, node, (x,), (out,)):

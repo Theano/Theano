@@ -1631,6 +1631,18 @@ def test_flatten_outdimNone():
 
     tensor.verify_grad(None, Flatten(), [a_val])
 
+def test_flatten_scalar():
+    a = dscalar()
+    c = flatten(a)
+    f = function([a], c, mode='FAST_COMPILE')
+    a_val = numpy.asarray(3.0, dtype='float64')
+    c_val = numpy.asarray([3.0], dtype='float64')
+    assert numpy.all(f(a_val)==c_val)
+    f = function([a], c, mode='FAST_RUN')
+    assert numpy.all(f(a_val)==c_val)
+
+    #tensor.verify_grad(None, Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
+
 def test_flatten_outdim1():
     a = dmatrix()
     c = flatten(a, 1)
