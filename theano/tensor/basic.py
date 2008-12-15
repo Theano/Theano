@@ -1806,24 +1806,37 @@ def reshape(x, newshape, ndim=None):
 
 
 class Flatten(Op):
-    """Flattens the input node"""
+    """Flattens a tensor to `outdim` dimensions by preserving the leading outdim-1 shape
+    components.
+    """
     #Could be done as a reshape, but this is more direct.
     #TODO: optimize reshape(x, prod(shape(x))) -> flatten(x)
-    def __init__(self, ldim=None):
-        self.ldim = ldim
+    def __init__(self, outdim=1):
+        self.outdim = int(outdim)
+    def __eq__(self, other):
+        return type(self) == type(other) and self.outdim == other.outdim
+    def __hash__(self):
+        return hash(type(self))^hash(self.outdim)
     def make_node(self, x):
-        x = as_tensor(x)
-        outdim = 1 if self.ldim is None else x.ndim - self.ldim +1
-        return gof.Apply(self, [x], [tensor(x.type.dtype, (False,)*outdim)])
+        t_x = as_tensor(x)
+        if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
+            raise ValueError('invalid output ndimensions(%i) for tensor of rank %i' %(self.outdim, t_x.ndim))
+        return gof.Apply(self, [t_x], [tensor(x.type.dtype, (False,)*self.outdim)])
     def perform(self, node, (x,), (out,)):
-        # flatten the entire tensor or just the last ldim dimensions
-        out[0] = x.flatten() if self.ldim is None else\
-                 x.reshape(numpy.r_[x.shape[:-self.ldim],\
-                           numpy.prod(x.shape[-self.ldim:])])
+        outdim = self.outdim
+        if outdim == 1:
+            out[0] = x.flatten()
+        elif outdim == len(x.shape):
+            out[0] = x.copy()
+        else:
+            newshape = x.shape[:outdim-1] + (numpy.prod(x.shape[outdim-1:]),)
+            #print 'newshape', newshape, x.shape, x.shape
+            out[0] = x.reshape(newshape)
     def grad(self, (x,), (g_out,)):
         return [reshape(g_out, shape(x), x.ndim)]
 
-def flatten(ldim=None): return Flatten(ldim)
+def flatten(x, outdim=1): 
+    return Flatten(outdim)(x)
 
 class TileGrad(Op):
     """Calculates the gradient of the Tile Op"""

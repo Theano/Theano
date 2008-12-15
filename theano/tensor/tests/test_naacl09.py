@@ -446,7 +446,6 @@ def create(window_size=3,
 
     import pylearn.cost
 
-    print "BUILDING MODEL"
     architecture = ConvolutionalMLP( \
                 window_size = window_size,
                 n_quadratic_filters = n_quadratic_filters,
@@ -457,8 +456,43 @@ def create(window_size=3,
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
     return model
 
-def test_naacl_model(optimizer='fast_run'):
-    m = create(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
+def create_realistic(window_size=3,#7,
+        input_dimension=200, 
+        output_vocabsize=23, 
+        n_quadratic_filters=2, 
+        token_representation_size=150, 
+        concatenated_representation_size=400, 
+        lr=0.001, 
+        seed=123, 
+        noise_level=0.2, 
+        qfilter_relscale=0.1, 
+        compile_mode=None):
+    """ Create a convolutional model. """
+    activation_function = T.tanh
+
+    import pylearn.cost
+
+    architecture = ConvolutionalMLP( \
+                window_size = window_size,
+                n_quadratic_filters = n_quadratic_filters,
+                activation_function = activation_function,
+                reconstruction_cost_function = pylearn.cost.quadratic,
+                tie_weights = False
+            )
+    model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
+    return model
+
+def test_naacl_model(optimizer='fast_run', iters_per_unsup=10, iters_per_sup=10,
+        realistic=False):
+    print "BUILDING MODEL"
+    import time
+    t = time.time()
+    if realistic:
+        m = create_realistic(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
+    else:
+        m = create(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
+
+    print 'BUILD took', time.time() - t
     prog_str = []
     idx_of_node = {}
     for i, node in enumerate(m.pretraining_update.maker.env.toposort()):
@@ -480,21 +514,23 @@ def test_naacl_model(optimizer='fast_run'):
 
     print 'UNSUPERVISED PHASE'
     for i in xrange(10):
-        for i in xrange(10):
+        for j in xrange(iters_per_unsup):
             m.pretraining_update(*inputs)
-        s0, s1 = [str(i) for i in m.pretraining_update(*inputs)]
-        print s0, s1
-    assert s0.startswith('0.40218760858')
-    assert s1.startswith('0.074450801777')
+        s0, s1 = [str(j) for j in m.pretraining_update(*inputs)]
+        print 'huh?', i, iters_per_unsup, iters_per_unsup * (i+1), s0, s1
+    if iters_per_unsup == 10:
+        assert s0.startswith('0.40218760858')
+        assert s1.startswith('0.074450801777')
 
     print 'FINETUNING GRAPH'
     print 'SUPERVISED PHASE COSTS (%s)'%optimizer
     for i in xrange(10):
-        for i in xrange(10):
+        for j in xrange(iters_per_unsup):
             m.finetuning_update(*(inputs + [targets]))
         s0 = str(m.finetuning_update(*(inputs + [targets])))
-        print s0
-    assert s0.startswith('15.651277636')
+        print iters_per_sup * (i+1), s0
+    if iters_per_sup == 10:
+        assert s0.startswith('15.651277636')
 
 if __name__ == '__main__':
     from theano import gof
@@ -502,4 +538,5 @@ if __name__ == '__main__':
     print 'JTEST', JTEST
     theano.compile.register_optimizer('JTEST', JTEST)
     optimizer = eval(sys.argv[1])
-    test_naacl_model(optimizer)
+    test_naacl_model(optimizer, 10, 10, realistic=False)
+

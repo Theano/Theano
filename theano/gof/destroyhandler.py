@@ -39,6 +39,33 @@ class DestroyHandler(toolbox.Bookkeeper):
         return self.map[env].orderings(env)
 
 
+def getroot(r, view_i):
+    """
+    For views: Return non-view result which is ultimatly viewed by r.
+    For non-views: return self.
+    """
+    try: 
+        return getroot(view_i[r], view_i)
+    except KeyError:
+        return r
+
+def add_impact(r, view_o, impact):
+    """
+    In opposition to getroot, which finds the result that is viewed *by* r, this function
+    returns all the results that are views of r.
+
+    :param impact: is a set of results that are views of r
+    :param droot: a dictionary mapping views -> r
+    """
+    for v in view_o.get(r,[]):
+        impact.add(v)
+        add_impact(v, view_o, impact)
+
+def get_impact(root, view_o):
+    impact = set()
+    add_impact(root, view_o, impact)
+    return impact
+
 class DestroyHandlerHelper2(toolbox.Bookkeeper):
     """WRITEME"""
 
@@ -53,13 +80,14 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             if hasattr(env, attr):
                 raise toolbox.AlreadyThere("DestroyHandler feature is already present or in conflict with another plugin.")
 
-        def get_destroyers(r):
-            d_of = self.get_destroyer_of(r)
-            if d_of:
-                return [d_of]
-            else:
+        def get_destroyers_of(r):
+            droot, impact, root_destroyer = self.refresh_droot_impact()
+            try:
+                return [root_destroyer[droot[r]]]
+            except:
                 return []
-        env.destroyers = get_destroyers
+
+        env.destroyers = get_destroyers_of
         env.destroy_handler = self
 
         self.env = env
@@ -68,11 +96,18 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         self.view_o = {}  # result -> set of results
         #clients: how many times does an apply use a given result
         self.clients = {} # result -> apply -> ninputs  
+        self.stale_droot = True
 
         self.debug_all_apps = set()
         toolbox.Bookkeeper.on_attach(self, env)
 
-    def build_droot_impact(self):
+    def refresh_droot_impact(self):
+        if self.stale_droot:
+            self.droot, self.impact, self.root_destroyer = self._build_droot_impact()
+            self.stale_droot = False
+        return self.droot, self.impact, self.root_destroyer
+
+    def _build_droot_impact(self):
         droot = {}   # destroyed view + nonview results -> foundation
         impact = {}  # destroyed nonview result -> it + all views of it
         root_destroyer = {} # root -> destroyer apply
@@ -83,32 +118,22 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                     raise NotImplementedError()
                 input_idx = input_idx_list[0]
                 input = app.inputs[input_idx]
-                def getroot(r):
-                    try: 
-                        return getroot(self.view_i[r])
-                    except KeyError:
-                        return r
-                input_root = getroot(input)
+                input_root = getroot(input, self.view_i)
                 if input_root in droot:
                     raise InconsistencyError("Multiple destroyers of %s" % input_root)
                 droot[input_root] = input_root
                 root_destroyer[input_root] = app
-                impact[input_root] = set([input_root])
-                def build_stuff(r):
-                    for v in self.view_o.get(r,[]):
-                        assert v not in droot
-                        droot[v] = input_root
-                        impact[input_root].add(v)
-                        build_stuff(v)
-                build_stuff(input_root)
+                #input_impact = set([input_root])
+                #add_impact(input_root, self.view_o, input_impact)
+                input_impact = get_impact(input_root, self.view_o)
+                for v in input_impact:
+                    assert v not in droot
+                    droot[v] = input_root
+
+                impact[input_root] = input_impact
+                impact[input_root].add(input_root)
 
         return droot, impact, root_destroyer
-
-    def get_destroyer_of(self, r):
-        droot, impact, root_destroyer = self.build_droot_impact()
-        for root in impact:
-            if r in impact[root]:
-                return root_destroyer[root]
 
     def on_detach(self, env):
         if env is not self.env:
@@ -117,6 +142,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         del self.view_i
         del self.view_o
         del self.clients
+        del self.stale_droot
         assert self.env.destroyer_handler is self
         delattr(self.env, 'destroyers')
         delattr(self.env, 'destroy_handler')
@@ -148,6 +174,8 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         for i, output in enumerate(app.outputs):
             self.clients.setdefault(output, {})
+        
+        self.stale_droot = True
 
     def on_prune(self, env, app):
         """Remove Apply instance from set which must be computed"""
@@ -178,6 +206,8 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             self.view_o[i].remove(o)
             if not self.view_o[i]:
                 del self.view_o[i]
+        
+        self.stale_droot = True
 
     def on_change_input(self, env, app, i, old_r, new_r):
         """app.inputs[i] changed from old_r to new_r """
@@ -214,6 +244,8 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                         del self.view_o[old_r]
 
                     self.view_o.setdefault(new_r,set()).add(output)
+        
+        self.stale_droot = True
 
     def validate(self, env):
         """Return None
@@ -261,7 +293,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             # BUILD DATA STRUCTURES
             # CHECK for multiple destructions during construction of variables
 
-            droot, impact, __ignore = self.build_droot_impact()
+            droot, impact, __ignore = self.refresh_droot_impact()
             #print "droot", droot
             #print "impact", impact
             #print "view_i", self.view_i
