@@ -251,7 +251,7 @@ def local_subtensor_make_vector(node):
     """
     if not opt.check_chain(node, T.Subtensor, T.MakeVector):
         return False
-    
+
     joined_r = node.inputs[0]
 
     try: 

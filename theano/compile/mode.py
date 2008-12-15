@@ -74,9 +74,9 @@ optdb = gof.SequenceDB()
 optdb.register('merge1', gof.MergeOptimizer(), 0, 'fast_run', 'fast_compile')
 optdb.register('canonicalize', gof.EquilibriumDB(), 1, 'fast_run')
 optdb.register('specialize', gof.EquilibriumDB(), 2, 'fast_run')
-optdb.register('merge2', gof.EquilibriumDB(), 49, 'fast_run')
+optdb.register('merge2', gof.MergeOptimizer(), 49, 'fast_run')
 optdb.register('add_destroy_handler', AddDestroyHandler(), 49.5, 'fast_run', 'inplace')
-optdb.register('merge3', gof.EquilibriumDB(), 100, 'fast_run')
+optdb.register('merge3', gof.MergeOptimizer(), 100, 'fast_run')
 
 
 class Mode(object):
