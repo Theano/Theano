@@ -623,32 +623,47 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
     """
     Return a function calculating the outputs from the inputs.
 
-    inputs -> list of SymbolicInput or In instances
-    outputs -> a SymbolicOutput or a list of SymbolicOutput or Out instances
-      The return value of the returned function will match the format of this
-      argument (either the value itself or a list of one or more return values)
-    mode -> a descriptive string or a Mode instance; descriptive strings can be one of:
-      * SANITY_CHECK TODO: NotImplemented
-      * FAST_COMPILE (apply only optimization that are fast to apply)
-      * FAST_RUN (default) (optimize without too much time)
-      * EXPENSIVE_OPTIMIZATION TODO: NotImplemented
-    accept_inplace -> True iff the graph can contain inplace operations
-      prior to the optimization phase (default is False)
+    :param inputs: list of `SymbolicInput` or `In` instances
 
-    Every element of the input list will be upgraded to an In instance if necessary,
+    :param outputs: a SymbolicOutput or a list of `SymbolicOutput` or `Out` instances.   The return
+        value of the returned function will match the format of this argument (either the value
+        itself or a list of one or more return values)
+
+    :param mode: a descriptive string or a Mode instance. (See below for descriptive string
+    list).
+    
+    Currently, the library provides the following mode strings:
+
+     - SANITY_CHECK TODO: NotImplemented
+
+     - FAST_COMPILE (apply only optimization that are fast to apply)
+
+     - FAST_RUN (default) (optimize without too much time)
+
+     - EXPENSIVE_OPTIMIZATION TODO: NotImplemented
+
+    :param accept_inplace:  True iff the graph can contain inplace operations prior to the
+    optimization phase (default is False)
+
+    Every element of the input list will be upgraded to an `In` instance if necessary,
     using the following rules:
 
-    * a Result instance r will be upgraded like In(r)
-    * a tuple (name, r) will be In(r, name=name)
-    * a tuple (r, val) will be In(r, value=value, autoname=True)
-    * a tuple ((r,up), val) will be In(r, value=value, update=up, autoname=True)
-    * a tuple (name, r, val) will be In(r, name=name, value=value)
-    * a tuple (name, (r,up), val) will be In(r, name=name, value=val, update=up, autoname=True)
+    - a `Result` instance r will be upgraded like `In`(r)
+
+    - a tuple (name, r) will be `In`(r, name=name)
+    
+    - a tuple (r, val) will be `In`(r, value=value, autoname=True)
+
+    - a tuple ((r,up), val) will be `In`(r, value=value, update=up, autoname=True)
+
+    - a tuple (name, r, val) will be `In`(r, name=name, value=value)
+
+    - a tuple (name, (r,up), val) will be `In`(r, name=name, value=val, update=up, autoname=True)
 
     Similarly, every element of the output list will be upgraded to an
-    Out instance if necessary:
+    `Out` instance if necessary:
 
-    * a Result instance r will be upgraded like Out(r)
+    * a `Result` instance r will be upgraded like `Out`(r)
 
 
     Random Numbers
@@ -656,7 +671,9 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
 
     If your computation involves random numbers, then you have to pass the `RandomKit` as an
     input argument.  That RandomKit must have a name to be able to seed the generator.  To seed
-    the generator, use the __getitem__ method: 
+    the generator, use the `__setitem__` method: 
+
+    ..code-block: python
     
         f[<kitname>] = seed   #re-seed the elements of a RandomKit
 
