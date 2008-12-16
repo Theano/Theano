@@ -96,7 +96,7 @@ class T_test_module(unittest.TestCase):
             m1.y=y
 
             z=x*2
-//            print type(z)
+#            print type(z)
             m1.z=z 
             m1.lz=[z]
             m1.dz={"z":z}
