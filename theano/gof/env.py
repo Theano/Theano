@@ -108,8 +108,10 @@ class Env(utils.object2):
     ### clients ###
 
     def clients(self, r):
-        """WRITEME
-        Set of all the (node, i) pairs such that node.inputs[i] is r."""
+        """
+        Set of all the (node, i) pairs such that node.inputs[i] is r.
+        Tell differently, a list of (node,i) such that each node have r as input at index i.
+        """
         return r.clients
 
     def __add_clients__(self, r, new_clients):
