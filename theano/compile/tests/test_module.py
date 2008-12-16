@@ -158,6 +158,8 @@ class T_test_module(unittest.TestCase):
         m2.ltx=[(Member(x),)]
         m1.tx=(Member(x),)
         m2.tx=(Member(x),)
+        m1.ttx=((Member(x),),)
+        m2.ttx=((Member(x),),)
         m1.tlx=([Member(x)],)
         m2.tlx=([Member(x)],)
 
@@ -178,6 +180,8 @@ class T_test_module(unittest.TestCase):
         assert inst2.llx[1][0]==2#BUG: list of list don't work
         assert inst1.tx[0]==1
         assert inst2.tx[0]==2
+        assert inst1.ttx[0][0]==1#BUG: tuple of list don't work
+        assert inst2.ttx[0][0]==2#BUG: tuple of list don't work
         assert inst1.tlx[0][0]==1#BUG: tuple of list don't work
         assert inst2.tlx[0][0]==2#BUG: tuple of list don't work
 
@@ -189,8 +193,18 @@ class T_test_module(unittest.TestCase):
         assert inst.m2.x==1
         assert inst.lx[0]==1
         assert inst.m2.lx[0]==1
+        assert inst.llx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.llx[0][0]==1#BUG: list of list don't work
+        assert inst.llx[1][0]==1#BUG: list of list don't work
+        assert inst.m2.llx[1][0]==1#BUG: list of list don't work
+        assert inst.ltx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.ltx[0][0]==1#BUG: list of list don't work
         assert inst.tx[0]==1
         assert inst.m2.tx[0]==1
+        assert inst.ttx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.ttx[0][0]==1#BUG: list of list don't work
+        assert inst.tlx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.tlx[0][0]==1#BUG: list of list don't work
         inst.m2.x=2
         assert inst.x==2
         assert inst.m2.x==2
@@ -199,9 +213,6 @@ class T_test_module(unittest.TestCase):
         assert inst.tx[0]==2
         assert inst.m2.tx[0]==2
 
-        #same preceding test with list, tuple and dict
-
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED4"
 
     #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
     #a list and a submodule with a dictionary, etc...
