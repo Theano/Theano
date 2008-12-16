@@ -57,17 +57,29 @@ class T_test_module(unittest.TestCase):
             m1=Module()
             m1.lx=[x]#cast Result]
             m1.ly=[y]
+            m1.llx=[[x]]#cast Result]
+            m1.lly=[[y]]
+            m1.ltx=[(x,)]
+            m1.lty=[(y,)]
             m1.dx={"x":x}
             m1.dy={"y":y}
             m1.tx=(x,)
             m1.ty=(y,)
+            m1.ttx=((x,),)
+            m1.tty=((y,),)
             m1.x=x
             m1.y=y
             inst=m1.make()
             assert inst.lx
             assert inst.ly
+            assert inst.llx
+            assert inst.lly
+            assert inst.ltx
+            assert inst.lty
             assert inst.tx
             assert inst.ty
+            assert inst.ttx
+            assert inst.tty
             inst.y # we don't assert just make the look up as with T.dscalar it return None
             # but it don't return None for value and constant
             self.assertRaises(AttributeError, inst.__getattr__, "x")
@@ -77,7 +89,6 @@ class T_test_module(unittest.TestCase):
         local_test(T.dscalar(),Member(T.dscalar()))
         local_test(T.value(1),Member(T.value(2)))
         local_test(T.constant(1),Member(T.constant(2)))
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED2"
         
     def test_method_in_list_or_dict(self):
         """Test that a Method which is only included via a list or dictionary is still treated as if it
@@ -122,8 +133,6 @@ class T_test_module(unittest.TestCase):
         assert isinstance(inst.ty[0],theano.compile.function_module.Function)
         assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
-
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED3"
 
     def test_shared_members(self):
         """Test that under a variety of tricky conditions, the shared-ness of Results and Members
@@ -212,6 +221,46 @@ class T_test_module(unittest.TestCase):
     def test_shared_method(self):
         """Test that under a variety of tricky conditions, the shared-ness of Results and Methods
         is respected."""
+
+#Fred: the test create different method event if they are shared. Do we want this?
+        m1=Module()
+        m1.x=Member(T.dscalar())
+        x=T.dscalar()
+        fy=Method(x,x*2)
+        fz=Method([],m1.x*2)
+        m1.y=fy
+        m1.z=fz
+        m1.ly=[fy]
+        m1.lz=[fz]
+        m1.lly=[[fy]]
+        m1.llz=[[fz]]
+        m1.ty=(fy,)
+        m1.tz=(fz,)
+        m1.tty=((fy,),)
+        m1.ttz=((fz,),)
+
+        inst=m1.make()
+        inst.x=1
+        assert inst.y(2)==4
+        assert inst.z()==2
+        assert inst.ly[0](2)==4
+        assert inst.lz[0]()==2
+#        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
+#        assert inst.llz[0][0]()==2
+        assert inst.ty[0](2)==4
+        assert inst.tz[0]()==2
+#        assert inst.tty[0][0](2)==4
+#        assert inst.ttz[0][0]()==2
+        assert isinstance(inst.z,theano.compile.function_module.Function)
+        assert isinstance(inst.lz[0],theano.compile.function_module.Function)
+#        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.tz[0],theano.compile.function_module.Function)
+#        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.y,theano.compile.function_module.Function)
+        assert isinstance(inst.ly[0],theano.compile.function_module.Function)
+#        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.ty[0],theano.compile.function_module.Function)
+#        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
     #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
