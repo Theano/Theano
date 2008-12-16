@@ -207,25 +207,33 @@ class DimShuffle(Op):
 
 
         if self.inplace:
-            get_base = ['{ PyArrayObject * base = %(input)s', 'Py_INCREF((PyObject*)base)']
+            get_output = ['{ PyArrayObject * base = %(input)s', 'Py_INCREF((PyObject*)base)']
         else:
-            get_base = [('{ PyArrayObject * base = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
+            get_output = [('{ PyArrayObject * base = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
                     '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
 
-        alloc_output = [('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
-                    '' + str(nd_out) + ', dimensions, '
-                    'PyArray_TYPE(base), strides, '
-                    'base->data, base->descr->elsize, '
-                    'PyArray_FLAGS(base), NULL)'),
-                '%(res)s->base = (PyObject*)base',
+        
+        close_bracket = [
+                #create a new array, 
+                ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
+                            '' + str(nd_out) + ', dimensions, '
+                            'PyArray_TYPE(base), strides, '
+                            'base->data, base->descr->elsize, '
+                            #borrow only the writable flag from the base
+                            # the NPY_OWNDATA flag will default to 0.
+                            'PyArray_ISWRITEABLE(base), NULL)'),
+                #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
+                'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
+                #we are making a view in both inplace and non-inplace cases
+                '%(res)s->base = (PyObject*)base', 
                 '}']
 
         full_code = statements(check_input_nd 
                 + clear_output
                 + shape_statements 
                 + strides_statements
-                + get_base
-                + alloc_output)
+                + get_output
+                + close_bracket)
 
         if 0:
             print 'C_CODE'
