@@ -2,6 +2,7 @@ import unittest
 from theano.compile.module import *
 import theano.tensor as T
 import sys
+import theano
 
 class T_test_module(unittest.TestCase):
 
@@ -84,60 +85,43 @@ class T_test_module(unittest.TestCase):
         Fred: why do we promote a list or tuple of fct of result to a Method?
         Fred: why we don't do this of direct fct of results or dict?
         """
-        def local_test(x,y):
-            m1=Module()
-            m1.lx=[x]#cast Result to Member
-            m1.ly=[y]#cast Result to Member
-            m1.dx={"x":x}
-            m1.dy={"y":y}
-            m1.tx=(x,)#cast Result to Member
-            m1.ty=(y,)#cast Result to Member
-            m1.x=x
-            m1.y=y
+        m1=Module()
+        x=T.dscalar()
+        m1.x=Member(T.dscalar())
+        m1.y=Method(x,x*2)
+        m1.z=Method([],m1.x*2)
+        m1.ly=[Method(x,x*2)]
+        m1.lz=[Method([],m1.x*2)]
+        m1.lly=[[Method(x,x*2)]]
+        m1.llz=[[Method([],m1.x*2)]]
+        m1.ty=(Method(x,x*2),)
+        m1.tz=(Method([],m1.x*2),)
+        m1.tty=((Method(x,x*2),),)
+        m1.ttz=((Method([],m1.x*2),),)
 
-            z=x*2
-#            print type(z)
-            m1.z=z 
-            m1.lz=[z]
-            m1.dz={"z":z}
-            m1.tz=(z,)
-            m1.zz1=Method(x,x*2)
-            m1.zz2=m1.zz1
-            m1.lzz1=[Method(x,x*2)]
-            m1.lzz2=[m1.zz1]
-            m1.dzz1={"z":m1.zz1}
-            m1.dzz2={"z":Method(x,x*2)}
-            m1.tzz1=(Method(x,x*2),)
-            m1.tzz2=(m1.zz1,)
-            inst=m1.make()
+        inst=m1.make()
+        inst.x=1
+        assert inst.y(2)==4
+        assert inst.z()==2
+        assert inst.ly[0](2)==4
+        assert inst.lz[0]()==2
+        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
+        assert inst.llz[0][0]()==2
+        assert inst.ty[0](2)==4
+        assert inst.tz[0]()==2
+        assert inst.tty[0][0](2)==4
+        assert inst.ttz[0][0]()==2
+        assert isinstance(inst.z,theano.compile.function_module.Function)
+        assert isinstance(inst.lz[0],theano.compile.function_module.Function)
+        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.tz[0],theano.compile.function_module.Function)
+        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.y,theano.compile.function_module.Function)
+        assert isinstance(inst.ly[0],theano.compile.function_module.Function)
+        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.ty[0],theano.compile.function_module.Function)
+        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
-            assert inst.lx
-            assert inst.ly
-            assert inst.tx
-            assert inst.ty
-            inst.y # we don't assert just make the look up as with T.dscalar it return None
-            # but it don't return None for value and constant
-            self.assertRaises(AttributeError, inst.__getattr__, "x")
-            self.assertRaises(AttributeError, inst.__getattr__, "dx")
-            self.assertRaises(AttributeError, inst.__getattr__, "dy")
-            self.assertRaises(AttributeError, inst.__getattr__, "z")
-            self.assertRaises(AttributeError, inst.__getattr__, "lz")
-            self.assertRaises(AttributeError, inst.__getattr__, "dz")
-            self.assertRaises(AttributeError, inst.__getattr__, "tz")
-            self.assertRaises(AttributeError, inst.__getattr__, "dzz1")
-            self.assertRaises(AttributeError, inst.__getattr__, "dzz2")
-            print m1
-            print inst
-            assert inst.zz1(2)
-            assert inst.zz2(2)
-            assert inst.lzz1[0](2)
-            assert inst.lzz2[0](2)
-            assert inst.tzz1[0](2)
-            assert inst.tzz2[0](2)
-
-        local_test(T.dscalar(),Member(T.dscalar()))
-        local_test(T.value(1),Member(T.value(2)))
-        local_test(T.constant(1),Member(T.constant(2)))
 
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED3"
 
