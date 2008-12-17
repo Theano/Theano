@@ -787,8 +787,12 @@ def wrap(x):
             return wrapper(x)
     return x
 
+# Result -> Member
+register_wrapper(lambda x: isinstance(x, gof.Result) and not x.owner,
+                 lambda x: Member(x))
+
 # Result -> External
-register_wrapper(lambda x: isinstance(x, gof.Result),
+register_wrapper(lambda x: isinstance(x, gof.Result) and x.owner,
                  lambda x: External(x))
 
 # [Component1, Component2, ...] -> ComponentList(Component1, Component2, ...)

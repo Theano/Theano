@@ -74,9 +74,8 @@ class T_test_module(unittest.TestCase):
             assert inst.ly
             assert inst.tx
             assert inst.ty
-            inst.y # we don't assert just make the look up as with T.dscalar it return None
-            # but it don't return None for value and constant
-            self.assertRaises(AttributeError, inst.__getattr__, "x")
+            inst.y 
+            inst.x
             assert inst.dx
             assert inst.dy
             assert inst.llx
@@ -98,7 +97,7 @@ class T_test_module(unittest.TestCase):
         """
         m1=Module()
         x=T.dscalar()
-        m1.x=Member(T.dscalar())
+        m1.x=T.dscalar()
         m1.y=Method(x,x*2)
         m1.z=Method([],m1.x*2)
         m1.ly=[Method(x,x*2)]
@@ -145,21 +144,21 @@ class T_test_module(unittest.TestCase):
         m1=Module()
         m2=Module()
         x=T.dscalar()
-        m1.x=Member(x)
+        m1.x=x
         m2.x=Member(x)
-        m1.lx=[Member(x)]
+        m1.lx=[x]
         m2.lx=[Member(x)]
-        m1.llx=[[Member(x)],[Member(x)]]
+        m1.llx=[[x],[x]]
         m2.llx=[[Member(x)],[Member(x)]]
-        m1.ltx=[(Member(x),)]
+        m1.ltx=[(x,)]
         m2.ltx=[(Member(x),)]
-        m1.tx=(Member(x),)
+        m1.tx=(x,)
         m2.tx=(Member(x),)
-        m1.ttx=((Member(x),),)
+        m1.ttx=((x,),)
         m2.ttx=((Member(x),),)
-        m1.tlx=([Member(x)],)
+        m1.tlx=([x],)
         m2.tlx=([Member(x)],)
-        m1.dx={'x':Member(x)}
+        m1.dx={'x':x}
         m2.dx={'x':Member(x)}
 
         #m1.x and m2.x should not be shared as their is no hierarchi link between them.
@@ -246,7 +245,7 @@ class T_test_module(unittest.TestCase):
 
 #Fred: the test create different method event if they are shared. Do we want this?
         m1=Module()
-        m1.x=Member(T.dscalar())
+        m1.x=T.dscalar()
         x=T.dscalar()
         fy=Method(x,x*2)
         fz=Method([],m1.x*2)
