@@ -47,38 +47,38 @@ class T_test_module(unittest.TestCase):
 
     def test_members_in_list_tuple_or_dict(self):
         """Test that a Member which is only included via a list, tuple or dictionary is still treated as if it
-        were a toplevel attribute
+        were a toplevel attribute and not shared
         Fred: toplevel attribute? do you mean as a toplevel member? m1.x=x work as m1.lx=[x]?
         """
 
         def local_test(x,y):
             m1=Module()
-            m1.x=x
-            m1.y=y
-            m1.lx=[x]#cast Result]
-            m1.ly=[y]
-            m1.llx=[[x]]#cast Result]
-            m1.lly=[[y]]
-            m1.ltx=[(x,)]
-            m1.lty=[(y,)]
-            m1.ldx=[{"x":x}]
-            m1.ldy=[{"y":y}]
-            m1.tx=(x,)
-            m1.ty=(y,)
-            m1.tlx=[(x,)]
-            m1.tly=[(y,)]
-            m1.ttx=((x,),)
-            m1.tty=((y,),)
-            m1.tdx=({"x":x},)
-            m1.tdy=({"y":y},)
-            m1.dx={"x":x}
-            m1.dy={"y":y}
-            m1.dlx=[{"x":x}]
-            m1.dly=[{"y":y}]
-            m1.dtx=({"x":x},)
-            m1.dty=({"y":y},)
-            m1.ddx={"x":{"x":x}}
-            m1.ddy={"y":{"y":y}}
+            m1.x=x()
+            m1.y=y()
+            m1.lx=[x()]#cast Result]
+            m1.ly=[y()]
+            m1.llx=[[x()]]#cast Result]
+            m1.lly=[[y()]]
+            m1.ltx=[(x(),)]
+            m1.lty=[(y(),)]
+            m1.ldx=[{"x":x()}]
+            m1.ldy=[{"y":y()}]
+            m1.tx=(x(),)
+            m1.ty=(y(),)
+            m1.tlx=[(x(),)]
+            m1.tly=[(y(),)]
+            m1.ttx=((x(),),)
+            m1.tty=((y(),),)
+            m1.tdx=({"x":x()},)
+            m1.tdy=({"y":y()},)
+            m1.dx={"x":x()}
+            m1.dy={"y":y()}
+            m1.dlx=[{"x":x()}]
+            m1.dly=[{"y":y()}]
+            m1.dtx=({"x":x()},)
+            m1.dty=({"y":y()},)
+            m1.ddx={"x":{"x":x()}}
+            m1.ddy={"y":{"y":y()}}
 
             inst=m1.make()
 
@@ -109,9 +109,9 @@ class T_test_module(unittest.TestCase):
             assert inst.ddy
             assert inst.ddx
 
-        local_test(T.dscalar(),Member(T.dscalar()))
-        local_test(T.value(1),Member(T.value(2)))
-        local_test(T.constant(1),Member(T.constant(2)))
+        local_test(lambda:T.dscalar(),lambda:Member(T.dscalar()))
+        local_test(lambda:T.value(1),lambda:Member(T.value(2)))
+        local_test(lambda:T.constant(1),lambda:Member(T.constant(2)))
         
     def test_method_in_list_or_dict(self):
         """Test that a Method which is only included via a list or dictionary is still treated as if it
@@ -132,8 +132,22 @@ class T_test_module(unittest.TestCase):
         m1.dz={'z':Method([],m1.x*2)}
         m1.lly=[[Method(x,x*2)]]
         m1.llz=[[Method([],m1.x*2)]]
+        m1.lty=[(Method(x,x*2),)]
+        m1.ltz=[(Method([],m1.x*2),)]
+        m1.ldy=[{'y':Method(x,x*2)}]
+        m1.ldz=[{'z':Method([],m1.x*2)}]
+        m1.tly=([Method(x,x*2)],)
+        m1.tlz=([Method([],m1.x*2)],)
         m1.tty=((Method(x,x*2),),)
         m1.ttz=((Method([],m1.x*2),),)
+        m1.tdy=({'y':Method(x,x*2)},)
+        m1.tdz=({'z':Method([],m1.x*2)},)
+        m1.dly={'y':[Method(x,x*2)]}
+        m1.dlz={'z':[Method([],m1.x*2)]}
+        m1.dty={'y':(Method(x,x*2),)}
+        m1.dtz={'z':(Method([],m1.x*2),)}
+        m1.ddy={'y':{'y':Method(x,x*2)}}
+        m1.ddz={'z':{'z':Method([],m1.x*2)}}
 
         inst=m1.make()
         inst.x=1
@@ -145,129 +159,122 @@ class T_test_module(unittest.TestCase):
         assert inst.tz[0]()==2
         assert inst.dy['y'](2)==4
         assert inst.dz['z']()==2
+        for f in inst.lly[0][0], inst.lty[0][0], inst.ldy[0]['y'], inst.tly[0][0], inst.tty[0][0], inst.tdy[0]['y'], inst.dly['y'][0], inst.dty['y'][0], inst.ddy['y']['y']:
+            assert f(2)==4
+        for f in inst.llz[0][0], inst.ltz[0][0], inst.ldz[0]['z'], inst.tlz[0][0], inst.ttz[0][0], inst.tdz[0]['z'], inst.dlz['z'][0], inst.dtz['z'][0], inst.ddz['z']['z']:
+            assert f()==2
+
         assert isinstance(inst.z,theano.compile.function_module.Function)
-        assert isinstance(inst.lz[0],theano.compile.function_module.Function)
-        assert isinstance(inst.tz[0],theano.compile.function_module.Function)
         assert isinstance(inst.y,theano.compile.function_module.Function)
-        assert isinstance(inst.ly[0],theano.compile.function_module.Function)
-        assert isinstance(inst.ty[0],theano.compile.function_module.Function)
-
-        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
-        assert inst.llz[0][0]()==2
-        assert inst.tty[0][0](2)==4
-        assert inst.ttz[0][0]()==2
-        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
-        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
-        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
-        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
-
+        for f in inst.ly,inst.lz,inst.ty,inst.tz:
+            assert isinstance(f[0],theano.compile.function_module.Function)
+        for f in inst.lly,inst.llz,inst.lty,inst.ltz,inst.tly,inst.tlz,inst.tty,inst.ttz:
+            assert isinstance(f[0][0],theano.compile.function_module.Function)
+        for f in inst.dly['y'][0],inst.dty['y'][0], inst.dlz['z'][0],inst.dtz['z'][0], inst.ddy['y']['y'], inst.ddz['z']['z']:
+            assert isinstance(f,theano.compile.function_module.Function)
+            
     def test_shared_members(self):
         """Test that under a variety of tricky conditions, the shared-ness of Results and Members
         is respected."""
 
+        def populate_module(m,x):
+            m.x=x
+            m.lx=[x]
+            m.llx=[[x],[x]]
+            m.ltx=[(x,)]
+            m.ldx=[{'x':x}]
+            m.tx=(x,)
+            m.tlx=([x],)
+            m.ttx=((x,),)
+            m.tdx=({'x':x},)
+            m.dx={'x':x}
+            m.dlx={'x':[x]}
+            m.dtx={'x':(x,)}
+            m.ddx={'x':{'x':x}}
+
+        def get_element(i):
+            return [i.x,i.lx[0],i.tx[0],i.dx['x'],i.llx[0][0], i.llx[1][0], i.ltx[0][0], i.ldx[0]['x'], i.tlx[0][0], i.tlx[0][0], i.tdx[0]['x'], i.dlx['x'][0], i.dtx['x'][0], i.ddx['x']['x']]
         m1=Module()
         m2=Module()
         x=T.dscalar()
-        m1.x=x
-        m2.x=Member(x)
-        m1.lx=[x]
-        m2.lx=[Member(x)]
-        m1.llx=[[x],[x]]
-        m2.llx=[[Member(x)],[Member(x)]]
-        m1.ltx=[(x,)]
-        m2.ltx=[(Member(x),)]
-        m1.tx=(x,)
-        m2.tx=(Member(x),)
-        m1.ttx=((x,),)
-        m2.ttx=((Member(x),),)
-        m1.tlx=([x],)
-        m2.tlx=([Member(x)],)
-        m1.dx={'x':x}
-        m2.dx={'x':Member(x)}
-
+        populate_module(m1,x)
+        populate_module(m2,Member(x))
         #m1.x and m2.x should not be shared as their is no hierarchi link between them.
         inst1=m1.make()
         inst2=m2.make()
+        m1.m2=m2
+        #m1.x and m2.x should be shared as their is a hierarchi link between them.
+        inst3=m1.make()
         inst1.x=1
         inst2.x=2
-        assert inst1.x==1
-        assert inst2.x==2
-        assert inst1.lx[0]==1
-        assert inst2.lx[0]==2
-        assert inst1.tx[0]==1
-        assert inst2.tx[0]==2
-        assert inst1.dx['x']==1
-        assert inst2.dx['x']==2
-        assert inst1.ltx[0][0]==1#BUG: list of tuple don't work
-        assert inst2.ltx[0][0]==2#BUG: list of tuple don't work
-        assert inst1.llx[0][0]==1#BUG: list of list don't work
-        assert inst2.llx[0][0]==2#BUG: list of list don't work
-        assert inst1.llx[1][0]==1#BUG: list of list don't work
-        assert inst2.llx[1][0]==2#BUG: list of list don't work
-        assert inst1.ttx[0][0]==1#BUG: tuple of list don't work
-        assert inst2.ttx[0][0]==2#BUG: tuple of list don't work
-        assert inst1.tlx[0][0]==1#BUG: tuple of list don't work
-        assert inst2.tlx[0][0]==2#BUG: tuple of list don't work
+        inst3.x=3
+        for f in get_element(inst1):
+            assert f==1
+        for f in get_element(inst2):
+            assert f==2
+        for f in get_element(inst3)+get_element(inst3.m2):
+            assert f==3
 
-        #m1.x and m2.x should be shared as their is a hierarchi link between them.
-        m1.m2=m2
-        inst=m1.make()
-        inst.x=1
-        assert inst.x==1
-        assert inst.m2.x==1
-        assert inst.lx[0]==1
-        assert inst.m2.lx[0]==1
-        assert inst.tx[0]==1
-        assert inst.m2.tx[0]==1
-        assert inst.dx['x']==1
-        assert inst.m2.dx['x']==1
-        assert inst.llx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.llx[0][0]==1#BUG: list of list don't work
-        assert inst.llx[1][0]==1#BUG: list of list don't work
-        assert inst.m2.llx[1][0]==1#BUG: list of list don't work
-        assert inst.ltx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.ltx[0][0]==1#BUG: list of list don't work
-        assert inst.ttx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.ttx[0][0]==1#BUG: list of list don't work
-        assert inst.tlx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.tlx[0][0]==1#BUG: list of list don't work
-        inst.m2.x=2
-        assert inst.x==2
-        assert inst.m2.x==2
-        assert inst.lx[0]==2
-        assert inst.m2.lx[0]==2
-        assert inst.tx[0]==2
-        assert inst.m2.tx[0]==2
-        assert inst.dx['x']==2
-        assert inst.m2.dx['x']==2
-        assert inst.llx[0][0]==2#BUG: list of list don't work
-        assert inst.m2.llx[0][0]==2#BUG: list of list don't work
-        assert inst.llx[1][0]==2#BUG: list of list don't work
-        assert inst.m2.llx[1][0]==2#BUG: list of list don't work
-        assert inst.ltx[0][0]==2#BUG: list of list don't work
-        assert inst.m2.ltx[0][0]==2#BUG: list of list don't work
-        assert inst.ttx[0][0]==2#BUG: list of list don't work
-        assert inst.m2.ttx[0][0]==2#BUG: list of list don't work
-        assert inst.tlx[0][0]==2#BUG: list of list don't work
-        assert inst.m2.tlx[0][0]==2#BUG: list of list don't work
-
-
-    #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
-    #a list and a submodule with a dictionary, etc...
+        inst3.m2.x=4
+        for f in get_element(inst3)+get_element(inst3.m2):
+            assert f==4
 
     def test_shared_members_N(self):
         """Test that Members can be shared an arbitrary number of times between many submodules and
         internal data structures."""
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+        def populate_module(m,x):
+            m.x=x
+            m.lx=[x]
+            m.llx=[[x],[x]]
+            m.ltx=[(x,)]
+            m.ldx=[{'x':x}]
+            m.tx=(x,)
+            m.tlx=([x],)
+            m.ttx=((x,),)
+            m.tdx=({'x':x},)
+            m.dx={'x':x}
+            m.dlx={'x':[x]}
+            m.dtx={'x':(x,)}
+            m.ddx={'x':{'x':x}}
 
-    #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
-    #a list and a submodule with a dictionary, etc...
+        def get_element(i):
+            return [i.x,i.lx[0],i.tx[0],i.dx['x'],i.llx[0][0], i.llx[1][0], i.ltx[0][0], i.ldx[0]['x'], i.tlx[0][0], i.tlx[0][0], i.tdx[0]['x'], i.dlx['x'][0], i.dtx['x'][0], i.ddx['x']['x']]
+        m1=Module()
+        m2=Module()
+        m3=Module()
+        m4=Module()
+        x=T.dscalar()
+        populate_module(m1,x)
+        populate_module(m2,Member(x))
+        populate_module(m4,Member(x))
+        #m1.x and m2.x should not be shared as their is no hierarchi link between them.
+        inst1=m1.make()
+        inst2=m2.make()
+        m1.m2=m2
+        m2.m3=m3
+        m3.m4=m4
+        #m1.x and m2.x should be shared as their is a hierarchi link between them.
+        inst3=m1.make()
+        inst1.x=1
+        inst2.x=2
+        inst3.x=3
+        for f in get_element(inst1):
+            assert f==1
+        for f in get_element(inst2):
+            assert f==2
+        for f in get_element(inst3)+get_element(inst3.m2)+get_element(inst3.m2.m3.m4):
+            assert f==3
+
+        inst3.m2.x=4
+        for f in get_element(inst3)+get_element(inst3.m2)+get_element(inst3.m2.m3.m4):
+            assert f==4
 
     def test_shared_method(self):
         """Test that under a variety of tricky conditions, the shared-ness of Results and Methods
-        is respected."""
+        is respected.
+        Fred: the test create different method event if they are shared. Do we want this?
+        """
 
-#Fred: the test create different method event if they are shared. Do we want this?
         m1=Module()
         m1.x=T.dscalar()
         x=T.dscalar()
@@ -296,7 +303,7 @@ class T_test_module(unittest.TestCase):
         assert inst.tz[0]()==2
         assert inst.dy['y'](2)==4
         assert inst.dz['z']()==2
-        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
+        assert inst.lly[0][0](2)==4
         assert inst.llz[0][0]()==2
         assert inst.tty[0][0](2)==4
         assert inst.ttz[0][0]()==2
