@@ -49,42 +49,65 @@ class T_test_module(unittest.TestCase):
         """Test that a Member which is only included via a list, tuple or dictionary is still treated as if it
         were a toplevel attribute
         Fred: toplevel attribute? do you mean as a toplevel member? m1.x=x work as m1.lx=[x]?
-        Fred: why list,tuple of result are casted to member?
-        Fred: why no wrapper for dict? Should I add one?
-        Fred: why we don't promote a Result to a member, but we do it for lsit and tuple of results?
         """
 
         def local_test(x,y):
             m1=Module()
+            m1.x=x
+            m1.y=y
             m1.lx=[x]#cast Result]
             m1.ly=[y]
             m1.llx=[[x]]#cast Result]
             m1.lly=[[y]]
             m1.ltx=[(x,)]
             m1.lty=[(y,)]
-            m1.dx={"x":x}
-            m1.dy={"y":y}
+            m1.ldx=[{"x":x}]
+            m1.ldy=[{"y":y}]
             m1.tx=(x,)
             m1.ty=(y,)
+            m1.tlx=[(x,)]
+            m1.tly=[(y,)]
             m1.ttx=((x,),)
             m1.tty=((y,),)
-            m1.x=x
-            m1.y=y
+            m1.tdx=({"x":x},)
+            m1.tdy=({"y":y},)
+            m1.dx={"x":x}
+            m1.dy={"y":y}
+            m1.dlx=[{"x":x}]
+            m1.dly=[{"y":y}]
+            m1.dtx=({"x":x},)
+            m1.dty=({"y":y},)
+            m1.ddx={"x":{"x":x}}
+            m1.ddy={"y":{"y":y}}
+
             inst=m1.make()
+
+            inst.y 
+            inst.x
             assert inst.lx
             assert inst.ly
             assert inst.tx
             assert inst.ty
-            inst.y 
-            inst.x
             assert inst.dx
             assert inst.dy
             assert inst.llx
             assert inst.lly
             assert inst.ltx
             assert inst.lty
+            assert inst.ldx
+            assert inst.ldy
+            assert inst.tlx
+            assert inst.tly
             assert inst.ttx
             assert inst.tty
+            assert inst.tdx
+            assert inst.tdy
+            assert inst.dly
+            assert inst.dlx
+            assert inst.dty
+            assert inst.dtx
+            assert inst.ddy
+            assert inst.ddx
 
         local_test(T.dscalar(),Member(T.dscalar()))
         local_test(T.value(1),Member(T.value(2)))
