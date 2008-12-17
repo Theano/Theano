@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import unittest
 from theano.compile.module import *
 import theano.tensor as T
@@ -174,16 +175,16 @@ class T_test_module(unittest.TestCase):
         assert inst2.tx[0]==2
         assert inst1.dx['x']==1
         assert inst2.dx['x']==2
-#        assert inst1.ltx[0][0]==1#BUG: list of tuple don't work
-#        assert inst2.ltx[0][0]==2#BUG: list of tuple don't work
-#        assert inst1.llx[0][0]==1#BUG: list of list don't work
-#        assert inst2.llx[0][0]==2#BUG: list of list don't work
-#        assert inst1.llx[1][0]==1#BUG: list of list don't work
-#        assert inst2.llx[1][0]==2#BUG: list of list don't work
-#        assert inst1.ttx[0][0]==1#BUG: tuple of list don't work
-#        assert inst2.ttx[0][0]==2#BUG: tuple of list don't work
-#        assert inst1.tlx[0][0]==1#BUG: tuple of list don't work
-#        assert inst2.tlx[0][0]==2#BUG: tuple of list don't work
+        assert inst1.ltx[0][0]==1#BUG: list of tuple don't work
+        assert inst2.ltx[0][0]==2#BUG: list of tuple don't work
+        assert inst1.llx[0][0]==1#BUG: list of list don't work
+        assert inst2.llx[0][0]==2#BUG: list of list don't work
+        assert inst1.llx[1][0]==1#BUG: list of list don't work
+        assert inst2.llx[1][0]==2#BUG: list of list don't work
+        assert inst1.ttx[0][0]==1#BUG: tuple of list don't work
+        assert inst2.ttx[0][0]==2#BUG: tuple of list don't work
+        assert inst1.tlx[0][0]==1#BUG: tuple of list don't work
+        assert inst2.tlx[0][0]==2#BUG: tuple of list don't work
 
         #m1.x and m2.x should be shared as their is a hierarchi link between them.
         m1.m2=m2
@@ -197,16 +198,16 @@ class T_test_module(unittest.TestCase):
         assert inst.m2.tx[0]==1
         assert inst.dx['x']==1
         assert inst.m2.dx['x']==1
-#        assert inst.llx[0][0]==1#BUG: list of list don't work
-#        assert inst.m2.llx[0][0]==1#BUG: list of list don't work
-#        assert inst.llx[1][0]==1#BUG: list of list don't work
-#        assert inst.m2.llx[1][0]==1#BUG: list of list don't work
-#        assert inst.ltx[0][0]==1#BUG: list of list don't work
-#        assert inst.m2.ltx[0][0]==1#BUG: list of list don't work
-#        assert inst.ttx[0][0]==1#BUG: list of list don't work
-#        assert inst.m2.ttx[0][0]==1#BUG: list of list don't work
-#        assert inst.tlx[0][0]==1#BUG: list of list don't work
-#        assert inst.m2.tlx[0][0]==1#BUG: list of list don't work
+        assert inst.llx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.llx[0][0]==1#BUG: list of list don't work
+        assert inst.llx[1][0]==1#BUG: list of list don't work
+        assert inst.m2.llx[1][0]==1#BUG: list of list don't work
+        assert inst.ltx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.ltx[0][0]==1#BUG: list of list don't work
+        assert inst.ttx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.ttx[0][0]==1#BUG: list of list don't work
+        assert inst.tlx[0][0]==1#BUG: list of list don't work
+        assert inst.m2.tlx[0][0]==1#BUG: list of list don't work
         inst.m2.x=2
         assert inst.x==2
         assert inst.m2.x==2
@@ -272,22 +273,22 @@ class T_test_module(unittest.TestCase):
         assert inst.tz[0]()==2
         assert inst.dy['y'](2)==4
         assert inst.dz['z']()==2
-#        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
-#        assert inst.llz[0][0]()==2
-#        assert inst.tty[0][0](2)==4
-#        assert inst.ttz[0][0]()==2
+        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
+        assert inst.llz[0][0]()==2
+        assert inst.tty[0][0](2)==4
+        assert inst.ttz[0][0]()==2
         assert isinstance(inst.z,theano.compile.function_module.Function)
         assert isinstance(inst.lz[0],theano.compile.function_module.Function)
-#        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.tz[0],theano.compile.function_module.Function)
         assert isinstance(inst.dz['z'],theano.compile.function_module.Function)
-#        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.y,theano.compile.function_module.Function)
         assert isinstance(inst.ly[0],theano.compile.function_module.Function)
-#        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.ty[0],theano.compile.function_module.Function)
         assert isinstance(inst.dy['y'],theano.compile.function_module.Function)
-#        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
     #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
@@ -330,3 +331,11 @@ class T_test_module(unittest.TestCase):
         As Result with more optimization?"""
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
 
+if __name__ == '__main__':
+    from theano.tests import main
+#    main(__file__[:-3])
+    main("test_module")
+#    t=T_test_module()
+#    t.test_shared_members()
+#    tests = unittest.TestLoader().loadTestsFromModule("T_test_module")
+#    tests.debug()
