@@ -72,19 +72,19 @@ class T_test_module(unittest.TestCase):
             inst=m1.make()
             assert inst.lx
             assert inst.ly
+            assert inst.tx
+            assert inst.ty
+            inst.y # we don't assert just make the look up as with T.dscalar it return None
+            # but it don't return None for value and constant
+            self.assertRaises(AttributeError, inst.__getattr__, "x")
+            assert inst.dx
+            assert inst.dy
             assert inst.llx
             assert inst.lly
             assert inst.ltx
             assert inst.lty
-            assert inst.tx
-            assert inst.ty
             assert inst.ttx
             assert inst.tty
-            inst.y # we don't assert just make the look up as with T.dscalar it return None
-            # but it don't return None for value and constant
-            self.assertRaises(AttributeError, inst.__getattr__, "x")
-            self.assertRaises(AttributeError, inst.__getattr__, "dx")
-            self.assertRaises(AttributeError, inst.__getattr__, "dy")
 
         local_test(T.dscalar(),Member(T.dscalar()))
         local_test(T.value(1),Member(T.value(2)))
@@ -103,10 +103,12 @@ class T_test_module(unittest.TestCase):
         m1.z=Method([],m1.x*2)
         m1.ly=[Method(x,x*2)]
         m1.lz=[Method([],m1.x*2)]
-        m1.lly=[[Method(x,x*2)]]
-        m1.llz=[[Method([],m1.x*2)]]
         m1.ty=(Method(x,x*2),)
         m1.tz=(Method([],m1.x*2),)
+        m1.dy={'y':Method(x,x*2)}
+        m1.dz={'z':Method([],m1.x*2)}
+        m1.lly=[[Method(x,x*2)]]
+        m1.llz=[[Method([],m1.x*2)]]
         m1.tty=((Method(x,x*2),),)
         m1.ttz=((Method([],m1.x*2),),)
 
@@ -116,23 +118,25 @@ class T_test_module(unittest.TestCase):
         assert inst.z()==2
         assert inst.ly[0](2)==4
         assert inst.lz[0]()==2
-        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
-        assert inst.llz[0][0]()==2
         assert inst.ty[0](2)==4
         assert inst.tz[0]()==2
-        assert inst.tty[0][0](2)==4
-        assert inst.ttz[0][0]()==2
+        assert inst.dy['y'](2)==4
+        assert inst.dz['z']()==2
         assert isinstance(inst.z,theano.compile.function_module.Function)
         assert isinstance(inst.lz[0],theano.compile.function_module.Function)
-        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.tz[0],theano.compile.function_module.Function)
-        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.y,theano.compile.function_module.Function)
         assert isinstance(inst.ly[0],theano.compile.function_module.Function)
-        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.ty[0],theano.compile.function_module.Function)
-        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
+        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
+        assert inst.llz[0][0]()==2
+        assert inst.tty[0][0](2)==4
+        assert inst.ttz[0][0]()==2
+        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
+        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
     def test_shared_members(self):
         """Test that under a variety of tricky conditions, the shared-ness of Results and Members
@@ -155,6 +159,8 @@ class T_test_module(unittest.TestCase):
         m2.ttx=((Member(x),),)
         m1.tlx=([Member(x)],)
         m2.tlx=([Member(x)],)
+        m1.dx={'x':Member(x)}
+        m2.dx={'x':Member(x)}
 
         #m1.x and m2.x should not be shared as their is no hierarchi link between them.
         inst1=m1.make()
@@ -165,18 +171,20 @@ class T_test_module(unittest.TestCase):
         assert inst2.x==2
         assert inst1.lx[0]==1
         assert inst2.lx[0]==2
-        assert inst1.ltx[0][0]==1#BUG: list of tuple don't work
-        assert inst2.ltx[0][0]==2#BUG: list of tuple don't work
-        assert inst1.llx[0][0]==1#BUG: list of list don't work
-        assert inst2.llx[0][0]==2#BUG: list of list don't work
-        assert inst1.llx[1][0]==1#BUG: list of list don't work
-        assert inst2.llx[1][0]==2#BUG: list of list don't work
         assert inst1.tx[0]==1
         assert inst2.tx[0]==2
-        assert inst1.ttx[0][0]==1#BUG: tuple of list don't work
-        assert inst2.ttx[0][0]==2#BUG: tuple of list don't work
-        assert inst1.tlx[0][0]==1#BUG: tuple of list don't work
-        assert inst2.tlx[0][0]==2#BUG: tuple of list don't work
+        assert inst1.dx['x']==1
+        assert inst2.dx['x']==2
+#        assert inst1.ltx[0][0]==1#BUG: list of tuple don't work
+#        assert inst2.ltx[0][0]==2#BUG: list of tuple don't work
+#        assert inst1.llx[0][0]==1#BUG: list of list don't work
+#        assert inst2.llx[0][0]==2#BUG: list of list don't work
+#        assert inst1.llx[1][0]==1#BUG: list of list don't work
+#        assert inst2.llx[1][0]==2#BUG: list of list don't work
+#        assert inst1.ttx[0][0]==1#BUG: tuple of list don't work
+#        assert inst2.ttx[0][0]==2#BUG: tuple of list don't work
+#        assert inst1.tlx[0][0]==1#BUG: tuple of list don't work
+#        assert inst2.tlx[0][0]==2#BUG: tuple of list don't work
 
         #m1.x and m2.x should be shared as their is a hierarchi link between them.
         m1.m2=m2
@@ -186,18 +194,20 @@ class T_test_module(unittest.TestCase):
         assert inst.m2.x==1
         assert inst.lx[0]==1
         assert inst.m2.lx[0]==1
-        assert inst.llx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.llx[0][0]==1#BUG: list of list don't work
-        assert inst.llx[1][0]==1#BUG: list of list don't work
-        assert inst.m2.llx[1][0]==1#BUG: list of list don't work
-        assert inst.ltx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.ltx[0][0]==1#BUG: list of list don't work
         assert inst.tx[0]==1
         assert inst.m2.tx[0]==1
-        assert inst.ttx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.ttx[0][0]==1#BUG: list of list don't work
-        assert inst.tlx[0][0]==1#BUG: list of list don't work
-        assert inst.m2.tlx[0][0]==1#BUG: list of list don't work
+        assert inst.dx['x']==1
+        assert inst.m2.dx['x']==1
+#        assert inst.llx[0][0]==1#BUG: list of list don't work
+#        assert inst.m2.llx[0][0]==1#BUG: list of list don't work
+#        assert inst.llx[1][0]==1#BUG: list of list don't work
+#        assert inst.m2.llx[1][0]==1#BUG: list of list don't work
+#        assert inst.ltx[0][0]==1#BUG: list of list don't work
+#        assert inst.m2.ltx[0][0]==1#BUG: list of list don't work
+#        assert inst.ttx[0][0]==1#BUG: list of list don't work
+#        assert inst.m2.ttx[0][0]==1#BUG: list of list don't work
+#        assert inst.tlx[0][0]==1#BUG: list of list don't work
+#        assert inst.m2.tlx[0][0]==1#BUG: list of list don't work
         inst.m2.x=2
         assert inst.x==2
         assert inst.m2.x==2
@@ -205,6 +215,18 @@ class T_test_module(unittest.TestCase):
         assert inst.m2.lx[0]==2
         assert inst.tx[0]==2
         assert inst.m2.tx[0]==2
+        assert inst.dx['x']==2
+        assert inst.m2.dx['x']==2
+        assert inst.llx[0][0]==2#BUG: list of list don't work
+        assert inst.m2.llx[0][0]==2#BUG: list of list don't work
+        assert inst.llx[1][0]==2#BUG: list of list don't work
+        assert inst.m2.llx[1][0]==2#BUG: list of list don't work
+        assert inst.ltx[0][0]==2#BUG: list of list don't work
+        assert inst.m2.ltx[0][0]==2#BUG: list of list don't work
+        assert inst.ttx[0][0]==2#BUG: list of list don't work
+        assert inst.m2.ttx[0][0]==2#BUG: list of list don't work
+        assert inst.tlx[0][0]==2#BUG: list of list don't work
+        assert inst.m2.tlx[0][0]==2#BUG: list of list don't work
 
 
     #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
@@ -238,6 +260,8 @@ class T_test_module(unittest.TestCase):
         m1.tz=(fz,)
         m1.tty=((fy,),)
         m1.ttz=((fz,),)
+        m1.dy={'y':fy}
+        m1.dz={'z':fz}
 
         inst=m1.make()
         inst.x=1
@@ -245,21 +269,25 @@ class T_test_module(unittest.TestCase):
         assert inst.z()==2
         assert inst.ly[0](2)==4
         assert inst.lz[0]()==2
-#        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
-#        assert inst.llz[0][0]()==2
         assert inst.ty[0](2)==4
         assert inst.tz[0]()==2
+        assert inst.dy['y'](2)==4
+        assert inst.dz['z']()==2
+#        assert inst.lly[0][0](2)==4#BUG: we don't support list of list of Method...
+#        assert inst.llz[0][0]()==2
 #        assert inst.tty[0][0](2)==4
 #        assert inst.ttz[0][0]()==2
         assert isinstance(inst.z,theano.compile.function_module.Function)
         assert isinstance(inst.lz[0],theano.compile.function_module.Function)
 #        assert isinstance(inst.llz[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.tz[0],theano.compile.function_module.Function)
+        assert isinstance(inst.dz['z'],theano.compile.function_module.Function)
 #        assert isinstance(inst.ttz[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.y,theano.compile.function_module.Function)
         assert isinstance(inst.ly[0],theano.compile.function_module.Function)
 #        assert isinstance(inst.lly[0][0],theano.compile.function_module.Function)
         assert isinstance(inst.ty[0],theano.compile.function_module.Function)
+        assert isinstance(inst.dy['y'],theano.compile.function_module.Function)
 #        assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"

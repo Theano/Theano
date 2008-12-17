@@ -799,7 +799,19 @@ register_wrapper(lambda x: isinstance(x, (list, tuple)) and all(isinstance(r, Co
 register_wrapper(lambda x: isinstance(x, (list, tuple)) \
                      and all(isinstance(r, gof.Result) and not r.owner for r in x),
                  lambda x: ComponentList(*map(Member, x)))
-
+#{ "name1":Result1,...} -> ComponentDict(Member(Result1),...)
+def dict_member(d):
+    nd={}
+    for k,v in d.iteritems():
+        nd[k]=Member(v)
+    return nd
+register_wrapper(lambda x: isinstance(x, dict) \
+                     and all(isinstance(r,gof.Result) \
+                                 and not r.owner for r in x.itervalues()),
+                 lambda x: ComponentDict(dict_member(x)))
+register_wrapper(lambda x: isinstance(x, dict) \
+                     and all(isinstance(r,Component) for r in x.itervalues()),
+                 lambda x: ComponentDict(x))
 
 class Curry:
     def __init__(self, obj, name, arg):
