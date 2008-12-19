@@ -787,29 +787,31 @@ def wrap(x):
             return wrapper(x)
     return x
 
-def dict_wrap(d):
-    for k,v in d.iteritems():
-        d[k]=wrap(v)
-    return d
-
-# Result -> Member
-register_wrapper(lambda x: isinstance(x, gof.Result) and not x.owner,
-                 lambda x: Member(x))
-
 # Result -> External
-register_wrapper(lambda x: isinstance(x, gof.Result) and x.owner,
+register_wrapper(lambda x: isinstance(x, gof.Result),
                  lambda x: External(x))
 
-# [[Result1], {Result2}, Result3...] -> ComponentList(Member(Result1), Member(Result2), ...)
-register_wrapper(lambda x: isinstance(x, (list, tuple)) \
-                     and all(isinstance(r, (gof.Result,Component,list,
-                                            tuple, dict)) for r in x),
-                 lambda x: ComponentList(*map(wrap, x)))
+# [Component1, Component2, ...] -> ComponentList(Component1, Component2, ...)
+register_wrapper(lambda x: isinstance(x, (list, tuple)) and all(isinstance(r, Component) for r in x),
+                 lambda x: ComponentList(*x))
 
-#{ "name1":{Component,Result,list,tuple,dict},...} -> ComponentDict({Component,Result,list,tuple,dict},...)
+# [Result1, Result2, ...] -> ComponentList(Member(Result1), Member(Result2), ...)
+register_wrapper(lambda x: isinstance(x, (list, tuple)) \
+                     and all(isinstance(r, gof.Result) and not r.owner for r in x),
+                 lambda x: ComponentList(*map(Member, x)))
+#{ "name1":Result1,...} -> ComponentDict(Member(Result1),...)
+def dict_member(d):
+    nd={}
+    for k,v in d.iteritems():
+        nd[k]=Member(v)
+    return nd
 register_wrapper(lambda x: isinstance(x, dict) \
-                     and all(isinstance(r,(Component,gof.Result,list,tuple,dict)) for r in x.itervalues()),
-                 lambda x: ComponentDict(dict_wrap(x)))
+                     and all(isinstance(r,gof.Result) \
+                                 and not r.owner for r in x.itervalues()),
+                 lambda x: ComponentDict(dict_member(x)))
+register_wrapper(lambda x: isinstance(x, dict) \
+                     and all(isinstance(r,Component) for r in x.itervalues()),
+                 lambda x: ComponentDict(x))
 
 class Curry:
     def __init__(self, obj, name, arg):
