@@ -21,34 +21,9 @@ class T_test_module(unittest.TestCase):
         b.step(1.0)
         assert b.stepsize == 0.0
 
-
-    def test_no_shared_members(self):
-        """Test that a Result cannot become a Member of two connected Modules
-        Fred: What is the purpose of this test? Why we should not be able to do it? I think we should be able to share member.
-              Right now it seem to work when it should not.
-        """
-        x=T.dscalar()
-        y=Member(T.dscalar())
-        m1=Module()
-        m2=Module()
-        m1.x=x
-        m2.x=x
-        m1.y=y
-        m2.y=y
-        m2.m1=m1
-        inst1=m1.make()
-        inst2=m2.make()
-
-#        inst1.y=1
-#        inst2.y=2
-        print inst1
-        print inst2
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED1"
-
     def test_members_in_list_tuple_or_dict(self):
         """Test that a Member which is only included via a list, tuple or dictionary is still treated as if it
         were a toplevel attribute and not shared
-        Fred: toplevel attribute? do you mean as a toplevel member? m1.x=x work as m1.lx=[x]?
         """
 
         def local_test(x,y):
@@ -73,41 +48,49 @@ class T_test_module(unittest.TestCase):
             m1.tdy=({"y":y()},)
             m1.dx={"x":x()}
             m1.dy={"y":y()}
-            m1.dlx=[{"x":x()}]
-            m1.dly=[{"y":y()}]
-            m1.dtx=({"x":x()},)
-            m1.dty=({"y":y()},)
+            m1.dlx={"x":[x()]}
+            m1.dly={"y":[y()]}
+            m1.dtx={"x":(x(),)}
+            m1.dty={"y":(y(),)}
             m1.ddx={"x":{"x":x()}}
             m1.ddy={"y":{"y":y()}}
 
             inst=m1.make()
 
-            inst.y 
+            def get_l():
+                return [inst.lx, inst.ly, inst.tx, inst.ty, inst.dx, inst.dy, inst.llx, inst.lly, inst.ltx, inst.lty, inst.ldx, inst.ldy, inst.tlx, inst.tly, inst.ttx, inst.tty, inst.tdx, inst.tdy, inst.dly, inst.dlx, inst.dty, inst.dtx, inst.ddy, inst.ddx] 
+            def get_l2():
+#                return [inst.lx[0], inst.ly[0], inst.tx[0], inst.ty[0], inst.dx['x'], inst.dy['y'], inst.llx[0][0], inst.lly[0][0], inst.ltx[0][0], inst.lty[0][0], inst.ldx[0]['x'], inst.ldy[0]['y'], inst.tlx[0][0], inst.tly[0][0], inst.ttx[0][0], inst.tty[0][0], inst.tdx, inst.tdy, inst.dly, inst.dlx, inst.dty, inst.dtx, inst.ddy, inst.ddx] 
+                return [inst.lx, inst.ly, inst.tx, inst.ty, inst.llx[0], inst.lly[0], inst.ltx[0], inst.lty[0], inst.ldx[0], inst.ldy[0], inst.tlx[0], inst.tly[0], inst.ttx[0], inst.tty[0], inst.tdx[0], inst.tdy[0], inst.dly['y'], inst.dlx['x'], inst.dty['y'], inst.dtx['x']]#, inst.ddy['y'], inst.ddx['x']] 
+
+
+            #test that we can access the data
             inst.x
-            assert inst.lx
-            assert inst.ly
-            assert inst.tx
-            assert inst.ty
-            assert inst.dx
-            assert inst.dy
-            assert inst.llx
-            assert inst.lly
-            assert inst.ltx
-            assert inst.lty
-            assert inst.ldx
-            assert inst.ldy
-            assert inst.tlx
-            assert inst.tly
-            assert inst.ttx
-            assert inst.tty
-            assert inst.tdx
-            assert inst.tdy
-            assert inst.dly
-            assert inst.dlx
-            assert inst.dty
-            assert inst.dtx
-            assert inst.ddy
-            assert inst.ddx
+            inst.y 
+            for i in get_l():
+                assert i
+
+            #test that we can set a value to the data the get this value
+            inst.x=-1
+            inst.y=-2
+            inst.ldx[0]['x']=-3
+            inst.ldy[0]['y']=-4
+            inst.tdx[0]['x']=-5
+            inst.tdy[0]['y']=-6
+            inst.ddx['x']['x']=-7
+            inst.ddy['y']['y']=-8
+            for i,j in zip(get_l2(),range(len(get_l2()))):
+                i[0]=j
+            assert inst.x==-1
+            assert inst.y==-2
+            assert inst.ldx[0]['x']==-3
+            assert inst.ldy[0]['y']==-4
+            assert inst.tdx[0]['x']==-5
+            assert inst.tdy[0]['y']==-6
+            assert inst.ddx['x']['x']==-7
+            assert inst.ddy['y']['y']==-8
+            for i,j in zip(get_l2(),range(len(get_l2()))):
+                assert i[0]==j
 
         local_test(lambda:T.dscalar(),lambda:Member(T.dscalar()))
         local_test(lambda:T.value(1),lambda:Member(T.value(2)))
@@ -116,8 +99,7 @@ class T_test_module(unittest.TestCase):
     def test_method_in_list_or_dict(self):
         """Test that a Method which is only included via a list or dictionary is still treated as if it
         were a toplevel attribute
-        Fred: why do we promote a list or tuple of fct of result to a Method?
-        Fred: why we don't do this of direct fct of results or dict?
+        Fred: why we don't do this of direct fct of results?
         """
         m1=Module()
         x=T.dscalar()
@@ -272,7 +254,7 @@ class T_test_module(unittest.TestCase):
     def test_shared_method(self):
         """Test that under a variety of tricky conditions, the shared-ness of Results and Methods
         is respected.
-        Fred: the test create different method event if they are shared. Do we want this?
+        Fred: the test create different method event if they are shared. What do we want?
         """
 
         m1=Module()
@@ -320,9 +302,7 @@ class T_test_module(unittest.TestCase):
         assert isinstance(inst.dy['y'],theano.compile.function_module.Function)
         assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
-    #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
-    #a list and a submodule with a dictionary, etc...
+        print >> sys.stderr, "MODULE TEST IMPLEMENTED BUT WE DON'T KNOW WHAT WE WANT AS A RESULT"
 
     def test_shared_method_N(self):
         """Test that Methods can be shared an arbitrary number of times between many submodules and
