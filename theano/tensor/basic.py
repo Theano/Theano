@@ -492,7 +492,14 @@ class _tensor_py_operators:
     #ARITHMETIC - NORMAL
     def __add__(self,other): return add(self,other)
     def __sub__(self,other): return sub(self,other)
-    def __mul__(self,other): return mul(self,other)
+    def __mul__(self,other): 
+        try: 
+            return mul(self,other)
+        except Exception, e:
+            try:
+                return other * self
+            except:
+                raise e
     def __div__(self,other): return div(self,other)
     def __pow__(self,other): return pow(self,other)
     def __mod__(self,other): return mod(self,other)
@@ -2189,7 +2196,8 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
     testcase.failUnless(analytic gradient matches finite-diff gradient)
 
     :param pt: the list of numpy.ndarrays to use as inputs to the op
-    :param op: something that behaves like an Op instance.
+    :param op: something that behaves like an Op instance with a single output (can be a
+    function)
     :param testcase: the thing to call `fail` on if things go awry.
     
     """
