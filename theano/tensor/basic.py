@@ -490,20 +490,38 @@ class _tensor_py_operators:
 #     def __ixor__(self, other): return _xor_inplace(self, other)
 
     #ARITHMETIC - NORMAL
-    def __add__(self,other): return add(self,other)
-    def __sub__(self,other): return sub(self,other)
+    def __add__(self,other): 
+        try:
+            return add(self,other)
+        except Exception, e:
+            raise NotImplemented
+    def __sub__(self,other): 
+        try:
+            return sub(self,other)
+        except Exception, e:
+            raise NotImplemented
     def __mul__(self,other): 
         try: 
             return mul(self,other)
         except Exception, e:
-            try:
-                return other * self
-            except:
-                raise e
-    def __div__(self,other): return div(self,other)
-    def __pow__(self,other): return pow(self,other)
-    def __mod__(self,other): return mod(self,other)
+            raise NotImplemented
+    def __div__(self,other): 
+        try: 
+            return div(self,other)
+        except Exception, e:
+            raise NotImplemented
+    def __pow__(self,other): 
+        try:
+            return pow(self,other)
+        except Exception, e:
+            raise NotImplemented
+    def __mod__(self,other):
+        try:
+            return mod(self,other)
+        except Exception, e:
+            raise NotImplemented
 
+#     ##### DON"T USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED BY OPTIMIZATION ONLY
 #     #ARITHMETIC - INPLACE
 #     def __iadd__(self,other): return _add_inplace(self,other)
 #     def __isub__(self,other): return _sub_inplace(self,other)

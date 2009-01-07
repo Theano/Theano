@@ -11,6 +11,11 @@ from scipy import sparse
 
 from .. import gof
 from .. import tensor
+from .. import compile
+
+#TODO: move this decorator to the compile submodule
+def register_specialize(lopt, *tags, **kwargs):
+    compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or lopt.__name__, lopt, 'fast_run', *tags)
 
 
 """ Types of sparse matrices to use for testing """
@@ -98,6 +103,9 @@ def value(x):
     except TypeError:
         raise TypeError("Could not convert %s to Sparse" % x, type(x))
 
+def sp_ones_like(x):
+    data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
+    return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
 
 class Sparse(gof.Type):
@@ -187,12 +195,159 @@ class SparseValue(gof.Value, _sparse_py_operators):
     format = property(lambda self: self.type.format)
 
     
+# CONSTRUCTION
+class CSMProperties(gof.Op):
+    """Extract all of .data .indices and .indptr"""
+    view_map = {0:[0],1:[0],2:[0],3:[0]}
+
+    def __init__(self, map=None):
+        self.map = map
+
+    def make_node(self, csm):
+        print '******* sp:CSMProperties:make_node *******'
+        csm = as_sparse(csm)
+        data = tensor.Tensor(dtype=csm.type.dtype, broadcastable = (False,)).make_result()
+        return gof.Apply(self, [csm], 
+                [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
+
+    def perform(self, node, (csm,), out):
+        print '******* sp:CSMProperties:perform *******'
+        print 'self.map = ', self.map
+        print 'csm.data = ', csm.data
+        print 'size(csm.data) = ', numpy.size(csm.data)
+        print 'csm.todense.shape = ', csm.todense().shape
+        print 'type(csm) = ', type(csm)
+        out[0][0] = csm.data if self.map is None else csm.data[self.map]
+        out[1][0] = numpy.asarray(csm.indices, dtype='int32')
+        out[2][0] = numpy.asarray(csm.indptr, dtype='int32')
+        out[3][0] = numpy.asarray(csm.shape, dtype='int32')
+
+    # TODO FIX THIS
+    def grad(self, (csm,), g):
+        print '******* sp:CSMProperties:grad *******'
+        assert [gg is None for gg in g[1:]]
+        data, indices, indptr, shape = csm_properties(csm, self.map)
+        if csm.format == 'csc':
+            return [CSM('csc',self.map)(g_data, indices, indptr, shape)]
+        else:
+            return [CSR('csm',self.map)(g_data, indices, indptr, shape)]
+
+def csm_properties(csm, map=None): return CSMProperties(map)(csm)
+def csm_data(csm,map=None): return csm_properties(csm,map)[0]
+def csm_indices(csm): return csm_properties(csm)[1]
+def csm_indptr(csm): return csm_properties(csm)[2]
+def csm_shape(csm): return csm_properties(csm)[3]
+
+class CSM(gof.Op):
+    """Construct a CSC or CSR matrix from the internal representation """
+    view_map = {0:[0]} #should view the other inputs too, but viewing multiple inputs is not
+    #currently supported by the destroyhandler
+
+    def __init__(self, format, map=None):
+        if format not in ('csr', 'csc'):
+            raise ValueError("format must be one of: 'csr', 'csc'", format)
+        self.format = format
+       
+        # for efficiency, if remap does nothing, then do not apply it
+        if map is not None and all(map==N.arange(N.size(map))):
+            map = None
+
+        self.map = map
+
+    def __eq__(self, other):
+        return type(other) is CSM \
+                and other.format == self.format and other.map==self.map
+
+    def __hash__(self):
+        return hash(CSM) ^ hash(self.format) ^ hash(numpy.str(self.map))
+
+    def make_node(self, data, indices, indptr, shape): 
+        """Build a SparseResult from the internal parametrization
+        
+        :param data: 
+        :param indices:
+        :param indptr:
+        :type data: 1-d tensor
+        :type indices: 1-d tensor of ints
+        :type indptr: 1-d tensor of ints
+
+        """
+        data = tensor.as_tensor(data)
+        indices = tensor.as_tensor(indices)
+        indptr = tensor.as_tensor(indptr)
+        shape = tensor.as_tensor(shape)
+
+        if data.type.ndim != 1:
+            raise TypeError('data argument must be a vector', data.type)
+        if indices.type not in tensor.int_vector_types:
+            raise TypeError('indices must be vector of integers')
+        if indptr.type not in tensor.int_vector_types:
+            raise TypeError('indices must be vector of integers')
+        if shape.type not in tensor.int_vector_types:
+            raise TypeError('n_rows must be integer type')
+
+        return gof.Apply(self,
+                         [data, indices, indptr, shape],
+                         [Sparse(dtype = data.type.dtype,
+                                 format = self.format).make_result()])
+
+    def perform(self, node, (data, indices, indptr, shape), (out,)):
+        """Build a csc_matrix"""
+        #assert len(data.flatten()) == len(indices.flatten())
+
+        print '********** sp:CSM:perform ***********'
+        print 'data =', data.__repr__()
+        print 'size(data) = ', numpy.size(data)
+        print 'kmap =', self.map.__repr__()
+        data = data[self.map] if self.map!=None else data
+        print 'data[kmap] =', data.__repr__()
+
+        if len(shape) != 2:
+            raise ValueError('Shape should be an array of length 2')
+        if data.shape != indices.shape:
+            raise ValueError('data indices shape mismatch', (data.shape, indices.shape))
+        if self.format == 'csc':
+            out[0] = sparse.csc_matrix((data, indices.copy(), indptr.copy()), 
+                    numpy.asarray(shape),
+                    copy = False #1000*len(data.flatten())
+                    )
+        else:
+            assert self.format == 'csr'
+            out[0] = sparse.csr_matrix((data, indices.copy(), indptr.copy()), 
+                    shape.copy(),
+                    copy = False #1000*len(data.flatten())
+                    )
+        
+        if 0:
+            print 'out[0] = ', out[0].todense().__repr__()
+
+    def grad(self, input, (g_out,)):
+        """Return a gradient on the data vector"""
+        #unpack the data vector and wrap it as a 1d Tensor
+        return [csm_data(g_out,self.map), None, None, None]
+
+CSC = CSM('csc')
+CSR = CSM('csr')
+
+@gof.local_optimizer([csm_properties])
+def skip_pack_csc01(node):
+    """if we find csm_properties(CSM(*args)), then we can replace that with the *args
+    directly"""
+    if node.op == csm_properties:
+        csm, = node.inputs
+        if csm.owner and (csm.owner.op == CSC or csm.owner.op == CSR):
+            return csm.owner.inputs
+    return False
+register_specialize(skip_pack_csc01)
+
+
     
 #
 # Conversion
 #
 # convert a sparse matrix to an ndarray
 class DenseFromSparse(gof.op.Op):
+    sparse_grad = True
     def make_node(self, x):
         x = as_sparse(x)
         return gof.Apply(self,
@@ -202,7 +357,10 @@ class DenseFromSparse(gof.op.Op):
     def perform(self, node, (x, ), (out, )):
         out[0] = x.toarray()
     def grad(self, (x, ), (gz, )):
-        return SparseFromDense(x.type.format)(gz),
+        if self.sparse_grad:
+            return [sp_ones_like(x) * gz]
+        else:
+            return [SparseFromDense(x.type.format)(gz)]
 dense_from_sparse = DenseFromSparse()
 
 class SparseFromDense(gof.op.Op):
@@ -253,6 +411,7 @@ class AddSS(gof.op.Op):
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
         if x.type.format != y.type.format:
+            print x.type.format, y.type.format
             raise NotImplementedError()
         return gof.Apply(self,
                          [x, y],
@@ -303,6 +462,25 @@ def add(x,y):
     elif y_is_sparse_result and not x_is_sparse_result: return add_s_d(y,x)
     else: raise NotImplementedError()
 
+class MulSS(gof.op.Op):
+    ''' Elementwise multiply a sparse and a ndarray '''
+    def make_node(self, x, y):
+        x, y = as_sparse(x), as_sparse(y)
+        if x.type != y.type:
+            raise NotImplementedError()
+        return gof.Apply(self, [x, y], [x.type()])
+    def perform(self, node, (x, y), (out, )): 
+        assert _is_sparse(x) and _is_sparse(y)
+        assert len(x.shape) == 2
+        assert y.shape == x.shape
+        if (numpy.all(y.indptr == x.indptr) and numpy.all(y.indices == x.indices)):
+            out[0] = y.copy()
+            out[0].data *= x.data
+        else:
+            raise NotImplementedError() #RowScale / ColScale
+    def grad(self, (x, y), (gz,)):
+        return y * gz, x * gz
+mul_s_s = MulSS()
 class MulSD(gof.op.Op):
     ''' Elementwise multiply a sparse and a ndarray '''
     def make_node(self, x, y):
@@ -324,11 +502,11 @@ class MulSD(gof.op.Op):
         elif len(y.shape) == 2:
             #if we have enough memory to fit y, maybe we can fit x.asarray() too?
             #TODO: change runtime from O(M*N) to O(nonzeros)
-            return DenseFromSparse(x) * y
+            out[0] = type(x)(x.toarray() * y)
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_result(x) and _is_dense_result(y)
-        assert _is_dense_result(gz)
-        return SparseFromDense(x.type.format)(gz), gz
+        assert _is_sparse_result(gz)
+        return y * gz, x * gz
 mul_s_d = MulSD()
 def mul(x,y):
     """
@@ -385,6 +563,8 @@ class Dot(gof.op.Op):
         @todo: Verify that output is sufficiently sparse, and raise a warning if it is not
         @todo: Also determine that we are storing the output in the best storage format?
         """
+        print 'x type is', type(x)
+        print 'y type is', type(y)
         out[0] = x.dot(y)
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_result(gz)
