@@ -274,9 +274,10 @@ class test_dot(unittest.TestCase):
             for epoch in xrange(50):
                 y, loss, gw = trainfn(x, w)
                 w = w - (lr * gw)
+                print loss
 
             self.failUnless(origloss > loss)
-            self.failUnless('1.0543172285' == str(loss))
+            self.failUnless('1.05191241115' == str(loss))
 
     def test_graph_bprop_rand(self):
         for i in range(10):

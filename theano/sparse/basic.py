@@ -6,6 +6,7 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 @todo: Automatic methods for determining best sparse format?
 """
 
+import sys
 import numpy
 from scipy import sparse
 
@@ -211,12 +212,13 @@ class CSMProperties(gof.Op):
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
     def perform(self, node, (csm,), out):
-        print '******* sp:CSMProperties:perform *******'
-        print 'self.map = ', self.map
-        print 'csm.data = ', csm.data
-        print 'size(csm.data) = ', numpy.size(csm.data)
-        print 'csm.todense.shape = ', csm.todense().shape
-        print 'type(csm) = ', type(csm)
+        if 0:
+            print '******* sp:CSMProperties:perform *******'
+            print 'self.map = ', self.map
+            print 'csm.data = ', csm.data
+            print 'size(csm.data) = ', numpy.size(csm.data)
+            print 'csm.todense.shape = ', csm.todense().shape
+            print 'type(csm) = ', type(csm)
         out[0][0] = csm.data if self.map is None else csm.data[self.map]
         out[1][0] = numpy.asarray(csm.indices, dtype='int32')
         out[2][0] = numpy.asarray(csm.indptr, dtype='int32')
@@ -295,12 +297,14 @@ class CSM(gof.Op):
         """Build a csc_matrix"""
         #assert len(data.flatten()) == len(indices.flatten())
 
-        print '********** sp:CSM:perform ***********'
-        print 'data =', data.__repr__()
-        print 'size(data) = ', numpy.size(data)
-        print 'kmap =', self.map.__repr__()
+        if 0:
+            print '********** sp:CSM:perform ***********'
+            print 'data =', data.__repr__()
+            print 'size(data) = ', numpy.size(data)
+            print 'kmap =', self.map.__repr__()
         data = data[self.map] if self.map!=None else data
-        print 'data[kmap] =', data.__repr__()
+        if 0:
+            print 'data[kmap] =', data.__repr__()
 
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
@@ -502,7 +506,37 @@ class MulSD(gof.op.Op):
         elif len(y.shape) == 2:
             #if we have enough memory to fit y, maybe we can fit x.asarray() too?
             #TODO: change runtime from O(M*N) to O(nonzeros)
-            out[0] = type(x)(x.toarray() * y)
+            M, N = x.shape
+            assert x.shape == y.shape
+
+            if x.format == 'csc':
+                x_data = x.data
+                indices = x.indices
+                indptr = x.indptr
+                z = x.copy()
+                z_data = z.data
+
+                for j in xrange(0, N):
+                    for i_idx in xrange(indptr[j], indptr[j+1]):
+                        i = indices[i_idx]
+                        z_data[i_idx] *= y[i,j]
+                out[0] = z
+            elif x.format == 'csr':
+                x_data = x.data
+                indices = x.indices
+                indptr = x.indptr
+                z = x.copy()
+                z_data = z.data
+
+                for i in xrange(0, M):
+                    for j_idx in xrange(indptr[i], indptr[i+1]):
+                        j = indices[j_idx]
+                        z_data[j_idx] *= y[i,j]
+                out[0] = z
+            else:
+                print >> sys.stderr, "WARNING: crappy implementation of MulSD", x.format
+                out[0] = type(x)(x.toarray() * y)
+
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_result(x) and _is_dense_result(y)
         assert _is_sparse_result(gz)
@@ -563,8 +597,6 @@ class Dot(gof.op.Op):
         @todo: Verify that output is sufficiently sparse, and raise a warning if it is not
         @todo: Also determine that we are storing the output in the best storage format?
         """
-        print 'x type is', type(x)
-        print 'y type is', type(y)
         out[0] = x.dot(y)
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_result(gz)
