@@ -2156,8 +2156,10 @@ class numeric_grad:
         shapes = [p.shape for p in apt]
         dtypes = [str(p.dtype) for p in apt]
 
-        if not dtypes == [dtypes[0]] * len(apt):
-            raise TypeError('All function arguments must have same dtype')
+        # TODO: remove this eventually (why was this here in the first place ?)
+        # In the case of CSM, the arguments are a mixture of floats and integers...
+        #if not dtypes == [dtypes[0]] * len(apt):
+            #raise TypeError('All function arguments must have same dtype')
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
 
@@ -2214,8 +2216,8 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
     testcase.failUnless(analytic gradient matches finite-diff gradient)
 
     :param pt: the list of numpy.ndarrays to use as inputs to the op
-    :param op: something that behaves like an Op instance with a single output (can be a
-    function)
+    :param op: something that behaves like an Op instance with a single output
+     (can be a python function combining multiple ops)
     :param testcase: the thing to call `fail` on if things go awry.
     
     """
@@ -2264,7 +2266,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
 
         #print "PT D", pt
         analytic_grad = grad_fn(*pt)
-        
+
         #print "PT Z", pt
         if not isinstance(analytic_grad, (list, tuple)):
             analytic_grad = [analytic_grad]
@@ -2277,4 +2279,3 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
 
 verify_grad.E_grad = 'gradient error exceeded tolerance'
 """This error is raised when a gradient is calculated, but incorrect."""
-

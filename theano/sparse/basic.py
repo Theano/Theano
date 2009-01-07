@@ -205,20 +205,12 @@ class CSMProperties(gof.Op):
         self.map = map
 
     def make_node(self, csm):
-        print '******* sp:CSMProperties:make_node *******'
         csm = as_sparse(csm)
         data = tensor.Tensor(dtype=csm.type.dtype, broadcastable = (False,)).make_result()
         return gof.Apply(self, [csm], 
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
     def perform(self, node, (csm,), out):
-        if 0:
-            print '******* sp:CSMProperties:perform *******'
-            print 'self.map = ', self.map
-            print 'csm.data = ', csm.data
-            print 'size(csm.data) = ', numpy.size(csm.data)
-            print 'csm.todense.shape = ', csm.todense().shape
-            print 'type(csm) = ', type(csm)
         out[0][0] = csm.data if self.map is None else csm.data[self.map]
         out[1][0] = numpy.asarray(csm.indices, dtype='int32')
         out[2][0] = numpy.asarray(csm.indptr, dtype='int32')
@@ -226,16 +218,15 @@ class CSMProperties(gof.Op):
 
     # TODO FIX THIS
     def grad(self, (csm,), g):
-        print '******* sp:CSMProperties:grad *******'
         assert [gg is None for gg in g[1:]]
-        data, indices, indptr, shape = csm_properties(csm, self.map)
+        data, indices, indptr, shape = csm_properties(csm)
         if csm.format == 'csc':
-            return [CSM('csc',self.map)(g_data, indices, indptr, shape)]
+            return [CSM('csc')(g_data, indices, indptr, shape)]
         else:
-            return [CSR('csm',self.map)(g_data, indices, indptr, shape)]
+            return [CSR('csm')(g_data, indices, indptr, shape)]
 
-def csm_properties(csm, map=None): return CSMProperties(map)(csm)
-def csm_data(csm,map=None): return csm_properties(csm,map)[0]
+def csm_properties(csm): return CSMProperties()(csm)
+def csm_data(csm): return csm_properties(csm)[0]
 def csm_indices(csm): return csm_properties(csm)[1]
 def csm_indptr(csm): return csm_properties(csm)[2]
 def csm_shape(csm): return csm_properties(csm)[3]
@@ -251,7 +242,7 @@ class CSM(gof.Op):
         self.format = format
        
         # for efficiency, if remap does nothing, then do not apply it
-        if map is not None and all(map==N.arange(N.size(map))):
+        if map is not None and all(map==numpy.arange(numpy.size(map))):
             map = None
 
         self.map = map
@@ -296,15 +287,7 @@ class CSM(gof.Op):
     def perform(self, node, (data, indices, indptr, shape), (out,)):
         """Build a csc_matrix"""
         #assert len(data.flatten()) == len(indices.flatten())
-
-        if 0:
-            print '********** sp:CSM:perform ***********'
-            print 'data =', data.__repr__()
-            print 'size(data) = ', numpy.size(data)
-            print 'kmap =', self.map.__repr__()
         data = data[self.map] if self.map!=None else data
-        if 0:
-            print 'data[kmap] =', data.__repr__()
 
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
@@ -321,17 +304,29 @@ class CSM(gof.Op):
                     shape.copy(),
                     copy = False #1000*len(data.flatten())
                     )
-        
-        if 0:
-            print 'out[0] = ', out[0].todense().__repr__()
 
-    def grad(self, input, (g_out,)):
+    def grad(self, (data, indices, indptr, shape), (g_out,)):
         """Return a gradient on the data vector"""
         #unpack the data vector and wrap it as a 1d Tensor
-        return [csm_data(g_out,self.map), None, None, None]
+        g_data = csm_grad(self.map)(data, csm_data(g_out),csm_indices(g_out))
+        return [g_data, None, None, None]
 
 CSC = CSM('csc')
 CSR = CSM('csr')
+
+class CSMGrad(gof.op.Op):
+    def __init__(self, map=None):
+        self.map = map
+
+    def make_node(self, data, gout_data, gout_indices):
+        g_data = data.type()
+        return gof.Apply(self, [data, gout_data, gout_indices], [g_data])
+
+    def perform(self, node, (data, gout_data, gout_indices), (g_data,)):
+        grad = numpy.zeros_like(data)
+        grad[self.map] = gout_data
+        g_data[0] = grad
+csm_grad = CSMGrad
 
 @gof.local_optimizer([csm_properties])
 def skip_pack_csc01(node):

@@ -286,6 +286,23 @@ def local_inplace_setsubtensor(node):
 compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor), 60, 'fast_run', 'inplace') #DEBUG
 
 ##################
+# Reshape opts   #
+##################
+
+
+@gof.local_optimizer([None, None])
+def local_reshape_chain(node):
+    """
+    Reshape(Reshape(shape1),shape2) -> Reshape(shape2)
+    """
+    if not opt.check_chain(node, T.Reshape, T.Reshape):
+        return False
+    
+    return [node.op(node.inputs[0].owner.inputs[0], node.inputs[1])]
+register_canonicalize(local_reshape_chain)
+
+
+##################
 # Middleman cuts #
 ##################
 
