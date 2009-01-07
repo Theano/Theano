@@ -494,32 +494,32 @@ class _tensor_py_operators:
         try:
             return add(self,other)
         except Exception, e:
-            raise NotImplemented
+            return NotImplemented
     def __sub__(self,other): 
         try:
             return sub(self,other)
         except Exception, e:
-            raise NotImplemented
+            return NotImplemented
     def __mul__(self,other): 
         try: 
             return mul(self,other)
         except Exception, e:
-            raise NotImplemented
+            return NotImplemented
     def __div__(self,other): 
         try: 
             return div(self,other)
         except Exception, e:
-            raise NotImplemented
+            return NotImplemented
     def __pow__(self,other): 
         try:
             return pow(self,other)
         except Exception, e:
-            raise NotImplemented
+            return NotImplemented
     def __mod__(self,other):
         try:
             return mod(self,other)
         except Exception, e:
-            raise NotImplemented
+            return NotImplemented
 
 #     ##### DON"T USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED BY OPTIMIZATION ONLY
 #     #ARITHMETIC - INPLACE
