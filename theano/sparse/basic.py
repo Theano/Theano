@@ -323,9 +323,12 @@ class CSMGrad(gof.op.Op):
         return gof.Apply(self, [data, gout_data, gout_indices], [g_data])
 
     def perform(self, node, (data, gout_data, gout_indices), (g_data,)):
-        grad = numpy.zeros_like(data)
-        grad[self.map] = gout_data
-        g_data[0] = grad
+        if self.map is None:
+            g_data[0] = gout_data
+        else:
+            grad = numpy.zeros_like(data)
+            grad[self.map] = gout_data
+            g_data[0] = grad
 csm_grad = CSMGrad
 
 @gof.local_optimizer([csm_properties])
