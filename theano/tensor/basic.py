@@ -575,6 +575,11 @@ class _tensor_py_operators:
     """
     dtype = property(lambda self: self.type.dtype)
     """ The dtype of this tensor.  """
+
+
+    #extra pseudo-operator symbols
+    def __dot__(left, right): return dot(left, right)
+    def __rdot__(right, left): return dot(left, right)
     
 
 class TensorResult(Result, _tensor_py_operators):
@@ -2089,13 +2094,14 @@ outer = Outer()
 # Gradient
 #########################
 
-def grad(cost, wrt, g_cost=None):
+def grad(cost, wrt, g_cost=None, consider_constant=[]):
     """
     @type cost: L{Result}
     @type wrt: L{Result} or list of L{Result}s.
     @type g_cost: L{Result} broadcastable to size of I{cost}, or None
     @param g_cost: an expression for the gradient through cost.  The default is
         {{{ones_like(cost)}}}
+    @param consider_constant: a list of expressions not to backpropagate through
 
     @rtype: L{Result} or list of L{Result}s (depending upon I{wrt})
     @return: symbolic expression of gradient of I{cost} with respect to I{wrt}.
@@ -2111,7 +2117,7 @@ def grad(cost, wrt, g_cost=None):
     if g_cost is None:
         g_cost = ones_like(cost)
     inputs = gof.graph.inputs([cost])
-    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs)
+    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs + consider_constant)
 
     def zero(p):
         return TensorConstant(
