@@ -123,3 +123,23 @@ def __src_version__():
 
     return __src_version__.rval
 
+### This is defined here because it is designed to work across symbolic datatypes 
+#   (Sparse and Tensor)
+def dot(l, r):
+    """Return a symbolic matrix/dot product between l and r """
+    rval = NotImplemented
+
+    if rval == NotImplemented and hasattr(l, '__dot__'):
+        try:
+            rval = l.__dot__(r)
+        except Exception, e0:
+            rval = NotImplemented
+    if rval == NotImplemented and hasattr(r, '__rdot__'):
+        try:
+            rval = r.__rdot__(l)
+        except Exception, e1:
+            rval = NotImplemented
+    if rval == NotImplemented:
+        raise NotImplementedError("Dot failed for the following reaons:", (e0, e1))
+    return rval
+
