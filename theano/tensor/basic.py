@@ -2043,7 +2043,7 @@ class TensorDot(Op):
                     axesdim, x.type.ndim, y.type.ndim)
        
         outdim = x.type.ndim + y.type.ndim - 2*axesdim
-        output = tensor(dtype=x.dtype, broadcastable=[None]*outdim);
+        output = tensor(dtype=x.dtype, broadcastable=[False]*outdim);
         return Apply(self, inputs=[x,y], outputs=[output,])
 
     def perform(self, node, (x, y), (z,)):
