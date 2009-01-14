@@ -55,6 +55,12 @@ class T_test_module(unittest.TestCase):
             m1.ddx={"x":{"x":x()}}
             m1.ddy={"y":{"y":y()}}
 
+            assert isinstance(m1.x,(gof.Result))
+            assert isinstance(m1.y,(gof.Result))
+            for i in [m1.lx[0], m1.ly[0], m1.llx[0][0], m1.lly[0][0], m1.ltx[0][0], m1.lty[0][0], m1.ldx[0]['x'], m1.ldy[0]['y'], m1.tx[0], m1.ty[0], m1.tlx[0][0], m1.tly[0][0], m1.ttx[0][0], m1.tty[0][0], m1.tdx[0]['x'], m1.tdy[0]['y'], m1.dx['x'], m1.dy['y'], m1.dlx['x'][0], m1.dly['y'][0], m1.dtx['x'][0], m1.dty['y'][0], m1.ddx['x']['x'], m1.ddy['y']['y']]:
+                assert isinstance(i,(gof.Result))
+                
+
             inst=m1.make()
 
             def get_l():
@@ -314,7 +320,12 @@ class T_test_module(unittest.TestCase):
 
     def test_member_method_inputs(self):
         """Test that module Members can be named as Method inputs, in which case the function will
-        *not* use the storage allocated for the Module's version of that Member."""
+        *not* use the storage allocated for the Module's version of that Member.
+        
+        si le module a un membre x et qu''une fct un parametre appele x qui n''est pas le membre cela doit etre bien traiter.
+        les poids ne change pas
+
+"""
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
 
     def test_member_input_flags(self):
