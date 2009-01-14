@@ -490,13 +490,38 @@ class _tensor_py_operators:
 #     def __ixor__(self, other): return _xor_inplace(self, other)
 
     #ARITHMETIC - NORMAL
-    def __add__(self,other): return add(self,other)
-    def __sub__(self,other): return sub(self,other)
-    def __mul__(self,other): return mul(self,other)
-    def __div__(self,other): return div(self,other)
-    def __pow__(self,other): return pow(self,other)
-    def __mod__(self,other): return mod(self,other)
+    def __add__(self,other): 
+        try:
+            return add(self,other)
+        except Exception, e:
+            return NotImplemented
+    def __sub__(self,other): 
+        try:
+            return sub(self,other)
+        except Exception, e:
+            return NotImplemented
+    def __mul__(self,other): 
+        try: 
+            return mul(self,other)
+        except Exception, e:
+            return NotImplemented
+    def __div__(self,other): 
+        try: 
+            return div(self,other)
+        except Exception, e:
+            return NotImplemented
+    def __pow__(self,other): 
+        try:
+            return pow(self,other)
+        except Exception, e:
+            return NotImplemented
+    def __mod__(self,other):
+        try:
+            return mod(self,other)
+        except Exception, e:
+            return NotImplemented
 
+#     ##### DON"T USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED BY OPTIMIZATION ONLY
 #     #ARITHMETIC - INPLACE
 #     def __iadd__(self,other): return _add_inplace(self,other)
 #     def __isub__(self,other): return _sub_inplace(self,other)
@@ -550,6 +575,11 @@ class _tensor_py_operators:
     """
     dtype = property(lambda self: self.type.dtype)
     """ The dtype of this tensor.  """
+
+
+    #extra pseudo-operator symbols
+    def __dot__(left, right): return dot(left, right)
+    def __rdot__(right, left): return dot(left, right)
     
 
 class TensorResult(Result, _tensor_py_operators):
@@ -2013,7 +2043,7 @@ class TensorDot(Op):
                     axesdim, x.type.ndim, y.type.ndim)
        
         outdim = x.type.ndim + y.type.ndim - 2*axesdim
-        output = tensor(dtype=x.dtype, broadcastable=[None]*outdim);
+        output = tensor(dtype=x.dtype, broadcastable=[False]*outdim);
         return Apply(self, inputs=[x,y], outputs=[output,])
 
     def perform(self, node, (x, y), (z,)):
@@ -2064,13 +2094,14 @@ outer = Outer()
 # Gradient
 #########################
 
-def grad(cost, wrt, g_cost=None):
+def grad(cost, wrt, g_cost=None, consider_constant=[]):
     """
     @type cost: L{Result}
     @type wrt: L{Result} or list of L{Result}s.
     @type g_cost: L{Result} broadcastable to size of I{cost}, or None
     @param g_cost: an expression for the gradient through cost.  The default is
         {{{ones_like(cost)}}}
+    @param consider_constant: a list of expressions not to backpropagate through
 
     @rtype: L{Result} or list of L{Result}s (depending upon I{wrt})
     @return: symbolic expression of gradient of I{cost} with respect to I{wrt}.
@@ -2086,7 +2117,7 @@ def grad(cost, wrt, g_cost=None):
     if g_cost is None:
         g_cost = ones_like(cost)
     inputs = gof.graph.inputs([cost])
-    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs)
+    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs + consider_constant)
 
     def zero(p):
         return TensorConstant(
@@ -2131,8 +2162,10 @@ class numeric_grad:
         shapes = [p.shape for p in apt]
         dtypes = [str(p.dtype) for p in apt]
 
-        if not dtypes == [dtypes[0]] * len(apt):
-            raise TypeError('All function arguments must have same dtype')
+        # TODO: remove this eventually (why was this here in the first place ?)
+        # In the case of CSM, the arguments are a mixture of floats and integers...
+        #if not dtypes == [dtypes[0]] * len(apt):
+            #raise TypeError('All function arguments must have same dtype')
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
 
@@ -2189,7 +2222,8 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
     testcase.failUnless(analytic gradient matches finite-diff gradient)
 
     :param pt: the list of numpy.ndarrays to use as inputs to the op
-    :param op: something that behaves like an Op instance.
+    :param op: something that behaves like an Op instance with a single output
+     (can be a python function combining multiple ops)
     :param testcase: the thing to call `fail` on if things go awry.
     
     """
@@ -2238,7 +2272,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
 
         #print "PT D", pt
         analytic_grad = grad_fn(*pt)
-        
+
         #print "PT Z", pt
         if not isinstance(analytic_grad, (list, tuple)):
             analytic_grad = [analytic_grad]
@@ -2251,4 +2285,3 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
 
 verify_grad.E_grad = 'gradient error exceeded tolerance'
 """This error is raised when a gradient is calculated, but incorrect."""
-

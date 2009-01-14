@@ -1,5 +1,6 @@
 
 import numpy
+import scipy.sparse as sp
 from .. import gof
 
 def check_equal(x, y):
@@ -8,6 +9,13 @@ def check_equal(x, y):
     shape if x and y are numpy.ndarray instances). Used internally.
     """
     x, y = x[0], y[0]
+   
+    # TODO: bug in current scipy, two sparse matrices are never equal, remove when moving to 0.7
+    if sp.issparse(x):
+        x = x.todense()
+    if sp.issparse(y):
+        y = y.todense()
+
     if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
         if x.dtype != y.dtype or x.shape != y.shape or numpy.any(abs(x - y) > 1e-10):
             raise Exception("Output mismatch.", {'performlinker': x, 'clinker': y})
