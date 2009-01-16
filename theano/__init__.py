@@ -128,6 +128,7 @@ def __src_version__():
 def dot(l, r):
     """Return a symbolic matrix/dot product between l and r """
     rval = NotImplemented
+    e0, e1 = None, None
 
     if rval == NotImplemented and hasattr(l, '__dot__'):
         try:
