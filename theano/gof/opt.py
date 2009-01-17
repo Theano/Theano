@@ -209,7 +209,7 @@ class MergeOptimizer(Optimizer):
 
         for node in _list_of_nodes(env):
             node_cid = (node.op, tuple([symbol_idx[input] for input in node.inputs]))
-            print 'NODE', node, node_cid
+            #print 'NODE', node, node_cid
             dup = symbol_idx_inv.get(node_cid, None)
             success = False
             if dup is not None:
@@ -247,6 +247,8 @@ class MergeOptimizer(Optimizer):
             nodes_seen.add(node)
             #print 'NODE', node, merge_candidates, node.inputs[0].clients
             for candidate in merge_candidates:
+                if len(node.inputs) != len(candidate.inputs):
+                    continue
                 inputs_match = all(node_in is cand_in for node_in, cand_in in zip(node.inputs, candidate.inputs))
                 if inputs_match and node.op == candidate.op:
                     assert node is not candidate

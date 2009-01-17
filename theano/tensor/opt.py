@@ -144,7 +144,7 @@ def local_shape_lift_elemwise(node):
 
     return False
 
-register_canonicalize(local_shape_lift_elemwise)
+register_canonicalize(local_shape_lift_elemwise, 'shape_lift')
 
 
 @gof.local_optimizer([T.shape, None])
@@ -165,7 +165,7 @@ def local_shape_lift_sum(node):
     return T.make_lvector.make_node(*(ish[i] for i in xrange(input.type.ndim) if i not in axis)).outputs
 #    return T.vertical_stack.make_node(ish[:axis], ish[axis+1:]).outputs
 
-register_canonicalize(local_shape_lift_sum)
+register_canonicalize(local_shape_lift_sum, 'shape_lift')
 
 
 @gof.local_optimizer([T.shape, T.dot])
@@ -178,7 +178,7 @@ def local_shape_lift_dot(node):
     a, b = node.inputs[0].owner.inputs
     return T.make_lvector.make_node(T.shape(a)[0], T.shape(b)[1]).outputs
 
-register_canonicalize(local_shape_lift_dot)
+register_canonicalize(local_shape_lift_dot, 'shape_lift')
 
 
 # local_shape_lift = opt.LocalOptGroup(local_shape_lift_elemwise,
@@ -233,7 +233,7 @@ def local_fill_lift(node):
 
     return False
 
-register_canonicalize(local_fill_lift)
+register_canonicalize(local_fill_lift, 'fill_lift')
 
 
 ##################
