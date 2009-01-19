@@ -440,6 +440,7 @@ class AddSS(gof.op.Op):
                                  format = x.type.format).make_result()])
     def perform(self, node, (x, y), (out, )): 
         assert _is_sparse(x) and _is_sparse(y)
+        assert x.shape == y.shape
         out[0] = x + y
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_result(x) and _is_sparse_result(y)
@@ -626,7 +627,7 @@ class TrueDot(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_result(gz)
         assert _is_sparse_result(x)
-        rval = [dot(gz, y.T), dot(x.T, gz)]
+        rval = [true_dot(gz, y.T), true_dot(x.T, gz)]
         if _is_dense_result(y):
             if self.grad_preserves_dense:
                 rval[1] = dense_from_sparse(rval[1])
@@ -649,10 +650,10 @@ def true_dot(x, y, grad_preserves_dense=True):
     if not x_is_sparse_result and not y_is_sparse_result:
         raise TypeError()
     if x_is_sparse_result:
-        return Dot(grad_preserves_dense)(x, y)
+        return TrueDot(grad_preserves_dense)(x, y)
     else:
         assert y_is_sparse_result
-        return transpose(Dot(grad_preserves_dense)(y.T, x.T))
+        return transpose(TrueDot(grad_preserves_dense)(y.T, x.T))
 
 
 ###############
@@ -845,6 +846,17 @@ class StructuredDotCSC(gof.Op):
 sd_csc = StructuredDotCSC()
 
 #TODO: register a specialization to replace StructuredDot -> StructuredDotCSC
+@gof.local_optimizer([_structured_dot])
+def local_structured_dot_csc(node):
+    if node.op == _structured_dot:
+        a, b = node.inputs
+        if a.type.format == 'csc':
+            a_val, a_ind, a_ptr, a_shape = csm_properties(a)
+            a_nrows = a_shape[0]
+            return [sd_csc(a_val,a_ind, a_ptr, a_nrows, b)]
+    return False
+register_specialize(local_structured_dot_csc)
+
 
 class StructuredDotGrad(gof.Op):
     def make_node(self, a, b, g_ab):

@@ -147,7 +147,7 @@ class T_conversion(unittest.TestCase):
             self.failUnless(numpy.all(val[0] == [1,0,0,0,0]))
 
 
-class test_dot(unittest.TestCase):
+class test_true_dot(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(44)
 
@@ -161,7 +161,7 @@ class test_dot(unittest.TestCase):
             xT = x.T
             self.failUnless(_is_sparse_result(xT))
 
-            zop = dot(x,xT)
+            zop = true_dot(x,xT)
             self.failUnless(_is_sparse_result(zop))
             z = eval_outputs([zop])
             self.failUnless(_is_sparse(z))
@@ -192,7 +192,7 @@ class test_dot(unittest.TestCase):
             y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
             self.failUnless(_is_dense_result(y))
 
-            zop = dot(x,y)
+            zop = true_dot(x,y)
             self.failUnless(_is_sparse_result(zop))
             z = eval_outputs([zop])
             self.failUnless(_is_sparse(z))
@@ -228,8 +228,8 @@ class test_dot(unittest.TestCase):
             x.data = x.data.T
             y.data = y.data.T
 
-#            zop = dot(y, x)
-            zop = transpose(dot(y, x))
+#            zop = true_dot(y, x)
+            zop = transpose(true_dot(y, x))
             self.failUnless(_is_sparse_result(zop))
             z = eval_outputs([zop])
             self.failUnless(_is_sparse(z))
@@ -258,8 +258,8 @@ class test_dot(unittest.TestCase):
         for mtype in _mtypes:
             x = tensor.matrix('x') #Tensor('float64', broadcastable=[False,False], name='x')
             w = Sparse(dtype = 'float64', format = _mtype_to_str[mtype]).make_result()
-            xw = dense_from_sparse(dot(w, x))
-            y = dense_from_sparse(dot(w.T, xw))
+            xw = dense_from_sparse(true_dot(w, x))
+            y = dense_from_sparse(true_dot(w.T, xw))
             diff = x-y
             loss = tensor.sum(tensor.sqr(diff))
             gw = tensor.grad(loss, w)
@@ -285,8 +285,8 @@ class test_dot(unittest.TestCase):
             for mtype in _mtypes:
                 x = tensor.matrix('x')
                 w = Sparse(dtype = 'float64', format = _mtype_to_str[mtype]).make_result()
-                xw = dense_from_sparse(dot(w, x))
-                y = dense_from_sparse(dot(w.T, xw))
+                xw = dense_from_sparse(true_dot(w, x))
+                y = dense_from_sparse(true_dot(w.T, xw))
                 diff = x-y
                 loss = tensor.sum(tensor.sqr(diff))
                 gw = tensor.grad(loss, w)
