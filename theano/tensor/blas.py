@@ -8,6 +8,7 @@ from ..gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler,
         InconsistencyError)
 from ..printing import pprint, FunctionPrinter
 from .opt import register_specialize, out2in, insert_inplace_optimizer
+# opt.py
 
 import basic as T
 
