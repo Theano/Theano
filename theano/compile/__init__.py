@@ -14,3 +14,5 @@ from builders import *
 import module
 from module import *
 
+from profilemode import ProfileMode
+

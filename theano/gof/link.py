@@ -220,14 +220,6 @@ def map_storage(env, order, input_storage, output_storage):
 
     return input_storage, output_storage, storage_map
 
-def clear_storage_thunk(stg):
-    """This is useful for inserting thunks that zero-out storage, which allows memory to be freed by gc."""
-    def thunk():
-        stg[0] = None
-    thunk.outputs = []
-    thunk.inputs = [stg]
-    return thunk
-
 def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling = [], profiler = None, nice_errors = True):
     """WRITEME
 
@@ -379,8 +371,8 @@ class PerformLinker(LocalLinker):
 
         input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
 
+        computed, last_user = gc_helper(order)
         if self.allow_gc:
-            computed, last_user = gc_helper(order)
             post_thunk_old_storage = []
         else:
             post_thunk_old_storage = None
@@ -403,18 +395,6 @@ class PerformLinker(LocalLinker):
                     for input in node.inputs
                     if (input in computed) and (input not in env.outputs) and node == last_user[input]])
 
-            if 0: # -JB 20081202
-                if self.allow_gc:
-                    for idx, input in enumerate(node.inputs):
-                        if input not in computed:
-                            continue
-                        if input in env.outputs:
-                            continue
-                        if (node, idx) == last_user[input]:
-                            #print '... zeroing', id(storage_map[input])
-                            thunks.append(clear_storage_thunk(storage_map[input]))
-                            new_order.append(node)
-
         if no_recycling is True: 
             # True seems like some special code for *everything*?? -JB
             # FunctionMaker always passes a list I think   -JB
@@ -427,10 +407,18 @@ class PerformLinker(LocalLinker):
         f = streamline(env, thunks, order, post_thunk_old_storage, no_recycling = no_recycling, profiler = profiler)
   
         f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
+        add_clear_storage(f, computed, storage_map)
 
         return f, [Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
             thunks, order
+
+def add_clear_storage(f, computed, storage_map):
+    def clear_storage():
+        for c in computed:
+            storage_map[c][0] = None
+    f.clear_storage = clear_storage
+
 
 class WrapLinker(Linker):
     """ WRITEME
@@ -541,113 +529,13 @@ class WrapLinker(Linker):
 
         return f, inputs0, outputs0
 
-
-
-import time
-
-class Stats:
-    """WRITEME"""
-    def __init__(self):
-        self.ncalls = 0
-        self.time = 0
-        self.nfailures = 0
-        self.time_failures = 0
-    def inc_ncalls(self, v): self.ncalls += v
-    def inc_time(self, v): self.time += v
-    def inc_nfailures(self, v): self.nfailures += v
-    def inc_time_failures(self, v): self.time_failures += v
-
-class Profiler:
-    """WRITEME
-    Collects performance statistics on a function on a per-L{Op}
-    or per-L{Op}-class basis.
+def WrapLinkerMany(linkers, wrappers):
+    """ Variant on WrapLinker that runs a series of wrapper functions instead of
+    just one.
     """
-    
-    def __init__(self, ignore = [], by_class = True):
-        """
-        Creates a L{Profiler}. If by_class is True, stats will
-        be collected for each L{Op} class, adding the totals for
-        each occurrence of that L{Op} in the computation. If
-        by_class is False, each node will be timed individually.
-
-        All L{Op} classes or L{Op}s (depending on the value of by_class)
-        listed in ignore will not be timed.
-        """
-        self.ignore = ignore
-        self.stats = {}
-        self.by_class = by_class
-
-    def profile_env(self, f, env):
-        """WRITEME"""
-        stats = self.stats.setdefault('TOTAL', Stats())
-        n, t = stats.inc_ncalls, stats.inc_time
-        failed = False
-        
-        start = time.time()
-        try:
-            f()
-            end = time.time()
-        except:
-            end = time.time()
-            n, t = stats.inc_nfailures, stats.inc_times_failures
-            failed = True
-            ety, eva, etr = sys.exc_info()
-        n(1)
-        t(end - start)
-        if failed:
-            raise ety, eva, etr
-
-    def profile_op(self, f, op):
-        """WRITEME"""
-        if self.by_class:
-            entry = op.__class__
-        else:
-            entry = op
-        stats = self.stats.setdefault(entry, Stats())
-        n, t = stats.inc_ncalls, stats.inc_time
-        failed = False
-        
-        start = time.time()
-        try:
-            f()
-            end = time.time()
-        except:
-            end = time.time()
-            n, t = stats.inc_nfailures, stats.inc_times_failures
-            failed = True
-            exc = sys.exc_info()
-
-        if entry not in self.ignore:
-            n(1)
-            t(end - start)
-        if failed:
-            raise_with_op(op, exc)
-
-
-    def print_stats(self, sort_by = 'time'):
-        """WRITEME"""
-        
-        def compare_fn((op1, stat1), (op2, stat2)):
-            x1 = getattr(stat2, sort_by)
-            x2 = getattr(stat1, sort_by)
-            if x1 > x2:
-                return 1
-            elif x1 < x2:
-                return -1
-            else:
-                return 0
-
-        totals = self.stats['TOTAL']
-
-        print 'CPU usage statistics' 
-        print "  %-25s %9s %12s %12s %12s" % (("Op%s" % (self.by_class and ' class' or '')), 'NCALLS', 'PER_CALL', 'TOTAL', 'CPU%')
-
-        for op, stat in sorted(self.stats.items(), compare_fn):
-            if op == 'TOTAL': continue
-            to_print = self.by_class and (op.__module__ + "." + op.__name__) or str(op)
-            print "  %-25s %9i %12.5f %12.5f %12.5f" % (to_print, stat.ncalls, stat.time / stat.ncalls, stat.time, stat.time / totals.time)
-
-        stat = self.stats['TOTAL']
-        print "  %-25s %9i %12.5f %12.5f %12.5f" % ('TOTAL (includes overhead)', stat.ncalls, stat.time / stat.ncalls, stat.time, stat.time / totals.time)
+    def wrapper(*args):
+        for f in wrappers:
+            f(*args)
+    return WrapLinker(linkers, wrapper)
 
 

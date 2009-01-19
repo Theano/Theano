@@ -89,97 +89,127 @@ def run_all(i, node, *thunks):
 
 
 
-def WrapLinkerMany(linkers, wrappers):
-    """ Variant on WrapLinker that runs a series of wrapper functions instead of
-    just one.
-    """
-    def wrapper(*args):
-        for f in wrappers:
-            f(*args)
-    return WrapLinker(linkers, wrapper)
-
 
 def DualLinker(linkers):
+    #still in sandbox pending ticket 247
+    # when value_cmp is implemented, then cmp_outputs can be rewritten in a solid way, and the
+    # DualLinker can be this simple.
     return WrapLinkerMany(linkers, [run_all, cmp_outputs])
 
 
-class ProfileMode(Mode):
-    def __init__(self, linker, optimizer=None):
-        local_time = [0.0]
-        apply_time = {}
-        op_time = {}
-        op_cimpl = {}
 
-        def blah(i, node, *thunks):
-            if 0:
-                t0 = time.time() 
-                for th in thunks:
-                    th()
-                dt = time.time() - t0
-            elif 0: #more precise timing
-                for th in thunks:
-                    t0 = time.time()
-                    th()
-                    dt = time.time() - t0
-            elif 1:
-                for th in thunks:
-                    if hasattr(th, 'cthunk'):
-                        t0 = time.time()
-                        run_cthunk(th.cthunk)
-                        dt = time.time() - t0
-                    else:
-                        t0 = time.time()
-                        th()
-                        dt = time.time() - t0
-            elif 1:
-                pass
-            else:
-                raise Exception('one of the cases has to run the thunks!')
-            local_time[0] += dt
-            apply_time[(i,node.op)] = apply_time.get((i,node.op), 0.0) + dt
-            op_time[node.op] = op_time.get(node.op, 0.0) + dt
-            op_cimpl[node.op] = hasattr(thunks[0], 'cthunk')
+####
+#
+#  The Stats and Profiler classes used to be in gof/link.
+#  But Stats was not used I think, and Profiler has been implemented using the wraplinker.
+#
+#  -JB20090119
+###
+import time
 
-        self.local_time = local_time
-        self.apply_time = apply_time
-        self.op_time = op_time
-        self.op_cimpl = op_cimpl
+class Stats:
+    """WRITEME"""
+    def __init__(self):
+        self.ncalls = 0
+        self.time = 0
+        self.nfailures = 0
+        self.time_failures = 0
+    def inc_ncalls(self, v): self.ncalls += v
+    def inc_time(self, v): self.time += v
+    def inc_nfailures(self, v): self.nfailures += v
+    def inc_time_failures(self, v): self.time_failures += v
 
-        wrap_linker = WrapLinkerMany([linker], [blah])
-        if optimizer:
-            super(ProfileMode, self).__init__(wrap_linker, optimizer)
+class Profiler:
+    """WRITEME
+    Collects performance statistics on a function on a per-L{Op}
+    or per-L{Op}-class basis.
+    """
+    
+    def __init__(self, ignore = [], by_class = True):
+        """
+        Creates a L{Profiler}. If by_class is True, stats will
+        be collected for each L{Op} class, adding the totals for
+        each occurrence of that L{Op} in the computation. If
+        by_class is False, each node will be timed individually.
+
+        All L{Op} classes or L{Op}s (depending on the value of by_class)
+        listed in ignore will not be timed.
+        """
+        self.ignore = ignore
+        self.stats = {}
+        self.by_class = by_class
+
+    def profile_env(self, f, env):
+        """WRITEME"""
+        stats = self.stats.setdefault('TOTAL', Stats())
+        n, t = stats.inc_ncalls, stats.inc_time
+        failed = False
+        
+        start = time.time()
+        try:
+            f()
+            end = time.time()
+        except:
+            end = time.time()
+            n, t = stats.inc_nfailures, stats.inc_times_failures
+            failed = True
+            ety, eva, etr = sys.exc_info()
+        n(1)
+        t(end - start)
+        if failed:
+            raise ety, eva, etr
+
+    def profile_op(self, f, op):
+        """WRITEME"""
+        if self.by_class:
+            entry = op.__class__
         else:
-            super(ProfileMode, self).__init__(wrap_linker)
+            entry = op
+        stats = self.stats.setdefault(entry, Stats())
+        n, t = stats.inc_ncalls, stats.inc_time
+        failed = False
+        
+        start = time.time()
+        try:
+            f()
+            end = time.time()
+        except:
+            end = time.time()
+            n, t = stats.inc_nfailures, stats.inc_times_failures
+            failed = True
+            exc = sys.exc_info()
 
-    def print_summary(self):
-        local_time = self.local_time[0]
-        apply_time = self.apply_time
-        op_time = self.op_time
-
-        print ''
-        print 'ProfileMode.print_summary()'
-        print '---------------------------'
-        print ''
-        print 'local_time', local_time, '(Time spent running thunks)'
-        print 'Apply-wise summary: <fraction of local_time spent at this position> (<Apply position>, <Apply Op name>)'
-        atimes = [(t/local_time, (a[0], str(a[1]))) for a, t in apply_time.items()]
-        atimes.sort()
-        atimes.reverse()
-        for t,a in atimes[:15]:
-            print '\t%.3f\t%i\t%s' % (t, a[0], a[1])
-        print '   ... (remaining %i Apply instances account for %.2f of the runtime)'\
-                %(max(0, len(atimes)-15), sum(t for t, a in atimes[15:]))
+        if entry not in self.ignore:
+            n(1)
+            t(end - start)
+        if failed:
+            raise_with_op(op, exc)
 
 
-        n_ops_to_print = 20
-        print 'Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>'
-        otimes = [(t/local_time, a, self.op_cimpl[a]) for a, t in op_time.items()]
-        otimes.sort()
-        otimes.reverse()
-        for t,a,ci in otimes[:n_ops_to_print]:
-            print '\t%.3f\t%s %s' % (t, '*' if ci else ' ', a)
-        print '   ... (remaining %i Ops account for %.2f of the runtime)'\
-                %(max(0, len(otimes)-n_ops_to_print), sum(t for t, a, ci in
-                    otimes[n_ops_to_print:]))
-        print '(*) Op is running a c implementation'
+    def print_stats(self, sort_by = 'time'):
+        """WRITEME"""
+        
+        def compare_fn((op1, stat1), (op2, stat2)):
+            x1 = getattr(stat2, sort_by)
+            x2 = getattr(stat1, sort_by)
+            if x1 > x2:
+                return 1
+            elif x1 < x2:
+                return -1
+            else:
+                return 0
+
+        totals = self.stats['TOTAL']
+
+        print 'CPU usage statistics' 
+        print "  %-25s %9s %12s %12s %12s" % (("Op%s" % (self.by_class and ' class' or '')), 'NCALLS', 'PER_CALL', 'TOTAL', 'CPU%')
+
+        for op, stat in sorted(self.stats.items(), compare_fn):
+            if op == 'TOTAL': continue
+            to_print = self.by_class and (op.__module__ + "." + op.__name__) or str(op)
+            print "  %-25s %9i %12.5f %12.5f %12.5f" % (to_print, stat.ncalls, stat.time / stat.ncalls, stat.time, stat.time / totals.time)
+
+        stat = self.stats['TOTAL']
+        print "  %-25s %9i %12.5f %12.5f %12.5f" % ('TOTAL (includes overhead)', stat.ncalls, stat.time / stat.ncalls, stat.time, stat.time / totals.time)
+
 

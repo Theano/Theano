@@ -26,7 +26,7 @@ To learn more, check out:
 __docformat__ = "restructuredtext en"
 
 from gof import \
-     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, Profiler, \
+     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
      Container, \
      InconsistencyError, Env, \
      Apply, Result, Constant, Value, \
@@ -44,7 +44,9 @@ from compile import \
     predefined_modes, predefined_linkers, predefined_optimizers, \
     FunctionMaker, function, OpFromGraph, \
     Component, External, Member, KitComponent, Method, \
-    Composite, ComponentList, ComponentDict, Module
+    Composite, ComponentList, ComponentDict, Module, \
+    ProfileMode
+
 
 FancyModule = Module
 

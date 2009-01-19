@@ -1,7 +1,7 @@
 
 import unittest
 
-from theano.gof.link import PerformLinker, Profiler
+from theano.gof.link import PerformLinker
 from theano.gof.cc import *
 from theano.gof.type import Type
 from theano.gof.graph import Result, Apply, Constant

@@ -15,7 +15,7 @@ from graph import \
     Apply, Result, Constant, Value, view_roots
 
 from link import \
-    Container, Linker, LocalLinker, PerformLinker, WrapLinker, Profiler
+    Container, Linker, LocalLinker, PerformLinker, WrapLinker, WrapLinkerMany
 
 from op import \
     Op
