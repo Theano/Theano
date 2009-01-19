@@ -444,13 +444,13 @@ def create(window_size=3,
     """ Create a convolutional model. """
     activation_function = T.tanh
 
-    import pylearn.cost
+    import pylearn.algorithms.cost
 
     architecture = ConvolutionalMLP( \
                 window_size = window_size,
                 n_quadratic_filters = n_quadratic_filters,
                 activation_function = activation_function,
-                reconstruction_cost_function = pylearn.cost.quadratic,
+                reconstruction_cost_function = pylearn.algorithms.cost.quadratic,
                 tie_weights = False
             )
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
@@ -470,13 +470,13 @@ def create_realistic(window_size=3,#7,
     """ Create a convolutional model. """
     activation_function = T.tanh
 
-    import pylearn.cost
+    import pylearn.algorithms.cost
 
     architecture = ConvolutionalMLP( \
                 window_size = window_size,
                 n_quadratic_filters = n_quadratic_filters,
                 activation_function = activation_function,
-                reconstruction_cost_function = pylearn.cost.quadratic,
+                reconstruction_cost_function = pylearn.algorithms.cost.quadratic,
                 tie_weights = False
             )
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
