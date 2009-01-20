@@ -208,8 +208,8 @@ class CSMProperties(gof.Op):
     """Extract all of .data .indices and .indptr"""
     view_map = {0:[0],1:[0],2:[0],3:[0]}
 
-    def __init__(self, map=None):
-        self.map = map
+    def __init__(self, kmap=None):
+        self.kmap = kmap
 
     def make_node(self, csm):
         csm = as_sparse(csm)
@@ -218,7 +218,7 @@ class CSMProperties(gof.Op):
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
     def perform(self, node, (csm,), out):
-        out[0][0] = csm.data if self.map is None else csm.data[self.map]
+        out[0][0] = csm.data if self.kmap is None else csm.data[self.kmap]
         out[1][0] = numpy.asarray(csm.indices, dtype='int32')
         out[2][0] = numpy.asarray(csm.indptr, dtype='int32')
         out[3][0] = numpy.asarray(csm.shape, dtype='int32')
@@ -243,23 +243,23 @@ class CSM(gof.Op):
     view_map = {0:[0]} #should view the other inputs too, but viewing multiple inputs is not
     #currently supported by the destroyhandler
 
-    def __init__(self, format, map=None):
+    def __init__(self, format, kmap=None):
         if format not in ('csr', 'csc'):
             raise ValueError("format must be one of: 'csr', 'csc'", format)
         self.format = format
-       
-        # for efficiency, if remap does nothing, then do not apply it
-        if map is not None and all(map==numpy.arange(numpy.size(map))):
-            map = None
 
-        self.map = map
+        # for efficiency, if remap does nothing, then do not apply it
+        if kmap is not None and all(kmap==numpy.arange(numpy.size(kmap))):
+            kmap = None
+
+        self.kmap = kmap
 
     def __eq__(self, other):
         return type(other) is CSM \
-                and other.format == self.format and other.map==self.map
+                and other.format == self.format and other.kmap==self.kmap
 
     def __hash__(self):
-        return hash(CSM) ^ hash(self.format) ^ hash(numpy.str(self.map))
+        return hash(CSM) ^ hash(self.format) ^ hash(numpy.str(self.kmap))
 
     def make_node(self, data, indices, indptr, shape): 
         """Build a SparseResult from the internal parametrization
@@ -296,13 +296,15 @@ class CSM(gof.Op):
         #assert len(data.flatten()) == len(indices.flatten())
 
         # for efficiency, if remap does nothing, then do not apply it
-        if map is not None and all(map==numpy.arange(numpy.size(map))):
-            data = data[self.map]
+        if self.kmap is not None:
+            data = data[self.kmap]
 
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
-        if data.shape != indices.shape:
-            raise ValueError('data indices shape mismatch', (data.shape, indices.shape))
+        if data.shape != indices.shape and numpy.size(data) != numpy.size(self.kmap):
+            errmsg = 'Data (shape '+`data.shape`+' must have the same number of elements '+\
+                     'as indices (shape'+`indices.shape`+') or elements as kmap ('+`numpy.size(self.kmap)`+')'
+            raise ValueError(errmsg)
         if self.format == 'csc':
             out[0] = sparse.csc_matrix((data, indices.copy(), indptr.copy()), 
                     numpy.asarray(shape),
@@ -318,26 +320,26 @@ class CSM(gof.Op):
     def grad(self, (data, indices, indptr, shape), (g_out,)):
         """Return a gradient on the data vector"""
         #unpack the data vector and wrap it as a 1d Tensor
-        g_data = csm_grad(self.map)(data, csm_data(g_out),csm_indices(g_out))
+        g_data = csm_grad(self.kmap)(data, csm_data(g_out),csm_indices(g_out))
         return [g_data, None, None, None]
 
 CSC = CSM('csc')
 CSR = CSM('csr')
 
 class CSMGrad(gof.op.Op):
-    def __init__(self, map=None):
-        self.map = map
+    def __init__(self, kmap=None):
+        self.kmap = kmap
 
     def make_node(self, data, gout_data, gout_indices):
         g_data = data.type()
         return gof.Apply(self, [data, gout_data, gout_indices], [g_data])
 
     def perform(self, node, (data, gout_data, gout_indices), (g_data,)):
-        if self.map is None:
+        if self.kmap is None:
             g_data[0] = gout_data
         else:
             grad = numpy.zeros_like(data)
-            grad[self.map] = gout_data
+            grad[self.kmap] = gout_data
             g_data[0] = grad
 csm_grad = CSMGrad
 
