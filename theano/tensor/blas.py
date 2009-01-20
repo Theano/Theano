@@ -543,11 +543,11 @@ class GemmLocalOptimizer(LocalOptimizer):
 # TODO: This could be an equilibriumOptmizer, but I don't know how to combine an OpKeyOptimizer and
 # an EquilibriumOptimizer.
 compile.optdb.register('inplace_gemm_0', OpKeyOptimizer(GemmLocalOptimizer(), 
-    failure_callback=GemmLocalOptimizer.failure_callback), 70.00, 'fast_run', 'inplace')
+    failure_callback=GemmLocalOptimizer.failure_callback), 70.00, 'fast_run', 'inplace', 'gemm')
 compile.optdb.register('inplace_gemm_1', OpKeyOptimizer(GemmLocalOptimizer(), 
-    failure_callback=GemmLocalOptimizer.failure_callback), 70.01, 'fast_run', 'inplace')
+    failure_callback=GemmLocalOptimizer.failure_callback), 70.01, 'fast_run', 'inplace', 'gemm')
 compile.optdb.register('inplace_gemm_2', OpKeyOptimizer(GemmLocalOptimizer(), 
-    failure_callback=GemmLocalOptimizer.failure_callback), 70.02, 'fast_run', 'inplace')
+    failure_callback=GemmLocalOptimizer.failure_callback), 70.02, 'fast_run', 'inplace', 'gemm')
 
 class Dot22(GemmRelated):
     """Compute a matrix-matrix product.
