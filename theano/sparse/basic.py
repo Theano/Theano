@@ -256,10 +256,10 @@ class CSM(gof.Op):
 
     def __eq__(self, other):
         return type(other) is CSM \
-                and other.format == self.format and other.map==self.map
+                and other.format == self.format and numpy.all(other.map==self.map)
 
     def __hash__(self):
-        return hash(CSM) ^ hash(self.format) ^ hash(numpy.str(self.map))
+        return hash(type(self)) ^ hash(self.format) ^ hash(numpy.str(self.map))
 
     def make_node(self, data, indices, indptr, shape): 
         """Build a SparseResult from the internal parametrization

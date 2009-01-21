@@ -138,6 +138,13 @@ class NodeFinder(dict, Bookkeeper):
             self.setdefault(node.op, []).append(node)
         except TypeError: #node.op is unhashable
             return
+        except Exception, e:
+            print >> sys.stderr, 'OFFENDING node', type(node), type(node.op)
+            try:
+                print >> sys.stderr, 'OFFENDING node hash', hash(node.op)
+            except:
+                print >> sys.stderr, 'OFFENDING node not hashable'
+            raise e
 
     def on_prune(self, env, node):
         try:
