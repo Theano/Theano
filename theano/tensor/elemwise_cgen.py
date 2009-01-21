@@ -67,7 +67,7 @@ def make_checks(loop_orders, dtypes, sub):
         if cond:
             check += """
             if (%(cond)s) {
-                PyErr_SetString(PyExc_ValueError, "Input dimensions do not match.");
+                PyErr_SetString(PyExc_ValueError, "Input dimensions do not match (Try re-running with py linker for more information).");
                 %%(fail)s
             }
             """ % locals()
