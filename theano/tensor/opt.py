@@ -588,6 +588,7 @@ def mul_calculate(num, denum, aslist = False):
     return v
 
 local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate, False)
+register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
 @gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):
@@ -693,7 +694,6 @@ def local_mul_specialize(node):
         return False
 register_specialize(local_mul_specialize)
 
-register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
 
 # neg_to_mul = out2in(gof.LocalOptGroup(local_neg_to_mul))

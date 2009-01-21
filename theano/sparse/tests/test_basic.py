@@ -1,14 +1,16 @@
 from theano.sparse import *
 
+import random
 import unittest
+import theano
+
 from theano import compile
 from theano import gradient
+from theano import gof
 
 from theano.sparse.basic import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
 from theano.sparse.basic import _mtypes, _mtype_to_str
 
-import random
-from theano import gof
 
 def eval_outputs(outputs):
     return compile.function([], outputs)()[0]
@@ -228,7 +230,7 @@ class test_true_dot(unittest.TestCase):
             x.data = x.data.T
             y.data = y.data.T
 
-#            zop = true_dot(y, x)
+            zop = true_dot(y, x)
             zop = transpose(true_dot(y, x))
             self.failUnless(_is_sparse_result(zop))
             z = eval_outputs([zop])
@@ -303,6 +305,60 @@ class test_true_dot(unittest.TestCase):
                     w = w - (lr * gw)
 
                 self.failUnless(origloss > loss)
+
+import scipy.sparse as sp
+class test_structureddot(unittest.TestCase):
+
+    def test_structuredot(self):
+
+        #bsize = 5
+        #spmat = sp.csc_matrix((8,15))
+        #spmat[1,2] = 3
+        #spmat[4,7] = 6
+        #spmat[2,7] = 72
+        #spmat[1,9] = 2
+        #spmat[7,12] = 1
+        #spmat[4,2] = 7
+ 
+        bsize = 2
+        spmat = sp.csc_matrix((5,5))
+        spmat[1,2] = 1
+        spmat[0,1] = 2
+        spmat[0,2] = 3
+
+      
+        kerns = tensor.dvector()
+        images = tensor.dmatrix()
+
+        def buildgraphCSC(kerns,images):
+            csc = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
+            return structured_dot(csc, images.T)
+        out = buildgraphCSC(kerns,images)
+
+        for mode in 'FAST_COMPILE','FAST_RUN':
+            f = theano.function([kerns,images], out, mode=mode)
+            kernvals = spmat.data[:spmat.size]
+            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+            outvals = f(kernvals,imvals)
+            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+
+            tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals], mode=mode)
+
+        spmat = spmat.tocsr()
+        def buildgraphCSR(kerns,images):
+            csr = CSR(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
+            return structured_dot(csr, images.T)
+        out = buildgraphCSR(kerns,images)
+
+        for mode in 'FAST_COMPILE','FAST_RUN':
+            f = theano.function([kerns,images], out, mode=mode)
+            kernvals = spmat.data[:spmat.size]
+            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+            outvals = f(kernvals,imvals)
+            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+
+            tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals], mode=mode)
+
 
 if __name__ == '__main__':
     unittest.main()
