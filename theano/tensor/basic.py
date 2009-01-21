@@ -1994,6 +1994,12 @@ class TensorDotGrad(Op):
     def __init__(self, axes):
         self.axes = axes;
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.axes == other.axes
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.axes) ^ 89234
+
     def make_node(self, x, y, gz):
         assert isinstance(x, Result)
         assert isinstance(y, Result)
@@ -2032,6 +2038,12 @@ class TensorDot(Op):
 
     def __init__(self, axes):
         self.axes = axes;
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.axes == other.axes
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.axes) ^ 89234
 
     def make_node(self, x, y):
 
