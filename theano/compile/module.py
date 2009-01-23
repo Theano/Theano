@@ -370,9 +370,9 @@ class Method(Component):
                 return memo[r]
             except KeyError:
                 if require:
-                    raise AllocationError('There is no storage associated to %s used by %s.'
+                    raise AllocationError('There is no storage associated to %s used by %s = %s.'
                                           ' Verify that it is indeed a Member of the'
-                                          ' enclosing module or of one of its submodules.' % (r, self))
+                                          ' enclosing module or of one of its submodules.' % (r, self.name, self))
                 else:
                     return io.In(result = r, value = gof.Container(r, storage = [None]), mutable = False)
         # Wrap the inputs in In instances. TODO: allow the inputs to _be_ In instances
