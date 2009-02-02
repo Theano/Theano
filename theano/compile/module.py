@@ -639,6 +639,10 @@ class ComponentList(Composite):
             raise TypeError('ComponentList may only contain Components.', c, type(c))
         self._components.append(c)
 
+    def extend(self, other):
+        for o in other:
+            self.append(o)
+
     def __add__(self, other):
         if isinstance(other, (list, tuple)):
             return ComponentList(self._components + map(wrap,other))
