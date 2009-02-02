@@ -580,6 +580,9 @@ class _tensor_py_operators:
     #extra pseudo-operator symbols
     def __dot__(left, right): return dot(left, right)
     def __rdot__(right, left): return dot(left, right)
+
+    def sum(self, axis=None):
+        return elemwise.Sum(axis)(self)
     
 
 class TensorResult(Result, _tensor_py_operators):
