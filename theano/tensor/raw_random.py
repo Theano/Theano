@@ -212,7 +212,7 @@ class RandomKit(SymbolicInputKit):
         return out
 
     def distribute(self, value, indices, containers):
-        rg = partial(numpy.random.RandomState(value).randint, 2**30)
+        rg = partial(numpy.random.RandomState(int(value)).randint, 2**30)
         elems = deque(zip(indices, containers))
         i = 0
         while elems:
