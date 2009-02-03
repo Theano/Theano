@@ -319,24 +319,14 @@ def _pickle_Function(f):
         else:
             defaults.append(ins[0])
             del ins[0]
-
-    def numpysucks(obj):
-        #this is to workaround a finding that cPickle.dumps(a) is often much bigger than
-        # a.dumps() --JB:20090202
-        if type(obj) is numpy.ndarray:
-            return ('__numpysucks__', obj.dumps())
-        else:
-            return obj
-    return (_constructor_Function, (f.maker, defaults, [numpysucks(x.data) for x in f.input_storage]))
+    rval = (_constructor_Function, (f.maker, defaults, [x.data for x in f.input_storage]))
+    return rval
 
 def _constructor_Function(maker, defaults, data):
     f = maker.create(defaults, trustme = True)
     assert len(f.input_storage) == len(data)
     for container, x in zip(f.input_storage, data):
-        if type(x) is tuple and len(x) == 2 and x[0] == '__numpysucks__':
-            container.data = numpy.loads(x[1])
-        else:
-            container.data = x
+        container.data = x
     return f
 
 copy_reg.pickle(Function, _pickle_Function)
