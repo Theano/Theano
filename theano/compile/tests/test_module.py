@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import unittest
+import cPickle, numpy, unittest
 from theano.compile.module import *
 import theano.tensor as T
 import sys
@@ -351,6 +351,64 @@ class T_test_module(unittest.TestCase):
         """Test that module Members of Constant work correctly.
         As Result with more optimization?"""
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+
+def test_pickle():
+    """Test that a module can be pickled"""
+    M = Module()
+    M.x = Member(T.dmatrix())
+    M.y = Member(T.dmatrix())
+    a = T.dmatrix()
+    M.f = Method([a], a + M.x + M.y)
+    M.g = Method([a], a * M.x * M.y)
+
+    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
+
+    m_dup = cPickle.loads(cPickle.dumps(m))
+
+    assert numpy.all(m.x == m_dup.x) and numpy.all(m.y == m_dup.y)
+
+    m_dup.x[0,0] = 3.142
+    assert m_dup.f.input_storage[1].data[0,0] == 3.142
+    assert m.x[0,0] == 0.0 #ensure that m is not aliased to m_dup
+
+    #check that the unpickled version has the same argument/property aliasing
+    assert m_dup.x is m_dup.f.input_storage[1].data
+    assert m_dup.y is m_dup.f.input_storage[2].data
+    assert m_dup.x is m_dup.g.input_storage[1].data
+    assert m_dup.y is m_dup.g.input_storage[2].data
+
+
+def test_pickle_aliased_memory():
+    M = Module()
+    M.x = Member(T.dmatrix())
+    M.y = Member(T.dmatrix())
+    a = T.dmatrix()
+    M.f = Method([a], a + M.x + M.y)
+    M.g = Method([a], a * M.x * M.y)
+
+    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
+    m.y = m.x[:]
+    m_dup = cPickle.loads(cPickle.dumps(m))
+
+    #m's memory is aliased....
+    m.x[0,0] = 3.14
+    assert m.y[0,0] == 3.14
+
+    #is m_dup's memory aliased?
+    m_dup.x[0,0] = 3.14
+    assert m_dup.y[0,0] == 3.14
+
+    #m's memory is aliased differently....
+    m.y = m.x[1:2]
+    m_dup = cPickle.loads(cPickle.dumps(m))
+
+    #is m_dup's memory aliased the same way?
+    m.x[1,0] = 3.142
+    assert m.y[0,0] == 3.142
+    m_dup.x[1,0] = 3.142
+    assert m_dup.y[0,0] == 3.142
+
+
 
 if __name__ == '__main__':
     from theano.tests import main
