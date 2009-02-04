@@ -1144,6 +1144,10 @@ def mod(a, b):
 def pow(a, b):
     """elementwise power"""
 
+@_scal_elemwise
+def clip(x, min, max):
+    """clip x to be between min and max"""
+
 pprint.assign(add, printing.OperatorPrinter('+', -2, 'either'))
 pprint.assign(mul, printing.OperatorPrinter('*', -1, 'either'))
 pprint.assign(sub, printing.OperatorPrinter('-', -2, 'left'))

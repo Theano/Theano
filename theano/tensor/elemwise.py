@@ -591,7 +591,7 @@ class Elemwise(Op):
         task_code = self.scalar_op.c_code(Apply(self.scalar_op,
                                                 [Scalar(dtype = input.type.dtype)() for input in node.inputs],
                                                 [Scalar(dtype = output.type.dtype)() for input in node.outputs]),
-                                          None,
+                                          name + '_scalar_',
                                           ["%s_i" % s for s in _inames],
                                           ["%s_i" % s for s in onames],
                                           sub)
@@ -614,6 +614,9 @@ class Elemwise(Op):
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
+
+    def c_support_code(self):
+        return self.scalar_op.c_support_code()
 
 # def elemwise_to_scal(env):
 #     mapping = {}
