@@ -583,6 +583,14 @@ class _tensor_py_operators:
 
     def sum(self, axis=None):
         return elemwise.Sum(axis)(self)
+
+    def norm(self, L, axis=None):
+        if L==0:
+            raise NotImplementedError()
+        if L==float('inf'):
+            raise NotImplementedError()
+        #optimizations will/should catch cases like L=1, L=2
+        return pow(pow(self, L).sum(axis=axis), 1.0/L)
     
 
 class TensorResult(Result, _tensor_py_operators):
