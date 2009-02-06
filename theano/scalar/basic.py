@@ -417,6 +417,30 @@ class NEQ(LogicalComparison):
         return x != y
 neq = NEQ()
 
+class InRange(LogicalComparison):
+    nin = 3
+    def __init__(self, openlow, openhi):
+        self.openlow = openlow
+        self.openhi = openhi
+    def impl(self, x, low, hi):
+        if self.openlow and x <= low:
+            return False
+        elif not self.openlow and x < low:
+            return False
+        if self.openhi and x >= hi:
+            return False
+        elif not self.openhi and x > hi:
+            return False
+        return True
+    def c_code(self, node, name, (x, low, hi), (z, ), sub):
+        cmp1 = '>' if self.openlow else '>='
+        cmp2 = '<' if self.openhi else '<='
+        return "%(z)s = %(x)s %(cmp1)s %(low)s && %(x)s %(cmp2)s %(hi)s;" % locals()
+    def grad(self, (x, low, hi), (gz, )):
+        return None, None, None
+inopenrange = InRange(True, True)
+inclosedrange = InRange(False, False)
+
 ####################
 # BIT-WISE OPERATORS
 ####################
@@ -544,6 +568,17 @@ class Pow(BinaryScalarOp):
     def grad(self, (x, y), (gz, )):
         return gz * y * x**(y - 1), gz * log(x) * x**y
 pow = Pow(upcast_out, name = 'pow')
+
+class Clip(ScalarOp):
+    nin = 3
+    def impl(self, x, min, max):
+        return min if x < min else max if x > max else x
+    def c_code(self, node, name, (x, min, max), (z, ), sub):
+        return "%(z)s = %(x)s < %(min)s ? %(min)s : %(x)s > %(max)s ? %(max)s : %(x)s;" % locals()
+    def grad(self, (x, min, max), (gz, )):
+        gx = (x > min & x < max) * gz
+        return gx, None, None
+clip = Clip(transfer_type(0), name = 'clip')
 
 class First(BinaryScalarOp):
     def impl(self, x, y):

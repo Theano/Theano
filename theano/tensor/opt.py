@@ -475,6 +475,8 @@ class Canonizer(gof.LocalOptimizer):
             return v
         if isinstance(v, gof.Constant):
             return v.data
+        if not hasattr(v, 'owner'):
+            return v
         if v.owner and isinstance(v.owner.op, DimShuffle):
             return cls.get_constant(v.owner.inputs[0])
         return None
