@@ -22,13 +22,13 @@ class LogisticRegressionN(module.FancyModule):
             self.__hide__ = ['params']
         def __eq__(self, other):
             if not isinstance(other.component, LogisticRegressionN) and not isinstance(other.component, LogisticRegression2):
-                raise NotImplemented
+                raise NotImplementedError
          #we compare the member.
             if (N.abs(self.w-other.w)<1e-8).all() and (N.abs(self.b-other.b)<1e-8).all() and self.lr == other.lr:
                 return True
             return False
         def __hash__(self):
-            raise NotImplemented
+            raise NotImplementedError
 
     def __init__(self, x = None, targ = None):
         super(LogisticRegressionN, self).__init__() #boilerplate
@@ -69,13 +69,13 @@ class LogisticRegression2(module.FancyModule):
             self.__hide__ = ['params']
         def __eq__(self, other):
             if not isinstance(other.component, LogisticRegressionN) and not isinstance(other.component, LogisticRegression2):
-                raise NotImplemented
+                raise NotImplementedError
          #we compare the member.
             if (N.abs(self.w-other.w)<1e-8).all() and (N.abs(self.b-other.b)<1e-8).all() and self.lr == other.lr:
                 return True
             return False
         def __hash__(self):
-            raise NotImplemented 
+            raise NotImplementedError
 
     def __init__(self, x = None, targ = None):
         super(LogisticRegression2, self).__init__() #boilerplate
