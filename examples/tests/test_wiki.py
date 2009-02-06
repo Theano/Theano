@@ -23,13 +23,13 @@ class Blah(M.ModuleInstance):
         M.default_initialize(self,**init)#equivalent to previous line.
     def __eq__(self, other):
         if not isinstance(other.component, SoftmaxXERegression1) and not isinstance(other.component, SoftmaxXERegression2):
-            raise NotImplemented
+            raise NotImplementedError
         #we compare the member.
         if (self.w==other.w).all() and (self.b==other.b).all() and self.stepsize == other.stepsize:
             return True
         return False
     def __hash__(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def fit(self, train, test):
         pass
