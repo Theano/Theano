@@ -461,8 +461,8 @@ class GemmLocalOptimizer(LocalOptimizer):
     @staticmethod
     def _is_real_matrix(res):
         return res.type in T.float_matrix_types \
-                and res.broadcastable[0] == False \
-                and res.broadcastable[1] == False #cope with tuple vs. list
+                and res.type.broadcastable[0] == False \
+                and res.type.broadcastable[1] == False #cope with tuple vs. list
 
     @staticmethod
     def _as_isolated_scalar_times_matrix(res):
