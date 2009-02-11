@@ -746,7 +746,8 @@ class TopoOptimizer(NavigatorOptimizer):
         if start_from is None: start_from = env.outputs
         q = deque(graph.io_toposort(env.inputs, start_from))
         def importer(node):
-            q.append(node)
+            if node is not current_node:
+                q.append(node)
         def pruner(node):
             if node is not current_node:
                 try: q.remove(node)
@@ -782,7 +783,8 @@ class OpKeyOptimizer(NavigatorOptimizer):
         else:
             q = list(env.get_nodes(op))
         def importer(node):
-            if node.op == op: q.append(node)
+            if node is not current_node:
+                if node.op == op: q.append(node)
         def pruner(node):
             if node is not current_node and node.op == op:
                 try: q.remove(node)
@@ -845,7 +847,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
             max_use = len(q) * self.max_use_ratio
             def importer(node):
-                q.append(node)
+                if node is not current_node:
+                    q.append(node)
             def pruner(node):
                 if node is not current_node:
                     try: q.remove(node)
