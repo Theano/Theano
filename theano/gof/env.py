@@ -29,16 +29,60 @@ class Env(utils.object2):
 
     It can also be "extended" using env.extend(some_object). See the
     toolbox and ext modules for common extensions.
+
+    Features added with the`extend` function can handle the following events:
+
+    - feature.on_attach(env)
+        Called by extend. The feature has great freedom in what
+        it can do with the env: it may, for example, add methods
+        to it dynicamically.
+
+    - feature.on_detach(env)
+        Called by remove_feature(feature).  Should remove any dynamically-added
+        functionality that it installed into the env.
+
+    - feature.on_import(env, node)*
+        Called whenever a node is imported into env, which is
+        just before the node is actually connected to the graph.
+
+    - feature.on_prune(env, node)*
+        Called whenever a node is pruned (removed) from the env,
+        after it is disconnected from the graph.
+
+    - feature.on_change_input(env, node, i, r, new_r)*
+        Called whenever node.inputs[i] is changed from r to new_r.
+        At the moment the callback is done, the change has already
+        taken place.
+
+    - feature.orderings(env)
+        Called by toposort. It should return a dictionary of
+        {node: predecessors} where predecessors is a list of
+        nodes that should be computed before the key node.
+
+        * If you raise an exception in the functions marked with an
+          asterisk, the state of the graph might be inconsistent.
+
+    - feature.on_setup_node(env, node):
+        WRITEME
+
+    - feature.on_setup_result(env, result):
+        WRITEME
+
     """
 
     ### Special ###
+    # TODO: document which things that features can do to the env
 
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, outputs, features=[]):
         """
         Create an Env which operates on the subgraph bound by the inputs and outputs
         sets.
         
-        WRITEME
+        This class keeps a pointer to the inputs and outputs, and also modifies them.
+
+        #TODO: document what variables are[not] set in the env when a feature is added via the
+        constructor.  How constructed is the env?
+
         """
 
         self._features = []
@@ -50,6 +94,11 @@ class Env(utils.object2):
         self.results = set()
 
         self.inputs = list(inputs)
+        self.outputs = outputs
+
+        for f in features:
+            self.extend(f)
+
         for input in self.inputs:
             if input.owner is not None:
                 raise ValueError("One of the provided inputs is the output of an already existing node. " \
@@ -58,7 +107,6 @@ class Env(utils.object2):
             self.results.add(input)
 
         self.__import_r__(outputs)
-        self.outputs = outputs
         for i, output in enumerate(outputs):
             output.clients.append(('output', i))
 
@@ -74,6 +122,7 @@ class Env(utils.object2):
             raise Exception("%s is already owned by another env" % r)
         r.env = self
         r.clients = []
+        #self.execute_callbacks('on_setup_result', r)
 
     def __setup_node__(self, node):
         # sets up node so it belongs to this env
@@ -81,6 +130,7 @@ class Env(utils.object2):
             raise Exception("%s is already owned by another env" % node)
         node.env = self
         node.deps = {}
+        #self.execute_callbacks('on_setup_node', node)
 
     def disown(self):
         """ WRITEME
@@ -171,6 +221,7 @@ class Env(utils.object2):
                         raise TypeError("An input of the graph was not provided and not given a value", r)
         
         for node in new_nodes:
+            assert node not in self.nodes
             self.__setup_node__(node)
             self.nodes.add(node)
             for output in node.outputs:
@@ -284,29 +335,6 @@ class Env(utils.object2):
         Adds a feature to this env. The feature may define one
         or more of the following methods:
 
-         - feature.on_attach(env)
-            Called by extend. The feature has great freedom in what
-            it can do with the env: it may, for example, add methods
-            to it dynicamically.
-         - feature.on_detach(env)
-            Called by remove_feature(feature).
-         - feature.on_import(env, node)*
-            Called whenever a node is imported into env, which is
-            just before the node is actually connected to the graph.
-         - feature.on_prune(env, node)*
-            Called whenever a node is pruned (removed) from the env,
-            after it is disconnected from the graph.
-         - feature.on_change_input(env, node, i, r, new_r)*
-            Called whenever node.inputs[i] is changed from r to new_r.
-            At the moment the callback is done, the change has already
-            taken place.
-         - feature.orderings(env)
-            Called by toposort. It should return a dictionary of
-            {node: predecessors} where predecessors is a list of
-            nodes that should be computed before the key node.
-
-        * If you raise an exception in the functions marked with an
-          asterisk, the state of the graph might be inconsistent.
         """
         if feature in self._features:
             return # the feature is already present

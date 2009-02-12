@@ -10,14 +10,15 @@ class ProtocolError(Exception):
     """WRITEME"""
     pass
 
-class DestroyHandler(toolbox.Bookkeeper):
+class DestroyHandler(object):
     """WRITEME"""
 
-    def __init__(self):
+    def __init__(self, do_imports_on_attach=True):
         self.map = {}
+        self.do_imports_on_attach=do_imports_on_attach
 
     def on_attach(self, env):
-        dh = self.map.setdefault(env, DestroyHandlerHelper2())
+        dh = self.map.setdefault(env, DestroyHandlerHelper2(do_imports_on_attach=self.do_imports_on_attach))
         dh.on_attach(env)
 
     def on_detach(self, env):
@@ -69,8 +70,9 @@ def get_impact(root, view_o):
 class DestroyHandlerHelper2(toolbox.Bookkeeper):
     """WRITEME"""
 
-    def __init__(self):
+    def __init__(self, do_imports_on_attach=True):
         self.env = None
+        self.do_imports_on_attach = do_imports_on_attach
 
     def on_attach(self, env):
         #boilerplate from old implementation
@@ -99,7 +101,8 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         self.stale_droot = True
 
         self.debug_all_apps = set()
-        toolbox.Bookkeeper.on_attach(self, env)
+        if self.do_imports_on_attach:
+            toolbox.Bookkeeper.on_attach(self, env)
 
     def refresh_droot_impact(self):
         if self.stale_droot:
@@ -153,6 +156,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         if app in self.debug_all_apps: raise ProtocolError("double import")
         self.debug_all_apps.add(app)
+        #print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
 
         # If it's a destructive op, add it to our watch list
         if getattr(app.op, 'destroy_map', {}):

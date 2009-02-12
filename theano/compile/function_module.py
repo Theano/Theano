@@ -1,4 +1,6 @@
-"""Convenient driver of graph construction, optimization, and linking."""
+"""Driver of graph construction, optimization, and linking.
+
+"""
 
 import copy_reg
 import cPickle
@@ -102,6 +104,15 @@ DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate
 class Function(object):
     """
     Type of the functions returned by theano.function or theano.FunctionMaker.create.
+
+
+    `Function` is the callable object that does computation.  It has the storage of inputs and
+    outputs, performs the packing and unpacking of inputs and return values.  It implements the
+    square-bracket indexing so that you can look up the value of a symbolic node.
+
+    When a function is copied, this instance is duplicated.  Contrast with self.maker
+    (instance of `FunctionMaker`) that is shared between copies.
+
     """
 
     def __init__(self, fn, input_storage, output_storage, indices, outputs, defaults, unpack_single, maker):
@@ -394,6 +405,13 @@ class SanityCheckFunction(Function):
 
 NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):
+    """`FunctionMaker` is the class to `create` `Function` instances.
+    
+    This class has the env, the optimizer, and the linker.  When copying a `Function`, there is
+    no need to duplicate the `FunctionMaker` instance.  Deepcopy still copies both, which can
+    result in re-compilation.
+
+    """
 
     @staticmethod
     def wrap_in(input):
@@ -432,18 +450,20 @@ class FunctionMaker(object):
         else:
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
-    def __init__(self, inputs, outputs, mode = 'FAST_RUN', accept_inplace = False, function_builder = Function):
+    def __init__(self, inputs, outputs, 
+            mode = 'FAST_COMPILE', accept_inplace = False, function_builder = Function):
         """
-        Create a FunctionMaker for the specified inputs, outputs and mode.
+        :type inputs: a list of SymbolicInput instances
 
-        @param inputs: a list of SymbolicInput instances
-        @param outputs: a list of SymbolicOutput instances
-                   outputs may also be a single Result (not a list), in which
-                   case the functions produced by FunctionMaker will return
-                   their output value directly
-        @param mode: a Mode instance telling FunctionMaker how to optimize and link
-        @param accept_inplace: True iff it is acceptable to have inplace operations
-                          in the graph from the inputs to the outputs
+        :type outputs: a list of SymbolicOutput instances
+                    outputs may also be a single Result (not a list), in which
+                    case the functions produced by FunctionMaker will return
+                    their output value directly
+
+        :param mode: a Mode instance telling FunctionMaker how to optimize and link
+
+        :param accept_inplace: True iff it is acceptable to have inplace operations
+                    in the graph from the inputs to the outputs
         """
 
 
@@ -648,19 +668,7 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
     optimization phase (default is False)
 
     Every element of the input list will be upgraded to an `In` instance if necessary,
-    using the following rules:
-
-    - a `Result` instance r will be upgraded like `In`(r)
-
-    - a tuple (name, r) will be `In`(r, name=name)
-    
-    - a tuple (r, val) will be `In`(r, value=value, autoname=True)
-
-    - a tuple ((r,up), val) will be `In`(r, value=value, update=up, autoname=True)
-
-    - a tuple (name, r, val) will be `In`(r, name=name, value=value)
-
-    - a tuple (name, (r,up), val) will be `In`(r, name=name, value=val, update=up, autoname=True)
+    using the rules implemented by the `convert_function_input` function.
 
     Similarly, every element of the output list will be upgraded to an
     `Out` instance if necessary:
@@ -681,54 +689,7 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
 
     """
 
-    def wrap_in(input):
-        if isinstance(input, (SymbolicInput, SymbolicInputKit)):
-            return input
-        elif isinstance(input, gof.Result):
-            return In(input)
-        elif isinstance(input, (list, tuple)):
-            orig = input
-            if not input:
-                raise TypeError("Nonsensical input specification: %s" % input)
-            if isinstance(input[0], str):
-                name = input[0]
-                input = input[1:]
-            else:
-                name = None
-            if isinstance(input[0], (list, tuple)):
-                if len(input[0]) != 2 or len(input) != 2:
-                    raise TypeError("Invalid input syntax: %s (check documentation or use an In instance)" % orig)
-                (result, update), value = input
-            elif isinstance(input[0], gof.Result):
-                if len(input) == 1:
-                    result, update, value = input[0], None, None
-                elif len(input) == 2:
-                    (result, value), update = input, None
-                else:
-                    raise TypeError("Invalid input syntax: %s (check documentation or use an In instance)" % orig)
-            elif isinstance(input[0], (SymbolicInput, SymbolicInputKit)):
-                if len(input) == 1:
-                    return input[0]
-                elif len(input) == 2:
-                    input, value = input
-                    if name is not None: input.name = name
-                    input.value = value
-                    return input
-            else:
-                raise TypeError("The input specification is not valid: %s" % input)
-
-            if not isinstance(result, gof.Result):
-                raise TypeError("Unknown input type: %s, expected Result instance" % type(result), result)
-            if update is not None and not isinstance(update, gof.Result):
-                raise TypeError("Unknown update type: %s, expected Result instance" % type(update), update)
-            if value is not None and isinstance(value, (gof.Result, SymbolicInput)):
-                raise TypeError("The value for input %s should not be a Result or SymbolicInput instance (got: %s)" % (result, value))
-
-            return In(result, name=name, value=value, update=update)
-        else:
-            raise TypeError("Unknown input type: %s, expected Result instance" % type(input), input)
-
-    inputs = map(wrap_in, inputs)
+    inputs = map(convert_function_input, inputs)
     outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
 
     defaults = [getattr(input, 'value', None) for input in inputs]
@@ -750,9 +711,76 @@ def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
             maker1 = FunctionMaker(inputs, outputs, mode[0], accept_inplace = accept_inplace, function_builder = builder)
             fn = maker1.create(defaults)
     else:
-        fn = FunctionMaker(inputs, outputs, mode, accept_inplace = accept_inplace).create(defaults)
+        Maker = getattr(mode, 'function_maker', FunctionMaker)
+        fn = Maker(inputs, outputs, mode, accept_inplace = accept_inplace).create(defaults)
 
     return fn
 
 
+
+def convert_function_input(input):
+    """
+    Upgrade a input shortcut to an In instance.
+    
+    The rules for upgrading are as follows:
+
+    - a `Result` instance r will be upgraded like `In`(r)
+
+    - a tuple (name, r) will be `In`(r, name=name)
+    
+    - a tuple (r, val) will be `In`(r, value=value, autoname=True)
+
+    - a tuple ((r,up), val) will be `In`(r, value=value, update=up, autoname=True)
+
+    - a tuple (name, r, val) will be `In`(r, name=name, value=value)
+
+    - a tuple (name, (r,up), val) will be `In`(r, name=name, value=val, update=up, autoname=True)
+
+
+    """
+    if isinstance(input, (SymbolicInput, SymbolicInputKit)):
+        return input
+    elif isinstance(input, gof.Result):
+        return In(input)
+    elif isinstance(input, (list, tuple)):
+        orig = input
+        if not input:
+            raise TypeError("Nonsensical input specification: %s" % input)
+        if isinstance(input[0], str):
+            name = input[0]
+            input = input[1:]
+        else:
+            name = None
+        if isinstance(input[0], (list, tuple)):
+            if len(input[0]) != 2 or len(input) != 2:
+                raise TypeError("Invalid input syntax: %s (check documentation or use an In instance)" % orig)
+            (result, update), value = input
+        elif isinstance(input[0], gof.Result):
+            if len(input) == 1:
+                result, update, value = input[0], None, None
+            elif len(input) == 2:
+                (result, value), update = input, None
+            else:
+                raise TypeError("Invalid input syntax: %s (check documentation or use an In instance)" % orig)
+        elif isinstance(input[0], (SymbolicInput, SymbolicInputKit)):
+            if len(input) == 1:
+                return input[0]
+            elif len(input) == 2:
+                input, value = input
+                if name is not None: input.name = name
+                input.value = value
+                return input
+        else:
+            raise TypeError("The input specification is not valid: %s" % input)
+
+        if not isinstance(result, gof.Result):
+            raise TypeError("Unknown input type: %s, expected Result instance" % type(result), result)
+        if update is not None and not isinstance(update, gof.Result):
+            raise TypeError("Unknown update type: %s, expected Result instance" % type(update), update)
+        if value is not None and isinstance(value, (gof.Result, SymbolicInput)):
+            raise TypeError("The value for input %s should not be a Result or SymbolicInput instance (got: %s)" % (result, value))
+
+        return In(result, name=name, value=value, update=update)
+    else:
+        raise TypeError("Unknown input type: %s, expected Result instance" % type(input), input)
 
