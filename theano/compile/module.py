@@ -763,7 +763,7 @@ class ComponentDict(Composite):
         return '\n'.join(strings)
 
     def __str__(self):
-        return "ComponentDict(%s)" % ', '.join(x for x in sorted(map(str, self._components)) if x[0] != '_')
+        return self.__class__.__name__+"(%s)" % ', '.join(x for x in sorted(map(str, self._components)) if x[0] != '_')
 
     def __set_name__(self, name):
         super(ComponentDict, self).__set_name__(name)
