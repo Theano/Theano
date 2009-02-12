@@ -270,7 +270,7 @@ class Env(utils.object2):
 
     ### change input ###
 
-    def change_input(self, node, i, new_r):
+    def change_input(self, node, i, new_r, reason=None):
         """WRITEME
         Changes node.inputs[i] to new_r.
 
@@ -297,14 +297,18 @@ class Env(utils.object2):
         self.__import_r__([new_r])
         self.__add_clients__(new_r, [(node, i)])
         prune = self.__remove_clients__(r, [(node, i)], False)
-        self.execute_callbacks('on_change_input', node, i, r, new_r)
+        if reason is None:
+            self.execute_callbacks('on_change_input', node, i, r, new_r)
+        else:
+            self.execute_callbacks('on_change_input_with_reason', node, i, r, new_r, reason)
+
         if prune:
             self.__prune_r__([r])
 
 
     ### replace ###
 
-    def replace(self, r, new_r):
+    def replace(self, r, new_r, reason=None):
         """ WRITEME
         This is the main interface to manipulate the subgraph in Env.
         For every node that uses r as input, makes it use new_r instead.
@@ -320,12 +324,12 @@ class Env(utils.object2):
 
         for node, i in list(r.clients):
             assert node == 'output' and self.outputs[i] is r or node.inputs[i] is r
-            self.change_input(node, i, new_r)
+            self.change_input(node, i, new_r, reason=reason)
 
-    def replace_all(self, pairs):
+    def replace_all(self, pairs, reason=None):
         """WRITEME"""
         for r, new_r in pairs:
-            self.replace(r, new_r)
+            self.replace(r, new_r, reason=reason)
 
 
     ### features ###
