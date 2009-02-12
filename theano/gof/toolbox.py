@@ -36,11 +36,11 @@ class History:
         del env.revert
         del self.history[env]
 
-    def on_change_input(self, env, node, i, r, new_r):
+    def on_change_input(self, env, node, i, r, new_r, reason=None):
         if self.history[env] is None:
             return
         h = self.history[env]
-        h.append(lambda: env.change_input(node, i, r))
+        h.append(lambda: env.change_input(node, i, r, reason=("Revert", reason)))
     
     def revert(self, env, checkpoint):
         """
@@ -92,14 +92,14 @@ class ReplaceValidate(History, Validator):
         del env.replace_validate
         del env.replace_all_validate
 
-    def replace_validate(self, env, r, new_r):
-        self.replace_all_validate(env, [(r, new_r)])
+    def replace_validate(self, env, r, new_r, reason=None):
+        self.replace_all_validate(env, [(r, new_r)], reason=reason)
 
-    def replace_all_validate(self, env, replacements):
+    def replace_all_validate(self, env, replacements, reason=None):
         chk = env.checkpoint()
         for r, new_r in replacements:
             try:
-                env.replace(r, new_r)
+                env.replace(r, new_r, reason=reason)
             except Exception, e:
                 if 'The type of the replacement must be the same' not in str(e) and 'does not belong to this Env' not in str(e):
                     print >>sys.stderr, "<<!! BUG IN ENV.REPLACE OR A LISTENER !!>>", type(e), e

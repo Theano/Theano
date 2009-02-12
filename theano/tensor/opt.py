@@ -64,7 +64,8 @@ def insert_inplace_optimizer(env):
                                 *[inplace_pattern.get(i, None) \
                                         for i in xrange(len(node.outputs))])),
                         inplace_pattern).make_node(*node.inputs)
-                    env.replace_all_validate(zip(node.outputs, new.outputs))
+                    env.replace_all_validate(zip(node.outputs, new.outputs),
+                            reason="insert_inplace_optimizer")
                 except (ValueError, TypeError, InconsistencyError), e:
                     continue
                 candidate_inputs.remove(candidate_input)

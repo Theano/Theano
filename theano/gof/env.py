@@ -297,10 +297,7 @@ class Env(utils.object2):
         self.__import_r__([new_r])
         self.__add_clients__(new_r, [(node, i)])
         prune = self.__remove_clients__(r, [(node, i)], False)
-        if reason is None:
-            self.execute_callbacks('on_change_input', node, i, r, new_r)
-        else:
-            self.execute_callbacks('on_change_input_with_reason', node, i, r, new_r, reason)
+        self.execute_callbacks('on_change_input', node, i, r, new_r, reason=reason)
 
         if prune:
             self.__prune_r__([r])
@@ -367,7 +364,7 @@ class Env(utils.object2):
 
     ### callback utils ###
     
-    def execute_callbacks(self, name, *args):
+    def execute_callbacks(self, name, *args, **kwargs):
         """WRITEME
         Calls
           getattr(feature, name)(*args)
@@ -378,7 +375,16 @@ class Env(utils.object2):
                 fn = getattr(feature, name)
             except AttributeError:
                 continue
-            fn(self, *args)
+
+            #####HORRIBLE OPTIONAL ARGUMENT HACK
+            try:
+                fn(self, *args, **kwargs)
+            except TypeError, e:
+                if str(e) == "on_change_input() got an unexpected keyword argument 'reason'" and len(kwargs) == 1:
+                    fn(self, *args)
+                else:
+                    raise
+
 
     def collect_callbacks(self, name, *args):
         """WRITEME

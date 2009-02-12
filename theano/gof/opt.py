@@ -189,7 +189,7 @@ class MergeOptimizer(Optimizer):
                 # we adopt convention to keep the last name
                 if c.name:  
                     other_c.name = c.name
-                env.replace_validate(c, other_c)
+                env.replace_validate(c, other_c, reason='Constant Merge')
             else:
                 #this is a new constant
                 const_sig[c] = sig
@@ -219,7 +219,7 @@ class MergeOptimizer(Optimizer):
                     if output.name and not new_output.name:
                         new_output.name = output.name
                 try:
-                    env.replace_all_validate(pairs)
+                    env.replace_all_validate(pairs, reason='Merge (exptime)')
                 except InconsistencyError, e:
                     success = False
             if not success:
@@ -266,7 +266,7 @@ class MergeOptimizer(Optimizer):
                         if node_output.name:
                             cand_output.name = node_output.name
                     try:
-                        env.replace_all_validate(pairs)
+                        env.replace_all_validate(pairs, reason="Merge")
                     except InconsistencyError, e:
                         success = False
 
@@ -714,7 +714,7 @@ class NavigatorOptimizer(Optimizer):
             return False
         repl_pairs = zip(node.outputs, replacements)
         try:
-            env.replace_all_validate(repl_pairs)
+            env.replace_all_validate(repl_pairs, reason=lopt)
             return True
         except Exception, e:
             # This means the replacements were rejected by the env.
