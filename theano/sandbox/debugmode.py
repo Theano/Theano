@@ -69,9 +69,9 @@ class ResultEquivalenceTracker(object):
                 assert r not in self.equiv
                 self.equiv[r] = set([r])
                 self.all_results_ever.append(r)
-                self.reasons[r] = []
+                self.reasons.setdefault(r, [])
             for r in node.inputs:
-                self.reasons[r] = []
+                self.reasons.setdefault(r, [])
 
     def on_change_input(self, env, node, i, r, new_r, reason=None):
         #print 'CHANGE by', reason, 'to use', new_r, type(new_r)
