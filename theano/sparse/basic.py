@@ -682,7 +682,7 @@ class StructuredDot(gof.Op):
         if a.shape[1] != b.shape[0]:
             raise ValueError('shape mismatch in StructuredDot.perform', (a.shape, b.shape))
         if b.shape[0] == 1:
-            raise NotImplemented('ERROR: scipy.csc_matrix dot has bug with singleton dimensions')
+            raise NotImplementedError('ERROR: scipy.csc_matrix dot has bug with singleton dimensions')
 
         result = a.dot(b)
 
