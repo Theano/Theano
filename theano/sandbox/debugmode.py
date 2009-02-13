@@ -19,7 +19,6 @@ from ..gof.link import WrapLinkerMany, raise_with_op
 from ..gof.cutils import run_cthunk
 from ..gof.cc import OpWiseCLinker, CLinker
 from ..compile.mode import Mode
-import ..gof.graph
 import numpy
 
 from ..compile.function_module import (convert_function_input, 
@@ -78,11 +77,9 @@ class ResultEquivalenceTracker(object):
         #print 'CHANGE by', reason, 'to use', new_r, type(new_r)
 
         self.reasons.setdefault(new_r, [])
-        if reason not in self.reasons[new_r]:
-            self.reasons[new_r].append(reason)
-        #if new_r in self.reasons:
-        #else:
-        #    self.reasons[new_r] = [reason]
+        if (reason, r) not in self.reasons[new_r]:
+            self.reasons[new_r].append((reason, r))
+            self.reasons[r].append(('replaced by', new_r))
 
         if r in self.equiv:
             r_set = self.equiv[r]
@@ -250,9 +247,11 @@ class OptCheckLinker(OpWiseCLinker):
 
                     print "OPTCHECK FAILURE"
                     for r in problematic_set:
-                        print "  Op", r.owner, "produced", type(r_vals[r])
+                        print "  Result:", id(r), r 
+                        print "  Op", r.owner
+                        print "  Value Type:", type(r_vals[r])
                         print "  Value: ", r_vals[r]
-                        print "  Reason: ", [str(s) for s in env.equivalence_tracker.reasons[r]]
+                        print "  Reason: ", [(str(reason), id(old_r)) for reason, old_r in env.equivalence_tracker.reasons[r]]
                         print ""
 
                     raise Exception("OptCheckFailure")
