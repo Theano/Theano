@@ -673,16 +673,14 @@ class StructuredDot(gof.Op):
     """
     def make_node(self, a, b):
         assert a.type.dtype == b.type.dtype
-        if type(a) is not SparseResult:
-            raise TypeError('First argument must be of type SparseResult');
+        if type(a) is not SparseResult and type(a) is not SparseConstant:
+            raise TypeError('First argument must be of type SparseResult or SparseConstant');
 
         return gof.Apply(self, [a,b], [tensor.tensor(a.type.dtype, (False, False))])
 
     def perform(self, node, (a,b), (out,)):
         if a.shape[1] != b.shape[0]:
             raise ValueError('shape mismatch in StructuredDot.perform', (a.shape, b.shape))
-        if b.shape[0] == 1:
-            raise NotImplementedError('ERROR: scipy.csc_matrix dot has bug with singleton dimensions')
 
         result = a.dot(b)
 
@@ -698,6 +696,12 @@ class StructuredDot(gof.Op):
             raise Exception('Output of structured dot should be a matrix (ndim=2)')
 
         assert result.ndim == 2
+
+        if result.shape != (a.shape[0], b.shape[1]):
+            if b.shape[0] == 1:
+                raise Exception("a.shape=%s, b.shape=%s, result.shape=%s ??? This is probably because scipy.csc_matrix dot has a bug with singleton dimensions (i.e. b.shape[0]=1), for scipy 0.6. Use scipy 0.7" % (a.shape, b.shape, result.shape))
+            else:
+                raise Exception("a.shape=%s, b.shape=%s, result.shape=%s ??? I have no idea why")
 
         ## Commenting this out because result should be a numpy.ndarray since the assert above
         ## (JB 20090109)
