@@ -22,6 +22,8 @@ def register_specialize(lopt, *tags, **kwargs):
 """ Types of sparse matrices to use for testing """
 _mtypes = [sparse.csc_matrix, sparse.csr_matrix]
 #_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix, sparse.lil_matrix, sparse.coo_matrix]
+#* new class ``dia_matrix`` : the sparse DIAgonal format
+#* new class ``bsr_matrix`` : the Block CSR format
 _mtype_to_str = {sparse.csc_matrix: "csc", sparse.csr_matrix: "csr"}
 
 
