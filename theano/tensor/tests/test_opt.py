@@ -142,6 +142,9 @@ class test_greedy_distribute(unittest.TestCase):
         r1 = f(4,1.e-6, [1.5,2], [2.3,3.1])
         r2 = f(4,1.e-6, [1.5,2], [2.3,3.1])
 
+        assert numpy.all(r0 == r1)
+        assert numpy.all(r0 == r2)
+
 
 
 class test_canonize(unittest.TestCase):
