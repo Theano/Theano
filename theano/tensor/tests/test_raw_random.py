@@ -32,7 +32,7 @@ class T_test_module(unittest.TestCase):
         """
         class B(RModule):
             def __init__(self):
-                super(B, self).__init__(self)
+                super(B, self).__init__()
                 
                 self.x = compile.Member(tensor.dvector())
                 self.r = self.random.uniform(tensor.shape(self.x))
@@ -40,7 +40,7 @@ class T_test_module(unittest.TestCase):
                 self.f = compile.Method([self.x], self.r)
         class E(RModule):
             def __init__(self):
-                super(E, self).__init__(self)
+                super(E, self).__init__()
                 self.b = B()
                 self.f = compile.Method([self.b.x], self.b.r)
 

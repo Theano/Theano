@@ -10,7 +10,7 @@ class T_test_module(unittest.TestCase):
     def test_whats_up_with_submembers(self):
         class Blah(FancyModule):
             def __init__(self, stepsize):
-                super(Blah, self).__init__(self)
+                super(Blah, self).__init__()
                 self.stepsize = Member(T.value(stepsize))
                 x = T.dscalar()
             
