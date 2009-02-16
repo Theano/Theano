@@ -78,9 +78,9 @@ memory leak. Numpy version >=1.2 fixes more memory leak.
 
 - g++, python-dev (optional, to compile generated C code)
 
-- nose, for testing
+- nose(nosetests), for testing
 
--  `psyco <http://psyco.sourceforge.net/>`__ can make your python code much faster, if you are on a 32-bit x86 architecture.  If you use compiled C code, this can be less important.
+- Optional: `psyco <http://psyco.sourceforge.net/>`__ can make your python code much faster, if you are on a 32-bit x86 architecture.  If you use compiled C code, this can be less important.
 
 Downloading Theano
 ------------------
@@ -97,7 +97,15 @@ Get the source and run the tests like this:
     hg clone http://pylearn.org/hg/theano Theano
     ln -s Theano/theano <someplace on your PYTHONPATH>/theano
     cd Theano
-    nosetests
+    nosetests #execute all the tests
+
+All tests should pass. From time to time, their is some test that are know to fail, but normally we know them and are trying to fix them. But to be sure contact us about them. 
+
+To define PYTHONPATH if it don't exist:
+
+.. code-block:: bash
+export PYTHONPATH=<path to theano>:$PYTHONPATH
+
 
 To update your library to the latest on pylearn.org, change directory (`cd`) to this `theano` folder and type
 
@@ -107,6 +115,9 @@ To update your library to the latest on pylearn.org, change directory (`cd`) to 
 
 *To get the source via unix tar*, you can download the latest source directly as a gzip'd tar file:
 `<http://pylearn.org/hg/theano/archive/tip.tar.gz>`__.
+
+Configuring the environment
+------------------
 
 Two environment variables are used to control automatic code generation.
 (It is possible to use theano in a way that avoids all automatic code generation, but the functions you make using {{{theano.function}}} will execute more slowly.)
@@ -159,6 +170,8 @@ Use the fast BLAS library that Fred installed, by setting
 Tips for running on a cluster
 +++++++++++++++++++++++++++++
 
+
+OUTDATED(was for mammouth1, should be updated for mammouth2)
 Use something like the following in your .bashrc:
 
 .. code-block:: bash
