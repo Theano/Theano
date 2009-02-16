@@ -245,7 +245,7 @@ class RModule(compile.Module):
     def __init__(self, components = {}, **kwcomponents):
         super(RModule, self).__init__(components, **kwcomponents)
         self.random = RandomKit('rkit')
-        self._components['_rkit'] = compile.KitComponent(self.random)
+        self._rkit = compile.KitComponent(self.random)
 
     def __wrapper__(self, x):
         x = compile.module.wrap(x)
