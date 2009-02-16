@@ -801,6 +801,7 @@ def local_greedy_distributor(node):
     increase numerical stability, e.g. when x and/or y tend to 0 in
     example 1.
     """
+
     out = node.outputs[0]
     num, denum = local_mul_canonizer.get_num_denum(out)
     if len(num) == 1 and not denum:
@@ -816,8 +817,7 @@ def local_greedy_distributor(node):
         num.remove(candidate)
         _change, candidate, num, denum = attempt_distribution(candidate, num, denum)
         change |= _change
-        if change:
-            new_num.append(candidate)
+        new_num.append(candidate)
 
     for candidate in list(denum):
         if candidate not in denum:
@@ -825,8 +825,7 @@ def local_greedy_distributor(node):
         denum.remove(candidate)
         _change, candidate, denum, num = attempt_distribution(candidate, denum, num)
         change |= _change
-        if change:
-            new_denum.append(candidate)
+        new_denum.append(candidate)
 
     if not change:
         return False

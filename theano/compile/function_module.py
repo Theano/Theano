@@ -16,6 +16,9 @@ from mode import *
 from io import *
 
 
+# used by function and module as the default compilation mode
+mode_default = 'FAST_COMPILE'
+
 def infer_reuse_pattern(env, outputs_to_disown):
     """
     Given an env and a list of results, returns the list of all
@@ -451,7 +454,7 @@ class FunctionMaker(object):
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
     def __init__(self, inputs, outputs, 
-            mode = 'FAST_COMPILE', accept_inplace = False, function_builder = Function):
+            mode = mode_default, accept_inplace = False, function_builder = Function):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -641,7 +644,7 @@ def register_checker(checker):
 
 
 
-def function(inputs, outputs, mode='FAST_RUN', accept_inplace = False):
+def function(inputs, outputs, mode=mode_default, accept_inplace = False):
     """
     Return a function calculating the outputs from the inputs.
 
