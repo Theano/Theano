@@ -65,12 +65,7 @@ Software Requirements
 
 - python 2.5
 
-- SciPy (specifically numpy, sparse, weave). We recommend scipy >=0.7 if you
-are using sparse matrices, because scipy.sparse is buggy in 0.6.
-(scipy.csc_matrix dot has a bug with singleton dimensions. There may be more
-bugs.)
-Numpy version >= 1.1 fixes
-memory leak. Numpy version >=1.2 fixes more memory leak.
+- SciPy (specifically numpy, sparse, weave). We recommend scipy >=0.7 if you are using sparse matrices, because scipy.sparse is buggy in 0.6. (scipy.csc_matrix dot has a bug with singleton dimensions. There may be more bugs.) Numpy version >= 1.1 fixes memory leak. Numpy version >=1.2 fixes more memory leak.
 
 - docutils, pygments (optional, to build documentation)
 
