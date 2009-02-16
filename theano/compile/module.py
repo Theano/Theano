@@ -125,7 +125,7 @@ class Component(object):
         """
         raise NotImplementedError
 
-    def make_no_init(self, mode='FAST_COMPILE'):
+    def make_no_init(self, mode=F.mode_default):
         """
         Allocates the necessary containers using allocate() and uses
         build() with the provided mode to make an instance which will
@@ -145,7 +145,7 @@ class Component(object):
         arguments and the keyword arguments. If 'mode' is in the
         keyword arguments it will be passed to build().
         """
-        mode = kwargs.pop('mode', 'FAST_COMPILE')
+        mode = kwargs.pop('mode', F.mode_default)
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)
@@ -956,7 +956,7 @@ class Module(ComponentDict):
         """
         self.make_mi(args,kwargs)
 
-        mode = kwargs.pop('mode', 'FAST_COMPILE')
+        mode = kwargs.pop('mode', F.mode_default)
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)

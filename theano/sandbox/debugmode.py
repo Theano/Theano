@@ -11,6 +11,7 @@ broken.
 
 """
 import time, copy, sys
+from StringIO import StringIO
 
 from .. import gof
 
@@ -21,6 +22,7 @@ from ..gof.cc import OpWiseCLinker, CLinker
 from ..compile.mode import Mode
 import numpy
 
+
 from ..compile.function_module import (convert_function_input, 
         FunctionMaker,
         predefined_modes,
@@ -30,6 +32,24 @@ from ..compile.function_module import (convert_function_input,
         SymbolicInputKit,
         SymbolicOutput,
         Supervisor)
+
+def debugprint(a, prefix='', depth=-1, done=None, file=sys.stdout):
+    if depth==0:
+        return
+    done = set() if done is None else done
+    if hasattr(a, 'op'):
+        print >> file, prefix, a.op, id(a)
+        if id(a) not in done:
+            done.add(id(a))
+            for i in a.inputs:
+                if i.owner:
+                    debugprint(i.owner, prefix+'  ', depth=depth-1, done=done, file=file)
+                else:
+                    print >> file, prefix+'  ', i, id(i)
+    else:
+        print >> file, prefix+'  ', a, id(a)
+
+    return file
 
 class ResultEquivalenceTracker(object):
     def __init__(self):
@@ -43,6 +63,7 @@ class ResultEquivalenceTracker(object):
         self.env = env
         self.all_results_ever = []
         self.reasons = {}
+        self.snapshots = {}
 
     def on_detach(self, env):
         assert env is self.env
@@ -70,15 +91,22 @@ class ResultEquivalenceTracker(object):
                 self.equiv[r] = set([r])
                 self.all_results_ever.append(r)
                 self.reasons.setdefault(r, [])
+                self.snapshots.setdefault(r, [])
             for r in node.inputs:
                 self.reasons.setdefault(r, [])
+                self.snapshots.setdefault(r, [])
 
     def on_change_input(self, env, node, i, r, new_r, reason=None):
         #print 'CHANGE by', reason, 'to use', new_r, type(new_r)
 
         self.reasons.setdefault(new_r, [])
+        self.snapshots.setdefault(new_r, [])
         if (reason, r) not in self.reasons[new_r]:
             self.reasons[new_r].append((reason, r))
+            self.snapshots[new_r].append((
+                reason, 
+                debugprint(r.owner, prefix='  ', depth=6, file=StringIO()).getvalue(),
+                debugprint(new_r.owner,prefix='  ',  depth=6, file=StringIO()).getvalue()))
             self.reasons[r].append(('replaced by', new_r))
 
         if r in self.equiv:
@@ -252,6 +280,12 @@ class OptCheckLinker(OpWiseCLinker):
                         print "  Value Type:", type(r_vals[r])
                         print "  Value: ", r_vals[r]
                         print "  Reason: ", [(str(reason), id(old_r)) for reason, old_r in env.equivalence_tracker.reasons[r]]
+                        print "  Snapshots:"
+                        for s in env.equivalence_tracker.snapshots[r]:
+                            print "  BEFORE"
+                            print s[1]
+                            print "  AFTER"
+                            print s[2]
                         print ""
 
                     raise Exception("OptCheckFailure")

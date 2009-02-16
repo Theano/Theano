@@ -13,6 +13,9 @@ from theano import pprint
 import numpy
 #import scalar_opt
 
+from theano.sandbox.debugmode import OptCheck
+from theano import function
+
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = Tensor(broadcastable = xbc, dtype = 'float64')('x')
@@ -119,7 +122,26 @@ class test_greedy_distribute(unittest.TestCase):
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor), order = 'out_to_in').optimize(g)
         ##print pprint(g.outputs[0])
-        
+    
+    def test_kording_bug(self):
+        x, y = vectors('xy')
+        eps = scalar('eps')
+        s = scalar('s')
+
+        #r = theano.tensor.mul(theano.tensor.fill(x, 2.*a), x/a , (y+z) , a)
+        #r = theano.tensor.mul((x/a+y) , a, z)
+        r = mul(
+                s - 1
+                , eps + x/s
+                , eps + y/s
+                , s)
+
+        f = function([s, eps, x,y], r**2, mode=OptCheck())
+
+        r0 = f(4,1.e-6, [1.5,2], [2.3,3.1])
+        r1 = f(4,1.e-6, [1.5,2], [2.3,3.1])
+        r2 = f(4,1.e-6, [1.5,2], [2.3,3.1])
+
 
 
 class test_canonize(unittest.TestCase):
