@@ -236,6 +236,7 @@ class PPrinter:
         return "\n".join(s[1] for s in strings)
 
     def __call__(self, *args):
+        print sys.stderr, "WARNING: PPrinter bug. Is theano ticket #249 fixed yet?"
         if len(args) == 1:
             return self.process(*args)
         elif len(args) == 2 and isinstance(args[1], (PrinterState, dict)):
