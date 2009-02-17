@@ -26,6 +26,9 @@ _mtypes = [sparse.csc_matrix, sparse.csr_matrix]
 #* new class ``bsr_matrix`` : the Block CSR format
 _mtype_to_str = {sparse.csc_matrix: "csc", sparse.csr_matrix: "csr"}
 
+import scipy
+if scipy.__version__ != '0.7.0':
+    sys.stderr.write("WARNING: scipy version = %s. We prefer version >=0.7.0 because it has bugs fixed in the sparse matrix code.\n" % scipy.__version__)
 
 def _is_sparse_result(x):
     """
@@ -33,7 +36,7 @@ def _is_sparse_result(x):
     @return: True iff x is a L{SparseResult} (and not a L{tensor.Tensor})
     """
     if not isinstance(x.type, Sparse) and not isinstance(x.type, tensor.Tensor):
-        raise NotImplementedError("this function should only be called on results of type sparse.Sparse or tensor.Tensor, not,", x)
+        raise NotImplementedError("this function should only be called on *results* (of type sparse.Sparse or tensor.Tensor), not,", x)
     return isinstance(x.type, Sparse)
 def _is_dense_result(x):
     """
@@ -41,7 +44,7 @@ def _is_dense_result(x):
     @return: True unless x is a L{SparseResult} (and not a L{tensor.Tensor})
     """
     if not isinstance(x.type, Sparse) and not isinstance(x.type, tensor.Tensor):
-        raise NotImplementedError("this function should only be called on results of type sparse.Sparse or tensor.Tensor, not,", x)
+        raise NotImplementedError("this function should only be called on *results* (of type sparse.Sparse or tensor.Tensor), not,", x)
     return isinstance(x.type, tensor.Tensor)
 
 def _is_sparse(x):
@@ -371,7 +374,12 @@ class DenseFromSparse(gof.op.Op):
                          [tensor.Tensor(dtype = x.type.dtype,
                                         broadcastable = (False, False)).make_result()])
     def perform(self, node, (x, ), (out, )):
-        out[0] = x.toarray()
+        if _is_dense(x):
+            print >> sys.stderr, "WARNING: You just called DenseFromSparse on a dense matrix:", x
+            out[0] = x
+        else:
+            out[0] = x.toarray()
+        assert _is_dense(out[0])
     def grad(self, (x, ), (gz, )):
         if self.sparse_grad:
             return [sp_ones_like(x) * gz]
@@ -686,10 +694,11 @@ class StructuredDot(gof.Op):
 
         result = a.dot(b)
 
-        # sparse dot generates sparse matrix, unless output has single dimension
-        if sparse.issparse(result):
-            result = result.toarray()
-        assert isinstance(result, numpy.ndarray)
+#       scipy 0.7.0 automatically casts to dense, so the following is not necessary:
+#        # sparse dot generates sparse matrix, unless output has single dimension
+#        if sparse.issparse(result):
+#            result = result.toarray()
+        assert _is_dense(result)
 
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix
         if result.ndim == 1:
@@ -701,7 +710,7 @@ class StructuredDot(gof.Op):
 
         if result.shape != (a.shape[0], b.shape[1]):
             if b.shape[0] == 1:
-                raise Exception("a.shape=%s, b.shape=%s, result.shape=%s ??? This is probably because scipy.csc_matrix dot has a bug with singleton dimensions (i.e. b.shape[0]=1), for scipy 0.6. Use scipy 0.7" % (a.shape, b.shape, result.shape))
+                raise Exception("a.shape=%s, b.shape=%s, result.shape=%s ??? This is probably because scipy.csc_matrix dot has a bug with singleton dimensions (i.e. b.shape[0]=1), for scipy 0.6. Use scipy 0.7. NB you have scipy version %s" % (a.shape, b.shape, result.shape, scipy.__version__))
             else:
                 raise Exception("a.shape=%s, b.shape=%s, result.shape=%s ??? I have no idea why")
 
@@ -747,7 +756,10 @@ class StructuredDotCSC(gof.Op):
         a = sparse.csc_matrix((a_val, a_ind, a_ptr), 
                 (a_nrows, b.shape[0]),
                 copy = False)
-        out[0] = numpy.asarray(a.dot(b).todense())
+#       TODO: todense() is automatic in 0.7.0, just remove the following line:
+#        out[0] = numpy.asarray(a.dot(b).todense())
+        out[0] = a.dot(b)
+        assert _is_dense(out[0])
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, a_nrows, b), (z,), sub):
         return """
