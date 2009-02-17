@@ -23,9 +23,9 @@ developer documentation.
 Using Theano
 ============
 
-- First of all, read the `n00b guide`_.  It is a cut-and-paste, tutorial-style intro to what Theano can do.
+- First of all, read the `tutorial`_.  It is a cut-and-paste, tutorial-style intro to what Theano can do.
 
-- Familiarize yourself with the `glossary of terminology`_.
+- Familiarize yourself with the :ref:`glossary`.
 
 - Join `theano-users`_.
 
@@ -38,7 +38,6 @@ Using Theano
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
 .. _tutorial: tutorial.html
-.. _glossary of terminology: ../api/term-index.html
 .. _typelist: typelist.html
 .. _oplist: oplist.html
 

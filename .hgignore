@@ -4,6 +4,7 @@ syntax: glob
 \#*\#
 doc/oplist.txt
 doc/typelist.txt
+doc/.build/
 compiled/*.cpp
 cutils_ext.cpp
 html

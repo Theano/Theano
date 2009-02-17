@@ -1,0 +1,424 @@
+.. _glossary:
+
+Glossary of terminology
+=======================
+
+.. glossary::
+
+    Apply
+        Op-related graph node (expression instance)
+        
+        An Apply instance (`Apply API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Apply-class.html>`_)
+        represents the application of an :term:`Op` on input :term:`Results <Result>`, producing output :term:`Results <Result>`.
+        Users typically do not instantiate Apply directly, instead they should use an Op's ``make_node`` or ``__call__`` function.
+        
+        Comparing with the Python language, an :term:`Apply` instance is theano's version of a function call (or expression instance) whereas :term:`Op` is theano's version of a function definition.
+        
+        An Apply instance serves as a simple structure with three important fields:
+          ``inputs``: a list of :term:`Result` instances that represent the arguments of the function.
+          ``outputs``: a list of :term:`Result` instances that represent the return values of the function.
+          ``op``: an Op instance that determines the function/transformation being applied here.
+        
+        Theano.function uses the Apply instances' ``inputs`` field together with each :term:`Result`'s ``owner`` field to determine which inputs are necessary to compute the function's outputs.
+        Theano.function uses the Apply instances' ``op`` field to know how to compute the intermediate and final Results.
+        
+    Broadcasting
+        implicit tensor repmat
+        
+        WRITEME
+        
+        The following pages appear to describe broadcasting, but I haven't read over them:
+           * http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html
+           * http://www.scipy.org/EricsBroadcastingDoc
+        
+    Build
+        see :term:`Compilation`
+        
+    Compilation
+        use a mode to transform graph into a callable
+        
+        Compilation is the transformation of a graph into a callable object instance.
+        Compilation is implemented by the :ref:`theano.function() <CompileFunction>` function.
+        
+        As far as compilation is concerned, ``theano.function()`` accepts three important arguments: a list of inputs, a list of outputs, and a :term:`mode`:
+            #. use ``owner`` and ``input`` fields to identify the intermediate nodes connecting inputs to outputs
+            #. copy that sub-graph into an internal :term:`Env` instance
+            #. use the Env to transform the subgraph copy (introduce :term:`optimizations <Optimization>` and :term:`stabilizations <Stabilization>`)
+            #. serialize the transformed subgraph by topological sort
+            #. allocate a :term:`linker` to perform the calculations associated with each :term:`Op`.
+        
+        The :term:`mode` defines how optimizations and stabilizations will be introduced, and defines which linker will be used.
+
+    Constant
+        See :term:`Value`        
+        
+        Constant (`Constant API
+        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Constant-class.html
+        doc>`_) also has an additional property: it is forbidden for an
+        :term:`Op` to modify the state of the data it contains. This
+        makes it eligible to participate in numerous optimizations:
+        constant inlining in C code, constant folding, etc.
+
+    DType
+        the numeric type for :term:`Tensor` elements
+
+        A :term:`Tensor` is for storing a number of objects that
+        all have the same type.  In computations, the storage for
+        :term:`TensorResult` instances is a ``numpy.ndarray``.
+        Instances of ``numpy.ndarray`` have a ``dtype`` property
+        to indicate which data type (i.e., byte, float, double, python
+        object) can be stored in each element.  The ``dtype`` property
+        of Tensors is a little different: it is a string which can be
+        converted to a numpy ``dtype`` object.  Still the meaning
+        is pretty much the same: elements of the ``numpy.ndarray``
+        corresponding to a :term:`TensorResult` in a particular
+        computation must have the corresponding data type.
+
+
+    Env
+        important class during compilation
+
+        WRITEME
+
+    Function
+        callable object representing a compiled graph
+
+        WRITEME
+
+    Graph
+        interconnected :term:`Apply` and :term:`Result` instances
+
+        In theano, a graph is an implicit concept, not a class or
+        an instance.  When we create :term:`Results <Result>` and
+        then :term:`apply` :term:`operations <Op>` to them to make
+        more Results, we build a bi-partite, directed, acyclic graph.
+        Results point to Apply instances (via the ``owner`` field)
+        and Apply instances point to Results (via their ``inputs``
+        and ``outputs`` fields).
+
+        To see how :term:`Result`, :term:`Type`, :term:`Apply`, and
+        :term:`Op` all work together, compare the following code fragment
+        and illustration.
+
+        .. code-block:: python
+
+            #!python
+            x = matrix('x')
+            y = matrix('y')
+            z = x + y
+
+        .. image:: apply.png 
+
+        Arrows represent references (python's pointers), the blue box is an Apply instance, red boxes are :term:`Result` nodes, green circles are :term:`Op` instances, purple boxes are :term:`Type` instances.
+        
+        Short example:
+        
+        .. code-block:: python
+
+            #!python
+            from theano.tensor import *
+            
+            # create 3 Results with owner = None
+            x = matrix('x')
+            y = matrix('y')
+            z = matrix('z')
+            
+            # create 2 Results (one for 'e', one intermediate for y*z)
+            # create 2 Apply instances (one for '+', one for '*')
+            e = x + y * z
+
+        Long example:
+        
+        The example above uses several syntactic shortcuts.
+        If we had wanted a more brute-force approach to graph construction, we could have typed this.
+
+        .. code-block:: python
+
+            #!python
+            from theano.tensor import *
+            
+            # We instantiate a type that represents a matrix of doubles
+            float64_matrix = Tensor(dtype = 'float64',              # double
+                                    broadcastable = (False, False)) # matrix
+            
+            # We make the Result instances we need.
+            x = Result(type = float64_matrix, name = 'x')
+            y = Result(type = float64_matrix, name = 'y')
+            z = Result(type = float64_matrix, name = 'z')
+            
+            # This is the Result that we want to symbolically represents y*z
+            mul_result = Result(type = float64_matrix)
+            assert mul_result.owner is None
+            
+            # We instantiate a symbolic multiplication
+            node_mul = Apply(op = mul,
+                             inputs = [y, z],
+                             outputs = [mul_result])
+            assert mul_result.owner is node_mul and mul_result.index == 0 # these fields are set by Apply
+            
+            # This is the Result that we want to symbolically represents x+(y*z)
+            add_result = Result(type = float64_matrix)
+            assert add_result.owner is None
+            
+            # We instantiate a symbolic addition
+            node_add = Apply(op = add,
+                             inputs = [x, mul_result],
+                             outputs = [add_result])
+            assert add_result.owner is node_add and add_result.index == 0 # these fields are set by Apply
+            
+            e = add_result
+            
+            # We have access to x, y and z through pointers
+            assert e.owner.inputs[0] is x
+            assert e.owner.inputs[1] is mul_result
+            assert e.owner.inputs[1].owner.inputs[0] is y
+            assert e.owner.inputs[1].owner.inputs[1] is z
+
+        Note how the call to ``Apply`` modifies the ``owner``
+        and ``index`` fields of the :term:`Results <Result>` passed as
+        outputs to point to itself and the rank they occupy in the
+        output list. This whole machinery builds a DAG (Directed
+        Acyclic Graph) representing the computation, a graph that
+        theano can compile and optimize.
+
+    Graph Transformation
+        compilation stage
+
+        :term:`Env`, in particular `replace()
+        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.env.Env-class.html#replace
+        replace()>`_
+
+        See also `Optimizer
+        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.opt.Optimizer-class.html>`_,
+        which is the base interface for writing transformers, such as
+        :term:`optimizations <Optimization>` and :term:`stabilizations
+        <Stabilization>`.
+
+        WRITEME
+
+    Linker
+        object which executes serialized graphs after compilation
+
+        WRITEME
+
+    Mode
+        mode of compilation (linker, transformer)
+
+        WRITEME
+
+    Op
+        a type of operation. Instance is TOI
+
+        :term:`Op` is an abstract class (`Op API
+        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.op.Op-class.html>`_)
+        that documents the interface for theano's data
+        transformations.  It has many subclasses, such as `sparse Dot
+        <http://lgcm.iro.umontreal.ca/epydoc/theano.sparse.Dot-class.html>`_.
+        and `Shape
+        <http://lgcm.iro.umontreal.ca/epydoc/theano.tensor.Shape-class.html>`_.
+
+
+        Comparing with the Python language, :term:`Op` is theano's
+        version of a function definition where an :term:`Apply` instance
+        is theano's version of a function call (or expression instance).
+
+        These subclasses are meant to be instantiated, and I'll call
+        an instance a theano Op instance (TOI).  A TOI has several
+        important responsabilities:
+
+            * making :term:`Apply` instances, which mean "apply this TOI to some particular inputs" (via the ``make_node``),
+            * performing the calculation of outputs from given inputs (via the ``perform``),
+            * producing c code to perform calculation of outputs from inputs (via ``c_code, c_code_cleanup, c_support_code, c_headers, c_libraries, c_compile_args``)
+            * [optionally] building gradient-calculating graphs (via ``grad``).
+        
+    Optimization
+        graph transformation for faster execution
+        
+        An optimization is a type of :term:`graph transformation`.
+        
+        WRITEME.
+        
+    Result
+        a Type-related graph node (a variable)
+        
+        A Result
+        (`Result API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Result-class.html>`_)
+        is theano's variable.  It symbolically represents a value (which
+        can be a number, vector, matrix, tensor, etc.).
+        The inputs and outputs of every :term:`Op` are Result instances.
+        The input and output arguments to create a :term:`function` are also Results.
+        A Result is like a strongly-typed variable in some other languages; each Result contains a reference to a :term:`TTI` (Theano Type Instance) that defines the kind of value that can be associated to the Result by a :term:`function`.
+        
+        A Result is a container for four important fields:
+            type
+                a :term:`TTI` defining the kind of value this Result can have,
+            owner
+                either None (for graph roots) or the :term:`Apply` instance (i.e. result of applying an :term:`Op`) of which ``self`` is an output,
+            index
+                the integer such that ``owner.outputs[index] is this_result`` (ignored if ``owner`` is None)
+            name
+                a string to use in pretty-printing and debugging.
+        
+        There are two subclasses related to Result:
+            :term:`Value`
+                a Result with a data field.
+            :term:`Constant`
+                like ``Value``, but the data it contains cannot be modified.
+        
+        Code Example:
+        
+        .. code-block:: python
+
+            #!python
+            import theano
+            from theano import tensor
+            
+            a = tensor.constant(1.5)        # declare a symbolic constant
+            b = tensor.fscalar()            # declare a symbolic floating-point scalar
+            
+            c = a + b                       # create a simple expression
+            
+            f = theano.function([b], [c])   # this works because a has a value associated with it already
+            
+            assert 4.0 == f(2.5)[0]         # bind 2.5 to an internal copy of b and evaluate an internal c
+            
+            theano.function([a], [c])       # compilation error because b (required by c) is undefined
+            
+            theano.function([a,b], [c])     # compilation error because a is constant, it can't be an input
+            
+            d = tensor.value(1.5)           # create a value similar to the constant 'a'
+            e = d + b
+            theano.function([d,b], [e])     # this works.  d's default value of 1.5 is ignored.
+        
+        The python variables ``a,b,c`` all refer to instances of type Result.
+        The Result refered to by ``a`` is also an instance of ``Constant``.
+        
+        Theano.:term:`function` uses the :term:`Apply` instances' ``inputs`` field together with each Result's ``owner`` field to determine which inputs are necessary to compute the function's outputs.
+        
+        
+    Scalar
+        [overloaded term]
+        
+        The scalar we use in the :ref:`tutorial` is a zero-dimensional tensor.
+        
+        The second type of scalar is for advanced users and developers.
+        It is actually a scalar, and is the primitive that is contained by a tensor.
+        
+        WRITEME: More information.
+        
+    Stabilization
+        graph transformation for numeric stability
+        
+        Some graph transformations improve numerical stability.  For example ``log(x+1)`` has a special implementation which is accurate for a wider range of ``x`` values than a naive implementation in which ``log`` is applied to a temporary variable storing ``1+x``.  Theano includes many graph transformations aimed at recognizing patterns like this one and replacing them with compound expressions.
+        
+        Stabilizations are like :term:`optimizations <Optimization>` in the sense that they are often pattern-based sub-graph substitutions.
+        
+        Stabilizations are unlike :term:`optimizations <Optimization>` in that 
+         - they are typically applied even when intermediate results in the subgraph have external :term:`clients`,
+         - they are typically prioritized over transformations which improve run-time speed, and
+         - they are typically not faster than the naive implementation.
+        
+    Tensor
+        Type for vectors, matrices, etc.
+        
+        Tensor (`Tensor API <http://lgcm.iro.umontreal.ca/epydoc/theano.tensor.Tensor-class.html doc>`_) is a class
+        that derives from :term:`Type`.  It is the symbolic type for ``numpy.ndarray``.
+        The main properties that distinguish one Tensor instance from another are:
+
+         * ndim - the rank of the tensor
+         * :term:`broadcastable <Broadcasting>` - which dimensions are broadcastable
+         * :term:`dtype` - what kind of elements will the tensor contain
+
+        See also :term:`TensorResult`.
+        
+    TensorResult
+        :term:`Results <Result>` of type :term:`Tensor` are of class
+        TensorResult (`TensorResult API <http://lgcm.iro.umontreal.ca/epydoc/theano.tensor.TensorResult-class.html>`_).
+        ``TensorResult`` adds operator overloading so that ``TensorResult`` instances can be used
+        in mathematical expressions.  When any input to an expression is a ``TensorResult`` then the
+        expression will evaluate to an ``TensorResult`` and a :term:`graph` corresponding to
+        the expression.
+        
+        Many shortcuts exist for creating ``TensorResult`` instances:
+
+         * ``<t>scalar`` - create a tensor of rank 0
+         * ``<t>vector`` - create a tensor of rank 1
+         * ``<t>matrix`` - create a tensor of rank 2
+         * ``<t>row`` - create a "row vector" (tensor of rank 2) that is :term:`broadcastable <Broadcasting>` over rows
+         * ``<t>col`` - create a "column vector" (tensor of rank 2) that is :term:`broadcastable <Broadcasting>` over columns
+
+        In each shortcut the ``<t>`` is a letter from ``fdbil`` that indicates the :term:`DType` 
+        of the tensor:
+
+         * ``f`` - float
+         * ``d`` - double
+         * ``b`` - byte
+         * ``i`` - int
+         * ``l`` - long
+        
+
+    TTI 
+        An object instance whose type is a subclass of :term:`Type` is a theano type instance (TTI).
+        In the following code:
+
+        .. code-block:: python
+
+            # tensor.fvector is a TTI
+            # declare a symbolic floating-point vector using __call__
+            b = tensor.fvector()
+        
+            # create a second Result with the same TTI
+            c = tensor.fvector()
+
+        (``tensor.fvector``) is a TTI because
+        (``tensor.fvector``) is an instance of the (``theano.tensor.Tensor``) class, which is a subclass of (``theano.Type``).
+        
+        Whenever you create a variable in theano (technically, a :term:`Result`)  it will contain a reference to a TTI.
+        That reference is typically constant during the lifetime of the Result.
+        Many variables can refer to a single TTI, as do ``b`` and ``c`` above.
+        The TTI defines the kind of value which might end up in that variable when executing a :term:`function`.
+        In this sense, theano is like a strongly-typed language.
+        In our example above, ``b`` is a result which is guaranteed to corresond to a ``numpy.ndarray`` of rank 1 when we try to do some computations with it.
+        
+        Many :term:`Ops <Op>` will raise an exception if their inputs do not have the correct types (TTI references).
+        TTI references are also useful to do type-checking in pattern-based optimizations.
+        
+    Type
+        :term:`Results <Result>` are strongly typed by :term:`Type` instances
+        
+        `theano.Type <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.type.Type-class.html>`_
+        is an important abstract class in the creation and compilation of theano graphs.
+        
+        Type instances are mainly responsible for two things: 
+
+         * filtering potential values to conform to the restrictions imposed by the type (also known as casting),
+         * creating :term:`Result` instances whose type is ``self`` (conventionally, ``__call__`` does this), and
+         * providing the C code that interfaces python objects with C :term:`Op` implementations.
+        
+        Theano comes with several subclasses of ``theano.type`` such as:
+
+         * Generic (`Generic API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.type.Generic-class.html>`_) - for any python type
+         * :term:`Tensor` - for numpy.ndarray
+         * Sparse (`Sparse API <http://lgcm.iro.umontreal.ca/epydoc/theano.sparse.Sparse-class.html>`_) - for scipy.sparse
+
+        You can create more type instances if you like (see :ref:`HowtoCreateType`).
+        
+        The C code interface methods of
+        ``theano.Type`` are described in `docstrings
+        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.type.Type-class.html>`_,
+        see :ref:`CodeGeneration` for a more general intro to how C code is generated.
+
+        See also :term:`Theano type instance (TTI) <TTI>`.
+        
+
+    Value
+        :term:`Value` (`Value API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Value-class.html doc>`_)
+        and :term:`Constant` are subclasses of
+        :term:`Result`, which means they serve more or less the
+        same purpose. There is however one important difference:
+        whereas :term:`Result` is purely symbolic, :term:`Value` and
+        :term:`Constant` can hold data in their ``data`` pointer and
+        ''must'' have a ''None'' owner (can't be the result of some other
+        Theano computation). This can be practical because the compiler
+        knows how to assign values to those nodes, thereby creating a
+        sort of closure.
