@@ -1,0 +1,83 @@
+.. _sparse:
+
+===============
+Sparse matrices
+===============
+
+scipy.sparse
+------------
+
+Note that you want scipy >= 0.7.0. 0.6 has a very bug and inconsistent
+implementation of sparse matrices.
+
+We describe the details of the compressed sparse matrix types.
+    ``scipy.sparse.csc_matrix``
+        should be used if the columns are sparse.
+    ``scipy.sparse.csr_matrix``
+        should be used if the rows are sparse.
+    ``scipy.sparse.lil_matrix``
+        is faster if we are modifying the array. After initial inserts,
+        we can then convert to the appropriate sparse matrix format.
+
+There are four member variables that comprise a compressed matrix ``sp``:
+
+    ``sp.shape``
+        gives the shape of the matrix.
+    ``sp.data``
+        gives the values of the non-zero entries. For CSC, these should
+        be in order from (I think, not sure) reading down in columns,
+        starting at the leftmost column until we reach the rightmost
+        column.
+    ``sp.indices``
+        gives the location of the non-zero entry. For CSC, this is the
+        row location.
+    ``sp.indptr``
+        gives the other location of the non-zero entry. For CSC, there are
+        as many values of indptr as there are columns + 1 in the matrix.
+        ``sp.indptr[k] = x`` and ``indptr[k+1] = y`` means that column
+        k contains sp.data[x:y], i.e. the xth through the y-1th non-zero values.
+
+See the example below for details.
+
+.. code-block:: python
+
+    >>> import scipy.sparse
+    >>> sp = scipy.sparse.csc_matrix((5, 10))
+    >>> sp[4, 0] = 20
+    /u/lisa/local/byhost/test_maggie46.iro.umontreal.ca/lib64/python2.5/site-packages/scipy/sparse/compressed.py:494: SparseEfficiencyWarning: changing the sparsity structure of a csc_matrix is expensive. lil_matrix is more efficient.
+     SparseEfficiencyWarning)
+    >>> sp[0, 0] = 10
+    >>> sp[2, 3] = 30
+    >>> sp.todense()
+    matrix([[ 10.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.],
+            [  0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.],
+            [  0.,   0.,   0.,  30.,   0.,   0.,   0.,   0.,   0.,   0.],
+            [  0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.],
+            [ 20.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.]])
+    >>> print sp
+      (0, 0)        10.0
+      (4, 0)        20.0
+      (2, 3)        30.0
+    >>> sp.shape
+    (5, 10)
+    >>> sp.data
+    array([ 10.,  20.,  30.])
+    >>> sp.indices
+    array([0, 4, 2], dtype=int32)
+    >>> sp.indptr
+    array([0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3], dtype=int32)
+
+Several things should be learned from the above example:
+
+    * We actually use the wrong sparse matrix type. In fact, it is the
+      *rows* that are sparse, not the columns. So, it would have been
+      better to use ``sp = scipy.sparse.csr_matrix((5, 10))``.
+    * We should have actually created the matrix as a ``lil_matrix``,
+      which is more efficient for inserts. Afterwards, we should convert
+      to the appropriate compressed format.
+    * `sp.indptr[0] = 0` and `sp.indptr[1] = 2`, which means that
+      column 0 contains sp.data[0:2], i.e. the first two non-zero values.
+    * `sp.indptr[3] = 2` and `sp.indptr[4] = 3`, which means that column
+      3 contains sp.data[2:3], i.e. the third non-zero value.
+
+TODO: Rewrite this documentation to do things in a smarter way.
