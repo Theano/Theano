@@ -9,28 +9,31 @@ Lets start by looking at what happens in a simple theano program.
 
 .. code-block:: python
 
-    #!python
     x = tensor.matrix('x')
     y = tensor.matrix('y')
     z = x + y
     f = theano.function(input=[x,y], output=z, mode='FAST_RUN')
     print f(numpy.ones(2,3), numpy.ones(2,3))
 
-The first three lines build a graph_ whose nodes correspond to variables (``x,y,z``) and expressions (just the '+' here).
-The variables in such a graph are Result_ instances of some Type_, and the expressions are Apply_ instances of some Op_.
+The first three lines build a :term:`graph` whose nodes correspond to variables (``x,y,z``) and expressions (just the '+' here).
+The variables in such a graph are :term:`Result` instances of some
+:term:`Type`, and the expressions are :term:`Apply` instances of some
+:term:`Op`.
 
-The line ``f = theano.function([x,y], [z], mode='FAST_RUN')`` compiles_
-the graph we built and returns a function_ whose ``__call__`` method
+The line ``f = theano.function([x,y], [z], mode='FAST_RUN')`` :term:`compiles
+<Compilation>`.
+the graph we built and returns a :term:`function` whose ``__call__`` method
 takes as arguments the values to use for ``x`` and ``y``.
-The mode_ controls which transformations_ are applied to the graph as we compile it.
+The :term:`mode` controls which :term:`transformations <Graph Transformation>` are applied to the graph as we compile it.
 
 The line ``print f(numpy.ones(2,3), numpy.ones(2,3))`` creates two
 matrices, and then uses f's ``__call__`` method to run the compiled
 function on those inputs.
-The compiled function is executed by a linker_, which was also specified by the mode_ argument to ``function``.
+The compiled function is executed by a :term:`linker`, which was also specified by the :term:`mode` argument to ``function``.
 The instance f's ``__call__`` method returns a value for ``z`` (given ``x,y``) which we print.
 
-Theano was designed to be extensible to new types_ of Result, new Ops_ to use in symbolic computations,
+Theano was designed to be extensible to new :term:`types <Type>` of Result,
+new :term:`Ops <Op>` to use in symbolic computations,
 and new modes of compilation and execution.  When you're comfortable with the material above, move on to:
 
 * HowtoCreateType create a new data type,
