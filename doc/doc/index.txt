@@ -13,7 +13,9 @@ developer documentation.
 - `Using Theano` covers how to *use* what is already in the Theano library to
   build graphs and evaluate them.
 
-- `Extending Theano` introduces how Theano works and explains how to add new
+- `Concepts` introduces how Theano works.
+
+- `Extending Theano` explains how to add new
   data and expression types, as well as optimizations to accompany them.
 
 - `Module`
