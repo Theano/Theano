@@ -171,6 +171,10 @@ class Env(utils.object2):
 
         Updates the list of clients of r with new_clients.
         """
+        if set(r.clients).intersection(set(new_clients)):
+            print 'RCLIENTS of', r, [(n,i, type(n), id(n)) for n,i in r.clients]
+            print 'NCLIENTS of', r, [(n,i, type(n), id(n)) for n,i in new_clients]
+        assert not set(r.clients).intersection(set(new_clients))
         r.clients += new_clients
 
     def __remove_clients__(self, r, clients_to_remove, prune = True):
@@ -182,6 +186,10 @@ class Env(utils.object2):
         """
         for entry in clients_to_remove:
             r.clients.remove(entry)
+            if entry in r.clients:
+                print 'ENTRY', repr(entry), type(entry[0])
+                print 'CLIENTS', repr(r.clients)
+            assert entry not in r.clients # an op,i pair should be unique
         if not r.clients:
             if prune:
                 self.__prune_r__([r])
@@ -319,8 +327,8 @@ class Env(utils.object2):
             # because it makes it easier to implement some optimizations for multiple-output ops
             return
 
-        for node, i in list(r.clients):
-            assert node == 'output' and self.outputs[i] is r or node.inputs[i] is r
+        for node, i in list(r.clients): #copy the client list for iteration
+            assert (node == 'output' and self.outputs[i] is r) or (node.inputs[i] is r)
             self.change_input(node, i, new_r, reason=reason)
 
     def replace_all(self, pairs, reason=None):
