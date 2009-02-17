@@ -202,8 +202,11 @@ class Env(utils.object2):
 
     def __import_r__(self, results):
         # Imports the owners of the results
-        for node in set(r.owner for r in results if r.owner is not None):
-            self.__import__(node)
+        r_owner_done = set()
+        for node in [r.owner for r in results if r.owner is not None]:
+            if node not in r_owner_done:
+                r_owner_done.add(node)
+                self.__import__(node)
         for r in results:
             if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
                 raise TypeError("Undeclared input", r)
