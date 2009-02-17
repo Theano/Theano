@@ -14,6 +14,7 @@ from copy import copy
 from collections import deque, defaultdict
 import destroyhandler as dh
 import sys
+import traceback
 
 _optimizer_idx = [0]
 
@@ -87,6 +88,13 @@ class SeqOptimizer(Optimizer, list):
     Takes a list of L{Optimizer} instances and applies them
     sequentially.
     """
+    @staticmethod
+    def warn(exc, self, optimizer):
+        """Default failure_callback for SeqOptimizer
+        """
+        print >> sys.stderr, "WARNING: SeqOptimizer apply", optimizer
+        print >> sys.stderr, "Traceback:"
+        traceback.print_exc()
 
     def __init__(self, *opts, **kw):
         """WRITEME"""
@@ -614,6 +622,27 @@ class NavigatorOptimizer(Optimizer):
     """Abstract class
     
     """
+    @staticmethod
+    def warn(exc, nav, repl_pairs, local_opt):
+        """failure_callback for NavigatorOptimizer: print traceback
+        """
+        print "WARNING: Optimization failure due to: ", local_opt
+        print "TRACEBACK:"
+        traceback.print_exc()
+    @staticmethod
+    def warn_inplace(exc, nav, repl_pairs, local_opt):
+        """failure_callback for NavigatorOptimizer: ignore InconsistencyErrors, print traceback
+        """
+        if isinstance(exc, InconsistencyError):
+            return
+        print >> sys.stderr, "WARNING: Optimization failure due to: ", local_opt
+        print >> sys.stderr, "TRACEBACK:"
+        traceback.print_exc()
+    @staticmethod
+    def warn_ignore(exc, nav, repl_pairs, local_opt):
+        """failure_callback for NavigatorOptimizer: ignore all errors
+        """
+        pass
 
     def __init__(self, local_opt, ignore_newtrees = 'auto', failure_callback = None):
         """
@@ -706,7 +735,7 @@ class NavigatorOptimizer(Optimizer):
             replacements = lopt.transform(node)
         except Exception, e:
             if self.failure_callback is not None:
-                self.failure_callback(e, self, [(x, None) for x in node.outputs])
+                self.failure_callback(e, self, [(x, None) for x in node.outputs], lopt)
                 return False
             else:
                 raise
@@ -722,7 +751,7 @@ class NavigatorOptimizer(Optimizer):
             # This is not supposed to happen.  The default failure_callback will print a
             # traceback as a warning.
             if self.failure_callback is not None:
-                self.failure_callback(e, self, repl_pairs)
+                self.failure_callback(e, self, repl_pairs, lopt)
                 return False
             else:
                 raise
@@ -874,16 +903,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         if max_use_abort:
             print >> sys.stderr, "WARNING: EquilibriumOptimizer max'ed out"
 
-
-def keep_going(exc, nav, repl_pairs):
-    """WRITEME"""
-    pass
-
-
-import traceback
-def warn(exc, nav, repl_pairs):
-    """WRITEME"""
-    traceback.print_exc()
 
 
 #################

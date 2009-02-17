@@ -4,7 +4,7 @@ import os, sys, traceback
 import numpy
 
 from ..gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
-        SeqOptimizer, warn, local_optimizer, LocalOptimizer, OpKeyOptimizer, 
+        SeqOptimizer, local_optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError)
 from ..printing import pprint, FunctionPrinter
 from .opt import register_specialize, out2in, insert_inplace_optimizer

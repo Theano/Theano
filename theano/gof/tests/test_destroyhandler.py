@@ -14,7 +14,7 @@ from theano.gof.toolbox import ReplaceValidate
 from copy import copy
 
 PatternOptimizer = lambda p1, p2, ign=True: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
-OpSubOptimizer = lambda op1, op2, fail=keep_going, ign=True: TopoOptimizer(OpSub(op1, op2), ignore_newtrees=ign, failure_callback = fail)
+OpSubOptimizer = lambda op1, op2, fail=NavigatorOptimizer.warn_ignore, ign=True: TopoOptimizer(OpSub(op1, op2), ignore_newtrees=ign, failure_callback = fail)
 
 
 def as_result(x):
@@ -89,7 +89,7 @@ class FailureWatch:
     # when passed to OpSubOptimizer or PatternOptimizer, counts the number of failures
     def __init__(self):
         self.failures = 0
-    def __call__(self, exc, nav, pairs):
+    def __call__(self, exc, nav, pairs, lopt):
         assert isinstance(exc, InconsistencyError)
         self.failures += 1
 

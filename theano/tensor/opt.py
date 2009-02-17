@@ -284,7 +284,8 @@ def local_inplace_setsubtensor(node):
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
-compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor), 60, 'fast_run', 'inplace') #DEBUG
+compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor,
+    failure_callback=TopoOptimizer.warn_inplace), 60, 'fast_run', 'inplace') #DEBUG
 
 ##################
 # Reshape opts   #
@@ -833,7 +834,13 @@ def local_greedy_distributor(node):
     new_num += num
     new_denum += denum
 
-    return [local_mul_canonizer.merge_num_denum(new_num, new_denum)]
+    rval = local_mul_canonizer.merge_num_denum(new_num, new_denum)
+
+    if rval.type != out.type:  
+        #WHY DOES THIS HAPPEN?
+        return False
+
+    return [rval]
 
 register_canonicalize(local_greedy_distributor)
 

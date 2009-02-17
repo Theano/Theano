@@ -25,7 +25,6 @@ from opt import (Optimizer, optimizer, SeqOptimizer,
     LocalOptimizer, local_optimizer, LocalOptGroup, 
     OpSub, OpRemove, PatternSub, 
     NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer, 
-    keep_going, warn, 
     InplaceOptimizer, PureThenInplaceOptimizer, 
     OpKeyOptimizer)
 

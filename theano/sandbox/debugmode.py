@@ -1,12 +1,4 @@
-""" Mode that runs all nodes, even those which have been optimized out. 
-
-A basic premise of how theano works is that every node that is replaced during optimization should compute the same thing as its replacement.
-
-Normally theano's optimizations work by running such replacements instead of the originals.
-This debugging tool does a different thing.  It runs the original and the replacement, and then
-checks that they both compute the same thing.
-If their values are different, the optimization that created the replacement is probably
-broken.
+""" Provides `OptCheck`
 
 
 """
@@ -480,6 +472,17 @@ class OptCheckFunctionMaker(FunctionMaker):
         return fn
 
 class OptCheck(Mode):
+    """Evaluation Mode that detects optimization errors.
+
+    A basic premise of how theano works is that every node that is replaced during optimization should compute the same thing as its replacement.
+
+    Normally such replacements run instead of the originals.
+    This Mode runs the original and the replacement, and then checks that they both compute the
+    same thing.
+    If their values are different, the optimization that created the replacement is probably
+    broken.
+
+    """
     # This function will be used to create a FunctionMaker in 
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):

@@ -311,9 +311,9 @@ class Env(utils.object2):
         For every node that uses r as input, makes it use new_r instead.
         """
         if r.env is not self:
-            raise Exception("Cannot replace %s because it does not belong to this Env" % r)
+            raise Exception("Cannot replace %s because it does not belong to this Env" % r, str(reason))
         if not r.type == new_r.type:
-            raise TypeError("The type of the replacement must be the same as the type of the original Result.", r, new_r, r.type, new_r.type)
+            raise TypeError("The type of the replacement must be the same as the type of the original Result.", r, new_r, r.type, new_r.type, str(reason))
         if r not in self.results:
             # this result isn't in the graph... don't raise an exception here, just return silently
             # because it makes it easier to implement some optimizations for multiple-output ops

@@ -117,12 +117,15 @@ class EquilibriumDB(DB):
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
-        return opt.EquilibriumOptimizer(opts, max_depth = 5, max_use_ratio = 10, failure_callback = opt.warn)
+        return opt.EquilibriumOptimizer(opts, 
+                max_depth=5,
+                max_use_ratio=10,
+                failure_callback=opt.NavigatorOptimizer.warn)
 
 
 class SequenceDB(DB):
 
-    def __init__(self, failure_callback = opt.warn):
+    def __init__(self, failure_callback = opt.SeqOptimizer.warn):
         super(SequenceDB, self).__init__()
         self.__priority__ = {}
         self.failure_callback = failure_callback
