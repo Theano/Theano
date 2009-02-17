@@ -8,7 +8,7 @@ README: theano
 Project Description
 ===================
 
-Theano is a python library for manipulating and evaluating expressions, especially matrix-valued ones.
+Theano is a python library and optimizing compiler for manipulating and evaluating expressions, especially matrix-valued ones.
 What does Theano do that Python and numpy do not?
 
 - *execution speed optimizations*: Theano can use `g++` to compile parts your expression graph into native machine code, which runs much faster than python.
@@ -37,13 +37,17 @@ Here's a very simple example of how to use Theano.  It doesn't show off many of 
 
 Theano is not a programming language in the normal sense because you write a program in Python that builds expressions for Theano.  Still it is like a programming language in the sense that to use theano, you have to 
 
-- declare variables ({{{a,b}}}) and give their types
+- declare variables (``a,b``) and give their types
 
 - build expressions for how to put those variables together
 
 - compile expression graphs to functions in order to use them for computation.
 
-It is good to think of `theano.function` as the interface to a compiler which builds a callable object from a purely symbolic graph.
+It is good to think of ``theano.function`` as the interface to a compiler
+which builds a callable object from a purely symbolic graph; one of
+theano's most important features is that ``theano.function`` can
+optimize a graph, and even compile some or all of it into native machine
+instructions if you pass ``linker='c'`` as a keyword argument.
 
 
 License
@@ -54,9 +58,6 @@ Theano is licensed under a BSD-like license.  See the LICENSE file in the projec
 
 Installation
 ============
-
-(See also the :wiki:`InstallationNotes` on the wiki.)
-
 
 Software Requirements
 ---------------------
@@ -94,15 +95,24 @@ Get the source and run the tests like this:
     cd Theano
     nosetests #execute all the tests
 
-All tests should pass. From time to time, their is some test that are know to fail, but normally we know them and are trying to fix them. But to be sure contact us about them. 
+All tests should pass. From time to time, there is some test that are
+know to fail, but normally we know them and are trying to fix them. But
+to be sure contact us about them.
 
-To define PYTHONPATH if it don't exist:
+The environment variables PYTHONPATH should be modified to allow python
+import. In bash do this: 
 
 .. code-block:: bash
-export PYTHONPATH=<path to theano>:$PYTHONPATH
 
+    export PYTHONPATH=<path to theano>:$PYTHONPATH
 
-To update your library to the latest on pylearn.org, change directory (`cd`) to this `theano` folder and type
+In csh:
+
+.. code-block:: csh
+
+    setevn PYTHONPATH <path to theano>:$PYTHONPATH 
+
+To update your library to the latest on pylearn.org, change directory (`cd`) to this `Theano` folder and type
 
 .. code-block:: bash
 
@@ -112,7 +122,7 @@ To update your library to the latest on pylearn.org, change directory (`cd`) to 
 `<http://pylearn.org/hg/theano/archive/tip.tar.gz>`__.
 
 Configuring the environment
-------------------
+---------------------------
 
 Two environment variables are used to control automatic code generation.
 (It is possible to use theano in a way that avoids all automatic code generation, but the functions you make using {{{theano.function}}} will execute more slowly.)
@@ -184,6 +194,14 @@ Use something like the following in your .bashrc:
     # Theano is not process-safe or thread-safe in this sense.
     THEANO_COMPILEDIR=/ltmp/<username>_theano
 
+You may also need to run the following from your shell: 
+
+.. code-block:: bash
+
+    module add python      # for the current shell session 
+    module initadd python  # for this and future sessions 
+
+Lastly,  if ``./filename.py`` doesn't work, try ``python filename.py``.
 
 Running the Test Suite
 ======================
