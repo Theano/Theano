@@ -276,7 +276,7 @@ class OptCheckLinker(OpWiseCLinker):
                                 if not numpy.allclose(new_r_val, r_val):
                                     problem = True
                             else:
-                                print >> sys.stderr, 'WARNING: OptCheck Ignoring comparison of instances of', type(new_r_val)
+                                print >> sys.stderr, 'WARNING: OptCheck comparison of', type(new_r_val), 'NotImplementedError'
 
                             if problem:
                                 print "OPTCHECK FAILURE"
@@ -299,8 +299,9 @@ class OptCheckLinker(OpWiseCLinker):
                                 # because the incorrect result detected here will cause
                                 # subsequent outputs to be incorrect.
                                 raise Exception("OptCheckFailure")
+                print >> sys.stderr, 'OptCheck PASS'
 
-                if 0:
+                if 0: #OLD CODE
                     #print out the summary of the first problematic equivalence group
                     min_member = []
                     for problem_r in problematic:

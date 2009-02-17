@@ -446,8 +446,7 @@ class GemmLocalOptimizer(LocalOptimizer):
                         gemm_of_sM_list = beta_L_plus_alpha_M(sL, mL, sR, mR)
                         if gemm_of_sM_list:
                             assert len(gemm_of_sM_list) == 1
-                            inputs_without_ij = \
-                                    [input for k, input in enumerate(sM_orig) if k not in (i,j)]
+                            inputs_without_ij = [input for k, input in enumerate(sM_orig) if k not in (i,j)]
 
                             new_add_inputs = (inputs_without_ij + gemm_of_sM_list + other_inputs)
 
