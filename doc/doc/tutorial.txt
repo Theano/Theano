@@ -87,7 +87,7 @@ and we are working hard to make these problems errors easier to fix.
 *It would be worth thinking through the order in which these terms should be introduced.
 Can we inline the text?'''*
 
-*Note: Theano has two types of [DefineScalar scalar].*
+*Note: Theano has two types of scalar_.*
 
 Matrix example
 ==============
