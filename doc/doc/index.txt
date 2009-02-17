@@ -16,6 +16,8 @@ developer documentation.
 - `Extending Theano` introduces how Theano works and explains how to add new
   data and expression types, as well as optimizations to accompany them.
 
+- `Module`
+
 - `Hacking Theano` introduces you to what's under the hood: the compilation
   process, the Env, C code generation.
 

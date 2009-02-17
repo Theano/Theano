@@ -206,6 +206,9 @@ Glossary of terminology
 
         WRITEME
 
+    Module
+        See :ref:`Module`.
+
     Op
         a type of operation. Instance is TOI
 

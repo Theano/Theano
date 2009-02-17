@@ -1,0 +1,366 @@
+.. _module:
+
+######
+Module
+######
+
+
+What is a Theano Module
+=======================
+
+Theano 'Module' is a structure which implements what could be called a
+"theano class". A ``Module`` can contain ``Members``, which act like
+instance variables ("state"). It can also contain an arbitrary number
+of ``Methods``, which are functions that share the same ``Members`` in
+addition to their own inputs. Last but not least, ``Modules`` can be
+nested (explanations and examples follow). ``Module`` is meant to:
+
+ #. ease the sharing of parameters between several functions,
+ #. streamline automatic naming, and
+ #. allow a hierarchy of "modules" whose states can interact.
+
+
+import
+======
+
+all example suppose that you have done those import
+
+.. code-block:: python
+
+    #!/usr/bin/env python
+    import theano
+    import numpy as N
+    from theano import tensor as T
+    from theano.tensor import nnet as NN
+    from theano.compile import module as M
+
+Module
+======
+
+A ``Module`` can contain ``Members``, ``Methods`` and inner ``Modules``. Each type has a special meaning.
+
+.. code-block:: python
+
+    module = M.Module()
+
+``Member``
+------------
+
+Usage:
+
+.. code-block:: python
+
+    #module.state = M.Member(result)
+    module.state = M.Member(T.scalar())
+
+A ``Member`` wraps a ``Result`` and represents a state variable. If one field of a ``Module`` is set with a ``Member``, it will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage will be shared by all ``Methods`` of the ``Module``.
+
+A ``Member`` cannot wrap a ``Result`` which is the result of a previous computation. [What does this mean?][Fred:Still true?]
+
+**NOTE:** after the state is declared, ``module.state`` will yield the ``result``, '''not''' the ``Member``. This is so it can be used directly in theano expressions.  [What does this mean? What confusion does this clear up?] Basically:
+
+.. code-block:: python
+
+    member = M.Member(result)
+    module.state = member
+    assert module.state is result # NOT member
+    
+**NOTE2:** this can also lead to some subtle bug as to share a member between module, you should do as this:
+
+.. code-block:: python
+
+    module2 = M.Module()
+    module2.m1_state = M.Member(module.state)
+    #wrong: module2.m1_state = module.state as module2.m1_state won't be a member of module2...
+
+see later section for more information.
+
+``Method``
+------------
+
+Usage:
+
+.. code-block:: python
+
+    module.method = M.Method(inputs, outputs, **updates)
+
+Each key in the updates dictionary must be the name of an existing ``Member`` of the ``Module`` (or a ``Result`` that was declared to be a member of the module) and the value associated to that key is the update to the state. When called on a ``ModuleInstance`` produced by the ``Module``, the method will calculate the outputs from the inputs and will update all the states as specified. See the basic example for an example.
+
+Inner Module
+------------
+
+To share a member between modules, the modules must be linked by inner module. 
+
+Usage:
+
+.. code-block:: python
+
+    module2.submodule = module
+
+``ModuleInstance``
+====================
+
+A ``Module`` can produce a ``ModuleInstance`` with its ``make`` method. Think of this as a class and an object in C++/Java. If an attribute was a ``Member``, it will become a read/write access to actual data for the state. If it was a ``M.Method``, a function will be compiled with the proper signature and semantics.
+
+
+Module Interface
+================
+
+.. code-block:: python
+
+    def make(self, mode = {'FAST_COMPILE', 'FAST_RUN', ... }, **init)
+
+'''make''' compiles all ``Methods`` and allocates storage for all ``Members`` into a ``ModuleInstance`` object, which is returned. The ``init`` dictionary can be used to provide initial values for the members.
+
+'''make''' calls ``initialize_storage``[Fred: still true???] to allocate storage and ``_instance_initialize`` to initialize the instance.
+
+.. code-block:: python
+
+    def resolve(self, symbol, filter = None)
+
+Resolves a symbol in this module. The symbol can be a string or a ``Result``. If the string contains dots (eg ``"x.y"``), the module will resolve the symbol hierarchically in its inner modules. The filter argument is None or a class and it can be used to restrict the search to ``Member`` or ``Method`` instances for example.
+
+.. code-block:: python
+
+    def initialize_storage(self, stor)
+
+This allocates a ``Container`` for each member (and hierarchically, for the members of each inner module). This can be easily overriden by ``Module`` subclasses to share storage between some states.[Fred: still usefull?]
+
+
+
+.. code-block:: python
+
+    def _instance_initialize(self, inst, **init)
+
+The inst argument is a ``ModuleInstance``. For each key, value pair in init: s``etattr(inst, key, value)``. This can be easily overriden by ``Module`` subclasses to initialize an instance in different ways. If you don't know what to put their, you probably want:
+
+.. code-block:: python
+
+    def _instance_initialize(self, inst, **init):
+        M.default_initialize(inst,**init)
+
+
+Basic example
+=============
+
+The problem here is to create two functions, ``inc`` and ``dec`` and a shared state ``c`` such that ``inc(n)`` increases ``c`` by ``n`` and ``dec(n)`` decreases ``c`` by ``n``. We also want a third function, ``plus10``, which adds 10 to the current state. Using the function interface, the feature can be implemented as follows:
+
+.. code-block:: python
+
+    n, c = T.scalars('nc')
+    inc = theano.function([n, ((c, c + n), 0)], [])
+    dec = theano.function([n, ((c, c - n), inc.container[c])], []) # we need to pass inc's container in order to share
+    plus10 = theano.function([(c, inc.container[c])], c + 10)
+    assert inc[c] == 0
+    inc(2)
+    assert inc[c] == 2 and dec[c] == inc[c]
+    dec(3)
+    assert inc[c] == -1 and dec[c] == inc[c]
+    assert plus10() == 9
+
+Now, using ``Module``:
+
+.. code-block:: python
+
+    m = M.Module()
+    n = T.scalar('n')
+    m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
+    m.inc = M.Method(n, [], c = m.c + n) # m.c <= m.c + n
+    m.dec = M.Method(n, [], c = m.c - n) # k.c <= k.c - n
+    m.dec = M.Method(n, [], updates = {m.c: m.c - n})
+    #m.dec = M.Method(n, [], updates = {c: m.c - n})#global c don't exist
+    #m.dec = M.Method(n, [], m.c = m.c - n) #python don't suppor this syntax
+    #m.plus10 don't update the state
+    m.plus10 = M.Method([], m.c + 10) # m.c is always accessible since it is a member of this mlass
+    
+    inst = m.make(c = 0) # here, we make an "instance" of the module with c initialized to 0
+    assert inst.c == 0
+    inst.inc(2)
+    assert inst.c == 2
+    inst.dec(3)
+    assert inst.c == -1
+    assert inst.plus10() == 9
+    
+Benefits of ``Module`` over ``function`` in this example:
+ * There is no need to manipulate the containers directly
+ * The fact inc and dec share a state is more obvious syntactically.
+ * ``Method`` does not require the states to be anywhere in the input list.
+ * The interface of the instance produced by ``m.make()`` is simple and coherent, extremely similar to that of a normal python object. It is directly usable by any user.
+
+
+Nesting example
+===============
+
+The problem now is to create two pairs of ``inc dec`` functions and a function s``um`` that adds the shared states of the first and second pair.
+
+Using function:
+
+.. code-block:: python
+
+    def make_incdec_function():
+           n, c = T.scalars('nc')
+           inc = theano.function([n, ((c, c + n), 0)], [])
+           dec = theano.function([n, ((c, c - n), inc.container[c])], [])
+           return inc,dec
+    
+    
+    inc1, dec1 = make_incdec_function()
+    inc2, dec2 = make_incdec_function()
+    a, b = T.scalars('ab')
+    sum = theano.function([(a, inc1.container['c']), (b, inc2.container['c'])], a + b)
+    inc1(2)
+    dec1(4)
+    inc2(6)
+    assert inc1['c'] == -2 and inc2['c'] == 6
+    assert sum() == 4 # -2 + 6
+
+Using Module:
+
+.. code-block:: python
+
+    def make_incdec_module():
+        m = M.Module()
+        n = T.scalar('n')
+        m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
+        m.inc = M.Method(n, [], c = m.c + n) # m.c <= m.c + n
+        m.dec = M.Method(n, [], c = m.c - n) # k.c <= k.c - n
+        return m
+    
+    m = M.Module()
+    m.incdec1 = make_incdec_module()
+    m.incdec2 = make_incdec_module()
+    m.sum = M.Method([], m.incdec1.c + m.incdec2.c)
+    inst = m.make(incdec1 = dict(c=0), incdec2 = dict(c=0))
+    inst.incdec1.inc(2)
+    inst.incdec1.dec(4)
+    inst.incdec2.inc(6)
+    assert inst.incdec1.c == -2 and inst.incdec2.c == 6
+    assert inst.sum() == 4 # -2 + 6
+
+Here, we make a new ``Module`` and we give it two inner ``Modules`` like the one defined in the basic example. Each inner module has methods inc and dec as well as a state c and their state is directly accessible from the outer module, which means that it can define methods using them. The ``ModuleInstance`` we make from the ``Module`` reflects the hierarchy that we created. Unlike the method using function, there is no need to manipulate any containers directly.
+
+
+Advanced example
+================
+
+Complex models can be implemented by subclassing ``Module`` (though that is not mandatory). Here is a complete, extensible (and working) regression model implemented using this system:
+
+.. code-block:: python
+
+    class RegressionLayer(M.Module):
+        def __init__(self, input = None, target = None, regularize = True):
+            super(RegressionLayer, self).__init__() #boilerplate
+            # MODEL CONFIGURATION
+            self.regularize = regularize
+            # ACQUIRE/MAKE INPUT AND TARGET
+            if not input:
+                input = T.matrix('input')
+            if not target:
+                target = T.matrix('target')
+            # HYPER-PARAMETERS
+            self.stepsize = M.Member(T.scalar())  # a stepsize for gradient descent
+            # PARAMETERS
+            self.w = M.Member(T.matrix())  #the linear transform to apply to our input points
+            self.b = M.Member(T.vector())  #a vector of biases, which make our transform affine instead of linear
+            # REGRESSION MODEL
+            self.activation = T.dot(input, self.w) + self.b
+            self.prediction = self.build_prediction()
+            # CLASSIFICATION COST
+            self.classification_cost = self.build_classification_cost(target)
+            # REGULARIZATION COST
+            self.regularization = self.build_regularization()
+            # TOTAL COST
+            self.cost = self.classification_cost
+            if self.regularize:
+                self.cost = self.cost + self.regularization
+            # GET THE GRADIENTS NECESSARY TO FIT OUR PARAMETERS
+            self.grad_w, self.grad_b = T.grad(self.cost, [self.w, self.b])
+            # INTERFACE METHODS
+            self.update = M.Method([input, target],
+                                      self.cost,
+                                      w = self.w - self.stepsize * self.grad_w,
+                                      b = self.b - self.stepsize * self.grad_b)
+            self.apply = M.Method(input, self.prediction)
+        def params(self):
+            return self.w, self.b
+        def _instance_initialize(self, obj, input_size = None, target_size = None, 
+                                 seed = 1827, **init):
+            # obj is an "instance" of this module holding values for each member and
+            # functions for each method
+            if input_size and target_size:
+                # initialize w and b in a special way using input_size and target_size
+                sz = (input_size, target_size)
+                rng = N.random.RandomState(seed)
+                obj.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
+                obj.b = N.zeros(target_size)
+                obj.stepsize = 0.01
+            # here we call the default_initialize method, which takes all the name: value
+            # pairs in init and sets the property with that name to the provided value
+            # this covers setting stepsize, l2_coef; w and b can be set that way too
+            # we call it after as we want the parameter to superseed the default value.
+            M.default_initialize(obj,**init)
+        def build_regularization(self):
+            return T.zero() # no regularization!
+    
+    
+    class SoftmaxXERegression(RegressionLayer):
+        """ XE mean cross entropy"""
+        def build_prediction(self):
+            return NN.softmax(self.activation)
+        def build_classification_cost(self, target):
+            #self.classification_cost_matrix = target * T.log(self.prediction) + (1 - target) * T.log(1 - self.prediction)
+            self.classification_cost_matrix = (target - self.prediction)**2
+            self.classification_costs = -T.sum(self.classification_cost_matrix, axis=1)
+            return T.sum(self.classification_costs)
+        def build_regularization(self):
+            self.l2_coef = M.Member(T.scalar()) # we can add a hyper parameter if we need to
+            return self.l2_coef * T.sum(self.w * self.w)
+
+Using the model is quite simple:
+
+.. code-block:: python
+
+    data_x = N.random.randn(4, 10)
+    data_y = [ [int(x)] for x in N.random.randn(4) > 0]
+    
+    
+    model = SoftmaxXERegression(regularize = False).make(input_size = 10,
+                       target_size = 1,
+                       stepsize = 0.1)
+    
+    for i in xrange(1000):
+       xe = model.update(data_x, data_y)
+       if i % 100 == 0:
+           print i, xe
+           pass
+       #for inputs, targets in my_training_set():
+           #print "cost:", model.update(inputs, targets)
+    
+    print "final weights:", model.w
+    print "final biases:", model.b
+
+
+Extending ``Methods``
+=======================
+
+[Fred:still valid? example don't work and I'm not able to repair it.] 
+
+``Methods`` can be extended to update more parameters. For example, if we wanted to add a variable holding the sum of all costs encountered so far to ``SoftmaxXERegression``, we could proceed like this:
+
+.. code-block:: python
+
+    model_module = SoftmaxXERegression(regularize = False)
+    model_module.sum = M.Member(T.scalar()) # we add a module member to hold the sum
+    model_module.update.updates.update(sum = model_module.sum + model_module.cost) # now update will also update sum!
+    
+    model = model_module.make(input_size = 4,
+                             target_size = 2,
+                             stepsize = 0.1,
+                             sum = 0) # we mustn't forget to initialize the sum
+    
+    test = model.update([[0,0,1,0]], [[0,1]]) + model.update([[0,1,0,0]], [[1,0]])
+    assert model.sum == test
+
+The inputs and outputs list of a ``Method`` can be doctored as well, but it is trickier, arguably less useful and not fully supported at the moment.
+
+
