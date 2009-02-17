@@ -37,7 +37,7 @@ Using Theano
 .. _Howto: 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
-.. _n00b guide: n00b.html
+.. _tutorial: tutorial.html
 .. _glossary of terminology: ../api/term-index.html
 .. _typelist: typelist.html
 .. _oplist: oplist.html
@@ -47,6 +47,8 @@ Extending Theano
 
 - Read about `How Theano Works <UserAdvanced.html>`__.  This introduces the
   major interface data structures: Op, Type, Result, Apply.
+
+- Read about `Extending theano <extending.html>`__.
 
 - How to make a new Op.
 

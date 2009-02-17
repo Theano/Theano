@@ -1,5 +1,5 @@
 =============
-n00b Tutorial
+Tutorial
 =============
 
 .. contents::
@@ -44,14 +44,16 @@ In the following example, we will build a function `f(x) = x + 1.5`. We will the
     f = theano.function([x], [y])
 
     # We now bind 2.5 to an internal copy of x and evaluate an internal y,
-    # which we return.
-    # We assert that 4.0 == f(2.5) = 2.5 + 1.5
-    assert 4.0 == f(2.5)
+    # which we return (actually f(2.5) returns a list because theano 
+    # functions in general can return many things). 
+    # We assert that 4.0 == f(2.5)[0] = 2.5 + 1.5 
+    assert 4.0 == f(2.5)[0] 
 
-In the example above, `c`, `x`, and `y` are each a ''symbolic'' result_. They
-are symbolic because they stand for variables and have a type_, but
-do not necessarily store actual values.  Not yet, at least.  (To give them
-values, we will have to `evaluate` them.  More on this below.)
+In the example above, `c`, `x`, and `y` are each a ''symbolic''
+result_. They are symbolic because they stand for variables and have
+a type_, but do not actually store instantiated variables.  Not yet,
+at least.  (To give them values, we will have to `evaluate` them.
+More on this below.)
 
 .. _result: glossary.html#result
 .. _type: glossary.html#type
@@ -60,14 +62,15 @@ Since we are using the addition operator (`x + c`) here on symbolic results, the
 output `y` is also symbolic.  The `+` corresponds to an ''operation'' in theano
 terminology, or ''op'' for short.
 
-We use these results and ops to construct a `symbolic graph`_.  The graph is
-symbolic because we declare what it computes, but do not actually perform any
-computation.  Some type-checking is done on while we build our graphs, so if you
-try to do something really crazy you'll see an exception right away.
+We use these results and ops to construct a `symbolic graph`_. The graph
+is symbolic because we declare what it computes, but do not actually
+perform any computation.  Some type-checking is done on while we build
+our graphs, so if you try to do something really crazy you'll see an
+exception right away.
 
 .. _symbolic graph: glossary.html#symbolicgraph
 
-To actually use our graph for computation, we have to compile (or build) it into
+To actually use our graph for computation, we have to compile_ (or build_) it into
 a function `f`.   The compiled function is actually capable of performing
 computation.  So after we have built f, we use it to compute the value of y from
 a `value input` x.  Some argument checking is only possible at run-time, so if
@@ -84,7 +87,7 @@ and we are working hard to make these problems errors easier to fix.
 *It would be worth thinking through the order in which these terms should be introduced.
 Can we inline the text?'''*
 
-*Note: Theano has two types of [DefineScalar scalar].*
+*Note: Theano has two types of scalar_.*
 
 Matrix example
 ==============
