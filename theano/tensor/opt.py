@@ -5,7 +5,7 @@
 
 
 from .. import gof
-from ..gof import opt, InconsistencyError, TopoOptimizer
+from ..gof import opt, InconsistencyError, TopoOptimizer, graph
 from elemwise import Elemwise, DimShuffle
 from .. import scalar
 import basic as T
@@ -47,7 +47,7 @@ def insert_inplace_optimizer(env):
       x + y + z -> x += y += z
       (x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)
     """
-    for node in list(env.nodes):
+    for node in list(graph.io_toposort(env.inputs, env.outputs)):
         op = node.op
         if not isinstance(op, Elemwise):
             continue
