@@ -6,7 +6,8 @@ Theano
 .. toctree::
    :maxdepth: 2
 
-   README
+   doc/README
+   doc/LICENSE
    doc/index
 
 -------------------------------------------------------------------

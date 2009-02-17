@@ -237,7 +237,13 @@ Using Module:
     assert inst.incdec1.c == -2 and inst.incdec2.c == 6
     assert inst.sum() == 4 # -2 + 6
 
-Here, we make a new ``Module`` and we give it two inner ``Modules`` like the one defined in the basic example. Each inner module has methods inc and dec as well as a state c and their state is directly accessible from the outer module, which means that it can define methods using them. The ``ModuleInstance`` we make from the ``Module`` reflects the hierarchy that we created. Unlike the method using function, there is no need to manipulate any containers directly.
+Here, we make a new ``Module`` and we give it two inner ``Modules`` like
+the one defined in the basic example. Each inner module has methods inc
+and dec as well as a state c and their state is directly accessible from
+the outer module, which means that it can define methods using them. The
+``ModuleInstance`` we make from the ``Module`` reflects the hierarchy
+that we created. Unlike the method using function, there is no need to
+manipulate any containers directly.
 
 
 Advanced example
