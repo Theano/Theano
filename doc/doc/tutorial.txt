@@ -1,5 +1,5 @@
 =============
-n00b Tutorial
+Tutorial
 =============
 
 .. contents::

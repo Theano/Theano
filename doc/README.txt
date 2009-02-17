@@ -215,13 +215,13 @@ Test your installation by running the tests.  Type at the shell:
 
 All tests should pass.
 
-python-nose must be installed. On red-hat or fedora core: sudo yum install python-nose.noarch
+python-nose must be installed. On red-hat or fedora core: ``sudo yum install python-nose.noarch``
 
 
 Using Theano
 ============
 
-Now that you've got theano installed and running, check out the `n00b tutorial <doc/n00b.html>`__ for how to use it.
+Now that you've got theano installed and running, check out the `tutorial <doc/tutorial.html>`__ for how to use it.
 
 
 Getting Help
