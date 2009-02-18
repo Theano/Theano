@@ -188,6 +188,14 @@ class T_test_wiki_module(unittest.TestCase):
         assert inst.c == -1
         assert inst.plus10() == 9
 
+        inst = m.make(c = 5) # here, we make an "instance" of the module with c initialized to 0
+        assert inst.c == 5
+        inst.inc(2)
+        assert inst.c == 7
+        inst.dec(3)
+        assert inst.c == 4
+        assert inst.plus10() == 14
+
     def test_Module_nesting_example1(self):
         def make_incdec_function():
             n, c = T.scalars('nc')
