@@ -875,6 +875,15 @@ class T_Join_and_Split(unittest.TestCase):
             return
         self.fail()
 
+    def test_stack_mixed_type_constants(self):
+        a = as_tensor(1)
+        b = as_tensor(2.0)
+        c = as_tensor(3.0)
+        s = stack(a, b, c)
+
+        want = numpy.array([1, 2, 3])
+        self.failUnless((eval_outputs([s]) == want).all())
+
     def test_stack_scalar(self):
         a = as_tensor(1)
         b = as_tensor(2)
@@ -1773,6 +1782,7 @@ def test_smallest_stack():
     rval = function([sx,sy], stack(sx,sy))(-4.0, -2.0)
     assert type(rval) == numpy.ndarray
     assert [-4, -2] == list(rval)
+
 
 def test_smallest():
     x = dvector()
