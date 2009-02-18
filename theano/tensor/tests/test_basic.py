@@ -875,6 +875,15 @@ class T_Join_and_Split(unittest.TestCase):
             return
         self.fail()
 
+    def test_stack_mixed_type_constants(self):
+        a = as_tensor(1)
+        b = as_tensor(2.0)
+        c = as_tensor(3.0)
+        s = stack(a, b, c)
+
+        want = numpy.array([1, 2, 3])
+        self.failUnless((eval_outputs([s]) == want).all())
+
     def test_stack_scalar(self):
         a = as_tensor(1)
         b = as_tensor(2)
@@ -1766,6 +1775,28 @@ class test_tensordot(unittest.TestCase):
             self.failUnless(numpy.all(numpy.tensordot(bval,aval,axes) == \
                                       f6(bval,aval)))
             tensor.verify_grad(None, TensorDot(axes), [bval,aval])
+
+def test_smallest_stack():
+    sx, sy = dscalar(), dscalar()
+
+    rval = function([sx,sy], stack(sx,sy))(-4.0, -2.0)
+    assert type(rval) == numpy.ndarray
+    assert [-4, -2] == list(rval)
+
+
+def test_smallest():
+    x = dvector()
+    y = dvector()
+    z = dvector()
+    f1 = function([x], smallest(x))
+    assert numpy.all([1,2,3] == f1([1,2,3]))
+    f3 = function([x,y,z], smallest(x,y,z))
+    assert numpy.all([1,2,3] == f3([1,3,9], [7,7,7], [8,2,3]))
+
+    sx, sy = dscalar(), dscalar()
+
+    assert -4 == function([sx,sy], smallest(sx,sy))(-4.0, -2.0)
+
 
 
 if __name__ == '__main__':
