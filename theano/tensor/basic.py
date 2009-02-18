@@ -809,8 +809,8 @@ class MaxAndArgmax(Op):
                    tensor(axis.type.dtype, broadcastable)]
         return Apply(self, inputs, outputs)
     def perform(self, node, (x, axis), (max, max_idx)):
-        max[0] = numpy.max(x, axis)
-        max_idx[0] = numpy.argmax(x, axis)
+        max[0] = numpy.asarray(numpy.max(x, axis))
+        max_idx[0] = numpy.asarray(numpy.argmax(x, axis))
     def grad(self, (x, axis), (g_max, g_max_idx)):
         # @warning: This only works if axis is 0, else the max is
         # broadcasted wrong in the call to eq.
@@ -858,6 +858,27 @@ def argmax(x, axis=None):
     # implementation that goes through the data twice instead of once
     # but when Argmax.c_impl() is in place, it should be fine.
     return max_and_argmax(x,axis)[1]
+
+@constructor
+def min(x, axis=None):
+    if 'float'in str(x.dtype):
+        return -max(-x, axis=axis)
+    else:
+        #Be careful about unsigned integers, complex
+        raise NotImplementedError()
+
+@constructor
+def argmin(x, axis=None):
+    if 'float'in str(x.dtype):
+        return argmax(-x, axis=axis)
+    else:
+        #Be careful about unsigned integers, complex
+        raise NotImplementedError()
+
+@constructor
+def smallest(*args):
+    """Return the [elementwise] smallest of a variable number of arguments (like python's min)."""
+    return min(stack(*args), axis=0)
 
 
 ##########################

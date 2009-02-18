@@ -1767,6 +1767,27 @@ class test_tensordot(unittest.TestCase):
                                       f6(bval,aval)))
             tensor.verify_grad(None, TensorDot(axes), [bval,aval])
 
+def test_smallest_stack():
+    sx, sy = dscalar(), dscalar()
+
+    rval = function([sx,sy], stack(sx,sy))(-4.0, -2.0)
+    assert type(rval) == numpy.ndarray
+    assert [-4, -2] == list(rval)
+
+def test_smallest():
+    x = dvector()
+    y = dvector()
+    z = dvector()
+    f1 = function([x], smallest(x))
+    assert numpy.all([1,2,3] == f1([1,2,3]))
+    f3 = function([x,y,z], smallest(x,y,z))
+    assert numpy.all([1,2,3] == f3([1,3,9], [7,7,7], [8,2,3]))
+
+    sx, sy = dscalar(), dscalar()
+
+    assert -4 == function([sx,sy], smallest(sx,sy))(-4.0, -2.0)
+
+
 
 if __name__ == '__main__':
     if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
