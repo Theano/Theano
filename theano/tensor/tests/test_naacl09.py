@@ -530,7 +530,7 @@ def test_naacl_model(optimizer='fast_run', iters_per_unsup=10, iters_per_sup=10,
         s0 = str(m.finetuning_update(*(inputs + [targets])))
         print iters_per_sup * (i+1), s0
     if iters_per_sup == 10:
-        assert s0.startswith('15.651277636')
+        assert s0.startswith('15.65127763')#should check for the 8 decimal only.
 
 if __name__ == '__main__':
     from theano import gof
