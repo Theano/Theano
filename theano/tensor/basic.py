@@ -1667,28 +1667,26 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
 
 
 @constructor
-def shape_padleft(tensor, n_ones=1):
-    """Reshape `tensor` by left-padding the shape with `n_ones` 1s
+def shape_padleft(t, n_ones=1):
+    """Reshape `t` by left-padding the shape with `n_ones` 1s
     
     See also: `shape_padright` and `Dimshuffle`
     """
+    _t = as_tensor(t)
 
-    pattern = ['x']*n_ones + [i for i in range(tensor.type.ndim)]
-    return DimShuffle(tensor.broadcastable, pattern)(tensor)
-@constructor
-def rightpad_shape(tensor, n_ones):
-    """Reshape `tensor` by right-padding the shape with `n_ones` 1s"""
-    pattern = [i for i in range(tensor.type.ndim)] + ['x']*n_ones
-    return DimShuffle(tensor.broadcastable, pattern)(tensor)
+    pattern = ['x']*n_ones + [i for i in range(_t.type.ndim)]
+    return DimShuffle(_t.broadcastable, pattern)(_t)
 
 @constructor
-def shape_padright(tensor, n_ones=1):
-    """Reshape `tensor` by right-padding the shape with `n_ones` 1s
+def shape_padright(t, n_ones=1):
+    """Reshape `t` by right-padding the shape with `n_ones` 1s
     
     See also: `shape_padleft` and `Dimshuffle`
     """
-    pattern = [i for i in range(tensor.type.ndim)] + ['x']*n_ones
-    return DimShuffle(tensor.broadcastable, pattern)(tensor)
+    _t = as_tensor(t)
+
+    pattern = [i for i in range(_t.type.ndim)] + ['x']*n_ones
+    return DimShuffle(_t.broadcastable, pattern)(_t)
 
 @constructor
 def stack(*tensors):
