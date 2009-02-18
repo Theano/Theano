@@ -50,21 +50,13 @@ Usage:
 
 .. code-block:: python
 
-    #module.state = M.Member(result)
-    module.state = M.Member(T.scalar())
+    #module.state = result
+    module.state = T.scalar()
 
-A ``Member`` wraps a ``Result`` and represents a state variable. If one field of a ``Module`` is set with a ``Member``, it will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage will be shared by all ``Methods`` of the ``Module``.
+A ``Member`` represents a state variable. It will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage will be shared by all ``Methods`` of the ``Module``.
 
-A ``Member`` cannot wrap a ``Result`` which is the result of a previous computation. [What does this mean?][Fred:Still true?]
+A ``Member`` cannot wrap a ``Result`` which is the result of a previous computation. [What does this mean?][Fred:Still true?Yes]. Those are called External and are automatically detected.
 
-**NOTE:** after the state is declared, ``module.state`` will yield the ``result``, '''not''' the ``Member``. This is so it can be used directly in theano expressions.  [What does this mean? What confusion does this clear up?] Basically:
-
-.. code-block:: python
-
-    member = M.Member(result)
-    module.state = member
-    assert module.state is result # NOT member
-    
 **NOTE2:** this can also lead to some subtle bug as to share a member between module, you should do as this:
 
 .. code-block:: python
@@ -84,7 +76,7 @@ Usage:
 
     module.method = M.Method(inputs, outputs, **updates)
 
-Each key in the updates dictionary must be the name of an existing ``Member`` of the ``Module`` (or a ``Result`` that was declared to be a member of the module) and the value associated to that key is the update to the state. When called on a ``ModuleInstance`` produced by the ``Module``, the method will calculate the outputs from the inputs and will update all the states as specified. See the basic example for an example.
+Each key in the updates dictionary must be the name of an existing ``Member`` of the ``Module`` and the value associated to that key is the update to the state. When called on a ``ModuleInstance`` produced by the ``Module``, the method will calculate the outputs from the inputs and will update all the states as specified. See the basic example for an example.
 
 Inner Module
 ------------
@@ -143,7 +135,7 @@ The inst argument is a ``ModuleInstance``. For each key, value pair in init: s``
 Basic example
 =============
 
-The problem here is to create two functions, ``inc`` and ``dec`` and a shared state ``c`` such that ``inc(n)`` increases ``c`` by ``n`` and ``dec(n)`` decreases ``c`` by ``n``. We also want a third function, ``plus10``, which adds 10 to the current state. Using the function interface, the feature can be implemented as follows:
+The problem here is to create two functions, ``inc`` and ``dec`` and a shared state ``c`` such that ``inc(n)`` increases ``c`` by ``n`` and ``dec(n)`` decreases ``c`` by ``n``. We also want a third function, ``plus10``, which return 10 + the current state without changing the current state. Using the function interface, the feature can be implemented as follows:
 
 .. code-block:: python
 
@@ -164,10 +156,10 @@ Now, using ``Module``:
 
     m = M.Module()
     n = T.scalar('n')
-    m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
+    m.c = T.scalar() # state variables
     m.inc = M.Method(n, [], c = m.c + n) # m.c <= m.c + n
     m.dec = M.Method(n, [], c = m.c - n) # k.c <= k.c - n
-    m.dec = M.Method(n, [], updates = {m.c: m.c - n})
+    m.dec = M.Method(n, [], updates = {m.c: m.c - n})#alternative syntax
     #m.dec = M.Method(n, [], updates = {c: m.c - n})#global c don't exist
     #m.dec = M.Method(n, [], m.c = m.c - n) #python don't suppor this syntax
     #m.plus10 don't update the state
@@ -191,7 +183,7 @@ Benefits of ``Module`` over ``function`` in this example:
 Nesting example
 ===============
 
-The problem now is to create two pairs of ``inc dec`` functions and a function s``um`` that adds the shared states of the first and second pair.
+The problem now is to create two pairs of ``inc dec`` functions and a function ``sum`` that adds the shared states of the first and second pair.
 
 Using function:
 
@@ -221,9 +213,9 @@ Using Module:
     def make_incdec_module():
         m = M.Module()
         n = T.scalar('n')
-        m.c = M.Member(T.scalar()) # state variables must be wrapped with ModuleMember
+        m.c = T.scalar() # state variables
         m.inc = M.Method(n, [], c = m.c + n) # m.c <= m.c + n
-        m.dec = M.Method(n, [], c = m.c - n) # k.c <= k.c - n
+        m.dec = M.Method(n, [], c = m.c - n) # m.c <= m.c - n
         return m
     
     m = M.Module()
@@ -241,7 +233,7 @@ Here, we make a new ``Module`` and we give it two inner ``Modules`` like
 the one defined in the basic example. Each inner module has methods inc
 and dec as well as a state c and their state is directly accessible from
 the outer module, which means that it can define methods using them. The
-``ModuleInstance`` we make from the ``Module`` reflects the hierarchy
+instance(inst) we make from the ``Module``(m) reflects the hierarchy
 that we created. Unlike the method using function, there is no need to
 manipulate any containers directly.
 
@@ -264,10 +256,10 @@ Complex models can be implemented by subclassing ``Module`` (though that is not 
             if not target:
                 target = T.matrix('target')
             # HYPER-PARAMETERS
-            self.stepsize = M.Member(T.scalar())  # a stepsize for gradient descent
+            self.stepsize = T.scalar()  # a stepsize for gradient descent
             # PARAMETERS
-            self.w = M.Member(T.matrix())  #the linear transform to apply to our input points
-            self.b = M.Member(T.vector())  #a vector of biases, which make our transform affine instead of linear
+            self.w = T.matrix()  #the linear transform to apply to our input points
+            self.b = T.vector()  #a vector of biases, which make our transform affine instead of linear
             # REGRESSION MODEL
             self.activation = T.dot(input, self.w) + self.b
             self.prediction = self.build_prediction()
@@ -349,14 +341,12 @@ Using the model is quite simple:
 Extending ``Methods``
 =======================
 
-[Fred:still valid? example don't work and I'm not able to repair it.] 
-
 ``Methods`` can be extended to update more parameters. For example, if we wanted to add a variable holding the sum of all costs encountered so far to ``SoftmaxXERegression``, we could proceed like this:
 
 .. code-block:: python
 
     model_module = SoftmaxXERegression(regularize = False)
-    model_module.sum = M.Member(T.scalar()) # we add a module member to hold the sum
+    model_module.sum = T.scalar() # we add a module member to hold the sum
     model_module.update.updates.update(sum = model_module.sum + model_module.cost) # now update will also update sum!
     
     model = model_module.make(input_size = 4,
