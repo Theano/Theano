@@ -340,7 +340,15 @@ class test_structureddot(unittest.TestCase):
             kernvals = spmat.data[:spmat.size]
             imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
             outvals = f(kernvals,imvals)
-            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+            print type(spmat.dot(imvals.T))
+            print spmat.dot(imvals.T)
+            print dir(spmat.dot(imvals.T))
+
+#           scipy 0.7.0 should already make the output dense
+#            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+            c = spmat.dot(imvals.T)
+            assert _is_dense(c)
+            assert numpy.all(outvals == c)
 
             tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals], mode=mode)
 
@@ -355,7 +363,12 @@ class test_structureddot(unittest.TestCase):
             kernvals = spmat.data[:spmat.size]
             imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
             outvals = f(kernvals,imvals)
-            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+
+#           scipy 0.7.0 should already make the output dense
+#            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+            c = spmat.dot(imvals.T)
+            assert _is_dense(c)
+            assert numpy.all(outvals == c)
 
             tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals], mode=mode)
 
