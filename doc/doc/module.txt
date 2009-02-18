@@ -55,17 +55,9 @@ Usage:
 
 A ``Member`` represents a state variable. It will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage will be shared by all ``Methods`` of the ``Module``.
 
-A ``Result`` which is the result of a previous computation is not a Member. Internally this is called an External. You should not care about this.
+A ``Result`` which is the result of a previous computation is not a Member. Internally this is called an External. You should not need to care about this.
 
-**NOTE2:** this can also lead to some subtle bug as to share a member between module, you should do as this:
-
-.. code-block:: python
-
-    module2 = M.Module()
-    module2.m1_state = M.Member(module.state)
-    #wrong: module2.m1_state = module.state as module2.m1_state won't be a member of module2...[Fred: need to check, Being an External is not what it need to be?]
-
-see later section for more information.
+For sharing state between module, see ``Inner Module`` section.
 
 ``Method``
 ------------
@@ -104,32 +96,18 @@ Module Interface
 
 '''make''' compiles all ``Methods`` and allocates storage for all ``Members`` into a ``ModuleInstance`` object, which is returned. The ``init`` dictionary can be used to provide initial values for the members.
 
-'''make''' calls ``initialize_storage``[Fred: still true??? Olivier D. What was this? Do you removed it as I don't find it anywhere] to allocate storage and ``_instance_initialize`` to initialize the instance.
-
 .. code-block:: python
 
     def resolve(self, symbol, filter = None)
 
 Resolves a symbol in this module. The symbol can be a string or a ``Result``. If the string contains dots (eg ``"x.y"``), the module will resolve the symbol hierarchically in its inner modules. The filter argument is None or a class and it can be used to restrict the search to ``Member`` or ``Method`` instances for example.
 
-.. code-block:: python
-
-    def initialize_storage(self, stor)
-
-This allocates a ``Container`` for each member (and hierarchically, for the members of each inner module). This can be easily overriden by ``Module`` subclasses to share storage between some states.[Fred: still usefull?]
-
-
 
 .. code-block:: python
 
     def _instance_initialize(self, inst, **init)
 
-The inst argument is a ``ModuleInstance``. For each key, value pair in init: s``etattr(inst, key, value)``. This can be easily overriden by ``Module`` subclasses to initialize an instance in different ways. If you don't know what to put their, you probably want[Fred: this should be automatic. Is it?]:
-
-.. code-block:: python
-
-    def _instance_initialize(self, inst, **init):
-        M.default_initialize(inst,**init)
+The inst argument is a ``ModuleInstance``. For each key, value pair in init: ``setattr(inst, key, value)`` is called. This can be easily overriden by ``Module`` subclasses to initialize an instance in different ways. If you don't know what to put their, don't put it and it will execute a default version. If you want to call the parent version call: ``M.default_initialize(inst,**init)``
 
 
 Basic example
@@ -192,7 +170,7 @@ Using function:
     def make_incdec_function():
            n, c = T.scalars('nc')
            inc = theano.function([n, ((c, c + n), 0)], [])
-           dec = theano.function([n, ((c, c - n), inc.container[c])], [])#[Fred: inc.container should mean that inc and dec share the same state?]
+           dec = theano.function([n, ((c, c - n), inc.container[c])], [])#inc and dec share the same state.
            return inc,dec
     
     
