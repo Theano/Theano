@@ -4,7 +4,7 @@ from theano.compile.module import *
 import theano.tensor as T
 import sys
 import theano
-
+#TODO: add test for module.make(member=init_value)
 class T_test_module(unittest.TestCase):
 
     def test_whats_up_with_submembers(self):
@@ -208,8 +208,8 @@ class T_test_module(unittest.TestCase):
             assert f==4
 
     def test_shared_members_N(self):
-        """Test that Members can be shared an arbitrary number of times between many submodules and
-        internal data structures."""
+        """Test that Members can be shared an arbitrary number of times between 
+        many submodules and internal data structures."""
         def populate_module(m,x):
             m.x=x
             m.lx=[x]
