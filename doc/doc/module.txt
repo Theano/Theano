@@ -15,7 +15,7 @@ of ``Methods``, which are functions that share the same ``Members`` in
 addition to their own inputs. Last but not least, ``Modules`` can be
 nested (explanations and examples follow). ``Module`` is meant to:
 
- #. ease the sharing of parameters between several functions,
+ #. ease the sharing of variables between several Theano functions,
  #. streamline automatic naming, and
  #. allow a hierarchy of "modules" whose states can interact.
 
@@ -23,7 +23,7 @@ nested (explanations and examples follow). ``Module`` is meant to:
 import
 ======
 
-all example suppose that you have done those import
+All examples suppose that you have done those import:
 
 .. code-block:: python
 
@@ -53,11 +53,11 @@ Usage:
     #module.state = result
     module.state = T.scalar()
 
-A ``Member`` represents a state variable. It will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage will be shared by all ``Methods`` of the ``Module``.
+A ``Member`` represents a state variable (i.e., whose value remains after a ``Method`` is called). It will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage (i.e. where the value is stored) will be shared by all ``Methods`` of the ``Module``.
 
-A ``Result`` which is the result of a previous computation is not a Member. Internally this is called an External. You should not need to care about this.
+A ``Result`` which is the result of a previous computation (by opposition to being ``updated``) is not a ``Member``. Internally this is called an External. You should not need to care about this.
 
-For sharing state between module, see ``Inner Module`` section.
+For sharing state between modules, see ``Inner Module`` section.
 
 ``Method``
 ------------
@@ -68,12 +68,12 @@ Usage:
 
     module.method = M.Method(inputs, outputs, **updates)
 
-Each key in the updates dictionary must be the name of an existing ``Member`` of the ``Module`` and the value associated to that key is the update to the state. When called on a ``ModuleInstance`` produced by the ``Module``, the method will calculate the outputs from the inputs and will update all the states as specified. See the basic example for an example.
+Each key in the updates dictionary must be the name of an existing ``Member`` of the ``Module`` and the value associated to that key is the update expression for the state. When called on a ``ModuleInstance`` produced by the ``Module``, the method will calculate the outputs from the inputs and will update all the states as specified by the update expressions. See the basic example below.
 
 Inner Module
 ------------
 
-To share a member between modules, the modules must be linked by inner module. 
+To share a ``Member`` between modules, the modules must be linked through the inner module mechanism. 
 
 Usage:
 
