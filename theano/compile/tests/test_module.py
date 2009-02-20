@@ -422,6 +422,18 @@ def test_pickle_aliased_memory():
     assert m_dup.y[0,0] == 3.142
 
 
+def test_tuple_members():
+
+    M = Module()
+    M.a = (1,1)
+    assert isinstance(M.a, tuple)
+
+    class Temp(Module):
+        def __init__(self):
+            self.a = (1,1)
+    M = Temp()
+    assert isinstance(M.a, tuple)
+
 
 if __name__ == '__main__':
     from theano.tests import main
