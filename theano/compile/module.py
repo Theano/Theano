@@ -887,8 +887,10 @@ class Module(ComponentDict):
                 return v
             elif isinstance(v,(int,bool)):
                 return v
-            elif isinstance(v, (list,tuple)):
+            elif isinstance(v, (list)):
                 return map(remove_member,v)
+            elif isinstance(v, (tuple)):
+                return tuple(map(remove_member,v))
             elif isinstance(v,dict):
                 for k,vv in v.iteritems():
                     v[k]=remove_member(vv)
