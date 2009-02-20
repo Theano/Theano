@@ -365,6 +365,19 @@ class T_test_module(unittest.TestCase):
         self.assertRaises(NotImplementedError, c.get,"n")
         self.assertRaises(NotImplementedError, c.set,"n",1)
 
+    def test_tuple_members(self):
+
+        M = Module()
+        M.a = (1,1)
+        assert isinstance(M.a, tuple)
+
+        class Temp(Module):
+            def __init__(self):
+                self.a = (1,1)
+        M = Temp()
+        assert isinstance(M.a, tuple)
+
+
 def test_pickle():
     """Test that a module can be pickled"""
     M = Module()
@@ -420,19 +433,6 @@ def test_pickle_aliased_memory():
     assert m.y[0,0] == 3.142
     m_dup.x[1,0] = 3.142
     assert m_dup.y[0,0] == 3.142
-
-
-def test_tuple_members():
-
-    M = Module()
-    M.a = (1,1)
-    assert isinstance(M.a, tuple)
-
-    class Temp(Module):
-        def __init__(self):
-            self.a = (1,1)
-    M = Temp()
-    assert isinstance(M.a, tuple)
 
 
 if __name__ == '__main__':
