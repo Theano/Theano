@@ -352,6 +352,19 @@ class T_test_module(unittest.TestCase):
         As Result with more optimization?"""
         print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
 
+    def test_raise_NotImplemented(self):
+        c=Component()
+        self.assertRaises(NotImplementedError, c.allocate,"")
+        self.assertRaises(NotImplementedError, c.build,"","")
+        self.assertRaises(NotImplementedError, c.pretty)
+        self.assertRaises(NotImplementedError, c.dup)
+        c=Composite()
+        self.assertRaises(NotImplementedError, c.resolve,"n")
+        self.assertRaises(NotImplementedError, c.components)
+        self.assertRaises(NotImplementedError, c.components_map)
+        self.assertRaises(NotImplementedError, c.get,"n")
+        self.assertRaises(NotImplementedError, c.set,"n",1)
+
 def test_pickle():
     """Test that a module can be pickled"""
     M = Module()
