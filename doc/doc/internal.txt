@@ -34,6 +34,11 @@ It calls ``epydoc`` and ``sphinx`` on the code.
  * Can we get links about mercurial hooks?
  * What happens if two people push at the same time? Does documentation get clobbered?
 
+pylint
+---------------------------------------
+
+Pylint documentation is generated using pylintrc file: ``Theano/doc/pylintrc``
+
 TO WRITE
 ---------------------------------------
 
