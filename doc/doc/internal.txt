@@ -1,0 +1,44 @@
+.. _extending:
+
+================
+Internal notes
+================
+
+
+How to build sphinx documentation
+---------------------------------------
+
+Let's say you are writing documentation, and want to see the sphinx
+output before you push it.
+Here is what you do it::
+
+    cd Theano/doc
+    # Make an HTML directory for the output
+    mkdir html
+    sphinx-build . html
+
+
+How documentation is auto-built on push
+---------------------------------------
+
+When you push to the main repository, the following file is run::
+
+   projects@lgcm:~/repos/theano/.hg/refresh-epydoc.sh
+
+It calls ``epydoc``, ``sphinx``, and ``pylint`` on the code.
+
+*It would be nice to explain this stuff in a little more depth:*
+ * Who calls refresh-epydoc.sh ?
+ * What exactly does it do?
+ * Where does the output go?
+ * Can we get links about mercurial hooks?
+ * What happens if two people push at the same time? Does documentation get clobbered?
+
+TO WRITE
+---------------------------------------
+
+*There is other stuff to document here, e.g.:*
+ * where the documentation is getting built, and epy.
+ * How epydoc and sphinx are integrated
+ * The nightly build process.
+ * We also want examples of good documentaiton, to show people how to write sphinx,
