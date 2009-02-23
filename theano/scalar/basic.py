@@ -441,6 +441,18 @@ class InRange(LogicalComparison):
 inopenrange = InRange(True, True)
 inclosedrange = InRange(False, False)
 
+class Switch(ScalarOp):
+    nin = 3
+    def impl(self, cond, ift, iff):
+        return ift if cond else iff
+    def c_code(self, node, name, (cond, ift, iff), (z, ), sub):
+        return "%(z)s = %(cond)s ? %(ift)s : %(iff)s;" % locals()
+    def grad(self, (cond, ift, iff), (gz, )):
+        return None, switch(cond, gz, 0), switch(cond, 0, gz)
+    def output_types(self, (cond_t, ift_t, iff_t)):
+        return upcast_out(ift_t, iff_t)
+switch = Switch()
+
 ####################
 # BIT-WISE OPERATORS
 ####################

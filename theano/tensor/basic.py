@@ -911,6 +911,15 @@ def neq(a, b):
 
 
 ##########################
+# Condition
+##########################
+
+@_scal_elemwise
+def switch(cond, ift, iff):
+    """if cond then ift else iff"""
+
+
+##########################
 # Bit-wise
 ##########################
 
