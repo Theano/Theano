@@ -33,6 +33,20 @@ class test_composite(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
+#    def test_sin(self):
+#        x = inputs()
+#        e = sin(x)
+#        C = Composite([x], [e])
+#        c = C.make_node(x)
+#        # print c.c_code(['x'], ['z'], dict(id = 0))
+#        g = Env([x], [c.out])
+#        fn = gof.DualLinker().accept(g).make_function()
+#        assert fn(0) == 0
+#        assert fn(3.14159265358/2) == 1
+#        assert fn(3.14159265358) == 0
+
+    # WRITEME: Test for sin, pow, and other scalar ops.
+
     def test_with_constants(self):
         x, y, z = inputs()
         e = mul(add(70.0, y), div(x, y))
