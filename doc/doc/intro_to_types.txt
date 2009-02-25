@@ -1,0 +1,107 @@
+.. _intro_to_types:
+
+=====================
+Introduction to Types
+=====================
+
+This page introduces ``theano.Result`` and ``theano.Type``.  
+
+
+class ``Result``
+------------------
+
+Consider the following program:
+
+
+.. code-block:: python
+
+    import theano
+    from theano import tensor
+    
+    a = tensor.constant(1.5)        # declare a symbolic constant
+    b = tensor.fscalar()            # declare a symbolic floating-point scalar
+    
+    c = a + b                       # create a simple expression
+    
+    f = theano.function([b], [c])   # convert the expression into a callable function
+    
+    assert 4.0 == f(2.5)            # bind 2.5 to 'b' and evaluate 'c'
+
+The python variables ``a,b,c`` all refer to classes of type ``theano.Result``.
+A ``Result`` is theano's version of a variable.  There are three important kinds of ``Results``: 
+
+ * ones that are the result of an expression (such as c) are the normal ``Result``
+ * constants, which are of subclass ``Constant``
+ * closures, which are of subclass ``Value``.
+
+In our example, ``a`` refers to a ``Constant`` and ``b`` is a normal
+``Result``.  Although ``b`` is not the result of an expression in our
+graph, it is necessary that ``b`` be the result of an expression outside
+the graph; that's why ``b`` must be listed as one of the inputs of our
+compiled function ``f``.  We could have named ``a`` as an input to our
+function too (even though it is declared as a constant) but as the example
+shows, we don't have to because it already has a value associated with it.
+
+The other kind of ``Result`` is the ``Value`` which implements
+closures.  It comes into play in the following variation on the program
+above.
+
+.. code-block:: python
+
+	import theano
+	from theano import tensor
+	
+	a = tensor.value(1.5)           # declare a symbolic value
+	b = tensor.fscalar()            # declare a symbolic floating-point scalar
+	
+	c = a                           # create a second name for a
+	c += b                          # c refers to the result of incrementing a by b
+	
+	f = theano.function([b], [c])   # convert the expression into a callable function
+	
+	assert 4.0 == f(2.5)            # bind 2.5 to 'b' and evaluate 'c' (increments f's copy of a)
+	assert 6.5 == f(2.5)            # bind 2.5 to 'b' and evaluate 'c' (increments f's copy of a)
+	
+	g = theano.function([b], [c])   # make another function like f
+	assert 4.0 == g(2.5)            # g got a fresh version of the closure, not the one modified by f
+
+A ``Value`` is a ``Result`` that is not computed by any expression,
+but need not be an input to our function because it already has a value.
+In this example, ``a`` is a ``Value`` instance. [''Too many negations
+in the previous sentence for me to figure out what it means.''] One of
+the expressions that use it in a given function can modify it and the
+modified value will persist between evaluations of that function.  If two
+expressions try to modify the same ``Value`` then ``theano.function``
+will raise an exception.  Incidentally, ``theano.function`` might choose
+to work in-place on internal results at its discretion... once you tell
+it which input and output results you care about, then it basically
+has free reign over all the others. [''Shouldn't this sentence be a
+new paragraph?'']
+
+class ``Type``
+----------------
+
+[http://lgcm.iro.umontreal.ca:8000/theano/chrome/common/epydoc/theano.gof.type.Type-class.html autodoc of theano.Type]
+
+A ``Type`` instance hides behind each ``Result`` and indicates what
+sort of value we can associate with that ``Result``.  Many ``Result``
+instances can use the same ``Type`` instance.  In our example above
+``theano.fscalar`` is a ``Type`` instance, and calling it generated
+a ``Result`` of that type.   The ``Type`` of a ``Result`` is a
+contract to expression implementations; [''previous phrase is really
+convoluted. Just use standard terminology from programming language
+specification. It's like a type declaration, right?''] it's a promise
+that at computation time, the actual value (not symbolic anymore)
+will have a certain interface... to really go into detail is beyond the
+scope of this user intro, but for example if a ``Result`` has a type
+``tensor.fvector`` then we'll compute a 1-dimensional numpy.ndarray of
+dtype('float64') for it[[''How to get float32?'']].  ``Type`` instances
+are also responsible for exposing actual data to C code, and packaging it
+back up for python when ``theano.function`` is asked to generate C code.
+To learn more about that, read the introduction to CodeGeneration.
+
+What's Next?
+--------------
+
+The companion to Result and Type is :ref:`intro_to_ops`, which develops a similar story for the expression objects themselves.
+

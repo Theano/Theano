@@ -1,6 +1,12 @@
+.. _graph:
+
 ================================================
 Graph: interconnected Apply and Result instances
 ================================================
+
+*TODO: There is similar documentation in the* `wiki <http://lgcm.iro.umontreal.ca/theano/wiki/GraphStructures>`__. *However, the
+wiki has more information about certain topics. Merge these two pieces of
+documentation.*
 
 In theano, a graph is an implicit concept, not a class or an instance.
 When we create `Results` and then `apply` `operations` to them to make more `Results`, we build a bi-partite, directed, acyclic graph.

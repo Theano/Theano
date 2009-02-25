@@ -21,6 +21,8 @@ Glossary of terminology
         
         Theano.function uses the Apply instances' ``inputs`` field together with each :term:`Result`'s ``owner`` field to determine which inputs are necessary to compute the function's outputs.
         Theano.function uses the Apply instances' ``op`` field to know how to compute the intermediate and final Results.
+
+        See :ref:`intro_to_ops`.
         
     Broadcasting
         implicit tensor repmat
@@ -82,6 +84,8 @@ Glossary of terminology
 
     Function
         callable object representing a compiled graph
+
+        It is created through ``theano.function``.
 
         WRITEME
 
@@ -233,6 +237,8 @@ Glossary of terminology
             * performing the calculation of outputs from given inputs (via the ``perform``),
             * producing c code to perform calculation of outputs from inputs (via ``c_code, c_code_cleanup, c_support_code, c_headers, c_libraries, c_compile_args``)
             * [optionally] building gradient-calculating graphs (via ``grad``).
+
+        See :ref:`intro_to_ops`.
         
     Optimization
         graph transformation for faster execution
@@ -267,6 +273,8 @@ Glossary of terminology
                 a Result with a data field.
             :term:`Constant`
                 like ``Value``, but the data it contains cannot be modified.
+
+        See :ref:`intro_to_types`.
         
         Code Example:
         
@@ -412,6 +420,8 @@ Glossary of terminology
         see :ref:`CodeGeneration` for a more general intro to how C code is generated.
 
         See also :term:`Theano type instance (TTI) <TTI>`.
+
+        See :ref:`intro_to_types`.
         
 
     Value
