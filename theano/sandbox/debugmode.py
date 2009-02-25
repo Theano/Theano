@@ -25,6 +25,83 @@ from ..compile.function_module import (convert_function_input,
         SymbolicOutput,
         Supervisor)
 
+def values_eq_enough_warn(a, b, r):
+    # TODO: use  the result variables r to retrieve a Type, and then use the Type's value_cmp
+    # function: see ticket on value_cmp
+    print >> sys.stderr, 'WARNING: OptCheck comparison of', type(new_r_val), 'NotImplementedError'
+    return True
+
+
+class OptCheckError(Exception):
+    pass
+
+class BadClinkerOutput(OptCheckError):
+    """Exception: a c implementation and python implementation don't agree"""
+
+    r = None
+    """TODO"""
+
+    a = None
+    """TODO"""
+
+    b = None
+    """TODO"""
+
+    def __init__(self, r, a, b):
+        """Initialize members"""
+        super(BadClinkerOutput, self).__init__()
+        self.r = r
+        self.a = a
+        self.b = b
+
+class BadOptimization(OptCheckError):
+    """Exception: some result and its substitute take different runtime values."""
+
+    new_r = None
+    """TODO"""
+
+    r_val = None
+    """TODO"""
+
+    new_r_val = None
+    """TODO"""
+
+    reasons = []
+    """TODO"""
+
+    snapshots = []
+    """TODO"""
+
+    def __init__(self, new_r, r_val, new_r_val, reasons, snapshots):
+        """Initialize members"""
+        super(BadOptimization, self).__init__()
+        self.new_r = new_r
+        self.r_val = r_val
+        self.new_r_val = new_r_val
+        self.reasons = reasons
+        self.snapshots = snapshots
+
+    #def __str__(self):
+        #return self.str_diagnostic() #debatable...
+
+    def str_diagnostic(self):
+        """TODO: what does this mean?  How to interpret?  """
+        sio = StringIO()
+        print >> sio, "  Result:", id(self.new_r), self.new_r 
+        print >> sio, "  Op", self.new_r.owner
+        print >> sio, "  Value Type:", type(self.new_r_val)
+        print >> sio, "  Old Value: ", self.r_val
+        print >> sio, "  Value: ", self.new_r_val
+        print >> sio, "  Reason: ", [(str(reason), id(old_r)) for reason, old_r in self.reasons[self.new_r]]
+        print >> sio, "  Snapshots:"
+        for s in self.snapshots[self.new_r]:
+            print >> sio, "  BEFORE"
+            print >> sio, s[1]
+            print >> sio, "  AFTER"
+            print >> sio, s[2]
+        return sio.getvalue()
+
+
 def debugprint(a, prefix='', depth=-1, done=None, file=sys.stdout):
     if depth==0:
         return
@@ -194,7 +271,21 @@ def optcheck_env(input_specs, output_specs, accept_inplace = False):
     env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
     return env, map(SymbolicOutput, updates), equivalence_tracker
 
-class OptCheckLinker(OpWiseCLinker):
+
+class OptCheckLinker(gof.link.LocalLinker):
+    def __init__(self, maker):
+        super(gof.LocalLinker, self).__init__()
+        self.env = None
+        self.maker = maker
+
+    def accept(self, env, no_recycling = []):
+        if self.env is not None and self.env is not env:
+            assert type(self) is OptCheckLinker
+            return type(self)(self.env, self.maker).accept(env, no_recycling)
+        self.env = env
+        self.no_recycling = no_recycling
+        return self
+
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
         env = self.env
         #order = env.toposort()
@@ -207,19 +298,20 @@ class OptCheckLinker(OpWiseCLinker):
         order_outputs.reverse()
         order = graph.io_toposort(env.inputs, order_outputs)
 
-
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(env, order, input_storage, output_storage)
 
-        thunks = []
+        thunks_py = [] #python thunks
+        thunks_c = [] #c thunks
         for node in order:
             node_input_storage = [storage_map[r] for r in node.inputs]
             node_output_storage = [storage_map[r] for r in node.outputs]
             try:
-                raise NotImplementedError('need to copy destroyed inputs')
+                if not self.maker.mode.check_c_code:
+                    raise utils.AbstractFunctionError()
                 e = Env(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.nodes
+                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER
 
                 if any(isinstance(input, graph.Value) for input in node.inputs):
                     desc = None
@@ -248,18 +340,18 @@ class OptCheckLinker(OpWiseCLinker):
                     output_storage = node_output_storage)
                 thunk.inputs = node_input_storage
                 thunk.outputs = node_output_storage
-                thunks.append(thunk)
-            except (NotImplementedError, utils.AbstractFunctionError):
-                if self.fallback_on_perform:
-                    p = node.op.perform
-                    thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
-                            node: p(n, [copy.copy(x[0]) for x in i], o))
-                    thunk.inputs = node_input_storage
-                    thunk.outputs = node_output_storage
-                    thunk.perform = p
-                    thunks.append(thunk)
-                else:
-                    raise
+                thunks_c.append(thunk)
+            except utils.AbstractFunctionError:
+                thunks_c.append(None)
+
+
+            p = node.op.perform
+            thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
+                    node: p(n, [x[0] for x in i], o))
+            thunk.inputs = node_input_storage
+            thunk.outputs = node_output_storage
+            thunk.perform = p
+            thunks_py.append(thunk)
 
         if no_recycling is True:
             no_recycling = storage_map.values()
@@ -267,97 +359,102 @@ class OptCheckLinker(OpWiseCLinker):
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
+        #####
+        # This is the function that runs when you evaluate the graph
+        #####
         def f():
             for x in no_recycling:
                 x[0] = None
-            try:
-                equiv_vals = {}
-                problematic = set()
-                r_vals = {}
-                assert len(thunks) == len(order)
 
-                for r in env.inputs:
+            equiv_vals = {}
+            problematic = set()
+            # r_vals are the true values associated with each result in the graph
+            # they should not change during the evaluation of this function, even when the
+            # graph has destructive ops in it
+            #
+            # This dictionary is used to populate the storage_map as necessary
+            r_vals = {} 
+            assert len(thunks_py) == len(order)
+
+            #put the initial values into the r_vals
+            for r in storage_map:
+                if storage_map[r][0] is not None:
                     r_vals[r] = copy.copy(storage_map[r][0])
+                    storage_map[r][0] = None
 
+            try:
                 # compute the value of all results
-                for i, (thunk, node) in enumerate(zip(thunks, order)):
-                    thunk()
+                for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
 
+                    #put a copy of each input into the storage_map
+                    for r in node.inputs:
+                        storage_map[r][0] = copy.copy(r_vals[r])
+
+                    thunk_py()
+
+                    #retrieve a copy of each output from the storage_map
                     for r in node.outputs:
-                        assert r not in r_vals
-                        this_r_val = copy.copy(storage_map[r][0])
-                        r_vals[r] = this_r_val
+                        if r in r_vals:
+                            # r has been constant-folded
+                            if not r.type.values_eq_enough(r_vals[r], storage_map[r][0]):
+                                raise Exception('BadConstantFold', (r,  r_vals[r],
+                                    storage_map[r][0])) #TODO: make a proper exception class for this
 
-                # iterate over results looking for values that don't match the values of the
-                # results they replaced.  This is the sign of a broken optimization.
-                for i, (thunk, node) in enumerate(zip(thunks, order)):
-                    for new_r in node.outputs:
-                        for reason, r in env.equivalence_tracker.reasons[new_r]:
-                            problem = False
+                        else:
+                            r_vals[r] = copy.copy(storage_map[r][0])
 
-                            #check if the value for new_r doesn't match the value for r
-                            new_r_val = r_vals[new_r]
-                            r_val = r_vals[r]
+                    if thunk_c:
+                        for r in node.outputs:
+                            storage_map[r][0] = None #clear the storage_map for the thunk_c
 
-                            if type(new_r_val) != type(r_val):
-                                problem = True
-                            elif type(new_r_val) is numpy.ndarray:
-                                if not numpy.allclose(new_r_val, r_val):
-                                    problem = True
-                            else:
-                                print >> sys.stderr, 'WARNING: OptCheck comparison of', type(new_r_val), 'NotImplementedError'
+                        if 0:
+                            # TODO: check that Op didn't change any inputs that it wasn't allowed to
+                            # (Hint: use the destroy_map attribute)
+                            raise NotImplementedError()
+                        else:
+                            for r in node.inputs:
+                                storage_map[r][0] = copy.copy(r_vals[r])
 
-                            if problem:
-                                print "OPTCHECK FAILURE"
-                                print "  Result:", id(new_r), new_r 
-                                print "  Op", new_r.owner
-                                print "  Value Type:", type(new_r_val)
-                                print "  Old Value: ", r_val
-                                print "  Value: ", new_r_val
-                                print "  Reason: ", [(str(reason), id(old_r)) for reason, old_r in env.equivalence_tracker.reasons[new_r]]
-                                print "  Snapshots:"
-                                for s in env.equivalence_tracker.snapshots[new_r]:
-                                    print "  BEFORE"
-                                    print s[1]
-                                    print "  AFTER"
-                                    print s[2]
-                                print ""
+                        thunk_c()
 
-
-                                # There is no point in continuing to check for more problems,
-                                # because the incorrect result detected here will cause
-                                # subsequent outputs to be incorrect.
-                                raise Exception("OptCheckFailure")
-
-                if 0: #OLD CODE
-                    #print out the summary of the first problematic equivalence group
-                    min_member = []
-                    for problem_r in problematic:
-                        problem_r_set = env.equivalence_tracker.equiv[problem_r]
-                        for i, n in enumerate(order):
-                            if problem_r_set.intersection(n.outputs):
-                                break
-                        min_member.append((i, problem_r_set))
-                    min_member.sort()
-
-                    problematic_set = min_member[0][1]
-
-
+                        for r in node.outputs:
+                            # compares the version from thunk_py (in r_vals)
+                            # to the version produced by thunk_c (in storage_map)
+                            if not r.type.values_eq_enough(r_vals[r], storage_map[r][0]):
+                                raise BadClinkerOutput(r, r_vals[r], storage_map[r][0])
 
             except:
                 raise_with_op(node)
 
-        f.allow_gc = self.allow_gc
+            # iterate over results looking for values that don't match the values of the
+            # results they replaced.  This is the sign of a broken optimization.
+            for i, node in enumerate(order):
+                for new_r in node.outputs:
+                    for reason, r in env.equivalence_tracker.reasons[new_r]:
+                        problem = False
 
+                        #check if the value for new_r doesn't match the value for r
+                        new_r_val = r_vals[new_r]
+                        r_val = r_vals[r]
+                        assert r.type == new_r.type
+
+                        if not r.type.values_eq_enough(r_val, new_r_val):
+                            raise BadOptimization(new_r, r_val, new_r_val,
+                                    env.equivalence_tracker.reasons,
+                                    env.equivalence_tracker.snapshots)
+
+        f.allow_gc = True
         return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
-            thunks, order
+            thunks_py, order
 
 NODEFAULT = ['NODEFAULT']
-class OptCheckFunctionMaker(FunctionMaker):
+class OptCheckFunctionMaker(FunctionMaker): #inheritance buys a few helper functions
+    verbose = 0
+    """Verbosity level of compile-time and run-time checks. (Default 0: silent)"""
 
-    def __init__(self, inputs, outputs, optimizer,
-            chances_for_optimizer_to_screw_up = 10,
+
+    def __init__(self, inputs, outputs, optimizer, mode,
             accept_inplace = False, 
             function_builder = Function):
         """
@@ -371,7 +468,6 @@ class OptCheckFunctionMaker(FunctionMaker):
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
         """
-
 
         # Handle the case where inputs and/or outputs is a single Result (not in a list)
         unpack_single = False
@@ -388,7 +484,7 @@ class OptCheckFunctionMaker(FunctionMaker):
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
 
         # make the env
-        for i in xrange(chances_for_optimizer_to_screw_up):
+        for i in xrange(mode.stability_patience):
             env, additional_outputs, equivalence_tracker = optcheck_env(expanded_inputs, outputs, accept_inplace)
             env.equivalence_tracker = equivalence_tracker
             # optimize the env
@@ -410,7 +506,8 @@ class OptCheckFunctionMaker(FunctionMaker):
                     sys.exit(1)
                     break
                 else:
-                    print >> sys.stdout, "OPTCHECK: optimization", i, "of", len(li), "events was stable."
+                    if self.verbose:
+                        print >> sys.stdout, "OPTCHECK: optimization", i, "of", len(li), "events was stable."
             else:
                 env0 = env
 
@@ -419,7 +516,7 @@ class OptCheckFunctionMaker(FunctionMaker):
         self.env = env
         #equivalence_tracker.printstuff()
 
-        linker = OptCheckLinker()
+        linker = OptCheckLinker(self)
 
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
@@ -436,6 +533,7 @@ class OptCheckFunctionMaker(FunctionMaker):
         self.unpack_single = unpack_single
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
+        self.mode = mode
 
     def create(self, defaults = None, trustme = False):
         """
@@ -547,14 +645,16 @@ class OptCheck(Mode):
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):
         assert m is self
-        return OptCheckFunctionMaker(i, o, self.optimizer, 
-                chances_for_optimizer_to_screw_up=self.stability_patience,
-                *args, **kwargs)
-    def __init__(self, optimizer='fast_run', stability_patience=10):
+        return OptCheckFunctionMaker(i, o, self.optimizer, self, *args, **kwargs)
+    def __init__(self, 
+            optimizer='fast_run', 
+            stability_patience=10,
+            check_c_code=True):
         super(OptCheck, self).__init__(
                 optimizer=optimizer,
                 linker=OptCheckLinker)
         self.stability_patience = stability_patience
+        self.check_c_code = check_c_code
 
 
 
