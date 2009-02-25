@@ -15,16 +15,16 @@ from theano import gof
 from theano.gof.utils import AbstractFunctionError
 
 from theano.tensor.elemwise import DimShuffle
-
-default_mode = compile.Mode(optimizer = None,
-                            linker = 'c&py')
-
-def function(inputs, outputs, mode = default_mode):
-    return compile.function(inputs, outputs, mode = mode, accept_inplace = True)
+from theano.compile.mode import default_mode
+from theano import function
 
 
-def eval_outputs(outputs, mode = default_mode):
-    results = function([], outputs, mode = mode)()
+def inplace_func(inputs, outputs, mode=default_mode):
+    return function(inputs, outputs, mode=mode, accept_inplace=True)
+
+
+def eval_outputs(outputs):
+    results = inplace_func([], outputs)()
     if len(results) == 1:
         return results[0]
     return results
@@ -85,9 +85,7 @@ def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                     raise type, exc_value, traceback
 
                 try:
-                    f = function(inputrs, node.outputs,
-                                 mode = default_mode, ##lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
-                                 )
+                    f = inplace_func(inputrs, node.outputs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
@@ -144,9 +142,7 @@ def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                     raise type, exc_value, traceback
 
                 try:
-                    f = function(inputrs, node.outputs,
-                                 mode = default_mode, #lambda env, **kwargs: gof.DualLinker(env, checker = _numpy_checker, **kwargs),
-                                 )
+                    f = inplace_func(inputrs, node.outputs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while trying to make a Function" \
@@ -599,7 +595,7 @@ class T_Cast(unittest.TestCase):
                                         [convert_to_int8, convert_to_int16, convert_to_int32, convert_to_int64,
                                          convert_to_float32, convert_to_float64]):
                 y = converter(x)
-                f = function([compile.In(x, strict = True)], y, mode = default_mode)
+                f = inplace_func([compile.In(x, strict = True)], y)
                 a = numpy.arange(10, dtype = type1)
                 b = f(a)
                 self.failUnless(numpy.all(b == numpy.arange(10, dtype = type2)))
@@ -959,7 +955,7 @@ class T_Join_and_Split(unittest.TestCase):
         ax = lscalar()
         s = join(ax, a, b)
 
-        f = function([ax], [s])
+        f = inplace_func([ax], [s])
 
         want = numpy.array([[1, 2, 3], [4, 5, 6] ,[1, 2, 3], [4, 5, 6]])
         got = f(0)
@@ -976,7 +972,7 @@ class T_Join_and_Split(unittest.TestCase):
 class test_comparison(unittest.TestCase):
     def test_gt(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], x > y)
+        fn = inplace_func([x,y], x > y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -984,7 +980,7 @@ class test_comparison(unittest.TestCase):
 
     def test_lt(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], x < y)
+        fn = inplace_func([x,y], x < y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -992,7 +988,7 @@ class test_comparison(unittest.TestCase):
 
     def test_le(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], x <= y)
+        fn = inplace_func([x,y], x <= y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1000,7 +996,7 @@ class test_comparison(unittest.TestCase):
 
     def test_ge(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], x >= y)
+        fn = inplace_func([x,y], x >= y)
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1008,7 +1004,7 @@ class test_comparison(unittest.TestCase):
 
     def test_eq(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], eq(x,y))
+        fn = inplace_func([x,y], eq(x,y))
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1016,7 +1012,7 @@ class test_comparison(unittest.TestCase):
 
     def test_neq(self):
         x, y = fvector(), fvector()
-        fn = function([x,y], neq(x, y))
+        fn = inplace_func([x,y], neq(x, y))
         l = numpy.asarray([0.,-1.,1.])
         r = numpy.asarray([0.,1.,-1.])
         v = fn(l, r)
@@ -1025,7 +1021,7 @@ class test_comparison(unittest.TestCase):
 class test_bitwise(unittest.TestCase):
     def test_or(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], x|y)
+        fn = inplace_func([x,y], x|y)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1033,10 +1029,10 @@ class test_bitwise(unittest.TestCase):
 
     def test_xor(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], x^y)
+        fn = inplace_func([x,y], x^y)
         ix = x
         ix = inplace.xor_inplace(ix, y)
-        gn = function([x,y], ix)
+        gn = inplace_func([x,y], ix)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1047,7 +1043,7 @@ class test_bitwise(unittest.TestCase):
 
     def test_and(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], x&y)
+        fn = inplace_func([x,y], x&y)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1055,7 +1051,7 @@ class test_bitwise(unittest.TestCase):
 
     def test_inv(self):
         x, y = bvector(), bvector()
-        fn = function([x,y], ~x)
+        fn = inplace_func([x,y], ~x)
         l = numpy.asarray([0,0,1,1], dtype = 'int8')
         r = numpy.asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
@@ -1074,7 +1070,9 @@ class T_add(unittest.TestCase):
                      ("*", lambda x,y: x*y),
                      ("/", lambda x,y: x/y))
             for s, fn in tests:
-                f = function([a,b], fn(a, b), mode = compile.Mode(optimizer = None, linker = 'c'))
+                f = inplace_func([a,b], fn(a, b))
+                print 'valid output:', fn(a.data, b.data)
+                print 'theano output:', f(a.data, b.data)
                 self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
@@ -1283,7 +1281,7 @@ class test_matinv(unittest.TestCase):
 
         # compilation to function
         # [a,b] are the inputs, [ssdiff,g_b] are the outputs
-        fn = function([a,b], [ssdiff,g_b])
+        fn = inplace_func([a,b], [ssdiff,g_b])
 
         # use the function
         x = numpy.random.rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
@@ -1340,11 +1338,11 @@ class t_dot(unittest.TestCase):
     def not_aligned(self, x, y):
         z = dot(x,y)
         try:
-            tz = eval_outputs([z], mode = compile.Mode(optimizer = None, linker = 'py'))
+            tz = eval_outputs([z])
         except ValueError, e:
-            self.failUnless(e[0].split()[1:4] == ['are', 'not', 'aligned'], e)
-            return
-        self.fail()
+            self.failUnless(
+                    e[0].split()[1:4] == ['are', 'not', 'aligned'] or # reported by numpy
+                    e[0].split()[2:5] == ['do', 'not', 'agree'], e) # reported by blas return self.fail()
 
     def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
     def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
@@ -1585,8 +1583,8 @@ class T_op_cache(unittest.TestCase):
         v = matrix()
         v.name = 'v'
         gv = fill(v/v, 1.0)/v - (fill(v/v, 1.0) * v) / (v*v)
-        fn_py = function([v], gv, mode = compile.Mode(optimizer = None, linker = 'py'))
-        fn_c_or_py = function([v], gv, compile.Mode(optimizer = None, linker = 'c|py'))
+        fn_py = inplace_func([v], gv)
+        fn_c_or_py = inplace_func([v], gv)
 
         a = numpy.random.rand(5,2)
         self.failUnless(numpy.all(fn_py(a) == fn_c_or_py(a)))
@@ -1600,7 +1598,7 @@ def test_reshape():
     c = reshape(a, [2,3])
 
     #basic
-    f = function([a], c, mode='FAST_COMPILE')
+    f = inplace_func([a], c)
     assert numpy.all(f(numpy.asarray([0,1,2,3,4,5])) == numpy.asarray([[0,1,2], [3,4,5]]))
 
     #test that it works without inplace operations
@@ -1608,7 +1606,7 @@ def test_reshape():
     a_val_copy = numpy.asarray([0,1,2,3,4,5])
     b_val = numpy.asarray([[0,1,2],[3,4,5]])
 
-    f_sub = function([a,b], c-b, mode='FAST_COMPILE')
+    f_sub = inplace_func([a,b], c-b)
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(a_val == a_val_copy)
 
@@ -1617,7 +1615,7 @@ def test_reshape():
     a_val_copy = numpy.asarray([0,1,2,3,4,5], dtype='float64')
     b_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
 
-    f_sub = function([a,b], c-b, mode=compile.Mode(optimizer='fast_run', linker='c|py'))
+    f_sub = inplace_func([a,b], c-b)
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(a_val == a_val_copy)
 
@@ -1631,11 +1629,11 @@ def test_flatten_outdimNone():
 
     a = dmatrix()
     c = flatten(a)
-    f = function([a], c, mode='FAST_COMPILE')
+    f = inplace_func([a], c)
     a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
     c_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
-    f = function([a], c, mode='FAST_RUN')
+    f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
     tensor.verify_grad(None, Flatten(), [a_val])
@@ -1643,11 +1641,11 @@ def test_flatten_outdimNone():
 def test_flatten_scalar():
     a = dscalar()
     c = flatten(a)
-    f = function([a], c, mode='FAST_COMPILE')
+    f = inplace_func([a], c)
     a_val = numpy.asarray(3.0, dtype='float64')
     c_val = numpy.asarray([3.0], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
-    f = function([a], c, mode='FAST_RUN')
+    f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
     #tensor.verify_grad(None, Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
@@ -1655,11 +1653,11 @@ def test_flatten_scalar():
 def test_flatten_outdim1():
     a = dmatrix()
     c = flatten(a, 1)
-    f = function([a], c, mode='FAST_COMPILE')
+    f = inplace_func([a], c)
     a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
     c_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
-    f = function([a], c, mode='FAST_RUN')
+    f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
     tensor.verify_grad(None, Flatten(1), [a_val])
@@ -1667,10 +1665,10 @@ def test_flatten_outdim1():
 def test_flatten_outdim2():
     a = dmatrix()
     c = flatten(a, 2)
-    f = function([a], c, mode='FAST_COMPILE')
+    f = inplace_func([a], c)
     a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
     assert numpy.all(f(a_val)==a_val)
-    f = function([a], c, mode='FAST_RUN')
+    f = inplace_func([a], c)
     assert numpy.all(f(a_val)==a_val)
 
     tensor.verify_grad(None, Flatten(2), [a_val])
@@ -1678,11 +1676,11 @@ def test_flatten_outdim2():
 def test_flatten_outdim2_of_3():
     a = Tensor('float64', (False, False, False))()
     c = flatten(a, 2)
-    f = function([a], c, mode='FAST_COMPILE')
+    f = inplace_func([a], c)
     a_val = numpy.asarray([[[0,1],[2,3]], [[4,5],[6,7]]], dtype='float64')
     c_val = numpy.asarray([[0,1,2,3], [4,5,6,7]], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
-    f = function([a], c, mode='FAST_RUN')
+    f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
     tensor.verify_grad(None, Flatten(2), [a_val])
@@ -1710,76 +1708,74 @@ class test_tensordot(unittest.TestCase):
 
     def test0(self):
 
-        for mod in 'FAST_COMPILE', 'FAST_RUN', default_mode:
+        # test vector-vector
+        avec = dvector()
+        bvec = dvector()
+        axes = ((0,),(0,))
+        c = tensordot(axes)(avec, bvec)
+        f1 = inplace_func([avec,bvec],c)
+        aval = numpy.random.rand(5);
+        bval = numpy.random.rand(5);
+        self.failUnless(numpy.tensordot(aval,bval,axes) == \
+                        f1(aval,bval))
+        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
 
-            # test vector-vector
-            avec = dvector()
-            bvec = dvector()
-            axes = ((0,),(0,))
-            c = tensordot(axes)(avec, bvec)
-            f1 = function([avec,bvec],c, mode=mod)
-            aval = numpy.random.rand(5);
-            bval = numpy.random.rand(5);
-            self.failUnless(numpy.tensordot(aval,bval,axes) == \
-                            f1(aval,bval))
-            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        # test matrix-vector
+        bmat = dmatrix()
+        axes = ((0,),(1,))
+        c = tensordot(axes)(avec, bmat)
+        f2 = inplace_func([avec,bmat],c)
+        aval = numpy.random.rand(5);
+        bval = numpy.random.rand(8,5);
+        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                  f2(aval,bval)))
+        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
 
-            # test matrix-vector
-            bmat = dmatrix()
-            axes = ((0,),(1,))
-            c = tensordot(axes)(avec, bmat)
-            f2 = function([avec,bmat],c, mode=mod)
-            aval = numpy.random.rand(5);
-            bval = numpy.random.rand(8,5);
-            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                      f2(aval,bval)))
-            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        # test matrix-matrix
+        amat = dmatrix()
+        axes = ((1,),(0,))
+        c = tensordot(axes)(amat, bmat)
+        f3 = inplace_func([amat,bmat],c)
+        aval = numpy.random.rand(4,7);
+        bval = numpy.random.rand(7,9);
+        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                  f3(aval,bval)))
+        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
 
-            # test matrix-matrix
-            amat = dmatrix()
-            axes = ((1,),(0,))
-            c = tensordot(axes)(amat, bmat)
-            f3 = function([amat,bmat],c, mode=mod)
-            aval = numpy.random.rand(4,7);
-            bval = numpy.random.rand(7,9);
-            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                      f3(aval,bval)))
-            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        # test ndarray-matrix, sum over one dim of matrix
+        atens = Tensor('float64', broadcastable=(False,)*4)()
+        axes = ((2,),(1,))
+        c = tensordot(axes)(atens, bmat)
+        f4 = inplace_func([atens,bmat],c)
+        aval = numpy.random.rand(1,2,3,4);
+        bval = numpy.random.rand(2,3);
+        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                  f4(aval,bval)))
+        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
 
-            # test ndarray-matrix, sum over one dim of matrix
-            atens = Tensor('float64', broadcastable=(False,)*4)()
-            axes = ((2,),(1,))
-            c = tensordot(axes)(atens, bmat)
-            f4 = function([atens,bmat],c, mode=mod)
-            aval = numpy.random.rand(1,2,3,4);
-            bval = numpy.random.rand(2,3);
-            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                      f4(aval,bval)))
-            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
-
-            # test ndarray-ndarray
-            atens = Tensor('float64', broadcastable=(False,)*4)()
-            btens = Tensor('float64', broadcastable=(False,)*3)()
-            axes = ((1,3),(0,2))
-            c = tensordot(axes)(atens, btens)
-            f5 = function([atens,btens],c, mode=mod)
-            aval = numpy.random.rand(4,3,5,2);
-            bval = numpy.random.rand(3,4,2);
-            self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
-                                      f5(aval,bval)))
-            tensor.verify_grad(None, TensorDot(axes), [aval,bval])
-            
-            axes = (axes[1],axes[0])
-            c = tensordot(axes)(btens, atens)
-            f6 = function([btens,atens],c, mode=mod)
-            self.failUnless(numpy.all(numpy.tensordot(bval,aval,axes) == \
-                                      f6(bval,aval)))
-            tensor.verify_grad(None, TensorDot(axes), [bval,aval])
+        # test ndarray-ndarray
+        atens = Tensor('float64', broadcastable=(False,)*4)()
+        btens = Tensor('float64', broadcastable=(False,)*3)()
+        axes = ((1,3),(0,2))
+        c = tensordot(axes)(atens, btens)
+        f5 = inplace_func([atens,btens],c)
+        aval = numpy.random.rand(4,3,5,2);
+        bval = numpy.random.rand(3,4,2);
+        self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
+                                  f5(aval,bval)))
+        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        
+        axes = (axes[1],axes[0])
+        c = tensordot(axes)(btens, atens)
+        f6 = inplace_func([btens,atens],c)
+        self.failUnless(numpy.all(numpy.tensordot(bval,aval,axes) == \
+                                  f6(bval,aval)))
+        tensor.verify_grad(None, TensorDot(axes), [bval,aval])
 
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()
 
-    rval = function([sx,sy], stack(sx,sy))(-4.0, -2.0)
+    rval = inplace_func([sx,sy], stack(sx,sy))(-4.0, -2.0)
     assert type(rval) == numpy.ndarray
     assert [-4, -2] == list(rval)
 
@@ -1788,14 +1784,14 @@ def test_smallest():
     x = dvector()
     y = dvector()
     z = dvector()
-    f1 = function([x], smallest(x))
+    f1 = inplace_func([x], smallest(x))
     assert numpy.all([1,2,3] == f1([1,2,3]))
-    f3 = function([x,y,z], smallest(x,y,z))
+    f3 = inplace_func([x,y,z], smallest(x,y,z))
     assert numpy.all([1,2,3] == f3([1,3,9], [7,7,7], [8,2,3]))
 
     sx, sy = dscalar(), dscalar()
 
-    assert -4 == function([sx,sy], smallest(sx,sy))(-4.0, -2.0)
+    assert -4 == inplace_func([sx,sy], smallest(sx,sy))(-4.0, -2.0)
 
 
 

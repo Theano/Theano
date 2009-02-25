@@ -7,6 +7,7 @@ from functools import partial
 from copy import copy
 import io
 import function_module as F
+from mode import default_mode
 
 
 def join(*args):
@@ -125,7 +126,7 @@ class Component(object):
         """
         raise NotImplementedError
 
-    def make_no_init(self, mode=F.mode_default):
+    def make_no_init(self, mode=default_mode):
         """
         Allocates the necessary containers using allocate() and uses
         build() with the provided mode to make an instance which will
@@ -145,7 +146,7 @@ class Component(object):
         arguments and the keyword arguments. If 'mode' is in the
         keyword arguments it will be passed to build().
         """
-        mode = kwargs.pop('mode', F.mode_default)
+        mode = kwargs.pop('mode', default_mode)
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)
@@ -958,7 +959,7 @@ class Module(ComponentDict):
         """
         self.make_mi(args,kwargs)
 
-        mode = kwargs.pop('mode', F.mode_default)
+        mode = kwargs.pop('mode', default_mode)
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)
@@ -1011,10 +1012,3 @@ class KitComponent(Component):
 
     def build(self, mode, memo):
         return [memo[i.result].value for i in self.kit.sinputs]
-
-
-
-
-
-
-

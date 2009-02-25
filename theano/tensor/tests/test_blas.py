@@ -11,7 +11,7 @@ _as_scalar = GemmLocalOptimizer._as_scalar
 _is_real_matrix = GemmLocalOptimizer._is_real_matrix
 
 from theano import In, Out
-from .test_basic import (_approx_eq, as_tensor, function,
+from .test_basic import (_approx_eq, as_tensor, inplace_func,
         compile, value, constant, inplace, eval_outputs)
 
 class t_gemm(TestCase):
@@ -36,7 +36,7 @@ class t_gemm(TestCase):
             z_orig = z.copy()
             tz,ta,tx,ty,tb = [as_tensor(p).type() for p in z,a,x,y,b]
 
-            f = function([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode=compile.Mode(optimizer = None, linker = l))
+            f = inplace_func([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode=compile.Mode(optimizer = None, linker = l))
             new_z = f(z,a,x,y,b)
             z_after = self._gemm(z_orig, a, x, y, b)
 
@@ -158,7 +158,7 @@ class t_gemm(TestCase):
 
             tz,ta,tx,ty,tb = [value(p) for p in z,a,x,y,b]
 
-            f = function([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
+            f = inplace_func([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
             f(z, a, x, y, b)
             self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
 
@@ -256,11 +256,11 @@ class Warning(Exception):
 
 def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()]):
     try:
-        f = function([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
+        f = inplace_func([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
         for node in f.maker.env.nodes:
             if node.op == T.dot: raise Warning('dot not changed to gemm in graph')
             if node.op == _dot22: raise Warning('_dot22 not changed to gemm in graph')
-        g = function(i, o, mode=compile.Mode(linker='py', optimizer=None))
+        g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None))
         for node in g.maker.env.nodes:
             if node.op == gemm: raise Exception('gemm in original graph')
 
@@ -320,11 +320,11 @@ def test_gemm_opt_double_gemm():
     i = [X,Y,Z,a,b, R, S, c]
     o = [a * T.dot(X,Y) + gemm(Z, b, S.T, R.T, 1.0)]
     try:
-        f = function([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
+        f = inplace_func([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
         for node in f.maker.env.nodes:
             if node.op == T.dot: raise Failure('dot in graph')
             if node.op == _dot22: raise Failure('_dot22 in graph')
-        g = function(i, o, mode=compile.Mode(linker='py', optimizer=None))
+        g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None))
         #for node in g.maker.env.nodes:
         #    if node.op == gemm: raise Failure('gemm in graph')
 
@@ -379,11 +379,11 @@ def test_gemm_opt_vector_stuff():
     X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
     u,v = T.dvector(), T.dvector()
 
-    f = function([a, u, v], a + T.dot(u,v), mode='FAST_RUN')
+    f = inplace_func([a, u, v], a + T.dot(u,v), mode='FAST_RUN')
     if gemm in [n.op for n in f.maker.env.nodes]:
         raise Failure('gemm in graph')
     
-    f = function([a, u, X,Y], a * u + T.dot(X,Y), mode='FAST_RUN')
+    f = inplace_func([a, u, X,Y], a * u + T.dot(X,Y), mode='FAST_RUN')
     if (gemm in [n.op for n in f.maker.env.nodes]):
         raise Failure('gemm in graph')
 
@@ -392,7 +392,7 @@ def test_inplace0():
     X,Y,Z,a,b = T.dmatrix(), T.dmatrix(), T.dmatrix(), T.dscalar(), T.dscalar()
     R, S, c = T.dmatrix(), T.dmatrix(), T.dscalar()
 
-    f = function([X,Y,Z,a,b, R, S, c],
+    f = inplace_func([X,Y,Z,a,b, R, S, c],
             [Z * (Z *c + a * T.dot(X,Y) + b * T.dot(R,S).T)], mode='FAST_RUN')
     if (gemm in [n.op for n in f.maker.env.nodes]):
         raise Failure('gemm in graph')
@@ -400,7 +400,7 @@ def test_inplace0():
 def test_inplace1():
     X,Y,Z,a,b = XYZab()
     # with > 2 terms in the overall addition
-    f = function([X,Y,Z,a,b],
+    f = inplace_func([X,Y,Z,a,b],
             [Z + Z + T.dot(X,Y)], mode='FAST_RUN')
     if (gemm in [n.op for n in f.maker.env.nodes]):
         raise Failure('gemm in graph')

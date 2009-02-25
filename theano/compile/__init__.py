@@ -14,5 +14,7 @@ from builders import *
 import module
 from module import *
 
+import debugmode
+
 from profilemode import ProfileMode
 

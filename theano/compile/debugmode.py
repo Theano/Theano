@@ -11,13 +11,9 @@ from ..gof import Env, graph, utils, link
 from ..gof.link import WrapLinkerMany, raise_with_op
 from ..gof.cutils import run_cthunk
 from ..gof.cc import OpWiseCLinker, CLinker
-from ..compile.mode import Mode
 import numpy
 
-
-from ..compile.function_module import (convert_function_input, 
-        FunctionMaker,
-        predefined_modes,
+from ..compile.function_module import (FunctionMaker,
         Function, 
         infer_reuse_pattern,
         SymbolicInput,
@@ -622,6 +618,9 @@ class DebugModeFunctionMaker(FunctionMaker): #inheritance buys a few helper func
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self)
         return fn
 
+
+
+from ..compile.mode import Mode, register_mode
 class DebugMode(Mode):
     """Evaluation Mode that detects optimization errors.
 
@@ -648,6 +647,4 @@ class DebugMode(Mode):
                 linker=DebugModeLinker)
         self.stability_patience = stability_patience
         self.check_c_code = check_c_code
-
-
-
+register_mode('DEBUG_MODE',DebugMode(optimizer='fast_run'))

@@ -1,5 +1,5 @@
-
 import numpy
+import os
 import scipy.sparse as sp
 from .. import gof
 
@@ -144,16 +144,21 @@ class Mode(object):
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
-
 FAST_COMPILE = Mode('py', 'fast_compile')
 FAST_RUN = Mode('c|py', 'fast_run')
 SANITY_CHECK = [Mode('c|py', None),
                 Mode('c|py', 'fast_run')]
-
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,
                     'SANITY_CHECK': SANITY_CHECK}
-default_mode = 'FAST_COMPILE'
+
+
+##
+# The default mode used by functions and modules is read from the environment
+# variable THEANO_DEFAULT_MODE. Unit tests will run using this value. If the env. var.
+# is not set, it will default to 'FAST_RUN'
+##
+default_mode = os.getenv('THEANO_DEFAULT_MODE','FAST_RUN')
 
 def register_mode(name, mode):
     """Add a `Mode` which can be referred to by `name` in `function`."""

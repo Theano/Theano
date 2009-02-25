@@ -136,7 +136,7 @@ class test_greedy_distribute(unittest.TestCase):
                 , eps + y/s
                 , s)
 
-        f = function([s, eps, x,y], r**2, mode=DebugMode())
+        f = function([s, eps, x,y], r**2)
 
         r0 = f(4,1.e-6, [1.5,2], [2.3,3.1])
         r1 = f(4,1.e-6, [1.5,2], [2.3,3.1])

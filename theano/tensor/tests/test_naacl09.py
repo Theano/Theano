@@ -5,6 +5,7 @@ from theano import tensor as T
 from theano.tensor import nnet as NN
 import numpy as N
 from theano.compile import module
+from theano.compile.mode import default_mode
 from theano import tensor as T, sparse as S
 import numpy as N
 import sys
@@ -482,15 +483,17 @@ def create_realistic(window_size=3,#7,
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
     return model
 
-def test_naacl_model(optimizer='fast_run', iters_per_unsup=10, iters_per_sup=10,
-        realistic=False):
+def test_naacl_model(iters_per_unsup=10, iters_per_sup=10,
+        optimizer=None, realistic=False):
     print "BUILDING MODEL"
     import time
     t = time.time()
+    
+    mode = theano.Mode(linker='c|py', optimizer=optimizer) if optimizer else default_mode
     if realistic:
-        m = create_realistic(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
+        m = create_realistic(compile_mode=mode)
     else:
-        m = create(compile_mode = theano.Mode(linker='c|py', optimizer=optimizer))
+        m = create(compile_mode=mode)
 
     print 'BUILD took', time.time() - t
     prog_str = []

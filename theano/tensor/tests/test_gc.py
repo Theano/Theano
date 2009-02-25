@@ -73,7 +73,7 @@ def test_merge_opt_runtime():
         else:
             r = x
     t = time.time()
-    f = theano.function([x], r,mode='FAST_COMPILE')
+    f = theano.function([x], r)
     dt = time.time() - t
 
     assert dt < 5.0 #it should never take longer than 5 seconds to compile this graph

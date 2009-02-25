@@ -335,22 +335,21 @@ class test_structureddot(unittest.TestCase):
             return structured_dot(csc, images.T)
         out = buildgraphCSC(kerns,images)
 
-        for mode in 'FAST_COMPILE','FAST_RUN':
-            f = theano.function([kerns,images], out, mode=mode)
-            kernvals = spmat.data[:spmat.size]
-            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
-            outvals = f(kernvals,imvals)
-            print type(spmat.dot(imvals.T))
-            print spmat.dot(imvals.T)
-            print dir(spmat.dot(imvals.T))
+        f = theano.function([kerns,images], out)
+        kernvals = spmat.data[:spmat.size]
+        imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+        outvals = f(kernvals,imvals)
+        print type(spmat.dot(imvals.T))
+        print spmat.dot(imvals.T)
+        print dir(spmat.dot(imvals.T))
 
-#           scipy 0.7.0 should already make the output dense
-#            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
-            c = spmat.dot(imvals.T)
-            assert _is_dense(c)
-            assert numpy.all(outvals == c)
+#       scipy 0.7.0 should already make the output dense
+#       assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+        c = spmat.dot(imvals.T)
+        assert _is_dense(c)
+        assert numpy.all(outvals == c)
 
-            tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals], mode=mode)
+        tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals])
 
         spmat = spmat.tocsr()
         def buildgraphCSR(kerns,images):
@@ -358,19 +357,18 @@ class test_structureddot(unittest.TestCase):
             return structured_dot(csr, images.T)
         out = buildgraphCSR(kerns,images)
 
-        for mode in 'FAST_COMPILE','FAST_RUN':
-            f = theano.function([kerns,images], out, mode=mode)
-            kernvals = spmat.data[:spmat.size]
-            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
-            outvals = f(kernvals,imvals)
+        f = theano.function([kerns,images], out)
+        kernvals = spmat.data[:spmat.size]
+        imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+        outvals = f(kernvals,imvals)
 
-#           scipy 0.7.0 should already make the output dense
-#            assert numpy.all(outvals == spmat.dot(imvals.T).todense())
-            c = spmat.dot(imvals.T)
-            assert _is_dense(c)
-            assert numpy.all(outvals == c)
+#       scipy 0.7.0 should already make the output dense
+#       assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+        c = spmat.dot(imvals.T)
+        assert _is_dense(c)
+        assert numpy.all(outvals == c)
 
-            tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals], mode=mode)
+        tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals])
 
 
 if __name__ == '__main__':

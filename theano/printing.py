@@ -37,6 +37,13 @@ class Print(Op):
     def grad(self,input,output_gradients):
         return output_gradients
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.message==other.message and self.attrs==other.attrs
+
+    def __hash__(self):
+        return hash(self.message) ^ hash(self.attrs)
+
+
 class PrinterState(gof.utils.scratchpad):
     
     def __init__(self, props = {}, **more_props):

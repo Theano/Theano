@@ -13,7 +13,7 @@ class T_test_module(unittest.TestCase):
     def test_state_propagation(self):
         x = tensor.vector()
         rk = RandomKit('rk', 1000)
-        f = compile.function([x, (rk, [gof.Container(r = gof.generic, storage = [123], name='bla')])], rk.binomial(tensor.shape(x)), mode='FAST_COMPILE')
+        f = compile.function([x, (rk, [gof.Container(r = gof.generic, storage = [123], name='bla')])], rk.binomial(tensor.shape(x)))
         f['rk'] = 9873456
     
         rvals = [f([1,2,3,4,6, 7, 8]) for i in xrange(5)]
@@ -45,7 +45,7 @@ class T_test_module(unittest.TestCase):
                 self.f = compile.Method([self.b.x], self.b.r)
 
         b = E()
-        m = b.make(mode='FAST_COMPILE')
+        m = b.make()
         
         m.seed(1000)
     #print m.f(N.ones(5))

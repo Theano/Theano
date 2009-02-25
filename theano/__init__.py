@@ -57,6 +57,7 @@ import tensor
 import scalar
 import sparse
 import gradient
+import gof
 
 
 ## import scalar_opt
