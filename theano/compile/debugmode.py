@@ -401,7 +401,7 @@ class _Linker(gof.link.LocalLinker):
                 thunk.inputs = node_input_storage
                 thunk.outputs = node_output_storage
                 thunks_c.append(thunk)
-            except utils.AbstractFunctionError:
+            except (NotImplementedError, utils.AbstractFunctionError):
                 thunks_c.append(None)
 
 
