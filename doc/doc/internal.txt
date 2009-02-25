@@ -16,7 +16,7 @@ For example::
 
     :api:`function <theano.compile.function>`
 
-You can also use :api:`path-to-symbol` directly.
+You can also use ``:api:\`path-to-symbol\``` directly.
 
 If you are lazy, you can try::
 

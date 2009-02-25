@@ -81,3 +81,30 @@ Several things should be learned from the above example:
       3 contains sp.data[2:3], i.e. the third non-zero value.
 
 TODO: Rewrite this documentation to do things in a smarter way.
+
+:api:`TrueDot` vs. :api:`StructuredDot`
+----------------------------------------
+
+Often when you use a sparse matrix it is because there is a meaning to the
+structure of non-zeros. The gradient on terms outside that structure
+has no meaning, so it is computationally efficient not to compute them.
+
+StructuredDot is when you want the gradient to have zeroes corresponding to
+the sparse entries in the matrix.
+
+TrueDot and Structured dot have different gradients
+but their perform functions should be the same.
+
+The gradient of TrueDot can have non-zeros where the sparse matrix had zeros.
+The gradient of StructuredDot can't.
+
+Suppose you have ``dot(x,w)`` where ``x`` and ``w`` are square matrices.
+If ``w`` is dense, like ``randn((5,5))`` and ``x`` is of full rank (though
+potentially sparse, like a diagonal matrix of 1s) then the output will
+be dense too. (But i guess the density of the output is a red herring.)
+What's important is the density of the gradient on the output.
+If the gradient on the output is dense, and ``w`` is dense (as we said it was)
+then the True gradient on ``x`` will be dense.
+If our dot is a TrueDot, then it will say that the gradient on ``x`` is dense.
+If our dot is a StructuredDot, then it will say the gradient on ``x`` is only
+defined on the diagonal and ignore the gradients on the off-diagonal.

@@ -364,8 +364,10 @@ register_specialize(skip_pack_csc01)
 #
 # Conversion
 #
-# convert a sparse matrix to an ndarray
 class DenseFromSparse(gof.op.Op):
+    """
+    Convert a sparse matrix to an `ndarray`.
+    """
     sparse_grad = True
     def make_node(self, x):
         x = as_sparse(x)
