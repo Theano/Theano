@@ -5,6 +5,28 @@ Internal notes
 ================
 
 
+How to link from Sphinx to API documentation
+--------------------------------------------
+
+Link from Sphinx to epydoc this way::
+
+    :api:`linkname <path-to-symbol>`
+
+For example::
+
+    :api:`function <theano.compile.function>`
+
+You can also use :api:`path-to-symbol` directly.
+
+If you are lazy, you can try::
+
+    :api:`<function>`
+
+However, if the link target is ambiguous, Sphinx will generate errors.
+
+NB the ``:api:`` reference is special magic by Olivier, in
+./scripts/docgen.py.
+
 How to write API documentation
 ---------------------------------------
 
@@ -14,17 +36,23 @@ API documentation is processed by `epydoc
 <http://epydoc.sourceforge.net/manual-othermarkup.html#restructuredtext>`__
 for details about how to use reST with epydoc documentation.
 
-How to build sphinx documentation
+How to build documentation
 ---------------------------------------
 
-Let's say you are writing documentation, and want to see the `sphinx
+Let's say you are writing documentation, and want to see
+the `epydoc <http://epydoc.sourceforge.net/>`__ and `sphinx
 <http://sphinx.pocoo.org/>`__ output before you push it.
-Here is what you do it::
 
-    cd Theano/doc
-    # Make an HTML directory for the output
-    mkdir html
-    sphinx-build . html
+The following technique uses Olivier's code to insert :api: links::
+
+    cd Theano/
+    python ./scripts/docgen.py
+
+If you don't want to rerun epydoc, do the following::
+
+    cd Theano/
+    python ./scripts/docgen.py --rst
+
 
 
 How documentation is auto-built on push
@@ -62,4 +90,5 @@ TO WRITE
  * where the documentation is getting built, and epy.
  * How epydoc and sphinx are integrated
  * The nightly build process.
+ * Explain the special magic in ./scripts/docgen.py
  * We also want examples of good documentaiton, to show people how to write sphinx,
