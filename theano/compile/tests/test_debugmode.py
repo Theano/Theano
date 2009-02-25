@@ -5,7 +5,7 @@ from theano import gof
 import theano.sparse
 import theano
 import theano.tensor
-import debugmode
+from theano.compile import debugmode
 import theano.compile
 
 def test0():
