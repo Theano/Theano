@@ -1,3 +1,13 @@
+"""
+These routines are not well-tested. They are also old.
+OB says that it is not important to test them well because Scalar Ops
+are rarely used by themselves, instead they are the basis for Tensor Ops
+(which should be checked thoroughly). Moreover, Scalar will be changed
+to use numpy's scalar routines.
+If you do want to rewrite these tests, bear in mind:
+  * You don't need to use Composite.
+  * Env and DualLinker are old, use compile.function instead.
+"""
 
 import unittest
 

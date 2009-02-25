@@ -791,7 +791,12 @@ tanh = Tanh(upgrade_to_float, name = 'tanh')
 
 
 class Composite(ScalarOp):
-
+    """
+    Composite is an Op that takes a graph of scalar operations and
+    produces c code for the whole graph. Its biggest use would be to
+    implement the loop fusion optimizer (which I have yet to do
+    someday...)
+    """
     def __init__(self, inputs, outputs):
         env = Env(*gof.graph.clone(inputs, outputs))
         gof.MergeOptimizer().optimize(env)
