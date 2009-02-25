@@ -1,4 +1,4 @@
-""" Provides `OptCheck`
+""" Provides `DebugMode`
 
 
 """
@@ -25,17 +25,10 @@ from ..compile.function_module import (convert_function_input,
         SymbolicOutput,
         Supervisor)
 
-def values_eq_enough_warn(a, b, r):
-    # TODO: use  the result variables r to retrieve a Type, and then use the Type's value_cmp
-    # function: see ticket on value_cmp
-    print >> sys.stderr, 'WARNING: OptCheck comparison of', type(new_r_val), 'NotImplementedError'
-    return True
-
-
-class OptCheckError(Exception):
+class DebugModeError(Exception):
     pass
 
-class BadClinkerOutput(OptCheckError):
+class BadClinkerOutput(DebugModeError):
     """Exception: a c implementation and python implementation don't agree"""
 
     r = None
@@ -54,7 +47,7 @@ class BadClinkerOutput(OptCheckError):
         self.a = a
         self.b = b
 
-class BadOptimization(OptCheckError):
+class BadOptimization(DebugModeError):
     """Exception: some result and its substitute take different runtime values."""
 
     new_r = None
@@ -272,7 +265,7 @@ def optcheck_env(input_specs, output_specs, accept_inplace = False):
     return env, map(SymbolicOutput, updates), equivalence_tracker
 
 
-class OptCheckLinker(gof.link.LocalLinker):
+class DebugModeLinker(gof.link.LocalLinker):
     def __init__(self, maker):
         super(gof.LocalLinker, self).__init__()
         self.env = None
@@ -280,7 +273,7 @@ class OptCheckLinker(gof.link.LocalLinker):
 
     def accept(self, env, no_recycling = []):
         if self.env is not None and self.env is not env:
-            assert type(self) is OptCheckLinker
+            assert type(self) is DebugModeLinker
             return type(self)(self.env, self.maker).accept(env, no_recycling)
         self.env = env
         self.no_recycling = no_recycling
@@ -449,7 +442,7 @@ class OptCheckLinker(gof.link.LocalLinker):
             thunks_py, order
 
 NODEFAULT = ['NODEFAULT']
-class OptCheckFunctionMaker(FunctionMaker): #inheritance buys a few helper functions
+class DebugModeFunctionMaker(FunctionMaker): #inheritance buys a few helper functions
     verbose = 0
     """Verbosity level of compile-time and run-time checks. (Default 0: silent)"""
 
@@ -516,7 +509,7 @@ class OptCheckFunctionMaker(FunctionMaker): #inheritance buys a few helper funct
         self.env = env
         #equivalence_tracker.printstuff()
 
-        linker = OptCheckLinker(self)
+        linker = DebugModeLinker(self)
 
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
@@ -629,7 +622,7 @@ class OptCheckFunctionMaker(FunctionMaker): #inheritance buys a few helper funct
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self)
         return fn
 
-class OptCheck(Mode):
+class DebugMode(Mode):
     """Evaluation Mode that detects optimization errors.
 
     A basic premise of how theano works is that every node that is replaced during optimization should compute the same thing as its replacement.
@@ -645,14 +638,14 @@ class OptCheck(Mode):
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):
         assert m is self
-        return OptCheckFunctionMaker(i, o, self.optimizer, self, *args, **kwargs)
+        return DebugModeFunctionMaker(i, o, self.optimizer, self, *args, **kwargs)
     def __init__(self, 
             optimizer='fast_run', 
             stability_patience=10,
             check_c_code=True):
-        super(OptCheck, self).__init__(
+        super(DebugMode, self).__init__(
                 optimizer=optimizer,
-                linker=OptCheckLinker)
+                linker=DebugModeLinker)
         self.stability_patience = stability_patience
         self.check_c_code = check_c_code
 

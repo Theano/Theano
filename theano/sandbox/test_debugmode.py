@@ -10,7 +10,7 @@ import theano.compile
 
 def test0():
     x = theano.tensor.dvector()
-    f = theano.function([x], (2.*x + 7) / 2., mode=debugmode.OptCheck())
+    f = theano.function([x], (2.*x + 7) / 2., mode=debugmode.DebugMode())
     print f([1,2])
 
 class BROKEN_ON_PURPOSE_StructuredDotCSC(gof.Op):
@@ -161,10 +161,10 @@ def test_badclinkeroutput():
 
     f_good = theano.function([vals, inds, ptrs, nrows, b], 
             theano.sparse.StructuredDotCSC()(vals, inds, ptrs, nrows, b), 
-            mode=debugmode.OptCheck(check_c_code=True))
+            mode=debugmode.DebugMode(check_c_code=True))
     f_inconsistent = theano.function([vals, inds, ptrs, nrows, b], 
             inconsistent(vals, inds, ptrs, nrows, b), 
-            mode=debugmode.OptCheck(check_c_code=True))
+            mode=debugmode.DebugMode(check_c_code=True))
 
     #this should evaluate with no error
     rval_good = f_good([1.0, 2.0, 3.0],
@@ -205,7 +205,7 @@ def test_badoptimization():
 
     f = theano.function([vals, inds, ptrs, nrows, b], 
             theano.sparse.sd_csc(vals, inds, ptrs, nrows, b), 
-            mode=debugmode.OptCheck(optimizer=opt, check_c_code=True))
+            mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
 
     try:
         rval = f([1.0, 2.0, 3.0],
