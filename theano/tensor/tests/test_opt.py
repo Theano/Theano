@@ -13,7 +13,7 @@ from theano import pprint
 import numpy
 #import scalar_opt
 
-from theano.sandbox.debugmode import OptCheck
+from theano.sandbox.debugmode import DebugMode
 from theano import function
 
 
@@ -136,7 +136,7 @@ class test_greedy_distribute(unittest.TestCase):
                 , eps + y/s
                 , s)
 
-        f = function([s, eps, x,y], r**2, mode=OptCheck())
+        f = function([s, eps, x,y], r**2, mode=DebugMode())
 
         r0 = f(4,1.e-6, [1.5,2], [2.3,3.1])
         r1 = f(4,1.e-6, [1.5,2], [2.3,3.1])

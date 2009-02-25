@@ -242,6 +242,22 @@ class PureType(object):
         r.tag.trace = traceback.extract_stack()[:-1]
         return r
 
+    def values_eq_enough(self, a, b):
+        """Return True if a and b can be considered equal as Op outputs, else False.
+
+        :param a: a potential value for a Result of this Type.
+
+        :param b: a potential value for a Result of this Type.
+
+        :rtype: Bool
+
+        This function is used by theano debugging tools to decide whether two values are
+        equivalent, admitting a certain amount of numerical instability.  For example,
+        for floating-point numbers this function should be an approximate comparison.
+
+        """
+        return (a == b)
+
 
 _nothing = """
        """
