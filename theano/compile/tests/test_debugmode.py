@@ -214,7 +214,7 @@ def test_badoptimization():
                 3,
                 numpy.asarray([[0.,1.,2.],[3.,4.,5.],[6.,7.,8.]]))
     except debugmode.BadOptimization, e:
-        assert str(e.reasons[e.new_r][0][0]) == 'insert_broken_csc'
+        assert str(e.reason) == 'insert_broken_csc'
         return #TEST PASS
 
     assert False
