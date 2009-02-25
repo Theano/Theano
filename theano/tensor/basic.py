@@ -222,6 +222,10 @@ class Tensor(Type):
         """Compare True iff other is the same kind of Tensor"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
+    def values_eq_enough(self, a, b):
+        return type(a) is numpy.ndarray and type(b) is numpy.ndarray \
+                and (a.shape == b.shape) and numpy.allclose(a, b)
+
     def __hash__(self):
         """Hash equal for same kinds of Tensor"""
         return hash(self.dtype) ^ hash(self.broadcastable)
