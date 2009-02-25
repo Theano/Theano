@@ -3,87 +3,97 @@
 Theano
 ======
 
+Theano is a Python library aiming to allow definition, optimization
+and efficient evaluation of mathematical expressions involving
+multi-dimensional arrays (though it may be extended to support many
+other types). Theano melds some aspects of a computer algebra system
+(CAS) with aspects of an optimizing compiler. This is particularly
+useful in fields such as machine learning where complicated algorithms
+must be run over large amounts of data.
+
+Theano supports a wide range of numerical types in multiple
+dimensions, a rapidly growing number of well-tested operations as well
+as utilities to compute the gradient of an expression with respect to
+another. Symbolic expressions may be compiled into functions, which
+work merrily on the same data structures as numpy_, allowing for easy
+interoperability.
+
+Theano's compiler applies many optimizations of varying
+complexity. These optimizations include, but are not limited to
+constant folding, merging of similar subgraphs (to avoid calculating
+the same values more than once), simple arithmetic simplification
+(``x*y/x -> y``), inserting efficient BLAS_ operations and using
+inplace operations wherever it is safe to do so. Theano also defines
+several optimizations which improve the numerical stability of
+computations and it provides a framework to add and test new
+optimizers.
+
+Theano was written at the LISA_ to support the development of
+efficient machine learning algorithms while minimizing human
+time. Theano was named after the `Greek mathematician`_ who may have
+been Pythagoras' wife.
+
+
+
+Getting started
+===============
+
+TODO: I want to bold the links below. How the fuck do I bold links? ``**`link name`_**`` doesn't work! :(
+
+
+`Installing Theano`_
+  Instructions to download and install Theano on your system.
+
+
+`Basic tutorial`_
+  Getting started with Theano's basic features. Go there if you are new!
+
+
+`Advanced tutorial`_
+  This tutorial is for more advanced users who want to define their own
+  operations and optimizations. It is recommended to go through the
+  `Basic tutorial`_ first.
+
+
+
+Contents
+========
+
 .. toctree::
-   :maxdepth: 2
+   :glob:
 
-   doc/README
-   doc/LICENSE
-   doc/index
-
--------------------------------------------------------------------
-A python library for manipulating and evaluating matrix expressions
--------------------------------------------------------------------
-
-Theano is a library and optimizing compiler in Python, built to
-evaluate complicated expressions (especially matrix-valued ones) as
-quickly as possible.  It was written at LISA_ to explore techniques
-for machine learning.  Our project uses the name to honour the ancient
-Greek mathematician.
-
---------------------------------------------------------------------------------
-
-.. _not in the normal sense: :wiki:`WhatIsTheano`
-
-Overview
-========
-
-**To get up and running quickly** see README_.
-
-All **documentation** can be reached from the `Theano Project Documentation Overview`_.
-
-As developers of an open source project, we rely on **feedback** for
-determining what features to implement, and what documentation needs to be
-improved.  The best forum for feedback is the theano-users_ mailing list.
-
-All **discussion** about theano also takes place on the theano-users_ mailing list.
-
-If you find a **bug**, please file a `bug report`_ or send email to
-the theano-users_ mailing list.  **Patch** submissions should be
-sent to theano-dev_.
-
-We welcome all kinds of **contributions**.  Our `task list`_ is
-full of interesting ideas awaiting a champion.  If you have any
-questions regarding how to extend Theano, please feel free to ask on
-the Theano-dev_ mailing list.
-
-Theano is in active development and should be considered **experimental**.
-APIs are subject to change at any time.
+   *
 
 
-Download
-========
+Contact us
+==========
 
-We recommend that you use the `latest snapshot`_,
-Better yet, use `mercurial`_ to keep your installation fresh.
-The snapshots usually contain *more features* and *fewer bugs* than the
-"official" releases |---| they're not only for developers!
+Discussion about Theano takes place in the theano-dev_ and
+theano-users_ mailing lists. People interested in development of
+Theano should check the former, while the latter is reserved for
+issues that concern the end users.
+
+Questions, comments, praise, criticism as well as bug reports should
+be submitted to these mailing lists.
+
+We welcome all kinds of contributions. Our `task list`_ is full of
+interesting ideas awaiting a champion.  If you have any questions
+regarding how to extend Theano, please feel free to ask on the
+theano-dev_ mailing list.
 
 
-Indices and tables
-==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. _LISA:  http://www.iro.umontreal.ca/rubrique.php3?id_rubrique=27
+.. _Greek mathematician: http://en.wikipedia.org/wiki/Theano_(mathematician)
+.. _numpy: http://numpy.scipy.org/
+.. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 
+.. _Installing Theano: install.html
+.. _Basic tutorial: tutorial/index.html
+.. _Advanced tutorial: advtutorial/index.html
 
-.. |---| unicode:: U+02014 .. em dash
-   :trim:
-.. _latest snapshot: http://pylearn.org/hg/theano/archive/tip.tar.gz
-.. _bug report: http://lgcm.iro.umontreal.ca/theano/newticket
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
-.. _reStructuredText: rst.html
 .. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
-.. _README: README.html
-.. _Quick-Start: README.html#quick-start
 
-.. _Theano Project Documentation Overview: doc/index.html
-.. _Mercurial: http://www.selenic.com/mercurial/wiki/
-.. _docutils: http://docutils.sourceforge.net
-.. _epydoc: http://epydoc.sourceforge.net/
-.. _scipy: http://scipy.org/
-.. _Python: http://www.python.org/
-.. _TRAC: http://trac.edgewall.org/
-.. _LISA:  http://www.iro.umontreal.ca/rubrique.php3?id_rubrique=27
 
