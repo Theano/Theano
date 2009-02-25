@@ -1,0 +1,351 @@
+.. _how_to_make_ops:
+
+#################
+How to Make Ops
+#################
+
+[*Links within the page would be nice. Also, links to the epydocumentation for the major classes, e.g. Op and Result, would be useful at least once in the document.*]
+
+:ref:`Graph`
+
+What is an Op?
+==============
+
+An Op *instance* represents a particular function that can be applied to
+inputs to produce a Result. Note that (unlike in the previous version of
+Theano) an Op instance does not represent the application of a function,
+only the function itself. This means that the same Op instance can be
+used several times in the same computation graph, as part of different
+nodes. [*I don't understand, how would that work? What are the semantics
+of it?*]
+
+An Op can provide the following special functionality which will be
+detailed further down the page:
+
+  * Given a list of input Results, *make_node* produces an Apply instance representing the application of a function on those inputs.
+  * Given an Apply instance, a list of input values and a list of output storage, *perform* fills the storage with the results of the computation on the inputs.
+  * Given an Apply instance and names for the node, inputs and outputs, *c_code* and *c_code_cleanup* produce C code to compute the function.
+  * Given input Results and gradient Results, *grad* returns the symbolic expressions for computing gradients for each input.
+
+To make an Op, extend the Op class and override the functions you need. The checklist section below should be of great help to make sure your Op's interface is complete.
+
+Using an Op subclass
+--------------------
+
+This is not meant to give an exhaustive overview of how to use an Op (see IntroToOps for that).
+
+.. code-block:: python
+
+	op = MyOp(<parameters>)
+	node = MyOp(<parameters>).make_node(<inputs>)   # returns an Apply instance (contains pointers to op, inputs and outputs)
+	result = MyOp(<parameters>)(<inputs>)           # returns as many Result instances as the op has outputs (each contains pointer to node) (this is what the end user manipulates)
+	value = op.perform(node, <values>, <storage>)   # computes the function on actual values - see perform section
+
+Checklist
+---------
+
+Use this list to make sure that you defined everything you need for your Op:
+  * Are there parameters that are not inputs but parametrize the behavior of your Op? (see parametrization section below)
+
+    * Yes?
+
+      * Define ``__init__`` with those parameters. They will be instance variables.
+      * Override ``__eq__``, ``__ne__`` and ``__hash__`` (optional)
+      * Consider making pre-made instances for common parameters. This will simplify usage.
+    * No? (usual case for simple Ops)
+      * Consider making a singleton of your Op (this can be as simple as ``my_op = MyOp()``). It will simplify usage. [*What is the benefit of using the singleton? How does it simplify usage? We __shouldn't__ use singletons when there __are__ parameters?*]
+      * All instances should compare equal (which is trivial if there is only one of them). [*How do we make sure this is true? Because this checklist should be a list of instructions. Do you describe later on?*]
+  * Always define *make_node* (see make_node section below).
+  * Always define *perform* (see perform section below).
+  * Do you need performance only C can offer?
+    * Define *c_code* and *c_code_cleanup* (see HowtoMakeCeeOps)
+    * Remember to use the 'c' or 'c|py' linker on graphs using your Op! [*This is described where?*]
+  * Is your Op differentiable?
+    * Define *grad* (see grad section below) [*If not, and you don't define *grad*, what will happen if you try to differentiate it?*]
+  * Does your Op modify any of its inputs?
+    * *IMPORTANT:* read the destroyers and viewers section.
+  * Does any output from the Op share any sort of state with an input?
+    * *IMPORTANT:* read the destroyers and viewers section.
+  * Does your Op have more than one output?
+    * Consider setting the default_output attribute to the index of that output. (It will make your Op usable in ``PatternOptimizers``, and make user code look like the Op has only that output.)
+
+[*Consider changing the order of the checklist above and the sections below such that the stuff you ALWAYS have to do, which is the most basic stuff anyhow, goes towards the top.*]
+
+Parametrization
+===============
+
+An Op class can represent one or a wide variety of functions depending on how you choose to parametrize it. The parameters of an Op do not show up in the structure of the computation graph - they are local to the Op. [*What does the last sentence mean? What is its effect?*] When an Op's ``make_node`` function is called on an Op instance with a list of inputs, the computation that is performed depends on the type and value of those inputs and on the internal parameters of the Op.
+
+It is not always obvious what should be a parameter and what should be an input. For example, a generic indexing Op could take a list and an index as graph inputs, whereas a specific indexing Op could have an index parameter, so you could have a specialized Op instance to fetch the nth element of a list, where n is known statically. [*Could you give some advice about the relative tradeoffs of having something as a parameter and something as an input?*]
+
+Examples of parameterized Ops in theano:
+  ``Broadcast(<scalar op>, <inplace?>)``
+    upgrades an op that works on scalars so it works on tensors. Can work inplace or not.
+  ``Reduce(<scalar op>, <axes>)``
+    reduces the specified axes using the provided scalar op.
+  ``Add(<output type inferrer>)``
+    adds scalars and puts the result in a scalar whose type is inferred from the input types using ``output_type_inferrer(*inputs)``
+  ``Composite(<graph>)``
+    makes a single Op out of a graph of scalar operations.
+
+[*These examples are a little abstract. I'm not sure what are the inputs and what are the parameters. Maybe also give like something that has a random seed.*]
+
+Ideas:
+  ``MyOp(<debug>)``
+    prints debugging information in perform or the C implementation if debug is True.
+  ``MyOp(<allow C>)``
+    always use the python implementation if allow C is False (raise an exception in c_code)
+
+``__eq__``, ``__ne__`` and ``__hash__``
+---------------------------------------------
+
+In order for certain optimizations to apply (such as the merging of duplicate calculations by ``MergeOptimizer``), it is necessary for Ops that do the same thing to compare equal.  If ``Op`` instances are generated by a function call (for example) then it can happen that several different ``Op`` instances do the same thing; in that case you will have to override ``__eq__``, ``__ne__``, and ``__hash__`` for the ``MergeOptimizer`` to recognize them as equal.
+
+Recall: the contract for ``__hash__`` is that ``a == b`` implies ``hash(a) == hash(b)``.
+
+Mutability
+----------
+
+In general, Theano's internal routines assume that the parameters of an op are immutable.
+If in doubt, don't change them (especially once you are using them in a graph).
+[*Does this mean that the output has to be deterministic? i.e. if I generate random unmers in the Op, I have to reset the RNG to the initial state afterwards?*]
+
+make_node
+=========
+
+The ``make_node`` method is expected to have the following signature:
+
+.. code-block:: python
+
+    make_node(self, *inputs)
+
+``inputs`` may be a list of anything that the user wants to provide as symbolic input (symbolic: standing for the actual values that will be passed when the graph is compiled into an executable function). [*The Theano intro should describe symbolic in greater depth, and we should link to that from here.*] This may or may not include Result instances (but if you want the inputs of this Op to sometimes be outputs of another Op, then the inputs should be Result instances). [*What else could they be? Constant, Values, ...*] The return value should be an instance of [GraphStructures Apply] (see the example below). Here are the tasks typically handled in ``make_node``.
+
+  * Check that the inputs are valid (type checking, etc.). [*Since we don't actually have values, what can we do besides type checking?*]
+  * If needed, wrap the inputs in Result instances with the proper type.
+  * Make the Result instances that will serve as the outputs of the node.
+  * ``return Apply(self, <wrapped inputs>, <outputs>)``
+
+The ``inputs`` and ``outputs`` arguments to ``Apply`` must be lists of ``Result`` instances (or instances of subclasses of ``Result``). The inputs given to ``Apply`` do not have to be the same as the inputs passed to ``make_node``, but it is recommended that the order corresponds. [*why?*] The behavior of ``make_node`` should not depend on the structure of the graph of [*or?*] its inputs: it may look at the type and type fields of its inputs, but not at their owner field, because modifications to the graph structure do not use ``make_node``. [*???*]
+
+Example:
+
+.. code-block:: python
+
+	from theano.scalar import *
+	
+	class Add(Op):
+	    #...
+	    def make_node(self, x, y):
+	        # note 1: constant, int64 and Scalar are defined in theano.scalar
+	        # note 2: constant(x) is equivalent to Constant(type = int64, data = x)
+	        # note 3: the call int64() is equivalent to Result(type = int64) or Result(type = Scalar(dtype = 'int64'))
+	        if isinstance(x, int):
+	            x = constant(x)
+	        elif not isinstance(x, Result) or not x.type == int64:
+	            raise TypeError("expected an int64 Scalar")
+	        if isinstance(y, int):
+	            y = constant(y)
+	        elif not isinstance(y, Result) or not x.type == int64:
+	            raise TypeError("expected an int64 Scalar")
+	        inputs = [x, y]
+	        outputs = [int64()]
+	        node = Apply(op = self, inputs = inputs, outputs = outputs)
+	        return node
+	    #...
+	
+	add = Add()                               # I make an instance of Add
+	node1 = add.make_node(int64(), int64())   # I make a node with two Result inputs
+	node2 = add.make_node(1, 2)               # this works too
+	node3 = add.make_node(int64(), 79)        # this works three
+	node4 = add.make_node(float64(), int64()) # this raises a TypeError
+
+[*What type is an instance of Add? It's an Apply? But that's not a Result, and cannot be used as input for another Op.*]
+
+Two Apply nodes ``node1`` and ``node2`` are *assumed* by the compiler to represent the same behavior if:
+  1. ``node1.op == node2.op``
+  1. ``all(input1.type == input2.type for input1, input2 in zip(node1.inputs, node2.inputs))``
+  1. ``all(output1.type == output2.type for output1, output2 in zip(node1.outputs, node2.outputs))``
+
+It is considered an *error* to have conditions 1 and 2 but not condition 3. A corollary to those conditions is that repeated calls to ``make_node`` with the same inputs should produce equivalent nodes.
+
+``__call__``
+----------------
+
+In ``Op``, ``__call__`` is defined in terms of ``make_node``. Instead of returning a node, it returns the output Results directly, which is practical from a UI standpoint. Here is pseudocode:
+
+.. code-block:: python
+
+    if len(outputs) is 1:
+        __call__(*inputs) <=> make_node(*inputs).outputs[0]
+    else:
+        __call__(*inputs) <=> make_node(*inputs).outputs
+
+It is not necessary or recommended to override ``__call__`` unless you want to hide some outputs from view (see hidden outputs section).
+
+perform
+=======
+
+The ``perform`` method is expected to have the following signature: 
+
+``
+perform(self, node, inputs, output_storage)
+``
+
+Where:
+  * *node*: a pointer to an Apply instance - ``node`` is assumed to be produced by a previous call to ``self.make_node``.
+  * *inputs*: *not* the same as ``node.inputs`` - it is a list of values. [*i.e. actually data, not just symbolic stuff?*]
+  * *output_storage*: *not* the same as ``node.outputs`` - it is a list of lists of length 1 where the results of the computation must be put.
+
+[*Can you explain better how inputs is not node.inputs and output_storage is not node.outputs?*]
+
+[*Would it be better to call inputs as 'inputs_storage'?*]
+
+Here is an example of a properly defined ``perform``:
+
+.. code-block:: python
+
+	class Add(Op):
+	    ...
+	    def perform(self, node, inputs, output_storage):
+	        # this does z = x + y
+	        x, y = inputs        # extract the two inputs
+	        z, = output_storage  # extract the one storage (the comma after z is not optional)
+	        z[0] = x + y         # we must put the result in z[0]
+	    ...
+	
+	add = Add()                               # I make an instance of Add
+	node = add.make_node(int64(), int64())    # I make a node with two integer inputs
+	storage = [None]                          # I make my storage as a 1-element list with None
+	add.perform(node, (3, 7), (storage, ))    # I provide the node, two inputs and storage for one output
+    print storage[0]                          # prints 10
+
+[*Why is node never used in the perform function? Why is self never used?*]
+
+[*What does the comma after z do? Why is it not optional?*]
+
+The ``node`` parameter is not always needed, but might come in handy sometimes [*when?*]. There are as many entries in ``output_storage`` as there are in ``node.outputs`` and each entry is a list of length 1. The outputs must be computed from the inputs and put in those lists. The lists in ``output_storage`` must not be resized - the only allowed operation is to set or read their first element. [*Since these instructions correspond to more general principles, could you state the principles of the contract more generally and put it __above__ the example?*]
+
+reusing outputs
+---------------
+
+The output storage in ``output_storage`` might not be empty. In fact, whatever the op allocates to store the computation and puts in the storage *might* still be there the second time around. [*huh?*] This is an intended feature and it is acceptable for ``perform`` to *reuse* what is in the output storage if it is worth it. For example, if ``perform`` must add two ``1000x1000`` matrices into a new matrix of the same size and that there is already a ``1000x1000`` matrix in the corresponding output storage, it may reuse it and thus save a lot in memory and allocation time. It may also freely discard what is already there.
+
+Note that it is not *guaranteed* that the outputs will stick around. Indeed, the linker may, at its discretion, clean them up. It is not guaranteed either (though it will usually be the case) that the contents of the output storage was allocated by a previous call to ``perform``. It *is* however guaranteed that the contents are either ``None`` or a structure of the proper type which it can use.
+
+If the contents of the storage are ``None``, *new* storage is expected for that output (typical case is that we "gave" the output to the user so we don't own it anymore). Therefore, it is not acceptable to have a private cache of previously allocated storage unless you know what you are doing.
+
+Advanced note: for an Op with multiple outputs, it is possible that some of them can be reused and some others not. If an Op with multiple outputs shares storage between them, e.g. the first output is a view of the second, if the first output is reset to ``None``, the second should *not* be reused, even if it's available, because a fresh output is expected for the first. It is not recommended in general to share storage between outputs unless one of them is hidden (see hidden outputs section), because the engine does not know how to handle that situation safely.
+
+grad
+====
+
+``grad`` is a theano-specific [*as opposed to?*]  function - it does not interface with core optimization and compilation facilities, but it provides a useful interface to differentiation. Its expected signature is:
+
+.. code-block:: python
+
+    grad(self, inputs, output_gradients)
+
+
+where:
+  * ``inputs`` is a list of Result instances. It is assumed to be the ``inputs`` field of a node produced by ``make_node``.
+  * ``output_gradients`` is a list of Result instances. They have the same properties as the outputs of the node, but are filled with gradient values.
+
+Essentially, the semantics are:
+
+.. code-block:: python
+
+	# Not completely sure about this, James should doublecheck -jpt and ob
+	def grad(self, (x, ), (gz, )):
+	   return [gz * (dz/dx)]
+	def grad(self, (x, y), (gz, )):
+	   return gz*(dz/dx), gz*(dz/dy)
+	def grad(self, (x, y), (gz, gw)):
+	   # In this situation you want two return values that have the shape of x and y respectively
+	   return gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
+	
+More specifically, 
+``grad`` must return a list or tuple of input gradients, as many as there are inputs. Let C be a Result (currently assumed to be a scalar) that depends through a theano symbolic expression on the node outputs. Then each output_gradients[i] represents symbolically dC/doutputs[i]. The returned input gradients should represent symbolically dC/dinputs[i].
+
+Example:
+
+.. code-block:: python
+
+	class Mul(Op):
+	    ...
+	    def grad(self, inputs, output_gradients):
+	        x, y = inputs
+	        gz, = output_gradients   # here again, the comma is not optional
+	        return mul(gz, y), mul(gz, x)
+	    ...
+	mul = Mul()
+
+If the op is not differentiable wrt one of its inputs, the gradient for that input should be ``None``; if the op is not differentiable with respect to any of its inputs, it should return something equivalent to 
+``[None] * len(inputs)``.  If ``grad`` is not implemented for any op in a graph, then the symbolic gradient engine will complain (with an attribute exception).
+
+
+
+If the op only has one input, be careful to still return a list or tuple:
+  * fine: ``return gx,``
+  * fine: ``return [gx]``
+  * not fine: ``return gx``
+
+The [http://www.iro.umontreal.ca/~pift6266/A06/cours/gradient.pdf principle] behide this is explaned in section 2.
+
+Destroyers and viewers
+======================
+
+Destroyers
+----------
+
+An Op may change the contents of its inputs. For example, ``z = add_inplace(x, y)`` will increment ``x`` with ``y``, erasing the previous contents of ``x``. ``z`` represents ``x`` after it was incremented. However, the engine needs to be told about all this so it can guarantee that ``add_inplace`` will only be executed as soon as we don't need ``x`` anywhere else.
+
+This is done by setting the ``destroy_map`` field of the op. ``destroy_map`` must be a dictionary which associates an output index or ``None`` to a list of input indices that are destroyed by that output. For example, ``add_inplace.destroy_map == {0: [0]``} because the first input is overwritten by the first output. If it was ``y`` that was overwritten, then ``destroy_map`` would be ``{0: [1]``}, because the second input is overwritten by the first output. In a nutshell, to each output must correspond the list of inputs that were changed and share storage with that output. Use ``None`` if the inputs were only destroyed to do temporary calculations, etc. and are not reused as the output storage.
+
+Viewers
+-------
+
+Similarly, an Op might not modify the inputs, but return an output which shares state with one or several of its inputs. For example, ``transpose`` can be done very efficiently by viewing the same data as the original with modified dimensions and strides. That is fine, but the compiler needs to be told.
+
+This is done by setting the ``view_map`` field of the op. It works just like the ``destroy_map`` field: to an output index is associated the list of inputs that it shares state with. For example, ``transpose.view_map == {0: [0]``} because its first output uses the same data as its first input. ``view_map`` is conservative: if there is any probability that an output will be the view of an input, that input must be in the view list of that output.
+
+Important note: currently, an output can only be the view of one input. This is limiting, as an 'if' or 'switch' op would need to declare its output as a view of both its then and else branches, but for the time being the framework is not powerful enough to handle it. A future version should address this issue.
+
+Hidden outputs (as a form of op state)
+======================================
+
+For performance purposes, an ``op`` might want to have a hidden internal state.
+
+Example: if we expect to call the op repeatedly on incrementally bigger inputs, we might want private output storage that's a lot bigger than needed and take incrementally bigger views on it, to save allocation overhead. In order to do this, we can simple have two outputs: one that we will return normally and will contain the answer and the other that will be the (larger) container. In this case, the advanced note in the 'reusing outputs' section applies. Furthermore, ``__call__`` should be overriden to only return the first output instead of both of them. Here is what the example's ``perform`` and ``__call__`` would look like:
+
+.. code-block:: python
+
+	class Add(Op):
+	    """
+	    Use a hidden buffer to prevent unnecessary reallocation of memory.
+	    """
+	    default_output = 0
+	    def make_node(self, x, y):
+	        return Apply(self, [x,y], [x.type.make_result(), x.type.make_result()])
+	
+	    def perform(self, node, (x, y), (z, stor)):
+	        if z[0] is None or stor[0] is None:
+	            stor[0] = numpy.ndarray(x.size * 2)
+	        else:
+	            if x.size > stor[0].size:
+	                stor[0].resize(x.size * 2, refcheck = 0)
+	        z[0] = stor[0][:x.size]
+	        numpy.add(x, y, z[0])
+        ...
+
+Another example: for a FFTW Op, we would like to cache FFTW's plan along
+with the inputs it was computed on, so we can reuse it if the inputs
+are similar to the previous ones.
+
+It is also possible but potentially more complicated to use "private
+inputs" to do the same thing: inputs cannot be set, though their contents
+can be modified, so a wrapper would be needed and the input must be
+marked as 'destroyed' by the Op using the 'destroy_map' field.
+
+
+

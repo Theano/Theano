@@ -1,0 +1,44 @@
+.. _intro_to_ops:
+
+===================
+Introduction to Ops
+===================
+
+This page introduces :term:`Apply` and :term:`Op`.  To start, let's consider the following program:
+
+.. code-block:: python
+
+    import theano
+    from theano import tensor
+
+    a = tensor.constant(1.5)
+    b = tensor.fscalar()    
+    c = a + b                       # Apply the Add Op to results a and b.
+    d = c + c                       # Apply the Add Op to the result c in two ways
+    f = theano.function([b], [d])   # Convert Op applications to callable objects.
+    assert 8.0 == f(2.5)            # Bind 2.5 to 'b' and evaluate 'd' by running
+                                    #   Add.perform() twice.
+
+The python variables ``a,b,c,d`` all refer to classes of type :term:`Result` (introduced in :ref:`intro_to_types`), whereas :term:`Apply` and :term:`Op` classes serve to connect them together.
+:term:`Apply` instances permit ``theano.function`` to figure out how to compute outputs from inputs (in this case, ``d`` from ``b``).  Comparing with python's normal types, an :term:`Apply` instance is theano's version of a function call (or expression instance) whereas :term:`Op` is theano's version of a function.
+
+There are three fields which are fundamental to an ''':term:`Apply`''' instance:
+  * ``inputs``: a list of :term:`Result` instances that represent the arguments of the function.
+  * ``outputs``: a list of :term:`Result` instances that represent the return values of the function.
+  * ``op``: an Op instance that determines which function is being applied here. 
+
+Now that we've seen :term:`Result` and :term:`Apply` we can begin to understand what ``theano.function`` does.  
+When a :term:`Result` is the output of an :term:`Apply`, it stores a reference to this ``owner``).
+Similarly, each :term:`Apply` stores a list of its inputs.
+In this way, :term:`Result` and :term:`Apply` instances together form a bi-partite directed acyclic graph: :term:`Results <Result>` point to :term:`Applies <Apply>` via the ``.owner`` attribute and :term:`Applies <Apply>` to :term:`Results <Result>` via the ``.inputs`` attribute.
+When we call ``theano.function`` one of the first things that happens is a search through this graph from the :term:`Results <Result>` given as the function's outputs; this search establishes how to compute the outputs from inputs, and finds all the constants and values which contribute to the outputs.
+
+:term:`Op` instances, like :term:`Type` instances, tell ``theano.function`` what to do with the nodes it finds in this graph search.
+An :term:`Op` instance has a ``perform`` method which implements the computation that transforms the data associated with ``Apply.inputs`` to the data associated with ``Apply.outputs``.
+
+What's Next?
+============
+
+ * Read more about theano's :ref:`Graph`.
+ * Learn :ref:`HowtoMakeOps`.
+
