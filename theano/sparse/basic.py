@@ -419,7 +419,7 @@ class DenseFromSparse(gof.op.Op):
                                         broadcastable = (False, False)).make_result()])
     def perform(self, node, (x, ), (out, )):
         if _is_dense(x):
-            print >> sys.stderr, "WARNING: You just called DenseFromSparse on a dense matrix:", x
+            print >> sys.stderr, "WARNING: You just called DenseFromSparse on a dense matrix." 
             out[0] = x
         else:
             out[0] = x.toarray()
