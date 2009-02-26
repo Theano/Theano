@@ -38,6 +38,11 @@ As a developer, you should clone this repository like this:
 - `hg clone 'http://username:password@pylearn.org/hg/theano' theano`
 
 
+Nighlty test
+============
+
+Their is nightly build done. The output is at: http://lgcm/nightly_build/do_nightly_build.txt
+
 Setting up your environment
 ===========================
 
