@@ -1,0 +1,76 @@
+
+.. _Basic Tutorial - More Examples:
+
+=============
+More examples
+=============
+
+
+Logistic function
+=================
+
+Let's say that you want to compute the logistic curve, which is given
+by:
+
+``s(x) = 1 / (1 + e**(-x))``
+
+You want to compute the function :term:`elementwise` on matrices of
+doubles.
+
+>>> x = T.dmatrix('x')
+>>> s = 1 / (1 + T.exp(-x))
+>>> logistic = function([x], s)
+
+Alternatively:
+
+>>> s = (T.tanh(x) + 1) / 2
+>>> logistic = function([x], s)
+
+
+Computing more than one thing at the same time
+==============================================
+
+Theano supports functions with multiple outputs. For example, we can
+compute the absolute :term:`elementwise` difference between two
+matrices ``x`` and ``y`` and the squared difference at the same time:
+
+>>> x, y = T.dmatrices('xy')
+>>> d = x - y
+>>> f = function([x, y], [abs(d), d**2])
+
+Theano will make ``f`` in such a way that it will only compute the
+difference once. When we use the function, it will return the two
+results (reformatted for readability):
+
+>>> f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
+[array([[ 1.,  0.],
+        [ 1.,  2.]]),
+ array([[ 1.,  0.],
+        [ 1.,  4.]])]
+
+Also note the call to ``dmatrices``. This is a shortcut, use it wisely
+;)
+
+
+Computing gradients
+===================
+
+WRITEME
+
+
+Setting a default value for an argument
+=======================================
+
+WRITEME
+
+
+Making a function with state
+============================
+
+WRITEME
+
+
+**Next:** `Using Module`_
+
+.. _Using Module: module.html
+

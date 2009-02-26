@@ -6,32 +6,132 @@ Glossary of terminology
 .. glossary::
 
     Apply
-        Op-related graph node (expression instance)
-        
-        An Apply instance (`Apply API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Apply-class.html>`_)
-        represents the application of an :term:`Op` on input :term:`Results <Result>`, producing output :term:`Results <Result>`.
-        Users typically do not instantiate Apply directly, instead they should use an Op's ``make_node`` or ``__call__`` function.
-        
-        Comparing with the Python language, an :term:`Apply` instance is theano's version of a function call (or expression instance) whereas :term:`Op` is theano's version of a function definition.
-        
-        An Apply instance serves as a simple structure with three important fields:
-          ``inputs``: a list of :term:`Result` instances that represent the arguments of the function.
-          ``outputs``: a list of :term:`Result` instances that represent the return values of the function.
-          ``op``: an Op instance that determines the function/transformation being applied here.
-        
-        Theano.function uses the Apply instances' ``inputs`` field together with each :term:`Result`'s ``owner`` field to determine which inputs are necessary to compute the function's outputs.
-        Theano.function uses the Apply instances' ``op`` field to know how to compute the intermediate and final Results.
+        WRITEME
 
-        See :ref:`intro_to_ops`.
+    broadcasting
+        Broadcasting is a mechanism which allows tensors with
+        different numbers of dimensions to be added or multiplied
+        together by (virtually) replicating the smaller tensor along
+        the dimensions that it is lacking.
+
+        In a nutshell, broadcasting is the mechanism by which a scalar
+        may be added to a matrix, a vector to a matrix or a scalar to
+        a vector.
+
+        .. figure:: bcast.png
+
+           Broadcasting a row matrix. T and F respectively stand for
+           True and False and indicate along which dimensions we allow
+           broadcasting.
+        
+        Unlike numpy which does broadcasting dynamically, Theano needs
+        to know, for any operation which supports broadcasting, which
+        dimensions will need to be broadcasted. When applicable, this
+        information is given in the :term:`Type` of a :term:`Result`.
+
+        For more information, see the article about broadcasting_.
+        
+        See also:
+
+        * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
+        * `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
+
+    constant
+        WRITEME
+
+    elementwise
+        An elementwise operation ``f`` on two matrices ``M`` and ``N``
+        is one such that:
+        
+        ``f(M, N)[i, j] = f(M[i, j], N[i, j])``
+
+        In other words, each element of an input matrix is combined
+        with the corresponding element of the other(s). There are no
+        dependencies between elements whose ``[i, j]`` coordinates do
+        not correspond, so an elementwise operation is like a scalar
+        operation generalized along several dimensions.
+
+        There exist unary, binary, ternary, etc. elementwise
+        operations and they can work on scalars, vectors, matrices,
+        etc. as long as all the inputs have the same dimensions or can
+        be :term:`broadcasted <broadcasting>` to the same dimensions.
+
+        Examples of elementwise operations in Theano: ``add, sub, mul,
+        div, neg, inv, log, exp, sin, cos, tan`` and many
+        others. These operations are all subclasses of :api:`Elemwise
+        <theano.tensor.elemwise.Elemwise>`.
+
+    graph
+        WRITEME
+
+    op
+        WRITEME
+
+    Result 
+        A :ref:`result` is the main data structure you work with when
+        using Theano. The symbolic inputs that you operate on are
+        Results and what you get from applying various operations to
+        these inputs are also Results. For example, when I type
+
+        >>> x = theano.tensor.ivector()
+        >>> y = -x
+
+        ``x`` and ``y`` are both Results, i.e. instances of the
+        :api:`Result <theano.gof.graph.Result>` class. The
+        :term:`Type` of both ``x`` and ``y`` is
+        ``theano.tensor.ivector``.
+
+        For more information, see: :ref:`result`.
+
+    type
+        WRITEME
+
+
+.. _broadcasting: concepts/broadcasting.html
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+..
+    Apply
+        TRANSFERRED
         
     Broadcasting
-        implicit tensor repmat
-        
-        WRITEME
-        
-        The following pages appear to describe broadcasting, but I haven't read over them:
-           * http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html
-           * http://www.scipy.org/EricsBroadcastingDoc
+        TRANSFERRED
         
     Build
         see :term:`Compilation`
@@ -52,14 +152,7 @@ Glossary of terminology
         The :term:`mode` defines how optimizations and stabilizations will be introduced, and defines which linker will be used.
 
     Constant
-        See :term:`Value`        
-        
-        Constant (`Constant API
-        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Constant-class.html
-        doc>`_) also has an additional property: it is forbidden for an
-        :term:`Op` to modify the state of the data it contains. This
-        makes it eligible to participate in numerous optimizations:
-        constant inlining in C code, constant folding, etc.
+        TRANSFERRED    
 
     DType
         the numeric type for :term:`Tensor` elements
@@ -435,3 +528,4 @@ Glossary of terminology
         Theano computation). This can be practical because the compiler
         knows how to assign values to those nodes, thereby creating a
         sort of closure.
+..

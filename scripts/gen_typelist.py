@@ -4,6 +4,8 @@ from gen_oplist import print_title, print_hline
 
 def print_file(file):
 
+    print >>file, '.. _typelist:\n\n'
+
     print_title(file, "Type List", "~", "~")
 
     print >>file, "*THIS PAGE IS A PLACEHOLDER: WRITEME*"
