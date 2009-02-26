@@ -7,6 +7,7 @@ sys.path[0:0] = [theano_path]
 from theano import gof
 
 def print_title(file, title_string, under_char, over_char=''):
+
     l = len(title_string)
     if over_char:
         print >>file, over_char * l
@@ -156,6 +157,8 @@ def print_entries(file, ops, constructors):
 
 
 def print_file(file):
+
+    print >>file, '.. _oplist:\n\n'
 
     print_title(file, "Op List", "~", "~")
     print >>file, """

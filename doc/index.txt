@@ -1,4 +1,6 @@
 
+.. _theano:
+
 ======
 Theano
 ======
@@ -41,18 +43,18 @@ Getting started
 TODO: I want to bold the links below. How the fuck do I bold links? ``**`link name`_**`` doesn't work! :(
 
 
-`Installing Theano`_
+:ref:`install`
   Instructions to download and install Theano on your system.
 
 
-`Basic tutorial`_
+:ref:`basictutorial`
   Getting started with Theano's basic features. Go there if you are new!
 
 
-`Advanced tutorial`_
+:ref:`advtutorial`
   This tutorial is for more advanced users who want to define their own
   operations and optimizations. It is recommended to go through the
-  `Basic tutorial`_ first.
+  :ref:`basictutorial` first.
 
 
 
@@ -60,9 +62,14 @@ Contents
 ========
 
 .. toctree::
-   :glob:
+   :maxdepth: 2
 
-   *
+   install
+   tutorial/index
+   advtutorial/index
+   advanced/index
+   indexes/index
+   LICENSE
 
 
 Contact us
@@ -87,10 +94,6 @@ theano-dev_ mailing list.
 .. _Greek mathematician: http://en.wikipedia.org/wiki/Theano_(mathematician)
 .. _numpy: http://numpy.scipy.org/
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
-
-.. _Installing Theano: install.html
-.. _Basic tutorial: tutorial/index.html
-.. _Advanced tutorial: advtutorial/index.html
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
