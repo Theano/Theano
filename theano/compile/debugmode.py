@@ -44,6 +44,7 @@ class BadClinkerOutput(DebugModeError):
         self.val_c = val_c
 
     def offending_op(self):
+        """Return the Op class whose c_code and perform implementations didn't match"""
         return type(self.r.owner.op)
 
 class BadOptimization(DebugModeError):
@@ -100,9 +101,21 @@ class BadOptimization(DebugModeError):
         print >> sio, self.new_graph
         return sio.getvalue()
 
+class BadDestroyMap(DebugModeError):
+    """TODO #318"""
+    pass
+
+class StochasticOrder(DebugModeError):
+    """TODO #319"""
+    pass
+
+class FloatError(DebugModeError):
+    """TODO #320"""
+    pass
+
 
 def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
-    """Print the graph ending at `a` to given depth.
+    """Print the graph leading to `r` to given depth.
 
     :param r: Result instance
     :param prefix: prefix to each line (typically some number of spaces)
@@ -128,6 +141,38 @@ def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
         print >> file, prefix, r, id(r)
 
     return file
+
+def _optcheck_env(input_specs, output_specs, accept_inplace = False):
+    """Create an Env for debugging.
+
+    :param input_specs: env inputs
+    :type input_specs: WRITEME
+    :param output_specs: env outputs
+    :type output_specs: WRITEME
+    :param accept_inplace: are inplace ops permitted in the original graph?
+    :type accept_inplace: Bool
+    :rtype: `Env`
+    :returns: a new Env with a cloned graph, with debugging `Feature` instances already installed.
+
+    """
+    orig_inputs = [spec.result for spec in input_specs]
+    updates = [spec.update for spec in input_specs if spec.update]
+    orig_outputs = [spec.result for spec in output_specs] + updates
+
+    inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
+    equivalence_tracker = _ResultEquivalenceTracker()
+    env = gof.env.Env(inputs, outputs,
+            features=[equivalence_tracker,
+                gof.DestroyHandler(do_imports_on_attach=False)])
+
+    if not accept_inplace:
+        for node in env.nodes:
+            if getattr(node.op, 'destroy_map', None):
+                raise TypeError("Graph must not contain inplace operations", node)
+
+    # We need to protect all immutable inputs from inplace operations.
+    env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
+    return env, map(SymbolicOutput, updates), equivalence_tracker
 
 class _EnvEvent(object):
     """A record of an event in the life of an Env.
@@ -311,28 +356,8 @@ class _ResultEquivalenceTracker(object):
             for e in self.equiv[key]:
                 print '  ', e
 
-def _optcheck_env(input_specs, output_specs, accept_inplace = False):
-    orig_inputs = [spec.result for spec in input_specs]
-    updates = [spec.update for spec in input_specs if spec.update]
-    orig_outputs = [spec.result for spec in output_specs] + updates
-
-    inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
-    equivalence_tracker = _ResultEquivalenceTracker()
-    env = gof.env.Env(inputs, outputs,
-            features=[equivalence_tracker,
-                gof.DestroyHandler(do_imports_on_attach=False)])
-
-    if not accept_inplace:
-        for node in env.nodes:
-            if getattr(node.op, 'destroy_map', None):
-                raise TypeError("Graph must not contain inplace operations", node)
-
-    # We need to protect all immutable inputs from inplace operations.
-    env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
-    return env, map(SymbolicOutput, updates), equivalence_tracker
-
-
 class _Linker(gof.link.LocalLinker):
+    """Special debugging linker"""
     def __init__(self, maker):
         super(gof.LocalLinker, self).__init__()
         self.env = None
@@ -489,13 +514,6 @@ class _Linker(gof.link.LocalLinker):
             # iterate over results looking for values that don't match the values of the
             # results they replaced.  This is the sign of a broken optimization.
     
-            # A basic premise of how theano works is that every node that is replaced during optimization should compute the same thing as its replacement.
-
-            # Normally such replacements run instead of the originals.
-            # This Mode runs the original and the replacement, and then checks that they both compute the
-            # same thing.
-            # If their values are different, the optimization that created the replacement is probably broken.
-
             for i, node in enumerate(order):
                 for new_r in node.outputs:
                     for reason, r, old_graph_str, new_graph_str in env.equivalence_tracker.reasons[new_r]:
@@ -522,6 +540,8 @@ class _Linker(gof.link.LocalLinker):
 
 _NODEFAULT = ['NODEFAULT']
 class _Maker(FunctionMaker): #inheritance buys a few helper functions
+    """Special debugging FunctionMaker
+    """
     verbose = 0
     """Verbosity level of compile-time and run-time checks. (Default 0: silent)"""
 
@@ -710,27 +730,39 @@ class DebugMode(Mode):
 
     - inconsistent c_code and perform implementations (see `BadClinkerOutput`)
 
-    - incorrect optimizations (see `BadOptimization`)
+    - a result replacing another when their runtime values don't match.  This is a symptom of
+      an incorrect optimization step, or faulty Op implementation (raises `BadOptimization`)
 
-    - stochastic optimization ordering
+    - stochastic optimization ordering (raises `StochasticOrder`)
+
+    - incomplete `destroy_map` specification (raises `BadDestroyMap`)
+
+    Each of these exceptions inherits from the more generic `DebugModeError`.
 
     If there are no internal errors, this mode behaves like FAST_RUN or FAST_COMPILE, but takes
     a little longer and uses more memory.  
 
-    If there are internal errors, this mode will raise Exceptions (see above) and write
+    If there are internal errors, this mode will raise an `DebugModeError` exception and write
     diagnostic information to a file.
+
+    :remark: The work of debugging is implemented by the `_Maker`, `_Linker`, and
+    `_ResultEquivalenceTracker` classes.
 
     """
     # This function will be used to create a FunctionMaker in 
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):
+        """Return an instance of `_Maker` which handles much of the debugging work"""
         assert m is self
         return _Maker(i, o, self.optimizer, self, *args, **kwargs)
+    
     def __init__(self, 
             optimizer='fast_run', 
             stability_patience=10,
             check_c_code=True,
             diagnostic=sys.stderr):
+        """Initialize member variables
+        """
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
                 linker=_Linker)
