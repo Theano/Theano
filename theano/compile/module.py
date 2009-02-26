@@ -1012,3 +1012,22 @@ class KitComponent(Component):
 
     def build(self, mode, memo):
         return [memo[i.result].value for i in self.kit.sinputs]
+
+
+def func_to_mod(f):
+    """
+    Creates a dummy module, with external member variables for  the input
+    parameters required by the function f, and a member output defined as:
+        output <= f(**kwinit)
+    """
+    def make(**kwinit):
+        m = Module()
+        outputs = f(**kwinit)
+        if isinstance(outputs, list):
+            for i,o in enumerate(outputs):
+                setattr(m, 'output%(i)i', o)
+        else:
+            m.output = outputs
+
+        return m
+    return make
