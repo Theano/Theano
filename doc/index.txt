@@ -69,6 +69,7 @@ Contents
    advtutorial/index
    advanced/index
    indexes/index
+   glossary
    LICENSE
 
 

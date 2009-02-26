@@ -9,4 +9,10 @@ Advanced Topics
    :maxdepth: 2
    
    graphstructures
+   env
+   optimization
+   compilation
+   function
+   module
+
 

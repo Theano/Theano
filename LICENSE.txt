@@ -1,1 +1,1 @@
-doc/doc/LICENSE.txt
+doc/LICENSE.txt

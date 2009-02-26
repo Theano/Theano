@@ -23,9 +23,9 @@ of theano. Let's import that subpackage under a handy name. I like
 
 >>> import theano.tensor as T
 
+Now we're ready for the tour:
 
-From then, here's the tour:
-
+---------------------------------------
 
 `Adding two numbers together`_
   Starting small
@@ -35,6 +35,8 @@ From then, here's the tour:
 
 `Using Module`_
   Getting serious
+
+---------------------------------------
 
 
 .. rubric:: Contents
