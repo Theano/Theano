@@ -565,12 +565,12 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                 li = env.equivalence_tracker.event_list
                 l0 = env0.equivalence_tracker.event_list
                 if li != l0 :
-                    print >> sys.stderr, "WARNING: Optimization process is unstable"
+                    print >> mode.diagnostic, "WARNING: Optimization process is unstable"
                     for j in xrange(max(len(li), len(l0))):
                         if li[j] != l0[j]:
-                            print >> sys.stderr, "* ", j
-                            print >> sys.stderr, "  ", str(li[j]) if j < len(li) else '-'
-                            print >> sys.stderr, "  ", str(l0[j]) if j < len(l0) else '-'
+                            print >> mode.diagnostic, "* ", j
+                            print >> mode.diagnostic, "  ", str(li[j]) if j < len(li) else '-'
+                            print >> mode.diagnostic, "  ", str(l0[j]) if j < len(l0) else '-'
                         else:
                             pass
 
@@ -729,10 +729,13 @@ class DebugMode(Mode):
     def __init__(self, 
             optimizer='fast_run', 
             stability_patience=10,
-            check_c_code=True):
+            check_c_code=True,
+            diagnostic=sys.stderr):
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
                 linker=_Linker)
         self.stability_patience = stability_patience
         self.check_c_code = check_c_code
+        self.diagnostic = diagnostic
 register_mode('DEBUG_MODE',DebugMode(optimizer='fast_run'))
+
