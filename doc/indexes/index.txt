@@ -1,0 +1,15 @@
+
+=======
+Indexes
+=======
+
+The following indexes are generated automatically and cover most
+:ref:`Ops <op>`, :ref:`Types <type>` and :ref:`Optimizers <optimizer>`
+in Theano.
+
+.. toctree::
+   :maxdepth: 1
+   
+   oplist
+   typelist
+
