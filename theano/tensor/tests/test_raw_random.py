@@ -14,7 +14,9 @@ class T_test_module(unittest.TestCase):
         x = tensor.vector()
         rk = RandomKit('rk', 1000)
         f = compile.function([x, (rk, [gof.Container(r = gof.generic, storage = [123], name='bla')])], rk.binomial(tensor.shape(x)))
+        print "RK", rk.value
         f['rk'] = 9873456
+        print "RK", rk.value
     
         rvals = [f([1,2,3,4,6, 7, 8]) for i in xrange(5)]
         print rvals
