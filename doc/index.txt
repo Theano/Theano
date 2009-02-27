@@ -72,6 +72,7 @@ Contents
    advanced/index
    indexes/index
    glossary
+   links
    LICENSE
 
 

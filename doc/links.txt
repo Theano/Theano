@@ -1,0 +1,40 @@
+
+.. _links:
+
+=====
+Links
+=====
+
+This page lists links to various resources.
+
+
+Theano requirements
+===================
+
+- mercurial_: A distributed revision control system (RCS).
+- nosetests_: A system for unit tests.
+- numpy_: A library for efficient numerical computing.s
+- python_: The programming language Theano is for.
+- scipy_: A library for scientific computing.
+
+
+Libraries we might want to use
+==============================
+
+This is a sort of memo for developers and would-be developers.
+
+- liboil_: A library for CPU-specific optimization.
+- llvm_: A low-level virtual machine we might want to use for compilation.
+- networkx_: A package to create and manipulate graph structures.
+
+
+
+.. _mercurial: http://www.selenic.com/mercurial/wiki/
+.. _nosetests: http://somethingaboutorange.com/mrl/projects/nose/
+.. _numpy: http://numpy.scipy.org/
+.. _python: http://www.python.or
+.. _scipy: http://scipy.org/
+
+.. _liboil: http://liboil.freedesktop.org/wiki/
+.. _llvm: http://llvm.org/
+.. _networkx: http://networkx.lanl.gov/
