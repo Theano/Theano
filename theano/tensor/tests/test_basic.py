@@ -114,8 +114,8 @@ def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 for description, check in self.checks.items():
                     if not check(inputs, results):
-                        self.fail("Test %s::%s: Failed check: %s (inputs were %s)"
-                                  % (self.op, testname, description, inputs))
+                        self.fail("Test %s::%s: Failed check: %s (inputs were %s, outputs were %s)"
+                                  % (self.op, testname, description, inputs, results))
 
         def test_bad_build(self):
             for testname, inputs in self.bad_build.items():
@@ -195,8 +195,11 @@ def make_broadcast_restet(op, expected, checks = {}, **kwargs):
         if kwargs['inplace']:
             _expected = expected
             expected = lambda *inputs: numpy.array(_expected(*inputs), dtype = inputs[0].dtype)
-            checks = dict(checks,
-                          inplace_check = lambda inputs, outputs: inputs[0] is outputs[0])
+            def inplace_check(inputs, outputs):
+                # this used to be inputs[0] is output[0]
+                # I changed it so that it was easier to satisfy by the DebugMode
+                return numpy.all(inputs[0] == outputs[0])
+            checks = dict(checks, inplace_check=inplace_check) #lambda inputs, outputs: numpy.all(inputs[0] == outputs[0]))
         del kwargs['inplace']
     return make_restet(name, op, expected, checks, **kwargs)
 
