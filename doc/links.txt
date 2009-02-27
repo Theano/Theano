@@ -18,14 +18,21 @@ Theano requirements
 - scipy_: A library for scientific computing.
 
 
-Libraries we might want to use
-==============================
+Libraries we might want to look at or use
+=========================================
 
 This is a sort of memo for developers and would-be developers.
 
+- autodiff_: Tools for automatic differentiation.
+- boost.python_: An interoperability layer between Python and C++
+- cython_: A language to write C extensions to Python.
 - liboil_: A library for CPU-specific optimization.
 - llvm_: A low-level virtual machine we might want to use for compilation.
 - networkx_: A package to create and manipulate graph structures.
+- pycppad_: Python bindings to an AD package in C++.
+- pypy_: Optimizing compiler for Python in Python.
+- swig_: An interoperability layer between Python and C/C++
+- unpython_: Python to C compiler.
 
 
 
@@ -35,6 +42,14 @@ This is a sort of memo for developers and would-be developers.
 .. _python: http://www.python.or
 .. _scipy: http://scipy.org/
 
+.. _autodiff: http://autodiff.org
+.. _boost.python: http://www.boost.org/doc/libs/1_38_0/libs/python/doc/index.html
+.. _cython: http://www.cython.org/
 .. _liboil: http://liboil.freedesktop.org/wiki/
 .. _llvm: http://llvm.org/
 .. _networkx: http://networkx.lanl.gov/
+.. _pypy: http://codespeak.net/pypy/dist/pypy/doc/
+.. _swig: http://www.swig.org/
+.. _unpython: http://code.google.com/p/unpython/
+.. _pycppad: http://www.seanet.com/~bradbell/pycppad/index.xml
+
