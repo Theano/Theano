@@ -1,0 +1,157 @@
+
+===========================
+Adding two numbers together
+===========================
+
+
+Adding two scalars
+==================
+
+So, to get us started and get a feel of what we're working with, let's
+make a simple function: add two numbers together. Here is how you do
+it:
+
+>>> x = T.dscalar('x')
+>>> y = T.dscalar('y')
+>>> z = x + y
+>>> f = function([x, y], z)
+
+And now that we've created our function we can use it:
+
+>>> f(2, 3)
+array(5.0)
+>>> f(16.3, 12.1)
+array(28.4)
+
+
+Let's break this down into several steps. The first step is to define
+two symbols, or Results, representing the quantities that you want to
+add. Note that from now on, we will use the term :term:`Result` to
+mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Result
+objects).
+
+-------------------------------------------
+
+**Step 1**
+
+>>> x = T.dscalar('x')
+>>> y = T.dscalar('y')
+
+In Theano, all symbols must be typed. In particular, ``T.dscalar`` is
+the type we assign to "0-dimensional arrays of doubles". It is a
+Theano :term:`Type`. Therefore, you can guess that by calling
+``T.dscalar`` with a string argument, you create a :term:`Result`
+representing a floating-point scalar quantity with the given name (if
+you provide no argument, the symbol will be unnamed, which can cause
+difficulties in debugging).
+
+Note that ``dscalar`` is not a class and that therefore neither ``x``
+nor ``y`` are actually instances of ``dscalar``. They are instances of
+:api:`TensorResult <theano.tensor.basic.TensorResult>`. It is however
+assigned the theano Type ``dscalar`` in its ``type`` field, as you can
+see here:
+
+>>> type(x)
+<class 'theano.tensor.basic.TensorResult'>
+>>> x.type
+Tensor(float64, scalar)
+>>> T.dscalar
+Tensor(float64, scalar)
+>>> x.type == T.dscalar
+True
+
+Ditto for ``y``. You may learn more about the structures in Theano in
+the :ref:`advtutorial` and in :ref:`graphstructures`.
+
+-------------------------------------------
+
+**Step 2**
+
+The second step is to combine ``x`` and ``y`` into their sum ``z``:
+
+>>> z = x + y
+
+``z`` is yet another :term:`Result` which represents the addition of
+``x`` and ``y``. You can use the :api:`pp <theano.printing.pp>`
+function to print out the computation associated to ``z``.
+
+>>> print pp(z)
+x + y
+
+-------------------------------------------
+
+**Step 3**
+
+The last step is to create a function taking ``x`` and ``y`` as inputs
+and giving out ``z`` as output:
+
+>>> f = function([x, y], z)
+
+The first argument to ``function`` is a list of :term:`Results
+<Result>` that will be provided as inputs to the function. The second
+argument is a single Result that we want to see as output *or* a list
+of output results.
+
+``f`` may then be used like a normal Python function.
+
+
+Adding two matrices
+===================
+
+You might already have guessed how to do this. Indeed, the only change
+from the previous example is that you need to instantiate ``x`` and
+``y`` using the matrix Types:
+
+>>> x = T.dmatrix('x')
+>>> y = T.dmatrix('y')
+>>> z = x + y
+>>> f = function([x, y], z)
+
+``dmatrix`` is the Type for matrices of doubles. And then we can use
+our new function on 2D arrays:
+
+>>> f([[1, 2], [3, 4]], [[10, 20], [30, 40]])
+array([[ 11.,  22.],
+       [ 33.,  44.]])
+
+The result is a numpy array. We can also use numpy arrays directly as
+inputs:
+
+>>> import numpy
+>>> f(numpy.ones((3, 5)), numpy.ones((3, 5)))
+array([[ 2.,  2.,  2.,  2.,  2.],
+       [ 2.,  2.,  2.,  2.,  2.],
+       [ 2.,  2.,  2.,  2.,  2.]])
+
+It is possible to add scalars to matrices, vectors to matrices,
+scalars to vectors, etc. The behavior of these operations is defined
+by broadcasting_.
+
+The following types are readily available:
+
+* **byte**: bscalar, bvector, bmatrix
+* **32-bit integers**: iscalar, ivector, imatrix
+* **64-bit integers**: lscalar, lvector, lmatrix
+* **float**: fscalar, fvector, fmatrix
+* **double**: dscalar, dvector, dmatrix
+
+.. note::
+
+   Watch out for the distinction between 32 and 64 bit integers (i
+   prefix vs the l prefix) and between 32 and 64 bit floats (f prefix
+   vs the d prefix).
+
+
+Section
+-------
+
+Try to mix and match them and see what happens. A complete list of
+types compatible with numpy arrays may be found :ref:`here
+<typelist>`.
+
+
+**Next:** `More examples`_
+
+
+.. _broadcasting: ../concepts/broadcasting.html
+.. _More examples: examples.html

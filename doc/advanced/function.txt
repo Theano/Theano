@@ -1,0 +1,50 @@
+
+.. _functioninterface:
+
+==================
+Function Interface
+==================
+
+This section details the various structures used to make ``function``
+work. You might want to read the sections about :ref:`compilation` and
+:ref:`optimization`.
+
+
+
+
+
+.. index::
+   single: Mode
+
+.. _mode:
+
+----
+Mode
+----
+
+WRITEME
+
+
+.. index::
+   single: function
+
+.. _function:
+
+--------
+function
+--------
+
+WRITEME
+
+
+.. index::
+   single: FunctionMaker
+
+.. _functionmaker:
+
+-------------
+FunctionMaker
+-------------
+
+WRITEME
+

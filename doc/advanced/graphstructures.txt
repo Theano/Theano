@@ -1,0 +1,293 @@
+
+.. _graphstructures:
+
+================
+Graph Structures
+================
+
+Theano represents mathematical computations as graphs. These graphs
+are formed of interconnected :ref:`apply` and :ref:`result` nodes,
+which are standard types of objects. They are respectively associated
+to *function application* and *data*.  Two additional structures are
+used by Theano in order to represent the operations carried in the
+computations and the data types that are processed. Operations are
+represented :ref:`op` instances and data types are represented by
+:ref:`type` instances. Here is a piece of code and a diagram showing
+the structure built by that piece of code. This should help you
+understand how all these things play together:
+
+
+-----------------------
+
+**Code**
+
+.. code-block:: python
+
+    x = dmatrix('x')
+    y = dmatrix('y')
+    z = x + y
+
+**Diagram**
+
+.. image:: apply.png 
+
+-----------------------
+
+Arrows represent references to the Python objects pointed at. The blue
+box is an :ref:`apply` node. Red boxes are :ref:`result` nodes. Green
+circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
+
+When we create :ref:`Results <result>` and then :ref:`apply`
+:ref:`operations <op>` to them to make more Results, we build a
+bi-partite, directed, acyclic graph. Results point to the Apply nodes
+representing the function application producing them via their
+``owner`` field. These Apply nodes point in turn to their input and
+output Results via their ``inputs`` and ``outputs`` fields.
+
+The ``owner`` field of both ``x`` and ``y`` point to ``None`` because
+they are not the result of another computation. If they were the
+result of another computation, they would point to another blue box
+like ``z`` does, and so on.
+
+
+An explicit example
+===================
+
+In this example we will see in turn a short example where the graph
+construction is hidden behind the standard interface's syntactic
+shortcuts and then the same example but rolled out so that the graph
+construction is made explicit.
+
+
+**Short example**
+
+This is what you would normally type:
+
+.. code-block:: python
+
+    from theano.tensor import *
+            
+    # create 3 Results with owner = None
+    x = matrix('x')
+    y = matrix('y')
+    z = matrix('z')
+    
+    # create 2 Results (one for 'e', one intermediate for y*z)
+    # create 2 Apply instances (one for '+', one for '*')
+    e = x + y * z
+
+
+**Long example**
+
+This is what you would type to build the graph explicitly:
+
+.. code-block:: python
+
+    from theano.tensor import *
+    
+    # We instantiate a type that represents a matrix of doubles
+    float64_matrix = Tensor(dtype = 'float64',              # double
+                            broadcastable = (False, False)) # matrix
+    
+    # We make the Result instances we need.
+    x = Result(type = float64_matrix, name = 'x')
+    y = Result(type = float64_matrix, name = 'y')
+    z = Result(type = float64_matrix, name = 'z')
+    
+    # This is the Result that we want to symbolically represents y*z
+    mul_result = Result(type = float64_matrix)
+    assert mul_result.owner is None
+    
+    # We instantiate a symbolic multiplication
+    node_mul = Apply(op = mul,
+                     inputs = [y, z],
+                     outputs = [mul_result])
+    assert mul_result.owner is node_mul and mul_result.index == 0 # these fields are set by Apply
+    
+    # This is the Result that we want to symbolically represents x+(y*z)
+    add_result = Result(type = float64_matrix)
+    assert add_result.owner is None
+    
+    # We instantiate a symbolic addition
+    node_add = Apply(op = add,
+                     inputs = [x, mul_result],
+                     outputs = [add_result])
+    assert add_result.owner is node_add and add_result.index == 0 # these fields are set by Apply
+    
+    e = add_result
+    
+    # We have access to x, y and z through pointers
+    assert e.owner.inputs[0] is x
+    assert e.owner.inputs[1] is mul_result
+    assert e.owner.inputs[1].owner.inputs[0] is y
+    assert e.owner.inputs[1].owner.inputs[1] is z
+
+
+Note how the call to ``Apply`` modifies the ``owner`` and ``index``
+fields of the :ref:`Results <result>` passed as outputs to point to
+itself and the rank they occupy in the output list. This whole
+machinery builds a DAG (Directed Acyclic Graph) representing the
+computation, a graph that theano can compile and optimize.
+
+
+Graph Structures
+================
+
+The following section outlines each type of structure that may be used
+in a Theano-built computation graph. The following structures are
+explained: :ref:`apply`, :ref:`constant`, :ref:`op`, :ref:`result` and
+:ref:`type`.
+
+
+.. index::
+   single: Apply
+   single: graph construct; Apply
+
+.. _apply:
+
+-----
+Apply
+-----
+
+An *Apply node* is a type of internal node used to represent a
+:term:`computation graph <graph>` in Theano. Unlike
+:ref:`Result nodes <result>`, Apply nodes are usually not
+manipulated directly by the end user. They may be accessed via
+a Result's ``owner`` field.
+
+An Apply node is typically an instance of the :api:`Apply
+<theano.gof.graph.Apply>` class. It represents the application
+of an :ref:`op` on one or more inputs, where each input is a
+:ref:`result`. By convention, each Op is responsible for
+knowing how to build an Apply node from a list of
+inputs. Therefore, an Apply node may be obtained from an Op
+and a list of inputs by calling ``Op.make_node(*inputs)``.
+
+Comparing with the Python language, an :ref:`apply` node is
+theano's version of a function call whereas an :ref:`op` is
+theano's version of a function definition.
+
+An Apply instance has three important fields:
+
+**inputs**
+  A list of :ref:`Results <result>` that represent the arguments of
+  the function.
+
+**outputs**
+  A list of :ref:`Results <result>` that represent the return values
+  of the function.
+
+**op**
+  An :ref:`op` that determines the function/transformation being
+  applied here.
+
+
+.. index::
+   single: Constant
+   single: graph construct; Constant
+
+.. _constant:
+
+--------
+Constant
+--------
+
+A constant is a :ref:`Result` with one extra field, *data* (only
+settable once). When used in a computation graph as the input of an
+:ref:`Op` :ref:`application <Apply>`, it is assumed that said input
+will *always* take the value contained in the constant's data
+field. Furthermore, it is assumed that the :ref:`Op` will not under
+any circumstances modify the input. This means that a constant is
+eligible to participate in numerous optimizations: constant inlining
+in C code, constant folding, etc.
+
+A constant does not need to be specified in a :ref:`function`'s list
+of inputs.
+
+
+
+.. index::
+   single: Result
+   single: graph construct; Result
+
+.. _result:
+
+------
+Result
+------
+
+A :ref:`result` is the main data structure you work with when using
+Theano. The symbolic inputs that you operate on are Results and what
+you get from applying various operations to these inputs are also
+Results. For example, when I type
+
+>>> x = theano.tensor.ivector()
+>>> y = -x
+
+``x`` and ``y`` are both Results, i.e. instances of the :api:`Result
+<theano.gof.graph.Result>` class. The :ref:`type` of both ``x`` and
+``y`` is ``theano.tensor.ivector``.
+
+Despite what the name might suggest, a Result is not necessarily
+produced by a computation. Indeed, in the example above, ``x`` is only
+an input. However, it is still called a Result for historical reasons
+(and because the data structure is identical).
+
+Now, unlike ``x``, ``y`` is indeed produced by a computation (in this
+case, negation of x). ``y`` is the Result corresponding to the output
+of the computation, while ``x`` is the Result corresponding to its
+input. The computation itself is represented by another type of node,
+an :ref:`apply` node, and may be accessed through ``y.owner``.
+
+More specifically, a Result is a basic structure in Theano that
+represents a datum at a certain point in computation. It is typically
+an instance of the class :api:`Result <theano.gof.graph.Result>` or
+one of its subclasses.
+
+A Result ``r`` contains four important fields:
+
+**type**
+  a :ref:`type` defining the kind of value this Result can hold in
+  computation.
+
+**owner**
+  this is either None or an :ref:`apply` node of which the Result is
+  an output.
+
+**index**
+  the integer such that ``owner.outputs[index] is r`` (ignored if
+  ``owner`` is None)
+
+**name**
+  a string to use in pretty-printing and debugging.
+
+Result has one special subclass: :ref:`constant <constant>`.
+
+
+
+.. index::
+   single: Op
+   single: graph construct; Op
+
+.. _op:
+
+--
+Op
+--
+
+WRITEME
+
+
+
+.. index::
+   single: Type
+   single: graph construct; Type
+
+.. _type:
+
+----
+Type
+----
+
+WRITEME
+

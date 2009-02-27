@@ -75,12 +75,12 @@ if __name__ == '__main__':
 
     import gen_oplist
     print 'Generating oplist...'
-    gen_oplist.print_file(open('%s/doc/doc/oplist.txt' % throot, 'w'))
+    gen_oplist.print_file(open('%s/doc/indexes/oplist.txt' % throot, 'w'))
     print 'oplist done!'
 
     import gen_typelist
     print 'Generating typelist...'
-    gen_typelist.print_file(open('%s/doc/doc/typelist.txt' % throot, 'w'))
+    gen_typelist.print_file(open('%s/doc/indexes/typelist.txt' % throot, 'w'))
     print 'typelist done!'
 
     def mkdir(path):
