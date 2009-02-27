@@ -218,6 +218,10 @@ class PureType(object):
 
         """
         raise AbstractFunctionError()
+
+    def is_valid_value(self, a):
+        """Required: Return True for any python object `a` that would be a legal value for a Result of this Type"""
+        raise AbstractFunctionError()
     
     def make_result(self, name = None):
         """Return a new `Result` instance of Type `self`.
@@ -325,6 +329,9 @@ class Generic(SingletonType):
     def filter(self, data, strict = False):
         return data
 
+    def is_valid_value(self, a):
+        return True
+
     def c_declare(self, name, sub):
         return """
         PyObject* %(name)s;
@@ -347,6 +354,7 @@ class Generic(SingletonType):
         py_%(name)s = %(name)s;
         Py_XINCREF(py_%(name)s);
         """ % locals()
+
 
 generic = Generic()
 
