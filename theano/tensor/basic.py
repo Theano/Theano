@@ -226,6 +226,17 @@ class Tensor(Type):
         return type(a) is numpy.ndarray and type(b) is numpy.ndarray \
                 and (a.shape == b.shape) and numpy.allclose(a, b)
 
+    def is_valid_value(self, a):
+        rval = (type(a) is numpy.ndarray) and (self.ndim == a.ndim) \
+                and (str(a.dtype) == self.dtype) \
+                and all([((si == 1) or not bi) for si, bi in zip(a.shape, self.broadcastable)])
+        if not rval:
+            print type(a),(type(a) is numpy.ndarray)
+            print a.ndim, (self.ndim == a.ndim)
+            print a.dtype, (str(a.dtype) == self.dtype)
+            print a.shape, self.broadcastable, ([(shp_i == 1) for shp_i in a.shape] == self.broadcastable)
+        return rval
+
     def __hash__(self):
         """Hash equal for same kinds of Tensor"""
         return hash(self.dtype) ^ hash(self.broadcastable)
