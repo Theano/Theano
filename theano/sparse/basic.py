@@ -9,6 +9,7 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 import sys, operator
 import numpy
 from scipy import sparse
+import scipy.sparse
 
 from .. import gof
 from .. import tensor
@@ -184,6 +185,14 @@ class Sparse(gof.Type):
 
     def __repr__(self):
         return "Sparse[%s, %s]" % (str(self.dtype), str(self.format))
+
+    def values_eq_enough(self, a, b, eps=1e-6):
+        return scipy.sparse.issparse(a) \
+                and scipy.sparse.issparse(b) \
+                and abs(a-b).sum() < (1e-6 * a.nnz)
+
+    def is_valid_value(self, a):
+        return scipy.sparse.issparse(a) and (a.format == self.format)
 
 csc_matrix = Sparse(format='csc')
 csr_matrix = Sparse(format='csr')

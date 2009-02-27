@@ -163,7 +163,7 @@ class Container(object):
 
 
 def map_storage(env, order, input_storage, output_storage):
-    """Ensure there is storage for inputs, outputs, and interior nodes.
+    """Ensure there is storage (a length-1 list) for inputs, outputs, and interior nodes.
 
     :param env: The current env.  This function uses the inputs and outputs attributes.
     :param order: an iterable over Apply instances (in program running order)

@@ -141,9 +141,10 @@ class t_gemm(TestCase):
         """test that dot args can be aliased"""
         Z = value(self.rand(2,2))
         A = value(self.rand(2,2))
-        eval_outputs([gemm(Z, 1.0, A, A, 1.0)])
-        eval_outputs([gemm(Z, 1.0, A, A.T, 1.0)])
-
+        f = inplace_func([A,Z], gemm(Z, 1.0, A, A, 1.0))
+        f(A.data, Z.data)
+        f = inplace_func([A,Z], gemm(Z, 1.0, A, A.T, 1.0))
+        f(A.data, Z.data)
 
     def test_transposes(self):
         # three square matrices which are not contiguous

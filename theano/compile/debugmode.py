@@ -103,7 +103,25 @@ class BadOptimization(DebugModeError):
 
 class BadDestroyMap(DebugModeError):
     """TODO #318"""
-    pass
+    def __init__(self, node, idx, old_val, new_val):
+        super(BadDestroyMap, self).__init__()
+        self.node = node
+        self.idx = idx
+        self.old_val = old_val
+        self.new_val = new_val
+    
+    def __str__(self):
+        sio = StringIO()
+        print >> sio, "  node:", self.node
+        print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
+        print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
+        print >> sio, "  changed input idx:", self.idx
+        print >> sio, "  changed input type:", self.node.inputs[self.idx].type
+        print >> sio, "  old val:", self.old_val
+        print >> sio, "  new val:", self.new_val
+        print >> sio, ""
+        print >> sio, "  Hint: this can be caused by a deficient values_eq_enough() or __eq__() implementation that compares node input values"
+        return sio.getvalue()
 
 class StochasticOrder(DebugModeError):
     """TODO #319"""
@@ -113,6 +131,17 @@ class FloatError(DebugModeError):
     """TODO #320"""
     pass
 
+class InvalidValueError(DebugModeError):
+    """Exception: some Op an output value that is inconsistent with the Type of that output"""
+    def __init__(self, r, v):
+        super(InvalidValueError, self).__init__()
+        self.r = r
+        self.v = v
+
+    def __str__(self):
+        r, v = self.r, self.v
+        return "InvalidValueError: Result %s,  Type %s, type(Value) %s, Value %s"\
+                % (str(r), str(r.type), str(type(v)), str(v)[0:100])
 
 def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
     """Print the graph leading to `r` to given depth.
@@ -173,6 +202,29 @@ def _optcheck_env(input_specs, output_specs, accept_inplace = False):
     # We need to protect all immutable inputs from inplace operations.
     env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
     return env, map(SymbolicOutput, updates), equivalence_tracker
+
+def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes):
+    """Raise BadDestroyMap if necessary, update dr_vals"""
+    destroyed_idx_list = []
+    destroy_map = getattr(node.op, 'destroy_map', {})
+    for o_pos, i_pos_list in destroy_map.iteritems():
+        destroyed_idx_list.extend(i_pos_list)
+    destroyed_res_list = [node.inputs[i] for i in destroyed_idx_list]
+
+    for r_idx, r in enumerate(node.inputs):
+        if not r.type.values_eq_enough(r_vals[r], storage_map[r][0]):
+            # some input node 'r' got changed by running the node
+            # this may or may not be ok...
+            if r in destroyed_res_list:
+                # ok, we expected r to be destroyed
+                if node in active_nodes:
+                    if dr_vals.get(r, (0, node))[1] is not node:
+                        # bad: there should only be one active node that destroys any result
+                        raise Exception('failure in topological ordering')
+                    dr_vals[r] = (storage_map[r][0], node) #no copy, this is the last use of this variable
+            else:
+                raise BadDestroyMap(node, r_idx, r_vals[r], storage_map[r][0])
+
 
 class _EnvEvent(object):
     """A record of an event in the life of an Env.
@@ -383,6 +435,9 @@ class _Linker(gof.link.LocalLinker):
         order_outputs.reverse()
         order = graph.io_toposort(env.inputs, order_outputs)
 
+        active_order = env.toposort()  #an ordering of just the active nodes
+        active_order_set = set(active_order)
+
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(env, order, input_storage, output_storage)
@@ -459,61 +514,78 @@ class _Linker(gof.link.LocalLinker):
             #
             # This dictionary is used to populate the storage_map as necessary
             r_vals = {} 
+
+            # dr_vals are the values taken by results after being destroyed
+            dr_vals = {}
             assert len(thunks_py) == len(order)
 
-            #put the initial values into the r_vals
+            # transfer the initial values from the storage_map to the r_vals
             for r in storage_map:
                 if storage_map[r][0] is not None:
-                    r_vals[r] = copy.copy(storage_map[r][0])
+                    if r.owner is not None:
+                        # DEBUG
+                        print r, storage_map[r], type(storage_map[r]), id(storage_map[r])
+                    assert r.owner is None
+                    r_vals[r] = storage_map[r][0]
                     storage_map[r][0] = None
+            #####
+            #  Precondition: the storage map is empty, transferred completely to r_vals
+            #####
+            for r, s in storage_map.iteritems():
+                assert s[0] is None
 
             try:
                 # compute the value of all results
                 for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
+                    this_node_destroyed_results = set()
 
-                    #put a copy of each input into the storage_map
+                    # put a copy of each input into the storage_map
                     for r in node.inputs:
                         storage_map[r][0] = copy.copy(r_vals[r])
 
                     thunk_py()
 
+                    _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set)
+
                     #retrieve a copy of each output from the storage_map
                     for r in node.outputs:
+                        if not r.type.is_valid_value(storage_map[r][0]):
+                            raise InvalidValueError(r, storage_map[r][0])
                         if r in r_vals:
-                            # r has been constant-folded
-                            if not r.type.values_eq_enough(r_vals[r], storage_map[r][0]):
-                                raise DebugModeError('BadConstantFold', (r,  r_vals[r],
-                                    storage_map[r][0])) #TODO: make a proper exception class for this
-
-                        else:
-                            r_vals[r] = copy.copy(storage_map[r][0])
+                            print >> sys.stderr, 'OUTPUT', r, 'ALREADY HAS_VALUE!', r_vals[r], 'WHAT ABOUT', storage_map[r][0]
+                        assert r not in r_vals
+                        r_vals[r] = storage_map[r][0]
+                        storage_map[r][0] = None #clear the storage_map for the thunk_c
 
                     if thunk_c:
-                        for r in node.outputs:
-                            storage_map[r][0] = None #clear the storage_map for the thunk_c
 
-                        if 0:
-                            # TODO: check that Op didn't change any inputs that it wasn't allowed to
-                            # (Hint: use the destroy_map attribute)
-                            raise NotImplementedError()
-                        else:
-                            for r in node.inputs:
-                                storage_map[r][0] = copy.copy(r_vals[r])
+                        for r in node.inputs:
+                            # TODO:  we only need to overwrite the non-destroyed inputs
+                            storage_map[r][0] = copy.copy(r_vals[r])
 
                         thunk_c()
 
+                        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set)
+
                         for r in node.outputs:
+                            if not r.type.is_valid_value(storage_map[r][0]):
+                                raise InvalidValueError(r, storage_map[r][0])
                             # compares the version from thunk_py (in r_vals)
                             # to the version produced by thunk_c (in storage_map)
                             if not r.type.values_eq_enough(r_vals[r], storage_map[r][0]):
                                 raise BadClinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                            storage_map[r][0] = None #clear the storage_map for the thunk_c
+
+                    # we're done with this thunk
+                    # clear everything out of the storage_map
+                    for r in node.inputs:
+                        storage_map[r][0] = None
 
             except:
                 raise_with_op(node)
 
             # iterate over results looking for values that don't match the values of the
             # results they replaced.  This is the sign of a broken optimization.
-    
             for i, node in enumerate(order):
                 for new_r in node.outputs:
                     for reason, r, old_graph_str, new_graph_str in env.equivalence_tracker.reasons[new_r]:
@@ -532,10 +604,58 @@ class _Linker(gof.link.LocalLinker):
                                     reason=reason,
                                     old_graph=old_graph_str,
                                     new_graph=new_graph_str)
+            
+
+            #####
+            #  Postcondition: the input and output results are in the storage map, nothing more
+            #####
+
+            # Nothing should be in storage map after evaluating each the thunk (specifically the
+            # last one)
+            for r, s in storage_map.iteritems():
+                assert type(s) is list
+                assert s[0] is None
+
+            # store our output results to their respective storage lists
+            for output, storage in zip(env.outputs, output_storage):
+                storage[0] = r_vals[output]
+
+            # transfer all inputs back to their respective storage lists
+            for r in r_vals:
+                if r.owner is None:
+                    if r in env.inputs:
+                        assert storage_map[r] is input_storage[env.inputs.index(r)]
+                    storage_map[r][0] = r_vals[r]
+
+            # if an input was destroyed, the destroyed value should be returned
+            for r in dr_vals:
+                if r.owner is None:
+                    assert r in env.inputs
+                    #HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
+                    if type(dr_vals[r][0]) is numpy.ndarray \
+                            and dr_vals[r][0].dtype == storage_map[r][0].dtype \
+                            and dr_vals[r][0].shape == storage_map[r][0].shape:
+                        if len(dr_vals[r][0].shape):
+                            storage_map[r][0][:] = dr_vals[r][0]
+                        else:
+                            storage_map[r][0].itemset(dr_vals[r][0])
+                    else:
+                        storage_map[r][0] = dr_vals[r][0]
+            #print ""
+            #print output_storage
+            #print dr_vals
+            #print storage_map
+
+            ###############
+            # Done f
+            ##############
 
         f.allow_gc = True
-        return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        assert len(env.inputs) == len(input_storage)
+        assert len(env.outputs) == len(output_storage)
+        #print 'make_all returning output', [id(z) for z in output_storage]
+        return f, [link.Container(input, storage, readonly=False) for input, storage in zip(env.inputs, input_storage)], \
+            [link.Container(output, storage, readonly=True) for output, storage in zip(env.outputs, output_storage)], \
             thunks_py, order
 
 _NODEFAULT = ['NODEFAULT']
@@ -736,6 +856,9 @@ class DebugMode(Mode):
     - stochastic optimization ordering (raises `StochasticOrder`)
 
     - incomplete `destroy_map` specification (raises `BadDestroyMap`)
+
+    - an op that returns an illegal value not matching the output Result Type (raises
+      InvalidValueError)
 
     Each of these exceptions inherits from the more generic `DebugModeError`.
 

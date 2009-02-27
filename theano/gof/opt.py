@@ -431,7 +431,7 @@ class OpSub(LocalOptimizer):
                 new_output.tag = copy(output.tag)
         return repl.outputs
 
-    def str(self):
+    def __str__(self):
         return "%s -> %s" % (self.op1, self.op2)
 
 
@@ -444,10 +444,6 @@ class OpRemove(LocalOptimizer):
     reentrant = False      # no nodes are added at all
 
     def __init__(self, op):
-        """
-        op1.make_node and op2.make_node must take the same number of
-        inputs and have the same number of outputs.
-        """
         self.op = op
 
     def op_key(self):
@@ -461,7 +457,7 @@ class OpRemove(LocalOptimizer):
             return False
         return node.inputs
 
-    def str(self):
+    def __str__(self):
         return "%s(x) -> x" % (self.op)
 
 
