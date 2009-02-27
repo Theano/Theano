@@ -35,6 +35,7 @@ efficient machine learning algorithms while minimizing human
 time. Theano was named after the `Greek mathematician`_ who may have
 been Pythagoras' wife.
 
+You can keep reading from :ref:`here <usingtheano>`.
 
 
 Getting started
@@ -64,6 +65,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   theano
    install
    tutorial/index
    advtutorial/index

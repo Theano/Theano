@@ -1,0 +1,147 @@
+
+.. _whatistheano:
+
+===============
+What is Theano?
+===============
+
+
+Introduction
+============
+
+Theano is a Python library aiming to allow definition, optimization
+and efficient evaluation of mathematical expressions involving
+multi-dimensional arrays (though it may be extended to support many
+other types). Theano melds some aspects of a computer algebra system
+(CAS) with aspects of an optimizing compiler. This is particularly
+useful in fields such as machine learning where complicated algorithms
+must be run over large amounts of data.
+
+Theano supports a wide range of numerical types in multiple
+dimensions, a rapidly growing number of well-tested operations as well
+as utilities to compute the gradient of an expression with respect to
+another. Symbolic expressions may be compiled into functions, which
+work merrily on the same data structures as numpy_, allowing for easy
+interoperability.
+
+Theano's compiler applies many optimizations of varying
+complexity. These optimizations include, but are not limited to
+constant folding, merging of similar subgraphs (to avoid calculating
+the same values more than once), simple arithmetic simplification
+(``x*y/x -> y``), inserting efficient BLAS_ operations and using
+inplace operations wherever it is safe to do so. Theano also defines
+several optimizations which improve the numerical stability of
+computations and it provides a framework to add and test new
+optimizers.
+
+Theano was written at the LISA_ to support the development of
+efficient machine learning algorithms while minimizing human
+time. Theano was named after the `Greek mathematician`_ who may have
+been Pythagoras' wife.
+
+
+.. _usingtheano:
+
+Using Theano
+============
+
+Here's a very simple example of how to use Theano.  It doesn't show
+off many of Theano's features, but it illustrates concretely what
+Theano is.
+
+.. code-block:: python
+
+    import theano
+    from theano import tensor
+
+    # declare two symbolic floating-point scalars
+    a = tensor.dscalar()
+    b = tensor.dscalar()
+
+    # create a simple expression
+    c = a + b
+
+    # convert the expression into a callable object that takes (a,b)
+    # values as input and computes a value for c
+    f = theano.function([a,b], c)
+
+    # bind 1.5 to 'a', 2.5 to 'b', and evaluate 'c'
+    assert 4.0 == f(1.5, 2.5)
+
+
+Theano is not a programming language in the normal sense because you
+write a program in Python that builds expressions for Theano.  Still
+it is like a programming language in the sense that to use theano, you
+have to
+
+- declare variables (``a,b``) and give their types
+
+- build expressions for how to put those variables together
+
+- compile expression graphs to functions in order to use them for computation.
+
+It is good to think of ``theano.function`` as the interface to a
+compiler which builds a callable object from a purely symbolic graph;
+one of theano's most important features is that ``theano.function``
+can optimize a graph and even compile some or all of it into native
+machine instructions.
+
+
+What does it do that they don't?
+================================
+
+Theano is a python library and optimizing compiler for manipulating
+and evaluating expressions, especially matrix-valued
+ones. Manipulation of matrices is typically done using the numpy
+package, so what does Theano do that Python and numpy do not?
+
+- *execution speed optimizations*: Theano can use `g++` to compile
+  parts your expression graph into native machine code, which runs
+  much faster than python.
+
+- *symbolic differentiation*: Theano can convert a symbolic graph
+  build symbolic graphs for computing gradients.
+
+- *stability optimizations*: Theano can recognize numerically unstable
+  expressions and compute them with more stable algorithms.
+
+There also exists symbolic packages in Python, namely sympy_. Theano
+is different from them in the sense that while it allows symbolic
+manipulation it puts more emphasis on the evaluation of these
+expressions and being able to repeatedly evaluate them on many
+different sets of inputs. It is also better suited to handling very
+large tensors which have no assumed structures.
+
+If numpy_ is to be compared to MATLAB_ and sympy_ to Mathematica_,
+Theano is a sort of hybrid of the two which tries to make the best of
+both worlds.
+
+
+Getting Started
+===============
+
+:ref:`install`
+  Instructions to download and install Theano on your system.
+
+
+:ref:`basictutorial`
+  Getting started with Theano's basic features. Go there if you are new!
+
+
+:ref:`advtutorial`
+  This tutorial is for more advanced users who want to define their own
+  operations and optimizations. It is recommended to go through the
+  :ref:`basictutorial` first.
+
+
+
+
+.. _LISA:  http://www.iro.umontreal.ca/rubrique.php3?id_rubrique=27
+.. _Greek mathematician: http://en.wikipedia.org/wiki/Theano_(mathematician)
+.. _numpy: http://numpy.scipy.org/
+.. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
+
+.. _sympy: http://code.google.com/p/sympy/
+.. _MATLAB: http://www.mathworks.com/products/matlab/
+.. _Mathematica: http://www.wolfram.com/products/mathematica/index.html
+

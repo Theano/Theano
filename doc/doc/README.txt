@@ -8,46 +8,10 @@ README: theano
 Project Description
 ===================
 
-Theano is a python library and optimizing compiler for manipulating and evaluating expressions, especially matrix-valued ones.
-What does Theano do that Python and numpy do not?
 
-- *execution speed optimizations*: Theano can use `g++` to compile parts your expression graph into native machine code, which runs much faster than python.
+<MOVED TO theano.txt>
 
-- *symbolic differentiation*: Theano can convert a symbolic graph build symbolic graphs for computing gradients.
-
-- *stability optimizations*: Theano can recognize numerically unstable expressions and compute them with more stable algorithms.
-
-
-Here's a very simple example of how to use Theano.  It doesn't show off many of Theano's features, but it illustrates concretely what Theano is.
-
-.. code-block:: python
-
-    import theano
-    from theano import tensor
-
-    a = tensor.fscalar()            # declare a symbolic floating-point scalar.
-    b = tensor.fscalar()            # declare a symbolic floating-point scalar.
-
-    c = a + b                       # create a simple expression
-
-    f = theano.function([a,b], [c]) # convert the expression into a callable object 
-                                    # that takes (a,b) values as input and computes a value for c
-
-    assert 4.0 == f(1.5, 2.5)       # bind 1.5 to 'a', 2.5 to 'b', and evaluate 'c'
-
-Theano is not a programming language in the normal sense because you write a program in Python that builds expressions for Theano.  Still it is like a programming language in the sense that to use theano, you have to 
-
-- declare variables (``a,b``) and give their types
-
-- build expressions for how to put those variables together
-
-- compile expression graphs to functions in order to use them for computation.
-
-It is good to think of ``theano.function`` as the interface to a compiler
-which builds a callable object from a purely symbolic graph; one of
-theano's most important features is that ``theano.function`` can
-optimize a graph, and even compile some or all of it into native machine
-instructions if you pass ``linker='c'`` as a keyword argument.
+<MOVED TO theano.txt>
 
 
 License
