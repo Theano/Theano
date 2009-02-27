@@ -12,6 +12,7 @@ Advanced Topics
    env
    optimization
    compilation
+   ccodegen
    function
    module
 
