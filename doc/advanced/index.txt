@@ -5,6 +5,9 @@
 Advanced Topics
 ===============
 
+Structure
+=========
+
 .. toctree::
    :maxdepth: 2
    
@@ -16,4 +19,11 @@ Advanced Topics
    function
    module
 
+Concepts
+========
+
+.. toctree::
+   :maxdepth: 2
+
+   gradient
 

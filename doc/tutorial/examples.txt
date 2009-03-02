@@ -55,22 +55,130 @@ Also note the call to ``dmatrices``. This is a shortcut, use it wisely
 Computing gradients
 ===================
 
-WRITEME
+Now let's use Theano for a slightly more sophisticated task: create a
+function which computes the derivative of some expression ``e`` with
+respect to its parameter ``x``. For instance, we can compute the
+gradient of the square of ``x``.
+
+>>> x = T.dscalar('x')
+>>> y = x**2
+>>> gy = T.grad(y, x)
+>>> f = function([x], gy)
+>>> f(4)
+array(8.0)
+>>> f(94.2)
+array(188.40000000000001)
+
+We can also compute the gradient of complex expressions such as the
+logistic function defined above:
+
+>>> x = T.dmatrix('x')
+>>> s = 1 / (1 + T.exp(-x))
+>>> gs = T.grad(s, x)
+>>> glogistic = function([x], gs)
+
+The resulting function computes the gradient of its first argument
+with respect to the second. It is pretty much equivalent in semantics
+and in computational complexity as what you would obtain through an
+`automatic differentiation`_ tool.
+
+.. note::
+
+   In general, the result of ``T.grad`` has the same dimensions as the
+   second argument. This is exactly like the first derivative if the
+   first argument is a scalar or a tensor of size 1 but not if it is
+   larger. For more information on the semantics when the first
+   argument has a larger size and details about the implementation,
+   see the :ref:`gradient` section.
 
 
 Setting a default value for an argument
 =======================================
 
-WRITEME
+Let's say you want to define a function that adds two numbers, except
+that if you only provide one number, the other input is assumed to be
+one. You can do it like this:
+
+>>> x, y = T.dscalars('xy')
+>>> z = x + y
+>>> f = function([x, (y, 1)], z)
+>>> f(33)
+array(34.0)
+>>> f(33, 2)
+array(35.0)
+
+The syntax is that if one of the elements in the list of inputs is a
+pair, the input is the first element of the pair and the second
+element is its default value. Here ``y``'s default value is set to 1.
 
 
 Making a function with state
 ============================
 
-WRITEME
+It is also possible to make a function with an internal state. For
+example, let's say we want to make an accumulator: at the beginning,
+the state is initialized to zero, then on each function call the state
+is incremented by the function's argument. We'll also make it so that
+the increment has a default value of 1.
+
+First let's define the accumulator function:
+
+>>> inc = T.scalar('inc')
+>>> state = T.scalar('state')
+>>> new_state = state + inc
+>>> accumulator = function([(inc, 1), ((state, new_state), 0)], new_state)
+
+The first argument is a pair. As we saw in the previous section this
+simply means that inc is an input with a default value of 1. The
+second argument has a new syntax which creates an internal state or
+closure. The syntax is ``((state_result, new_state_result),
+initial_value)``. What this means is that every time ``accumulator``
+will be called, the value of the internal ``state`` will be replaced
+by the value computed as ``new_state``. In this case, the state will
+be replaced by the result of incrementing it by ``inc``.
+
+There is no limit to how many states you can have. You can add an
+arbitrary number of elements to the input list which correspond to the
+syntax described in the previous paragraph. You can name the states
+however you like as long as the name does not conflict with the names
+of other inputs.
+
+Anyway, let's try it out! The state can be accessed using the square
+brackets notation ``[]``. You may access the state either by putting
+the :ref:`result` representing it or the name of that
+:ref:`result`. In our example we can access the state either with the
+``state`` object or the string 'state'.
+
+>>> accumulator[state]
+array(0.0)
+>>> accumulator['state']
+array(0.0)
+
+Here we use the accumulator and check that the state is correct each
+time:
+
+>>> accumulator()
+array(1.0)
+>>> accumulator['state']
+array(1.0)
+>>> accumulator(300)
+array(301.0)
+>>> accumulator['state']
+array(301.0)
+
+It is of course possible to reset the state. This is done very
+naturally by assigning to the state using the square brackets
+notation:
+
+>>> accumulator['state'] = 5
+>>> accumulator(0.9)
+array(5.9000000000000004)
+>>> accumulator['state']
+array(5.9000000000000004)
 
 
 **Next:** `Using Module`_
 
 .. _Using Module: module.html
+.. _automatic differentiation: http://en.wikipedia.org/wiki/Automatic_differentiation
 
