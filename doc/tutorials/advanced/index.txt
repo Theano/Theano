@@ -1,0 +1,26 @@
+
+.. _advtutorial:
+
+=================
+Advanced Tutorial
+=================
+
+Before tackling this tutorial, it is highly recommended to read the
+:ref:`basictutorial`.
+
+
+The advanced tutorial is meant to give the reader a greater
+understanding of the building blocks of Theano by making him or her
+define a framework for basic arithmetic on doubles from scratch, as
+well as custom optimizations for this system. This tutorial should be
+of most use to users who want to extend Theano with custom types and
+operations related to these types. Users who want to extend Theano
+with new operations on tensors should check the
+:ref:`tensoroptutorial`, but it is a good idea to read this tutorial
+as well since it probably provides better grounding for the many
+concepts at work here.
+
+
+
+
+

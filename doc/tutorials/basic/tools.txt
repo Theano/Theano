@@ -1,0 +1,151 @@
+
+=====
+Tools
+=====
+
+
+Mode
+====
+
+WRITEME
+
+
+Types
+=====
+
+NOTE: I'm not sure this actually goes in the tutorial - it ended up
+much longer than intended - maybe we should just link to it! --OB
+
+Predefined types
+----------------
+
+Theano gives you many premade types to work with. These types are
+located in the ``theano.tensor`` package. The name of the types follow
+a recipe:
+
+``<dtype><dimensionality>``
+
+Where ``<dtype>`` is one of:
+
+==== ======== ============== ====
+code type     domain         bits
+==== ======== ============== ====
+b    byte     signed integer 8
+w    word     signed integer 16
+i    integer  signed integer 32
+l    long     signed integer 64
+f    float    floating point 32
+d    double   floating point 64
+==== ======== ============== ====
+
+Dimensionality is one of:
+
+====== ====== ========================================== =============================================
+code   shape  Rows :term:`broadcastable <broadcasting>`? Columns :term:`broadcastable <broadcasting>`?
+====== ====== ========================================== =============================================
+scalar []     Yes                                        Yes
+vector [n]    Yes                                        N/A
+row    [1, n] Yes                                        No
+col    [m, 1] No                                         Yes
+matrix [m, n] No                                         No
+====== ====== ========================================== =============================================
+
+So for example if you want a row of 32-bit floats, it is available
+under ``theano.tensor.frow`` and if you want a matrix of unsigned
+32-bit integers it is available under ``theano.tensor.imatrix``.
+
+Each of the methods described above have a singular version and a
+plural version. When called, the singular version takes a single
+argument which is the name of the :term:`Result` we want to make and
+it makes a single Result of that type. The plural version can either
+take an integer or a string. If an integer is provided, it will return
+that many Results and if a string is provided, it will create one
+Result for each letter of the string, using the letter as the Result's
+name. For example:
+
+.. code-block:: python
+
+   from theano.tensor import *
+
+   x = dmatrix() # creates one Result with no name
+   x = dmatrix('x') # creates one Result with name 'x'
+   xyz = dmatrix('xyz') # creates one Result with name 'xyz'
+
+   x, y, z = dmatrices(3) # creates three Results with no names
+   x, y, z = dmatrices('xyz') # creates three Results named 'x', 'y' and 'z'
+
+
+Custom tensor types
+-------------------
+
+If you wish to use a type which is not available here (for example, a
+3D tensor) you can build an appropriate type using
+``theano.tensor.Tensor``. The first argument you pass is the ``dtype``
+and the second is the ``broadcastable pattern``.
+
+Where ``dtype`` is one of:
+
+=========== ================ =================
+dtype       domain           bits
+=========== ================ =================
+int8        signed integer   8
+int16       signed integer   16
+int32       signed integer   32
+int64       signed integer   64
+uint8       unsigned integer 8
+uint16      unsigned integer 16
+uint32      unsigned integer 32
+uint64      unsigned integer 64
+float32     floating point   32
+float64     floating point   64
+complex64   complex          64 (two float32)
+complex128  complex          128 (two float64)
+=========== ================ =================
+
+The broadcastable pattern, on the other hand, indicates both the
+number of dimensions and whether a particular dimension has length
+1. Here is a handy table mapping the :term:`broadcastable
+<broadcasting>` pattern to what kind of tensor it encodes:
+
+===================== =================================
+pattern               interpretation
+===================== =================================
+[]                    scalar
+[True]                1D scalar (vector of length 1)
+[True, True]          2D scalar (1x1 matrix)
+[False]               vector
+[False, False]        matrix
+[False] * n           nD tensor
+[True, False]         row (1xN matrix)
+[False, True]         column (Mx1 matrix)
+[False, True, False]  A Mx1xP tensor (a)
+[True, False, False]  A 1xNxP tensor (b)
+[False, False, False] A MxNxP tensor (pattern of a + b)
+===================== =================================
+
+So if we wanted to create a type representing a 3D array of unsigned
+bytes, we would simply do: 
+
+.. code-block:: python
+
+   mytype = theano.tensor.Tensor('uint8', [False]*3)
+
+
+Ops
+===
+
+There's a lot of operations readily available in the ``theano.tensor``
+package. They do not require much explanation according to this
+tutorial's author, so he will simply direct you to the :ref:`oplist`
+:)
+
+
+
+**Next:** `Wrapping up`_
+
+.. _Wrapping up: wrapup.html
+
+
+
+
+

@@ -69,8 +69,8 @@ Contents
 
    theano
    install
-   tutorial/index
-   advtutorial/index
+   tutorials/basic/index
+   tutorials/advanced/index
    advanced/index
    indexes/index
    examples/index

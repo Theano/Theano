@@ -36,7 +36,8 @@ Now we're ready for the tour:
 `Using Module`_
   Getting serious
 
-WRITEME: using modes?
+`Tools`_
+  An overview of what you have access to
 
 `Wrapping up`_
   A guide to what to look at next
@@ -52,6 +53,7 @@ WRITEME: using modes?
    adding
    examples
    module
+   tools
    wrapup
 
 
@@ -59,5 +61,6 @@ WRITEME: using modes?
 .. _Adding two numbers together: adding.html
 .. _More examples: examples.html
 .. _Using Module: module.html
+.. _Tools: tools.html
 .. _Wrapping up: wrapup.html
 
