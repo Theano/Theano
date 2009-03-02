@@ -71,6 +71,7 @@ Contents
    advtutorial/index
    advanced/index
    indexes/index
+   examples/index
    glossary
    links
    LICENSE

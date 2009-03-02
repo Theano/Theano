@@ -8,6 +8,19 @@ Module Interface
 WRITEME
 
 
+.. index::
+   single: External
+   single: component; External
+
+.. _external:
+
+--------
+External
+--------
+
+WRITEME
+
+
 
 .. index::
    single: Member

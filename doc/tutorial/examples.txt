@@ -1,5 +1,5 @@
 
-.. _Basic Tutorial - More Examples:
+.. _basictutexamples:
 
 =============
 More examples
@@ -12,7 +12,9 @@ Logistic function
 Let's say that you want to compute the logistic curve, which is given
 by:
 
-``s(x) = 1 / (1 + e**(-x))``
+.. math::
+
+   s(x) = \frac{1}{1 + e^{-x}}
 
 You want to compute the function :term:`elementwise` on matrices of
 doubles.
@@ -58,7 +60,7 @@ Computing gradients
 Now let's use Theano for a slightly more sophisticated task: create a
 function which computes the derivative of some expression ``e`` with
 respect to its parameter ``x``. For instance, we can compute the
-gradient of the square of ``x``.
+gradient of :math:`x^2` with respect to :math:`x`.
 
 >>> x = T.dscalar('x')
 >>> y = x**2
@@ -111,6 +113,8 @@ The syntax is that if one of the elements in the list of inputs is a
 pair, the input is the first element of the pair and the second
 element is its default value. Here ``y``'s default value is set to 1.
 
+
+.. _functionstateexample:
 
 Making a function with state
 ============================

@@ -36,6 +36,9 @@ Now we're ready for the tour:
 `Using Module`_
   Getting serious
 
+`Wrapping up`_
+  A guide to what to look at next
+
 ---------------------------------------
 
 
@@ -47,9 +50,11 @@ Now we're ready for the tour:
    adding
    examples
    module
+   wrapup
 
 
 
 .. _Adding two numbers together: adding.html
 .. _More examples: examples.html
 .. _Using Module: module.html
+.. _Wrapping up: wrapup.html

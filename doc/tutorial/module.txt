@@ -3,5 +3,270 @@
 Using Module
 ============
 
-WRITEME
+Now that we're familiar with the basics, we can see Theano's more
+advanced interface, Module. This interface allows you to define Theano
+"objects" which can have many state variables and many methods sharing
+these states. This is what you should use if you aim to use Theano to
+define complex systems such as a neural network.
+
+
+Remake of the "state" example
+=============================
+
+Let's use Module to re-implement :ref:`this example
+<functionstateexample>`.
+
+>>> m = Module()
+>>> m.state = Member(T.dscalar())
+>>> m.inc = External(T.dscalar())
+>>> m.new_state = m.state + m.inc
+>>> m.call = Method(m.inc, m.new_state, {m.state: m.new_state})
+>>> acc = m.make(state = 0)
+>>> acc.state
+array(0.0)
+>>> acc.call(2)
+array(2.0)
+>>> acc.state
+array(2.0)
+>>> acc.state = 39.99
+>>> acc.call(0.01)
+array(40.0)
+>>> acc.state
+array(40.0)
+
+This deserves to be broken up a bit...
+
+
+>>> m = Module()
+
+Here we instantiate an empty Module.
+
+
+>>> m.state = Member(T.dscalar())
+
+Then we declare a variable for use with our Module. That variable will
+be a :ref:`member` of the module, which means that it will be
+accessible as a field of the object we will create later (for reading
+and writing). It will also be accessible from any :ref:`method`
+defined in our Module.
+
+.. note::
+
+   There is no need to name the variable explicitly here. m.state will
+   be given the name 'state' automatically.
+
+
+>>> m.inc = External(T.dscalar('inc'))
+
+The inc variable doesn't need to be declared as a Member because it
+will only serve as an input to the method we will define. This is why
+it is defined as an :ref:`external` variable. Do note that it is
+inconsequential if you do declare it as a Member - it is very unlikely
+to cause you any problems.
+
+.. note::
+
+   Both Member and External are optional. If you do the direct assignment:
+
+   >>> m.state = T.dscalar()
+
+   The default is to declare m.state as a Member. This is a sensible
+   default in most situations and can avoid clutter, so feel free to
+   omit explicit calls to Member.
+
+
+>>> m.new_state = m.state + m.inc
+
+This line describes how to compute the new state.
+
+.. note::
+
+   Here new_state is implicitly declared as External since it is
+   illegal to declare a Result as a Member if it is the result of
+   previous computations.
+
+
+>>> m.call = Method(m.inc, m.new_state, {m.state: m.new_state})
+
+Here we declare a Method. The three arguments are as follow:
+
+* **inputs**: a list of input Results
+* **outputs**: a list of output Results
+* **updates**: a dictionary mapping a Result declared as a Member to a
+  Result representing the computation of the next state of the member.
+
+If possible, you may also give the updates as keyword arguments, as
+in: ``Method(m.inc, m.new_state, state = m.new_state)``. This implies
+that m.state's name is 'state'.
+
+
+>>> acc = m.make(state = 0)
+
+This line is what does the magic. Everything in m is symbolic. Once
+the make method is called on it, an object is made which can do real
+computation and whose fields contain real values.
+
+The keyword arguments given to make are optional and are used to
+assign initial values to each Member. If a Member is omitted, the
+initial value is None.
+
+
+>>> acc.state
+array(0.0)
+
+Since state was declared as a Member, we can access it easily using
+'.state'.
+
+
+>>> acc.call(2)
+array(2.0)
+>>> acc.state
+array(2.0)
+>>> acc.call(6)
+array(8.0)
+>>> acc.state
+array(8.0)
+
+When we call the ``call`` method, all the updates given to the
+corresponding Method's ``updates`` field are performed. We only had
+one update which mapped ``state`` to ``new_state`` and you can see
+that it works as intended, adding the argument to the internal state
+every time.
+
+
+>>> acc.state = 39.99
+>>> acc.call(0.01)
+array(40.0)
+>>> acc.state
+array(40.0)
+
+The state is also easy to set.
+
+
+Using Inheritance
+=================
+
+A friendlier way to use Module is to implement your functionality as a
+subclass of Module:
+
+
+.. code-block:: python
+
+   class Accumulator(Module):
+
+       def __init__(self):
+           super(Accumulator, self).__init__() # don't forget this
+           self.inc = External(T.dscalar())
+           self.state = Member(T.dscalar())
+           self.new_state = self.inc + self.state
+           self.call = Method(inputs = self.inc,
+                              outputs = self.new_state,
+                              updates = {self.state: self.new_state})
+
+   m = Accumulator()
+   acc = m.make(state = 0)
+
+
+This is just like the previous example except slightly fancier.
+
+.. warning::
+
+   Do not forget to call the constructor of the parent class! (the
+   call to ``super().__init__`` in the previous code block) If you
+   forget it, you'll get strange behavior :(
+
+
+Extending your Module with Python methods
+=========================================
+
+Let's say we want to add a method to our accumulator to print out the
+state and we want to call it ``print_state``. All we need to do is to
+give a method called ``_instance_print_state`` to our Module.
+
+
+.. code-block:: python
+
+   class Accumulator(Module):
+
+       def __init__(self):
+           super(Accumulator, self).__init__() # don't forget this
+           self.inc = External(T.dscalar())
+           self.state = Member(T.dscalar())
+           self.new_state = self.inc + self.state
+           self.call = Method(inputs = self.inc,
+                              outputs = self.new_state,
+                              updates = {self.state: self.new_state})
+
+       def _instance_print_state(self, acc):
+           print '%s is: %s' % (self.state, acc.state)
+
+   m = Accumulator()
+   acc = m.make(state = 0)
+
+   acc.print_state() # --> prints "state is: 0.0"
+
+
+Any method called like ``_instance_XXX`` will result in the object
+obtained through a call to ``make`` to gain an ``XXX`` method. Note
+that when we define ``_instance_print_state`` there are two "self"
+arguments: ``self`` which is *symbolic* and ``obj`` which contains
+*data*. Therefore, ``self.state`` is the symbolic state variable and
+prints out as "state", whereas ``obj.state`` is the state's actual
+value in the accumulator and prints out as "0.0".
+
+
+Adding custom initialization
+============================
+
+As was said in the previous section, you can add functionality with
+``_instance_XXX`` methods. One of these methods is actually special:
+``_instance_initialize`` will be called with whatever arguments you
+give to ``make``. There is a default behavior which we have used,
+where we give the states' initial values with keyword arguments
+(``acc.make(state = 0)``). If you want more personalized behavior, you
+can override the default with your own method, which has to be called
+``_instance_initialize``.
+
+Here is an example where we take width and height arguments to
+initialize a state with a matrix of zeros:
+
+
+.. code-block:: python
+
+   import numpy
+
+   class MatrixAccumulator(Module):
+
+       def __init__(self):
+           super(MatrixAccumulator, self).__init__() # don't forget this
+           self.inc = External(T.dscalar())
+           self.state = Member(T.dmatrix())
+           self.new_state = self.inc + self.state
+           self.call = Method(inputs = self.inc,
+                              outputs = self.new_state,
+                              updates = {self.state: self.new_state})
+
+       def _instance_print_state(self, acc):
+           print '%s is: %s' % (self.state, acc.state)
+
+       def _instance_initialize(self, acc, nrows, ncols):
+           acc.state = numpy.zeros((nrows, ncols))
+
+   m = Accumulator()
+   acc = m.make(2, 5) # this calls m._instance_initialize(acc, 2, 5)
+
+   acc.print_state()
+
+   # OUTPUT:
+   # state is: [[ 0.  0.  0.  0.  0.]
+   #  [ 0.  0.  0.  0.  0.]]
+
+
+**Next:** `Wrapping up`_
+
+.. _Wrapping up: wrapup.html
+
+
+
+
 
