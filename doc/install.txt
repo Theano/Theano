@@ -18,7 +18,7 @@ to be installed:
 - numpy >=1.2 (earlier versions have memory leaks)
 - SciPy (specifically numpy, sparse, weave). We recommend scipy >=0.7 if you are using sparse matrices, because scipy.sparse is buggy in 0.6. (scipy.csc_matrix dot has a bug with singleton dimensions. There may be more bugs.)
 - g++, python-dev (optional but highly recommended, to compile generated C code)
-- sphinx >=0.5.1, pygments (optional, to build documentation)
+- sphinx >=0.5.1, pygments (optional, to build documentation) (also latex and dvipng if you want math to show up as images...)
 - mercurial (optional, to download the source)
 - nose (nosetests) (optional, for testing)
 
@@ -133,4 +133,20 @@ Windows
 As of now, the Windows platform is not supported. In fact, it has
 never even been tested, so feel free to explore this uncharted
 territory and inform us of your progress!
+
+
+----------------------------
+Generating the documentation
+----------------------------
+
+This should give you the gist of it:
+
+.. code-block:: bash
+
+   $ python scripts/docgen.py --help
+   Usage: scripts/docgen.py [OPTIONS]
+     -o <dir>: output the html files in the specified dir
+     --rst: only compile the doc (requires sphinx)
+     --epydoc: only compile the api documentation (requires epydoc)
+     --help: this help
 
