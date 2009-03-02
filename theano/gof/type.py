@@ -221,7 +221,11 @@ class PureType(object):
 
     def is_valid_value(self, a):
         """Required: Return True for any python object `a` that would be a legal value for a Result of this Type"""
-        raise AbstractFunctionError()
+        try:
+            self.filter(a, True)
+            return True
+        except TypeError:
+            return False
     
     def make_result(self, name = None):
         """Return a new `Result` instance of Type `self`.
@@ -246,8 +250,17 @@ class PureType(object):
         r.tag.trace = traceback.extract_stack()[:-1]
         return r
 
-    def values_eq_enough(self, a, b):
-        """Return True if a and b can be considered equal as Op outputs, else False.
+    def values_eq(self, a, b):
+        """
+        Return True if a and b can be considered exactly equal.
+
+        a and b are assumed to be valid values of this Type.
+        """
+        return a == b
+
+    def values_eq_approx(self, a, b):
+        """
+        Return True if a and b can be considered approximately equal.
 
         :param a: a potential value for a Result of this Type.
 
@@ -255,12 +268,14 @@ class PureType(object):
 
         :rtype: Bool
 
-        This function is used by theano debugging tools to decide whether two values are
-        equivalent, admitting a certain amount of numerical instability.  For example,
-        for floating-point numbers this function should be an approximate comparison.
+        This function is used by theano debugging tools to decide
+        whether two values are equivalent, admitting a certain amount
+        of numerical instability.  For example, for floating-point
+        numbers this function should be an approximate comparison.
 
+        By default, this does an exact comparison.
         """
-        return (a == b)
+        return self.values_eq(a, b)
 
 
 _nothing = """

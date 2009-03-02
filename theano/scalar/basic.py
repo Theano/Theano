@@ -52,13 +52,8 @@ class Scalar(Type):
         except Exception, e:
             raise TypeError("Could not convert %s (value=%s) to %s" % (type(data), data, self.dtype), e)
 
-    def values_eq_enough(self, a, b):
-        return abs(a - b) / (a+b) < 1e-4
-    
-    def is_valid_value(self, a):
-        _a = numpy.asarray(a)
-        rval = (_a.ndim == 0) and (str(_a.dtype) == self.dtype)
-        return rval
+    def values_eq_approx(self, a, b, tolerance = 1e-4):
+        return abs(a - b) / (a+b) < tolerance
 
     def __eq__(self, other):
         return type(self) == type(other) and other.dtype == self.dtype

@@ -222,20 +222,9 @@ class Tensor(Type):
         """Compare True iff other is the same kind of Tensor"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
-    def values_eq_enough(self, a, b):
+    def values_eq_approx(self, a, b):
         return type(a) is numpy.ndarray and type(b) is numpy.ndarray \
                 and (a.shape == b.shape) and numpy.allclose(a, b)
-
-    def is_valid_value(self, a):
-        rval = (type(a) is numpy.ndarray) and (self.ndim == a.ndim) \
-                and (str(a.dtype) == self.dtype) \
-                and all([((si == 1) or not bi) for si, bi in zip(a.shape, self.broadcastable)])
-        if not rval:
-            print type(a),(type(a) is numpy.ndarray)
-            print a.ndim, (self.ndim == a.ndim)
-            print a.dtype, (str(a.dtype) == self.dtype)
-            print a.shape, self.broadcastable, ([(shp_i == 1) for shp_i in a.shape] == self.broadcastable)
-        return rval
 
     def __hash__(self):
         """Hash equal for same kinds of Tensor"""
