@@ -186,7 +186,8 @@ class Sparse(gof.Type):
     def __repr__(self):
         return "Sparse[%s, %s]" % (str(self.dtype), str(self.format))
 
-    def values_eq_enough(self, a, b, eps=1e-6):
+    def values_eq_approx(self, a, b, eps=1e-6):
+#        print "VEA", a, b, scipy.sparse.issparse(a), scipy.sparse.issparse(b), abs(a-b).sum(), abs(a-b).sum() < (1e-6 * a.nnz)
         return scipy.sparse.issparse(a) \
                 and scipy.sparse.issparse(b) \
                 and abs(a-b).sum() < (1e-6 * a.nnz)
