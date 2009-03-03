@@ -288,8 +288,12 @@ class Function(object):
         # if we are allowing garbage collection, remove the input and output reference from the internal
         # storage cells
         if getattr(self.fn, 'allow_gc', False):
-            for x in self.output_storage:
-                x.storage[0] = None  #WARNING: This circumvents the 'readonly' attribute in x
+            assert len(self.output_storage) == len(self.maker.env.outputs)
+            for o_container, o_result in zip(self.output_storage, self.maker.env.outputs):
+                if o_result.owner is not None:
+                    # this node is the result of computation
+                    # WARNING: This circumvents the 'readonly' attribute in x
+                    o_container.storage[0] = None
 
         # Update the inputs that have an update function
         for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
