@@ -1,0 +1,57 @@
+
+.. _tensoroptutorial:
+
+===============================
+How to make a new Op on tensors
+===============================
+
+This tutorial aims to explain how to create a new operation operating
+on numpy's ndarrays and using Theano's Tensor type. It is optional but
+recommended to go through the :ref:`advtutorial` beforehand, which
+explains more in detail the purpose of each of the methods you will
+define here.
+
+The operation we will implement will be multiplication of two matrices
+of doubles. Of course, this operation already exists in Theano, but so
+do all simple operations and a tutorial works better when all concepts
+are kept as simple as possible. We will proceed by steps: the first
+step is to implement the Op in Python using numpy's multiplication
+operator. In the second step, we will extend our Op to (optionally)
+operate inplace on its inputs. In the third step, which is the most
+difficult, we will give our Op a solid C implementation.
+
+
+Implementing a new Op in Python
+===============================
+
+This is actually very simple to do. You are required to define two
+methods - one to create the :ref:`apply` node every time your Op is
+applied to some inputs, declaring the outputs in the process and
+another to operate on the inputs. There is also one optional method
+you may define which will compute the gradient of your Op.
+
+
+Extending the Op to work inplace
+================================
+
+WRITEME
+
+
+Writing a C implementation
+==========================
+
+WRITEME
+
+
+
+What's next
+===========
+
+Theano provides several special Ops that can make your job
+easier. Check the :ref:`tensoroptools` to see if you can leverage them
+to do what you need.
+
+It is highly recommended that you read the :ref:`opchecklist` before
+making any new Op. This can avoid you a lot of problems.
+
+

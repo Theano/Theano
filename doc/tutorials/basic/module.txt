@@ -262,6 +262,13 @@ initialize a state with a matrix of zeros:
    #  [ 0.  0.  0.  0.  0.]]
 
 
+Nesting Modules
+===============
+
+WRITEME
+
+
+
 **Next:** `Tools`_
 
 .. _Tools: tools.html

@@ -1,0 +1,14 @@
+
+
+=========
+Example 1
+=========
+
+.. rubric:: Contents
+
+.. toctree::
+   :maxdepth: 2
+
+   type
+
+

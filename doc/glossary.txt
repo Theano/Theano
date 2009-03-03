@@ -28,8 +28,6 @@ Glossary of terminology
         to know, for any operation which supports broadcasting, which
         dimensions will need to be broadcasted. When applicable, this
         information is given in the :term:`Type` of a :term:`Result`.
-
-        For more information, see the article about broadcasting_.
         
         See also:
 
@@ -64,6 +62,9 @@ Glossary of terminology
     graph
         WRITEME
 
+    inplace
+        WRITEME
+
     op
         WRITEME
 
@@ -86,8 +87,9 @@ Glossary of terminology
     type
         WRITEME
 
+    view
+        WRITEME
 
-.. _broadcasting: concepts/broadcasting.html
 
 
 
