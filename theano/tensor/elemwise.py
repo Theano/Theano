@@ -160,6 +160,8 @@ class DimShuffle(Op):
     def perform(self, node, (input, ), (storage, )):
         # drop
         res = input
+        if type(res) != numpy.ndarray:
+            raise TypeError(res)
         shape = list(res.shape)
         for drop in reversed(self.drop):
             shape.pop(drop)
@@ -178,7 +180,7 @@ class DimShuffle(Op):
         if not self.inplace:
             res = numpy.copy(res)
 
-        storage[0] = res
+        storage[0] = numpy.asarray(res) #asarray puts scalars back into array
 
     def c_code(self, node, name, (input,), (res,), sub):
         def statements(lst):
