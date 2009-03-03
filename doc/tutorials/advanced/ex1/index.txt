@@ -10,5 +10,8 @@ Example 1
    :maxdepth: 2
 
    type
+   op
+   ctype
+   cop
 
 

@@ -125,7 +125,7 @@ array([[ 2.,  2.,  2.,  2.,  2.],
 
 It is possible to add scalars to matrices, vectors to matrices,
 scalars to vectors, etc. The behavior of these operations is defined
-by broadcasting_.
+by :term:`broadcasting`.
 
 The following types are readily available:
 
@@ -153,5 +153,4 @@ types compatible with numpy arrays may be found :ref:`here
 **Next:** `More examples`_
 
 
-.. _broadcasting: ../concepts/broadcasting.html
 .. _More examples: examples.html

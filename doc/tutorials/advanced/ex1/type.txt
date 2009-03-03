@@ -4,4 +4,84 @@
 Making the ``double`` type
 ==========================
 
-WRITEME
+We will piggyback this type on Python's "float" type. Note that a
+Theano :ref:`type` is not equivalent to a Python type or
+class. Indeed, in Theano, :ref:`dmatrix` an :ref:`ivector` both use
+``numpy.ndarray`` as the working data type, yet they are different
+Types. The Python and C implementations may also use different types
+as long as a way to convert back and forth between them is provided.
+
+
+A :ref:`type` in Theano is any object which defines the following
+methods:
+
+* **filter(value, strict [= False])**: this casts or wraps a value to
+  match the Type and returns the casted/wrapped value. If the value is
+  incompatible with the type, it must raise an exception. If strict is
+  True, filter must return a reference to ``value`` (i.e. casting
+  prohibited)
+
+* **is_valid_value(value)**: returns True iff the value is exactly
+  compatible with the Type.
+    *Default*: defined in terms of ``filter(value, strict = True)``
+
+* **values_eq(a, b)**: returns True iff ``a`` and ``b`` are valid
+  values of this Type and are equal.
+    *Default*: a == b
+
+* **values_eq_approx(a, b)**: returns True iff ``a`` and ``b`` are
+  valid values of this Type and are approximately equal, for a
+  definition of approximately which varies from Type to Type.
+    *Default*: same as values_eq
+
+* **make_result(name = None)**: makes a :term:`Result` of this Type
+  with the specified name. The Result will have its ``type`` field set
+  to the Type object.
+    *Default*: there is a generic definition of this in Type.
+
+* **__call__()**:
+  Syntactic shortcut to make_result.
+    *Default*: this is done for you by Type.
+
+
+For each method, the *default* is what Type defines for you. This
+means you will rarely need to define all of these methods.
+
+
+In the past, some confusion has arised on what an instance of Type is
+versus a subclass of Type or an instance of Result. Some of this
+confusion is syntactic. A Type is any object which has fields
+corresponding to the functions defined above. The Type class provides
+sensible defaults for most of them but the most important one
+(filter), which means that in most cases all you have to do is:
+
+.. code-block:: python
+
+   def filter(x, strict = False):
+       ...
+
+   mytype = theano.gof.Type()
+   mytype.filter = filter
+
+Another way to make a new Type is to subclass Type:
+
+.. code-block:: python
+
+   class MyType(theano.gof.Type):
+       def filter(self, x, strict = False):
+           ...
+
+   mytype = MyType()
+
+The issue with defining a new Type like this is that all instances of
+MyType are technically the same Type since they filter in the same
+way. This is relevant because Theano often compares Types using ``==``
+to see if they are the same - for example, if the inputs of two
+different :ref:`applications <apply>` have the same Types and that the
+operation applied on them is the same, they can be :term:`merged
+<merge>`.  The workarounds are to define ``MyType.__eq__`` so that all
+instances of MyType are equal *or* to override ``MyType.__new__`` to
+always return the same instance *or* to hide MyType and only publish a
+single instance of it.
+
+
