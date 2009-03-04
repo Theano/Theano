@@ -1,6 +1,7 @@
 
 import sys
 import os
+import shutil
 import inspect
 
 from epydoc import docintrospecter 
@@ -98,13 +99,36 @@ if __name__ == '__main__':
     if options['--all'] or options['--epydoc']:
         from epydoc.cli import cli
         sys.path[0:0] = throot
+
+        #Generate HTML doc
+        #os.system("epydoc --config doc/api/epydoc.conf -o html/api")
         sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot, '-o', 'api']
         cli()
-#        os.system("epydoc --config doc/api/epydoc.conf -o html/api")
+
+        # Generate PDF doc
+        # TODO
 
     if options['--all'] or options['--rst']:
         import sphinx
         sys.path[0:0] = [os.path.join(throot, 'doc')]
         sphinx.main(['', '-E', os.path.join(throot, 'doc'), '.'])
+
+        # Generate latex file in a temp directory
+        import tempfile
+        workdir = tempfile.mkdtemp()
+        sphinx.main(['', '-E', '-b', 'latex',
+            os.path.join(throot, 'doc'), workdir])
+        # Compile to PDF
+        currentdir = os.getcwd()
+        os.chdir(workdir)
+        os.system('make')
+        try:
+            shutil.copy(os.path.join(workdir, 'theano.pdf'), currentdir)
+            os.chdir(currentdir)
+            shutil.rmtree(workdir)
+        except OSError, e:
+            print 'OSError:', e
+
+
 
 
