@@ -35,13 +35,14 @@ efficient machine learning algorithms while minimizing human
 time. Theano was named after the `Greek mathematician`_ who may have
 been Pythagoras' wife.
 
+Theano is released under a BSD license (:ref:`link <license>`)
+
 You can keep reading from :ref:`here <usingtheano>`.
+
 
 
 Getting started
 ===============
-
-TODO: I want to bold the links below. How the fuck do I bold links? ``**`link name`_**`` doesn't work! :(
 
 
 :ref:`install`
@@ -49,13 +50,14 @@ TODO: I want to bold the links below. How the fuck do I bold links? ``**`link na
 
 
 :ref:`basictutorial`
-  Getting started with Theano's basic features. Go there if you are new!
+  Getting started with Theano's basic features. Go there if you are
+  new!
 
 
 :ref:`advtutorial`
-  This tutorial is for more advanced users who want to define their own
-  operations and optimizations. It is recommended to go through the
-  :ref:`basictutorial` first.
+  This tutorial is for more advanced users who want to define their
+  own operations and optimizations. It is recommended to go through
+  the :ref:`basictutorial` first.
 
 
 
@@ -71,6 +73,7 @@ Contents
    advtutorial/index
    advanced/index
    indexes/index
+   examples/index
    glossary
    links
    LICENSE

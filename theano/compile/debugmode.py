@@ -124,7 +124,7 @@ class BadDestroyMap(DebugModeError):
         print >> sio, "  repr (old val):", repr(self.old_val)
         print >> sio, "  repr (new val):", repr(self.new_val)
         print >> sio, ""
-        print >> sio, "  Hint: this can be caused by a deficient values_eq_enough() or __eq__() implementation that compares node input values"
+        print >> sio, "  Hint: this can be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
         return sio.getvalue()
 
 class StochasticOrder(DebugModeError):
@@ -216,7 +216,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes):
     destroyed_res_list = [node.inputs[i] for i in destroyed_idx_list]
 
     for r_idx, r in enumerate(node.inputs):
-        if not r.type.values_eq_enough(r_vals[r], storage_map[r][0]):
+        if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
             # some input node 'r' got changed by running the node
             # this may or may not be ok...
             if r in destroyed_res_list:
@@ -257,7 +257,7 @@ def _find_bad_optimizations0(order, reasons, r_vals):
                 r_val = r_vals[r]
                 assert r.type == new_r.type
 
-                if not r.type.values_eq_enough(r_val, new_r_val):
+                if not r.type.values_eq_approx(r_val, new_r_val):
                     raise BadOptimization(old_r=r,
                             new_r=new_r, 
                             old_r_val=r_val, 
@@ -296,7 +296,7 @@ def _find_bad_optimizations1(order, reasons, r_vals):
                     new_r_val = r_vals[re]
                     r_val = r_vals[re0]
                     assert re.type == re0.type
-                    if not re.type.values_eq_enough(r_val, new_r_val):
+                    if not re.type.values_eq_approx(r_val, new_r_val):
                         equivalence_sets_broken[id(r_equiv)] = True
                         there_is_a_problem = True
                 re0 = re
@@ -667,7 +667,7 @@ class _Linker(gof.link.LocalLinker):
                                 raise InvalidValueError(r, storage_map[r][0])
                             # compares the version from thunk_py (in r_vals)
                             # to the version produced by thunk_c (in storage_map)
-                            if not r.type.values_eq_enough(r_vals[r], storage_map[r][0]):
+                            if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                                 raise BadClinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
                             storage_map[r][0] = None #clear the storage_map for the thunk_c
 

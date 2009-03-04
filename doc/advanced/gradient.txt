@@ -1,0 +1,8 @@
+
+.. _gradient:
+
+===========================
+Computation of the Gradient
+===========================
+
+WRITEME

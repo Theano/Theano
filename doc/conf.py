@@ -25,6 +25,13 @@ import sys, os
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'ext']
 
+try:
+    from sphinx.ext import pngmath
+    extensions.append('sphinx.ext.pngmath')
+except ImportError:
+    pass
+
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
 

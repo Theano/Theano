@@ -39,6 +39,8 @@ efficient machine learning algorithms while minimizing human
 time. Theano was named after the `Greek mathematician`_ who may have
 been Pythagoras' wife.
 
+Theano is released under a BSD license (:ref:`link <license>`)
+
 
 .. _usingtheano:
 
