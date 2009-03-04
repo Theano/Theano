@@ -16,6 +16,8 @@ Types
 NOTE: I'm not sure this actually goes in the tutorial - it ended up
 much longer than intended - maybe we should just link to it! --OB
 
+.. _predefinedtypes:
+
 Predefined types
 ----------------
 
@@ -101,6 +103,14 @@ float64     floating point   64
 complex64   complex          64 (two float32)
 complex128  complex          128 (two float64)
 =========== ================ =================
+
+.. note::
+
+   There are no premade complex types, so you need to make them
+   explicitly with Tensor. Furthermore, few operations are fully
+   supported for complex types: as of version 0.1, only elementary
+   operations (``+-*/``) have C implementations.
+
 
 The broadcastable pattern, on the other hand, indicates both the
 number of dimensions and whether a particular dimension has length

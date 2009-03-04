@@ -1,87 +1,265 @@
 
 
-==========================
-Making the ``double`` type
-==========================
-
-We will piggyback this type on Python's "float" type. Note that a
-Theano :ref:`type` is not equivalent to a Python type or
-class. Indeed, in Theano, :ref:`dmatrix` an :ref:`ivector` both use
-``numpy.ndarray`` as the working data type, yet they are different
-Types. The Python and C implementations may also use different types
-as long as a way to convert back and forth between them is provided.
+======================
+Making the double type
+======================
 
 
-A :ref:`type` in Theano is any object which defines the following
-methods:
+What is a Type?
+===============
 
-* **filter(value, strict [= False])**: this casts or wraps a value to
-  match the Type and returns the casted/wrapped value. If the value is
-  incompatible with the type, it must raise an exception. If strict is
-  True, filter must return a reference to ``value`` (i.e. casting
-  prohibited)
+A :ref:`type` in Theano, generally speaking, represents a set of
+constraints on potential data objects. These constraints allow Theano
+to tailor C code to handle them and to statically optimize the
+computation graph. For instance, the :ref:`irow <predefinedtypes>`
+type in the ``theano.tensor`` package gives the following constraints
+on the data the Results of type ``irow`` may contain:
 
-* **is_valid_value(value)**: returns True iff the value is exactly
-  compatible with the Type.
-    *Default*: defined in terms of ``filter(value, strict = True)``
+#. Must be an instance of ``numpy.ndarray`` (``isinstance(x, numpy.ndarray)``)
+#. Must be an array of 32-bit integers (``str(x.dtype) == 'int32'``)
+#. Must have a shape of 1xN (``len(x.shape) == 2 and x.shape[0] == 1``)
 
-* **values_eq(a, b)**: returns True iff ``a`` and ``b`` are valid
-  values of this Type and are equal.
-    *Default*: a == b
+Knowing these restrictions, Theano may generate C code for addition,
+etc. which contains the right number of loops over the dimensions and
+declares the right data types.
 
-* **values_eq_approx(a, b)**: returns True iff ``a`` and ``b`` are
-  valid values of this Type and are approximately equal, for a
-  definition of approximately which varies from Type to Type.
-    *Default*: same as values_eq
+Note that a Theano :ref:`type` is not equivalent to a Python type or
+class. Indeed, in Theano, :ref:`irow <predefinedtypes>` and
+:ref:`dmatrix <predefinedtypes>` both use ``numpy.ndarray`` as the
+working data type, yet they are different Types. Indeed, the
+constraints set by ``dmatrix`` are:
 
-* **make_result(name = None)**: makes a :term:`Result` of this Type
-  with the specified name. The Result will have its ``type`` field set
-  to the Type object.
-    *Default*: there is a generic definition of this in Type.
+#. Must be an instance of ``numpy.ndarray`` (``isinstance(x, numpy.ndarray)``)
+#. Must be an array of 64-bit floating point numbers (``str(x.dtype) == 'float64'``)
+#. Must have a shape of MxN, no restriction on M or N (``len(x.shape) == 2``)
 
-* **__call__()**:
-  Syntactic shortcut to make_result.
-    *Default*: this is done for you by Type.
+These are different from ``irow``'s which I listed above. There are
+cases where a Type can fully correspond to a Python type (such as the
+``double`` type we will define here which corresponds to Python's
+``float``) but it's good to know that this is not always the case.
+
+
+Type's contract
+===============
+
+Concretely speaking, in Theano's framework, a Type is any object which
+defines the following methods:
+
+- **filter(value, strict [= False])**
+
+  - This casts or wraps a value to match the Type and returns the
+    casted/wrapped value. If the value is incompatible with the type,
+    it must raise an exception. If strict is True, filter must return a
+    reference to ``value`` (i.e. casting prohibited)
+
+- **is_valid_value(value)**
+
+  - Returns True iff the value is exactly compatible with the Type.
+
+  - *Default*: defined in terms of ``filter(value, strict = True)``
+
+- **values_eq(a, b)**
+
+  - Returns True iff ``a`` and ``b`` are valid values of this Type and
+    are equal.
+
+  - *Default*: a == b
+
+- **values_eq_approx(a, b)**
+
+  - Returns True iff ``a`` and ``b`` are valid values of this Type and
+    are approximately equal, for a definition of approximately which
+    varies from Type to Type.
+
+  - *Default*: same as values_eq
+
+- **make_result(name [= None])**
+
+  - Makes a :term:`Result` of this Type with the specified name. The
+    Result will have its ``type`` field set to the Type object.
+
+  - *Default*: there is a generic definition of this in Type.
+
+- **__call__()**:
+
+  - Syntactic shortcut to make_result.
+
+  - *Default*: this is done for you by Type.
 
 
 For each method, the *default* is what Type defines for you. This
 means you will rarely need to define all of these methods.
 
+For more details you can go see the documentation for :ref:`type`.
 
-In the past, some confusion has arised on what an instance of Type is
-versus a subclass of Type or an instance of Result. Some of this
-confusion is syntactic. A Type is any object which has fields
-corresponding to the functions defined above. The Type class provides
-sensible defaults for most of them but the most important one
-(filter), which means that in most cases all you have to do is:
 
-.. code-block:: python
+Defining double
+===============
 
-   def filter(x, strict = False):
-       ...
+We are going to piggyback ``double`` on Python's ``float``. We are
+going to redefine two functions: filter and values_eq_approx.
 
-   mytype = theano.gof.Type()
-   mytype.filter = filter
 
-Another way to make a new Type is to subclass Type:
+**filter**
 
 .. code-block:: python
 
-   class MyType(theano.gof.Type):
-       def filter(self, x, strict = False):
-           ...
+   def filter(x, strict=False):
+       if strict and not isinstance(x, float):
+           raise TypeError('Expected a float!')
+       return float(x)
 
-   mytype = MyType()
+We need to define ``filter`` with two arguments. The second argument
+must be called ``strict`` (Theano often calls it by keyword) and must
+have a default value of False.
 
-The issue with defining a new Type like this is that all instances of
-MyType are technically the same Type since they filter in the same
-way. This is relevant because Theano often compares Types using ``==``
-to see if they are the same - for example, if the inputs of two
-different :ref:`applications <apply>` have the same Types and that the
-operation applied on them is the same, they can be :term:`merged
-<merge>`.  The workarounds are to define ``MyType.__eq__`` so that all
-instances of MyType are equal *or* to override ``MyType.__new__`` to
-always return the same instance *or* to hide MyType and only publish a
-single instance of it.
+If ``strict == True`` we need to return ``x``. If ``x`` is not a
+``float`` (for example, ``x`` could easily be an ``int``) then it is
+incompatible with our Type and we are forced to raise an exception. If
+``strict == False`` then we are allowed to cast ``x`` to a ``float``,
+so if ``x`` is an ``int`` it we will return an equivalent ``float``.
+
+
+**values_eq_approx**
+
+.. code-block:: python
+
+   def values_eq_approx(x, y, tolerance=1e-4):
+       return abs(x - y) / (x + y) < tolerance
+
+The second function we are defining is ``values_eq_approx``. This
+method is meant to allow approximate comparison between two values
+respecting our Type's constraints. It might happen that an
+optimization changes the computation graph in such a way that it
+produces slightly different results due to numerical instability such
+as rounding errors at the end of the mantissa. For instance, ``a + a +
+a + a + a + a`` might not actually produce the exact same output as
+``6 * a`` (try with a=0.1), but we don't necessarily mind.
+
+We added an extra ``tolerance`` argument here. Since this argument is
+not part of the API, it must have a default value which we reasonably
+chose to be 1e-4.
+
+
+**Putting them together**
+
+What we want in the end is an object which respects the aforementioned
+contract. Any way to achieve this is fine, but one must not forget
+that Type defines standard, default implementations for most required
+methods of the interface. One way to make the Type is to just
+instantiate a plain Type and set the needed fields:
+
+.. code-block:: python
+
+   from theano import gof
+
+   double = gof.Type()
+   double.filter = filter
+   double.values_eq_approx = values_eq_approx
+
+
+Another is to make a subclass of Type and define filter and
+values_eq_approx there:
+
+.. code-block:: python
+
+   from theano import gof
+
+   class Double(gof.Type):
+   
+       def filter(self, x, strict=False):
+           if strict and not isinstance(x, float):
+               raise TypeError('Expected a float!')
+           return float(x)
+   
+       def values_eq_approx(self, x, y, tolerance=1e-4):
+           return abs(x - y) / (x + y) < tolerance
+   
+   double = Double()
+
+
+There is a small issue with defining double that way in that all
+instances of Double are technically the same Type. Indeed, they all
+filter in the same way. This is relevant because Theano often compares
+Types using ``==`` to see if they are the same - for example, if the
+inputs of two different :ref:`applications <apply>` have the same
+Types and that the operation applied on them is the same, they can be
+:term:`merged <merge>`.  The workarounds are to define
+``Double.__eq__`` so that all instances of Double are equal *or* to
+override ``Double.__new__`` to always return the same instance *or* to
+hide Double and only publish a single instance of it.
+
+
+Untangling some concepts
+========================
+
+From feedback I have gotten in the past, confusion is common on what
+an instance of Type is versus a subclass of Type or an instance of
+Result. Some of this confusion is syntactic. A Type is any object
+which has fields corresponding to the functions defined above. The
+Type class provides sensible defaults for most of them but the most
+important one (filter) so when defining new types it is natural to
+subclass Type. Therefore, we often end up with Type subclasses and it
+is not completely clear what these represent semantically. Here is an
+attempt to clear up the confusion:
+
+
+* An **instance of Type** is a set of constraints on real data. It is
+  akin to a primitive type or class in C and it is a *static*
+  annotation.
+
+* An **instance of Result** symbolizes data nodes in a data flow
+  graph. If you were to parse the C expression ``int x;``, ``int``
+  would be a Type instance and ``x`` would be a Result instance of
+  that Type instance. If you were to parse the C expression ``c = a +
+  b;``, ``a``, ``b`` and ``c`` would all be Result instances.
+
+* A **subclass of Type** represents a set of Type instances that share
+  structural similarities. In the ``double`` example that we are
+  doing, there is actually only one Type in that set, therefore the
+  subclass doesn't represent anything that one of its instances
+  doesn't. In this case it is a singleton. However, the Tensor class
+  which is a subclass of Type represents a set of types of tensors
+  parametrized by their data type or number of dimensions. We could
+  say that subclassing Type builds a hierarchy of Types which is based
+  upon structural similarity rather than compatibility.
+
+
+Final version
+=============
+
+.. code-block:: python
+
+   from theano import gof
+
+   class Double(gof.Type):
+   
+       def filter(self, x, strict=False):
+           if strict and not isinstance(x, float):
+               raise TypeError('Expected a float!')
+           return float(x)
+   
+       def values_eq_approx(self, x, y, tolerance=1e-4):
+           return abs(x - y) / (x + y) < tolerance
+
+       def __str__(self):
+           return "double"
+   
+   double = Double()
+
+
+I added one utility function, ``__str__``. That way, when we print
+``double`` it will print out something sensible!
+
+
+
+**Next:** `Making arithmetic Ops on double`_
+
+.. _Making arithmetic Ops on double: op.html
+
+
+
+
+
 
 

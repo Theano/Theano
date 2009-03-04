@@ -39,11 +39,11 @@ templates_path = ['.templates']
 source_suffix = '.txt'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'contents'
 
 # General substitutions.
 project = 'theano'
-copyright = '2008, LISA lab'
+copyright = '2008-2009, LISA lab'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.

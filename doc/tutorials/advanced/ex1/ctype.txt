@@ -1,0 +1,9 @@
+
+========================
+Implementing double in C
+========================
+
+
+**Next:** `Implementing the arithmetic Ops in C`_
+
+.. _Implementing the arithmetic Ops in C: cop.html

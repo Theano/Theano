@@ -1,17 +1,13 @@
 
-
-=========
-Example 1
-=========
-
-.. rubric:: Contents
+==================
+Example 1 - double
+==================
 
 .. toctree::
-   :maxdepth: 2
 
    type
    op
    ctype
    cop
 
-
+WRITEME

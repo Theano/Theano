@@ -1,0 +1,240 @@
+
+===============================
+Making arithmetic Ops on double
+===============================
+
+Now that we have a ``double`` type, we have yet to use it to perform
+computations. We'll start with defining multiplication.
+
+
+What is an Op?
+==============
+
+An :ref:`op` in Theano defines a certain computation on some types of
+inputs, producing some types of outputs. It is equivalent to a
+function definition in most programming languages. From a list of
+input :ref:`Results <result>` and an Op, you can build an :ref:`apply`
+node representing the application of the Op to the inputs.
+
+It is important to understand the distinction between the definition
+of a function (an Op) and the application of a function (an Apply
+node). If you were to interpret the Python language using Theano's
+structures, code going like ``def f(x): ...`` would produce an Op for
+``f`` whereas code like ``a = f(x)`` or ``g(f(4), 5)`` would produce
+an Apply node involving the ``f`` Op.
+
+
+
+Op's contract
+=============
+
+An Op is any object which defines the following methods:
+
+- **make_node(*inputs)**
+  
+  - This important function creates an Apply node representing the
+    application of the Op on the inputs provided. If the Op cannot be
+    applied on these inputs, it must raise an appropriate
+    exception. This method is also responsible for creating Results of
+    the suitable Type to serve as the outputs of the Op's application.
+
+- **__call__(*inputs)**
+
+  - Syntactic shortcut to make_node which returns the output Results
+    of the Op.
+
+  - *Default*: this is done for you by Op.
+
+- **perform(node, inputs, output_storage)**
+
+  - This function computes the function associated to this Op. The
+    ``node`` is an Apply node created by the Op's ``make_node``
+    method, the inputs are a list of references to data to operate on
+    and output_storage is a list of storage cells where the results of
+    the computation must be put.
+
+- **grad(inputs, output_gradients)** *Optional*
+
+  - If the Op you are defining is differentiable, you can define its
+    gradient symbolically in this method. Both the inputs and
+    output_gradients are Results and you must return one Result for
+    each input representing the gradient wrt these inputs provided
+    that the gradients wrt the outputs are computed by
+    output_gradients.
+
+
+For each method, the *default* is what the Op class defines for you.
+
+For more details you can go see the documentation for :ref:`op`.
+
+
+
+Defining mul
+============
+
+We are going to redefine the two functions that are absolutely
+necessary to redefine: ``make_node`` and ``perform``. First, we'll
+instantiate a ``mul`` Op:
+
+.. code-block:: python
+
+   from theano import gof
+   mul = gof.Op()
+
+
+**make_node**
+
+This function must take as many arguments as the operation we are
+defining is supposed to take as inputs - in this example that would be
+two (we'll define multiplication as a binary operation here, even
+though a multiplication Op could technically take an arbitrary number
+of arguments). It should ensure that both inputs have the ``double``
+type and it should make an Apply node with an output Result of type
+``double`` (since multiplying two doubles yields a double).
+
+.. code-block:: python
+
+   def make_node(x, y):
+       if x.type != double or y.type != double:
+           raise TypeError('mul only works on doubles')
+       return gof.Apply(mul, [x, y], [double()])
+   mul.make_node = make_node
+
+
+This is a pretty simple definition: the first two lines make sure that
+both inputs are Results of the ``double`` type that we created in the
+previous section. We would not want to multiply two arbitrary types,
+it would not make much sense (and we'd be screwed when we implement
+this in C!)
+
+The last line is the meat of the definition. There we create an Apply
+node representing the application of ``mul`` to ``x`` and ``y``. Apply
+takes three arguments: the first one is the Op we are applying. In
+this case, we are applying ``mul``. The second argument is a list of
+input Results - here, ``x`` and ``y``. The third is a list of output
+Results. Since the multiplication of two doubles ought to give us a
+double again, we create a Result of type ``double`` and we place it in
+a list. Since the list only has one element, ``mul`` only has one
+output.
+
+.. note::
+   Theano relies on the fact that if you call the ``make_node`` method
+   of Apply's first argument on the inputs passed as the Apply's
+   second argument, the call will not fail and the returned Apply
+   instance will be equivalent. We can see that this is trivially true
+   here.
+
+
+**perform**
+
+This code should actually compute the function. It is important to
+understand the role of all three arguments of ``perform``:
+
+- *node*: This is a reference to an Apply node which was previously
+  obtained via ``mul``'s ``make_node`` method. It is not typically
+  useful, but it contains symbolic information that could be required
+  for complex Ops.
+
+- *inputs*: This is a list of data. In this example, the data in
+  ``inputs`` will be instances of Python's built-in type ``float``
+  because this is the type that ``double.filter()`` will always
+  return, per our own definition.
+
+- *output_storage*: This is a list of storage cells. There is one
+  storage cell for each output of the Op. A storage cell is quite
+  simply a one-element list (note: it is forbidden to change the
+  length of the list(s) contained in output_storage). In this example,
+  output_storage will contain a single storage cell for the
+  multiplication's result.
+
+.. code-block:: python
+
+   def perform(node, inputs, output_storage):
+       x, y = inputs[0], inputs[1]
+       z = output_storage[0]
+       z[0] = x * y
+   mul.perform = perform
+
+Here, ``z`` is a list of one element. By default, ``z == [None]``.
+
+.. note::
+   It is possible that ``z`` does not contain ``None``. If it contains
+   anything else, Theano guarantees that whatever it contains is what
+   ``perform`` put there the last time it was called with this
+   particular storage. Furthermore, Theano gives you permission to do
+   whatever you want with ``z``'s contents, chiefly reusing it or the
+   memory allocated for it. More information can be found in the
+   :ref:`op` documentation.
+
+.. warning::
+   The data you put in the output_storage must match the type of the
+   symbolic output (this is a situation where the ``node`` argument
+   can come in handy). In the previous example, if you put, say, an
+   ``int`` in ``z[0]`` (even though we gave ``z`` the Theano type
+   ``double`` in ``make_node``, which means that a Python ``float``
+   must be put there) you might have nasty problems further down the
+   line since Theano often assumes Ops handle typing properly.
+
+
+Trying out our new Op
+=====================
+
+>>> x, y = double('x'), double('y')
+>>> z = mul(x, y)
+>>> f = theano.function([x, y], z)
+>>> f(5, 6)
+30.0
+>>> f(5.6, 6.7)
+37.519999999999996
+
+Seems to work. Note that there is an implicit call to
+``double.filter()`` on each argument, so if we give integers as inputs
+they are magically casted to the right type. Now, what if we try this?
+
+>>> x = double('x')
+>>> z = mul(x, 2)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/u/breuleuo/hg/theano/theano/gof/op.py", line 207, in __call__
+  File "<stdin>", line 2, in make_node
+AttributeError: 'int' object has no attribute 'type'
+
+Well, ok. We'd like our Op to be a bit more flexible. This can be done
+by fixing ``make_node`` a little bit:
+
+.. code-block:: python
+
+   def make_node(x, y):
+       if isinstance(x, (int, float)):
+           x = gof.Constant(double, x)
+       if isinstance(y, (int, float)):
+           y = gof.Constant(double, y)
+       if x.type != double or y.type != double:
+           raise TypeError('mul only works on doubles')
+       return gof.Apply(mul, [x, y], [double()])
+   mul.make_node = make_node
+
+Whenever we pass a Python int or float instead of a Result as ``x`` or
+``y``, make_node will convert it to :ref:`constant` for us. Constant
+is basically a :ref:`result` we statically know the value of.
+
+>>> x = double('x')
+>>> z = mul(x, 2)
+>>> f = theano.function([x], z)
+>>> f(10)
+20.0
+>>> f(3.4)
+6.7999999999999998
+
+And now it works the way we want it to.
+
+
+
+
+
+**Next:** `Implementing double in C`_
+
+.. _Implementing double in C: ctype.html
+
+
+

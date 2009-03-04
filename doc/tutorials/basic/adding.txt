@@ -1,7 +1,7 @@
 
-===========================
-Adding two numbers together
-===========================
+========================================
+Baby steps - Adding two numbers together
+========================================
 
 
 Adding two scalars
@@ -141,13 +141,9 @@ The following types are readily available:
    prefix vs the l prefix) and between 32 and 64 bit floats (f prefix
    vs the d prefix).
 
-
-Section
--------
-
-Try to mix and match them and see what happens. A complete list of
-types compatible with numpy arrays may be found :ref:`here
-<typelist>`.
+Try to mix and match them and see what happens. The previous list is
+not exhaustive. A guide to all types compatible with numpy arrays may
+be found :ref:`here <predefinedtypes>`.
 
 
 **Next:** `More examples`_

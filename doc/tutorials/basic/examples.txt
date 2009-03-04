@@ -9,8 +9,9 @@ More examples
 Logistic function
 =================
 
-Let's say that you want to compute the logistic curve, which is given
-by:
+Here's another straightforward example, though a bit more elaborate
+than adding two numbers together. Let's say that you want to compute
+the logistic curve, which is given by:
 
 .. math::
 
@@ -18,6 +19,8 @@ by:
 
 You want to compute the function :term:`elementwise` on matrices of
 doubles.
+
+Well, what you do is this:
 
 >>> x = T.dmatrix('x')
 >>> s = 1 / (1 + T.exp(-x))
@@ -33,16 +36,17 @@ Computing more than one thing at the same time
 ==============================================
 
 Theano supports functions with multiple outputs. For example, we can
-compute the absolute :term:`elementwise` difference between two
+compute the :term:`elementwise` absolute difference between two
 matrices ``x`` and ``y`` and the squared difference at the same time:
 
 >>> x, y = T.dmatrices('xy')
->>> d = x - y
->>> f = function([x, y], [abs(d), d**2])
+>>> diff = x - y
+>>> abs_diff = abs(x - y)
+>>> diff_squared = diff**2
+>>> f = function([x, y], [abs_diff, diff_squared])
 
-Theano will make ``f`` in such a way that it will only compute the
-difference once. When we use the function, it will return the two
-results (reformatted for readability):
+When we use the function, it will return the two results (the printing
+was reformatted for readability):
 
 >>> f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
 [array([[ 1.,  0.],

@@ -1,11 +1,10 @@
 
-=========
-Example 2
-=========
 
-.. rubric:: Contents
+=====================
+Example 2 - cons_cell
+=====================
 
 .. toctree::
-   :maxdepth: 2
 
    type
+

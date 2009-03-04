@@ -1,0 +1,19 @@
+
+.. _howtotest:
+
+===========
+How to test
+===========
+
+
+How to test an Op
+=================
+
+blah blah WRITEME
+
+
+How to test an Optimizer
+========================
+
+yadda WRITEME yadda
+

@@ -56,13 +56,16 @@ Glossary of terminology
 
         Examples of elementwise operations in Theano: ``add, sub, mul,
         div, neg, inv, log, exp, sin, cos, tan`` and many
-        others. These operations are all subclasses of :api:`Elemwise
+        others. These operations are all instances of :api:`Elemwise
         <theano.tensor.elemwise.Elemwise>`.
 
     graph
         WRITEME
 
     inplace
+        WRITEME
+
+    merge
         WRITEME
 
     op
