@@ -37,46 +37,101 @@ been Pythagoras' wife.
 
 Theano is released under a BSD license (:ref:`link <license>`)
 
-You can keep reading from :ref:`here <usingtheano>`.
+
+Sneak peek
+==========
+
+Here's a very simple example of how to use Theano.  It doesn't show
+off many of Theano's features, but it illustrates concretely what
+Theano is.
+
+.. code-block:: python
+
+    import theano
+    from theano import tensor
+
+    # declare two symbolic floating-point scalars
+    a = tensor.dscalar()
+    b = tensor.dscalar()
+
+    # create a simple expression
+    c = a + b
+
+    # convert the expression into a callable object that takes (a,b)
+    # values as input and computes a value for c
+    f = theano.function([a,b], c)
+
+    # bind 1.5 to 'a', 2.5 to 'b', and evaluate 'c'
+    assert 4.0 == f(1.5, 2.5)
+
+
+Theano is not a programming language in the normal sense because you
+write a program in Python that builds expressions for Theano.  Still
+it is like a programming language in the sense that to use theano, you
+have to
+
+- declare variables (``a,b``) and give their types
+
+- build expressions for how to put those variables together
+
+- compile expression graphs to functions in order to use them for computation.
+
+It is good to think of ``theano.function`` as the interface to a
+compiler which builds a callable object from a purely symbolic graph;
+one of theano's most important features is that ``theano.function``
+can optimize a graph and even compile some or all of it into native
+machine instructions.
+
+
+What does it do that they don't?
+================================
+
+Theano is a python library and optimizing compiler for manipulating
+and evaluating expressions, especially matrix-valued
+ones. Manipulation of matrices is typically done using the numpy
+package, so what does Theano do that Python and numpy do not?
+
+- *execution speed optimizations*: Theano can use `g++` to compile
+  parts your expression graph into native machine code, which runs
+  much faster than python.
+
+- *symbolic differentiation*: Theano can convert a symbolic graph
+  build symbolic graphs for computing gradients.
+
+- *stability optimizations*: Theano can recognize numerically unstable
+  expressions and compute them with more stable algorithms.
+
+There also exists symbolic packages in Python, namely sympy_. Theano
+is different from them in the sense that while it allows symbolic
+manipulation it puts more emphasis on the evaluation of these
+expressions and being able to repeatedly evaluate them on many
+different sets of inputs. It is also better suited to handling very
+large tensors which have no assumed structures.
+
+If numpy_ is to be compared to MATLAB_ and sympy_ to Mathematica_,
+Theano is a sort of hybrid of the two which tries to make the best of
+both worlds.
 
 
 
 Getting started
 ===============
 
-
 :ref:`install`
   Instructions to download and install Theano on your system.
-
 
 :ref:`basictutorial`
   Getting started with Theano's basic features. Go there if you are
   new!
-
 
 :ref:`advtutorial`
   This tutorial is for more advanced users who want to define their
   own operations and optimizations. It is recommended to go through
   the :ref:`basictutorial` first.
 
-
-
-Contents
-========
-
-.. toctree::
-   :maxdepth: 2
-
-   theano
-   install
-   tutorial/index
-   advtutorial/index
-   advanced/index
-   indexes/index
-   examples/index
-   glossary
-   links
-   LICENSE
+For a complete map of the documentation you may check the
+:ref:`contents`. Also, a PDF version of the online documentation may
+be found `here <theano.pdf>`_.
 
 
 Contact us
@@ -101,6 +156,10 @@ theano-dev_ mailing list.
 .. _Greek mathematician: http://en.wikipedia.org/wiki/Theano_(mathematician)
 .. _numpy: http://numpy.scipy.org/
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
+
+.. _sympy: http://code.google.com/p/sympy/
+.. _MATLAB: http://www.mathworks.com/products/matlab/
+.. _Mathematica: http://www.wolfram.com/products/mathematica/index.html
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1

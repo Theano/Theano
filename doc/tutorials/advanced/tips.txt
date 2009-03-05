@@ -1,0 +1,50 @@
+
+
+====
+Tips
+====
+
+
+Don't define new Ops unless you have to
+=======================================
+
+It is usually not very useful to define Ops that can be easily
+implemented using other already existing Ops. For example, instead of
+writing a "sum_square_difference" Op, you should probably just write a
+simple function:
+
+.. code-block:: python
+
+   from theano import tensor as T
+
+   def sum_square_difference(a, b):
+       return T.sum((a - b)**2)
+
+Even without taking Theano's optimizations into account, it is likely
+to work just as well as a custom implementation. It also supports all
+data types, tensors of all dimensions as well as broadcasting, whereas
+a custom implementation would probably only bother to support
+contiguous vectors/matrices of doubles...
+
+
+Use Theano's high order Ops when applicable
+===========================================
+
+Theano provides some generic Op classes which allow you to generate a
+lot of ops at a lesser effort. For instance, Elemwise can be used to
+make :term:`elementwise` operations easily whereas DimShuffle can be
+used to make transpose-like transformations. These higher order Ops
+are mostly Tensor-related, as this is Theano's specialty. An exposé of
+them can therefore be found in :ref:`tensoroptools`.
+
+
+.. _opchecklist:
+
+Op Checklist
+============
+
+Use this list to make sure you haven't forgotten anything when
+defining a new Op. It might not be exhaustive but it covers a lot of
+common mistakes.
+
+WRITEME

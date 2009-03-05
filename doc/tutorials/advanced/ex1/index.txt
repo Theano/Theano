@@ -1,0 +1,13 @@
+
+==================
+Example 1 - double
+==================
+
+.. toctree::
+
+   type
+   op
+   ctype
+   cop
+
+WRITEME

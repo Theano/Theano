@@ -1076,7 +1076,7 @@ class T_add(unittest.TestCase):
                 f = inplace_func([a,b], fn(a, b))
                 print 'valid output:', fn(a.data, b.data)
                 print 'theano output:', f(a.data, b.data)
-                self.failUnless(numpy.all(fn(a.data, b.data) == f(a.data, b.data)))
+                self.failUnless(a.type.values_eq_approx(fn(a.data, b.data), f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
         verify_grad(self, add, [numpy.asarray([3.0]), numpy.random.rand(3)])

@@ -28,8 +28,6 @@ Glossary of terminology
         to know, for any operation which supports broadcasting, which
         dimensions will need to be broadcasted. When applicable, this
         information is given in the :term:`Type` of a :term:`Result`.
-
-        For more information, see the article about broadcasting_.
         
         See also:
 
@@ -58,10 +56,16 @@ Glossary of terminology
 
         Examples of elementwise operations in Theano: ``add, sub, mul,
         div, neg, inv, log, exp, sin, cos, tan`` and many
-        others. These operations are all subclasses of :api:`Elemwise
+        others. These operations are all instances of :api:`Elemwise
         <theano.tensor.elemwise.Elemwise>`.
 
     graph
+        WRITEME
+
+    inplace
+        WRITEME
+
+    merge
         WRITEME
 
     op
@@ -86,8 +90,9 @@ Glossary of terminology
     type
         WRITEME
 
+    view
+        WRITEME
 
-.. _broadcasting: concepts/broadcasting.html
 
 
 

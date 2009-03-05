@@ -25,39 +25,11 @@ of theano. Let's import that subpackage under a handy name. I like
 
 Now we're ready for the tour:
 
----------------------------------------
-
-`Adding two numbers together`_
-  Starting small
-
-`More examples`_
-  Getting comfortable
-
-`Using Module`_
-  Getting serious
-
-WRITEME: using modes?
-
-`Wrapping up`_
-  A guide to what to look at next
-
----------------------------------------
-
-
-.. rubric:: Contents
 
 .. toctree::
-   :maxdepth: 2
 
    adding
    examples
    module
+   tools
    wrapup
-
-
-
-.. _Adding two numbers together: adding.html
-.. _More examples: examples.html
-.. _Using Module: module.html
-.. _Wrapping up: wrapup.html
-

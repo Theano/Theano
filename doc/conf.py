@@ -39,11 +39,11 @@ templates_path = ['.templates']
 source_suffix = '.txt'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'contents'
 
 # General substitutions.
 project = 'theano'
-copyright = '2008, LISA lab'
+copyright = '2008-2009, LISA lab'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
@@ -164,7 +164,7 @@ htmlhelp_basename = 'theanodoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, document class [howto/manual]).
 latex_documents = [
-  ('index', 'theano.tex', 'theano Documentation',
+  ('contents', 'theano.tex', 'theano Documentation',
    'LISA lab', 'manual'),
 ]
 
