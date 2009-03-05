@@ -130,7 +130,8 @@ Getting started
   the :ref:`basictutorial` first.
 
 For a complete map of the documentation you may check the
-:ref:`contents`.
+:ref:`contents`. Also, a PDF version of the online documentation may
+be found `here <theano.pdf>`_.
 
 
 Contact us
