@@ -19,7 +19,7 @@ class T_transpose(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(44)
     def test_transpose_csc(self):
-        sp = sparse.csc_matrix(sparse.speye(5,3))
+        sp = sparse.csc_matrix(sparse.eye(5,3))
         a = as_sparse(sp)
         self.failUnless(a.data is sp)
         self.failUnless(a.data.shape == (5,3))
@@ -32,7 +32,7 @@ class T_transpose(unittest.TestCase):
         vta = eval_outputs([ta])
         self.failUnless(vta.shape == (3,5))
     def test_transpose_csr(self):
-        a = as_sparse(sparse.csr_matrix(sparse.speye(5,3)))
+        a = as_sparse(sparse.csr_matrix(sparse.eye(5,3)))
         self.failUnless(a.data.shape == (5,3))
         self.failUnless(a.type.dtype == 'float64')
         self.failUnless(a.type.format == 'csr')
@@ -148,163 +148,6 @@ class T_conversion(unittest.TestCase):
             self.failUnless(str(val.dtype)=='float64')
             self.failUnless(numpy.all(val[0] == [1,0,0,0,0]))
 
-
-class test_true_dot(unittest.TestCase):
-    def setUp(self):
-        numpy.random.seed(44)
-
-    def test_basicSS(self):
-        for mtype in _mtypes:
-            x = as_sparse(mtype((500,3)))
-            x.data[(10, 1)] = 1
-            x.data[(20, 2)] = 2
-            self.failUnless(_is_sparse_result(x))
-
-            xT = x.T
-            self.failUnless(_is_sparse_result(xT))
-
-            zop = true_dot(x,xT)
-            self.failUnless(_is_sparse_result(zop))
-            z = eval_outputs([zop])
-            self.failUnless(_is_sparse(z))
-            self.failUnless(z.shape == (500,500))
-            self.failUnless(type(z) is mtype)
-
-            w = mtype((500,500))
-            w[(10, 10)] = 1
-            w[(20, 20)] = 4
-            self.failUnless(z.shape == w.shape)
-            self.failUnless(type(z) == type(w))
-            self.failUnless(z.dtype == w.dtype)
-
-            #self.failUnless(z == w)
-            self.failUnless(abs(z-w).nnz == 0)
-
-            z = z.todense()
-            w = w.todense()
-            self.failUnless((z == w).all() == True)
-
-    def test_basicSD(self):
-        for mtype in _mtypes:
-            x = as_sparse(mtype((500,3)))
-            x.data[(10, 1)] = 1
-            x.data[(20, 2)] = 2
-            self.failUnless(_is_sparse_result(x))
-
-            y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
-            self.failUnless(_is_dense_result(y))
-
-            zop = true_dot(x,y)
-            self.failUnless(_is_sparse_result(zop))
-            z = eval_outputs([zop])
-            self.failUnless(_is_sparse(z))
-            self.failUnless(z.shape == (500,2))
-            self.failUnless(type(z) is mtype)
-
-            w = mtype((500,2))
-            w[(10, 0)] = 3.
-            w[(20, 0)] = 4
-            w[(10, 1)] = 4
-            w[(20, 1)] = 2
-            self.failUnless(z.shape == w.shape)
-            self.failUnless(type(z) == type(w))
-            self.failUnless(z.dtype == w.dtype)
-
-            #self.failUnless(z == w)
-            self.failUnless(abs(z-w).nnz == 0)
-
-            z = z.todense()
-            w = w.todense()
-            self.failUnless((z == w).all() == True)
-
-    def test_basicDS(self):
-        for mtype in _mtypes:
-            x = as_sparse(mtype((500,3)))
-            x.data[(10, 1)] = 1
-            x.data[(20, 2)] = 2
-            self.failUnless(_is_sparse_result(x))
-
-            y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
-            self.failUnless(_is_dense_result(y))
-
-            x.data = x.data.T
-            y.data = y.data.T
-
-            zop = true_dot(y, x)
-            zop = transpose(true_dot(y, x))
-            self.failUnless(_is_sparse_result(zop))
-            z = eval_outputs([zop])
-            self.failUnless(_is_sparse(z))
-            self.failUnless(z.shape == (500,2))
-#            self.failUnless(type(z) is mtype)
-
-            w = mtype((500,2))
-            w[(10, 0)] = 3.
-            w[(20, 0)] = 4
-            w[(10, 1)] = 4
-            w[(20, 1)] = 2
-            self.failUnless(z.shape == w.shape)
-            # Type should switch from csr to csc and vice-versa, so don't perform this test
-            #self.failUnless(type(z) == type(w))
-            self.failUnless(z.dtype == w.dtype)
-
-            # Type should switch from csr to csc and vice-versa, so don't perform this test
-            #self.failUnless(z == w)
-            self.failUnless(abs(z-w).nnz == 0)
-
-            z = z.todense()
-            w = w.todense()
-            self.failUnless((z == w).all() == True)
-
-    def test_graph_bprop0(self):
-        for mtype in _mtypes:
-            x = tensor.matrix('x') #Tensor('float64', broadcastable=[False,False], name='x')
-            w = Sparse(dtype = 'float64', format = _mtype_to_str[mtype]).make_result()
-            xw = dense_from_sparse(true_dot(w, x))
-            y = dense_from_sparse(true_dot(w.T, xw))
-            diff = x-y
-            loss = tensor.sum(tensor.sqr(diff))
-            gw = tensor.grad(loss, w)
-            trainfn = compile.function([x, w], [y, loss, gw])
-
-            x = numpy.asarray([[1., 2], [3, 4], [2, 1]])
-            w = mtype((500,3))
-            w[(10, 1)] = 1
-            w[(20, 2)] = 2
-            lr = 0.001
-            y, origloss, gw = trainfn(x, w)
-            for epoch in xrange(50):
-                y, loss, gw = trainfn(x, w)
-                w = w - (lr * gw)
-                print loss
-
-            self.failUnless(origloss > loss)
-            self.failUnless('1.05191241115' == str(loss))
-
-    def test_graph_bprop_rand(self):
-        for i in range(10):
-            xorig = numpy.random.rand(3,2)
-            for mtype in _mtypes:
-                x = tensor.matrix('x')
-                w = Sparse(dtype = 'float64', format = _mtype_to_str[mtype]).make_result()
-                xw = dense_from_sparse(true_dot(w, x))
-                y = dense_from_sparse(true_dot(w.T, xw))
-                diff = x-y
-                loss = tensor.sum(tensor.sqr(diff))
-                gw = tensor.grad(loss, w)
-                trainfn = compile.function([x, w], [y, loss, gw])
-
-                x = xorig
-                w = mtype((500,3))
-                w[(10, 1)] = 1
-                w[(20, 2)] = 2
-                lr = 0.001
-                y, origloss, gw = trainfn(x, w)
-                for epoch in xrange(50):
-                    y, loss, gw = trainfn(x, w)
-                    w = w - (lr * gw)
-
-                self.failUnless(origloss > loss)
 
 import scipy.sparse as sp
 class test_structureddot(unittest.TestCase):
