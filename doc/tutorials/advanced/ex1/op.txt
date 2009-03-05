@@ -229,7 +229,85 @@ is basically a :ref:`result` we statically know the value of.
 And now it works the way we want it to.
 
 
+Final version
+=============
 
+While I would call the above definitions appropriately pedagogical, it
+is not necessarily the best way to do things, especially when you need
+to define the other basic arithmetic operations ``add``, ``sub`` and
+``div``. It appears that the code for ``make_node`` can be shared
+between these Ops. Here is the final version of the four arithmetic
+operators (well, pending revision of this tutorial, I guess):
+
+.. code-block:: python
+
+   from theano import gof
+
+   class BinaryDoubleOp(gof.Op):
+   
+       def __init__(self, name, fn, gradfnx, gradfny):
+           self.name = name
+           self.fn = fn
+           self.gradfnx = gradfnx
+           self.gradfny = gradfny
+   
+       def make_node(self, x, y):
+           if isinstance(x, (int, float)):
+               x = gof.Constant(double, x)
+           if isinstance(y, (int, float)):
+               y = gof.Constant(double, y)
+           if x.type != double or y.type != double:
+               raise TypeError('%s only works on doubles' % self.name)
+           return gof.Apply(self, [x, y], [double()])
+   
+       def perform(self, node, (x, y), (z, )):
+           z[0] = self.fn(x, y)
+
+       def __str__(self):
+           return self.name
+   
+   add = BinaryDoubleOp(name = 'add',
+                        fn = lambda x, y: x + y)
+   
+   sub = BinaryDoubleOp(name = 'sub',
+                        fn = lambda x, y: x - y)
+   
+   mul = BinaryDoubleOp(name = 'mul',
+                        fn = lambda x, y: x * y)
+   
+   div = BinaryDoubleOp(name = 'div',
+                        fn = lambda x, y: x / y)
+
+Can you see how the definition of ``mul`` here does exactly the same
+thing as the definition we had earlier?
+
+Instead of working directly on an instance of Op, we create a subclass
+of Op that we can parametrize. First, all the operations we define are
+binary, they all work on inputs with type ``double`` and they all
+return a single Result of type ``double``. Therefore, ``make_node``
+basically does the same thing for all these operations, except for the
+fact that the Op reference passed as first argument to Apply must be
+themselves. Therefore we can abstract out most of the logic and pass
+self to Apply, which seems natural. We can also easily define
+``perform`` as depending on a function or lambda expression passed in
+the constructor.
+
+This design therefore appears to be a flexible way to define our four
+basic operations (and possibly many more!) without duplicating
+code. The same way a Type subclass represents a set of structurally
+similar types (see previous section), an Op subclass represents a set
+of structurally similar operations: operations that have the same
+input/output types, operations that only differ in one small detail,
+etc. If you see common patterns in several Ops that you want to
+define, it can be a good idea to abstract out what you can, as I did
+here. Remember that an Op is just an object which satisfies the
+contract described above on this page and that you should use all the
+tools at your disposal to create these objects as efficiently as
+possible.
+
+While I could have made a generic DoubleOp where the number of
+arguments can also be given as a parameter, I decided it was not
+necessary here.
 
 
 **Next:** `Implementing double in C`_
