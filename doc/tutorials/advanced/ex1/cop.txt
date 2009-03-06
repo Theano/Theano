@@ -3,6 +3,163 @@
 Implementing the arithmetic Ops in C
 ====================================
 
+Now that we have set up our ``double`` type properly to allow C
+implementations for operations that work on it, all we have to do now
+is to actually define these operations in C.
+
+
+How does it work?
+=================
+
+Before a C :ref:`op` is executed, the variables related to each of its
+inputs will be declared and will be filled appropriately, either from
+an input provided by the end user (using c_extract) or it might simply
+have been calculated by another operation. For each of the outputs,
+the variables associated to them will be declared and initialized.
+
+The operation then simply has to compute what it needs to using the
+input variables and place the results in the output variables.
+
+
+What needs to be defined
+========================
+
+There are less methods to define for an Op than for a Type:
+
+- **c_code(node, name, input_names, output_names, sub)**
+
+  - This must return C code that carries the computation we want to
+    do.
+
+- **c_code_cleanup(node, name, input_names, output_names, sub)**
+
+  - This must return C code that cleans up whatever c_code allocated
+    and that we must free.
+
+  - *Default* The default behavior is to do nothing.
+
+- **c_compile_args(), c_headers(), c_libraries(), c_support_code()**
+
+  - Allows you to specify headers, libraries, special g++ arguments or
+    helper functions/structs that the type needs. See :ref:`op`.
+
+
+The ``name`` argument is currently given an invalid value, so steer
+away from it. As was the case with Type, ``sub['fail']`` provides
+failure code that you *must* use if you want to raise an exception,
+after setting the exception message.
+
+The ``node`` argument is an :ref:`apply` node representing an
+application of the current Op on a list of inputs, producing a list of
+outputs. ``input_names`` and ``output_names`` arguments contain as
+many strings as there are inputs and outputs to the application of the
+Op and they correspond to the ``name`` that is passed to the type of
+each Result in these lists. For example, if ``node.inputs[0].type ==
+double``, then ``input_names[0]`` is the ``name`` argument passed to
+``double.c_declare`` etc. when the first input is processed by Theano.
+
+In a nutshell, ``input_names`` and ``output_names`` parameterize the
+names of the inputs your operation needs to use and the outputs it
+needs to put results into. But this will be clear with the examples.
+
+
+Defining the methods
+====================
+
+We will be defining C code for the multiplication Op on doubles.
+
+**c_code**
+
+.. code-block:: python
+
+   def c_code(node, name, input_names, output_names, sub):
+       x_name, y_name = input_names[0], input_names[1]
+       output_name = output_names[0]
+       return """
+       %(output_name)s = %(x_name)s * %(y_name)s;
+       """ % locals()
+   mul.c_code = c_code
+
+And that's it. As we enter the scope of the C code we are defining in
+the method above, many variables are defined for us. Namely, the
+variables x_name, y_name and output_name are all of the primitive C
+``double`` type and they were declared using the C code returned by
+``double.c_declare``.
+
+Implementing multiplication is as simple as multiplying the two input
+doubles and setting the output double to what comes out of it. If you
+had more than one output, you would simply set the variable(s) for
+each output to what they should be.
+
+.. warning::
+   Do *NOT* use C's ``return`` statement to return the result(s) of
+   the computations. Set the output variables directly as shown
+   above. Theano will pick them up for you.
+
+
+**c_code_cleanup**
+
+There is nothing to cleanup after multiplying two doubles. Typically,
+you won't need to define this method unless you malloc() some
+temporary storage (which you would free() here) or create temporary
+Python objects (which you would Py_XDECREF() here).
+
+
+Final version
+=============
+
+As before, I tried to organize the code in order to minimize
+repetition. You can check that mul produces the same C code in this
+version that it produces in the code I gave above.
+
+
+.. code-block:: python
+
+   from theano import gof
+   
+   class BinaryDoubleOp(gof.Op):
+   
+       def __init__(self, name, fn, ccode):
+           self.name = name
+           self.fn = fn
+           self.ccode = ccode
+   
+       def make_node(self, x, y):
+           if isinstance(x, (int, float)):
+               x = gof.Constant(double, x)
+           if isinstance(y, (int, float)):
+               y = gof.Constant(double, y)
+           if x.type != double or y.type != double:
+               raise TypeError('%s only works on doubles' % self.name)
+           return gof.Apply(self, [x, y], [double()])
+   
+       def perform(self, node, (x, y), (z, )):
+           z[0] = self.fn(x, y)
+   
+       def __str__(self):
+           return self.name
+   
+       def c_code(self, node, name, (x, y), (z, ), sub):
+           return self.ccode % locals()
+   
+   
+   add = BinaryDoubleOp(name = 'add',
+                        fn = lambda x, y: x + y,
+                        ccode = "%(z)s = %(x)s + %(y)s;")
+   
+   sub = BinaryDoubleOp(name = 'sub',
+                        fn = lambda x, y: x - y,
+                        ccode = "%(z)s = %(x)s - %(y)s;")
+   
+   mul = BinaryDoubleOp(name = 'mul',
+                        fn = lambda x, y: x * y,
+                        ccode = "%(z)s = %(x)s * %(y)s;")
+   
+   div = BinaryDoubleOp(name = 'div',
+                        fn = lambda x, y: x / y,
+                        ccode = "%(z)s = %(x)s / %(y)s;")
+
+
 
 **Next:** `Example 2 - cons_cell`_
 
