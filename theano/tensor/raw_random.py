@@ -23,6 +23,7 @@ class RandomStateType(gof.Type):
     """
     def __str__(self):
         return 'RandomStateType'
+
     def filter(self, data, strict=False):
         if self.is_valid_value(data):
             return data
@@ -115,7 +116,6 @@ class RandomFunction(gof.Op):
         the random draw.
 
         """
-        args = map(tensor.as_tensor, args)
         if shape == () or shape == []:
             shape = tensor.lvector()
         else:
@@ -127,20 +127,33 @@ class RandomFunction(gof.Op):
             print >> sys.stderr, 'WARNING: RandomState instances should be in RandomStateType'
             if 0:
                 raise TypeError('r must be RandomStateType instance', r)
-        # assert shape.type == tensor.lvector doesn't work because we want to ignore the
-        # broadcastable vector
-        assert len(args) <= len(self.args)
+        # the following doesn't work because we want to ignore the broadcastable flags in
+        # shape.type
+        # assert shape.type == tensor.lvector 
+
+        # convert args to Tensor instances
+        # and append enough None's to match the length of self.args
+        args = map(tensor.as_tensor, args)
+        if len(args) > len(self.args):
+            raise TypeError('Too many args for this kind of random generator')
         args += (None,) * (len(self.args) - len(args))
+        assert len(args) == len(self.args)
+
+        # build the inputs to this Apply by overlaying args on self.args
         inputs = []
         for arg, default in zip(args, self.args):
             assert arg is None or default.type.dtype == arg.type.dtype
             input = default if arg is None else arg
             inputs.append(input)
+
         return gof.Apply(self,
                          [r, shape] + inputs,
                          [r.type(), self.outtype()])
 
     def perform(self, node, inputs, (rout, out)):
+        # Use self.fn to draw shape worth of random numbers.
+        # Numbers are drawn from r if self.inplace is True, and from a copy of r if
+        # self.inplace is False
         r, shape, args = inputs[0], inputs[1], inputs[2:]
         assert type(r) == numpy.random.RandomState
         r_orig = r
