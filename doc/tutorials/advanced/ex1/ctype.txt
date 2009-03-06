@@ -152,6 +152,7 @@ it, it's best to publish it somewhere.
         return """
         %(name)s = 0.0;
         """ % dict(name = name)
+    double.c_init = c_init
 
 Still straightforward. This function simply has to initialize the
 double we declared previously to a suitable value. This is useful if
@@ -181,6 +182,7 @@ called, without knowing for sure which of the two.
         }
         %(name)s = PyFloat_AsDouble(py_%(name)s);
         """ % dict(name = name, fail = sub['fail'])
+    double.c_extract = c_extract
 
 This method is slightly more sophisticated. What happens here is that
 we have a reference to a Python object which Theano has placed in
@@ -218,6 +220,7 @@ API) and we put it in our double variable that we declared previously.
             py_%(name)s = Py_None;
         }
         """ % dict(name = name)
+    double.c_sync = c_sync
 
 This function is probably the trickiest. What happens here is that we
 have computed some operation on doubles and we have put the result
@@ -267,6 +270,7 @@ unlikely to ever happen, but if it ever does, better safe than sorry.
 
     def c_cleanup(self, name, sub):
         return ""
+    double.c_cleanup = c_cleanup
 
 We actually have nothing to do here. We declared a double on the stack
 so the C language will reclaim it for us when its scope ends. We
