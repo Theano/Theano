@@ -1,17 +1,14 @@
-"""Random number generation for Theano graphs."""
-from .. import gof
-import basic as tensor
-import numpy
-import functools
-
-import opt
-from .. import compile
-from ..compile import SymbolicInputKit, SymbolicInput
-from copy import copy
-
+"""Define random number Type (`RandomStateType`) and Op (`RandomFunction`)."""
+__docformat__ = "restructuredtext en"
 import sys
+from copy import copy
+import numpy
 
-RS = numpy.random.RandomState
+#local imports
+import basic as tensor
+import opt
+from .. import gof
+from ..compile import optdb
 
 class RandomStateType(gof.Type):
     """A Type wrapper for numpy.RandomState
@@ -46,7 +43,6 @@ class RandomStateType(gof.Type):
         return True
 
 random_state_type = RandomStateType()
-
 
 
 class RandomFunction(gof.Op):
@@ -89,7 +85,7 @@ class RandomFunction(gof.Op):
     def __setstate__(self, state):
         self.state = state
         fn, outtype, args, kwargs = state
-        self.fn = getattr(RS, fn) if isinstance(fn, str) else fn
+        self.fn = getattr(numpy.random.RandomState, fn) if isinstance(fn, str) else fn
         self.outtype = outtype
         self.args = tuple(tensor.as_tensor(arg) for arg in args)
         self.inplace = kwargs.pop('inplace', False)
@@ -270,88 +266,6 @@ def random_make_inplace(node):
         return RandomFunction(op.fn, op.outtype, *op.args, **dict(inplace=True)).make_node(*node.inputs).outputs
     return False
 
-compile.optdb.register('random_make_inplace', opt.in2out(random_make_inplace, ignore_newtrees=True), 99, 'fast_run', 'inplace')
+optdb.register('random_make_inplace', opt.in2out(random_make_inplace, ignore_newtrees=True), 99, 'fast_run', 'inplace')
 
 
-
-import sys
-from functools import partial
-from collections import deque
-
-class RandomKit(SymbolicInputKit):
-
-    def __init__(self, name, value = None):
-        super(RandomKit, self).__init__(name)
-        self.value = value
-
-    def gen(self, op, *args, **kwargs):
-        r = gof.generic()
-        new_r, out = op(r, *args, **kwargs)
-        self.add_input(SymbolicInput(r, update = new_r))
-        out.rng = r
-        out.auto = self
-        return out
-
-    def distribute(self, value, indices, containers):
-        rg = partial(numpy.random.RandomState(int(value)).randint, 2**30)
-        elems = deque(zip(indices, containers))
-        i = 0
-        while elems:
-            index, container = elems.popleft()
-            while i <= index:
-                curr = rg()
-                i += 1
-            rs = numpy.random.RandomState(int(curr))
-            container.data = rs
-
-    def binomial(self, *args, **kwargs):
-        return self.gen(binomial, *args, **kwargs)
-
-    def uniform(self, *args, **kwargs):
-        return self.gen(uniform, *args, **kwargs)
-
-    def normal(self, *args, **kwargs):
-        return self.gen(normal, *args, **kwargs)
-
-    def random_integers(self, *args, **kwargs):
-        return self.gen(random_integers, *args, **kwargs)
-
-
-
-rk = RandomKit('rk', 0xBAD5EED)
-
-
-class RModule(compile.Module):
-
-    def __init__(self, components = {}, **kwcomponents):
-        super(RModule, self).__init__(components, **kwcomponents)
-        self.random = RandomKit('rkit')
-        self._rkit = compile.KitComponent(self.random)
-
-    def __wrapper__(self, x):
-        x = compile.module.wrap(x)
-        if isinstance(x, compile.Method):
-            x.kits += [self.random]
-        return x
-
-    def _instance_seed(self, inst, seed, recursive = True):
-        seedgen = numpy.random.RandomState(seed)
-        if recursive:
-            #Here, we recurse through all the components (inst2) contained in (inst)
-            #and seeds each subcomponent that is an RModule
-            
-            
-            for path, c in self.flat_components_map(True):
-                if isinstance(c, RModule):
-                    inst2 = inst
-                    for name in path:
-                        inst2 = inst2[name]
-                    # A Kit (c._rkit.kit) contains a list of io.SymbolicIn instances
-                    # and the distribute method takes a value (seed), a list of indices
-                    # and a list of corresponding gof.Container instances. In this
-                    # situation it will reseed all the rngs using the containers
-                    # associated to them.
-                    c._rkit.kit.distribute(seedgen.random_integers(2**30),
-                                           xrange(len(inst2._rkit)), inst2._rkit)
-        else:
-            self._rkit.kit.distribute(seedgen.random_integers(2**30), xrange(len(inst._rkit)), inst._rkit)
