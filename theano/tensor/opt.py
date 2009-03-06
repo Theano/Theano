@@ -20,14 +20,16 @@ from .. import compile  #to register the optimizer built by this file
 # Utilities
 
 def out2in(*local_opts):
+    """WRITEME """
     return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
                              order = 'out_to_in',
-                             failure_callback = lambda exc,opt,pairs: None)
+                             failure_callback=TopoOptimizer.warn_inplace)
 
 def in2out(*local_opts, **kwargs):
+    """WRITEME """
     return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
                              order = 'in_to_out',
-                             failure_callback = lambda exc,opt,pairs: None,
+                             failure_callback=TopoOptimizer.warn_inplace,
                              **kwargs)
 
 
