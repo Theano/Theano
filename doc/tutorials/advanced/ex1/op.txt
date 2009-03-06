@@ -245,11 +245,9 @@ operators (well, pending revision of this tutorial, I guess):
 
    class BinaryDoubleOp(gof.Op):
    
-       def __init__(self, name, fn, gradfnx, gradfny):
+       def __init__(self, name, fn):
            self.name = name
            self.fn = fn
-           self.gradfnx = gradfnx
-           self.gradfny = gradfny
    
        def make_node(self, x, y):
            if isinstance(x, (int, float)):
