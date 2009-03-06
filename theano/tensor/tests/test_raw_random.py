@@ -1,5 +1,5 @@
 ## TODO: REDO THESE TESTS
-
+import sys
 import unittest
 import numpy as N
 
@@ -8,6 +8,39 @@ from theano.tensor.raw_random import *
 from theano import tensor
 
 from theano import compile, gof
+
+class T_random_function(unittest.TestCase):
+    def test_basic_usage(self):
+        rf = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector, -2.0, 2.0)
+        assert not rf.inplace
+        assert getattr(rf, 'destroy_map', {}) == {}
+
+        rng_R = random_state_type()
+        print rng_R
+
+        post_r, out = rf(rng_R, (4,))
+
+        assert out.type == tensor.dvector
+
+        f = compile.function([rng_R], out)
+
+        rng_state0 = numpy.random.RandomState(55)
+
+        f_0 = f(rng_state0)
+        f_1 = f(rng_state0)
+
+        assert numpy.all(f_0 == f_1)
+
+    def test_inplace_norun(self):
+        rf = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector, -2.0, 2.0,
+                inplace=True)
+        assert rf.inplace
+        assert getattr(rf, 'destroy_map', {}) != {}
+
+    def test_inplace_optimization(self):
+        print >> sys.stderr, "WARNING NOT IMPLEMENTED T_random_function.test_inplace_optimization"
+
+
 
 class T_test_module(unittest.TestCase):
     def test_state_propagation(self):
