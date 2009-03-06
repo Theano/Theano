@@ -123,6 +123,8 @@ class Component(object):
 
         A Component which builds nothing, such as External, may return
         None.
+
+        The return value of this function will show up in the Module graph produced by make().
         """
         raise NotImplementedError
 
@@ -833,11 +835,13 @@ class Curry:
 
 class ModuleInstance(ComponentDictInstance):
     """
-    ModuleInstance is meant to be instantiated by Module. This differs
+    WRITEME
+
+    :note: ModuleInstance is meant to be instantiated by Module. This differs
     from ComponentDictInstance on a key point, which is that getattr
     does a similar thing to getitem.
 
-    ModuleInstance is compatible for use as ComponentDict.InstanceType.
+    :note: ModuleInstance is compatible for use as ComponentDict.InstanceType.
     """
 
     def __getattr__(self, attr):
@@ -855,6 +859,12 @@ class ModuleInstance(ComponentDictInstance):
             self.__dict__[attr] = value
 
 class Module(ComponentDict):
+    """WRITEME
+    
+    You should inherit from Module with the members will be other Modules or Components.  To
+    make more specialized elements of a Module graph, consider inheriting from Component
+    directly.
+    """
     InstanceType = ModuleInstance # By default, we use build ModuleInstance
     
     def __wrapper__(self, x):
