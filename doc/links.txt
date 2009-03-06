@@ -31,6 +31,7 @@ This is a sort of memo for developers and would-be developers.
 - networkx_: A package to create and manipulate graph structures.
 - pycppad_: Python bindings to an AD package in C++.
 - pypy_: Optimizing compiler for Python in Python.
+- shedskin_: An experimental (restricted-)Python-to-C++ compiler.
 - swig_: An interoperability layer between Python and C/C++
 - unpython_: Python to C compiler.
 
@@ -52,4 +53,5 @@ This is a sort of memo for developers and would-be developers.
 .. _swig: http://www.swig.org/
 .. _unpython: http://code.google.com/p/unpython/
 .. _pycppad: http://www.seanet.com/~bradbell/pycppad/index.xml
+.. _shedskin: http://shed-skin.blogspot.com/
 
