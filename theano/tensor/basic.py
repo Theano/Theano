@@ -319,6 +319,7 @@ class Tensor(Type):
         return """
         Py_XDECREF(py_%(name)s);
         if (!%(name)s) {
+            Py_XINCREF(Py_None);
             py_%(name)s = Py_None;
         }
         else if ((void*)py_%(name)s != (void*)%(name)s) {
