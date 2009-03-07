@@ -15,11 +15,14 @@ class T_RandomStreams(unittest.TestCase):
         m = Module()
         m.random = RandomStreams(234)
         m.fn = Method([], m.random.uniform((2,2)))
+        m.gn = Method([], m.random.normal((2,2)))
         made = m.make()
         made.random.initialize()
 
         fn_val0 = made.fn()
         fn_val1 = made.fn()
+
+        gn_val0 = made.gn()
 
         rng_seed = numpy.random.RandomState(234).randint(2**30)
         rng = numpy.random.RandomState(rng_seed)
