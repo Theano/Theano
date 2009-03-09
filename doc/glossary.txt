@@ -23,13 +23,21 @@ Glossary of terminology
            Broadcasting a row matrix. T and F respectively stand for
            True and False and indicate along which dimensions we allow
            broadcasting.
-        
+
+           If the second argument were a vector, its shape would be
+           ``(2,)`` and its broadcastable pattern ``(F,)``. They would
+           be automatically expanded to the **left** to match the
+           dimensions of the matrix (adding ``1`` to the shape and ``T``
+           to the pattern), resulting in ``(1, 2)`` and ``(T, F)``.
+           It would then behave just like the example above.
+
         Unlike numpy which does broadcasting dynamically, Theano needs
         to know, for any operation which supports broadcasting, which
         dimensions will need to be broadcasted. When applicable, this
         information is given in the :term:`Type` of a :term:`Result`.
-        
+
         See also:
+        * :ref:`How broadcasting is used in Theano's tensor types <tensortypes>`
 
         * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
         * `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
@@ -40,7 +48,7 @@ Glossary of terminology
     elementwise
         An elementwise operation ``f`` on two matrices ``M`` and ``N``
         is one such that:
-        
+
         ``f(M, N)[i, j] = f(M[i, j], N[i, j])``
 
         In other words, each element of an input matrix is combined
