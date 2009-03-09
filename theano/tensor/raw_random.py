@@ -118,7 +118,7 @@ class RandomFunction(gof.Op):
             shape = tensor.as_tensor(shape, ndim=1)
         #print 'SHAPE TYPE', shape.type, tensor.lvector
         assert shape.type.ndim == 1
-        assert shape.type.dtype == 'int64'
+        assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
         if not isinstance(r.type, RandomStateType):
             print >> sys.stderr, 'WARNING: RandomState instances should be in RandomStateType'
             if 0:

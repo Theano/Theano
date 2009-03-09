@@ -25,7 +25,7 @@ class T_RandomStreams(unittest.TestCase):
         gn_val0 = made.gn()
 
         rng_seed = numpy.random.RandomState(234).randint(2**30)
-        rng = numpy.random.RandomState(rng_seed)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
 
         #print fn_val0
         numpy_val0 = rng.uniform(size=(2,2))
@@ -46,7 +46,7 @@ class T_RandomStreams(unittest.TestCase):
         fn_val1 = made.fn()
 
         rng_seed = numpy.random.RandomState(888).randint(2**30)
-        rng = numpy.random.RandomState(rng_seed)
+        rng = numpy.random.RandomState(int(rng_seed))  #int() is for 32bit
 
         #print fn_val0
         numpy_val0 = rng.uniform(size=(2,2))
@@ -69,7 +69,7 @@ class T_RandomStreams(unittest.TestCase):
         fn_val1 = made.fn()
 
         rng_seed = numpy.random.RandomState(888).randint(2**30)
-        rng = numpy.random.RandomState(rng_seed)
+        rng = numpy.random.RandomState(int(rng_seed))  #int() is for 32bit
 
         #print fn_val0
         numpy_val0 = rng.uniform(size=(2,2))

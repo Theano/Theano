@@ -128,9 +128,11 @@ class RandomStreamsInstance(object):
             old_r_seed = seedgen.randint(2**30)
             old_r_container = self.memo[old_r].value
             if old_r_container.value is None:
-                old_r_container.value = numpy.random.RandomState(old_r_seed)
+                #the cast to int here makes it work on 32bit machines, not sure why
+                old_r_container.value = numpy.random.RandomState(int(old_r_seed))
             else:
-                old_r_container.value.seed(old_r_seed)
+                #the cast to int here makes it work on 32bit machines, not sure why
+                old_r_container.value.seed(int(old_r_seed))
 
     def __getitem__(self, item):
         """Retrieve the numpy RandomState instance associated with a particular stream
