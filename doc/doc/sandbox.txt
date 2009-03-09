@@ -99,6 +99,11 @@ How to use the PrintOp
 
 ** This is also useful in the How to write an Op tutorial. **
 
+=======================================================
+Modules
+=======================================================
+
+* What is the correct way to tie weights?
 
 =======================================================
 Mammouth
