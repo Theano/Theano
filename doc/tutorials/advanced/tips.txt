@@ -5,6 +5,12 @@ Tips
 ====
 
 
+Reusing outputs
+===============
+
+WRITEME
+
+
 Don't define new Ops unless you have to
 =======================================
 
@@ -48,3 +54,10 @@ defining a new Op. It might not be exhaustive but it covers a lot of
 common mistakes.
 
 WRITEME
+
+
+
+**Next:** `Wrapping up`_
+
+.. _Wrapping up: wrapup.html
+

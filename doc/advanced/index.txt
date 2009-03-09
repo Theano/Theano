@@ -13,6 +13,7 @@ Structure
    
    graphstructures
    env
+   features
    optimization
    compilation
    ccodegen

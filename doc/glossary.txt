@@ -71,6 +71,9 @@ Glossary of terminology
     op
         WRITEME
 
+    pure
+        WRITEME
+
     Result 
         A :ref:`result` is the main data structure you work with when
         using Theano. The symbolic inputs that you operate on are

@@ -298,6 +298,7 @@ class MergeOptimizer(Optimizer):
         self.apply_constant_merge(env)
         self.apply_node_merge(env)
 
+merge_optimizer = MergeOptimizer()
 
 def MergeOptMerge(opt):
     """WRITEME
@@ -305,7 +306,7 @@ def MergeOptMerge(opt):
     optimizer in opt and then merges the graph again in case the
     opt introduced additional similarities.
     """
-    merger = MergeOptimizer()
+    merger = merge_optimizer
     return SeqOptimizer([merger, opt, merger])
 
 

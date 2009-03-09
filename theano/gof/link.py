@@ -71,6 +71,7 @@ class Linker(object):
         """
         raise utils.AbstractFunctionError()
 
+    ## DELETEME ##
     def make_function(self, unpack_single = True, **kwargs):
         """
         Returns a function that takes values corresponding to the inputs of the

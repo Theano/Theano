@@ -4,4 +4,242 @@
 Graph optimization
 ==================
 
-WRITEME
+In this section we will define a couple optimizations on doubles.
+
+
+Global and local optimizations
+==============================
+
+First, let's lay out the way optimizations work in Theano. There are
+two types of optimizations: *global* optimizations and *local*
+optimizations. A global optimization takes an :ref:`env` object (an
+Env is a wrapper around a whole computation graph, you can see its
+:ref:`documentation <env>` for more details) and navigates through it
+in a suitable way, replacing some Results by others in the process. A
+local optimization, on the other hand, is defined as a function on a
+*single* :ref:`apply` node and must return either False (to mean that
+nothing is to be done) or a list of new Results that we would like to
+replace the node's outputs with. A :ref:`navigator` is a special kind
+of global optimization which navigates the computation graph in some
+fashion (in topological order, reverse-topological order, random
+order, etc.) and applies one or more local optimizations at each step.
+
+Optimizations which are holistic, meaning that they must take into
+account dependencies that might be all over the graph, should be
+global. Optimizations that can be done with a narrow perspective are
+better defined as local optimizations. The majority of optimizations
+we want to define are local.
+
+
+Global optimization
+-------------------
+
+A global optimization is an object which defines the following
+methods:
+
+- **apply(env)**
+
+  - This method takes an Env object which contains the computation
+    graph and does modifications in line with what the optimization is
+    meant to do. This is of the main method of the optimizer.
+
+- **add_requirements(env)**
+
+  - This method takes an Env object and adds :ref:`features
+    <envfeature>` to it. These features are "plugins" that are needed
+    for the apply method to do its job properly.
+
+- **optimize(env)**
+
+  - This is the interface function called by Theano.
+
+  - *Default:* this is defined by Optimizer as ``add_requirement(env);
+    apply(env)``.
+
+See the section about :ref:`env` to understand how to define these
+methods.
+
+
+Local optimization
+------------------
+
+A local optimization is an object which defines the following methods:
+
+- **transform(node)**
+
+  - This method takes an :ref:`apply` node and returns either False to
+    signify that no changes are to be done or a list of Results which
+    matches the length of the node's ``outputs`` list. When the
+    LocalOptimizer is applied by a Navigator, the outputs of the node
+    passed as argument to the LocalOptimizer will be replaced by the
+    list returned.
+
+
+
+One simplification rule
+=======================
+
+For starters, let's define the following simplification:
+
+.. math::
+
+   \frac{xy}{y} = x
+
+We will implement it in three ways: using a global optimization, a
+local optimization with a Navigator and then using the PatternSub
+facility.
+
+
+Global optimization
+-------------------
+
+Here is the code for a global optimization implementing the
+simplification described above:
+
+.. code-block:: python
+   
+   from theano.gof import toolbox
+   
+   class Simplify(gof.Optimizer):
+       def add_requirements(self, env):
+           env.extend(toolbox.ReplaceValidate())
+       def apply(self, env):
+           for node in env.toposort():
+               if node.op == div:
+                   x, y = node.inputs
+                   z = node.outputs[0]
+                   if x.owner and x.owner.op == mul:
+                       a, b = x.owner.inputs
+                       if y == a:
+                           env.replace_validate(z, b)
+                       elif y == b:
+                           env.replace_validate(z, a)
+   
+   simplify = Simplify()
+
+Here's how it works: first, in ``add_requirements``, we add the
+``ReplaceValidate`` :ref:`envfeature` located in
+``theano.gof.toolbox``. This feature adds the ``replace_validate``
+method to the env, which is an enhanced version of ``replace`` that
+does additional checks to ensure that we are not messing up the
+computation graph (note: if ReplaceValidate was already added by
+another optimizer, ``extend`` will do nothing). In a nutshell,
+``toolbox.ReplaceValidate`` grants access to ``env.replace_validate``
+and ``env.replace_validate`` allows us to replace a Result with
+another while respecting certain validation constraints. You can
+browse the list of :ref:`features <envfeaturelist>` and see if some of
+them might be useful to write optimizations with. For example, as an
+exercise, try to rewrite Simplify using :ref:`nodefinder` (hint: you
+want to use the method it publishes in place of the call to toposort!)
+
+Then, in ``apply`` we do the actual job of simplification. We start by
+iterating through the graph in topological order. For each node
+encountered, we check if it's a ``div`` node. If not, we have nothing
+to do here. If so, we put in x, y and z the numerator, denominator and
+quotient (output) of the division. The simplification only occurs when
+the numerator is a multiplication, so we check for that. If the
+numerator is a multiplication we put the two operands in a and b, so
+we can now say that ``z == (a*b)/y``. If ``y==a`` then ``z==b`` and if
+``y==b`` then ``z==a``. When either case happens then we can replace z
+by either a or b using ``env.replace_validate`` - else we do
+nothing. You might want to check the documentation about :ref:`result`
+and :ref:`apply` to get a better understanding of the
+pointer-following game you need to get ahold of the nodes of interest
+for the simplification (x, y, z, a, b, etc.)
+
+Test time:
+
+>>> x = double('x')
+>>> y = double('y')
+>>> z = double('z')
+>>> a = add(z, mul(div(mul(y, x), y), div(z, x)))
+>>> e = gof.Env([x, y, z], [a])
+>>> e
+[add(z, mul(div(mul(y, x), y), div(z, x)))]
+>>> simplify.optimize(e)
+>>> e
+[add(z, mul(x, div(z, x)))]
+
+Cool! It seems to work. You can check what happens if you put many
+instances of :math:`\frac{xy}{y}` in the graph. Note that it sometimes
+won't work for reasons that have nothing to do with the quality of the
+optimization you wrote. For example, consider the following:
+
+>>> x = double('x')
+>>> y = double('y')
+>>> z = double('z')
+>>> a = div(mul(add(y, z), x), add(y, z))
+>>> e = gof.Env([x, y, z], [a])
+>>> e
+[div(mul(add(y, z), x), add(y, z))]
+>>> simplify.optimize(e)
+>>> e
+[div(mul(add(y, z), x), add(y, z))]
+
+Nothing happened here. The reason is simple: ``add(y, z) != add(y,
+z)``. That is the case for efficiency reasons. To fix this problem we
+first need to merge the parts of the graph that represent the same
+computation, using the ``merge_optimizer`` defined in
+``theano.gof.opt``.
+
+>>> from theano.gof.opt import merge_optimizer
+>>> merge_optimizer.optimize(e)
+>>> e
+[div(mul(*1 -> add(y, z), x), *1)]
+>>> simplify.optimize(e)
+>>> e
+[x]
+
+Once the merge is done, both occurrences of ``add(y, z)`` are
+collapsed into a single one and is used as an input in two
+places. Note that ``add(x, y)`` and ``add(y, x)`` are still considered
+to be different because Theano has no clue that ``add`` is
+commutative. You may write your own global optimizer to identify
+computations that are identical with full knowledge of the rules of
+arithmetics that your ops implement. Theano might provide facilities
+for this somewhere in the future.
+
+.. note::
+   :ref:`env` is a Theano structure intended for the optimization
+   phase. It is used internally by function and Module and is rarely
+   exposed to the end user. You can use it to test out optimizations,
+   etc. if you are comfortable with it, but it is recommended to use
+   the function/Module frontends and to interface optimizations with
+   optdb (we'll see how to do that soon).
+
+
+Local optimization
+------------------
+
+
+
+
+
+
+
+
+
+The optimization database (optdb)
+=================================
+
+Theano exports a symbol called ``optdb`` which acts as a sort of
+ordered database of optimizations. When you make a new optimization,
+you must insert it at the proper place in the database. Furthermore,
+you can give each optimization in the database a set of tags that can
+serve as a basis for filtering.
+
+
+
+Using PatternSub
+================
+
+
+Inplace optimizations
+=====================
+
+
+
+
+**Next:** `Tips`_
+
+.. _Tips: tips.html

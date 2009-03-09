@@ -10,11 +10,11 @@ Before tackling this tutorial, it is highly recommended to read the
 
 
 The advanced tutorial is meant to give the reader a greater
-understanding of the building blocks of Theano. It contains two
-examples which cover most of the conceptual space associated with
-:ref:`type` and :ref:`op` and then expands on other important matters
-such as optimization.
-
+understanding of the building blocks of Theano. Through this tutorial
+we are going to define one :ref:`type`, ``double`` and basic
+arithmetic :ref:`operations <op>` on that Type. We will first define
+them using a Python implementation and then we will add a C
+implementation.
 
 This tutorial should be of most use to users who want to extend Theano
 with custom types and operations related to these types. Users who
@@ -26,47 +26,14 @@ concepts at work here.
 
 .. toctree::
 
-   ex1/index
-   ex2/index
+   ex1/type
+   ex1/op
+   ex1/ctype
+   ex1/cop
    inplace
    optimization
    tips
    wrapup
-
-
-
-..
-    `Example 1`_
-      Making a basic arithmetic system on doubles
-    
-    `Example 2`_
-      Making a higher-level type: ``cons_cell`` (pair)
-    
-    `Views and inplace operations`_
-      A guide to making Ops that return a :term:`view` on their inputs or
-      operate :term:`inplace` on them.
-    
-    `Graph optimization`_
-      A guide to the different ways of defining new custom optimizations
-      to simplify the computation graph and/or improve its numerical
-      stability or other desirable properties.
-    
-    `Tips`_
-      Tips and tricks about writing types, ops and optimizations. This
-      page is good reference - check it and come back to it!
-    
-    `Wrapping up`_
-      A guide to what to look at next
-    
-    
-    .. _Example 1: ex1/index.html
-    .. _Example 2: ex2/index.html
-    .. _Views and inplace operations: inplace.html
-    .. _Graph optimization: optimization.html
-    .. _Tips: tips.html
-    .. _Wrapping up: wrapup.html
-
-..
 
 
 
