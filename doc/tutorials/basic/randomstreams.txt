@@ -1,0 +1,160 @@
+====================
+Using RandomStreams
+====================
+
+Since Theano uses a functional design, producing pseudo-random numbers in a
+graph is almost as straightforward as it is in numpy.  If you are using theano's
+modules, then a RandomStreams object is probably what you want.  If you are
+using the function interface directly (not Module and Method) then have a look
+at the :api:`RandomFunction` Op.
+
+I'm going to use the term "random stream" to mean the sequence of random
+numbers that comes from a numpy RandomState object (starting from a particular
+state).   Try to think about putting random variables in your graph, rather than
+random number generators. 
+
+Here's a brief example:
+-----------------------
+
+.. code-block:: python
+
+    from theano.tensor import RandomStreams
+    m = Module()
+    m.random = RandomStreams(seed=234)
+    rv_u = m.random.uniform((2,2))
+    rv_n = m.random.normal((2,2))
+    m.fn = Method([], rv_u)
+    m.gn = Method([], rv_n)
+    m.nearly_zeros = Method([], rv_u + rv_u - 2 * rv_u)
+    made = m.make()
+    made.random.initialize()
+    fn_val0 = made.fn()
+    fn_val1 = made.fn()  #different numbers from fn_val0
+
+
+
+>>> from theano.tensor import RandomStreams
+>>> m = Module()
+>>> m.random = RandomStreams(seed=234)
+>>> rv_u = m.random.uniform((2,2))
+>>> rv_n = m.random.normal((2,2))
+
+Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
+distribution.  Likewise,  'rv_n' represenents a random stream of 2x2 matrices of
+draws from a normal distribution.
+
+
+>>> m.fn = Method([], rv_u)
+>>> m.gn = Method([], rv_n)
+
+As usual, we can define methods that operate on Module members (the RandomState
+object for each of fn and gn).  
+
+>>> m.nearly_zeros = Method([], rv_u + rv_u - 2 * rv_u)
+
+This function will always return a 2x2 matrix of very small numbers, or possibly
+zeros.  It illustrates that random variables are not re-drawn every time they
+are used, they are only drawn once (per call).
+
+
+>>> made = m.make()
+
+When we compile things with m.make(), the RandomStreams instance (m.random)
+emits an RandomStreamsInstance object (made.random) containing a numpy
+RandomState instance for each stream.
+
+>>> assert isinstance(made.random[rv_u.rng], numpy.random.RandomState)
+
+These RandomState objects can be accessed using standard indexing syntax.
+
+>>> fn_val0 = made.fn()
+>>> fn_val1 = made.fn()
+
+Finally, we can use our toy methods to draw random numbers.  Every call will of
+course, draw different ones!
+
+
+Seedings Streams
+----------------
+
+All of the streams in a RandomStreams container can be seeded at once using the
+seed method of a RandomStreamsInstance.
+
+>>> made.random.seed(seed_value)
+
+Of course, a RandomStreamsInstance can contain several RandomState instances and
+these will _not_ all be seeded to the same seed_value.  They will all be seeded
+deterministically and very-probably uniquely as a function of the seed_value.
+
+Seeding the generator in this way makes it possible to repeat random streams.
+
+>>> made.random.seed(777)
+>>> f0 = made.fn()
+>>> made.random.seed(999)
+>>> f1 = made.fn()
+
+Here we have different values in f0 and f1 because they were created from
+generators seeded differently.
+
+>>> made.random.seed(777)
+>>> f2 = made.fn()
+
+If we re-seed the generator with 777 and call fn again, we'll find that we
+re-drew the f0 values.  
+
+>>> assert(numpy.all(f2 == f0))
+
+
+Sharing Streams between Methods
+-------------------------------
+
+Streams in a Module, like other Members of a Module, are shared between Methods.
+This means that when one Method updates the state of a stream, it updates the
+state for other methods in that ModuleInstance too.
+
+For example:
+
+>>> m = Module()
+>>> m.random = RandomStreams(seed=234)
+>>> rv_u = m.random.uniform((2,2))
+>>> m.fn = Method([], rv_u)
+>>> m.gn = Method([], rv_u)
+>>> made = m.make()
+>>> made.random.initialize()
+>>> fn_val0 = made.fn()
+>>> gn_val0 = made.gn()
+
+At this point, fn_val0 != gn_val0 because made.fn() updated the random state
+after it was called.
+
+
+Compiled Modules are independent
+--------------------------------
+
+The RandomState objects are created only at the time of calling `make`, and
+calling make repeatedly will create multiple independent RandomStreamsInstance
+objects.  So, for example, if we were to hijack the previous example like this:
+
+>>> made = m.make()
+>>> made_again = m.make()
+>>> made.random.initialize()
+>>> made_again.random.initialize()
+>>> fn_val = made.fn()
+>>> gn_val = made.gn()
+>>> gn_val_ = made_again.gn()
+>>> fn_val_ = made_again.fn()
+
+We could call f and g in different orders in the two modules, and find that
+numpy.all(fn_val == fn_val_) and numpy.all(gn_val == gn_val_).
+
+
+
+**Next:** TODO
+**Prev:** TODO
+
+.. _Tools: tools.html
+
+
+
+
+
