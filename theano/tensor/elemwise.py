@@ -521,10 +521,11 @@ class Elemwise(Op):
         
         try:
             results = ufunc(*ufunc_args)
-        except:
+        except Exception, e:
             errormsg = 'Failed calling ufunc for op', self.scalar_op,\
                         'for params of shape', [arg.shape for arg in ufunc_args]
-            raise Exception, errormsg
+            e.args = e.args + errormsg
+            raise e
         if ufunc.nout == 1: results = [results]
         for result, storage in zip(results, output_storage):
             if storage[0].shape:
