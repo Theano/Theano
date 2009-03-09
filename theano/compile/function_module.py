@@ -743,6 +743,8 @@ def convert_function_input(input):
     """
     if isinstance(input, (SymbolicInput, SymbolicInputKit)):
         return input
+    elif isinstance(input, gof.Constant):
+        raise TypeError('A Constant instance is not a legal function input', input)
     elif isinstance(input, gof.Result):
         return In(input)
     elif isinstance(input, (list, tuple)):
