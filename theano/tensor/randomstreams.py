@@ -1,97 +1,12 @@
-"""Define RModule, a Module providing random number streams in Theano graphs."""
+"""Define RandomStreams, providing random number variables for Theano graphs."""
 __docformat__ = "restructuredtext en"
-import sys
-import functools
-from functools import partial
-from collections import deque
 
+import sys
 import numpy
 
-from ..compile import (SymbolicInputKit, SymbolicInput, 
-        Module, KitComponent, module, Method, Member, In, Component)
+from ..compile import module, In, Component
 from ..gof import Container
-
 from ..tensor import raw_random
-
-class RandomKit(SymbolicInputKit):
-
-    def __init__(self, name, value = None):
-        super(RandomKit, self).__init__(name)
-        self.value = value
-
-    def gen(self, op, *args, **kwargs):
-        random_state_result = raw_random.random_state_type()
-        new_r, out = op(random_state_result, *args, **kwargs)
-        self.add_input(SymbolicInput(random_state_result, update = new_r))
-        out.rng = new_r
-        out.auto = self
-        return out
-
-    def distribute(self, value, indices, containers):
-        rg = partial(numpy.random.RandomState(int(value)).randint, 2**30)
-        elems = deque(zip(indices, containers))
-        i = 0
-        while elems:
-            index, container = elems.popleft()
-            while i <= index:
-                curr = rg()
-                i += 1
-            rs = numpy.random.RandomState(int(curr))
-            container.data = rs
-
-    def binomial(self, *args, **kwargs):
-        return self.gen(raw_random.binomial, *args, **kwargs)
-
-    def uniform(self, *args, **kwargs):
-        return self.gen(raw_random.uniform, *args, **kwargs)
-
-    def normal(self, *args, **kwargs):
-        return self.gen(raw_random.normal, *args, **kwargs)
-
-    def random_integers(self, *args, **kwargs):
-        return self.gen(raw_random.random_integers, *args, **kwargs)
-
-
-
-rk = RandomKit('rk', 0xBAD5EED)
-
-
-class RModule(Module):
-    """Module providing random number streams in Theano graphs."""
-
-    def __init__(self, components = {}, **kwcomponents):
-        super(RModule, self).__init__(components, **kwcomponents)
-        self.random = RandomKit('rkit')
-        self._rkit = KitComponent(self.random)
-
-    def __wrapper__(self, x):
-        x = module.wrap(x)
-        if isinstance(x, Method):
-            x.kits += [self.random]
-        return x
-
-    def _instance_seed(self, inst, seed, recursive = True):
-        seedgen = numpy.random.RandomState(seed)
-        if recursive:
-            #Here, we recurse through all the components (inst2) contained in (inst)
-            #and seeds each subcomponent that is an RModule
-            
-            
-            for path, c in self.flat_components_map(True):
-                if isinstance(c, RModule):
-                    inst2 = inst
-                    for name in path:
-                        inst2 = inst2[name]
-                    # A Kit (c._rkit.kit) contains a list of io.SymbolicIn instances
-                    # and the distribute method takes a value (seed), a list of indices
-                    # and a list of corresponding Container instances. In this
-                    # situation it will reseed all the rngs using the containers
-                    # associated to them.
-                    c._rkit.kit.distribute(seedgen.random_integers(2**30),
-                                           xrange(len(inst2._rkit)), inst2._rkit)
-        else:
-            self._rkit.kit.distribute(seedgen.random_integers(2**30), xrange(len(inst._rkit)), inst._rkit)
-
 
 class RandomStreamsInstance(object):
     """RandomStreamsInstance"""
@@ -168,10 +83,8 @@ class RandomStreamsInstance(object):
                 return
         raise KeyError(item)
 
-
-
 class RandomStreams(Component):
-    """Module with similar interface to numpy.random (numpy.random.RandomState)"""
+    """Module component with similar interface to numpy.random (numpy.random.RandomState)"""
 
     random_state_results = []
     """A list of pairs of the form (input_r, output_r).  This will be over-ridden by the module
@@ -183,11 +96,18 @@ class RandomStreams(Component):
     generator that provides seeds for member streams"""
 
     def __init__(self, seed=None):
+        """
+        :type seed: None or int
+
+        :param seed: a default seed to initialize the RandomState instances after build.  See
+        `RandomStreamsInstance.__init__` for more details.
+        """
         super(RandomStreams, self).__init__()
         self.random_state_results = []
         self.default_instance_seed = seed
 
     def allocate(self, memo):
+        """override `Component.allocate` """
         for old_r, new_r in self.random_state_results:
             assert old_r not in memo
             memo[old_r] = In(old_r, 
@@ -196,11 +116,23 @@ class RandomStreams(Component):
                     mutable=True)
 
     def build(self, mode, memo):
-        #print 'MODE', mode
-        #returns a list of containers
+        """override `Component.build` """
         return RandomStreamsInstance(self, memo, self.default_instance_seed)
 
     def gen(self, op, *args, **kwargs):
+        """Create a new random stream in this container.
+
+        :param op: a RandomFunction instance to 
+
+        :param args: interpreted by `op`
+
+        :param kwargs: interpreted by `op`
+
+        :returns: The symbolic random draw part of op()'s return value.  This function stores
+        the updated RandomStateType Result for use at `build` time.
+
+        :rtype: TensorResult
+        """
         random_state_result = raw_random.random_state_type()
         new_r, out = op(random_state_result, *args, **kwargs)
         out.rng = random_state_result
@@ -210,15 +142,28 @@ class RandomStreams(Component):
     def binomial(self, *args, **kwargs):
         """Return a symbolic binomial sample
 
+        This is a shortcut for a call to `self.gen`
         """
         return self.gen(raw_random.binomial, *args, **kwargs)
 
     def uniform(self, *args, **kwargs):
+        """Return a symbolic uniform sample
+
+        This is a shortcut for a call to `self.gen`
+        """
         return self.gen(raw_random.uniform, *args, **kwargs)
 
     def normal(self, *args, **kwargs):
+        """Return a symbolic normal sample
+
+        This is a shortcut for a call to `self.gen`
+        """
         return self.gen(raw_random.normal, *args, **kwargs)
 
     def random_integers(self, *args, **kwargs):
+        """Return a symbolic random integer sample
+
+        This is a shortcut for a call to `self.gen`
+        """
         return self.gen(raw_random.random_integers, *args, **kwargs)
 
