@@ -12,7 +12,7 @@ class Print(Op):
     can pass a list of the input member functions to execute, or attributes to print.
     
     @type message: String
-    @param message: string to preprend to the output
+    @param message: string to prepend to the output
     @type attrs: list of Strings
     @param attrs: list of input node attributes or member functions to print. Functions are
     identified through callable(), executed and their return value printed.
