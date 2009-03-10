@@ -137,3 +137,11 @@ Type checking
         "if isinstance(item, int):" is the preferred way to do it in
         python now, so mimic this
         If the type is wrong, what exception should be raised?
+
+======================================
+More simple numpy stuff
+======================================
+
+    * If we have a matrix with only one row, how do we convert it to a vector?
+        ``x.reshape(x.size)``
+        You can also use ``resize`` but there is not reason to ''resize''
