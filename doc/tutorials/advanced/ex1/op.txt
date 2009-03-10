@@ -62,23 +62,23 @@ An Op is any object which defines the following methods:
 
 - **__eq__(self, other)**
 
-    - Returning True here is a promise to the optimization system that the other
-      Op will produce exactly the same graph effects (from perform) as this one, given
-      identical inputs.  This means it will produce the same output values, it
-      will destroy the same inputs (same destroy_map), and will alias outputs to
-      the same inputs (same view_map).
+  - Returning True here is a promise to the optimization system that the other
+    Op will produce exactly the same graph effects (from perform) as this one,
+    given identical inputs.  This means it will produce the same output values,
+    it will destroy the same inputs (same destroy_map), and will alias outputs
+    to the same inputs (same view_map).
 
 - **__hash__(self)**
 
-    - If two Op instances compare equal, then they MUST return the same hash
-      value.  
+  - If two Op instances compare equal, then they MUST return the same hash
+    value.  
       
-    - Equally important, this hash value must not change during the lifetime of
-      self.
+  - Equally important, this hash value must not change during the lifetime of
+    self.
 
 - **__ne__(self, other)**
 
-    - Recommended, and default: define as (not (self==other))
+  - Recommended, and default: define as (not (self==other))
 
 - **grad(inputs, output_gradients)** *Optional*
 
