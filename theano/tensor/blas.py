@@ -18,7 +18,7 @@ from .. import compile  #to register the optimizer built by this file
 from .blas_headers import cblas_header_text, blas_header_text
 
 @utils.memoize
-def ldflags():
+def ldflags(libs=True, flags=False):
     """Return a list of libraries against which an Op's object file should be
     linked to benefit from a BLAS implementation.
     
@@ -26,6 +26,7 @@ def ldflags():
     """
     if os.getenv('THEANO_BLAS_LDFLAGS'):
         tokens = os.getenv('THEANO_BLAS_LDFLAGS').split()
+        rval = []
         for t in tokens:
             try:
                 t0, t1, t2 = t[0:3]
@@ -34,7 +35,10 @@ def ldflags():
                 raise ValueError('invalid token in THEANO_BLAS_LDFLAGS', t)
             if t1 == 'L':
                 raise ValueError('library dir not allowed in THEANO_BLAS_LDFLAGS', t)
-        rval = [token[2:] for token in tokens]
+            elif libs and t1=='l': # example -lmkl
+                rval.append(t[2:])
+            elif flags and t1!='l': # example -openmp
+                rval.append(t)
     else:
         rval = ['blas']
     #print "blas linking against", rval
@@ -60,6 +64,9 @@ class GemmRelated(Op):
     
     def c_libraries(self):
         return ldflags()
+
+    def c_compile_args(self):
+        return ldflags(libs=False, flags=True)
 
     declare_NS = """
         int unit = 0;
