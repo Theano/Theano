@@ -402,7 +402,7 @@ class CLinker(link.Linker):
                         consts.append(result)
                         self.orphans.remove(result)
                         continue
-                    except (utils.AbstractFunctionError, NotImplementedError):
+                    except (utils.MethodNotDefined, NotImplementedError):
                         pass
                 # orphans are not inputs so we'll just get fetch them when we initialize the struct and assume they stay the same
                 policy = [[get_c_declare, get_c_extract, get_c_cleanup],
@@ -465,11 +465,11 @@ class CLinker(link.Linker):
 
             op = node.op
             try: behavior = op.c_code(node, name, isyms, osyms, sub)
-            except utils.AbstractFunctionError:
+            except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
 
             try: cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
-            except utils.AbstractFunctionError:
+            except utils.MethodNotDefined:
                 cleanup = ""
 
             blocks.append(CodeBlock("", behavior, cleanup, sub))
@@ -517,7 +517,7 @@ class CLinker(link.Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret.append(x.c_support_code())
-            except utils.AbstractFunctionError: pass
+            except utils.MethodNotDefined: pass
         return ret
 
     def compile_args(self):
@@ -530,7 +530,7 @@ class CLinker(link.Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret += x.c_compile_args()
-            except utils.AbstractFunctionError: pass
+            except utils.MethodNotDefined: pass
         return ret
 
     def headers(self):
@@ -543,7 +543,7 @@ class CLinker(link.Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret += x.c_headers()
-            except utils.AbstractFunctionError: pass
+            except utils.MethodNotDefined: pass
         return ret
 
     def libraries(self):
@@ -556,7 +556,7 @@ class CLinker(link.Linker):
         ret = []
         for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
             try: ret += x.c_libraries()
-            except utils.AbstractFunctionError: pass
+            except utils.MethodNotDefined: pass
         return ret
 
     def __compile__(self, input_storage = None, output_storage = None):
@@ -840,7 +840,7 @@ class OpWiseCLinker(link.LocalLinker):
                 thunk.inputs = node_input_storage
                 thunk.outputs = node_output_storage
                 thunks.append(thunk)
-            except (NotImplementedError, utils.AbstractFunctionError):
+            except (NotImplementedError, utils.MethodNotDefined):
                 if self.fallback_on_perform:
                     p = node.op.perform
                     thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)

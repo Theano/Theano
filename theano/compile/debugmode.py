@@ -542,7 +542,7 @@ class _Linker(gof.link.LocalLinker):
             node_output_storage = [storage_map[r] for r in node.outputs]
             try:
                 if not self.maker.mode.check_c_code:
-                    raise utils.AbstractFunctionError()
+                    raise utils.MethodNotDefined()
                 e = Env(*graph.clone(node.inputs, node.outputs))
                 e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER
 
@@ -575,7 +575,7 @@ class _Linker(gof.link.LocalLinker):
                 thunk.outputs = node_output_storage
                 thunks_c.append(thunk)
 
-            except (NotImplementedError, utils.AbstractFunctionError):
+            except (NotImplementedError, utils.MethodNotDefined):
                 thunks_c.append(None)
 
             p = node.op.perform

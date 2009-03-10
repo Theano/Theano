@@ -39,5 +39,5 @@ from type import \
     Type, Generic, generic
 
 from utils import \
-    object2, AbstractFunctionError
+    object2, MethodNotDefined
 

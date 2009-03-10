@@ -45,10 +45,10 @@ class CLinkerOp(object):
            WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: the subclass does not override this method
+         - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.AbstractFunctionError('%s.c_code is not defined' \
+        raise utils.MethodNotDefined('%s.c_code' \
                 % self.__class__.__name__)
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
@@ -77,10 +77,11 @@ class CLinkerOp(object):
         WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: the subclass does not override this method
+         - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.AbstractFunctionError()
+        raise utils.MethodNotDefined('%s.c_code_cleanup' \
+                % self.__class__.__name__)
 
     def c_compile_args(self):
         """Optional: Return a list of recommended gcc compiler arguments.
@@ -93,7 +94,8 @@ class CLinkerOp(object):
 
         WRITEME
         """
-        raise utils.AbstractFunctionError()
+        raise utils.MethodNotDefined('%s.c_compile_args' \
+                % self.__class__.__name__)
 
     def c_headers(self):
         """Optional: Return a list of header files that must be included to compile the C code.
@@ -105,10 +107,11 @@ class CLinkerOp(object):
         WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: the subclass does not override this method
+         - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.AbstractFunctionError()
+        raise utils.MethodNotDefined('%s.c_headers' \
+                % self.__class__.__name__)
 
     def c_libraries(self):
         """Optional: Return a list of libraries to link against to manipulate this `Op`.
@@ -118,10 +121,11 @@ class CLinkerOp(object):
         WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: the subclass does not override this method
+         - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.AbstractFunctionError()
+        raise utils.MethodNotDefined('%s.c_libraries' \
+                % self.__class__.__name__)
 
     def c_support_code(self):
         """Optional: Return support code for use by the code that is returned by `c_code`.
@@ -133,10 +137,11 @@ class CLinkerOp(object):
         WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: the subclass does not override this method
+         - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.AbstractFunctionError()
+        raise utils.MethodNotDefined('%s.c_support_code' \
+                % self.__class__.__name__)
 
 class PureOp(object):
     """
@@ -185,10 +190,10 @@ class PureOp(object):
         All subclasses should over-ride this function.
 
         :Exceptions:
-         - `AbstractFunctionError`: the subclass does not override this method
+         - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.AbstractFunctionError(self)
+        raise utils.MethodNotDefined("make_node", type(self), self.__class__.__name__)
 
     def __call__(self, *inputs):
         """Optional: Return some or all output[s] of `make_node`.  
@@ -241,10 +246,10 @@ class PureOp(object):
         sees fit.
 
         :Exceptions:
-         - `AbstractFunctionError`: the subclass does not override this method
+         - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.AbstractFunctionError(self)
+        raise utils.MethodNotDefined("perform", type(self), self.__class__.__name__)
 
 class Op(utils.object2, PureOp, CLinkerOp): 
     """Convenience class to bundle `PureOp` and `CLinkerOp`"""

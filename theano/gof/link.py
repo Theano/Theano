@@ -69,7 +69,7 @@ class Linker(object):
          print new_e.data # 3.0
          print e.data # 3.0 iff inplace == True (else unknown)
         """
-        raise utils.AbstractFunctionError()
+        raise utils.MethodNotDefined("make_thunk", type(self), self.__class__.__name__)
 
     ## DELETEME ##
     def make_function(self, unpack_single = True, **kwargs):
@@ -306,7 +306,7 @@ class LocalLinker(Linker):
         # 3. output storage
         # 4. thunks: list of nodes' functions in the order they will be run by the function in (1)
         # 5. order: list of nodes, in the order they will be run by the function in (1)
-        raise AbstractFunctionError
+        raise MethodNotDefined("make_all", type(self), self.__class__.__name__)
 
 def gc_helper(node_list):
     """

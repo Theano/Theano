@@ -9,9 +9,7 @@ def hashgen():
     return  hashgen.next
 hashgen.next = 0
 
-class OmegaError(Exception): pass
-
-class AbstractFunctionError(Exception): 
+class MethodNotDefined(Exception): 
     """
     To be raised by functions defined as part of an interface.
 
