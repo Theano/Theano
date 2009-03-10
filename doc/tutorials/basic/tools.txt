@@ -9,6 +9,7 @@ Mode
 
 WRITEME
 
+.. _tensortypes:
 
 Types
 =====
@@ -46,7 +47,7 @@ Dimensionality is one of:
 code   shape  Rows :term:`broadcastable <broadcasting>`? Columns :term:`broadcastable <broadcasting>`?
 ====== ====== ========================================== =============================================
 scalar []     Yes                                        Yes
-vector [n]    Yes                                        N/A
+vector [n]    Yes                                        N/A (vectors are used like row vectors)
 row    [1, n] Yes                                        No
 col    [m, 1] No                                         Yes
 matrix [m, n] No                                         No
@@ -56,13 +57,14 @@ So for example if you want a row of 32-bit floats, it is available
 under ``theano.tensor.frow`` and if you want a matrix of unsigned
 32-bit integers it is available under ``theano.tensor.imatrix``.
 
-Each of the methods described above have a singular version and a
-plural version. When called, the singular version takes a single
-argument which is the name of the :term:`Result` we want to make and
-it makes a single Result of that type. The plural version can either
-take an integer or a string. If an integer is provided, it will return
-that many Results and if a string is provided, it will create one
-Result for each letter of the string, using the letter as the Result's
+Each of the types described above can be constructed by two methods:
+a singular version (e.g., ``dmatrix``) and a plural version
+(``dmatrices``).  When called, the singular version takes a single
+argument which is the name of the :term:`Result` we want to make and it
+makes a single Result of that type. The plural version can either take
+an integer or several strings. If an integer is provided, the method
+will return that many Results and if strings are provided, it will
+create one Result for each string, using the string as the Result's
 name. For example:
 
 .. code-block:: python
@@ -74,14 +76,14 @@ name. For example:
    xyz = dmatrix('xyz') # creates one Result with name 'xyz'
 
    x, y, z = dmatrices(3) # creates three Results with no names
-   x, y, z = dmatrices('xyz') # creates three Results named 'x', 'y' and 'z'
+   x, y, z = dmatrices('x', 'y', 'z') # creates three Results named 'x', 'y' and 'z'
 
 
 Custom tensor types
 -------------------
 
-If you wish to use a type which is not available here (for example, a
-3D tensor) you can build an appropriate type using
+If you wish to use a type of tensor which is not already available here
+(for example, a 3D tensor) you can build an appropriate type using
 ``theano.tensor.Tensor``. The first argument you pass is the ``dtype``
 and the second is the ``broadcastable pattern``.
 
@@ -106,10 +108,11 @@ complex128  complex          128 (two float64)
 
 .. note::
 
-   There are no premade complex types, so you need to make them
-   explicitly with Tensor. Furthermore, few operations are fully
-   supported for complex types: as of version 0.1, only elementary
-   operations (``+-*/``) have C implementations.
+   Even though ``theano.tensor`` does not define any type using
+   ``complex`` dtypes (``complex64`` or ``complex128``), you can define
+   them explicitly with ``Tensor`` (see example below). However, few
+   operations are fully supported for complex types: as of version 0.1,
+   only elementary operations (``+-*/``) have C implementations.
 
 
 The broadcastable pattern, on the other hand, indicates both the
@@ -133,12 +136,23 @@ pattern               interpretation
 [False, False, False] A MxNxP tensor (pattern of a + b)
 ===================== =================================
 
+When two tensors have a different number of dimensions, the broadcastable
+pattern is *expanded to the left*, by padding with ``True``. So, for example,
+a vector's pattern, ``[False]``, could be expanded to ``[True, False]``, and
+would behave like a row (1xN matrix). In the same way, a matrix (``[False,
+False]``) would behave like a 1xNxP tensor (``[True, False, False]``).
+
 So if we wanted to create a type representing a 3D array of unsigned
 bytes, we would simply do: 
 
 .. code-block:: python
 
+   # 3D tensor of signed bytes
    mytype = theano.tensor.Tensor('uint8', [False]*3)
+
+   # complex types (based on complex64)
+   my_cscalar = theano.tensor.Tensor('complex64', [])
+   my_cmatrix = theano.tensor.Tensor('complex64', [False, False])
 
 
 Ops

@@ -1,0 +1,139 @@
+Basically, this file contains stuff that should be documented, but is not.
+
+Feel free to contribute things that you want documented, as well as to add
+or correct documentation.
+
+
+======================================
+What happens if grad is not defined?
+======================================
+
+If an Op does not define ``grad``, but this Op does not appear in the path when
+you compute the gradient, then there is no problem.
+
+If an Op does not define ``grad``, and this Op *does* appear in the path when
+you compute the gradient, **WRITEME**.
+
+**This documentation is useful when we show users how to write Ops.**
+
+======================================
+What is staticmethod, st_impl?
+======================================
+
+``st_impl`` is an optional method in an Op.
+``@staticmethod`` is a Python decorator for a class method that does not
+implicitly take the class instance as a first argument. Hence, st_impl
+can be used for Op implementations when no information from the Op
+instance is needed. This can be useful for testing an implementation.
+See :api:`XlogX` for an example.
+
+**This documentation is useful when we show users how to write Ops.
+Olivier says this behavior should be discouraged but I feel that st_impl
+should be encouraged where possible.**
+
+============================================================
+how do we write scalar ops and upgrade them to tensor ops?
+============================================================
+
+**Olivier says that :api:`XlogX` gives a good example. In fact, I would
+like to beef xlogx up into our running example for demonstrating how to
+write an Op:**
+
+.. code-block:: python
+
+    class XlogX(scalar.UnaryScalarOp):
+        """
+        Compute X * log(X), with special case 0 log(0) = 0.
+        """
+        @staticmethod
+        def st_impl(x):
+            if x == 0.0:
+                return 0.0
+            return x * numpy.log(x)
+        def impl(self, x):
+            return XlogX.st_impl(x)
+        def grad(self, (x,), (gz,)):
+            return [gz * (1 + scalar.log(x))]
+        def c_code(self, node, name, (x,), (z,), sub):
+            if node.inputs[0].type in [scalar.float32, scalar.float64]:
+                return """%(z)s =
+                    %(x)s == 0.0
+                    ? 0.0
+                    : %(x)s * log(%(x)s);""" % locals()
+            raise NotImplementedError('only floatingpoint is implemented')
+    scalar_xlogx  = XlogX(scalar.upgrade_to_float, name='scalar_xlogx')
+    xlogx = tensor.Elemwise(scalar_xlogx, name='xlogx')
+    
+**It is also necessary to talk about UnaryScalarOp vs. BinaryOp.**
+
+UnaryScalarOp is the same as scalar.ScalarOp with member variable nin=1.
+**give an example of this**
+
+=======================================================
+Documentation on how to write tests
+=======================================================
+
+Guillaume can you make sure to hit these points:
+
+    * What are canonical examples of tests?
+
+        * What are the different test patterns?
+
+    * nnet.py:
+
+        * What is going on with test1, test2, test3, test4?
+
+    * What is the right eq function to use?
+
+        * There are a lot of tests that define their own epsilon, but this should be standardized.  e.g. in test_elemwise.py ``self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())``
+
+    * If the expected result of a test is that an Exception is thrown, how do we correctly detect and handle that?
+
+        nosetests has ``failUnlessRaises``
+
+    * Convention is that all test files must start with test_, not _test_, so rename all that use the old convention?
+
+=======================================================
+How to use the PrintOp
+=======================================================
+
+** This is also useful in the How to write an Op tutorial. **
+
+=======================================================
+Modules
+=======================================================
+
+* What is the correct way to tie weights?
+
+=======================================================
+Mammouth
+=======================================================
+
+**This is internal documentation. Guillaume can you make sure to hit these points:**
+
+export THEANO_BLAS_LDFLAGS='-lmkl -liomp5 -fopenmp'
+
+**Do we want the following:**
+
+export OMP_NUM_THREADS=2
+
+=======================================================
+Cache
+=======================================================
+
+The compile cache is written to ``THEANO_COMPILEDIR``.  If this environment
+variable is not present, the compile cache defaults to ``$HOME/.theano``.
+The compile cache is based upon the C++ code of the graph to be compiled.
+So, if you change compilation environment variables, such as
+``THEANO_BLAS_LDFLAGS``, you will need to manually remove your compile cache.
+
+=======================================================
+Type checking
+=======================================================
+
+    * Are there functions for doing type checking?
+        like dtype of this matrix is an int-type (not just int32
+        or int64)
+        "if isinstance(item, int):" is the preferred way to do it in
+        python now, so mimic this
+        If the type is wrong, what exception should be raised?

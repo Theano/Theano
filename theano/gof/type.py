@@ -318,6 +318,8 @@ class Type(object2, PureType, CLinkerType):
 
     """
 
+
+## DELETEME ##
 class SingletonType(Type):
     """WRITEME"""
     __instance = None
@@ -374,6 +376,7 @@ class Generic(SingletonType):
 generic = Generic()
 
 
+## DELETEME ##
 class PropertiedType(Type):
     """WRITEME"""
 

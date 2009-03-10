@@ -161,6 +161,6 @@ version that it produces in the code I gave above.
 
 
 
-**Next:** `Example 2 - cons_cell`_
+**Next:** `Views and inplace operations`_
 
-.. _Example 2 - cons_cell: ../ex2/index.html
+.. _Views and inplace operations: ../inplace.html

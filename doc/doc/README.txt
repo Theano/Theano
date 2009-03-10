@@ -89,9 +89,9 @@ Configuring the environment
 ---------------------------
 
 Two environment variables are used to control automatic code generation.
-(It is possible to use theano in a way that avoids all automatic code generation, but the functions you make using {{{theano.function}}} will execute more slowly.)
+(It is possible to use theano in a way that avoids all automatic code generation, but the functions you make using ``theano.function`` will execute more slowly.)
 
-- `THEANO_BLAS_LDFLAGS`: 
+- `THEANO_BLAS_LDFLAGS`:
     a space-separated list of library names to link against for BLAS functions. Default: `-lblas`
 
 - `THEANO_COMPILEDIR`:

@@ -288,10 +288,14 @@ def struct_result_codeblocks(result, policies, id, symbol_table, sub):
 #    sub['name'] = name
     sub['id'] = id
     sub['fail'] = failure_code(sub)
+    sub['py_ptr'] = "py_%s" % name
+    sub['stor_ptr'] = "storage_%s" % name
     struct_builder = CodeBlock(*[apply_policy(policy, result, name, sub)
                                  for policy in policies[0]]+[sub]) # struct_declare, struct_behavior, struct_cleanup, sub)
     sub['id'] = id + 1
     sub['fail'] = failure_code(sub)
+    sub['py_ptr'] = "py_%s" % name
+    sub['stor_ptr'] = "storage_%s" % name
     block = CodeBlock(*[apply_policy(policy, result, name, sub)
                         for policy in policies[1]]+[sub]) # run_declare, run_behavior, run_cleanup, sub)
 

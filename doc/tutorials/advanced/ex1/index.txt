@@ -3,11 +3,11 @@
 Example 1 - double
 ==================
 
+WRITEME
+
 .. toctree::
 
    type
    op
    ctype
    cop
-
-WRITEME

@@ -63,7 +63,7 @@ if __name__ == '__main__':
     throot = "/".join(sys.path[0].split("/")[:-1])
 
     options = defaultdict(bool)
-    options.update(dict([x, y or True] for x, y in getopt.getopt(sys.argv[1:], 'o:', ['epydoc', 'rst', 'help'])[0]))
+    options.update(dict([x, y or True] for x, y in getopt.getopt(sys.argv[1:], 'o:', ['epydoc', 'rst', 'help', 'nopdf'])[0]))
     if options['--help']:
         print 'Usage: %s [OPTIONS]' % sys.argv[0]
         print '  -o <dir>: output the html files in the specified dir'
@@ -113,21 +113,22 @@ if __name__ == '__main__':
         sys.path[0:0] = [os.path.join(throot, 'doc')]
         sphinx.main(['', '-E', os.path.join(throot, 'doc'), '.'])
 
-        # Generate latex file in a temp directory
-        import tempfile
-        workdir = tempfile.mkdtemp()
-        sphinx.main(['', '-E', '-b', 'latex',
-            os.path.join(throot, 'doc'), workdir])
-        # Compile to PDF
-        currentdir = os.getcwd()
-        os.chdir(workdir)
-        os.system('make')
-        try:
-            shutil.copy(os.path.join(workdir, 'theano.pdf'), currentdir)
-            os.chdir(currentdir)
-            shutil.rmtree(workdir)
-        except OSError, e:
-            print 'OSError:', e
+        if not options['--nopdf']:
+            # Generate latex file in a temp directory
+            import tempfile
+            workdir = tempfile.mkdtemp()
+            sphinx.main(['', '-E', '-b', 'latex',
+                os.path.join(throot, 'doc'), workdir])
+            # Compile to PDF
+            currentdir = os.getcwd()
+            os.chdir(workdir)
+            os.system('make')
+            try:
+                shutil.copy(os.path.join(workdir, 'theano.pdf'), currentdir)
+                os.chdir(currentdir)
+                shutil.rmtree(workdir)
+            except OSError, e:
+                print 'OSError:', e
 
 
 
