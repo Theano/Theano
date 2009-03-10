@@ -1,3 +1,25 @@
+"""Classes implementing Theano's Module system.
+
+Functions in theano can share containers, when the `value` argument to `In` is a Container
+instance.  This feature makes it possible for multiple functions to use (and update) the same
+inputs.
+
+Modules provide a more intuitive syntax that makes this feature easier to use.  
+They draw on the metaphor of a python import--a module has functions and variables, and
+can contain other modules.  All functions have access to all variables, and whenever any
+function modifies a file-level variable, then that change is visible to all other functions.
+
+In the Module system, the analog of the file is the `Module`, the analog of the function is the
+`Method`, and the analog of the variable is the `Member`.  Module, Member, and Method all work
+at the symbolic level.  Once a graph of Modules, Members, and Methods is ready for use, it must
+be compiled with a call to `make` which will return an isomorphic structure in which Modules
+have become `ModuleInstances`, Members have become `Container`s, and Methods have become
+`Function`s.
+This structure contains numbers and functions, and is ready for computation.
+
+"""
+
+__doc__='restructuredtext en'
 
 from theano import gof
 from theano.printing import pprint
