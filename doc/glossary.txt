@@ -31,12 +31,14 @@ Glossary of terminology
            to the pattern), resulting in ``(1, 2)`` and ``(T, F)``.
            It would then behave just like the example above.
 
+
         Unlike numpy which does broadcasting dynamically, Theano needs
         to know, for any operation which supports broadcasting, which
         dimensions will need to be broadcasted. When applicable, this
         information is given in the :term:`Type` of a :term:`Result`.
 
         See also:
+
         * :ref:`How broadcasting is used in Theano's tensor types <tensortypes>`
 
         * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
