@@ -43,7 +43,7 @@ from compile import \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
     FunctionMaker, function, OpFromGraph, \
-    Component, External, Member, KitComponent, Method, \
+    Component, External, Member, Method, \
     Composite, ComponentList, ComponentDict, Module, \
     ProfileMode
 
