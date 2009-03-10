@@ -101,6 +101,21 @@ class T_test_module(unittest.TestCase):
         local_test(lambda:T.dscalar(),lambda:Member(T.dscalar()))
         local_test(lambda:T.value(1),lambda:Member(T.value(2)))
         local_test(lambda:T.constant(1),lambda:Member(T.constant(2)))
+
+    def test_compound_structure_assignment(self):
+        """Test that list members can be assigned list-wise"""
+        def local_test(x,y):
+            m1=Module()
+            m1.l=[x(), y()]#cast Result]
+            m1.f=Method([], m1.l[1])
+            m = m1.make()
+            m.l = [4, 5]
+            assert 5 == m.f()
+
+        local_test(lambda:T.dscalar(),lambda:Member(T.dscalar()))
+        local_test(lambda:T.value(1),lambda:Member(T.value(2)))
+        local_test(lambda:T.constant(1),lambda:Member(T.constant(2)))
+
         
     def test_method_in_list_or_dict(self):
         """Test that a Method which is only included via a list or dictionary is still treated as if it
