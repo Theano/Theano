@@ -12,7 +12,6 @@ from theano import gradient
 from theano import gof
 from theano.gof.python25 import any
 from theano import gof
-from theano.gof.utils import AbstractFunctionError
 
 from theano.tensor.elemwise import DimShuffle
 from theano.compile.mode import default_mode

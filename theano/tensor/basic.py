@@ -11,7 +11,7 @@ import numpy
 from copy import copy
 
 from .. import gof
-from ..gof import Result, Op, utils, AbstractFunctionError, Type, Constant, Apply, Value
+from ..gof import Result, Op, utils, Type, Constant, Apply, Value
 
 from .. import gradient
 

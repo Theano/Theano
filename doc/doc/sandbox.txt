@@ -8,11 +8,34 @@ or correct documentation.
 What happens if grad is not defined?
 ======================================
 
+You should define gradient, even if it is undefined.
+[give log factorial example]
+
 If an Op does not define ``grad``, but this Op does not appear in the path when
 you compute the gradient, then there is no problem.
 
 If an Op does not define ``grad``, and this Op *does* appear in the path when
 you compute the gradient, **WRITEME**.
+
+Gradients for a particular result can be one of four kinds:
+1) forgot to implement it
+
+You will get an exception of the following form.
+
+theano.gof.utils.MethodNotDefined: ('grad', <class 'pylearn.algorithms.sandbox.cost.LogFactorial'>, 'LogFactorial')
+
+2) a symbolic result
+3) None / zero
+4) undefined mathematically
+currently, there is no way for a grad() method to distinguish between cases 3
+and 4
+but the distinction is important because graphs with type-3 gradients are ok
+to run, whereas graphs with type-4 gradients are not.
+so I suggested that Joseph return a type-4 gradient by defining an Op with no
+perform method.
+the idea would be that this would suit the graph-construction phase, but would
+prevent linking.
+how does that sound to you?
 
 **This documentation is useful when we show users how to write Ops.**
 

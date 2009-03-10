@@ -334,10 +334,10 @@ class ScalarOp(Op):
                 storage[0] = result
 
     def impl(self, *inputs):
-        raise AbstractFunctionError()
+        raise utils.MethodNotDefined("impl", type(self), self.__class__.__name__)
     
     def grad(self, inputs, output_gradients):
-        raise AbstractFunctionError()
+        raise utils.MethodNotDefined("grad", type(self), self.__class__.__name__)
 
     def __eq__(self, other):
         test =  type(self) == type(other) \

@@ -4,7 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import copy
 import utils
-from utils import AbstractFunctionError, object2
+from utils import MethodNotDefined, object2
 from graph import Result
 import traceback
 
@@ -41,10 +41,10 @@ class CLinkerType(object):
             WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
         
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_literal", type(self), self.__class__.__name__)
     
     def c_declare(self, name, sub):
         """Required: Return c code to declare variables that will be
@@ -59,12 +59,12 @@ class CLinkerType(object):
             WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined()
 
     def c_init(self, name, sub):
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_init", type(self), self.__class__.__name__)
 
     def c_extract(self, name, sub):
         """Required: Return c code to extract a PyObject * instance.
@@ -89,10 +89,10 @@ class CLinkerType(object):
             WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_extract", type(self), self.__class__.__name__)
     
     def c_cleanup(self, name, sub):
         """Optional: Return c code to clean up after `c_extract`.
@@ -110,10 +110,10 @@ class CLinkerType(object):
             WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined()
 
     def c_sync(self, name, sub):
         """Required: Return c code to pack C types back into a PyObject.
@@ -131,10 +131,10 @@ class CLinkerType(object):
             WRITEME
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_sync", type(self), self.__class__.__name__)
 
     def c_compile_args(self):
         """Optional: Return a list of compile args recommended to compile the
@@ -143,10 +143,10 @@ class CLinkerType(object):
         WRITEME: example of formatting for -I, -L, -f args.
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_compile_args", type(self), self.__class__.__name__)
 
     def c_headers(self):
         """Optional: Return a list of header files required by code returned by
@@ -155,10 +155,10 @@ class CLinkerType(object):
         WRITEME: example of local file, standard file.
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_headers", type(self), self.__class__.__name__)
 
     def c_libraries(self):
         """Optional: Return a list of libraries required by code returned by
@@ -174,10 +174,10 @@ class CLinkerType(object):
         QUESTION: What about via the c_compile_args? a -L option is allowed no?
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_libraries", type(self), self.__class__.__name__)
 
     def c_support_code(self):
         """Optional: Return utility code for use by a `Result` or `Op` to be
@@ -187,10 +187,10 @@ class CLinkerType(object):
         with many instances of the same type?
 
         :Exceptions:
-         - `AbstractFunctionError`: Subclass does not implement this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("c_support_code", type(self), self.__class__.__name__)
 
 class PureType(object):
     """Interface specification for result type instances.
@@ -214,10 +214,10 @@ class PureType(object):
         argument. If it is False, filter may cast it to an appropriate type.
 
         :Exceptions:
-         - `AbstractFunctionError`: subclass doesn't implement this function.
+         - `MethodNotDefined`: subclass doesn't implement this function.
 
         """
-        raise AbstractFunctionError()
+        raise MethodNotDefined("filter", type(self), self.__class__.__name__)
 
     def is_valid_value(self, a):
         """Required: Return True for any python object `a` that would be a legal value for a Result of this Type"""

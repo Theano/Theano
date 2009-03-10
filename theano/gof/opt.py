@@ -342,7 +342,7 @@ class LocalOptimizer(object):
 
         """
 
-        raise utils.AbstractFunctionError()
+        raise utils.MethodNotDefined("transform", type(self), self.__class__.__name__)
 
     def add_requirements(self, env):
         """If this local optimization wants to add some requirements to the env,
