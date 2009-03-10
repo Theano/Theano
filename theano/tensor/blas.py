@@ -24,9 +24,9 @@ def ldflags(libs=True, flags=False):
     
     Default: ['blas'], but environment variable THEANO_BLAS_LDFLAGS overrides this.
     """
+    rval = []
     if os.getenv('THEANO_BLAS_LDFLAGS'):
         tokens = os.getenv('THEANO_BLAS_LDFLAGS').split()
-        rval = []
         for t in tokens:
             try:
                 t0, t1, t2 = t[0:3]
@@ -39,7 +39,7 @@ def ldflags(libs=True, flags=False):
                 rval.append(t[2:])
             elif flags and t1!='l': # example -openmp
                 rval.append(t)
-    else:
+    elif libs:
         rval = ['blas']
     #print "blas linking against", rval
     return rval
