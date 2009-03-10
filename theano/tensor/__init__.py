@@ -6,11 +6,11 @@ from basic import *
 import opt
 import blas
 
-import raw_random, rmodule
-from rmodule import \
-    RandomKit, RModule
+import raw_random, randomstreams
+from randomstreams import \
+    RandomStreams
 
-random = RandomKit('random')
+random = RandomStreams(seed=0xBAD5EED)
 """Imitate the numpy.random symbol with a tensor.random one"""
 
 from elemwise import \

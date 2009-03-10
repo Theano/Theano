@@ -18,7 +18,7 @@ def cross_entropy(target, output, axis=1):
     """
     return -T.mean(target * T.log(output) + (1 - target) * T.log(1 - output), axis=axis)
 
-class QuadraticDenoisingAA(T.RModule):
+class QuadraticDenoisingAA(module.Module):
     """Quadratic de-noising Auto-encoder
 
     WRITEME
@@ -59,6 +59,8 @@ class QuadraticDenoisingAA(T.RModule):
         """
         super(QuadraticDenoisingAA, self).__init__()
 
+        self.random = T.RandomStreams()
+
         # MODEL CONFIGURATION
 #        self.regularize = regularize
         self.tie_weights = tie_weights
@@ -75,11 +77,11 @@ class QuadraticDenoisingAA(T.RModule):
 
         # PARAMETERS
         if _qfilters is None:
-            self.qfilters = [theano.Member(T.dmatrix()) for i in xrange(n_quadratic_filters)]
+            self.qfilters = [theano.Member(T.dmatrix('q%i'%i)) for i in xrange(n_quadratic_filters)]
         else:
             self.qfilters = [theano.Member(q) for q in _qfilters]
 
-        self.w1 = theano.Member(T.matrix()) if _w1 is None else theano.Member(_w1)
+        self.w1 = theano.Member(T.matrix('w1')) if _w1 is None else theano.Member(_w1)
         if _w2 is None:
             if not tie_weights:
                 self.w2 = theano.Member(T.matrix())
@@ -87,8 +89,8 @@ class QuadraticDenoisingAA(T.RModule):
                 self.w2 = self.w1.T
         else:
             self.w2 = theano.Member(_w2)
-        self.b1 = theano.Member(T.vector()) if _b1 is None else theano.Member(_b1)
-        self.b2 = theano.Member(T.vector()) if _b2 is None else theano.Member(_b2)
+        self.b1 = theano.Member(T.vector('b1')) if _b1 is None else theano.Member(_b1)
+        self.b2 = theano.Member(T.vector('b2')) if _b2 is None else theano.Member(_b2)
 
 #        # REGULARIZATION COST
 #        self.regularization = self.build_regularization()
@@ -173,6 +175,7 @@ class QuadraticDenoisingAA(T.RModule):
         if (input_size is None) ^ (hidden_size is None):
             raise ValueError("Must specify input_size and hidden_size or neither.")
         super(QuadraticDenoisingAA, self)._instance_initialize(obj, {})
+        obj.random.initialize()
         if seed is not None:
             R = N.random.RandomState(seed)
         else:
@@ -189,7 +192,7 @@ class QuadraticDenoisingAA(T.RModule):
             obj.qfilters = [R.uniform(size = sz, low = -inf, high = inf) * qfilter_relscale \
                     for qf in self.qfilters]
         if seed is not None:
-            obj.seed(seed, recursive=True)
+            obj.random.seed(seed)
 
         obj.lr = lr
 
