@@ -145,3 +145,5 @@ More simple numpy stuff
     * If we have a matrix with only one row, how do we convert it to a vector?
         ``x.reshape(x.size)``
         You can also use ``resize`` but there is not reason to ''resize''
+    * How do you convert the type of a numpy array?
+        ``numpy.asarray(x, dtype = 'int32')``
