@@ -8,10 +8,36 @@ from collections import deque
 import numpy
 
 from ...compile import (SymbolicInputKit, SymbolicInput, 
-        Module, KitComponent, module, Method, Member, In, Component)
+        Module, module, Method, Member, In, Component)
 from ...gof import Container
 
 from ...tensor import raw_random
+
+class KitComponent(Component):
+    """
+    Represents a SymbolicInputKit (see io.py).
+    """
+    
+    def __init__(self, kit):
+        super(KitComponent, self).__init__()
+        self.kit = kit
+
+    def allocate(self, memo):
+        """
+        Allocates a Container for each input in the kit. Sets a key in
+        the memo that maps the SymbolicInputKit to the list of
+        Containers.
+        """
+        for input in self.kit.sinputs:
+            r = input.result
+            if r not in memo:
+                input = copy(input)
+                input.value = gof.Container(r, storage = [None])
+                memo[r] = input
+
+    def build(self, mode, memo):
+        return [memo[i.result].value for i in self.kit.sinputs]
+
 
 class RandomKit(SymbolicInputKit):
 
