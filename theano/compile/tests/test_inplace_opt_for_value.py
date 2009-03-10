@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 import numpy as N
-from theano import Op, Apply, tensor as T, Module, Member, Method, Mode, compile
+from theano import Op, Apply, tensor as T, Module, Method, Mode, compile
 from theano.gof import OpSub, TopoOptimizer
 
-from pylearn.algorithms.minimizer import make_minimizer # minimizer
 from theano.printing import Print
-#import sgd #until Olivier's module-import thing works better
 
 ####################
 # Library-type stuff
@@ -13,8 +11,6 @@ from theano.printing import Print
 
 from theano.compile import module
 from theano import tensor as T
-
-from pylearn.algorithms.minimizer import minimizer_factory
 
 class StochasticGradientDescent(module.FancyModule):
     """Fixed stepsize gradient descent"""
@@ -28,18 +24,18 @@ class StochasticGradientDescent(module.FancyModule):
         self.stepsize_init = None
 
         if stepsize is None:
-            self.stepsize = module.Member(T.dscalar())
+            self.stepsize = (T.dscalar())
         elif isinstance(stepsize, T.TensorResult):
             self.stepsize = stepsize
         else:
             if self.WEIRD_STUFF:
                 #TODO: why is this necessary? why does the else clause not work?
 #                self.stepsize = module.Member(T.dscalar(), init = stepsize)
-                self.stepsize = module.Member(T.dscalar())
+                self.stepsize = (T.dscalar())
                 self.stepsize_init = stepsize
             else:
 #                self.stepsize = module.Member(T.value(stepsize))
-                self.stepsize = module.Member(T.constant(stepsize))#work!
+                self.stepsize = (T.constant(stepsize))#work!
 
         if self.stepsize.ndim != 0:
             raise ValueError('stepsize must be a scalar', stepsize)
@@ -62,7 +58,6 @@ class StochasticGradientDescent(module.FancyModule):
             pass
 
 
-@minimizer_factory('sgd')
 def sgd_minimizer(stepsize=None, **args):
     def m(i,c,p,g=None):
         return StochasticGradientDescent(i, c, p, stepsize=stepsize, **args)
@@ -100,6 +95,9 @@ class TanhRnn(Op):
         return Apply(self, [x, z0, A], [z])
 
     def perform(self, node, (x,z0,A), out):
+        assert x is not None 
+        assert z0 is not None 
+        assert A is not None
         T,M = x.shape
         z = N.zeros((T+1, M))
         z[0] = z0
@@ -160,10 +158,10 @@ class ExampleRNN(Module):
         self.n_vis = n_vis
 
         #recurrent weight matrix in latent space
-        self.z0 = Member(T.dvector())
-        self.w = Member(T.dmatrix())
+        self.z0 = (T.dvector())
+        self.w = (T.dmatrix())
 
-        self.params = [self.w]
+        self.params = [self.z0, self.w]
 
         #input and target
         x, y = T.dmatrix(), T.dmatrix()
@@ -175,6 +173,7 @@ class ExampleRNN(Module):
         self.minimizer = minimizer([x, y], self.cost, self.params)
 
     def _instance_initialize(self, obj):
+        print 'INITIALIZE EXAMPLE RNN'
         n_vis = self.n_vis
 
         rng = N.random.RandomState(2342)
@@ -184,14 +183,14 @@ class ExampleRNN(Module):
         obj.minimizer.initialize()
 
 def test_example_rnn():
-    minimizer_fn = make_minimizer('sgd', stepsize = 0.001)
+    minimizer_fn = sgd_minimizer(stepsize = 0.001)
 
     n_vis = 5
     n_out = 3
     n_hid = 4
     rnn_module = ExampleRNN(n_vis, minimizer_fn)
 
-    rnn = rnn_module.make(mode='FAST_RUN')
+    rnn = rnn_module.make()
 
     rng = N.random.RandomState(7722342)
     x = rng.randn(10,n_vis)
@@ -211,6 +210,7 @@ def test_example_rnn():
             print i, rnn.minimizer.step_cost(x, y), rnn.minimizer.stepsize
         else:
             rnn.minimizer.step_cost(x, y)
+    assert rnn.minimizer.step_cost(x,y) < -20 #it starts around -.28
 
 def test_WEIRD_STUFF():
     n_vis = 3
@@ -223,8 +223,8 @@ def test_WEIRD_STUFF():
     LAG = 4
     y[LAG:] = x[:-LAG, 0:n_vis]
 
-    minimizer_fn1 = make_minimizer('sgd', stepsize = 0.001, WEIRD_STUFF = False)
-    minimizer_fn2 = make_minimizer('sgd', stepsize = 0.001, WEIRD_STUFF = True)
+    minimizer_fn1 = sgd_minimizer(stepsize = 0.001, WEIRD_STUFF = False)
+    minimizer_fn2 = sgd_minimizer(stepsize = 0.001, WEIRD_STUFF = True)
     rnn_module1 = ExampleRNN(n_vis, minimizer_fn1)
     rnn_module2 = ExampleRNN(n_vis, minimizer_fn2)
     rnn1 = rnn_module1.make(mode='FAST_RUN')

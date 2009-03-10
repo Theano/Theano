@@ -19,7 +19,7 @@ This structure contains numbers and functions, and is ready for computation.
 
 """
 
-__doc__='restructuredtext en'
+__docformat__ = "restructuredtext en"
 
 from theano import gof
 from theano.printing import pprint
@@ -302,8 +302,6 @@ class Member(_RComponent):
         """
         return memo[self.r].value
 
-
-
 class Method(Component):
 
     def __init__(self, inputs, outputs, updates = {}, kits = [], **kwupdates):
@@ -345,13 +343,38 @@ class Method(Component):
             raise TypeError('Expected a Component with subtype Member or External.')
         return result
 
-    def resolve_result(self, x):
-        if isinstance(x, gof.Result):
+    def resolve_result(self, x, passthrough=(gof.Result)):
+        if isinstance(x, passthrough):
             return x
         elif isinstance(x, _RComponent):
             return x.r
         else:
             return self.resolve(x).r
+
+    def resolve_inputs(self):
+        if isinstance(self.inputs, (io.In, gof.Result, str)):
+            inputs = [self.inputs]
+        else:
+            inputs = list(self.inputs)
+        self.inputs = [self.resolve_result(input,
+            passthrough=(gof.Result, io.In)) for input in inputs]
+
+    def resolve_outputs(self):
+        if isinstance(self.outputs, (io.Out, gof.Result, str)):
+            output = self.outputs
+            self.outputs = self.resolve_result(output,
+                passthrough=(gof.Result, io.Out)) 
+        else:
+            outputs = list(self.outputs)
+            self.outputs = [self.resolve_result(output, 
+                passthrough=(gof.Result, io.Out)) for output in outputs]
+
+    def resolve_updates(self):
+        updates = self.updates
+        self.updates = {}
+        for k, v in updates.iteritems():
+            k, v = self.resolve_result(k), self.resolve_result(v)
+            self.updates[k] = v
 
     def resolve_all(self):
         """
@@ -359,20 +382,10 @@ class Method(Component):
         strings so that the fields contain the corresponding Result
         instances instead.
         """
-        if isinstance(self.inputs, (gof.Result, str)):
-            inputs = [self.inputs]
-        else:
-            inputs = list(self.inputs)
-        self.inputs = [self.resolve_result(input) for input in inputs]
-        if isinstance(self.outputs, (list, tuple, ComponentList)):
-            self.outputs = [self.resolve_result(output) for output in self.outputs]
-        else:
-            self.outputs = self.resolve_result(self.outputs)
-        updates = self.updates
-        self.updates = {}
-        for k, v in updates.iteritems():
-            k, v = self.resolve_result(k), self.resolve_result(v)
-            self.updates[k] = v
+        self.resolve_inputs()
+        self.resolve_outputs()
+        self.resolve_updates()
+
 
     def allocate(self, memo):
         """
@@ -399,24 +412,57 @@ class Method(Component):
                                           ' Verify that it is indeed a Member of the'
                                           ' enclosing module or of one of its submodules.' % (r, self.name, self))
                 else:
-                    return io.In(result = r, value = gof.Container(r, storage = [None]), mutable = False)
-        # Wrap the inputs in In instances. TODO: allow the inputs to _be_ In instances
+                    return io.In(result=r, 
+                            value=gof.Container(r, storage=[None]), 
+                            mutable=False)
         inputs = self.inputs
-        inputs = [io.In(result = input,
-                        value = get_storage(input).value,
-                        mutable = False)
-                  for input in inputs]
-        # Add the members to update to the inputs. TODO: see above
-        inputs += [io.In(result = k,
-                         update = v,
-                         value = get_storage(k, not allocate_all).value,
-                         mutable = True,
-                         strict = True)
-                   for k, v in self.updates.iteritems()]
+
+        # Deal with explicit inputs
+        inputs = []
+        for input in self.inputs:
+            if type(input) is io.In:
+                inputs.append(input)
+            elif isinstance(input, gof.Result):
+                input_in = io.In(
+                        result=input,
+                        mutable=False)
+                inputs.append(input_in)
+            else:
+                raise TypeError(input, type(input))
+
+        # Deal with updates
+        for k, v in self.updates.iteritems():
+            assert isinstance(k, gof.Result)
+            assert isinstance(v, gof.Result)
+
+            #identify an input for result k
+            input_k = None
+            for input in inputs:
+                if input.result == k:
+                    input_k = input
+
+            print 'METHOD UPDATE', k, v, input_k
+            if input_k is None:
+                # this is an implicit input,
+                # use shared storage
+                input_k = io.In(
+                        result=k,
+                        update=v,
+                        value=get_storage(k, not allocate_all).value,
+                        mutable=True)
+                inputs.append(input_k)
+            else:
+                # this was an explicit input
+                # don't use shared storage
+                input_k.update=v
+                input_k.mutable=True
+
         outputs = self.outputs
         _inputs = [x.result for x in inputs]
         # Grab the results that are not accessible from either the inputs or the updates.
-        for input in gof.graph.inputs((list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
+        outputs_list =  list(outputs) if isinstance(outputs, (list, tuple)) else [outputs]
+        outputs_result_list = [o.result if isinstance(o, io.Out) else o for o in outputs_list]
+        for input in gof.graph.inputs(outputs_result_list
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
             if input not in _inputs:
@@ -424,9 +470,12 @@ class Method(Component):
                 # but otherwise they are immutable.
                 if isinstance(input, gof.Value): # and not isinstance(input, gof.Constant):
                     storage = get_storage(input)
-                    storage.value = input.data
+                    assert type(storage) is io.In
+                    container = storage.value
+                    container.value = input.data
                 else:
                     storage = get_storage(input, not allocate_all)
+                assert type(storage) is io.In
                 inputs.append(storage)
 
         return F.function(inputs, outputs, mode)
@@ -466,8 +515,6 @@ class Method(Component):
     def __call__(self, *args, **kwargs):
         raise TypeError("'Method' object is not callable"
                 "  (Hint: compile your module first.  See Component.make())")
-
-
 
 class CompositeInstance(object):
     """
@@ -579,6 +626,7 @@ class Composite(Component):
 
     def __getitem__(self, item):
         # Uses get() internally
+        print 'COMPOSITE GETITEM', item
         x = self.get(item)
         if isinstance(x, (External, Member)):
             return x.r
@@ -617,6 +665,8 @@ class ComponentList(Composite):
             _components = _components[0]
         self._components = []
         for c in _components:
+            if not isinstance(c, Component):
+                raise TypeError(c, type(c))
             self.append(c)
 
     def resolve(self, name):
@@ -723,8 +773,8 @@ class ComponentDictInstance(CompositeInstance):
             # Set it if it's not there
             # TODO: is this needed here? move to ModuleInstance?
             self.__items__[item] = value
-            return
-        super(ComponentDictInstance, self).__setitem__(item, value)
+        else:
+            super(ComponentDictInstance, self).__setitem__(item, value)
     
     def __str__(self):
         strings = []
@@ -736,6 +786,11 @@ class ComponentDictInstance(CompositeInstance):
                 strings.append('%s%s' % (pre, str(v).replace('\n', '\n' + ' '*len(pre))))
         return '{%s}' % '\n'.join(strings).replace('\n', '\n ')
 
+    def initialize(self, init={}, **kwinit):
+        for k, initv in dict(init, **kwinit).iteritems():
+            self[k] = initv
+
+
 
 class ComponentDict(Composite):
     InstanceType = ComponentDictInstance # Type used by build() to make the instance
@@ -743,7 +798,12 @@ class ComponentDict(Composite):
     def __init__(self, components = {}, **kwcomponents):
         super(ComponentDict, self).__init__()
         components = dict(components, **kwcomponents)
+        for val in components.itervalues():
+            if not isinstance(val, Component):
+                raise TypeError(val, type(val))
+
         self.__dict__['_components'] = components
+
 
     def resolve(self, name):
         name = canonicalize(name)
@@ -804,22 +864,35 @@ __autowrappers = []
 def register_wrapper(condition, wrapper):
     __autowrappers.append((condition, wrapper))
 
+def wrapper(x):
+    """Returns a wrapper function appropriate for `x`
+    Returns None if not appropriate wrapper is found
+    """
+    for condition, wrap_fn in __autowrappers:
+        if condition(x):
+            return wrap_fn
+    return None
+
 def wrap(x):
     """
     Wraps x in a Component. Wrappers can be registered using
     register_wrapper to allow wrapping more types.
     """
-    if isinstance(x, Component):
+    w = wrapper(x)
+    if w is not None:
+        return w(x)
+    else:
         return x
-    for condition, wrapper in __autowrappers:
-        if condition(x):
-            return wrapper(x)
-    return x
 
 def dict_wrap(d):
+    d_copy = {}
     for k,v in d.iteritems():
-        d[k]=wrap(v)
-    return d
+        d_copy[k]=wrap(v)
+    return d_copy
+
+# Component -> itself
+register_wrapper(lambda x: isinstance(x, Component),
+                 lambda x: x)
 
 # Result -> Member
 register_wrapper(lambda x: isinstance(x, gof.Result) and not x.owner,
@@ -831,13 +904,12 @@ register_wrapper(lambda x: isinstance(x, gof.Result) and x.owner,
 
 # [[Result1], {Result2}, Result3...] -> ComponentList(Member(Result1), Member(Result2), ...)
 register_wrapper(lambda x: isinstance(x, (list, tuple)) \
-                     and all(isinstance(r, (gof.Result,Component,list,
-                                            tuple, dict)) for r in x),
+                     and all(wrapper(r) is not None for r in x),
                  lambda x: ComponentList(*map(wrap, x)))
 
 #{ "name1":{Component,Result,list,tuple,dict},...} -> ComponentDict({Component,Result,list,tuple,dict},...)
 register_wrapper(lambda x: isinstance(x, dict) \
-                     and all(isinstance(r,(Component,gof.Result,list,tuple,dict)) for r in x.itervalues()),
+                     and all(wrapper(r) is not None for r in x.itervalues()),
                  lambda x: ComponentDict(dict_wrap(x)))
 
 class Curry:
@@ -913,7 +985,7 @@ class Module(ComponentDict):
             self.__set_name__(value)
             return
 
-        def remove_member(v):
+        def identify_member(v):
             if isinstance(v, (Member, External)):
                 return v.r
             elif isinstance(v, (gof.Result,Method,Module)):
@@ -921,20 +993,20 @@ class Module(ComponentDict):
             elif isinstance(v,(int,bool)):
                 return v
             elif isinstance(v, (list)):
-                return map(remove_member,v)
+                return map(identify_member,v)
             elif isinstance(v, (tuple)):
-                return tuple(map(remove_member,v))
+                return tuple(map(identify_member,v))
             elif isinstance(v,dict):
+                v_copy = dict()
                 for k,vv in v.iteritems():
-                    v[k]=remove_member(vv)
+                    v_copy[k]=identify_member(vv)
                 return v
             else:
 #                raise NotImplementedError
 #                print "WARNING: unknow:",v
                 return v
 
-        value=remove_member(value)
-
+        value=identify_member(value)
         if not hasattr(self,"local_attr"):
             self.__dict__["local_attr"]={}
 
@@ -944,11 +1016,18 @@ class Module(ComponentDict):
         for k,v in self.local_attr.iteritems():
             self.__setattr__(k,v)
         inst = super(Module, self).build(mode, memo)
+        assert isinstance(inst, ModuleInstance)
         for method in dir(self):
             # Any method with a name like '_instance_XXX' is added to
             # the object built under the name obj.XXX
             if method.startswith('_instance_'):
-                setattr(inst, method[10:], Curry(self, method, inst))
+                new_methodname = method[len('_instance_'):]
+                new_obj = Curry(self, method, inst)
+                # setattr doesn't work here because we overrode __setattr__
+                # setattr(inst, new_methodname, new_obj)
+                inst.__dict__[new_methodname] = new_obj
+                assert getattr(inst, new_methodname) == new_obj
+                #print 'ADDING METHOD', method, 'to', id(inst), new_methodname, getattr(inst, new_methodname)
         return inst
 
     def _instance_initialize(self, inst, init = {}, **kwinit):

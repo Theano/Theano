@@ -70,27 +70,36 @@ class QuadraticDenoisingAA(module.Module):
         # ACQUIRE/MAKE INPUT
         if not input:
             input = T.matrix('input')
-        self.input = theano.External(input)
+        #self.input = theano.External(input)
+        self.input = (input)
 
         # HYPER-PARAMETERS
-        self.lr = theano.Member(T.scalar())
+        #self.lr = theano.Member(T.scalar())
+        self.lr = (T.scalar())
 
         # PARAMETERS
         if _qfilters is None:
-            self.qfilters = [theano.Member(T.dmatrix('q%i'%i)) for i in xrange(n_quadratic_filters)]
+            #self.qfilters = [theano.Member(T.dmatrix('q%i'%i)) for i in xrange(n_quadratic_filters)]
+            self.qfilters = [(T.dmatrix('q%i'%i)) for i in xrange(n_quadratic_filters)]
         else:
-            self.qfilters = [theano.Member(q) for q in _qfilters]
+            #self.qfilters = [theano.Member(q) for q in _qfilters]
+            self.qfilters = [(q) for q in _qfilters]
 
-        self.w1 = theano.Member(T.matrix('w1')) if _w1 is None else theano.Member(_w1)
+        #self.w1 = theano.Member(T.matrix('w1')) if _w1 is None else theano.Member(_w1)
+        self.w1 = (T.matrix('w1')) if _w1 is None else (_w1)
         if _w2 is None:
             if not tie_weights:
-                self.w2 = theano.Member(T.matrix())
+                #self.w2 = theano.Member(T.matrix())
+                self.w2 = (T.matrix())
             else:
                 self.w2 = self.w1.T
         else:
-            self.w2 = theano.Member(_w2)
-        self.b1 = theano.Member(T.vector('b1')) if _b1 is None else theano.Member(_b1)
-        self.b2 = theano.Member(T.vector('b2')) if _b2 is None else theano.Member(_b2)
+            #self.w2 = theano.Member(_w2)
+            self.w2 = (_w2)
+        #self.b1 = theano.Member(T.vector('b1')) if _b1 is None else theano.Member(_b1)
+        self.b1 = (T.vector('b1')) if _b1 is None else (_b1)
+        #self.b2 = theano.Member(T.vector('b2')) if _b2 is None else theano.Member(_b2)
+        self.b2 = (T.vector('b2')) if _b2 is None else (_b2)
 
 #        # REGULARIZATION COST
 #        self.regularization = self.build_regularization()
@@ -212,7 +221,8 @@ class SigmoidXEQuadraticDenoisingAA(QuadraticDenoisingAA):
     """
 
     def build_corrupted_input(self):
-        self.noise_level = theano.Member(T.scalar())
+        #self.noise_level = theano.Member(T.scalar())
+        self.noise_level = (T.scalar())
         return self.random.binomial(T.shape(self.input), 1, 1 - self.noise_level) * self.input
 
     def hid_activation_function(self, activation):
@@ -262,12 +272,17 @@ class Module_Nclass(module.FancyModule):
     def __init__(self, x=None, targ=None, w=None, b=None, lr=None, regularize=False):
         super(Module_Nclass, self).__init__() #boilerplate
 
-        self.x = module.Member(x) if x is not None else T.matrix('input')
-        self.targ = module.Member(targ) if targ is not None else T.lvector()
+        #self.x = module.Member(x) if x is not None else T.matrix('input')
+        self.x = (x) if x is not None else T.matrix('input')
+        #self.targ = module.Member(targ) if targ is not None else T.lvector()
+        self.targ = (targ) if targ is not None else T.lvector()
 
-        self.w = module.Member(w) if w is not None else module.Member(T.dmatrix())
-        self.b = module.Member(b) if b is not None else module.Member(T.dvector())
-        self.lr = module.Member(lr) if lr is not None else module.Member(T.dscalar())
+        #self.w = module.Member(w) if w is not None else module.Member(T.dmatrix())
+        self.w = (w) if w is not None else (T.dmatrix())
+        #self.b = module.Member(b) if b is not None else module.Member(T.dvector())
+        self.b = (b) if b is not None else (T.dvector())
+        #self.lr = module.Member(lr) if lr is not None else module.Member(T.dscalar())
+        self.lr = (lr) if lr is not None else (T.dscalar())
 
         self.params = [p for p in [self.w, self.b] if p.owner is None]
 
@@ -355,7 +370,8 @@ class ConvolutionalMLP(module.FancyModule):
             ):
         super(ConvolutionalMLP, self).__init__()
 
-        self.lr = module.Member(T.scalar())
+        #self.lr = module.Member(T.scalar())
+        self.lr = (T.scalar())
 
         self.inputs = [T.dmatrix() for i in range(window_size)]
         self.targ = T.lvector()
