@@ -159,6 +159,9 @@ class PureOp(object):
 
     To see how `Op`, `Type`, `Result`, and `Apply` fit together see the page on :doc:`graph`.
 
+    For more specifications on how these methods should behave: see the `Op Contract` in the
+    sphinx docs (advanced tutorial on Op-making).
+
     """
 
     default_output = None
