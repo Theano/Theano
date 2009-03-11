@@ -937,11 +937,13 @@ class Module(ComponentDict):
 
         if not hasattr(self,"local_attr"):
             self.__dict__["local_attr"]={}
+            self.__dict__["local_attr_order"]=[]
 
         self.__dict__["local_attr"][attr]=value
+        self.__dict__["local_attr_order"].append((attr, value))
 
     def build(self, mode, memo):
-        for k,v in self.local_attr.iteritems():
+        for k,v in list(self.local_attr_order): #.iteritems():
             self.__setattr__(k,v)
         inst = super(Module, self).build(mode, memo)
         for method in dir(self):
@@ -959,12 +961,21 @@ class Module(ComponentDict):
             inst[name] = value
 
     def make_mi(self, *args, **kwargs):
+        mods=[]
         meth=[]#we put the method after the member to be sure of the ordering.
+
         for k,v in self.local_attr.iteritems():
             if isinstance(v,Module):
-                v=v.make_mi(args,kwargs)
-            if isinstance(v,Method):
+                mods.append((k, v))
+            elif isinstance(v,Method):
                 meth.append((k,v))
+            elif isinstance(v, list) and isinstance(v[0],Module):
+                temp = []
+                for m in v:
+                    m=m.make_mi(args,kwargs)
+                    m = self.__wrapper__(m)
+                    temp.append(m)
+                self[k] = self.__wrapper__(temp)
             else:
                 v = self.__wrapper__(v)
                 try:
@@ -976,6 +987,11 @@ class Module(ComponentDict):
                         self.__dict__[k] = v
 #                self.__setitem__(k,v)
 
+        for k,v in mods:
+            v=v.make_mi(args,kwargs)
+            v = self.__wrapper__(v)
+            self[k] = v
+            
         for k,v in meth:
             self.__setitem__(k,v)
 
