@@ -1277,7 +1277,7 @@ class T_exp(unittest.TestCase):
 class test_matinv(unittest.TestCase):
 
     def setUp(self):
-        unittest_tools.seed_rng()
+        unittest_tools.seed_rng(1)
 
     def mat_reciprocal(self,dim):
         # symbolic program

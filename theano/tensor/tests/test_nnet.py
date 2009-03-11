@@ -14,8 +14,6 @@ class T_sigmoid(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
     def test_elemwise(self):
-        print dir(self)
-        assert 0
         TT.verify_grad(self, sigmoid, [numpy.random.rand(3,4)])
 
 class T_softplus(unittest.TestCase):
