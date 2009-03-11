@@ -1,6 +1,7 @@
 """Driver of graph construction, optimization, and linking.
 
 """
+__docformat__ = "restructuredtext en"
 
 import copy_reg
 import cPickle
