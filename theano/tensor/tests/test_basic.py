@@ -828,27 +828,26 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == 0))
 
     def test_grad_1d(self):
-        n = as_tensor(numpy.random.rand(2,3))
-        z = scal.constant(0)
+        subi = 0
+        data = numpy.random.rand(2,3)
+        n = as_tensor(data)
+        z = scal.constant(subi)
         t = n[z:,z]
         gn = grad(sum(exp(t)), n)
         gval = eval_outputs([gn])
-        s0 = 'array([ 2.05362099,  0.        ,  0.        ])'
-        s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
-        self.failUnless(repr(gval[0,:]) == s0)
-        self.failUnless(repr(gval[1,:]) == s1)
+        good = numpy.zeros_like(data)
+        good[subi:,subi] = numpy.exp(data[subi:,subi])
+        self.failUnless(numpy.all(gval == good), (gval, good))
+
     def test_grad_0d(self):
-        n = as_tensor(numpy.random.rand(2,3))
+        data = numpy.random.rand(2,3)
+        n = as_tensor(data)
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
         gval = eval_outputs([gn])
-        g0 = repr(gval[0,:])
-        g1 = repr(gval[1,:])
-        s0 = 'array([ 0.,  0.,  0.])'
-        s1 = 'array([ 1.55009327,  0.        ,  0.        ])'
-        self.failUnless(g0 == s0, (g0, s0))
-        self.failUnless(g1 == s1, (g1, s1))
-
+        good = numpy.zeros_like(data)
+        good[1,0] = numpy.exp(data[1,0])
+        self.failUnless(numpy.all(gval == good), (gval, good))
 
 
 class T_Join_and_Split(unittest.TestCase):
