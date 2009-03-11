@@ -377,6 +377,8 @@ class Method(Component):
         self.mode = mode
 
     def bind(self, parent, name, dup_ok=True):
+        """Implement`Component.bind`"""
+
         rval = super(Method, self).bind(parent, name, dup_ok=dup_ok)
         rval.resolve_all()
         return rval
@@ -384,7 +386,7 @@ class Method(Component):
     def resolve(self, name):
         """Return the Result corresponding to a given name
 
-        :param name: the name of a Result in the Module instance containing this Method
+        :param name: the name of a Result in the Module to which this Method is bound
         :type name: str
 
         :rtype: `Result`
@@ -399,7 +401,7 @@ class Method(Component):
     def resolve_all(self):
         """Convert all inputs, outputs, and updates specified as strings to Results.
 
-        This works by searching the containing Module for Result attributes by these names.
+        This works by searching the attribute list of the Module to which this Method is bound.
         """
         def resolve_result(x, passthrough=(gof.Result)):
             if isinstance(x, passthrough):
@@ -418,10 +420,10 @@ class Method(Component):
                 passthrough=(gof.Result, io.In)) for input in inputs]
 
         def resolve_outputs():
-            if isinstance(self.outputs, (io.Out, gof.Result, str, None)):
+            if isinstance(self.outputs, (io.Out, gof.Result, str, type(None))):
                 output = self.outputs
                 self.outputs = resolve_result(output,
-                    passthrough=(gof.Result, io.Out, None)) 
+                    passthrough=(gof.Result, io.Out, type(None))) 
             else:
                 outputs = list(self.outputs)
                 self.outputs = [resolve_result(output, 
@@ -1046,28 +1048,31 @@ class Module(ComponentDict):
             self.__set_name__(value)
             return
 
-        def identify_member(v):
+        def unpack_member_and_external(v):
             if isinstance(v, (Member, External)):
+                print >> sys.stderr, ("WARNING: assignment of Member or External "
+                        "objects (either directly or indirectly) to Module "
+                        "is deprecated.  Just use Result.")
                 return v.r
             elif isinstance(v, (gof.Result,Method,Module)):
                 return v
             elif isinstance(v,(int,bool)):
                 return v
             elif isinstance(v, (list)):
-                return map(identify_member,v)
+                return map(unpack_member_and_external,v)
             elif isinstance(v, (tuple)):
-                return tuple(map(identify_member,v))
+                return tuple(map(unpack_member_and_external,v))
             elif isinstance(v,dict):
                 v_copy = dict()
                 for k,vv in v.iteritems():
-                    v_copy[k]=identify_member(vv)
+                    v_copy[k]=unpack_member_and_external(vv)
                 return v
             else:
 #                raise NotImplementedError
 #                print "WARNING: unknow:",v
                 return v
 
-        value=identify_member(value)
+        value=unpack_member_and_external(value)
         if not hasattr(self,"local_attr"):
             self.__dict__["local_attr"]={}
 
