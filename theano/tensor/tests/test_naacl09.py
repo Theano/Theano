@@ -179,6 +179,7 @@ class QuadraticDenoisingAA(module.Module):
         #self.validate = theano.Method(self.input, [self.cost, self.output])
 
     def _instance_initialize(self, obj, input_size, hidden_size, seed, lr, qfilter_relscale):
+        print 'QDAA init'
         """
         qfilter_relscale is the initial range for any quadratic filters (relative to the linear
         filter's initial range)
@@ -326,9 +327,6 @@ class Module_Nclass(module.FancyModule):
 class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
     #initialize is called by Module.make
     def initialize(self, input_size, input_representation_size, hidden_representation_size, output_size, lr, seed, noise_level, qfilter_relscale):
-        print 'INITIALIZING'
-        # ASK JAMES: Is the following necessary?
-#        super(ConvolutionalMLPInstance, self)._instance_initialize(obj, **kwargs)
 
         R = N.random.RandomState(unittest_tools.fetch_seed(seed))
 
@@ -341,19 +339,29 @@ class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
 #        for layer in obj.layers:
 #            if layer.lr is None:
 #                layer.lr = lr
+        assert self.input_representations[-1] is not self.input_representations[0]
+        assert self.input_representations[-1].w1 is self.input_representations[0].w1
 
         for i in self.input_representations:
 #            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, seed=R.random_integers(2**30), noise_level=noise_level, qfilter_relscale=qfilter_relscale)
-            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, noise_level=noise_level, seed=R.random_integers(2**30), lr=lr, qfilter_relscale=qfilter_relscale)
+            i.initialize(input_size=self.input_size,
+                    hidden_size=self.input_representation_size, noise_level=noise_level,
+                    seed=int(R.random_integers(2**30)), lr=lr, qfilter_relscale=qfilter_relscale)
+            print type(i.w1)
+            assert isinstance(i.w1, N.ndarray)
 
         for i in self.input_representations[1:]:
+            print type(i.w1)
+            assert isinstance(i.w1, N.ndarray)
             assert (i.w1 == self.input_representations[0].w1).all()
             assert (i.w2 == self.input_representations[0].w2).all()
             assert (i.b1 == self.input_representations[0].b1).all()
             assert (i.b2 == self.input_representations[0].b2).all()
             assert all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters)) 
 
-        self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size), hidden_size=self.hidden_representation_size, noise_level=noise_level, seed=R.random_integers(2**30), lr=lr, qfilter_relscale=qfilter_relscale)
+        self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size),
+                hidden_size=self.hidden_representation_size, noise_level=noise_level,
+                seed=int(R.random_integers(2**30)), lr=lr, qfilter_relscale=qfilter_relscale)
 
         self.output.initialize(n_in=self.hidden_representation_size, n_out=self.output_size, lr=lr, seed=R.random_integers(2**30))
  
@@ -401,6 +409,7 @@ class ConvolutionalMLP(module.FancyModule):
                                 _qfilters = self.input_representations[0].qfilters
                             )
             )
+            assert self.input_representations[-1].w1 is self.input_representations[0].w1
 
         self.input_representation = T.concatenate([i.hidden for i in self.input_representations], axis=1)
         self.hidden = QDAA(
@@ -445,7 +454,7 @@ class ConvolutionalMLP(module.FancyModule):
         finetuning_cost = self.output.cost
         finetuning_gradients = T.grad(finetuning_cost, finetuning_params)
         finetuning_updates = dict((p, p - self.lr * g) for p, g in zip(finetuning_params, finetuning_gradients))
-        ###DEBUG: self.finetuning_update = module.Method(self.inputs + [self.targ], self.output.cost, finetuning_updates)
+        self.finetuning_update = module.Method(self.inputs + [self.targ], self.output.cost, finetuning_updates)
 
         #self.validate = module.Method(self.inputs + [self.targ], [self.output.cost, self.output.argmax, self.output.max_pr])
         #self.softmax_output = module.Method(self.inputs, self.output.softmax_unsupervised)
@@ -537,8 +546,8 @@ def test_naacl_model(iters_per_unsup=10, iters_per_sup=10,
         s0, s1 = [str(j) for j in m.pretraining_update(*inputs)]
         print 'huh?', i, iters_per_unsup, iters_per_unsup * (i+1), s0, s1
     if iters_per_unsup == 10:
-        assert s0.startswith('0.40218760858')
-        assert s1.startswith('0.074450801777')
+        assert s0.startswith('0.40304459240')
+        assert s1.startswith('0.074898707938')
 
     print 'FINETUNING GRAPH'
     print 'SUPERVISED PHASE COSTS (%s)'%optimizer
@@ -548,9 +557,9 @@ def test_naacl_model(iters_per_unsup=10, iters_per_sup=10,
         s0 = str(m.finetuning_update(*(inputs + [targets])))
         print iters_per_sup * (i+1), s0
     if iters_per_sup == 10:
-        assert s0.startswith('15.65127763')#should check for the 8 decimal only.
+        assert s0.startswith('15.65111049')#should check for the 8 decimal only.
 
-if __name__ == '__main__':
+def jtest_main():
     from theano import gof
     JTEST = theano.compile.mode.optdb.query(*sys.argv[2:])
     print 'JTEST', JTEST
@@ -558,3 +567,23 @@ if __name__ == '__main__':
     optimizer = eval(sys.argv[1])
     test_naacl_model(optimizer, 10, 10, realistic=False)
 
+def real_main():
+    test_naacl_model()
+
+def profile_main():
+    # This is the main function for profiling 
+    # We've renamed our original main() above to real_main()
+    import cProfile, pstats, StringIO
+    prof = cProfile.Profile()
+    prof = prof.runctx("real_main()", globals(), locals())
+    stream = StringIO.StringIO()
+    stats = pstats.Stats(prof)
+    stats.sort_stats("time")  # Or cumulative
+    stats.print_stats(80)  # 80 = how many to print
+    # The rest is optional.
+    # stats.print_callees()
+    # stats.print_callers()
+
+if __name__ == '__main__':
+    real_main()
+    #profile_main()

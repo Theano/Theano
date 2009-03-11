@@ -826,18 +826,15 @@ def default_initialize(self, init = {}, **kwinit):
     for k, initv in dict(init, **kwinit).iteritems():
         self[k] = initv
 
-class ComponentDictInstance(CompositeInstance):
-    """
-    ComponentDictInstance is meant to be instantiated by ComponentDict.
-    """
-
+class ComponentDictInstanceNoInit(CompositeInstance):
+    """Component Instance that allows new items to be added"""
     def __setitem__(self, item, value):
         if item not in self.__items__:
             # Set it if it's not there
             # TODO: is this needed here? move to ModuleInstance?
             self.__items__[item] = value
         else:
-            super(ComponentDictInstance, self).__setitem__(item, value)
+            super(ComponentDictInstanceNoInit, self).__setitem__(item, value)
     
     def __str__(self):
         strings = []
@@ -848,6 +845,12 @@ class ComponentDictInstance(CompositeInstance):
                 pre = '%s: ' % k
                 strings.append('%s%s' % (pre, str(v).replace('\n', '\n' + ' '*len(pre))))
         return '{%s}' % '\n'.join(strings).replace('\n', '\n ')
+
+
+class ComponentDictInstance(ComponentDictInstanceNoInit):
+    """
+    ComponentDictInstance is meant to be instantiated by ComponentDict.
+    """
 
     def initialize(self, init={}, **kwinit):
         for k, initv in dict(init, **kwinit).iteritems():
@@ -990,7 +993,7 @@ class Curry:
         self.meth = getattr(self.obj, self.name)
     
 
-class ModuleInstance(ComponentDictInstance):
+class ModuleInstance(ComponentDictInstanceNoInit):
     """
     WRITEME
 
@@ -1087,19 +1090,18 @@ class Module(ComponentDict):
         if not isinstance(inst, ModuleInstance):
             raise TypeError('The InstanceType of a Module should inherit from ModuleInstance',
                     (self, type(inst)))
-        print 'BUILD', self
         for methodname in dir(self):
             # Any method with a name like '_instance_XXX' is added to
             # the object built under the name obj.XXX
             if methodname.startswith('_instance_'):
-                print 'INSTALLING', inst, methodname
                 new_methodname = methodname[len('_instance_'):]
-                new_obj = Curry(self, methodname, inst)
-                # setattr doesn't work here because we overrode __setattr__
-                # setattr(inst, new_methodname, new_obj)
-                inst.__dict__[new_methodname] = new_obj
-                assert getattr(inst, new_methodname) == new_obj
-                #print 'ADDING METHOD', method, 'to', id(inst), new_methodname, getattr(inst, new_methodname)
+                if not hasattr(inst, new_methodname):
+                    curried = Curry(self, methodname, inst)
+                    # setattr doesn't work here because we overrode __setattr__
+                    # setattr(inst, new_methodname, curried)
+                    inst.__dict__[new_methodname] = curried
+                    assert getattr(inst, new_methodname) == curried
+                    #print 'ADDING METHOD', method, 'to', id(inst), new_methodname, getattr(inst, new_methodname)
         return inst
 
     def _instance_initialize(self, inst, init = {}, **kwinit):
