@@ -19,7 +19,7 @@ This structure contains numbers and functions, and is ready for computation.
 
 """
 
-__doc__='restructuredtext en'
+__docformat__ = "restructuredtext en"
 
 from theano import gof
 from theano.printing import pprint
@@ -32,14 +32,14 @@ import function_module as F
 from mode import default_mode
 
 
-def join(*args):
+def name_join(*args):
     """
     Creates a string representation for the given names:
     join('a', 'b', 'c') => 'a.b.c'
     """
     return ".".join(arg for arg in args if arg)
 
-def split(sym, n=-1):
+def name_split(sym, n=-1):
     """
     Gets the names from their joined representation
     split('a.b.c') => ['a', 'b', 'c']
@@ -55,14 +55,13 @@ def canonicalize(name):
     [Fred: why we return the right type? Why int only?]
     """
     if isinstance(name, str):
-        name = split(name)
+        name = name_split(name)
     def convert(x):
         try:
             return int(x)
         except (ValueError, TypeError):
             return x
     return map(convert, name)
-
 
 class AllocationError(Exception):
     """
@@ -116,7 +115,7 @@ class Component(object):
             else:
                 raise BindError("%s is already bound to %s as %s" % (self, self.parent, self.name))
         self.parent = parent
-        self.name = join(parent.name, name)
+        self.name = name_join(parent.name, name)
         return self
 
     def bound(self):
@@ -302,41 +301,95 @@ class Member(_RComponent):
         """
         return memo[self.r].value
 
-
-
 class Method(Component):
+    """
+    Method is a declaration of a function. It contains inputs,
+    outputs and updates. If the Method is part of a Composite
+    which holds references to Members, the Method may use them
+    without declaring them in the inputs, outputs or updates list.
 
-    def __init__(self, inputs, outputs, updates = {}, kits = [], **kwupdates):
-        """
-        Method is a declaration of a function. It contains inputs,
-        outputs and updates. If the Method is part of a Composite
-        which holds references to Members, the Method may use them
-        without declaring them in the inputs, outputs or updates list.
+    inputs, outputs or updates may be strings. In that case, they
+    will be resolved in the Composite which is the parent of this
+    Method.
 
-        [TODO: remove references to kits, for they are not really
-        needed anymore]
+    Method builds a Function (same structure as a call to
+    theano.function)
+    """
 
-        inputs, outputs or updates may be strings. In that case, they
-        will be resolved in the Composite which is the parent of this
-        Method.
+    inputs = []
+    """function inputs (see `compile.function`)
 
-        Method builds a Function (same structure as a call to
-        theano.function)
+    If Module members are named explicitly in this list, then they will not use shared storage.
+    Storage must be provided either via an `io.In` value argument, or at the point of the
+    function call.
+    """
+
+    outputs=None
+    """function outputs (see `compile.function`)"""
+
+    updates = {}
+    """update expressions for module members
+
+    If this method should update the shared storage value for a Module member, then the
+    update expression must be given in this dictionary.
+    
+
+    Keys in this dictionary must be members of the module graph--results for which this Method
+    will use the shared storage.
+
+    The value associated with each key should be a Result (or a string that can be resolved to
+    a Result) representing the computation of a new value for this shared storage after
+    each function call.
+    
+    """
+
+    mode=None
+    """This will override the Module compilation mode for this Method"""
+
+    def __init__(self, inputs, outputs, updates = {}, mode=None, **kwupdates):
+        """Initialize attributes
+        :param inputs: value for `Method.inputs`
+
+        :param outputs: value for `Method.outputs`
+
+        :param updates: value for `Method.updates`
+
+        :param kwupdates: additions to `updates`
+
+        :param mode: value for `Method.mode`
+
+        :type inputs: list of (str or `Result` or `io.In`)
+
+        :type outputs: None or str or `Result` or `io.Out` or list of (str or `Result` or
+        `io.Out`)
+
+        :type updates: dict of `Result` or str -> `Result` or str
+
+        :type kwupdates: extra updates
+
+        :type mode: None or any mode accepted by `compile.function`
+
         """
         super(Method, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
         self.updates = dict(updates, **kwupdates)
-        self.kits = list(kits)
+        self.mode = mode
 
     def bind(self, parent, name, dup_ok=True):
+        """Implement`Component.bind`"""
+
         rval = super(Method, self).bind(parent, name, dup_ok=dup_ok)
         rval.resolve_all()
         return rval
 
     def resolve(self, name):
-        """
-        Resolves the name of an input or output in the parent.
+        """Return the Result corresponding to a given name
+
+        :param name: the name of a Result in the Module to which this Method is bound
+        :type name: str
+
+        :rtype: `Result`
         """
         if not self.bound():
             raise ValueError('Trying to resolve a name on an unbound Method.')
@@ -345,34 +398,47 @@ class Method(Component):
             raise TypeError('Expected a Component with subtype Member or External.')
         return result
 
-    def resolve_result(self, x):
-        if isinstance(x, gof.Result):
-            return x
-        elif isinstance(x, _RComponent):
-            return x.r
-        else:
-            return self.resolve(x).r
-
     def resolve_all(self):
+        """Convert all inputs, outputs, and updates specified as strings to Results.
+
+        This works by searching the attribute list of the Module to which this Method is bound.
         """
-        Resolves all inputs, outputs and updates that were given as
-        strings so that the fields contain the corresponding Result
-        instances instead.
-        """
-        if isinstance(self.inputs, (gof.Result, str)):
-            inputs = [self.inputs]
-        else:
-            inputs = list(self.inputs)
-        self.inputs = [self.resolve_result(input) for input in inputs]
-        if isinstance(self.outputs, (list, tuple, ComponentList)):
-            self.outputs = [self.resolve_result(output) for output in self.outputs]
-        else:
-            self.outputs = self.resolve_result(self.outputs)
-        updates = self.updates
-        self.updates = {}
-        for k, v in updates.iteritems():
-            k, v = self.resolve_result(k), self.resolve_result(v)
-            self.updates[k] = v
+        def resolve_result(x, passthrough=(gof.Result)):
+            if isinstance(x, passthrough):
+                return x
+            elif isinstance(x, _RComponent):
+                return x.r
+            else:
+                return self.resolve(x).r
+
+        def resolve_inputs():
+            if isinstance(self.inputs, (io.In, gof.Result, str)):
+                inputs = [self.inputs]
+            else:
+                inputs = list(self.inputs)
+            self.inputs = [resolve_result(input,
+                passthrough=(gof.Result, io.In)) for input in inputs]
+
+        def resolve_outputs():
+            if isinstance(self.outputs, (io.Out, gof.Result, str, type(None))):
+                output = self.outputs
+                self.outputs = resolve_result(output,
+                    passthrough=(gof.Result, io.Out, type(None))) 
+            else:
+                outputs = list(self.outputs)
+                self.outputs = [resolve_result(output, 
+                    passthrough=(gof.Result, io.Out)) for output in outputs]
+
+        def resolve_updates():
+            updates = self.updates
+            self.updates = {}
+            for k, v in updates.iteritems():
+                k, v = resolve_result(k), resolve_result(v)
+                self.updates[k] = v
+
+        resolve_inputs()
+        resolve_outputs()
+        resolve_updates()
 
     def allocate(self, memo):
         """
@@ -381,13 +447,21 @@ class Method(Component):
         return None
 
     def build(self, mode, memo, allocate_all = False):
-        """
-        Produces a function. If allocate_all is True, storage will be
-        allocated for all needed Results, even if there is no
+        """Compile a function for this Method.
+
+        :param allocate_all: if True, storage will be
+        allocated for all needed Results even if there is no
         associated storage for them in the memo. If allocate_all is
         False, storage will only be allocated for Results that are
         reachable from the inputs list.
+
+        :returns: a function that implements this method
+        :rtype: `Function` instance
+
         """
+        if self in memo:
+            return memo[self]
+
         self.resolve_all() # resolve all so we don't have to mess with strings
         def get_storage(r, require = False):
             # If require is True, we can only get storage from the memo.
@@ -399,24 +473,56 @@ class Method(Component):
                                           ' Verify that it is indeed a Member of the'
                                           ' enclosing module or of one of its submodules.' % (r, self.name, self))
                 else:
-                    return io.In(result = r, value = gof.Container(r, storage = [None]), mutable = False)
-        # Wrap the inputs in In instances. TODO: allow the inputs to _be_ In instances
+                    return io.In(result=r, 
+                            value=gof.Container(r, storage=[None]), 
+                            mutable=False)
         inputs = self.inputs
-        inputs = [io.In(result = input,
-                        value = get_storage(input).value,
-                        mutable = False)
-                  for input in inputs]
-        # Add the members to update to the inputs. TODO: see above
-        inputs += [io.In(result = k,
-                         update = v,
-                         value = get_storage(k, not allocate_all).value,
-                         mutable = True,
-                         strict = True)
-                   for k, v in self.updates.iteritems()]
+
+        # Deal with explicit inputs
+        inputs = []
+        for input in self.inputs:
+            if type(input) is io.In:
+                inputs.append(input)
+            elif isinstance(input, gof.Result):
+                input_in = io.In(
+                        result=input,
+                        mutable=False)
+                inputs.append(input_in)
+            else:
+                raise TypeError(input, type(input))
+
+        # Deal with updates to shared storage
+        for k, v in self.updates.iteritems():
+            assert isinstance(k, gof.Result)
+            assert isinstance(v, gof.Result)
+
+            #identify an input for result k
+            input_k = None
+            for input in inputs:
+                if input.result == k:
+                    input_k = input
+
+            #print 'METHOD UPDATE', k, v, input_k
+            if input_k is None:
+                # this is an implicit input,
+                # use shared storage
+                input_k = io.In(
+                        result=k,
+                        update=v,
+                        value=get_storage(k, not allocate_all).value,
+                        mutable=True)
+                inputs.append(input_k)
+            else:
+                raise ValueError(('Result listed in both inputs and updates.'
+                    ' Use inputs to use your own storage, use updates to '
+                    'work on module-shared storage'), k)
+
         outputs = self.outputs
         _inputs = [x.result for x in inputs]
         # Grab the results that are not accessible from either the inputs or the updates.
-        for input in gof.graph.inputs((list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
+        outputs_list =  list(outputs) if isinstance(outputs, (list, tuple)) else [outputs]
+        outputs_result_list = [o.result if isinstance(o, io.Out) else o for o in outputs_list]
+        for input in gof.graph.inputs(outputs_result_list
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
             if input not in _inputs:
@@ -424,12 +530,18 @@ class Method(Component):
                 # but otherwise they are immutable.
                 if isinstance(input, gof.Value): # and not isinstance(input, gof.Constant):
                     storage = get_storage(input)
-                    storage.value = input.data
+                    assert type(storage) is io.In
+                    container = storage.value
+                    container.value = input.data
                 else:
                     storage = get_storage(input, not allocate_all)
+                assert type(storage) is io.In
                 inputs.append(storage)
 
-        return F.function(inputs, outputs, mode)
+        effective_mode = mode if self.mode is None else self.mode
+        rval = F.function(inputs, outputs, effective_mode)
+        memo[self] = rval
+        return rval
 
     def pretty(self, **kwargs):
         self.resolve_all()
@@ -458,16 +570,14 @@ class Method(Component):
 
     def dup(self):
         self.resolve_all()
-        return self.__class__(list(self.inputs),
-                              list(self.outputs) if isinstance(self.outputs, list) else self.outputs,
-                              dict(self.updates),
-                              list(self.kits))
+        return self.__class__(inputs=list(self.inputs),
+                              outputs=list(self.outputs) if isinstance(self.outputs, list) else self.outputs,
+                              updates=dict(self.updates),
+                              mode=self.mode)
 
     def __call__(self, *args, **kwargs):
         raise TypeError("'Method' object is not callable"
                 "  (Hint: compile your module first.  See Component.make())")
-
-
 
 class CompositeInstance(object):
     """
@@ -579,6 +689,7 @@ class Composite(Component):
 
     def __getitem__(self, item):
         # Uses get() internally
+        print 'COMPOSITE GETITEM', item
         x = self.get(item)
         if isinstance(x, (External, Member)):
             return x.r
@@ -617,6 +728,8 @@ class ComponentList(Composite):
             _components = _components[0]
         self._components = []
         for c in _components:
+            if not isinstance(c, Component):
+                raise TypeError(c, type(c))
             self.append(c)
 
     def resolve(self, name):
@@ -723,8 +836,8 @@ class ComponentDictInstance(CompositeInstance):
             # Set it if it's not there
             # TODO: is this needed here? move to ModuleInstance?
             self.__items__[item] = value
-            return
-        super(ComponentDictInstance, self).__setitem__(item, value)
+        else:
+            super(ComponentDictInstance, self).__setitem__(item, value)
     
     def __str__(self):
         strings = []
@@ -736,6 +849,11 @@ class ComponentDictInstance(CompositeInstance):
                 strings.append('%s%s' % (pre, str(v).replace('\n', '\n' + ' '*len(pre))))
         return '{%s}' % '\n'.join(strings).replace('\n', '\n ')
 
+    def initialize(self, init={}, **kwinit):
+        for k, initv in dict(init, **kwinit).iteritems():
+            self[k] = initv
+
+
 
 class ComponentDict(Composite):
     InstanceType = ComponentDictInstance # Type used by build() to make the instance
@@ -743,7 +861,12 @@ class ComponentDict(Composite):
     def __init__(self, components = {}, **kwcomponents):
         super(ComponentDict, self).__init__()
         components = dict(components, **kwcomponents)
+        for val in components.itervalues():
+            if not isinstance(val, Component):
+                raise TypeError(val, type(val))
+
         self.__dict__['_components'] = components
+
 
     def resolve(self, name):
         name = canonicalize(name)
@@ -804,22 +927,35 @@ __autowrappers = []
 def register_wrapper(condition, wrapper):
     __autowrappers.append((condition, wrapper))
 
+def wrapper(x):
+    """Returns a wrapper function appropriate for `x`
+    Returns None if not appropriate wrapper is found
+    """
+    for condition, wrap_fn in __autowrappers:
+        if condition(x):
+            return wrap_fn
+    return None
+
 def wrap(x):
     """
     Wraps x in a Component. Wrappers can be registered using
     register_wrapper to allow wrapping more types.
     """
-    if isinstance(x, Component):
+    w = wrapper(x)
+    if w is not None:
+        return w(x)
+    else:
         return x
-    for condition, wrapper in __autowrappers:
-        if condition(x):
-            return wrapper(x)
-    return x
 
 def dict_wrap(d):
+    d_copy = {}
     for k,v in d.iteritems():
-        d[k]=wrap(v)
-    return d
+        d_copy[k]=wrap(v)
+    return d_copy
+
+# Component -> itself
+register_wrapper(lambda x: isinstance(x, Component),
+                 lambda x: x)
 
 # Result -> Member
 register_wrapper(lambda x: isinstance(x, gof.Result) and not x.owner,
@@ -831,13 +967,12 @@ register_wrapper(lambda x: isinstance(x, gof.Result) and x.owner,
 
 # [[Result1], {Result2}, Result3...] -> ComponentList(Member(Result1), Member(Result2), ...)
 register_wrapper(lambda x: isinstance(x, (list, tuple)) \
-                     and all(isinstance(r, (gof.Result,Component,list,
-                                            tuple, dict)) for r in x),
+                     and all(wrapper(r) is not None for r in x),
                  lambda x: ComponentList(*map(wrap, x)))
 
 #{ "name1":{Component,Result,list,tuple,dict},...} -> ComponentDict({Component,Result,list,tuple,dict},...)
 register_wrapper(lambda x: isinstance(x, dict) \
-                     and all(isinstance(r,(Component,gof.Result,list,tuple,dict)) for r in x.itervalues()),
+                     and all(wrapper(r) is not None for r in x.itervalues()),
                  lambda x: ComponentDict(dict_wrap(x)))
 
 class Curry:
@@ -913,28 +1048,31 @@ class Module(ComponentDict):
             self.__set_name__(value)
             return
 
-        def remove_member(v):
+        def unpack_member_and_external(v):
             if isinstance(v, (Member, External)):
+                print >> sys.stderr, ("WARNING: assignment of Member or External "
+                        "objects (either directly or indirectly) to Module "
+                        "is deprecated.  Just use Result.")
                 return v.r
             elif isinstance(v, (gof.Result,Method,Module)):
                 return v
             elif isinstance(v,(int,bool)):
                 return v
             elif isinstance(v, (list)):
-                return map(remove_member,v)
+                return map(unpack_member_and_external,v)
             elif isinstance(v, (tuple)):
-                return tuple(map(remove_member,v))
+                return tuple(map(unpack_member_and_external,v))
             elif isinstance(v,dict):
+                v_copy = dict()
                 for k,vv in v.iteritems():
-                    v[k]=remove_member(vv)
+                    v_copy[k]=unpack_member_and_external(vv)
                 return v
             else:
 #                raise NotImplementedError
 #                print "WARNING: unknow:",v
                 return v
 
-        value=remove_member(value)
-
+        value=unpack_member_and_external(value)
         if not hasattr(self,"local_attr"):
             self.__dict__["local_attr"]={}
             self.__dict__["local_attr_order"]=[]
@@ -946,11 +1084,22 @@ class Module(ComponentDict):
         for k,v in list(self.local_attr_order): #.iteritems():
             self.__setattr__(k,v)
         inst = super(Module, self).build(mode, memo)
-        for method in dir(self):
+        if not isinstance(inst, ModuleInstance):
+            raise TypeError('The InstanceType of a Module should inherit from ModuleInstance',
+                    (self, type(inst)))
+        print 'BUILD', self
+        for methodname in dir(self):
             # Any method with a name like '_instance_XXX' is added to
             # the object built under the name obj.XXX
-            if method.startswith('_instance_'):
-                setattr(inst, method[10:], Curry(self, method, inst))
+            if methodname.startswith('_instance_'):
+                print 'INSTALLING', inst, methodname
+                new_methodname = methodname[len('_instance_'):]
+                new_obj = Curry(self, methodname, inst)
+                # setattr doesn't work here because we overrode __setattr__
+                # setattr(inst, new_methodname, new_obj)
+                inst.__dict__[new_methodname] = new_obj
+                assert getattr(inst, new_methodname) == new_obj
+                #print 'ADDING METHOD', method, 'to', id(inst), new_methodname, getattr(inst, new_methodname)
         return inst
 
     def _instance_initialize(self, inst, init = {}, **kwinit):

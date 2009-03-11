@@ -17,6 +17,8 @@ def cross_entropy(target, output, axis=1):
     @warning: OUTPUT and TARGET are reversed in nnet_ops.binary_crossentropy
     """
     return -T.mean(target * T.log(output) + (1 - target) * T.log(1 - output), axis=axis)
+def quadratic(target, output, axis=1):
+    return T.mean(T.sqr(target - output), axis=axis)
 
 class QuadraticDenoisingAA(module.Module):
     """Quadratic de-noising Auto-encoder
@@ -70,27 +72,36 @@ class QuadraticDenoisingAA(module.Module):
         # ACQUIRE/MAKE INPUT
         if not input:
             input = T.matrix('input')
-        self.input = theano.External(input)
+        #self.input = theano.External(input)
+        self.input = (input)
 
         # HYPER-PARAMETERS
-        self.lr = theano.Member(T.scalar())
+        #self.lr = theano.Member(T.scalar())
+        self.lr = (T.scalar())
 
         # PARAMETERS
         if _qfilters is None:
-            self.qfilters = [theano.Member(T.dmatrix('q%i'%i)) for i in xrange(n_quadratic_filters)]
+            #self.qfilters = [theano.Member(T.dmatrix('q%i'%i)) for i in xrange(n_quadratic_filters)]
+            self.qfilters = [(T.dmatrix('q%i'%i)) for i in xrange(n_quadratic_filters)]
         else:
-            self.qfilters = [theano.Member(q) for q in _qfilters]
+            #self.qfilters = [theano.Member(q) for q in _qfilters]
+            self.qfilters = [(q) for q in _qfilters]
 
-        self.w1 = theano.Member(T.matrix('w1')) if _w1 is None else theano.Member(_w1)
+        #self.w1 = theano.Member(T.matrix('w1')) if _w1 is None else theano.Member(_w1)
+        self.w1 = (T.matrix('w1')) if _w1 is None else (_w1)
         if _w2 is None:
             if not tie_weights:
-                self.w2 = theano.Member(T.matrix())
+                #self.w2 = theano.Member(T.matrix())
+                self.w2 = (T.matrix())
             else:
                 self.w2 = self.w1.T
         else:
-            self.w2 = theano.Member(_w2)
-        self.b1 = theano.Member(T.vector('b1')) if _b1 is None else theano.Member(_b1)
-        self.b2 = theano.Member(T.vector('b2')) if _b2 is None else theano.Member(_b2)
+            #self.w2 = theano.Member(_w2)
+            self.w2 = (_w2)
+        #self.b1 = theano.Member(T.vector('b1')) if _b1 is None else theano.Member(_b1)
+        self.b1 = (T.vector('b1')) if _b1 is None else (_b1)
+        #self.b2 = theano.Member(T.vector('b2')) if _b2 is None else theano.Member(_b2)
+        self.b2 = (T.vector('b2')) if _b2 is None else (_b2)
 
 #        # REGULARIZATION COST
 #        self.regularization = self.build_regularization()
@@ -212,7 +223,8 @@ class SigmoidXEQuadraticDenoisingAA(QuadraticDenoisingAA):
         unittest_tools.seed_rng()
 
     def build_corrupted_input(self):
-        self.noise_level = theano.Member(T.scalar())
+        #self.noise_level = theano.Member(T.scalar())
+        self.noise_level = (T.scalar())
         return self.random.binomial(T.shape(self.input), 1, 1 - self.noise_level) * self.input
 
     def hid_activation_function(self, activation):
@@ -262,12 +274,17 @@ class Module_Nclass(module.FancyModule):
     def __init__(self, x=None, targ=None, w=None, b=None, lr=None, regularize=False):
         super(Module_Nclass, self).__init__() #boilerplate
 
-        self.x = module.Member(x) if x is not None else T.matrix('input')
-        self.targ = module.Member(targ) if targ is not None else T.lvector()
+        #self.x = module.Member(x) if x is not None else T.matrix('input')
+        self.x = (x) if x is not None else T.matrix('input')
+        #self.targ = module.Member(targ) if targ is not None else T.lvector()
+        self.targ = (targ) if targ is not None else T.lvector()
 
-        self.w = module.Member(w) if w is not None else module.Member(T.dmatrix())
-        self.b = module.Member(b) if b is not None else module.Member(T.dvector())
-        self.lr = module.Member(lr) if lr is not None else module.Member(T.dscalar())
+        #self.w = module.Member(w) if w is not None else module.Member(T.dmatrix())
+        self.w = (w) if w is not None else (T.dmatrix())
+        #self.b = module.Member(b) if b is not None else module.Member(T.dvector())
+        self.b = (b) if b is not None else (T.dvector())
+        #self.lr = module.Member(lr) if lr is not None else module.Member(T.dscalar())
+        self.lr = (lr) if lr is not None else (T.dscalar())
 
         self.params = [p for p in [self.w, self.b] if p.owner is None]
 
@@ -309,6 +326,7 @@ class Module_Nclass(module.FancyModule):
 class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
     #initialize is called by Module.make
     def initialize(self, input_size, input_representation_size, hidden_representation_size, output_size, lr, seed, noise_level, qfilter_relscale):
+        print 'INITIALIZING'
         # ASK JAMES: Is the following necessary?
 #        super(ConvolutionalMLPInstance, self)._instance_initialize(obj, **kwargs)
 
@@ -352,7 +370,8 @@ class ConvolutionalMLP(module.FancyModule):
             ):
         super(ConvolutionalMLP, self).__init__()
 
-        self.lr = module.Member(T.scalar())
+        #self.lr = module.Member(T.scalar())
+        self.lr = (T.scalar())
 
         self.inputs = [T.dmatrix() for i in range(window_size)]
         self.targ = T.lvector()
@@ -426,7 +445,7 @@ class ConvolutionalMLP(module.FancyModule):
         finetuning_cost = self.output.cost
         finetuning_gradients = T.grad(finetuning_cost, finetuning_params)
         finetuning_updates = dict((p, p - self.lr * g) for p, g in zip(finetuning_params, finetuning_gradients))
-        self.finetuning_update = module.Method(self.inputs + [self.targ], self.output.cost, finetuning_updates)
+        ###DEBUG: self.finetuning_update = module.Method(self.inputs + [self.targ], self.output.cost, finetuning_updates)
 
         #self.validate = module.Method(self.inputs + [self.targ], [self.output.cost, self.output.argmax, self.output.max_pr])
         #self.softmax_output = module.Method(self.inputs, self.output.softmax_unsupervised)
@@ -445,13 +464,11 @@ def create(window_size=3,
     """ Create a convolutional model. """
     activation_function = T.tanh
 
-    import pylearn.algorithms.cost
-
     architecture = ConvolutionalMLP( \
                 window_size = window_size,
                 n_quadratic_filters = n_quadratic_filters,
                 activation_function = activation_function,
-                reconstruction_cost_function = pylearn.algorithms.cost.quadratic,
+                reconstruction_cost_function = quadratic,
                 tie_weights = False
             )
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
@@ -471,13 +488,11 @@ def create_realistic(window_size=3,#7,
     """ Create a convolutional model. """
     activation_function = T.tanh
 
-    import pylearn.algorithms.cost
-
     architecture = ConvolutionalMLP( \
                 window_size = window_size,
                 n_quadratic_filters = n_quadratic_filters,
                 activation_function = activation_function,
-                reconstruction_cost_function = pylearn.algorithms.cost.quadratic,
+                reconstruction_cost_function = quadratic,
                 tie_weights = False
             )
     model = architecture.make(input_size=input_dimension, input_representation_size=token_representation_size, hidden_representation_size=concatenated_representation_size, output_size=output_vocabsize, lr=lr, seed=seed, noise_level=noise_level, qfilter_relscale=qfilter_relscale, mode=compile_mode)
