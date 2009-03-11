@@ -32,14 +32,14 @@ import function_module as F
 from mode import default_mode
 
 
-def join(*args):
+def name_join(*args):
     """
     Creates a string representation for the given names:
     join('a', 'b', 'c') => 'a.b.c'
     """
     return ".".join(arg for arg in args if arg)
 
-def split(sym, n=-1):
+def name_split(sym, n=-1):
     """
     Gets the names from their joined representation
     split('a.b.c') => ['a', 'b', 'c']
@@ -55,14 +55,13 @@ def canonicalize(name):
     [Fred: why we return the right type? Why int only?]
     """
     if isinstance(name, str):
-        name = split(name)
+        name = name_split(name)
     def convert(x):
         try:
             return int(x)
         except (ValueError, TypeError):
             return x
     return map(convert, name)
-
 
 class AllocationError(Exception):
     """
@@ -116,7 +115,7 @@ class Component(object):
             else:
                 raise BindError("%s is already bound to %s as %s" % (self, self.parent, self.name))
         self.parent = parent
-        self.name = join(parent.name, name)
+        self.name = name_join(parent.name, name)
         return self
 
     def bound(self):
@@ -303,29 +302,79 @@ class Member(_RComponent):
         return memo[self.r].value
 
 class Method(Component):
+    """
+    Method is a declaration of a function. It contains inputs,
+    outputs and updates. If the Method is part of a Composite
+    which holds references to Members, the Method may use them
+    without declaring them in the inputs, outputs or updates list.
 
-    def __init__(self, inputs, outputs, updates = {}, kits = [], **kwupdates):
-        """
-        Method is a declaration of a function. It contains inputs,
-        outputs and updates. If the Method is part of a Composite
-        which holds references to Members, the Method may use them
-        without declaring them in the inputs, outputs or updates list.
+    inputs, outputs or updates may be strings. In that case, they
+    will be resolved in the Composite which is the parent of this
+    Method.
 
-        [TODO: remove references to kits, for they are not really
-        needed anymore]
+    Method builds a Function (same structure as a call to
+    theano.function)
+    """
 
-        inputs, outputs or updates may be strings. In that case, they
-        will be resolved in the Composite which is the parent of this
-        Method.
+    inputs = []
+    """function inputs (see `compile.function`)
 
-        Method builds a Function (same structure as a call to
-        theano.function)
+    If Module members are named explicitly in this list, then they will not use shared storage.
+    Storage must be provided either via an `io.In` value argument, or at the point of the
+    function call.
+    """
+
+    outputs=None
+    """function outputs (see `compile.function`)"""
+
+    updates = {}
+    """update expressions for module members
+
+    If this method should update the shared storage value for a Module member, then the
+    update expression must be given in this dictionary.
+    
+
+    Keys in this dictionary must be members of the module graph--results for which this Method
+    will use the shared storage.
+
+    The value associated with each key should be a Result (or a string that can be resolved to
+    a Result) representing the computation of a new value for this shared storage after
+    each function call.
+    
+    """
+
+    mode=None
+    """This will override the Module compilation mode for this Method"""
+
+    def __init__(self, inputs, outputs, updates = {}, mode=None, **kwupdates):
+        """Initialize attributes
+        :param inputs: value for `Method.inputs`
+
+        :param outputs: value for `Method.outputs`
+
+        :param updates: value for `Method.updates`
+
+        :param kwupdates: additions to `updates`
+
+        :param mode: value for `Method.mode`
+
+        :type inputs: list of (str or `Result` or `io.In`)
+
+        :type outputs: None or str or `Result` or `io.Out` or list of (str or `Result` or
+        `io.Out`)
+
+        :type updates: dict of `Result` or str -> `Result` or str
+
+        :type kwupdates: extra updates
+
+        :type mode: None or any mode accepted by `compile.function`
+
         """
         super(Method, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
         self.updates = dict(updates, **kwupdates)
-        self.kits = list(kits)
+        self.mode = mode
 
     def bind(self, parent, name, dup_ok=True):
         rval = super(Method, self).bind(parent, name, dup_ok=dup_ok)
@@ -333,8 +382,12 @@ class Method(Component):
         return rval
 
     def resolve(self, name):
-        """
-        Resolves the name of an input or output in the parent.
+        """Return the Result corresponding to a given name
+
+        :param name: the name of a Result in the Module instance containing this Method
+        :type name: str
+
+        :rtype: `Result`
         """
         if not self.bound():
             raise ValueError('Trying to resolve a name on an unbound Method.')
@@ -343,49 +396,47 @@ class Method(Component):
             raise TypeError('Expected a Component with subtype Member or External.')
         return result
 
-    def resolve_result(self, x, passthrough=(gof.Result)):
-        if isinstance(x, passthrough):
-            return x
-        elif isinstance(x, _RComponent):
-            return x.r
-        else:
-            return self.resolve(x).r
-
-    def resolve_inputs(self):
-        if isinstance(self.inputs, (io.In, gof.Result, str)):
-            inputs = [self.inputs]
-        else:
-            inputs = list(self.inputs)
-        self.inputs = [self.resolve_result(input,
-            passthrough=(gof.Result, io.In)) for input in inputs]
-
-    def resolve_outputs(self):
-        if isinstance(self.outputs, (io.Out, gof.Result, str)):
-            output = self.outputs
-            self.outputs = self.resolve_result(output,
-                passthrough=(gof.Result, io.Out)) 
-        else:
-            outputs = list(self.outputs)
-            self.outputs = [self.resolve_result(output, 
-                passthrough=(gof.Result, io.Out)) for output in outputs]
-
-    def resolve_updates(self):
-        updates = self.updates
-        self.updates = {}
-        for k, v in updates.iteritems():
-            k, v = self.resolve_result(k), self.resolve_result(v)
-            self.updates[k] = v
-
     def resolve_all(self):
-        """
-        Resolves all inputs, outputs and updates that were given as
-        strings so that the fields contain the corresponding Result
-        instances instead.
-        """
-        self.resolve_inputs()
-        self.resolve_outputs()
-        self.resolve_updates()
+        """Convert all inputs, outputs, and updates specified as strings to Results.
 
+        This works by searching the containing Module for Result attributes by these names.
+        """
+        def resolve_result(x, passthrough=(gof.Result)):
+            if isinstance(x, passthrough):
+                return x
+            elif isinstance(x, _RComponent):
+                return x.r
+            else:
+                return self.resolve(x).r
+
+        def resolve_inputs():
+            if isinstance(self.inputs, (io.In, gof.Result, str)):
+                inputs = [self.inputs]
+            else:
+                inputs = list(self.inputs)
+            self.inputs = [resolve_result(input,
+                passthrough=(gof.Result, io.In)) for input in inputs]
+
+        def resolve_outputs():
+            if isinstance(self.outputs, (io.Out, gof.Result, str, None)):
+                output = self.outputs
+                self.outputs = resolve_result(output,
+                    passthrough=(gof.Result, io.Out, None)) 
+            else:
+                outputs = list(self.outputs)
+                self.outputs = [resolve_result(output, 
+                    passthrough=(gof.Result, io.Out)) for output in outputs]
+
+        def resolve_updates():
+            updates = self.updates
+            self.updates = {}
+            for k, v in updates.iteritems():
+                k, v = resolve_result(k), resolve_result(v)
+                self.updates[k] = v
+
+        resolve_inputs()
+        resolve_outputs()
+        resolve_updates()
 
     def allocate(self, memo):
         """
@@ -394,13 +445,21 @@ class Method(Component):
         return None
 
     def build(self, mode, memo, allocate_all = False):
-        """
-        Produces a function. If allocate_all is True, storage will be
-        allocated for all needed Results, even if there is no
+        """Compile a function for this Method.
+
+        :param allocate_all: if True, storage will be
+        allocated for all needed Results even if there is no
         associated storage for them in the memo. If allocate_all is
         False, storage will only be allocated for Results that are
         reachable from the inputs list.
+
+        :returns: a function that implements this method
+        :rtype: `Function` instance
+
         """
+        if self in memo:
+            return memo[self]
+
         self.resolve_all() # resolve all so we don't have to mess with strings
         def get_storage(r, require = False):
             # If require is True, we can only get storage from the memo.
@@ -430,7 +489,7 @@ class Method(Component):
             else:
                 raise TypeError(input, type(input))
 
-        # Deal with updates
+        # Deal with updates to shared storage
         for k, v in self.updates.iteritems():
             assert isinstance(k, gof.Result)
             assert isinstance(v, gof.Result)
@@ -441,7 +500,7 @@ class Method(Component):
                 if input.result == k:
                     input_k = input
 
-            print 'METHOD UPDATE', k, v, input_k
+            #print 'METHOD UPDATE', k, v, input_k
             if input_k is None:
                 # this is an implicit input,
                 # use shared storage
@@ -452,10 +511,9 @@ class Method(Component):
                         mutable=True)
                 inputs.append(input_k)
             else:
-                # this was an explicit input
-                # don't use shared storage
-                input_k.update=v
-                input_k.mutable=True
+                raise ValueError(('Result listed in both inputs and updates.'
+                    ' Use inputs to use your own storage, use updates to '
+                    'work on module-shared storage'), k)
 
         outputs = self.outputs
         _inputs = [x.result for x in inputs]
@@ -478,7 +536,10 @@ class Method(Component):
                 assert type(storage) is io.In
                 inputs.append(storage)
 
-        return F.function(inputs, outputs, mode)
+        effective_mode = mode if self.mode is None else self.mode
+        rval = F.function(inputs, outputs, effective_mode)
+        memo[self] = rval
+        return rval
 
     def pretty(self, **kwargs):
         self.resolve_all()
@@ -507,10 +568,10 @@ class Method(Component):
 
     def dup(self):
         self.resolve_all()
-        return self.__class__(list(self.inputs),
-                              list(self.outputs) if isinstance(self.outputs, list) else self.outputs,
-                              dict(self.updates),
-                              list(self.kits))
+        return self.__class__(inputs=list(self.inputs),
+                              outputs=list(self.outputs) if isinstance(self.outputs, list) else self.outputs,
+                              updates=dict(self.updates),
+                              mode=self.mode)
 
     def __call__(self, *args, **kwargs):
         raise TypeError("'Method' object is not callable"
