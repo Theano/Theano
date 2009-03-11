@@ -5,8 +5,21 @@ or correct documentation.
 
 
 ======================================
-What happens if grad is not defined?
+How do you define the grad function?
 ======================================
+
+Let's talk about defining the `grad()` function in an Op, using an
+illustrative example.
+
+In Poisson regression (Ranzato and Szummer, 2008), the target *t* is
+integer data, which we predict using a continuous output *o*.
+In the negative log likelihood of the Poisson regressor, there is a term:
+
+.. math::
+
+    \log(t!)
+
+Let's say we write a logfactorial Op. We then compute the gradient
 
 You should define gradient, even if it is undefined.
 [give log factorial example]
@@ -170,3 +183,11 @@ More simple numpy stuff
         You can also use ``resize`` but there is not reason to ''resize''
     * How do you convert the type of a numpy array?
         ``numpy.asarray(x, dtype = 'int32')``
+
+
+=========================================
+How to reuse (overwrite) a storage tensor
+=========================================
+
+``theano.compile.io.Out(gw1, borrow = True)`` for that value in
+``compile.function``
