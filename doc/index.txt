@@ -5,43 +5,49 @@
 Theano
 ======
 
-Theano is a Python library aiming to allow definition, optimization
-and efficient evaluation of mathematical expressions involving
-multi-dimensional arrays (though it may be extended to support many
-other types). Theano melds some aspects of a computer algebra system
-(CAS) with aspects of an optimizing compiler. This is particularly
-useful in fields such as machine learning where complicated algorithms
-must be run over large amounts of data.
+Theano is a Python library that allows you to definite, optimize, and
+efficiently evaluate mathematical expressions involving multi-dimensional
+arrays. It can be extended to support other types. Theano melds some
+aspects of a computer algebra system (CAS) with aspects of an optimizing
+compiler. It can even transform some or all of the expression into C code
+and compile it into native machine instructions. This combination of CAS
+with optimizing compilation is particularly useful for computational
+fields in which complicated mathematical expressions are evaluated
+numerous times over large data sets.
 
-Theano supports a wide range of numerical types in multiple
-dimensions, a rapidly growing number of well-tested operations as well
-as utilities to compute the gradient of an expression with respect to
-another. Symbolic expressions may be compiled into functions, which
-work merrily on the same data structures as numpy_, allowing for easy
-interoperability.
-
-Theano's compiler applies many optimizations of varying
-complexity. These optimizations include, but are not limited to
-constant folding, merging of similar subgraphs (to avoid calculating
-the same values more than once), simple arithmetic simplification
-(``x*y/x -> y``), inserting efficient BLAS_ operations and using
-inplace operations wherever it is safe to do so. Theano also defines
-several optimizations which improve the numerical stability of
-computations and it provides a framework to add and test new
-optimizers.
-
-Theano was written at the LISA_ to support the development of
+Theano was written at the LISA_ lab to support the development of
 efficient machine learning algorithms while minimizing human
-time. Theano was named after the `Greek mathematician`_ who may have
-been Pythagoras' wife.
+time. We use it especially in gradient-based learning techniques.
 
+Theano supports a range of numerical types in multiple dimensions and
+a number of well-tested operations. It also allows you to compute the
+gradient of an expression with respect to another. Symbolic expressions
+may be compiled into functions, which work on the same data structures
+as numpy_, allowing for easy interoperability.
+
+Theano's compiler applies many optimizations of varying complexity
+to these symbolic expressions. These optimizations include, but are
+not limited to:
+
+* constant folding
+* merging of similar subgraphs, to avoid calculating the same values more than once
+* simple arithmetic simplification (``x*y/x -> y``)
+* inserting efficient BLAS_ operations
+* using inplace operations wherever it is safe to do so.
+
+Theano defines several optimizations which improve the numerical
+stability of computations. It also provides a framework to add and test
+new optimizers.
+
+Theano was named after the `Greek mathematician`_, who may have
+been Pythagoras' wife.
 Theano is released under a BSD license (:ref:`link <license>`)
 
 
 Sneak peek
 ==========
 
-Here's a very simple example of how to use Theano.  It doesn't show
+Here is a simple example of how to use Theano. It doesn't show
 off many of Theano's features, but it illustrates concretely what
 Theano is.
 
@@ -66,9 +72,8 @@ Theano is.
 
 
 Theano is not a programming language in the normal sense because you
-write a program in Python that builds expressions for Theano.  Still
-it is like a programming language in the sense that to use theano, you
-have to
+write a program in Python that builds expressions for Theano. Still
+it is like a programming language in the sense that you have to
 
 - declare variables (``a,b``) and give their types
 
@@ -77,8 +82,8 @@ have to
 - compile expression graphs to functions in order to use them for computation.
 
 It is good to think of ``theano.function`` as the interface to a
-compiler which builds a callable object from a purely symbolic graph;
-one of theano's most important features is that ``theano.function``
+compiler which builds a callable object from a purely symbolic graph.
+One of theano's most important features is that ``theano.function``
 can optimize a graph and even compile some or all of it into native
 machine instructions.
 
@@ -95,18 +100,18 @@ package, so what does Theano do that Python and numpy do not?
   parts your expression graph into native machine code, which runs
   much faster than python.
 
-- *symbolic differentiation*: Theano can convert a symbolic graph
-  build symbolic graphs for computing gradients.
+- *symbolic differentiation*: Theano can automatic build symbolic graphs
+  for computing gradients.
 
 - *stability optimizations*: Theano can recognize numerically unstable
   expressions and compute them with more stable algorithms.
 
-There also exists symbolic packages in Python, namely sympy_. Theano
-is different from them in the sense that while it allows symbolic
-manipulation it puts more emphasis on the evaluation of these
-expressions and being able to repeatedly evaluate them on many
-different sets of inputs. It is also better suited to handling very
-large tensors which have no assumed structures.
+There exist another symbolic package in Python, namely sympy_. Theano
+is different from sympy in the sense that while Theano allows symbolic
+manipulation it puts more emphasis on the evaluation of these expressions
+and being able to repeatedly evaluate them on many different inputs. Theano
+is also better suited to handling very large tensors which have no
+assumed structures.
 
 If numpy_ is to be compared to MATLAB_ and sympy_ to Mathematica_,
 Theano is a sort of hybrid of the two which tries to make the best of
@@ -145,10 +150,9 @@ issues that concern the end users.
 Questions, comments, praise, criticism as well as bug reports should
 be submitted to these mailing lists.
 
-We welcome all kinds of contributions. Our `task list`_ is full of
-interesting ideas awaiting a champion.  If you have any questions
-regarding how to extend Theano, please feel free to ask on the
-theano-dev_ mailing list.
+We welcome all kinds of contributions. If you have any questions
+regarding how to extend Theano, please feel free to ask on the theano-dev_
+mailing list.
 
 
 
