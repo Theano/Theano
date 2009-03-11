@@ -163,6 +163,8 @@ The compile cache is based upon the C++ code of the graph to be compiled.
 So, if you change compilation environment variables, such as
 ``THEANO_BLAS_LDFLAGS``, you will need to manually remove your compile cache.
 
+``Theano/bin/theano-compiledir clear``
+
 =======================================================
 Type checking
 =======================================================
