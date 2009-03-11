@@ -9,7 +9,7 @@ from theano.compile.mode import default_mode
 from theano import tensor as T, sparse as S
 import numpy as N
 import sys
-
+from theano.tests import unittest_tools
 
 def cross_entropy(target, output, axis=1):
     """
@@ -175,11 +175,9 @@ class QuadraticDenoisingAA(module.Module):
         if (input_size is None) ^ (hidden_size is None):
             raise ValueError("Must specify input_size and hidden_size or neither.")
         super(QuadraticDenoisingAA, self)._instance_initialize(obj, {})
+        
         obj.random.initialize()
-        if seed is not None:
-            R = N.random.RandomState(seed)
-        else:
-            R = N.random
+        R = N.random.RandomState(unittest_tools.fetch_seed(seed))
         if input_size is not None:
             sz = (input_size, hidden_size)
             inf = 1/N.sqrt(input_size)
@@ -210,6 +208,8 @@ class SigmoidXEQuadraticDenoisingAA(QuadraticDenoisingAA):
     @todo: Merge this into the above.
     @todo: Default noise level for all daa levels
     """
+    def setUp(self):
+        unittest_tools.seed_rng()
 
     def build_corrupted_input(self):
         self.noise_level = theano.Member(T.scalar())
@@ -312,10 +312,7 @@ class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
         # ASK JAMES: Is the following necessary?
 #        super(ConvolutionalMLPInstance, self)._instance_initialize(obj, **kwargs)
 
-        if seed is not None:
-            R = N.random.RandomState(seed)
-        else:
-            R = N.random
+        R = N.random.RandomState(unittest_tools.fetch_seed(seed))
 
         self.input_size = input_size
         self.input_representation_size = input_representation_size
@@ -512,7 +509,7 @@ def test_naacl_model(iters_per_unsup=10, iters_per_sup=10,
 
     print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.env.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
 
-    rng = N.random.RandomState(23904)
+    rng = N.random.RandomState(unittest_tools.fetch_seed(23904))
 
     inputs = [rng.rand(10,9) for i in 1,2,3]
     targets = N.asarray([0,3,4,2,3,4,4,2,1,0])

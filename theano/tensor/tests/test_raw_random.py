@@ -2,6 +2,7 @@ __docformat__ = "restructuredtext en"
 import sys
 import unittest
 import numpy as N
+from theano.tests import unittest_tools
 
 from theano.tensor.raw_random import *
 

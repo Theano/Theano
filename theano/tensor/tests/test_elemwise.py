@@ -9,6 +9,7 @@ from theano.scalar import *
 
 from theano import tensor
 from theano.tensor.elemwise import *
+from theano.tests import unittest_tools
 
 
 def Env(i, o):
@@ -36,6 +37,8 @@ class test_DimShuffle(unittest.TestCase):
 
 
 class test_Broadcast(unittest.TestCase):
+    def setUp(self):
+        unittest_tools.seed_rng()
 
     def with_linker(self, linker):
         for xsh, ysh in [((3, 5), (3, 5)),
@@ -120,6 +123,8 @@ class test_Broadcast(unittest.TestCase):
 
 
 class test_CAReduce(unittest.TestCase):
+    def setUp(self):
+        unittest_tools.seed_rng()
 
     def with_linker(self, linker):
         for xsh, tosum in [((5, 6), None),

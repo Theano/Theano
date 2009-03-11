@@ -5,6 +5,7 @@ from theano.gof import OpSub, TopoOptimizer
 
 from pylearn.algorithms.minimizer import make_minimizer # minimizer
 from theano.printing import Print
+from theano.tests import unittest_tools
 #import sgd #until Olivier's module-import thing works better
 
 ####################
@@ -177,7 +178,7 @@ class ExampleRNN(Module):
     def _instance_initialize(self, obj):
         n_vis = self.n_vis
 
-        rng = N.random.RandomState(2342)
+        rng = N.random.RandomState(unittest_tools.fetch_seed(2342))
 
         obj.z0 = N.zeros(n_vis)
         obj.w = rng.randn(n_vis, n_vis) * 0.01
@@ -193,7 +194,7 @@ def test_example_rnn():
 
     rnn = rnn_module.make(mode='FAST_RUN')
 
-    rng = N.random.RandomState(7722342)
+    rng = N.random.RandomState(unittest_tools.fetch_seed(7722342))
     x = rng.randn(10,n_vis)
     y = rng.randn(10,n_out)
 
@@ -215,7 +216,7 @@ def test_example_rnn():
 def test_WEIRD_STUFF():
     n_vis = 3
 
-    rng = N.random.RandomState(7722342)
+    rng = N.random.RandomState(unittest_tools.fetch_seed(7722342))
     x = rng.randn(10,n_vis)
     y = rng.randn(10,n_vis)
 

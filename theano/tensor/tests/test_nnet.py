@@ -5,13 +5,14 @@ from theano import tensor as T
 from theano import gof
 import test_basic as TT
 import numpy
+from theano.tests import unittest_tools
 
 from theano.tensor.nnet import *
 
 
 class T_sigmoid(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(9999)
+        unittest_tools.seed_rng()
     def test_elemwise(self):
         print dir(self)
         assert 0
@@ -19,13 +20,13 @@ class T_sigmoid(unittest.TestCase):
 
 class T_softplus(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(9999)
+        unittest_tools.seed_rng()
     def test_elemwise(self):
         TT.verify_grad(self, softplus, [numpy.random.rand(3,4)])
 
 class T_Softmax(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(9999)
+        unittest_tools.seed_rng()
     def test0(self):
         def f(a):
             return softmax(a)[:,0]
@@ -46,7 +47,7 @@ class T_Softmax(unittest.TestCase):
 
 class T_SoftmaxWithBias(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(9999)
+        unittest_tools.seed_rng()
     def test0(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:,0]
@@ -70,7 +71,7 @@ class T_SoftmaxWithBias(unittest.TestCase):
 
 class T_CrossentropySoftmax1Hot(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(9999)
+        unittest_tools.seed_rng()
     def test0(self):
         y_idx = [0,1,3]
         def f(a, b):
@@ -84,6 +85,8 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
         TT.verify_grad(self, f, [numpy.random.rand(3,4)])
 
 class T_prepend(unittest.TestCase):
+    def setUp(self):
+        unittest_tools.seed_rng()
     def test0(self):
         """basic functionality"""
         x=tensor.matrix('x')
@@ -109,7 +112,7 @@ class T_prepend(unittest.TestCase):
 
 class T_solve(unittest.TestCase):
     def setUp(self):
-        self.rng = numpy.random.RandomState(666)
+        self.rng = numpy.random.RandomState(unittest_tools.fetch_seed(666))
 
     def test0(self):
         A=self.rng.randn(5,5)

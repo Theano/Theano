@@ -6,6 +6,7 @@ from functools import partial
 from collections import deque
 
 import numpy
+from copy import copy
 
 from ...compile import (SymbolicInputKit, SymbolicInput, 
         Module, module, Method, Member, In, Component)
@@ -32,7 +33,7 @@ class KitComponent(Component):
             r = input.result
             if r not in memo:
                 input = copy(input)
-                input.value = gof.Container(r, storage = [None])
+                input.value = Container(r, storage = [None])
                 memo[r] = input
 
     def build(self, mode, memo):

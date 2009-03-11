@@ -10,6 +10,7 @@ from theano import gof
 
 from theano.sparse.basic import _is_dense, _is_sparse, _is_dense_result, _is_sparse_result
 from theano.sparse.basic import _mtypes, _mtype_to_str
+from theano.tests import unittest_tools
 
 
 def eval_outputs(outputs):
@@ -17,7 +18,8 @@ def eval_outputs(outputs):
 
 class T_transpose(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(44)
+        unittest_tools.seed_rng()
+
     def test_transpose_csc(self):
         sp = sparse.csc_matrix(sparse.eye(5,3))
         a = as_sparse(sp)
@@ -123,7 +125,7 @@ class T_Add(unittest.TestCase):
 
 class T_conversion(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(44)
+        unittest_tools.seed_rng()
 
     def test0(self):
         a = tensor.as_tensor(numpy.random.rand(5))

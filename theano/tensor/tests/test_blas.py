@@ -5,6 +5,7 @@ import numpy
 from theano.tensor.blas import *
 from theano.tensor.blas import _dot22, res_is_a
 from unittest import TestCase
+from theano.tests import unittest_tools
 from copy import copy
 
 _as_scalar = GemmLocalOptimizer._as_scalar
@@ -17,7 +18,7 @@ from .test_basic import (_approx_eq, as_tensor, inplace_func,
 class t_gemm(TestCase):
     """This test suite is supposed to establish that gemm works as it is supposed to."""
     def setUp(self):
-        numpy.random.seed(44)
+        unittest_tools.seed_rng()
         _approx_eq.debug = 0
         Gemm.debug = False
 
@@ -265,9 +266,9 @@ def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()]):
         for node in g.maker.env.nodes:
             if node.op == gemm: raise Exception('gemm in original graph')
 
-        rng = numpy.random.RandomState(234)
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
         r0 = f(*[rng.randn(*sh) for sh in ishapes])
-        rng = numpy.random.RandomState(234)
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
         r1 = g(*[rng.randn(*sh) for sh in ishapes])
         max_abs_err = numpy.max(numpy.abs(r0[0] - r1[0]))
         if  max_abs_err > 1.0e-8:
@@ -329,9 +330,9 @@ def test_gemm_opt_double_gemm():
         #for node in g.maker.env.nodes:
         #    if node.op == gemm: raise Failure('gemm in graph')
 
-        rng = numpy.random.RandomState(234)
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
         r0 = f(*[rng.randn(*sh) for sh in ishapes])
-        rng = numpy.random.RandomState(234)
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
         r1 = g(*[rng.randn(*sh) for sh in ishapes])
         max_abs_err = numpy.max(numpy.abs(r0[0] - r1[0]))
         if  max_abs_err > 1.0e-8:

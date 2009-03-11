@@ -8,8 +8,12 @@ import test_basic as TT
 
 import random
 import numpy.random
+from theano.tests import unittest_tools
 
 class T_XlogX(unittest.TestCase):
+    def setUp(self):
+        unittest_tools.seed_rng()
+
     def test0(self):
         x = as_tensor([1, 0])
         y = xlogx(x)

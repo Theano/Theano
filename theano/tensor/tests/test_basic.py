@@ -16,7 +16,10 @@ from theano import gof
 from theano.tensor.elemwise import DimShuffle
 from theano.compile.mode import default_mode
 from theano import function
+from theano.tests import unittest_tools
 
+### seed random number generator so that unittests are deterministic ###
+unittest_tools.seed_rng()
 
 def inplace_func(inputs, outputs, mode=default_mode):
     return function(inputs, outputs, mode=mode, accept_inplace=True)
@@ -604,7 +607,7 @@ class T_Cast(unittest.TestCase):
 
 class T_max_and_argmax(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(123784)
+        unittest_tools.seed_rng()
         MaxAndArgmax.debug = 0
 
     def test0(self):
@@ -620,13 +623,17 @@ class T_max_and_argmax(unittest.TestCase):
         self.failUnless(i == 2)
 
     def test2(self):
-        n = as_tensor(numpy.random.rand(2,3))
+        data = numpy.random.rand(2,3)
+        n = as_tensor(data)
         v,i = eval_outputs(max_and_argmax(n))
-        self.failUnless(numpy.all(i == [0,1]))
+        self.failUnless(numpy.all(v == numpy.max(data,-1)))
+        self.failUnless(numpy.all(i == numpy.argmax(data,-1)))
     def test2b(self):
-        n = as_tensor(numpy.random.rand(2,3))
+        data = numpy.random.rand(2,3)
+        n = as_tensor(data)
         v,i = eval_outputs(max_and_argmax(n,0))
-        self.failUnless(numpy.all(i == [0,1,1]))
+        self.failUnless(numpy.all(v == numpy.max(data,0)))
+        self.failUnless(numpy.all(i == numpy.argmax(data,0)))
     def test2_invalid(self):
         n = as_tensor(numpy.random.rand(2,3))
         try:
@@ -663,7 +670,7 @@ class T_max_and_argmax(unittest.TestCase):
 class T_subtensor(unittest.TestCase):
     def setUp(self):
         Subtensor.debug = False
-        numpy.random.seed(12353123)
+        unittest_tools.seed_rng()
 
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
@@ -1063,6 +1070,9 @@ class test_bitwise(unittest.TestCase):
 
 class T_add(unittest.TestCase):
 
+    def setUp(self):
+        unittest_tools.seed_rng()
+
     def test_complex_all_ops(self):
         for nbits in (64, 128):
             a = value(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
@@ -1158,7 +1168,7 @@ class T_exp(unittest.TestCase):
 
 # class T_mul(unittest.TestCase):
 #     def setUp(self):
-#         numpy.random.seed([1,2,3,4])
+#         unittest_tools.seed_rng()
 
 #     def test_elemwise(self):
 #         a = as_tensor(0.0)
@@ -1221,7 +1231,7 @@ class T_exp(unittest.TestCase):
 
 # class T_div(unittest.TestCase):
 #     def setUp(self):
-#         numpy.random.seed(9999)
+#         unittest_tools.seed_rng()
 #     def test_grad_e(self):
 #         verify_grad(self, Div, [numpy.random.rand(3), numpy.ones(3)])
 #         verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
@@ -1233,10 +1243,14 @@ class T_exp(unittest.TestCase):
 #         verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
 
 # class T_log2(unittest.TestCase):
+#     def setUp(self):
+#         unittest_tools.seed_rng()
 #     def test0(self):
 #         verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
 
 # class T_log(unittest.TestCase):
+#     def setUp(self):
+#         unittest_tools.seed_rng()
 #     def test0(self):
 #         verify_grad(self, Log, [numpy.random.rand(3,1)+0.0001])
 #     def test1(self):
@@ -1248,7 +1262,7 @@ class T_exp(unittest.TestCase):
 
 # class T_pow(unittest.TestCase):
 #     def setUp(self):
-#         numpy.random.seed(9999)
+#         unittest_tools.seed_rng()
 #     def test_elemwise(self):
 #         verify_grad(self, Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
 #         verify_grad(self, Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
@@ -1264,7 +1278,7 @@ class T_exp(unittest.TestCase):
 class test_matinv(unittest.TestCase):
 
     def setUp(self):
-        numpy.random.seed(1)
+        unittest_tools.seed_rng()
 
     def mat_reciprocal(self,dim):
         # symbolic program
@@ -1303,8 +1317,7 @@ class test_matinv(unittest.TestCase):
 
 class t_dot(unittest.TestCase):
     def setUp(self):
-        numpy.random.seed(44)
-
+        unittest_tools.seed_rng()
     @staticmethod
     def rand(*args):
         return numpy.random.rand(*args)
@@ -1409,6 +1422,8 @@ class T_tensorfromscalar(unittest.TestCase):
 
 
 # class T_tensor(unittest.TestCase):
+#     def setUp(self):
+#         unittest_tools.seed_rng()
 #     def test0(self): # allocate from a scalar float
 #         t = _tensor(1.0)
 #         self.failUnless(isinstance(t, Tensor))
@@ -1578,7 +1593,8 @@ class test_grad(unittest.TestCase):
         self.failUnless(g2.data == 0)
 
 class T_op_cache(unittest.TestCase):
-
+    def setUp(self):
+        unittest_tools.seed_rng()
     def test0(self):
         """trigger bug in ticket #162"""
         lr = constant(0.011)
@@ -1707,6 +1723,8 @@ def test_tile():
 
 
 class test_tensordot(unittest.TestCase):
+    def setUp(self):
+        unittest_tools.seed_rng()
 
     def test0(self):
 
