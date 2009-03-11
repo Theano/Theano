@@ -17,7 +17,7 @@ installed:
 
 >>> from theano import *
 
-Many of symbols you will need to use lie in the ``tensor`` subpackage
+Many of symbols you will need to use are in the ``tensor`` subpackage
 of theano. Let's import that subpackage under a handy name. I like
 ``T``.
 
