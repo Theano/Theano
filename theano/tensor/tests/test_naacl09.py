@@ -546,8 +546,8 @@ def test_naacl_model(iters_per_unsup=10, iters_per_sup=10,
         s0, s1 = [str(j) for j in m.pretraining_update(*inputs)]
         print 'huh?', i, iters_per_unsup, iters_per_unsup * (i+1), s0, s1
     if iters_per_unsup == 10:
-        assert s0.startswith('0.40304459240')
-        assert s1.startswith('0.074898707938')
+        assert s0.startswith('0.403044')
+        assert s1.startswith('0.074898')
 
     print 'FINETUNING GRAPH'
     print 'SUPERVISED PHASE COSTS (%s)'%optimizer
@@ -557,7 +557,7 @@ def test_naacl_model(iters_per_unsup=10, iters_per_sup=10,
         s0 = str(m.finetuning_update(*(inputs + [targets])))
         print iters_per_sup * (i+1), s0
     if iters_per_sup == 10:
-        assert s0.startswith('15.65111049')#should check for the 8 decimal only.
+        assert s0.startswith('15.6511')#should check for the 8 decimal only.
 
 def jtest_main():
     from theano import gof
@@ -585,5 +585,5 @@ def profile_main():
     # stats.print_callers()
 
 if __name__ == '__main__':
-    real_main()
-    #profile_main()
+    #real_main()
+    profile_main()
