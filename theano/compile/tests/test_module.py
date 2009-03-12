@@ -36,6 +36,7 @@ class T_module(unittest.TestCase):
             m1=Module()
             m1.x=x()
             m1.y=y()
+            m1.emtpylist = []
             m1.lx=[x()]#cast Result]
             m1.ly=[y()]
             m1.llx=[[x()]]#cast Result]
