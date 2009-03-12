@@ -98,26 +98,27 @@ class T_module(unittest.TestCase):
                 assert i
 
             #test that we can set a value to the data the get this value
-            inst.x=-1
-            inst.y=-2
-            inst.ldx[0]['x']=-3
-            inst.ldy[0]['y']=-4
-            inst.tdx[0]['x']=-5
-            inst.tdy[0]['y']=-6
-            inst.ddx['x']['x']=-7
-            inst.ddy['y']['y']=-8
-            for i,j in zip(get_l2(),range(len(get_l2()))):
-                i[0]=j
-            assert inst.x==-1
-            assert inst.y==-2
-            assert inst.ldx[0]['x']==-3
-            assert inst.ldy[0]['y']==-4
-            assert inst.tdx[0]['x']==-5
-            assert inst.tdy[0]['y']==-6
-            assert inst.ddx['x']['x']==-7
-            assert inst.ddy['y']['y']==-8
-            for i,j in zip(get_l2(),range(len(get_l2()))):
-                assert i[0]==j
+            if not isinstance(m1.x, gof.Constant):
+                inst.x=-1
+                inst.y=-2
+                inst.ldx[0]['x']=-3
+                inst.ldy[0]['y']=-4
+                inst.tdx[0]['x']=-5
+                inst.tdy[0]['y']=-6
+                inst.ddx['x']['x']=-7
+                inst.ddy['y']['y']=-8
+                for i,j in zip(get_l2(),range(len(get_l2()))):
+                    i[0]=j
+                assert inst.x==-1
+                assert inst.y==-2
+                assert inst.ldx[0]['x']==-3
+                assert inst.ldy[0]['y']==-4
+                assert inst.tdx[0]['x']==-5
+                assert inst.tdy[0]['y']==-6
+                assert inst.ddx['x']['x']==-7
+                assert inst.ddy['y']['y']==-8
+                for i,j in zip(get_l2(),range(len(get_l2()))):
+                    assert i[0]==j
 
         local_test(lambda:T.dscalar(),lambda:T.dscalar())
         local_test(lambda:T.value(1),lambda:T.value(2))
@@ -474,9 +475,9 @@ class T_module(unittest.TestCase):
         m = M.make()
         try:
             m.y = 77 #fail?
-            assert 0 #assign to constant should not have worked
         except:
             pass
+        assert m.y == 40
         assert m.f(20) == 100
 
     def test_raise_NotImplemented(self):

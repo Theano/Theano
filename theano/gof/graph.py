@@ -84,6 +84,9 @@ class Apply(utils.object2):
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
 
+        self._creation_idx = _creation_idx[0]
+        _creation_idx[0] += 1
+
     def default_output(self):
         """Returns the default output for this node.
         
@@ -123,9 +126,6 @@ class Apply(utils.object2):
         return self
 
     def __hash__(self):
-        if not hasattr(self, '_creation_idx'):
-            self._creation_idx = _creation_idx[0]
-            _creation_idx[0] += 1
         return self._creation_idx
 
 

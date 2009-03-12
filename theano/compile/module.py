@@ -1,5 +1,8 @@
 """Classes implementing Theano's Module system.
 
+Rationale
+=========
+
 Functions in theano can share containers, when the `value` argument to `In` is a Container
 instance.  This feature makes it possible for multiple functions to use (and update) the same
 inputs.
@@ -16,6 +19,53 @@ be compiled with a call to `make` which will return an isomorphic structure in w
 have become `ModuleInstances`, Members have become `Container`s, and Methods have become
 `Function`s.
 This structure contains numbers and functions, and is ready for computation.
+
+
+Design Documentation
+====================
+
+Module Graph
+------------
+
+Components form a tree structure.  Each component may have a _parent_ to which it is _bound_.
+When we call `make`, this tree structure is replicated with ComponentInstances instead of
+Components.  Wheras Components are primarily symbolic, ComponentInstances are sparse matrices,
+ndarrays, callable functions, etc.
+
+Compilation via make
+--------------------
+
+Conversion from a Component graph to a ComponentInstance graph is performed by `Component.make`.
+This method traverses the Component graph in two passes. 
+
+In the first pass (the allocate pass), it creates storage for all Results that are contained in the graph (see
+`Component.allocate`).  These are the module variables.
+
+In the second pass (the build pass), it creates functions that (in general) operate on these module variables.
+This pass also serves to construct all ComponentInstance-derived instances as well, such as
+`ModuleInstance`s.  The objects that are returned from this second pass are the return value of
+`Component.make`.
+
+In the third pass (the initialize pass), is optional and not necessarily recursive through the
+graph.
+The purpose of the third pass is to call the initialize method of the ComponentInstances built
+during the second pass.
+During this pass the ComponentInstance graph is complete. It is a good time to fill storage
+allocated in phase 1 with sensible values.
+
+Class Structure
+---------------
+
+The most important classes for the user API here are `Module`, `ModuleInstance`, and `Method`.  
+Several other classes are defined to factorize functionality.
+
+- `Component`: WRITEME: what properties make something a Component?
+
+- `_RComponent`: WRITEME: what properties make something a Component?
+
+- `External`: WRITEME: what properties hold? What 
+
+- `Member`: WRITEME: what properties hold? What do they do?
 
 """
 
@@ -291,8 +341,12 @@ class Member(_RComponent):
         r = self.r
         if memo and r in memo:
             return memo[r]
-        rval = gof.Container(r, storage = [getattr(r, 'data', None)])
-        memo[r] = io.In(result = r, value = rval, mutable = False)
+        assert isinstance(r, gof.Result)
+        rval = gof.Container(r, storage = [getattr(r, 'data', None)],
+                readonly=isinstance(r, gof.Constant))
+        memo[r] = io.In(result=r,
+                value=rval,
+                mutable=False)
         return memo[r]
 
     def build(self, mode, memo):
@@ -474,7 +528,9 @@ class Method(Component):
                                           ' enclosing module or of one of its submodules.' % (r, self.name, self))
                 else:
                     return io.In(result=r, 
-                            value=gof.Container(r, storage=[None]), 
+                            value=gof.Container(r,
+                                storage=[getattr(r, 'data', None)],  
+                                readonly=(isinstance(r, gof.Constant))), 
                             mutable=False)
         inputs = self.inputs
 
@@ -494,6 +550,8 @@ class Method(Component):
         # Deal with updates to shared storage
         for k, v in self.updates.iteritems():
             assert isinstance(k, gof.Result)
+            if isinstance(k, gof.Constant):
+                raise TypeError('Module Constants cannot be updated', k)
             assert isinstance(v, gof.Result)
 
             #identify an input for result k
@@ -517,6 +575,8 @@ class Method(Component):
                     ' Use inputs to use your own storage, use updates to '
                     'work on module-shared storage'), k)
 
+        # Deal with module inputs that are not updated
+
         outputs = self.outputs
         _inputs = [x.result for x in inputs]
         # Grab the results that are not accessible from either the inputs or the updates.
@@ -529,10 +589,15 @@ class Method(Component):
                 # Add this input to the inputs; we require that storage already exists for them,
                 # but otherwise they are immutable.
                 if isinstance(input, gof.Value): # and not isinstance(input, gof.Constant):
+                    #input might be Value or Constant
                     storage = get_storage(input)
+
                     assert type(storage) is io.In
                     container = storage.value
-                    container.value = input.data
+                    #the user is allowed to change this value between function calls if it isn't a constant
+                    assert container.readonly == (isinstance(input, gof.Constant))
+                    #the function is not allowed to change this value
+                    assert storage.mutable == False 
                 else:
                     storage = get_storage(input, not allocate_all)
                 assert type(storage) is io.In
@@ -1095,7 +1160,12 @@ class Module(ComponentDict):
             # the object built under the name obj.XXX
             if methodname.startswith('_instance_'):
                 new_methodname = methodname[len('_instance_'):]
-                if not hasattr(inst, new_methodname):
+                if hasattr(inst, new_methodname):
+                    print >> sys.stderr, "WARNING: not overriding already-defined method",
+                    print >> sys.stderr, getattr(inst, new_methodname),
+                    print >> sys.stderr, "with",
+                    print >> sys.stderr, getattr(self, methodname)
+                else:
                     curried = Curry(self, methodname, inst)
                     # setattr doesn't work here because we overrode __setattr__
                     # setattr(inst, new_methodname, curried)
