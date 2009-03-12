@@ -77,7 +77,7 @@ from collections import defaultdict
 from itertools import chain
 from functools import partial
 from copy import copy
-import io
+import io, sys
 import function_module as F
 from mode import default_mode
 
