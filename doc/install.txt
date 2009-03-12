@@ -12,15 +12,31 @@ Requirements
 In order to use Theano, the following libraries and software will need
 to be installed:
 
+    Linux or OS-X operating system
+        We develop mainly on 64-bit Linux machines. 32-bit architectures are
+        not well-tested.
 
-- linux or OS-X operating system
-- python >=2.5
-- numpy >=1.2 (earlier versions have memory leaks)
-- SciPy (specifically numpy, sparse, weave). We recommend scipy >=0.7 if you are using sparse matrices, because scipy.sparse is buggy in 0.6. (scipy.csc_matrix dot has a bug with singleton dimensions. There may be more bugs.)
-- g++, python-dev (optional but highly recommended, to compile generated C code)
-- sphinx >=0.5.1, pygments (optional, to build documentation) (also latex and dvipng if you want math to show up as images...)
-- mercurial (optional, to download the source)
-- nose (nosetests) (optional, for testing)
+    python >= 2.5
+
+    `numpy <http://numpy.scipy.org/>`_ >= 1.2
+        Earlier versions have memory leaks.
+    `SciPy <http://scipy.org>`_
+        Specifically numpy, sparse, and weave. We recommend scipy
+        >=0.7 if you are using sparse matrices, because scipy.sparse
+        is buggy in 0.6. (scipy.csc_matrix dot has a bug with singleton
+        dimensions. There may be more bugs.)
+
+The following libraries and software are optional:
+
+    g++, python-dev
+        Highly recommended, to compile generated C code.
+    `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
+        Recommended, to run Theano's test-suite.
+    `sphinx <http://sphinx.pocoo.org/>`_ >=0.5.1, `pygments <http://pygments.org/>`_
+        Used to build documentation. latex and dvipng
+        are also necessary for math to show up as images.
+    `mercurial <http://www.selenic.com/mercurial/>`_
+        To download bleeding-edge 
 
 
 ------------

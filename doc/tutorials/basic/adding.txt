@@ -37,19 +37,15 @@ objects).
 >>> x = T.dscalar('x')
 >>> y = T.dscalar('y')
 
-In Theano, all symbols must be typed. In particular, ``T.dscalar`` is
-the type we assign to "0-dimensional arrays of doubles". It is a
-Theano :term:`Type`. Therefore, you can guess that by calling
-``T.dscalar`` with a string argument, you create a :term:`Result`
-representing a floating-point scalar quantity with the given name (if
-you provide no argument, the symbol will be unnamed, which can cause
-difficulties in debugging).
+In Theano, all symbols must be typed. In particular, ``T.dscalar``
+is the type we assign to "0-dimensional arrays (`scalar`) of doubles
+(`d`)". It is a Theano :term:`Type`.
 
-Note that ``dscalar`` is not a class and that therefore neither ``x``
-nor ``y`` are actually instances of ``dscalar``. They are instances of
-:api:`TensorResult <theano.tensor.basic.TensorResult>`. It is however
-assigned the theano Type ``dscalar`` in its ``type`` field, as you can
-see here:
+``dscalar`` is not a class. Therefore, neither ``x`` nor ``y``
+are actually instances of ``dscalar``. They are instances of
+:api:`TensorResult <theano.tensor.basic.TensorResult>`. ``x`` and ``y``
+are, however, assigned the theano Type ``dscalar`` in their ``type``
+field, as you can see here:
 
 >>> type(x)
 <class 'theano.tensor.basic.TensorResult'>
@@ -60,8 +56,13 @@ Tensor(float64, scalar)
 >>> x.type == T.dscalar
 True
 
-Ditto for ``y``. You may learn more about the structures in Theano in
+You can learn more about the structures in Theano in
 the :ref:`advtutorial` and in :ref:`graphstructures`.
+
+By calling ``T.dscalar`` with a string argument, you create a
+:term:`Result` representing a floating-point scalar quantity with the
+given name. If you provide no argument, the symbol will be unnamed. Names
+are not require, but they can aid debugging.
 
 -------------------------------------------
 
@@ -83,14 +84,14 @@ x + y
 **Step 3**
 
 The last step is to create a function taking ``x`` and ``y`` as inputs
-and giving out ``z`` as output:
+and giving ``z`` as output:
 
 >>> f = function([x, y], z)
 
-The first argument to ``function`` is a list of :term:`Results
-<Result>` that will be provided as inputs to the function. The second
-argument is a single Result that we want to see as output *or* a list
-of output results.
+The first argument to ``function`` is a list of :term:`Results <Result>`
+that will be provided as inputs to the function. The second argument
+is a single Result *or* a list of Results. For either case, the second
+argument is what we want to see as output when we apply the function.
 
 ``f`` may then be used like a normal Python function.
 

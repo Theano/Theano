@@ -195,8 +195,10 @@ def _optcheck_env(input_specs, output_specs, accept_inplace = False):
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     equivalence_tracker = _ResultEquivalenceTracker()
     env = gof.env.Env(inputs, outputs,
-            features=[equivalence_tracker,
-                gof.DestroyHandler(do_imports_on_attach=False)])
+            #DestroyHandler is not needed because it is actually installed by an optimization
+            # after canonicalization.  This results in a big speed gain.
+            #features=[equivalence_tracker, gof.DestroyHandler(do_imports_on_attach=False)])
+            features=[equivalence_tracker])
 
     if not accept_inplace:
         for node in env.nodes:

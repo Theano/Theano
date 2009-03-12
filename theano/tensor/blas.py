@@ -474,15 +474,6 @@ class GemmLocalOptimizer(LocalOptimizer):
         return False
 
     @staticmethod
-    def failure_callback(exc, nav, repl_pairs):
-        """WRITEME"""
-        if not isinstance(exc, InconsistencyError):
-            traceback.print_exc()
-        else:
-            #print 'GEMM caused cycle, it happens.'
-            pass
-
-    @staticmethod
     def _as_scalar(res):
         """Return None or a TensorResult whose type is in T.float_scalar_types"""
         if res.owner and isinstance(res.owner.op, T.DimShuffle):
@@ -579,11 +570,11 @@ class GemmLocalOptimizer(LocalOptimizer):
 # TODO: This could be an equilibriumOptmizer, but I don't know how to combine an OpKeyOptimizer and
 # an EquilibriumOptimizer.
 compile.optdb.register('inplace_gemm_0', OpKeyOptimizer(GemmLocalOptimizer(), 
-    failure_callback=GemmLocalOptimizer.failure_callback), 70.00, 'fast_run', 'inplace', 'gemm')
+    failure_callback=OpKeyOptimizer.warn_inplace), 70.00, 'fast_run', 'inplace', 'gemm')
 compile.optdb.register('inplace_gemm_1', OpKeyOptimizer(GemmLocalOptimizer(), 
-    failure_callback=GemmLocalOptimizer.failure_callback), 70.01, 'fast_run', 'inplace', 'gemm')
+    failure_callback=OpKeyOptimizer.warn_inplace), 70.01, 'fast_run', 'inplace', 'gemm')
 compile.optdb.register('inplace_gemm_2', OpKeyOptimizer(GemmLocalOptimizer(), 
-    failure_callback=GemmLocalOptimizer.failure_callback), 70.02, 'fast_run', 'inplace', 'gemm')
+    failure_callback=OpKeyOptimizer.warn_inplace), 70.02, 'fast_run', 'inplace', 'gemm')
 
 class Dot22(GemmRelated):
     """Compute a matrix-matrix product.

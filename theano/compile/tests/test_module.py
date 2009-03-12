@@ -1,23 +1,29 @@
 #!/usr/bin/env python
+"""Test compile.module"""
+
+__docformat__ = "restructuredtext en"
+
 import cPickle, numpy, unittest
 from theano.compile.module import *
 import theano.tensor as T
 import sys
 import theano
+
 #TODO: add test for module.make(member=init_value)
-class T_test_module(unittest.TestCase):
+class T_module(unittest.TestCase):
 
     def test_whats_up_with_submembers(self):
-        class Blah(FancyModule):
+        class Blah(Module):
             def __init__(self, stepsize):
                 super(Blah, self).__init__()
-                self.stepsize = Member(T.value(stepsize))
+                self.stepsize = T.value(stepsize)
                 x = T.dscalar()
             
                 self.step = Method([x], x - self.stepsize)
 
         B = Blah(0.0)
         b = B.make(mode='FAST_RUN')
+        assert b.stepsize == 0.0
         b.step(1.0)
         assert b.stepsize == 0.0
 
@@ -30,6 +36,7 @@ class T_test_module(unittest.TestCase):
             m1=Module()
             m1.x=x()
             m1.y=y()
+            m1.emtpylist = []
             m1.lx=[x()]#cast Result]
             m1.ly=[y()]
             m1.llx=[[x()]]#cast Result]
@@ -57,8 +64,23 @@ class T_test_module(unittest.TestCase):
 
             assert isinstance(m1.x,(gof.Result))
             assert isinstance(m1.y,(gof.Result))
-            for i in [m1.lx[0], m1.ly[0], m1.llx[0][0], m1.lly[0][0], m1.ltx[0][0], m1.lty[0][0], m1.ldx[0]['x'], m1.ldy[0]['y'], m1.tx[0], m1.ty[0], m1.tlx[0][0], m1.tly[0][0], m1.ttx[0][0], m1.tty[0][0], m1.tdx[0]['x'], m1.tdy[0]['y'], m1.dx['x'], m1.dy['y'], m1.dlx['x'][0], m1.dly['y'][0], m1.dtx['x'][0], m1.dty['y'][0], m1.ddx['x']['x'], m1.ddy['y']['y']]:
-                assert isinstance(i,(gof.Result))
+            for i, obj in enumerate([
+                    m1.lx[0], #0
+                    m1.llx[0][0],
+                    m1.ltx[0][0],
+                    m1.ldx[0]['x'],
+                    m1.lty[0][0],#5
+                    m1.ldy[0]['y'],
+                    m1.ly[0],
+                    m1.lly[0][0],
+                    m1.tx[0], #8
+                    m1.ty[0], m1.tlx[0][0], 
+                    m1.tly[0][0], m1.ttx[0][0], m1.tty[0][0], m1.tdx[0]['x'],
+                    m1.tdy[0]['y'], m1.dx['x'], 
+                    m1.dy['y'], m1.dlx['x'][0], m1.dly['y'][0],
+                    m1.dtx['x'][0], m1.dty['y'][0], m1.ddx['x']['x'],
+                    m1.ddy['y']['y']]):
+                assert isinstance(obj,(gof.Result))
                 
 
             inst=m1.make()
@@ -77,44 +99,94 @@ class T_test_module(unittest.TestCase):
                 assert i
 
             #test that we can set a value to the data the get this value
-            inst.x=-1
-            inst.y=-2
-            inst.ldx[0]['x']=-3
-            inst.ldy[0]['y']=-4
-            inst.tdx[0]['x']=-5
-            inst.tdy[0]['y']=-6
-            inst.ddx['x']['x']=-7
-            inst.ddy['y']['y']=-8
-            for i,j in zip(get_l2(),range(len(get_l2()))):
-                i[0]=j
-            assert inst.x==-1
-            assert inst.y==-2
-            assert inst.ldx[0]['x']==-3
-            assert inst.ldy[0]['y']==-4
-            assert inst.tdx[0]['x']==-5
-            assert inst.tdy[0]['y']==-6
-            assert inst.ddx['x']['x']==-7
-            assert inst.ddy['y']['y']==-8
-            for i,j in zip(get_l2(),range(len(get_l2()))):
-                assert i[0]==j
+            if not isinstance(m1.x, gof.Constant):
+                inst.x=-1
+                inst.y=-2
+                inst.ldx[0]['x']=-3
+                inst.ldy[0]['y']=-4
+                inst.tdx[0]['x']=-5
+                inst.tdy[0]['y']=-6
+                inst.ddx['x']['x']=-7
+                inst.ddy['y']['y']=-8
+                for i,j in zip(get_l2(),range(len(get_l2()))):
+                    i[0]=j
+                assert inst.x==-1
+                assert inst.y==-2
+                assert inst.ldx[0]['x']==-3
+                assert inst.ldy[0]['y']==-4
+                assert inst.tdx[0]['x']==-5
+                assert inst.tdy[0]['y']==-6
+                assert inst.ddx['x']['x']==-7
+                assert inst.ddy['y']['y']==-8
+                for i,j in zip(get_l2(),range(len(get_l2()))):
+                    assert i[0]==j
 
-        local_test(lambda:T.dscalar(),lambda:Member(T.dscalar()))
-        local_test(lambda:T.value(1),lambda:Member(T.value(2)))
-        local_test(lambda:T.constant(1),lambda:Member(T.constant(2)))
+        local_test(lambda:T.dscalar(),lambda:T.dscalar())
+        local_test(lambda:T.value(1),lambda:T.value(2))
+        local_test(lambda:T.constant(1),lambda:T.constant(2))
 
-    def test_compound_structure_assignment(self):
+    def test_list_assign(self):
         """Test that list members can be assigned list-wise"""
         def local_test(x,y):
             m1=Module()
-            m1.l=[x(), y()]#cast Result]
+
+            #create a list with some results in it
+            m1.l=[x(), y()]
+
+            # create a Method that makes the second list element a shared Member
+            m1.f=Method([], m1.l[1])
+            m1.g=Method([], m1.l[0])
+            m = m1.make()
+
+            #assign 4 and 5 to the two results' containers in m
+            m.l = [4, 5]
+            print 'm.f', m.f()
+            assert numpy.all(5 == m.f())
+            assert numpy.all(4 == m.g())
+
+        local_test(lambda:T.dscalar(),lambda:T.dscalar())
+        local_test(lambda:T.value(1),lambda:T.value(2))
+
+    def test_tuple_assign(self):
+        """Test that list members can be assigned tuple-wise"""
+        def local_test(x,y):
+            m1=Module()
+            m1.l=(x(), y())
+
+            # create a Method that makes the second list element a shared Member
+            m1.g=Method([], m1.l[0])
             m1.f=Method([], m1.l[1])
             m = m1.make()
-            m.l = [4, 5]
-            assert 5 == m.f()
 
-        local_test(lambda:T.dscalar(),lambda:Member(T.dscalar()))
-        local_test(lambda:T.value(1),lambda:Member(T.value(2)))
-        local_test(lambda:T.constant(1),lambda:Member(T.constant(2)))
+            #assign 4 and 5 to the two results' containers in m
+            m.l = (4, 5)
+            assert 5 == m.f()
+            assert 4 == m.g()
+
+        local_test(lambda:T.dscalar(),lambda:T.dscalar())
+        local_test(lambda:T.value(1),lambda:T.value(2))
+
+    def test_dict_assign(self):
+        """Test that list members can be assigned dict-wise"""
+        def local_test(x,y):
+            m1=Module()
+            ##DICT
+            m1.l={'x':x(), 'y':y()}
+
+            # create a Method that makes the second list element a shared Member
+            m1.f=Method([], m1.l['y'])
+            m1.g=Method([], m1.l['x'])
+            m = m1.make()
+
+            #assign 4 and 5 to the two results' containers in m
+            m.l = dict(x=4, y=5)
+            assert 5 == m.f()
+            assert 4 == m.g()
+
+        print 'dscalar test'
+        local_test(lambda:T.dscalar(),lambda:T.dscalar())
+        print 'value test'
+        local_test(lambda:T.value(1),lambda:T.value(2))
 
         
     def test_method_in_list_or_dict(self):
@@ -197,11 +269,12 @@ class T_test_module(unittest.TestCase):
 
         def get_element(i):
             return [i.x,i.lx[0],i.tx[0],i.dx['x'],i.llx[0][0], i.llx[1][0], i.ltx[0][0], i.ldx[0]['x'], i.tlx[0][0], i.tlx[0][0], i.tdx[0]['x'], i.dlx['x'][0], i.dtx['x'][0], i.ddx['x']['x']]
+
         m1=Module()
         m2=Module()
         x=T.dscalar()
         populate_module(m1,x)
-        populate_module(m2,Member(x))
+        populate_module(m2,x)
         #m1.x and m2.x should not be shared as their is no hierarchi link between them.
         inst1=m1.make()
         inst2=m2.make()
@@ -248,8 +321,8 @@ class T_test_module(unittest.TestCase):
         m4=Module()
         x=T.dscalar()
         populate_module(m1,x)
-        populate_module(m2,Member(x))
-        populate_module(m4,Member(x))
+        populate_module(m2,(x))
+        populate_module(m4,(x))
         #m1.x and m2.x should not be shared as their is no hierarchi link between them.
         inst1=m1.make()
         inst2=m2.make()
@@ -323,49 +396,90 @@ class T_test_module(unittest.TestCase):
         assert isinstance(inst.dy['y'],theano.compile.function_module.Function)
         assert isinstance(inst.tty[0][0],theano.compile.function_module.Function)
 
-        print >> sys.stderr, "MODULE TEST IMPLEMENTED BUT WE DON'T KNOW WHAT WE WANT AS A RESULT"
 
-    def test_shared_method_N(self):
-        """Test that Methods can be shared an arbitrary number of times between many submodules and
-        internal data structures."""
-        
-    #put them in subModules, sub-sub-Modules, shared between a list and a dict, shared between
-    #a list and a submodule with a dictionary, etc...
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+        assert m1.y is m1.ly[0]
+        assert inst.y is inst.ly[0]
+        assert inst.y is inst.lly[0][0]
+        assert inst.y is inst.ty[0]
+        assert inst.y is inst.tty[0][0]
+        assert inst.y is inst.dy['y']
 
     def test_member_method_inputs(self):
         """Test that module Members can be named as Method inputs, in which case the function will
         *not* use the storage allocated for the Module's version of that Member.
         
-        si le module a un membre x et qu''une fct un parametre appele x qui n''est pas le membre cela doit etre bien traiter.
-        les poids ne change pas
-
-"""
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+        """
+        
+        # test that explicit Method inputs don't use shared storage
+        M = Module()
+        M.x = T.dscalar()
+        M.y = T.dscalar()
+        M.f = Method([M.x], M.x + M.y)
+        M.g = Method([M.y], M.x - M.y)
+        m = M.make()
+        m.y = 77
+        assert m.f(23) == 100
+        assert m.x == None
+        m.x = 1000
+        assert m.g(23) == 977
+        assert m.y == 77
+        assert m.x == 1000
 
     def test_member_input_flags(self):
         """Test that we can manipulate the mutable, strict, etc. flags (see SymbolicInput) of
         Method inputs"""
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+
+        M = Module()
+        M.x = T.dvector()
+        M.y = T.dvector()
+        xval= numpy.asarray([0, 0.5])
+        M.f = Method([io.In(M.x,
+            mutable=True, 
+            update=(M.x - M.y),
+            value=xval)], M.x + M.y)
+        m = M.make()
+        m.y = numpy.asarray([1, 2])
+
+        assert numpy.all(m.f(xval) == [1, 2.5])
+        assert numpy.all(xval == [-1, -1.5])
 
     def test_member_output_flags(self):
         """Test that we can manipulate the output flags (just 'borrow' I think, see SymbolicOutput)
         of Method outputs"""
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+        M = Module()
+        M.x = T.dvector()
+        M.f = Method([M.x], io.Out(M.x*4, borrow=True), mode='FAST_RUN')
+        m = M.make()
 
-    def test_sanity_check_mode(self):
-        """Test that Module.make(self) can take the same list of Modes that function can, so we can
-        debug modules"""
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+        v0 = m.f([5, 8])
+        v0_copy = v0 * 1
+        m.f([3, 2])
+        assert numpy.all(v0 != v0_copy)
 
     def test_member_value(self):
         """Test that module Members of Value work correctly. As Result?"""
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+        M = Module()
+        x = T.dscalar()
+        M.y = T.value(40)
+        M.f = Method([x], x + 2 * M.y)
+        m = M.make()
+        m.y = 80
+        assert m.f(20) == 180
 
     def test_member_constant(self):
         """Test that module Members of Constant work correctly.
         As Result with more optimization?"""
-        print >> sys.stderr, "WARNING MODULE TEST NOT IMPLEMENTED"
+        M = Module()
+        x = T.dscalar()
+        M.y = T.constant(40)
+        M.f = Method([x], x + 2 * M.y)
+        m = M.make()
+        try:
+            m.y = 77 #fail?
+        except:
+            pass
+        assert m.y == 40
+        assert m.f(20) == 100
 
     def test_raise_NotImplemented(self):
         c=Component()
@@ -380,24 +494,78 @@ class T_test_module(unittest.TestCase):
         self.assertRaises(NotImplementedError, c.get,"n")
         self.assertRaises(NotImplementedError, c.set,"n",1)
 
-    def test_tuple_members(self):
+def test_tuple_members():
 
-        M = Module()
-        M.a = (1,1)
-        assert isinstance(M.a, tuple)
+    M = Module()
+    M.a = (1,1)
+    assert isinstance(M.a, tuple)
 
-        class Temp(Module):
-            def __init__(self):
-                self.a = (1,1)
-        M = Temp()
-        assert isinstance(M.a, tuple)
+    class Temp(Module):
+        def __init__(self):
+            self.a = (1,1)
+    M = Temp()
+    assert isinstance(M.a, tuple)
 
+
+def test_method_updates():
+
+    # updates work
+    M = Module()
+    M.x = T.dvector()
+    x = T.dvector()
+    xval= numpy.asarray([0, 0.5])
+    M.f = Method([x], M.x*4, updates={M.x:M.x * 2}, mode='FAST_COMPILE')
+    m = M.make(mode='FAST_RUN')
+    m.x = xval
+    m.f([9,9])
+    assert numpy.all(m.x == [0, 1])
+    assert numpy.all(xval == [0, 0.5])
+
+    # In(update) works
+    M = Module()
+    M.x = T.dvector()
+    x = T.dvector()
+    M.f = Method([x, io.In(M.x, value=xval, update=M.x*2)], M.x*4)
+    m = M.make()
+    m.f([9,9])
+    assert m.x is None
+    assert numpy.all(xval == [0, 1])
+
+
+    # when a result is listed explicitly and in an update, then there's a problem.
+    M = Module()
+    M.x = T.dvector()
+    x = T.dvector()
+    M.f = Method([x, io.In(M.x, value=xval, update=M.x*2)], M.x*4,
+            updates={M.x:M.x * 7})
+    try:
+        m = M.make()
+        assert False
+    except ValueError, e:
+        if str(e[0]).startswith('Result listed in both inputs and up'):
+            pass
+        else:
+            raise
+
+def test_method_mode():
+    """Test that Methods can override the module build mode"""
+
+    M = Module()
+    M.x = T.dvector()
+    M.f = Method([M.x], M.x*4, mode='FAST_COMPILE')
+    M.g = Method([M.x], M.x*4)
+    M.h = Method([M.x], M.x*4)
+    m = M.make(mode='FAST_RUN')
+
+    assert m.f.maker.mode != m.g.maker.mode
+    assert m.h.maker.mode == m.g.maker.mode
+    assert numpy.all(m.f([1,2]) == m.g([1,2]))
 
 def test_pickle():
     """Test that a module can be pickled"""
     M = Module()
-    M.x = Member(T.dmatrix())
-    M.y = Member(T.dmatrix())
+    M.x = (T.dmatrix())
+    M.y = (T.dmatrix())
     a = T.dmatrix()
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
@@ -418,38 +586,39 @@ def test_pickle():
     assert m_dup.x is m_dup.g.input_storage[1].data
     assert m_dup.y is m_dup.g.input_storage[2].data
 
-from numpy.testing import *
-
-@dec.knownfailureif(True, "These branch cuts are known to fail")
 def test_pickle_aliased_memory():
-    M = Module()
-    M.x = Member(T.dmatrix())
-    M.y = Member(T.dmatrix())
-    a = T.dmatrix()
-    M.f = Method([a], a + M.x + M.y)
-    M.g = Method([a], a * M.x * M.y)
+    try:
+        M = Module()
+        M.x = (T.dmatrix())
+        M.y = (T.dmatrix())
+        a = T.dmatrix()
+        M.f = Method([a], a + M.x + M.y)
+        M.g = Method([a], a * M.x * M.y)
 
-    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
-    m.y = m.x[:]
-    m_dup = cPickle.loads(cPickle.dumps(m))
+        m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
+        m.y = m.x[:]
+        m_dup = cPickle.loads(cPickle.dumps(m))
 
-    #m's memory is aliased....
-    m.x[0,0] = 3.14
-    assert m.y[0,0] == 3.14
+        #m's memory is aliased....
+        m.x[0,0] = 3.14
+        assert m.y[0,0] == 3.14
 
-    #is m_dup's memory aliased?
-    m_dup.x[0,0] = 3.14
-    assert m_dup.y[0,0] == 3.14
+        #is m_dup's memory aliased?
+        m_dup.x[0,0] = 3.14
+        assert m_dup.y[0,0] == 3.14
 
-    #m's memory is aliased differently....
-    m.y = m.x[1:2]
-    m_dup = cPickle.loads(cPickle.dumps(m))
+        #m's memory is aliased differently....
+        m.y = m.x[1:2]
+        m_dup = cPickle.loads(cPickle.dumps(m))
 
-    #is m_dup's memory aliased the same way?
-    m.x[1,0] = 3.142
-    assert m.y[0,0] == 3.142
-    m_dup.x[1,0] = 3.142
-    assert m_dup.y[0,0] == 3.142
+        #is m_dup's memory aliased the same way?
+        m.x[1,0] = 3.142
+        assert m.y[0,0] == 3.142
+        m_dup.x[1,0] = 3.142
+        assert m_dup.y[0,0] == 3.142
+    except Exception, e:
+        raise Exception('Known Failure: These branch cuts are known to fail', str(e))
+
 
 
 if __name__ == '__main__':
