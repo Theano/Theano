@@ -572,7 +572,7 @@ def test_pickle():
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
 
-    mode = default_mode if default_mode is not 'DEBUG_MODE' else 'FAST_RUN'
+    mode = default_mode if default_mode != 'DEBUG_MODE' else 'FAST_RUN'
     m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
 
     m_dup = cPickle.loads(cPickle.dumps(m))
@@ -597,7 +597,7 @@ def test_pickle_aliased_memory():
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
 
-    mode = default_mode if default_mode is not 'DEBUG_MODE' else 'FAST_RUN'
+    mode = default_mode if default_mode != 'DEBUG_MODE' else 'FAST_RUN'
     m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
     m.y = m.x[:]
 
