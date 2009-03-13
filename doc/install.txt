@@ -43,17 +43,20 @@ The following libraries and software are optional:
 Easy install
 ------------
 
-The following command will install the very latest revision of Theano
+The following command will install the latest revision of Theano
 on your system:
+
+.. TODO: Does this install the latest package version, or the latest Mercurial
+.. revision?
 
 .. code-block:: bash
     
     easy_install http://pylearn.org/hg/theano/archive/tip.tar.gz
 
-TODO: make sure this works
+.. TODO: make sure this works
 
-TODO: change the command to install the latest *stable* version of
-Theano, when we figure out where to put it.
+.. TODO: change the command to install the latest *stable* version of
+.. Theano, when we figure out where to put it.
 
 
 --------------

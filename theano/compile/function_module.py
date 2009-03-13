@@ -115,6 +115,19 @@ class Function(object):
 
     """
 
+    pickle_aliased_memory_strategy = 'warn'
+    """How to deal with pickling finding aliased storage.
+
+    Meaningful settings are: 'ignore', 'warn', 'raise'
+
+    If the value is 'warn', then a message will be printed to stderr if aliased storage is
+    dectected during pickle.dump.
+
+    If the value is 'raise', then an AliasedMemoryError will be raised if aliased storage is
+    detected during pickle.dump.
+    
+    """
+
     def __init__(self, fn, input_storage, output_storage, indices, outputs, defaults, unpack_single, maker):
         """
         fn -> a function returned by some linker's make_thunk method
@@ -334,8 +347,28 @@ def _pickle_Function(f):
         else:
             defaults.append(ins[0])
             del ins[0]
-    rval = (_constructor_Function, (f.maker, defaults, [x.data for x in f.input_storage]))
+
+    inputs_data = [x.data for x in f.input_storage]
+
+    #HACK to detect aliased storage.
+    # aliased relationships will not be preserved across the pickle operation
+    if not (f.pickle_aliased_memory_strategy == 'ignore'):
+        all_data = defaults + inputs_data
+        for i, d_i in enumerate(all_data):
+            for j, d_j in enumerate(all_data):
+                if (i < j) and isinstance(d_i, numpy.ndarray) and isinstance(d_j, numpy.ndarray):
+                    if f.pickle_aliased_memory_strategy == 'warn':
+                        print >> sys.stderr, ('WARNING: '
+                                'aliased relationship between Function arguments '
+                                'will not be preserved by un-pickling operation')
+                        #print >> sys.stderr, d_i, d_j, id(d_i), id(d_j)
+                    else:
+                        raise AliasedMemoryError(d_i, d_j)
+
+    rval = (_constructor_Function, (f.maker, defaults, inputs_data))
     return rval
+
+class AliasedMemoryError(Exception):pass
 
 def _constructor_Function(maker, defaults, data):
     f = maker.create(defaults, trustme = True)

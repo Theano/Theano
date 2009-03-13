@@ -154,7 +154,7 @@ it, it's best to publish it somewhere.
         """ % dict(name = name)
     double.c_init = c_init
 
-Still straightforward. This function simply has to initialize the
+This function has to initialize the
 double we declared previously to a suitable value. This is useful if
 we want to avoid dealing with garbage values, especially if our data
 type is a pointer. This is not going to be called for all Results with
@@ -375,7 +375,7 @@ like this:
      //c_cleanup for x
    }
 
-It's not very good looking, but it gives you an idea of how things
+It's not pretty, but it gives you an idea of how things
 work (note that the variable names won't be x, y, z, etc. - they will
 get a unique mangled name). The ``fail`` code runs a goto to the
 appropriate label in order to run all cleanup that needs to be

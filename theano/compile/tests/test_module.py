@@ -4,7 +4,9 @@
 __docformat__ = "restructuredtext en"
 
 import cPickle, numpy, unittest
+from theano.compile.mode import default_mode
 from theano.compile.module import *
+from theano.compile.function_module import AliasedMemoryError
 import theano.tensor as T
 import sys
 import theano
@@ -570,7 +572,8 @@ def test_pickle():
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
 
-    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
+    mode = default_mode if default_mode is not 'DEBUG_MODE' else 'FAST_RUN'
+    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
 
     m_dup = cPickle.loads(cPickle.dumps(m))
 
@@ -587,38 +590,56 @@ def test_pickle():
     assert m_dup.y is m_dup.g.input_storage[2].data
 
 def test_pickle_aliased_memory():
+    M = Module()
+    M.x = (T.dmatrix())
+    M.y = (T.dmatrix())
+    a = T.dmatrix()
+    M.f = Method([a], a + M.x + M.y)
+    M.g = Method([a], a * M.x * M.y)
+
+    mode = default_mode if default_mode is not 'DEBUG_MODE' else 'FAST_RUN'
+    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
+    m.y = m.x[:]
+
+    #m's x and y memory is aliased....
+    m.x[0,0] = 3.14
+    assert m.y[0,0] == 3.14
+
+    import StringIO
+
+    sio = StringIO.StringIO()
+
+    old_stderr = sys.stderr
+    sys.stderr = sio
+
+    m.f.pickle_aliased_memory_strategy = 'warn'
+    m.g.pickle_aliased_memory_strategy = 'warn'
+    m_dup = cPickle.loads(cPickle.dumps(m))
+    sys.stderr = old_stderr
+    assert sio.getvalue().startswith('WARNING: aliased relat')
     try:
-        M = Module()
-        M.x = (T.dmatrix())
-        M.y = (T.dmatrix())
-        a = T.dmatrix()
-        M.f = Method([a], a + M.x + M.y)
-        M.g = Method([a], a * M.x * M.y)
-
-        m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
-        m.y = m.x[:]
+        m.f.pickle_aliased_memory_strategy = 'raise'
+        m.g.pickle_aliased_memory_strategy = 'raise'
         m_dup = cPickle.loads(cPickle.dumps(m))
+    except AliasedMemoryError, e:
+        return
 
-        #m's memory is aliased....
-        m.x[0,0] = 3.14
-        assert m.y[0,0] == 3.14
+    assert 0 #should have failed to pickle
 
-        #is m_dup's memory aliased?
-        m_dup.x[0,0] = 3.14
-        assert m_dup.y[0,0] == 3.14
+    #is m_dup's memory aliased?
+    m_dup.x[0,0] = 3.14
+    assert m_dup.y[0,0] == 3.14
 
-        #m's memory is aliased differently....
-        m.y = m.x[1:2]
-        m_dup = cPickle.loads(cPickle.dumps(m))
+    #m's memory is aliased differently....
+    m.y = m.x[1:2]
+    m_dup = cPickle.loads(cPickle.dumps(m))
 
+    if 0:
         #is m_dup's memory aliased the same way?
         m.x[1,0] = 3.142
         assert m.y[0,0] == 3.142
         m_dup.x[1,0] = 3.142
         assert m_dup.y[0,0] == 3.142
-    except Exception, e:
-        raise Exception('Known Failure: These branch cuts are known to fail', str(e))
-
 
 
 if __name__ == '__main__':

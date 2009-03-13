@@ -3,11 +3,11 @@
 Using Module
 ============
 
-Now that we're familiar with the basics, we can see Theano's more
+Now that we're familiar with the basics, we introduce Theano's more
 advanced interface, Module. This interface allows you to define Theano
 "objects" which can have many state variables and many methods sharing
-these states. This is what you should use if you aim to use Theano to
-define complex systems such as a neural network.
+these states. This is what you should use to define complex systems such
+as a neural network.
 
 
 Remake of the "state" example
@@ -61,7 +61,7 @@ defined in our Module.
 The inc variable doesn't need to be declared as a Member because it
 will only serve as an input to the method we will define. This is why
 it is defined as an :ref:`external` variable. Do note that it is
-inconsequential if you do declare it as a Member - it is very unlikely
+inconsequential if you do declare it as a Member - it is unlikely
 to cause you any problems.
 
 .. note::

@@ -7,8 +7,13 @@ Sparse matrices
 scipy.sparse
 ------------
 
-Note that you want scipy >= 0.7.0. 0.6 has a very bug and inconsistent
-implementation of sparse matrices.
+Note that you want scipy >= 0.7.0.
+
+.. warning::
+
+    In scipy 0.6, ``scipy.csc_matrix.dot`` has a bug with singleton
+    dimensions. There may be more bugs. It also has inconsistent
+    implementation of sparse matrices.
 
 We describe the details of the compressed sparse matrix types.
     ``scipy.sparse.csc_matrix``

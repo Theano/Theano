@@ -17,7 +17,7 @@ an input provided by the end user (using c_extract) or it might simply
 have been calculated by another operation. For each of the outputs,
 the variables associated to them will be declared and initialized.
 
-The operation then simply has to compute what it needs to using the
+The operation then has to compute what it needs to using the
 input variables and place the results in the output variables.
 
 
@@ -88,7 +88,7 @@ variables x_name, y_name and output_name are all of the primitive C
 
 Implementing multiplication is as simple as multiplying the two input
 doubles and setting the output double to what comes out of it. If you
-had more than one output, you would simply set the variable(s) for
+had more than one output, you would just set the variable(s) for
 each output to what they should be.
 
 .. warning::

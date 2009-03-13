@@ -292,7 +292,7 @@ Complex models can be implemented by subclassing ``Module`` (though that is not 
             self.l2_coef = M.Member(T.scalar()) # we can add a hyper parameter if we need to
             return self.l2_coef * T.sum(self.w * self.w)
 
-Using the model is quite simple:
+Here is how we use the model:
 
 .. code-block:: python
 

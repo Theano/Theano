@@ -166,7 +166,7 @@ first input (rank 0).
 Purely destructive operations
 =============================
 
-While some operations will operate inplace on their inputs, some will
+While some operations will operate inplace on their inputs, some might
 simply destroy or corrupt them. For example, an Op could do temporary
 calculations right in its inputs. If that is the case, Theano also
 needs to be notified. The way to notify Theano is to assume that some

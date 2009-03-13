@@ -17,39 +17,63 @@ the logistic curve, which is given by:
 
    s(x) = \frac{1}{1 + e^{-x}}
 
+.. figure:: logistic.png
+
+    A plot of the logistic function, with x on the x-axis and s(x) on the
+    y-axis.
+
 You want to compute the function :term:`elementwise` on matrices of
-doubles.
+doubles, which means that you want to apply this function to each
+individual element of the matrix.
 
 Well, what you do is this:
 
 >>> x = T.dmatrix('x')
 >>> s = 1 / (1 + T.exp(-x))
 >>> logistic = function([x], s)
+>>> logistic([[0, 1], [-1, -2]])
+array([[ 0.5       ,  0.73105858],
+       [ 0.26894142,  0.11920292]])
 
-Alternatively:
+The reason logistic is performed elementwise is because all of its
+operations---division, addition, exponentiation, and division---are
+themselves elementwise operations.
 
->>> s = (T.tanh(x) + 1) / 2
->>> logistic = function([x], s)
+It is also the case that:
+
+.. math::
+
+    s(x) = \frac{1}{1 + e^{-x}} = \frac{1 + \tanh(x/2)}{2}
+
+We can verify that this alternate form produces the same values:
+
+>>> s2 = (1 + T.tanh(x / 2)) / 2
+>>> logistic2 = function([x], s2)
+>>> logistic2([[0, 1], [-1, -2]])
+array([[ 0.5       ,  0.73105858],
+       [ 0.26894142,  0.11920292]])
 
 
 Computing more than one thing at the same time
 ==============================================
 
 Theano supports functions with multiple outputs. For example, we can
-compute the :term:`elementwise` absolute difference between two
-matrices ``x`` and ``y`` and the squared difference at the same time:
+compute the :term:`elementwise` difference, absolute difference, and
+squared difference between two matrices ``x`` and ``y`` at the same time:
 
 >>> x, y = T.dmatrices('xy')
 >>> diff = x - y
->>> abs_diff = abs(x - y)
+>>> abs_diff = abs(diff)
 >>> diff_squared = diff**2
->>> f = function([x, y], [abs_diff, diff_squared])
+>>> f = function([x, y], [diff, abs_diff, diff_squared])
 
 When we use the function, it will return the two results (the printing
 was reformatted for readability):
 
 >>> f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
 [array([[ 1.,  0.],
+        [-1., -2.]]),
+ array([[ 1.,  0.],
         [ 1.,  2.]]),
  array([[ 1.,  0.],
         [ 1.,  4.]])]
@@ -62,9 +86,12 @@ Computing gradients
 ===================
 
 Now let's use Theano for a slightly more sophisticated task: create a
-function which computes the derivative of some expression ``e`` with
+function which computes the derivative of some expression ``y`` with
 respect to its parameter ``x``. For instance, we can compute the
-gradient of :math:`x^2` with respect to :math:`x`.
+gradient of :math:`x^2` with respect to :math:`x`. Note that:
+:math:`d(x^2)/dx = 2 \cdot x`.
+
+Here is code to compute this gradient:
 
 >>> x = T.dscalar('x')
 >>> y = x**2
@@ -76,17 +103,26 @@ array(8.0)
 array(188.40000000000001)
 
 We can also compute the gradient of complex expressions such as the
-logistic function defined above:
+logistic function defined above. It turns out that the derivative of the
+logistic is: :math:`ds(x)/dx = s(x) \cdot (1 - s(x))`.
+
+.. figure:: dlogistic.png
+
+    A plot of the gradient of the logistic function, with x on the x-axis
+    and :math:`ds(x)/dx` on the y-axis.
 
 >>> x = T.dmatrix('x')
 >>> s = 1 / (1 + T.exp(-x))
 >>> gs = T.grad(s, x)
->>> glogistic = function([x], gs)
+>>> dlogistic = function([x], gs)
+>>> dlogistic([[0, 1], [-1, -2]])
+array([[ 0.25      ,  0.19661193],
+       [ 0.19661193,  0.10499359]])
+
 
 The resulting function computes the gradient of its first argument
-with respect to the second. It is pretty much equivalent in semantics
-and in computational complexity as what you would obtain through an
-`automatic differentiation`_ tool.
+with respect to the second. In this way, Theano can be used for
+`automatic differentiation`_.
 
 .. note::
 
@@ -125,7 +161,7 @@ Making a function with state
 
 It is also possible to make a function with an internal state. For
 example, let's say we want to make an accumulator: at the beginning,
-the state is initialized to zero, then on each function call the state
+the state is initialized to zero. Then, on each function call, the state
 is incremented by the function's argument. We'll also make it so that
 the increment has a default value of 1.
 
@@ -136,12 +172,12 @@ First let's define the accumulator function:
 >>> new_state = state + inc
 >>> accumulator = function([(inc, 1), ((state, new_state), 0)], new_state)
 
-The first argument is a pair. As we saw in the previous section this
-simply means that inc is an input with a default value of 1. The
-second argument has a new syntax which creates an internal state or
+The first argument is a pair. As we saw in the previous section, this
+means that ``inc`` is an input with a default value of 1. The
+second argument has syntax that creates an internal state or
 closure. The syntax is ``((state_result, new_state_result),
 initial_value)``. What this means is that every time ``accumulator``
-will be called, the value of the internal ``state`` will be replaced
+is called, the value of the internal ``state`` will be replaced
 by the value computed as ``new_state``. In this case, the state will
 be replaced by the result of incrementing it by ``inc``.
 
@@ -152,7 +188,7 @@ however you like as long as the name does not conflict with the names
 of other inputs.
 
 Anyway, let's try it out! The state can be accessed using the square
-brackets notation ``[]``. You may access the state either by putting
+brackets notation ``[]``. You may access the state either by using
 the :ref:`result` representing it or the name of that
 :ref:`result`. In our example we can access the state either with the
 ``state`` object or the string 'state'.
@@ -174,8 +210,8 @@ array(301.0)
 >>> accumulator['state']
 array(301.0)
 
-It is of course possible to reset the state. This is done very
-naturally by assigning to the state using the square brackets
+It is possible to reset the state. This is done
+by assigning to the state using the square brackets
 notation:
 
 >>> accumulator['state'] = 5

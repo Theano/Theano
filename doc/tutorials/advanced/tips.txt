@@ -14,7 +14,7 @@ WRITEME
 Don't define new Ops unless you have to
 =======================================
 
-It is usually not very useful to define Ops that can be easily
+It is usually not useful to define Ops that can be easily
 implemented using other already existing Ops. For example, instead of
 writing a "sum_square_difference" Op, you should probably just write a
 simple function:

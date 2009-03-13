@@ -114,7 +114,7 @@ Setup on OS-X
     Note that compiling gcc42 takes a significant time (hours) so it's probably
     not the best solution if you're in a rush! In my (Doomie) experience, scipy
     failed to compile the first time I tried the command, but the second time
-    it compiled just fine. Same thing with py25-zlib.
+    it compiled fine. Same thing with py25-zlib.
 
 
 - Install some kind of BLAS library (TODO: how?)
