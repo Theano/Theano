@@ -195,7 +195,7 @@ class PureOp(object):
         """
         raise utils.MethodNotDefined("make_node", type(self), self.__class__.__name__)
 
-    def __call__(self, *inputs):
+    def __call__(self, *inputs, **kwargs):
         """Optional: Return some or all output[s] of `make_node`.  
 
         It is called by code such as:
@@ -212,7 +212,7 @@ class PureOp(object):
         `default_output`.
 
         """
-        node = self.make_node(*inputs)
+        node = self.make_node(*inputs, **kwargs)
         node.tag.trace = traceback.extract_stack()[:-1]
         if self.default_output is not None:
             return node.outputs[self.default_output]
