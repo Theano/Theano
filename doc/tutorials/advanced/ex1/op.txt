@@ -138,11 +138,10 @@ type and it should make an Apply node with an output Result of type
    mul.make_node = make_node
 
 
-This is a pretty simple definition: the first two lines make sure that
-both inputs are Results of the ``double`` type that we created in the
-previous section. We would not want to multiply two arbitrary types,
-it would not make much sense (and we'd be screwed when we implement
-this in C!)
+The first two lines make sure that both inputs are Results of the
+``double`` type that we created in the previous section. We would not
+want to multiply two arbitrary types, it would not make much sense
+(and we'd be screwed when we implement this in C!)
 
 The last line is the meat of the definition. There we create an Apply
 node representing the application of ``mul`` to ``x`` and ``y``. Apply
@@ -178,8 +177,8 @@ understand the role of all three arguments of ``perform``:
   return, per our own definition.
 
 - *output_storage*: This is a list of storage cells. There is one
-  storage cell for each output of the Op. A storage cell is quite
-  simply a one-element list (note: it is forbidden to change the
+  storage cell for each output of the Op. A storage cell is
+  a one-element list (note: it is forbidden to change the
   length of the list(s) contained in output_storage). In this example,
   output_storage will contain a single storage cell for the
   multiplication's result.
@@ -204,17 +203,18 @@ Here, ``z`` is a list of one element. By default, ``z == [None]``.
    :ref:`op` documentation.
 
 .. warning::
-   The data you put in the output_storage must match the type of the
-   symbolic output (this is a situation where the ``node`` argument
-   can come in handy). In the previous example, if you put, say, an
-   ``int`` in ``z[0]`` (even though we gave ``z`` the Theano type
+   The data you put in ``output_storage`` must match the type of the
+   symbolic output. This is a situation where the ``node`` argument
+   can come in handy. In this example, we gave ``z`` the Theano type
    ``double`` in ``make_node``, which means that a Python ``float``
-   must be put there) you might have nasty problems further down the
-   line since Theano often assumes Ops handle typing properly.
+   must be put there. You should not put, say, an ``int`` in ``z[0]``
+   because Theano assumes Ops handle typing properly.
 
 
 Trying out our new Op
 =====================
+
+In the following code, we use our new Op:
 
 >>> x, y = double('x'), double('y')
 >>> z = mul(x, y)
@@ -224,7 +224,7 @@ Trying out our new Op
 >>> f(5.6, 6.7)
 37.519999999999996
 
-Seems to work. Note that there is an implicit call to
+Note that there is an implicit call to
 ``double.filter()`` on each argument, so if we give integers as inputs
 they are magically casted to the right type. Now, what if we try this?
 
@@ -237,7 +237,8 @@ Traceback (most recent call last):
 AttributeError: 'int' object has no attribute 'type'
 
 Well, ok. We'd like our Op to be a bit more flexible. This can be done
-by fixing ``make_node`` a little bit:
+by modifying ``make_node`` to accept Python ``int`` or ``float`` as
+``x`` and/or ``y``:
 
 .. code-block:: python
 
@@ -252,8 +253,8 @@ by fixing ``make_node`` a little bit:
    mul.make_node = make_node
 
 Whenever we pass a Python int or float instead of a Result as ``x`` or
-``y``, make_node will convert it to :ref:`constant` for us. Constant
-is basically a :ref:`result` we statically know the value of.
+``y``, make_node will convert it to :ref:`constant` for us. ``gof.Constant``
+is a :ref:`result` we statically know the value of.
 
 >>> x = double('x')
 >>> z = mul(x, 2)
@@ -263,18 +264,16 @@ is basically a :ref:`result` we statically know the value of.
 >>> f(3.4)
 6.7999999999999998
 
-And now it works the way we want it to.
+Now the code works the way we want it to.
 
 
 Final version
 =============
 
-While I would call the above definitions appropriately pedagogical, it
-is not necessarily the best way to do things, especially when you need
-to define the other basic arithmetic operations ``add``, ``sub`` and
-``div``. It appears that the code for ``make_node`` can be shared
-between these Ops. Here is the final version of the four arithmetic
-operators (well, pending revision of this tutorial, I guess):
+The above example is pedagogical.  When you define other basic arithmetic
+operations ``add``, ``sub`` and ``div``, code for ``make_node`` can be
+shared between these Ops. Here is revised implementation of these four
+arithmetic operators:
 
 .. code-block:: python
 
@@ -313,37 +312,27 @@ operators (well, pending revision of this tutorial, I guess):
    div = BinaryDoubleOp(name = 'div',
                         fn = lambda x, y: x / y)
 
-Can you see how the definition of ``mul`` here does exactly the same
-thing as the definition we had earlier?
+Instead of working directly on an instance of Op, we create a subclass of
+Op that we can parametrize. All the operations we define are binary. They
+all work on two inputs with type ``double``. They all return a single
+Result of type ``double``. Therefore, ``make_node`` does the same thing
+for all these operations, except for the Op reference ``self`` passed
+as first argument to Apply.  We define ``perform`` using the function
+``fn`` passed in the constructor.
 
-Instead of working directly on an instance of Op, we create a subclass
-of Op that we can parametrize. First, all the operations we define are
-binary, they all work on inputs with type ``double`` and they all
-return a single Result of type ``double``. Therefore, ``make_node``
-basically does the same thing for all these operations, except for the
-fact that the Op reference passed as first argument to Apply must be
-themselves. Therefore we can abstract out most of the logic and pass
-self to Apply, which seems natural. We can also easily define
-``perform`` as depending on a function or lambda expression passed in
-the constructor.
+This design is a flexible way to define basic operations without
+duplicating code. The same way a Type subclass represents a set of
+structurally similar types (see previous section), an Op subclass
+represents a set of structurally similar operations: operations that
+have the same input/output types, operations that only differ in one
+small detail, etc. If you see common patterns in several Ops that you
+want to define, it can be a good idea to abstract out what you can.
+Remember that an Op is just an object which satisfies the contract
+described above on this page and that you should use all the tools at
+your disposal to create these objects as efficiently as possible.
 
-This design therefore appears to be a flexible way to define our four
-basic operations (and possibly many more!) without duplicating
-code. The same way a Type subclass represents a set of structurally
-similar types (see previous section), an Op subclass represents a set
-of structurally similar operations: operations that have the same
-input/output types, operations that only differ in one small detail,
-etc. If you see common patterns in several Ops that you want to
-define, it can be a good idea to abstract out what you can, as I did
-here. Remember that an Op is just an object which satisfies the
-contract described above on this page and that you should use all the
-tools at your disposal to create these objects as efficiently as
-possible.
-
-While I could have made a generic DoubleOp where the number of
-arguments can also be given as a parameter, I decided it was not
-necessary here.
-
+**Exercise**: Make a generic DoubleOp, where the number of
+arguments can also be given as a parameter.
 
 **Next:** `Implementing double in C`_
 

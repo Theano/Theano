@@ -157,7 +157,7 @@ State example
 =============
 
 In this example, we'll look at a complete logistic regression model, with
-training by simple gradient descent.
+training by gradient descent.
 
 .. code-block:: python
 

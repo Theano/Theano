@@ -30,6 +30,12 @@ add. Note that from now on, we will use the term :term:`Result` to
 mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Result
 objects).
 
+If you are following along and typing into an interpreter, you may have
+noticed that there was a slight delay in executing the ``function``
+instruction. Behind the scenes, ``f`` was being compiled into C code.
+
+    .. TODO: help
+
 -------------------------------------------
 
 **Step 1**
@@ -119,16 +125,15 @@ The result is a numpy array. We can also use numpy arrays directly as
 inputs:
 
 >>> import numpy
->>> f(numpy.ones((3, 5)), numpy.ones((3, 5)))
-array([[ 2.,  2.,  2.,  2.,  2.],
-       [ 2.,  2.,  2.,  2.,  2.],
-       [ 2.,  2.,  2.,  2.,  2.]])
+>>> f(numpy.array([[1, 2], [3, 4]]), numpy.array([[10, 20], [30, 40]]))
+array([[ 11.,  22.],
+       [ 33.,  44.]])
 
 It is possible to add scalars to matrices, vectors to matrices,
 scalars to vectors, etc. The behavior of these operations is defined
 by :term:`broadcasting`.
 
-The following types are readily available:
+The following types are available:
 
 * **byte**: bscalar, bvector, bmatrix
 * **32-bit integers**: iscalar, ivector, imatrix
@@ -136,15 +141,14 @@ The following types are readily available:
 * **float**: fscalar, fvector, fmatrix
 * **double**: dscalar, dvector, dmatrix
 
+The previous list is not exhaustive. A guide to all types compatible
+with numpy arrays may be found :ref:`here <predefinedtypes>`.
+
 .. note::
 
    Watch out for the distinction between 32 and 64 bit integers (i
    prefix vs the l prefix) and between 32 and 64 bit floats (f prefix
    vs the d prefix).
-
-Try to mix and match them and see what happens. The previous list is
-not exhaustive. A guide to all types compatible with numpy arrays may
-be found :ref:`here <predefinedtypes>`.
 
 
 **Next:** `More examples`_

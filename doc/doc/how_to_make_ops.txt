@@ -305,9 +305,9 @@ This is done by setting the ``destroy_map`` field of the op. ``destroy_map`` mus
 Viewers
 -------
 
-Similarly, an Op might not modify the inputs, but return an output which shares state with one or several of its inputs. For example, ``transpose`` can be done very efficiently by viewing the same data as the original with modified dimensions and strides. That is fine, but the compiler needs to be told.
+Similarly, an Op might not modify the inputs, but return an output which shares state with one or several of its inputs. For example, ``transpose`` can be done efficiently by viewing the same data as the original with modified dimensions and strides. That is fine, but the compiler needs to be told.
 
-This is done by setting the ``view_map`` field of the op. It works just like the ``destroy_map`` field: to an output index is associated the list of inputs that it shares state with. For example, ``transpose.view_map == {0: [0]``} because its first output uses the same data as its first input. ``view_map`` is conservative: if there is any probability that an output will be the view of an input, that input must be in the view list of that output.
+This is done by setting the ``view_map`` field of the op. It works like the ``destroy_map`` field: to an output index is associated the list of inputs that it shares state with. For example, ``transpose.view_map == {0: [0]``} because its first output uses the same data as its first input. ``view_map`` is conservative: if there is any probability that an output will be the view of an input, that input must be in the view list of that output.
 
 Important note: currently, an output can only be the view of one input. This is limiting, as an 'if' or 'switch' op would need to declare its output as a view of both its then and else branches, but for the time being the framework is not powerful enough to handle it. A future version should address this issue.
 
@@ -316,7 +316,7 @@ Hidden outputs (as a form of op state)
 
 For performance purposes, an ``op`` might want to have a hidden internal state.
 
-Example: if we expect to call the op repeatedly on incrementally bigger inputs, we might want private output storage that's a lot bigger than needed and take incrementally bigger views on it, to save allocation overhead. In order to do this, we can simple have two outputs: one that we will return normally and will contain the answer and the other that will be the (larger) container. In this case, the advanced note in the 'reusing outputs' section applies. Furthermore, ``__call__`` should be overriden to only return the first output instead of both of them. Here is what the example's ``perform`` and ``__call__`` would look like:
+Example: if we expect to call the op repeatedly on incrementally bigger inputs, we might want private output storage that's a lot bigger than needed and take incrementally bigger views on it, to save allocation overhead. In order to do this, we can have two outputs: one that we will return normally and will contain the answer and the other that will be the (larger) container. In this case, the advanced note in the 'reusing outputs' section applies. Furthermore, ``__call__`` should be overriden to only return the first output instead of both of them. Here is what the example's ``perform`` and ``__call__`` would look like:
 
 .. code-block:: python
 

@@ -22,7 +22,7 @@ much longer than intended - maybe we should just link to it! --OB
 Predefined types
 ----------------
 
-Theano gives you many premade types to work with. These types are
+Predefined types are
 located in the ``theano.tensor`` package. The name of the types follow
 a recipe:
 
@@ -53,9 +53,9 @@ col    [m, 1] No                                         Yes
 matrix [m, n] No                                         No
 ====== ====== ========================================== =============================================
 
-So for example if you want a row of 32-bit floats, it is available
-under ``theano.tensor.frow`` and if you want a matrix of unsigned
-32-bit integers it is available under ``theano.tensor.imatrix``.
+So, if you want a row of 32-bit floats, it is available
+as ``theano.tensor.frow``. If you want a matrix of unsigned
+32-bit integers it is available as ``theano.tensor.imatrix``.
 
 Each of the types described above can be constructed by two methods:
 a singular version (e.g., ``dmatrix``) and a plural version
@@ -108,16 +108,18 @@ complex128  complex          128 (two float64)
 
 .. note::
 
-   Even though ``theano.tensor`` does not define any type using
-   ``complex`` dtypes (``complex64`` or ``complex128``), you can define
-   them explicitly with ``Tensor`` (see example below). However, few
-   operations are fully supported for complex types: as of version 0.1,
-   only elementary operations (``+-*/``) have C implementations.
+   Even though ``theano.tensor`` does not define any type
+   using ``complex`` dtypes (``complex64`` or ``complex128``),
+   you can define them explicitly with ``Tensor`` (see example
+   below). However, few operations are fully supported for complex
+   types: as of version 0.1, only elementary operations (``+-*/``)
+   have C implementations. Additionally, complex types have received
+   little testing.
 
 
-The broadcastable pattern, on the other hand, indicates both the
-number of dimensions and whether a particular dimension has length
-1. Here is a handy table mapping the :term:`broadcastable
+The broadcastable pattern indicates both the number of dimensions and
+whether a particular dimension must have length 1.
+Here is a table mapping the :term:`broadcastable
 <broadcasting>` pattern to what kind of tensor it encodes:
 
 ===================== =================================
@@ -136,14 +138,18 @@ pattern               interpretation
 [False, False, False] A MxNxP tensor (pattern of a + b)
 ===================== =================================
 
+For dimensions in which broadcasting is False, the length of this
+dimension can be 1 or more.  For dimensions in which broadcasting is True,
+the length of this dimension must be 1.
+
 When two tensors have a different number of dimensions, the broadcastable
-pattern is *expanded to the left*, by padding with ``True``. So, for example,
+pattern is *expanded to the left*, by padding with ``True``. For example,
 a vector's pattern, ``[False]``, could be expanded to ``[True, False]``, and
 would behave like a row (1xN matrix). In the same way, a matrix (``[False,
 False]``) would behave like a 1xNxP tensor (``[True, False, False]``).
 
-So if we wanted to create a type representing a 3D array of unsigned
-bytes, we would simply do: 
+If we wanted to create a type representing a 3D array of unsigned
+bytes, we would do: 
 
 .. code-block:: python
 
@@ -158,10 +164,8 @@ bytes, we would simply do:
 Ops
 ===
 
-There's a lot of operations readily available in the ``theano.tensor``
-package. They do not require much explanation according to this
-tutorial's author, so he will simply direct you to the :ref:`oplist`
-:)
+There are a lot of operations available in the ``theano.tensor`` package.
+See :ref:`oplist`.
 
 
 

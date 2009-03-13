@@ -176,7 +176,7 @@ optimization you wrote. For example, consider the following:
 >>> e
 [div(mul(add(y, z), x), add(y, z))]
 
-Nothing happened here. The reason is simple: ``add(y, z) != add(y,
+Nothing happened here. The reason is: ``add(y, z) != add(y,
 z)``. That is the case for efficiency reasons. To fix this problem we
 first need to merge the parts of the graph that represent the same
 computation, using the ``merge_optimizer`` defined in

@@ -27,6 +27,21 @@ However, if the link target is ambiguous, Sphinx will generate errors.
 NB the ``:api:`` reference is special magic by Olivier, in
 ./scripts/docgen.py.
 
+How to add TODO comments in Sphinx documentation
+-------------------------------------------------
+
+To include a TODO comment in Sphinx documentation, use an indented block as
+follows::
+
+    .. TODO: This is a comment.
+    .. You have to put .. at the beginning of every line :(
+    .. These lines should all be indented.
+
+It will not appear in the output generated.
+
+    .. TODO: Check it out, this won't appear.
+    .. Nor will this.
+
 How to write API documentation
 ---------------------------------------
 

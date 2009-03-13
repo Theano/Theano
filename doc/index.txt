@@ -31,7 +31,7 @@ not limited to:
 
 * constant folding
 * merging of similar subgraphs, to avoid calculating the same values more than once
-* simple arithmetic simplification (``x*y/x -> y``)
+* arithmetic simplification (``x*y/x -> y``)
 * inserting efficient BLAS_ operations
 * using inplace operations wherever it is safe to do so.
 
@@ -47,7 +47,7 @@ Theano is released under a BSD license (:ref:`link <license>`)
 Sneak peek
 ==========
 
-Here is a simple example of how to use Theano. It doesn't show
+Here is an example of how to use Theano. It doesn't show
 off many of Theano's features, but it illustrates concretely what
 Theano is.
 
@@ -110,7 +110,7 @@ There exist another symbolic package in Python, namely sympy_. Theano
 is different from sympy in the sense that while Theano allows symbolic
 manipulation it puts more emphasis on the evaluation of these expressions
 and being able to repeatedly evaluate them on many different inputs. Theano
-is also better suited to handling very large tensors which have no
+is also better suited to handling large tensors which have no
 assumed structures.
 
 If numpy_ is to be compared to MATLAB_ and sympy_ to Mathematica_,

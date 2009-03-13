@@ -11,7 +11,7 @@ Before tackling this tutorial, it is highly recommended to read the
 
 The advanced tutorial is meant to give the reader a greater
 understanding of the building blocks of Theano. Through this tutorial
-we are going to define one :ref:`type`, ``double`` and basic
+we are going to define one :ref:`type`, ``double``, and basic
 arithmetic :ref:`operations <op>` on that Type. We will first define
 them using a Python implementation and then we will add a C
 implementation.

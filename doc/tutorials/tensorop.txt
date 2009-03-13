@@ -24,7 +24,7 @@ difficult, we will give our Op a solid C implementation.
 Implementing a new Op in Python
 ===============================
 
-This is actually very simple to do. You are required to define two
+You are required to define two
 methods - one to create the :ref:`apply` node every time your Op is
 applied to some inputs, declaring the outputs in the process and
 another to operate on the inputs. There is also one optional method

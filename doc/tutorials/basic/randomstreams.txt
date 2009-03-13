@@ -52,7 +52,7 @@ object for each of fn and gn).
 
 >>> m.nearly_zeros = Method([], rv_u + rv_u - 2 * rv_u)
 
-This function will always return a 2x2 matrix of very small numbers, or possibly
+This function will always return a 2x2 matrix of small numbers, or possibly
 zeros.  It illustrates that random variables are not re-drawn every time they
 are used, they are only drawn once (per call).
 
@@ -84,7 +84,7 @@ seed method of a RandomStreamsInstance.
 
 Of course, a RandomStreamsInstance can contain several RandomState instances and
 these will _not_ all be seeded to the same seed_value.  They will all be seeded
-deterministically and very-probably uniquely as a function of the seed_value.
+deterministically and probably uniquely as a function of the seed_value.
 
 Seeding the generator in this way makes it possible to repeat random streams.
 
