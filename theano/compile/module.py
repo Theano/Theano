@@ -197,7 +197,7 @@ class Component(object):
 
         The return value of this function will show up in the Module graph produced by make().
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def make_no_init(self, mode=default_mode):
         """
@@ -1147,6 +1147,8 @@ class Module(ComponentDict):
         self.__dict__["local_attr"][attr] = value
 
     def build(self, mode, memo):
+        if self in memo:
+            return memo[self]
         for k,v in self.local_attr.iteritems():
             self.__setattr__(k,v)
         inst = super(Module, self).build(mode, memo)
@@ -1170,6 +1172,7 @@ class Module(ComponentDict):
                     inst.__dict__[new_methodname] = curried
                     assert getattr(inst, new_methodname) == curried
                     #print 'ADDING METHOD', method, 'to', id(inst), new_methodname, getattr(inst, new_methodname)
+        memo[self] = inst
         return inst
 
     def _instance_initialize(self, inst, init = {}, **kwinit):
