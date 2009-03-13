@@ -4,6 +4,7 @@
 __docformat__ = "restructuredtext en"
 
 import cPickle, numpy, unittest
+from theano.compile.mode import default_mode
 from theano.compile.module import *
 from theano.compile.function_module import AliasedMemoryError
 import theano.tensor as T
@@ -571,7 +572,8 @@ def test_pickle():
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
 
-    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
+    mode = default_mode if default_mode is not 'DEBUG_MODE' else 'FAST_RUN'
+    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
 
     m_dup = cPickle.loads(cPickle.dumps(m))
 
@@ -595,7 +597,8 @@ def test_pickle_aliased_memory():
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
 
-    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)))
+    mode = default_mode if default_mode is not 'DEBUG_MODE' else 'FAST_RUN'
+    m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
     m.y = m.x[:]
 
     #m's x and y memory is aliased....
