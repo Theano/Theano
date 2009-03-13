@@ -625,7 +625,15 @@ class Identity(UnaryScalarOp):
 identity = Identity(same_out, name = 'identity')
 
 class Abs(UnaryScalarOp):
-    #TODO: for complex input, output is some flavour of float
+    def make_node(self, x):
+        inputs = [as_scalar(input) for input in [x]]
+        if inputs[0].type == complex64:
+            outputs = [float32()]
+        elif inputs[0].type == complex128:
+            outputs = [float64()]
+        else:
+            outputs = [t() for t in self.output_types([input.type for input in inputs])]
+        return Apply(self, inputs, outputs)
     def impl(self, x):
         return numpy.abs(x)
     def grad(self, (x, ), (gz, )):
