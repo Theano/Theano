@@ -10,6 +10,7 @@ import sys, operator
 import numpy
 from scipy import sparse
 import scipy.sparse
+from theano.printing import Print
 
 from .. import gof
 from .. import tensor
@@ -674,12 +675,7 @@ class StructuredDot(gof.Op):
             raise ValueError('shape mismatch in StructuredDot.perform', (a.shape, b.shape))
 
         result = a.dot(b)
-
-#       scipy 0.7.0 automatically casts to dense, so the following is not necessary:
-#        # sparse dot generates sparse matrix, unless output has single dimension
-#        if sparse.issparse(result):
-#            result = result.toarray()
-        assert _is_dense(result)
+        assert _is_dense(result) # scipy 0.7 automatically converts to dense
 
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix
         if result.ndim == 1:
@@ -697,15 +693,16 @@ class StructuredDot(gof.Op):
 
         ## Commenting this out because result should be a numpy.ndarray since the assert above
         ## (JB 20090109)
-        #out[0] = numpy.asarray(result)  #TODO: fix this really bad implementation
+        # out[0] = numpy.asarray(result)  #TODO: fix this really bad implementation
         #
         out[0] = result
 
     def grad(self, (a,b), (g_out,)):
-        #a is sparse, b is dense, g_out is dense
-        #ga = g_out x b.T
-        #gb = a.T x g_out
-        return structured_dot_grad(a, b, g_out), structured_dot(a.T,g_out)
+        # a is sparse, b is dense, g_out is dense
+        # ga = g_out x b.T
+        # gb = a.T x g_out
+        return [structured_dot_grad(a, b, g_out), structured_dot(a.T,g_out)]
+
 _structured_dot = StructuredDot()
 
 def structured_dot(x, y):
@@ -718,8 +715,10 @@ def structured_dot(x, y):
 
     x_is_sparse_result = _is_sparse_result(x)
     y_is_sparse_result = _is_sparse_result(y)
+
     if not x_is_sparse_result and not y_is_sparse_result:
         raise TypeError('structured_dot requires at least one sparse argument')
+
     if x_is_sparse_result:
         return _structured_dot(x, y)
     else:
@@ -737,12 +736,20 @@ class StructuredDotCSC(gof.Op):
         a = sparse.csc_matrix((a_val, a_ind, a_ptr), 
                 (a_nrows, b.shape[0]),
                 copy = False)
-#       TODO: todense() is automatic in 0.7.0, just remove the following line:
-#        out[0] = numpy.asarray(a.dot(b).todense())
         out[0] = a.dot(b)
-        assert _is_dense(out[0])
+        assert _is_dense(out[0]) # scipy 0.7 automatically converts to dense
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, a_nrows, b), (z,), sub):
+        """
+        C-implementation of the dot product of the sparse matrix A and matrix B.
+        @param a_val: non-zero values of the sparse matrix
+        @param a_ind: column indices of the non-null values (.indices of a scipy.csc_matrix)
+        @param a_ptr: a_ptr indicates col indices for col. i are in the range a_ptr[i]:a_ptr[i+1]
+        @param n_rows: number of rows of sparse matrix
+        @param b: dense matrix to perform dot product with, as in dot(a,b)
+        @param z: return value
+        @param sub: TODO, not too sure, something to do with weave probably
+        """
         return """
         if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
         if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
@@ -784,10 +791,12 @@ class StructuredDotCSC(gof.Op):
         }
 
         {
-            //the output array has size M x N
+            // sparse array has size MxK, dense KxN, output MxN
             npy_intp M = %(z)s->dimensions[0];
             npy_intp N = %(z)s->dimensions[1];
             npy_intp K = %(b)s->dimensions[0];
+
+            // strides tell you how many bytes to skip to go to next column/row entry
             npy_intp Szm = %(z)s->strides[0] / %(z)s->descr->elsize;
             npy_intp Szn = %(z)s->strides[1] / %(z)s->descr->elsize;
             //npy_intp Sbm = %(b)s->strides[0] / %(b)s->descr->elsize;
@@ -796,6 +805,7 @@ class StructuredDotCSC(gof.Op):
             npy_intp Sind = %(a_ind)s->strides[0] / %(a_ind)s->descr->elsize;
             npy_intp Sptr = %(a_ptr)s->strides[0] / %(a_ptr)s->descr->elsize;
 
+            // pointers to access actual data in the arrays passed as params.
             npy_double * __restrict__ Dz = (npy_double*)%(z)s->data;
             //const npy_double * __restrict__ Db = (npy_double*)%(b)s->data;
             const npy_double * __restrict__ Dval = (npy_double*)%(a_val)s->data;
@@ -815,31 +825,38 @@ class StructuredDotCSC(gof.Op):
 
             //iterate over the sparse array, making the most of an entry wherever we find it.
             //
-            // Normal matrix matrix multiply:
+            // Normal matrix matrix multiply: A MxK, B KxN =>  Z = AB
             // for m
             //   for n
             //     for k
             //        z[m,n] += a[m,k] * b[k,n]
-            // Here instead:
+            // Here instead: Z = 
             // for k
             //   for m (sparse)
             //     for n
             //        z[m,n] += a[m,k] * b[k,n]
 
+            // loop over inner dimension
             for (npy_int32 k = 0; k < K; ++k)
             {
+                // get pointer to k-th row of dense matrix
                 const npy_double * __restrict__ bk = (double *)(%(b)s->data + %(b)s->strides[0] * k);
-
+                
+                // loop over sparse column indices through index pointer array 
+                // (amounts to looping over rows M of sparse matrix)
                 for (npy_int32 m_idx = Dptr[k * Sptr]; m_idx < Dptr[(k+1) * Sptr]; ++m_idx)
                 {
-                    npy_int32 m = Dind[m_idx * Sind];
-                    const double Amk = Dval[m_idx * Sval];
-
+                    npy_int32 m = Dind[m_idx * Sind]; // row index of non-null value for column K
+                    const double Amk = Dval[m_idx * Sval]; // actual value at that location
+    
+                    // pointer to m-th row of the output matrix Z
                     npy_double * __restrict__ zm = (npy_double *)(%(z)s->data + %(z)s->strides[0] * m);
 
+                    //RESOLVE: a.shape[0] equals z.shape[0], why is this not an equality constraint?
                     if (m >= %(z)s->dimensions[0]) 
                     {PyErr_SetString(PyExc_NotImplementedError, "illegal row index in a"); %(fail)s;}
 
+                    // loop over final dimension (cols of dense matrix) and perform dot product
                     for(npy_int32 n = 0; n < N; ++n)
                     {
                         zm[n*Szn] += Amk * bk[n*Sbn];
@@ -850,40 +867,173 @@ class StructuredDotCSC(gof.Op):
         """% dict(locals(), **sub)
 sd_csc = StructuredDotCSC()
 
-#TODO: register a specialization to replace StructuredDot -> StructuredDotCSC
+
+class StructuredDotCSR(gof.Op):
+    def make_node(self, a_val, a_ind, a_ptr, a_ncols, b):
+        assert a_val.type.dtype == b.type.dtype
+        r = gof.Apply(self, [a_val, a_ind, a_ptr, a_ncols, b], 
+                [tensor.tensor(a_val.type.dtype, (False, False))])
+        return r
+
+    def perform(self, node, (a_val, a_ind, a_ptr, a_ncols, b), (out,)):
+        a = sparse.csc_matrix((a_val, a_ind, a_ptr), 
+                (a_ncols, b.shape[0]),
+                copy = False)
+        out[0] = a.dot(b)
+        assert _is_dense(out[0]) # scipy 0.7 automatically converts to dense
+
+    def c_code(self, node, name, (a_val, a_ind, a_ptr, a_ncols, b), (z,), sub):
+        """
+        C-implementation of the dot product of the sparse matrix A and matrix B.
+        @param a_val: non-zero values of the sparse matrix
+        @param a_ind: column indices of the non-null values (.indices of a scipy.csc_matrix)
+        @param a_ptr: a_ptr indicates col indices for col. i are in the range a_ptr[i]:a_ptr[i+1]
+        @param n_cols: number of columns of sparse matrix
+        @param b: dense matrix to perform dot product with, as in dot(a,b)
+        @param z: return value
+        @param sub: TODO, not too sure, something to do with weave probably
+        """
+        return """
+        if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
+        if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
+        if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
+        if (%(a_ncols)s->nd != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(ncols) != 0"); %(fail)s;}
+        if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
+
+        if (%(a_val)s->descr->type_num != PyArray_DOUBLE)
+        {PyErr_SetString(PyExc_NotImplementedError, "a_val dtype not NPY_DOUBLE"); %(fail)s;}
+
+        if (%(a_ind)s->descr->type_num != PyArray_INT32) {
+        PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
+
+        if (%(a_ptr)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
+
+        if (%(a_ncols)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "a_ncols dtype not INT32"); %(fail)s;}
+
+        if (%(b)s->descr->type_num != PyArray_DOUBLE)
+        {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_DOUBLE"); %(fail)s;}
+
+        if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
+        {PyErr_SetString(PyExc_NotImplementedError, "a_val and a_ind have different lengths"); %(fail)s;}
+
+        if (%(a_ptr)s->dimensions[0] != %(b)s->dimensions[0]+1)
+        {PyErr_SetString(PyExc_NotImplementedError, "a's number of columns doesn't match b's rows"); %(fail)s;}
+
+        if ((!%(z)s)
+            || (%(z)s->dimensions[0] != ((npy_int32 *)%(a_ncols)s->data)[0])
+            || (%(z)s->dimensions[1] != %(b)s->dimensions[1])
+            )
+        {
+            if (%(z)s) Py_DECREF(%(z)s);
+            npy_intp dims[] = {0,0};
+            dims[0] = ((npy_int32 *)%(a_ncols)s->data)[0];
+            dims[1] = %(b)s->dimensions[1];
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(b)s->descr->type_num);
+        }
+
+        {
+            // sparse array has size MxK, dense KxN, output MxN
+            npy_intp M = %(z)s->dimensions[0];
+            npy_intp N = %(z)s->dimensions[1];
+            npy_intp K = %(b)s->dimensions[0];
+
+            // strides tell you how many bytes to skip to go to next column/row entry
+            npy_intp Szm = %(z)s->strides[0] / %(z)s->descr->elsize;
+            npy_intp Szn = %(z)s->strides[1] / %(z)s->descr->elsize;
+            npy_intp Sbm = %(b)s->strides[0] / %(b)s->descr->elsize;
+            npy_intp Sbn = %(b)s->strides[1] / %(b)s->descr->elsize;
+            npy_intp Sval = %(a_val)s->strides[0] / %(a_val)s->descr->elsize;
+            npy_intp Sind = %(a_ind)s->strides[0] / %(a_ind)s->descr->elsize;
+            npy_intp Sptr = %(a_ptr)s->strides[0] / %(a_ptr)s->descr->elsize;
+
+            // pointers to access actual data in the arrays passed as params.
+            npy_double * __restrict__ Dz = (npy_double*)%(z)s->data;
+            //const npy_double * __restrict__ Db = (npy_double*)%(b)s->data;
+            const npy_double * __restrict__ Dval = (npy_double*)%(a_val)s->data;
+            const npy_int32 * __restrict__ Dind = (npy_int32*)%(a_ind)s->data;
+            const npy_int32 * __restrict__ Dptr = (npy_int32*)%(a_ptr)s->data;
+
+            //npy_intp nnz = %(a_ind)s->dimensions[0];
+
+            //clear the output array
+            for (npy_intp m = 0; m < M; ++m)
+            {
+                for (npy_intp n = 0; n < N; ++n)
+                {
+                    Dz[m*Szm + n*Szn] = 0.0;
+                }
+            }
+
+            //iterate over the sparse array, making the most of an entry wherever we find it.
+            // Normal matrix matrix multiply:
+            // for m
+            //   for n
+            //     for k
+            //        z[m,n] += a[m,k] * b[k,n]
+            // Here instead:
+            // for m
+            //   for k (sparse)
+            //     for n
+            //        z[m,n] += a[m,k] * b[k,n]
+
+            // loop over inner dimension
+            for (npy_int32 m = 0; m < M; ++m)
+            {
+                // pointer to m-th row of the output matrix Z
+                npy_double * __restrict__ zm = (npy_double *)(%(z)s->data + %(z)s->strides[0] * m);
+
+                // loop over sparse rows indices through index pointer array 
+                // (amounts to looping over cols k of sparse matrix)
+                for (npy_int32 k_idx = Dptr[m * Sptr]; k_idx < Dptr[(m+1) * Sptr]; ++k_idx)
+                {
+                    npy_int32 k = Dind[k_idx * Sind]; // col index of non-null value for row m
+                    const double Amk = Dval[k_idx * Sval]; // actual value at that location
+                
+                    // get pointer to k-th row of dense matrix
+                    const npy_double * __restrict__ bk = (double *)(%(b)s->data + %(b)s->strides[0] * k);
+    
+                    // loop over final dimension (cols of dense matrix) and perform dot product
+                    for(npy_int32 n = 0; n < N; ++n)
+                    {
+                        zm[n*Szn] += Amk * bk[n*Sbn];
+                    }
+                }
+            }
+        }
+ 
+        """% dict(locals(), **sub)
+sd_csr = StructuredDotCSR()
+
+# register a specialization to replace StructuredDot -> StructuredDotCSx
 @gof.local_optimizer([_structured_dot])
-def local_structured_dot_csc(node):
+def local_structured_dot(node):
     if node.op == _structured_dot:
         a, b = node.inputs
-        if a.type.format == 'csc':
+        if a.type.format in ('csc','csr'):
             a_val, a_ind, a_ptr, a_shape = csm_properties(a)
-            a_nrows = a_shape[0]
-            return [sd_csc(a_val,a_ind, a_ptr, a_nrows, b)]
+            a_nsparse = a_shape[0]
+            sd_csx = sd_csc if a.type.format == 'csc' else sd_csr
+            return [sd_csx(a_val,a_ind, a_ptr, a_nsparse, b)]
     return False
-register_specialize(local_structured_dot_csc)
+register_specialize(local_structured_dot)
 
 
-class StructuredDotGrad(gof.Op):
-    def make_node(self, a, b, g_ab):
-        return gof.Apply(self, [a, b, g_ab], [a.type()])
-    def perform(self, node, (a, b, g_ab), (out,)):
-        g_a_data = a.data.copy()
-        if a.format == 'csc':
-            for j in xrange(len(a.indptr)-1):
-                ind0 = a.indptr[j]
-                ind1 = a.indptr[j+1]
-                for i_idx in xrange(ind0, ind1):
-                    i = a.indices[i_idx]
-                    #v = a.data[i_idx]
-                    #print (i, j, v)
-                    g_a_data[i_idx] = numpy.dot(g_ab[i], b[j])
-            out[0] = sparse.csc_matrix((g_a_data, a.indices.copy(), a.indptr.copy()),
-                    a.shape, copy=False)
-        elif a.format == 'csr':
-            raise NotImplementedError()
-        else:
-            raise TypeError()
-_structured_dot_grad = StructuredDotGrad()
+def structured_dot_grad(sparse_A, dense_B, ga):
+    if sparse_A.type.format in ('csc','csr'):
+
+        sdgcsx = sdg_csc if sparse_A.type.format == 'csc' else sdg_csr
+        CSx = CSC if sparse_A.type.format == 'csc' else CSR
+
+        g_A_data = sdgcsx(csm_indices(sparse_A),\
+                          csm_indptr(sparse_A), dense_B, ga)
+        return CSx(g_A_data, csm_indices(sparse_A),\
+                                 csm_indptr(sparse_A),\
+                                 csm_shape(sparse_A))
+    else:
+        raise NotImplementedError()
+
 
 class StructuredDotGradCSC(gof.Op):
     def make_node(self, a_indices, a_indptr, b, g_ab):
@@ -981,7 +1131,7 @@ class StructuredDotGradCSC(gof.Op):
         }
 
         """% dict(locals(), **sub)
-_sdgcsc = StructuredDotGradCSC()
+sdg_csc = StructuredDotGradCSC()
 
 
 class StructuredDotGradCSR(gof.Op):
@@ -1082,25 +1232,4 @@ class StructuredDotGradCSR(gof.Op):
         }
  
         """% dict(locals(), **sub)
-_sdgcsr = StructuredDotGradCSR()
-
-
-def structured_dot_grad(sparse_A, dense_B, ga):
-    #TODO: 1. move this switch to be a specialization of structuredDotGrad
-    #      2. implement StructuredDotGrad.grad()
-    if 0:
-        return _structured_dot_grad(sparse_A, dense_B, ga)
-    else:
-        if sparse_A.type.format in ('csc','csr'):
-
-            sdgcsx = _sdgcsc if sparse_A.type.format == 'csc' else _sdgcsr
-            CSx = CSC if sparse_A.type.format == 'csc' else CSR
-
-            g_A_data = sdgcsx(csm_indices(sparse_A),\
-                              csm_indptr(sparse_A), dense_B, ga)
-            return CSx(g_A_data, csm_indices(sparse_A),\
-                                     csm_indptr(sparse_A),\
-                                     csm_shape(sparse_A))
-        else:
-            raise NotImplementedError()
-
+sdg_csr = StructuredDotGradCSR()

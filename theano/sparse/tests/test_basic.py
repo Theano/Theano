@@ -155,60 +155,54 @@ import scipy.sparse as sp
 class test_structureddot(unittest.TestCase):
 
     def test_structuredot(self):
-
-        #bsize = 5
-        #spmat = sp.csc_matrix((8,15))
-        #spmat[1,2] = 3
-        #spmat[4,7] = 6
-        #spmat[2,7] = 72
-        #spmat[1,9] = 2
-        #spmat[7,12] = 1
-        #spmat[4,2] = 7
- 
         bsize = 2
         spmat = sp.csc_matrix((5,5))
-        spmat[1,2] = 1
-        spmat[0,1] = 2
-        spmat[0,2] = 3
-
+        spmat[0,1] = 1
+        spmat[0,2] = 2
+        spmat[1,2] = 3
+        spmat[1,4] = 4
+        spmat[3,4] = 5
       
-        kerns = tensor.dvector()
-        images = tensor.dmatrix()
+        kerns = tensor.dvector('kerns')
+        images = tensor.dmatrix('images')
 
+        ##
+        # Test compressed-sparse column matrices ###
+        ##
+
+        # build symbolic theano graph
         def buildgraphCSC(kerns,images):
             csc = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
             return structured_dot(csc, images.T)
         out = buildgraphCSC(kerns,images)
-
         f = theano.function([kerns,images], out)
+        # compute theano outputs
         kernvals = spmat.data[:spmat.size]
         imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
         outvals = f(kernvals,imvals)
-        print type(spmat.dot(imvals.T))
-        print spmat.dot(imvals.T)
-        print dir(spmat.dot(imvals.T))
-
-#       scipy 0.7.0 should already make the output dense
-#       assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+        # compare to scipy
         c = spmat.dot(imvals.T)
         assert _is_dense(c)
         assert numpy.all(outvals == c)
 
         tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals])
 
+        ##
+        # Test compressed-sparse row matrices ###
+        ##
         spmat = spmat.tocsr()
+        
+        # build theano graph
         def buildgraphCSR(kerns,images):
             csr = CSR(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
             return structured_dot(csr, images.T)
         out = buildgraphCSR(kerns,images)
-
         f = theano.function([kerns,images], out)
+        # compute theano output
         kernvals = spmat.data[:spmat.size]
         imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
         outvals = f(kernvals,imvals)
-
-#       scipy 0.7.0 should already make the output dense
-#       assert numpy.all(outvals == spmat.dot(imvals.T).todense())
+        # compare to scipy
         c = spmat.dot(imvals.T)
         assert _is_dense(c)
         assert numpy.all(outvals == c)
