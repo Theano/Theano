@@ -87,7 +87,7 @@ class RandomFunction(gof.Op):
         fn, outtype, args, kwargs = state
         self.fn = getattr(numpy.random.RandomState, fn) if isinstance(fn, str) else fn
         self.outtype = outtype
-        self.args = tuple(tensor.as_tensor(arg) for arg in args)
+        self.args = tuple(tensor.as_ndarray_result(arg) for arg in args)
         self.inplace = kwargs.pop('inplace', False)
         if self.inplace:
             self.destroy_map = {0: [0]}
@@ -103,7 +103,7 @@ class RandomFunction(gof.Op):
 
         :param args: the values associated with these results will be passed to the RandomState
         function during perform as extra "*args"-style arguments.  These should be castable to
-        results of Type Tensor.
+        results of Type NDArrayType.
 
         :rtype: Apply
 
@@ -115,7 +115,7 @@ class RandomFunction(gof.Op):
         if shape == () or shape == []:
             shape = tensor.lvector()
         else:
-            shape = tensor.as_tensor(shape, ndim=1)
+            shape = tensor.as_ndarray_result(shape, ndim=1)
         #print 'SHAPE TYPE', shape.type, tensor.lvector
         assert shape.type.ndim == 1
         assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
@@ -127,9 +127,9 @@ class RandomFunction(gof.Op):
         # shape.type
         # assert shape.type == tensor.lvector 
 
-        # convert args to Tensor instances
+        # convert args to NDArrayType instances
         # and append enough None's to match the length of self.args
-        args = map(tensor.as_tensor, args)
+        args = map(tensor.as_ndarray_result, args)
         if len(args) > len(self.args):
             raise TypeError('Too many args for this kind of random generator')
         args += (None,) * (len(self.args) - len(args))
@@ -202,14 +202,14 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
         else:
             r, shape, args = ndim, args[0], args[1:]
             if shape == () or shape == []:
-                shape = tensor.TensorConstant(type = tensor.lvector, data = shape)
+                shape = tensor.NDArrayConstant(type = tensor.lvector, data = shape)
             else:
-                shape = tensor.as_tensor(shape)
+                shape = tensor.as_ndarray_result(shape)
             ndim = tensor.get_vector_length(shape)
             if ndim is None:
                 raise ValueError('Cannot infer the number of dimensions from the shape argument.')
         # note: rf could be cached for future use
-        rf = RandomFunction(fn, tensor.Tensor(dtype = dtype, broadcastable = (False,)*ndim), *rfargs, **rfkwargs)
+        rf = RandomFunction(fn, tensor.NDArrayType(dtype = dtype, broadcastable = (False,)*ndim), *rfargs, **rfkwargs)
         return rf(r, shape, *args, **kwargs)
     return f
 

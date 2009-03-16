@@ -12,7 +12,7 @@ _as_scalar = GemmLocalOptimizer._as_scalar
 _is_real_matrix = GemmLocalOptimizer._is_real_matrix
 
 from theano import In, Out
-from .test_basic import (_approx_eq, as_tensor, inplace_func,
+from .test_basic import (_approx_eq, as_ndarray_result, inplace_func,
         compile, value, constant, inplace, eval_outputs)
 
 class t_gemm(TestCase):
@@ -35,7 +35,7 @@ class t_gemm(TestCase):
         def cmp_linker(z, a, x, y, b, l):
             z,a,x,y,b = [numpy.asarray(p) for p in z,a,x,y,b]
             z_orig = z.copy()
-            tz,ta,tx,ty,tb = [as_tensor(p).type() for p in z,a,x,y,b]
+            tz,ta,tx,ty,tb = [as_ndarray_result(p).type() for p in z,a,x,y,b]
 
             f = inplace_func([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode=compile.Mode(optimizer = None, linker = l))
             new_z = f(z,a,x,y,b)
@@ -100,7 +100,7 @@ class t_gemm(TestCase):
 
     def test_destroy_map0(self):
         """test that only first input can be overwritten"""
-        Z = as_tensor(self.rand(2,2))
+        Z = as_ndarray_result(self.rand(2,2))
         try:
             gemm(Z, 1.0, Z, Z, 1.0)
         except ValueError, e:
@@ -109,8 +109,8 @@ class t_gemm(TestCase):
         self.fail()
     def test_destroy_map1(self):
         """test that only first input can be overwritten"""
-        Z = as_tensor(self.rand(2,2))
-        A = as_tensor(self.rand(2,2))
+        Z = as_ndarray_result(self.rand(2,2))
+        A = as_ndarray_result(self.rand(2,2))
         try:
             gemm(Z, 1.0, A, inplace.transpose_inplace(Z), 1.0)
         except ValueError, e:
@@ -119,8 +119,8 @@ class t_gemm(TestCase):
         self.fail()
     def test_destroy_map2(self):
         """test that only first input can be overwritten"""
-        Z = as_tensor(self.rand(2,2))
-        A = as_tensor(self.rand(2,2))
+        Z = as_ndarray_result(self.rand(2,2))
+        A = as_ndarray_result(self.rand(2,2))
         try:
             gemm(Z, 1.0, inplace.transpose_inplace(Z), A, 1.0)
         except ValueError, e:
@@ -129,8 +129,8 @@ class t_gemm(TestCase):
         self.fail()
     def test_destroy_map3(self):
         """test that only first input can be overwritten"""
-        Z = as_tensor(self.rand(2,2))
-        A = as_tensor(self.rand(2,2))
+        Z = as_ndarray_result(self.rand(2,2))
+        A = as_ndarray_result(self.rand(2,2))
         try:
             gemm(Z, 1.0, Z, A, 1.0)
         except ValueError, e:

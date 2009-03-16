@@ -3,7 +3,7 @@ from theano.tensor.xlogx import xlogx
 import unittest
 
 import theano
-from theano.tensor import as_tensor
+from theano.tensor import as_ndarray_result
 import test_basic as TT
 
 import random
@@ -15,7 +15,7 @@ class T_XlogX(unittest.TestCase):
         unittest_tools.seed_rng()
 
     def test0(self):
-        x = as_tensor([1, 0])
+        x = as_ndarray_result([1, 0])
         y = xlogx(x)
         f = theano.function([], [y])
         self.failUnless(numpy.all(f() == numpy.asarray([0, 0.])))

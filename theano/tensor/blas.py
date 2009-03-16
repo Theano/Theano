@@ -275,7 +275,7 @@ class Gemm(GemmRelated):
     E_z_uniq = 'argument z aliased to x or y'
     destroy_map = {0: [0]}
     def make_node(self, *inputs):
-        inputs = map(T.as_tensor, inputs)
+        inputs = map(T.as_ndarray_result, inputs)
         if len(inputs) != 5:
             raise TypeError("Wrong number of inputs for %s (expected 5, got %s)" % (self, len(inputs)))
         z, a, x, y, b = inputs
@@ -475,7 +475,7 @@ class GemmLocalOptimizer(LocalOptimizer):
 
     @staticmethod
     def _as_scalar(res):
-        """Return None or a TensorResult whose type is in T.float_scalar_types"""
+        """Return None or a NDArrayResult whose type is in T.float_scalar_types"""
         if res.owner and isinstance(res.owner.op, T.DimShuffle):
             return GemmLocalOptimizer._as_scalar(res.owner.inputs[0])
         elif res.type in T.float_scalar_types:

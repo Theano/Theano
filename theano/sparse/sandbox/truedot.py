@@ -66,8 +66,8 @@ def true_dot(x, y, grad_preserves_dense=True):
     @todo: Maybe the triple-transposition formulation (when x is dense)
     is slow. See if there is a direct way to do this.
     """
-    if hasattr(x, 'getnnz'): x = as_sparse(x)
-    if hasattr(y, 'getnnz'): y = as_sparse(y)
+    if hasattr(x, 'getnnz'): x = as_sparse_result(x)
+    if hasattr(y, 'getnnz'): y = as_sparse_result(y)
 
     x_is_sparse_result = _is_sparse_result(x)
     y_is_sparse_result = _is_sparse_result(y)
@@ -86,7 +86,7 @@ class test_true_dot(unittest.TestCase):
 
     def test_basicSS(self):
         for mtype in _mtypes:
-            x = as_sparse(mtype((500,3)))
+            x = as_sparse_result(mtype((500,3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
             self.failUnless(_is_sparse_result(x))
@@ -117,12 +117,12 @@ class test_true_dot(unittest.TestCase):
 
     def test_basicSD(self):
         for mtype in _mtypes:
-            x = as_sparse(mtype((500,3)))
+            x = as_sparse_result(mtype((500,3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
             self.failUnless(_is_sparse_result(x))
 
-            y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
+            y = tensor.as_ndarray_result([[1., 2], [3, 4], [2, 1]])
             self.failUnless(_is_dense_result(y))
 
             zop = true_dot(x,y)
@@ -150,12 +150,12 @@ class test_true_dot(unittest.TestCase):
 
     def test_basicDS(self):
         for mtype in _mtypes:
-            x = as_sparse(mtype((500,3)))
+            x = as_sparse_result(mtype((500,3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
             self.failUnless(_is_sparse_result(x))
 
-            y = tensor.as_tensor([[1., 2], [3, 4], [2, 1]])
+            y = tensor.as_ndarray_result([[1., 2], [3, 4], [2, 1]])
             self.failUnless(_is_dense_result(y))
 
             x.data = x.data.T
@@ -189,7 +189,7 @@ class test_true_dot(unittest.TestCase):
 
     def test_graph_bprop0(self):
         for mtype in _mtypes:
-            x = tensor.matrix('x') #Tensor('float64', broadcastable=[False,False], name='x')
+            x = tensor.matrix('x') #NDArrayType('float64', broadcastable=[False,False], name='x')
             w = Sparse(dtype = 'float64', format = _mtype_to_str[mtype]).make_result()
             xw = dense_from_sparse(true_dot(w, x))
             y = dense_from_sparse(true_dot(w.T, xw))

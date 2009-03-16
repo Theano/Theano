@@ -534,7 +534,7 @@ class Canonizer(gof.LocalOptimizer):
 
         ln, ld = len(num), len(denum)
         if not ln and not ld:
-            return T.as_tensor(self.calculate([], []))
+            return T.as_ndarray_result(self.calculate([], []))
         if not ln:
             if self.use_reciprocal:
                 return self.reciprocal(self.merge_num_denum(denum, []))
@@ -545,7 +545,7 @@ class Canonizer(gof.LocalOptimizer):
                 if isinstance(num[0], gof.Result):
                     return num[0]
                 else:
-                    return T.as_tensor(num[0])
+                    return T.as_ndarray_result(num[0])
             else:
                 return self.main(*num)
         return self.inverse(self.merge_num_denum(num, []),
@@ -844,7 +844,7 @@ def local_mul_specialize(node):
         if len(new_inputs) < len(node.inputs):
             if len(new_inputs) == 0:
                 newval = -y.flatten()[0] if neg else y.flatten()[0]
-                return [T.TensorConstant(T.Tensor(dtype=node.outputs[0].type.dtype,
+                return [T.NDArrayConstant(T.NDArrayType(dtype=node.outputs[0].type.dtype,
                     broadcastable = [True] * node.outputs[0].ndim), N.asarray(newval))]
 
             if len(new_inputs) == 1:

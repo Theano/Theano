@@ -289,9 +289,9 @@ class Type(object2, PureType, CLinkerType):
 
     - `Generic`: for any python type
 
-    - `Tensor`: for numpy.ndarray
+    - `NDArrayType`: for numpy.ndarray
 
-    - `Sparse`: for scipy.sparse
+    - `SparseType`: for scipy.sparse
 
     But you are encouraged to write your own, as described in WRITEME.
 

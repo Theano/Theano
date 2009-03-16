@@ -59,11 +59,11 @@ def __oplist_tag(thing, tag):
     thing.__oplist_tags = tags
 
 
-def as_tensor(x, name = None, ndim=None):
-    """Return `x`, transformed into a `Tensor`
+def as_ndarray_result(x, name = None, ndim=None):
+    """Return `x`, transformed into a `NDArrayType`
 
     This function is often used by `make_node` methods of `Op` subclasses to
-    turn ndarrays, numbers, `Scalar` instances, `Apply` instances and `Tensor`
+    turn ndarrays, numbers, `Scalar` instances, `Apply` instances and `NDArrayType`
     instances into valid input list elemnts.
 
     :Parameters:
@@ -78,7 +78,7 @@ def as_tensor(x, name = None, ndim=None):
 
     :Exceptions:
      - `ValueError`: raised if an `Apply` with no default output is fetched
-     - `TypeError`: raised if `x` cannot be converted to a Tensor Result
+     - `TypeError`: raised if `x` cannot be converted to a NDArrayType Result
 
     """
 
@@ -92,15 +92,15 @@ def as_tensor(x, name = None, ndim=None):
         if isinstance(x.type, scal.Scalar):
             x = tensor_from_scalar(x)
 
-        if not isinstance(x.type, Tensor):
-            raise TypeError("Result type field must be a Tensor.", x, x.type)
+        if not isinstance(x.type, NDArrayType):
+            raise TypeError("Result type field must be a NDArrayType.", x, x.type)
 
         if ndim is None:
             return x
         else:
             if (x.type.ndim > ndim):
                 #TODO: strip off leading broadcastable dimensions
-                raise ValueError('Tensor could not be cast to have %i dimensions' % ndim, x.type)
+                raise ValueError('NDArrayType could not be cast to have %i dimensions' % ndim, x.type)
             elif (x.type.ndim < ndim):
                 return shape_padleft(x, n_ones=(ndim - x.type.ndim))
             else:
@@ -112,11 +112,14 @@ def as_tensor(x, name = None, ndim=None):
             str_x = str(x)
         except:
             str_x = repr(x)
-        raise TypeError("Cannot convert %s to Tensor" % str_x, type(x))
+        raise TypeError("Cannot convert %s to NDArrayType" % str_x, type(x))
 
-# this has a different name, because _as_tensor is the function which ops use
+# this has a different name, because _as_ndarray_result is the function which ops use
 # to upcast their arguments... this internal-use function is a good place to put debugging stuff, better than the global astensor.
-_as_tensor = as_tensor
+_as_ndarray_result = as_ndarray_result
+
+as_tensor = as_ndarray_result
+
 
 def constant_or_value(x, rtype, name=None, ndim=None):
     """Return a symbolic `Constant` with value `x`
@@ -141,19 +144,19 @@ def constant_or_value(x, rtype, name=None, ndim=None):
         assert len(bcastable) == ndim
 
     try:
-        return rtype(Tensor(dtype = x_.dtype, broadcastable = bcastable), x_, name=name)
+        return rtype(NDArrayType(dtype = x_.dtype, broadcastable = bcastable), x_, name=name)
     except:
-        raise TypeError("Could not convert %s to Tensor" % x, type(x))
+        raise TypeError("Could not convert %s to NDArrayType" % x, type(x))
 
 def constant(x, name=None, ndim=None):
-    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim)
+    return constant_or_value(x, rtype=NDArrayConstant, name=name, ndim=ndim)
 
 def value(x, name=None, ndim=None):
-    return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim)
+    return constant_or_value(x, rtype=NDArrayValue, name=name, ndim=ndim)
 
 
 
-class Tensor(Type):
+class NDArrayType(Type):
     """Symbolic `Type` representing a numpy.ndarray value."""
 
     def __init__(self, dtype, broadcastable, name = None):
@@ -178,7 +181,7 @@ class Tensor(Type):
         self.name = name
     
     def filter(self, data, strict = False):
-        """Convert `data` to something which can be associated to a `TensorResult`.
+        """Convert `data` to something which can be associated to a `NDArrayResult`.
 
         This function is not meant to be called in user code.  It is for
         `Linker` instances to use when running a compiled graph.
@@ -228,7 +231,7 @@ class Tensor(Type):
         return scal.Scalar(dtype = self.dtype)
 
     def __eq__(self, other):
-        """Compare True iff other is the same kind of Tensor"""
+        """Compare True iff other is the same kind of NDArrayType"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
     def values_eq_approx(self, a, b):
@@ -236,26 +239,26 @@ class Tensor(Type):
                 and (a.shape == b.shape) and numpy.allclose(a, b)
 
     def __hash__(self):
-        """Hash equal for same kinds of Tensor"""
+        """Hash equal for same kinds of NDArrayType"""
         return hash(self.dtype) ^ hash(self.broadcastable)
 
     ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
     """Number of dimensions
 
     This read-only property is the preferred way to get the number of dimensions
-    of a `Tensor`.
+    of a `NDArrayType`.
     
     """
 
     def make_result(self, name = None):
-        """Return a `TensorResult` of this type
+        """Return a `NDArrayResult` of this type
 
         :Parameters:
          - `name`: str
            A pretty name to identify this `Result` when printing and debugging
 
         """
-        return TensorResult(self, name = name)
+        return NDArrayResult(self, name = name)
 
     def __str__(self):
         if self.name:
@@ -268,11 +271,11 @@ class Tensor(Type):
                      (False, True): 'col',
                      (True, False): 'row',
                      (False, False): 'matrix'}.get(b, "%iD" % len(b) if not any(b) else str(b))
-            return "Tensor(%s, %s)" % (str(self.dtype), bcast)
+            return "NDArrayType(%s, %s)" % (str(self.dtype), bcast)
 
     def __repr__(self):
         return str(self)
-        #"Tensor{%s, %s}" % (str(self.dtype), str(self.broadcastable))
+        #"NDArrayType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub):
         """Override `CLinkerOp.c_declare` """
@@ -386,7 +389,7 @@ class Tensor(Type):
 # Easy constructors
 
 def tensor(*args, **kwargs):
-    return Tensor(*args, **kwargs).make_result()
+    return NDArrayType(*args, **kwargs).make_result()
 
 def _multi(*fns):
     def f2(f, *names):
@@ -407,16 +410,16 @@ def _multi(*fns):
     else:
         return [partial(f2, f) for f in fns]
 
-cscalar = Tensor('complex64', ())
-zscalar = Tensor('complex128', ())
-fscalar = Tensor('float32', ())
-dscalar = Tensor('float64', ())
-bscalar = Tensor('int8', ())
-wscalar = Tensor('int16', ())
-iscalar = Tensor('int32', ())
-lscalar = Tensor('int64', ())
+cscalar = NDArrayType('complex64', ())
+zscalar = NDArrayType('complex128', ())
+fscalar = NDArrayType('float32', ())
+dscalar = NDArrayType('float64', ())
+bscalar = NDArrayType('int8', ())
+wscalar = NDArrayType('int16', ())
+iscalar = NDArrayType('int32', ())
+lscalar = NDArrayType('int64', ())
 def scalar(name = None, dtype = 'float64'):
-    type = Tensor(dtype, ())
+    type = NDArrayType(dtype, ())
     return type(name)
 scalars, fscalars, dscalars, iscalars, lscalars = _multi(scalar, fscalar, dscalar, iscalar, lscalar)
 
@@ -427,16 +430,16 @@ int_scalar_types = int_types
 float_scalar_types = float_types
 complex_scalar_types = complex_types
 
-cvector = Tensor('complex64', (False, ))
-zvector = Tensor('complex128', (False, ))
-fvector = Tensor('float32', (False, ))
-dvector = Tensor('float64', (False, ))
-bvector = Tensor('int8', (False,))
-wvector = Tensor('int16', (False,))
-ivector = Tensor('int32', (False, ))
-lvector = Tensor('int64', (False, ))
+cvector = NDArrayType('complex64', (False, ))
+zvector = NDArrayType('complex128', (False, ))
+fvector = NDArrayType('float32', (False, ))
+dvector = NDArrayType('float64', (False, ))
+bvector = NDArrayType('int8', (False,))
+wvector = NDArrayType('int16', (False,))
+ivector = NDArrayType('int32', (False, ))
+lvector = NDArrayType('int64', (False, ))
 def vector(name = None, dtype = 'float64'):
-    type = Tensor(dtype, (False, ))
+    type = NDArrayType(dtype, (False, ))
     return type(name)
 vectors, fvectors, dvectors, ivectors, lvectors = _multi(vector, fvector, dvector, ivector, lvector)
 
@@ -444,16 +447,16 @@ int_vector_types = bvector, wvector, ivector, lvector
 float_vector_types = fvector, dvector
 complex_vector_types = cvector, zvector
 
-cmatrix = Tensor('complex64', (False, False))
-zmatrix = Tensor('complex128', (False, False))
-fmatrix = Tensor('float32', (False, False))
-dmatrix = Tensor('float64', (False, False))
-bmatrix = Tensor('int8', (False, False))
-wmatrix = Tensor('int16', (False, False))
-imatrix = Tensor('int32', (False, False))
-lmatrix = Tensor('int64', (False, False))
+cmatrix = NDArrayType('complex64', (False, False))
+zmatrix = NDArrayType('complex128', (False, False))
+fmatrix = NDArrayType('float32', (False, False))
+dmatrix = NDArrayType('float64', (False, False))
+bmatrix = NDArrayType('int8', (False, False))
+wmatrix = NDArrayType('int16', (False, False))
+imatrix = NDArrayType('int32', (False, False))
+lmatrix = NDArrayType('int64', (False, False))
 def matrix(name = None, dtype = 'float64'):
-    type = Tensor(dtype, (False, False))
+    type = NDArrayType(dtype, (False, False))
     return type(name)
 matrices, fmatrices, dmatrices, imatrices, lmatrices = _multi(matrix, fmatrix, dmatrix, imatrix, lmatrix)
 
@@ -461,29 +464,29 @@ int_matrix_types = bmatrix, wmatrix, imatrix, lmatrix
 float_matrix_types = fmatrix, dmatrix
 complex_matrix_types = cmatrix, zmatrix
 
-crow = Tensor('complex64', (True, False))
-zrow = Tensor('complex128', (True, False))
-frow = Tensor('float32', (True, False))
-drow = Tensor('float64', (True, False))
-brow = Tensor('int8', (True, False))
-wrow = Tensor('int16', (True, False))
-irow = Tensor('int32', (True, False))
-lrow = Tensor('int64', (True, False))
+crow = NDArrayType('complex64', (True, False))
+zrow = NDArrayType('complex128', (True, False))
+frow = NDArrayType('float32', (True, False))
+drow = NDArrayType('float64', (True, False))
+brow = NDArrayType('int8', (True, False))
+wrow = NDArrayType('int16', (True, False))
+irow = NDArrayType('int32', (True, False))
+lrow = NDArrayType('int64', (True, False))
 def row(name = None, dtype = 'float64'):
-    type = Tensor(dtype, (True, False))
+    type = NDArrayType(dtype, (True, False))
     return type(name)
 rows, frows, drows, irows, lrows = _multi(row, frow, drow, irow, lrow)
 
-ccol = Tensor('complex64', (False, True))
-zcol = Tensor('complex128', (False, True))
-fcol = Tensor('float32', (False, True))
-dcol = Tensor('float64', (False, True))
-bcol = Tensor('int8', (False, True))
-wcol = Tensor('int16', (False, True))
-icol = Tensor('int32', (False, True))
-lcol = Tensor('int64', (False, True))
+ccol = NDArrayType('complex64', (False, True))
+zcol = NDArrayType('complex128', (False, True))
+fcol = NDArrayType('float32', (False, True))
+dcol = NDArrayType('float64', (False, True))
+bcol = NDArrayType('int8', (False, True))
+wcol = NDArrayType('int16', (False, True))
+icol = NDArrayType('int32', (False, True))
+lcol = NDArrayType('int64', (False, True))
 def col(name = None, dtype = 'float64'):
-    type = Tensor(dtype, (False, True))
+    type = NDArrayType(dtype, (False, True))
     return type(name)
 cols, fcols, dcols, icols, lcols = _multi(col, fcol, dcol, icol, lcol)
 
@@ -588,7 +591,7 @@ class _tensor_py_operators:
 
     def __iter__(self): 
         # This prevents accidental iteration via builtin.sum(self)
-        raise TypeError('Tensor does not support iteration. '
+        raise TypeError('NDArrayType does not support iteration. '
         'Maybe you are using builtin.sum instead of theano.tensor.sum? (Maybe .max?)')
         
 
@@ -621,10 +624,10 @@ class _tensor_py_operators:
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0/L)
     
 
-class TensorResult(Result, _tensor_py_operators):
+class NDArrayResult(Result, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Result` class."""
 
-class TensorConstantSignature(tuple):
+class NDArrayConstantSignature(tuple):
     def __eq__(self, other):
         (a, b), (x,y) = self, other
         #N.B. compare shape to ensure no broadcasting in ==
@@ -633,26 +636,33 @@ class TensorConstantSignature(tuple):
         a, b = self
         return hash(type(self)) ^ hash(a) ^ hash(b.shape)
 
-class TensorConstant(Constant, _tensor_py_operators):
+class NDArrayConstant(Constant, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Constant` class.
     
-    To create a TensorConstant, use the `constant` function in this module.
+    To create a NDArrayConstant, use the `constant` function in this module.
     """
     def signature(self):
-        return TensorConstantSignature((self.type, self.data))
+        return NDArrayConstantSignature((self.type, self.data))
 
-class TensorValue(Value, _tensor_py_operators):
+class NDArrayValue(Value, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Value` class.
     
-    To create a TensorValue, use the `value` function in this module.
+    To create a NDArrayValue, use the `value` function in this module.
     """
 
+
+Tensor = NDArrayType
+TensorResult = NDArrayResult
+TensorConstant = NDArrayConstant
+TensorValue = NDArrayValue
+
+
 #QUESTION: why are we doing this!?
-elemwise.as_tensor = as_tensor    
-elemwise.Tensor = Tensor
-elemwise.TensorResult = TensorResult
-elemwise.TensorConstant = TensorConstant
-elemwise.TensorValue = TensorValue
+elemwise.as_ndarray_result = as_ndarray_result    
+elemwise.NDArrayType = NDArrayType
+elemwise.NDArrayResult = NDArrayResult
+elemwise.NDArrayConstant = NDArrayConstant
+elemwise.NDArrayValue = NDArrayValue
 
 
 
@@ -724,7 +734,7 @@ def _scal_elemwise(symbol):
 # Casting Operations
 #########################
 
-class TensorFromScalar(Op):
+class NDArrayFromScalar(Op):
     def make_node(self, s):
         assert isinstance(s.type, scal.Scalar)
         return Apply(self,
@@ -734,12 +744,12 @@ class TensorFromScalar(Op):
     def perform(self, node, (s, ), (out, )):
         out[0] = numpy.asarray(s)
     def grad(self, (s,), (dt,)):
-        return [ScalarFromTensor(dt)]
-tensor_from_scalar = TensorFromScalar()
+        return [ScalarFromNDArray(dt)]
+tensor_from_scalar = NDArrayFromScalar()
 
-class ScalarFromTensor(Op):
+class ScalarFromNDArray(Op):
     def make_node(self, t):
-        assert isinstance(t.type, Tensor)
+        assert isinstance(t.type, NDArrayType)
         assert t.type.broadcastable == ()
         return Apply(self,
                      [t],
@@ -747,8 +757,8 @@ class ScalarFromTensor(Op):
     def perform(self, node, (s, ), (out, )):
         out[0] = s.flatten()[0]
     def grad(self, (s,), (dt,)):
-        return [TensorFromScalar(dt)]
-scalar_from_tensor = ScalarFromTensor()
+        return [NDArrayFromScalar(dt)]
+scalar_from_tensor = ScalarFromNDArray()
 
 
 @constructor
@@ -807,7 +817,7 @@ class Shape(Op):
     @note: Non-differentiable.
     """
     def make_node(self, x):
-        x = as_tensor(x)
+        x = as_ndarray_result(x)
         return Apply(self, [x], [lvector()])
     def perform(self, node, (x, ), (out, )):
         out[0] = numpy.asarray(x.shape, dtype = 'int64')
@@ -827,10 +837,10 @@ class MaxAndArgmax(Op):
     E_axis = 'invalid axis'
     
     def make_node(self, x, axis=None):
-        x = _as_tensor(x)
+        x = _as_ndarray_result(x)
         if axis is None:
             axis = x.type.ndim - 1
-        axis = _as_tensor(axis)
+        axis = _as_ndarray_result(axis)
         inputs = [x, axis]
         broadcastable = [False] * (x.type.ndim - 1)
         outputs = [tensor(x.type.dtype, broadcastable), 
@@ -975,7 +985,7 @@ def invert(a):
 def abs_(a):
     """|`a`|
 
-    TensorResult overloads the `TensorResult.__abs__` operator so that
+    NDArrayResult overloads the `NDArrayResult.__abs__` operator so that
     this function is called when you type abs(a).
 
     """
@@ -1076,11 +1086,11 @@ class Filler(gof.Op):
         self.value = value
         self.ndim = ndim
         self.dtype = dtype
-        self.type = Tensor(dtype = dtype,
+        self.type = NDArrayType(dtype = dtype,
                            broadcastable = (False,)*ndim)
 
     def make_node(self, dims):
-        dims = as_tensor(dims)
+        dims = as_ndarray_result(dims)
         return gof.Apply(self, [dims], [self.type()])
 
     def perform(self, node, (dims,), (out,)):
@@ -1165,10 +1175,10 @@ def mean(input, axis = None):
 class Repeat(gof.Op):
 
     def make_node(self, input, repeats, axis):
-        assert isinstance(input.type, Tensor)
+        assert isinstance(input.type, NDArrayType)
         assert repeats.type == iscalar
         assert axis.type == iscalar
-        type = Tensor(dtype = input.type.dtype,
+        type = NDArrayType(dtype = input.type.dtype,
                       broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
         return gof.Apply(self, [inputs, repeats, axis], [type()])
 
@@ -1293,9 +1303,9 @@ class Subtensor(Op):
         self.idx_list = map(self.convert, idx_list)
 
     def make_node(self, x, *inputs):
-        x = as_tensor(x)
+        x = as_ndarray_result(x)
         def my_as_scalar(a):
-            if isinstance(a, gof.Result) and isinstance(a.type, Tensor):
+            if isinstance(a, gof.Result) and isinstance(a.type, NDArrayType):
                 return scalar_from_tensor(a)
             else:
                 return scal.as_scalar(a)
@@ -1397,7 +1407,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), S
 
 
 class SetSubtensor(Op):
-    """Set just some elements of a larger Tensor.
+    """Set just some elements of a larger NDArrayType.
 
     This is like numpy's 
 
@@ -1434,7 +1444,7 @@ class SetSubtensor(Op):
                 self.__class__.__name__, ", ".join(indices))
 
     def make_node(self, x, y, *inputs):
-        x, y = map(as_tensor, [x, y])
+        x, y = map(as_ndarray_result, [x, y])
         inputs = tuple(map(scal.as_scalar, inputs))
         
         idx_list = list(self.idx_list)
@@ -1487,7 +1497,7 @@ def split(x, splits_size, n_splits, axis=0):
     return the_split(x, axis, splits_size)
 
 class Split(Op):
-    """Partition a `TensorResult` along some axis.
+    """Partition a `NDArrayResult` along some axis.
 
     .. python::
         
@@ -1523,9 +1533,9 @@ class Split(Op):
  
     def make_node(self, x, axis, splits):
         """WRITEME"""
-        x = as_tensor(x)
-        axis = as_tensor(axis)
-        splits = as_tensor(splits)
+        x = as_ndarray_result(x)
+        axis = as_ndarray_result(axis)
+        splits = as_ndarray_result(splits)
 
         if splits.type not in int_vector_types: 
             raise TypeError('splits must have type tensor.lvector', splits.type)
@@ -1567,10 +1577,10 @@ class Split(Op):
 
 class Join(Op):
     """
-    Concatenate two `TensorResult`s along some axis.
+    Concatenate two `NDArrayResult`s along some axis.
 
     These tensors must have the same shape along all dimensions other than this axis.
-    Of course, TensorResult instances don't have a shape, so this error can't be caught until
+    Of course, NDArrayResult instances don't have a shape, so this error can't be caught until
     runtime.  See `perform()`.
 
     For joins involving scalar values, see @stack.
@@ -1600,16 +1610,16 @@ class Join(Op):
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         if not tensors:
             raise ValueError('Cannot join an empty list of tensors')
-        as_tensor_args= [as_tensor(x) for x in tensors]
-        dtypes = [x.type.dtype for x in as_tensor_args]
+        as_ndarray_result_args= [as_ndarray_result(x) for x in tensors]
+        dtypes = [x.type.dtype for x in as_ndarray_result_args]
         out_dtype = scal.upcast(*dtypes)
 
-        if not all(targs.type.ndim for targs in as_tensor_args):
+        if not all(targs.type.ndim for targs in as_ndarray_result_args):
             raise TypeError('Join cannot handle arguments of dimension 0. For joining scalar values, see @stack');
 
         # When the axis may vary, no dimension can be guaranteed to be
         # broadcastable.
-        bcastable = [False] * len(as_tensor_args[0].type.broadcastable)
+        bcastable = [False] * len(as_ndarray_result_args[0].type.broadcastable)
 
         # When the axis is fixed, the broadcastable dimensions remain, except
         # for the axis dimension.
@@ -1617,17 +1627,17 @@ class Join(Op):
         # dimensions.
         if isinstance(axis, int):
             bcasts = [x.type.broadcastable[0:axis] + \
-                      x.type.broadcastable[axis + 1:] for x in as_tensor_args]
+                      x.type.broadcastable[axis + 1:] for x in as_ndarray_result_args]
             if not all([bcasts[0] == bc for bc in bcasts[1:]]):
                 raise ValueError('Dimensions other than the given axis must'
                     ' match', tensors)
-            bcastable[:] = as_tensor_args[0].type.broadcastable
+            bcastable[:] = as_ndarray_result_args[0].type.broadcastable
             try:
                 bcastable[axis] = False
             except IndexError, e:
                 raise ValueError('Join argument "axis" is out of range (given input dimensions)')
 
-        inputs = [as_tensor(axis)] + as_tensor_args
+        inputs = [as_ndarray_result(axis)] + as_ndarray_result_args
         if inputs[0].type not in int_types: 
             raise TypeError('Axis could not be cast to an integer type', axis, inputs[0].type, int_types)
 
@@ -1683,7 +1693,7 @@ class Join(Op):
 @_redefine_asRoutine(Join())
 def join(axis, *tensors):
     """
-    Convenience function to concatenate `Tensor`s along the given axis.
+    Convenience function to concatenate `NDArrayType`s along the given axis.
 
     :Parameters:
      - `tensors` : list of tensors (or list-like)
@@ -1711,7 +1721,7 @@ def shape_padleft(t, n_ones=1):
     
     See also: `shape_padright` and `Dimshuffle`
     """
-    _t = as_tensor(t)
+    _t = as_ndarray_result(t)
 
     pattern = ['x']*n_ones + [i for i in range(_t.type.ndim)]
     return DimShuffle(_t.broadcastable, pattern)(_t)
@@ -1722,7 +1732,7 @@ def shape_padright(t, n_ones=1):
     
     See also: `shape_padleft` and `Dimshuffle`
     """
-    _t = as_tensor(t)
+    _t = as_ndarray_result(t)
 
     pattern = [i for i in range(_t.type.ndim)] + ['x']*n_ones
     return DimShuffle(_t.broadcastable, pattern)(_t)
@@ -1759,7 +1769,7 @@ def get_vector_length(v):
     """Return the run-time length of a symbolic vector.
 
     :Parameters:
-     - `v` : A rank-1 Tensor result.
+     - `v` : A rank-1 NDArrayType result.
 
     :Exceptions:
      - `TypeError` : `v` hasn't the proper type.
@@ -1788,9 +1798,9 @@ def get_vector_length(v):
 @constructor
 def horizontal_stack(*args):
     """
-    Horizontally stack two L{Tensor}s.
-    Stack two L{Tensor}s along the second axis (column wise). These
-    L{Tensor}s must have the same shape along all dimensions but the
+    Horizontally stack two L{NDArrayType}s.
+    Stack two L{NDArrayType}s along the second axis (column wise). These
+    L{NDArrayType}s must have the same shape along all dimensions but the
     second.
     """
     assert len(args) >= 2
@@ -1806,17 +1816,17 @@ def vertical_stack(*args):
 if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() and join().
     class VerticalStack(Op):
         """
-        Vertically stack two L{Tensor}s.
-        Stack two L{Tensor}s along the first axis (row wise). These
-        L{Tensor}s must have the same shape along all dimensions but the
+        Vertically stack two L{NDArrayType}s.
+        Stack two L{NDArrayType}s along the first axis (row wise). These
+        L{NDArrayType}s must have the same shape along all dimensions but the
         first.
 
         @attention: Because we use vstack as the implementation, if the
         inputs have 1-dimension, the output will have 2-dimensions.
         """
         def make_node(self, x, y):
-            x = as_tensor(x)
-            y = as_tensor(y)
+            x = as_ndarray_result(x)
+            y = as_ndarray_result(y)
             assert x.type.dtype == y.type.dtype
             if x.type.broadcastable[1:] != y.type.broadcastable[1:]:
                 raise NotImplementedError
@@ -1853,9 +1863,9 @@ class MakeVector(Op):
     def __init__(self, stype):
         self.stype = stype
     def make_node(self, *inputs):
-        inputs = map(as_tensor, inputs)
+        inputs = map(as_ndarray_result, inputs)
         assert all(a.type == self.stype for a in inputs)
-        return Apply(self, inputs, [Tensor(broadcastable = (False,),
+        return Apply(self, inputs, [NDArrayType(broadcastable = (False,),
                                            dtype = self.stype.dtype)()])
     def perform(self, node, inputs, (out,)):
         out[0] = numpy.asarray(inputs)
@@ -1891,8 +1901,8 @@ class Reshape(Op):
     def __hash__(self):
         return hash(Reshape) ^ hash(self.ndim)
     def make_node(self, x, shp):
-        x = as_tensor(x)
-        shp = as_tensor(shp)
+        x = as_ndarray_result(x)
+        shp = as_ndarray_result(shp)
         return gof.Apply(self, [x, shp], [tensor(x.type.dtype, [False]*self.ndim)])
     def perform(self, node, (x, shp), (out,)):
         if (len(shp) != self.ndim):
@@ -1928,7 +1938,7 @@ class Flatten(Op):
     def __hash__(self):
         return hash(type(self))^hash(self.outdim)
     def make_node(self, x):
-        t_x = as_tensor(x)
+        t_x = as_ndarray_result(x)
         if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
             raise ValueError('invalid output ndimensions(%i) for tensor of rank %i' %(self.outdim, t_x.ndim))
         return gof.Apply(self, [t_x], [tensor(x.type.dtype, (False,)*self.outdim)])
@@ -1974,8 +1984,8 @@ class Tile(Op):
         return hash(Tile) ^ hash(self.ndim)
 
     def make_node(self, x, reps):
-        x = as_tensor(x)
-        reps = as_tensor(reps)
+        x = as_ndarray_result(x)
+        reps = as_ndarray_result(reps)
         return gof.Apply(self, [x, reps], [tensor(x.type.dtype, [False,] * self.ndim)])
     def perform(self, node, (x, reps), (out,)):
         out[0] = numpy.tile(x, reps)
@@ -2007,7 +2017,7 @@ class Dot(Op):
 
     """
     def make_node(self, *inputs):
-        inputs = map(as_tensor, inputs)
+        inputs = map(as_ndarray_result, inputs)
 
         numpy_semantics = 0
         if numpy_semantics:
@@ -2128,7 +2138,7 @@ class TensorDot(Op):
     def make_node(self, x, y):
 
         axesdim = numpy.size(self.axes)/2
-        x, y = map(as_tensor, [x, y])
+        x, y = map(as_ndarray_result, [x, y])
 
         if axesdim > x.type.ndim or axesdim > y.type.ndim:
             raise TypeError('Cannot sum over more dimensions than input. %i > %i,%i' %
@@ -2159,7 +2169,7 @@ class Outer(Op):
     """ Compute vector-vector outer product
     """
     def make_node(self, *inputs):
-        inputs = map(as_tensor, inputs)
+        inputs = map(as_ndarray_result, inputs)
 
         x, y = inputs
         nx = x.type.ndim
@@ -2199,12 +2209,12 @@ def grad(cost, wrt, g_cost=None, consider_constant=[]):
     @return: symbolic expression of gradient of I{cost} with respect to I{wrt}.
     If I{wrt} is a list, then return a list containing the gradient of I{cost} wrt
     each element of the list.  If an element of I{wrt} is not differentiable
-    with respect to the output, then a L{TensorConstant} with an appropriate
+    with respect to the output, then a L{NDArrayConstant} with an appropriate
     kind of zero is returned.
 
     """
-    if not isinstance(cost, TensorResult):
-        raise TypeError('In tensor.grad(), cost argument should be a TensorResult.', cost)
+    if not isinstance(cost, NDArrayResult):
+        raise TypeError('In tensor.grad(), cost argument should be a NDArrayResult.', cost)
 
     if g_cost is None:
         g_cost = ones_like(cost)
@@ -2212,8 +2222,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=[]):
     gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs + consider_constant)
 
     def zero(p):
-        return TensorConstant(
-                Tensor(dtype = p.type.dtype, broadcastable = []),
+        return NDArrayConstant(
+                NDArrayType(dtype = p.type.dtype, broadcastable = []),
                 numpy.asarray(0, dtype=p.type.dtype))
 
     try:
@@ -2345,7 +2355,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
         o_fn_out = o_fn(*[p.copy() for p in pt])
         #print "PT C", pt
         random_projection = rng.rand(*o_fn_out.shape)
-        t_r = as_tensor(random_projection)
+        t_r = as_ndarray_result(random_projection)
 
         #random projection of o onto t_r
         cost = sum(t_r * o_output)  #This sum() is defined above, it's not the builtin sum.
@@ -2353,7 +2363,7 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
 
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
 
-        symbolic_grad = grad(cost, tensor_pt,as_tensor(1.0,name='g_cost'))
+        symbolic_grad = grad(cost, tensor_pt,as_ndarray_result(1.0,name='g_cost'))
 
         if 0:
             print '----------'

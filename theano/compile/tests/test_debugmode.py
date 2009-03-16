@@ -22,7 +22,7 @@ class BROKEN_ON_PURPOSE_StructuredDotCSC(gof.Op):
     def __hash__(self):
         return 29834 ^ hash(type(self)) ^ hash(self.py_offset)
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
-        a_nrows = theano.tensor.as_tensor(a_nrows)
+        a_nrows = theano.tensor.as_ndarray_result(a_nrows)
         assert a_val.type.dtype == b.type.dtype
         r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b], 
                 [theano.tensor.tensor(a_val.type.dtype, (False, False))])

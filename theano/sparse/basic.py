@@ -35,19 +35,19 @@ if scipy.__version__ != '0.7.0':
 def _is_sparse_result(x):
     """
     @rtype: boolean
-    @return: True iff x is a L{SparseResult} (and not a L{tensor.Tensor})
+    @return: True iff x is a L{SparseResult} (and not a L{tensor.NDArrayType})
     """
-    if not isinstance(x.type, Sparse) and not isinstance(x.type, tensor.Tensor):
-        raise NotImplementedError("this function should only be called on *results* (of type sparse.Sparse or tensor.Tensor), not,", x)
-    return isinstance(x.type, Sparse)
+    if not isinstance(x.type, SparseType) and not isinstance(x.type, tensor.NDArrayType):
+        raise NotImplementedError("this function should only be called on *results* (of type sparse.SparseType or tensor.NDArrayType), not,", x)
+    return isinstance(x.type, SparseType)
 def _is_dense_result(x):
     """
     @rtype: boolean
-    @return: True unless x is a L{SparseResult} (and not a L{tensor.Tensor})
+    @return: True unless x is a L{SparseResult} (and not a L{tensor.NDArrayType})
     """
-    if not isinstance(x.type, Sparse) and not isinstance(x.type, tensor.Tensor):
-        raise NotImplementedError("this function should only be called on *results* (of type sparse.Sparse or tensor.Tensor), not,", x)
-    return isinstance(x.type, tensor.Tensor)
+    if not isinstance(x.type, SparseType) and not isinstance(x.type, tensor.NDArrayType):
+        raise NotImplementedError("this function should only be called on *results* (of type sparse.SparseType or tensor.NDArrayType), not,", x)
+    return isinstance(x.type, tensor.NDArrayType)
 
 def _is_sparse(x):
     """
@@ -78,10 +78,10 @@ def _kmap_hash(a):
 
 # Wrapper type
 
-def as_sparse(x):
+def as_sparse_result(x):
     """
     Wrapper around SparseResult constructor.
-    @param x:  A sparse matrix. as_sparse reads dtype and format properties
+    @param x:  A sparse matrix. as_sparse_result reads dtype and format properties
                out of this sparse matrix.
     @return:   SparseResult version of sp.
 
@@ -93,38 +93,40 @@ def as_sparse(x):
         else:
             x = x.outputs[0]
     if isinstance(x, gof.Result):
-        if not isinstance(x.type, Sparse):
-            raise TypeError("Result type field must be a Sparse.", x, x.type)
+        if not isinstance(x.type, SparseType):
+            raise TypeError("Result type field must be a SparseType.", x, x.type)
         return x
     try:
         return constant(x)
     except TypeError:
-        raise TypeError("Cannot convert %s to Sparse" % x, type(x))
+        raise TypeError("Cannot convert %s to SparseType" % x, type(x))
+
+as_sparse = as_sparse_result
 
 def constant(x):
     if not isinstance(x, sparse.spmatrix):
         raise TypeError("sparse.constant must be called on a scipy.sparse.spmatrix")
     try:
-        return SparseConstant(Sparse(format = x.format,
+        return SparseConstant(SparseType(format = x.format,
                                      dtype = x.dtype), x)
     except TypeError:
-        raise TypeError("Could not convert %s to Sparse" % x, type(x))
+        raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
 def value(x):
     if not isinstance(x, sparse.spmatrix):
         raise TypeError("sparse.value must be called on a scipy.sparse.spmatrix")
     try:
-        return SparseValue(Sparse(format = x.format,
+        return SparseValue(SparseType(format = x.format,
                                   dtype = x.dtype), x)
     except TypeError:
-        raise TypeError("Could not convert %s to Sparse" % x, type(x))
+        raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
 def sp_ones_like(x):
     data, indices, indptr, shape = csm_properties(x) #TODO: don't restrict to CSM formats
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
 
-class Sparse(gof.Type):
+class SparseType(gof.Type):
     """
     @type dtype: numpy dtype string such as 'int64' or 'float64' (among others)
     @type format: string
@@ -196,8 +198,8 @@ class Sparse(gof.Type):
     def is_valid_value(self, a):
         return scipy.sparse.issparse(a) and (a.format == self.format)
 
-csc_matrix = Sparse(format='csc')
-csr_matrix = Sparse(format='csr')
+csc_matrix = SparseType(format='csc')
+csr_matrix = SparseType(format='csr')
 
 class _sparse_py_operators:
     T = property(lambda self: transpose(self), doc = "Return aliased transpose of self (read-only)")
@@ -248,8 +250,8 @@ class CSMProperties(gof.Op):
         return 8234 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
 
     def make_node(self, csm):
-        csm = as_sparse(csm)
-        data = tensor.Tensor(dtype=csm.type.dtype, broadcastable = (False,)).make_result()
+        csm = as_sparse_result(csm)
+        data = tensor.NDArrayType(dtype=csm.type.dtype, broadcastable = (False,)).make_result()
         return gof.Apply(self, [csm], 
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
@@ -319,10 +321,10 @@ class CSM(gof.Op):
         :type indptr: 1-d tensor of ints
 
         """
-        data = tensor.as_tensor(data)
-        indices = tensor.as_tensor(indices)
-        indptr = tensor.as_tensor(indptr)
-        shape = tensor.as_tensor(shape)
+        data = tensor.as_ndarray_result(data)
+        indices = tensor.as_ndarray_result(indices)
+        indptr = tensor.as_ndarray_result(indptr)
+        shape = tensor.as_ndarray_result(shape)
 
         if data.type.ndim != 1:
             raise TypeError('data argument must be a vector', data.type)
@@ -335,7 +337,7 @@ class CSM(gof.Op):
 
         return gof.Apply(self,
                          [data, indices, indptr, shape],
-                         [Sparse(dtype = data.type.dtype,
+                         [SparseType(dtype = data.type.dtype,
                                  format = self.format).make_result()])
 
     def perform(self, node, (data, indices, indptr, shape), (out,)):
@@ -366,7 +368,7 @@ class CSM(gof.Op):
 
     def grad(self, (data, indices, indptr, shape), (g_out,)):
         """Return a gradient on the data vector"""
-        #unpack the data vector and wrap it as a 1d Tensor
+        #unpack the data vector and wrap it as a 1d NDArrayType
         g_data = csm_grad(self.kmap)(data, csm_data(g_out),csm_indices(g_out))
         return [g_data, None, None, None]
 
@@ -423,10 +425,10 @@ class DenseFromSparse(gof.op.Op):
     """WRITEME"""
 
     def make_node(self, x):
-        x = as_sparse(x)
+        x = as_sparse_result(x)
         return gof.Apply(self,
                          [x],
-                         [tensor.Tensor(dtype = x.type.dtype,
+                         [tensor.NDArrayType(dtype = x.type.dtype,
                                         broadcastable = (False, False)).make_result()])
     def perform(self, node, (x, ), (out, )):
         if _is_dense(x):
@@ -453,13 +455,13 @@ class SparseFromDense(gof.op.Op):
         return 982374 ^ hash(self.format) ^ hash(DenseFromSparse)
 
     def make_node(self, x):
-        x = tensor.as_tensor(x)
+        x = tensor.as_ndarray_result(x)
         return gof.Apply(self,
                          [x],
-                         [Sparse(dtype = x.type.dtype,
+                         [SparseType(dtype = x.type.dtype,
                                  format = self.format).make_result()])
     def perform(self, node, (x, ), (out, )):
-        out[0] = Sparse.format_cls[self.format](x)
+        out[0] = SparseType.format_cls[self.format](x)
     def grad(self, (x, ), (gz, )):
         return dense_from_sparse(gz),
 csr_from_dense = SparseFromDense('csr')
@@ -473,10 +475,10 @@ class Transpose(gof.op.Op):
     format_map = {'csr' : 'csc',
                   'csc' : 'csr'}
     def make_node(self, x):
-        x = as_sparse(x)
+        x = as_sparse_result(x)
         return gof.Apply(self,
                          [x],
-                         [Sparse(dtype = x.type.dtype,
+                         [SparseType(dtype = x.type.dtype,
                                  format = self.format_map[x.type.format]).make_result()])
     def perform(self, node, (x, ), (out, )):
         assert _is_sparse(x)
@@ -488,7 +490,7 @@ transpose = Transpose()
 
 class Neg(gof.op.Op):
     def make_node(self, x):
-        x = as_sparse(x)
+        x = as_sparse_result(x)
         return gof.Apply(self, [x], [x.type()])
     def perform(self, node, (x, ), (out, )):
         assert _is_sparse(x)
@@ -501,7 +503,7 @@ neg = Neg()
 class AddSS(gof.op.Op):
     '''Add two sparse matrices '''
     def make_node(self, x, y):
-        x, y = map(as_sparse, [x, y])
+        x, y = map(as_sparse_result, [x, y])
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
         if x.type.format != y.type.format:
@@ -509,7 +511,7 @@ class AddSS(gof.op.Op):
             raise NotImplementedError()
         return gof.Apply(self,
                          [x, y],
-                         [Sparse(dtype = x.type.dtype,
+                         [SparseType(dtype = x.type.dtype,
                                  format = x.type.format).make_result()])
     def perform(self, node, (x, y), (out, )): 
         assert _is_sparse(x) and _is_sparse(y)
@@ -523,7 +525,7 @@ add_s_s = AddSS()
 class AddSD(gof.op.Op):
     ''' Add a sparse and a dense matrix '''
     def make_node(self, x, y):
-        x, y = as_sparse(x), tensor.as_tensor(y)
+        x, y = as_sparse_result(x), tensor.as_ndarray_result(y)
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
         # The magic number two here arises because L{scipy.sparse}
@@ -531,7 +533,7 @@ class AddSD(gof.op.Op):
         assert y.type.ndim == 2
         return gof.Apply(self,
                          [x, y],
-                         [tensor.Tensor(dtype = y.type.dtype,
+                         [tensor.NDArrayType(dtype = y.type.dtype,
                                         broadcastable = y.type.broadcastable).make_result()])
     def perform(self, node, (x, y), (out, )): 
         assert _is_sparse(x) and _is_dense(y)
@@ -545,8 +547,8 @@ def add(x,y):
     """
     Add two matrices, at least one of which is sparse.
     """
-    if hasattr(x, 'getnnz'): x = as_sparse(x)
-    if hasattr(y, 'getnnz'): y = as_sparse(y)
+    if hasattr(x, 'getnnz'): x = as_sparse_result(x)
+    if hasattr(y, 'getnnz'): y = as_sparse_result(y)
     
     x_is_sparse_result = _is_sparse_result(x)
     y_is_sparse_result = _is_sparse_result(y)
@@ -564,7 +566,7 @@ def sub(x,y):
 class MulSS(gof.op.Op):
     ''' Elementwise multiply a sparse and a ndarray '''
     def make_node(self, x, y):
-        x, y = as_sparse(x), as_sparse(y)
+        x, y = as_sparse_result(x), as_sparse_result(y)
         if x.type != y.type:
             raise NotImplementedError()
         return gof.Apply(self, [x, y], [x.type()])
@@ -583,7 +585,7 @@ mul_s_s = MulSS()
 class MulSD(gof.op.Op):
     ''' Elementwise multiply a sparse and a ndarray '''
     def make_node(self, x, y):
-        x, y = as_sparse(x), tensor.as_tensor(y)
+        x, y = as_sparse_result(x), tensor.as_ndarray_result(y)
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
         # The magic number two here arises because L{scipy.sparse}
@@ -641,8 +643,8 @@ def mul(x,y):
     """
     Multiply (elementwise) two matrices, at least one of which is sparse.
     """
-    if hasattr(x, 'getnnz'): x = as_sparse(x)
-    if hasattr(y, 'getnnz'): y = as_sparse(y)
+    if hasattr(x, 'getnnz'): x = as_sparse_result(x)
+    if hasattr(y, 'getnnz'): y = as_sparse_result(y)
     
     x_is_sparse_result = _is_sparse_result(x)
     y_is_sparse_result = _is_sparse_result(y)
@@ -661,7 +663,7 @@ class StructuredDot(gof.Op):
     """Structured Dot is like dot, except that only the gradient wrt non-zero elements of the
     sparse matrix A are calculated and propagated.
 
-    The output is presumed to be a dense matrix, and is represented by a Tensor instance.
+    The output is presumed to be a dense matrix, and is represented by a NDArrayType instance.
     """
     def make_node(self, a, b):
         assert a.type.dtype == b.type.dtype
@@ -710,8 +712,8 @@ def structured_dot(x, y):
     @todo: Maybe the triple-transposition formulation (when x is dense)
     is slow. See if there is a direct way to do this.
     """
-    if hasattr(x, 'getnnz'): x = as_sparse(x)
-    if hasattr(y, 'getnnz'): y = as_sparse(y)
+    if hasattr(x, 'getnnz'): x = as_sparse_result(x)
+    if hasattr(y, 'getnnz'): y = as_sparse_result(y)
 
     x_is_sparse_result = _is_sparse_result(x)
     y_is_sparse_result = _is_sparse_result(y)

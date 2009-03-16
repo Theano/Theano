@@ -22,7 +22,7 @@ class T_transpose(unittest.TestCase):
 
     def test_transpose_csc(self):
         sp = sparse.csc_matrix(sparse.eye(5,3))
-        a = as_sparse(sp)
+        a = as_sparse_result(sp)
         self.failUnless(a.data is sp)
         self.failUnless(a.data.shape == (5,3))
         self.failUnless(a.type.dtype == 'float64', a.type.dtype)
@@ -34,7 +34,7 @@ class T_transpose(unittest.TestCase):
         vta = eval_outputs([ta])
         self.failUnless(vta.shape == (3,5))
     def test_transpose_csr(self):
-        a = as_sparse(sparse.csr_matrix(sparse.eye(5,3)))
+        a = as_sparse_result(sparse.csr_matrix(sparse.eye(5,3)))
         self.failUnless(a.data.shape == (5,3))
         self.failUnless(a.type.dtype == 'float64')
         self.failUnless(a.type.format == 'csr')
@@ -49,13 +49,13 @@ class T_Add(unittest.TestCase):
     def testSS(self):
         for mtype in _mtypes:
             a = mtype(numpy.array([[1., 0], [3, 0], [0, 6]]))
-            aR = as_sparse(a)
+            aR = as_sparse_result(a)
             self.failUnless(aR.data is a)
             self.failUnless(_is_sparse(a))
             self.failUnless(_is_sparse_result(aR))
 
             b = mtype(numpy.asarray([[0, 2.], [0, 4], [5, 0]]))
-            bR = as_sparse(b)
+            bR = as_sparse_result(b)
             self.failUnless(bR.data is b)
             self.failUnless(_is_sparse(b))
             self.failUnless(_is_sparse_result(bR))
@@ -76,13 +76,13 @@ class T_Add(unittest.TestCase):
     def testSD(self):
         for mtype in _mtypes:
             a = numpy.array([[1., 0], [3, 0], [0, 6]])
-            aR = tensor.as_tensor(a)
+            aR = tensor.as_ndarray_result(a)
             self.failUnless(aR.data is a)
             self.failUnless(_is_dense(a))
             self.failUnless(_is_dense_result(aR))
 
             b = mtype(numpy.asarray([[0, 2.], [0, 4], [5, 0]]))
-            bR = as_sparse(b)
+            bR = as_sparse_result(b)
             self.failUnless(bR.data is b)
             self.failUnless(_is_sparse(b))
             self.failUnless(_is_sparse_result(bR))
@@ -101,13 +101,13 @@ class T_Add(unittest.TestCase):
     def testDS(self):
         for mtype in _mtypes:
             a = mtype(numpy.array([[1., 0], [3, 0], [0, 6]]))
-            aR = as_sparse(a)
+            aR = as_sparse_result(a)
             self.failUnless(aR.data is a)
             self.failUnless(_is_sparse(a))
             self.failUnless(_is_sparse_result(aR))
 
             b = numpy.asarray([[0, 2.], [0, 4], [5, 0]])
-            bR = tensor.as_tensor(b)
+            bR = tensor.as_ndarray_result(b)
             self.failUnless(bR.data is b)
             self.failUnless(_is_dense(b))
             self.failUnless(_is_dense_result(bR))
@@ -128,14 +128,14 @@ class T_conversion(unittest.TestCase):
         unittest_tools.seed_rng()
 
     def test0(self):
-        a = tensor.as_tensor(numpy.random.rand(5))
+        a = tensor.as_ndarray_result(numpy.random.rand(5))
         s = csc_from_dense(a)
         val = eval_outputs([s])
         self.failUnless(str(val.dtype)=='float64')
         self.failUnless(val.format == 'csc')
 
     def test1(self):
-        a = tensor.as_tensor(numpy.random.rand(5))
+        a = tensor.as_ndarray_result(numpy.random.rand(5))
         s = csr_from_dense(a)
         val = eval_outputs([s])
         self.failUnless(str(val.dtype)=='float64')

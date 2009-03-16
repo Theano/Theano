@@ -63,7 +63,7 @@ def test_merge_with_weird_eq():
     assert node.inputs[0] is node.inputs[1]
 
     #NONSCALAR CASE
-    # This was created to test TensorConstantSignature
+    # This was created to test NDArrayConstantSignature
     x = T.constant(numpy.ones(5), name='x')
     y = T.constant(numpy.ones(5), name='y')
     g = Env([x, y], [x+y])

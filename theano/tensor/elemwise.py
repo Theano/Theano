@@ -13,18 +13,18 @@ from copy import copy, deepcopy
 
 
 # tensor depends on elemwise to provide definitions for several ops
-# but elemwise needs to make Tensor instances, so we have these as
+# but elemwise needs to make NDArrayType instances, so we have these as
 # placeholders and the tensor module fills them
-def as_tensor(data):
+def as_ndarray_result(data):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
-def Tensor(*inputs, **kwargs):
+def NDArrayType(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
-def TensorResult(*inputs, **kwargs):
+def NDArrayResult(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
-def TensorConstant(*inputs, **kwargs):
+def NDArrayConstant(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
 
@@ -137,7 +137,7 @@ class DimShuffle(Op):
             else:
                 ob.append(ib[value])
 
-        output = Tensor(dtype = input.type.dtype,
+        output = NDArrayType(dtype = input.type.dtype,
                         broadcastable = ob).make_result()
         return Apply(self, [input], [output])
 
@@ -256,7 +256,7 @@ class DimShuffle(Op):
         return full_code % dict(locals(), **sub)
 
     def grad(self, (x, ), (gz, )):
-        gz = as_tensor(gz)
+        gz = as_ndarray_result(gz)
         grad_order = ['x'] * len(x.type.broadcastable)
         for i, v in enumerate(self.new_order):
             if v != 'x':
@@ -365,7 +365,7 @@ class Elemwise(Op):
         using DimShuffle.
         """
 
-        inputs = map(as_tensor, inputs)
+        inputs = map(as_ndarray_result, inputs)
         shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
@@ -403,7 +403,7 @@ class Elemwise(Op):
         if any(inputs[i].type.dtype != out_dtypes[o] for o, i in inplace_pattern.items()):
             raise TypeError("Cannot do an inplace operation on incompatible data types.", 
                     ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern))
-        outputs = [Tensor(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
+        outputs = [NDArrayType(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
         return Apply(self, inputs, outputs)
 
     def __eq__(self, other):
@@ -431,7 +431,7 @@ class Elemwise(Op):
             return self.name
 
     def grad(self, inputs, ograds):
-        ograds = map(as_tensor, ograds) # this shouldn't be necessary...
+        ograds = map(as_ndarray_result, ograds) # this shouldn't be necessary...
         scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
         scalar_ograds = [Scalar(dtype = ograd.type.dtype)() for ograd in ograds]
         scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
@@ -445,8 +445,8 @@ class Elemwise(Op):
             node = r.owner
             if node is None:
                 # the gradient contains a constant, translate it as
-                # an equivalent Tensor of size 1 and proper number of dimensions
-                res = TensorConstant(Tensor(dtype = r.type.dtype,
+                # an equivalent NDArrayType of size 1 and proper number of dimensions
+                res = NDArrayConstant(NDArrayType(dtype = r.type.dtype,
                                             broadcastable = ()),
                                      numpy.asarray(r.data)) # .reshape(b)
                 return DimShuffle((), ['x']*nd, inplace = True)(res)
@@ -678,12 +678,12 @@ class CAReduce(Op):
         self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
     def make_node(self, input):
-        input = as_tensor(input)
+        input = as_ndarray_result(input)
         axis = self.axis
         if axis is None:
             axis = range(len(input.type.broadcastable))
-        output = Tensor(dtype = input.type.dtype,
-                        broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
+        output = NDArrayType(dtype = input.type.dtype,
+                             broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
         return Apply(self, [input], [output])
 
     def __getstate__(self):
@@ -809,7 +809,7 @@ class Sum(CAReduce):
         CAReduce.__init__(self, scalar.add, axis)
 
     def grad(self, (x, ), (gz, )):
-        gz = as_tensor(gz)
+        gz = as_ndarray_result(gz)
         axis = self.axis
         if axis is None:
             axis = range(x.type.ndim)

@@ -131,7 +131,7 @@ class RandomStreams(Component):
         :returns: The symbolic random draw part of op()'s return value.  This function stores
         the updated RandomStateType Result for use at `build` time.
 
-        :rtype: TensorResult
+        :rtype: NDArrayResult
         """
         random_state_result = raw_random.random_state_type()
         new_r, out = op(random_state_result, *args, **kwargs)
