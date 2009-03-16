@@ -148,6 +148,14 @@ def checkfor(testcase, fn, E):
 
 
 class T_function(unittest.TestCase):
+    def test_none(self):
+        fn = function([], None) #ok
+        rval = fn()
+        if rval == []:
+            print >> sys.stderr, 'WARNING: ticket #254'
+        else:
+            assert rval is None
+
     def test_empty(self):
         fn = function([], []) #ok
         self.failUnless(fn() == [])
