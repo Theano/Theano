@@ -14,6 +14,10 @@ import theano
 #TODO: add test for module.make(member=init_value)
 class T_module(unittest.TestCase):
 
+    def test_empty_module(self):
+        m = Module()
+        m.make()
+
     def test_whats_up_with_submembers(self):
         class Blah(Module):
             def __init__(self, stepsize):
@@ -504,6 +508,7 @@ def test_tuple_members():
 
     class Temp(Module):
         def __init__(self):
+            super(Temp, self).__init__()
             self.a = (1,1)
     M = Temp()
     assert isinstance(M.a, tuple)

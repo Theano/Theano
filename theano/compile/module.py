@@ -1091,7 +1091,11 @@ class Module(ComponentDict):
     directly.
     """
     InstanceType = ModuleInstance # By default, we use build ModuleInstance
-    
+   
+    def __init__(self):
+        super(Module, self).__init__()
+        self.__dict__["local_attr"]={}
+        
     def __wrapper__(self, x):
         """
         This function is called whenever x is set as an attribute of
@@ -1139,12 +1143,8 @@ class Module(ComponentDict):
 #                raise NotImplementedError
 #                print "WARNING: unknow:",v
                 return v
-
-        value=unpack_member_and_external(value)
-        if not hasattr(self,"local_attr"):
-            self.__dict__["local_attr"]={}
         
-        self.__dict__["local_attr"][attr] = value
+        self.__dict__["local_attr"][attr] = unpack_member_and_external(value)
 
     def build(self, mode, memo):
         if self in memo:
