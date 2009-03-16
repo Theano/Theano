@@ -876,7 +876,7 @@ class StructuredDotCSR(gof.Op):
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, a_ncols, b), (out,)):
-        a = sparse.csc_matrix((a_val, a_ind, a_ptr), 
+        a = sparse.csr_matrix((a_val, a_ind, a_ptr), 
                 (a_ncols, b.shape[0]),
                 copy = False)
         out[0] = a.dot(b)
