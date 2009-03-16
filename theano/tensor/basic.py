@@ -235,8 +235,15 @@ class NDArrayType(Type):
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
     def values_eq_approx(self, a, b):
-        return type(a) is numpy.ndarray and type(b) is numpy.ndarray \
-                and (a.shape == b.shape) and numpy.allclose(a, b)
+        if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
+            if a.shape != b.shape:
+                return False
+            if a.shape == ():
+                ones = numpy.ones(2)
+                return numpy.allclose(ones * a, ones*b)
+            else:
+                return numpy.allclose(a,b)
+        return False
 
     def __hash__(self):
         """Hash equal for same kinds of NDArrayType"""
