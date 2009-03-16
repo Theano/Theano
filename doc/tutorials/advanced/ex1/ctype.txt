@@ -67,7 +67,7 @@ the most important ones:
 
   - When the computations are done, transfer the results from the C
     structure we put them in to the destination Python object. This
-    will only be called for the inputs.
+    will only be called for the outputs.
 
 - **c_cleanup(name, sub)**
 
