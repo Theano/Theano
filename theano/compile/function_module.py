@@ -727,7 +727,10 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
     """
 
     inputs = map(convert_function_input, inputs)
-    outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
+    if outputs is None:
+        outputs = []
+    else:
+        outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
