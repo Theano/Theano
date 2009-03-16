@@ -84,7 +84,7 @@ Custom tensor types
 
 If you wish to use a type of tensor which is not already available here
 (for example, a 3D tensor) you can build an appropriate type using
-``theano.tensor.Tensor``. The first argument you pass is the ``dtype``
+``theano.tensor.NDArrayType``. The first argument you pass is the ``dtype``
 and the second is the ``broadcastable pattern``.
 
 Where ``dtype`` is one of:
@@ -110,7 +110,7 @@ complex128  complex          128 (two float64)
 
    Even though ``theano.tensor`` does not define any type
    using ``complex`` dtypes (``complex64`` or ``complex128``),
-   you can define them explicitly with ``Tensor`` (see example
+   you can define them explicitly with ``NDArrayType`` (see example
    below). However, few operations are fully supported for complex
    types: as of version 0.1, only elementary operations (``+-*/``)
    have C implementations. Additionally, complex types have received
@@ -154,11 +154,11 @@ bytes, we would do:
 .. code-block:: python
 
    # 3D tensor of signed bytes
-   mytype = theano.tensor.Tensor('uint8', [False]*3)
+   mytype = theano.tensor.NDArrayType('uint8', [False]*3)
 
    # complex types (based on complex64)
-   my_cscalar = theano.tensor.Tensor('complex64', [])
-   my_cmatrix = theano.tensor.Tensor('complex64', [False, False])
+   my_cscalar = theano.tensor.NDArrayType('complex64', [])
+   my_cmatrix = theano.tensor.NDArrayType('complex64', [False, False])
 
 
 Ops

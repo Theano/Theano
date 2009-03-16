@@ -49,16 +49,16 @@ is the type we assign to "0-dimensional arrays (`scalar`) of doubles
 
 ``dscalar`` is not a class. Therefore, neither ``x`` nor ``y``
 are actually instances of ``dscalar``. They are instances of
-:api:`TensorResult <theano.tensor.basic.TensorResult>`. ``x`` and ``y``
+:api:`NDArrayResult <theano.tensor.basic.NDArrayResult>`. ``x`` and ``y``
 are, however, assigned the theano Type ``dscalar`` in their ``type``
 field, as you can see here:
 
 >>> type(x)
-<class 'theano.tensor.basic.TensorResult'>
+<class 'theano.tensor.basic.NDArrayResult'>
 >>> x.type
-Tensor(float64, scalar)
+NDArrayType(float64, scalar)
 >>> T.dscalar
-Tensor(float64, scalar)
+NDArrayType(float64, scalar)
 >>> x.type == T.dscalar
 True
 

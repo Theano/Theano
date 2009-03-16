@@ -6,7 +6,7 @@ How to make a new Op on tensors
 ===============================
 
 This tutorial aims to explain how to create a new operation operating
-on numpy's ndarrays and using Theano's Tensor type. It is optional but
+on numpy's ndarrays and using Theano's NDArrayType. It is optional but
 recommended to go through the :ref:`advtutorial` beforehand, which
 explains more in detail the purpose of each of the methods you will
 define here.

@@ -86,8 +86,8 @@ This is what you would type to build the graph explicitly:
     from theano.tensor import *
     
     # We instantiate a type that represents a matrix of doubles
-    float64_matrix = Tensor(dtype = 'float64',              # double
-                            broadcastable = (False, False)) # matrix
+    float64_matrix = NDArrayType(dtype = 'float64',              # double
+                                 broadcastable = (False, False)) # matrix
     
     # We make the Result instances we need.
     x = Result(type = float64_matrix, name = 'x')

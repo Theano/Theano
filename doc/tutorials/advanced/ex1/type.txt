@@ -221,11 +221,11 @@ attempt to clear up the confusion:
   structural similarities. In the ``double`` example that we are
   doing, there is actually only one Type in that set, therefore the
   subclass doesn't represent anything that one of its instances
-  doesn't. In this case it is a singleton. However, the Tensor class
-  which is a subclass of Type represents a set of types of tensors
-  parametrized by their data type or number of dimensions. We could
-  say that subclassing Type builds a hierarchy of Types which is based
-  upon structural similarity rather than compatibility.
+  doesn't. In this case it is a singleton. However, the NDArrayType
+  class which is a subclass of Type represents a set of types of
+  tensors parametrized by their data type or number of dimensions. We
+  could say that subclassing Type builds a hierarchy of Types which is
+  based upon structural similarity rather than compatibility.
 
 
 Final version
