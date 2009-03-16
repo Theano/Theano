@@ -26,6 +26,7 @@ concepts at work here.
 
 .. toctree::
 
+   graphstructures
    ex1/type
    ex1/op
    ex1/ctype
