@@ -61,7 +61,7 @@ Theano supports functions with multiple outputs. For example, we can
 compute the :term:`elementwise` difference, absolute difference, and
 squared difference between two matrices ``x`` and ``y`` at the same time:
 
->>> x, y = T.dmatrices('xy')
+>>> x, y = T.dmatrices('x', 'y')
 >>> diff = x - y
 >>> abs_diff = abs(diff)
 >>> diff_squared = diff**2
@@ -96,11 +96,21 @@ Here is code to compute this gradient:
 >>> x = T.dscalar('x')
 >>> y = x**2
 >>> gy = T.grad(y, x)
+>>> pp(gy)
+'fill(x ** 2, 1.0) * 2 * x ** (2 - 1)'
 >>> f = function([x], gy)
 >>> f(4)
 array(8.0)
 >>> f(94.2)
 array(188.40000000000001)
+
+In the example above, we can see from ``pp(gw)`` that we are computing
+the correct symbolic gradient.
+``fill(x ** 2, 1.0)`` means to make a matrix of the same shape as ``x **
+2`` and fill it with 1.0.
+
+.. note::
+    The optimizer will simplify the symbolic gradient expression.
 
 We can also compute the gradient of complex expressions such as the
 logistic function defined above. It turns out that the derivative of the
@@ -141,7 +151,7 @@ Let's say you want to define a function that adds two numbers, except
 that if you only provide one number, the other input is assumed to be
 one. You can do it like this:
 
->>> x, y = T.dscalars('xy')
+>>> x, y = T.dscalars('x', 'y')
 >>> z = x + y
 >>> f = function([x, (y, 1)], z)
 >>> f(33)
@@ -152,6 +162,26 @@ array(35.0)
 The syntax is that if one of the elements in the list of inputs is a
 pair, the input is the first element of the pair and the second
 element is its default value. Here ``y``'s default value is set to 1.
+
+Inputs with default values should (must?) follow inputs without default
+values.  There can be multiple inputs with default values. Defaults can
+be set positionally or by name, as in standard Python:
+
+>>> x, y, w = T.dscalars('x', 'y', 'w')
+>>> z = (x + y) * w
+>>> f = function([x, (y, 1), (w, 2)], z)
+>>> f(33)
+array(68.0)
+>>> f(33, 2)
+array(70.0)
+>>> f(33, 0, 1)
+array(33.0)
+>>> f(33, w=1)
+array(34.0)
+>>> f(33, w=1, y=0)
+array(33.0)
+>>> f(33, w=1, 2)
+<type 'exceptions.SyntaxError'>: non-keyword arg after keyword arg (<ipython console>, line 1)
 
 
 .. _functionstateexample:
@@ -173,13 +203,17 @@ First let's define the accumulator function:
 >>> accumulator = function([(inc, 1), ((state, new_state), 0)], new_state)
 
 The first argument is a pair. As we saw in the previous section, this
-means that ``inc`` is an input with a default value of 1. The
-second argument has syntax that creates an internal state or
-closure. The syntax is ``((state_result, new_state_result),
-initial_value)``. What this means is that every time ``accumulator``
-is called, the value of the internal ``state`` will be replaced
-by the value computed as ``new_state``. In this case, the state will
-be replaced by the result of incrementing it by ``inc``.
+means that ``inc`` is an input with a default value of 1. The second
+argument has syntax that creates an internal state.  The syntax is
+``((state_result, new_state_result), initial_value)``.
+The internal storage associated with ``state_result`` is initialized to
+``initial_value``.  Every time ``accumulator`` is called, the value
+of the internal ``state`` will be replaced by the value computed as
+``new_state``. In this case, the state will be replaced by the result
+of incrementing it by ``inc``.
+
+We recommend (insist?) that internl state arguments occur after any
+plain arguments and arguments with default values.
 
 There is no limit to how many states you can have. You can add an
 arbitrary number of elements to the input list which correspond to the

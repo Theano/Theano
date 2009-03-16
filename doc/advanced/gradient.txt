@@ -6,3 +6,7 @@ Computation of the Gradient
 ===========================
 
 WRITEME
+
+Describe what is happening in general when you compute the gradient
+
+Give examples with varying shapes

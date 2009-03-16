@@ -25,10 +25,11 @@ array(28.4)
 
 
 Let's break this down into several steps. The first step is to define
-two symbols, or Results, representing the quantities that you want to
-add. Note that from now on, we will use the term :term:`Result` to
-mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Result
-objects).
+two symbols, or Results, representing the quantities that you want
+to add. Note that from now on, we will use the term :term:`Result`
+to mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Result
+objects). The output of the function ``f`` is a :api:`numpy.ndarray`
+with zero dimensions.
 
 If you are following along and typing into an interpreter, you may have
 noticed that there was a slight delay in executing the ``function``
@@ -80,7 +81,7 @@ The second step is to combine ``x`` and ``y`` into their sum ``z``:
 
 ``z`` is yet another :term:`Result` which represents the addition of
 ``x`` and ``y``. You can use the :api:`pp <theano.printing.pp>`
-function to print out the computation associated to ``z``.
+function to pretty-print out the computation associated to ``z``.
 
 >>> print pp(z)
 x + y
@@ -146,9 +147,9 @@ with numpy arrays may be found :ref:`here <predefinedtypes>`.
 
 .. note::
 
-   Watch out for the distinction between 32 and 64 bit integers (i
-   prefix vs the l prefix) and between 32 and 64 bit floats (f prefix
-   vs the d prefix).
+   You the user---not the system architecture---choose whether your
+   program will use 32- or 64-bit integers (i prefix vs the l prefix)
+   and floats (f prefix vs the d prefix).
 
 
 **Next:** `More examples`_
