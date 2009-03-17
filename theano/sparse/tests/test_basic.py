@@ -153,61 +153,65 @@ class T_conversion(unittest.TestCase):
 
 import scipy.sparse as sp
 class test_structureddot(unittest.TestCase):
+    def setUp(self):
+        unittest_tools.seed_rng()
 
     def test_structuredot(self):
         bsize = 2
-        spmat = sp.csc_matrix((5,5))
-        spmat[0,1] = 1
-        spmat[0,2] = 2
-        spmat[1,2] = 3
-        spmat[1,4] = 4
-        spmat[3,4] = 5
-      
-        kerns = tensor.dvector('kerns')
-        images = tensor.dmatrix('images')
+       
+        # iterate 10 times just to make sure (cannot get this wrong !)
+        for i in range(10):
+            spmat = sp.csc_matrix((4,6))
+            for i in range(5):
+                x = numpy.floor(numpy.random.rand()*spmat.shape[0])
+                y = numpy.floor(numpy.random.rand()*spmat.shape[1])
+                spmat[x,y] = numpy.random.rand()*10
+       
+            kerns = tensor.dvector('kerns')
+            images = tensor.dmatrix('images')
 
-        ##
-        # Test compressed-sparse column matrices ###
-        ##
+            ##
+            # Test compressed-sparse column matrices ###
+            ##
 
-        # build symbolic theano graph
-        def buildgraphCSC(kerns,images):
-            csc = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
-            return structured_dot(csc, images.T)
-        out = buildgraphCSC(kerns,images)
-        f = theano.function([kerns,images], out)
-        # compute theano outputs
-        kernvals = spmat.data[:spmat.size]
-        imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
-        outvals = f(kernvals,imvals)
-        # compare to scipy
-        c = spmat.dot(imvals.T)
-        assert _is_dense(c)
-        assert numpy.all(outvals == c)
+            # build symbolic theano graph
+            def buildgraphCSC(kerns,images):
+                csc = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
+                return structured_dot(csc, images.T)
+            out = buildgraphCSC(kerns,images)
+            f = theano.function([kerns,images], out)
+            # compute theano outputs
+            kernvals = spmat.data[:spmat.size]
+            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+            outvals = f(kernvals,imvals)
+            # compare to scipy
+            c = spmat.dot(imvals.T)
+            assert _is_dense(c)
+            assert numpy.all(outvals == c)
 
-        tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals])
+            tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals])
 
-        ##
-        # Test compressed-sparse row matrices ###
-        ##
-        spmat = spmat.tocsr()
-        
-        # build theano graph
-        def buildgraphCSR(kerns,images):
-            csr = CSR(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
-            return structured_dot(csr, images.T)
-        out = buildgraphCSR(kerns,images)
-        f = theano.function([kerns,images], out)
-        # compute theano output
-        kernvals = spmat.data[:spmat.size]
-        imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
-        outvals = f(kernvals,imvals)
-        # compare to scipy
-        c = spmat.dot(imvals.T)
-        assert _is_dense(c)
-        assert numpy.all(outvals == c)
+            ##
+            # Test compressed-sparse row matrices ###
+            ##
+            spmat = spmat.tocsr()
+            
+            # build theano graph
+            def buildgraphCSR(kerns,images):
+                csr = CSR(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
+                return structured_dot(csr, images.T)
+            out = buildgraphCSR(kerns,images)
+            f = theano.function([kerns,images], out)
+            # compute theano output
+            kernvals = spmat.data[:spmat.size]
+            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+            outvals = f(kernvals,imvals)
+            # compare to scipy
+            c = spmat.dot(imvals.T)
+            assert _is_dense(c)
+            assert numpy.all(outvals == c)
 
-        tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals])
+            tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals])
 
 
 if __name__ == '__main__':

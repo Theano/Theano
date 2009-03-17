@@ -1,0 +1,223 @@
+.. _unittest:
+
+===============
+Unit Testing
+===============
+
+Theano relies heavily on unit testing. Its importance cannot be stressed enough !
+
+Unit Testing revolves around the following principles:
+
+* ensuring correctness: making sure that your Op, Type or Optimization works in the way you intended it to work. It is important for this testing to be as thorough as possible: test not only the obvious cases, but more importantly the corner cases which are more likely to trigger bugs down the line.
+* test all possible failure paths. This means testing that your code fails in the appropriate manner, by raising the correct errors when in certain situations.
+* sanity check: making sure that everything still runs after you've done your modification. If your changes cause unit tests to start failing, it could be that you've changed an API on which other users rely on. It is therefore your responsibility to either a) provide the fix or b) inform the author of your changes and coordinate with that person to produce a fix. If this sounds like too much of a burden... then good ! APIs aren't meant to be changed on a whim !
+
+This page is in no way meant to replace tutorials on Python's unittest module, for this we refer the reader to the `official documentation <http://docs.python.org/library/unittest.html>`_.  We will however adress certain specificities about how unittests relate to theano.
+
+How to Run Unit Tests ?
+=======================
+
+Running all unit tests
+
+>>> cd Theano/theano
+>>> nosetests
+
+Running unit tests with standard out
+
+>>> nosetests -s
+
+Running unit tests contained in a specific .py file
+
+>>> nosetests <filename>.py
+
+Running a specific unit test
+
+>>> nosetests <filename>.py:<classname>.<method_name>
+
+
+Folder Layout
+=============
+
+"tests" directories are scattered throughout theano. Each tests subfolder is
+meant to contain the unittests which validate the .py files in the parent folder.
+
+Files containing unittests should be prefixed with the word "test".
+
+Optimally every python module should have a unittest file associated with it,
+as shown below. Unittests testing functionality of module <module>.py should therefore be stored in tests/test_<module>.py
+
+>>> Theano/theano/tensor/basic.py
+>>> Theano/theano/tensor/elemwise.py
+>>> Theano/theano/tensor/tests/test_basic.py
+>>> Theano/theano/tensor/tests/test_elemwise.py
+
+
+How to Write a Unittest
+=======================
+
+Test Cases and Methods
+----------------------
+
+Unittests should be grouped "logically" into test cases, which are meant to
+group all unittests operating on the same element and/or concept. Test cases
+are implemented as Python classes which inherit from unittest.TestCase
+
+Test cases contain multiple test methods. These should be prefixed with the
+word "test". 
+
+Test methods should be as specific as possible and cover a particular aspect
+of the problem. For example, when testing the TensorDot Op, one test method
+could check for validity, while another could verify that the proper errors
+are raised when inputs have invalid dimensions.
+
+Test method names should be as explicit as possible, so that users can see at
+first glance, what functionality is being tested and what tests need to be added.
+
+Example:
+
+>>> import unittest
+>>> class TestTensorDot(unittest.TestCase):
+>>>     def test_validity(self):
+>>>         # do stuff
+>>>     def test_invalid_dims(self):
+>>>         # do more stuff
+
+Test cases can define a special setUp method, which will get called before
+each test method is executed. This is a good place to put functionality which
+is shared amongst all test methods in the test case (i.e initializing data,
+parameters, seeding random number generators -- more on this later)
+
+>>> class TestTensorDot(unittest.TestCase):
+>>>     def setUp(self):
+>>>         # data which will be used in various test methods
+>>>         self.avals = numpy.array([[1,5,3],[2,4,1]])
+>>>         self.bvals = numpy.array([[2,3,1,8],[4,2,1,1],[1,4,8,5]])
+
+Similarly, test cases can define a tearDown method, which will be implicitely
+called at the end of each test method.
+
+
+Checking for correctness
+------------------------
+
+When checking for correctness of mathematical expressions, the user should
+preferably compare theano's output to the equivalent numpy implementation. 
+
+Example:
+
+>>> class TestTensorDot(unittest.TestCase):
+>>>     def setUp(self):
+>>>         ...
+>>>
+>>>     def test_validity(self):
+>>>         a = T.dmatrix('a')
+>>>         b = T.dmatrix('b')
+>>>         c = T.dot(a,b)
+>>>         f = theano.function([a,b],[c])
+>>>         cmp = f(self.avals,self.bvals) == numpy.dot(self.avals,self.bvals)
+>>>         self.failUnless(numpy.all(cmp))
+
+Avoid hard-coding results, as in the following case:
+
+>>>         self.failUnless(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
+
+This makes the test case less manageable and forces the user to update the
+results each time the input is changed or possibly when the module being
+tested changes (after a bug fix for example). It also constrains the test case
+to specific input/output data pairs. The section on random values covers why this
+might not be such a good idea.
+
+Here is a list of useful functions, as defined by TestCase: 
+
+* checking the state of boolean variables: assert_, failUnless, assertTrue, failIf, assertFalse
+* checking for (in)equality constraints: assertEqual, failUnlessEqual, assertNotEqual, failIfEqual
+* checking for (in)equality constraints up to a given precision (very useful in theano): assertAlmostEqual, failUnlessAlmostEqual, assertNotAlmostEqual, failIfAlmostEqual
+
+
+Checking for errors
+-------------------
+
+On top of verifying that your code provides the correct output, it is equally
+important to test that it fails in the appropriate manner, raising the
+appropriate exceptions, etc. Silent failures are deadly, as they can go unnoticed
+for a long time and a hard to detect "after-the-fact".
+
+Example:
+
+>>> class TestTensorDot(unittest.TestCase):
+>>>     ...
+>>>     def test_3D_dot_fail(self):
+>>>         def func():
+>>>             a = T.NDArrayType('float64', (False,False,False)) # create 3d tensor
+>>>             b = T.dmatrix()
+>>>             c = T.dot(a,b) # we expect this to fail
+>>>         # above should fail as dot operates on 2D tensors only
+>>>         self.failUnlessRaises(TypeError, func)
+
+Useful functions, as defined by TestCase: 
+
+* assertRaises, failUnlessRaises
+
+
+Test Cases and Theano Modes
+---------------------------
+
+When compiling theano functions or modules, a mode parameter can be given to specify which linker and optimizer to use.
+
+Example:
+
+>>> f = T.function([a,b],[c],mode='FAST_RUN')
+>>> m = theano.Module()
+>>> minstance = m.make(mode='DEBUG_MODE')
+
+Whenever possible, unit tests should omit this parameter. Leaving-out the mode will ensure that unit tests use the default mode (defined in compile.mode.default_mode). This default_mode is set to the THEANO_DEFAULT_MODE environment variable, if it is present. If not, it defaults to 'FAST_RUN'.
+
+This allows the user to easily switch the mode in which unittests are run. For example the nightly-build system iterates over all modes.
+
+>>> THEANO_DEFAULT_MODE=FAST_COMPILE nosetests
+>>> THEANO_DEFAULT_MODE=FAST_RUN nosetests
+>>> THEANO_DEFAULT_MODE=DEBUG_MODE nosetests
+
+
+Using Random Values in Test Cases
+---------------------------------
+
+numpy.random is often used in unit tests to initialize large data structures, 
+for use as inputs to the function or module being tested. When
+doing this, it is imperative that the random number generator be seeded at the
+be beginning of each unit test. This will ensure that unittest behaviour is
+consistent from one execution to another (i.e always pass or always fail).
+
+Instead of using numpy.random.seed to do this, we encourage users to do the
+following:
+
+>>> from theano.tests import unittest_tools
+>>>
+>>> class TestTensorDot(unittest.TestCase):
+>>>     def setUp(self):
+>>>         unittest_tools.seed_rng()
+>>>         # OR ... call with an explicit seed 
+>>>         unittest_tools.seed_rng(234234)
+
+The behaviour of seed_rng is as follows:
+
+* if the environment variable THEANO_UNITTEST_SEED is defined, it will be used to seed the random number generator (and override any seed provided by the user)
+* if THEANO_UNITTEST_SEED is not defined, the user-supplied seed will be used to seed the rng
+* if THEANO_UNITTEST_SEED is not defined and no seed is given, the rng will be seeded with a random seed.
+
+The main advantage of using unittest_tools.seed_rng is that it allows us to
+change the seed used in the unitests, without having to manually edit all the
+files. For example, this allows the nightly build to run nosetests repeatedly,
+changing the seed on every run (hence achieving a higher confidence that the 
+results are correct), while still making sure unittests are deterministic. 
+
+Users who prefer their unittests to be random (when run on their local machine)
+can simply undefine THEANO_UNITTEST_SEED.
+
+Similarly, to provide a seed to numpy.random.RandomState, simply use:
+
+>>> rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+>>> # OR providing an explicit seed
+>>> rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231))
+
+Note that the ability to change the seed from one nosetest to another, is incompatible with the method of hard-coding the baseline results (against which we compare the theano outputs). These must then be determined "algorithmically". Although this represents more work, the test suite will be better because of it.

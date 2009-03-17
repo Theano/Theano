@@ -1193,7 +1193,7 @@ class StructuredDotGradCSR(gof.Op):
             const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
             const npy_int32 * __restrict__ indices = (npy_int32 *)%(_indices)s->data;
 
-            // loop over rows
+            // loop over columns of sparse matrix
             for (npy_int32 i = 0; i < N; ++i)
             {
                 // for each non-null value in the sparse row

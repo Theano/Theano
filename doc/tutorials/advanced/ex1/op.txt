@@ -86,14 +86,14 @@ An Op is any object which defines the following methods:
     gradient symbolically in this method. 
     
   - Both the inputs and output_gradients will be Results. This function must
-    return a list containg one Result (or None) for each input.
+    return a list containing one Result (or None) for each input.
     Each returned Result represents the gradient wrt that input given the
     symbolic gradients wrt each output.
 
   - If the output is not differentiable with respect to any inputs, then this
     function should be defined to return [None for i in inputs].
 
-  - If this method is not defined, then theano assumes it hsa been forgotten.
+  - If this method is not defined, then theano assumes it has been forgotten.
     Symbolic differentiation will fail on a graph that includes this Op.
 
   - For more information on the use of this method, see ``grad``.
