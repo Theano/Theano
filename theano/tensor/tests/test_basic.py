@@ -897,7 +897,6 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([1, 2, 3])
         self.failUnless((eval_outputs([s]) == want).all())
 
-
     def test_join_vector(self):
         a = as_ndarray_result(numpy.array([1, 2, 3]))
         b = as_ndarray_result(numpy.array([7, 8, 9]))
@@ -976,6 +975,16 @@ class T_Join_and_Split(unittest.TestCase):
         verify_grad(self, lambda a, b: join(0,a,b), [v, 2*v])
         verify_grad(self, lambda a, b: join(1,a,b), [v, 2*v])
 
+    def test_vector_len(self):
+        x = lscalar('x')
+        y = dscalar('y')
+
+        triple = as_ndarray_result((x, y, 9.0))
+        assert 3 == get_vector_length(triple)
+
+        a,b,c = triple
+        f = function([x,y], [b,c,a])
+        assert numpy.allclose(f(4, 5), [5, 9, 4])
 
 class test_comparison(unittest.TestCase):
     def test_gt(self):
