@@ -47,7 +47,7 @@ The following command will install the latest revision of Theano
 on your system:
 
 .. TODO: Does this install the latest package version, or the latest Mercurial
-.. revision?
+.. revision ?
 
 .. code-block:: bash
     
