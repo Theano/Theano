@@ -492,13 +492,75 @@ class T_module(unittest.TestCase):
         self.assertRaises(NotImplementedError, c.allocate,"")
         self.assertRaises(NotImplementedError, c.build,"","")
         self.assertRaises(NotImplementedError, c.pretty)
-        self.assertRaises(NotImplementedError, c.dup)
         c=Composite()
-        self.assertRaises(NotImplementedError, c.resolve,"n")
         self.assertRaises(NotImplementedError, c.components)
         self.assertRaises(NotImplementedError, c.components_map)
         self.assertRaises(NotImplementedError, c.get,"n")
         self.assertRaises(NotImplementedError, c.set,"n",1)
+
+
+
+def test_multiple_references():
+
+
+    class A(theano.Module):
+
+       def __init__(self, sub_module):
+           super(A, self).__init__()
+           self.sub_module = sub_module
+
+       def _instance_initialize(self, obj):
+           print 'Initializing A'
+
+
+    class B(theano.Module):
+
+       def __init__(self, sub_module):
+           super(B, self).__init__()
+           self.sub_module = sub_module
+
+       def _instance_initialize(self, obj):
+           print 'Initializing B'
+
+
+    class C(theano.Module):
+
+       def __init__(self):
+           super(C, self).__init__()
+           self.value = theano.tensor.scalar()
+
+       def _instance_initialize(self, obj):
+           print 'Initializing C'
+           obj.value = 0
+
+       def _instance_set(self, obj, value):
+           print 'Setting C'
+           obj.value = value
+
+
+    class D(theano.Module):
+
+       def __init__(self):
+           super(D, self).__init__()
+           self.c = C()
+           self.a = A(self.c)
+           self.b = B(self.c)
+           # Workaround for bug exhibited in a previous email.
+           self.bug = theano.tensor.scalar()
+
+       def _instance_initialize(self, obj):
+           print 'Initializing D'
+           obj.c.set(1)
+
+
+    d = D()
+    d_instance = d.make(mode = 'FAST_COMPILE')
+
+    assert d_instance.c.value == 1
+    assert d_instance.a.sub_module.value == 1
+    assert d_instance.b.sub_module.value == 1
+
+
 
 def test_tuple_members():
 
