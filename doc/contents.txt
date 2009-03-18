@@ -13,7 +13,6 @@ Contents
    install
    basic_tutorial/index
    advanced_tutorial/index
-   tutorials/index
    advanced/index
    indexes/index
    examples/index
