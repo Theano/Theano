@@ -13,3 +13,4 @@ Structure
 
    dev_start_guide
    extending
+   misc

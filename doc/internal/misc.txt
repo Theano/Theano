@@ -1,7 +1,7 @@
-.. _internal:
+.. _misc:
 
 ================
-Internal notes
+Miscellaneous
 ================
 
 

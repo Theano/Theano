@@ -8,9 +8,11 @@ Contents
 .. toctree::
    :maxdepth: 3
 
-   index
    LICENSE
+   index
    install
+   basic_tutorial/index
+   advanced_tutorial/index
    tutorials/index
    advanced/index
    indexes/index
