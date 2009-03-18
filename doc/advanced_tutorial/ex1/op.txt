@@ -41,6 +41,10 @@ An Op is any object which defines the following methods:
     applied on these inputs, it must raise an appropriate
     exception.
 
+  - The inputs of the Apply instance returned by this call must be ordered
+    correctly: a subsequent ``self.make_node(*apply.inputs)`` must produce
+    something equivalent to the first ``apply``.
+
 - **__call__(*inputs)**
 
   - Syntactic shortcut to make_node which returns the output Results
@@ -284,6 +288,12 @@ arithmetic operators:
        def __init__(self, name, fn):
            self.name = name
            self.fn = fn
+
+       def __eq__(self, other):
+           return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
+
+       def __hash__(self):
+           return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
    
        def make_node(self, x, y):
            if isinstance(x, (int, float)):
