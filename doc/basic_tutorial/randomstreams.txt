@@ -1,3 +1,5 @@
+.. _randomstreams:
+
 ====================
 Using RandomStreams
 ====================
@@ -148,9 +150,6 @@ We could call f and g in different orders in the two modules, and find that
 numpy.all(fn_val == fn_val_) and numpy.all(gn_val == gn_val_).
 
 
-
-**Next:** TODO
-**Prev:** TODO
 
 .. _Tools: tools.html
 

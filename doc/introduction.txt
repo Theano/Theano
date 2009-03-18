@@ -1,9 +1,9 @@
 
-.. _theano:
+.. _introduction:
 
-======
-Theano
-======
+============
+Introduction
+============
 
 Theano is a Python library that allows you to definite, optimize, and
 efficiently evaluate mathematical expressions involving multi-dimensional

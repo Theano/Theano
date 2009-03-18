@@ -9,7 +9,7 @@ Contents
    :maxdepth: 3
 
    LICENSE
-   index
+   introduction
    install
    basic_tutorial/index
    advanced_tutorial/index

@@ -31,5 +31,7 @@ Now we're ready for the tour:
    adding
    examples
    module
+   module_vs_op
+   randomstreams
    tools
    wrapup
