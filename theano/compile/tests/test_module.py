@@ -709,6 +709,42 @@ def test_pickle_aliased_memory():
         assert m_dup.y[0,0] == 3.142
 
 
+def test_default_instance_initialize():
+    """
+    Testing the default _instance_initialize provided by module.
+    """
+    
+    class M1(Module):
+        def __init__(self):
+            super(M1, self).__init__()
+            self.a = T.dscalar()
+            self.b = T.lscalar()
+            self.c = T.lvector()
+
+    class M2(Module):
+        def __init__(self):
+            super(M2, self).__init__()
+            self.a = T.lscalar()
+            self.x = M1()
+            self.y = self.x
+            self.z = M1()
+
+    m = M2().make(a = 13,
+                  x = dict(a = 1, b = 2, c = [3, 4]),
+                  z = dict(a = 5, b = 6, c = [7, 8]))
+
+    assert m.a == 13
+    assert m.x.a == 1
+    assert m.x.b == 2
+    assert all(m.x.c == [3, 4])
+    assert m.y.a == 1
+    assert m.y.b == 2
+    assert all(m.y.c == [3, 4])
+    assert m.z.a == 5
+    assert m.z.b == 6
+    assert all(m.z.c == [7, 8])
+
+
 if __name__ == '__main__':
     from theano.tests import main
 #    main(__file__[:-3])
@@ -717,3 +753,4 @@ if __name__ == '__main__':
 #    t.test_shared_members()
 #    tests = unittest.TestLoader().loadTestsFromModule("T_test_module")
 #    tests.debug()
+
