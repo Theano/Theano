@@ -6,14 +6,14 @@ Using Module
 Now that we're familiar with the basics, we introduce Theano's more
 advanced interface, Module. This interface allows you to define Theano
 "objects" which can have many state variables and many methods sharing
-these states. This is what you should use to define complex systems such
-as a neural network.
+these states. The Module system simplifies the way to define complex
+systems such as a neural network.
 
 
 Remake of the "state" example
 =============================
 
-Let's use Module to re-implement :ref:`this example
+Let's use Module to re-implement :ref:`the example using state
 <functionstateexample>`.
 
 >>> m = Module()
@@ -44,21 +44,21 @@ Here we instantiate an empty Module.
 
 >>> m.state = Member(T.dscalar())
 
-Then we declare a variable for use with our Module. That variable will
-be a :ref:`member` of the module, which means that it will be
+Then we declare a Result for use with our Module. That Result will
+be a :ref:`member` of the Module, which means that it will be
 accessible as a field of the object we will create later (for reading
 and writing). It will also be accessible from any :ref:`method`
 defined in our Module.
 
 .. note::
 
-   There is no need to name the variable explicitly here. m.state will
+   There is no need to name the Result explicitly here. ``m.state`` will
    be given the name 'state' automatically.
 
 
 >>> m.inc = External(T.dscalar('inc'))
 
-The inc variable doesn't need to be declared as a Member because it
+The ``inc`` variable doesn't need to be declared as a Member because it
 will only serve as an input to the method we will define. This is why
 it is defined as an :ref:`external` variable. Do note that it is
 inconsequential if you do declare it as a Member - it is unlikely

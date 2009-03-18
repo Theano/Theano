@@ -1,0 +1,21 @@
+.. _extending:
+
+================
+Extending theano
+================
+
+
+How to Add Transformations
+==========================
+
+WRITEME
+
+How to Create a Linker
+======================
+
+WRITEME
+
+How to Create a Transformation Mode
+===================================
+
+WRITEME

@@ -1,0 +1,15 @@
+
+.. _internal:
+
+======================
+Internal documentation
+======================
+
+Structure
+=========
+
+.. toctree::
+   :maxdepth: 2
+
+   dev_start_guide
+   extending

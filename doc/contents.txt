@@ -6,9 +6,10 @@ Contents
 ========
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    index
+   LICENSE
    install
    tutorials/index
    advanced/index
@@ -16,6 +17,6 @@ Contents
    examples/index
    glossary
    links
-   LICENSE
-
+   internal/index
+   doc/index
 
