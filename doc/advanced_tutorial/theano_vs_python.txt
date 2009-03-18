@@ -1,0 +1,19 @@
+
+.. _theano_vs_python:
+
+======================
+Theano vs. Python
+======================
+
+We describe some of the patterns in Theano, and present their closest
+analogue in Python:
+
+=============== ===========================================================
+Theano          Python
+=============== ===========================================================
+Apply           function application / function call
+Result          function data
+Op              operations carried out in computation / function definition
+Type            data types
+Module          ??? class?
+=============== ===========================================================

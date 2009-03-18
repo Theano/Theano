@@ -5,16 +5,13 @@
 Graph Structures
 ================
 
-Theano represents mathematical computations as graphs. These graphs
-are formed of interconnected :ref:`apply` and :ref:`result` nodes,
-which are standard types of objects. They are respectively associated
-to *function application* and *data*.  Two additional structures are
-used by Theano in order to represent the operations carried in the
-computations and the data types that are processed. Operations are
-represented :ref:`op` instances and data types are represented by
-:ref:`type` instances. Here is a piece of code and a diagram showing
-the structure built by that piece of code. This should help you
-understand how all these things play together:
+Theano represents symbolic mathematical computations as graphs. These
+graphs are composed of interconnected :ref:`apply` and :ref:`result`
+nodes. They are associated to *function application* and *data*,
+respectively. Operations are represented :ref:`op` instances and data
+types are represented by :ref:`type` instances. Here is a piece of code
+and a diagram showing the structure built by that piece of code. This
+should help you understand how these pieces fit together:
 
 
 -----------------------
@@ -38,7 +35,7 @@ box is an :ref:`apply` node. Red boxes are :ref:`result` nodes. Green
 circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
 
 When we create :ref:`Results <result>` and then :ref:`apply`
-:ref:`operations <op>` to them to make more Results, we build a
+:ref:`Ops <op>` to them to make more Results, we build a
 bi-partite, directed, acyclic graph. Results point to the Apply nodes
 representing the function application producing them via their
 ``owner`` field. These Apply nodes point in turn to their input and
@@ -49,14 +46,17 @@ they are not the result of another computation. If they were the
 result of another computation, they would point to another blue box
 like ``z`` does, and so on.
 
+Note that the ``Apply`` instance's outputs points to
+``z``. ``z.owner`` points to the ``Apply`` instance.
+
 
 An explicit example
 ===================
 
-In this example we will see in turn a short example where the graph
-construction is hidden behind the standard interface's syntactic
-shortcuts and then the same example but rolled out so that the graph
-construction is made explicit.
+In this example we will see in turn a short example in which the
+graph construction is hidden behind the standard interface's syntactic
+shortcuts. We will then see the same example but rolled out so that the
+graph construction is made explicit.
 
 
 **Short example**
@@ -85,7 +85,7 @@ This is what you would type to build the graph explicitly:
 
     from theano.tensor import *
     
-    # We instantiate a type that represents a matrix of doubles
+    # Instantiate a type that represents a matrix of doubles
     float64_matrix = NDArrayType(dtype = 'float64',              # double
                                  broadcastable = (False, False)) # matrix
     
@@ -98,7 +98,7 @@ This is what you would type to build the graph explicitly:
     mul_result = Result(type = float64_matrix)
     assert mul_result.owner is None
     
-    # We instantiate a symbolic multiplication
+    # Instantiate a symbolic multiplication
     node_mul = Apply(op = mul,
                      inputs = [y, z],
                      outputs = [mul_result])
@@ -108,7 +108,7 @@ This is what you would type to build the graph explicitly:
     add_result = Result(type = float64_matrix)
     assert add_result.owner is None
     
-    # We instantiate a symbolic addition
+    # Instantiate a symbolic addition
     node_add = Apply(op = add,
                      inputs = [x, mul_result],
                      outputs = [add_result])
@@ -218,7 +218,7 @@ Result
 
 A :ref:`result` is the main data structure you work with when using
 Theano. The symbolic inputs that you operate on are Results and what
-you get from applying various operations to these inputs are also
+you get from applying various Ops to these inputs are also
 Results. For example, when I type
 
 >>> x = theano.tensor.ivector()
