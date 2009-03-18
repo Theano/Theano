@@ -20,5 +20,4 @@ Contents
    glossary
    links
    internal/index
-   doc/index
-
+   sandbox/index
