@@ -2,8 +2,8 @@ syntax: glob
 *.pyo
 *~
 \#*\#
-doc/oplist.txt
-doc/typelist.txt
+doc/indexes/oplist.txt
+doc/indexes/typelist.txt
 doc/.build/
 compiled/*.cpp
 cutils_ext.cpp
