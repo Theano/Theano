@@ -1,4 +1,5 @@
-
+"""Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out` """
+__docformat__ = 'restructuredtext en'
 
 class SymbolicInput(object):
     """

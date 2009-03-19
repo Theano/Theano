@@ -1,0 +1,296 @@
+
+.. _function:
+
+===============
+theano.function
+===============
+
+
+This page is about ``theano.function``, the interface for compiling graphs into callable objects.
+
+The signature for this function is:
+
+.. code-block:: python
+
+    def function(inputs, outputs, mode='FAST_RUN'):
+        ...
+
+You've already seen example usage in the basic tutorial... something like this:
+
+>>> x = theano.tensor.dscalar()
+>>> f = theano.function([x], 2*x)
+>>> print f(4)                    # prints 8.0
+
+The idea here is that we've compiled the symbolic graph (``2*x``) into a function that can be called on a number and will do some computations.
+
+Inputs
+======
+
+The ``inputs`` argument to ``theano.function`` is a list, containing the ``Result`` instances for which values will be specified at the time of the function call.  But inputs can be more than just Results.  
+``In`` instances let us attach properties to ``Results`` to tell function more about how to use them.
+
+.. code-block:: python
+
+    class In(obect):
+        def __init__(self, result, name=None, value=None, update=None, mutable=False):
+            """
+            result: a Result instance. 
+                This will be assigned a value before running the function,
+                not computed from its owner.
+            
+            name: Any type. (If autoname_input=True, defaults to result.name). 
+                If name is a valid Python identifier, this input can be set by kwarg, and its value
+                can be accessed by self.<name>.
+               
+            value: literal or Container
+                This is the default value of the Input.
+
+            update: Result instance
+                value (see previous) will be replaced with this expression result after each function call.
+
+            mutable: Bool (requires value)
+                True: permit the compiled function to modify the python object being used as the default value.
+                False: do not permit the compiled function to modify the python object being used as the default value.
+
+            autoname: Bool
+                True: if the name parameter is None and the Result has a name, it will be taken as the input's name
+                False: the name is the exact value passed as the name parameter (possibly None)
+            """
+
+Value: initial and default values
+---------------------------------
+
+A non-None `value` argument makes an In() instance an optional parameter.  For example, in the following code we are defining an arity-2 function ``inc``. 
+
+>>> u, x, s = T.scalars('uxs')
+>>> inc = function([u, In(x, value=3), In(s, update=(s+x*u), value=10.0)], [])
+
+Since we provided a ``value`` for ``s`` and ``x``, we can call it with just a value for ``u`` like this:
+
+>>> inc(5)         # update s with 10+3*5
+>>> print inc[s]   # print 25
+
+The effect of this call is to increment the storage associated to ``s`` in ``inc`` by 15.
+
+If we pass two arguments to ``inc``, then we over-ride the value associated to ``x``, but only for the one function call.
+
+>>> inc(3, 4)      # update s with 25 + 3*4
+>>> print inc[s]   # print 37
+>>> print inc[x]   # print 3    <--- the over-ride value of 4 was only temporary
+
+If we pass three arguments to ``inc``, then we over-ride the value associated 
+with ``x`` and ``u`` and ``s``.
+Since ``s``'s value is updated on every call, the old value of ``s`` will be ignored and then replaced.
+
+>>> inc(3, 4, 7)      # update s with 7 + 3*4
+>>> print inc[s]      # print 19
+
+
+Advanced: Sharing Storage Between Functions
+-------------------------------------------
+
+The ``value`` can be a :api:`theano.gof.Container` as well as a literal.
+This permits linking a value of a Result in one function to the value of a Result in another function.
+By using a ``Container`` as a value we can implement shared variables between functions.
+
+For example, consider the following program.
+
+>>> x, s = T.scalars('xs')
+>>> inc = function([x, In(s, update=(s+x), value=10.0)], [])
+>>> dec = function([x, In(s, update=(s-x), value=inc.container[s])], [])
+>>> dec(3) 
+>>> print inc[s]   # print 7
+
+The functions ``inc`` and ``dec`` operate on a shared internal value for ``s``.
+Theano's Module system uses this mechanism to share storage between Methods.
+
+The container being shared doesn't have to correspond to the same Result in both functions, 
+but that's usually how this mechanism is used.
+
+Input Argument Restrictions
+---------------------------
+
+- Every input list element must be (or be upgradable to) a valid ``In`` instance (see the shortcut rules below).
+
+- The same restrictions apply as in Python function definitions: default arguments and keyword arguments have to come at the end of the list. Un-named mandatory arguments must come at the beginning of the list.
+
+- Names have to be unique within an input list.  If multiple inputs have the same name, then the function will raise an exception. [***Which exception?]
+
+- Two ``In`` instances may not name the same Result.  (You can't give the same parameter multiple times.)
+
+If no name is specified explicitly for an In instance, then it will be taken from the Result's name.
+Note that this feature can cause harmless-looking input lists to not satisfy the two conditions above.
+In such cases, Inputs should be named explicitly to avoid problems such as duplicate names, and named arguments preceding unnamed ones.
+This automatic naming feature can be disabled by instantiating an In instance explicitly with the ``autoname`` flag set to False.
+
+
+Access to function values and containers
+----------------------------------------
+
+For each input, ``theano.function`` will create a  ``Container`` if the value wasn't already a ``Contanier``.
+At the time of a function call, each of these containers must be filled with a value.
+Each input (but especially ones with a default value or an update expression) may have a value between calls too.
+The function interface defines a way to get at both the current value associated with an input, as well as the container which will contain all future values.  
+
+The ``value`` property accesses the current values.  It is both readable and writable, but
+assignments (writes) may be implemented by an internal copy and/or casts.
+
+The ``container`` property accesses the corresponding container.  
+This property accesses is a read-only dictionary-like interface.  It is useful
+for fetching the container associated with a particular input to share
+containers between functions, or to have a sort of pointer to an always
+up-to-date value.
+(It is illegal to try to get a function to use the same container in two or
+more places.)
+
+Both ``value`` and ``container`` properties provide dictionary-like access based on three types of keys:
+
+- ''integer keys'': you can look up a value/container by its position in the input list;
+- ''name keys'': you can look up a value/container by its name;
+- ''Result keys'': you can look up a value/container by the Result it corresponds to.
+
+In addition to these access mechanisms, there is an even more convenient method
+to access values by simply indexing a Function directly, as in the
+examples above, by typing ``fn[<name>]``.
+
+To show some examples of these access methods...
+
+.. code-block:: python
+
+    a, b, c = T.scalars('xys') # set the internal names of graph nodes
+    # Note that the name of c is 's', not 'c'!
+    fn = theano.function([a, b, ((c, c+a+b), 10.0)], [])
+
+    #the value associated with c is accessible in 3 ways
+    assert fn['s'] is fn.value[c]
+    assert fn['s'] is fn.container[c].value
+
+    assert fn['s'] == 10.0
+    fn(1, 2)
+    assert fn['s'] == 13.0
+    fn.s = 99.0
+    fn(1, 0)
+    assert fn['s'] == 100.0
+    fn.value[c] = 99.0
+    fn(1,0)
+    assert fn['s'] == 100.0
+    assert fn['s'] == fn.value[c]
+    assert fn['s'] == fn.container[c].value
+
+
+Input Shortcuts
+---------------
+
+Every element of the inputs list will be upgraded to an In instance if necessary.
+
+- a Result instance ``r`` will be upgraded like ``In(r)``
+
+- a tuple ``(name, r)`` will be ``In(r, name=name)``
+
+- a tuple ``(r, val)`` will be ``In(r, value=value, autoname=True)``
+
+- a tuple ``((r,up), val)`` will be ``In(r, value=value, update=up, autoname=True)``
+
+- a tuple ``(name, r, val)`` will be ``In(r, name=name, value=value)``
+
+- a tuple ``(name, (r,up), val)`` will be ``In(r, name=name, value=val, update=up, autoname=True)``
+
+Example:
+
+.. code-block:: python
+
+    import theano
+    from theano import tensor as T
+    from theano.compile.io import In
+    x = T.scalar()
+    y = T.scalar('y')
+    z = T.scalar('z')
+    w = T.scalar('w')
+
+    fn = theano.function(inputs = [x, y, In(z, value=42), ((w, w+x), 0)],
+                         outputs = x + y + z)
+    # the first two arguments are required and the last two are
+    # optional and initialized to 42 and 0, respectively.
+    # The last argument, w, is updated with w + x each time the
+    # function is called.
+
+    fn(1)               # illegal because there are two required arguments
+    fn(1, 2)            # legal, z is 42, w goes 0 -> 1 (because w <- w + x)
+    fn(1, y = 2)        # legal, z is 42, w goes 1 -> 2
+    fn(x = 1, y = 2)    # illegal because x was not named
+    fn(1, 2, 3)         # legal, z is 3, w goes 2 -> 3
+    fn(1, z = 3, y = 2) # legal, z is 3, w goes 3 -> 4
+    fn(1, 2, w = 400)   # legal, z is 42 again, w goes 400 -> 401
+    fn(1, 2)            # legal, z is 42, w goes 401 -> 402
+
+
+
+
+Outputs
+=======
+
+The ``outputs`` argument to function can be one of
+
+- None, or
+- a Result, or ``Out`` instance, or
+- a list of Results or ``Out`` instances.
+
+An ``Out`` instance is a structure that lets us attach options to individual output ``Result`` instances, 
+similarly to how ``In`` lets us attach options to individual input ``Result`` instances.
+
+.. code-block:: python
+
+    class Out(object):
+        def __init__(self, result, borrow=False):
+
+            """
+
+            borrow: set this to True to indicate that a reference to 
+                    function's internal storage is OK.  A value returned 
+                    for this output might be clobbered by running the 
+                    function again, but the function might be faster.
+            """
+            ....
+
+
+
+
+If a single ``Result`` or ``Out`` instance is given as argument, then the compiled function will return a single value.
+
+If a list of ``Result`` or ``Out`` instances is given as argument, then the compiled function will return a list of their values.
+
+.. code-block:: python
+
+    x, y, s = T.matrices('xys')
+
+    # print a list of 2 ndarrays
+    fn1 = theano.function([x], [x+x, Out((x+x).T, borrow=True])
+    print fn1(ndarray([[1,0],[0,1]]))
+
+
+    # print a list of 1 ndarray
+    fn2 = theano.function([x], [x+x])
+    print fn2(ndarray([[1,0],[0,1]]))
+
+    # print an ndarray
+    fn3 = theano.function([x], outputs=x+x)
+    print fn3(ndarray([[1,0],[0,1]]))
+
+
+
+Modes
+=====
+
+The ``mode`` parameter to ``theano.function`` controls how the inputs-to-outputs graph is transformed into a callable object.
+
+Currently, theano defines the following modes by name:
+
+- ``FAST_COMPILE``: Apply just a few optimizations, but use C op implementations where possible.
+- ``FAST_RUN``:  Apply all optimizations, use C op implementations where possible.
+- ``DEBUG_MODE``: Verify the correctness of all optimizations, and compare C and python 
+    implementations.  This mode can take much longer than the other modes, 
+    but can identify many kinds of problems.
+
+For a finer level of control over which optimizations are applied, and whether
+C or python implementations are used, read :api:`theano.compile.Mode`.
+

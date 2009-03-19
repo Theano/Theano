@@ -30,6 +30,7 @@ Now we're ready for the tour:
 
    adding
    examples
+   function
    module
    module_vs_op
    randomstreams
