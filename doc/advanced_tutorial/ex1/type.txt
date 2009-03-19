@@ -5,43 +5,6 @@ Making the double type
 ======================
 
 
-What is a Type?
-===============
-
-A :ref:`type` in Theano represents a set of constraints on potential
-data objects. These constraints allow Theano to tailor C code to handle
-them and to statically optimize the computation graph. For instance,
-the :ref:`irow <predefinedtypes>` type in the ``theano.tensor`` package
-gives the following constraints on the data the Results of type ``irow``
-may contain:
-
-#. Must be an instance of ``numpy.ndarray``: ``isinstance(x, numpy.ndarray)``
-#. Must be an array of 32-bit integers: ``str(x.dtype) == 'int32'``
-#. Must have a shape of 1xN: ``len(x.shape) == 2 and x.shape[0] == 1``
-
-Knowing these restrictions, Theano may generate C code for addition, etc.
-that declares the right data types and that contains the right number
-of loops over the dimensions.
-
-Note that a Theano :ref:`type` is not equivalent to a Python type or
-class. Indeed, in Theano, :ref:`irow <predefinedtypes>` and :ref:`dmatrix
-<predefinedtypes>` both use ``numpy.ndarray`` as the underlying type
-for doing computations and storing data, yet they are different Theano
-Types. Indeed, the constraints set by ``dmatrix`` are:
-
-#. Must be an instance of ``numpy.ndarray``: ``isinstance(x, numpy.ndarray)``
-#. Must be an array of 64-bit floating point numbers: ``str(x.dtype) == 'float64'``
-#. Must have a shape of MxN, no restriction on M or N: ``len(x.shape) == 2``
-
-These restrictions are different from those of ``irow`` which are listed above.
-
-There are cases in which a Type can fully correspond to a Python type,
-such as the ``double`` Type we will define here which corresponds to
-Python's ``float``. But, it's good to know that this is not necessarily
-the case. Unless specified otherwise, when we say "Type" we mean a
-Theano Type.
-
-
 Type's contract
 ===============
 

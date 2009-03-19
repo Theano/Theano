@@ -7,24 +7,6 @@ Now that we have a ``double`` type, we have yet to use it to perform
 computations. We'll start by defining multiplication.
 
 
-What is an Op?
-==============
-
-An :ref:`op` in Theano defines a certain computation on some types of
-inputs, producing some types of outputs. It is equivalent to a
-function definition in most programming languages. From a list of
-input :ref:`Results <result>` and an Op, you can build an :ref:`apply`
-node representing the application of the Op to the inputs.
-
-It is important to understand the distinction between an Op (the
-definition of a function) and an Apply node (the application of a
-function). If you were to interpret the Python language using Theano's
-structures, code going like ``def f(x): ...`` would produce an Op for
-``f`` whereas code like ``a = f(x)`` or ``g(f(4), 5)`` would produce an
-Apply node involving the ``f`` Op.
-
-
-
 Op's contract
 =============
 
