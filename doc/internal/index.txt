@@ -13,5 +13,5 @@ Structure
 
    dev_start_guide
    hg_primer
+   mammouth
    metadocumentation
-   lisa_labo

@@ -12,7 +12,7 @@ analogue in Python:
 Theano          Python
 =============== ===========================================================
 Apply           function application / function call
-Result          function data
+Result          function data / variable
 Op              operations carried out in computation / function definition
 Type            data types
 Module          ??? class?
