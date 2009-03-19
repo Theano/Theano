@@ -101,9 +101,12 @@ if __name__ == '__main__':
         sys.path[0:0] = throot
 
         #Generate HTML doc
-        #os.system("epydoc --config doc/api/epydoc.conf -o html/api")
-        sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot, '-o', 'api']
-        cli()
+
+        ## This causes problems with the subsequent generation of sphinx doc
+        #sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot, '-o', 'api']
+        #cli()
+        ## So we use this instead
+        os.system("epydoc --config %s/doc/api/epydoc.conf -o api" % throot)
 
         # Generate PDF doc
         # TODO
@@ -120,16 +123,14 @@ if __name__ == '__main__':
             sphinx.main(['', '-E', '-b', 'latex',
                 os.path.join(throot, 'doc'), workdir])
             # Compile to PDF
-            currentdir = os.getcwd()
             os.chdir(workdir)
             os.system('make')
             try:
                 shutil.copy(os.path.join(workdir, 'theano.pdf'), currentdir)
-                os.chdir(currentdir)
+                os.chdir(outdir)
                 shutil.rmtree(workdir)
             except OSError, e:
                 print 'OSError:', e
-
 
 
 
