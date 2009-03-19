@@ -326,15 +326,13 @@ class Method(Component):
     mode=None
     """This will override the Module compilation mode for this Method"""
 
-    def __init__(self, inputs, outputs, updates = {}, mode=None, **kwupdates):
+    def __init__(self, inputs, outputs, updates = {}, mode=None):
         """Initialize attributes
         :param inputs: value for `Method.inputs`
 
         :param outputs: value for `Method.outputs`
 
         :param updates: value for `Method.updates`
-
-        :param kwupdates: additions to `updates`
 
         :param mode: value for `Method.mode`
 
@@ -345,15 +343,13 @@ class Method(Component):
 
         :type updates: dict of `Result` or str -> `Result` or str
 
-        :type kwupdates: extra updates
-
         :type mode: None or any mode accepted by `compile.function`
 
         """
         super(Method, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
-        self.updates = dict(updates, **kwupdates)
+        self.updates = dict(updates)
         self.mode = mode
 
     def resolve_all(self):
@@ -367,7 +363,7 @@ class Method(Component):
             elif isinstance(x, _RComponent):
                 return x.r
             else:
-                raise Exception('damnit looks like we need this')
+                raise Exception('Cannot resolve symbol', x)
                 # return self.resolve(x).r
 
         def resolve_inputs():

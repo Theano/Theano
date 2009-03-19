@@ -18,3 +18,5 @@ Structure
    ccodegen
    function
    module
+   profilemode
+   unittest
