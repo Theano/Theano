@@ -124,6 +124,15 @@ automatic code generation, but that way is much, much slower.
     theano will try to create it with the correct permissions. If that fails,
     an exception will be raised and no C code will be compiled.
 
+- `THEANO_DEFAULT_MODE`: 
+    string value specifying the default mode to use when compiling theano
+    graphs. This can be one of the strings defined in theano.compile.mode
+    Possible values so far are: FAST_COMPILE, FAST_RUN and DEBUG_MODE.
+    Omitting this variable defaults the mode to FAST_RUN.
+
+- `THEANO_UNITTEST_SEED`: 
+    an integer value specifying which seed should be used when running unit tests.
+    Setting this value will make the unit tests deterministic. 
 
 ---
 Mac

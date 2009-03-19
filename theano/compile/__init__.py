@@ -14,7 +14,7 @@ from builders import *
 import module
 from module import *
 
-import debugmode
+import debugmode   # register DEBUG_MODE
 
 from profilemode import ProfileMode
 

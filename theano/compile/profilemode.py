@@ -11,35 +11,20 @@ class ProfileMode(Mode):
         op_time = {}
         op_cimpl = {}
 
-        def blah(i, node, *thunks):
-            if 0:
-                t0 = time.time() 
-                for th in thunks:
-                    th()
+        def blah(i, node, th):
+            if hasattr(th, 'cthunk'):
+                t0 = time.time()
+                run_cthunk(th.cthunk)
                 dt = time.time() - t0
-            elif 0: #more precise timing
-                for th in thunks:
-                    t0 = time.time()
-                    th()
-                    dt = time.time() - t0
-            elif 1:
-                for th in thunks:
-                    if hasattr(th, 'cthunk'):
-                        t0 = time.time()
-                        run_cthunk(th.cthunk)
-                        dt = time.time() - t0
-                    else:
-                        t0 = time.time()
-                        th()
-                        dt = time.time() - t0
-            elif 1:
-                pass
             else:
-                raise Exception('one of the cases has to run the thunks!')
+                t0 = time.time()
+                th()
+                dt = time.time() - t0
+
             local_time[0] += dt
             apply_time[(i,node.op)] = apply_time.get((i,node.op), 0.0) + dt
             op_time[node.op] = op_time.get(node.op, 0.0) + dt
-            op_cimpl[node.op] = hasattr(thunks[0], 'cthunk')
+            op_cimpl[node.op] = hasattr(th, 'cthunk')
 
         self.local_time = local_time
         self.apply_time = apply_time
@@ -83,4 +68,3 @@ class ProfileMode(Mode):
                 %(max(0, len(otimes)-n_ops_to_print), sum(t for t, a, ci in
                     otimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
-
