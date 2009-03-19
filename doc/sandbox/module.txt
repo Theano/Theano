@@ -224,6 +224,7 @@ Complex models can be implemented by subclassing ``Module`` (though that is not 
 .. code-block:: python
 
     class RegressionLayer(M.Module):
+
         def __init__(self, input = None, target = None, regularize = True):
             super(RegressionLayer, self).__init__() #boilerplate
             # MODEL CONFIGURATION
@@ -253,13 +254,15 @@ Complex models can be implemented by subclassing ``Module`` (though that is not 
             self.grad_w, self.grad_b = T.grad(self.cost, [self.w, self.b])
             # INTERFACE METHODS
             self.update = M.Method([input, target],
-                                      self.cost,
-                                      w = self.w - self.stepsize * self.grad_w,
-                                      b = self.b - self.stepsize * self.grad_b)
+                                   self.cost,
+                                   updates={self.w: self.w - self.stepsize * self.grad_w,
+                                            self.b: self.b - self.stepsize * self.grad_b})
             self.apply = M.Method(input, self.prediction)
+
         def params(self):
             return self.w, self.b
-        def _instance_initialize(self, obj, input_size = None, target_size = None, 
+
+        def _instance_initialize(self, obj, input_size = None, target_size = None,
                                  seed = 1827, **init):
             # obj is an "instance" of this module holding values for each member and
             # functions for each method
@@ -275,21 +278,23 @@ Complex models can be implemented by subclassing ``Module`` (though that is not 
             # this covers setting stepsize, l2_coef; w and b can be set that way too
             # we call it after as we want the parameter to superseed the default value.
             M.default_initialize(obj,**init)
+
         def build_regularization(self):
             return T.zero() # no regularization!
-    
-    
+
     class SoftmaxXERegression(RegressionLayer):
-        """ XE mean cross entropy"""
+        """ XE means cross entropy"""
         def build_prediction(self):
             return NN.softmax(self.activation)
+
         def build_classification_cost(self, target):
             #self.classification_cost_matrix = target * T.log(self.prediction) + (1 - target) * T.log(1 - self.prediction)
             self.classification_cost_matrix = (target - self.prediction)**2
             self.classification_costs = -T.sum(self.classification_cost_matrix, axis=1)
             return T.sum(self.classification_costs)
+
         def build_regularization(self):
-            self.l2_coef = M.Member(T.scalar()) # we can add a hyper parameter if we need to
+            self.l2_coef = T.scalar() # we can add a hyper parameter if we need to
             return self.l2_coef * T.sum(self.w * self.w)
 
 Here is how we use the model:
