@@ -152,7 +152,7 @@ so if ``x`` is an ``int`` it we will return an equivalent ``float``.
 .. code-block:: python
 
    def values_eq_approx(x, y, tolerance=1e-4):
-       return abs(x - y) / (x + y) < tolerance
+       return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
 The second method we define is ``values_eq_approx``. This method
 allows approximate comparison between two values respecting our Type's
@@ -204,7 +204,7 @@ and define ``filter`` and ``values_eq_approx`` in the subclass:
            return float(x)
    
        def values_eq_approx(self, x, y, tolerance=1e-4):
-           return abs(x - y) / (x + y) < tolerance
+           return abs(x - y) / (abs(x) + abs(y)) < tolerance
    
    double = Double()
 
@@ -291,7 +291,7 @@ Final version
            return float(x)
    
        def values_eq_approx(self, x, y, tolerance=1e-4):
-           return abs(x - y) / (x + y) < tolerance
+           return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
        def __str__(self):
            return "double"

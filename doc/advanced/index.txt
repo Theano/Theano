@@ -18,12 +18,3 @@ Structure
    ccodegen
    function
    module
-
-Concepts
-========
-
-.. toctree::
-   :maxdepth: 2
-
-   gradient
-

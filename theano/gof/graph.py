@@ -345,6 +345,8 @@ class Value(Result):
             raise ValueError("Value instances cannot have an owner.")
     owner = property(lambda self: None, __set_owner)
 
+    # index is not defined, because the `owner` attribute must necessarily be None
+
 class Constant(Value):
     """
     A :term:`Constant` is a `Value` that cannot be changed at runtime.

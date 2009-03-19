@@ -189,11 +189,3 @@ input(s)'s memory). From there, go to the previous section.
    certainly lead to erroneous computations and be a headache to
    debug.
 
-
-**Next:** `Graph optimization`_
-
-.. _Graph optimization: optimization.html
-
-
-
-

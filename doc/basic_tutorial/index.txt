@@ -34,4 +34,3 @@ Now we're ready for the tour:
    module_vs_op
    randomstreams
    tools
-   wrapup

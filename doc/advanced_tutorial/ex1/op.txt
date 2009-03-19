@@ -63,6 +63,11 @@ An Op is any object which defines the following methods:
   - This function must be determined by the inputs.  That is to say, if it is
     evaluated once on inputs A and returned B, then if ever inputs C, equal to
     A, are presented again, then outputs equal to B must be returned again.
+  
+  - You must be careful about aliasing outputs to inputs, and making
+    modifications to any of the inputs.  See `Views and inplace operations`_
+    before writing a ``perform`` implementation that does either of these
+    things.
 
 - **__eq__(self, other)**
 

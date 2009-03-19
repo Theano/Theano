@@ -56,8 +56,3 @@ common mistakes.
 WRITEME
 
 
-
-**Next:** `Wrapping up`_
-
-.. _Wrapping up: wrapup.html
-

@@ -30,12 +30,11 @@ concepts at work here.
    graphstructures
    ex1/type
    ex1/op
+   inplace
    ex1/ctype
    ex1/cop
-   inplace
    optimization
    tips
-   wrapup
 
 
 

@@ -136,7 +136,7 @@ with respect to the second. In this way, Theano can be used for
 
 .. note::
 
-   In general, the result of ``T.grad`` has the same dimensions as the
+   The result of ``T.grad`` has the same dimensions as the
    second argument. This is exactly like the first derivative if the
    first argument is a scalar or a tensor of size 1 but not if it is
    larger. For more information on the semantics when the first
@@ -212,7 +212,7 @@ of the internal ``state`` will be replaced by the value computed as
 ``new_state``. In this case, the state will be replaced by the result
 of incrementing it by ``inc``.
 
-We recommend (insist?) that internl state arguments occur after any
+We recommend (insist?) that internal state arguments occur after any
 plain arguments and arguments with default values.
 
 There is no limit to how many states you can have. You can add an

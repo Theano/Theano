@@ -6,8 +6,6 @@ Developer Start Guide
 =====================
 
 
-- Learn about the basics of using mercurial.
-
 - Learn some `non-basic python`_ to understand what's going on in some of the
   tricker files (like tensor.py).
 
@@ -44,7 +42,7 @@ As a developer, you should clone this repository like this:
 Nightly test
 ============
 
-Their is nightly build done. The output is at: http://lgcm/nightly_build/do_nightly_build.txt
+WRITEME 
 
 Setting up your environment
 ===========================

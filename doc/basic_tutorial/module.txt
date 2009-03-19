@@ -269,11 +269,4 @@ WRITEME
 
 
 
-**Next:** `Tools`_
-
-.. _Tools: tools.html
-
-
-
-
 

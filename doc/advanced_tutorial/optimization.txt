@@ -276,7 +276,3 @@ Inplace optimizations
 
 
 
-
-**Next:** `Tips`_
-
-.. _Tips: tips.html
