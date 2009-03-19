@@ -169,6 +169,10 @@ theano's version of a function definition.
 
 An Apply instance has three important fields:
 
+**op**
+  An :ref:`op` that determines the function/transformation being
+  applied here.
+
 **inputs**
   A list of :ref:`Results <result>` that represent the arguments of
   the function.
@@ -177,11 +181,8 @@ An Apply instance has three important fields:
   A list of :ref:`Results <result>` that represent the return values
   of the function.
 
-**op**
-  An :ref:`op` that determines the function/transformation being
-  applied here.
-
-
+An Apply instance can be created by calling ``gof.Apply(op, inputs,
+outputs)``.
 
 
 .. index::
