@@ -1,8 +1,8 @@
 ===========================
-Runninng Theano on Mammouth
+Running Theano on Mammouth
 ===========================
 
-To run Theano on the Mammouth cluster, perform the following steps:
+To run Theano on the Mammouth cluster, follow these simple steps:
 
 * Make sure to source Fred's .local.bashrc file. It contains all the goodies for using the latest and greatest (optimized) libraries (numpy, scipy, etc.)
 >>> source /home/bastienf/.local.bashrc
