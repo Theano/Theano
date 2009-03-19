@@ -114,6 +114,42 @@ For more details, including the interface for providing a C implementation of
 perform(), refer to the documentation for :ref:`op`.
 
 
+Checklist
+---------
+
+Use this list to make sure that you defined everything you need for your Op:
+  * Are there parameters that are not inputs but parametrize the behavior of your Op? (see parametrization section below)
+
+    * Yes?
+
+      * Define ``__init__`` with those parameters. They will be instance variables.
+      * Override ``__eq__``, ``__ne__`` and ``__hash__`` (optional)
+      * Consider making pre-made instances for common parameters. This will simplify usage.
+    * No? (usual case for simple Ops)
+
+      * Consider making a singleton of your Op (this can be as simple as ``my_op = MyOp()``). It will simplify usage. [*What is the benefit of using the singleton? How does it simplify usage? We __shouldn't__ use singletons when there __are__ parameters?*]
+      * All instances should compare equal (which is trivial if there is only one of them). [*How do we make sure this is true? Because this checklist should be a list of instructions. Do you describe later on?*]
+  * Always define *make_node* (see make_node section below).
+  * Always define *perform* (see perform section below).
+  * Do you need performance only C can offer?
+
+    * Define *c_code* and *c_code_cleanup* (see HowtoMakeCeeOps)
+    * Remember to use the 'c' or 'c|py' linker on graphs using your Op! [*This is described where?*]
+  * Is your Op differentiable?
+
+    * Define *grad* (see grad section below) [*If not, and you don't define *grad*, what will happen if you try to differentiate it?*]
+  * Does your Op modify any of its inputs?
+
+    * *IMPORTANT:* read the destroyers and viewers section.
+  * Does any output from the Op share any sort of state with an input?
+
+    * *IMPORTANT:* read the destroyers and viewers section.
+  * Does your Op have more than one output?
+
+    * Consider setting the default_output attribute to the index of that output. (It will make your Op usable in ``PatternOptimizers``, and make user code look like the Op has only that output.)
+
+[*Consider changing the order of the checklist above and the sections below such that the stuff you ALWAYS have to do, which is the most basic stuff anyhow, goes towards the top.*]
+
 
 Defining mul
 ============
@@ -348,10 +384,3 @@ your disposal to create these objects as efficiently as possible.
 
 **Exercise**: Make a generic DoubleOp, where the number of
 arguments can also be given as a parameter.
-
-**Next:** `Implementing double in C`_
-
-.. _Implementing double in C: ctype.html
-
-
-
