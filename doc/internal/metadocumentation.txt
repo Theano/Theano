@@ -1,8 +1,8 @@
-.. _misc:
+.. _metadocumentation:
 
-================
-Miscellaneous
-================
+==================================================
+Documentation Documentation AKA Meta-Documentation
+==================================================
 
 
 How to link from Sphinx to API documentation
@@ -106,4 +106,4 @@ TO WRITE
  * How epydoc and sphinx are integrated
  * The nightly build process.
  * Explain the special magic in ./scripts/docgen.py
- * We also want examples of good documentaiton, to show people how to write sphinx,
+ * We also want examples of good documentation, to show people how to write sphinx,
