@@ -15,10 +15,10 @@ An Op is any object which defines the following methods:
 - **make_node(*inputs)**
     
   - This method is responsible for creating output Results of a suitable Type
-    to serve as the outputs of this Op's application.  It should put these
+    to serve as the outputs of this Op's application.  This method should put these
     outputs into an Apply instance, and return the Apply instance.
   
-  - This important function creates an Apply node representing the
+  - This method creates an Apply node representing the
     application of the Op on the inputs provided. If the Op cannot be
     applied on these inputs, it must raise an appropriate
     exception.
