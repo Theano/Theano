@@ -110,8 +110,20 @@ class Function(object):
     outputs, performs the packing and unpacking of inputs and return values.  It implements the
     square-bracket indexing so that you can look up the value of a symbolic node.
 
+    Functions are copyable via {{{fn.copy()}}} and {{{copy.copy(fn)}}}.
     When a function is copied, this instance is duplicated.  Contrast with self.maker
     (instance of `FunctionMaker`) that is shared between copies.
+    The meaning of copying a function is that the containers and their current values will all be duplicated.
+    This requires that mutable inputs be copied, whereas immutable inputs may be shared between copies.
+
+
+
+    A Function instance is hashable, on the basis of its memory address (its id).
+
+    A Function instance is only equal to itself.
+    
+    A Function instance may be serialized using the `pickle` or `cPickle` modules.
+    This will save all default inputs, the graph, and *** to the pickle file (WRITEME).
 
     """
 

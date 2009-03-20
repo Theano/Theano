@@ -7,24 +7,6 @@ Now that we have a ``double`` type, we have yet to use it to perform
 computations. We'll start by defining multiplication.
 
 
-What is an Op?
-==============
-
-An :ref:`op` in Theano defines a certain computation on some types of
-inputs, producing some types of outputs. It is equivalent to a
-function definition in most programming languages. From a list of
-input :ref:`Results <result>` and an Op, you can build an :ref:`apply`
-node representing the application of the Op to the inputs.
-
-It is important to understand the distinction between an Op (the
-definition of a function) and an Apply node (the application of a
-function). If you were to interpret the Python language using Theano's
-structures, code going like ``def f(x): ...`` would produce an Op for
-``f`` whereas code like ``a = f(x)`` or ``g(f(4), 5)`` would produce an
-Apply node involving the ``f`` Op.
-
-
-
 Op's contract
 =============
 
@@ -33,10 +15,10 @@ An Op is any object which defines the following methods:
 - **make_node(*inputs)**
     
   - This method is responsible for creating output Results of a suitable Type
-    to serve as the outputs of this Op's application.  It should put these
+    to serve as the outputs of this Op's application.  This method should put these
     outputs into an Apply instance, and return the Apply instance.
   
-  - This important function creates an Apply node representing the
+  - This method creates an Apply node representing the
     application of the Op on the inputs provided. If the Op cannot be
     applied on these inputs, it must raise an appropriate
     exception.
@@ -44,6 +26,15 @@ An Op is any object which defines the following methods:
   - The inputs of the Apply instance returned by this call must be ordered
     correctly: a subsequent ``self.make_node(*apply.inputs)`` must produce
     something equivalent to the first ``apply``.
+
+- default_output
+
+  - *Default*: None
+
+  - If this member variable is an integer, then the default implementation of
+    ``__call__`` will return `node.outputs[self.default_output]``, where
+    `node` was returned by ``make_node``.  Otherwise, the entire list of
+    outputs will be returned.
 
 - **__call__(*inputs)**
 
@@ -54,53 +45,80 @@ An Op is any object which defines the following methods:
 
 - **perform(node, inputs, output_storage)**
 
-  - This function computes the function associated to this Op. The
+  - This method computes the function associated to this Op. The
     ``node`` is an Apply node created by the Op's ``make_node``
-    method, the inputs are a list of references to data to operate on
-    and output_storage is a list of storage cells where the results of
-    the computation must be put.
-  
-  - This function must be determined by the inputs.  That is to say, if it is
+    method, ``inputs`` is a list of references to data to operate on,
+    and ``output_storage`` is a list of storage cells where the results of
+    the computation must be put. More specifically:
+
+    - ``node``: This is a reference to an Apply node which was previously
+      obtained via ``mul``'s ``make_node`` method. It is typically not
+      used in simple Ops, but it contains symbolic information that
+      could be required for complex Ops.
+
+    - ``inputs``: This is a list of data.
+
+    - ``output_storage``: This is a list of storage cells.
+      A storage cell is a one-element list. It is forbidden to change
+      the length of the list(s) contained in output_storage.  There is
+      one storage cell for each output of the Op.
+
+      The data you put in ``output_storage`` must match the type of the
+      symbolic output. This is a situation where the ``node`` argument
+      can come in handy.
+
+      A function Mode may allow output_storage elements to persist between
+      evaluations, or it may reset output_storage cells to hold a value of
+      None.  This feature can allow perform to reuse memory between calls, for
+      example.
+
+  - This method must be determined by the inputs. That is to say, if it is
     evaluated once on inputs A and returned B, then if ever inputs C, equal to
     A, are presented again, then outputs equal to B must be returned again.
   
   - You must be careful about aliasing outputs to inputs, and making
-    modifications to any of the inputs.  See `Views and inplace operations`_
+    modifications to any of the inputs. See `Views and inplace operations`_
     before writing a ``perform`` implementation that does either of these
     things.
 
 - **__eq__(self, other)**
 
-  - Returning True here is a promise to the optimization system that the other
+  - ``other`` is also an Op.
+
+  - Returning ``True`` here is a promise to the optimization system that the other
     Op will produce exactly the same graph effects (from perform) as this one,
-    given identical inputs.  This means it will produce the same output values,
+    given identical inputs. This means it will produce the same output values,
     it will destroy the same inputs (same destroy_map), and will alias outputs
     to the same inputs (same view_map).
 
 - **__hash__(self)**
 
-  - If two Op instances compare equal, then they MUST return the same hash
-    value.  
+  - If two Op instances compare equal, then they **must** return the same hash
+    value.
       
   - Equally important, this hash value must not change during the lifetime of
     self.
 
 - **__ne__(self, other)**
 
-  - Recommended, and default: define as (not (self==other))
+  - Recommended
+  
+  - Default: ``(not (self==other))``
 
-- **grad(inputs, output_gradients)** *Optional*
+- **grad(inputs, output_gradients)**
+
+  - Optional.
 
   - If the Op you are defining is differentiable, you can define its
     gradient symbolically in this method. 
     
-  - Both the inputs and output_gradients will be Results. This function must
-    return a list containing one Result (or None) for each input.
-    Each returned Result represents the gradient wrt that input given the
-    symbolic gradients wrt each output.
+  - Both the ``inputs`` and ``output_gradients`` will be Results. This
+    method must return a list containing one Result (or None) for each
+    input. Each returned Result represents the gradient with respect to
+    that input given the symbolic gradients with respect to each output.
 
   - If the output is not differentiable with respect to any inputs, then this
-    function should be defined to return [None for i in inputs].
+    method should be defined to return [None for i in inputs].
 
   - If this method is not defined, then theano assumes it has been forgotten.
     Symbolic differentiation will fail on a graph that includes this Op.
@@ -108,7 +126,9 @@ An Op is any object which defines the following methods:
   - For more information on the use of this method, see ``grad``.
 
 
-For each method, the *default* is what the Op class defines for you.
+For each method, the *default* is what :api:`theano.gof.Op` defines
+for you.  At a bare minimum, a new Op must define ``make_node`` and
+``perform``, which have no defaults.
 
 For more details, including the interface for providing a C implementation of
 perform(), refer to the documentation for :ref:`op`.
@@ -154,9 +174,10 @@ Use this list to make sure that you defined everything you need for your Op:
 Defining mul
 ============
 
-We are going to redefine the two functions that are absolutely
-necessary to redefine: ``make_node`` and ``perform``. First, we'll
-instantiate a ``mul`` Op:
+We'll define multiplication as a *binary* operation, even though a
+multiplication Op could take an arbitrary number of arguments.
+
+First, we'll instantiate a ``mul`` Op:
 
 .. code-block:: python
 
@@ -167,12 +188,13 @@ instantiate a ``mul`` Op:
 **make_node**
 
 This function must take as many arguments as the operation we are
-defining is supposed to take as inputs - in this example that would be
-two (we'll define multiplication as a binary operation here, even
-though a multiplication Op could technically take an arbitrary number
-of arguments). It should ensure that both inputs have the ``double``
-type and it should make an Apply node with an output Result of type
-``double`` (since multiplying two doubles yields a double).
+defining is supposed to take as inputs---in this example that would be
+two.
+This function ensures that both inputs have the ``double``
+type.
+Since multiplying two doubles yields a double,
+this function makes an Apply node with an output Result of type
+``double``.
 
 .. code-block:: python
 
@@ -189,14 +211,8 @@ want to multiply two arbitrary types, it would not make much sense
 (and we'd be screwed when we implement this in C!)
 
 The last line is the meat of the definition. There we create an Apply
-node representing the application of ``mul`` to ``x`` and ``y``. Apply
-takes three arguments: the first one is the Op we are applying. In
-this case, we are applying ``mul``. The second argument is a list of
-input Results - here, ``x`` and ``y``. The third is a list of output
-Results. Since the multiplication of two doubles ought to give us a
-double again, we create a Result of type ``double`` and we place it in
-a list. Since the list only has one element, ``mul`` only has one
-output.
+node representing the application of Op ``mul`` to inputs ``x`` and
+``y``, giving a Result instance of type ``double`` as the output.
 
 .. note::
    Theano relies on the fact that if you call the ``make_node`` method
@@ -208,25 +224,11 @@ output.
 
 **perform**
 
-This code should actually compute the function. It is important to
-understand the role of all three arguments of ``perform``:
-
-- *node*: This is a reference to an Apply node which was previously
-  obtained via ``mul``'s ``make_node`` method. It is not typically
-  useful, but it contains symbolic information that could be required
-  for complex Ops.
-
-- *inputs*: This is a list of data. In this example, the data in
-  ``inputs`` will be instances of Python's built-in type ``float``
-  because this is the type that ``double.filter()`` will always
-  return, per our own definition.
-
-- *output_storage*: This is a list of storage cells. There is one
-  storage cell for each output of the Op. A storage cell is
-  a one-element list (note: it is forbidden to change the
-  length of the list(s) contained in output_storage). In this example,
-  output_storage will contain a single storage cell for the
-  multiplication's result.
+This code actually computes the function.
+In our example, the data in ``inputs`` will be instances of Python's
+built-in type ``float`` because this is the type that ``double.filter()``
+will always return, per our own definition. ``output_storage`` will
+contain a single storage cell for the multiplication's result.
 
 .. code-block:: python
 
@@ -248,12 +250,9 @@ Here, ``z`` is a list of one element. By default, ``z == [None]``.
    :ref:`op` documentation.
 
 .. warning::
-   The data you put in ``output_storage`` must match the type of the
-   symbolic output. This is a situation where the ``node`` argument
-   can come in handy. In this example, we gave ``z`` the Theano type
-   ``double`` in ``make_node``, which means that a Python ``float``
-   must be put there. You should not put, say, an ``int`` in ``z[0]``
-   because Theano assumes Ops handle typing properly.
+   We gave ``z`` the Theano type ``double`` in ``make_node``, which means
+   that a Python ``float`` must be put there. You should not put, say, an
+   ``int`` in ``z[0]`` because Theano assumes Ops handle typing properly.
 
 
 Trying out our new Op
@@ -298,7 +297,7 @@ by modifying ``make_node`` to accept Python ``int`` or ``float`` as
    mul.make_node = make_node
 
 Whenever we pass a Python int or float instead of a Result as ``x`` or
-``y``, make_node will convert it to :ref:`constant` for us. ``gof.Constant``
+``y``, ``make_node`` will convert it to :ref:`constant` for us. ``gof.Constant``
 is a :ref:`result` we statically know the value of.
 
 >>> x = double('x')

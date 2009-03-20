@@ -169,6 +169,10 @@ theano's version of a function definition.
 
 An Apply instance has three important fields:
 
+**op**
+  An :ref:`op` that determines the function/transformation being
+  applied here.
+
 **inputs**
   A list of :ref:`Results <result>` that represent the arguments of
   the function.
@@ -177,33 +181,8 @@ An Apply instance has three important fields:
   A list of :ref:`Results <result>` that represent the return values
   of the function.
 
-**op**
-  An :ref:`op` that determines the function/transformation being
-  applied here.
-
-
-.. index::
-   single: Constant
-   single: graph construct; Constant
-
-.. _constant:
-
---------
-Constant
---------
-
-A constant is a :ref:`Result` with one extra field, *data* (only
-settable once). When used in a computation graph as the input of an
-:ref:`Op` :ref:`application <Apply>`, it is assumed that said input
-will *always* take the value contained in the constant's data
-field. Furthermore, it is assumed that the :ref:`Op` will not under
-any circumstances modify the input. This means that a constant is
-eligible to participate in numerous optimizations: constant inlining
-in C code, constant folding, etc.
-
-A constant does not need to be specified in a :ref:`function`'s list
-of inputs.
-
+An Apply instance can be created by calling ``gof.Apply(op, inputs,
+outputs)``.
 
 
 .. index::
@@ -211,6 +190,8 @@ of inputs.
    single: graph construct; Result
 
 .. _result:
+
+
 
 ------
 Result
@@ -263,6 +244,28 @@ A Result ``r`` contains four important fields:
 
 Result has one special subclass: :ref:`constant <constant>`.
 
+.. index::
+   single: Constant
+   single: graph construct; Constant
+
+.. _constant:
+
+
+
+Constant
+^^^^^^^^
+
+A constant is a :ref:`Result` with one extra field, *data* (only
+settable once). When used in a computation graph as the input of an
+:ref:`Op` :ref:`application <Apply>`, it is assumed that said input
+will *always* take the value contained in the constant's data
+field. Furthermore, it is assumed that the :ref:`Op` will not under
+any circumstances modify the input. This means that a constant is
+eligible to participate in numerous optimizations: constant inlining
+in C code, constant folding, etc.
+
+A constant does not need to be specified in a :ref:`function`'s list
+of inputs.
 
 
 .. index::
@@ -275,7 +278,20 @@ Result has one special subclass: :ref:`constant <constant>`.
 Op
 --
 
-WRITEME
+An :ref:`op` in Theano defines a certain computation on some types of
+inputs, producing some types of outputs. It is equivalent to a
+function definition in most programming languages. From a list of
+input :ref:`Results <result>` and an Op, you can build an :ref:`apply`
+node representing the application of the Op to the inputs.
+
+It is important to understand the distinction between an Op (the
+definition of a function) and an Apply node (the application of a
+function). If you were to interpret the Python language using Theano's
+structures, code going like ``def f(x): ...`` would produce an Op for
+``f`` whereas code like ``a = f(x)`` or ``g(f(4), 5)`` would produce an
+Apply node involving the ``f`` Op.
+
+
 
 
 
@@ -289,5 +305,37 @@ WRITEME
 Type
 ----
 
-WRITEME
+A :ref:`type` in Theano represents a set of constraints on potential
+data objects. These constraints allow Theano to tailor C code to handle
+them and to statically optimize the computation graph. For instance,
+the :ref:`irow <predefinedtypes>` type in the ``theano.tensor`` package
+gives the following constraints on the data the Results of type ``irow``
+may contain:
+
+#. Must be an instance of ``numpy.ndarray``: ``isinstance(x, numpy.ndarray)``
+#. Must be an array of 32-bit integers: ``str(x.dtype) == 'int32'``
+#. Must have a shape of 1xN: ``len(x.shape) == 2 and x.shape[0] == 1``
+
+Knowing these restrictions, Theano may generate C code for addition, etc.
+that declares the right data types and that contains the right number
+of loops over the dimensions.
+
+Note that a Theano :ref:`type` is not equivalent to a Python type or
+class. Indeed, in Theano, :ref:`irow <predefinedtypes>` and :ref:`dmatrix
+<predefinedtypes>` both use ``numpy.ndarray`` as the underlying type
+for doing computations and storing data, yet they are different Theano
+Types. Indeed, the constraints set by ``dmatrix`` are:
+
+#. Must be an instance of ``numpy.ndarray``: ``isinstance(x, numpy.ndarray)``
+#. Must be an array of 64-bit floating point numbers: ``str(x.dtype) == 'float64'``
+#. Must have a shape of MxN, no restriction on M or N: ``len(x.shape) == 2``
+
+These restrictions are different from those of ``irow`` which are listed above.
+
+There are cases in which a Type can fully correspond to a Python type,
+such as the ``double`` Type we will define here which corresponds to
+Python's ``float``. But, it's good to know that this is not necessarily
+the case. Unless specified otherwise, when we say "Type" we mean a
+Theano Type.
+
 
