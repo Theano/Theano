@@ -1,5 +1,5 @@
 """
-Node classes (`Apply`, `Result`) and expression graph algorithms.
+Node classes (`Apply`, `Variable`) and expression graph algorithms.
 
 To read about what theano graphs are from a user perspective, have a look at
 `graph.html <../doc/graph.html>`__.
@@ -18,24 +18,24 @@ _creation_idx = [0]
 class Apply(utils.object2):
     """
     An :term:`Apply` instance is a node in an expression graph which represents the application
-    of an `Op` to some input `Result` nodes, producing some output `Result` nodes.
+    of an `Op` to some input `Variable` nodes, producing some output `Variable` nodes.
     
     This class is typically instantiated by an Op's make_node() function, which is typically
     called by that Op's __call__() function.
 
     An Apply instance serves as a simple structure with three important attributes:
 
-    - :literal:`inputs` :  a list of `Result` nodes that represent the arguments of the expression,
+    - :literal:`inputs` :  a list of `Variable` nodes that represent the arguments of the expression,
 
-    - :literal:`outputs` : a list of `Result` nodes that represent the result of the expression, and
+    - :literal:`outputs` : a list of `Variable` nodes that represent the variable of the expression, and
 
     - :literal:`op` : an `Op` instance that determines the nature of the expression being applied.
 
-    The driver `compile.function` uses Apply's inputs attribute together with Result's owner
+    The driver `compile.function` uses Apply's inputs attribute together with Variable's owner
     attribute to search the expression graph and determine which inputs are necessary to
     compute the function's outputs.
 
-    A `Linker` uses the Apply instance's `op` field to compute the results.
+    A `Linker` uses the Apply instance's `op` field to compute the variables.
 
     Comparing with the Python language, an `Apply` instance is theano's version of a function
     call (or expression instance) whereas `Op` is theano's version of a function definition.
@@ -48,9 +48,9 @@ class Apply(utils.object2):
         :Parameters:
          `op` : `Op` instance
            initialize self.op
-         `inputs` : list of Result instances
+         `inputs` : list of Variable instances
            initialize self.inputs
-         `outputs` : list of Result instances
+         `outputs` : list of Variable instances
            initialize self.outputs
 
         :note:
@@ -65,24 +65,24 @@ class Apply(utils.object2):
         self.inputs = []
         self.tag = utils.scratchpad()
 
-        ## filter inputs to make sure each element is a Result
+        ## filter inputs to make sure each element is a Variable
         for input in inputs:
-            if isinstance(input, Result):
+            if isinstance(input, Variable):
                 self.inputs.append(input)
             else:
-                raise TypeError("The 'inputs' argument to Apply must contain Result instances, not %s" % input)
+                raise TypeError("The 'inputs' argument to Apply must contain Variable instances, not %s" % input)
         self.outputs = []
-        ## filter outputs to make sure each element is a Result
+        ## filter outputs to make sure each element is a Variable
         for i, output in enumerate(outputs):
-            if isinstance(output, Result):
+            if isinstance(output, Variable):
                 if output.owner is None:
                     output.owner = self
                     output.index = i
                 elif output.owner is not self or output.index != i:
-                    raise ValueError("All output results passed to Apply must belong to it.")
+                    raise ValueError("All output variables passed to Apply must belong to it.")
                 self.outputs.append(output)
             else:
-                raise TypeError("The 'outputs' argument to Apply must contain Result instances with no owner, not %s" % output)
+                raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
 
         self._creation_idx = _creation_idx[0]
         _creation_idx[0] += 1
@@ -91,7 +91,7 @@ class Apply(utils.object2):
         """Returns the default output for this node.
         
         :rtype:
-            Result instance 
+            Variable instance 
 
         :return:
             an element of self.outputs, typically self.outputs[0].
@@ -145,7 +145,7 @@ class Apply(utils.object2):
     def clone_with_new_inputs(self, inputs, strict = True):
         """Duplicate this Apply instance in a new graph.
 
-        :param inputs: list of Result instances to use as inputs.
+        :param inputs: list of Variable instances to use as inputs.
 
         :type strict: Bool
 
@@ -181,38 +181,38 @@ class Apply(utils.object2):
     """property: Number of outputs"""
 
 
-class Result(utils.object2):
+class Variable(utils.object2):
     """
-    A :term:`Result` is a node in an expression graph that represents a variable.
+    A :term:`Variable` is a node in an expression graph that represents a variable.
 
-    The inputs and outputs of every `Apply` are `Result` instances.
-    The input and output arguments to create a `function` are also `Result` instances.
-    A `Result` is like a strongly-typed variable in some other languages; each `Result` contains a
-    reference to a `Type` instance that defines the kind of value the `Result` can take in a
+    The inputs and outputs of every `Apply` are `Variable` instances.
+    The input and output arguments to create a `function` are also `Variable` instances.
+    A `Variable` is like a strongly-typed variable in some other languages; each `Variable` contains a
+    reference to a `Type` instance that defines the kind of value the `Variable` can take in a
     computation.
 
-    A `Result` is a container for four important attributes:
+    A `Variable` is a container for four important attributes:
 
-    - :literal:`type` a `Type` instance defining the kind of value this `Result` can have,
+    - :literal:`type` a `Type` instance defining the kind of value this `Variable` can have,
 
     - :literal:`owner` either None (for graph roots) or the `Apply` instance of which `self` is an output,
 
-    - :literal:`index` the integer such that :literal:`owner.outputs[index] is this_result` (ignored if `owner` is None)
+    - :literal:`index` the integer such that :literal:`owner.outputs[index] is this_variable` (ignored if `owner` is None)
 
     - :literal:`name` a string to use in pretty-printing and debugging.
 
-    There are a few kinds of Results to be aware of: A Result which is the output of a symbolic
+    There are a few kinds of Variables to be aware of: A Variable which is the output of a symbolic
     computation has a reference to the Apply instance to which it belongs (property: owner) and
     the position of itself in the owner's output list (property: index).
 
-    - `Result` (this base type) is typically the output of a symbolic computation,
+    - `Variable` (this base type) is typically the output of a symbolic computation,
     
     - `Value` (a subclass) adds a default :literal:`value`, and requires that owner == None
 
     - `Constant` (a subclass) which adds a default and un-replacable :literal:`value`, and
       requires that owner == None
 
-    A Result which is the output of a symbolic computation will have an owner != None.
+    A Variable which is the output of a symbolic computation will have an owner != None.
 
     Code Example
     ============
@@ -239,11 +239,11 @@ class Result(utils.object2):
         e = d + b
         theano.function([d,b], [e])     # this works.  d's default value of 1.5 is ignored.
 
-    The python variables :literal:`a,b,c` all refer to instances of type `Result`.
-    The `Result` refered to by `a` is also an instance of `Constant`.
+    The python variables :literal:`a,b,c` all refer to instances of type `Variable`.
+    The `Variable` refered to by `a` is also an instance of `Constant`.
 
     `compile.function` uses each `Apply` instance's `inputs` attribute
-    together with each Result's `owner` field to determine which inputs are necessary to compute the function's outputs.
+    together with each Variable's `owner` field to determine which inputs are necessary to compute the function's outputs.
 
     """
     #__slots__ = ['type', 'owner', 'index', 'name']
@@ -258,7 +258,7 @@ class Result(utils.object2):
         :param owner: the Apply instance which computes the value for this variable
 
         :type index: None or int
-        :param index: the position of this Result in owner.outputs
+        :param index: the position of this Variable in owner.outputs
 
         :type name: None or str
         :param name: a string for pretty-printing and debugging
@@ -290,10 +290,10 @@ class Result(utils.object2):
     def __repr__(self):
         return str(self)
     def clone(self):
-        """Return a new Result like self.
+        """Return a new Variable like self.
 
-        :rtype: Result instance
-        :return: a new Result instance (or subclass instance) with no owner or index.
+        :rtype: Variable instance
+        :return: a new Variable instance (or subclass instance) with no owner or index.
 
         :note: tags are copied to the returned instance.
         :note: name is copied to the returned instance.
@@ -303,9 +303,9 @@ class Result(utils.object2):
         cp.tag = copy(self.tag)
         return cp
 
-class Value(Result):
+class Value(Variable):
     """
-    A :term:`Value` is a `Result` with a default value.
+    A :term:`Value` is a `Variable` with a default value.
 
     Its owner field is always None. And since it has a default value, a `Value` instance need
     not be named as an input to `compile.function`.
@@ -325,7 +325,7 @@ class Value(Result):
         WRITEME
 
         """
-        Result.__init__(self, type, None, None, name)
+        Variable.__init__(self, type, None, None, name)
         self.data = type.filter(data)
     def __str__(self):
         """WRITEME"""
@@ -357,7 +357,7 @@ class Constant(Value):
     def __init__(self, type, data, name = None):
         Value.__init__(self, type, data, name)
     def equals(self, other):
-        # this does what __eq__ should do, but Result and Apply should always be hashable by id
+        # this does what __eq__ should do, but Variable and Apply should always be hashable by id
         return isinstance(other, Constant) and self.signature() == other.signature()
     def signature(self):
         return (self.type, self.data)
@@ -378,7 +378,7 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
     :param expand: 
         when we get to a node, add expand(node) to the list of nodes to visit.  This function
         should return a list, or None
-    :rtype: list of `Result` or `Apply` instances (depends on `expend`)
+    :rtype: list of `Variable` or `Apply` instances (depends on `expend`)
     :return: the list of nodes in order of traversal.
     
     :note:
@@ -414,16 +414,16 @@ def stack_search(start, expand, mode='bfs', build_inv = False):
     return rval_list
 
 
-def inputs(result_list, blockers = None):
-    """Return the inputs required to compute the given Results.
+def inputs(variable_list, blockers = None):
+    """Return the inputs required to compute the given Variables.
 
-    :type result_list: list of `Result` instances
-    :param result_list:
-        output `Result` instances from which to search backward through owners
-    :rtype: list of `Result` instances
+    :type variable_list: list of `Variable` instances
+    :param variable_list:
+        output `Variable` instances from which to search backward through owners
+    :rtype: list of `Variable` instances
     :returns: 
         input nodes with no owner, in the order found by a left-recursive depth-first search
-        started at the nodes in `result_list`.
+        started at the nodes in `variable_list`.
 
     """
     def expand(r):
@@ -431,13 +431,13 @@ def inputs(result_list, blockers = None):
             l = list(r.owner.inputs)
             l.reverse()
             return l
-    dfs_results = stack_search(deque(result_list), expand, 'dfs')
-    rval = [r for r in dfs_results if r.owner is None]
+    dfs_variables = stack_search(deque(variable_list), expand, 'dfs')
+    rval = [r for r in dfs_variables if r.owner is None]
     #print rval, _orig_inputs(o)
     return rval
 
 
-def results_and_orphans(i, o):
+def variables_and_orphans(i, o):
     """WRITEME
     """
     def expand(r):
@@ -445,72 +445,72 @@ def results_and_orphans(i, o):
             l = list(r.owner.inputs) + list(r.owner.outputs)
             l.reverse()
             return l
-    results = stack_search(deque(o), expand, 'dfs')
-    orphans = [r for r in results if r.owner is None and r not in i]
-    return results, orphans
+    variables = stack_search(deque(o), expand, 'dfs')
+    orphans = [r for r in variables if r.owner is None and r not in i]
+    return variables, orphans
 
 
 def ops(i, o):
     """ WRITEME
 
     :type i: list
-    :param i: input L{Result}s
+    :param i: input L{Variable}s
     :type o: list
-    :param o: output L{Result}s
+    :param o: output L{Variable}s
 
     :returns:
         the set of ops that are contained within the subgraph that lies between i and o,
-        including the owners of the L{Result}s in o and intermediary ops between i and o, but
-        not the owners of the L{Result}s in i.
+        including the owners of the L{Variable}s in o and intermediary ops between i and o, but
+        not the owners of the L{Variable}s in i.
     """
     ops = set()
-    results, orphans = results_and_orphans(i, o)
-    for r in results:
+    variables, orphans = variables_and_orphans(i, o)
+    for r in variables:
         if r not in i and r not in orphans:
             if r.owner is not None:
                 ops.add(r.owner)
     return ops
 
 
-def results(i, o):
+def variables(i, o):
     """ WRITEME
 
     :type i: list
-    :param i: input L{Result}s
+    :param i: input L{Variable}s
     :type o: list
-    :param o: output L{Result}s
+    :param o: output L{Variable}s
 
     :returns:
-        the set of Results that are involved in the subgraph that lies between i and o. This
+        the set of Variables that are involved in the subgraph that lies between i and o. This
         includes i, o, orphans(i, o) and all values of all intermediary steps from i to o.
     """
-    return results_and_orphans(i, o)[0]
+    return variables_and_orphans(i, o)[0]
 
 
 def orphans(i, o):
     """ WRITEME
 
     :type i: list
-    :param i: input L{Result}s
+    :param i: input L{Variable}s
     :type o: list
-    :param o: output L{Result}s
+    :param o: output L{Variable}s
 
     :returns:
-        the set of Results which one or more Results in o depend on but are neither in i nor in
+        the set of Variables which one or more Variables in o depend on but are neither in i nor in
         the subgraph that lies between i and o.
 
     e.g. orphans([x], [(x+y).out]) => [y]
     """
-    return results_and_orphans(i, o)[1]
+    return variables_and_orphans(i, o)[1]
 
 
 def clone(i, o, copy_inputs = True):
     """ WRITEME
 
     :type i: list
-    :param i: input L{Result}s
+    :param i: input L{Variable}s
     :type o: list
-    :param o: output L{Result}s
+    :param o: output L{Variable}s
     :type copy_inputs: bool
     :param copy_inputs: if True, the inputs will be copied (defaults to False)
 
@@ -525,9 +525,9 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
     """ WRITEME
 
     :type i: list
-    :param i: input L{Result}s
+    :param i: input L{Variable}s
     :type o: list
-    :param o: output L{Result}s
+    :param o: output L{Variable}s
     :type copy_inputs_and_orphans: bool
     :param copy_inputs_and_orphans: 
         if True, the inputs and the orphans will be replaced in the cloned graph by copies
@@ -536,7 +536,7 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
 
     :rtype: a dictionary
     :return:
-        equiv mapping each L{Result} and L{Op} in the graph delimited by i and o to a copy
+        equiv mapping each L{Variable} and L{Op} in the graph delimited by i and o to a copy
         (akin to deepcopy's memo).
     """
 
@@ -629,7 +629,7 @@ def io_toposort(i, o, orderings = {}):
     def deps(obj): 
         rval = []
         if obj not in iset:
-            if isinstance(obj, Result): 
+            if isinstance(obj, Variable): 
                 if obj.owner:
                     rval = [obj.owner]
             if isinstance(obj, Apply):
@@ -660,11 +660,11 @@ def as_string(i, o,
     """WRITEME
 
     :type i: list
-    :param i: input `Result` s
+    :param i: input `Variable` s
     :type o: list
-    :param o: output `Result` s
+    :param o: output `Variable` s
     :type leaf_formatter: function
-    :param leaf_formatter: takes a `Result`  and returns a string to describe it
+    :param leaf_formatter: takes a `Variable`  and returns a string to describe it
     :type node_formatter: function
     :param node_formatter: 
         takes an `Op`  and the list of strings corresponding to its arguments and returns a

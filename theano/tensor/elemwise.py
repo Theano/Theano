@@ -13,18 +13,18 @@ from copy import copy, deepcopy
 
 
 # tensor depends on elemwise to provide definitions for several ops
-# but elemwise needs to make NDArrayType instances, so we have these as
+# but elemwise needs to make TensorType instances, so we have these as
 # placeholders and the tensor module fills them
-def as_ndarray_result(data):
+def as_tensor_variable(data):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
-def NDArrayType(*inputs, **kwargs):
+def TensorType(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
-def NDArrayResult(*inputs, **kwargs):
+def TensorVariable(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
-def NDArrayConstant(*inputs, **kwargs):
+def TensorConstant(*inputs, **kwargs):
     raise Exception("Circular dependencies prevent using this here. import tensor before elemwise")
 
 
@@ -137,8 +137,8 @@ class DimShuffle(Op):
             else:
                 ob.append(ib[value])
 
-        output = NDArrayType(dtype = input.type.dtype,
-                        broadcastable = ob).make_result()
+        output = TensorType(dtype = input.type.dtype,
+                        broadcastable = ob).make_variable()
         return Apply(self, [input], [output])
 
     def __eq__(self, other):
@@ -256,7 +256,7 @@ class DimShuffle(Op):
         return full_code % dict(locals(), **sub)
 
     def grad(self, (x, ), (gz, )):
-        gz = as_ndarray_result(gz)
+        gz = as_tensor_variable(gz)
         grad_order = ['x'] * len(x.type.broadcastable)
         for i, v in enumerate(self.new_order):
             if v != 'x':
@@ -365,7 +365,7 @@ class Elemwise(Op):
         using DimShuffle.
         """
 
-        inputs = map(as_ndarray_result, inputs)
+        inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(*[Scalar(dtype = t.type.dtype)() for t in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
@@ -403,7 +403,7 @@ class Elemwise(Op):
         if any(inputs[i].type.dtype != out_dtypes[o] for o, i in inplace_pattern.items()):
             raise TypeError("Cannot do an inplace operation on incompatible data types.", 
                     ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern))
-        outputs = [NDArrayType(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
+        outputs = [TensorType(dtype = dtype, broadcastable = broadcastable)() for dtype, broadcastable in zip(out_dtypes, out_broadcastables)]
         return Apply(self, inputs, outputs)
 
     def __eq__(self, other):
@@ -431,7 +431,7 @@ class Elemwise(Op):
             return self.name
 
     def grad(self, inputs, ograds):
-        ograds = map(as_ndarray_result, ograds) # this shouldn't be necessary...
+        ograds = map(as_tensor_variable, ograds) # this shouldn't be necessary...
         scalar_inputs = [Scalar(dtype = t.type.dtype)() for t in inputs]
         scalar_ograds = [Scalar(dtype = ograd.type.dtype)() for ograd in ograds]
         scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
@@ -445,8 +445,8 @@ class Elemwise(Op):
             node = r.owner
             if node is None:
                 # the gradient contains a constant, translate it as
-                # an equivalent NDArrayType of size 1 and proper number of dimensions
-                res = NDArrayConstant(NDArrayType(dtype = r.type.dtype,
+                # an equivalent TensorType of size 1 and proper number of dimensions
+                res = TensorConstant(TensorType(dtype = r.type.dtype,
                                             broadcastable = ()),
                                      numpy.asarray(r.data)) # .reshape(b)
                 return DimShuffle((), ['x']*nd, inplace = True)(res)
@@ -520,18 +520,18 @@ class Elemwise(Op):
         ufunc = self.ufunc or numpy.frompyfunc(self.scalar_op.impl, len(inputs), self.scalar_op.nout)
         
         try:
-            results = ufunc(*ufunc_args)
+            variables = ufunc(*ufunc_args)
         except Exception, e:
             errormsg = 'Failed calling ufunc for op', self.scalar_op,\
                         'for params of shape', [arg.shape for arg in ufunc_args]
             e.args = e.args + errormsg
             raise e
-        if ufunc.nout == 1: results = [results]
-        for result, storage in zip(results, output_storage):
+        if ufunc.nout == 1: variables = [variables]
+        for variable, storage in zip(variables, output_storage):
             if storage[0].shape:
-                storage[0][:] = result
+                storage[0][:] = variable
             else:
-                storage[0].itemset(result)
+                storage[0].itemset(variable)
         # the following should be used instead of the previous loop, unfortunately it tends to segfault
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
@@ -640,7 +640,7 @@ class CAReduce(Op):
     Reduces a scalar operation along the specified axis(es).
 
     The output will have the same shape as the input minus the reduced
-    dimensions. It will contain the result of accumulating all values
+    dimensions. It will contain the variable of accumulating all values
     over the reduced dimensions using the specified scalar op.
 
     Examples:
@@ -652,7 +652,7 @@ class CAReduce(Op):
     In order to (eventually) optimize memory usage patterns,
     L{CAReduce} makes zero guarantees on the order in which it
     iterates over the dimensions and the elements of the
-    array(s). Therefore, to ensure consistent results, the scalar
+    array(s). Therefore, to ensure consistent variables, the scalar
     operation represented by the reduction must be both commutative
     and associative (eg add, multiply, binary or/and/xor - but not
     subtract, divide or power).
@@ -678,11 +678,11 @@ class CAReduce(Op):
         self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
     def make_node(self, input):
-        input = as_ndarray_result(input)
+        input = as_tensor_variable(input)
         axis = self.axis
         if axis is None:
             axis = range(len(input.type.broadcastable))
-        output = NDArrayType(dtype = input.type.dtype,
+        output = TensorType(dtype = input.type.dtype,
                              broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
         return Apply(self, [input], [output])
 
@@ -714,14 +714,14 @@ class CAReduce(Op):
         axis = self.axis
         if axis is None:
             axis = range(input.ndim)
-        result = input
+        variable = input
         to_reduce = reversed(sorted(axis))
         if to_reduce:
             for dimension in to_reduce:
-                result = self.ufunc.reduce(result, dimension)
-            output[0] = numpy.asarray(result, dtype = node.outputs[0].type.dtype)
+                variable = self.ufunc.reduce(variable, dimension)
+            output[0] = numpy.asarray(variable, dtype = node.outputs[0].type.dtype)
         else:
-            output[0] = numpy.copy(result)
+            output[0] = numpy.copy(variable)
 
     def _c_all(self, node, name, inames, onames, sub):
 
@@ -809,7 +809,7 @@ class Sum(CAReduce):
         CAReduce.__init__(self, scalar.add, axis)
 
     def grad(self, (x, ), (gz, )):
-        gz = as_ndarray_result(gz)
+        gz = as_tensor_variable(gz)
         axis = self.axis
         if axis is None:
             axis = range(x.type.ndim)

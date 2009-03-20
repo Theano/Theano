@@ -11,7 +11,7 @@ If you do want to rewrite these tests, bear in mind:
 
 import unittest
 
-from theano.gof import Result, Op, Env
+from theano.gof import Variable, Op, Env
 from theano import gof
 
 from theano.scalar.basic import *

@@ -18,7 +18,7 @@ Python data that satisfy the constraints it puts forward. In other
 words, it must define C code that can convert a Python reference into
 some type suitable for manipulation in C and it must define C code
 that can convert some C structure in which the C implementation of an
-operation stores its results into a reference to an object that can be
+operation stores its variables into a reference to an object that can be
 used from Python and is a valid value for the Type.
 
 For example, in the current example, we have a Type which represents a
@@ -65,7 +65,7 @@ the most important ones:
 
 - **c_sync(name, sub)**
 
-  - When the computations are done, transfer the results from the C
+  - When the computations are done, transfer the variables from the C
     structure we put them in to the destination Python object. This
     will only be called for the outputs.
 
@@ -82,12 +82,12 @@ the most important ones:
 
 Each of these functions take two arguments, ``name`` and ``sub`` which
 must be used to parameterize the C code they return. ``name`` is a
-string which is chosen by the compiler to represent a :ref:`result` of
+string which is chosen by the compiler to represent a :ref:`variable` of
 the Type in such a way that there are no name conflicts between
 different pieces of data. Therefore, all variables declared in
 ``c_declare`` should have a name which includes ``name``. Furthermore,
 the name of the variable containing a pointer to the Python object
-associated to the Result is ``py_<name>``.
+associated to the Variable is ``py_<name>``.
 
 ``sub``, on the other hand, is a dictionary containing bits of C code
 suitable for use in certain situations. For instance, ``sub['fail']``
@@ -129,7 +129,7 @@ double. That double will be named whatever is passed to our function
 in the "name" argument. That will usually be some mangled name like
 "V0", "V2" or "V92" depending on how many nodes there are in the
 computation graph and what rank the current node has. This function
-will be called for all Results whose type is ``double``.
+will be called for all Variables whose type is ``double``.
 
 You can declare as many variables as you want there and you can also
 do typedefs. Make sure that the name of each variable contains the
@@ -157,15 +157,15 @@ it, it's best to publish it somewhere.
 This function has to initialize the
 double we declared previously to a suitable value. This is useful if
 we want to avoid dealing with garbage values, especially if our data
-type is a pointer. This is not going to be called for all Results with
-the ``double`` type. Indeed, if a Result is an input which we pass
+type is a pointer. This is not going to be called for all Variables with
+the ``double`` type. Indeed, if a Variable is an input which we pass
 from Python we will want to extract that input from a Python object,
 therefore it is the c_extract method that will be called instead of
 c_init. You can therefore not assume, when writing c_extract, that the
 initialization has been done (in fact you can assume that it *hasn't*
 been done).
 
-``c_init`` will typically be called on output Results, but in general
+``c_init`` will typically be called on output Variables, but in general
 you should only assume that either c_init or c_extract has been
 called, without knowing for sure which of the two.
 
@@ -190,7 +190,7 @@ we have a reference to a Python object which Theano has placed in
 given in the inputs. This special variable is declared by Theano as
 ``PyObject* py_%(name)s`` where ``PyObject*`` is a pointer to a Python
 object as defined by CPython's C API. This is the reference that
-corresponds, on the Python side of things, to a Result with the
+corresponds, on the Python side of things, to a Variable with the
 ``double`` type. It is what the end user will give and what he or she
 expects to get back.
 
@@ -223,7 +223,7 @@ API) and we put it in our double variable that we declared previously.
     double.c_sync = c_sync
 
 This function is probably the trickiest. What happens here is that we
-have computed some operation on doubles and we have put the result
+have computed some operation on doubles and we have put the variable
 into the double variable ``%(name)s``. Now, we need to put this data
 into a Python object that we can manipulate on the Python side of
 things. This Python object must be put into the ``py_%(name)s``
@@ -306,9 +306,9 @@ object on which we want to apply computations using C
 code. Conversely, ``c_sync`` will only be called if we want to
 communicate the values we have computed to Python and ``c_cleanup``
 will only be called when we don't need to process the data with C
-anymore. In other words, the use of these functions for a given Result
+anymore. In other words, the use of these functions for a given Variable
 depends on the the relationship between Python and C with respect to
-that Result. For instance, imagine you define the following function
+that Variable. For instance, imagine you define the following function
 and call it:
 
 .. code-block:: python

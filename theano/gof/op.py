@@ -38,7 +38,7 @@ class CLinkerOp(object):
            `PyObject` variable pointing to that input.
          `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
-           results.  The `CLinker` guarantees that on entry to this code block, each pointer
+           variables.  The `CLinker` guarantees that on entry to this code block, each pointer
            is either NULL or is unchanged from the end of the previous execution.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
@@ -68,7 +68,7 @@ class CLinkerOp(object):
            `PyObject` variable pointing to that input.
          `outputs` : list of strings
            Each string is the name of a `PyObject` pointer where the Op should store its
-           results.  The `CLinker` guarantees that on entry to this code block, each pointer
+           variables.  The `CLinker` guarantees that on entry to this code block, each pointer
            is either NULL or is unchanged from the end of the previous execution.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
@@ -162,7 +162,7 @@ class PureOp(object):
     - [optionally] building gradient-calculating graphs (via `grad`).
 
 
-    To see how `Op`, `Type`, `Result`, and `Apply` fit together see the page on :doc:`graph`.
+    To see how `Op`, `Type`, `Variable`, and `Apply` fit together see the page on :doc:`graph`.
 
     For more specifications on how these methods should behave: see the `Op Contract` in the
     sphinx docs (advanced tutorial on Op-making).
@@ -229,7 +229,7 @@ class PureOp(object):
 
     def perform(self, node, inputs, output_storage):
         """
-        Required:  Calculate the function on the inputs and put the results in the
+        Required:  Calculate the function on the inputs and put the variables in the
         output storage.  Return None.
 
         :Parameters:

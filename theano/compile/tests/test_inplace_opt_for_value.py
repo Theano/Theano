@@ -18,7 +18,7 @@ class StochasticGradientDescent(module.FancyModule):
     def __init__(self, args, cost, params, gradients=None, stepsize=None, WEIRD_STUFF=True):
         """
         :param stepsize: the step to take in (negative) gradient direction
-        :type stepsize: None, scalar value, or scalar NDArrayResult
+        :type stepsize: None, scalar value, or scalar TensorVariable
         """
         super(StochasticGradientDescent, self).__init__()
         self.WEIRD_STUFF = WEIRD_STUFF
@@ -26,7 +26,7 @@ class StochasticGradientDescent(module.FancyModule):
 
         if stepsize is None:
             self.stepsize = (T.dscalar())
-        elif isinstance(stepsize, T.NDArrayResult):
+        elif isinstance(stepsize, T.TensorVariable):
             self.stepsize = stepsize
         else:
             if self.WEIRD_STUFF:
@@ -89,10 +89,10 @@ class TanhRnn(Op):
         :type A: matrix (M by M)
 
         """
-        x = T.as_ndarray_result(x)
-        z0 = T.as_ndarray_result(z0)
-        A = T.as_ndarray_result(A)
-        z = x.type() #make a new symbolic result with the same type as x
+        x = T.as_tensor_variable(x)
+        z0 = T.as_tensor_variable(z0)
+        A = T.as_tensor_variable(A)
+        z = x.type() #make a new symbolic variable with the same type as x
         return Apply(self, [x, z0, A], [z])
 
     def perform(self, node, (x,z0,A), out):

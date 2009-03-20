@@ -2,10 +2,10 @@
 from copy import copy
 from theano.gof.op import *
 from theano.gof.type import Type, Generic
-from theano.gof.graph import Apply, Result
+from theano.gof.graph import Apply, Variable
 
-def as_result(x):
-    assert isinstance(x, Result)
+def as_variable(x):
+    assert isinstance(x, Variable)
     return x
 
 
@@ -27,7 +27,7 @@ class MyType(Type):
 class MyOp(Op):
 
     def make_node(self, *inputs):
-        inputs = map(as_result, inputs)
+        inputs = map(as_variable, inputs)
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")

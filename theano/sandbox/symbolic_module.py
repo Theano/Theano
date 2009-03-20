@@ -19,7 +19,7 @@ class InitGraph(type):
                     return True
                 if issubclass(v, SymbolicModule):
                     return True
-                return isinstance(v, theano.Result) and not k.startswith('_')
+                return isinstance(v, theano.Variable) and not k.startswith('_')
             r = {}
             for key, val in dct.items():
                 if filter(key, val):
@@ -31,7 +31,7 @@ class InitGraph(type):
         dct = just_symbolic(build_graph_rval)
         for key, val in dct.items():
             #print '  adding class attribute', key
-            if isinstance(val, theano.Result) and val.name is None:
+            if isinstance(val, theano.Variable) and val.name is None:
                 val.name = key
             if callable(val):
                 setattr(cls, key, staticmethod(val))
@@ -98,7 +98,7 @@ def compile_fn(f, path_locals, common_inputs):
 
 def compile(smod, initial_values={}):
     """
-    :type values: dictionary Result -> value
+    :type values: dictionary Variable -> value
     """
     def sym_items(mod):
         for k in mod.__dict__:
@@ -121,7 +121,7 @@ def compile(smod, initial_values={}):
                         yield s
                 elif isinstance(val, (str, int, float)):
                     pass
-                elif isinstance(val, theano.Result):
+                elif isinstance(val, theano.Variable):
                     pass
                 elif issymbolicmethod(val):
                     pass
@@ -135,7 +135,7 @@ def compile(smod, initial_values={}):
     #Locate all the starting nodes, and create containers entries for their values
     inputs = {}
     for path_locals, val in walker(smod):
-        if isinstance(val, theano.Result) and (val.owner is None) and (val not in inputs):
+        if isinstance(val, theano.Variable) and (val.owner is None) and (val not in inputs):
             inputs[val] = theano.In(val, value=theano.gof.Container(val, ['a'])) 
 
     assert len(inputs) == len([v for v in inputs.items()])
@@ -172,7 +172,7 @@ def compile(smod, initial_values={}):
                     setattr(CMod, key, reflect(val))
             elif isinstance(thing, (str, int, float)):
                 reflected[thing] = thing
-            elif isinstance(thing, theano.Result):
+            elif isinstance(thing, theano.Variable):
                 if thing.owner is None:
                     def getter(s):
                         return inputs[thing].value.value
@@ -275,11 +275,11 @@ if 0:
 
         locals_dict = f()
         for key, val in locals_dict.items():
-            if isinstance(val, theano.Result):
+            if isinstance(val, theano.Variable):
                 try:
                     kres = klass.KlassMember(val)
                 except:
-                    kres = klass.KlassResult(val)
+                    kres = klass.KlassVariable(val)
                 setattr(SymMod, key, kres)
             elif callable(val) and getattr(val, '__is_symbolic'):
                 setattr(SymMod, key, val)
@@ -333,14 +333,14 @@ if 0:
     class SymbolicModule(object):
         name = "__no_name__" #name of this module
 
-        result_table = {}  #map strings (names) to Results
+        variable_table = {}  #map strings (names) to Variables
         method_table = {}  #map strings to compilable functions
         include_list = []
 
         constructor_fn = None
 
         def build(self):
-            """Run the body of the included modules in order, using the current results and imports
+            """Run the body of the included modules in order, using the current variables and imports
             """
 
         def include(self, symbolic_module, name=None):
@@ -350,7 +350,7 @@ if 0:
 
         def __init__(self, constructor_fn=None):
             """ A constructor fn builds 
-            - a graph on top of the result table, and
+            - a graph on top of the variable table, and
             - compilable methods.
             """
 

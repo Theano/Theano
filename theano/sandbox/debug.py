@@ -14,7 +14,7 @@ class DebugLinker(gof.WrapLinker):
                  debug_post = [],
                  copy_originals = False,
                  check_types = True,
-                 compare_results = True,
+                 compare_variables = True,
                  compare_fn = lambda x, y: x == y):
         gof.WrapLinker.__init__(self,
                                 linkers = linkers,
@@ -27,8 +27,8 @@ class DebugLinker(gof.WrapLinker):
         self.copy_originals = copy_originals
         if check_types not in [None, True]:
             self.check_types = check_types
-        if compare_results not in [None, True]:
-            self.compare_results = compare_results
+        if compare_variables not in [None, True]:
+            self.compare_variables = compare_variables
 
         if not isinstance(debug_pre, (list, tuple)):
             debug_pre = [debug_pre]
@@ -39,8 +39,8 @@ class DebugLinker(gof.WrapLinker):
         self.debug_post = debug_post
         if check_types is not None:
             self.debug_post.append(self.check_types)
-        if compare_results is not None:
-            self.debug_post.append(self.compare_results)
+        if compare_variables is not None:
+            self.debug_post.append(self.compare_variables)
 
     def accept(self, env, no_recycling = []):
         return gof.WrapLinker.accept(self,
@@ -75,13 +75,13 @@ class DebugLinker(gof.WrapLinker):
                     exc.linker = linker
                     raise DebugException, exc, exc_trace
 
-    def compare_results(self, i, node, *thunks):
+    def compare_variables(self, i, node, *thunks):
         thunk0 = thunks[0]
         linker0 = self.linkers[0]
         for thunk, linker in zip(thunks[1:], self.linkers[1:]):
             for o, output0, output in zip(node.outputs, thunk0.outputs, thunk.outputs):
                 if not self.compare_fn(output0[0], output[0]):
-                    exc = DebugException(("The results from %s and %s for output %s are not the same. This happened at step %i." % (linker0, linker, o, step)) + \
+                    exc = DebugException(("The variables from %s and %s for output %s are not the same. This happened at step %i." % (linker0, linker, o, step)) + \
                                          "For more info, inspect this exception's 'debugger', 'output', 'output_value1', 'output_value2', " \
                                          "'step', 'node', 'thunk1', 'thunk2', 'linker1' and 'linker2' fields.")
                     exc.debugger = self
@@ -98,7 +98,7 @@ class DebugLinker(gof.WrapLinker):
 
     def pre(self, f, inputs, order, thunk_groups):
         env = f.env
-        for r in env.results:
+        for r in env.variables:
             if r.owner is None:
                 r.step = "value" # this will be overwritten if r is an input
             else:

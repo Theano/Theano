@@ -117,12 +117,12 @@ Example:
 >>>         cmp = f(self.avals,self.bvals) == numpy.dot(self.avals,self.bvals)
 >>>         self.failUnless(numpy.all(cmp))
 
-Avoid hard-coding results, as in the following case:
+Avoid hard-coding variables, as in the following case:
 
 >>>         self.failUnless(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
 
 This makes the test case less manageable and forces the user to update the
-results each time the input is changed or possibly when the module being
+variables each time the input is changed or possibly when the module being
 tested changes (after a bug fix for example). It also constrains the test case
 to specific input/output data pairs. The section on random values covers why this
 might not be such a good idea.
@@ -148,7 +148,7 @@ Example:
 >>>     ...
 >>>     def test_3D_dot_fail(self):
 >>>         def func():
->>>             a = T.NDArrayType('float64', (False,False,False)) # create 3d tensor
+>>>             a = T.TensorType('float64', (False,False,False)) # create 3d tensor
 >>>             b = T.dmatrix()
 >>>             c = T.dot(a,b) # we expect this to fail
 >>>         # above should fail as dot operates on 2D tensors only
@@ -209,7 +209,7 @@ The main advantage of using unittest_tools.seed_rng is that it allows us to
 change the seed used in the unitests, without having to manually edit all the
 files. For example, this allows the nightly build to run nosetests repeatedly,
 changing the seed on every run (hence achieving a higher confidence that the 
-results are correct), while still making sure unittests are deterministic. 
+variables are correct), while still making sure unittests are deterministic. 
 
 Users who prefer their unittests to be random (when run on their local machine)
 can simply undefine THEANO_UNITTEST_SEED.
@@ -220,4 +220,4 @@ Similarly, to provide a seed to numpy.random.RandomState, simply use:
 >>> # OR providing an explicit seed
 >>> rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231))
 
-Note that the ability to change the seed from one nosetest to another, is incompatible with the method of hard-coding the baseline results (against which we compare the theano outputs). These must then be determined "algorithmically". Although this represents more work, the test suite will be better because of it.
+Note that the ability to change the seed from one nosetest to another, is incompatible with the method of hard-coding the baseline variables (against which we compare the theano outputs). These must then be determined "algorithmically". Although this represents more work, the test suite will be better because of it.

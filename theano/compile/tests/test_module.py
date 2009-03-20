@@ -43,9 +43,9 @@ class T_module(unittest.TestCase):
             m1.x=x()
             m1.y=y()
             m1.emtpylist = []
-            m1.lx=[x()]#cast Result]
+            m1.lx=[x()]#cast Variable]
             m1.ly=[y()]
-            m1.llx=[[x()]]#cast Result]
+            m1.llx=[[x()]]#cast Variable]
             m1.lly=[[y()]]
             m1.ltx=[(x(),)]
             m1.lty=[(y(),)]
@@ -68,8 +68,8 @@ class T_module(unittest.TestCase):
             m1.ddx={"x":{"x":x()}}
             m1.ddy={"y":{"y":y()}}
 
-            assert isinstance(m1.x,(gof.Result))
-            assert isinstance(m1.y,(gof.Result))
+            assert isinstance(m1.x,(gof.Variable))
+            assert isinstance(m1.y,(gof.Variable))
             for i, obj in enumerate([
                     m1.lx[0], #0
                     m1.llx[0][0],
@@ -86,7 +86,7 @@ class T_module(unittest.TestCase):
                     m1.dy['y'], m1.dlx['x'][0], m1.dly['y'][0],
                     m1.dtx['x'][0], m1.dty['y'][0], m1.ddx['x']['x'],
                     m1.ddy['y']['y']]):
-                assert isinstance(obj,(gof.Result))
+                assert isinstance(obj,(gof.Variable))
                 
 
             inst=m1.make()
@@ -136,7 +136,7 @@ class T_module(unittest.TestCase):
         def local_test(x,y):
             m1=Module()
 
-            #create a list with some results in it
+            #create a list with some variables in it
             m1.l=[x(), y()]
 
             # create a Method that makes the second list element a shared Member
@@ -144,7 +144,7 @@ class T_module(unittest.TestCase):
             m1.g=Method([], m1.l[0])
             m = m1.make()
 
-            #assign 4 and 5 to the two results' containers in m
+            #assign 4 and 5 to the two variables' containers in m
             m.l = [4, 5]
             print 'm.f', m.f()
             assert numpy.all(5 == m.f())
@@ -164,7 +164,7 @@ class T_module(unittest.TestCase):
             m1.f=Method([], m1.l[1])
             m = m1.make()
 
-            #assign 4 and 5 to the two results' containers in m
+            #assign 4 and 5 to the two variables' containers in m
             m.l = (4, 5)
             assert 5 == m.f()
             assert 4 == m.g()
@@ -184,7 +184,7 @@ class T_module(unittest.TestCase):
             m1.g=Method([], m1.l['x'])
             m = m1.make()
 
-            #assign 4 and 5 to the two results' containers in m
+            #assign 4 and 5 to the two variables' containers in m
             m.l = dict(x=4, y=5)
             assert 5 == m.f()
             assert 4 == m.g()
@@ -198,7 +198,7 @@ class T_module(unittest.TestCase):
     def test_method_in_list_or_dict(self):
         """Test that a Method which is only included via a list or dictionary is still treated as if it
         were a toplevel attribute
-        Fred: why we don't do this of direct fct of results?
+        Fred: why we don't do this of direct fct of variables?
         """
         m1=Module()
         x=T.dscalar()
@@ -255,7 +255,7 @@ class T_module(unittest.TestCase):
             assert isinstance(f,theano.compile.function_module.Function)
             
     def test_shared_members(self):
-        """Test that under a variety of tricky conditions, the shared-ness of Results and Members
+        """Test that under a variety of tricky conditions, the shared-ness of Variables and Members
         is respected."""
 
         def populate_module(m,x):
@@ -352,7 +352,7 @@ class T_module(unittest.TestCase):
             assert f==4
 
     def test_shared_method(self):
-        """Test that under a variety of tricky conditions, the shared-ness of Results and Methods
+        """Test that under a variety of tricky conditions, the shared-ness of Variables and Methods
         is respected.
         Fred: the test create different method event if they are shared. What do we want?
         """
@@ -463,7 +463,7 @@ class T_module(unittest.TestCase):
         assert numpy.all(v0 != v0_copy)
 
     def test_member_value(self):
-        """Test that module Members of Value work correctly. As Result?"""
+        """Test that module Members of Value work correctly. As Variable?"""
         M = Module()
         x = T.dscalar()
         M.y = T.value(40)
@@ -474,7 +474,7 @@ class T_module(unittest.TestCase):
 
     def test_member_constant(self):
         """Test that module Members of Constant work correctly.
-        As Result with more optimization?"""
+        As Variable with more optimization?"""
         M = Module()
         x = T.dscalar()
         M.y = T.constant(40)
@@ -601,7 +601,7 @@ def test_method_updates():
     assert numpy.all(xval == [0, 1])
 
 
-    # when a result is listed explicitly and in an update, then there's a problem.
+    # when a variable is listed explicitly and in an update, then there's a problem.
     M = Module()
     M.x = T.dvector()
     x = T.dvector()
@@ -611,7 +611,7 @@ def test_method_updates():
         m = M.make()
         assert False
     except ValueError, e:
-        if str(e[0]).startswith('Result listed in both inputs and up'):
+        if str(e[0]).startswith('Variable listed in both inputs and up'):
             pass
         else:
             raise

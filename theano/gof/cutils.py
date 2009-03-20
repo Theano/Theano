@@ -14,7 +14,7 @@ except ImportError:
 
     # The following function takes a PyCObject instance that contains
     # a void*->int function in its VoidPtr field. It then calls that
-    # function on the object's Desc field and returns the int result.
+    # function on the object's Desc field and returns the int variable.
     single_runner = """
         if (!PyCObject_Check(py_cthunk)) {
             PyErr_SetString(PyExc_ValueError,

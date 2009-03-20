@@ -1,6 +1,6 @@
 
 from theano.gof import graph
-from theano.gof.graph import Result, Apply, Constant
+from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.type import Type
 from theano.gof.op import Op
 from theano.gof import env
@@ -8,11 +8,11 @@ from theano.gof import toolbox
 
 from theano.gof.link import *
 
-#from _test_result import Double
+#from _test_variable import Double
 
 
-def as_result(x):
-    assert isinstance(x, Result)
+def as_variable(x):
+    assert isinstance(x, Variable)
     return x
 
 class TDouble(Type):
@@ -22,7 +22,7 @@ class TDouble(Type):
 tdouble = TDouble()
 
 def double(name):
-    return Result(tdouble, None, None, name = name)
+    return Variable(tdouble, None, None, name = name)
 
 
 class MyOp(Op):
@@ -35,7 +35,7 @@ class MyOp(Op):
     
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_result, inputs)
+        inputs = map(as_variable, inputs)
         for input in inputs:
             if input.type is not tdouble:
                 raise Exception("Error 1")

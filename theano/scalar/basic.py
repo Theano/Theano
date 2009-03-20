@@ -5,7 +5,7 @@ from copy import copy
 import numpy
 
 from .. import gof
-from ..gof import Op, utils, Result, Constant, Type, Apply, Env
+from ..gof import Op, utils, Variable, Constant, Type, Apply, Env
 from ..gof.python25 import partial
 
 def upcast(dtype, *dtypes):
@@ -20,9 +20,9 @@ def as_scalar(x, name = None):
             raise ValueError("It is ambiguous which output of a multi-output Op has to be fetched.", x)
         else:
             x = x.outputs[0]
-    if isinstance(x, Result):
+    if isinstance(x, Variable):
         if not isinstance(x.type, Scalar):
-            raise TypeError("Result type field must be a Scalar.", x, x.type)
+            raise TypeError("Variable type field must be a Scalar.", x, x.type)
         return x
     try:
         return constant(x)
@@ -82,8 +82,8 @@ class Scalar(Type):
     def upcast(self, *others):
         return upcast(*[x.dtype for x in [self]+list(others)])
 
-    def make_result(self, name = None):
-        return ScalarResult(self, name = name)
+    def make_variable(self, name = None):
+        return ScalarVariable(self, name = name)
 
     def __str__(self):
         return str(self.dtype)
@@ -225,7 +225,7 @@ class _scalar_py_operators:
     def __rmod__(self,other): return mod(other,self)
     def __rpow__(self,other): return pow(other,self)
 
-class ScalarResult(Result, _scalar_py_operators):
+class ScalarVariable(Variable, _scalar_py_operators):
     pass
 
 class ScalarConstant(Constant, _scalar_py_operators):
@@ -313,14 +313,14 @@ class ScalarOp(Op):
 
     def output_types(self, types):
         if hasattr(self, 'output_types_preference'):
-            results = self.output_types_preference(*types)
-            if not isinstance(results, (list, tuple)) or any(not isinstance(x, Type) for x in results):
-                raise TypeError("output_types_preference should return a list or a tuple of types", self.output_types_preference, results)
-            if len(results) != self.nout:
+            variables = self.output_types_preference(*types)
+            if not isinstance(variables, (list, tuple)) or any(not isinstance(x, Type) for x in variables):
+                raise TypeError("output_types_preference should return a list or a tuple of types", self.output_types_preference, variables)
+            if len(variables) != self.nout:
                 raise TypeError("Not the right number of outputs produced for %s(%s) by %s. Expected %s, got ?s."
                                 % (self, ", ".join(str(input.type) for input in inputs),
-                                   self.output_types_preference, self.nout, len(results)))
-            return results
+                                   self.output_types_preference, self.nout, len(variables)))
+            return variables
         else:
             raise NotImplementedError("Cannot calculate the output types for %s" % self)
 
@@ -328,10 +328,10 @@ class ScalarOp(Op):
         if self.nout == 1:
             output_storage[0][0] = self.impl(*inputs)
         else:
-            results = utils.from_return_values(self.impl(*inputs))
-            assert len(results) == len(output_storage)
-            for storage, result in zip(output_storage, results):
-                storage[0] = result
+            variables = utils.from_return_values(self.impl(*inputs))
+            assert len(variables) == len(output_storage)
+            for storage, variable in zip(output_storage, variables):
+                storage[0] = variable
 
     def impl(self, *inputs):
         raise utils.MethodNotDefined("impl", type(self), self.__class__.__name__)
@@ -822,7 +822,7 @@ class Composite(ScalarOp):
                     zip(outputs,
                         ["%%(o%i)s"%i for i in range(len(outputs))]))
 
-        for orphan in env.results: #env.orphans:
+        for orphan in env.variables: #env.orphans:
             if orphan.owner is None and orphan not in env.inputs:
                 if isinstance(orphan, Constant):
                     subd[orphan] = orphan.type.c_literal(orphan.data)

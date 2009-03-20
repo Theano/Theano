@@ -18,9 +18,9 @@ from io import *
 
 def infer_reuse_pattern(env, outputs_to_disown):
     """
-    Given an env and a list of results, returns the list of all
-    results which may share the same underlying data storage as any of
-    the specified results. Used internally by function, FunctionMaker.
+    Given an env and a list of variables, returns the list of all
+    variables which may share the same underlying data storage as any of
+    the specified variables. Used internally by function, FunctionMaker.
 
     This list is also refered to as no_recycling sometimes.
     """
@@ -46,7 +46,7 @@ def infer_reuse_pattern(env, outputs_to_disown):
 class Supervisor:
     """
     Listener for Env events which makes sure that no operation overwrites the
-    contents of protected Results. The outputs of the Env are protected by default.
+    contents of protected Variables. The outputs of the Env are protected by default.
     """
 
     def __init__(self, protected):
@@ -57,7 +57,7 @@ class Supervisor:
             return True
         for r in self.protected + list(env.outputs):
             if env.destroyers(r):
-                raise gof.InconsistencyError("Trying to destroy a protected Result.", r)
+                raise gof.InconsistencyError("Trying to destroy a protected Variable.", r)
 
 
 def std_env(input_specs, output_specs, accept_inplace = False):
@@ -76,9 +76,9 @@ def std_env(input_specs, output_specs, accept_inplace = False):
     The returned Env is a clone of the graph between the provided
     inputs and outputs.
     """
-    orig_inputs = [spec.result for spec in input_specs]
+    orig_inputs = [spec.variable for spec in input_specs]
     updates = [spec.update for spec in input_specs if spec.update]
-    orig_outputs = [spec.result for spec in output_specs] + updates
+    orig_outputs = [spec.variable for spec in output_specs] + updates
 
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     env = gof.env.Env(inputs, outputs)
@@ -185,11 +185,11 @@ class Function(object):
                 c.provided = 0 # this is a count of how many times the input has been provided (reinitialized to 0 on __call__)
                 # We set an entry in finder for:
                 # - the index of the input
-                # - the result instance the input is based on
+                # - the variable instance the input is based on
                 # - the name of the input
                 # All entries map to the container or to DUPLICATE if an ambiguity is detected
                 finder[i] = c
-                finder[input.result] = c
+                finder[input.variable] = c
                 finder[input.name] = c if input.name not in finder else DUPLICATE
                 # inv_finder maps the container to the input (useful for one error message)
                 inv_finder[c] = input
@@ -212,7 +212,7 @@ class Function(object):
                 # This allows the user to micro-manage elements of the kit if need be.
                 # All containers inherit the required field and have their own "provided" counter
                 for c, sin in zip(cs, sinputs):
-                    finder[sin.result] = c
+                    finder[sin.variable] = c
                     finder[sin.name] = c
                     finder[sin.name] = c if sin.name not in finder else DUPLICATE
                     inv_finder[c] = input
@@ -296,9 +296,9 @@ class Function(object):
         # Check if inputs are missing or if inputs were set more than once
         for c in self.input_storage:
             if c.required and not c.provided:
-                raise TypeError("Missing required input: %s" % getattr(self.inv_finder[c], 'result', self.inv_finder[c]))
+                raise TypeError("Missing required input: %s" % getattr(self.inv_finder[c], 'variable', self.inv_finder[c]))
             if c.provided > 1:
-                raise TypeError("Multiple values for input: %s" % getattr(self.inv_finder[c], 'result', self.inv_finder[c]))
+                raise TypeError("Multiple values for input: %s" % getattr(self.inv_finder[c], 'variable', self.inv_finder[c]))
         # Do the actual work
         self.fn()
 
@@ -315,9 +315,9 @@ class Function(object):
         # storage cells
         if getattr(self.fn, 'allow_gc', False):
             assert len(self.output_storage) == len(self.maker.env.outputs)
-            for o_container, o_result in zip(self.output_storage, self.maker.env.outputs):
-                if o_result.owner is not None:
-                    # this node is the result of computation
+            for o_container, o_variable in zip(self.output_storage, self.maker.env.outputs):
+                if o_variable.owner is not None:
+                    # this node is the variable of computation
                     # WARNING: This circumvents the 'readonly' attribute in x
                     o_container.storage[0] = None
 
@@ -415,7 +415,7 @@ class SanityCheckFunction(Function):
             for stor1, stor2 in zip(self.input_storage, fn.input_storage):
                 stor2.value = copy(stor1.value)
 
-        results = super(SanityCheckFunction, self).__call__(*args, **kwargs)
+        variables = super(SanityCheckFunction, self).__call__(*args, **kwargs)
 
         all_outputs = [copy(c.value) for c in self.output_storage] # we keep a copy to make sure it's not overwritten
         for fn in self.others:
@@ -433,18 +433,18 @@ class SanityCheckFunction(Function):
                                          c1.value, c2.value)
 
             # This checks all output storage (this includes state variables that we updated)
-            # This is ok because the results of a call stick around in their storage
+            # This is ok because the variables of a call stick around in their storage
             for i, (r1, c2) in enumerate(zip(all_outputs, fn.output_storage)):
                 r2 = c2.value
                 if not self.check_equal(r1, r2):
                     name = c2.name
-                    raise ValueError("Result #%i%s using %s and %s differs."
+                    raise ValueError("Variable #%i%s using %s and %s differs."
                                      % (i,
                                         " (%s)" % name if name else "",
                                         self.maker.mode,
                                         fn.maker.mode),
                                      r1, r2)
-        return results
+        return variables
 
 
 
@@ -458,7 +458,7 @@ class FunctionMaker(object):
     
     This class has the env, the optimizer, and the linker.  When copying a `Function`, there is
     no need to duplicate the `FunctionMaker` instance.  Deepcopy still copies both, which can
-    result in re-compilation.
+    variable in re-compilation.
 
     """
 
@@ -466,23 +466,23 @@ class FunctionMaker(object):
     def wrap_in(input):
         if isinstance(input, (SymbolicInput, SymbolicInputKit)):
             return input
-        elif isinstance(input, gof.Result):
-            # r -> SymbolicInput(result=r)
+        elif isinstance(input, gof.Variable):
+            # r -> SymbolicInput(variable=r)
             return SymbolicInput(input)
         elif isinstance(input, (list, tuple)):
-            # (r, u) -> SymbolicInput(result=r, update=u)
+            # (r, u) -> SymbolicInput(variable=r, update=u)
             if len(input) == 2:
                 return SymbolicInput(input[0], update = input[1])
             else:
                 raise TypeError("Expected two elements in the list or tuple.", input)
         else:
-            raise TypeError("Unknown input type: %s (%s), expected Result instance", type(input), input)
+            raise TypeError("Unknown input type: %s (%s), expected Variable instance", type(input), input)
 
     @staticmethod
     def expand_in(sinput, rinputs):
         # For SymbolicInputKits, this extracts a list of SymbolicInput instances
         # and corresponding indices such that these SymbolicInputs are representative
-        # of some of the Result instances in inputs.
+        # of some of the Variable instances in inputs.
         # For SymbolicInput, this returns None as the list of indices and a list with
         # just the SymbolicInput.
         if isinstance(sinput, SymbolicInputKit):
@@ -494,7 +494,7 @@ class FunctionMaker(object):
     def wrap_out(output):
         if isinstance(output, SymbolicOutput):
             return output
-        elif isinstance(output, gof.Result):
+        elif isinstance(output, gof.Variable):
             return SymbolicOutput(output)
         else:
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
@@ -505,7 +505,7 @@ class FunctionMaker(object):
         :type inputs: a list of SymbolicInput instances
 
         :type outputs: a list of SymbolicOutput instances
-                    outputs may also be a single Result (not a list), in which
+                    outputs may also be a single Variable (not a list), in which
                     case the functions produced by FunctionMaker will return
                     their output value directly
 
@@ -516,7 +516,7 @@ class FunctionMaker(object):
         """
 
 
-        # Handle the case where inputs and/or outputs is a single Result (not in a list)
+        # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
         if not isinstance(outputs, (list, tuple)):
             unpack_single = True
@@ -526,7 +526,7 @@ class FunctionMaker(object):
 
         # Wrap them in In or Out instances if needed.
         inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
-        _inputs = gof.graph.inputs([o.result for o in outputs] + [i.update for i in inputs if getattr(i, 'update', False)])
+        _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update for i in inputs if getattr(i, 'update', False)])
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
 
@@ -722,7 +722,7 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
     Similarly, every element of the output list will be upgraded to an
     `Out` instance if necessary:
 
-    * a `Result` instance r will be upgraded like `Out`(r)
+    * a `Variable` instance r will be upgraded like `Out`(r)
 
 
     Random Numbers
@@ -776,7 +776,7 @@ def convert_function_input(input):
     
     The rules for upgrading are as follows:
 
-    - a `Result` instance r will be upgraded like `In`(r)
+    - a `Variable` instance r will be upgraded like `In`(r)
 
     - a tuple (name, r) will be `In`(r, name=name)
     
@@ -794,7 +794,7 @@ def convert_function_input(input):
         return input
     elif isinstance(input, gof.Constant):
         raise TypeError('A Constant instance is not a legal function input', input)
-    elif isinstance(input, gof.Result):
+    elif isinstance(input, gof.Variable):
         return In(input)
     elif isinstance(input, (list, tuple)):
         orig = input
@@ -808,12 +808,12 @@ def convert_function_input(input):
         if isinstance(input[0], (list, tuple)):
             if len(input[0]) != 2 or len(input) != 2:
                 raise TypeError("Invalid input syntax: %s (check documentation or use an In instance)" % orig)
-            (result, update), value = input
-        elif isinstance(input[0], gof.Result):
+            (variable, update), value = input
+        elif isinstance(input[0], gof.Variable):
             if len(input) == 1:
-                result, update, value = input[0], None, None
+                variable, update, value = input[0], None, None
             elif len(input) == 2:
-                (result, value), update = input, None
+                (variable, value), update = input, None
             else:
                 raise TypeError("Invalid input syntax: %s (check documentation or use an In instance)" % orig)
         elif isinstance(input[0], (SymbolicInput, SymbolicInputKit)):
@@ -827,14 +827,14 @@ def convert_function_input(input):
         else:
             raise TypeError("The input specification is not valid: %s" % input)
 
-        if not isinstance(result, gof.Result):
-            raise TypeError("Unknown input type: %s, expected Result instance" % type(result), result)
-        if update is not None and not isinstance(update, gof.Result):
-            raise TypeError("Unknown update type: %s, expected Result instance" % type(update), update)
-        if value is not None and isinstance(value, (gof.Result, SymbolicInput)):
-            raise TypeError("The value for input %s should not be a Result or SymbolicInput instance (got: %s)" % (result, value))
+        if not isinstance(variable, gof.Variable):
+            raise TypeError("Unknown input type: %s, expected Variable instance" % type(variable), variable)
+        if update is not None and not isinstance(update, gof.Variable):
+            raise TypeError("Unknown update type: %s, expected Variable instance" % type(update), update)
+        if value is not None and isinstance(value, (gof.Variable, SymbolicInput)):
+            raise TypeError("The value for input %s should not be a Variable or SymbolicInput instance (got: %s)" % (variable, value))
 
-        return In(result, name=name, value=value, update=update)
+        return In(variable, name=name, value=value, update=update)
     else:
-        raise TypeError("Unknown input type: %s, expected Result instance" % type(input), input)
+        raise TypeError("Unknown input type: %s, expected Variable instance" % type(input), input)
 

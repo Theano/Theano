@@ -6,8 +6,8 @@ from function_module import function
 
 class OpFromGraph(gof.Op):
     """
-    This create an L{Op} from a list of input results and a list of output
-    results.
+    This create an L{Op} from a list of input variables and a list of output
+    variables.
 
     The signature is the same as the signature of L{FunctionFactory}
     and/or function and the resulting L{Op}'s perform will do the same
@@ -62,9 +62,9 @@ class OpFromGraph(gof.Op):
                          [type() for type in self.output_types])
 
     def perform(self, node, inputs, outputs):
-        results = self.fn(*inputs)
-        for output, result in zip(outputs, results):
-            output[0] = result
+        variables = self.fn(*inputs)
+        for output, variable in zip(outputs, variables):
+            output[0] = variable
 
     def grad(self, inputs, output_grads):
         if hasattr(self, 'grad_ops'):

@@ -14,7 +14,7 @@ An Op is any object which defines the following methods:
 
 - **make_node(*inputs)**
     
-  - This method is responsible for creating output Results of a suitable Type
+  - This method is responsible for creating output Variables of a suitable Type
     to serve as the outputs of this Op's application.  This method should put these
     outputs into an Apply instance, and return the Apply instance.
   
@@ -38,7 +38,7 @@ An Op is any object which defines the following methods:
 
 - **__call__(*inputs)**
 
-  - Syntactic shortcut to make_node which returns the output Results
+  - Syntactic shortcut to make_node which returns the output Variables
     of the Op.
 
   - *Default*: this is done for you by Op.
@@ -48,7 +48,7 @@ An Op is any object which defines the following methods:
   - This method computes the function associated to this Op. The
     ``node`` is an Apply node created by the Op's ``make_node``
     method, ``inputs`` is a list of references to data to operate on,
-    and ``output_storage`` is a list of storage cells where the results of
+    and ``output_storage`` is a list of storage cells where the variables of
     the computation must be put. More specifically:
 
     - ``node``: This is a reference to an Apply node which was previously
@@ -112,9 +112,9 @@ An Op is any object which defines the following methods:
   - If the Op you are defining is differentiable, you can define its
     gradient symbolically in this method. 
     
-  - Both the ``inputs`` and ``output_gradients`` will be Results. This
-    method must return a list containing one Result (or None) for each
-    input. Each returned Result represents the gradient with respect to
+  - Both the ``inputs`` and ``output_gradients`` will be Variables. This
+    method must return a list containing one Variable (or None) for each
+    input. Each returned Variable represents the gradient with respect to
     that input given the symbolic gradients with respect to each output.
 
   - If the output is not differentiable with respect to any inputs, then this
@@ -193,7 +193,7 @@ two.
 This function ensures that both inputs have the ``double``
 type.
 Since multiplying two doubles yields a double,
-this function makes an Apply node with an output Result of type
+this function makes an Apply node with an output Variable of type
 ``double``.
 
 .. code-block:: python
@@ -205,14 +205,14 @@ this function makes an Apply node with an output Result of type
    mul.make_node = make_node
 
 
-The first two lines make sure that both inputs are Results of the
+The first two lines make sure that both inputs are Variables of the
 ``double`` type that we created in the previous section. We would not
 want to multiply two arbitrary types, it would not make much sense
 (and we'd be screwed when we implement this in C!)
 
 The last line is the meat of the definition. There we create an Apply
 node representing the application of Op ``mul`` to inputs ``x`` and
-``y``, giving a Result instance of type ``double`` as the output.
+``y``, giving a Variable instance of type ``double`` as the output.
 
 .. note::
    Theano relies on the fact that if you call the ``make_node`` method
@@ -228,7 +228,7 @@ This code actually computes the function.
 In our example, the data in ``inputs`` will be instances of Python's
 built-in type ``float`` because this is the type that ``double.filter()``
 will always return, per our own definition. ``output_storage`` will
-contain a single storage cell for the multiplication's result.
+contain a single storage cell for the multiplication's variable.
 
 .. code-block:: python
 
@@ -296,9 +296,9 @@ by modifying ``make_node`` to accept Python ``int`` or ``float`` as
        return gof.Apply(mul, [x, y], [double()])
    mul.make_node = make_node
 
-Whenever we pass a Python int or float instead of a Result as ``x`` or
+Whenever we pass a Python int or float instead of a Variable as ``x`` or
 ``y``, ``make_node`` will convert it to :ref:`constant` for us. ``gof.Constant``
-is a :ref:`result` we statically know the value of.
+is a :ref:`variable` we statically know the value of.
 
 >>> x = double('x')
 >>> z = mul(x, 2)
@@ -365,7 +365,7 @@ arithmetic operators:
 Instead of working directly on an instance of Op, we create a subclass of
 Op that we can parametrize. All the operations we define are binary. They
 all work on two inputs with type ``double``. They all return a single
-Result of type ``double``. Therefore, ``make_node`` does the same thing
+Variable of type ``double``. Therefore, ``make_node`` does the same thing
 for all these operations, except for the Op reference ``self`` passed
 as first argument to Apply.  We define ``perform`` using the function
 ``fn`` passed in the constructor.

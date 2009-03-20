@@ -23,7 +23,7 @@ class Print(Op):
         self.attrs=attrs
 
     def make_node(self,xin):
-        xout = xin.type.make_result()
+        xout = xin.type.make_variable()
         return Apply(op = self, inputs = [xin], outputs=[xout])
 
     def perform(self,node,inputs,output_storage):
@@ -68,7 +68,7 @@ class OperatorPrinter:
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
-            raise TypeError("operator %s cannot represent a result with no associated operation" % self.operator)
+            raise TypeError("operator %s cannot represent a variable that is not the result of an operation" % self.operator)
         outer_precedence = getattr(pstate, 'precedence', -999999)
         outer_assoc = getattr(pstate, 'assoc', 'none')
         if outer_precedence > self.precedence:
@@ -105,7 +105,7 @@ class PatternPrinter:
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
-            raise TypeError("Patterns %s cannot represent a result with no associated operation" % self.patterns)
+            raise TypeError("Patterns %s cannot represent a variable that is not the result of an operation" % self.patterns)
         idx = node.outputs.index(output)
         pattern, precedences = self.patterns[idx]
         precedences += (1000,) * len(node.inputs)
@@ -123,7 +123,7 @@ class FunctionPrinter:
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
-            raise TypeError("function %s cannot represent a result with no associated operation" % self.names)
+            raise TypeError("function %s cannot represent a variable that is not the result of an operation" % self.names)
         idx = node.outputs.index(output)
         name = self.names[idx]
         return "%s(%s)" % (name, ", ".join([pprinter.process(input, pstate.clone(precedence = -1000))
@@ -138,7 +138,7 @@ class MemberPrinter:
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
-            raise TypeError("function %s cannot represent a result with no associated operation" % self.function)
+            raise TypeError("function %s cannot represent a variable that is not the result of an operation" % self.function)
         names = self.names
         idx = node.outputs.index(output)
         name = self.names[idx]
@@ -152,7 +152,7 @@ class IgnorePrinter:
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
-            raise TypeError("function %s cannot represent a result with no associated operation" % self.function)
+            raise TypeError("function %s cannot represent a variable that is not the result of an operation" % self.function)
         input = node.inputs[0]
         return "%s" % pprinter.process(input, pstate)
 

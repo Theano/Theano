@@ -53,22 +53,22 @@ default values.
 
   - *Default*: ``values_eq(a, b)``
 
-- **make_result(name=None)**
+- **make_variable(name=None)**
 
-  - Makes a :term:`Result` of this Type with the specified name, if
-    ``name is not None``. If ``name is ``None``, then the Result does
-    not have a name. The Result will have its ``type`` field set to the
+  - Makes a :term:`Variable` of this Type with the specified name, if
+    ``name is not None``. If ``name is ``None``, then the Variable does
+    not have a name. The Variable will have its ``type`` field set to the
     Type object.
 
-  - *Default*: there is a generic definition of this in Type. The Result's
+  - *Default*: there is a generic definition of this in Type. The Variable's
     ``type`` will be the object that defines this method (in other words,
     ``self``).
 
 - **__call__(name=None)**:
 
-  - Syntactic shortcut to ``make_result``.
+  - Syntactic shortcut to ``make_variable``.
 
-  - *Default*: ``make_result``
+  - *Default*: ``make_variable``
 
 
 For each method, the *default* is what :api:``theano.gof.Type`` defines
@@ -120,7 +120,7 @@ so if ``x`` is an ``int`` it we will return an equivalent ``float``.
 The second method we define is ``values_eq_approx``. This method
 allows approximate comparison between two values respecting our Type's
 constraints. It might happen that an optimization changes the computation
-graph in such a way that it produces slightly different results, for
+graph in such a way that it produces slightly different variables, for
 example because of numerical instability like rounding errors at the
 end of the mantissa. For instance, ``a + a + a + a + a + a`` might not
 actually produce the exact same output as ``6 * a`` (try with a=0.1),
@@ -209,7 +209,7 @@ Untangling some concepts
 ========================
 
 Initially, confusion is common on what an instance of Type is versus
-a subclass of Type or an instance of Result. Some of this confusion is
+a subclass of Type or an instance of Variable. Some of this confusion is
 syntactic. A Type is any object which has fields corresponding to the
 functions defined above. The Type class provides sensible defaults for
 all of them except ``filter``, so when defining new Types it is natural
@@ -222,17 +222,17 @@ attempt to clear up the confusion:
   akin to a primitive type or class in C. It is a *static*
   annotation.
 
-* An **instance of Result** symbolizes data nodes in a data flow
+* An **instance of Variable** symbolizes data nodes in a data flow
   graph. If you were to parse the C expression ``int x;``, ``int``
-  would be a Type instance and ``x`` would be a Result instance of
+  would be a Type instance and ``x`` would be a Variable instance of
   that Type instance. If you were to parse the C expression ``c = a +
-  b;``, ``a``, ``b`` and ``c`` would all be Result instances.
+  b;``, ``a``, ``b`` and ``c`` would all be Variable instances.
 
 * A **subclass of Type** represents a set of Type instances that share
   structural similarities. In the ``double`` example that we are doing,
   there is actually only one Type in that set, therefore the subclass
   doesn't represent anything that one of its instances doesn't. In this
-  case it is a singleton, a set with one element. However, the NDArrayType
+  case it is a singleton, a set with one element. However, the TensorType
   class which is a subclass of Type represents a set of types of tensors
   parametrized by their data type or number of dimensions. We could say
   that subclassing Type builds a hierarchy of Types which is based upon

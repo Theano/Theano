@@ -90,8 +90,8 @@ operation on ``x``.
 
    Inplace operations in theano still work in a functional setting:
    they need to return the modified input. Symbolically, Theano
-   requires one Result standing for the input *before* being modified
-   and *another* Result representing the input *after* being
+   requires one Variable standing for the input *before* being modified
+   and *another* Variable representing the input *after* being
    modified. Therefore, code using inplace operations would look like
    this:
 
@@ -129,7 +129,7 @@ operation on ``x``.
 Take the previous definitions of x, y and z and suppose an Op which
 adds one to every byte of its input. If we give ``x`` as an input to
 that Op, it can either allocate a new buffer of the same size as ``x``
-(that could be ``z``) and set that new buffer's bytes to the result of
+(that could be ``z``) and set that new buffer's bytes to the variable of
 the addition. That would be a normal, :term:`pure` Op. Alternatively,
 it could add one to each byte *in* the buffer ``x``, therefore
 changing it. That would be an inplace Op.

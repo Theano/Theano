@@ -5,16 +5,16 @@ class SymbolicInput(object):
     """
     Represents a symbolic input for use with function or FunctionMaker.
 
-    result: a Result instance. 
+    variable: a Variable instance. 
         This will be assigned a value before running the function,
         not computed from its owner.
 
-    name: Any type. (If autoname=True, defaults to result.name). 
+    name: Any type. (If autoname=True, defaults to variable.name). 
         If name is a valid Python identifier, this input can be set by kwarg, and its value
         can be accessed by self.<name>.
 
-    update: Result instance (default: None)
-        value (see previous) will be replaced with this expression result after each function call.
+    update: Variable instance (default: None)
+        value (see previous) will be replaced with this expression variable after each function call.
         If update is None, the update will be the default value of the input.
 
     mutable: Bool (default: False if update is None, True if update is not None)
@@ -29,9 +29,9 @@ class SymbolicInput(object):
         See the name option.
     """
 
-    def __init__(self, result, name=None, update=None, mutable=None, strict=False, autoname=True):
-        self.result = result
-        self.name = result.name if (autoname and name is None) else name
+    def __init__(self, variable, name=None, update=None, mutable=None, strict=False, autoname=True):
+        self.variable = variable
+        self.name = variable.name if (autoname and name is None) else name
         if self.name is not None and not isinstance(self.name, str):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
@@ -40,9 +40,9 @@ class SymbolicInput(object):
 
     def __str__(self):
         if self.update:
-            return "In(%s -> %s)" % (self.result, self.update)
+            return "In(%s -> %s)" % (self.variable, self.update)
         else:
-            return "In(%s)" % self.result
+            return "In(%s)" % self.variable
 
     def __repr__(self):
         return str(self)
@@ -64,7 +64,7 @@ class SymbolicInputKit(object):
             raise TypeError('naem must be a string (got: %s)' % name)
         self.name = name
         self.sinputs = []
-        self.results = []
+        self.variables = []
 
     def add_input(self, sinput):
         """
@@ -72,7 +72,7 @@ class SymbolicInputKit(object):
         next available index.
         """
         self.sinputs.append(sinput)
-        self.results.append(sinput.result)
+        self.variables.append(sinput.variable)
 
     def distribute(self, value, indices, containers):
         """
@@ -84,10 +84,10 @@ class SymbolicInputKit(object):
 
     def complete(self, inputs):
         """
-        Given inputs (a list of Result instances), checks through all
+        Given inputs (a list of Variable instances), checks through all
         the SymbolicInputs in the kit and return a sorted list of
         indices and a list of their corresponding SymbolicInputs such
-        that each of them represents some result in the inputs list.
+        that each of them represents some variable in the inputs list.
 
         Not all the provided inputs will have a corresponding
         SymbolicInput in the kit.
@@ -95,7 +95,7 @@ class SymbolicInputKit(object):
         ret = []
         for input in inputs:
             try:
-                i = self.results.index(input)
+                i = self.variables.index(input)
                 ret.append((i, self.sinputs[i]))
             except ValueError:
                 pass
@@ -109,11 +109,11 @@ class In(SymbolicInput):
     """
     Represents a symbolic input for use with function or FunctionMaker.
 
-    result: a Result instance. 
+    variable: a Variable instance. 
         This will be assigned a value before running the function,
         not computed from its owner.
 
-    name: Any type. (If autoname=True, defaults to result.name). 
+    name: Any type. (If autoname=True, defaults to variable.name). 
         If name is a valid Python identifier, this input can be set by kwarg, and its value
         can be accessed by self.<name>.
 
@@ -122,8 +122,8 @@ class In(SymbolicInput):
         an argument with a default value in Python. If update is not None, changes to this
         value will "stick around", whether due to an update or a user's explicit action.
 
-    update: Result instance (default: None)
-        value (see previous) will be replaced with this expression result after each function call.
+    update: Variable instance (default: None)
+        value (see previous) will be replaced with this expression variable after each function call.
         If update is None, the update will be the default value of the input.
 
     mutable: Bool (default: False if update is None, True if update is not None)
@@ -137,8 +137,8 @@ class In(SymbolicInput):
     autoname: Bool (default: True)
         See the name option.
     """
-    def __init__(self, result, name=None, value=None, update=None, mutable=None, strict=False, autoname=True):
-        super(In, self).__init__(result, name, update, mutable, strict, autoname)
+    def __init__(self, variable, name=None, value=None, update=None, mutable=None, strict=False, autoname=True):
+        super(In, self).__init__(variable, name, update, mutable, strict, autoname)
         self.value = value
 
 
@@ -152,12 +152,12 @@ class SymbolicOutput(object):
             the function again, but the function might be faster.
     """
     
-    def __init__(self, result, borrow=False):
-        self.result = result
+    def __init__(self, variable, borrow=False):
+        self.variable = variable
         self.borrow = borrow
 
     def __str__(self):
-        return "Out(%s)" % self.result
+        return "Out(%s)" % self.variable
 
 Out = SymbolicOutput
 

@@ -2,7 +2,7 @@
 Theano is an optimizing compiler in Python, built to evaluate complicated expressions
 (especially matrix-valued ones) as quickly as possible. 
 Theano compiles expression graphs (see :doc:`graph` ) that are built by Python code.
-The expressions in these graphs are called `Apply` nodes and the variables in these graphs are called `Result` nodes.
+The expressions in these graphs are called `Apply` nodes and the variables in these graphs are called `Variable` nodes.
 
 You compile a graph by calling `function`, which takes a graph, and returns a callable object.
 One of theano's most important features is that `function` can transform your graph before
@@ -29,7 +29,7 @@ from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
      Container, \
      InconsistencyError, Env, \
-     Apply, Result, Constant, Value, \
+     Apply, Variable, Constant, Value, \
      Op, \
      opt, \
      toolbox, \

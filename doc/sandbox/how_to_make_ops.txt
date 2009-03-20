@@ -18,7 +18,7 @@ Examples of parameterized Ops in theano:
   ``Reduce(<scalar op>, <axes>)``
     reduces the specified axes using the provided scalar op.
   ``Add(<output type inferrer>)``
-    adds scalars and puts the result in a scalar whose type is inferred from the input types using ``output_type_inferrer(*inputs)``
+    adds scalars and puts the variable in a scalar whose type is inferred from the input types using ``output_type_inferrer(*inputs)``
   ``Composite(<graph>)``
     makes a single Op out of a graph of scalar operations.
 
@@ -46,14 +46,14 @@ The ``make_node`` method is expected to have the following signature:
 
     make_node(self, *inputs)
 
-``inputs`` may be a list of anything that the user wants to provide as symbolic input (symbolic: standing for the actual values that will be passed when the graph is compiled into an executable function). [*The Theano intro should describe symbolic in greater depth, and we should link to that from here.*] This may or may not include Result instances (but if you want the inputs of this Op to sometimes be outputs of another Op, then the inputs should be Result instances). [*What else could they be? Constant, Values, ...*] The return value should be an instance of [GraphStructures Apply] (see the example below). Here are the tasks typically handled in ``make_node``.
+``inputs`` may be a list of anything that the user wants to provide as symbolic input (symbolic: standing for the actual values that will be passed when the graph is compiled into an executable function). [*The Theano intro should describe symbolic in greater depth, and we should link to that from here.*] This may or may not include Variable instances (but if you want the inputs of this Op to sometimes be outputs of another Op, then the inputs should be Variable instances). [*What else could they be? Constant, Values, ...*] The return value should be an instance of [GraphStructures Apply] (see the example below). Here are the tasks typically handled in ``make_node``.
 
   * Check that the inputs are valid (type checking, etc.). [*Since we don't actually have values, what can we do besides type checking?*]
-  * If needed, wrap the inputs in Result instances with the proper type.
-  * Make the Result instances that will serve as the outputs of the node.
+  * If needed, wrap the inputs in Variable instances with the proper type.
+  * Make the Variable instances that will serve as the outputs of the node.
   * ``return Apply(self, <wrapped inputs>, <outputs>)``
 
-The ``inputs`` and ``outputs`` arguments to ``Apply`` must be lists of ``Result`` instances (or instances of subclasses of ``Result``). The inputs given to ``Apply`` do not have to be the same as the inputs passed to ``make_node``, but it is recommended that the order corresponds. [*why?*] The behavior of ``make_node`` should not depend on the structure of the graph of [*or?*] its inputs: it may look at the type and type fields of its inputs, but not at their owner field, because modifications to the graph structure do not use ``make_node``. [*???*]
+The ``inputs`` and ``outputs`` arguments to ``Apply`` must be lists of ``Variable`` instances (or instances of subclasses of ``Variable``). The inputs given to ``Apply`` do not have to be the same as the inputs passed to ``make_node``, but it is recommended that the order corresponds. [*why?*] The behavior of ``make_node`` should not depend on the structure of the graph of [*or?*] its inputs: it may look at the type and type fields of its inputs, but not at their owner field, because modifications to the graph structure do not use ``make_node``. [*???*]
 
 Example:
 
@@ -66,14 +66,14 @@ Example:
 	    def make_node(self, x, y):
 	        # note 1: constant, int64 and Scalar are defined in theano.scalar
 	        # note 2: constant(x) is equivalent to Constant(type = int64, data = x)
-	        # note 3: the call int64() is equivalent to Result(type = int64) or Result(type = Scalar(dtype = 'int64'))
+	        # note 3: the call int64() is equivalent to Variable(type = int64) or Variable(type = Scalar(dtype = 'int64'))
 	        if isinstance(x, int):
 	            x = constant(x)
-	        elif not isinstance(x, Result) or not x.type == int64:
+	        elif not isinstance(x, Variable) or not x.type == int64:
 	            raise TypeError("expected an int64 Scalar")
 	        if isinstance(y, int):
 	            y = constant(y)
-	        elif not isinstance(y, Result) or not x.type == int64:
+	        elif not isinstance(y, Variable) or not x.type == int64:
 	            raise TypeError("expected an int64 Scalar")
 	        inputs = [x, y]
 	        outputs = [int64()]
@@ -82,12 +82,12 @@ Example:
 	    #...
 	
 	add = Add()                               # I make an instance of Add
-	node1 = add.make_node(int64(), int64())   # I make a node with two Result inputs
+	node1 = add.make_node(int64(), int64())   # I make a node with two Variable inputs
 	node2 = add.make_node(1, 2)               # this works too
 	node3 = add.make_node(int64(), 79)        # this works three
 	node4 = add.make_node(float64(), int64()) # this raises a TypeError
 
-[*What type is an instance of Add? It's an Apply? But that's not a Result, and cannot be used as input for another Op.*]
+[*What type is an instance of Add? It's an Apply? But that's not a Variable, and cannot be used as input for another Op.*]
 
 Two Apply nodes ``node1`` and ``node2`` are *assumed* by the compiler to represent the same behavior if:
   1. ``node1.op == node2.op``
@@ -99,7 +99,7 @@ It is considered an *error* to have conditions 1 and 2 but not condition 3. A co
 ``__call__``
 ----------------
 
-In ``Op``, ``__call__`` is defined in terms of ``make_node``. Instead of returning a node, it returns the output Results directly, which is practical from a UI standpoint. Here is pseudocode:
+In ``Op``, ``__call__`` is defined in terms of ``make_node``. Instead of returning a node, it returns the output Variables directly, which is practical from a UI standpoint. Here is pseudocode:
 
 .. code-block:: python
 
@@ -122,7 +122,7 @@ perform(self, node, inputs, output_storage)
 Where:
   * *node*: a pointer to an Apply instance - ``node`` is assumed to be produced by a previous call to ``self.make_node``.
   * *inputs*: *not* the same as ``node.inputs`` - it is a list of values. [*i.e. actually data, not just symbolic stuff?*]
-  * *output_storage*: *not* the same as ``node.outputs`` - it is a list of lists of length 1 where the results of the computation must be put.
+  * *output_storage*: *not* the same as ``node.outputs`` - it is a list of lists of length 1 where the variables of the computation must be put.
 
 [*Can you explain better how inputs is not node.inputs and output_storage is not node.outputs?*]
 
@@ -138,7 +138,7 @@ Here is an example of a properly defined ``perform``:
 	        # this does z = x + y
 	        x, y = inputs        # extract the two inputs
 	        z, = output_storage  # extract the one storage (the comma after z is not optional)
-	        z[0] = x + y         # we must put the result in z[0]
+	        z[0] = x + y         # we must put the variable in z[0]
 	    ...
 	
 	add = Add()                               # I make an instance of Add
@@ -175,8 +175,8 @@ grad
 
 
 where:
-  * ``inputs`` is a list of Result instances. It is assumed to be the ``inputs`` field of a node produced by ``make_node``.
-  * ``output_gradients`` is a list of Result instances. They have the same properties as the outputs of the node, but are filled with gradient values.
+  * ``inputs`` is a list of Variable instances. It is assumed to be the ``inputs`` field of a node produced by ``make_node``.
+  * ``output_gradients`` is a list of Variable instances. They have the same properties as the outputs of the node, but are filled with gradient values.
 
 Essentially, the semantics are:
 
@@ -192,7 +192,7 @@ Essentially, the semantics are:
 	   return gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
 	
 More specifically, 
-``grad`` must return a list or tuple of input gradients, as many as there are inputs. Let C be a Result (currently assumed to be a scalar) that depends through a theano symbolic expression on the node outputs. Then each output_gradients[i] represents symbolically dC/doutputs[i]. The returned input gradients should represent symbolically dC/dinputs[i].
+``grad`` must return a list or tuple of input gradients, as many as there are inputs. Let C be a Variable (currently assumed to be a scalar) that depends through a theano symbolic expression on the node outputs. Then each output_gradients[i] represents symbolically dC/doutputs[i]. The returned input gradients should represent symbolically dC/dinputs[i].
 
 Example:
 
@@ -253,7 +253,7 @@ Example: if we expect to call the op repeatedly on incrementally bigger inputs, 
 	    """
 	    default_output = 0
 	    def make_node(self, x, y):
-	        return Apply(self, [x,y], [x.type.make_result(), x.type.make_result()])
+	        return Apply(self, [x,y], [x.type.make_variable(), x.type.make_variable()])
 	
 	    def perform(self, node, (x, y), (z, stor)):
 	        if z[0] is None or stor[0] is None:

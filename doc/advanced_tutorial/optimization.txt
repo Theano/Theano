@@ -15,10 +15,10 @@ two types of optimizations: *global* optimizations and *local*
 optimizations. A global optimization takes an :ref:`env` object (an
 Env is a wrapper around a whole computation graph, you can see its
 :ref:`documentation <env>` for more details) and navigates through it
-in a suitable way, replacing some Results by others in the process. A
+in a suitable way, replacing some Variables by others in the process. A
 local optimization, on the other hand, is defined as a function on a
 *single* :ref:`apply` node and must return either False (to mean that
-nothing is to be done) or a list of new Results that we would like to
+nothing is to be done) or a list of new Variables that we would like to
 replace the node's outputs with. A :ref:`navigator` is a special kind
 of global optimization which navigates the computation graph in some
 fashion (in topological order, reverse-topological order, random
@@ -68,7 +68,7 @@ A local optimization is an object which defines the following methods:
 - **transform(node)**
 
   - This method takes an :ref:`apply` node and returns either False to
-    signify that no changes are to be done or a list of Results which
+    signify that no changes are to be done or a list of Variables which
     matches the length of the node's ``outputs`` list. When the
     LocalOptimizer is applied by a Navigator, the outputs of the node
     passed as argument to the LocalOptimizer will be replaced by the
@@ -125,7 +125,7 @@ does additional checks to ensure that we are not messing up the
 computation graph (note: if ReplaceValidate was already added by
 another optimizer, ``extend`` will do nothing). In a nutshell,
 ``toolbox.ReplaceValidate`` grants access to ``env.replace_validate``
-and ``env.replace_validate`` allows us to replace a Result with
+and ``env.replace_validate`` allows us to replace a Variable with
 another while respecting certain validation constraints. You can
 browse the list of :ref:`features <envfeaturelist>` and see if some of
 them might be useful to write optimizations with. For example, as an
@@ -142,7 +142,7 @@ numerator is a multiplication we put the two operands in a and b, so
 we can now say that ``z == (a*b)/y``. If ``y==a`` then ``z==b`` and if
 ``y==b`` then ``z==a``. When either case happens then we can replace z
 by either a or b using ``env.replace_validate`` - else we do
-nothing. You might want to check the documentation about :ref:`result`
+nothing. You might want to check the documentation about :ref:`variable`
 and :ref:`apply` to get a better understanding of the
 pointer-following game you need to get ahold of the nodes of interest
 for the simplification (x, y, z, a, b, etc.)

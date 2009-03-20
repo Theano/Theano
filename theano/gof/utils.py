@@ -1,6 +1,6 @@
 
 # import op
-# import result
+# import variable
 
 import re
 
@@ -316,16 +316,16 @@ def comm_guard(type1, type2):
                     raise
 
             try:
-                result = f(arg1, arg2, *rest)
+                variable = f(arg1, arg2, *rest)
             except:
                 raise
-            if result is FALL_THROUGH:
+            if variable is FALL_THROUGH:
                 try:
                     return old_f(arg1, arg2, *rest)
                 except:
                     raise
             else:
-                return result
+                return variable
 
         new_f.__name__ = f.__name__
         def typename(type):
@@ -345,11 +345,11 @@ def type_guard(type1):
         old_f = f.func_globals[f.__name__]
         def new_f(arg1, *rest):
             if (type1 is ANY_TYPE or isinstance(arg1, type1)):
-                result = f(arg1, *rest)
-                if result is FALL_THROUGH:
+                variable = f(arg1, *rest)
+                if variable is FALL_THROUGH:
                     return old_f(arg1, *rest)
                 else:
-                    return result
+                    return variable
             else:
                 return old_f(arg1, *rest)
 

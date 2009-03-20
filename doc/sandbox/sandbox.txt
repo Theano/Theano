@@ -30,14 +30,14 @@ you compute the gradient, then there is no problem.
 If an Op does not define ``grad``, and this Op *does* appear in the path when
 you compute the gradient, **WRITEME**.
 
-Gradients for a particular result can be one of four kinds:
+Gradients for a particular variable can be one of four kinds:
 1) forgot to implement it
 
 You will get an exception of the following form.
 
 theano.gof.utils.MethodNotDefined: ('grad', <class 'pylearn.algorithms.sandbox.cost.LogFactorial'>, 'LogFactorial')
 
-2) a symbolic result
+2) a symbolic variable
 3) None / zero
 4) undefined mathematically
 currently, there is no way for a grad() method to distinguish between cases 3
@@ -123,7 +123,7 @@ Guillaume can you make sure to hit these points:
 
         * There are a lot of tests that define their own epsilon, but this should be standardized.  e.g. in test_elemwise.py ``self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())``
 
-    * If the expected result of a test is that an Exception is thrown, how do we correctly detect and handle that?
+    * If the expected variable of a test is that an Exception is thrown, how do we correctly detect and handle that?
 
         nosetests has ``failUnlessRaises``
 

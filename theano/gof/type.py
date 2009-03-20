@@ -5,7 +5,7 @@ __docformat__ = "restructuredtext en"
 import copy
 import utils
 from utils import MethodNotDefined, object2
-from graph import Result
+from graph import Variable
 import traceback
 
 
@@ -71,7 +71,7 @@ class CLinkerType(object):
 
         The code returned from this function must be templated using
         "%(name)s", representing the name that the caller wants to
-        call this `Result`. The Python object self.data is in a
+        call this `Variable`. The Python object self.data is in a
         variable called "py_%(name)s" and this code must set the
         variables declared by c_declare to something representative
         of py_%(name)s. If the data is improper, set an appropriate
@@ -119,9 +119,9 @@ class CLinkerType(object):
         """Required: Return c code to pack C types back into a PyObject.
 
         The code returned from this function must be templated using "%(name)s",
-        representing the name that the caller wants to call this Result.  The
+        representing the name that the caller wants to call this Variable.  The
         returned code may set "py_%(name)s" to a PyObject* and that PyObject*
-        will be accessible from Python via result.data. Do not forget to adjust
+        will be accessible from Python via variable.data. Do not forget to adjust
         reference counts if "py_%(name)s" is changed from its original value.
 
         :Parameters:
@@ -180,7 +180,7 @@ class CLinkerType(object):
         raise MethodNotDefined("c_libraries", type(self), self.__class__.__name__)
 
     def c_support_code(self):
-        """Optional: Return utility code for use by a `Result` or `Op` to be
+        """Optional: Return utility code for use by a `Variable` or `Op` to be
         included at global scope prior to the rest of the code for this class.
 
         QUESTION: How many times will this support code be emitted for a graph
@@ -193,13 +193,13 @@ class CLinkerType(object):
         raise MethodNotDefined("c_support_code", type(self), self.__class__.__name__)
 
 class PureType(object):
-    """Interface specification for result type instances.
+    """Interface specification for variable type instances.
 
     A :term:`Type` instance is mainly reponsible for two things:
 
-    - creating `Result` instances (conventionally, `__call__` does this), and
+    - creating `Variable` instances (conventionally, `__call__` does this), and
 
-    - filtering a value assigned to a `Result` so that the value conforms to restrictions
+    - filtering a value assigned to a `Variable` so that the value conforms to restrictions
       imposed by the type (also known as casting, this is done by `filter`),
 
     """
@@ -220,33 +220,33 @@ class PureType(object):
         raise MethodNotDefined("filter", type(self), self.__class__.__name__)
 
     def is_valid_value(self, a):
-        """Required: Return True for any python object `a` that would be a legal value for a Result of this Type"""
+        """Required: Return True for any python object `a` that would be a legal value for a Variable of this Type"""
         try:
             self.filter(a, True)
             return True
         except TypeError:
             return False
     
-    def make_result(self, name = None):
-        """Return a new `Result` instance of Type `self`.
+    def make_variable(self, name = None):
+        """Return a new `Variable` instance of Type `self`.
 
         :Parameters:
          - `name`: None or str
             A pretty string for printing and debugging.
 
         """
-        r = Result(self, name = name)
+        r = Variable(self, name = name)
         return r
     
     def __call__(self, name = None):
-        """Return a new `Result` instance of Type `self`.
+        """Return a new `Variable` instance of Type `self`.
 
         :Parameters:
          - `name`: None or str
             A pretty string for printing and debugging.
 
         """
-        r = self.make_result(name)
+        r = self.make_variable(name)
         r.tag.trace = traceback.extract_stack()[:-1]
         return r
 
@@ -262,9 +262,9 @@ class PureType(object):
         """
         Return True if a and b can be considered approximately equal.
 
-        :param a: a potential value for a Result of this Type.
+        :param a: a potential value for a Variable of this Type.
 
-        :param b: a potential value for a Result of this Type.
+        :param b: a potential value for a Variable of this Type.
 
         :rtype: Bool
 
@@ -289,7 +289,7 @@ class Type(object2, PureType, CLinkerType):
 
     - `Generic`: for any python type
 
-    - `NDArrayType`: for numpy.ndarray
+    - `TensorType`: for numpy.ndarray
 
     - `SparseType`: for scipy.sparse
 
@@ -301,15 +301,15 @@ class Type(object2, PureType, CLinkerType):
         # Declare a symbolic floating-point vector using __call__
         b = tensor.fvector()
 
-        # Create a second Result with the same Type instance
+        # Create a second Variable with the same Type instance
         c = tensor.fvector()
 
-    Whenever you create a symbolic variable in theano (technically, `Result`) it will contain a
+    Whenever you create a symbolic variable in theano (technically, `Variable`) it will contain a
     reference to a Type instance.  That reference is typically constant during the lifetime of
-    the Result.  Many variables can refer to a single Type instance, as do b and c above.  The
+    the Variable.  Many variables can refer to a single Type instance, as do b and c above.  The
     Type instance defines the kind of value which might end up in that variable when executing
     a `Function`.  In this sense, theano is like a strongly-typed language because the types
-    are included in the graph before the values.  In our example above, b is a Result which is
+    are included in the graph before the values.  In our example above, b is a Variable which is
     guaranteed to corresond to a numpy.ndarray of rank 1 when we try to do some computations
     with it.
 

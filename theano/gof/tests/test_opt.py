@@ -1,15 +1,15 @@
 
 from theano.gof.type import Type
-from theano.gof.graph import Result, Apply, Constant
+from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
 from theano.gof.opt import *
 from theano.gof.env import Env
 from theano.gof.toolbox import *
 
 
-def as_result(x):
-    if not isinstance(x, Result):
-        raise TypeError("not a Result", x)
+def as_variable(x):
+    if not isinstance(x, Variable):
+        raise TypeError("not a Variable", x)
     return x
 
 
@@ -25,8 +25,8 @@ class MyType(Type):
         return hash(MyType)
 
 
-def MyResult(name):
-    return Result(MyType(), None, None, name = name)
+def MyVariable(name):
+    return Variable(MyType(), None, None, name = name)
 
 
 class MyOp(Op):
@@ -37,7 +37,7 @@ class MyOp(Op):
         self.x = x
     
     def make_node(self, *inputs):
-        inputs = map(as_result, inputs)
+        inputs = map(as_variable, inputs)
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
@@ -74,9 +74,9 @@ op_z = MyOp('OpZ', x = 1)
 
 
 def inputs():
-    x = MyResult('x')
-    y = MyResult('y')
-    z = MyResult('z')
+    x = MyVariable('x')
+    y = MyVariable('y')
+    z = MyVariable('z')
     return x, y, z
 
 
@@ -188,7 +188,7 @@ class TestPatternOptimizer:
 
     def test_constant_unification(self):
         x = Constant(MyType(), 2, name = 'x')
-        y = MyResult('y')
+        y = MyVariable('y')
         z = Constant(MyType(), 2, name = 'z')
         e = op1(op1(x, y), y)
         g = Env([y], [e])
@@ -288,7 +288,7 @@ class TestMergeOptimizer:
         assert str(g) == "[Op1(*1 -> Op2(x, y), *1, Op2(x, z))]"
 
     def test_constant_merging(self):
-        x = MyResult('x')
+        x = MyVariable('x')
         y = Constant(MyType(), 2, name = 'y')
         z = Constant(MyType(), 2, name = 'z')
         e = op1(op2(x, y), op2(x, y), op2(x, z))
@@ -334,7 +334,7 @@ class TestMergeOptimizer:
             or strg == "[Op1(*2 -> Op1(x, y), Op4(*1 -> Op2(Op3(x), y, z), *2), Op1(*1))]"
 
     def test_identical_constant_args(self):
-        x = MyResult('x')
+        x = MyVariable('x')
         y = Constant(MyType(), 2, name = 'y')
         z = Constant(MyType(), 2, name = 'z')
         e1 = op1(y, z)
@@ -347,7 +347,7 @@ class TestMergeOptimizer:
 class TestEquilibrium(object):
 
     def test_1(self):
-        x, y, z = map(MyResult, 'xyz')
+        x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
         print g
@@ -362,7 +362,7 @@ class TestEquilibrium(object):
         assert str(g) == '[Op2(x, y)]'
 
     def test_2(self):
-        x, y, z = map(MyResult, 'xyz')
+        x, y, z = map(MyVariable, 'xyz')
         e = op1(op1(op3(x, y)))
         g = Env([x, y, z], [e])
         print g
@@ -378,7 +378,7 @@ class TestEquilibrium(object):
         assert str(g) == '[Op2(x, y)]'
 
     def test_low_use_ratio(self):
-        x, y, z = map(MyResult, 'xyz')
+        x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
         print 'before', g

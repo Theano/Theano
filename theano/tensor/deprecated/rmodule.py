@@ -30,14 +30,14 @@ class KitComponent(Component):
         Containers.
         """
         for input in self.kit.sinputs:
-            r = input.result
+            r = input.variable
             if r not in memo:
                 input = copy(input)
                 input.value = Container(r, storage = [None])
                 memo[r] = input
 
     def build(self, mode, memo):
-        return [memo[i.result].value for i in self.kit.sinputs]
+        return [memo[i.variable].value for i in self.kit.sinputs]
 
 
 class RandomKit(SymbolicInputKit):
@@ -47,9 +47,9 @@ class RandomKit(SymbolicInputKit):
         self.value = value
 
     def gen(self, op, *args, **kwargs):
-        random_state_result = raw_random.random_state_type()
-        new_r, out = op(random_state_result, *args, **kwargs)
-        self.add_input(SymbolicInput(random_state_result, update = new_r))
+        random_state_variable = raw_random.random_state_type()
+        new_r, out = op(random_state_variable, *args, **kwargs)
+        self.add_input(SymbolicInput(random_state_variable, update = new_r))
         out.rng = new_r
         out.auto = self
         return out

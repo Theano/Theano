@@ -262,9 +262,9 @@ class Gemm(GemmRelated):
 
     The difference between the two is that the top form is destructive on z,
     whereas the bottom form is not.  Gemm works in-place on the storage
-    associated with z, and the L{Result} returned by Gemm has a storage that
+    associated with z, and the L{Variable} returned by Gemm has a storage that
     will be aliased to the storage of the z argument. Because of this in-place
-    computation, an L{Apply} of this op will destroy the L{Result} z on
+    computation, an L{Apply} of this op will destroy the L{Variable} z on
     which it operates.  (See L{DestructiveOps} for an explanation of what
     destroying means in the context of theano graphs. See L{BlasLapackSupport} for
     more optimized linear algebra operations.)
@@ -275,7 +275,7 @@ class Gemm(GemmRelated):
     E_z_uniq = 'argument z aliased to x or y'
     destroy_map = {0: [0]}
     def make_node(self, *inputs):
-        inputs = map(T.as_ndarray_result, inputs)
+        inputs = map(T.as_tensor_variable, inputs)
         if len(inputs) != 5:
             raise TypeError("Wrong number of inputs for %s (expected 5, got %s)" % (self, len(inputs)))
         z, a, x, y, b = inputs
@@ -475,7 +475,7 @@ class GemmLocalOptimizer(LocalOptimizer):
 
     @staticmethod
     def _as_scalar(res):
-        """Return None or a NDArrayResult whose type is in T.float_scalar_types"""
+        """Return None or a TensorVariable whose type is in T.float_scalar_types"""
         if res.owner and isinstance(res.owner.op, T.DimShuffle):
             return GemmLocalOptimizer._as_scalar(res.owner.inputs[0])
         elif res.type in T.float_scalar_types:

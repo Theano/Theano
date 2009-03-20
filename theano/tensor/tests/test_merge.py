@@ -1,15 +1,15 @@
 import numpy
 from theano.gof.type import Type
-from theano.gof.graph import Result, Apply, Constant
+from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
 from theano.gof.opt import *
 from theano.gof.env import Env
 from theano.gof.toolbox import *
 import theano.tensor.basic as T
 
-def as_result(x):
-    if not isinstance(x, Result):
-        raise TypeError("not a Result", x)
+def as_variable(x):
+    if not isinstance(x, Variable):
+        raise TypeError("not a Variable", x)
     return x
 class MyType(Type):
 
@@ -27,7 +27,7 @@ class MyOp(Op):
         self.x = x
     
     def make_node(self, *inputs):
-        inputs = map(as_result, inputs)
+        inputs = map(as_variable, inputs)
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
@@ -63,7 +63,7 @@ def test_merge_with_weird_eq():
     assert node.inputs[0] is node.inputs[1]
 
     #NONSCALAR CASE
-    # This was created to test NDArrayConstantSignature
+    # This was created to test TensorConstantSignature
     x = T.constant(numpy.ones(5), name='x')
     y = T.constant(numpy.ones(5), name='y')
     g = Env([x, y], [x+y])

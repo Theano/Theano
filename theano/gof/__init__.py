@@ -12,7 +12,7 @@ from destroyhandler import \
     DestroyHandler 
 
 from graph import \
-    Apply, Result, Constant, Value, view_roots
+    Apply, Variable, Constant, Value, view_roots
 
 from link import \
     Container, Linker, LocalLinker, PerformLinker, WrapLinker, WrapLinkerMany

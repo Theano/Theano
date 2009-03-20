@@ -20,7 +20,7 @@ if 0:
         """
         class MisMatch(Exception): """Output mismatch"""
 
-        #define a comparison function, which works for all the results in a graph
+        #define a comparison function, which works for all the variables in a graph
         #TODO: consider factoring this out (and maybe passing args explicitly
         # instead of by closure)
         def my_check_equal(x, y):

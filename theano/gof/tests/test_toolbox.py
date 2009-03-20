@@ -1,5 +1,5 @@
 
-from theano.gof.graph import Result, Apply
+from theano.gof.graph import Variable, Apply
 from theano.gof.type import Type
 from theano.gof.op import Op
 
@@ -7,8 +7,8 @@ from theano.gof.env import Env, InconsistencyError
 from theano.gof.toolbox import *
 
 
-def as_result(x):
-    assert isinstance(x, Result)
+def as_variable(x):
+    assert isinstance(x, Variable)
     return x
 
 
@@ -27,8 +27,8 @@ class MyType(Type):
         return isinstance(other, MyType)
 
 
-def MyResult(name):
-    return Result(MyType(name), None, None)
+def MyVariable(name):
+    return Variable(MyType(name), None, None)
 
 
 class MyOp(Op):
@@ -39,7 +39,7 @@ class MyOp(Op):
 
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_result, inputs)
+        inputs = map(as_variable, inputs)
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
@@ -55,9 +55,9 @@ dot = MyOp(2, 'Dot')
 
 
 def inputs():
-    x = MyResult('x')
-    y = MyResult('y')
-    z = MyResult('z')
+    x = MyVariable('x')
+    y = MyVariable('y')
+    z = MyVariable('z')
     return x, y, z
 
 

@@ -4,11 +4,11 @@ from theano.gof.graph import *
 
 from theano.gof.op import Op
 from theano.gof.type import Type
-from theano.gof.graph import Result
+from theano.gof.graph import Variable
 
 
-def as_result(x):
-    assert isinstance(x, Result)
+def as_variable(x):
+    assert isinstance(x, Variable)
     return x
 
 
@@ -26,19 +26,19 @@ class MyType(Type):
     def __repr__(self):
         return 'R%s' % str(self.thingy)
 
-def MyResult(thingy):
-    return Result(MyType(thingy), None, None)
+def MyVariable(thingy):
+    return Variable(MyType(thingy), None, None)
 
 
 class MyOp(Op):
 
     def make_node(self, *inputs):
-        inputs = map(as_result, inputs)
+        inputs = map(as_variable, inputs)
         for input in inputs:
             if not isinstance(input.type, MyType):
                 print input, input.type, type(input), type(input.type)
                 raise Exception("Error 1")
-        outputs = [MyResult(sum([input.type.thingy for input in inputs]))]
+        outputs = [MyVariable(sum([input.type.thingy for input in inputs]))]
         return Apply(self, inputs, outputs)
 
     def __str__(self):
@@ -54,12 +54,12 @@ MyOp = MyOp()
 class TestInputs:
 
     def test_inputs(self):
-        r1, r2 = MyResult(1), MyResult(2)
+        r1, r2 = MyVariable(1), MyVariable(2)
         node = MyOp.make_node(r1, r2)
         assert inputs(node.outputs) == [r1, r2]
 
     def test_inputs_deep(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
         i = inputs(node2.outputs)
@@ -86,26 +86,26 @@ class X:
 class TestStr(X):
 
     def test_as_string(self):
-        r1, r2 = MyResult(1), MyResult(2)
+        r1, r2 = MyVariable(1), MyVariable(2)
         node = MyOp.make_node(r1, r2)
         s = self.str([r1, r2], node.outputs)
         assert s == ["MyOp(R1, R2)"]
 
     def test_as_string_deep(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
         s = self.str([r1, r2, r5], node2.outputs)
         assert s == ["MyOp(MyOp(R1, R2), R5)"]
 
     def test_multiple_references(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], node.outputs[0])
         assert self.str([r1, r2, r5], node2.outputs) == ["MyOp(*1 -> MyOp(R1, R2), *1)"]
 
     def test_cutoff(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], node.outputs[0])
         assert self.str(node.outputs, node2.outputs) == ["MyOp(R3, R3)"]
@@ -119,13 +119,13 @@ class TestStr(X):
 class TestClone(X):
 
     def test_accurate(self):
-        r1, r2 = MyResult(1), MyResult(2)
+        r1, r2 = MyVariable(1), MyVariable(2)
         node = MyOp.make_node(r1, r2)
         _, new = clone([r1, r2], node.outputs, False)
         assert self.str([r1, r2], new) == ["MyOp(R1, R2)"]
 
     def test_copy(self):
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
         _, new = clone([r1, r2, r5], node2.outputs, False)
@@ -136,11 +136,11 @@ class TestClone(X):
 
     def test_not_destructive(self):
         # Checks that manipulating a cloned graph leaves the original unchanged.
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         node = MyOp.make_node(MyOp.make_node(r1, r2).outputs[0], r5)
         _, new = clone([r1, r2, r5], node.outputs, False)
         new_node = new[0].owner
-        new_node.inputs = MyResult(7), MyResult(8)
+        new_node.inputs = MyVariable(7), MyVariable(8)
         assert self.str(inputs(new_node.outputs), new_node.outputs) == ["MyOp(R7, R8)"]
         assert self.str(inputs(node.outputs), node.outputs) == ["MyOp(MyOp(R1, R2), R5)"]
 
@@ -150,7 +150,7 @@ class TestClone(X):
 ############
 
 def prenode(obj):
-    if isinstance(obj, Result): 
+    if isinstance(obj, Variable): 
         if obj.owner:
             return [obj.owner]
     if isinstance(obj, Apply):
@@ -160,7 +160,7 @@ class TestToposort:
 
     def test_0(self):
         """Test a simple graph"""
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         o = MyOp.make_node(r1, r2)
         o2 = MyOp.make_node(o.outputs[0], r5)
 
@@ -172,7 +172,7 @@ class TestToposort:
 
     def test_1(self):
         """Test a graph with double dependencies"""
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         o = MyOp.make_node(r1, r1)
         o2 = MyOp.make_node(o.outputs[0], r5)
         all = general_toposort(o2.outputs, prenode)
@@ -180,7 +180,7 @@ class TestToposort:
 
     def test_2(self):
         """Test a graph where the inputs have owners"""
-        r1, r2, r5 = MyResult(1), MyResult(2), MyResult(5)
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         o = MyOp.make_node(r1, r1)
         r2b = o.outputs[0]
         o2 = MyOp.make_node(r2b, r2b)
@@ -193,7 +193,7 @@ class TestToposort:
 
     def test_3(self):
         """Test a graph which is not connected"""
-        r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
+        r1, r2, r3, r4 = MyVariable(1), MyVariable(2), MyVariable(3), MyVariable(4)
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(r3, r4)
         all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
@@ -201,7 +201,7 @@ class TestToposort:
 
     def test_4(self):
         """Test inputs and outputs mixed together in a chain graph"""
-        r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
+        r1, r2, r3, r4 = MyVariable(1), MyVariable(2), MyVariable(3), MyVariable(4)
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(o0.outputs[0], r1)
         all = io_toposort([r1, o0.outputs[0]], [o0.outputs[0], o1.outputs[0]])
@@ -209,7 +209,7 @@ class TestToposort:
 
     def test_5(self):
         """Test when outputs have clients"""
-        r1, r2, r3, r4 = MyResult(1), MyResult(2), MyResult(3), MyResult(4)
+        r1, r2, r3, r4 = MyVariable(1), MyVariable(2), MyVariable(3), MyVariable(4)
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(o0.outputs[0], r4)
         all = io_toposort([], o0.outputs)

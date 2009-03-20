@@ -94,8 +94,8 @@ class SoftmaxWithBias(gof.Op):
         gof.Op.__init__(self, **kwargs)
 
     def make_node(self, x, b):
-        x = tensor.as_ndarray_result(x)
-        b = tensor.as_ndarray_result(b)
+        x = tensor.as_tensor_variable(x)
+        b = tensor.as_tensor_variable(b)
         if x.type.ndim != 2 \
                 or x.type.dtype not in ['float32', 'float64']:
             raise ValueError('x must be 2-d tensor of floats')
@@ -103,7 +103,7 @@ class SoftmaxWithBias(gof.Op):
                 or x.type.dtype not in ['float32', 'float64']:
             raise ValueError('b must be 1-d tensor of floats')
 
-        sm = x.type.make_result()
+        sm = x.type.make_variable()
         return gof.Apply(self, [x, b], [sm])
 
     def perform(self, node, input_storage, output_storage):
@@ -263,9 +263,9 @@ class SoftmaxWithBiasDx(gof.Op):
         gof.Op.__init__(self, **kwargs)
 
     def make_node(self, dy, sm, **kwargs):
-        dy = tensor.as_ndarray_result(dy)
-        sm = tensor.as_ndarray_result(sm)
-        return gof.Apply(self, [dy, sm], [sm.type.make_result()])
+        dy = tensor.as_tensor_variable(dy)
+        sm = tensor.as_tensor_variable(sm)
+        return gof.Apply(self, [dy, sm], [sm.type.make_variable()])
 
     def perform(self, node, input_storage, output_storage):
         dy, sm = input_storage
@@ -368,9 +368,9 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         gof.Op.__init__(self, **kwargs)
 
     def make_node(self, x, b, y_idx):
-        x = tensor.as_ndarray_result(x)
-        b = tensor.as_ndarray_result(b)
-        y_idx = tensor.as_ndarray_result(y_idx)
+        x = tensor.as_tensor_variable(x)
+        b = tensor.as_tensor_variable(b)
+        y_idx = tensor.as_tensor_variable(y_idx)
         if x.type.ndim != 2 \
                 or x.type.dtype not in ['float32', 'float64']:
             raise ValueError('x must be 2-d tensor of floats')
@@ -382,11 +382,11 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             raise ValueError('y_idx must be 1-d tensor of ints')
 
 #       TODO: Is this correct? It used to be y, not y_idx
-        nll = tensor.NDArrayType(x.type.dtype,
-                y_idx.type.broadcastable).make_result()
-#        nll = NDArrayType(x.dtype, y.broadcastable)
-        sm = x.type.make_result()
-        am = y_idx.type.make_result()
+        nll = tensor.TensorType(x.type.dtype,
+                y_idx.type.broadcastable).make_variable()
+#        nll = TensorType(x.dtype, y.broadcastable)
+        sm = x.type.make_variable()
+        am = y_idx.type.make_variable()
         return gof.Apply(self, [x, b, y_idx], [nll, sm, am])
     def perform(self, node, input_storage, output_storage):
         """
@@ -532,10 +532,10 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
     def __init__(self, **kwargs):
         gof.Op.__init__(self,**kwargs)
     def make_node(self, dy, sm, y_idx,**kwargs):
-        dy = tensor.as_ndarray_result(dy)
-        sm = tensor.as_ndarray_result(sm)
-        y_idx = tensor.as_ndarray_result(y_idx)
-        return gof.Apply(self, [dy, sm, y_idx],[sm.type.make_result()])
+        dy = tensor.as_tensor_variable(dy)
+        sm = tensor.as_tensor_variable(sm)
+        y_idx = tensor.as_tensor_variable(y_idx)
+        return gof.Apply(self, [dy, sm, y_idx],[sm.type.make_variable()])
     def perform(self, node, input_storage, output_storage):
         dy,sm,y_idx = input_storage
         dx = numpy.zeros_like(sm)
@@ -670,10 +670,10 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
 
     def make_node(self, mat):
         #check type of input
-        if not isinstance(mat,gof.Result) or not mat.type==tensor.matrix().type:
+        if not isinstance(mat,gof.Variable) or not mat.type==tensor.matrix().type:
             raise TypeError("Expected a matrix as input")
-        x = tensor.as_ndarray_result(mat)
-        y = tensor.as_ndarray_result(self.val)
+        x = tensor.as_tensor_variable(mat)
+        y = tensor.as_tensor_variable(self.val)
         if x.type.dtype != y.type.dtype:
             TypeError("the value to prepend don't have the same type as the matrix")
 
@@ -704,10 +704,10 @@ class Prepend_scalar_to_each_row(gof.Op):
         #check type of input
         if isinstance(val, float):
             val = scalar.constant(val)
-        if not isinstance(mat,gof.Result) or not mat.type==tensor.matrix().type:
+        if not isinstance(mat,gof.Variable) or not mat.type==tensor.matrix().type:
             raise TypeError("Expected a matrix as input")
-        x = tensor.as_ndarray_result(mat)
-        y = tensor.as_ndarray_result(val)
+        x = tensor.as_tensor_variable(mat)
+        y = tensor.as_tensor_variable(val)
         if x.type.dtype != y.type.dtype:
             TypeError("the value to prepend don't have the same type as the matrix")
 
@@ -744,9 +744,9 @@ class solve(gof.Op):
     """
 
     def make_node(self, A, b):
-        if not isinstance(A, gof.Result) or not A.type==tensor.matrix().type:
+        if not isinstance(A, gof.Variable) or not A.type==tensor.matrix().type:
             raise TypeError("We expected that A had a matrix type")
-        if not isinstance(B, gof.Result) or not B.type==tensor.matrix().type:
+        if not isinstance(B, gof.Variable) or not B.type==tensor.matrix().type:
             raise TypeError("We expected that B had a matrix type")
 
         node = gof.Apply(op=self, inputs=[A, B], outputs=[tensor.matrix()])

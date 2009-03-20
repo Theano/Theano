@@ -38,7 +38,7 @@ Compilation via make
 Conversion from a Component graph to a ComponentInstance graph is performed by `Component.make`.
 This method traverses the Component graph in two passes. 
 
-In the first pass (the allocate pass), it creates storage for all Results that are contained in the graph (see
+In the first pass (the allocate pass), it creates storage for all Variables that are contained in the graph (see
 `Component.allocate`).  These are the module variables.
 
 In the second pass (the build pass), it creates functions that (in general) operate on these module variables.
@@ -100,7 +100,7 @@ def name_split(sym, n=-1):
 
 class AllocationError(Exception):
     """
-    Exception raised when a Result has no associated storage.
+    Exception raised when a Variable has no associated storage.
     """
     pass
 
@@ -117,11 +117,11 @@ class Component(object):
 
     def allocate(self, memo):
         """
-        Populates the memo dictionary with gof.Result -> io.In
+        Populates the memo dictionary with gof.Variable -> io.In
         pairings. The value field of the In instance should contain a
         gof.Container instance. The memo dictionary is meant to tell
         the build method of Components where the values associated to
-        certain results are stored and how they should behave if they
+        certain variables are stored and how they should behave if they
         are implicit inputs to a Method (needed to compute its
         output(s) but not in the inputs or updates lists).
         """
@@ -198,19 +198,19 @@ class Component(object):
 
 class _RComponent(Component):
     """
-    Base class for a Component wrapping a Result. For internal use.
+    Base class for a Component wrapping a Variable. For internal use.
     """
 
     def __init__(self, r):
         super(_RComponent, self).__init__()
         self.r = r
-        # If self.owns_name is True, then the name of the result
+        # If self.owns_name is True, then the name of the variable
         # may be adjusted when the name of the Component is. Else,
-        # the result will always keep its original name. The component
-        # will only be allowed to own a result's name if it has no
+        # the variable will always keep its original name. The component
+        # will only be allowed to own a variable's name if it has no
         # original name to begin with. This allows the user to opt out
         # of the automatic naming scheme if he or she wants to. It is
-        # also usually the case that a Result used in more than one
+        # also usually the case that a Variable used in more than one
         # Component should only retain the first name it gets.
         self.owns_name = r.name is None
 
@@ -229,7 +229,7 @@ class _RComponent(Component):
 
 class External(_RComponent):
     """
-    External represents a Result which comes from somewhere else
+    External represents a Variable which comes from somewhere else
     (another module) or is a temporary calculation.
     """
 
@@ -252,8 +252,8 @@ class External(_RComponent):
 
 class Member(_RComponent):
     """
-    Member represents a Result which is a state of a Composite. That
-    Result will be accessible from a built Composite and it is
+    Member represents a Variable which is a state of a Composite. That
+    Variable will be accessible from a built Composite and it is
     possible to do updates on Members.
 
     Member builds a gof.Container.
@@ -262,22 +262,22 @@ class Member(_RComponent):
     def allocate(self, memo):
         """
         If the memo does not have a Container associated to this
-        Member's Result, instantiates one and sets it in the memo.
+        Member's Variable, instantiates one and sets it in the memo.
         """
         r = self.r
         if memo and r in memo:
             return memo[r]
-        assert isinstance(r, gof.Result)
+        assert isinstance(r, gof.Variable)
         rval = gof.Container(r, storage = [getattr(r, 'data', None)],
                 readonly=isinstance(r, gof.Constant))
-        memo[r] = io.In(result=r,
+        memo[r] = io.In(variable=r,
                         value=rval,
                         mutable=False)
         return memo[r]
 
     def build(self, mode, memo):
         """
-        Returns the Container associated to this Member's Result.
+        Returns the Container associated to this Member's Variable.
         """
         return memo[self.r].value
 
@@ -314,11 +314,11 @@ class Method(Component):
     update expression must be given in this dictionary.
     
 
-    Keys in this dictionary must be members of the module graph--results for which this Method
+    Keys in this dictionary must be members of the module graph--variables for which this Method
     will use the shared storage.
 
-    The value associated with each key should be a Result (or a string that can be resolved to
-    a Result) representing the computation of a new value for this shared storage after
+    The value associated with each key should be a Variable (or a string that can be resolved to
+    a Variable) representing the computation of a new value for this shared storage after
     each function call.
     
     """
@@ -336,12 +336,12 @@ class Method(Component):
 
         :param mode: value for `Method.mode`
 
-        :type inputs: list of (str or `Result` or `io.In`)
+        :type inputs: list of (str or `Variable` or `io.In`)
 
-        :type outputs: None or str or `Result` or `io.Out` or list of (str or `Result` or
+        :type outputs: None or str or `Variable` or `io.Out` or list of (str or `Variable` or
         `io.Out`)
 
-        :type updates: dict of `Result` or str -> `Result` or str
+        :type updates: dict of `Variable` or str -> `Variable` or str
 
         :type mode: None or any mode accepted by `compile.function`
 
@@ -353,11 +353,11 @@ class Method(Component):
         self.mode = mode
 
     def resolve_all(self):
-        """Convert all inputs, outputs, and updates specified as strings to Results.
+        """Convert all inputs, outputs, and updates specified as strings to Variables.
 
         This works by searching the attribute list of the Module to which this Method is bound.
         """
-        def resolve_result(x, passthrough=(gof.Result)):
+        def resolve_variable(x, passthrough=(gof.Variable)):
             if isinstance(x, passthrough):
                 return x
             elif isinstance(x, _RComponent):
@@ -367,28 +367,28 @@ class Method(Component):
                 # return self.resolve(x).r
 
         def resolve_inputs():
-            if isinstance(self.inputs, (io.In, gof.Result, str)):
+            if isinstance(self.inputs, (io.In, gof.Variable, str)):
                 inputs = [self.inputs]
             else:
                 inputs = list(self.inputs)
-            self.inputs = [resolve_result(input,
-                passthrough=(gof.Result, io.In)) for input in inputs]
+            self.inputs = [resolve_variable(input,
+                passthrough=(gof.Variable, io.In)) for input in inputs]
 
         def resolve_outputs():
-            if isinstance(self.outputs, (io.Out, gof.Result, str, type(None))):
+            if isinstance(self.outputs, (io.Out, gof.Variable, str, type(None))):
                 output = self.outputs
-                self.outputs = resolve_result(output,
-                    passthrough=(gof.Result, io.Out, type(None))) 
+                self.outputs = resolve_variable(output,
+                    passthrough=(gof.Variable, io.Out, type(None))) 
             else:
                 outputs = list(self.outputs)
-                self.outputs = [resolve_result(output, 
-                    passthrough=(gof.Result, io.Out)) for output in outputs]
+                self.outputs = [resolve_variable(output, 
+                    passthrough=(gof.Variable, io.Out)) for output in outputs]
 
         def resolve_updates():
             updates = self.updates
             self.updates = {}
             for k, v in updates.iteritems():
-                k, v = resolve_result(k), resolve_result(v)
+                k, v = resolve_variable(k), resolve_variable(v)
                 self.updates[k] = v
 
         resolve_inputs()
@@ -405,9 +405,9 @@ class Method(Component):
         """Compile a function for this Method.
 
         :param allocate_all: if True, storage will be
-        allocated for all needed Results even if there is no
+        allocated for all needed Variables even if there is no
         associated storage for them in the memo. If allocate_all is
-        False, storage will only be allocated for Results that are
+        False, storage will only be allocated for Variables that are
         reachable from the inputs list.
 
         :returns: a function that implements this method
@@ -428,7 +428,7 @@ class Method(Component):
                                           ' Verify that it is indeed a Member of the'
                                           ' enclosing module or of one of its submodules.' % (r, self.name, self))
                 else:
-                    return io.In(result=r, 
+                    return io.In(variable=r, 
                             value=gof.Container(r,
                                 storage=[getattr(r, 'data', None)],  
                                 readonly=(isinstance(r, gof.Constant))), 
@@ -440,9 +440,9 @@ class Method(Component):
         for input in self.inputs:
             if type(input) is io.In:
                 inputs.append(input)
-            elif isinstance(input, gof.Result):
+            elif isinstance(input, gof.Variable):
                 input_in = io.In(
-                        result=input,
+                        variable=input,
                         mutable=False)
                 inputs.append(input_in)
             else:
@@ -450,15 +450,15 @@ class Method(Component):
 
         # Deal with updates to shared storage
         for k, v in self.updates.iteritems():
-            assert isinstance(k, gof.Result)
+            assert isinstance(k, gof.Variable)
             if isinstance(k, gof.Constant):
                 raise TypeError('Module Constants cannot be updated', k)
-            assert isinstance(v, gof.Result)
+            assert isinstance(v, gof.Variable)
 
-            #identify an input for result k
+            #identify an input for variable k
             input_k = None
             for input in inputs:
-                if input.result == k:
+                if input.variable == k:
                     input_k = input
 
             #print 'METHOD UPDATE', k, v, input_k
@@ -466,24 +466,24 @@ class Method(Component):
                 # this is an implicit input,
                 # use shared storage
                 input_k = io.In(
-                        result=k,
+                        variable=k,
                         update=v,
                         value=get_storage(k, not allocate_all).value,
                         mutable=True)
                 inputs.append(input_k)
             else:
-                raise ValueError(('Result listed in both inputs and updates.'
+                raise ValueError(('Variable listed in both inputs and updates.'
                     ' Use inputs to use your own storage, use updates to '
                     'work on module-shared storage'), k)
 
         # Deal with module inputs that are not updated
 
         outputs = self.outputs
-        _inputs = [x.result for x in inputs]
-        # Grab the results that are not accessible from either the inputs or the updates.
+        _inputs = [x.variable for x in inputs]
+        # Grab the variables that are not accessible from either the inputs or the updates.
         outputs_list =  list(outputs) if isinstance(outputs, (list, tuple)) else [outputs]
-        outputs_result_list = [o.result if isinstance(o, io.Out) else o for o in outputs_list]
-        for input in gof.graph.inputs(outputs_result_list
+        outputs_variable_list = [o.variable if isinstance(o, io.Out) else o for o in outputs_list]
+        for input in gof.graph.inputs(outputs_variable_list
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
             if input not in _inputs:
@@ -709,7 +709,7 @@ class ComponentList(Composite):
         return self._components[item]
 
     def set(self, item, value):
-        if isinstance(value, gof.Result):
+        if isinstance(value, gof.Variable):
             value = Member(value)
         elif not isinstance(value, Component):
             raise TypeError('ComponentList may only contain Components.', value, type(value))
@@ -718,7 +718,7 @@ class ComponentList(Composite):
         self._components[item] = value
 
     def append(self, c):
-        if isinstance(c, gof.Result):
+        if isinstance(c, gof.Variable):
             c = Member(c)
         elif not isinstance(c, Component):
             raise TypeError('ComponentList may only contain Components.', c, type(c))
@@ -900,20 +900,20 @@ def dict_wrap(d):
 register_wrapper(lambda x: isinstance(x, Component),
                  lambda x: x)
 
-# Result -> Member
-register_wrapper(lambda x: isinstance(x, gof.Result) and not x.owner,
+# Variable -> Member
+register_wrapper(lambda x: isinstance(x, gof.Variable) and not x.owner,
                  lambda x: Member(x))
 
-# Result -> External
-register_wrapper(lambda x: isinstance(x, gof.Result) and x.owner,
+# Variable -> External
+register_wrapper(lambda x: isinstance(x, gof.Variable) and x.owner,
                  lambda x: External(x))
 
-# [[Result1], {Result2}, Result3...] -> ComponentList(Member(Result1), Member(Result2), ...)
+# [[Variable1], {Variable2}, Variable3...] -> ComponentList(Member(Variable1), Member(Variable2), ...)
 register_wrapper(lambda x: isinstance(x, (list, tuple)) \
                      and all(wrapper(r) is not None for r in x),
                  lambda x: ComponentList(*map(wrap, x)))
 
-#{ "name1":{Component,Result,list,tuple,dict},...} -> ComponentDict({Component,Result,list,tuple,dict},...)
+#{ "name1":{Component,Variable,list,tuple,dict},...} -> ComponentDict({Component,Variable,list,tuple,dict},...)
 register_wrapper(lambda x: isinstance(x, dict) \
                      and all(wrapper(r) is not None for r in x.itervalues()),
                  lambda x: ComponentDict(dict_wrap(x)))
@@ -999,9 +999,9 @@ class Module(ComponentDict):
             if isinstance(v, (Member, External)):
                 print >> sys.stderr, ("WARNING: assignment of Member or External "
                         "objects (either directly or indirectly) to Module "
-                        "is deprecated.  Just use Result.")
+                        "is deprecated.  Just use Variable.")
                 return v.r
-            elif isinstance(v, (gof.Result,Method,Module)):
+            elif isinstance(v, (gof.Variable,Method,Module)):
                 return v
             elif isinstance(v,(int,bool)):
                 return v

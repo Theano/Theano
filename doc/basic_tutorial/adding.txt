@@ -25,9 +25,9 @@ array(28.4)
 
 
 Let's break this down into several steps. The first step is to define
-two symbols, or Results, representing the quantities that you want
-to add. Note that from now on, we will use the term :term:`Result`
-to mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Result
+two symbols, or Variables, representing the quantities that you want
+to add. Note that from now on, we will use the term :term:`Variable`
+to mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Variable
 objects). The output of the function ``f`` is a :api:`numpy.ndarray`
 with zero dimensions.
 
@@ -50,16 +50,16 @@ is the type we assign to "0-dimensional arrays (`scalar`) of doubles
 
 ``dscalar`` is not a class. Therefore, neither ``x`` nor ``y``
 are actually instances of ``dscalar``. They are instances of
-:api:`NDArrayResult <theano.tensor.basic.NDArrayResult>`. ``x`` and ``y``
+:api:`TensorVariable <theano.tensor.basic.TensorVariable>`. ``x`` and ``y``
 are, however, assigned the theano Type ``dscalar`` in their ``type``
 field, as you can see here:
 
 >>> type(x)
-<class 'theano.tensor.basic.NDArrayResult'>
+<class 'theano.tensor.basic.TensorVariable'>
 >>> x.type
-NDArrayType(float64, scalar)
+TensorType(float64, scalar)
 >>> T.dscalar
-NDArrayType(float64, scalar)
+TensorType(float64, scalar)
 >>> x.type == T.dscalar
 True
 
@@ -67,7 +67,7 @@ You can learn more about the structures in Theano in
 the :ref:`advtutorial` and in :ref:`graphstructures`.
 
 By calling ``T.dscalar`` with a string argument, you create a
-:term:`Result` representing a floating-point scalar quantity with the
+:term:`Variable` representing a floating-point scalar quantity with the
 given name. If you provide no argument, the symbol will be unnamed. Names
 are not require, but they can aid debugging.
 
@@ -79,7 +79,7 @@ The second step is to combine ``x`` and ``y`` into their sum ``z``:
 
 >>> z = x + y
 
-``z`` is yet another :term:`Result` which represents the addition of
+``z`` is yet another :term:`Variable` which represents the addition of
 ``x`` and ``y``. You can use the :api:`pp <theano.printing.pp>`
 function to pretty-print out the computation associated to ``z``.
 
@@ -95,9 +95,9 @@ and giving ``z`` as output:
 
 >>> f = function([x, y], z)
 
-The first argument to ``function`` is a list of :term:`Results <Result>`
+The first argument to ``function`` is a list of :term:`Variables <Variable>`
 that will be provided as inputs to the function. The second argument
-is a single Result *or* a list of Results. For either case, the second
+is a single Variable *or* a list of Variables. For either case, the second
 argument is what we want to see as output when we apply the function.
 
 ``f`` may then be used like a normal Python function.
@@ -122,7 +122,7 @@ our new function on 2D arrays:
 array([[ 11.,  22.],
        [ 33.,  44.]])
 
-The result is a numpy array. We can also use numpy arrays directly as
+The variable is a numpy array. We can also use numpy arrays directly as
 inputs:
 
 >>> import numpy

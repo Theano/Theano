@@ -42,7 +42,7 @@ class DestroyHandler(object):
 
 def getroot(r, view_i):
     """
-    For views: Return non-view result which is ultimatly viewed by r.
+    For views: Return non-view variable which is ultimatly viewed by r.
     For non-views: return self.
     """
     try: 
@@ -52,10 +52,10 @@ def getroot(r, view_i):
 
 def add_impact(r, view_o, impact):
     """
-    In opposition to getroot, which finds the result that is viewed *by* r, this function
-    returns all the results that are views of r.
+    In opposition to getroot, which finds the variable that is viewed *by* r, this function
+    returns all the variables that are views of r.
 
-    :param impact: is a set of results that are views of r
+    :param impact: is a set of variables that are views of r
     :param droot: a dictionary mapping views -> r
     """
     for v in view_o.get(r,[]):
@@ -94,10 +94,10 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         self.env = env
         self.destroyers = set() #set of Apply instances with non-null destroy_map
-        self.view_i = {}  # result -> result
-        self.view_o = {}  # result -> set of results
-        #clients: how many times does an apply use a given result
-        self.clients = {} # result -> apply -> ninputs  
+        self.view_i = {}  # variable -> variable
+        self.view_o = {}  # variable -> set of variables
+        #clients: how many times does an apply use a given variable
+        self.clients = {} # variable -> apply -> ninputs  
         self.stale_droot = True
 
         self.debug_all_apps = set()
@@ -111,8 +111,8 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         return self.droot, self.impact, self.root_destroyer
 
     def _build_droot_impact(self):
-        droot = {}   # destroyed view + nonview results -> foundation
-        impact = {}  # destroyed nonview result -> it + all views of it
+        droot = {}   # destroyed view + nonview variables -> foundation
+        impact = {}  # destroyed nonview variable -> it + all views of it
         root_destroyer = {} # root -> destroyer apply
 
         for app in self.destroyers:
@@ -286,7 +286,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         """Return orderings induced by destructive operations.
 
         Raise InconsistencyError when
-        a) attempting to destroy indestructable result, or
+        a) attempting to destroy indestructable variable, or
         b) attempting to destroy a value multiple times, or
         c) an Apply destroys (illegally) one of its own inputs by aliasing
         
@@ -309,23 +309,23 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                     isinstance(r, graph.Constant)]
             if illegal_destroy:
                 #print 'destroying illegally'
-                raise InconsistencyError("Attempting to destroy indestructible results: %s" %
+                raise InconsistencyError("Attempting to destroy indestructible variables: %s" %
                         illegal_destroy)
 
-            # add destroyed result clients as computational dependencies
+            # add destroyed variable clients as computational dependencies
             for app in self.destroyers:
                 # for each destroyed input...
                 for output_idx, input_idx_list in app.op.destroy_map.items():
                     destroyed_idx = input_idx_list[0]
-                    destroyed_result = app.inputs[destroyed_idx]
-                    root = droot[destroyed_result]
+                    destroyed_variable = app.inputs[destroyed_idx]
+                    root = droot[destroyed_variable]
                     root_impact = impact[root]
                     # we generally want to put all clients of things which depend on root
                     # as pre-requisites of app.
                     # But, app is itself one such client!
                     # App will always be a client of the node we're destroying
-                    # (destroyed_result, but the tricky thing is when it is also a client of
-                    # *another result* viewing on the root.  Generally this is illegal, (e.g.,
+                    # (destroyed_variable, but the tricky thing is when it is also a client of
+                    # *another variable* viewing on the root.  Generally this is illegal, (e.g.,
                     # add_inplace(x, x.T).  In some special cases though, the in-place op will
                     # actually be able to work properly with multiple destroyed inputs (e.g,
                     # add_inplace(x, x).  An Op that can still work in this case should declare
@@ -349,7 +349,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                     #print 'tolerated', tolerated
                     for i, input in enumerate(app.inputs):
                         if input in root_impact \
-                                and (i not in tolerated or input is not destroyed_result):
+                                and (i not in tolerated or input is not destroyed_variable):
                             raise InconsistencyError("Input aliasing: %s (%i, %i)" 
                                     % (app, destroyed_idx, i))
 

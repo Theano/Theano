@@ -1,4 +1,4 @@
-import gof #, gof.result
+import gof #, gof.variable
 import numpy #for numeric_grad
 
 from gof.python25 import all
@@ -7,22 +7,10 @@ import gof.utils
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
-def _unpack_result(lst):
-    if len(lst) > 1:
-        return lst
-    else:
-        return lst[0]
-
-def _pack_result(arg):
-    if isinstance(arg, gof.result.Result):
-        return [arg]
-    else:
-        return arg
-
 def grad_sources_inputs(sources, graph_inputs):
     """
-    A gradient source is a pair (r, g_r), in which r is a result, and g_r is a
-    result that is a gradient wrt r.
+    A gradient source is a pair (r, g_r), in which r is a variable, and g_r is a
+    variable that is a gradient wrt r.
 
     This function traverses the graph backward from the 'r' sources,
     calling L{Op.grad}(...) when it is provided by an L{Op}, and at least one of the
@@ -32,21 +20,21 @@ def grad_sources_inputs(sources, graph_inputs):
         op.grad( op.inputs[0], grad(op.outputs[0]))
 
     This function expects the L{Op.grad}(...) function to return the gradient
-    expression [results] associated with the inputs of the L{Op}. The L{Op} should
-    return a list of results corresponding to the gradients in the same order
+    expression [variables] associated with the inputs of the L{Op}. The L{Op} should
+    return a list of variables corresponding to the gradients in the same order
     as the inputs. If it has a single output it should return a list or tuple
     of length 1.
 
     For each input wrt to which an L{Op} is not differentiable, it should return
-    None instead of a result instance.
+    None instead of a variable instance.
 
     @type sources: list
     @param sources: gradient sources (explained below)
     @type graph_inputs: list
-    @param graph_inputs: results considered to be constant
+    @param graph_inputs: variables considered to be constant
 
     @rtype: dictionary
-    @return: dictionary mapping each result necessary for a source to its gradient.
+    @return: dictionary mapping each variable necessary for a source to its gradient.
     """
     gmap = {}
     for (r, g_r) in sources:
@@ -94,7 +82,7 @@ def grad_sources_inputs(sources, graph_inputs):
         op_grad = node.op.grad(input_arg, output_arg)
         if not isinstance(op_grad, (list,tuple)):
             raise ValueError(_msg_retType, node.op)
-        g_inputs = op_grad #_pack_result(op_grad)
+        g_inputs = op_grad
         assert isinstance(g_inputs, (list, tuple))
         if len(g_inputs) != len(node.inputs):
             raise ValueError(_msg_badlen, 

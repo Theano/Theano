@@ -255,8 +255,8 @@ def get_c_sync(r, name, sub):
 
 def apply_policy(policy, r, name, sub):
     """WRITEME
-    @param policy: list of functions that map a L{Result} to a string, or a single such function
-    @type r: L{Result}
+    @param policy: list of functions that map a L{Variable} to a string, or a single such function
+    @type r: L{Variable}
     @return: C{policy[0](r) + policy[1](r) + ...}
     """
     if isinstance(policy, (list, tuple)):
@@ -268,35 +268,35 @@ def apply_policy(policy, r, name, sub):
 
 
 
-def struct_result_codeblocks(result, policies, id, symbol_table, sub):
+def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     """WRITEME
-    result -> a Result
+    variable -> a Variable
     policies -> a pair of tuples ((declare_policy, behavior_policy, cleanup_policy), -- at construction
                                   (declare_policy, behavior_policy, cleanup_policy)) -- at execution
                 the first list will produce an element of the 'struct_builders' argument in struct_gen
                 the second list will produce an element of the 'blocks' argument in struct_gen
-    id -> the id assigned to this result's task in the computation
-    symbol_table -> a dict that maps results to variable names. It is not read
-        by this function but a variable name for the result is computed and added
+    id -> the id assigned to this variable's task in the computation
+    symbol_table -> a dict that maps variables to variable names. It is not read
+        by this function but a variable name for the variable is computed and added
         to the table.
     sub -> dictionary for use by L{CodeBlock}.
     """
 
     name = "V%i" % id
-    symbol_table[result] = name
+    symbol_table[variable] = name
     sub = dict(sub)
 #    sub['name'] = name
     sub['id'] = id
     sub['fail'] = failure_code(sub)
     sub['py_ptr'] = "py_%s" % name
     sub['stor_ptr'] = "storage_%s" % name
-    struct_builder = CodeBlock(*[apply_policy(policy, result, name, sub)
+    struct_builder = CodeBlock(*[apply_policy(policy, variable, name, sub)
                                  for policy in policies[0]]+[sub]) # struct_declare, struct_behavior, struct_cleanup, sub)
     sub['id'] = id + 1
     sub['fail'] = failure_code(sub)
     sub['py_ptr'] = "py_%s" % name
     sub['stor_ptr'] = "storage_%s" % name
-    block = CodeBlock(*[apply_policy(policy, result, name, sub)
+    block = CodeBlock(*[apply_policy(policy, variable, name, sub)
                         for policy in policies[1]]+[sub]) # run_declare, run_behavior, run_cleanup, sub)
 
     return struct_builder, block
@@ -309,8 +309,8 @@ class CLinker(link.Linker):
     through make_thunk and make_function that make use of the compiled
     code.
 
-    no_recycling can contain a list of Results that belong to the env.
-    If a Result is in no_recycling, CLinker will clear the output storage
+    no_recycling can contain a list of Variables that belong to the env.
+    If a Variable is in no_recycling, CLinker will clear the output storage
     associated to it during the computation (to avoid reusing it).
     """
 
@@ -323,21 +323,21 @@ class CLinker(link.Linker):
             return type(self)().accept(env, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
         self.env = env
-        self.fetch_results()
+        self.fetch_variables()
         self.no_recycling = no_recycling
         return self
 
-    def fetch_results(self):
+    def fetch_variables(self):
         """WRITEME
-        Fills the inputs, outputs, results, orphans, temps and node_order fields.
+        Fills the inputs, outputs, variables, orphans, temps and node_order fields.
         """
         env = self.env
         self.inputs = env.inputs
         self.outputs = env.outputs
-        self.results = graph.results(self.inputs, self.outputs) # list(env.results)
+        self.variables = graph.variables(self.inputs, self.outputs) # list(env.variables)
         # The orphans field is listified to ensure a consistent order.
-        self.orphans = list(r for r in self.results if isinstance(r, graph.Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
-        self.temps = list(set(self.results).difference(self.inputs).difference(self.outputs).difference(self.orphans))
+        self.orphans = list(r for r in self.variables if isinstance(r, graph.Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
+        self.temps = list(set(self.variables).difference(self.inputs).difference(self.outputs).difference(self.orphans))
         self.node_order = env.toposort()
 
     def code_gen(self):
@@ -365,7 +365,7 @@ class CLinker(link.Linker):
 
         symbol = {}
 
-        # (init_)tasks contains a list of pairs (Op/Result, task_name)
+        # (init_)tasks contains a list of pairs (Op/Variable, task_name)
         # e.g. (x, 'get') or (x+y, 'code')
         init_tasks = []
         tasks = []
@@ -380,46 +380,46 @@ class CLinker(link.Linker):
 
         sub = dict(failure_var = failure_var)
 
-        for result in self.results:
+        for variable in self.variables:
 
-            # it might be possible to inline constant results as C literals
-##            if getattr(result, 'constant', False):
+            # it might be possible to inline constant variables as C literals
+##            if getattr(variable, 'constant', False):
             # policy = [[what to declare in the struct, what to do at construction, what to do at destruction],
             #           [what to declare in each run, what to do at the beginning of each run, what to do at the end of each run]]
-            if result in self.inputs:
+            if variable in self.inputs:
                 # we need to extract the new inputs at each run
                 # they do not need to be relayed to Python, so we don't sync
-#                 if isinstance(result, Constant):
-#                     raise TypeError("Inputs to CLinker cannot be Constant.", result)
+#                 if isinstance(variable, Constant):
+#                     raise TypeError("Inputs to CLinker cannot be Constant.", variable)
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
-            elif result in self.orphans:
-                if not isinstance(result, graph.Value):
-                    raise TypeError("All orphans to CLinker must be Value instances.", result)
-                if isinstance(result, graph.Constant):
+            elif variable in self.orphans:
+                if not isinstance(variable, graph.Value):
+                    raise TypeError("All orphans to CLinker must be Value instances.", variable)
+                if isinstance(variable, graph.Constant):
                     try:
-                        symbol[result] = "(" + result.type.c_literal(result.data) + ")"
-                        consts.append(result)
-                        self.orphans.remove(result)
+                        symbol[variable] = "(" + variable.type.c_literal(variable.data) + ")"
+                        consts.append(variable)
+                        self.orphans.remove(variable)
                         continue
                     except (utils.MethodNotDefined, NotImplementedError):
                         pass
                 # orphans are not inputs so we'll just get fetch them when we initialize the struct and assume they stay the same
                 policy = [[get_c_declare, get_c_extract, get_c_cleanup],
                           [get_nothing, get_nothing, get_nothing]]
-            elif result in self.temps:
+            elif variable in self.temps:
                 # temps don't need to be extracted from Python, so we call c_init rather than c_extract
                 # they do not need to be relayed to Python, so we don't sync
-                if result.type.c_is_simple() or result in no_recycling:
+                if variable.type.c_is_simple() or variable in no_recycling:
                     policy = [[get_nothing, get_nothing, get_nothing],
                               [get_c_declare, get_c_init, get_c_cleanup]]
                 else:
                     # it is useful for complex temps to reuse storage at each run, so we only clean up in the destructor
                     policy = [[get_c_declare, get_c_init, get_c_cleanup],
                               [get_nothing, get_nothing, get_nothing]]
-            elif result in self.outputs:
+            elif variable in self.outputs:
                 # outputs don't need to be extracted from Python, so we call c_init rather than c_extract
-                if result.type.c_is_simple() or result in no_recycling:
+                if variable.type.c_is_simple() or variable in no_recycling:
                     policy = [[get_nothing, get_nothing, get_nothing],
                               [get_c_declare, get_c_init, (get_c_sync, get_c_cleanup)]]
                 else:
@@ -429,16 +429,16 @@ class CLinker(link.Linker):
             else:
                 raise Exception("what the fuck")
 
-            builder, block = struct_result_codeblocks(result, policy, id, symbol, sub)
+            builder, block = struct_variable_codeblocks(variable, policy, id, symbol, sub)
 
-            # each Result generates two CodeBlocks, one to declare/initialize/destroy struct variables
+            # each Variable generates two CodeBlocks, one to declare/initialize/destroy struct variables
             # and the other to declare/extract/cleanup each time the function is run.
             # Typically, only one of the two actually does anything (see all the possible combinations above)
 
-            init_tasks.append((result, 'init', id))
+            init_tasks.append((variable, 'init', id))
             init_blocks.append(builder)
 
-            tasks.append((result, 'get', id + 1))
+            tasks.append((variable, 'get', id + 1))
             blocks.append(block)
 
             id += 2
@@ -449,8 +449,8 @@ class CLinker(link.Linker):
             # method to the actual variable names that we will use.
 ##            ivnames, ovnames = op.c_var_names()
             sub = dict(failure_var = failure_var)
-##            for result, vname in zip(op.inputs + op.outputs, ivnames + ovnames):
-##                sub[vname] = symbol[result]
+##            for variable, vname in zip(op.inputs + op.outputs, ivnames + ovnames):
+##                sub[vname] = symbol[variable]
 
             name = "<invalid_c_thing>"
             isyms, osyms = [symbol[r] for r in node.inputs], [symbol[r] for r in node.outputs]
@@ -479,7 +479,7 @@ class CLinker(link.Linker):
         # List of arg names for use in struct_gen. Note the call to uniq: duplicate inputs
         # must only be passed once because they are mapped to the same name.
         args = []
-        args += ["storage_%s" % symbol[result] for result in utils.uniq(self.inputs + self.outputs + self.orphans)]
+        args += ["storage_%s" % symbol[variable] for variable in utils.uniq(self.inputs + self.outputs + self.orphans)]
 
         struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var, name = "<<<<NAME>>>>"))
 
@@ -509,13 +509,13 @@ class CLinker(link.Linker):
     def support_code(self):
         """WRITEME
         Returns a list of support code strings that are needed by
-        one or more Results or Ops. The support code from Results is
+        one or more Variables or Ops. The support code from Variables is
         added before the support code from Ops.
 
         This might contain duplicates.
         """
         ret = []
-        for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret.append(x.c_support_code())
             except utils.MethodNotDefined: pass
         return ret
@@ -523,12 +523,12 @@ class CLinker(link.Linker):
     def compile_args(self):
         """WRITEME
         Returns a list of compile args that are needed by one
-        or more Results or Ops.
+        or more Variables or Ops.
 
         This might contain duplicates.
         """
         ret = []
-        for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_compile_args()
             except utils.MethodNotDefined: pass
         return ret
@@ -536,12 +536,12 @@ class CLinker(link.Linker):
     def headers(self):
         """WRITEME
         Returns a list of headers that are needed by one
-        or more Results or Ops.
+        or more Variables or Ops.
 
         This might contain duplicates.
         """
         ret = []
-        for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_headers()
             except utils.MethodNotDefined: pass
         return ret
@@ -549,12 +549,12 @@ class CLinker(link.Linker):
     def libraries(self):
         """WRITEME
         Returns a list of libraries that are needed by one
-        or more Results or Ops.
+        or more Variables or Ops.
 
         This might contain duplicates.
         """
         ret = []
-        for x in [y.type for y in self.results] + [y.op for y in self.node_order]:
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_libraries()
             except utils.MethodNotDefined: pass
         return ret
@@ -568,21 +568,21 @@ class CLinker(link.Linker):
             the thunk returned by __compile__, the inputs must be put in
             that storage. If None, storage will be allocated.
         @param output_storage: list of lists of length 1. The thunk returned
-            by __compile__ will put the results of the computation in these
+            by __compile__ will put the variables of the computation in these
             lists. If None, storage will be allocated.
 
         Returns: thunk, input_storage, output_storage, error_storage
         """
         error_storage = [None, None, None]
         if input_storage is None:
-            input_storage = tuple([None] for result in self.inputs)
+            input_storage = tuple([None] for variable in self.inputs)
         if output_storage is None:
             map = {}
             output_storage = []
-            for result in self.outputs:
-                if result not in map:
-                    map[result] = [None]
-                output_storage.append(map[result])
+            for variable in self.outputs:
+                if variable not in map:
+                    map[variable] = [None]
+                output_storage.append(map[variable])
         input_storage = tuple(input_storage)
         output_storage = tuple(output_storage)
         thunk = self.cthunk_factory(error_storage,
@@ -604,7 +604,7 @@ class CLinker(link.Linker):
             the thunk returned by __compile__, the inputs must be put in
             that storage. If None, storage will be allocated.
         @param output_storage: list of lists of length 1. The thunk returned
-            by __compile__ will put the results of the computation in these
+            by __compile__ will put the variables of the computation in these
             lists. If None, storage will be allocated.
 
         Returns: thunk, input_storage, output_storage
@@ -760,16 +760,16 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
 class OpWiseCLinker(link.LocalLinker):
     """WRITEME
     Uses CLinker on the individual Ops that comprise an env and loops
-    over them in Python. The result is slower than a compiled version of
+    over them in Python. The variable is slower than a compiled version of
     the whole env, but saves on compilation time because small changes
     in the computation graph won't necessarily trigger any recompilation,
-    only local changes in the Results or Ops that are used.
+    only local changes in the Variables or Ops that are used.
 
     If fallback_on_perform is True, OpWiseCLinker will use an op's
     perform method if no C version can be generated.
 
-    no_recycling can contain a list of Results that belong to the env.
-    If a Result is in no_recycling, CLinker will clear the output storage
+    no_recycling can contain a list of Variables that belong to the env.
+    If a Variable is in no_recycling, CLinker will clear the output storage
     associated to it prior to computation (to avoid reusing it).
     """
 
@@ -878,7 +878,7 @@ class OpWiseCLinker(link.LocalLinker):
 def _default_checker(x, y):
     """WRITEME
     Default checker for DualLinker. This checks that the
-    results contain the same data using ==.
+    variables contain the same data using ==.
     """
     if x[0] != y[0]:
         raise Exception("Output mismatch.", {'performlinker': x[0], 'clinker': y[0]})
@@ -890,7 +890,7 @@ class DualLinker(link.Linker):
     The thunk/function produced by DualLinker uses PerformLinker as the
     "main" implementation: the inputs and outputs are fed to/taken from
     the Ops' perform. However, DualLinker also instantiates a copy of
-    the env on which it runs OpWiseCLinker. At each step, the results
+    the env on which it runs OpWiseCLinker. At each step, the variables
     of perform and of the C implementation are verified using a checker
     function.
     """
@@ -903,7 +903,7 @@ class DualLinker(link.Linker):
         of length 1. The first one passed will contain the output
         computed by PerformLinker and the second one the output
         computed by OpWiseCLinker. The checker should compare the data
-        fields of the two results to see if they match. By default,
+        fields of the two variables to see if they match. By default,
         DualLinker uses ==. A custom checker can be provided to
         compare up to a certain error tolerance.
 
@@ -914,8 +914,8 @@ class DualLinker(link.Linker):
         careful not to share data between the two outputs (or inplace
         operations that use them will interfere).
 
-        no_recycling can contain a list of Results that belong to the env.
-        If a Result is in no_recycling, CLinker will clear the output storage
+        no_recycling can contain a list of Variables that belong to the env.
+        If a Variable is in no_recycling, CLinker will clear the output storage
         associated to it during the computation (to avoid reusing it).
         """
         self.env = None

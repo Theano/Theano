@@ -52,14 +52,14 @@ class Linker(object):
 
     def make_thunk(self):
         """
-        This function must return a triplet (function, input_results, output_results)
-        where function is a thunk that operates on the returned results. If inplace
-        is True, the input_results and output_results lists will be the same as the
+        This function must return a triplet (function, input_variables, output_variables)
+        where function is a thunk that operates on the returned variables. If inplace
+        is True, the input_variables and output_variables lists will be the same as the
         inputs and outputs of the graph provided to the L{Linker}. Else, independent
-        results will be returned.
+        variables will be returned.
 
         Example::
-         x, y = Result(Double), Result(Double)
+         x, y = Variable(Double), Variable(Double)
          e = x + y
          env = Env([x, y], [e])
          fn, (new_x, new_y), (new_e, ) = MyLinker(env).make_thunk(inplace)
@@ -98,13 +98,13 @@ class Linker(object):
                         % (takes, ['argument','arguments'][takes>1], got)
             if (len(args) != len(inputs)):
                 raise TypeError(e_arity(len(inputs), len(args)))
-            for arg, result in zip(args, inputs):
-                result.data = arg
+            for arg, variable in zip(args, inputs):
+                variable.data = arg
             thunk()
             if unpack_single:
-                return utils.to_return_values([result.data for result in outputs])
+                return utils.to_return_values([variable.data for variable in outputs])
             else:
-                return [result.data for result in outputs]
+                return [variable.data for variable in outputs]
         execute.thunk = thunk
         execute.inputs = inputs
         execute.outputs = outputs
@@ -114,14 +114,14 @@ class Linker(object):
 
 #TODO: Move this class to the compile module, where it is used (and for which it exists).
 class Container(object):
-    """This class joins a result with its computed value. 
+    """This class joins a variable with its computed value. 
     It is used in linkers, especially for the inputs and outputs of a Function.
     """
     def __init__(self, r, storage, readonly = False, strict = False, name = None):
         """WRITEME
 
         :Parameters:
-         `r`: a result
+         `r`: a variable
          `storage`: a list of length 1, whose element is the value for `r`
          `readonly`: True indicates that this should not be setable by Function[r] = val
          `strict`: if True, we don't allow type casting.
@@ -176,8 +176,8 @@ def map_storage(env, order, input_storage, output_storage):
     
 
     This function iterates over the nodes in `order` and ensures that for every
-    input and output `Result`, there is a unique storage container.  This is
-    returned as a dictionary Result->storage called the `storage_map`.
+    input and output `Variable`, there is a unique storage container.  This is
+    returned as a dictionary Variable->storage called the `storage_map`.
 
     This function also returns `input_storage` which is a list of storages corresponding to env.inputs.
     This function also returns `output_storage` which is a list of storages corresponding to env.outputs.
@@ -313,8 +313,8 @@ def gc_helper(node_list):
     :param node_list: list of Apply instances in program execution order
 
     :rtype: a 2-tuple
-    :returns: FIRST, the set of Result instances which are computed by node_list, and SECOND a
-    dictionary that maps each Result instance to a the last node to use Result as an input.
+    :returns: FIRST, the set of Variable instances which are computed by node_list, and SECOND a
+    dictionary that maps each Variable instance to a the last node to use Variable as an input.
     
     This is used to allow garbage collection within graphs.
     """
@@ -434,7 +434,7 @@ class WrapLinker(Linker):
 
     @note:
     This linker ensures that each linker has its own storage for
-    inputs and outputs and intermediate results.  There is no interference
+    inputs and outputs and intermediate variables.  There is no interference
     between linkers.
 
     """
@@ -467,9 +467,9 @@ class WrapLinker(Linker):
         @type env: gof.Env
         @param env: the env which we will link
 
-        @type no_recycling: a list of Results that belong to env.  
+        @type no_recycling: a list of Variables that belong to env.  
 
-        @param no_recycling: If a Result is in no_recycling, L{WrapLinker} will clear
+        @param no_recycling: If a Variable is in no_recycling, L{WrapLinker} will clear
         the output storage associated to it (for each linker in linkers) during
         the computation to avoid reusing it.
         

@@ -2,7 +2,7 @@
 .. _tensoroptools:
 
 ================
-NDArray Op Tools
+Tensor Op Tools
 ================
 
 WRITEME - describe how to use Elemwise here

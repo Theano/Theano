@@ -2,7 +2,7 @@
 import time
 import unittest
 
-from theano.gof import Result, Op
+from theano.gof import Variable, Op
 from theano import gof
 
 from theano.scalar import *
@@ -27,7 +27,7 @@ class test_DimShuffle(unittest.TestCase):
                                   ((1, 4, 3, 2, 1), (3, 2, 1), (2, 3, 4)),
                                   ((1, 1, 4), (1, 2), (1, 4))]:
             ib = [(entry == 1) for entry in xsh]
-            x = NDArrayType('float64', ib)('x')
+            x = TensorType('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
             f = copy(linker).accept(Env([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
@@ -50,8 +50,8 @@ class test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = NDArrayType('float64', [(entry == 1) for entry in xsh])('x')
-            y = NDArrayType('float64', [(entry == 1) for entry in ysh])('y')
+            x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
+            y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
             e = Elemwise(add)(x, y)
             f = copy(linker).accept(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
@@ -69,8 +69,8 @@ class test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = NDArrayType('float64', [(entry == 1) for entry in xsh])('x')
-            y = NDArrayType('float64', [(entry == 1) for entry in ysh])('y')
+            x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
+            y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
             e = Elemwise(Add(transfer_type(0)), {0:0})(x, y)
             f = copy(linker).accept(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
@@ -94,8 +94,8 @@ class test_Broadcast(unittest.TestCase):
         self.with_linker_inplace(gof.CLinker())
 
     def test_fill(self):
-        x = NDArrayType('float64', [0, 0])('x')
-        y = NDArrayType('float64', [1, 1])('y')
+        x = TensorType('float64', [0, 0])('x')
+        y = TensorType('float64', [1, 1])('y')
         e = Elemwise(Second(transfer_type(0)), {0:0})(x, y)
         f = gof.CLinker().accept(Env([x, y], [e])).make_function()
         xv = numpy.ones((5, 5))
@@ -104,8 +104,8 @@ class test_Broadcast(unittest.TestCase):
         assert (xv == yv).all()
 
     def test_weird_strides(self):
-        x = NDArrayType('float64', [0, 0, 0, 0, 0])('x')
-        y = NDArrayType('float64', [0, 0, 0, 0, 0])('y')
+        x = TensorType('float64', [0, 0, 0, 0, 0])('x')
+        y = TensorType('float64', [0, 0, 0, 0, 0])('y')
         e = Elemwise(add)(x, y)
         f = gof.CLinker().accept(Env([x, y], [e])).make_function()
         xv = numpy.random.rand(2, 2, 2, 2, 2)
@@ -114,7 +114,7 @@ class test_Broadcast(unittest.TestCase):
         assert (f(xv, yv) == zv).all()
 
     def test_same_inputs(self):
-        x = NDArrayType('float64', [0, 0])('x')
+        x = TensorType('float64', [0, 0])('x')
         e = Elemwise(add)(x, x)
         f = gof.CLinker().accept(Env([x], [e])).make_function()
         xv = numpy.random.rand(2, 2)
@@ -134,7 +134,7 @@ class test_CAReduce(unittest.TestCase):
                            ((5, 6), ()),
                            ((2, 3, 4, 5), (0, 1, 3)),
                            ((), ())]:
-            x = NDArrayType('float64', [(entry == 1) for entry in xsh])('x')
+            x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             e = CAReduce(add, axis = tosum)(x)
             if tosum is None: tosum = range(len(xsh))
             f = copy(linker).accept(Env([x], [e])).make_function()

@@ -26,10 +26,10 @@ def inplace_func(inputs, outputs, mode=default_mode):
 
 
 def eval_outputs(outputs):
-    results = inplace_func([], outputs)()
-    if len(results) == 1:
-        return results[0]
-    return results
+    variables = inplace_func([], outputs)()
+    if len(variables) == 1:
+        return variables[0]
+    return variables
 
 _public_verify_grad = verify_grad
 def verify_grad(*args, **kwargs):
@@ -98,7 +98,7 @@ def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 expecteds = self.expected(*inputs)
 
                 try:
-                    results = f(*inputs)
+                    variables = f(*inputs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while calling the Function on the inputs %s" \
@@ -108,16 +108,16 @@ def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
 
                 if not isinstance(expecteds, (list, tuple)):
                     expecteds = (expecteds, )
-                for i, (result, expected) in enumerate(zip(results, expecteds)):
-                    if result.dtype != expected.dtype or result.shape != expected.shape or \
-                            numpy.any(numpy.abs(result - expected) > 1e-10):
+                for i, (variable, expected) in enumerate(zip(variables, expecteds)):
+                    if variable.dtype != expected.dtype or variable.shape != expected.shape or \
+                            numpy.any(numpy.abs(variable - expected) > 1e-10):
                         self.fail("Test %s::%s: Output %s gave the wrong value. With inputs %s, expected %s, got %s."
-                                  % (self.op, testname, i, inputs, expected, result))
+                                  % (self.op, testname, i, inputs, expected, variable))
 
                 for description, check in self.checks.items():
-                    if not check(inputs, results):
+                    if not check(inputs, variables):
                         self.fail("Test %s::%s: Failed check: %s (inputs were %s, outputs were %s)"
-                                  % (self.op, testname, description, inputs, results))
+                                  % (self.op, testname, description, inputs, variables))
 
         def test_bad_build(self):
             for testname, inputs in self.bad_build.items():
@@ -153,7 +153,7 @@ def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                     raise type, exc_value, traceback
 
                 try:
-                    results = f(*inputs)
+                    variables = f(*inputs)
                 except:
                     return
 
@@ -595,7 +595,7 @@ class T_Shape(unittest.TestCase):
 class T_Cast(unittest.TestCase):
     def test_basic(self):
         for type1 in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:
-            x = NDArrayType(dtype = type1, broadcastable = (False, )).make_result()
+            x = TensorType(dtype = type1, broadcastable = (False, )).make_variable()
             for type2, converter in zip(['int8', 'int16', 'int32', 'int64', 'float32', 'float64'],
                                         [convert_to_int8, convert_to_int16, convert_to_int32, convert_to_int64,
                                          convert_to_float32, convert_to_float64]):
@@ -611,51 +611,51 @@ class T_max_and_argmax(unittest.TestCase):
         MaxAndArgmax.debug = 0
 
     def test0(self):
-        n = as_ndarray_result(5.0)
+        n = as_tensor_variable(5.0)
         v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(v == 5.0)
         self.failUnless(i == 0)
 
     def test1(self):
-        n = as_ndarray_result([1,2,3,2,-6])
+        n = as_tensor_variable([1,2,3,2,-6])
         v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(v == 3)
         self.failUnless(i == 2)
 
     def test2(self):
         data = numpy.random.rand(2,3)
-        n = as_ndarray_result(data)
+        n = as_tensor_variable(data)
         v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(numpy.all(v == numpy.max(data,-1)))
         self.failUnless(numpy.all(i == numpy.argmax(data,-1)))
     def test2b(self):
         data = numpy.random.rand(2,3)
-        n = as_ndarray_result(data)
+        n = as_tensor_variable(data)
         v,i = eval_outputs(max_and_argmax(n,0))
         self.failUnless(numpy.all(v == numpy.max(data,0)))
         self.failUnless(numpy.all(i == numpy.argmax(data,0)))
     def test2_invalid(self):
-        n = as_ndarray_result(numpy.random.rand(2,3))
+        n = as_tensor_variable(numpy.random.rand(2,3))
         try:
             eval_outputs(max_and_argmax(n,3))
         except ValueError, e:
             return
         self.fail()
     def test2_invalid_neg(self):
-        n = as_ndarray_result(numpy.random.rand(2,3))
+        n = as_tensor_variable(numpy.random.rand(2,3))
         try:
             eval_outputs(max_and_argmax(n,-3))
         except ValueError, e:
             return
         self.fail()
     def test2_valid_neg(self):
-        n = as_ndarray_result(numpy.random.rand(2,3))
+        n = as_tensor_variable(numpy.random.rand(2,3))
         v,i = eval_outputs(max_and_argmax(n,-1))
         self.failUnless(v.shape == (2,))
         v,i = eval_outputs(max_and_argmax(n,-2))
         self.failUnless(v.shape == (3,))
     def test3(self):
-        n = as_ndarray_result(numpy.random.rand(2,3,4))
+        n = as_tensor_variable(numpy.random.rand(2,3,4))
         v,i = eval_outputs(max_and_argmax(n,0))
         self.failUnless(v.shape == (3,4))
         self.failUnless(i.shape == (3,4))
@@ -674,7 +674,7 @@ class T_subtensor(unittest.TestCase):
 
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
-        n = as_ndarray_result(numpy.ones(()))
+        n = as_tensor_variable(numpy.ones(()))
         try:
             t = n[0]
         except ValueError, e:
@@ -683,7 +683,7 @@ class T_subtensor(unittest.TestCase):
         self.fail()
 
     def test1_err_bounds(self):
-        n = as_ndarray_result(numpy.ones(3))
+        n = as_tensor_variable(numpy.ones(3))
         t = n[7]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         try:
@@ -694,7 +694,7 @@ class T_subtensor(unittest.TestCase):
             return
         self.fail()
     def test1_err_subslice(self):
-        n = as_ndarray_result(numpy.ones(3))
+        n = as_tensor_variable(numpy.ones(3))
         try:
             t = n[slice(0,slice(1,2,None),None)]
         except Exception, e:
@@ -704,21 +704,21 @@ class T_subtensor(unittest.TestCase):
         self.fail()
 
     def test1_ok_range_finite(self):
-        n = as_ndarray_result(numpy.ones(3)*5)
+        n = as_tensor_variable(numpy.ones(3)*5)
         t = n[0:2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
     def test2_ok_range_finite(self):
-        n = as_ndarray_result(numpy.ones((3,4))*5)
+        n = as_tensor_variable(numpy.ones((3,4))*5)
         t = n[0:2,3]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
     def test1_err_invalid(self):
-        n = as_ndarray_result(numpy.ones(1))
+        n = as_tensor_variable(numpy.ones(1))
         try:
             t = n[0,0]
         except ValueError, e:
@@ -726,7 +726,7 @@ class T_subtensor(unittest.TestCase):
             return
         self.fail()
     def test1_ok_elem(self):
-        n = as_ndarray_result(numpy.ones(1)*5)
+        n = as_tensor_variable(numpy.ones(1)*5)
         t = n[0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
@@ -734,14 +734,14 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(tval == 5.0)
     def test1_ok_range_infinite(self):
         #Subtensor.debug = True
-        n = as_ndarray_result(numpy.ones(3)*5)
+        n = as_tensor_variable(numpy.ones(3)*5)
         t = n[1:]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
         self.failUnless(tval.shape == (2,))
         self.failUnless(tval[1] == 5.0)
     def test1_ok_strided(self):
-        n = as_ndarray_result(numpy.ones(5)*5)
+        n = as_tensor_variable(numpy.ones(5)*5)
         t = n[1::2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
@@ -753,7 +753,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(tval[1] == 5.0)
 
     def test2_err_bounds0(self):
-        n = as_ndarray_result(numpy.ones((2,3))*5)
+        n = as_tensor_variable(numpy.ones((2,3))*5)
         t = n[0,4]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         try:
@@ -762,7 +762,7 @@ class T_subtensor(unittest.TestCase):
             return
         self.fail()
     def test2_err_bounds1(self):
-        n = as_ndarray_result(numpy.ones((2,3))*5)
+        n = as_tensor_variable(numpy.ones((2,3))*5)
         t = n[4:5,2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         try:
@@ -771,14 +771,14 @@ class T_subtensor(unittest.TestCase):
             if e[0] != 'index out of bounds':
                 raise
     def test2_ok_elem(self):
-        n = as_ndarray_result(numpy.asarray(range(6)).reshape((2,3)))
+        n = as_tensor_variable(numpy.asarray(range(6)).reshape((2,3)))
         t = n[0,2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
         self.failUnless(tval.shape == ())
         self.failUnless(numpy.all(tval == 2))
     def test2_ok_row(self):
-        n = as_ndarray_result(numpy.asarray(range(6)).reshape((2,3)))
+        n = as_tensor_variable(numpy.asarray(range(6)).reshape((2,3)))
         t = n[1]
         self.failIf(any(n.type.broadcastable))
         self.failUnless(isinstance(t.owner.op, Subtensor))
@@ -787,7 +787,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == [3,4,5]))
 
     def test2_ok_col(self):
-        n = as_ndarray_result(numpy.ones((2,3))*5)
+        n = as_tensor_variable(numpy.ones((2,3))*5)
         t = n[:,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         self.failIf(any(n.type.broadcastable))
@@ -796,7 +796,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_rows_finite(self):
-        n = as_ndarray_result(numpy.ones((4,3))*5)
+        n = as_tensor_variable(numpy.ones((4,3))*5)
         t = n[1:3,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
@@ -804,7 +804,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == 5.0))
 
     def test2_ok_cols_infinite(self):
-        n = as_ndarray_result(numpy.asarray(range(12)).reshape((4,3)))
+        n = as_tensor_variable(numpy.asarray(range(12)).reshape((4,3)))
         t = n[1,2:]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
@@ -812,7 +812,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == 5))
 
     def test2_ok_strided(self):
-        n = as_ndarray_result(numpy.asarray(range(20)).reshape((4,5)))
+        n = as_tensor_variable(numpy.asarray(range(20)).reshape((4,5)))
         t = n[1:4:2,1:5:2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
@@ -820,7 +820,7 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(numpy.all(tval == [[6, 8],[16, 18]]))
 
     def test3_ok_mat(self):
-        n = as_ndarray_result(numpy.asarray(range(24)).reshape((2,3,4)))
+        n = as_tensor_variable(numpy.asarray(range(24)).reshape((2,3,4)))
         t = n[0,0,0]
         self.failUnless(isinstance(t.owner.op, Subtensor))
         tval = eval_outputs([t])
@@ -830,7 +830,7 @@ class T_subtensor(unittest.TestCase):
     def test_grad_1d(self):
         subi = 0
         data = numpy.random.rand(2,3)
-        n = as_ndarray_result(data)
+        n = as_tensor_variable(data)
         z = scal.constant(subi)
         t = n[z:,z]
         gn = grad(sum(exp(t)), n)
@@ -841,7 +841,7 @@ class T_subtensor(unittest.TestCase):
 
     def test_grad_0d(self):
         data = numpy.random.rand(2,3)
-        n = as_ndarray_result(data)
+        n = as_tensor_variable(data)
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
         gval = eval_outputs([gn])
@@ -857,7 +857,7 @@ class T_Join_and_Split(unittest.TestCase):
 
     class Join1(Op):
         def make_node(self, *inputs):
-            inputs = [as_ndarray_result(t) for t in inputs]
+            inputs = [as_tensor_variable(t) for t in inputs]
             outputs = [lscalar()] + [i.type() for i in inputs]
             return Apply(self, inputs, outputs)
         def perform(self, node, inputs, outputs):
@@ -871,8 +871,8 @@ class T_Join_and_Split(unittest.TestCase):
         Join.debug = False
 
     def test_join_scalar(self):
-        a = as_ndarray_result(1)
-        b = as_ndarray_result(2)
+        a = as_tensor_variable(1)
+        b = as_tensor_variable(2)
         try:
             s = join(0, a, b)
         except:
@@ -880,42 +880,42 @@ class T_Join_and_Split(unittest.TestCase):
         self.fail()
 
     def test_stack_mixed_type_constants(self):
-        a = as_ndarray_result(1)
-        b = as_ndarray_result(2.0)
-        c = as_ndarray_result(3.0)
+        a = as_tensor_variable(1)
+        b = as_tensor_variable(2.0)
+        c = as_tensor_variable(3.0)
         s = stack(a, b, c)
 
         want = numpy.array([1, 2, 3])
         self.failUnless((eval_outputs([s]) == want).all())
 
     def test_stack_scalar(self):
-        a = as_ndarray_result(1)
-        b = as_ndarray_result(2)
-        c = as_ndarray_result(3)
+        a = as_tensor_variable(1)
+        b = as_tensor_variable(2)
+        c = as_tensor_variable(3)
         s = stack(a, b, c)
 
         want = numpy.array([1, 2, 3])
         self.failUnless((eval_outputs([s]) == want).all())
 
     def test_join_vector(self):
-        a = as_ndarray_result(numpy.array([1, 2, 3]))
-        b = as_ndarray_result(numpy.array([7, 8, 9]))
+        a = as_tensor_variable(numpy.array([1, 2, 3]))
+        b = as_tensor_variable(numpy.array([7, 8, 9]))
 
         s = join(0, a, b)
         want = numpy.array([1, 2, 3, 7, 8, 9])
         self.failUnless((eval_outputs([s]) == want).all())
 
     def test_stack_vector(self):
-        a = as_ndarray_result(numpy.array([1, 2, 3]))
-        b = as_ndarray_result(numpy.array([7, 8, 9]))
+        a = as_tensor_variable(numpy.array([1, 2, 3]))
+        b = as_tensor_variable(numpy.array([7, 8, 9]))
 
         s = stack(a, b)
         want = numpy.array([[1, 2, 3],[ 7, 8, 9]])
         self.failUnless((eval_outputs([s]) == want).all())
 
     def test_join_matrix0(self):
-        a = as_ndarray_result(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_ndarray_result(numpy.array([[7, 8, 9]]))
+        a = as_tensor_variable(numpy.array([[1, 2, 3], [4, 5, 6]]))
+        b = as_tensor_variable(numpy.array([[7, 8, 9]]))
         s = join(0, a, b)
 
         want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9]])
@@ -924,8 +924,8 @@ class T_Join_and_Split(unittest.TestCase):
     def test_join_matrix1(self):
         av=numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
         bv= numpy.array([[7], [8]],dtype='float32')
-        a = as_ndarray_result(av)
-        b = as_ndarray_result(bv)
+        a = as_tensor_variable(av)
+        b = as_tensor_variable(bv)
         s = join(1, a, b)
         want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
@@ -933,9 +933,9 @@ class T_Join_and_Split(unittest.TestCase):
         verify_grad(self, lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
 
     def test_join_matrix1_using_vertical_stack(self):
-        a = as_ndarray_result(numpy.array([[1, 2, 3], [4, 5, 6]]))
-        b = as_ndarray_result(numpy.array([[7, 8, 9]]))
-        c = as_ndarray_result(numpy.array([[9, 8, 7]]))
+        a = as_tensor_variable(numpy.array([[1, 2, 3], [4, 5, 6]]))
+        b = as_tensor_variable(numpy.array([[7, 8, 9]]))
+        c = as_tensor_variable(numpy.array([[9, 8, 7]]))
         s = vertical_stack(a, b, c)
 
         want = numpy.array([[1, 2, 3],[4,5,6],[7, 8, 9], [9, 8, 7]])
@@ -945,9 +945,9 @@ class T_Join_and_Split(unittest.TestCase):
         av=numpy.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
         bv=numpy.array([[7], [8]],dtype='float32')
         cv=numpy.array([[3, 2, 1], [6, 5, 4]], dtype='float32')
-        a = as_ndarray_result(av)
-        b = as_ndarray_result(bv)
-        c = as_ndarray_result(cv)
+        a = as_tensor_variable(av)
+        b = as_tensor_variable(bv)
+        c = as_tensor_variable(cv)
         s = horizontal_stack(a, b, c)
         want = numpy.array([[1, 2, 3, 7, 3, 2, 1], [4, 5, 6, 8, 6, 5, 4]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
@@ -957,8 +957,8 @@ class T_Join_and_Split(unittest.TestCase):
     def test_join_matrixV(self):
         """variable join axis"""
         v = numpy.array([[1., 2., 3.], [4., 5., 6.]])
-        a = as_ndarray_result(v.copy())
-        b = as_ndarray_result(v.copy())
+        a = as_tensor_variable(v.copy())
+        b = as_tensor_variable(v.copy())
         ax = lscalar()
         s = join(ax, a, b)
 
@@ -979,7 +979,7 @@ class T_Join_and_Split(unittest.TestCase):
         x = lscalar('x')
         y = dscalar('y')
 
-        triple = as_ndarray_result((x, y, 9.0))
+        triple = as_tensor_variable((x, y, 9.0))
         assert 3 == get_vector_length(triple)
 
         a,b,c = triple
@@ -1117,12 +1117,12 @@ class T_exp(unittest.TestCase):
 
 # class T_abs(unittest.TestCase):
 #     def test_impl(self):
-#         t = as_ndarray_result(1.0)
+#         t = as_tensor_variable(1.0)
 #         check_eq(self, t, abs(t), 1.0, 1.0)
 #         check_eq(self, t, abs(t), -1.0, 1.0)
 
 #         for shape in (2,), (3,4):
-#             t = as_ndarray_result(numpy.ones(shape))
+#             t = as_tensor_variable(numpy.ones(shape))
 #             d = numpy.random.rand(*shape)*2-1.0
 #             check_eq(self, t, abs(t), d, abs(d))
 #             check_eq(self, t, abs(t), -d, abs(-d))
@@ -1157,7 +1157,7 @@ class T_exp(unittest.TestCase):
 #         self.failUnless(numpy.all(eval_outputs([t]) == [9,9,9]))
 
 #     def test1(self):
-#         x = as_ndarray_result(numpy.ones((4,5)))
+#         x = as_tensor_variable(numpy.ones((4,5)))
 #         l = ones_like(x[:,0:1])
 #         r = ones_like(x[0:1,:])
 #         xx = x + dot(l,r)
@@ -1165,11 +1165,11 @@ class T_exp(unittest.TestCase):
 
 # class T_sum(unittest.TestCase):
 #     def test_impl(self):
-#         t = as_ndarray_result(0.0)
+#         t = as_tensor_variable(0.0)
 #         check_eq(self, t, Sum(t).out, 1.0, 1.0)
 #         check_eq(self, t, Sum(t).out, -1.0, -1.0)
 
-#         t = as_ndarray_result([0.0, 0.0])
+#         t = as_tensor_variable([0.0, 0.0])
 #         d = numpy.asarray([-0.4, 1.2])
 #         check_eq(self, t, Sum(t).out, d, numpy.sum(d))
 #         check_eq(self, t, Sum(t).out, -d, -numpy.sum(d))
@@ -1179,13 +1179,13 @@ class T_exp(unittest.TestCase):
 #         unittest_tools.seed_rng()
 
 #     def test_elemwise(self):
-#         a = as_ndarray_result(0.0)
-#         b = as_ndarray_result(0.0)
+#         a = as_tensor_variable(0.0)
+#         b = as_tensor_variable(0.0)
 #         check_eq2_both(self, [a,b], mul(a,b), [3.0, 4.0], 12.0)
 #         check_eq2_both(self, [a,b], mul(b,a), [-1.0,2.0], -2.0)
 
-#         a = as_ndarray_result(numpy.ones(2))
-#         b = as_ndarray_result(numpy.ones(2))
+#         a = as_tensor_variable(numpy.ones(2))
+#         b = as_tensor_variable(numpy.ones(2))
 #         aa = numpy.asarray([-0.5, 4.0])
 #         bb = numpy.asarray([-0.5, 2.0])
 #         check_eq2_both(self, [a,b], mul(a,b), [aa,bb], numpy.asarray([0.25, 8.0]))
@@ -1193,8 +1193,8 @@ class T_exp(unittest.TestCase):
 
 #     def test_scalar(self):
 #         r = numpy.random.rand(2,3)
-#         a = as_ndarray_result(r)
-#         b = as_ndarray_result(2.0)
+#         a = as_tensor_variable(r)
+#         b = as_tensor_variable(2.0)
 #         check_eq2_both(self, [a,b], mul(a,b), [r, 2.0], r*2.0)
 #         check_eq2_both(self, [a,b], mul(a,b), [r, 4.0], r*4.0)
 #         self.failUnless(b.data == 2.0)
@@ -1203,7 +1203,7 @@ class T_exp(unittest.TestCase):
 #         r1 = numpy.random.rand(3,5)
 #         r2 = numpy.random.rand(1,5)
 #         r3 = numpy.random.rand(3,1)
-#         a1, a2, a3 = as_ndarray_result(r1), as_ndarray_result(r2), as_ndarray_result(r3)
+#         a1, a2, a3 = as_tensor_variable(r1), as_tensor_variable(r2), as_tensor_variable(r3)
 #         check_eq2_both(self, [a1,a2], mul(a1,a2), [r1, r2], r1*r2)
 #         check_eq2_both(self, [a1,a3], mul(a1,a3), [r1, r3], r1*r3)
 
@@ -1222,8 +1222,8 @@ class T_exp(unittest.TestCase):
 #         verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 #     def test_wrong_shapes(self):
-#         a = as_ndarray_result(numpy.ones(3))
-#         b = as_ndarray_result(numpy.ones(4))
+#         a = as_tensor_variable(numpy.ones(3))
+#         b = as_tensor_variable(numpy.ones(4))
 #         try:
 #             check_eq2(self, [a,b], Mul(a,b).out,
 #                       [numpy.ones(3), numpy.ones(4)], 1.0)
@@ -1262,8 +1262,8 @@ class T_exp(unittest.TestCase):
 #     def test0(self):
 #         verify_grad(self, Log, [numpy.random.rand(3,1)+0.0001])
 #     def test1(self):
-#         a = as_ndarray_result(numpy.ones(2))
-#         b = as_ndarray_result(numpy.ones(2))
+#         a = as_tensor_variable(numpy.ones(2))
+#         b = as_tensor_variable(numpy.ones(2))
 #         aa = numpy.asarray([0.5, 4.0])
 #         bb = numpy.asarray([0.5, 2.0])
 #         check_eq2(self, [a], log(a), [aa], numpy.log(numpy.asarray(aa)))
@@ -1292,12 +1292,12 @@ class test_matinv(unittest.TestCase):
         # symbolic program
         # broadcastable=[False,False] means that the shape of matrix is two dimensional,
         # and none of the dimensions are constrained to have length 1.
-        # Note that NDArrayType's constructor does not actually allocate any memory.
-        # TODO: Make NDArrayType syntax more explicit, and maybe give shape or number of dimensions.
+        # Note that TensorType's constructor does not actually allocate any memory.
+        # TODO: Make TensorType syntax more explicit, and maybe give shape or number of dimensions.
         a, b = matrices('ab')
         ab = a*b
-        # Here, as_ndarray_result actually uses the data allocated by numpy.
-        diff = ab - as_ndarray_result(numpy.ones((dim,dim)))
+        # Here, as_tensor_variable actually uses the data allocated by numpy.
+        diff = ab - as_tensor_variable(numpy.ones((dim,dim)))
         # Sum of squared errors
         ssdiff = sum((diff**2.0))
 
@@ -1348,7 +1348,7 @@ class t_dot(unittest.TestCase):
             x = numpy.asarray(x)
             return type(x), x.dtype, x.shape
         nz = numpy.dot(x,y)
-        tz = eval_outputs([dot(as_ndarray_result(x), as_ndarray_result(y))])
+        tz = eval_outputs([dot(as_tensor_variable(x), as_tensor_variable(y))])
         self.failUnless(tz.dtype == nz.dtype)
         self.failUnless(tz.shape == nz.shape)
         self.failUnless(_approx_eq(nz, tz))
@@ -1415,7 +1415,7 @@ class T_tensorfromscalar(unittest.TestCase):
 
     def test1(self):
         s = scal.constant(56)
-        t = as_ndarray_result(s)
+        t = as_tensor_variable(s)
         self.failUnless(t.owner.op is tensor_from_scalar)
         self.failUnless(t.type.broadcastable == (), t.type.broadcastable)
         self.failUnless(t.type.ndim == 0, t.type.ndim)
@@ -1429,13 +1429,13 @@ class T_tensorfromscalar(unittest.TestCase):
 
 
 # def _tensor(data, broadcastable=None, name=None):
-#     """Return a NDArrayType containing given data"""
+#     """Return a TensorType containing given data"""
 #     data = numpy.asarray(data)
 #     if broadcastable is None:
 #         broadcastable = [s==1 for s in data.shape]
 #     elif broadcastable in [0, 1]:
 #         broadcastable = [broadcastable] *  len(data.shape)
-#     rval = NDArrayType(data.dtype, broadcastable, name)
+#     rval = TensorType(data.dtype, broadcastable, name)
 #     rval.data = data # will raise if broadcastable was mis-specified
 #     return rval
 
@@ -1446,7 +1446,7 @@ class T_tensorfromscalar(unittest.TestCase):
 #         unittest_tools.seed_rng()
 #     def test0(self): # allocate from a scalar float
 #         t = _tensor(1.0)
-#         self.failUnless(isinstance(t, NDArrayType))
+#         self.failUnless(isinstance(t, TensorType))
 #         self.failUnless(t.dtype == 'float64')
 #         self.failUnless(t.broadcastable == ())
 #         self.failUnless(t.role == None)
@@ -1455,25 +1455,25 @@ class T_tensorfromscalar(unittest.TestCase):
 #         self.failUnless(t.data == 1.0)
 #     def test0_int(self): # allocate from a scalar float
 #         t = _tensor(1)
-#         self.failUnless(isinstance(t, NDArrayType))
+#         self.failUnless(isinstance(t, TensorType))
 #         self.failUnless(t.dtype == 'int64' or t.dtype == 'int32')
 #     def test1(self): # allocate from a vector of ints, not broadcastable
 #         t = _tensor(numpy.ones(5,dtype='int32'))
-#         self.failUnless(isinstance(t, NDArrayType))
+#         self.failUnless(isinstance(t, TensorType))
 #         self.failUnless(t.dtype == 'int32')
 #         self.failUnless(t.broadcastable == (0,))
 #         self.failUnless(isinstance(t.data, numpy.ndarray))
 #         self.failUnless(str(t.data.dtype) == 'int32')
 #     def test2(self): # allocate from a column matrix of complex with name
 #         t = _tensor(numpy.ones((5,1),dtype='complex64'),name='bart')
-#         self.failUnless(isinstance(t, NDArrayType))
+#         self.failUnless(isinstance(t, TensorType))
 #         self.failUnless(t.dtype == 'complex64')
 #         self.failUnless(t.broadcastable == (0,1))
 #         self.failUnless(isinstance(t.data, numpy.ndarray))
 #         self.failUnless(t.name == 'bart')
 #     def test2b(self): # allocate from a column matrix, not broadcastable
 #         t = _tensor(numpy.ones((5,1),dtype='complex64'),broadcastable=0)
-#         self.failUnless(isinstance(t, NDArrayType))
+#         self.failUnless(isinstance(t, TensorType))
 #         self.failUnless(t.dtype == 'complex64')
 #         self.failUnless(t.broadcastable == (0,0))
 #         self.failUnless(isinstance(t.data, numpy.ndarray))
@@ -1493,39 +1493,39 @@ class T_tensorfromscalar(unittest.TestCase):
 #             t.data = numpy.ones((2,7,1))
 #             self.fail()
 #         except ValueError, e:
-#             self.failUnless(e[0] is NDArrayType.filter.E_rank)
+#             self.failUnless(e[0] is TensorType.filter.E_rank)
 #         try:
 #             t.data = numpy.ones(1)
 #             self.fail()
 #         except ValueError, e:
-#             self.failUnless(e[0] is NDArrayType.filter.E_rank)
+#             self.failUnless(e[0] is TensorType.filter.E_rank)
 #     def test_data_badrank1(self):
 #         t = _tensor(numpy.ones((1,1),dtype='complex64'), broadcastable=1)
 #         try:
 #             t.data = numpy.ones((1,1,1))
 #             self.fail()
 #         except ValueError, e:
-#             self.failUnless(e[0] is NDArrayType.filter.E_rank)
+#             self.failUnless(e[0] is TensorType.filter.E_rank)
 #         try:
 #             t.data = numpy.ones(1)
 #             self.fail()
 #         except ValueError, e:
-#             self.failUnless(e[0] is NDArrayType.filter.E_rank)
+#             self.failUnless(e[0] is TensorType.filter.E_rank)
 #     def test_data_badshape0(self):
 #         t = _tensor(numpy.ones((1,1),dtype='complex64'), broadcastable=1)
 #         try:
 #             t.data = numpy.ones((1,2))
 #             self.fail()
 #         except ValueError, e:
-#             self.failUnless(e[0] is NDArrayType.filter.E_shape)
+#             self.failUnless(e[0] is TensorType.filter.E_shape)
 #         try:
 #             t.data = numpy.ones((0,1))
 #             self.fail()
 #         except ValueError, e:
-#             self.failUnless(e[0] is NDArrayType.filter.E_shape)
+#             self.failUnless(e[0] is TensorType.filter.E_shape)
 
 #     def test_cast0(self):
-#         t = NDArrayType('float32', [0])
+#         t = TensorType('float32', [0])
 #         t.data = numpy.random.rand(4) > 0.5
 #         self.failUnless(str(t.data.dtype) == t.dtype)
 
@@ -1576,13 +1576,13 @@ class test_grad(unittest.TestCase):
             return self.gval0, self.gval1
 
     def test_1param(self):
-        """grad: Test passing a single result param"""
+        """grad: Test passing a single variable param"""
         o = test_grad.O()
         a1 = o.make_node()
         self.failUnless(o.gval0 is grad(a1.outputs[0], a1.inputs[0]))
 
     def test_Nparam(self):
-        """grad: Test passing multiple result params"""
+        """grad: Test passing multiple variable params"""
         o = test_grad.O()
         a1 = o.make_node()
         g0,g1 = grad(a1.outputs[0], a1.inputs)
@@ -1594,7 +1594,7 @@ class test_grad(unittest.TestCase):
         o = test_grad.O()
         a1 = o.make_node()
         g = grad(a1.outputs[0], a1.outputs[1])
-        self.failUnless(isinstance(g, NDArrayConstant))
+        self.failUnless(isinstance(g, TensorConstant))
         self.failUnless(g.data == 0)
         try:
             grad(a1.outputs[0], 'wtf')
@@ -1609,7 +1609,7 @@ class test_grad(unittest.TestCase):
         g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')])
         self.failUnless(o.gval0 is g0)
         self.failUnless(o.gval1 is g1)
-        self.failUnless(isinstance(g2, NDArrayConstant))
+        self.failUnless(isinstance(g2, TensorConstant))
         self.failUnless(g2.data == 0)
 
 class T_op_cache(unittest.TestCase):
@@ -1712,7 +1712,7 @@ def test_flatten_outdim2():
     tensor.verify_grad(None, Flatten(2), [a_val])
 
 def test_flatten_outdim2_of_3():
-    a = NDArrayType('float64', (False, False, False))()
+    a = TensorType('float64', (False, False, False))()
     c = flatten(a, 2)
     f = inplace_func([a], c)
     a_val = numpy.asarray([[[0,1],[2,3]], [[4,5],[6,7]]], dtype='float64')
@@ -1783,7 +1783,7 @@ class test_tensordot(unittest.TestCase):
         tensor.verify_grad(None, TensorDot(axes), [aval,bval])
 
         # test ndarray-matrix, sum over one dim of matrix
-        atens = NDArrayType('float64', broadcastable=(False,)*4)()
+        atens = TensorType('float64', broadcastable=(False,)*4)()
         axes = ((2,),(1,))
         c = tensordot(axes)(atens, bmat)
         f4 = inplace_func([atens,bmat],c)
@@ -1794,8 +1794,8 @@ class test_tensordot(unittest.TestCase):
         tensor.verify_grad(None, TensorDot(axes), [aval,bval])
 
         # test ndarray-ndarray
-        atens = NDArrayType('float64', broadcastable=(False,)*4)()
-        btens = NDArrayType('float64', broadcastable=(False,)*3)()
+        atens = TensorType('float64', broadcastable=(False,)*4)()
+        btens = TensorType('float64', broadcastable=(False,)*3)()
         axes = ((1,3),(0,2))
         c = tensordot(axes)(atens, btens)
         f5 = inplace_func([atens,btens],c)

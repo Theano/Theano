@@ -179,7 +179,7 @@ class MergeOptimizer(Optimizer):
     """WRITEME
     Merges parts of the graph that are identical, i.e. parts that
     take the same inputs and carry out the asme computations so we
-    can avoid doing them more than once. Also merges results that
+    can avoid doing them more than once. Also merges variables that
     are constant.
     """
 
@@ -188,8 +188,8 @@ class MergeOptimizer(Optimizer):
 
     def apply_constant_merge(self, env):
         seen_constants = set()
-        const_sig = _metadict()     # result -> result.signature()  (for constants)
-        const_sig_inv = _metadict() # signature -> result (for constants)
+        const_sig = _metadict()     # variable -> variable.signature()  (for constants)
+        const_sig_inv = _metadict() # signature -> variable (for constants)
         for node in _list_of_nodes(env):
             for i, c in enumerate([r for r in node.inputs if isinstance(r, graph.Constant)]):
                 if id(c) in seen_constants:
@@ -211,13 +211,13 @@ class MergeOptimizer(Optimizer):
 
     def exptime_apply_node_merge(self, env):
         # we clear the dicts because the Constants signatures are not necessarily hashable
-        # and it's more efficient to give them an integer like the other Results
+        # and it's more efficient to give them an integer like the other Variables
 
-        symbol_idx = {}       #result -> int
-        symbol_idx_inv = {}   #int -> result (inverse of symbol_idx)
+        symbol_idx = {}       #variable -> int
+        symbol_idx_inv = {}   #int -> variable (inverse of symbol_idx)
 
         #add all graph sources to the symbol_idx dictionaries (arbitrary order)
-        for i, r in enumerate(r for r in env.results if r.owner is None):
+        for i, r in enumerate(r for r in env.variables if r.owner is None):
             symbol_idx[r] = i
             symbol_idx_inv[i] = r
 
@@ -246,7 +246,7 @@ class MergeOptimizer(Optimizer):
     
     def apply_node_merge(self, env):
         # we clear the dicts because the Constants signatures are not necessarily hashable
-        # and it's more efficient to give them an integer like the other Results
+        # and it's more efficient to give them an integer like the other Variables
 
         nodes_seen = {}
 
@@ -336,7 +336,7 @@ class LocalOptimizer(object):
 
         - False to indicate that no optimization can be applied to this `node`; or
 
-        - <list of results> to use in place of `node`'s outputs in the greater graph.
+        - <list of variables> to use in place of `node`'s outputs in the greater graph.
 
         :type node: an Apply instance
 
@@ -487,13 +487,13 @@ class PatternSub(LocalOptimizer):
     place. The input pattern cannot just be a string but the output
     pattern can.
 
-    If you put a constant result in the input pattern, there will be a
-    match iff a constant result with the same value and the same type
+    If you put a constant variable in the input pattern, there will be a
+    match iff a constant variable with the same value and the same type
     is found in its place.
 
     You can add a constraint to the match by using the dict(...)  form
     described above with a 'constraint' key. The constraint must be a
-    function that takes the env and the current Result that we are
+    function that takes the env and the current Variable that we are
     trying to match and returns True or False according to an
     arbitrary criterion.
 
@@ -718,7 +718,7 @@ class NavigatorOptimizer(Optimizer):
     def process_node(self, env, node, lopt = None):
         """
         This function will use `lopt` to `transform` the `node`.  The `transform` method will
-        return either False or a list of Results that are intended to replace `node.outputs`.
+        return either False or a list of Variables that are intended to replace `node.outputs`.
 
         If the env accepts the replacement, then the optimization is successful, and this
         function returns True.

@@ -18,7 +18,7 @@ have been calculated by another operation. For each of the outputs,
 the variables associated to them will be declared and initialized.
 
 The operation then has to compute what it needs to using the
-input variables and place the results in the output variables.
+input variables and place the variables in the output variables.
 
 
 What needs to be defined
@@ -54,13 +54,13 @@ application of the current Op on a list of inputs, producing a list of
 outputs. ``input_names`` and ``output_names`` arguments contain as
 many strings as there are inputs and outputs to the application of the
 Op and they correspond to the ``name`` that is passed to the type of
-each Result in these lists. For example, if ``node.inputs[0].type ==
+each Variable in these lists. For example, if ``node.inputs[0].type ==
 double``, then ``input_names[0]`` is the ``name`` argument passed to
 ``double.c_declare`` etc. when the first input is processed by Theano.
 
 In a nutshell, ``input_names`` and ``output_names`` parameterize the
 names of the inputs your operation needs to use and the outputs it
-needs to put results into. But this will be clear with the examples.
+needs to put variables into. But this will be clear with the examples.
 
 
 Defining the methods
@@ -92,7 +92,7 @@ had more than one output, you would just set the variable(s) for
 each output to what they should be.
 
 .. warning::
-   Do *NOT* use C's ``return`` statement to return the result(s) of
+   Do *NOT* use C's ``return`` statement to return the variable(s) of
    the computations. Set the output variables directly as shown
    above. Theano will pick them up for you.
 

@@ -67,7 +67,7 @@ squared difference between two matrices ``x`` and ``y`` at the same time:
 >>> diff_squared = diff**2
 >>> f = function([x, y], [diff, abs_diff, diff_squared])
 
-When we use the function, it will return the two results (the printing
+When we use the function, it will return the two variables (the printing
 was reformatted for readability):
 
 >>> f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
@@ -136,7 +136,7 @@ with respect to the second. In this way, Theano can be used for
 
 .. note::
 
-   The result of ``T.grad`` has the same dimensions as the
+   The variable of ``T.grad`` has the same dimensions as the
    second argument. This is exactly like the first derivative if the
    first argument is a scalar or a tensor of size 1 but not if it is
    larger. For more information on the semantics when the first
@@ -205,11 +205,11 @@ First let's define the accumulator function:
 The first argument is a pair. As we saw in the previous section, this
 means that ``inc`` is an input with a default value of 1. The second
 argument has syntax that creates an internal state.  The syntax is
-``((state_result, new_state_result), initial_value)``.
-The internal storage associated with ``state_result`` is initialized to
+``((state_variable, new_state_variable), initial_value)``.
+The internal storage associated with ``state_variable`` is initialized to
 ``initial_value``.  Every time ``accumulator`` is called, the value
 of the internal ``state`` will be replaced by the value computed as
-``new_state``. In this case, the state will be replaced by the result
+``new_state``. In this case, the state will be replaced by the variable
 of incrementing it by ``inc``.
 
 We recommend (insist?) that internal state arguments occur after any
@@ -223,8 +223,8 @@ of other inputs.
 
 Anyway, let's try it out! The state can be accessed using the square
 brackets notation ``[]``. You may access the state either by using
-the :ref:`result` representing it or the name of that
-:ref:`result`. In our example we can access the state either with the
+the :ref:`variable` representing it or the name of that
+:ref:`variable`. In our example we can access the state either with the
 ``state`` object or the string 'state'.
 
 >>> accumulator[state]

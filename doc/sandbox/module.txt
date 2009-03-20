@@ -50,12 +50,12 @@ Usage:
 
 .. code-block:: python
 
-    #module.state = result
+    #module.state = variable
     module.state = T.scalar()
 
 A ``Member`` represents a state variable (i.e., whose value remains after a ``Method`` is called). It will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage (i.e. where the value is stored) will be shared by all ``Methods`` of the ``Module``.
 
-A ``Result`` which is the result of a previous computation (by opposition to being ``updated``) is not a ``Member``. Internally this is called an External. You should not need to care about this.
+A ``Variable`` which is the variable of a previous computation (by opposition to being ``updated``) is not a ``Member``. Internally this is called an External. You should not need to care about this.
 
 For sharing state between modules, see ``Inner Module`` section.
 
@@ -100,7 +100,7 @@ Module Interface
 
     def resolve(self, symbol, filter = None)
 
-Resolves a symbol in this module. The symbol can be a string or a ``Result``. If the string contains dots (eg ``"x.y"``), the module will resolve the symbol hierarchically in its inner modules. The filter argument is None or a class and it can be used to restrict the search to ``Member`` or ``Method`` instances for example.
+Resolves a symbol in this module. The symbol can be a string or a ``Variable``. If the string contains dots (eg ``"x.y"``), the module will resolve the symbol hierarchically in its inner modules. The filter argument is None or a class and it can be used to restrict the search to ``Member`` or ``Method`` instances for example.
 
 
 .. code-block:: python

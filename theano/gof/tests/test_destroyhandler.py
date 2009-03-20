@@ -3,7 +3,7 @@ import unittest
 
 from theano.gof.type import Type
 from theano.gof import graph
-from theano.gof.graph import Result, Apply
+from theano.gof.graph import Variable, Apply
 from theano.gof.op import Op
 from theano.gof.opt import *
 
@@ -17,8 +17,8 @@ PatternOptimizer = lambda p1, p2, ign=True: OpKeyOptimizer(PatternSub(p1, p2), i
 OpSubOptimizer = lambda op1, op2, fail=NavigatorOptimizer.warn_ignore, ign=True: TopoOptimizer(OpSub(op1, op2), ignore_newtrees=ign, failure_callback = fail)
 
 
-def as_result(x):
-    assert isinstance(x, Result)
+def as_variable(x):
+    assert isinstance(x, Variable)
     return x
 
 
@@ -31,8 +31,8 @@ class MyType(Type):
         return isinstance(other, MyType)
 
 
-def MyResult(name):
-    return Result(MyType(), None, None, name = name)
+def MyVariable(name):
+    return Variable(MyType(), None, None, name = name)
 
 def MyValue(data):
     return graph.Value(MyType(), data = data)
@@ -50,11 +50,11 @@ class MyOp(Op):
     
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_result, inputs)
+        inputs = map(as_variable, inputs)
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
-        outputs = [MyResult(self.name + "_R") for i in xrange(self.nout)]
+        outputs = [MyVariable(self.name + "_R") for i in xrange(self.nout)]
         return Apply(self, inputs, outputs)
 
     def __str__(self):
@@ -70,9 +70,9 @@ dot = MyOp(2, 'Dot')
 
 
 def inputs():
-    x = MyResult('x')
-    y = MyResult('y')
-    z = MyResult('z')
+    x = MyVariable('x')
+    y = MyVariable('y')
+    z = MyVariable('z')
     return x, y, z
 
 _Env = Env

@@ -18,13 +18,13 @@ class InconsistencyError(Exception):
 
 class Env(utils.object2):
     """ WRITEME
-    An Env represents a subgraph bound by a set of input results and a
-    set of output results. The inputs list should contain all the inputs
-    on which the outputs depend. Results of type Value or Constant are
+    An Env represents a subgraph bound by a set of input variables and a
+    set of output variables. The inputs list should contain all the inputs
+    on which the outputs depend. Variables of type Value or Constant are
     not counted as inputs.
 
     The Env supports the replace operation which allows to replace a
-    result in the subgraph by another, e.g. replace (x + x).out by (2
+    variable in the subgraph by another, e.g. replace (x + x).out by (2
     * x).out. This is the basis for optimization in theano.
 
     It can also be "extended" using env.extend(some_object). See the
@@ -65,7 +65,7 @@ class Env(utils.object2):
     - feature.on_setup_node(env, node):
         WRITEME
 
-    - feature.on_setup_result(env, result):
+    - feature.on_setup_variable(env, variable):
         WRITEME
 
     """
@@ -90,8 +90,8 @@ class Env(utils.object2):
         # All nodes in the subgraph defined by inputs and outputs are cached in nodes
         self.nodes = set()
         
-        # Ditto for results
-        self.results = set()
+        # Ditto for variables
+        self.variables = set()
 
         self.inputs = list(inputs)
         self.outputs = outputs
@@ -104,17 +104,17 @@ class Env(utils.object2):
                 raise ValueError("One of the provided inputs is the output of an already existing node. " \
                                  "If that is okay, either discard that input's owner or use graph.clone.")
             self.__setup_r__(input)
-            self.results.add(input)
+            self.variables.add(input)
 
         self.__import_r__(outputs)
         for i, output in enumerate(outputs):
             output.clients.append(('output', i))
 
         self.node_locks = {}
-        self.result_locks = {}
+        self.variable_locks = {}
 
 
-    ### Setup a Result ###
+    ### Setup a Variable ###
 
     def __setup_r__(self, r):
         # sets up r so it belongs to this env
@@ -122,7 +122,7 @@ class Env(utils.object2):
             raise Exception("%s is already owned by another env" % r)
         r.env = self
         r.clients = []
-        #self.execute_callbacks('on_setup_result', r)
+        #self.execute_callbacks('on_setup_variable', r)
 
     def __setup_node__(self, node):
         # sets up node so it belongs to this env
@@ -134,23 +134,23 @@ class Env(utils.object2):
 
     def disown(self):
         """ WRITEME
-        Cleans up all of this Env's nodes and results so they are not
+        Cleans up all of this Env's nodes and variables so they are not
         associated with this Env anymore.
         
         The Env should not be used anymore after disown is called.
 
         This may not clean everything this Env's features set in the
-        nodes and results. If there are no features, this should set
+        nodes and variables. If there are no features, this should set
         them back to what they were originally.
         """
         for node in self.nodes:
             del node.env
             del node.deps
-        for result in self.results:
-            del result.env
-            del result.clients
+        for variable in self.variables:
+            del variable.env
+            del variable.clients
         self.nodes = set()
-        self.results = set()
+        self.variables = set()
         self.inputs = None
         self.outputs = None
 
@@ -166,7 +166,7 @@ class Env(utils.object2):
 
     def __add_clients__(self, r, new_clients):
         """ WRITEME
-        r -> result
+        r -> variable
         new_clients -> list of (node, i) pairs such that node.inputs[i] is r.
 
         Updates the list of clients of r with new_clients.
@@ -179,7 +179,7 @@ class Env(utils.object2):
 
     def __remove_clients__(self, r, clients_to_remove, prune = True):
         """ WRITEME
-        r -> result
+        r -> variable
         clients_to_remove -> list of (op, i) pairs such that node.inputs[i] is not r anymore.
 
         Removes all from the clients list of r.
@@ -200,26 +200,26 @@ class Env(utils.object2):
 
     ### import ###
 
-    def __import_r__(self, results):
-        # Imports the owners of the results
+    def __import_r__(self, variables):
+        # Imports the owners of the variables
         r_owner_done = set()
-        for node in [r.owner for r in results if r.owner is not None]:
+        for node in [r.owner for r in variables if r.owner is not None]:
             if node not in r_owner_done:
                 r_owner_done.add(node)
                 self.__import__(node)
-        for r in results:
+        for r in variables:
             if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
                 raise TypeError("Undeclared input", r)
             if not getattr(r, 'env', None) is self:
                 self.__setup_r__(r)
-            self.results.add(r)
+            self.variables.add(r)
 
     def __import__(self, node, check = True):
         # We import the nodes in topological order. We only are interested
-        # in new nodes, so we use all results we know of as if they were the input set.
+        # in new nodes, so we use all variables we know of as if they were the input set.
         # (the functions in the graph module only use the input set to
         # know where to stop going down)
-        new_nodes = graph.io_toposort(self.results, node.outputs)
+        new_nodes = graph.io_toposort(self.variables, node.outputs)
 
         if check:
             for node in new_nodes:
@@ -237,11 +237,11 @@ class Env(utils.object2):
             self.nodes.add(node)
             for output in node.outputs:
                 self.__setup_r__(output)
-                self.results.add(output)
+                self.variables.add(output)
             for i, input in enumerate(node.inputs):
-                if input not in self.results:
+                if input not in self.variables:
                     self.__setup_r__(input)
-                    self.results.add(input)
+                    self.variables.add(input)
                 self.__add_clients__(input, [(node, i)])
             assert node.env is self
             self.execute_callbacks('on_import', node)
@@ -249,13 +249,13 @@ class Env(utils.object2):
 
     ### prune ###
 
-    def __prune_r__(self, results):
-        # Prunes the owners of the results.
-        for node in set(r.owner for r in results if r.owner is not None):
+    def __prune_r__(self, variables):
+        # Prunes the owners of the variables.
+        for node in set(r.owner for r in variables if r.owner is not None):
             self.__prune__(node)
-        for r in results:
-            if not r.clients and r in self.results:
-                self.results.remove(r)
+        for r in variables:
+            if not r.clients and r in self.variables:
+                self.variables.remove(r)
 
     def __prune__(self, node):
         if node not in self.nodes:
@@ -270,7 +270,7 @@ class Env(utils.object2):
             if self.clients(output) or output in self.outputs: #output in self.outputs or self.clients(output):
                 return
         self.nodes.remove(node)
-        self.results.difference_update(node.outputs)
+        self.variables.difference_update(node.outputs)
         self.execute_callbacks('on_prune', node)
         
         for i, input in enumerate(node.inputs):
@@ -295,14 +295,14 @@ class Env(utils.object2):
         if node == 'output':
             r = self.outputs[i]
             if not r.type == new_r.type:
-                raise TypeError("The type of the replacement must be the same as the type of the original Result.", r, new_r)
+                raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r)
             self.outputs[i] = new_r
         else:
             if node.env is not self:
                 raise Exception("Cannot operate on %s because it does not belong to this Env" % node)
             r = node.inputs[i]
             if not r.type == new_r.type:
-                raise TypeError("The type of the replacement must be the same as the type of the original Result.", r, new_r)
+                raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r)
             node.inputs[i] = new_r
         
         self.__import_r__([new_r])
@@ -324,9 +324,9 @@ class Env(utils.object2):
         if r.env is not self:
             raise Exception("Cannot replace %s because it does not belong to this Env" % r, str(reason))
         if not r.type == new_r.type:
-            raise TypeError("The type of the replacement must be the same as the type of the original Result.", r, new_r, r.type, new_r.type, str(reason))
-        if r not in self.results:
-            # this result isn't in the graph... don't raise an exception here, just return silently
+            raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r, r.type, new_r.type, str(reason))
+        if r not in self.variables:
+            # this variable isn't in the graph... don't raise an exception here, just return silently
             # because it makes it easier to implement some optimizations for multiple-output ops
             return
 
@@ -464,30 +464,30 @@ class Env(utils.object2):
         for node in nodes:
             if node.env is not self:
                 raise Exception("Node should belong to the env.", node)
-            for i, result in enumerate(node.inputs):
-                if result.env is not self:
-                    raise Exception("Input of node should belong to the env.", result, (node, i))
-                if (node, i) not in result.clients:
-                    raise Exception("Inconsistent clients list.", (node, i), result.clients)
-        results = set(graph.results(self.inputs, self.outputs))
-        if set(self.results) != results:
-            missing = results.difference(self.results)
-            excess = self.results.difference(results)
-            raise Exception("The results are inappropriately cached. missing, in excess: ", missing, excess)
-        for result in results:
-            if result.owner is None and result not in self.inputs and not isinstance(result, graph.Value):
-                raise Exception("Undeclared input.", result)
-            if result.env is not self:
-                raise Exception("Result should belong to the env.", result)
-            for node, i in result.clients:
+            for i, variable in enumerate(node.inputs):
+                if variable.env is not self:
+                    raise Exception("Input of node should belong to the env.", variable, (node, i))
+                if (node, i) not in variable.clients:
+                    raise Exception("Inconsistent clients list.", (node, i), variable.clients)
+        variables = set(graph.variables(self.inputs, self.outputs))
+        if set(self.variables) != variables:
+            missing = variables.difference(self.variables)
+            excess = self.variables.difference(variables)
+            raise Exception("The variables are inappropriately cached. missing, in excess: ", missing, excess)
+        for variable in variables:
+            if variable.owner is None and variable not in self.inputs and not isinstance(variable, graph.Value):
+                raise Exception("Undeclared input.", variable)
+            if variable.env is not self:
+                raise Exception("Variable should belong to the env.", variable)
+            for node, i in variable.clients:
                 if node == 'output':
-                    if self.outputs[i] is not result:
-                        raise Exception("Inconsistent clients list.", result, self.outputs[i])
+                    if self.outputs[i] is not variable:
+                        raise Exception("Inconsistent clients list.", variable, self.outputs[i])
                     continue
                 if node not in nodes:
-                    raise Exception("Client not in env.", result, (node, i))
-                if node.inputs[i] is not result:
-                    raise Exception("Inconsistent clients list.", result, node.inputs[i])
+                    raise Exception("Client not in env.", variable, (node, i))
+                if node.inputs[i] is not variable:
+                    raise Exception("Inconsistent clients list.", variable, node.inputs[i])
 
     def __str__(self):
         return "[%s]" % ", ".join(graph.as_string(self.inputs, self.outputs))

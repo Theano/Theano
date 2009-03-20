@@ -6,7 +6,7 @@ import unittest
 from theano import gof
 from theano.tensor.opt import *
 from theano import tensor
-from theano.tensor import NDArrayType
+from theano.tensor import TensorType
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint
@@ -18,9 +18,9 @@ from theano import function
 
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
-    x = NDArrayType(broadcastable = xbc, dtype = 'float64')('x')
-    y = NDArrayType(broadcastable = ybc, dtype = 'float64')('y')
-    z = NDArrayType(broadcastable = zbc, dtype = 'float64')('z')
+    x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
+    y = TensorType(broadcastable = ybc, dtype = 'float64')('y')
+    z = TensorType(broadcastable = zbc, dtype = 'float64')('z')
     return x, y, z
 
 

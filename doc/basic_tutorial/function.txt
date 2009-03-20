@@ -26,17 +26,17 @@ The idea here is that we've compiled the symbolic graph (``2*x``) into a functio
 Inputs
 ======
 
-The ``inputs`` argument to ``theano.function`` is a list, containing the ``Result`` instances for which values will be specified at the time of the function call.  But inputs can be more than just Results.  
-``In`` instances let us attach properties to ``Results`` to tell function more about how to use them.
+The ``inputs`` argument to ``theano.function`` is a list, containing the ``Variable`` instances for which values will be specified at the time of the function call.  But inputs can be more than just Variables.  
+``In`` instances let us attach properties to ``Variables`` to tell function more about how to use them.
 
-**In(result, name=None, value=None, update=None, mutable=False)** returns an ``In`` instance:
+**In(variable, name=None, value=None, update=None, mutable=False)** returns an ``In`` instance:
 
-  - ``result``: a Result instance. 
+  - ``variable``: a Variable instance. 
 
     This will be assigned a value before running the function,
     not computed from its owner.
   
-  - ``name``: Any type. (If autoname_input=True, defaults to result.name). 
+  - ``name``: Any type. (If autoname_input=True, defaults to variable.name). 
 
     If name is a valid Python identifier, this input can be set by
     ``kwarg``, and its value can be accessed by ``self.<name>``.
@@ -49,9 +49,9 @@ The ``inputs`` argument to ``theano.function`` is a list, containing the ``Resul
 
     Default: ``None``
 
-  - ``update``: Result instance
+  - ``update``: Variable instance
 
-    This expression Result will replace ``value`` after each function call.
+    This expression Variable will replace ``value`` after each function call.
 
     Default: ``None``
 
@@ -63,7 +63,7 @@ The ``inputs`` argument to ``theano.function`` is a list, containing the ``Resul
 
   - ``autoname``: Bool
 
-    ``True``: if ``name`` is None and the Result has a name, it will be taken
+    ``True``: if ``name`` is None and the Variable has a name, it will be taken
     as the input's name.
 
     ``False``: the name is the exact value passed as the name parameter
@@ -121,7 +121,7 @@ Advanced: Sharing Storage Between Functions
 -------------------------------------------
 
 ``value`` can be a :api:`theano.gof.Container` as well as a literal.
-This permits linking a value of a Result in one function to the value of a Result in another function.
+This permits linking a value of a Variable in one function to the value of a Variable in another function.
 By using a ``Container`` as a value we can implement shared variables between functions.
 
 For example, consider the following program.
@@ -141,7 +141,7 @@ For example, consider the following program.
 The functions ``inc`` and ``dec`` operate on a shared internal value for ``s``.
 Theano's Module system uses this mechanism to share storage between Methods.
 
-The container being shared doesn't have to correspond to the same Result in both functions, 
+The container being shared doesn't have to correspond to the same Variable in both functions, 
 but that's usually how this mechanism is used.
 
 Input Argument Restrictions
@@ -161,11 +161,11 @@ The following restrictions apply to the inputs to ``theano.function``:
   have the same name, then the function will raise an exception. [***Which
   exception?**]
 
-- Two ``In`` instances may not name the same Result. I.e. you cannot
+- Two ``In`` instances may not name the same Variable. I.e. you cannot
 give the same parameter multiple times.
 
 If no name is specified explicitly for an In instance, then its name
-will be taken from the Result's name. Note that this feature can cause
+will be taken from the Variable's name. Note that this feature can cause
 harmless-looking input lists to not satisfy the two conditions above.
 In such cases, Inputs should be named explicitly to avoid problems
 such as duplicate names, and named arguments preceding unnamed ones.
@@ -198,7 +198,7 @@ Both ``value`` and ``container`` properties provide dictionary-like access based
 
 - integer keys: you can look up a value/container by its position in the input list;
 - name keys: you can look up a value/container by its name;
-- Result keys: you can look up a value/container by the Result it corresponds to.
+- Variable keys: you can look up a value/container by the Variable it corresponds to.
 
 In addition to these access mechanisms, there is an even more convenient
 method to access values by indexing a Function directly by typing
@@ -234,7 +234,7 @@ Input Shortcuts
 
 Every element of the inputs list will be upgraded to an In instance if necessary.
 
-- a Result instance ``r`` will be upgraded like ``In(r)``
+- a Variable instance ``r`` will be upgraded like ``In(r)``
 
 - a tuple ``(name, r)`` will be ``In(r, name=name)``
 
@@ -285,13 +285,13 @@ Outputs
 The ``outputs`` argument to function can be one of
 
 - ``None``, or
-- a Result or ``Out`` instance, or
-- a list of Results or ``Out`` instances.
+- a Variable or ``Out`` instance, or
+- a list of Variables or ``Out`` instances.
 
-An ``Out`` instance is a structure that lets us attach options to individual output ``Result`` instances, 
-similarly to how ``In`` lets us attach options to individual input ``Result`` instances.
+An ``Out`` instance is a structure that lets us attach options to individual output ``Variable`` instances, 
+similarly to how ``In`` lets us attach options to individual input ``Variable`` instances.
 
-**Out(result, borrow=False)** returns an ``Out`` instance:
+**Out(variable, borrow=False)** returns an ``Out`` instance:
 
   * ``borrow``
   
@@ -304,9 +304,9 @@ similarly to how ``In`` lets us attach options to individual input ``Result`` in
 
 
 
-If a single ``Result`` or ``Out`` instance is given as argument, then the compiled function will return a single value.
+If a single ``Variable`` or ``Out`` instance is given as argument, then the compiled function will return a single value.
 
-If a list of ``Result`` or ``Out`` instances is given as argument, then the compiled function will return a list of their values.
+If a list of ``Variable`` or ``Out`` instances is given as argument, then the compiled function will return a list of their values.
 
 .. code-block:: python
 

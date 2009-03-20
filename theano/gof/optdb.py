@@ -38,16 +38,16 @@ class DB(object):
     def __query__(self, q):
         if not isinstance(q, Query):
             raise TypeError('Expected a Query.', q)
-        results = set()
+        variables = set()
         for tag in q.include:
-            results.update(self.__db__[tag])
+            variables.update(self.__db__[tag])
         for tag in q.require:
-            results.intersection_update(self.__db__[tag])
+            variables.intersection_update(self.__db__[tag])
         for tag in q.exclude:
-            results.difference_update(self.__db__[tag])
+            variables.difference_update(self.__db__[tag])
         remove = set()
         add = set()
-        for obj in results:
+        for obj in variables:
             if isinstance(obj, DB):
                 sq = q.subquery.get(obj.name, q)
                 if sq:
@@ -55,9 +55,9 @@ class DB(object):
                     replacement.name = obj.name
                     remove.add(obj)
                     add.add(replacement)
-        results.difference_update(remove)
-        results.update(add)
-        return results
+        variables.difference_update(remove)
+        variables.update(add)
+        return variables
 
     def query(self, *tags, **kwtags):
         if len(tags) >= 1 and isinstance(tags[0], Query):
@@ -75,13 +75,13 @@ class DB(object):
                                     subquery = kwtags))
 
     def __getitem__(self, name):
-        results = self.__db__[name]
-        if not results:
+        variables = self.__db__[name]
+        if not variables:
             raise KeyError("Nothing registered for '%s'" % name)
-        elif len(results) > 1:
+        elif len(variables) > 1:
             raise ValueError('More than one match for %s (please use query)' % name)
-        for result in results:
-            return result
+        for variable in variables:
+            return variable
 
 
 class Query(object):

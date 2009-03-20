@@ -39,7 +39,7 @@ class RandomStreamsInstance(object):
         """
         seed = self.default_seed if seed is None else seed
         seedgen = numpy.random.RandomState(seed)
-        for old_r, new_r in self.random_streams.random_state_results:
+        for old_r, new_r in self.random_streams.random_state_variables:
             old_r_seed = seedgen.randint(2**30)
             old_r_container = self.memo[old_r].value
             if old_r_container.value is None:
@@ -52,12 +52,12 @@ class RandomStreamsInstance(object):
     def __getitem__(self, item):
         """Retrieve the numpy RandomState instance associated with a particular stream
 
-        :param item: a result of type RandomStateType, associated with this RandomStream
+        :param item: a variable of type RandomStateType, associated with this RandomStream
 
         :rtype: numpy RandomState (or None, before initialize)
 
         """
-        for old_r, new_r in self.random_streams.random_state_results:
+        for old_r, new_r in self.random_streams.random_state_variables:
             if item is old_r:
                 container = self.memo[item].value
                 return container.value
@@ -66,7 +66,7 @@ class RandomStreamsInstance(object):
     def __setitem__(self, item, val):
         """Set the numpy RandomState instance associated with a particular stream
 
-        :param item: a result of type RandomStateType, associated with this RandomStream
+        :param item: a variable of type RandomStateType, associated with this RandomStream
 
         :param val: the new value
         :type val: numpy RandomState
@@ -76,7 +76,7 @@ class RandomStreamsInstance(object):
         """
         if type(val) is not numpy.random.RandomState:
             raise TypeError('only values of type RandomState are permitted', val)
-        for old_r, new_r in self.random_streams.random_state_results:
+        for old_r, new_r in self.random_streams.random_state_variables:
             if item is old_r:
                 container = self.memo[item].value
                 container.value = val
@@ -86,7 +86,7 @@ class RandomStreamsInstance(object):
 class RandomStreams(Component):
     """Module component with similar interface to numpy.random (numpy.random.RandomState)"""
 
-    random_state_results = []
+    random_state_variables = []
     """A list of pairs of the form (input_r, output_r).  This will be over-ridden by the module
     instance to contain stream generators.
     """
@@ -103,12 +103,12 @@ class RandomStreams(Component):
         `RandomStreamsInstance.__init__` for more details.
         """
         super(RandomStreams, self).__init__()
-        self.random_state_results = []
+        self.random_state_variables = []
         self.default_instance_seed = seed
 
     def allocate(self, memo):
         """override `Component.allocate` """
-        for old_r, new_r in self.random_state_results:
+        for old_r, new_r in self.random_state_variables:
             assert old_r not in memo
             memo[old_r] = In(old_r, 
                     value=Container(old_r, storage=[None]),
@@ -129,14 +129,14 @@ class RandomStreams(Component):
         :param kwargs: interpreted by `op`
 
         :returns: The symbolic random draw part of op()'s return value.  This function stores
-        the updated RandomStateType Result for use at `build` time.
+        the updated RandomStateType Variable for use at `build` time.
 
-        :rtype: NDArrayResult
+        :rtype: TensorVariable
         """
-        random_state_result = raw_random.random_state_type()
-        new_r, out = op(random_state_result, *args, **kwargs)
-        out.rng = random_state_result
-        self.random_state_results.append((random_state_result, new_r))
+        random_state_variable = raw_random.random_state_type()
+        new_r, out = op(random_state_variable, *args, **kwargs)
+        out.rng = random_state_variable
+        self.random_state_variables.append((random_state_variable, new_r))
         return out
 
     def binomial(self, *args, **kwargs):

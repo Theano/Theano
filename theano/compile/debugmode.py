@@ -28,7 +28,7 @@ class BadClinkerOutput(DebugModeError):
     """Exception: an Op's c_code and perform implementations don't agree."""
 
     r = None
-    """The `Result` instance for which conflicting values were computed"""
+    """The `Variable` instance for which conflicting values were computed"""
 
     val_py = None
     """The value computed by `r.owner.op.perform`"""
@@ -48,14 +48,14 @@ class BadClinkerOutput(DebugModeError):
         return type(self.r.owner.op)
 
 class BadOptimization(DebugModeError):
-    """Exception: some result and its substitute take different runtime values.
+    """Exception: some variable and its substitute take different runtime values.
     """
 
     new_r = None
-    """A `Result` instance that took a different value from `old_r`, but which replaced `old_r`."""
+    """A `Variable` instance that took a different value from `old_r`, but which replaced `old_r`."""
 
     old_r = None
-    """A `Result` instance that was replaced by `new_r`."""
+    """A `Variable` instance that was replaced by `new_r`."""
 
     old_r_val = None
     """The value computed for `old_r`."""
@@ -93,7 +93,7 @@ class BadOptimization(DebugModeError):
         """Return a pretty multiline string representating the cause of the exception"""
         sio = StringIO()
         print >> sio, "BadOptimization Error", super(BadOptimization, self).__str__()
-        print >> sio, "  Result: id", id(self.new_r), self.new_r 
+        print >> sio, "  Variable: id", id(self.new_r), self.new_r 
         print >> sio, "  Op", self.new_r.owner
         print >> sio, "  Value Type:", type(self.new_r_val)
         print >> sio, "  Old Value: ", self.old_r_val
@@ -144,13 +144,13 @@ class InvalidValueError(DebugModeError):
 
     def __str__(self):
         r, v = self.r, self.v
-        return "InvalidValueError: Result %s,  Type %s, type(Value) %s, Value %s"\
+        return "InvalidValueError: Variable %s,  Type %s, type(Value) %s, Value %s"\
                 % (str(r), str(r.type), str(type(v)), str(v)[0:100])
 
 def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
     """Print the graph leading to `r` to given depth.
 
-    :param r: Result instance
+    :param r: Variable instance
     :param prefix: prefix to each line (typically some number of spaces)
     :param depth: maximum recursion depth (Default -1 for unlimited).
     :param done: set of Apply instances that have already been printed
@@ -161,7 +161,7 @@ def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
         return
     done = set() if done is None else done
     if hasattr(r.owner, 'op'):
-        # this result is the output of computation,
+        # this variable is the output of computation,
         # so just print out the apply
         a = r.owner
         print >> file, prefix, a.op, id(a)
@@ -170,7 +170,7 @@ def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
             for i in a.inputs:
                 _debugprint(i, prefix+'  ', depth=depth-1, done=done, file=file)
     else:
-        #this is a result
+        #this is a variable
         print >> file, prefix, r, id(r)
 
     return file
@@ -188,15 +188,15 @@ def _optcheck_env(input_specs, output_specs, accept_inplace = False):
     :returns: a new Env with a cloned graph, with debugging `Feature` instances already installed.
 
     """
-    orig_inputs = [spec.result for spec in input_specs]
+    orig_inputs = [spec.variable for spec in input_specs]
     updates = [spec.update for spec in input_specs if spec.update]
-    orig_outputs = [spec.result for spec in output_specs] + updates
+    orig_outputs = [spec.variable for spec in output_specs] + updates
 
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
-    equivalence_tracker = _ResultEquivalenceTracker()
+    equivalence_tracker = _VariableEquivalenceTracker()
     env = gof.env.Env(inputs, outputs,
             #DestroyHandler is not needed because it is actually installed by an optimization
-            # after canonicalization.  This results in a big speed gain.
+            # after canonicalization.  This variables in a big speed gain.
             #features=[equivalence_tracker, gof.DestroyHandler(do_imports_on_attach=False)])
             features=[equivalence_tracker])
 
@@ -225,7 +225,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
                 # ok, we expected r to be destroyed
                 if node in active_nodes:
                     if dr_vals.get(r, (0, node))[1] is not node:
-                        # bad: there should only be one active node that destroys any result
+                        # bad: there should only be one active node that destroys any variable
                         raise Exception('failure in topological ordering')
                     if clobber_dr_vals:
                         dr_vals[r] = (storage_map[r][0], node) #no copy, this is the last use of this variable
@@ -249,8 +249,8 @@ def _find_bad_optimizations0(order, reasons, r_vals):
     understand, but sometimes when there's a problem it identifies the wrong optimization as
     the culprit.
     """
-    # iterate over results looking for values that don't match the values of the
-    # results they replaced.  This is the sign of a broken optimization.
+    # iterate over variables looking for values that don't match the values of the
+    # variables they replaced.  This is the sign of a broken optimization.
     for i, node in enumerate(order):
         for new_r in node.outputs:
             for reason, r, old_graph_str, new_graph_str in reasons[new_r]:
@@ -271,10 +271,10 @@ def _find_bad_optimizations0(order, reasons, r_vals):
                             new_graph=new_graph_str)
 
 def _find_bad_optimizations1(order, reasons, r_vals):
-    # iterate over results looking for values that don't match the values of the
-    # results they replaced.  This is the sign of a broken optimization.
+    # iterate over variables looking for values that don't match the values of the
+    # variables they replaced.  This is the sign of a broken optimization.
 
-    #identify sets of results that are supposed to be equivalent
+    #identify sets of variables that are supposed to be equivalent
     equivalence_sets = {}
     program_position = {} #node -> order idx
 
@@ -293,7 +293,7 @@ def _find_bad_optimizations1(order, reasons, r_vals):
     for r, r_equiv in equivalence_sets.iteritems():
         if id(r_equiv) not in equivalence_sets_broken:
             equivalence_sets_broken[id(r_equiv)] = False
-            #loop over the results in the set comparing them to be equal enough
+            #loop over the variables in the set comparing them to be equal enough
             re0 = None
             for re in r_equiv:
                 if re0:
@@ -336,7 +336,7 @@ class _EnvEvent(object):
     """Either 'output' or an Op instance"""
 
     idx = None
-    """change events involve an position index of the input result"""
+    """change events involve an position index of the input variable"""
 
     reason = None
     """change events sometimes have a reason"""
@@ -374,7 +374,7 @@ class _EnvEvent(object):
     def __ne__(self, other):
         return not (self == other)
 
-class _ResultEquivalenceTracker(object):
+class _VariableEquivalenceTracker(object):
     """A Env Feature that keeps tabs on an Env and tries to detect problems."""
 
     env = None
@@ -389,7 +389,7 @@ class _ResultEquivalenceTracker(object):
     inactive_nodes = None
     """WRITEME"""
 
-    all_results_ever = None
+    all_variables_ever = None
     """WRITEME"""
 
     reasons = None
@@ -410,7 +410,7 @@ class _ResultEquivalenceTracker(object):
         self.active_nodes = set()
         self.inactive_nodes = set()
         self.env = env
-        self.all_results_ever = []
+        self.all_variables_ever = []
         self.reasons = {}
         self.replaced_by = {}
         self.event_list = []
@@ -442,7 +442,7 @@ class _ResultEquivalenceTracker(object):
             for r in node.outputs:
                 assert r not in self.equiv
                 self.equiv[r] = set([r])
-                self.all_results_ever.append(r)
+                self.all_variables_ever.append(r)
                 self.reasons.setdefault(r, [])
                 self.replaced_by.setdefault(r, [])
             for r in node.inputs:
@@ -474,13 +474,13 @@ class _ResultEquivalenceTracker(object):
             r_set = self.equiv[r]
         else:
             r_set = self.equiv.setdefault(r, set([r]))
-            self.all_results_ever.append(r)
+            self.all_variables_ever.append(r)
 
         if new_r in self.equiv:
             new_r_set = self.equiv[new_r]
         else:
             new_r_set = self.equiv.setdefault(new_r, set([new_r]))
-            self.all_results_ever.append(new_r)
+            self.all_variables_ever.append(new_r)
 
         assert new_r in new_r_set
         assert r in r_set
@@ -525,7 +525,7 @@ class _Linker(gof.link.LocalLinker):
 
         #Compute a topological ordering that IGNORES the destroy_map of destructive Ops.
         #This will be OK, because every thunk is evaluated on a copy of its input.
-        order_outputs = copy.copy(env.equivalence_tracker.all_results_ever)
+        order_outputs = copy.copy(env.equivalence_tracker.all_variables_ever)
         order_outputs.reverse()
         order = graph.io_toposort(env.inputs, order_outputs)
 
@@ -603,14 +603,14 @@ class _Linker(gof.link.LocalLinker):
 
             equiv_vals = {}
             problematic = set()
-            # r_vals are the true values associated with each result in the graph
+            # r_vals are the true values associated with each variable in the graph
             # they should not change during the evaluation of this function, even when the
             # graph has destructive ops in it
             #
             # This dictionary is used to populate the storage_map as necessary
             r_vals = {} 
 
-            # dr_vals are the values taken by results after being destroyed
+            # dr_vals are the values taken by variables after being destroyed
             dr_vals = {}
             assert len(thunks_py) == len(order)
 
@@ -630,13 +630,13 @@ class _Linker(gof.link.LocalLinker):
                 assert s[0] is None
 
             try:
-                # compute the value of all results
+                # compute the value of all variables
                 for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
-                    this_node_destroyed_results = set()
+                    this_node_destroyed_variables = set()
 
                     # put a copy of each input into the storage_map
                     for r in node.inputs:
-                        assert isinstance(r, gof.Result)
+                        assert isinstance(r, gof.Variable)
                         assert r in r_vals
                         storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
                         if not r.type.is_valid_value(storage_map[r][0]):
@@ -688,7 +688,7 @@ class _Linker(gof.link.LocalLinker):
             _find_bad_optimizations0(order, env.equivalence_tracker.reasons, r_vals)
 
             #####
-            #  Postcondition: the input and output results are in the storage map, nothing more
+            #  Postcondition: the input and output variables are in the storage map, nothing more
             #####
 
             # Nothing should be in storage map after evaluating each the thunk (specifically the
@@ -697,7 +697,7 @@ class _Linker(gof.link.LocalLinker):
                 assert type(s) is list
                 assert s[0] is None
 
-            # store our output results to their respective storage lists
+            # store our output variables to their respective storage lists
             for output, storage in zip(env.outputs, output_storage):
                 storage[0] = r_vals[output]
 
@@ -758,7 +758,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         :type inputs: a list of SymbolicInput instances
 
         :type outputs: a list of SymbolicOutput instances
-                    outputs may also be a single Result (not a list), in which
+                    outputs may also be a single Variable (not a list), in which
                     case the functions produced by FunctionMaker will return
                     their output value directly
 
@@ -766,7 +766,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                     in the graph from the inputs to the outputs
         """
 
-        # Handle the case where inputs and/or outputs is a single Result (not in a list)
+        # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
         if not isinstance(outputs, (list, tuple)):
             unpack_single = True
@@ -776,7 +776,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
         # Wrap them in In or Out instances if needed.
         inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
-        _inputs = gof.graph.inputs([o.result for o in outputs] + [i.update for i in inputs if getattr(i, 'update', False)])
+        _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update for i in inputs if getattr(i, 'update', False)])
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
 
@@ -935,14 +935,14 @@ class DebugMode(Mode):
 
     - inconsistent c_code and perform implementations (see `BadClinkerOutput`)
 
-    - a result replacing another when their runtime values don't match.  This is a symptom of
+    - a variable replacing another when their runtime values don't match.  This is a symptom of
       an incorrect optimization step, or faulty Op implementation (raises `BadOptimization`)
 
     - stochastic optimization ordering (raises `StochasticOrder`)
 
     - incomplete `destroy_map` specification (raises `BadDestroyMap`)
 
-    - an op that returns an illegal value not matching the output Result Type (raises
+    - an op that returns an illegal value not matching the output Variable Type (raises
       InvalidValueError)
 
     Each of these exceptions inherits from the more generic `DebugModeError`.
@@ -954,7 +954,7 @@ class DebugMode(Mode):
     diagnostic information to a file.
 
     :remark: The work of debugging is implemented by the `_Maker`, `_Linker`, and
-    `_ResultEquivalenceTracker` classes.
+    `_VariableEquivalenceTracker` classes.
 
     """
     # This function will be used to create a FunctionMaker in 

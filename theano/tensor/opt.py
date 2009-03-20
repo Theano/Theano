@@ -397,7 +397,7 @@ class Canonizer(gof.LocalOptimizer):
                  the value is such that value = main(). In that case,
                  the return value should be an empty list.
 
-    The result is a local_optimizer. It is best used with a TopoOptimizer in
+    The variable is a local_optimizer. It is best used with a TopoOptimizer in
     in_to_out order.
 
     Examples:
@@ -534,7 +534,7 @@ class Canonizer(gof.LocalOptimizer):
 
         ln, ld = len(num), len(denum)
         if not ln and not ld:
-            return T.as_ndarray_result(self.calculate([], []))
+            return T.as_tensor_variable(self.calculate([], []))
         if not ln:
             if self.use_reciprocal:
                 return self.reciprocal(self.merge_num_denum(denum, []))
@@ -542,10 +542,10 @@ class Canonizer(gof.LocalOptimizer):
                 ln = [self.calculate([], [], aslist = False)]
         if not ld:
             if ln == 1:
-                if isinstance(num[0], gof.Result):
+                if isinstance(num[0], gof.Variable):
                     return num[0]
                 else:
-                    return T.as_ndarray_result(num[0])
+                    return T.as_tensor_variable(num[0])
             else:
                 return self.main(*num)
         return self.inverse(self.merge_num_denum(num, []),
@@ -556,7 +556,7 @@ class Canonizer(gof.LocalOptimizer):
         """
 
         Returns a numeric constant if v is a gof.Constant or, well, a
-        numeric constant. If v is a plain Result, returns None.
+        numeric constant. If v is a plain Variable, returns None.
 
         """
         if isinstance(v, N.generic):
@@ -591,7 +591,7 @@ class Canonizer(gof.LocalOptimizer):
 
     def simplify_factors(self, num, denum):
         """
-        For any Result r which is both in num and denum, removes it
+        For any Variable r which is both in num and denum, removes it
         from both lists. Modifies the lists inplace. Returns the
         modified lists. For example:
 
@@ -844,7 +844,7 @@ def local_mul_specialize(node):
         if len(new_inputs) < len(node.inputs):
             if len(new_inputs) == 0:
                 newval = -y.flatten()[0] if neg else y.flatten()[0]
-                return [T.NDArrayConstant(T.NDArrayType(dtype=node.outputs[0].type.dtype,
+                return [T.TensorConstant(T.TensorType(dtype=node.outputs[0].type.dtype,
                     broadcastable = [True] * node.outputs[0].ndim), N.asarray(newval))]
 
             if len(new_inputs) == 1:
@@ -1190,11 +1190,11 @@ register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 # # aaaaaaaaaaaaaaa
 # #             i, o = [], []
 # #             for output in node.outputs:
-# #                 results = grab_down(output, out)
-# # #                 if results is None:
+# #                 variables = grab_down(output, out)
+# # #                 if variables is None:
 # # #                     return [input], []
-# #                 i += results[0]
-# #                 o += results[1]
+# #                 i += variables[0]
+# #                 o += variables[1]
 # #             return i, o
 
 
