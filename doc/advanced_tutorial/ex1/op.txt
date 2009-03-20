@@ -27,6 +27,15 @@ An Op is any object which defines the following methods:
     correctly: a subsequent ``self.make_node(*apply.inputs)`` must produce
     something equivalent to the first ``apply``.
 
+- default_output
+
+  - *Default*: None
+
+  - If this member variable is an integer, then the default implementation of
+    ``__call__`` will return `node.outputs[self.default_output]``, where
+    `node` was returned by ``make_node``.  Otherwise, the entire list of
+    outputs will be returned.
+
 - **__call__(*inputs)**
 
   - Syntactic shortcut to make_node which returns the output Results
@@ -57,6 +66,11 @@ An Op is any object which defines the following methods:
       The data you put in ``output_storage`` must match the type of the
       symbolic output. This is a situation where the ``node`` argument
       can come in handy.
+
+      A function Mode may allow output_storage elements to persist between
+      evaluations, or it may reset output_storage cells to hold a value of
+      None.  This feature can allow perform to reuse memory between calls, for
+      example.
 
   - This method must be determined by the inputs. That is to say, if it is
     evaluated once on inputs A and returned B, then if ever inputs C, equal to
