@@ -591,7 +591,7 @@ class Clip(ScalarOp):
     def c_code(self, node, name, (x, min, max), (z, ), sub):
         return "%(z)s = %(x)s < %(min)s ? %(min)s : %(x)s > %(max)s ? %(max)s : %(x)s;" % locals()
     def grad(self, (x, min, max), (gz, )):
-        gx = (x > min & x < max) * gz
+        gx = (x > min and x < max) * gz
         return gx, None, None
 clip = Clip(transfer_type(0), name = 'clip')
 
