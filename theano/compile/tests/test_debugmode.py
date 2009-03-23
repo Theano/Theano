@@ -219,3 +219,40 @@ def test_badoptimization():
 
     assert False
 
+
+def test_baddestroymap():
+    class BadAdd(gof.Op):
+        def make_node(self, a, b):
+            c = a.type()
+            return gof.Apply(self, [a,b], [c])
+        def perform(self, node, (a,b), (c,)):
+            c[0] = a
+            c[0] += b
+
+    x = theano.tensor.dvector()
+    y = theano.tensor.dvector()
+    f = theano.function([x, y], BadAdd()(x,y), mode='DEBUG_MODE')
+
+    try:
+        f([1,2], [3,4])
+        assert False #failed to raise error
+    except debugmode.BadDestroyMap:
+        return
+
+def test_badviewmap():
+    class BadAdd(gof.Op):
+        def make_node(self, a, b):
+            c = b.type()
+            return gof.Apply(self, [a,b], [c])
+        def perform(self, node, (a,b), (c,)):
+            c[0] = b
+
+    x = theano.tensor.dvector()
+    y = theano.tensor.dvector()
+    f = theano.function([x, y], BadAdd()(x,y), mode='DEBUG_MODE')
+
+    try:
+        f([1,2], [3,4])
+        assert False #failed to raise error
+    except debugmode.BadViewMap:
+        return
