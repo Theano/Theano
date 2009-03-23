@@ -69,12 +69,17 @@ class OperatorPrinter:
         node = output.owner
         if node is None:
             raise TypeError("operator %s cannot represent a variable that is not the result of an operation" % self.operator)
-        outer_precedence = getattr(pstate, 'precedence', -999999)
-        outer_assoc = getattr(pstate, 'assoc', 'none')
-        if outer_precedence > self.precedence:
-            parenthesize = True
-        else:
-            parenthesize = False
+
+        ## Precedence seems to be buggy, see #249
+        ## So, in doubt, we parenthesize everything.
+        #outer_precedence = getattr(pstate, 'precedence', -999999)
+        #outer_assoc = getattr(pstate, 'assoc', 'none')
+        #if outer_precedence > self.precedence:
+        #    parenthesize = True
+        #else:
+        #    parenthesize = False
+        parenthesize = True
+
         input_strings = []
         max_i = len(node.inputs) - 1
         for i, input in enumerate(node.inputs):
@@ -243,7 +248,6 @@ class PPrinter:
         return "\n".join(s[1] for s in strings)
 
     def __call__(self, *args):
-        print sys.stderr, "WARNING: PPrinter bug. Is theano ticket #249 fixed yet?"
         if len(args) == 1:
             return self.process(*args)
         elif len(args) == 2 and isinstance(args[1], (PrinterState, dict)):
