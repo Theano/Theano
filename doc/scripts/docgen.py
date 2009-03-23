@@ -60,7 +60,7 @@ from collections import defaultdict
 
 if __name__ == '__main__':
 
-    throot = "/".join(sys.path[0].split("/")[:-1])
+    throot = "/".join(sys.path[0].split("/")[:-2])
 
     options = defaultdict(bool)
     options.update(dict([x, y or True] for x, y in getopt.getopt(sys.argv[1:], 'o:', ['epydoc', 'rst', 'help', 'nopdf'])[0]))
