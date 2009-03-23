@@ -42,7 +42,7 @@ As a developer, you should clone this repository like this:
 Nightly test
 ============
 
-WRITEME 
+Each night we execute all tests. The result is sent by email to one of the develloper and if it their is some change, he forward it to the mailing list. Otherwise we know that nothing changed from the last time it was emailed. He don't read its email each weekend, so their can be some delay. For more detail :ref:`see <metadocumentation_nightly_build>`.
 
 Setting up your environment
 ===========================

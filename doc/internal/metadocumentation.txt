@@ -98,12 +98,27 @@ You can see a list of all `pylint messages
 <http://www.logilab.org/card/pylintfeatures>`__.
 
 
+.. _metadocumentation_nightly_build:
+
+The nightly build process.
+---------------------------------------
+
+The user lisa have a cronjob on the computer boltzmann. The cronjob execute the script ~/nightly_build/do_nightly_build_theano. This script make a an "hg pull -u" of theano and pylearn. Then it execute 
+
+>>> HEANO_DEFAULT_MODE=DEBUG_MODE /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
+
+in the repository. The output is email to one of the developper.
+
+We can't email directly to the mailing list as it is emailed as the root user. We didn't found a way to have google groups accept email from a user without sending an email to it. As we don't have root control from this domain, we won't receive the email.
+
+Also, to have the crontab executed, the user must be logged onto the machine. The develloper that receive the email, keep a connection open to this machine.
+
 TO WRITE
 ---------------------------------------
 
 *There is other stuff to document here, e.g.:*
  * where the documentation is getting built, and epy.
  * How epydoc and sphinx are integrated
- * The nightly build process.
  * Explain the special magic in ./doc/scripts/docgen.py
  * We also want examples of good documentation, to show people how to write sphinx,
+
