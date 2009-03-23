@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
     if options['--all'] or options['--epydoc']:
         from epydoc.cli import cli
-        sys.path[0:0] = throot
+        sys.path[0:0] = [throot]
 
         #Generate HTML doc
 
