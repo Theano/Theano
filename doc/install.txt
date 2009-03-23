@@ -54,7 +54,7 @@ on your system:
 .. revision ?
 
 .. code-block:: bash
-    
+
     easy_install http://pylearn.org/hg/theano/archive/tip.tar.gz
 
 .. TODO: make sure this works
@@ -76,7 +76,7 @@ no stable releases yet.
 Get the source and run the tests like this:
 
 .. code-block:: bash
-    
+
     hg clone http://pylearn.org/hg/theano Theano
     ln -s Theano/theano <someplace on your PYTHONPATH>/theano
     cd Theano
@@ -175,8 +175,8 @@ This should give you the gist of it:
 
 .. code-block:: bash
 
-   $ python scripts/docgen.py --help
-   Usage: scripts/docgen.py [OPTIONS]
+   $ python doc/scripts/docgen.py --help
+   Usage: doc/scripts/docgen.py [OPTIONS]
      -o <dir>: output the html files in the specified dir
      --rst: only compile the doc (requires sphinx)
      --epydoc: only compile the api documentation (requires epydoc)
