@@ -620,13 +620,16 @@ class _Linker(gof.link.LocalLinker):
             except (NotImplementedError, utils.MethodNotDefined):
                 thunks_c.append(None)
 
-            p = node.op.perform
-            thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
-                    node: p(n, [x[0] for x in i], o))
-            thunk.inputs = node_input_storage
-            thunk.outputs = node_output_storage
-            thunk.perform = p
-            thunks_py.append(thunk)
+            if self.maker.mode.check_py_code:
+                p = node.op.perform
+                thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
+                        node: p(n, [x[0] for x in i], o))
+                thunk.inputs = node_input_storage
+                thunk.outputs = node_output_storage
+                thunk.perform = p
+                thunks_py.append(thunk)
+            else:
+                thunks_py.append(None)
 
         if no_recycling is True:
             no_recycling = storage_map.values()
@@ -675,6 +678,7 @@ class _Linker(gof.link.LocalLinker):
                     this_node_destroyed_variables = set()
 
                     # put a copy of each input into the storage_map
+                    # also, check that inputs have valid values
                     for r in node.inputs:
                         assert isinstance(r, gof.Variable)
                         assert r in r_vals
@@ -682,20 +686,22 @@ class _Linker(gof.link.LocalLinker):
                         if not r.type.is_valid_value(storage_map[r][0]):
                             raise InvalidValueError(r, storage_map[r][0])
 
-                    thunk_py()
+                    if thunk_py:
+                        thunk_py()
 
-                    _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                            clobber_dr_vals=True)
+                        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                                clobber_dr_vals=True)
 
-                    #retrieve each output from the storage_map
-                    for r in node.outputs:
-                        if not r.type.is_valid_value(storage_map[r][0]):
-                            raise InvalidValueError(r, storage_map[r][0])
-                        if r in r_vals:
-                            print >> sys.stderr, 'OUTPUT', r, 'ALREADY HAS_VALUE!', r_vals[r], 'WHAT ABOUT', storage_map[r][0]
-                        assert r not in r_vals
-                        r_vals[r] = storage_map[r][0]
-                        storage_map[r][0] = None #clear the storage_map for the thunk_c
+                        # check output values for type-correctness
+                        #retrieve each output from the storage_map
+                        for r in node.outputs:
+                            if not r.type.is_valid_value(storage_map[r][0]):
+                                raise InvalidValueError(r, storage_map[r][0])
+                            #if r in r_vals:
+                                #print >> sys.stderr, 'OUTPUT', r, 'ALREADY HAS_VALUE!', r_vals[r], 'WHAT ABOUT', storage_map[r][0]
+                            assert r not in r_vals
+                            r_vals[r] = storage_map[r][0]
+                            storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
 
                     if thunk_c:
 
@@ -709,12 +715,18 @@ class _Linker(gof.link.LocalLinker):
                                 clobber_dr_vals=False)
 
                         for r in node.outputs:
+                            # check output values for type-correctness
                             if not r.type.is_valid_value(storage_map[r][0]):
                                 raise InvalidValueError(r, storage_map[r][0])
-                            # compares the version from thunk_py (in r_vals)
-                            # to the version produced by thunk_c (in storage_map)
-                            if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                raise BadClinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+
+                            if r in r_vals:
+                                # compares the version from thunk_py (in r_vals)
+                                # to the version produced by thunk_c (in storage_map)
+                                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                                    raise BadClinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                            else:
+                                #retrieve each output from the storage_map
+                                r_vals[r] = storage_map[r][0]
                             storage_map[r][0] = None #clear the storage_map for the thunk_c
 
                     # we're done with this thunk
@@ -1013,14 +1025,18 @@ class DebugMode(Mode):
             optimizer='fast_run', 
             stability_patience=10,
             check_c_code=True,
+            check_py_code=True,
             diagnostic=sys.stderr):
         """Initialize member variables
         """
+        if not (check_c_code or check_py_code):
+            raise ValueError('DebugMode has to check at least one of c and py code')
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
                 linker=_Linker)
         self.stability_patience = stability_patience
         self.check_c_code = check_c_code
+        self.check_py_code = check_py_code
         self.diagnostic = diagnostic
 register_mode('DEBUG_MODE',DebugMode(optimizer='fast_run'))
 
