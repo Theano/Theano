@@ -20,6 +20,13 @@ from ..compile.function_module import (FunctionMaker,
         Supervisor)
 from ..compile.mode import Mode, register_mode
 
+
+########################
+#
+# Exceptions
+#
+########################
+
 class DebugModeError(Exception):
     """Generic Exception raised to indicate an internal theano problem"""
     pass
@@ -106,7 +113,7 @@ class BadOptimization(DebugModeError):
         return sio.getvalue()
 
 class BadDestroyMap(DebugModeError):
-    """TODO #318"""
+    """Exception: Some perform() or c_code() modified an input that wasn't in the destroy_map"""
     def __init__(self, node, idx, old_val, new_val):
         super(BadDestroyMap, self).__init__()
         self.node = node
@@ -124,7 +131,29 @@ class BadDestroyMap(DebugModeError):
         print >> sio, "  repr (old val):", repr(self.old_val)
         print >> sio, "  repr (new val):", repr(self.new_val)
         print >> sio, ""
-        print >> sio, "  Hint: this can be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
+        print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
+        return sio.getvalue()
+
+class BadViewMap(DebugModeError):
+    """Exception: Some perform() or c_code() created a memory alias that wasn't in the view_map"""
+    def __init__(self, node, idx, old_val, new_val):
+        super(BadViewMap, self).__init__()
+        self.node = node
+        self.idx = idx
+        self.old_val = old_val
+        self.new_val = new_val
+    
+    def __str__(self):
+        sio = StringIO()
+        print >> sio, "  node:", self.node
+        print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
+        print >> sio, "  view_map:", getattr(self.node.op, 'view_map', {})
+        print >> sio, "  changed input idx:", self.idx
+        print >> sio, "  changed input type:", self.node.inputs[self.idx].type
+        print >> sio, "  repr (old val):", repr(self.old_val)
+        print >> sio, "  repr (new val):", repr(self.new_val)
+        print >> sio, ""
+        print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
         return sio.getvalue()
 
 class StochasticOrder(DebugModeError):
@@ -132,7 +161,10 @@ class StochasticOrder(DebugModeError):
     pass
 
 class FloatError(DebugModeError):
-    """TODO #320"""
+    """Exception: Inf or NaN has crept into calculations
+    
+    :note: See #320 for what this exception is for
+    """
     pass
 
 class InvalidValueError(DebugModeError):
@@ -146,6 +178,14 @@ class InvalidValueError(DebugModeError):
         r, v = self.r, self.v
         return "InvalidValueError: Variable %s,  Type %s, type(Value) %s, Value %s"\
                 % (str(r), str(r.type), str(type(v)), str(v)[0:100])
+
+########################
+#
+# Private Functions
+#
+########################
+
+
 
 def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
     """Print the graph leading to `r` to given depth.
@@ -927,6 +967,11 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         return fn
 
 
+########################
+#
+# API symbol: DebugMode
+#
+########################
 
 class DebugMode(Mode):
     """Evaluation Mode that detects internal theano errors.
