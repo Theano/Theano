@@ -1,8 +1,8 @@
 """script to generate doc/oplist.txt, which compiles to :doc:`oplist`. """
 __docformat__ = "restructuredtext en"
 import sys, os
-theano_path = os.path.realpath("%s/.." % sys.path[0])
-sys.path[0:0] = [theano_path]
+throot = "/".join(sys.path[0].split("/")[:-2])
+sys.path[0:0] = [throot]
 
 from theano import gof
 
