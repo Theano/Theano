@@ -149,6 +149,95 @@ inconsistent = BROKEN_ON_PURPOSE_StructuredDotCSC(False)
 # off_by_half is a good op, that is different from theano.sparse.sd_csc
 off_by_half = BROKEN_ON_PURPOSE_StructuredDotCSC(True) 
 
+class WeirdBrokenOp(gof.Op):
+    """
+    This op can be inplace if behaviour is times1_inplace
+    This op can be destructive if behaviour is times2_inplace
+
+    In both cases, it does not set  the destroy_map or view_map correctly so it should raise an
+    error in DebugMode.
+    """
+    def __init__(self, behaviour):
+        gof.Op.__init__(self)
+        self.behaviour = behaviour
+
+    def __eq__(self, other):
+        return type(self) == type(other) and (self.behaviour == other.behaviour)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.behaviour)
+
+    def make_node(self, a):
+        a_ = theano.tensor.as_tensor_variable(a)
+        r = gof.Apply(self, [a_], [a_.type()])
+        return r
+
+    def dontuse_perform(self, node, (a,), (out,)):
+        if self.behaviour == 'times2':
+            out[0] = a * 2
+        elif self.behaviour == 'times2_inplace':
+            out[0] = a
+            out[0] *= 2
+        elif self.behaviour == 'times1':
+            out[0] = a * 1
+        elif self.behaviour == 'times1_inplace':
+            out[0] = a
+        else:
+            raise ValueError(self.behaviour)
+
+    def c_code(self, node, name, (a,), (z,), sub):
+        if "inplace" in self.behaviour:
+            z_code = """
+            if (%(z)s) Py_DECREF(%(z)s);
+            Py_INCREF(%(a)s);
+            %(z)s = %(a)s;
+            """
+        else:
+            z_code = """
+            if (%(z)s) Py_DECREF(%(z)s);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, %(a)s->dimensions, %(a)s->descr->type_num);
+            """
+        prep_vars = """
+            //the output array has size M x N
+            npy_intp M = %(a)s->dimensions[0];
+            npy_intp Sa = %(a)s->strides[0] / %(a)s->descr->elsize;
+            npy_intp Sz = %(z)s->strides[0] / %(z)s->descr->elsize;
+
+            npy_double * Da = (npy_double*)%(a)s->data;
+            npy_double * Dz = (npy_double*)%(z)s->data;
+
+            //clear the output array
+            for (npy_intp m = 0; m < M; ++m)
+            {
+        """
+
+        if self.behaviour == 'times2':
+            behaviour = "     Dz[m * Sz] = 2 * Da[m * Sa]; "
+            #out[0] = a * 2
+        elif self.behaviour == 'times2_inplace':
+            #out[0] = a
+            #out[0] *= 2
+            behaviour = "     Dz[m * Sz] = 2 * Da[m * Sa]; "
+        elif self.behaviour == 'times1':
+            #out[0] = a * 1
+            behaviour = "     Dz[m * Sz] = Da[m * Sa]; "
+        elif self.behaviour == 'times1_inplace':
+            #out[0] = a
+            behaviour = ""
+        else:
+            raise ValueError(self.behaviour)
+
+        prep_vars2 = """
+            }
+        """
+
+        total = (z_code + prep_vars + behaviour + prep_vars2)% dict(locals(), **sub)
+        return total
+
+wb2i = WeirdBrokenOp('times2_inplace')
+wb2 = WeirdBrokenOp('times2')
+wb1i = WeirdBrokenOp('times1_inplace')
+wb1 = WeirdBrokenOp('times1')
 
 def test_badclinkeroutput():
 
@@ -219,6 +308,10 @@ def test_badoptimization():
 
     assert False
 
+def test_just_c_code():
+    x = theano.tensor.dvector()
+    f = theano.function([x], wb2(x), mode=debugmode.DebugMode(check_py_code=False))
+    assert numpy.all(f([1,2]) == [2, 4])
 
 def test_baddestroymap():
     class BadAdd(gof.Op):
@@ -239,6 +332,16 @@ def test_baddestroymap():
     except debugmode.BadDestroyMap:
         return
 
+def test_baddestroymap_c():
+    x = theano.tensor.dvector()
+    f = theano.function([x], wb2i(x), mode=debugmode.DebugMode(check_py_code=False))
+    try:
+        assert numpy.all(f([1,2]) == [2, 4])
+        assert False #failed to raise error
+    except debugmode.BadDestroyMap:
+        pass
+
+
 def test_badviewmap():
     class BadAdd(gof.Op):
         def make_node(self, a, b):
@@ -256,3 +359,12 @@ def test_badviewmap():
         assert False #failed to raise error
     except debugmode.BadViewMap:
         return
+
+def test_badviewmap_c():
+    x = theano.tensor.dvector()
+    f = theano.function([x], wb1i(x), mode=debugmode.DebugMode(check_py_code=False))
+    try:
+        f([1,2])
+        assert False #failed to raise error
+    except debugmode.BadDestroyMap:
+        pass
