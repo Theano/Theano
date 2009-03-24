@@ -172,13 +172,13 @@ Example:
 
 Whenever possible, unit tests should omit this parameter. Leaving-out the mode will ensure that unit tests use the default mode (defined in compile.mode.default_mode). This default_mode is set to the THEANO_DEFAULT_MODE environment variable, if it is present. If not, it defaults to 'FAST_RUN'.
 
-This allows the user to easily switch the mode in which unittests are run. For example the nightly-build system could iterates over all modes.
+This allows the user to easily switch the mode in which unittests are run. For example to run all tests in all modes from a BASH script, type this:
 
->>> THEANO_DEFAULT_MODE=FAST_COMPILE nosetests
->>> THEANO_DEFAULT_MODE=FAST_RUN nosetests
->>> THEANO_DEFAULT_MODE=DEBUG_MODE nosetests
+.. code-block:: bash
 
-We don't do this as the debug mode generate the same error or more then the two previous one.
+    THEANO_DEFAULT_MODE=FAST_COMPILE nosetests
+    THEANO_DEFAULT_MODE=FAST_RUN nosetests
+    THEANO_DEFAULT_MODE=DEBUG_MODE nosetests
 
 Using Random Values in Test Cases
 ---------------------------------

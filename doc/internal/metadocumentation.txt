@@ -100,18 +100,35 @@ You can see a list of all `pylint messages
 
 .. _metadocumentation_nightly_build:
 
-The nightly build process.
+The nightly build/tests process
 ---------------------------------------
 
-The user lisa have a cronjob on the computer boltzmann. The cronjob execute the script ~/nightly_build/do_nightly_build_theano. This script make a an "hg pull -u" of theano and pylearn. Then it execute 
+The user ``lisa`` runs a cronjob on the computer ``boltzmann``.
+This happens nightly.
+The cronjob executes the script ``~/nightly_build/do_nightly_build_theano``.
+This script performs a an "hg pull -u" of theano (and pylearn too). 
+Then it executes something like
 
->>> THEANO_UNITTEST_SEED=3 THEANO_DEFAULT_MODE=DEBUG_MODE /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
+.. code-block:: bash
 
-in the repository. The output is email to one of the developper. We exeute it with many different seed and with the mode FAST_RUN.
+    THEANO_UNITTEST_SEED=<SEED> THEANO_DEFAULT_MODE=DEBUG_MODE /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
 
-We can't email directly to the mailing list as it is emailed as the root user. We didn't found a way to have google groups accept email from a user without sending an email to it. As we don't have root control from this domain, we won't receive the email.
+in the updated ``theano`` directory.
+The output is emailed automatically to one of the developers.
+This line is executed with a several fixed ``SEED`` values, and in both
+DEBUG_MODE and FAST_RUN modes.
 
-Also, to have the crontab executed, the user must be logged onto the machine. The develloper that receive the email, keep a connection open to this machine.
+We can't email directly to the mailing list as it is emailed as the root user.
+We haven't yet found a way to have google groups accept email from a user without sending an email to it.
+As we don't have root control from this domain, we won't receive the email.
+We haven't pursued the option of configuring the ``lisa`` account to send
+email from an official gmail account.
+
+Also, to have the crontab executed, *the ``lisa`` user must be logged onto the machine*.
+
+In a nutshell: Fred keeps a shell open on boltzmann at all times, gets the
+email, and forwards it to the mailing list when something interesting shows up
+in the report.
 
 TO WRITE
 ---------------------------------------
