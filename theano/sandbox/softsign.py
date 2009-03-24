@@ -21,4 +21,3 @@ class ScalarSoftsign(theano.scalar.UnaryScalarOp):
         raise NotImplementedError('only floating point x is implemented')
 scalar_softsign = ScalarSoftsign(theano.scalar.upgrade_to_float, name='scalar_softsign')
 softsign = theano.tensor.Elemwise(scalar_softsign, name='softsign')
-

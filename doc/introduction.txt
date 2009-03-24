@@ -5,19 +5,19 @@
 Introduction
 ============
 
-Theano is a Python library that allows you to definite, optimize, and
+Theano is a Python library that allows you to define, optimize, and
 efficiently evaluate mathematical expressions involving multi-dimensional
-arrays. It can be extended to support other types. Theano melds some
-aspects of a computer algebra system (CAS) with aspects of an optimizing
-compiler. It can even transform some or all of the expression into C code
-and compile it into native machine instructions. This combination of CAS
-with optimizing compilation is particularly useful for computational
-fields in which complicated mathematical expressions are evaluated
-numerous times over large data sets.
+arrays. Theano was written at the LISA_ lab to support the development
+of efficient machine learning algorithms while minimizing human time. We
+use it especially in gradient-based learning techniques.
 
-Theano was written at the LISA_ lab to support the development of
-efficient machine learning algorithms while minimizing human
-time. We use it especially in gradient-based learning techniques.
+Theano melds some aspects of a computer algebra system (CAS) with
+aspects of an optimizing compiler. It can even transform some or all
+of the expression into C code and compile it into native machine
+instructions. This combination of CAS with optimizing compilation
+is particularly useful for computational fields in which complicated
+mathematical expressions are evaluated numerous times over large data
+sets.
 
 Theano supports a range of numerical types in multiple dimensions and
 a number of well-tested operations. It also allows you to compute the
