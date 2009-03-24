@@ -19,7 +19,7 @@ from theano import function
 from theano.tests import unittest_tools
 
 ### seed random number generator so that unittests are deterministic ###
-unittest_tools.seed_rng(8374)
+unittest_tools.seed_rng()
 
 def inplace_func(inputs, outputs, mode=default_mode):
     return function(inputs, outputs, mode=mode, accept_inplace=True)
