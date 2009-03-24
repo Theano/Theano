@@ -107,7 +107,7 @@ The user lisa have a cronjob on the computer boltzmann. The cronjob execute the 
 
 >>> THEANO_UNITTEST_SEED=3 THEANO_DEFAULT_MODE=DEBUG_MODE /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
 
-in the repository. The output is email to one of the developper. We exeute it with many different seed.
+in the repository. The output is email to one of the developper. We exeute it with many different seed and with the mode FAST_RUN.
 
 We can't email directly to the mailing list as it is emailed as the root user. We didn't found a way to have google groups accept email from a user without sending an email to it. As we don't have root control from this domain, we won't receive the email.
 
