@@ -11,6 +11,7 @@ Contents
    LICENSE
    introduction
    install
+   numpy
    basic_tutorial/index
    advanced_tutorial/index
    advanced/index
