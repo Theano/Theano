@@ -113,6 +113,8 @@ Then it executes something like
 
     THEANO_UNITTEST_SEED=<SEED> THEANO_DEFAULT_MODE=DEBUG_MODE /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
 
+in the repository. The output is email to one of the developper. We exeute the mode DEBUG_MODE it with many different seed and with the mode FAST_RUN and FAST_COMPILE with 1 seed.
+
 in the updated ``theano`` directory.
 The output is emailed automatically to one of the developers.
 This line is executed with a several fixed ``SEED`` values, and in both
