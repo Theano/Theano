@@ -113,12 +113,10 @@ Then it executes something like
 
     THEANO_UNITTEST_SEED=<SEED> THEANO_DEFAULT_MODE=DEBUG_MODE /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
 
-in the repository. The output is email to one of the developper. We exeute the mode DEBUG_MODE it with many different seed and with the mode FAST_RUN and FAST_COMPILE with 1 seed.
-
 in the updated ``theano`` directory.
 The output is emailed automatically to one of the developers.
-This line is executed with a several fixed ``SEED`` values, and in both
-DEBUG_MODE and FAST_RUN modes.
+This line is executed with a several fixed ``SEED`` values in DEBUG_MODE.  It
+is executed in FAST_RUN and FAST_COMPILE with just one SEED value.
 
 We can't email directly to the mailing list as it is emailed as the root user.
 We haven't yet found a way to have google groups accept email from a user without sending an email to it.
@@ -126,7 +124,8 @@ As we don't have root control from this domain, we won't receive the email.
 We haven't pursued the option of configuring the ``lisa`` account to send
 email from an official gmail account.
 
-Also, to have the crontab executed, *the ``lisa`` user must be logged onto the machine*.
+Also, to have the crontab executed, *the ``lisa`` user must be logged into
+``boltzmann``*.
 
 In a nutshell: Fred keeps a shell open on boltzmann at all times, gets the
 email, and forwards it to the mailing list when something interesting shows up
