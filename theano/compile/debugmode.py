@@ -468,6 +468,7 @@ def _find_bad_optimizations2(order, reasons, r_vals):
     def check_variable(r):
         if r in checked_variables:
             return
+        checked_variables.add(r)
 
         # (recursively) first check all the variables that could make r look bad:
         for var_that_could_make_r_look_bad in \
@@ -476,7 +477,6 @@ def _find_bad_optimizations2(order, reasons, r_vals):
             check_variable(var_that_could_make_r_look_bad)
 
         check_variable_norec(r)
-        checked_variables.add(r)
 
 
     # iterate over variables looking for values that don't match the values of the
@@ -485,7 +485,7 @@ def _find_bad_optimizations2(order, reasons, r_vals):
         for new_r in node.outputs:
             check_variable(new_r)
 
-_find_bad_optimizations = _find_bad_optimizations2
+_find_bad_optimizations = _find_bad_optimizations0
 
 class _EnvEvent(object):
     """A record of an event in the life of an Env.
