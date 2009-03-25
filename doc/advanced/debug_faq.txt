@@ -1,0 +1,84 @@
+
+.. _debug_faq:
+
+=========================================
+Debugging Theano: FAQ and Troubleshooting
+=========================================
+
+There are many kinds of bugs that might come up in a computer program.
+This page is structured as an FAQ.  It should provide recipes to tackle common
+problems, and introduce some of the tools that we use to find problems in our
+Theano code, and even (it happens) in Theano's internals.
+
+
+
+
+How do I print an intermediate value in a Function/Method?
+----------------------------------------------------------
+
+Theano provides a 'Print' Op to do this.
+
+.. code-block::
+
+    x = theano.tensor.dvector('x')
+
+    x_printed = theano.Print('this is a very important value')(x)
+
+    f = theano.function([x], x * 5)
+    f_with_print = theano.function([x], x_printed * 5)
+
+    #this runs the graph without any printing
+    assert numpy.all( f([1,2,3]) == [5, 10, 15])
+
+    #this runs the graph with the message, and value printed
+    assert numpy.all( f_with_print([1,2,3]) == [5, 10, 15])
+
+
+Since Theano runs your program in a topological order, you won't have precise
+control over the order in which multiple Print() Ops are evaluted.  For a more
+precise inspection of what's being computed where, when, and how, see the
+:ref:`Stepping through a compiled function with the WrapLinker`.
+
+
+
+
+
+How do I step through a compiled function with the WrapLinker?
+--------------------------------------------------------------
+
+WRITEME
+
+
+I wrote a new Op, and weird stuff is happening...
+-------------------------------------------------
+
+First, check the :ref:`Op Contract` and make sure you're following the rules.
+Then try running your program in :ref:`debugmode`.  DebugMode might catch
+something that you're not seeing.
+
+
+I wrote a new optimization, but it's not getting used...
+---------------------------------------------------------
+
+Remember that you have to register optimizations with the OptDb, for them to get
+used by the normal modes like FAST_COMPILE, FAST_RUN, and DEBUG_MODE.
+
+
+I wrote a new optimization, and it changed my results even though I'm pretty sure it is correct.
+------------------------------------------------------------------------------------------------
+
+First, check the :ref:`Op Contract` and make sure you're following the rules.
+Then try running your program in :ref:`debugmode`.  DebugMode might catch
+something that you're not seeing.
+
+
+The function I compiled is too slow, what's up?
+-----------------------------------------------
+
+First, make sure you're running in FAST_RUN mode, by passing ``mode='FAST_RUN'``
+to ``theano.function`` or ``theano.make``.
+
+Second, try the theano :ref:`profiler`.  This will tell you which Apply nodes,
+and which Ops are eating up your CPU cycles.
+
+

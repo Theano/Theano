@@ -366,9 +366,11 @@ def _lessbroken_deepcopy(a):
     return rval
 
 def _find_bad_optimizations0(order, reasons, r_vals):
-    """Use a simple algorithm to find broken optimizations.  This algorithm is simple to
-    understand, but sometimes when there's a problem it identifies the wrong optimization as
-    the culprit.
+    """Use a simple algorithm to find broken optimizations.
+    
+    This algorithm is simple to understand, but sometimes when there's a problem it identifies
+    the wrong optimization as the culprit.  The problem stems from the fact that results are
+    not evaluated in chronological order (looking at when they were introduced to the graph).
     """
     # iterate over variables looking for values that don't match the values of the
     # variables they replaced.  This is the sign of a broken optimization.
@@ -437,6 +439,53 @@ def _find_bad_optimizations1(order, reasons, r_vals):
         #TODO finish this to produce good diagnostic information
         print first_broken_set
         raise Exception('broken')
+
+def _find_bad_optimizations2(order, reasons, r_vals):
+    """Use a simple algorithm to find broken optimizations.
+    
+    This algorithm is simple to understand, but sometimes when there's a problem it identifies
+    the wrong optimization as the culprit.  The problem stems from the fact that results are
+    not evaluated in chronological order (looking at when they were introduced to the graph).
+    """
+
+    checked_variables = set()
+
+    def check_variable_norec(new_r):
+        """Verify that `r` has the same value as the results it replaces """
+        for reason, r, old_graph_str, new_graph_str in reasons[new_r]:
+            new_r_val = r_vals[new_r]
+            r_val = r_vals[r]
+
+            if (r.type != new_r.type) or (not r.type.values_eq_approx(r_val, new_r_val)):
+                raise BadOptimization(old_r=r,
+                        new_r=new_r, 
+                        old_r_val=r_val, 
+                        new_r_val=new_r_val,
+                        reason=reason,
+                        old_graph=old_graph_str,
+                        new_graph=new_graph_str)
+
+    def check_variable(r):
+        if r in checked_variables:
+            return
+
+        # (recursively) first check all the variables that could make r look bad:
+        for var_that_could_make_r_look_bad in \
+                [old_r for (reason, old_r, olds, news) in reasons[r]] \
+                + ([] if (None is r.owner) else r.owner.inputs):
+            check_variable(var_that_could_make_r_look_bad)
+
+        check_variable_norec(r)
+        checked_variables.add(r)
+
+
+    # iterate over variables looking for values that don't match the values of the
+    # variables they replaced.  This is the sign of a broken optimization.
+    for i, node in enumerate(order):
+        for new_r in node.outputs:
+            check_variable(new_r)
+
+_find_bad_optimizations = _find_bad_optimizations2
 
 class _EnvEvent(object):
     """A record of an event in the life of an Env.
@@ -819,7 +868,7 @@ class _Linker(gof.link.LocalLinker):
             #except:
             #    raise_with_op(node)
 
-            _find_bad_optimizations0(order, env.equivalence_tracker.reasons, r_vals)
+            _find_bad_optimizations(order, env.equivalence_tracker.reasons, r_vals)
 
             #####
             #  Postcondition: the input and output variables are in the storage map, nothing more

@@ -1,0 +1,88 @@
+
+.. _debugmode:
+
+===============
+Using DebugMode
+===============
+
+
+The DebugMode evaluation mode (available via ``mode='DEBUG_MODE'``, :api:`DebugMode`) includes a number of
+self-checks and assertions that 
+can help to diagnose several kinds of programmer
+errors that can lead to incorrect output.
+
+It is much slower to evaluate a function or method in DEBUG_MODE than it would
+be in FAST_RUN or even FAST_COMPILE, so it is recommended to use it during
+development, but not when you launch 1000 nearly-identical processes on a
+cluster.
+
+DebugMode is easy to use:
+
+.. code-block::
+
+    x = theano.dvector('x')
+
+    f = theano.function(x, 10*x, mode='DEBUG_MODE')
+
+    f(5) 
+    f(0) 
+    f(7) 
+
+
+If any problem is detected, at either call time (e.g. ``f(5)``) or compile time
+(e.g ``f = theano.function(x, 10*x, mode='DEBUG_MODE')``) then DebugMode will
+raise an exception according to what went wrong.   None of these exceptions is
+OK to ignore; talk to you your local Theano guru if you can't make the exception
+go away.
+
+Some kinds of errors can only be detected for certain input value combinations.
+In the example above, there is no way to guarantee that a future call to say,
+``f(-1)`` won't cause a problem.  DebugMode is no silver bullet.
+
+
+BadCLinkerOutput
+----------------
+
+This really just means that python and c didn't match.  The problem might be a
+bug in either python or c or both.
+
+BadOptimization
+---------------
+
+This happens when ... WRITEME.
+
+BadDestroyMap
+-------------
+
+This happens when an Op's perform() or c_code() modifies an input that it wasn't
+supposed to.
+For detailed documentation see :api:`BadDestroyMap`.
+
+
+BadViewMap
+----------
+This happens when ... WRITEME.
+
+
+StochasticOrder
+---------------
+
+This happens when ... WRITEME.
+
+FloatError
+----------
+
+This happens when ... WRITEME.
+
+InvalidValueError
+-----------------
+
+This happens when ... WRITEME.
+
+
+DebugModeError
+--------------
+
+This is a generic error, pretty unhelpful.  You'll generally have to look at the
+stack trace and then in the code to figure out why DebugMode is complaining.
+
