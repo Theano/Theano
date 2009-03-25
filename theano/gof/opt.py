@@ -498,21 +498,21 @@ class PatternSub(LocalOptimizer):
     arbitrary criterion.
 
     Examples:
-     PatternOptimizer((add, 'x', 'y'), (add, 'y', 'x'))
-     PatternOptimizer((multiply, 'x', 'x'), (square, 'x'))
-     PatternOptimizer((subtract, (add, 'x', 'y'), 'y'), 'x')
-     PatternOptimizer((power, 'x', Constant(double, 2.0)), (square, 'x'))
-     PatternOptimizer((boggle, {'pattern': 'x',
+     PatternSub((add, 'x', 'y'), (add, 'y', 'x'))
+     PatternSub((multiply, 'x', 'x'), (square, 'x'))
+     PatternSub((subtract, (add, 'x', 'y'), 'y'), 'x')
+     PatternSub((power, 'x', Constant(double, 2.0)), (square, 'x'))
+     PatternSub((boggle, {'pattern': 'x',
                                 'constraint': lambda env, expr: expr.type == scrabble}),
                       (scrabble, 'x'))
     """
 
     def __init__(self, in_pattern, out_pattern, allow_multiple_clients = False):
         """
-        Creates a PatternOptimizer that replaces occurrences of
+        Creates a PatternSub that replaces occurrences of
         in_pattern by occurrences of out_pattern.
 
-        If allow_multiple_clients is False, he pattern matching will
+        If allow_multiple_clients is False, the pattern matching will
         fail if one of the subpatterns has more than one client.
         """
         self.in_pattern = in_pattern

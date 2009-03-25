@@ -227,6 +227,11 @@ The local version of the above code would be the following:
                    elif y == b:
                        return [a]
            return False
+       def tracks(self):
+           # This should be needed for the EquilibriumOptimizer
+           # but it isn't now
+           # TODO: do this and explain it
+           return [] # that's not what you should do
    
    local_simplify = LocalSimplify()
 
@@ -256,6 +261,61 @@ subset of them) and applies one or several local optimizers on them.
 TODO: test this.
 
 
+OpSub, OpRemove, PatternSub
++++++++++++++++++++++++++++
+
+Theano defines some shortcuts to make LocalOptimizers:
+
+* **OpSub(op1, op2)**: replaces all uses of op1 by op2. In other
+  words, the outputs of all :ref:`apply` involving op1 by the outputs
+  of Apply nodes involving op2, where their inputs are the same.
+
+* **OpRemove(op)**: removes all uses of op in the following way: if y
+  = op(x) then y is replaced by x. The op must have as many outputs as
+  it has inputs. The first output becomes the first input, the second
+  output becomes the second input, and so on.
+
+* **PatternSub(pattern1, pattern2)**: replaces all occurrences of the
+  first pattern by the second pattern. See the api for
+  :api:`theano.gof.opt.PatternSub`.
+
+
+.. code-block:: python
+
+   from theano.gof.opt import OpSub, OpRemove, PatternSub
+   
+   # Replacing add by mul (this is not recommended for primarily
+   # mathematical reasons):
+   add_to_mul = OpSub(add, mul)
+
+   # Removing identity
+   remove_identity = OpRemove(identity)
+
+   # The "simplify" operation we've been defining in the past few
+   # sections. Note that we need two patterns to account for the
+   # permutations of the arguments to mul.
+   local_simplify_1 = PatternSub((div, (mul, 'x', 'y'), 'y'),
+                                 'x')
+   local_simplify_2 = PatternSub((div, (mul, 'x', 'y'), 'x'),
+                                 'y')
+
+.. note::
+
+   OpSub, OpRemove and PatternSub produce local optimizers, which
+   means that everything we said previously about local optimizers
+   apply: they need to be wrapped in a Navigator, etc.
+
+
+When an optimization can be naturally expressed using OpSub, OpRemove
+or PatternSub, it is highly recommended to use them. Do note that they
+
+WRITEME: more about using PatternSub (syntax for the patterns, how to
+use constraints, etc. - there's some decent doc in the api
+:api:`theano.gof.opt.PatternSub` for those interested)
+
+
+.. _optdb:
+
 The optimization database (optdb)
 =================================
 
@@ -265,14 +325,212 @@ you must insert it at the proper place in the database. Furthermore,
 you can give each optimization in the database a set of tags that can
 serve as a basis for filtering.
 
+The point of optdb is that you might want to apply many optimizations
+to a computation graph in many unique patterns. For example, you might
+want to do optimization X, then optimization Y, then optimization
+Z. And then maybe optimization Y is an EquilibriumOptimizer containing
+LocalOptimizers A, B and C which are applied on every node of the
+graph until they all fail to change it. If some optimizations act up,
+we want an easy way to turn them off. Ditto if some optimizations are
+very CPU-intensive and we don't want to take the time to apply them.
+
+The optdb system allows us to tag each optimization with a unique name
+as well as informative tags such as 'stable', 'buggy' or
+'cpu_intensive', all this without compromising the structure of the
+optimizations.
 
 
-Using PatternSub
-================
+Definition of optdb
+-------------------
+
+optdb is an object which is an instance of ``theano.gof.SequenceDB``,
+itself a subclass of ``theano.gof.DB``. There exist (for now) two
+types of DB, SequenceDB and EquilibriumDB. When given an appropriate
+Query, DB objects build an Optimizer matching the query.
+
+A SequenceDB contains Optimizer or DB objects. Each of them has a
+name, an arbitrary number of tags and an integer representing their
+order in the sequence. When a Query is applied to a SequenceDB, all
+Optimizers whose tags match the query are inserted in proper order in
+a SequenceOptimizer, which is returned. If the SequenceDB contains DB
+instances, the Query will be passed to them as well and the optimizers
+they return will be put in their places.
+
+An EquilibriumDB contains LocalOptimizer or DB objects. Each of them
+has a name and an arbitrary number of tags. When a Query is applied to
+an EquilibriumDB, all LocalOptimizers that match the query are
+inserted into an EquilibriumOptimizer, which is returned. If the
+SequenceDB contains DB instances, the Query will be passed to them as
+well and the LocalOptimizers they return will be put in their places
+(note that as of yet no DB can produce LocalOptimizer objects, so this
+is a moot point).
+
+Theano contains one principal DB object, ``theano.optdb`` which
+contains all of Theano's optimizers with proper tags. It is
+recommended to insert new Optimizers in it. As mentioned previously,
+optdb is a SequenceDB, so at the top level Theano applies a sequence
+of global optimizations to the computation graphs.
 
 
-Inplace optimizations
-=====================
+Query
+-----
+
+A Query is built by the following call:
+
+theano.gof.Query(include, require = None, exclude = None, subquery = None)
+
+  * **include**: a set of tags (a tag being a string) such that every
+    optimization obtained through this Query must have **one** of the
+    tags listed. This field is required and basically acts as a
+    starting point for the search.
+
+  * **require**: a set of tags such that every optimization obtained
+    through this Query must have **all** of these tags.
+
+  * **exclude**: a set of tags such that every optimization obtained
+    through this Query must have **none** of these tags.
+
+  * **subquery**: optdb can contain sub-databases; subquery is a
+    dictionary mapping the name of a sub-database to a special Query.
+    If no subquery is given for a sub-database, the original Query
+    will be used again.
+
+Furthermore, a Query object includes three methods, ``including``,
+``requiring`` and ``excluding`` which each produce a new Query object
+with include, require and exclude sets refined to contain the new 
+
+
+Examples
+--------
+
+Here are a few examples of how to use a Query on optdb to produce an
+Optimizer:
+
+.. code-block:: python
+
+   # This is how the optimizer for the fast_run mode is defined
+   fast_run = optdb.query(Query(include = ['fast_run']))
+
+   # This is how the optimizer for the fast_compile mode is defined
+   fast_compile = optdb.query(Query(include = ['fast_compile']))
+
+   # This is the same as fast_run but no optimizations will replace
+   # any operation by an inplace version. This assumes, of course,
+   # that all inplace operations are tagged as 'inplace' (as they
+   # should!)
+   fast_run_no_inplace = optdb.query(Query(include = ['fast_run'], exclude = ['inplace']))
+   fast_run_no_inplace = fast_run.excluding('inplace')
+
+
+Registering an Optimizer
+------------------------
+
+Let's say we have a global optimizer called ``simplify``. We can add
+it to ``optdb`` as follows:
+
+.. code-block:: python
+
+   # optdb.register(name, optimizer, order, *tags)
+   optdb.register('simplify', simplify, 0.5, 'fast_run')
+
+Once this is done, the FAST_RUN mode will automatically include your
+optimization (since you gave it the 'fast_run' tag). Of course,
+already-compiled functions will see no change. The 'order' parameter
+(what it means and how to choose it) will be explained in another
+section below.
+
+
+Registering a LocalOptimizer
+----------------------------
+
+LocalOptimizers may be registered in two ways:
+
+* Wrap them in a Navigator and insert them like a global optimizer
+  (see previous section).
+* Put them in an EquilibriumDB.
+
+Theano defines two EquilibriumDBs where you can put local
+optimizations:
+
+
+* **canonicalize**: this contains optimizations that aim to *simplify*
+  the graph:
+
+  * Replace rare or esoterical operations with their equivalents using
+    elementary operations.
+
+  * Order operations in a canonical way (any sequence of
+    multiplications and divisions can be rewritten to contain at most
+    one division, for example; x*x can be rewritten x**2; etc.)
+
+  * Fold constants (Constant(2)*Constant(2) becomes Constant(4))
+
+
+* **specialize**: this contains optimizations that aim to *specialize*
+  the graph:
+
+  * Replace a combination of operations with a special operation that
+    does the same thing (but better).
+
+
+For each group, all optimizations of the group that are selected by
+the Query will be applied on the graph over and over again until none
+of them is applicable, so keep that in mind when designing it: check
+carefully that your optimization leads to a fixpoint (a point where it
+cannot apply anymore) at which point it returns False to indicate its
+job is done. Also be careful not to undo the work of another local
+optimizer in the group, because then the graph will oscillate between
+two or more states and nothing will get done.
+
+
+optdb structure
+---------------
+
+optdb contains the following Optimizers and sub-DBs, with the given
+priorities and tags:
+
++-------+---------------------+------------------------------+
+| Order | Name                | Description                  |
++=======+=====================+==============================+
+| 0     | merge1              | First merge operation        |
++-------+---------------------+------------------------------+
+| 1     | canonicalize        | Simplify the graph           |
++-------+---------------------+------------------------------+
+| 2     | specialize          | Add specialized operations   |
++-------+---------------------+------------------------------+
+| 49    | merge2              | Second merge operation       |
++-------+---------------------+------------------------------+
+| 49.5  | add_destroy_handler | Enable inplace optimizations |
++-------+---------------------+------------------------------+
+| 100   | merge3              | Third merge operation        |
++-------+---------------------+------------------------------+
+
+The merge operations are meant to put together parts of the graph that
+represent the same computation. Since optimizations can modify the
+graph in such a way that two previously different-looking parts of the
+graph become similar, we merge at the beginning, in the middle and at
+the very end. Technically, we only really need to do it at the end,
+but doing it in previous steps reduces the size of the graph and
+therefore increases the efficiency of the process.
+
+See previous section for more information about the canonicalize and
+specialize steps.
+
+The ``add_destroy_handler`` step is not really an optimization. It is
+a marker. Basically:
+
+.. warning::
+
+   Any optimization which inserts inplace operations in the
+   computation graph must appear **after** the ``add_destroy_handler``
+   "optimizer". In other words, the priority of any such optimization
+   must be **>= 50**. Failure to comply by this restriction can lead
+   to the creation of incorrect computation graphs.
+
+The reason the destroy handler is not inserted at the beginning is
+that it is costly to run. It is cheaper to run most optimizations
+under the assumption there are no inplace operations.
+
 
 
 

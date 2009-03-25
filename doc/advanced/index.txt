@@ -11,6 +11,7 @@ Structure
 .. toctree::
    :maxdepth: 2
    
+   pipeline
    env
    features
    optimization
