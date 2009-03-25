@@ -7,6 +7,7 @@ import theano
 import theano.tensor
 from theano.compile import debugmode
 import theano.compile
+import unittest
 
 def test0():
     x = theano.tensor.dvector()
@@ -342,128 +343,159 @@ def test_baddestroymap_c():
         pass
 
 
-def test_badviewmap():
-    class BadAdd(gof.Op):
+class Test_ViewMap(unittest.TestCase):
+
+    class BadAddRef(gof.Op):
         def make_node(self, a, b):
             c = b.type()
             return gof.Apply(self, [a,b], [c])
         def perform(self, node, (a,b), (c,)):
             c[0] = b
 
-    x = theano.tensor.dvector()
-    y = theano.tensor.dvector()
-    f = theano.function([x, y], BadAdd()(x,y), mode='DEBUG_MODE')
-
-    try:
-        f([1,2], [3,4])
-        assert False #failed to raise error
-    except debugmode.BadViewMap:
-        return
-
-def test_badviewmap_c():
-    x = theano.tensor.dvector()
-    f = theano.function([x], wb1i(x), mode=debugmode.DebugMode(check_py_code=False))
-    try:
-        f([1,2])
-        assert False #failed to raise error
-    except debugmode.BadDestroyMap:
-        pass
-
-def test_aliased_outputs_ok():
-    #here aliased outputs is ok because they are both aliased to an input as well
-    class CustomOp(gof.Op):
-        view_map = {0:[0], 1:[0]}
+    class BadAddSlice(gof.Op):
         def make_node(self, a, b):
-            c = a.type()
-            d = a.type()
-            return gof.Apply(self, [a,b], [c,d])
+            c = b.type()
+            return gof.Apply(self, [a,b], [c])
         def perform(self, node, (a,b), (c,)):
-            c[0] = a
-            d[0] = a[1:]
+            c[0] = b[1:3]
 
-    x = theano.tensor.dvector()
-    y = theano.tensor.dvector()
-    f = theano.function([x, y], CustomOp()(x,y), mode='DEBUG_MODE')
+    def test_badviewmap_ref(self):
+        x = theano.tensor.dvector()
+        y = theano.tensor.dvector()
+        f = theano.function([x, y], self.BadAddRef()(x,y), mode='DEBUG_MODE')
+        try:
+            f([1,2], [3,4])
+            assert False #failed to raise error
+        except debugmode.BadViewMap:
+            return
 
-    r0, r1 = f([1,2,3,4])
+    def test_badviewmap_slice(self):
+        x = theano.tensor.dvector()
+        y = theano.tensor.dvector()
+        f = theano.function([x, y], self.BadAddSlice()(x,y), mode='DEBUG_MODE')
+        try:
+            f([1,2], [3,4])
+            assert False #failed to raise error
+        except debugmode.BadViewMap:
+            return
 
-    assert numpy.all(r0 == [1,2,3,4])
-    assert numpy.all(r1 == [2,3,4])
-
-def test_aliased_outputs_ok_output():
-    # here aliased outputs is ok because they are both outputs of the function as a whole and
-    # thus not destroy-able
-    class CustomOp(gof.Op):
-        def make_node(self, a, b):
-            c = a.type()
-            d = a.type()
-            return gof.Apply(self, [a,b], [c,d])
-        def perform(self, node, (a,b), (c,)):
-            r = a * 2
-            c[0] = r
-            d[0] = r[1:]
-
-    x = theano.tensor.dvector()
-    y = theano.tensor.dvector()
-    f = theano.function([x, y], CustomOp()(x,y), mode='DEBUG_MODE')
-
-    r0, r1 = f([1,2,3,4])
-
-    assert numpy.all(r0 == [2,4,6,8])
-    assert numpy.all(r1 == [4,6,8])
-
-def test_aliased_outputs_ok_shadow():
-    # here the alias between outputs is ok because one of them is not used for subsequent
-    # computation.  This is like the case where we use one output as a memory buffer to serve
-    # another output.
-    class CustomOp(gof.Op):
-        def make_node(self, a, b):
-            c = a.type()
-            d = a.type()
-            return gof.Apply(self, [a,b], [c,d])
-        def perform(self, node, (a,b), (c,)):
-            r = a * 1
-            c[0] = r
-            d[0] = r[1:]
-
-    x = theano.tensor.dvector()
-    y = theano.tensor.dvector()
-    f = theano.function([x, y], CustomOp()(x,y)[0] * 2, mode='DEBUG_MODE')
-
-    r0 = f([1,2,3,4])
-
-    assert numpy.all(r0 == [2,4,6,8])
+    def test_goodviewmap(self):
+        goodop = self.BadAddRef()
+        goodop.view_map = {0: [1]}
+        x = theano.tensor.dvector()
+        y = theano.tensor.dvector()
+        f = theano.function([x, y], goodop(x,y), mode='DEBUG_MODE')
+        try:
+            f([1,5,1], [3,4,2,1,4])
+            return
+        except debugmode.BadViewMap:
+            assert False #failed to raise error
 
 
-def test_aliased_outputs_bad():
-    # here the alias between outputs is not ok because destroying one destroys the other, but
-    # there's no way to warn theano about it through the view_map mechanism.
-    class CustomOp(gof.Op):
-        def make_node(self, a, b):
-            c = a.type()
-            d = a.type()
-            return gof.Apply(self, [a,b], [c,d])
-        def perform(self, node, (a,b), (c,)):
-            r = a * 1
-            c[0] = r[:-1]
-            d[0] = r[1:]
-    custom_op = CustomOp()
+    def test_badviewmap_c(self):
+        x = theano.tensor.dvector()
+        f = theano.function([x], wb1i(x), mode=debugmode.DebugMode(check_py_code=False))
+        try:
+            f([1,2])
+            assert False #failed to raise error
+        except debugmode.BadViewMap:
+            pass
 
-    x = theano.tensor.dvector()
-    y = theano.tensor.dvector()
-    bad_xy0, bad_xy1 = custom_op(x, y)
-    out = bad_xy0 * 2 + bad_xy1 * 2
-    f = theano.function([x, y], out, mode='DEBUG_MODE')
+    def test_aliased_outputs_ok(self):
+        #here aliased outputs is ok because they are both aliased to an input as well
+        class CustomOp(gof.Op):
+            view_map = {0:[0], 1:[0]}
+            def make_node(self, a, b):
+                c = a.type()
+                d = a.type()
+                return gof.Apply(self, [a,b], [c,d])
+            def perform(self, node, (a,b), (c,d)):
+                c[0] = a
+                d[0] = a[1:]
 
-    try:
-        r0 = f([1,2,3,4])
-        assert False # DebugMode should have caught the error
-    except debugmode.BadViewMap, e:
-        pass
+        x = theano.tensor.dvector('x')
+        y = theano.tensor.dvector('y')
+        f = theano.function([x, y], CustomOp()(x,y), mode='DEBUG_MODE')
 
-    # the situation can be rescued by picking one of the inputs and pretending that it is
-    # aliased to both the outputs.  This unfairly disables any destructive operations on the
-    # input, but guarantees correctness.
-    custom_op.view_map = {0:[0], 1:[1]}
-    f([1,2,3,4])
+        r0, r1 = f([1,2,3,4],[5,6,7,8])
 
+        assert numpy.all(r0 == [1,2,3,4])
+        assert numpy.all(r1 == [2,3,4])
+
+    def test_aliased_outputs_ok_output(self):
+        # here aliased outputs is ok because they are both outputs of the function as a whole and
+        # thus not destroy-able
+        class CustomOp(gof.Op):
+            def make_node(self, a, b):
+                c = a.type()
+                d = a.type()
+                return gof.Apply(self, [a,b], [c,d])
+            def perform(self, node, (a,b), (c,d)):
+                r = a * 2
+                c[0] = r
+                d[0] = r[1:]
+
+        x = theano.tensor.dvector()
+        y = theano.tensor.dvector()
+        f = theano.function([x, y], CustomOp()(x,y), mode='DEBUG_MODE')
+
+        r0, r1 = f([1,2,3,4],[5,6,7,8])
+
+        assert numpy.all(r0 == [2,4,6,8])
+        assert numpy.all(r1 == [4,6,8])
+
+    def test_aliased_outputs_ok_shadow(self):
+        # here the alias between outputs is ok because one of them is not used for subsequent
+        # computation.  This is like the case where we use one output as a memory buffer to serve
+        # another output.
+        class CustomOp(gof.Op):
+            def make_node(self, a, b):
+                c = a.type()
+                d = a.type()
+                return gof.Apply(self, [a,b], [c,d])
+            def perform(self, node, (a,b), (c,d)):
+                r = a * 1
+                c[0] = r
+                d[0] = r[1:]
+
+        x = theano.tensor.dvector('x')
+        y = theano.tensor.dvector('y')
+        f = theano.function([x, y], CustomOp()(x,y)[0] * 2, mode='DEBUG_MODE')
+
+        r0 = f([1,2,3,4],[5,6,7,8])
+
+        assert numpy.all(r0 == [2,4,6,8])
+
+
+    def test_aliased_outputs_bad(self):
+        # here the alias between outputs is not ok because destroying one destroys the other, but
+        # there's no way to warn theano about it through the view_map mechanism.
+        class CustomOp(gof.Op):
+            def make_node(self, a, b):
+                c = a.type()
+                d = a.type()
+                return gof.Apply(self, [a,b], [c,d])
+            def perform(self, node, (a,b), (c,d)):
+                r = a * 1
+                c[0] = r[:-1]
+                d[0] = r[1:]
+        custom_op = CustomOp()
+
+        x = theano.tensor.dvector()
+        y = theano.tensor.dvector()
+        bad_xy0, bad_xy1 = custom_op(x, y)
+        out = bad_xy0 * 2 + bad_xy1 * 2
+        f = theano.function([x, y], out, mode='DEBUG_MODE')
+
+        try:
+            r0 = f([1,2,3,4],[5,6,7,8])
+            assert False # DebugMode should have caught the error
+        except debugmode.BadViewMap, e:
+            print e
+            pass
+
+        # the situation can be rescued by picking one of the inputs and pretending that it is
+        # aliased to both the outputs.  This unfairly disables any destructive operations on the
+        # input, but guarantees correctness.
+        #custom_op.view_map = {0:[0], 1:[1]}
+        #f([1,2,3,4],[5,6,7,8])

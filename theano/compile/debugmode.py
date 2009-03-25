@@ -136,24 +136,27 @@ class BadDestroyMap(DebugModeError):
 
 class BadViewMap(DebugModeError):
     """Exception: Some perform() or c_code() created a memory alias that wasn't in the view_map"""
-    def __init__(self, node, idx, old_val, new_val):
+    def __init__(self, node, output_idx, out_storage, in_alias_idx=None, out_alias_idx=None):
         super(BadViewMap, self).__init__()
         self.node = node
-        self.idx = idx
-        self.old_val = old_val
-        self.new_val = new_val
+        self.output_idx = output_idx
+        self.out_storage = out_storage
+        self.in_alias_idx = in_alias_idx
+        self.out_alias_idx = out_alias_idx
     
     def __str__(self):
         sio = StringIO()
         print >> sio, "  node:", self.node
         print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
+        print >> sio, "  node.outputs:", [(str(i), id(i)) for i in self.node.outputs]
         print >> sio, "  view_map:", getattr(self.node.op, 'view_map', {})
-        print >> sio, "  changed input idx:", self.idx
-        print >> sio, "  changed input type:", self.node.inputs[self.idx].type
-        print >> sio, "  repr (old val):", repr(self.old_val)
-        print >> sio, "  repr (new val):", repr(self.new_val)
-        print >> sio, ""
-        print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
+        print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
+        print >> sio, "  aliased output:", self.output_idx
+        print >> sio, "  aliased output storage:", self.out_storage
+        if self.in_alias_idx:
+            print >> sio, "  aliased to inputs:", self.in_alias_idx
+        if self.out_alias_idx:
+            print >> sio, "  aliased to outputs:", self.out_alias_idx
         return sio.getvalue()
 
 class StochasticOrder(DebugModeError):
@@ -273,7 +276,85 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
             else:
                 raise BadDestroyMap(node, r_idx, r_vals[r], storage_map[r][0])
 
+
+def _check_viewmap(node, storage_map):
+    """
+    This functions raises a BadViewMap exception when it detects the following:
+    - output node storages aliased to input storage, with no declaration in view_map
+    - if not aliased to an input, check if two outputs are aliased together
+      and used subsequently in the graph
+    """
+
+    for oi, onode in enumerate(node.outputs):
+        input_alias = None
+        outstorage = storage_map[onode][0]
+        instorage_id = [id(storage_map[i][0]) for i in node.inputs]
+        
+        # TODO: investigate ways in which other Types may be aliased
+        # TODO: consider adding a function to Type to detect aliasing
+        danger_flag = id(outstorage) in instorage_id or\
+                      (type(outstorage)==numpy.ndarray and 
+                       outstorage.flags['OWNDATA']==False)
+        if danger_flag:
+            # first find out which input it aliases
+
+            # In theory, theano's view_map only allows for 1 output to alias 1 input
+            # Checking for multiple aliases just in case...
+            alias = {}
+            for ii, inode in enumerate(node.inputs):
+                if _may_share_memory(outstorage, storage_map[inode][0]):
+                    alias[ii] = (ii,inode)
+
+            # if its aliased but its declared in the view/destroy map = OK
+            viewmapped = False
+            view_map = getattr(node.op, 'view_map', {})
+            destroy_map = getattr(node.op, 'destroy_map', {})
+            for key,val in view_map.items()+destroy_map.items():
+                val = val[0] # view_map stores a list with single-entries
+                if key==oi and val in alias.keys():
+                    # pfeew, its viewmapped. we're good
+                    input_alias = alias.pop(val)
+
+            # if there's anything left in alias, there's a problem
+            if len(alias):
+                raise BadViewMap(node, oi, outstorage, alias.keys())
+            
+        #need to check output->output aliasing as well
+        if not input_alias and _is_used_in_graph(onode):
+            for other_oi, other_onode in enumerate(node.outputs):
+                if other_oi==oi: continue
+
+                other_storage = storage_map[other_onode][0]
+                # check to see if we share memory with this other output
+                # this is not a problem if the node is not actually used
+                if _is_used_in_graph(other_onode) and \
+                        _may_share_memory(outstorage, other_storage):
+                    raise BadViewMap(node, oi, outstorage, out_alias_idx=other_oi)
+
+def _may_share_memory(a, b):
+    return (hasattr(a,'__array_interface__') and
+            hasattr(b,'__array_interface__') and
+            numpy.may_share_memory(a,b))
+            
+def _is_function_output(node):
+    """
+    Returns True if the node in question is the a final output of the graph
+    """
+    return node.clients==[('output', 1)]
+
+def _is_used_in_graph(node):
+    return not(_is_function_output(node) or node.clients==[])
+
+
 def _lessbroken_deepcopy(a):
+    """
+    :param a: any object
+
+    Returns a copy of `a` that shares no internal storage with the original.  A deep copy.
+    This function handles numpy arrays specially to avoid some bug I had one time... (possibly
+    about copying 1-d arrays?)
+    """
+    # this exists because numpy copies are broken
     if type(a) is numpy.ndarray:
         rval = numpy.array(a, copy=True, dtype=a.dtype)
     else:
@@ -718,70 +799,74 @@ class _Linker(gof.link.LocalLinker):
             for r, s in storage_map.iteritems():
                 assert s[0] is None
 
-            try:
-                # compute the value of all variables
-                for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
-                    this_node_destroyed_variables = set()
+            #try:
+            # compute the value of all variables
+            for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
+                this_node_destroyed_variables = set()
 
-                    # put a copy of each input into the storage_map
-                    # also, check that inputs have valid values
+                # put a copy of each input into the storage_map
+                # also, check that inputs have valid values
+                for r in node.inputs:
+                    assert isinstance(r, gof.Variable)
+                    assert r in r_vals
+                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+                    if not r.type.is_valid_value(storage_map[r][0]):
+                        raise InvalidValueError(r, storage_map[r][0])
+
+                if thunk_py:
+                    thunk_py()
+
+                    _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                            clobber_dr_vals=True)
+
+                    _check_viewmap(node, storage_map)
+
+                    # check output values for type-correctness
+                    #retrieve each output from the storage_map
+                    for r in node.outputs:
+                        if not r.type.is_valid_value(storage_map[r][0]):
+                            raise InvalidValueError(r, storage_map[r][0])
+                        #if r in r_vals:
+                            #print >> sys.stderr, 'OUTPUT', r, 'ALREADY HAS_VALUE!', r_vals[r], 'WHAT ABOUT', storage_map[r][0]
+                        assert r not in r_vals
+                        r_vals[r] = storage_map[r][0]
+                        storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
+
+                if thunk_c:
+
                     for r in node.inputs:
-                        assert isinstance(r, gof.Variable)
-                        assert r in r_vals
+                        # TODO:  we only need to overwrite the non-destroyed inputs
                         storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+
+                    thunk_c()
+
+                    _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                            clobber_dr_vals=False)
+
+                    _check_viewmap(node, storage_map)
+
+                    for r in node.outputs:
+                        # check output values for type-correctness
                         if not r.type.is_valid_value(storage_map[r][0]):
                             raise InvalidValueError(r, storage_map[r][0])
 
-                    if thunk_py:
-                        thunk_py()
-
-                        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                                clobber_dr_vals=True)
-
-                        # check output values for type-correctness
-                        #retrieve each output from the storage_map
-                        for r in node.outputs:
-                            if not r.type.is_valid_value(storage_map[r][0]):
-                                raise InvalidValueError(r, storage_map[r][0])
-                            #if r in r_vals:
-                                #print >> sys.stderr, 'OUTPUT', r, 'ALREADY HAS_VALUE!', r_vals[r], 'WHAT ABOUT', storage_map[r][0]
-                            assert r not in r_vals
+                        if r in r_vals:
+                            # compares the version from thunk_py (in r_vals)
+                            # to the version produced by thunk_c (in storage_map)
+                            if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                                raise BadClinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                        else:
+                            #retrieve each output from the storage_map
                             r_vals[r] = storage_map[r][0]
-                            storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
+                        storage_map[r][0] = None #clear the storage_map for the thunk_c
 
-                    if thunk_c:
+                # we're done with this thunk
+                # clear everything out of the storage_map
+                for r in node.inputs:
+                    storage_map[r][0] = None
 
-                        for r in node.inputs:
-                            # TODO:  we only need to overwrite the non-destroyed inputs
-                            storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
-
-                        thunk_c()
-
-                        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                                clobber_dr_vals=False)
-
-                        for r in node.outputs:
-                            # check output values for type-correctness
-                            if not r.type.is_valid_value(storage_map[r][0]):
-                                raise InvalidValueError(r, storage_map[r][0])
-
-                            if r in r_vals:
-                                # compares the version from thunk_py (in r_vals)
-                                # to the version produced by thunk_c (in storage_map)
-                                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                    raise BadClinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
-                            else:
-                                #retrieve each output from the storage_map
-                                r_vals[r] = storage_map[r][0]
-                            storage_map[r][0] = None #clear the storage_map for the thunk_c
-
-                    # we're done with this thunk
-                    # clear everything out of the storage_map
-                    for r in node.inputs:
-                        storage_map[r][0] = None
-
-            except:
-                raise_with_op(node)
+            #except:
+            #    raise_with_op(node)
 
             _find_bad_optimizations(order, env.equivalence_tracker.reasons, r_vals)
 
@@ -898,7 +983,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                             pass
 
                     print >> sys.stderr, "EXITING"
-                    sys.exit(1)
+                    sys.exit(1) #there is a ticket related to not calling sys.exit here.
                     break
                 else:
                     if self.verbose:
