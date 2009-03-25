@@ -114,7 +114,7 @@ tanh_rnn = TanhRnn()
 
 class TanhRnnGrad(Op):
     """Gradient calculation for TanhRnn"""
-
+    view_map = {0: [2]}
     def __init__(self):
         pass
 
