@@ -11,6 +11,8 @@ Structure
 .. toctree::
    :maxdepth: 2
    
+   debug_faq
+   debugmode
    env
    features
    optimization
