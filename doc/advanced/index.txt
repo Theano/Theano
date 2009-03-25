@@ -20,5 +20,6 @@ Structure
    ccodegen
    function
    module
+   pipeline
    profilemode
    unittest

@@ -47,6 +47,9 @@ Glossary of terminology
     constant
         WRITEME
 
+    dynamic
+        WRITEME
+
     elementwise
         An elementwise operation ``f`` on two matrices ``M`` and ``N``
         is one such that:
@@ -82,6 +85,9 @@ Glossary of terminology
         WRITEME
 
     pure
+        WRITEME
+
+    static
         WRITEME
 
     type
@@ -208,11 +214,11 @@ Glossary of terminology
         compilation stage
 
         :term:`Env`, in particular `replace()
-        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.env.Env-class.html#replace
+        <http://pylearn.org/epydoc/theano.gof.env.Env-class.html#replace
         replace()>`_
 
         See also `Optimizer
-        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.opt.Optimizer-class.html>`_,
+        <http://pylearn.org/epydoc/theano.gof.opt.Optimizer-class.html>`_,
         which is the base interface for writing transformers, such as
         :term:`optimizations <Optimization>` and :term:`stabilizations
         <Stabilization>`.
@@ -236,12 +242,12 @@ Glossary of terminology
         a type of operation. Instance is TOI
 
         :term:`Op` is an abstract class (`Op API
-        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.op.Op-class.html>`_)
+        <http://pylearn.org/epydoc/theano.gof.op.Op-class.html>`_)
         that documents the interface for theano's data
         transformations.  It has many subclasses, such as `sparse Dot
-        <http://lgcm.iro.umontreal.ca/epydoc/theano.sparse.Dot-class.html>`_.
+        <http://pylearn.org/epydoc/theano.sparse.Dot-class.html>`_.
         and `Shape
-        <http://lgcm.iro.umontreal.ca/epydoc/theano.tensor.Shape-class.html>`_.
+        <http://pylearn.org/epydoc/theano.tensor.Shape-class.html>`_.
 
 
         Comparing with the Python language, :term:`Op` is theano's
@@ -270,7 +276,7 @@ Glossary of terminology
         a Type-related graph node (a variable)
         
         A Variable
-        (`Variable API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Variable-class.html>`_)
+        (`Variable API <http://pylearn.org/epydoc/theano.gof.graph.Variable-class.html>`_)
         is theano's variable.  It symbolically represents a value (which
         can be a number, vector, matrix, tensor, etc.).
         The inputs and outputs of every :term:`Op` are Variable instances.
@@ -351,7 +357,7 @@ Glossary of terminology
     Tensor
         Type for vectors, matrices, etc.
         
-        Tensor (`Tensor API <http://lgcm.iro.umontreal.ca/epydoc/theano.tensor.Tensor-class.html doc>`_) is a class
+        Tensor (`Tensor API <http://pylearn.org/epydoc/theano.tensor.Tensor-class.html doc>`_) is a class
         that derives from :term:`Type`.  It is the symbolic type for ``numpy.ndarray``.
         The main properties that distinguish one Tensor instance from another are:
 
@@ -363,7 +369,7 @@ Glossary of terminology
         
     TensorVariable
         :term:`Variables <Variable>` of type :term:`Tensor` are of class
-        TensorVariable (`TensorVariable API <http://lgcm.iro.umontreal.ca/epydoc/theano.tensor.TensorVariable-class.html>`_).
+        TensorVariable (`TensorVariable API <http://pylearn.org/epydoc/theano.tensor.TensorVariable-class.html>`_).
         ``TensorVariable`` adds operator overloading so that ``TensorVariable`` instances can be used
         in mathematical expressions.  When any input to an expression is a ``TensorVariable`` then the
         expression will evaluate to an ``TensorVariable`` and a :term:`graph` corresponding to
@@ -416,7 +422,7 @@ Glossary of terminology
     Type
         :term:`Variables <Variable>` are strongly typed by :term:`Type` instances
         
-        `theano.Type <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.type.Type-class.html>`_
+        `theano.Type <http://pylearn.org/epydoc/theano.gof.type.Type-class.html>`_
         is an important abstract class in the creation and compilation of theano graphs.
         
         Type instances are mainly responsible for two things: 
@@ -427,15 +433,15 @@ Glossary of terminology
         
         Theano comes with several subclasses of ``theano.type`` such as:
 
-         * Generic (`Generic API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.type.Generic-class.html>`_) - for any python type
+         * Generic (`Generic API <http://pylearn.org/epydoc/theano.gof.type.Generic-class.html>`_) - for any python type
          * :term:`Tensor` - for numpy.ndarray
-         * Sparse (`Sparse API <http://lgcm.iro.umontreal.ca/epydoc/theano.sparse.Sparse-class.html>`_) - for scipy.sparse
+         * Sparse (`Sparse API <http://pylearn.org/epydoc/theano.sparse.Sparse-class.html>`_) - for scipy.sparse
 
         You can create more type instances if you like (see :ref:`HowtoCreateType`).
         
         The C code interface methods of
         ``theano.Type`` are described in `docstrings
-        <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.type.Type-class.html>`_,
+        <http://pylearn.org/epydoc/theano.gof.type.Type-class.html>`_,
         see :ref:`CodeGeneration` for a more general intro to how C code is generated.
 
         See also :term:`Theano type instance (TTI) <TTI>`.
@@ -444,7 +450,7 @@ Glossary of terminology
         
 
     Value
-        :term:`Value` (`Value API <http://lgcm.iro.umontreal.ca/epydoc/theano.gof.graph.Value-class.html doc>`_)
+        :term:`Value` (`Value API <http://pylearn.org/epydoc/theano.gof.graph.Value-class.html doc>`_)
         and :term:`Constant` are subclasses of
         :term:`Variable`, which means they serve more or less the
         same purpose. There is however one important difference:

@@ -64,10 +64,10 @@ I advise to never import theano's files from outside theano itself (and I think 
 When you install a package, only the package name can be imported directly. If you want a sub-package, you must import it from the main package. That's how it will work in 99.9% of installs because it is the default. Therefore, if you stray from this practice, your code will not be portable. Also, some ways to circumvent circular dependencies might make it so you have to import files in a certain order, which is best handled by the package's own __init__.py. 
 
 
-.. _non-basic python: http://lgcm.iro.umontreal.ca/theano/wiki/NonbasicPython
+.. _non-basic python: http://pylearn.org/theano/wiki/NonbasicPython
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html
 .. _epydoc: http://epydoc.sourceforge.net/
-.. _basicnumpy: http://lgcm.iro.umontreal.ca/theano/wiki/BasicNumpy
+.. _basicnumpy: http://pylearn.org/theano/wiki/BasicNumpy
 
 
 .. _README: ../README.html
@@ -75,6 +75,6 @@ When you install a package, only the package name can be imported directly. If y
 .. _Documentation: index.html
 .. _Wiki: http://pylearn.org/theano
 .. _TRAC: http://trac.edgewall.org/
-.. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
+.. _task list: http://pylearn.org/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
 

@@ -75,7 +75,7 @@ How documentation is auto-built on push
 
 When you push to the main repository, the following file is run::
 
-   projects@lgcm:~/repos/theano/.hg/refresh-epydoc.sh
+   projects@pylearn.org:~/repos/theano/.hg/refresh-epydoc.sh
 
 It calls ``epydoc`` and ``sphinx`` on the code.
 
