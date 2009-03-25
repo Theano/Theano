@@ -167,6 +167,6 @@ mailing list.
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 .. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
-.. _task list: http://lgcm.iro.umontreal.ca/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
+.. _task list: http://pylearn.org/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
 
