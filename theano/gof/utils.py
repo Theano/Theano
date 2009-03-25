@@ -89,6 +89,9 @@ def uniq(seq):
     return [x for i, x in enumerate(seq) if seq.index(x) == i]
 
 def difference(seq1, seq2):
+    """
+    Returns all elements in seq1 which are not in seq2: i.e seq1\seq2 
+    """
     try: 
         # try to use O(const * len(seq1)) algo
         if len(seq2) < 4: # I'm guessing this threshold -JB
