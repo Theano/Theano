@@ -6,17 +6,17 @@ Using DebugMode
 ===============
 
 
-The DebugMode evaluation mode (available via ``mode='DEBUG_MODE'``, :api:`DebugMode`) includes a number of
-self-checks and assertions that 
-can help to diagnose several kinds of programmer
-errors that can lead to incorrect output.
+The DebugMode evaluation mode (available via ``mode='DEBUG_MODE'``,
+:api:`DebugMode`) includes a number of self-checks and assertions that
+can help to diagnose several kinds of programmer errors that can lead
+to incorrect output.
 
-It is much slower to evaluate a function or method in DEBUG_MODE than it would
-be in FAST_RUN or even FAST_COMPILE, so it is recommended to use it during
-development, but not when you launch 1000 nearly-identical processes on a
-cluster.
+It is much slower to evaluate a function or method in DEBUG_MODE than
+it would be in FAST_RUN or even FAST_COMPILE. We recommended you use
+DebugMode during development, but not when you launch 1000 processes on
+a cluster.
 
-DebugMode is easy to use:
+DebugMode is used as follows:
 
 .. code-block:: python
 
@@ -29,16 +29,17 @@ DebugMode is easy to use:
     f(7) 
 
 
-If any problem is detected, at either call time (e.g. ``f(5)``) or compile time
-(e.g ``f = theano.function(x, 10*x, mode='DEBUG_MODE')``) then DebugMode will
-raise an exception according to what went wrong.   None of these exceptions is
-OK to ignore; talk to you your local Theano guru if you can't make the exception
-go away.
+If any problem is detected, DebugMode will raise an exception according to
+what went wrong, either at call time (e.g. ``f(5)``) or compile time (e.g
+``f = theano.function(x, 10*x, mode='DEBUG_MODE')``). These exceptions
+should *not* be ignored; talk to your local Theano guru or email the
+users list if you cannot make the exception go away.
 
 Some kinds of errors can only be detected for certain input value combinations.
 In the example above, there is no way to guarantee that a future call to say,
-``f(-1)`` won't cause a problem.  DebugMode is no silver bullet.
+``f(-1)`` won't cause a problem.  DebugMode is not a silver bullet.
 
+There following are DebugMode exceptions you might encounter:
 
 BadCLinkerOutput
 ----------------
