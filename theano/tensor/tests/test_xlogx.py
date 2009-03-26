@@ -23,7 +23,7 @@ class T_XlogX(unittest.TestCase):
 #        class Dummy(object):
 #            def make_node(self, a):
 #                return [xlogx(a)[:,2]]
-        TT.verify_grad(self, xlogx, [numpy.random.rand(3,4)])
+        TT.verify_grad(xlogx, [numpy.random.rand(3,4)])
 
 
 if __name__ == '__main__':

@@ -14,13 +14,13 @@ class T_sigmoid(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
     def test_elemwise(self):
-        TT.verify_grad(self, sigmoid, [numpy.random.rand(3,4)])
+        TT.verify_grad(sigmoid, [numpy.random.rand(3,4)])
 
 class T_softplus(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
     def test_elemwise(self):
-        TT.verify_grad(self, softplus, [numpy.random.rand(3,4)])
+        TT.verify_grad(softplus, [numpy.random.rand(3,4)])
 
 class T_Softmax(unittest.TestCase):
     def setUp(self):
@@ -28,19 +28,19 @@ class T_Softmax(unittest.TestCase):
     def test0(self):
         def f(a):
             return softmax(a)[:,0]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4)])
+        TT.verify_grad(f, [numpy.random.rand(3,4)])
     def test1(self):
         def f(a):
             return softmax(a)[:,1]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4)])
+        TT.verify_grad(f, [numpy.random.rand(3,4)])
     def test2(self):
         def f(a):
             return softmax(a)[:,2]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4)])
+        TT.verify_grad(f, [numpy.random.rand(3,4)])
     def test3(self):
         def f(a):
             return softmax(a)[:,3]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4)])
+        TT.verify_grad(f, [numpy.random.rand(3,4)])
 
 
 class T_SoftmaxWithBias(unittest.TestCase):
@@ -49,22 +49,22 @@ class T_SoftmaxWithBias(unittest.TestCase):
     def test0(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:,0]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4),
+        TT.verify_grad(f, [numpy.random.rand(3,4),
             numpy.random.rand(4)])
     def test1(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:,1]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4),
+        TT.verify_grad(f, [numpy.random.rand(3,4),
             numpy.random.rand(4)])
     def test2(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:,2]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4),
+        TT.verify_grad(f, [numpy.random.rand(3,4),
             numpy.random.rand(4)])
     def test3(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:,3]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4),
+        TT.verify_grad(f, [numpy.random.rand(3,4),
             numpy.random.rand(4)])
 
 class T_CrossentropySoftmax1Hot(unittest.TestCase):
@@ -74,13 +74,13 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
         y_idx = [0,1,3]
         def f(a, b):
             return crossentropy_softmax_1hot_with_bias(a, b, y_idx)[0]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4),
+        TT.verify_grad(f, [numpy.random.rand(3,4),
             numpy.random.rand(4)])
     def test1(self):
         y_idx = [0,1,3]
         def f(a):
             return crossentropy_softmax_1hot(a, y_idx)[0]
-        TT.verify_grad(self, f, [numpy.random.rand(3,4)])
+        TT.verify_grad(f, [numpy.random.rand(3,4)])
 
 class T_prepend(unittest.TestCase):
     def setUp(self):

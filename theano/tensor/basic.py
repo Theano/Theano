@@ -20,7 +20,7 @@ from ..gof.python25 import partial
 
 from .. import compile, printing
 from ..printing import pprint, Print
-
+from ..tests import unittest_tools
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -2327,29 +2327,35 @@ class numeric_grad:
             errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
         return numpy.max(errs)
 
-# TODO: remove testcase parameter as it is not used... and useless (forces you to
-# run your testcases from a unittest.TestCase class = not necessary)
-def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0.0001,
-        mode=compile.Mode(optimizer=None, linker='c&py')):
+
+def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
     """ WRITEME
     
-    testcase.failUnless(analytic gradient matches finite-diff gradient)
+    Raises an Exception if the difference between the analytic gradient and
+    numerical gradient (computed through the Finite Difference Method) exceeds
+    the given tolerance.
 
-    :param pt: the list of numpy.ndarrays to use as inputs to the op
     :param op: something that behaves like an Op instance with a single output
-     (can be a python function combining multiple ops)
-    :param testcase: the thing to call `fail` on if things go awry.
+               (can be a python function combining multiple ops)
+    :param pt: the list of numpy.ndarrays to use as inputs to the op
+    :param n_tests: number of times to run the test
+    :param rng: random number generator from which to draw random samples
+    :param eps: stepsize used in the Finite Difference Method
+    :param tol: relative tolerance used as threshold for gradient comparison
     
     """
     pt = [numpy.array(p) for p in pt]
 
-    #print "PT", pt
+    if rng is None:
+        rng = numpy.random
+        unittest_tools.seed_rng()
 
     def function(inputs, output):
-        f = compile.function(inputs, output, mode=mode, accept_inplace=True)
+        f = compile.function(inputs, output, accept_inplace=True)
         return f
 
     for test_num in xrange(n_tests):
+
         tensor_pt = [value(p.copy(), name='input %i'%i) for i,p in enumerate(pt)]
         
         #op can be either a function or an actual Op instance
@@ -2360,8 +2366,10 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
             # we could make loop over outputs making random projections R for each,
             # but this doesn't handle the case where not all the outputs are
             # differentiable... so I leave this as TODO for now -JB.
+
         o_fn = function(tensor_pt, o_output)
         o_fn_out = o_fn(*[p.copy() for p in pt])
+
         random_projection = rng.rand(*o_fn_out.shape)
         t_r = as_tensor_variable(random_projection)
 
@@ -2375,15 +2383,13 @@ def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0
 
         grad_fn = function(tensor_pt, symbolic_grad)
 
-        analytic_grad = grad_fn(*pt)
+        analytic_grad = grad_fn(*[p.copy() for p in pt])
 
         if not isinstance(analytic_grad, (list, tuple)):
             analytic_grad = [analytic_grad]
 
         max_err = num_grad.max_err(analytic_grad)
         if  max_err > tol:
-            #print 'analytic grad', analytic_grad
-            #print 'numeric grad', num_grad.gf
             raise Exception(verify_grad.E_grad, (max_err, tol))
 
 verify_grad.E_grad = 'gradient error exceeded tolerance'

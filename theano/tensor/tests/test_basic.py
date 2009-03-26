@@ -31,14 +31,6 @@ def eval_outputs(outputs):
         return variables[0]
     return variables
 
-_public_verify_grad = verify_grad
-def verify_grad(*args, **kwargs):
-    assert 'mode' not in kwargs
-    kwargs['mode'] = default_mode
-    r =  _public_verify_grad(*args, **kwargs)
-    return r
-
-
 def _numpy_checker(x, y):
     """
     Checks if x.data and y.data have the same contents.
@@ -56,7 +48,7 @@ def safe_make_node(op, *inputs):
     else:
         return node.owner
 
-def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}):
+def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_runtime = {}, grad = {}):
     if grad is True:
         grad = good
 
@@ -165,7 +157,7 @@ def make_restet(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    verify_grad(self, self.op, inputs)
+                    verify_grad(self.op, inputs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
@@ -191,7 +183,7 @@ def randint_ranged(min, max, shape):
     return numpy.random.random_integers(min, max, shape)
 
 
-def make_broadcast_restet(op, expected, checks = {}, **kwargs):
+def makeBroadcastTester(op, expected, checks = {}, **kwargs):
     name = str(op) + "Tester"
     if kwargs.has_key('inplace'):
         if kwargs['inplace']:
@@ -203,7 +195,7 @@ def make_broadcast_restet(op, expected, checks = {}, **kwargs):
                 return numpy.all(inputs[0] == outputs[0])
             checks = dict(checks, inplace_check=inplace_check) #lambda inputs, outputs: numpy.all(inputs[0] == outputs[0]))
         del kwargs['inplace']
-    return make_restet(name, op, expected, checks, **kwargs)
+    return makeTester(name, op, expected, checks, **kwargs)
 
 
 
@@ -227,7 +219,7 @@ _grad_broadcast_binary_normal = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                      column = (rand(2, 3), rand(2, 1)))
 
 
-AddTester = make_broadcast_restet(op = add,
+AddTester = makeBroadcastTester(op = add,
                                   expected = lambda *inputs: reduce(lambda x, y: x + y, inputs),
                                   good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
                                               four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
@@ -236,21 +228,21 @@ AddTester = make_broadcast_restet(op = add,
                                   bad_runtime = _bad_runtime_broadcast_binary_normal)
 
 
-AddInplaceTester = make_broadcast_restet(op = inplace.add_inplace,
+AddInplaceTester = makeBroadcastTester(op = inplace.add_inplace,
                                          expected = lambda x, y: x + y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
                                          bad_runtime = _bad_runtime_broadcast_binary_normal,
                                          inplace = True)
 
-SubTester = make_broadcast_restet(op = sub,
+SubTester = makeBroadcastTester(op = sub,
                                   expected = lambda x, y: x - y,
                                   good = _good_broadcast_binary_normal,
                                   bad_build = _bad_build_broadcast_binary_normal,
                                   bad_runtime = _bad_runtime_broadcast_binary_normal,
                                   grad = _grad_broadcast_binary_normal)
 
-SubInplaceTester = make_broadcast_restet(op = inplace.sub_inplace,
+SubInplaceTester = makeBroadcastTester(op = inplace.sub_inplace,
                                          expected = lambda x, y: x - y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
@@ -258,7 +250,7 @@ SubInplaceTester = make_broadcast_restet(op = inplace.sub_inplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
-MulTester = make_broadcast_restet(op = mul,
+MulTester = makeBroadcastTester(op = mul,
                                   expected = lambda *inputs: reduce(lambda x, y: x * y, inputs),
                                   good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
                                               four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
@@ -268,7 +260,7 @@ MulTester = make_broadcast_restet(op = mul,
                                   grad = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
                                               four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
                                               **_grad_broadcast_binary_normal))
-MulInplaceTester = make_broadcast_restet(op = inplace.mul_inplace,
+MulInplaceTester = makeBroadcastTester(op = inplace.mul_inplace,
                                          expected = lambda x, y: x * y,
                                          good = _good_broadcast_binary_normal,
                                          bad_build = _bad_build_broadcast_binary_normal,
@@ -276,7 +268,7 @@ MulInplaceTester = make_broadcast_restet(op = inplace.mul_inplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
-DivTester = make_broadcast_restet(op = div,
+DivTester = makeBroadcastTester(op = div,
                                   expected = lambda x, y: x / y,
                                   good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                               scalar = (rand(2, 3), rand(1, 1)),
@@ -294,7 +286,7 @@ DivTester = make_broadcast_restet(op = div,
                                               scalar = (rand(2, 3), rand(1, 1)),
                                               row = (rand(2, 3), rand(1, 3)),
                                               column = (rand(2, 3), rand(2, 1))))
-DivInplaceTester = make_broadcast_restet(op = inplace.div_inplace,
+DivInplaceTester = makeBroadcastTester(op = inplace.div_inplace,
                                          expected = lambda x, y: x / y,
                                          good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                                      scalar = (rand(2, 3), rand(1, 1)),
@@ -309,7 +301,7 @@ DivInplaceTester = make_broadcast_restet(op = inplace.div_inplace,
                                                      column = (rand(2, 3), rand(2, 1))),
                                          inplace = True)
 
-ModTester = make_broadcast_restet(op = mod,
+ModTester = makeBroadcastTester(op = mod,
                                   expected = lambda x, y: x % y,
                                   good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                               scalar = (rand(2, 3), rand(1, 1)),
@@ -324,7 +316,7 @@ ModTester = make_broadcast_restet(op = mod,
 #                                               dtype_mixup_1 = (rand(2, 3), randint_nonzero(2, 3)),
 #                                               dtype_mixup_2 = (randint_nonzero(2, 3), rand(2, 3))),
                                   )
-ModInplaceTester = make_broadcast_restet(op = inplace.mod_inplace,
+ModInplaceTester = makeBroadcastTester(op = inplace.mod_inplace,
                                          expected = lambda x, y: x % y,
                                          good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                                      scalar = (rand(2, 3), rand(1, 1)),
@@ -335,7 +327,7 @@ ModInplaceTester = make_broadcast_restet(op = inplace.mod_inplace,
                                                      ),
                                          inplace = True)
 
-PowTester = make_broadcast_restet(op = pow,
+PowTester = makeBroadcastTester(op = pow,
                                   expected = lambda x, y: x ** y,
                                   good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
                                               scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
@@ -347,7 +339,7 @@ PowTester = make_broadcast_restet(op = pow,
                                               row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
                                               column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))))
                                   )
-PowInplaceTester = make_broadcast_restet(op = inplace.pow_inplace,
+PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
                                          expected = lambda x, y: x ** y,
                                          good = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
                                                      scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
@@ -368,49 +360,49 @@ _good_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
 _grad_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),))
 
 
-AbsTester = make_broadcast_restet(op = tensor.abs_,
+AbsTester = makeBroadcastTester(op = tensor.abs_,
                                   expected = lambda x: abs(x),
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-AbsInplaceTester = make_broadcast_restet(op = inplace.abs__inplace,
+AbsInplaceTester = makeBroadcastTester(op = inplace.abs__inplace,
                                          expected = lambda x: numpy.abs(x),
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-NegTester = make_broadcast_restet(op = neg,
+NegTester = makeBroadcastTester(op = neg,
                                   expected = lambda x: -x,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-NegInplaceTester = make_broadcast_restet(op = inplace.neg_inplace,
+NegInplaceTester = makeBroadcastTester(op = inplace.neg_inplace,
                                          expected = lambda x: -x,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-SgnTester = make_broadcast_restet(op = sgn,
+SgnTester = makeBroadcastTester(op = sgn,
                                   expected = numpy.sign,
                                   good = _good_broadcast_unary_normal)
-SgnInplaceTester = make_broadcast_restet(op = inplace.sgn_inplace,
+SgnInplaceTester = makeBroadcastTester(op = inplace.sgn_inplace,
                                          expected = numpy.sign,
                                          good = _good_broadcast_unary_normal,
                                          inplace = True)
 
-SqrTester = make_broadcast_restet(op = sqr,
+SqrTester = makeBroadcastTester(op = sqr,
                                   expected = numpy.square,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-SqrInplaceTester = make_broadcast_restet(op = inplace.sqr_inplace,
+SqrInplaceTester = makeBroadcastTester(op = inplace.sqr_inplace,
                                          expected = numpy.square,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-ExpTester = make_broadcast_restet(op = exp,
+ExpTester = makeBroadcastTester(op = exp,
                                   expected = numpy.exp,
                                   good = _good_broadcast_unary_normal,
                                   grad = _grad_broadcast_unary_normal)
-ExpInplaceTester = make_broadcast_restet(op = inplace.exp_inplace,
+ExpInplaceTester = makeBroadcastTester(op = inplace.exp_inplace,
                                          expected = numpy.exp,
                                          good = _good_broadcast_unary_normal,
                                          grad = _grad_broadcast_unary_normal,
@@ -422,31 +414,31 @@ _good_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
 
 _grad_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),))
 
-LogTester = make_broadcast_restet(op = log,
+LogTester = makeBroadcastTester(op = log,
                                   expected = numpy.log,
                                   good = _good_broadcast_unary_positive,
                                   grad = _grad_broadcast_unary_positive)
-LogInplaceTester = make_broadcast_restet(op = inplace.log_inplace,
+LogInplaceTester = makeBroadcastTester(op = inplace.log_inplace,
                                          expected = numpy.log,
                                          good = _good_broadcast_unary_positive,
                                          grad = _grad_broadcast_unary_positive,
                                          inplace = True)
 
-Log2Tester = make_broadcast_restet(op = log2,
+Log2Tester = makeBroadcastTester(op = log2,
                                    expected = numpy.log2,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
-Log2InplaceTester = make_broadcast_restet(op = inplace.log2_inplace,
+Log2InplaceTester = makeBroadcastTester(op = inplace.log2_inplace,
                                           expected = numpy.log2,
                                           good = _good_broadcast_unary_positive,
                                           grad = _grad_broadcast_unary_positive,
                                           inplace = True)
 
-SqrtTester = make_broadcast_restet(op = sqrt,
+SqrtTester = makeBroadcastTester(op = sqrt,
                                    expected = numpy.sqrt,
                                    good = _good_broadcast_unary_positive,
                                    grad = _grad_broadcast_unary_positive)
-SqrtInplaceTester = make_broadcast_restet(op = inplace.sqrt_inplace,
+SqrtInplaceTester = makeBroadcastTester(op = inplace.sqrt_inplace,
                                           expected = numpy.sqrt,
                                           good = _good_broadcast_unary_positive,
                                           grad = _grad_broadcast_unary_positive,
@@ -460,33 +452,33 @@ _good_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
 _grad_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),))
 
 
-SinTester = make_broadcast_restet(op = sin,
+SinTester = makeBroadcastTester(op = sin,
                                   expected = numpy.sin,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
-SinInplaceTester = make_broadcast_restet(op = inplace.sin_inplace,
+SinInplaceTester = makeBroadcastTester(op = inplace.sin_inplace,
                                          expected = numpy.sin,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
 
-CosTester = make_broadcast_restet(op = cos,
+CosTester = makeBroadcastTester(op = cos,
                                   expected = numpy.cos,
                                   good = _good_broadcast_unary_wide,
                                   grad = _grad_broadcast_unary_wide)
-CosInplaceTester = make_broadcast_restet(op = inplace.cos_inplace,
+CosInplaceTester = makeBroadcastTester(op = inplace.cos_inplace,
                                          expected = numpy.cos,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
 
-TanTester = make_broadcast_restet(op = tan,
+TanTester = makeBroadcastTester(op = tan,
                                   expected = numpy.tan,
                                   good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
                                   grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                               shifted = (rand_ranged(3.15, 6.28, (2, 3)),)))
-TanInplaceTester = make_broadcast_restet(op = inplace.tan_inplace,
+TanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
                                          expected = numpy.tan,
                                          good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
                                                      shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
@@ -495,31 +487,31 @@ TanInplaceTester = make_broadcast_restet(op = inplace.tan_inplace,
                                          inplace = True)
 
 
-CoshTester = make_broadcast_restet(op = cosh,
+CoshTester = makeBroadcastTester(op = cosh,
                                    expected = numpy.cosh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-CoshInplaceTester = make_broadcast_restet(op = inplace.cosh_inplace,
+CoshInplaceTester = makeBroadcastTester(op = inplace.cosh_inplace,
                                           expected = numpy.cosh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
-SinhTester = make_broadcast_restet(op = sinh,
+SinhTester = makeBroadcastTester(op = sinh,
                                    expected = numpy.sinh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-SinhInplaceTester = make_broadcast_restet(op = inplace.sinh_inplace,
+SinhInplaceTester = makeBroadcastTester(op = inplace.sinh_inplace,
                                           expected = numpy.sinh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
-TanhTester = make_broadcast_restet(op = tanh,
+TanhTester = makeBroadcastTester(op = tanh,
                                    expected = numpy.tanh,
                                    good = _good_broadcast_unary_normal,
                                    grad = _grad_broadcast_unary_normal)
-TanhInplaceTester = make_broadcast_restet(op = inplace.tanh_inplace,
+TanhInplaceTester = makeBroadcastTester(op = inplace.tanh_inplace,
                                           expected = numpy.tanh,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
@@ -527,7 +519,7 @@ TanhInplaceTester = make_broadcast_restet(op = inplace.tanh_inplace,
 
 
 
-DotTester = make_restet(name = 'DotTester',
+DotTester = makeTester(name = 'DotTester',
                         op = dot,
                         expected = lambda x, y: numpy.dot(x, y),
                         checks = {},
@@ -930,7 +922,7 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
 
-        verify_grad(self, lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+        verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
 
     def test_join_matrix1_using_vertical_stack(self):
         a = as_tensor_variable(numpy.array([[1, 2, 3], [4, 5, 6]]))
@@ -952,7 +944,7 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([[1, 2, 3, 7, 3, 2, 1], [4, 5, 6, 8, 6, 5, 4]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
 
-        verify_grad(self, lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+        verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
 
     def test_join_matrixV(self):
         """variable join axis"""
@@ -972,8 +964,8 @@ class T_Join_and_Split(unittest.TestCase):
         got = f(1)
         self.failUnless((got == want).all(), (got, want))
 
-        verify_grad(self, lambda a, b: join(0,a,b), [v, 2*v])
-        verify_grad(self, lambda a, b: join(1,a,b), [v, 2*v])
+        verify_grad(lambda a, b: join(0,a,b), [v, 2*v])
+        verify_grad(lambda a, b: join(1,a,b), [v, 2*v])
 
     def test_vector_len(self):
         x = lscalar('x')
@@ -1096,22 +1088,22 @@ class T_add(unittest.TestCase):
                 self.failUnless(a.type.values_eq_approx(fn(a.data, b.data), f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
-        verify_grad(self, add, [numpy.asarray([3.0]), numpy.random.rand(3)])
+        verify_grad(add, [numpy.asarray([3.0]), numpy.random.rand(3)])
     def test_grad_scalar_r(self):
-        verify_grad(self, add, [numpy.random.rand(3), numpy.asarray([3.0])])
+        verify_grad(add, [numpy.random.rand(3), numpy.asarray([3.0])])
     def test_grad_row(self):
-        verify_grad(self, add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+        verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
     def test_grad_col(self):
-        verify_grad(self, add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+        verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 class T_exp(unittest.TestCase):
 
     def test_grad_0(self):
-        verify_grad(self, exp, [
+        verify_grad(exp, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
     def test_grad_1(self):
-        verify_grad(self, inplace.exp_inplace, [
+        verify_grad(inplace.exp_inplace, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
 
@@ -1128,8 +1120,8 @@ class T_exp(unittest.TestCase):
 #             check_eq(self, t, abs(t), -d, abs(-d))
 
 #     def test_grad(self):
-#         verify_grad(self, Abs, [numpy.ones(())])
-#         verify_grad(self, Abs, [numpy.ones(3)])
+#         verify_grad(Abs, [numpy.ones(())])
+#         verify_grad(Abs, [numpy.ones(3)])
 
 #     class AbsBadGrad(Abs):
 #         def grad(self, (x, ), (gz, )):
@@ -1137,7 +1129,7 @@ class T_exp(unittest.TestCase):
 
 #     def test_badgrad(self):
 #         try:
-#             verify_grad(self, T_abs.AbsBadGrad, [numpy.ones(())])
+#             verify_grad(T_abs.AbsBadGrad, [numpy.ones(())])
 #         except Exception, e:
 #             self.failUnless(str(e) == verify_grad.E_grad, str(e))
 #             return
@@ -1208,18 +1200,18 @@ class T_exp(unittest.TestCase):
 #         check_eq2_both(self, [a1,a3], mul(a1,a3), [r1, r3], r1*r3)
 
 #     def test_grad_elemwise(self):
-#         verify_grad(self, Mul, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+#         verify_grad(Mul, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
 #     def test_grad_scalar_l(self):
-#         verify_grad(self, Mul, [numpy.asarray([3.0]), numpy.random.rand(3)])
+#         verify_grad(Mul, [numpy.asarray([3.0]), numpy.random.rand(3)])
 #     def test_grad_scalar_r(self):
-#         verify_grad(self, Mul, [numpy.random.rand(3), numpy.asarray([3.0])])
+#         verify_grad(Mul, [numpy.random.rand(3), numpy.asarray([3.0])])
 #     def test_grad_row(self):
-#         verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+#         verify_grad(Mul, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
 #     def test_grad_row2(self):
 #         op = lambda x, y: Mul(x, DimShuffle(y, ['x', 0]).out)
-#         verify_grad(self, op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
+#         verify_grad(op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
 #     def test_grad_col(self):
-#         verify_grad(self, Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+#         verify_grad(Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 #     def test_wrong_shapes(self):
 #         a = as_tensor_variable(numpy.ones(3))
@@ -1241,26 +1233,26 @@ class T_exp(unittest.TestCase):
 #     def setUp(self):
 #         unittest_tools.seed_rng()
 #     def test_grad_e(self):
-#         verify_grad(self, Div, [numpy.random.rand(3), numpy.ones(3)])
-#         verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
-#         verify_grad(self, Div, [numpy.ones(()), numpy.ones(())])
+#         verify_grad(Div, [numpy.random.rand(3), numpy.ones(3)])
+#         verify_grad(Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
+#         verify_grad(Div, [numpy.ones(()), numpy.ones(())])
 
 #     def test_grad_sl(self):
-#         verify_grad(self, Div, [numpy.ones((3, 5)), numpy.ones((1, 1))])
-#         verify_grad(self, Div, [numpy.random.rand(3), numpy.ones((1, ))])
-#         verify_grad(self, Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
+#         verify_grad(Div, [numpy.ones((3, 5)), numpy.ones((1, 1))])
+#         verify_grad(Div, [numpy.random.rand(3), numpy.ones((1, ))])
+#         verify_grad(Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
 
 # class T_log2(unittest.TestCase):
 #     def setUp(self):
 #         unittest_tools.seed_rng()
 #     def test0(self):
-#         verify_grad(self, Log2, [numpy.random.rand(3,1)+0.0001])
+#         verify_grad(Log2, [numpy.random.rand(3,1)+0.0001])
 
 # class T_log(unittest.TestCase):
 #     def setUp(self):
 #         unittest_tools.seed_rng()
 #     def test0(self):
-#         verify_grad(self, Log, [numpy.random.rand(3,1)+0.0001])
+#         verify_grad(Log, [numpy.random.rand(3,1)+0.0001])
 #     def test1(self):
 #         a = as_tensor_variable(numpy.ones(2))
 #         b = as_tensor_variable(numpy.ones(2))
@@ -1272,21 +1264,21 @@ class T_exp(unittest.TestCase):
 #     def setUp(self):
 #         unittest_tools.seed_rng()
 #     def test_elemwise(self):
-#         verify_grad(self, Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
-#         verify_grad(self, Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+#         verify_grad(Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
+#         verify_grad(Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
 #     def test_scalar_l(self):
-#         verify_grad(self, Pow, [numpy.asarray([3.0]), numpy.random.rand(3)])
+#         verify_grad(Pow, [numpy.asarray([3.0]), numpy.random.rand(3)])
 #     def test_scalar_r(self):
-#         verify_grad(self, Pow, [numpy.random.rand(3), numpy.asarray([3.0])])
+#         verify_grad(Pow, [numpy.random.rand(3), numpy.asarray([3.0])])
 #     def test_row(self):
-#         verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+#         verify_grad(Pow, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
 #     def test_col(self):
-#         verify_grad(self, Pow, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+#         verify_grad(Pow, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 class test_matinv(unittest.TestCase):
 
     def setUp(self):
-        unittest_tools.seed_rng(1)
+        unittest_tools.seed_rng()
 
     def mat_reciprocal(self,dim):
         # symbolic program
@@ -1390,13 +1382,13 @@ class t_dot(unittest.TestCase):
     #def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
 
     def test_grad(self):
-        #verify_grad(self, dot, [self.rand(2,3,4), self.rand(4)])
-        verify_grad(self, dot, [self.rand(2,3), self.rand(3,2)])
-        verify_grad(self, dot, [self.rand(2), self.rand(2,3)])
-        verify_grad(self, dot, [self.rand(3,2), self.rand(2)])
-        verify_grad(self, dot, [self.rand(2), self.rand(2)])
-        #verify_grad(self, dot, [self.rand(), self.rand(2)])
-        #verify_grad(self, dot, [self.rand(), self.rand(2,5)])
+        #verify_grad(dot, [self.rand(2,3,4), self.rand(4)])
+        verify_grad(dot, [self.rand(2,3), self.rand(3,2)])
+        verify_grad(dot, [self.rand(2), self.rand(2,3)])
+        verify_grad(dot, [self.rand(3,2), self.rand(2)])
+        verify_grad(dot, [self.rand(2), self.rand(2)])
+        #verify_grad(dot, [self.rand(), self.rand(2)])
+        #verify_grad(dot, [self.rand(), self.rand(2,5)])
 
 class T_tensorfromscalar(unittest.TestCase):
     def test0(self):
@@ -1658,7 +1650,7 @@ def test_reshape():
     assert numpy.all(a_val == a_val_copy)
 
     # verify gradient
-    tensor.verify_grad(None, Reshape(2), [a_val,numpy.asarray([2,3], dtype='float64')])
+    tensor.verify_grad(Reshape(2), [a_val,numpy.asarray([2,3], dtype='float64')])
 
 
 def test_flatten_outdimNone():
@@ -1674,7 +1666,7 @@ def test_flatten_outdimNone():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    tensor.verify_grad(None, Flatten(), [a_val])
+    tensor.verify_grad(Flatten(), [a_val])
 
 def test_flatten_scalar():
     a = dscalar()
@@ -1686,7 +1678,7 @@ def test_flatten_scalar():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    #tensor.verify_grad(None, Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
+    #tensor.verify_grad(Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
 
 def test_flatten_outdim1():
     a = dmatrix()
@@ -1698,7 +1690,7 @@ def test_flatten_outdim1():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    tensor.verify_grad(None, Flatten(1), [a_val])
+    tensor.verify_grad(Flatten(1), [a_val])
 
 def test_flatten_outdim2():
     a = dmatrix()
@@ -1709,7 +1701,7 @@ def test_flatten_outdim2():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==a_val)
 
-    tensor.verify_grad(None, Flatten(2), [a_val])
+    tensor.verify_grad(Flatten(2), [a_val])
 
 def test_flatten_outdim2_of_3():
     a = TensorType('float64', (False, False, False))()
@@ -1721,7 +1713,7 @@ def test_flatten_outdim2_of_3():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    tensor.verify_grad(None, Flatten(2), [a_val])
+    tensor.verify_grad(Flatten(2), [a_val])
 
 def test_flatten_outdim_invalid():
     a = dmatrix()
@@ -1758,7 +1750,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(5);
         self.failUnless(numpy.tensordot(aval,bval,axes) == \
                         f1(aval,bval))
-        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        tensor.verify_grad(TensorDot(axes), [aval,bval])
 
         # test matrix-vector
         bmat = dmatrix()
@@ -1769,7 +1761,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(8,5);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f2(aval,bval)))
-        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        tensor.verify_grad(TensorDot(axes), [aval,bval])
 
         # test matrix-matrix
         amat = dmatrix()
@@ -1780,7 +1772,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(7,9);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f3(aval,bval)))
-        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        tensor.verify_grad(TensorDot(axes), [aval,bval])
 
         # test ndarray-matrix, sum over one dim of matrix
         atens = TensorType('float64', broadcastable=(False,)*4)()
@@ -1791,7 +1783,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(2,3);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f4(aval,bval)))
-        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        tensor.verify_grad(TensorDot(axes), [aval,bval])
 
         # test ndarray-ndarray
         atens = TensorType('float64', broadcastable=(False,)*4)()
@@ -1803,14 +1795,14 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(3,4,2);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f5(aval,bval)))
-        tensor.verify_grad(None, TensorDot(axes), [aval,bval])
+        tensor.verify_grad(TensorDot(axes), [aval,bval])
         
         axes = (axes[1],axes[0])
         c = tensordot(axes)(btens, atens)
         f6 = inplace_func([btens,atens],c)
         self.failUnless(numpy.all(numpy.tensordot(bval,aval,axes) == \
                                   f6(bval,aval)))
-        tensor.verify_grad(None, TensorDot(axes), [bval,aval])
+        tensor.verify_grad(TensorDot(axes), [bval,aval])
 
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()

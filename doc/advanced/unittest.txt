@@ -222,3 +222,41 @@ Similarly, to provide a seed to numpy.random.RandomState, simply use:
 >>> rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231))
 
 Note that the ability to change the seed from one nosetest to another, is incompatible with the method of hard-coding the baseline variables (against which we compare the theano outputs). These must then be determined "algorithmically". Although this represents more work, the test suite will be better because of it.
+
+
+Creating an Op UnitTest
+=======================
+
+A few tools have been developed to help automate the development of unitests
+for Theano Ops.
+
+
+Validating the Gradient
+-----------------------
+
+The ``verify_grad`` function can be used to validate that the ``grad``
+function of your Op is properly implemented. ``verify_grad`` is based on the
+Finite Difference Method where the derivative of function ``f`` at point ``x``
+is approximated as:
+
+.. math::
+
+   \frac{\partial{f}}{\partial{x}} = lim_{\Delta \rightarrow 0} \frac {f(x+\Delta) - f(x-\Delta)} {2\Delta}
+
+``verify_grad`` performs the following steps:
+
+* approximates the gradient numerically using the Finite Difference Method
+* calculate the gradient using the symbolic expression provided in the ``grad`` function
+* compares the two values. The tests passes if they are equal to within a certain tolerance.
+
+>>> def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0.0001,
+>>>                mode=compile.Mode(optimizer=None, linker='c&py')):
+>>>    """
+>>>    Raises an Exception if the analytic gradient and numerical gradient exceeds a certain tolerance.
+>>>    :param testcase: (obsolete) a reference to the unittest object calling 
+>>>    :param pt: the list of numpy.ndarrays to use as inputs to the op
+>>>    :param op: something that behaves like an Op instance with a single output
+>>>     (can be a python function combining multiple ops)
+>>>    :param testcase: the thing to call `fail` on if things go awry.
+
+
