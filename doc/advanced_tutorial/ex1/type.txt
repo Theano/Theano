@@ -5,6 +5,8 @@ Making the double type
 ======================
 
 
+.. _type_contract:
+
 Type's contract
 ===============
 
