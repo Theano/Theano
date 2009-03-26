@@ -4,7 +4,6 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
-import inspect
 import functools
 
 import numpy

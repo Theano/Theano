@@ -70,7 +70,7 @@ used by the normal modes like FAST_COMPILE, FAST_RUN, and DEBUG_MODE.
 I wrote a new optimization, and it changed my results even though I'm pretty sure it is correct.
 ------------------------------------------------------------------------------------------------
 
-First, check the :ref:`Op Contract` and make sure you're following the rules.
+First, check the :ref:`op_contract` and make sure you're following the rules.
 Then try running your program in :ref:`debugmode`.  DebugMode might catch
 something that you're not seeing.
 
