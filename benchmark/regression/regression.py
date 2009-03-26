@@ -77,9 +77,20 @@ class SpecifiedRegressionLayer(RegressionLayer):
         return self.l2_coef * T.sum(self.w * self.w)
 
 
+class PrintEverythingMode(theano.Mode):
+    def __init__(self, linker, optimizer=None):                                                       
+        def print_eval(i, node, fn): 
+            print i, node, [input[0] for input in fn.inputs],                                         
+            fn()
+            print [output[0] for output in fn.outputs]
+        wrap_linker = theano.gof.WrapLinkerMany([linker], [print_eval])
+        super(PrintEverythingMode, self).__init__(wrap_linker, optimizer)                             
+
+
 def test_module_advanced_example():
 
     profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+    profmode = PrintEverythingMode(theano.gof.OpWiseCLinker(), 'fast_run')
 
     data_x = N.random.randn(4, 10)
     data_y = [ [int(x)] for x in (N.random.randn(4) > 0)]

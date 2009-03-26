@@ -43,13 +43,6 @@ precise inspection of what's being computed where, when, and how, see the
 
 
 
-.. _faq_wraplinker:
-
-How do I step through a compiled function with the WrapLinker?
---------------------------------------------------------------
-
-WRITEME
-
 
 I wrote a new Op/Type, and weird stuff is happening...
 ------------------------------------------------------
@@ -84,4 +77,39 @@ to ``theano.function`` or ``theano.make``.
 Second, try the theano :ref:`profilemode`.  This will tell you which Apply nodes,
 and which Ops are eating up your CPU cycles.
 
+
+.. _faq_wraplinker:
+
+How do I step through a compiled function with the WrapLinker?
+--------------------------------------------------------------
+
+This is not exactly an FAQ, but the doc is here for now...
+It's pretty easy to roll-your-own evaluation mode.
+Check out this one:
+
+.. code-block:: python
+
+    class PrintEverythingMode(Mode):
+        def __init__(self):
+            def print_eval(i, node, fn):
+                print i, node, [input[0] for input in fn.inputs],
+                fn()
+                print [output[0] for output in fn.outputs]
+            wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()], [print_eval])
+            super(PrintEverythingMode, self).__init__(wrap_linker, optimizer='fast_run')
+
+When you use ``mode=PrintEverythingMode`` as the mode for Function or Method,
+then you should see a lot of output.  Every Apply node will be printed out,
+along with its position in the graph, the arguments to the ``perform`` or
+``c_code`` and the output it computed.  Admittedly, this is a huge amount of
+output to read through if you are using big tensors... but you can choose to
+put logic inside of the print_eval function  that would, for example, only
+print something out if a certain kind of Op was used, at a certain program
+position, or if a particular value shows up in one of the inputs or outputs.
+
+This can be a really powerful debugging tool.  Read about more things you can
+do with :api:`WrapLinkerMany`.
+
+Note well the call to ``fn`` inside the call to ``print_eval``; without it,
+the graph wouldn't get computed at all!
 
