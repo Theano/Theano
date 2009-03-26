@@ -38,12 +38,12 @@ Theano provides a 'Print' Op to do this.
 Since Theano runs your program in a topological order, you won't have precise
 control over the order in which multiple Print() Ops are evaluted.  For a more
 precise inspection of what's being computed where, when, and how, see the
-:ref:`wraplinker_faq`.
+:ref:`faq_wraplinker`.
 
 
 
 
-.. _wraplinker_faq:
+.. _faq_wraplinker:
 
 How do I step through a compiled function with the WrapLinker?
 --------------------------------------------------------------
@@ -81,7 +81,7 @@ The function I compiled is too slow, what's up?
 First, make sure you're running in FAST_RUN mode, by passing ``mode='FAST_RUN'``
 to ``theano.function`` or ``theano.make``.
 
-Second, try the theano :ref:`profiler`.  This will tell you which Apply nodes,
+Second, try the theano :ref:`profilemode`.  This will tell you which Apply nodes,
 and which Ops are eating up your CPU cycles.
 
 

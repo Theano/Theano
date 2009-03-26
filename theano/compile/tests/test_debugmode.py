@@ -268,7 +268,7 @@ def test_badclinkeroutput():
                 [0,1,2,3],
                 3,
                 numpy.asarray([[0.,1.,2.],[3.,4.,5.],[6.,7.,8.]]))
-    except debugmode.BadClinkerOutput, e:
+    except debugmode.BadCLinkerOutput, e:
         print repr(e)
         assert e.r.owner.op is inconsistent
         return #TEST PASS

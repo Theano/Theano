@@ -31,7 +31,7 @@ class DebugModeError(Exception):
     """Generic Exception raised to indicate an internal theano problem"""
     pass
 
-class BadClinkerOutput(DebugModeError):
+class BadCLinkerOutput(DebugModeError):
     """Exception: an Op's c_code and perform implementations don't agree."""
 
     r = None
@@ -45,7 +45,7 @@ class BadClinkerOutput(DebugModeError):
 
     def __init__(self, r, val_py, val_c):
         """Initialize members"""
-        super(BadClinkerOutput, self).__init__()
+        super(BadCLinkerOutput, self).__init__()
         self.r = r
         self.val_py = val_py
         self.val_c = val_c
@@ -861,7 +861,7 @@ class _Linker(gof.link.LocalLinker):
                             # compares the version from thunk_py (in r_vals)
                             # to the version produced by thunk_c (in storage_map)
                             if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                raise BadClinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                                raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
                         else:
                             #retrieve each output from the storage_map
                             r_vals[r] = storage_map[r][0]
@@ -1128,7 +1128,7 @@ class DebugMode(Mode):
 
     This mode catches several kinds of internal error:
 
-    - inconsistent c_code and perform implementations (see `BadClinkerOutput`)
+    - inconsistent c_code and perform implementations (see `BadCLinkerOutput`)
 
     - a variable replacing another when their runtime values don't match.  This is a symptom of
       an incorrect optimization step, or faulty Op implementation (raises `BadOptimization`)

@@ -1,4 +1,5 @@
 
+.. _views_and_inplace:
 
 ============================
 Views and inplace operations
@@ -19,6 +20,7 @@ floats are immutable). Therefore, we can't make examples of these
 concepts out of what we've just built. Nonetheless, we will present
 the concepts:
 
+.. _views:
 
 Views
 =====
@@ -76,6 +78,8 @@ unsupported. Here are more examples:
 
    myop.view_map = {0: [0, 1]} # THIS IS NOT SUPPORTED! Only put a single input number in the list!
 
+
+.. _inplace:
 
 
 Inplace operations
@@ -186,6 +190,9 @@ input(s)'s memory). From there, go to the previous section.
    the addition, the original x that we wanted to take the logarithm
    of is gone). If Theano does not know that ``add_inplace`` changes
    the value of ``x`` it might invert the order and that will
-   certainly lead to erroneous computations and be a headache to
-   debug.
+   certainly lead to erroneous computations.
+
+   You can often identify an incorrect view_map or destroy_map by using
+   :ref:`DebugMode`.  *Be sure to use DebugMode when developing a new Op that
+   uses view_map and/or destroy_map.*
 
