@@ -1,0 +1,43 @@
+
+.. _lisa_labo::
+
+===============================
+LISA Labo specific instructions
+===============================
+
+Tips for running at LISA
+++++++++++++++++++++++++
+
+Use the fast BLAS library that Fred installed, by setting
+`THEANO_BLAS_LDFLAGS=-lgoto`.
+
+Tips for running on a cluster
++++++++++++++++++++++++++++++
+
+
+OUTDATED(was for mammouth1, should be updated for mammouth2)
+Use something like the following in your .bashrc:
+
+.. code-block:: bash
+
+    #use the intel math-kernel library for BLAS routines
+    THEANO_BLAS_LDFLAGS=-lmkl
+
+    # use up to two threads in the MKL routines
+    OMP_NUM_THREADS=2
+
+    # IMPORTANT!
+    # Use the local-temporary directory as a cache.
+    # If several jobs start simultaneously and use a common
+    # cache, then the cache may be corrupted.
+    # Theano is not process-safe or thread-safe in this sense.
+    THEANO_COMPILEDIR=/ltmp/<username>_theano
+
+You may also need to run the following from your shell: 
+
+.. code-block:: bash
+
+    module add python      # for the current shell session 
+    module initadd python  # for this and future sessions 
+
+Lastly,  if ``./filename.py`` doesn't work, try ``python filename.py``.
