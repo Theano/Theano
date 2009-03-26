@@ -309,6 +309,38 @@ def test_badoptimization():
 
     assert False
 
+def test_stochasticoptimization():
+
+    # this optimization alternates between triggering and not triggering.
+
+    last_time_replaced=[False]
+    @gof.local_optimizer([theano.sparse.sd_csc])
+    def insert_broken_csc_sometimes(node):
+        if node.op == theano.sparse.sd_csc:
+            last_time_replaced[0] = not last_time_replaced[0]
+            if last_time_replaced[0]:
+                return [off_by_half(*node.inputs)]
+        return False
+    edb = gof.EquilibriumDB()
+    edb.register('insert_broken_csc_sometimes', insert_broken_csc_sometimes, 'all')
+    opt = edb.query('+all')
+
+    vals = theano.tensor.dvector()
+    inds = theano.tensor.ivector()
+    ptrs = theano.tensor.ivector()
+    nrows = theano.tensor.iscalar()
+
+    b = theano.tensor.dmatrix()
+
+    try:
+        f = theano.function([vals, inds, ptrs, nrows, b], 
+                theano.sparse.sd_csc(vals, inds, ptrs, nrows, b), 
+                mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
+    except debugmode.StochasticOrder:
+        return #TEST PASS
+    assert False
+
+
 def test_just_c_code():
     x = theano.tensor.dvector()
     f = theano.function([x], wb2(x), mode=debugmode.DebugMode(check_py_code=False))
@@ -331,7 +363,7 @@ def test_baddestroymap():
         f([1,2], [3,4])
         assert False #failed to raise error
     except debugmode.BadDestroyMap:
-        return
+        pass
 
 def test_baddestroymap_c():
     x = theano.tensor.dvector()

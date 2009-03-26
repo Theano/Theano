@@ -160,7 +160,14 @@ class BadViewMap(DebugModeError):
         return sio.getvalue()
 
 class StochasticOrder(DebugModeError):
-    """TODO #319"""
+    """Exception: Repeated Optimizations of the same graph do not give identical results.
+
+    The most common cause is that an Optimization iterates over some objects in a
+    memory-address-dependent order (such as id() or object.hash()).  If you see this error and
+    you think it is related to optimizations within Theano, email theano-dev with the message
+    attached to this exception.
+    
+    """
     pass
 
 class FloatError(DebugModeError):
@@ -532,7 +539,7 @@ class _EnvEvent(object):
                 self.reason, 
                 str(self.op), 
                 str(self.idx),
-                str(len(self.node.inputs))])
+                str(len(self.node.inputs)) if (self.op != 'output') else ''])
         else:
             return str(self.__dict__)
 
@@ -980,21 +987,21 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                 li = env.equivalence_tracker.event_list
                 l0 = env0.equivalence_tracker.event_list
                 if li != l0 :
-                    print >> mode.diagnostic, "WARNING: Optimization process is unstable"
+                    infolog = StringIO()
+                    print >> infolog, "WARNING: Optimization process is unstable..."
+                    print >> infolog, "(event index)  (one event trace)  (other event trace)"
+                    print >> infolog, "-----------------------------------------------------"
                     for j in xrange(max(len(li), len(l0))):
-                        if li[j] != l0[j]:
-                            print >> mode.diagnostic, "* ", j
-                            print >> mode.diagnostic, "  ", str(li[j]) if j < len(li) else '-'
-                            print >> mode.diagnostic, "  ", str(l0[j]) if j < len(l0) else '-'
+                        if j >= len(li) or j >= len(l0) or li[j] != l0[j]:
+                            print >> infolog, "* ", j,
+                            print >> infolog, "  ", str(li[j]) if j < len(li) else '-',
+                            print >> infolog, "  ", str(l0[j]) if j < len(l0) else '-'
                         else:
                             pass
-
-                    print >> sys.stderr, "EXITING"
-                    sys.exit(1) #there is a ticket related to not calling sys.exit here.
-                    break
+                    raise StochasticOrder(infolog.getvalue())
                 else:
                     if self.verbose:
-                        print >> sys.stdout, "OPTCHECK: optimization", i, "of", len(li), "events was stable."
+                        print >> sys.stderr, "OPTCHECK: optimization", i, "of", len(li), "events was stable."
             else:
                 env0 = env
 
@@ -1145,8 +1152,7 @@ class DebugMode(Mode):
     If there are no internal errors, this mode behaves like FAST_RUN or FAST_COMPILE, but takes
     a little longer and uses more memory.  
 
-    If there are internal errors, this mode will raise an `DebugModeError` exception and write
-    diagnostic information to a file.
+    If there are internal errors, this mode will raise an `DebugModeError` exception.
 
     :remark: The work of debugging is implemented by the `_Maker`, `_Linker`, and
     `_VariableEquivalenceTracker` classes.
@@ -1168,12 +1174,6 @@ class DebugMode(Mode):
     Should we evaluate (and check) the `perform` implementations?
     """
 
-    diagnostic = None
-    """
-    Log diagnostic information to this file.
-    """
-
-
     # This function will be used to create a FunctionMaker in 
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):
@@ -1185,8 +1185,7 @@ class DebugMode(Mode):
             optimizer='fast_run', 
             stability_patience=10,
             check_c_code=True,
-            check_py_code=True,
-            diagnostic=sys.stderr):
+            check_py_code=True):
         """Initialize member variables
         """
         if not (check_c_code or check_py_code):
@@ -1197,6 +1196,5 @@ class DebugMode(Mode):
         self.stability_patience = stability_patience
         self.check_c_code = check_c_code
         self.check_py_code = check_py_code
-        self.diagnostic = diagnostic
 register_mode('DEBUG_MODE',DebugMode(optimizer='fast_run'))
 
