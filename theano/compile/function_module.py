@@ -95,6 +95,10 @@ def std_env(input_specs, output_specs, accept_inplace = False):
     env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
     return env, map(SymbolicOutput, updates)
 
+class AliasedMemoryError(Exception):
+    """Memory is aliased that should not be"""
+    pass
+
 
 ###
 ### Function
@@ -140,27 +144,75 @@ class Function(object):
     
     """
 
+    input_storage = None
+    """list of Container instances"""
+
+    output_storage = None
+    """list of Container instances"""
+
+    indices = None
+    """list of (SymbolicInput|SymbolicInputKit, indices, [SymbolicInput,...]), one tuple for
+    each input
+
+    The first tuple element is the SymbolicInput object for the corresponding function input.
+
+    The second and third tuple elements are used only by Kits, which are deprecated.
+    """
+
+    defaults = None
+    """ list of 3-tuples, one 3-tuple for each input.
+
+    Tuple element 0: Bool:  Is this input required at each function call?
+    Tuple element 1: Bool:  Should this inputs value be reverted after each call?
+    Tuple element 2: Any:  The value associated with this input.
+    """
+
+    unpack_single = None
+    """Bool: for outputs lists of length 1, should the 0'th element be returned directly?"""
+
+    maker = None
+    """FunctionMaker instance"""
+
+    fn = None
+    """a function that evaluates the graph.  Typically a linker's make_thunk method created this
+    function."""
+
+    finder = None
+    """Dictionary mapping several kinds of things to containers.
+    
+    We set an entry in finder for:
+
+    - the index of the input
+
+    - the variable instance the input is based on
+
+    - the name of the input
+
+    All entries map to the container or to DUPLICATE if an ambiguity is detected
+    """
+
+    inv_finder = None
+    """Dict. Reverse lookup of `finder`.
+
+    It maps container -> SymbolicInput
+    """
+
     def __init__(self, fn, input_storage, output_storage, indices, outputs, defaults, unpack_single, maker):
         """
-        fn -> a function returned by some linker's make_thunk method
-        input_storage -> list of Container instances used by fn to fetch the inputs
-        output_storage -> list of Container instances used by fn to store the outputs in
-        indices -> list of (SymbolicInput|SymbolicInputKit, indices, [SymbolicInput,...]), one tuple for each input
-        defaults -> list of (required (bool), refeed (bool), value), one tuple for each input
-            required -> whether this input is required or optional
-            refeed -> whether this input's contents must be reverted to value after each call or not
-            value -> the initial or default value of the input
-        unpack_single -> if the function has one output and unpack_single is True, return that output. Else,
-            return [output].
-        maker -> FunctionMaker instance used to make this Function (used for copy)
+        Initialize attributes. create finder, inv_finder.
         """
 
         self.fn = fn
         self.input_storage = input_storage
         self.output_storage = output_storage
         self.indices = indices
+        self.outputs = outputs
+        self.defaults = defaults
+        self.unpack_single = unpack_single
+        self.maker = maker
 
-        containers = list(self.input_storage)
+        # we'll be popping stuff off this `containers` object.  It's a copy
+        containers = list(self.input_storage) 
         finder = {}
         inv_finder = {}
 
@@ -183,11 +235,6 @@ class Function(object):
                     c.data = value
                 c.required = required
                 c.provided = 0 # this is a count of how many times the input has been provided (reinitialized to 0 on __call__)
-                # We set an entry in finder for:
-                # - the index of the input
-                # - the variable instance the input is based on
-                # - the name of the input
-                # All entries map to the container or to DUPLICATE if an ambiguity is detected
                 finder[i] = c
                 finder[input.variable] = c
                 finder[input.name] = c if input.name not in finder else DUPLICATE
@@ -222,10 +269,6 @@ class Function(object):
 
         self.finder = finder
         self.inv_finder = inv_finder
-        self.outputs = outputs
-        self.defaults = defaults
-        self.unpack_single = unpack_single
-        self.maker = maker
 
         # this class is important in overriding the square-bracket notation:
         #     fn.value[x]
@@ -254,6 +297,8 @@ class Function(object):
                     s.provided += 1
                 else:
                     s(value)
+            def __contains__(self, item):
+                return finder.__contains__(item)
 
         # this class is important in overriding the square-bracket notation:
         #     fn.container[x]
@@ -261,10 +306,15 @@ class Function(object):
         class ContainerAttribute(object):
             def __getitem__(self, item):
                 return finder[item]
+            def __contains__(self, item):
+                return finder.__contains__(item)
             # You cannot set the container
 
         self._value = ValueAttribute()
         self._container = ContainerAttribute()
+
+    def __contains__(self, item):
+        return self.value.__contains__(item)
 
     def __getitem__(self, item):
         return self.value[item]
@@ -336,18 +386,20 @@ class Function(object):
 
     value = property(
         lambda self: self._value,
-        None, #not settable
-        doc="""TODOC""")
+        None, # this property itself is not settable
+        doc="""dictionary-like access to the values associated with Variables""")
     container = property(
         lambda self: self._container,
-        None,
-        doc="""TODOC""")
+        None, # this property itself is not settable
+        doc="""dictionary-like access to the containers associated with Variables""")
 
 # pickling/deepcopy support for Function
 
 def _pickle_Function(f):
+    #copy of the input storage list
     ins = list(f.input_storage)
     defaults = []
+
     for (input, indices, inputs), (required, refeed, default) in zip(f.indices, f.defaults):
         if isinstance(input, SymbolicInputKit):
             li = len(indices)
@@ -362,7 +414,7 @@ def _pickle_Function(f):
 
     inputs_data = [x.data for x in f.input_storage]
 
-    #HACK to detect aliased storage.
+    # HACK to detect aliased storage.
     # aliased relationships will not be preserved across the pickle operation
     if not (f.pickle_aliased_memory_strategy == 'ignore'):
         all_data = defaults + inputs_data
@@ -380,8 +432,6 @@ def _pickle_Function(f):
 
     rval = (_constructor_Function, (f.maker, defaults, inputs_data))
     return rval
-
-class AliasedMemoryError(Exception):pass
 
 def _constructor_Function(maker, defaults, data):
     f = maker.create(defaults, trustme = True)
@@ -659,7 +709,8 @@ class FunctionMaker(object):
 
 
 def _pickle_FunctionMaker(fm):
-    return (_constructor_FunctionMaker, (fm.inputs, fm.outputs[0] if fm.unpack_single else fm.outputs, fm.mode, fm.accept_inplace))
+    rval = (_constructor_FunctionMaker, (fm.inputs, fm.outputs[0] if fm.unpack_single else fm.outputs, fm.mode, fm.accept_inplace))
+    return rval
 
 def _constructor_FunctionMaker(*args):
     return FunctionMaker(*args)

@@ -381,18 +381,27 @@ class T_picklefunction(unittest.TestCase):
         x,s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
-        print f.maker.function_builder
 
-        g = copy.deepcopy(f)
+        try:
+            g = copy.deepcopy(f)
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
         #if they both return, assume  that they return equivalent things.
+        #print [(k,id(k)) for k in f.finder.keys()]
+        #print [(k,id(k)) for k in g.finder.keys()]
 
-        self.failIf(g.container[x].storage is f.container[x].storage)
-        self.failIf(g.container[a].storage is f.container[a].storage)
-        self.failIf(g.container[s].storage is f.container[s].storage)
+        self.failIf(g.container[0].storage is f.container[0].storage)
+        self.failIf(g.container[1].storage is f.container[1].storage)
+        self.failIf(g.container[2].storage is f.container[2].storage)
+        self.failIf(x in g.container)
+        self.failIf(x in g.value)
 
-        self.failIf(g.value[a] is f.value[a]) # should not have been copied
-        self.failIf(g.value[s] is f.value[s]) # should have been copied because it is mutable.
-        self.failIf((g.value[s] != f.value[s]).any()) # its contents should be identical
+        self.failIf(g.value[1] is f.value[1]) # should not have been copied
+        self.failIf(g.value[2] is f.value[2]) # should have been copied because it is mutable.
+        self.failIf((g.value[2] != f.value[2]).any()) # its contents should be identical
 
         self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
