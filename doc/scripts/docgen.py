@@ -68,6 +68,7 @@ if __name__ == '__main__':
         print 'Usage: %s [OPTIONS]' % sys.argv[0]
         print '  -o <dir>: output the html files in the specified dir'
         print '  --rst: only compile the doc (requires sphinx)'
+        print '  --nopdf: do not produce a PDF file from the doc, only HTML'
         print '  --epydoc: only compile the api documentation (requires epydoc)'
         print '  --help: this help'
         sys.exit(0)
