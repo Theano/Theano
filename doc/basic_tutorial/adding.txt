@@ -69,7 +69,7 @@ the :ref:`advtutorial` and in :ref:`graphstructures`.
 By calling ``T.dscalar`` with a string argument, you create a
 :term:`Variable` representing a floating-point scalar quantity with the
 given name. If you provide no argument, the symbol will be unnamed. Names
-are not require, but they can aid debugging.
+are not required, but they can help debugging.
 
 -------------------------------------------
 
@@ -147,9 +147,9 @@ with numpy arrays may be found :ref:`here <predefinedtypes>`.
 
 .. note::
 
-   You the user---not the system architecture---choose whether your
-   program will use 32- or 64-bit integers (i prefix vs the l prefix)
-   and floats (f prefix vs the d prefix).
+   You, the user---not the system architecture---have to choose whether your
+   program will use 32- or 64-bit integers (``i`` prefix vs. the ``l`` prefix)
+   and floats (``f`` prefix vs. the ``d`` prefix).
 
 
 **Next:** `More examples`_
