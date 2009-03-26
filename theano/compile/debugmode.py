@@ -1152,6 +1152,28 @@ class DebugMode(Mode):
     `_VariableEquivalenceTracker` classes.
 
     """
+
+    stability_patience = 10
+    """
+    When checking for the stability of optimization, recompile the graph this many times.
+    """
+
+    check_c_code = True
+    """
+    Should we evaluate (and check) the `c_code` implementations?
+    """
+
+    check_py_code = True
+    """
+    Should we evaluate (and check) the `perform` implementations?
+    """
+
+    diagnostic = None
+    """
+    Log diagnostic information to this file.
+    """
+
+
     # This function will be used to create a FunctionMaker in 
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):

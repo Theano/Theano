@@ -38,11 +38,12 @@ Theano provides a 'Print' Op to do this.
 Since Theano runs your program in a topological order, you won't have precise
 control over the order in which multiple Print() Ops are evaluted.  For a more
 precise inspection of what's being computed where, when, and how, see the
-:ref:`Stepping through a compiled function with the WrapLinker`.
+:ref:`wraplinker_faq`.
 
 
 
 
+.. _wraplinker_faq:
 
 How do I step through a compiled function with the WrapLinker?
 --------------------------------------------------------------
@@ -50,10 +51,11 @@ How do I step through a compiled function with the WrapLinker?
 WRITEME
 
 
-I wrote a new Op, and weird stuff is happening...
--------------------------------------------------
+I wrote a new Op/Type, and weird stuff is happening...
+------------------------------------------------------
 
-First, check the :ref:`Op Contract` and make sure you're following the rules.
+First, check the :ref:`op_contract` and the :ref:`type_contract` 
+and make sure you're following the rules.
 Then try running your program in :ref:`debugmode`.  DebugMode might catch
 something that you're not seeing.
 

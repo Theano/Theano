@@ -18,7 +18,7 @@ cluster.
 
 DebugMode is easy to use:
 
-.. code-block::
+.. code-block:: python
 
     x = theano.dvector('x')
 
