@@ -1,0 +1,117 @@
+
+=========================================
+ProfileMode
+=========================================
+
+To profile a Theano graph, a special mode called ProfileMode, must be passed as
+an argument when compiling your graph. Using ProfileMode is a three-step
+process.
+
+Creating a ProfileMode Instance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+First create a ProfileMode instance. 
+
+>>> from theano import ProfileMode
+>>> profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+
+The ProfileMode constructor takes as input an optimizer and a linker. Which optimizer 
+and linker to use will depend on the application. For example, a user wanting
+to profile the Python implementation only, should use the gof.PerformLinker (or
+"py" for short). On the other hand, a user wanting to profile his graph using
+c-implementations wherever possible should use the ``gof.OpWiseCLinker`` (or "c|py").
+
+In the same manner, modifying which optimizer is passed to ProfileMode
+will decide which optimizations are applied to the graph, prior to
+profiling. Changing the optimizer should be especially useful when developing
+new graph optimizations, in order to evaluate their impact on performance.
+
+Note that most users will want to use ProfileMode to optimize their graph and
+find where most of the computation time is being spent. In this context,
+'fast_run' optimizer and ``gof.OpWiseCLinker`` are the most appropriate choices.
+
+Compiling your Graph with ProfileMode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once the ProfileMode instance is created, simply compile your graph as you
+would normally, by specifying the mode parameter.
+
+>>> # with functions
+>>> f = theano.function([input1,input2],[output1], mode=profmode)
+>>> # with modules
+>>> m = theano.Module()
+>>> minst = m.make(mode=profmode)
+
+Retrieving Timing Information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once your graph is compiled, simply run the program or operation you wish to
+profile, then call ``profmode.print_summary()``. This will provide you with
+the desired timing information, indicating where your graph is spending most
+of its time.
+
+This is best shown through an example. Lets use the example of logistic
+regression, covered previously in the `Module`_ section.
+
+.. _Module : module.html?highlight=nnet#advanced-example
+
+Compiling the module with ProfileMode and calling ``profmode.print_summary()``
+generates the following output:
+
+.. code-block:: python
+
+    local_time 0.0508708953857 (Time spent running thunks)
+    Apply-wise summary: <fraction of local_time spent at this position> (<Apply position>, <Apply Op name>)
+            0.397   6       Subtensor{0, ::}
+            0.110   18      <theano.tensor.blas.Gemm object at 0x15eb3d0>
+            0.047   1       _dot22
+            0.033   0       InplaceDimShuffle{x,0}
+            0.032   2       InplaceDimShuffle{1,0}
+            0.030   7       second
+            0.029   8       <theano.tensor.nnet.SoftmaxWithBias object at 0x1619150>
+            0.028   16      Sum
+            0.027   3       InplaceDimShuffle{x}
+            0.024   9       sub
+            0.024   17      Sum{0}
+            0.024   15      <theano.tensor.nnet.SoftmaxWithBiasDx object at 0x177fcd0>
+            0.023   10      sqr
+            0.023   12      Sum{1}
+            0.023   4       neg
+       ... (remaining 6 Apply instances account for 0.13 of the runtime)
+    Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>
+            0.397     Subtensor{0, ::}
+            0.110   * <theano.tensor.blas.Gemm object at 0x15eb3d0>
+            0.047   * _dot22
+            0.043   * Elemwise{Mul{output_types_preference=<theano.scalar.basic.transfer_type object at 0x176dbd0>}}[(0, 1)]
+            0.033   * InplaceDimShuffle{x,0}
+            0.032   * InplaceDimShuffle{1,0}
+            0.030   * second
+            0.029   * <theano.tensor.nnet.SoftmaxWithBias object at 0x1619150>
+            0.028   * Sum
+            0.027   * InplaceDimShuffle{x}
+            0.024   * sub
+            0.024   * Sum{0}
+            0.024   * <theano.tensor.nnet.SoftmaxWithBiasDx object at 0x177fcd0>
+            0.023   * sqr
+            0.023   * Sum{1}
+            0.023   * neg
+            0.022   * Elemwise{Sub{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1900850>}}[(0, 0)]
+            0.021   * Elemwise{Add{output_types_preference=<theano.scalar.basic.transfer_type object at 0x18ab350>}}[(0, 0)]
+            0.021   * Elemwise{Second{output_types_preference=<theano.scalar.basic.transfer_type object at 0x177f090>}}[(0, 1)]
+            0.020   * Elemwise{Neg{output_types_preference=<theano.scalar.basic.transfer_type object at 0x17b4690>}}[(0, 0)]
+       ... (remaining 0 Ops account for 0.00 of the runtime)
+    (*) Op is running a c implementation
+
+The summary has two components to it. In the first section called the Apply-wise 
+summary, timing information is provided for the worst offending Apply nodes. This 
+corresponds to individual nodes within your graph which take the longest to
+execute. In the second portion, the Op-wise summary, the execution time of 
+all Apply nodes executing the same Op are grouped together and the total
+execution time per Op is shown.
+
+Note that the ProfileMode also shows which Ops were running a c implementation.
+
+Developers wishing to optimize the performance of their graph, should focus on the 
+worst offending Ops. If no c-implementation exists for this op, consider writing
+a c-implementation yourself or use the mailing list, to suggest that a c-implementation
+be provided.
