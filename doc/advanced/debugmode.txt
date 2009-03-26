@@ -77,7 +77,7 @@ attribute.
 
 For detailed documentation on the Exception, see :api:`BadDestroyMap`.
 
-For detailed documentation on the ``destroy_map`` attribute, see :ref:`_inplace`.
+For detailed documentation on the ``destroy_map`` attribute, see :ref:`inplace`.
 
 
 BadViewMap
@@ -89,7 +89,7 @@ optimization system via the ``view_map`` attribute.
 
 For detailed documentation on the Exception, see :api:`BadViewMap`.
 
-For detailed documentation on the ``view_map`` attribute, see :ref:`_views`.
+For detailed documentation on the ``view_map`` attribute, see :ref:`views`.
 
 
 StochasticOrder
