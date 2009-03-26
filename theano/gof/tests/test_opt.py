@@ -382,14 +382,18 @@ class TestEquilibrium(object):
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
         print 'before', g
+        oldstderr = sys.stderr
         sys.stderr = sys.stdout # display pesky warnings along with stdout
-        opt = EquilibriumOptimizer(
-            [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
-             PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
-             PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
-             ],
-            max_use_ratio = 1. / len(g.nodes)) # each opt can only be applied once
-        opt.optimize(g)
+        try:
+            opt = EquilibriumOptimizer(
+                [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
+                 PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
+                 PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
+                 ],
+                max_use_ratio = 1. / len(g.nodes)) # each opt can only be applied once
+            opt.optimize(g)
+        finally:
+            sys.stderr = oldstderr
         print 'after', g
         assert str(g) == '[Op4(x, y)]'
 

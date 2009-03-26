@@ -8,7 +8,8 @@ Debugging Theano: FAQ and Troubleshooting
 There are many kinds of bugs that might come up in a computer program.
 This page is structured as an FAQ.  It should provide recipes to tackle common
 problems, and introduce some of the tools that we use to find problems in our
-Theano code, and even (it happens) in Theano's internals.
+Theano code, and even (it happens) in Theano's internals, such as
+:ref:`debugmode`.
 
 
 
@@ -18,7 +19,7 @@ How do I print an intermediate value in a Function/Method?
 
 Theano provides a 'Print' Op to do this.
 
-.. code-block::
+.. code-block:: python
 
     x = theano.tensor.dvector('x')
 
