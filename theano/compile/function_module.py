@@ -13,7 +13,7 @@ from .. import gof
 import sys
 import copy
 
-from mode import *
+import mode as mode_module
 from io import *
 
 def infer_reuse_pattern(env, outputs_to_disown):
@@ -551,7 +551,7 @@ class FunctionMaker(object):
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
     def __init__(self, inputs, outputs, 
-            mode = default_mode, accept_inplace = False, function_builder = Function):
+            mode = None, accept_inplace = False, function_builder = Function):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -560,12 +560,14 @@ class FunctionMaker(object):
                     case the functions produced by FunctionMaker will return
                     their output value directly
 
-        :param mode: a Mode instance telling FunctionMaker how to optimize and link
+        :param mode: a Mode instance telling FunctionMaker how to optimize and link.  None
+        means to use the `default_mode`.
 
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
         """
 
+        mode = mode if mode is not None else mode_module.default_mode
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
@@ -586,7 +588,7 @@ class FunctionMaker(object):
         self.env = env
 
         # Fetch the mode and then the optimizer and linker
-        mode = predefined_modes.get(mode, mode)
+        mode = mode_module.predefined_modes.get(mode, mode)
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
@@ -595,7 +597,7 @@ class FunctionMaker(object):
         # initialize the linker
         if not hasattr(linker, 'accept'):
             raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
-                             "or one of %s" % predefined_linkers.keys())
+                             "or one of %s" % mode_module.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
         no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
@@ -742,7 +744,7 @@ def register_checker(checker):
 
 
 
-def function(inputs, outputs, mode=default_mode, accept_inplace = False):
+def function(inputs, outputs, mode=None, accept_inplace = False):
     """
     Return a function calculating the outputs from the inputs.
 
@@ -752,8 +754,8 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
         value of the returned function will match the format of this argument (either the value
         itself or a list of one or more return values)
 
-    :param mode: a descriptive string or a Mode instance. (See below for descriptive string
-    list).
+    :param mode: a descriptive string or a Mode instance. (Default of None means to use
+    `mode.default_mode` (See below for descriptive string list).
     
     Currently, the library provides the following mode strings:
 
@@ -789,6 +791,7 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
         f[<kitname>] = seed   #re-seed the elements of a RandomKit
 
     """
+    mode = mode if mode is not None else mode_module.default_mode
 
     inputs = map(convert_function_input, inputs)
     if outputs is None:
@@ -798,7 +801,7 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
-    mode = predefined_modes.get(mode, mode)
+    mode = mode_module.predefined_modes.get(mode, mode)
     if isinstance(mode, (list, tuple)): # "mode comparison" semantics
         if not mode:
             raise ValueError("Please provide at least one mode.")
