@@ -208,3 +208,4 @@ This should give you the gist of it:
      --epydoc: only compile the api documentation (requires epydoc)
      --help: this help
 
+.. _theano-users: http://groups.google.com/group/theano-users?pli=1
