@@ -149,8 +149,8 @@ class PureOp(object):
 
     `Op` is an abstract class that documents the interface for theano's data transformations.
     It has many subclasses, such as 
-    `sparse dot <http://lgcm.iro.umontreal.ca/epydoc/theano.sparse.Dot-class.html>`__,
-    and `Shape <http://lgcm.iro.umontreal.ca/epydoc/theano.tensor.Shape-class.html>`__.
+    `sparse dot <http://pylearn.org/epydoc/theano.sparse.Dot-class.html>`__,
+    and `Shape <http://pylearn.org/epydoc/theano.tensor.Shape-class.html>`__.
 
     These subclasses are meant to be instantiated.  
     An instance has several responsabilities:
