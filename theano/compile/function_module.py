@@ -11,7 +11,7 @@ from functools import partial
 import numpy
 from .. import gof
 import sys
-from copy import copy
+import copy
 
 from mode import *
 from io import *
@@ -168,10 +168,10 @@ class Function(object):
             input.distribute(value, indices, cs)
             for c in cs:
                 c.provided += 1
-        def assign(c, v):
-            c.data = v
+        #def assign(c, v):
+            #c.data = v
 
-        setters = []
+        #setters = []
         # Initialize the storage
         for i, ((input, indices, sinputs), (required, refeed, value)) in enumerate(zip(self.indices, defaults)):
             if indices is None: # this is true iff input is not a SymbolicInputKit
@@ -193,7 +193,7 @@ class Function(object):
                 finder[input.name] = c if input.name not in finder else DUPLICATE
                 # inv_finder maps the container to the input (useful for one error message)
                 inv_finder[c] = input
-                setters.append(partial(assign, c))
+                #setters.append(partial(assign, c))
                 containers[:1] = []
             else:
                 # The input is a SymbolicInputKit, so we take as many containers as the Kit provides inputs
@@ -207,7 +207,7 @@ class Function(object):
                 finder[i] = f
                 finder[input] = f
                 finder[input.name] = f if input.name not in finder else DUPLICATE
-                setters.append(f)
+                #setters.append(f)
                 # For each input in the kit and its corresponding container, we put an entry in finder.
                 # This allows the user to micro-manage elements of the kit if need be.
                 # All containers inherit the required field and have their own "provided" counter
@@ -278,7 +278,7 @@ class Function(object):
         cpy = self.maker.create(defaults, trustme = True)
         for (input,_1,_2), here, there in zip(self.indices, self.input_storage, cpy.input_storage):
             if input.mutable and here is not None:
-                there.data = copy(here.data)
+                there.data = copy.copy(here.data)
             else:
                 there.data = here.data
         return cpy
@@ -369,13 +369,14 @@ def _pickle_Function(f):
         for i, d_i in enumerate(all_data):
             for j, d_j in enumerate(all_data):
                 if (i < j) and isinstance(d_i, numpy.ndarray) and isinstance(d_j, numpy.ndarray):
-                    if f.pickle_aliased_memory_strategy == 'warn':
-                        print >> sys.stderr, ('WARNING: '
-                                'aliased relationship between Function arguments '
-                                'will not be preserved by un-pickling operation')
-                        #print >> sys.stderr, d_i, d_j, id(d_i), id(d_j)
-                    else:
-                        raise AliasedMemoryError(d_i, d_j)
+                    if numpy.may_share_memory(d_i, d_j):
+                        if f.pickle_aliased_memory_strategy == 'warn':
+                            print >> sys.stderr, ('WARNING: '
+                                    'aliased relationship between Function arguments '
+                                    'will not be preserved by un-pickling operation')
+                            #print >> sys.stderr, d_i, d_j, id(d_i), id(d_j)
+                        else:
+                            raise AliasedMemoryError(d_i, d_j)
 
     rval = (_constructor_Function, (f.maker, defaults, inputs_data))
     return rval
@@ -413,11 +414,11 @@ class SanityCheckFunction(Function):
 
         for fn in self.others:
             for stor1, stor2 in zip(self.input_storage, fn.input_storage):
-                stor2.value = copy(stor1.value)
+                stor2.value = copy.copy(stor1.value)
 
         variables = super(SanityCheckFunction, self).__call__(*args, **kwargs)
 
-        all_outputs = [copy(c.value) for c in self.output_storage] # we keep a copy to make sure it's not overwritten
+        all_outputs = [copy.copy(c.value) for c in self.output_storage] # we keep a copy to make sure it's not overwritten
         for fn in self.others:
             fn(*args, **kwargs)
 
@@ -536,7 +537,7 @@ class FunctionMaker(object):
 
         # Fetch the mode and then the optimizer and linker
         mode = predefined_modes.get(mode, mode)
-        optimizer, linker = mode.optimizer, copy(mode.linker)
+        optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
         optimizer(env)
@@ -755,7 +756,8 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
         else:              
             #return a different kind of function
             def dup_defaults():
-                return [copy(default.value) if isinstance(default, gof.Container) else copy(default)
+                return [copy.copy(default.value) if isinstance(default, gof.Container) else
+                        copy.copy(default)
                         for default in defaults]
             makers = [FunctionMaker(inputs, outputs, m, accept_inplace = accept_inplace) for m in mode[1:]]
             fns = [maker.create(dup_defaults(), trustme = True) for maker in makers]
