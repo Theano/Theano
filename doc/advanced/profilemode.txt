@@ -52,57 +52,60 @@ profile, then call ``profmode.print_summary()``. This will provide you with
 the desired timing information, indicating where your graph is spending most
 of its time.
 
-This is best shown through an example. Lets use the example of logistic
-regression, covered previously in the `Module`_ section.
-
-.. _Module : module.html?highlight=nnet#advanced-example
+This is best shown through an example.
+Lets use the example of logistic
+regression.  (Code for this example is in the file
+``benchmark/regression/regression.py``.) 
 
 Compiling the module with ProfileMode and calling ``profmode.print_summary()``
 generates the following output:
 
 .. code-block:: python
+    
+    """
+    ProfileMode.print_summary()
+    ---------------------------
 
-    local_time 0.0508708953857 (Time spent running thunks)
+    local_time 0.0749197006226 (Time spent running thunks)
     Apply-wise summary: <fraction of local_time spent at this position> (<Apply position>, <Apply Op name>)
-            0.397   6       Subtensor{0, ::}
-            0.110   18      <theano.tensor.blas.Gemm object at 0x15eb3d0>
-            0.047   1       _dot22
-            0.033   0       InplaceDimShuffle{x,0}
-            0.032   2       InplaceDimShuffle{1,0}
-            0.030   7       second
-            0.029   8       <theano.tensor.nnet.SoftmaxWithBias object at 0x1619150>
-            0.028   16      Sum
-            0.027   3       InplaceDimShuffle{x}
-            0.024   9       sub
-            0.024   17      Sum{0}
-            0.024   15      <theano.tensor.nnet.SoftmaxWithBiasDx object at 0x177fcd0>
-            0.023   10      sqr
-            0.023   12      Sum{1}
-            0.023   4       neg
-       ... (remaining 6 Apply instances account for 0.13 of the runtime)
+            0.069   15      _dot22
+            0.064   1       _dot22
+            0.053   0       InplaceDimShuffle{x,0}
+            0.049   2       InplaceDimShuffle{1,0}
+            0.049   10      mul
+            0.049   6       Elemwise{ScalarSigmoid{output_types_preference=<theano.scalar.basic.transfer_type object at 0x171e650>}}[(0, 0)]
+            0.049   3       InplaceDimShuffle{x}
+            0.049   4       InplaceDimShuffle{x,x}
+            0.048   14      Sum{0}
+            0.047   7       sub
+            0.046   17      mul
+            0.045   9       sqr
+            0.045   8       Elemwise{sub}
+            0.045   16      Sum
+            0.044   18      mul
+       ... (remaining 6 Apply instances account for 0.25 of the runtime)
     Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>
-            0.397     Subtensor{0, ::}
-            0.110   * <theano.tensor.blas.Gemm object at 0x15eb3d0>
-            0.047   * _dot22
-            0.043   * Elemwise{Mul{output_types_preference=<theano.scalar.basic.transfer_type object at 0x176dbd0>}}[(0, 1)]
-            0.033   * InplaceDimShuffle{x,0}
-            0.032   * InplaceDimShuffle{1,0}
-            0.030   * second
-            0.029   * <theano.tensor.nnet.SoftmaxWithBias object at 0x1619150>
-            0.028   * Sum
-            0.027   * InplaceDimShuffle{x}
-            0.024   * sub
-            0.024   * Sum{0}
-            0.024   * <theano.tensor.nnet.SoftmaxWithBiasDx object at 0x177fcd0>
-            0.023   * sqr
-            0.023   * Sum{1}
-            0.023   * neg
-            0.022   * Elemwise{Sub{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1900850>}}[(0, 0)]
-            0.021   * Elemwise{Add{output_types_preference=<theano.scalar.basic.transfer_type object at 0x18ab350>}}[(0, 0)]
-            0.021   * Elemwise{Second{output_types_preference=<theano.scalar.basic.transfer_type object at 0x177f090>}}[(0, 1)]
-            0.020   * Elemwise{Neg{output_types_preference=<theano.scalar.basic.transfer_type object at 0x17b4690>}}[(0, 0)]
+            0.139   * mul
+            0.134   * _dot22
+            0.092   * sub
+            0.085   * Elemwise{Sub{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1779f10>}}[(0, 0)]
+            0.053   * InplaceDimShuffle{x,0}
+            0.049   * InplaceDimShuffle{1,0}
+            0.049   * Elemwise{ScalarSigmoid{output_types_preference=<theano.scalar.basic.transfer_type object at 0x171e650>}}[(0, 0)]
+            0.049   * InplaceDimShuffle{x}
+            0.049   * InplaceDimShuffle{x,x}
+            0.048   * Sum{0}
+            0.045   * sqr
+            0.045   * Sum
+            0.043   * Sum{1}
+            0.042   * Elemwise{Mul{output_types_preference=<theano.scalar.basic.transfer_type object at 0x17a0f50>}}[(0, 1)]
+            0.041   * Elemwise{Add{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1736a50>}}[(0, 0)]
+            0.039   * Elemwise{Second{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1736d90>}}[(0, 1)]
        ... (remaining 0 Ops account for 0.00 of the runtime)
     (*) Op is running a c implementation
+
+    """
+
 
 The summary has two components to it. In the first section called the Apply-wise 
 summary, timing information is provided for the worst offending Apply nodes. This 
