@@ -98,7 +98,7 @@ if __name__ == '__main__':
     mkdir("api")
 
     # Make sure the appropriate 'theano' directory is in the PYTHONPATH
-    pythonpath = os.environ['PYTHONPATH']
+    pythonpath = os.environ.get('PYTHONPATH', '')
     pythonpath = throot + ':' + pythonpath
     os.environ['PYTHONPATH'] = pythonpath
 
