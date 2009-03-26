@@ -858,7 +858,7 @@ class MaxAndArgmax(Op):
             axis = x.type.ndim - 1
         axis = _as_tensor_variable(axis)
         inputs = [x, axis]
-        broadcastable = [False] * (x.type.ndim - 1)
+        broadcastable = [False] * (x.type.ndim - 1) #TODO: be less conservative
         outputs = [tensor(x.type.dtype, broadcastable), 
                    tensor(axis.type.dtype, broadcastable)]
         return Apply(self, inputs, outputs)

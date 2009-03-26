@@ -900,9 +900,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                             lopt_change = self.process_node(env, node, lopt)
                             process_count[lopt] += 1 if lopt_change else 0
                             changed |= lopt_change
-            except:
+            finally:
                 self.detach_updater(env, u)
-                raise
             self.detach_updater(env, u)
         if max_use_abort:
             print >> sys.stderr, "WARNING: EquilibriumOptimizer max'ed out"
