@@ -731,7 +731,7 @@ class Canonizer(gof.LocalOptimizer):
 
         # if our if's above worked, this should be true. OTW investigate.
         if new.type != out.type:
-            print >> sys.stderr, 'CANONIZE FAILED: new out = ', new, out
+            print >> sys.stderr, 'CANONIZE FAILED: new, out = ', new, ',', out, 'types', new.type, ',', out.type
             assert new.type == out.type
 
         return [new]

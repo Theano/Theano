@@ -1,4 +1,4 @@
-import traceback
+import traceback, StringIO
 import operator
 
 from theano.tensor import *
@@ -1364,12 +1364,19 @@ class t_dot(unittest.TestCase):
 
     def not_aligned(self, x, y):
         z = dot(x,y)
+        old_stderr = sys.stderr
+        # constant folding will complain to stderr that things are not aligned
+        # this is normal, testers are not interested in seeing that output.
+        sys.stderr = StringIO.StringIO()
         try:
             tz = eval_outputs([z])
+            assert False # should have raised exception
         except ValueError, e:
             self.failUnless(
                     e[0].split()[1:4] == ['are', 'not', 'aligned'] or # reported by numpy
                     e[0].split()[2:5] == ['do', 'not', 'agree'], e) # reported by blas return self.fail()
+        finally:
+            sys.stderr = old_stderr
 
     def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
     def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
