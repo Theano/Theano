@@ -211,7 +211,7 @@ class test_structureddot(unittest.TestCase):
             assert _is_dense(c)
             assert numpy.all(outvals == c)
 
-            tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals])
+            tensor.verify_grad( buildgraphCSR, [kernvals,imvals])
 
 
 if __name__ == '__main__':
