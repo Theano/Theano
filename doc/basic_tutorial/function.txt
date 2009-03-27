@@ -12,7 +12,7 @@ The signature for this function is:
 
 .. code-block:: python
 
-    def function(inputs, outputs, mode='FAST_RUN'):
+    def function(inputs, outputs, mode=None):
         ...
 
 You've already seen example usage in the basic tutorial... something like this:
@@ -22,6 +22,8 @@ You've already seen example usage in the basic tutorial... something like this:
 >>> print f(4)                    # prints 8.0
 
 The idea here is that we've compiled the symbolic graph (``2*x``) into a function that can be called on a number and will do some computations.
+
+.. _function_inputs:
 
 Inputs
 ======
@@ -278,6 +280,7 @@ In the example above, ``z`` has value 42 when no value is explicitly given.
 This default value is potentially used at every function invocation, because
 ``z`` has no ``update`` or storage associated with it.
 
+.. _function_outputs:
 
 Outputs
 =======
@@ -326,9 +329,10 @@ If a list of ``Variable`` or ``Out`` instances is given as argument, then the co
     print fn3(ndarray([[1,0],[0,1]]))
 
 
+.. _function_mode:
 
-Modes
-=====
+Mode
+====
 
 The ``mode`` parameter to ``theano.function`` controls how the
 inputs-to-outputs graph is transformed into a callable object.
@@ -341,6 +345,11 @@ Theano defines the following modes by name:
     implementations. This mode can take much longer than the other modes, 
     but can identify many kinds of problems.
 
+The default mode is typically 'FAST_RUN', but it can be controlled via the
+environment variable 'THEANO_DEFAULT_MODE', which can in turn be overridden by
+setting ``theano.compile.mode.default_mode`` directly, which can in turn be
+overridden by passing the keyword argument to ``theano.function``.
+
 For a finer level of control over which optimizations are applied, and whether
-C or python implementations are used, read :api:`theano.compile.Mode`.
+C or python implementations are used, read :api:`compile.mode.Mode`.
 

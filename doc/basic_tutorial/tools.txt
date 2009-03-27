@@ -1,21 +1,26 @@
 
-=====
-Tools
-=====
+=============================
+Basic Tutorial Mini-Reference
+=============================
 
+.. miniref_mode:
 
 Mode
 ====
 
-WRITEME
+============= ==============================================================   ===============================================================================
+short name    Full constructor                                                 What does it do?
+============= ==============================================================   ===============================================================================
+-             ``compile.mode.Mode(linker='py', optimizer=None)``                Python implementations with zero graph modifications.
+FAST_COMPILE  ``compile.mode.Mode(linker='c|py', optimizer='fast_compile')      C implementations where available, quick and cheap graph transformations
+FAST_RUN      ``compile.mode.Mode(linker='c|py', optimizer='fast_run')          C implementations where available, all available graph transformations.
+DEBUG_MODE    ``compile.debugmode.DebugMode()                                   Both implementations where available, all available graph transformations.
+============= ==============================================================   ===============================================================================
 
 .. _tensortypes:
 
 Types
 =====
-
-NOTE: I'm not sure this actually goes in the tutorial - it ended up
-much longer than intended - maybe we should just link to it! --OB
 
 .. _predefinedtypes:
 

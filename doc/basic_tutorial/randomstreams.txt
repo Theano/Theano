@@ -5,7 +5,7 @@ Using RandomStreams
 ====================
 
 Since Theano uses a functional design, producing pseudo-random numbers in a
-graph is almost as straightforward as it is in numpy.  If you are using theano's
+graph is not quite as straightforward as it is in numpy.  But close.  If you are using theano's
 modules, then a RandomStreams object is probably what you want.  If you are
 using the function interface directly (not Module and Method) then have a look
 at the :api:`RandomFunction` Op.
@@ -34,6 +34,7 @@ Here's a brief example:
     fn_val1 = made.fn()  #different numbers from fn_val0
 
 
+Let's walk through it.
 
 >>> from theano.tensor import RandomStreams
 >>> m = Module()
@@ -56,23 +57,23 @@ object for each of fn and gn).
 
 This function will always return a 2x2 matrix of small numbers, or possibly
 zeros.  It illustrates that random variables are not re-drawn every time they
-are used, they are only drawn once (per call).
+are used, they are only drawn once per method call.
 
 
 >>> made = m.make()
 
 When we compile things with m.make(), the RandomStreams instance (m.random)
-emits an RandomStreamsInstance object (made.random) containing a numpy
+emits an RandomStreamsInstance object (here called ``made.random``) containing a numpy
 RandomState instance for each stream.
 
 >>> assert isinstance(made.random[rv_u.rng], numpy.random.RandomState)
 
-These RandomState objects can be accessed using standard indexing syntax.
+These RandomState objects can be accessed using normal indexing syntax.
 
 >>> fn_val0 = made.fn()
 >>> fn_val1 = made.fn()
 
-Finally, we can use our toy methods to draw random numbers.  Every call will of
+Finally, we can use our methods to draw random numbers.  Every call will of
 course, draw different ones!
 
 
@@ -147,7 +148,7 @@ objects.  So, for example, if we were to hijack the previous example like this:
 >>> fn_val_ = made_again.fn()
 
 We could call f and g in different orders in the two modules, and find that
-numpy.all(fn_val == fn_val_) and numpy.all(gn_val == gn_val_).
+``numpy.all(fn_val == fn_val_)`` and ``numpy.all(gn_val == gn_val_)``.
 
 
 

@@ -67,7 +67,7 @@ squared difference between two matrices ``x`` and ``y`` at the same time:
 >>> diff_squared = diff**2
 >>> f = function([x, y], [diff, abs_diff, diff_squared])
 
-When we use the function, it will return the two variables (the printing
+When we use the function, it will return the three variables (the printing
 was reformatted for readability):
 
 >>> f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
@@ -141,7 +141,7 @@ with respect to the second. In this way, Theano can be used for
    first argument is a scalar or a tensor of size 1 but not if it is
    larger. For more information on the semantics when the first
    argument has a larger size and details about the implementation,
-   see the :ref:`gradient` section.
+   see :api:`tensor.grad`.
 
 
 Setting a default value for an argument
@@ -198,7 +198,7 @@ the increment has a default value of 1.
 First let's define the accumulator function:
 
 >>> inc = T.scalar('inc')
->>> state = T.scalar('state')
+>>> state = T.scalar('state_name')
 >>> new_state = state + inc
 >>> accumulator = function([(inc, 1), ((state, new_state), 0)], new_state)
 
@@ -212,8 +212,8 @@ of the internal ``state`` will be replaced by the value computed as
 ``new_state``. In this case, the state will be replaced by the variable
 of incrementing it by ``inc``.
 
-We recommend (insist?) that internal state arguments occur after any
-plain arguments and arguments with default values.
+.. We recommend (insist?) that internal state arguments occur after any plain
+   arguments and arguments with default values.
 
 There is no limit to how many states you can have. You can add an
 arbitrary number of elements to the input list which correspond to the
@@ -225,11 +225,11 @@ Anyway, let's try it out! The state can be accessed using the square
 brackets notation ``[]``. You may access the state either by using
 the :ref:`variable` representing it or the name of that
 :ref:`variable`. In our example we can access the state either with the
-``state`` object or the string 'state'.
+``state`` object or the string 'state_name'.
 
 >>> accumulator[state]
 array(0.0)
->>> accumulator['state']
+>>> accumulator['state_name']
 array(0.0)
 
 Here we use the accumulator and check that the state is correct each
@@ -237,21 +237,21 @@ time:
 
 >>> accumulator()
 array(1.0)
->>> accumulator['state']
+>>> accumulator['state_name']
 array(1.0)
 >>> accumulator(300)
 array(301.0)
->>> accumulator['state']
+>>> accumulator['state_name']
 array(301.0)
 
 It is possible to reset the state. This is done
 by assigning to the state using the square brackets
 notation:
 
->>> accumulator['state'] = 5
+>>> accumulator['state_name'] = 5
 >>> accumulator(0.9)
 array(5.9000000000000004)
->>> accumulator['state']
+>>> accumulator['state_name']
 array(5.9000000000000004)
 
 
