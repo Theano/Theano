@@ -13,7 +13,7 @@ Theano requirements
 
 - mercurial_: A distributed revision control system (RCS).
 - nosetests_: A system for unit tests.
-- numpy_: A library for efficient numerical computing.s
+- numpy_: A library for efficient numerical computing.
 - python_: The programming language Theano is for.
 - scipy_: A library for scientific computing.
 
