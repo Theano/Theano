@@ -108,7 +108,7 @@ Once you have completed these steps, you should run the tests like this:
     nosetests #execute all the tests
 
 All tests should pass. If some test fails on your machine, you are
-encouraged to tell us what went wrong on the :ref:`theano-users` mailing
+encouraged to tell us what went wrong on the ``theano-users@googlegroups.com`` mailing
 list.
 
 To update your library to the latest revision, change directory (``cd``)
