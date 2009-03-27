@@ -14,8 +14,35 @@ Unit Testing revolves around the following principles:
 
 This page is in no way meant to replace tutorials on Python's unittest module, for this we refer the reader to the `official documentation <http://docs.python.org/library/unittest.html>`_.  We will however adress certain specificities about how unittests relate to theano.
 
+Unittest Primer
+===============
+
+A unittest is a subclass of ``unittest.TestCase``, with member functions with 
+names that start with the string ``test``.  For example:
+
+>>> class MyTestCase(unittest.TestCase):
+>>>    def test0(self):
+>>>        pass                        # test passes cleanly
+>>>    def test1(self):
+>>>        self.failUnless(2+2 == 5)   # raises an exception, causes test to fail
+>>>    def test2(self):
+>>>        assert 2+2 == 5             # causes error in test (basically a failure, but counted separately)
+>>>    def test2(self):
+>>>        assert 2+2 == 4             # this test has the same name as a previous one, so this is the one that runs.
+
+
 How to Run Unit Tests ?
 -----------------------
+
+Two options are avaiable. 
+
+Nosetests
+~~~~~~~~~
+
+The easiest by far is to use ``nosetests`` which
+is a command line utility that recurses through a given directory, finds all
+unittests matching a specific criteria and executes them. By default, it will
+find & execute tests case in test*.py files whose method name starts with 'test'.
 
 Running all unit tests
 
@@ -33,6 +60,33 @@ Running unit tests contained in a specific .py file
 Running a specific unit test
 
 >>> nosetests <filename>.py:<classname>.<method_name>
+
+Using unittest module
+~~~~~~~~~~~~~~~~~~~~~
+
+To launch tests cases from within python, you can also use the functionality
+offered by the ``unittest`` module. The simplest thing is to run all the tests in a file 
+using ``unittest.main()``. Python's built-in unittest module uses metaclasses 
+to know about all the ``unittest.TestCase`` classes you have created.  This 
+call will run them all, printing '.' for passed tests, and a stack trace for 
+exceptions. The standard footer code in theano's test files is:
+
+>>> if __name__ == '__main__':
+>>>    unittest.main()
+
+You can also choose to run a subset of the full test suite.
+
+To run all the tests in one or more ``TestCase`` subclasses:
+
+>>>    suite = unittest.TestLoader()
+>>>    suite = suite.loadTestsFromTestCase(MyTestCase0)
+>>>    suite = suite.loadTestsFromTestCase(MyTestCase1)
+>>>    ...
+>>>    unittest.TextTestRunner(verbosity=2).run(suite)
+
+To run just a single ``MyTestCase`` member test function called ``test0``:
+
+>>>   MyTestCase('test0').debug()
 
 
 Folder Layout
@@ -249,14 +303,81 @@ is approximated as:
 * calculate the gradient using the symbolic expression provided in the ``grad`` function
 * compares the two values. The tests passes if they are equal to within a certain tolerance.
 
->>> def verify_grad(testcase, op, pt, n_tests=1, rng=numpy.random, eps=1.0e-7, tol=0.0001,
->>>                mode=compile.Mode(optimizer=None, linker='c&py')):
->>>    """
->>>    Raises an Exception if the analytic gradient and numerical gradient exceeds a certain tolerance.
->>>    :param testcase: (obsolete) a reference to the unittest object calling 
->>>    :param pt: the list of numpy.ndarrays to use as inputs to the op
->>>    :param op: something that behaves like an Op instance with a single output
->>>     (can be a python function combining multiple ops)
->>>    :param testcase: the thing to call `fail` on if things go awry.
+Here is the prototype for the verify_grad function.
+
+>>> def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
+
+``verify_grad`` raises an Exception if the difference between the analytic gradient and
+numerical gradient (computed through the Finite Difference Method) exceeds
+the given tolerance.
+
+The parameters are as follows:
+
+* op: something that behaves like an Op instance with a single output (can be a python 
+  function combining multiple ops)
+* pt: the list of numpy.ndarrays to use as inputs to the op
+* n_tests: number of times to run the test
+* rng: random number generator from which to draw random samples
+* eps: stepsize used in the Finite Difference Method
+* tol: relative tolerance used as threshold for gradient comparison
+
+Here is an example showing how to use verify_grad:
+
+>>> def test_flatten_outdimNone():
+>>>    a = dmatrix()
+>>>    # ...
+>>>    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+>>>    # ...
+>>>    tensor.verify_grad(Flatten(), [a_val])
 
 
+makeTester and makeBroadcastTester
+==================================
+
+Most Op unittests perform the same function. All such tests must verify that
+the op generates the proper output, that the gradient is valid, that the Op
+fails in known/expected ways. Because so much of this is common, two helper
+functions exists to make your lives easier: ``makeTester`` and
+``makeBroadcastTester`` (defined in module ``theano.tensor.tests.test_basic``).
+
+Here is an example of ``makeTester`` generating testcases for the Dot product
+op:
+
+>>> DotTester = makeTester(name = 'DotTester',
+>>>                        op = dot,
+>>>                        expected = lambda x, y: numpy.dot(x, y),
+>>>                        checks = {},
+>>>                        good = dict(correct1 = (rand(5, 7), rand(7, 5)),
+>>>                                    correct2 = (rand(5, 7), rand(7, 9)),
+>>>                                    correct3 = (rand(5, 7), rand(7))),
+>>>                        bad_build = dict(),
+>>>                        bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
+>>>                                           bad2 = (rand(5, 7), rand(8,3))),
+>>>                        grad = dict())
+
+In the above example, we provide a name and a reference to the op we want to
+test. We then provide in the ``expected`` field, a function which
+``makeTester`` can use to compute the correct values. The following five
+parameters are dictionaries which contain:
+
+* checks: dictionary of validation functions (dictionary key is a description
+  of what each function does). Each function accepts two parameters and
+  performs some sort of validation check on each op-input/op-output value pairs.
+  If the function returns False, an Exception is raised containing the
+  check's description.
+* good: contains valid input values, for which the output should match the 
+  expected output. Unittest will fail if this is not the case.
+* bad_build: invalid parameters which should generate an Exception when
+  attempting to build the graph (call to ``make_node`` should fail). 
+  Fails unless an Exception is raised.
+* bad_runtime: invalid parameters which should generate an Exception at
+  runtime, when trying to compute the actual output values (call to
+  ``perform`` should fail). Fails unless an Exception is raised.
+* grad: dictionary containing input values which will be used in the call to
+  ``verify_grad``
+
+
+``makeBroadcastTester`` is a wrapper function for makeTester. 
+If an ``inplace=True`` parameter is passed to it, it will take care of adding
+an entry to the ``checks`` dictionary. This check will ensure that inputs and
+outputs are equal, after the Op's perform function has been applied.
