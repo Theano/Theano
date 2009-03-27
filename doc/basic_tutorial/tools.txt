@@ -8,14 +8,14 @@ Basic Tutorial Mini-Reference
 Mode
 ====
 
-============= ==============================================================   ===============================================================================
-short name    Full constructor                                                 What does it do?
-============= ==============================================================   ===============================================================================
--             ``compile.mode.Mode(linker='py', optimizer=None)``                Python implementations with zero graph modifications.
-FAST_COMPILE  ``compile.mode.Mode(linker='c|py', optimizer='fast_compile')      C implementations where available, quick and cheap graph transformations
-FAST_RUN      ``compile.mode.Mode(linker='c|py', optimizer='fast_run')          C implementations where available, all available graph transformations.
-DEBUG_MODE    ``compile.debugmode.DebugMode()                                   Both implementations where available, all available graph transformations.
-============= ==============================================================   ===============================================================================
+============= =========================================================== ===============================================================================
+short name    Full constructor                                            What does it do?
+============= =========================================================== ===============================================================================
+(default)     compile.mode.Mode(linker='py', optimizer=None)              Python implementations with zero graph modifications.
+FAST_COMPILE  compile.mode.Mode(linker='c|py', optimizer='fast_compile')  C implementations where available, quick and cheap graph transformations
+FAST_RUN      compile.mode.Mode(linker='c|py', optimizer='fast_run')      C implementations where available, all available graph transformations.
+DEBUG_MODE    compile.debugmode.DebugMode()                               Both implementations where available, all available graph transformations.
+============= =========================================================== ===============================================================================
 
 .. _tensortypes:
 

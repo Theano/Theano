@@ -156,9 +156,6 @@ Using Inheritance
 A friendlier way to use Module is to implement your functionality as a
 subclass of Module:
 
-
-.. code-block:: python
-
 .. literalinclude:: ../examples/module/accumulator.py
 
 This is just like the previous example except slightly fancier.
