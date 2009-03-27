@@ -4,7 +4,21 @@ import numpy
 import os, sys
 
 def fetch_seed(pseed=None):
-    seed = os.getenv("THEANO_UNITTEST_SEED", pseed)
+    """
+    Returns the seed to use for running the unit tests.
+    If an explicit seed is given, it will be used for seending numpy's rng.
+    If not, it will try to get a seed from the THEANO_UNITTEST_SEED variable.
+    If THEANO_UNITTEST_SEED is set to "random", it will seed the rng. with None,
+    which is equivalent to seeding with a random seed.
+    If THEANO_UNITTEST_SEED is not defined, it will use a default seed of 666.
+
+    Useful for seeding RandomState objects.
+    >>> rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    """
+     
+    seed = pseed or os.getenv("THEANO_UNITTEST_SEED", 666)
+    seed = None if seed=='random' else seed
+
     try:
         seed = int(seed) if seed else None
     except ValueError:
@@ -15,6 +29,10 @@ def fetch_seed(pseed=None):
     return seed
 
 def seed_rng(pseed=None):
+    """
+    Seeds numpy's random number generator with the value returned by fetch_seed.
+    Usage: unittest_tools.seed_rng()
+    """
 
     seed = fetch_seed(pseed)
     if pseed and pseed!=seed:
