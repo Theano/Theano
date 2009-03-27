@@ -1,5 +1,6 @@
 
 from compiledir import *
+from compilelock import get_lock, release_lock
 import sys
 
 
@@ -30,8 +31,14 @@ except ImportError:
     
     cthunk = object()
     mod = weave.ext_tools.ext_module('cutils_ext')
-    fun =weave.ext_tools.ext_function('run_cthunk', single_runner, ['cthunk'])
+    fun = weave.ext_tools.ext_function('run_cthunk', single_runner, ['cthunk'])
     fun.customize.add_extra_compile_arg('--permissive')
     mod.add_function(fun)
-    mod.compile(location = get_compiledir())
+    get_lock()
+    try:
+        mod.compile(location = get_compiledir())
+    except:
+        release_lock()
+        raise
+    release_lock()
     from cutils_ext import *

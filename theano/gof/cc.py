@@ -2,7 +2,6 @@
 Defines Linkers that deal with C implementations.
 """
 
-
 # Python imports
 from copy import copy
 import md5
@@ -20,6 +19,7 @@ import link
 import utils
 
 from compiledir import *
+from compilelock import get_lock, release_lock
 
 class CodeBlock:
     """WRITEME
@@ -300,7 +300,6 @@ def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
                         for policy in policies[1]]+[sub]) # run_declare, run_behavior, run_cleanup, sub)
 
     return struct_builder, block
-
 
 class CLinker(link.Linker):
     """WRITEME
@@ -616,8 +615,17 @@ class CLinker(link.Linker):
           f()
           first_output = ostor[0].data
         """
-        cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
-        return _execute(cthunk, self.init_tasks, self.tasks, error_storage), in_storage, out_storage
+        # Note: acquiring the lock here may not be necessary. However, it is
+        # cheap enough that it should not matter.
+        get_lock()
+        try:
+            cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
+            res = _execute(cthunk, self.init_tasks, self.tasks, error_storage), in_storage, out_storage
+        except:
+            release_lock()
+            raise
+        release_lock()
+        return res
 
     def cthunk_factory(self, error_storage, in_storage, out_storage):
         """WRITEME
@@ -632,98 +640,112 @@ class CLinker(link.Linker):
         type, value and traceback of the exception in error_storage.
         """
 
-        # check if we already compiled this
-        if not getattr(self, 'instantiate', False):
+        get_lock()
 
-            self.code_gen()
-            module_name = self.hash
+        try:
 
-            # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
-            out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
-            in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
+            # check if we already compiled this
+            if not getattr(self, 'instantiate', False):
+    
+    
+                self.code_gen()
+                module_name = self.hash
+    
+                # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
+                out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
+                in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
+    
+                cthunk = object() # dummy so weave can get the type
+                mod = weave.ext_tools.ext_module(module_name)
+    
+                argnames = ["i%i" % i for i in xrange(len(in_storage))] \
+                    + ["o%i" % i for i in xrange(len(out_storage))] \
+                    + ["orph%i" % i for i in xrange(len(self.orphans))]
+    
+                # The code of instantiate
+                code = """
+                %(struct_name)s* struct_ptr = new %(struct_name)s();
+                struct_ptr->init(error_storage, %(args)s);
+                PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);
+                return thunk;
+                // return_val = thunk; // oh my god weave why does this leak >:\
+                """ % dict(struct_name = self.struct_name,
+                        args = ", ".join(argnames))
+    
+                d = dict(error_storage = object())
+                for argname in argnames:
+                    d[argname] = object()
+    
+                instantiate = weave.ext_tools.ext_function('instantiate',
+                                                        code,
+                                                        ['error_storage'] + argnames,
+                                                        local_dict = d,
+                                                        global_dict = {})
+    
+                # Static methods that can run and destroy the struct built by instantiate.
+                static = """
+                int %(struct_name)s_executor(%(struct_name)s* self) {
+                    return self->run();
+                }
+    
+                void %(struct_name)s_destructor(void* executor, void* self) {
+                    //printf("doing cleanup\\n");
+                    //fflush(stdout);
+                    ((%(struct_name)s*)self)->cleanup();
+                    free(self);
+                    //printf("done cleanup\\n");
+                    //fflush(stdout);
+                }
+                """ % dict(struct_name = self.struct_name)
+    
+                # We add all the support code, compile args, headers and libs we need.
+                for support_code in self.support_code():
+                    instantiate.customize.add_support_code(support_code)
+                instantiate.customize.add_support_code(self.struct_code)
+                instantiate.customize.add_support_code(static)
+                for extra_arg in (
+                        "-O2", 
+                        "-ffast-math",
+                        #"-fprefetch-loop-arrays",
+                        #"-ftree-vect-loop-version",
+                        #"-ftree-loop-optimize",
+                        #"-ftree-vectorize"):
+                        "-w" #-w means supress all warnings
+                        ):
+                    instantiate.customize.add_extra_compile_arg(extra_arg)
+                for arg in self.compile_args():
+                    instantiate.customize.add_extra_compile_arg(arg)
+                for header in self.headers():
+                    instantiate.customize.add_header(header)
+                for lib in self.libraries():
+                    instantiate.customize.add_library(lib)
+    
+                mod.add_function(instantiate)
+    
+                mod.compile(location = get_compiledir())
+    
+                module = __import__("%s" % (module_name), {}, {}, [module_name])
+    
+                self.instantiate = module.instantiate
+                
+    
+            else:
+                # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
+                out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
+                in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
+                module_name = self.hash
+                module = __import__("%s" % (module_name), {}, {}, [module_name])
+    
+            orphd = [[orphan.data] for orphan in self.orphans]
+            ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
+            #win pdb add 3 ref count, so we disable it by default.
+            #assert sys.getrefcount(ret) == 2 # refcount leak check
 
-            cthunk = object() # dummy so weave can get the type
-            mod = weave.ext_tools.ext_module(module_name)
+        except:
+            release_lock()
+            raise
+        release_lock()
 
-            argnames = ["i%i" % i for i in xrange(len(in_storage))] \
-                + ["o%i" % i for i in xrange(len(out_storage))] \
-                + ["orph%i" % i for i in xrange(len(self.orphans))]
-
-            # The code of instantiate
-            code = """
-            %(struct_name)s* struct_ptr = new %(struct_name)s();
-            struct_ptr->init(error_storage, %(args)s);
-            PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);
-            return thunk;
-            // return_val = thunk; // oh my god weave why does this leak >:\
-            """ % dict(struct_name = self.struct_name,
-                       args = ", ".join(argnames))
-
-            d = dict(error_storage = object())
-            for argname in argnames:
-                d[argname] = object()
-
-            instantiate = weave.ext_tools.ext_function('instantiate',
-                                                       code,
-                                                       ['error_storage'] + argnames,
-                                                       local_dict = d,
-                                                       global_dict = {})
-
-            # Static methods that can run and destroy the struct built by instantiate.
-            static = """
-            int %(struct_name)s_executor(%(struct_name)s* self) {
-                return self->run();
-            }
-
-            void %(struct_name)s_destructor(void* executor, void* self) {
-                //printf("doing cleanup\\n");
-                //fflush(stdout);
-                ((%(struct_name)s*)self)->cleanup();
-                free(self);
-                //printf("done cleanup\\n");
-                //fflush(stdout);
-            }
-            """ % dict(struct_name = self.struct_name)
-
-            # We add all the support code, compile args, headers and libs we need.
-            for support_code in self.support_code():
-                instantiate.customize.add_support_code(support_code)
-            instantiate.customize.add_support_code(self.struct_code)
-            instantiate.customize.add_support_code(static)
-            for extra_arg in (
-                    "-O2", 
-                    "-ffast-math",
-                    #"-fprefetch-loop-arrays",
-                    #"-ftree-vect-loop-version",
-                    #"-ftree-loop-optimize",
-                    #"-ftree-vectorize"):
-                    "-w" #-w means supress all warnings
-                    ):
-                instantiate.customize.add_extra_compile_arg(extra_arg)
-            for arg in self.compile_args():
-                instantiate.customize.add_extra_compile_arg(arg)
-            for header in self.headers():
-                instantiate.customize.add_header(header)
-            for lib in self.libraries():
-                instantiate.customize.add_library(lib)
-
-            mod.add_function(instantiate)
-            #mod.compile(location = compile_dir())
-            mod.compile(location = get_compiledir())
-            module = __import__("%s" % (module_name), {}, {}, [module_name])
-
-            self.instantiate = module.instantiate
-        else:
-            # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
-            out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
-            in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
-            module_name = self.hash
-            module = __import__("%s" % (module_name), {}, {}, [module_name])
-
-        orphd = [[orphan.data] for orphan in self.orphans]
-        ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
-        #win pdb add 3 ref count, so we disable it by default.
-        #assert sys.getrefcount(ret) == 2 # refcount leak check
         return ret
 
 
@@ -793,6 +815,10 @@ class OpWiseCLinker(link.LocalLinker):
         return self
 
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
+
+        # Acquire lock on compilation directory.
+        get_lock()
+
         env = self.env
         order = env.toposort()
         no_recycling = self.no_recycling
@@ -868,6 +894,9 @@ class OpWiseCLinker(link.LocalLinker):
                 nice_errors = self.nice_errors)
 
         f.allow_gc = self.allow_gc
+
+        # Release lock on compilation directory.
+        release_lock()
 
         return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
@@ -959,9 +988,4 @@ class DualLinker(link.Linker):
                     link.raise_with_op(node1)
 
         return f, i1, o1
-
-
-
-
-
 

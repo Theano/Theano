@@ -32,7 +32,13 @@ def set_compiledir(path=None):
             path = os.path.join(os.getenv('HOME'), '.theano', 'compiledir_'+platform_id)
 
     if not os.access(path, os.R_OK | os.W_OK):
-        os.makedirs(path, 0770) #read-write-execute for this user only
+        try:
+            os.makedirs(path, 0770) #read-write-execute for this user only
+        except OSError, e:
+            # Maybe another parallel execution of theano was trying to create
+            # the same directory at the same time.
+            if e.errno != EEXIST:
+                raise
 
     # PROBLEM: sometimes the first approach based on os.system('touch')
     # returned -1 for an unknown reason; the alternate approach here worked
