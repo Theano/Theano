@@ -190,9 +190,18 @@ Extending your Module with Python methods
 =========================================
 
 Let's say we want to add a method to our accumulator to print out the
-state and we want to call it ``print_state``. All we need to do is to
-give a method called ``_instance_print_state`` to our Module.
+state and we want to call it ``print_state``.  There are two mechanisms to do
+this: let's call them instance methods and InstanceType.
 
+
+Mechanism 1: _instance_method
+-----------------------------
+
+This is the preferred way of adding a few instance methods with a minimum of
+boilerplate code.
+
+All we need to do to use this mechanism is to give a method called
+``_instance_print_state`` to our Module class.
 
 .. code-block:: python
 
@@ -219,13 +228,54 @@ give a method called ``_instance_print_state`` to our Module.
    acc.print_state() # --> prints "state is: 0.0"
 
 
-Any method called like ``_instance_XXX`` will variable in the object
-obtained through a call to ``make`` to gain an ``XXX`` method. Note
-that when we define ``_instance_print_state`` there are two "self"
-arguments: ``self`` which is *symbolic* and ``obj`` which contains
-*data*. Therefore, ``self.state`` is the symbolic state variable and
+Any method called like ``_instance_XXX`` will cause the object
+obtained through a call to ``make`` to have a method called ``XXX``.
+Note that when we define ``_instance_print_state`` there are two "self"
+arguments: ``self`` which is *symbolic* and ``obj`` which is the compiled
+object (the one that contains values).
+
+Hint:``self.state`` is the symbolic state variable and
 prints out as "state", whereas ``obj.state`` is the state's actual
 value in the accumulator and prints out as "0.0".
+
+
+Mechanism 2: InstanceType
+-------------------------
+
+If a number of instance methods are going to be defined, and especially if you
+will want to inherit from the kind of class that gets instantiated by make,
+you might prefer to consider using the InstanceType mechanism.
+
+.. code-block:: python
+
+   class AccumulatorInstance(ModuleInstance):
+       
+       def print_state(self):
+           #self.component points to the Module from which this was compiled.
+           print '%s is: %s' % (self.component.state, self.state)
+       
+   class Accumulator(Module):
+
+       # This line tells theano to instantiate an AccumulatorInstance 
+       # when make() is called.
+       InstanceType = AccumulatorInstance
+
+       def __init__(self):
+           super(Accumulator, self).__init__() # don't forget this
+           self.inc = T.dscalar()
+           self.state = T.dscalar()
+           self.new_state = self.inc + self.state
+           self.add = Method(inputs = self.inc,
+                             outputs = self.new_state,
+                             updates = {self.state: self.new_state})
+           self.sub = Method(inputs = self.inc,
+                             outputs = None,
+                             updates = {self.state: self.state - self.inc})
+
+   m = Accumulator()
+   acc = m.make(state = 0)
+
+   acc.print_state() # --> prints "state is: 0.0"
 
 
 Adding custom initialization
@@ -281,8 +331,28 @@ initialize a state with a matrix of zeros:
 Nesting Modules
 ===============
 
-WRITEME
+Probably the most powerful feature of theano's modules is that one can be
+included as an attribute to another so that the storage of each is available
+to both.
 
+.. code-block:: python
+
+   M = theano.Module()
+   M.a, M.b, M.c = [theano.dvector() for i in 1,2,3]
+
+   P = theano.Module()
+   P.m = M   #include a module by nesting
+   x = theano.dvector()
+   P.f = Method([x], None, {M.b: M.b + x})
+
+   p = P.make()  #this converts both M and P because M was nested within P
+   p.m.b = [4, 5, 6]
+   p.f(3)
+   print p.m.b 
+   #  prints  array([7.,8.,9.])
+
+As you read through examples of Theano code, you will probably see many
+instances of Modules being nested in this way.
 
 
 

@@ -108,7 +108,7 @@ Once you have completed these steps, you should run the tests like this:
     nosetests #execute all the tests
 
 All tests should pass. If some test fails on your machine, you are
-encouraged to tell us what went wrong on the :ref:`theano-users` mailing
+encouraged to tell us what went wrong on the ``theano-users@googlegroups.com`` mailing
 list.
 
 To update your library to the latest revision, change directory (``cd``)
@@ -147,11 +147,11 @@ automatic code generation, but that way is much, much slower.
     :api:`theano.compile.mode`.
     Possible values so far are:
 
-    - FAST_COMPILE,
-    - FAST_RUN and
-    - DEBUG_MODE.
+    - 'FAST_COMPILE'
+    - 'FAST_RUN'
+    - 'DEBUG_MODE'
 
-    Omitting this variable defaults the mode to FAST_RUN.
+    Omitting this variable defaults the mode to 'FAST_RUN'.
 
 - `THEANO_UNITTEST_SEED`:
     An integer value specifying which seed should be used when

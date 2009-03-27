@@ -255,8 +255,8 @@ class Loss01(object):
     def loss_01(self, x, targ):
         return N.mean(self.classify(x) != targ)
 
-class LogRegInstanceType(module.FancyModuleInstance):
-    def initialize(self, n_in, n_out, lr, seed):
+class Module_Nclass(module.FancyModule):
+    def _instance_initialize(mod_self, self, n_in, n_out, lr, seed):
         #self.component is the LogisticRegressionTemplate instance that built this guy.
         """
         @todo: Remove seed. Used only to keep Stacker happy.
@@ -268,9 +268,6 @@ class LogRegInstanceType(module.FancyModuleInstance):
         self.__hide__ = ['params']
         self.input_dimension = n_in
         self.output_dimension = n_out
-
-class Module_Nclass(module.FancyModule):
-    InstanceType = LogRegInstanceType
 
     def __init__(self, x=None, targ=None, w=None, b=None, lr=None, regularize=False):
         super(Module_Nclass, self).__init__() #boilerplate
@@ -324,49 +321,7 @@ class Module_Nclass(module.FancyModule):
             #self.update = module.Method([self.input, self.targ], sum_xent,
                     #updates = dict((p, p - self.lr * g) for p, g in zip(self.params, gparams)))
 
-class ConvolutionalMLPInstance(module.FancyModuleInstance, Loss01):
-    #initialize is called by Module.make
-    def initialize(self, input_size, input_representation_size, hidden_representation_size, output_size, lr, seed, noise_level, qfilter_relscale):
-
-        R = N.random.RandomState(unittest_tools.fetch_seed(seed))
-
-        self.input_size = input_size
-        self.input_representation_size = input_representation_size
-        self.hidden_representation_size = hidden_representation_size
-        self.output_size = output_size
-
-        self.lr = lr
-#        for layer in obj.layers:
-#            if layer.lr is None:
-#                layer.lr = lr
-        assert self.input_representations[-1] is not self.input_representations[0]
-        assert self.input_representations[-1].w1 is self.input_representations[0].w1
-
-        for i in self.input_representations:
-#            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, seed=R.random_integers(2**30), noise_level=noise_level, qfilter_relscale=qfilter_relscale)
-            i.initialize(input_size=self.input_size,
-                    hidden_size=self.input_representation_size, noise_level=noise_level,
-                    seed=int(R.random_integers(2**30)), lr=lr, qfilter_relscale=qfilter_relscale)
-            print type(i.w1)
-            assert isinstance(i.w1, N.ndarray)
-
-        for i in self.input_representations[1:]:
-            print type(i.w1)
-            assert isinstance(i.w1, N.ndarray)
-            assert (i.w1 == self.input_representations[0].w1).all()
-            assert (i.w2 == self.input_representations[0].w2).all()
-            assert (i.b1 == self.input_representations[0].b1).all()
-            assert (i.b2 == self.input_representations[0].b2).all()
-            assert all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters)) 
-
-        self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size),
-                hidden_size=self.hidden_representation_size, noise_level=noise_level,
-                seed=int(R.random_integers(2**30)), lr=lr, qfilter_relscale=qfilter_relscale)
-
-        self.output.initialize(n_in=self.hidden_representation_size, n_out=self.output_size, lr=lr, seed=R.random_integers(2**30))
- 
 class ConvolutionalMLP(module.FancyModule):
-    InstanceType = ConvolutionalMLPInstance
     def __init__(self, 
             window_size,
             n_quadratic_filters,
@@ -458,6 +413,45 @@ class ConvolutionalMLP(module.FancyModule):
 
         #self.validate = module.Method(self.inputs + [self.targ], [self.output.cost, self.output.argmax, self.output.max_pr])
         #self.softmax_output = module.Method(self.inputs, self.output.softmax_unsupervised)
+
+    def _instance_initialize(mod_self, self, input_size, input_representation_size, hidden_representation_size, output_size, lr, seed, noise_level, qfilter_relscale):
+
+        R = N.random.RandomState(unittest_tools.fetch_seed(seed))
+
+        self.input_size = input_size
+        self.input_representation_size = input_representation_size
+        self.hidden_representation_size = hidden_representation_size
+        self.output_size = output_size
+
+        self.lr = lr
+#        for layer in obj.layers:
+#            if layer.lr is None:
+#                layer.lr = lr
+        assert self.input_representations[-1] is not self.input_representations[0]
+        assert self.input_representations[-1].w1 is self.input_representations[0].w1
+
+        for i in self.input_representations:
+#            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, seed=R.random_integers(2**30), noise_level=noise_level, qfilter_relscale=qfilter_relscale)
+            i.initialize(input_size=self.input_size,
+                    hidden_size=self.input_representation_size, noise_level=noise_level,
+                    seed=int(R.random_integers(2**30)), lr=lr, qfilter_relscale=qfilter_relscale)
+            print type(i.w1)
+            assert isinstance(i.w1, N.ndarray)
+
+        for i in self.input_representations[1:]:
+            print type(i.w1)
+            assert isinstance(i.w1, N.ndarray)
+            assert (i.w1 == self.input_representations[0].w1).all()
+            assert (i.w2 == self.input_representations[0].w2).all()
+            assert (i.b1 == self.input_representations[0].b1).all()
+            assert (i.b2 == self.input_representations[0].b2).all()
+            assert all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters)) 
+
+        self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size),
+                hidden_size=self.hidden_representation_size, noise_level=noise_level,
+                seed=int(R.random_integers(2**30)), lr=lr, qfilter_relscale=qfilter_relscale)
+
+        self.output.initialize(n_in=self.hidden_representation_size, n_out=self.output_size, lr=lr, seed=R.random_integers(2**30))
 
 def create(window_size=3, 
         input_dimension=9, 
