@@ -119,10 +119,16 @@ array(2.0)
 >>> acc.state, acc.inc
 array(2.0), None
 
-When we call the ``acc.add`` method, all the updates given to the
-corresponding Method's ``updates`` field are performed. We only had
+When we call the ``acc.add`` method, the value 2 is used for the symbolic 'm.inc'
+The first line evaluates the output and all the updates given to the
+'acc' Method's ``updates`` field. We only had
 one update which mapped ``state`` to ``new_state`` and you can see
 that it works as intended, adding the argument to the internal state.
+
+Note also that 'acc.inc' is still None after our call.  Since 'm.inc' was listed
+as an input the Method, the method got it's own private storage container for
+'m.inc'.  If we had left 'm.inc' out of the Method input list,  then it the
+method would have used the module's storage for ``m.inc`` instead.
 
 
 >>> acc.state = 39.99
@@ -276,6 +282,7 @@ Nesting Modules
 ===============
 
 WRITEME
+
 
 
 
