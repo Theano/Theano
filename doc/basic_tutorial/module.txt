@@ -244,13 +244,14 @@ Mechanism 2: InstanceType
 
 If a number of instance methods are going to be defined, and especially if you
 will want to inherit from the kind of class that gets instantiated by make,
-you will want to consider using the InstanceType mechanism.
+you might prefer to consider using the InstanceType mechanism.
 
 .. code-block:: python
 
    class AccumulatorInstance(ModuleInstance):
        
        def print_state(self):
+           #self.component points to the Module from which this was compiled.
            print '%s is: %s' % (self.component.state, self.state)
        
    class Accumulator(Module):
