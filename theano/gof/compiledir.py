@@ -1,4 +1,5 @@
 
+import errno
 import os
 import platform
 import re
@@ -37,7 +38,7 @@ def set_compiledir(path=None):
         except OSError, e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
-            if e.errno != EEXIST:
+            if e.errno != errno.EEXIST:
                 raise
 
     # PROBLEM: sometimes the first approach based on os.system('touch')
