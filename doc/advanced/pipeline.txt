@@ -113,7 +113,8 @@ case if ``borrow`` was True, the thunk would be allowed to reuse (or
     Theano also implements a lock mechanism that prevents
     multiple compilations within the same compilation directory (to avoid
     crashes with paralell execution of some scripts). This mechanism is
-    currently disabled by default, but can be enabled using the function
+    currently enabled by default, but if it causes any problem it may be
+    disabled using the function
     ``theano.gof.compilelock.set_lock_status(..)``.
 
 Step 4 - Wrap the thunk in a pretty package
