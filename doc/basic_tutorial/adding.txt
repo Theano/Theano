@@ -150,9 +150,3 @@ with numpy arrays may be found :ref:`here <predefinedtypes>`.
    You, the user---not the system architecture---have to choose whether your
    program will use 32- or 64-bit integers (``i`` prefix vs. the ``l`` prefix)
    and floats (``f`` prefix vs. the ``d`` prefix).
-
-
-**Next:** `More examples`_
-
-
-.. _More examples: examples.html
