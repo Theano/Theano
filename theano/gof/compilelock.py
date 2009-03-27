@@ -12,7 +12,7 @@ def get_lock():
         get_lock.n_lock = 0
         get_lock.lock_dir = os.path.join(compiledir.get_compiledir(), 'lock_dir')
         if not hasattr(get_lock, 'lock_is_enabled'):
-            get_lock.lock_is_enabled = False # Disabled for now by default.
+            get_lock.lock_is_enabled = True
     # Only really try to acquire the lock if we do not have it already.
     if get_lock.lock_is_enabled and get_lock.n_lock == 0:
         lock(get_lock.lock_dir, timeout = 60, verbosity = 10)
