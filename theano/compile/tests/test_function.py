@@ -455,8 +455,14 @@ class T_picklefunction(unittest.TestCase):
             g = cPickle.loads(str_f)
             #print g.maker.mode
             #print compile.mode.default_mode
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not pickl'):
+                g = 'ok'
         finally:
             compile.mode.default_mode = old_default_mode
+
+        if g == 'ok':
+            return
 
         assert f.maker is not g.maker
         assert f.maker.env is not g.maker.env

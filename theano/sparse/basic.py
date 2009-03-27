@@ -676,7 +676,8 @@ class StructuredDot(gof.Op):
         if a.shape[1] != b.shape[0]:
             raise ValueError('shape mismatch in StructuredDot.perform', (a.shape, b.shape))
 
-        variable = a.dot(b)
+        #variable = a.dot(b)  # deprecated
+        variable = a * b
         assert _is_dense(variable) # scipy 0.7 automatically converts to dense
 
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector not matrix
@@ -738,7 +739,8 @@ class StructuredDotCSC(gof.Op):
         a = sparse.csc_matrix((a_val, a_ind, a_ptr), 
                 (a_nrows, b.shape[0]),
                 copy = False)
-        out[0] = a.dot(b)
+        #out[0] = a.dot(b)
+        out[0] = a * b
         assert _is_dense(out[0]) # scipy 0.7 automatically converts to dense
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, a_nrows, b), (z,), sub):
@@ -881,7 +883,8 @@ class StructuredDotCSR(gof.Op):
         a = sparse.csr_matrix((a_val, a_ind, a_ptr), 
                 (len(a_ptr)-1, b.shape[0]),
                 copy = True) #use view_map before setting this to False
-        out[0] = a.dot(b)
+        #out[0] = a.dot(b)
+        out[0] = a * b
         assert _is_dense(out[0]) # scipy 0.7 automatically converts to dense, but not .6 sometimes
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, b), (z,), sub):
