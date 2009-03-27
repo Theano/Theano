@@ -42,7 +42,11 @@ Click on what you want to do:
   witchery and how their wicked plans come into fruition, you read the
   `theano-dev`_ mailing list.
 
-* Bored a Friday evening, you browse `Theano's API <../api/>`__. May
+* Mistaking your feverish sweat for genuine excitation, you
+  investigate `Theano's Trac <trac/>`__ for tickets_ that your feeble
+  mind might comprehend and your consumed brain is yearning to solve.
+
+* Bored a Friday evening, you browse `Theano's API <api/>`__. May
   the Great Ones help you with that one.
 
 
@@ -55,4 +59,5 @@ Click on what you want to do:
 
 .. _theano-dev: http://groups.google.com/group/theano-dev
 .. _theano-users: http://groups.google.com/group/theano-users
+.. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
