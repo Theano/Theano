@@ -147,11 +147,11 @@ automatic code generation, but that way is much, much slower.
     :api:`theano.compile.mode`.
     Possible values so far are:
 
-    - FAST_COMPILE,
-    - FAST_RUN and
-    - DEBUG_MODE.
+    - 'FAST_COMPILE'
+    - 'FAST_RUN'
+    - 'DEBUG_MODE'
 
-    Omitting this variable defaults the mode to FAST_RUN.
+    Omitting this variable defaults the mode to 'FAST_RUN'.
 
 - `THEANO_UNITTEST_SEED`:
     An integer value specifying which seed should be used when
