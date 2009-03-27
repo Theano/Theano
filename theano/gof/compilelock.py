@@ -12,12 +12,12 @@ def get_lock():
         get_lock.n_lock = 0
         get_lock.lock_dir = os.path.join(compiledir.get_compiledir(), 'lock_dir')
         if not hasattr(get_lock, 'lock_is_enabled'):
-            # Currently lock is disabled by default, due to the annoying
-            # persistence of lock files when compilation is being interrupted.
-            get_lock.lock_is_enabled = False
+            # Enable lock by default.
+            get_lock.lock_is_enabled = True
+        get_lock.unlocker = Unlocker(get_lock.lock_dir)
     # Only really try to acquire the lock if we do not have it already.
     if get_lock.lock_is_enabled and get_lock.n_lock == 0:
-        lock(get_lock.lock_dir, timeout = 60, verbosity = 10)
+        lock(get_lock.lock_dir, timeout = 60, verbosity = 1)
     get_lock.n_lock += 1
 
 def release_lock():
@@ -28,7 +28,7 @@ def release_lock():
     assert get_lock.n_lock >= 0
     # Only really release lock once all lock requests have ended.
     if get_lock.lock_is_enabled and get_lock.n_lock == 0:
-        unlock(get_lock.lock_dir)
+        get_lock.unlocker.unlock()
 
 def set_lock_status(use_lock):
     """
@@ -41,7 +41,7 @@ def set_lock_status(use_lock):
     """
     get_lock.lock_is_enabled = use_lock
 
-def lock(tmp_dir, timeout = 60, min_wait = 5, max_wait = 10, verbosity = 0):
+def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
     """
     Obtain lock access by creating a given temporary directory (whose base will
     be created if needed, but will not be deleted after the lock is removed).
@@ -62,7 +62,7 @@ def lock(tmp_dir, timeout = 60, min_wait = 5, max_wait = 10, verbosity = 0):
     @type  tmp_dir: string
 
     @param timeout: time (in seconds) to wait before replacing an existing lock
-    @type  timeout: int
+    @type  timeout: int or None
 
     @param min_wait: minimum time (in seconds) to wait before trying again to
                      get the lock
@@ -107,7 +107,8 @@ def lock(tmp_dir, timeout = 60, min_wait = 5, max_wait = 10, verbosity = 0):
                 if last_owner == read_owner:
                     if timeout is not None and time.time() - time_start >= timeout:
                         # Timeout exceeded.
-                        break
+                        get_lock.unlocker.unlock()
+                        continue
                 else:
                     last_owner = read_owner
                     time_start = time.time()
@@ -148,17 +149,34 @@ def lock(tmp_dir, timeout = 60, min_wait = 5, max_wait = 10, verbosity = 0):
             raise
             continue
     
-def unlock(tmp_dir):
+class Unlocker():
     """
-    Remove current lock.
-    This function assumes we have obtained the lock using lock(tmp_dir, ...),
-    so it does not check we are the lock owner.
+    Class wrapper around release mechanism so that the lock is automatically
+    released when the program exits (even when crashing or being interrupted),
+    using the __del__ class method.
+    """
 
-    @param tmp_dir: lock directory that will be removed when releasing the lock
-    @type  tmp_dir: string
-    """
-    lock_file = os.path.join(tmp_dir, 'lock')
-    if os.path.exists(lock_file):
-        os.remove(lock_file)
-    if os.path.exists(tmp_dir):
-        os.rmdir(tmp_dir)
+    def __init__(self, tmp_dir):
+        self.tmp_dir = tmp_dir
+        # Keep a pointer to the 'os' module, otherwise it may not be accessible
+        # anymore in the __del__ method.
+        self.os = os
+
+    def __del__(self):
+        self.unlock()
+
+    def unlock(self):
+        """
+        Remove current lock.
+        This function does not crash if it is unable to properly delete the lock
+        file and directory. The reason is that it should be allowed for multiple
+        jobs running in parallel to unlock the same directory at the same time
+        (e.g. when reaching their timeout limit).
+        """
+        try:
+            self.os.remove(self.os.path.join(self.tmp_dir, 'lock'))
+            self.os.rmdir(self.tmp_dir)
+        except:
+            # Assume someone else tried to unlock this directory at the same time.
+            pass
+
