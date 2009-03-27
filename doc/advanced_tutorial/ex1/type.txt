@@ -12,9 +12,9 @@ Type's contract
 
 In Theano's framework, a Type is any object which defines the following
 methods. To obtain the default methods described below, the Type should
-be an instance of :api:``theano.gof.Type`` or should be an instance of a
-subclass of :api:``theano.gof.Type``. If you will write all methods yourself,
-you need not use an instance of :api:``theano.gof.Type``.
+be an instance of :api:`theano.gof.Type` or should be an instance of a
+subclass of :api:`theano.gof.Type`. If you will write all methods yourself,
+you need not use an instance of :api:`theano.gof.Type`.
 
 Methods with default arguments must be defined with the same signature,
 i.e.  the same default argument names and values. If you wish to add
@@ -73,9 +73,9 @@ default values.
   - *Default*: ``make_variable``
 
 
-For each method, the *default* is what :api:``theano.gof.Type`` defines
-for you. So, if you create an instance of :api:``theano.gof.Type`` or an
-instance of a subclass of :api:``theano.gof.Type``, you
+For each method, the *default* is what :api:`theano.gof.Type` defines
+for you. So, if you create an instance of :api:`theano.gof.Type` or an
+instance of a subclass of :api:`theano.gof.Type`, you
 must define ``filter``. You might want to override ``values_eq_approx``,
 as well as ``values_eq``. The other defaults generally need not be
 overridden.
@@ -135,7 +135,7 @@ chose to be 1e-4.
 .. note::
 
     ``values_eq`` is never actually used by Theano, but it might be used
-    internally in the future. Currently, all equality testing is done
+    internally in the future. Equality testing in DebugMode is done
     using ``values_eq_approx``.
 
 **Putting them together**
@@ -185,15 +185,15 @@ instances of ``Double`` are technically the same Type. However, different
 >>> double1 == double2
 False
 
-Theano often compares Types using ``==`` to see if they are the same. If
-the inputs of two different :ref:`Applies <apply>` have the same Type
-and the :ref:`op` applied on them is the same, they can be :term:`merged
-<merge>`.
+Theano compares Types using ``==`` to see if they are the same. If
+the inputs of two different :ref:`Applies <apply>` are the same
+and two :ref:`op`s applied to them compare equal, then only one of those ops
+must be evaluated.  (This is sometimes called a :term:`merging <merge>` and it
+is done by the :api:`MergeOptimizer`.)
 
-There are several ways to make it that instances of Type ``Double``
-compare equal:
+There are several ways to make sure graphs are merged properly:
 
- #. Define ``Double.__eq__`` so that all instances of type Double
+ #. Define ``Double.__eq__`` so that instances of type Double
     are equal. For example:
 
     .. code-block:: python
@@ -202,9 +202,10 @@ compare equal:
             return type(self) is Double and type(other) is Double
 
  #. Override ``Double.__new__`` to always return the same instance.
- #. Hide Double and only publish a single instance of it.
+ #. Hide the Double class and only advertise a single instance of it.
 
-We prefer the final option, because it's the simplest.
+Here we will prefer the final option, because it's the simplest.
+Often Ops in the theano code define the ``__eq__`` function though.
 
 
 Untangling some concepts

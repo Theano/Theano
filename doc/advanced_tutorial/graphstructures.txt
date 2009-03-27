@@ -8,7 +8,7 @@ Graph Structures
 Theano represents symbolic mathematical computations as graphs. These
 graphs are composed of interconnected :ref:`apply` and :ref:`variable`
 nodes. They are associated to *function application* and *data*,
-respectively. Operations are represented :ref:`op` instances and data
+respectively. Operations are represented by :ref:`op` instances and data
 types are represented by :ref:`type` instances. Here is a piece of code
 and a diagram showing the structure built by that piece of code. This
 should help you understand how these pieces fit together:
@@ -40,24 +40,26 @@ bi-partite, directed, acyclic graph. Variables point to the Apply nodes
 representing the function application producing them via their
 ``owner`` field. These Apply nodes point in turn to their input and
 output Variables via their ``inputs`` and ``outputs`` fields.
+(Apply instances also contain a list of references to their ``outputs``, but
+those pointers don't count in this graph.)
 
 The ``owner`` field of both ``x`` and ``y`` point to ``None`` because
-they are not the variable of another computation. If they were the
-variable of another computation, they would point to another blue box
-like ``z`` does, and so on.
+they are not the result of another computation. If one of them was the
+result of another computation, it's ``owner`` field would point to another
+blue box like ``z`` does, and so on.
 
 Note that the ``Apply`` instance's outputs points to
-``z``. ``z.owner`` points to the ``Apply`` instance.
+``z``, and ``z.owner`` points back to the ``Apply`` instance.
 
 
 An explicit example
 ===================
 
-In this example we will see in turn a short example in which the
-graph construction is hidden behind the standard interface's syntactic
-shortcuts. We will then see the same example but rolled out so that the
-graph construction is made explicit.
-
+In this example we will compare two ways of defining the same graph.
+First, a short bit of code will build an expression (graph) the *normal* way, with most of the
+graph construction being done automatically.
+Second, we will walk through a longer re-coding of the same thing
+without any shortcuts that will make the graph construction very explicit.
 
 **Short example**
 
@@ -87,7 +89,7 @@ This is what you would type to build the graph explicitly:
     
     # Instantiate a type that represents a matrix of doubles
     float64_matrix = TensorType(dtype = 'float64',              # double
-                                 broadcastable = (False, False)) # matrix
+                                broadcastable = (False, False)) # matrix
     
     # We make the Variable instances we need.
     x = Variable(type = float64_matrix, name = 'x')
@@ -332,5 +334,5 @@ eligible to participate in numerous optimizations: constant inlining
 in C code, constant folding, etc.
 
 A constant does not need to be specified in a :ref:`function`'s list
-of inputs.
+of inputs.  In fact, doing so will raise an exception.
 
