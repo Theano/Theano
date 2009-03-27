@@ -158,9 +158,3 @@ version that it produces in the code I gave above.
    div = BinaryDoubleOp(name = 'div',
                         fn = lambda x, y: x / y,
                         ccode = "%(z)s = %(x)s / %(y)s;")
-
-
-
-**Next:** `Views and inplace operations`_
-
-.. _Views and inplace operations: ../inplace.html

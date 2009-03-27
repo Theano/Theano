@@ -15,7 +15,7 @@ Unit Testing revolves around the following principles:
 This page is in no way meant to replace tutorials on Python's unittest module, for this we refer the reader to the `official documentation <http://docs.python.org/library/unittest.html>`_.  We will however adress certain specificities about how unittests relate to theano.
 
 How to Run Unit Tests ?
-=======================
+-----------------------
 
 Running all unit tests
 
@@ -36,7 +36,7 @@ Running a specific unit test
 
 
 Folder Layout
-=============
+-------------
 
 "tests" directories are scattered throughout theano. Each tests subfolder is
 meant to contain the unittests which validate the .py files in the parent folder.

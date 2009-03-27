@@ -1,4 +1,4 @@
-import traceback
+import traceback, StringIO
 import operator
 
 from theano.tensor import *
@@ -628,18 +628,26 @@ class T_max_and_argmax(unittest.TestCase):
         self.failUnless(numpy.all(i == numpy.argmax(data,0)))
     def test2_invalid(self):
         n = as_tensor_variable(numpy.random.rand(2,3))
+        old_stderr = sys.stderr
+        sys.stderr = StringIO.StringIO()
         try:
             eval_outputs(max_and_argmax(n,3))
+            assert False
         except ValueError, e:
-            return
-        self.fail()
+            pass
+        finally:
+            sys.stderr = old_stderr
     def test2_invalid_neg(self):
         n = as_tensor_variable(numpy.random.rand(2,3))
+        old_stderr = sys.stderr
+        sys.stderr = StringIO.StringIO()
         try:
             eval_outputs(max_and_argmax(n,-3))
+            assert False
         except ValueError, e:
-            return
-        self.fail()
+            pass
+        finally:
+            sys.stderr = old_stderr
     def test2_valid_neg(self):
         n = as_tensor_variable(numpy.random.rand(2,3))
         v,i = eval_outputs(max_and_argmax(n,-1))
@@ -678,13 +686,16 @@ class T_subtensor(unittest.TestCase):
         n = as_tensor_variable(numpy.ones(3))
         t = n[7]
         self.failUnless(isinstance(t.owner.op, Subtensor))
+        old_stderr = sys.stderr
+        sys.stderr = StringIO.StringIO()
         try:
             tval = eval_outputs([t])
+            assert 0
         except Exception, e:
             if e[0] != 'index out of bounds':
                 raise
-            return
-        self.fail()
+        finally:
+            sys.stderr = old_stderr
     def test1_err_subslice(self):
         n = as_tensor_variable(numpy.ones(3))
         try:
@@ -748,20 +759,28 @@ class T_subtensor(unittest.TestCase):
         n = as_tensor_variable(numpy.ones((2,3))*5)
         t = n[0,4]
         self.failUnless(isinstance(t.owner.op, Subtensor))
+        old_stderr = sys.stderr
+        sys.stderr = StringIO.StringIO()
         try:
             tval = eval_outputs([t])
+            assert 0
         except IndexError, e:
-            return
-        self.fail()
+            pass
+        finally:
+            sys.stderr = old_stderr
     def test2_err_bounds1(self):
         n = as_tensor_variable(numpy.ones((2,3))*5)
         t = n[4:5,2]
         self.failUnless(isinstance(t.owner.op, Subtensor))
+        old_stderr = sys.stderr
+        sys.stderr = StringIO.StringIO()
         try:
             tval = eval_outputs([t])
         except Exception, e:
             if e[0] != 'index out of bounds':
                 raise
+        finally:
+            sys.stderr = old_stderr
     def test2_ok_elem(self):
         n = as_tensor_variable(numpy.asarray(range(6)).reshape((2,3)))
         t = n[0,2]
@@ -1364,12 +1383,19 @@ class t_dot(unittest.TestCase):
 
     def not_aligned(self, x, y):
         z = dot(x,y)
+        # constant folding will complain to stderr that things are not aligned
+        # this is normal, testers are not interested in seeing that output.
+        old_stderr = sys.stderr
+        sys.stderr = StringIO.StringIO()
         try:
             tz = eval_outputs([z])
+            assert False # should have raised exception
         except ValueError, e:
             self.failUnless(
                     e[0].split()[1:4] == ['are', 'not', 'aligned'] or # reported by numpy
                     e[0].split()[2:5] == ['do', 'not', 'agree'], e) # reported by blas return self.fail()
+        finally:
+            sys.stderr = old_stderr
 
     def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
     def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))

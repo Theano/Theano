@@ -51,6 +51,16 @@ API documentation is processed by `epydoc
 <http://epydoc.sourceforge.net/manual-othermarkup.html#restructuredtext>`__
 for details about how to use reST with epydoc documentation.
 
+Use ReST for API and Sphinx documentation
+-----------------------------------------
+
+ * ReST is standardized. epydoc is not. trac wiki-markup is not.
+   This means that ReST can be cut-and-pasted between epydoc, code, other
+   docs, and TRAC.  This is a huge win!
+ * ReST is extensible: we can write our own roles and directives to automatically link to WIKI, for example.
+ * ReST has figure and table directives, and can be converted (using a standard tool) to latex documents.
+ * No text documentation has good support for math rendering, but ReST is closest: it has three renderer-specific solutions (render latex, use latex to build images for html, use itex2mml to generate MathML)
+
 How to build documentation
 ---------------------------------------
 
@@ -80,6 +90,7 @@ When you push to the main repository, the following file is run::
 It calls ``epydoc`` and ``sphinx`` on the code.
 
 *It would be nice to explain this stuff in a little more depth:*
+
  * Who calls refresh-epydoc.sh ?
  * What exactly does it do?
  * Where does the output go?
@@ -135,6 +146,7 @@ TO WRITE
 ---------------------------------------
 
 *There is other stuff to document here, e.g.:*
+
  * where the documentation is getting built, and epy.
  * How epydoc and sphinx are integrated
  * Explain the special magic in ./doc/scripts/docgen.py

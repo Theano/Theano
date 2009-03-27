@@ -166,14 +166,3 @@ Ops
 
 There are a lot of operations available in the ``theano.tensor`` package.
 See :ref:`oplist`.
-
-
-
-**Next:** `Wrapping up`_
-
-.. _Wrapping up: wrapup.html
-
-
-
-
-

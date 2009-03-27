@@ -185,11 +185,11 @@ class test_structureddot(unittest.TestCase):
             imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
             outvals = f(kernvals,imvals)
             # compare to scipy
-            c = spmat.dot(imvals.T)
+            c = spmat * (imvals.T)
             assert _is_dense(c)
             assert numpy.all(outvals == c)
 
-            tensor.verify_grad(None, buildgraphCSC, [kernvals,imvals])
+            tensor.verify_grad(buildgraphCSC, [kernvals,imvals])
 
             ##
             # Test compressed-sparse row matrices ###
@@ -207,11 +207,11 @@ class test_structureddot(unittest.TestCase):
             imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
             outvals = f(kernvals,imvals)
             # compare to scipy
-            c = spmat.dot(imvals.T)
+            c = spmat * (imvals.T)
             assert _is_dense(c)
             assert numpy.all(outvals == c)
 
-            tensor.verify_grad(None, buildgraphCSR, [kernvals,imvals])
+            tensor.verify_grad( buildgraphCSR, [kernvals,imvals])
 
 
 if __name__ == '__main__':

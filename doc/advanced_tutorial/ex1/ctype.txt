@@ -440,9 +440,3 @@ Final version
            return ""
    
    double = Double()
-
-
-
-**Next:** `Implementing the arithmetic Ops in C`_
-
-.. _Implementing the arithmetic Ops in C: cop.html

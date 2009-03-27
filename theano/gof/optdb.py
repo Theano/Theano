@@ -120,7 +120,7 @@ class EquilibriumDB(DB):
         return opt.EquilibriumOptimizer(opts, 
                 max_depth=5,
                 max_use_ratio=10,
-                failure_callback=opt.NavigatorOptimizer.warn)
+                failure_callback=opt.NavigatorOptimizer.warn_inplace)
 
 
 class SequenceDB(DB):

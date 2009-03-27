@@ -1,7 +1,7 @@
 """Provides `DebugMode`, an evaluation mode for debugging theano internals."""
 __docformat__ = "restructuredtext en"
 
-import time, copy, sys
+import time, copy, sys, copy_reg
 from StringIO import StringIO
 
 import numpy
@@ -1123,6 +1123,9 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self)
         return fn
 
+def _pickle_DebugMode_Maker(maker):
+    raise NotImplementedError('DebugMode is not picklable (yet)')
+copy_reg.pickle(_Maker, _pickle_DebugMode_Maker)
 
 ########################
 #

@@ -255,8 +255,5 @@ array(5.9000000000000004)
 array(5.9000000000000004)
 
 
-**Next:** `Using Module`_
-
-.. _Using Module: module.html
 .. _automatic differentiation: http://en.wikipedia.org/wiki/Automatic_differentiation
 

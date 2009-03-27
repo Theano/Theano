@@ -266,16 +266,3 @@ Final version
 
 We add one utility function, ``__str__``. That way, when we print
 ``double``, it will print out something sensible.
-
-
-
-**Next:** `Making arithmetic Ops on double`_
-
-.. _Making arithmetic Ops on double: op.html
-
-
-
-
-
-
-

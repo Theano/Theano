@@ -47,23 +47,18 @@ Here we instantiate an empty Module.
 
 
 >>> m.state = T.dscalar()
+>>> m.inc = T.dscalar('inc')
 
-Then we declare a Variable for use with our Module. That Variable will
-be a :ref:`member` of the Module, which means that it will be
-accessible as a field of the object we will create later (for reading
-and writing). It will also be accessible from any :ref:`method`
-defined in our Module.
+Then we declares for use with our Module.
+Since we assign these input Variables as attributes of the Module, 
+they will be *member Variables* of the Module. 
+Member Variables are special in a few ways, which we will see shortly.
 
 .. note::
 
    There is no need to name the Variable explicitly here. ``m.state`` will
    be given the name 'state' automatically.
 
-
->>> m.inc = T.dscalar('inc')
-
-The ``inc`` variable doesn't need to be declared as a member of ``m`` because
-we only use it as a Method input.  
 
 .. note::
  
@@ -74,9 +69,10 @@ we only use it as a Method input.
 
 >>> m.new_state = m.state + m.inc
 
-This line creates a Variable corresponding to some symbolic computation.  It
-doesn't matter to Theano whether we put it inside ``m`` or not.  Feel free to
-put such results of symbolic computation wherever is most convenient.
+This line creates a Variable corresponding to some symbolic computation.
+Although this line also assigns a Variable to a Module attribute, it does not
+become a member Variable like state and inc because it represents an expression
+result.
 
 
 >>> m.add = Method(m.inc, m.new_state, {m.state: m.new_state})
@@ -97,16 +93,18 @@ Calling ``make`` on ``m`` creates an object that can do real
 computation and whose attributes contain values such as numbers and numpy
 ndarrays.
 
-The keyword arguments given to make are optional and are used to
-assign initial values to each Member. If a Member is omitted, the
-initial value is None.
+At this point something special happens for our member Variables too.
+In the 'acc' object, make allocates room to store numbers for m's member
+Variables.  By using the string 'state' as a keyword argument, we tell Theano to
+store the number 0 for the member Variable called 'state'.  By not mentioning
+the 'inc' variable, we associate None to the 'inc' Variable.
 
 
 >>> acc.state, acc.inc
 array(0.0), None
 
-Since state was declared as a Member, we can access it easily using
-'.state'.
+Since 'state' was declared as a member Variable of 'm', we can access it's value
+in the 'acc' object by the same attribute.  Ditto for 'inc'.
 
 .. note::
   
@@ -118,18 +116,24 @@ Since state was declared as a Member, we can access it easily using
 
 >>> acc.add(2)
 array(2.0)
->>> acc.state
-array(2.0)
+>>> acc.state, acc.inc
+array(2.0), None
 
-When we call the ``acc.add`` method, all the updates given to the
-corresponding Method's ``updates`` field are performed. We only had
+When we call the ``acc.add`` method, the value 2 is used for the symbolic 'm.inc'
+The first line evaluates the output and all the updates given to the
+'acc' Method's ``updates`` field. We only had
 one update which mapped ``state`` to ``new_state`` and you can see
 that it works as intended, adding the argument to the internal state.
+
+Note also that 'acc.inc' is still None after our call.  Since 'm.inc' was listed
+as an input the Method, the method got it's own private storage container for
+'m.inc'.  If we had left 'm.inc' out of the Method input list,  then it the
+method would have used the module's storage for ``m.inc`` instead.
 
 
 >>> acc.state = 39.99
 
-The state is also easy to set.  When we manually set the value of a member
+The state can also be set.  When we manually set the value of a member
 attribute like this, then subsequent calls to the methods of our module will
 use the new value.
 
@@ -278,6 +282,7 @@ Nesting Modules
 ===============
 
 WRITEME
+
 
 
 

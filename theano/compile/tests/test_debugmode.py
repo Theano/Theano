@@ -1,4 +1,5 @@
-import numpy
+import sys
+import numpy, scipy
 
 import scipy.sparse
 from theano import gof
@@ -34,9 +35,8 @@ class BROKEN_ON_PURPOSE_StructuredDotCSC(gof.Op):
                 (a_nrows, b.shape[0]),
                 copy = False)
 #       TODO: todense() is automatic in 0.7.0, just remove the following line:
-#        out[0] = numpy.asarray(a.dot(b).todense())
-        out[0] = a.dot(b)+0.5 if self.py_offset else a.dot(b) #ERROR TO ADD THIS CRAPPY OFFSET
-        #assert _is_dense(out[0])
+        z = a * b
+        out[0] = z+0.5 if self.py_offset else z #ERROR TO ADD THIS CRAPPY OFFSET
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, a_nrows, b), (z,), sub):
         return """

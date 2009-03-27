@@ -5,21 +5,20 @@
 Advanced Topics
 ===============
 
-Structure
-=========
-
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
    
-   debug_faq
-   debugmode
-   env
-   features
-   optimization
-   compilation
-   ccodegen
-   function
-   module
-   pipeline
-   profilemode
-   unittest
+    pipeline
+    unittest
+    profilemode
+    debug_faq
+    debugmode
+
+
+.. env
+.. features
+.. optimization
+.. compilation
+.. ccodegen
+.. function
+.. module

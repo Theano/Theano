@@ -381,23 +381,101 @@ class T_picklefunction(unittest.TestCase):
         x,s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
-        print f.maker.function_builder
 
-        g = copy.deepcopy(f)
+        try:
+            g = copy.deepcopy(f)
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
         #if they both return, assume  that they return equivalent things.
+        #print [(k,id(k)) for k in f.finder.keys()]
+        #print [(k,id(k)) for k in g.finder.keys()]
 
-        self.failIf(g.container[x].storage is f.container[x].storage)
-        self.failIf(g.container[a].storage is f.container[a].storage)
-        self.failIf(g.container[s].storage is f.container[s].storage)
+        self.failIf(g.container[0].storage is f.container[0].storage)
+        self.failIf(g.container[1].storage is f.container[1].storage)
+        self.failIf(g.container[2].storage is f.container[2].storage)
+        self.failIf(x in g.container)
+        self.failIf(x in g.value)
 
-        self.failIf(g.value[a] is f.value[a]) # should not have been copied
-        self.failIf(g.value[s] is f.value[s]) # should have been copied because it is mutable.
-        self.failIf((g.value[s] != f.value[s]).any()) # its contents should be identical
+        self.failIf(g.value[1] is f.value[1]) # should not have been copied
+        self.failIf(g.value[2] is f.value[2]) # should have been copied because it is mutable.
+        self.failIf((g.value[2] != f.value[2]).any()) # its contents should be identical
 
         self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         f(1,2) # put them out of sync
         self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+
+    def test_pickle(self):
+        a = T.scalar() # the a is for 'anonymous' (un-named).
+        x,s = T.scalars('xs')
+
+        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+
+        try:
+            g = cPickle.loads(cPickle.dumps(f))
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
+        #if they both return, assume  that they return equivalent things.
+        #print [(k,id(k)) for k in f.finder.keys()]
+        #print [(k,id(k)) for k in g.finder.keys()]
+
+        self.failIf(g.container[0].storage is f.container[0].storage)
+        self.failIf(g.container[1].storage is f.container[1].storage)
+        self.failIf(g.container[2].storage is f.container[2].storage)
+        self.failIf(x in g.container)
+        self.failIf(x in g.value)
+
+        self.failIf(g.value[1] is f.value[1]) # should not have been copied
+        self.failIf(g.value[2] is f.value[2]) # should have been copied because it is mutable.
+        self.failIf((g.value[2] != f.value[2]).any()) # its contents should be identical
+
+        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
+        f(1,2) # put them out of sync
+        self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+
+    def test_optimizations_preserved(self):
+        a = T.dvector() # the a is for 'anonymous' (un-named).
+        x = T.dvector('x')
+        s = T.dvector('s')
+        xm = T.dmatrix('x')
+        sm = T.dmatrix('s')
+
+        f = function([a, x, s, xm, sm], ((a.T.T)*(tensor.dot(xm, (sm.T.T.T)) + x).T * (x/x) + s))
+        old_default_mode = compile.mode.default_mode
+        try:
+            str_f = cPickle.dumps(f)
+            compile.mode.default_mode = mode_module.Mode(linker='py', optimizer=None)
+            g = cPickle.loads(str_f)
+            #print g.maker.mode
+            #print compile.mode.default_mode
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not pickl'):
+                g = 'ok'
+        finally:
+            compile.mode.default_mode = old_default_mode
+
+        if g == 'ok':
+            return
+
+        assert f.maker is not g.maker
+        assert f.maker.env is not g.maker.env
+        tf = f.maker.env.toposort()
+        tg = f.maker.env.toposort()
+        assert len(tf) == len(tg)
+        for nf, ng in zip(tf, tg):
+            assert nf.op == ng.op
+            assert len(nf.inputs) == len(ng.inputs)
+            assert len(nf.outputs) == len(ng.outputs)
+            assert [i.type for i in nf.inputs] == [i.type for i in ng.inputs]
+            assert [i.type for i in nf.outputs] == [i.type for i in ng.outputs]
+
 
 # class T_function_examples(unittest.TestCase):
 #     def test_accumulator(self):

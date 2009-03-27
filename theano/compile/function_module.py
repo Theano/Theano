@@ -13,7 +13,7 @@ from .. import gof
 import sys
 import copy
 
-from mode import *
+import mode as mode_module
 from io import *
 
 def infer_reuse_pattern(env, outputs_to_disown):
@@ -95,6 +95,10 @@ def std_env(input_specs, output_specs, accept_inplace = False):
     env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
     return env, map(SymbolicOutput, updates)
 
+class AliasedMemoryError(Exception):
+    """Memory is aliased that should not be"""
+    pass
+
 
 ###
 ### Function
@@ -140,27 +144,75 @@ class Function(object):
     
     """
 
+    input_storage = None
+    """list of Container instances"""
+
+    output_storage = None
+    """list of Container instances"""
+
+    indices = None
+    """list of (SymbolicInput|SymbolicInputKit, indices, [SymbolicInput,...]), one tuple for
+    each input
+
+    The first tuple element is the SymbolicInput object for the corresponding function input.
+
+    The second and third tuple elements are used only by Kits, which are deprecated.
+    """
+
+    defaults = None
+    """ list of 3-tuples, one 3-tuple for each input.
+
+    Tuple element 0: Bool:  Is this input required at each function call?
+    Tuple element 1: Bool:  Should this inputs value be reverted after each call?
+    Tuple element 2: Any:  The value associated with this input.
+    """
+
+    unpack_single = None
+    """Bool: for outputs lists of length 1, should the 0'th element be returned directly?"""
+
+    maker = None
+    """FunctionMaker instance"""
+
+    fn = None
+    """a function that evaluates the graph.  Typically a linker's make_thunk method created this
+    function."""
+
+    finder = None
+    """Dictionary mapping several kinds of things to containers.
+    
+    We set an entry in finder for:
+
+    - the index of the input
+
+    - the variable instance the input is based on
+
+    - the name of the input
+
+    All entries map to the container or to DUPLICATE if an ambiguity is detected
+    """
+
+    inv_finder = None
+    """Dict. Reverse lookup of `finder`.
+
+    It maps container -> SymbolicInput
+    """
+
     def __init__(self, fn, input_storage, output_storage, indices, outputs, defaults, unpack_single, maker):
         """
-        fn -> a function returned by some linker's make_thunk method
-        input_storage -> list of Container instances used by fn to fetch the inputs
-        output_storage -> list of Container instances used by fn to store the outputs in
-        indices -> list of (SymbolicInput|SymbolicInputKit, indices, [SymbolicInput,...]), one tuple for each input
-        defaults -> list of (required (bool), refeed (bool), value), one tuple for each input
-            required -> whether this input is required or optional
-            refeed -> whether this input's contents must be reverted to value after each call or not
-            value -> the initial or default value of the input
-        unpack_single -> if the function has one output and unpack_single is True, return that output. Else,
-            return [output].
-        maker -> FunctionMaker instance used to make this Function (used for copy)
+        Initialize attributes. create finder, inv_finder.
         """
 
         self.fn = fn
         self.input_storage = input_storage
         self.output_storage = output_storage
         self.indices = indices
+        self.outputs = outputs
+        self.defaults = defaults
+        self.unpack_single = unpack_single
+        self.maker = maker
 
-        containers = list(self.input_storage)
+        # we'll be popping stuff off this `containers` object.  It's a copy
+        containers = list(self.input_storage) 
         finder = {}
         inv_finder = {}
 
@@ -183,11 +235,6 @@ class Function(object):
                     c.data = value
                 c.required = required
                 c.provided = 0 # this is a count of how many times the input has been provided (reinitialized to 0 on __call__)
-                # We set an entry in finder for:
-                # - the index of the input
-                # - the variable instance the input is based on
-                # - the name of the input
-                # All entries map to the container or to DUPLICATE if an ambiguity is detected
                 finder[i] = c
                 finder[input.variable] = c
                 finder[input.name] = c if input.name not in finder else DUPLICATE
@@ -222,10 +269,6 @@ class Function(object):
 
         self.finder = finder
         self.inv_finder = inv_finder
-        self.outputs = outputs
-        self.defaults = defaults
-        self.unpack_single = unpack_single
-        self.maker = maker
 
         # this class is important in overriding the square-bracket notation:
         #     fn.value[x]
@@ -254,6 +297,8 @@ class Function(object):
                     s.provided += 1
                 else:
                     s(value)
+            def __contains__(self, item):
+                return finder.__contains__(item)
 
         # this class is important in overriding the square-bracket notation:
         #     fn.container[x]
@@ -261,10 +306,15 @@ class Function(object):
         class ContainerAttribute(object):
             def __getitem__(self, item):
                 return finder[item]
+            def __contains__(self, item):
+                return finder.__contains__(item)
             # You cannot set the container
 
         self._value = ValueAttribute()
         self._container = ContainerAttribute()
+
+    def __contains__(self, item):
+        return self.value.__contains__(item)
 
     def __getitem__(self, item):
         return self.value[item]
@@ -336,18 +386,20 @@ class Function(object):
 
     value = property(
         lambda self: self._value,
-        None, #not settable
-        doc="""TODOC""")
+        None, # this property itself is not settable
+        doc="""dictionary-like access to the values associated with Variables""")
     container = property(
         lambda self: self._container,
-        None,
-        doc="""TODOC""")
+        None, # this property itself is not settable
+        doc="""dictionary-like access to the containers associated with Variables""")
 
 # pickling/deepcopy support for Function
 
 def _pickle_Function(f):
+    #copy of the input storage list
     ins = list(f.input_storage)
     defaults = []
+
     for (input, indices, inputs), (required, refeed, default) in zip(f.indices, f.defaults):
         if isinstance(input, SymbolicInputKit):
             li = len(indices)
@@ -362,7 +414,7 @@ def _pickle_Function(f):
 
     inputs_data = [x.data for x in f.input_storage]
 
-    #HACK to detect aliased storage.
+    # HACK to detect aliased storage.
     # aliased relationships will not be preserved across the pickle operation
     if not (f.pickle_aliased_memory_strategy == 'ignore'):
         all_data = defaults + inputs_data
@@ -380,8 +432,6 @@ def _pickle_Function(f):
 
     rval = (_constructor_Function, (f.maker, defaults, inputs_data))
     return rval
-
-class AliasedMemoryError(Exception):pass
 
 def _constructor_Function(maker, defaults, data):
     f = maker.create(defaults, trustme = True)
@@ -501,7 +551,7 @@ class FunctionMaker(object):
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
     def __init__(self, inputs, outputs, 
-            mode = default_mode, accept_inplace = False, function_builder = Function):
+            mode = None, accept_inplace = False, function_builder = Function):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -510,12 +560,14 @@ class FunctionMaker(object):
                     case the functions produced by FunctionMaker will return
                     their output value directly
 
-        :param mode: a Mode instance telling FunctionMaker how to optimize and link
+        :param mode: a Mode instance telling FunctionMaker how to optimize and link.  None
+        means to use the `default_mode`.
 
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
         """
 
+        mode = mode if mode is not None else mode_module.default_mode
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
@@ -536,7 +588,7 @@ class FunctionMaker(object):
         self.env = env
 
         # Fetch the mode and then the optimizer and linker
-        mode = predefined_modes.get(mode, mode)
+        mode = mode_module.predefined_modes.get(mode, mode)
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
@@ -545,7 +597,7 @@ class FunctionMaker(object):
         # initialize the linker
         if not hasattr(linker, 'accept'):
             raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
-                             "or one of %s" % predefined_linkers.keys())
+                             "or one of %s" % mode_module.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
         no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
@@ -659,7 +711,8 @@ class FunctionMaker(object):
 
 
 def _pickle_FunctionMaker(fm):
-    return (_constructor_FunctionMaker, (fm.inputs, fm.outputs[0] if fm.unpack_single else fm.outputs, fm.mode, fm.accept_inplace))
+    rval = (_constructor_FunctionMaker, (fm.inputs, fm.outputs[0] if fm.unpack_single else fm.outputs, fm.mode, fm.accept_inplace))
+    return rval
 
 def _constructor_FunctionMaker(*args):
     return FunctionMaker(*args)
@@ -691,7 +744,7 @@ def register_checker(checker):
 
 
 
-def function(inputs, outputs, mode=default_mode, accept_inplace = False):
+def function(inputs, outputs, mode=None, accept_inplace = False):
     """
     Return a function calculating the outputs from the inputs.
 
@@ -701,8 +754,8 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
         value of the returned function will match the format of this argument (either the value
         itself or a list of one or more return values)
 
-    :param mode: a descriptive string or a Mode instance. (See below for descriptive string
-    list).
+    :param mode: a descriptive string or a Mode instance. (Default of None means to use
+    `mode.default_mode` (See below for descriptive string list).
     
     Currently, the library provides the following mode strings:
 
@@ -738,6 +791,7 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
         f[<kitname>] = seed   #re-seed the elements of a RandomKit
 
     """
+    mode = mode if mode is not None else mode_module.default_mode
 
     inputs = map(convert_function_input, inputs)
     if outputs is None:
@@ -747,7 +801,7 @@ def function(inputs, outputs, mode=default_mode, accept_inplace = False):
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
-    mode = predefined_modes.get(mode, mode)
+    mode = mode_module.predefined_modes.get(mode, mode)
     if isinstance(mode, (list, tuple)): # "mode comparison" semantics
         if not mode:
             raise ValueError("Please provide at least one mode.")

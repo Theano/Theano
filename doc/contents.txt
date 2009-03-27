@@ -6,7 +6,7 @@ Contents
 ========
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    LICENSE
    introduction
@@ -16,8 +16,9 @@ Contents
    advanced_tutorial/index
    advanced/index
    indexes/index
-   examples/index
    glossary
    links
    internal/index
-   sandbox/index
+
+
+..   examples/index

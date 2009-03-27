@@ -1,6 +1,13 @@
 syntax: glob
 
+*.o
+*.orig
+*.pyc
+*.pyo
+*.so
+*.sw?
 *~
+Theano.egg-info
 \#*\#
 build
 compiled/*.cpp
@@ -11,12 +18,6 @@ doc/.build/
 doc/indexes/oplist.txt
 doc/indexes/typelist.txt
 html
-*.o
-*.orig
 pdf
 pull.sh
-*.pyc
-*.pyo
-*.so
-*.sw?
-Theano.egg-info
+setuptools-*.egg

@@ -1,0 +1,62 @@
+'''Historical Interest.  This has been addressed for now.  20080904'''
+
+There are several [http://en.wikipedia.org/wiki/Comparison_of_free_software_hosting_facilities project hosting services] online, but none is perfect for theano.
+
+Wishlist:
+ - version control (mercurial)
+ - bugtracker (TRAC, ideally)
+ - wiki
+ - release file hosting
+ - mailing list
+ - reliability of hosting service
+
+Currently, [http://sharesource.org/ sharesource] and [http://www.assembla.com/ assembla] are the only hosting services that support mercurial that I know of.  Sharesource is young, but supports all the required features.  I'll make an account, and see what I can do with it...
+
+Should we get a domain name? To my dismay, theano.org, theano.com and theano.net are all taken. The first two seem legit, but theano.net doesn't look like it has anything on it and expires on May 29, so maybe there's a chance we can snag it? -ob
+
+We could also get [http://www.theano.io]. -jpt
+
+--------
+
+On Fri, May 09, 2008 at 03:49:31PM -0400, Joseph Turian wrote:
+> Another option for backup:
+> 
+> Since we have access to LGCM, there is a single SQLite db file (AFAIK) 
+> that we can back up periodically.
+> e.g. cron job to gzip and email it to us once a week.
+
+There are instructions for how to backup a Trac site, i just haven't gotten
+around to it. Currently, the whole directory is rsynced to the lisa account,
+which is close to ok, but not quite.
+
+> Besides mailing list, is there anything else we need? Besides figuring 
+> out how to administer trac? :}
+
+Writing scripts to update p-omega1/.ssh/authorized_keys2 automatically from
+certain user accounts' authorized_keys2 file.  I've written this script, but not
+really tested it.
+
+Hooking up mercurial to trac would be nice, so we can associate commits and
+tickets.
+
+lgcm's uptime is usually about a week or two at max, so there's the pain in the
+ass of having to re-log in, start up a screen session, find the directories,
+restart trac, restart hg serve.  We should be restarting hg serve for tlearn too
+soon.
+
+Even if I do set up the authorized_keys2 script to do the right thing, the users
+on TRAC and the users on the system are totally independent, so adding a new
+user is non-standard and only I can do it right now.
+
+My choices seem to be:
+ - document all these hoops and good ideas
+ - fix them so they are easier to use and document
+ - replace them with hosting service
+
+All of these options take time, mental effort, and the support of our
+development group (look the large number of messages today on the topic)... so
+i'm trying to find the least of all evils.  The Right Thing doesn't seem to have
+appeared yet.
+
+
+

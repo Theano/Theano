@@ -5,13 +5,15 @@
 Internal documentation
 ======================
 
-Structure
-=========
+If you're feeling ambitious, go fix some `pylint
+<http://lgcm.iro.umontreal.ca/auto_theano_pylint/pylint_global.html>` errors!
 
 .. toctree::
    :maxdepth: 2
 
    dev_start_guide
-   hg_primer
+   lisa_labo
    mammouth
    metadocumentation
+   python
+   hg_primer
