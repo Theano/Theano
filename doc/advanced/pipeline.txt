@@ -10,7 +10,7 @@ compiling a Theano function.
 
 
 Definition of the computation graph
-===================================
+-----------------------------------
 
 By creating Theano :ref:`Variables <variable>` using
 ``theano.tensor.lscalar`` or ``theano.tensor.dmatrix`` or by using
@@ -22,9 +22,9 @@ in the :ref:`graphstructures` article.
 
 
 Compilation of the computation graph
-====================================
+------------------------------------
 
-Once the user has built a computation graph, he can use
+Once the user has built a computation graph, she can use
 ``theano.function`` or a ``theano.Method`` in a ``theano.module`` in
 order to make one or more functions that operate on real data. Both
 function and Method take a list of input :ref:`Variables <variable>`
@@ -37,7 +37,7 @@ computation graph in the compilation phase:
 
 
 Step 1 - Create an Env
-======================
+^^^^^^^^^^^^^^^^^^^^^^
 
 The subgraph given by the end user is wrapped in a structure called
 :ref:`env`. That structure defines several hooks on adding and
@@ -56,7 +56,7 @@ inputs declared as immutable.
 
 
 Step 2 - Execute main Optimizer
-===============================
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the Env is made, an :ref:`optimizer <optimization>` is produced
 by the :ref:`mode` passed to ``function`` or to the Method/Module's
@@ -68,7 +68,7 @@ The optimizer is typically obtained through :ref:`optdb <optdb>`.
 
 
 Step 3 - Execute linker to obtain a thunk
-=========================================
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the computation graph is optimized, the :ref:`linker` is
 extracted from the Mode. It is then called with the Env as argument to
@@ -99,21 +99,10 @@ case if ``borrow`` was True, the thunk would be allowed to reuse (or
 
 
 Step 4 - Wrap the thunk in a pretty package
-===========================================
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The thunk returned by the linker along with input and output
 containers is unwieldy. ``function`` and ``Method`` hide that
 complexity away so that it can be used like a normal function with
 arguments and return values.
-
-
-
-
-
-
-
-
-
-
-
 

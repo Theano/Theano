@@ -1,7 +1,7 @@
 
 .. _install:
 
-=================
+
 Installing Theano
 =================
 
@@ -9,7 +9,7 @@ Installing Theano
     If you are a member of LISA Labo, have a look at :ref:`lisa_labo` for
     lab-specific installation instructions.
 
-------------
+
 Requirements
 ------------
 
@@ -43,7 +43,6 @@ The following libraries and software are optional:
         To download bleeding-edge 
 
 
-------------
 Easy install
 ------------
 
@@ -63,7 +62,6 @@ on your system:
 .. Theano, when we figure out where to put it.
 
 
---------------
 Manual install
 --------------
 
@@ -124,7 +122,6 @@ You may also download the latest source directly as a gzip'd tar file:
 `<http://pylearn.org/hg/theano/archive/tip.tar.gz>`__.
 
 
----------------------------
 Configuring the environment
 ---------------------------
 
@@ -161,7 +158,7 @@ automatic code generation, but that way is much, much slower.
     running unit tests.
     Setting this value will make the unit tests deterministic.
 
----
+
 Mac
 ---
 
@@ -185,7 +182,7 @@ Mac
 TODO: check if this is still valid
 
 
--------
+
 Windows
 -------
 
@@ -194,7 +191,6 @@ never even been tested, so feel free to explore this uncharted
 territory and inform us of your progress!
 
 
-----------------------------
 Generating the documentation
 ----------------------------
 

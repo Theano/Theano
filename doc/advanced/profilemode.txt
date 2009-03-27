@@ -10,7 +10,7 @@ an argument when compiling your graph. Using ProfileMode is a three-step
 process.
 
 Creating a ProfileMode Instance
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 
 First create a ProfileMode instance. 
 
@@ -33,7 +33,7 @@ find where most of the computation time is being spent. In this context,
 'fast_run' optimizer and ``gof.OpWiseCLinker`` are the most appropriate choices.
 
 Compiling your Graph with ProfileMode
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the ProfileMode instance is created, simply compile your graph as you
 would normally, by specifying the mode parameter.
@@ -45,7 +45,7 @@ would normally, by specifying the mode parameter.
 >>> minst = m.make(mode=profmode)
 
 Retrieving Timing Information
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once your graph is compiled, simply run the program or operation you wish to
 profile, then call ``profmode.print_summary()``. This will provide you with

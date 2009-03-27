@@ -1,7 +1,7 @@
 
 .. _links:
 
-=====
+
 Links
 =====
 
@@ -9,7 +9,7 @@ This page lists links to various resources.
 
 
 Theano requirements
-===================
+-------------------
 
 - mercurial_: A distributed revision control system (RCS).
 - nosetests_: A system for unit tests.
@@ -19,7 +19,7 @@ Theano requirements
 
 
 Libraries we might want to look at or use
-=========================================
+-----------------------------------------
 
 This is a sort of memo for developers and would-be developers.
 

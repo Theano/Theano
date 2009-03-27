@@ -90,6 +90,7 @@ When you push to the main repository, the following file is run::
 It calls ``epydoc`` and ``sphinx`` on the code.
 
 *It would be nice to explain this stuff in a little more depth:*
+
  * Who calls refresh-epydoc.sh ?
  * What exactly does it do?
  * Where does the output go?
@@ -145,6 +146,7 @@ TO WRITE
 ---------------------------------------
 
 *There is other stuff to document here, e.g.:*
+
  * where the documentation is getting built, and epy.
  * How epydoc and sphinx are integrated
  * Explain the special magic in ./doc/scripts/docgen.py

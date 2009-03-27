@@ -10,13 +10,6 @@ efficiently evaluate mathematical expressions involving multi-dimensional
 arrays. Using Theano, it is not uncommon to see speed improvements of
 ten-fold over using pure NumPy.
 
-The term "mathematical expressions" is used broadly to mean a
-computation with some inputs, possibly which might update the inputs
-in-place. Neural net forward propagation is an expression, as is fprop +
-bprop + a weight-update implementing stochastic gradient descent. Feature
-extraction from audio of zero-crossing, 16 mfcc, and 128 rceps coefficients is
-also an expression.
-
 Theano melds some aspects of a computer algebra system (CAS) with
 aspects of an optimizing compiler. It can even transform some or
 all of the mathematical expression into C code and compile it into
