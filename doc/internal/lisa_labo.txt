@@ -1,5 +1,5 @@
 
-.. _lisa_labo::
+.. _lisa_labo:
 
 ===============================
 LISA Labo specific instructions
