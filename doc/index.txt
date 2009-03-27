@@ -1,82 +1,58 @@
-TOTALLY CUTE HOMEPAGE! MAKE THIS A NICE HOMEPAGE :)
+
+===========
+Quick Start
+===========
 
 
-Documentation is broadly divided into two kinds: user documentation and
-developer documentation.  
+Click on what you want to do:
 
-- `Using Theano` covers how to *use* what is already in the Theano library to
-  build graphs and evaluate them.
+* You have no idea what Theano is and you read the :ref:`introduction
+  <introduction>`.
 
-- `Concepts` introduces how Theano works.
+* Convinced by the Theano staff's rhetoric that it is worthy of your
+  time (you can hear them into the distance congratulating themselves
+  on the success of their dishonest ploy - a lone puppy's
+  heart-wrenching cry echoes behind you but is cut short by an
+  outworldly screech and what might be the dripping sound of a bloody
+  blade - you don't care, though, because Theano is wicked cool), you
+  :ref:`install Theano <install>` and :ref:`learn the basics
+  <basictutorial>`.
 
-- `Extending Theano` explains how to add new
-  data and expression types, as well as optimizations to accompany them.
+* Blinded by your newfound knowledge, you want to play God and
+  :ref:`learn how to extend Theano <advtutorial>`. The Gods are
+  pleased that they get to devour your soul for this heresy, but you
+  ascertain that it is worth it.
 
-- `Module`
+* Decidedly, your thirst for Theano-related information is
+  unquenchable! So there you are, reading about Theano's compilation
+  :ref:`pipeline <pipeline>`. Little do you know that article could
+  not have been made without the tears of a thousand innocent kittens.
 
-- `Hacking Theano` introduces you to what's under the hood: the compilation
-  process, the Env, C code generation.
+* You descend into madness as you read detailed (or as-of-yet not
+  written, but our plans for world domination as well as the hourly
+  sacrifices that our God requires leave us little time for writing)
+  articles about :ref:`op`, :ref:`type`, :ref:`function`,
+  :ref:`module`, :ref:`compilation`, :ref:`optimization`, :ref:`env`
+  and as you consult the list of :ref:`envfeaturelist`. Sometimes you
+  check the :ref:`glossary` just in case you missed an important
+  concept.
 
+* Requiring help in your dark endeavors, you register and post to the
+  `theano-users`_ mailing list and curious to know who is behind this
+  witchery and how their wicked plans come into fruition, you read the
+  `theano-dev`_ mailing list.
 
-Using Theano
-============
-
-- First of all, read the `tutorial`_.  It is a cut-and-paste, tutorial-style intro to what Theano can do.
-
-- Familiarize yourself with the :ref:`glossary`.
-
-- Join `theano-users`_.
-
-- Learn to use the typelist_, and the oplist_.  These are the building blocks
-  of theano expression graphs.
-
-- Browse through some of the `Howto`_ recipes on the wiki.
-
-.. _Howto: 
-.. _theano-users: http://groups.google.com/group/theano-users?pli=1
-.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
-.. _tutorial: tutorial.html
-.. _typelist: typelist.html
-.. _oplist: oplist.html
-
-Extending Theano
-================
-
-- Read about `How Theano Works <UserAdvanced.html>`__.  This introduces the
-  major interface data structures: Op, Type, Variable, Apply.
-
-- Read about `Extending theano <extending.html>`__.
-
-- How to make a new Op.
-
-- How to make a new Optimization.
-
-- How to make a new data Type.
-
-Hacking Theano
-==============
-
-- `Get Started as a Developer <DevStartGuide.html>`__ by setting up mercurial, getting a few accounts,
-  setting up your environment, and getting some background in mercurial, python,
-  and numpy.
-
-- Join `theano-dev`_ to participate in development discussion.
-
-- Pick a task from the `task list`_, or suggest one on `theano-users`_.
-  Features/ideas are generally discussed on `theano-users`_.   Technical
-  discussions of how to actually implement something should be on
-  `theano-dev`_.
-
-- Browse `Theano's API <../api/>`__.
-
-- Keep an eye on the `Mercurial Changelog <http://pylearn.org/hg/theano>`__.
-
-- Send us your work as a patch to `theano-dev`_ or commit directly to the trunk.
-
-.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
-.. _task list: http://pylearn.org/theano/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
-.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+* Bored a Friday evening, you browse `Theano's API <../api/>`__. May
+  the Great Ones help you with that one.
 
 
+.. note::
 
+   May you be assured that this page was made solely under the
+   unsobering influence of boredom and that all of the unspeakable
+   things mentioned therein are merely artifacts of the author's
+   maddened delusions.
+
+.. _theano-dev: http://groups.google.com/group/theano-dev
+.. _theano-users: http://groups.google.com/group/theano-users
 
