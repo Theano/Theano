@@ -105,7 +105,7 @@ initial value is None.
 >>> acc.state, acc.inc
 array(0.0), None
 
-Since state was declared as a Member, we can access it easily using
+Since state was declared as a Member, we can access it using
 '.state'.
 
 .. note::
@@ -129,7 +129,7 @@ that it works as intended, adding the argument to the internal state.
 
 >>> acc.state = 39.99
 
-The state is also easy to set.  When we manually set the value of a member
+The state can also be set.  When we manually set the value of a member
 attribute like this, then subsequent calls to the methods of our module will
 use the new value.
 
