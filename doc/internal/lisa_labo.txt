@@ -6,13 +6,13 @@ LISA Labo specific instructions
 ===============================
 
 Tips for running at LISA
-++++++++++++++++++++++++
+------------------------
 
 Use the fast BLAS library that Fred installed, by setting
 `THEANO_BLAS_LDFLAGS=-lgoto`.
 
 Tips for running on a cluster
-+++++++++++++++++++++++++++++
+-----------------------------
 
 
 OUTDATED(was for mammouth1, should be updated for mammouth2)

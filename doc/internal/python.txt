@@ -1,0 +1,62 @@
+.. _python:
+
+================
+Python booster
+================
+
+`This page
+<http://wordaligned.org/articles/essential-python-reading-list>`_ will
+give you a warm feeling in your stomach.
+
+Non-Basic Python features
+-------------------------
+
+Theano doesn't use your grandfather's python.
+
+  * properties
+
+    a specific attribute that has get and set methods which python automatically invokes.
+
+    See [http://www.python.org/doc/newstyle/ New style classes].
+  * static methods vs. class methods vs. instance methods
+  * Decorators:
+
+    .. code-block:: python
+
+      @f
+      def g():
+        ...
+
+    runs function ``f`` before each invocation of ``g``.
+    See `PEP 0318 <http://www.python.org/dev/peps/pep-0318/>`_.
+    ``staticmethod`` is a specific decorator, since python 2.2
+  *  ``__metaclass__`` is kinda like a decorator for classes. It runs the metaclass __init__ after the class is defined
+  * ``setattr`` + ``getattr`` + ``hasattr``
+  * ``*args`` is a tuple like argv in C++, ``**kwargs`` is a keyword args version
+  * ``pass`` is no-op.
+  * functions (function objects) can have attributes too. This technique
+    is often used to define a function's error messages.
+
+    .. code-block:: python
+
+        def f(): return f.a
+        f.a = 5
+        f() # returns 5
+
+  * Warning about mutual imports:
+
+    * script a.py file defined a class A.
+    * script a.py imported file b.py
+    * file b.py imported a, and instantiated a.A()
+    * script a.py instantiated its own A(), and passed it to a function in b.py
+    * that function saw its argument as being of type __main__.A, not a.A.
+
+    Incidentally, this behaviour is one of the big reasons to put autotests in
+    different files from the classes they test!
+
+    If all the test cases were put into <file>.py directly, then during the test
+    cases, all <file>.py classes instantiated by unit tests would have type
+    ``__main__.<classname>``, instead of type ``<file>.<classname>``.  This should never
+    happen under normal usage, and can cause problems (like the one you are/were
+    experiencing).
+

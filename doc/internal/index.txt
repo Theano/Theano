@@ -5,6 +5,9 @@
 Internal documentation
 ======================
 
+If you're feeling ambitious, go fix some `pylint
+<http://lgcm.iro.umontreal.ca/auto_theano_pylint/pylint_global.html>` errors!
+
 Structure
 =========
 
@@ -12,6 +15,7 @@ Structure
    :maxdepth: 2
 
    dev_start_guide
+   python
    hg_primer
    mammouth
    metadocumentation

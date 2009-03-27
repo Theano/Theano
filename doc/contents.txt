@@ -20,4 +20,3 @@ Contents
    glossary
    links
    internal/index
-   sandbox/index

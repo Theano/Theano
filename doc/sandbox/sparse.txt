@@ -87,8 +87,17 @@ Several things should be learned from the above example:
 
 TODO: Rewrite this documentation to do things in a smarter way.
 
+Speed
+-----
+
+For faster sparse code:
+  * Construction: lil_format is fast for many inserts.
+  * Operators: "Since conversions to and from the COO format are
+  quite fast, you can use this approach to efficiently implement lots
+  computations on sparse matrices." (Nathan Bell on scipy mailing list)
+
 Misc
-----------------------------------------
+----
 The sparse equivalent of dmatrix is csc_matrix and csr_matrix.
 
 :api:`TrueDot` vs. :api:`StructuredDot`

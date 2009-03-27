@@ -64,4 +64,33 @@ old changes by hand.
 
 For more info, check out the `homepage <http://www.selenic.com/mercurial/wiki/>`_ and `hg book <http://hgbook.red-bean.com/hgbook.html>`_.
 
+Tip: Commit before pull
+------------------------
 
+"This is the general rule of thumb when using Mercurial: finish your work
+and commit it before you start pulling in stuff from the outside world."
+-Martin Geisler
+(http://www.selenic.com/pipermail/mercurial/2008-April/018817.html)
+
+Tip: Graph logs
+---------------
+
+Update your .hgrc::
+
+    [ui]
+    username = Foo Bar <barfoo@iro.umontreal.ca>
+
+    [extensions]
+    hgext.graphlog =
+
+Now try::
+
+    hg glog
+
+Troubleshooting
+---------------
+
+If you get message: "abort: push
+creates new remote heads!", read `this thread
+<http://www.selenic.com/pipermail/mercurial/2008-April/018804.html>`_
+to understand.

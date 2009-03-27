@@ -7,17 +7,23 @@ Introduction
 
 Theano is a Python library that allows you to define, optimize, and
 efficiently evaluate mathematical expressions involving multi-dimensional
-arrays. Theano was written at the LISA_ lab to support the development
-of efficient machine learning algorithms while minimizing human time. We
-use it especially in gradient-based learning techniques.
+arrays. Using Theano, it is not uncommon to see speed improvements of
+ten-fold over using pure NumPy.
+
+The term "mathematical expressions" is used broadly to mean a
+computation with some inputs, possibly which might update the inputs
+in-place. Neural net forward propagation is an expression, as is fprop +
+bprop + a weight-update implementing stochastic gradient descent. Feature
+extraction of zero-crossing, 16 mfcc, and 128 rceps coefficients is also
+an expression.
 
 Theano melds some aspects of a computer algebra system (CAS) with
-aspects of an optimizing compiler. It can even transform some or all
-of the expression into C code and compile it into native machine
-instructions. This combination of CAS with optimizing compilation
-is particularly useful for computational fields in which complicated
-mathematical expressions are evaluated numerous times over large data
-sets.
+aspects of an optimizing compiler. It can even transform some or
+all of the mathematical expression into C code and compile it into
+native machine instructions. This combination of CAS with optimizing
+compilation is particularly useful for computational fields in which
+complicated mathematical expressions are evaluated numerous times over
+large data sets.
 
 Theano supports a range of numerical types in multiple dimensions and
 a number of well-tested operations. It also allows you to compute the
@@ -36,10 +42,12 @@ not limited to:
 * using inplace operations wherever it is safe to do so.
 
 Theano defines several optimizations which improve the numerical
-stability of computations. It also provides a framework to add and test
-new optimizers.
+stability of computations.
 
-Theano was named after the `Greek mathematician`_, who may have
+Theano was written at the LISA_ lab to support the development
+of efficient machine learning algorithms while minimizing human time. We
+use it especially in gradient-based learning techniques.
+Theano is named after the `Greek mathematician`_, who may have
 been Pythagoras' wife.
 Theano is released under a BSD license (:ref:`link <license>`)
 
