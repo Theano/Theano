@@ -1,3 +1,4 @@
+import scipy.sparse
 from theano.sparse import *
 
 import random
@@ -142,8 +143,10 @@ class T_conversion(unittest.TestCase):
         self.failUnless(val.format == 'csr')
 
     def test2(self):
+        #call dense_from_sparse
         for t in _mtypes:
             s = t((2,5))
+            s = t(scipy.sparse.identity(5))
             d = dense_from_sparse(s)
             s[0,0] = 1.0
             val = eval_outputs([d])
@@ -161,11 +164,12 @@ class test_structureddot(unittest.TestCase):
        
         # iterate 10 times just to make sure (cannot get this wrong !)
         for i in range(10):
-            spmat = sp.csc_matrix((4,6))
+            spmat = sp.lil_matrix((4,6))
             for i in range(5):
                 x = numpy.floor(numpy.random.rand()*spmat.shape[0])
                 y = numpy.floor(numpy.random.rand()*spmat.shape[1])
                 spmat[x,y] = numpy.random.rand()*10
+            spmat = sp.csc_matrix(spmat)
        
             kerns = tensor.dvector('kerns')
             images = tensor.dmatrix('images')
