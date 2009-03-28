@@ -62,7 +62,10 @@ def setup(app):
 
     try:
         xlink.set_api_file('api', os.path.join(app.outdir, 'api', 'api-objects.txt'))
-        xlink.set_api_root('api', os.path.join('..', 'api', ''))
+        apiroot = os.getenv('THEANO_API_ROOT')
+        if not apiroot:
+            apiroot = os.path.join(os.path.realpath('api'), '')
+        xlink.set_api_root('api', apiroot)
         #xlink.create_api_role('api', True)
         create_api_role('api', True)
     except IOError:
