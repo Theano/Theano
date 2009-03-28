@@ -996,10 +996,15 @@ class Module(ComponentDict):
             return
 
         def unpack_member_and_external(v):
-            if isinstance(v, (Member, External)):
-                print >> sys.stderr, ("WARNING: assignment of Member or External "
-                        "objects (either directly or indirectly) to Module "
-                        "is deprecated.  Just use Variable.")
+            if isinstance(v, Member):
+                print >> sys.stderr, ("WARNING: assignment of Member "
+                        "object %s (either directly or indirectly) to Module "
+                        "is deprecated.  Just use Variable." % v)
+                return v.r
+            elif isinstance(v, External):
+                print >> sys.stderr, ("WARNING: assignment of External "
+                        "object %s (either directly or indirectly) to Module "
+                        "is deprecated.  Just use Variable." % v)
                 return v.r
             elif isinstance(v, (gof.Variable,Method,Module)):
                 return v
