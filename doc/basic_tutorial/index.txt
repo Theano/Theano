@@ -32,6 +32,4 @@ Now we're ready for the tour:
    examples
    function
    module
-   module_vs_op
-   randomstreams
    tools

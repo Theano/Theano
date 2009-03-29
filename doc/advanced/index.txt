@@ -13,6 +13,8 @@ Advanced Topics
     profilemode
     debug_faq
     debugmode
+    module_vs_op
+    randomstreams
 
 
 .. env
