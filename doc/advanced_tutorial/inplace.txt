@@ -7,7 +7,9 @@ Views and inplace operations
 
 Theano allows the definition of Ops which return a :term:`view` on one
 of their inputs or operates :term:`inplace` on one or several
-inputs. However, in order to work correctly, these Ops need to
+inputs. This allows more efficient operations on numpy's ndarray data type than
+would be possible otherwise.
+However, in order to work correctly, these Ops need to
 implement an additional interface.
 
 Theano recognizes views and inplace operations specially. It ensures
@@ -58,8 +60,8 @@ purpose, you would set the ``view_map`` field as follows:
    myop.view_map = {0: [0]}
 
 
-What this means is that the first output (rank 0) is a view of the
-first input (rank 0). Even though the interface allows a list of
+What this means is that the first output (position 0) is a view of the
+first input (position 0). Even though the interface allows a list of
 inputs that are a view of a given output, this feature is currently
 unsupported. Here are more examples:
 
@@ -76,7 +78,7 @@ unsupported. Here are more examples:
    myop.view_map = {0: [0], # first output is a view of first input
                     1: [0]} # *AND* second output is *ALSO* a view of first input
 
-   myop.view_map = {0: [0, 1]} # THIS IS NOT SUPPORTED! Only put a single input number in the list!
+   myop.view_map = {0: [0, 1]} # THIS IS NOT SUPPORTED YET! Only put a single input number in the list!
 
 
 .. _inplace:
@@ -139,7 +141,7 @@ it could add one to each byte *in* the buffer ``x``, therefore
 changing it. That would be an inplace Op.
 
 Theano needs to be notified of this fact. The syntax is similar to
-that of view_map, so I will copy paste cleverly:
+that of view_map:
 
 
 .. code-block:: python
@@ -147,8 +149,8 @@ that of view_map, so I will copy paste cleverly:
    myop.destroy_map = {0: [0]}
 
 
-What this means is that the first output (rank 0) operates inplace on the
-first input (rank 0).
+What this means is that the first output (position 0) operates inplace on the
+first input (position 0).
 
 
 .. code-block:: python
@@ -167,8 +169,8 @@ first input (rank 0).
    # unlike for views, the previous line is legal and supported
 
 
-Purely destructive operations
-=============================
+Destructive Operations
+======================
 
 While some operations will operate inplace on their inputs, some might
 simply destroy or corrupt them. For example, an Op could do temporary

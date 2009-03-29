@@ -12,7 +12,7 @@ computations. We'll start by defining multiplication.
 Op's contract
 =============
 
-An Op is any object which defines the following methods:
+An Op (:api:`gof.op.Op`) is any object which defines the following methods:
 
 - **make_node(*inputs)**
     
@@ -99,7 +99,7 @@ An Op is any object which defines the following methods:
     value.
       
   - Equally important, this hash value must not change during the lifetime of
-    self.
+    self.  Op instances should be immutable in this sense.
 
 - **__ne__(self, other)**
 
@@ -128,7 +128,7 @@ An Op is any object which defines the following methods:
   - For more information on the use of this method, see ``grad``.
 
 
-For each method, the *default* is what :api:`theano.gof.Op` defines
+For each method, the *default* is what :api:`theano.gof.op.Op` defines
 for you.  At a bare minimum, a new Op must define ``make_node`` and
 ``perform``, which have no defaults.
 
@@ -149,17 +149,21 @@ Use this list to make sure that you defined everything you need for your Op:
       * Consider making pre-made instances for common parameters. This will simplify usage.
     * No? (usual case for simple Ops)
 
-      * Consider making a singleton of your Op (this can be as simple as ``my_op = MyOp()``). It will simplify usage. [*What is the benefit of using the singleton? How does it simplify usage? We __shouldn't__ use singletons when there __are__ parameters?*]
-      * All instances should compare equal (which is trivial if there is only one of them). [*How do we make sure this is true? Because this checklist should be a list of instructions. Do you describe later on?*]
+      * Consider making a singleton of your Op (this can be as simple as 
+        ``my_op = MyOp()``). This will save you from having to implement __eq__
+        and company.  The singleton approach does not work when an Op instance
+        has parameters (Did you pass anything to __init__?)
   * Always define *make_node* (see make_node section below).
   * Always define *perform* (see perform section below).
   * Do you need performance only C can offer?
 
     * Define *c_code* and *c_code_cleanup* (see HowtoMakeCeeOps)
     * Remember to use the 'c' or 'c|py' linker on graphs using your Op! [*This is described where?*]
-  * Is your Op differentiable?
+  * Is your Op differentiable?  Do you want to use it in differentiable
+    expressions?
 
-    * Define *grad* (see grad section below) [*If not, and you don't define *grad*, what will happen if you try to differentiate it?*]
+    * Define *grad* (see grad section below) 
+
   * Does your Op modify any of its inputs?
 
     * *IMPORTANT:* read the destroyers and viewers section.
@@ -173,8 +177,8 @@ Use this list to make sure that you defined everything you need for your Op:
 [*Consider changing the order of the checklist above and the sections below such that the stuff you ALWAYS have to do, which is the most basic stuff anyhow, goes towards the top.*]
 
 
-Defining mul
-============
+Defining an Op: ``mul``
+=======================
 
 We'll define multiplication as a *binary* operation, even though a
 multiplication Op could take an arbitrary number of arguments.
@@ -220,9 +224,7 @@ node representing the application of Op ``mul`` to inputs ``x`` and
    Theano relies on the fact that if you call the ``make_node`` method
    of Apply's first argument on the inputs passed as the Apply's
    second argument, the call will not fail and the returned Apply
-   instance will be equivalent. We can see that this is trivially true
-   here.
-
+   instance will be equivalent.  This is how graphs are copied.
 
 **perform**
 
@@ -256,6 +258,28 @@ Here, ``z`` is a list of one element. By default, ``z == [None]``.
    that a Python ``float`` must be put there. You should not put, say, an
    ``int`` in ``z[0]`` because Theano assumes Ops handle typing properly.
 
+**eq** and **hash**
+
+Correct implementations of eq and hash permit Theano to recognize one 
+of the most obvious opportunities
+for optimization: not repeatedly computing the same thing.
+
+.. code-block:: python
+
+   def __eq__(self, other):
+       return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
+
+   def __hash__(self):
+       return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
+
+When theano compiles a graph, most Modes first :term:`merge` the graph (this is
+done by the :api:`MergeOptimizer`.) The principle of merging is that if the
+inputs to two different :ref:`Applies <apply>` are identical and the :ref:`op`s
+applied to them compare equal, then those two Apply instances are guaranteed to
+produce the same outputs.
+So Theano will only compute one of them.
+
+
 
 Trying out our new Op
 =====================
@@ -281,6 +305,9 @@ Traceback (most recent call last):
   File "/u/breuleuo/hg/theano/theano/gof/op.py", line 207, in __call__
   File "<stdin>", line 2, in make_node
 AttributeError: 'int' object has no attribute 'type'
+
+Automatic Constant Wrapping
+---------------------------
 
 Well, ok. We'd like our Op to be a bit more flexible. This can be done
 by modifying ``make_node`` to accept Python ``int`` or ``float`` as
@@ -311,6 +338,14 @@ is a :ref:`variable` we statically know the value of.
 6.7999999999999998
 
 Now the code works the way we want it to.
+
+.. note:: 
+   Most Theano Ops follow this convention of up-casting literal 
+   make_node arguments to Constants.
+   This makes typing expressions more natural.  If you do 
+   not want a constant somewhere in your graph, you have to pass a Variable
+   (like ``double('x')`` here).
+
 
 
 Final version
@@ -385,3 +420,4 @@ your disposal to create these objects as efficiently as possible.
 
 **Exercise**: Make a generic DoubleOp, where the number of
 arguments can also be given as a parameter.
+

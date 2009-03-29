@@ -10,11 +10,12 @@ Making the double type
 Type's contract
 ===============
 
-In Theano's framework, a Type is any object which defines the following
+In Theano's framework, a ``Type`` (:api:`gof.type.Type`)
+is any object which defines the following
 methods. To obtain the default methods described below, the Type should
-be an instance of :api:`theano.gof.Type` or should be an instance of a
-subclass of :api:`theano.gof.Type`. If you will write all methods yourself,
-you need not use an instance of :api:`theano.gof.Type`.
+be an instance of ``Type`` or should be an instance of a
+subclass of ``Type``. If you will write all methods yourself,
+you need not use an instance of ``Type``.
 
 Methods with default arguments must be defined with the same signature,
 i.e.  the same default argument names and values. If you wish to add
@@ -72,10 +73,22 @@ default values.
 
   - *Default*: ``make_variable``
 
+- **__eq__(self, other)**:
 
-For each method, the *default* is what :api:`theano.gof.Type` defines
-for you. So, if you create an instance of :api:`theano.gof.Type` or an
-instance of a subclass of :api:`theano.gof.Type`, you
+  - Used to compare Type instances themselves
+
+  - *Default*: ``object.__eq__``
+
+- **__hash__(self)**:
+
+  - Types should not be mutable, so it should be Ok to define a hash function.
+    Typically this function should hash all of the terms involved in ``__eq__``.
+
+  - *Default*: ``id(self)``
+
+For each method, the *default* is what ``Type`` defines
+for you. So, if you create an instance of ``Type`` or an
+instance of a subclass of ``Type``, you
 must define ``filter``. You might want to override ``values_eq_approx``,
 as well as ``values_eq``. The other defaults generally need not be
 overridden.
@@ -185,13 +198,11 @@ instances of ``Double`` are technically the same Type. However, different
 >>> double1 == double2
 False
 
-Theano compares Types using ``==`` to see if they are the same. If
-the inputs of two different :ref:`Applies <apply>` are the same
-and two :ref:`op`s applied to them compare equal, then only one of those ops
-must be evaluated.  (This is sometimes called a :term:`merging <merge>` and it
-is done by the :api:`MergeOptimizer`.)
+Theano compares Types using ``==`` to see if they are the same.
+This happens in DebugMode.  Also, ops can (and should) ensure that their inputs
+have the expected Type by checking something like ``if x.type == lvector``.
 
-There are several ways to make sure graphs are merged properly:
+There are several ways to make sure that equality testing works properly:
 
  #. Define ``Double.__eq__`` so that instances of type Double
     are equal. For example:
@@ -221,7 +232,8 @@ it is can be confusing what these represent semantically. Here is an
 attempt to clear up the confusion:
 
 
-* An **instance of Type** is a set of constraints on real data. It is
+* An **instance of Type** (or an instance of a subclass)
+  is a set of constraints on real data. It is
   akin to a primitive type or class in C. It is a *static*
   annotation.
 
@@ -231,12 +243,15 @@ attempt to clear up the confusion:
   that Type instance. If you were to parse the C expression ``c = a +
   b;``, ``a``, ``b`` and ``c`` would all be Variable instances.
 
-* A **subclass of Type** represents a set of Type instances that share
+* A **subclass of Type** is a way of implementing 
+  a set of Type instances that share
   structural similarities. In the ``double`` example that we are doing,
   there is actually only one Type in that set, therefore the subclass
   doesn't represent anything that one of its instances doesn't. In this
-  case it is a singleton, a set with one element. However, the TensorType
-  class which is a subclass of Type represents a set of types of tensors
+  case it is a singleton, a set with one element. However, the
+  :api:`TensorType`
+  class in Theano (which is a subclass of Type)
+  represents a set of types of tensors
   parametrized by their data type or number of dimensions. We could say
   that subclassing Type builds a hierarchy of Types which is based upon
   structural similarity rather than compatibility.
@@ -266,4 +281,5 @@ Final version
 
 
 We add one utility function, ``__str__``. That way, when we print
-``double``, it will print out something sensible.
+``double``, it will print out something intelligible.
+
