@@ -1,0 +1,53 @@
+
+.. thinking_in_theano:
+
+==================
+Thinking in Theano
+==================
+
+Theano offers quite a bit of flexibility.
+How should you write your algorithm to make the most of what Theano can do?
+
+A few tips
+----------
+
+- Remember that your code builds a graph that theano compiles, and you cannot
+  literally put loops into that graph.
+
+- Remember that Variables are symbolic of computations, not
+  storage.  It does not make sense to *reassign* to a Variable.
+
+
+Limitations
+-----------
+
+- Conditional control flow is possible but not efficient.  In essence, both
+  sides of an if (see ``switch``) will be evaluated.
+
+- Loops are not supported, but soon will be.
+  (A ``scan`` op is in the works, but not included yet.)
+
+- Recursion is not supported within a graph.
+
+
+A few examples
+--------------
+
+**DO WE WANT SOMETHING HERE?**
+
+These are intended to illustrate good ways of formulating an algorithm for
+Theano.
+For complete, usable implementations of these algorithms see WRITEME.
+
+- Short-time Fourier Transform
+
+- Contrastive Divergence for Restricted Boltzmann Machine
+
+- Kalman Filter
+
+- Logistic Regression
+
+- Training a neural network with sigmoidal hidden layer by backpropagation
+
+- Learning an Echo-State Network
+
