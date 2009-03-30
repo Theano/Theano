@@ -9,9 +9,7 @@ Advanced Topics
     :maxdepth: 2
    
     pipeline
-    unittest
     profilemode
-    debug_faq
     debugmode
     module_vs_op
     randomstreams
