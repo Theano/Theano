@@ -125,10 +125,10 @@ Mac
 
         $ sudo port install gcc42 py25-zlib py25-numpy py25-scipy mercurial
 
-    Note that compiling gcc42 takes a significant time (hours) so it's probably
-    not the best solution if you're in a rush! In my (Doomie) experience, scipy
-    failed to compile the first time I tried the command, but the second time
-    it compiled just fine. Same thing with py25-zlib.
+    Note that compiling gcc42 takes a significant time (hours) so it is probably
+    not the best solution if you are in a rush! It may happen that SciPy
+    fails to compile the first time and still compiles just fine on a second
+    try. Same thing with py25-zlib.
 
 - Install some kind of BLAS library (TODO: how?)
 
