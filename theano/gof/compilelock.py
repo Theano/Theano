@@ -1,7 +1,20 @@
-# Locking mechanism.
+# Locking mechanism to ensure no two compilations occur simultaneously in the
+# same compilation directory (which can cause crashes).
 
 import compiledir
 import os, random, time
+
+# In seconds, time that a process will wait before deciding to override an
+# existing lock. An override only happens when the existing lock is held by
+# the same owner *and* has not been 'refreshed' by this owner for more than
+# 'timeout_before_override' seconds.
+timeout_before_override = 120
+
+# In seconds, duration before a lock is refreshed. More precisely, the lock is
+# refreshed each time 'get_lock()' is called (typically for each file being
+# compiled) and the existing lock has not been refreshed in the past
+# 'refresh_every' seconds.
+refresh_every = 60
 
 def get_lock():
     """
@@ -26,9 +39,21 @@ def get_lock():
             get_lock.lock_dir = lock_dir
             get_lock.unlocker = Unlocker(get_lock.lock_dir)
 
-    # Only really try to acquire the lock if we do not have it already.
-    if get_lock.lock_is_enabled and get_lock.n_lock == 0:
-        lock(get_lock.lock_dir, timeout = 120, verbosity = 1)
+    if get_lock.lock_is_enabled:
+        # Only really try to acquire the lock if we do not have it already.
+        if get_lock.n_lock == 0:
+            lock(get_lock.lock_dir, timeout = timeout_before_override)
+            # Store time at which the lock was set.
+            get_lock.start_time = time.time()
+        else:
+            # Check whether we need to 'refresh' the lock. We do this every
+            # 'refresh_every' seconds to ensure noone else tries to override
+            # our lock after their 'timeout_before_override' timeout period.
+            now = time.time()
+            if now - get_lock.start_time > refresh_every:
+                print 'Refreshing lock'
+                refresh_lock(os.path.join(get_lock.lock_dir, 'lock'))
+                get_lock.start_time = now
     get_lock.n_lock += 1
 
 def release_lock():
@@ -39,6 +64,7 @@ def release_lock():
     assert get_lock.n_lock >= 0
     # Only really release lock once all lock requests have ended.
     if get_lock.lock_is_enabled and get_lock.n_lock == 0:
+        get_lock.start_time = None
         get_lock.unlocker.unlock()
 
 def set_lock_status(use_lock):
@@ -52,7 +78,7 @@ def set_lock_status(use_lock):
     """
     get_lock.lock_is_enabled = use_lock
 
-def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
+def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
     """
     Obtain lock access by creating a given temporary directory (whose base will
     be created if needed, but will not be deleted after the lock is removed).
@@ -101,8 +127,7 @@ def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
     # Variable initialization.
     lock_file = os.path.join(tmp_dir, 'lock')
     random.seed()
-    unique_id = '%s_%s' % (os.getpid(),
-            ''.join([str(random.randint(0,9)) for i in range(10)]))
+    my_pid = os.getpid()
     no_display = (verbosity == 0)
 
     # Acquire lock.
@@ -127,7 +152,7 @@ def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
                     no_display = (verbosity == 0)
                 if not no_display:
                     print 'Waiting for existing lock by %s (I am %s)' % (
-                            read_owner, unique_id)
+                            read_owner, my_pid)
                     if verbosity <= 1:
                         no_display = True
                 time.sleep(random.uniform(min_wait, max_wait))
@@ -142,9 +167,7 @@ def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
             assert os.path.isdir(tmp_dir)
     
             # Write own id into lock file.
-            lock_write = open(lock_file, 'w')
-            lock_write.write(unique_id + '\n')
-            lock_write.close()
+            unique_id = refresh_lock(lock_file)
     
             # Verify we are really the lock owner (this should not be needed,
             # but better be safe than sorry).
@@ -159,6 +182,18 @@ def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
         except:
             # If something wrong happened, we try again.
             continue
+
+def refresh_lock(lock_file):
+    """
+    'Refresh' an existing lock by re-writing the file containing the owner's
+    unique id, using a new (randomly generated) id, which is also returned.
+    """
+    unique_id = '%s_%s' % (os.getpid(),
+            ''.join([str(random.randint(0,9)) for i in range(10)]))
+    lock_write = open(lock_file, 'w')
+    lock_write.write(unique_id + '\n')
+    lock_write.close()
+    return unique_id
     
 class Unlocker():
     """
