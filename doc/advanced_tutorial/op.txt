@@ -14,44 +14,46 @@ Op's contract
 
 An Op (:api:`gof.op.Op`) is any object which defines the following methods:
 
-- **make_node(*inputs)**
+
+.. function:: make_node(*inputs)
     
-  - This method is responsible for creating output Variables of a suitable Type
-    to serve as the outputs of this Op's application.  This method should put these
-    outputs into an Apply instance, and return the Apply instance.
+  This method is responsible for creating output Variables of a
+  suitable Type to serve as the outputs of this Op's application.
+  This method should put these outputs into an Apply instance, and
+  return the Apply instance.
   
-  - This method creates an Apply node representing the
-    application of the Op on the inputs provided. If the Op cannot be
-    applied on these inputs, it must raise an appropriate
-    exception.
+  This method creates an Apply node representing the application of
+  the Op on the inputs provided. If the Op cannot be applied on
+  these inputs, it must raise an appropriate exception.
 
-  - The inputs of the Apply instance returned by this call must be ordered
-    correctly: a subsequent ``self.make_node(*apply.inputs)`` must produce
-    something equivalent to the first ``apply``.
+  The inputs of the Apply instance returned by this call must be
+  ordered correctly: a subsequent ``self.make_node(*apply.inputs)``
+  must produce something equivalent to the first ``apply``.
 
-- default_output
+``default_output``
 
-  - *Default*: None
+  *Default*: None
 
-  - If this member variable is an integer, then the default implementation of
-    ``__call__`` will return `node.outputs[self.default_output]``, where
-    `node` was returned by ``make_node``.  Otherwise, the entire list of
-    outputs will be returned.
+  If this member variable is an integer, then the default
+  implementation of ``__call__`` will return
+  `node.outputs[self.default_output]``, where `node` was returned
+  by ``make_node``.  Otherwise, the entire list of outputs will be
+  returned.
 
-- **__call__(*inputs)**
+.. function:: __call__(*inputs)
 
-  - Syntactic shortcut to make_node which returns the output Variables
-    of the Op.
+  Syntactic shortcut to make_node which returns the output
+  Variables of the Op.
 
-  - *Default*: this is done for you by Op.
+  *Default*: this is done for you by Op.
 
-- **perform(node, inputs, output_storage)**
+.. function:: perform(node, inputs, output_storage)
 
-  - This method computes the function associated to this Op. The
-    ``node`` is an Apply node created by the Op's ``make_node``
-    method, ``inputs`` is a list of references to data to operate on,
-    and ``output_storage`` is a list of storage cells where the variables of
-    the computation must be put. More specifically:
+  This method computes the function associated to this Op. The
+  ``node`` is an Apply node created by the Op's ``make_node``
+  method, ``inputs`` is a list of references to data to operate on,
+  and ``output_storage`` is a list of storage cells where the
+  variables of the computation must be put. More specifically:
 
     - ``node``: This is a reference to an Apply node which was previously
       obtained via ``mul``'s ``make_node`` method. It is typically not
@@ -74,108 +76,70 @@ An Op (:api:`gof.op.Op`) is any object which defines the following methods:
       None.  This feature can allow perform to reuse memory between calls, for
       example.
 
-  - This method must be determined by the inputs. That is to say, if it is
-    evaluated once on inputs A and returned B, then if ever inputs C, equal to
-    A, are presented again, then outputs equal to B must be returned again.
+  This method must be determined by the inputs. That is to say, if
+  it is evaluated once on inputs A and returned B, then if ever
+  inputs C, equal to A, are presented again, then outputs equal to
+  B must be returned again.
   
-  - You must be careful about aliasing outputs to inputs, and making
-    modifications to any of the inputs. See `Views and inplace operations
-    <views_and_inplace>`_
-    before writing a ``perform`` implementation that does either of these
-    things.
+  You must be careful about aliasing outputs to inputs, and making
+  modifications to any of the inputs. See `Views and inplace
+  operations <views_and_inplace>`_ before writing a ``perform``
+  implementation that does either of these things.
 
-- **__eq__(self, other)**
+.. function:: __eq__(other)
 
-  - ``other`` is also an Op.
+  ``other`` is also an Op.
 
-  - Returning ``True`` here is a promise to the optimization system that the other
-    Op will produce exactly the same graph effects (from perform) as this one,
-    given identical inputs. This means it will produce the same output values,
-    it will destroy the same inputs (same destroy_map), and will alias outputs
-    to the same inputs (same view_map).
+  Returning ``True`` here is a promise to the optimization system
+  that the other Op will produce exactly the same graph effects
+  (from perform) as this one, given identical inputs. This means it
+  will produce the same output values, it will destroy the same
+  inputs (same destroy_map), and will alias outputs to the same
+  inputs (same view_map).
 
-- **__hash__(self)**
+.. function:: __hash__()
 
-  - If two Op instances compare equal, then they **must** return the same hash
-    value.
+  If two Op instances compare equal, then they **must** return the
+  same hash value.
       
-  - Equally important, this hash value must not change during the lifetime of
-    self.  Op instances should be immutable in this sense.
+  Equally important, this hash value must not change during the
+  lifetime of self.  Op instances should be immutable in this
+  sense.
 
-- **__ne__(self, other)**
-
-  - Recommended
+.. function:: __ne__(other)
   
-  - Default: ``(not (self==other))``
+  Default: ``(not (self==other))``
 
-- **grad(inputs, output_gradients)**
+.. function:: grad(inputs, output_gradients)
 
-  - Optional.
+  Optional.
 
-  - If the Op you are defining is differentiable, you can define its
-    gradient symbolically in this method. 
+  If the Op you are defining is differentiable, you can define its
+  gradient symbolically in this method.
     
-  - Both the ``inputs`` and ``output_gradients`` will be Variables. This
-    method must return a list containing one Variable (or None) for each
-    input. Each returned Variable represents the gradient with respect to
-    that input given the symbolic gradients with respect to each output.
+  Both the ``inputs`` and ``output_gradients`` will be
+  Variables. This method must return a list containing one Variable
+  (or None) for each input. Each returned Variable represents the
+  gradient with respect to that input given the symbolic gradients
+  with respect to each output.
 
-  - If the output is not differentiable with respect to any inputs, then this
-    method should be defined to return [None for i in inputs].
+  If the output is not differentiable with respect to any inputs,
+  then this method should be defined to return [None for i in
+  inputs].
 
-  - If this method is not defined, then theano assumes it has been forgotten.
-    Symbolic differentiation will fail on a graph that includes this Op.
+  If this method is not defined, then theano assumes it has been
+  forgotten.  Symbolic differentiation will fail on a graph that
+  includes this Op.
 
-  - For more information on the use of this method, see ``grad``.
+  For more information on the use of this method, see ``grad``.
 
 
 For each method, the *default* is what :api:`theano.gof.op.Op` defines
 for you.  At a bare minimum, a new Op must define ``make_node`` and
 ``perform``, which have no defaults.
 
-For more details, including the interface for providing a C implementation of
-perform(), refer to the documentation for :ref:`op`.
-
-
-Checklist
----------
-
-Use this list to make sure that you defined everything you need for your Op:
-  * Are there parameters that are not inputs but parametrize the behavior of your Op? (see parametrization section below)
-
-    * Yes?
-
-      * Define ``__init__`` with those parameters. They will be instance variables.
-      * Override ``__eq__``, ``__ne__`` and ``__hash__`` (optional)
-      * Consider making pre-made instances for common parameters. This will simplify usage.
-    * No? (usual case for simple Ops)
-
-      * Consider making a singleton of your Op (this can be as simple as 
-        ``my_op = MyOp()``). This will save you from having to implement __eq__
-        and company.  The singleton approach does not work when an Op instance
-        has parameters (Did you pass anything to __init__?)
-  * Always define *make_node* (see make_node section below).
-  * Always define *perform* (see perform section below).
-  * Do you need performance only C can offer?
-
-    * Define *c_code* and *c_code_cleanup* (see HowtoMakeCeeOps)
-    * Remember to use the 'c' or 'c|py' linker on graphs using your Op! [*This is described where?*]
-  * Is your Op differentiable?  Do you want to use it in differentiable
-    expressions?
-
-    * Define *grad* (see grad section below) 
-
-  * Does your Op modify any of its inputs?
-
-    * *IMPORTANT:* read the destroyers and viewers section.
-  * Does any output from the Op share any sort of state with an input?
-
-    * *IMPORTANT:* read the destroyers and viewers section.
-  * Does your Op have more than one output?
-
-    * Consider setting the default_output attribute to the index of that output. (It will make your Op usable in ``PatternOptimizers``, and make user code look like the Op has only that output.)
-
-[*Consider changing the order of the checklist above and the sections below such that the stuff you ALWAYS have to do, which is the most basic stuff anyhow, goes towards the top.*]
+For more details, including the interface for providing a C
+implementation of perform(), refer to the documentation for :ref:`op`.
 
 
 Defining an Op: ``mul``
@@ -258,28 +222,6 @@ Here, ``z`` is a list of one element. By default, ``z == [None]``.
    We gave ``z`` the Theano type ``double`` in ``make_node``, which means
    that a Python ``float`` must be put there. You should not put, say, an
    ``int`` in ``z[0]`` because Theano assumes Ops handle typing properly.
-
-**eq** and **hash**
-
-Correct implementations of eq and hash permit Theano to recognize one 
-of the most obvious opportunities
-for optimization: not repeatedly computing the same thing.
-
-.. code-block:: python
-
-   def __eq__(self, other):
-       return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
-
-   def __hash__(self):
-       return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
-
-When theano compiles a graph, most Modes first :term:`merge` the graph (this is
-done by the :api:`MergeOptimizer`.) The principle of merging is that if the
-inputs to two different :ref:`Applies <apply>` are identical and the :ref:`op`s
-applied to them compare equal, then those two Apply instances are guaranteed to
-produce the same outputs.
-So Theano will only compute one of them.
-
 
 
 Trying out our new Op

@@ -8,12 +8,14 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   LICENSE
+   index
    introduction
+   LICENSE
    install
    basic_tutorial/index
    advanced_tutorial/index
    topics/index
+   advanced/index
    indexes/index
    glossary
    links

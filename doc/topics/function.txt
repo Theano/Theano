@@ -1,9 +1,9 @@
 
-.. _function:
+.. _usingfunction:
 
-===============
-theano.function
-===============
+=====================
+Using theano.function
+=====================
 
 
 This page is about ``theano.function``, the interface for compiling graphs into callable objects.

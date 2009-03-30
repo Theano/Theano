@@ -26,22 +26,24 @@ What needs to be defined
 
 There are less methods to define for an Op than for a Type:
 
-- **c_code(node, name, input_names, output_names, sub)**
+.. function:: c_code(node, name, input_names, output_names, sub)
 
-  - This must return C code that carries the computation we want to
-    do.
+  This must return C code that carries the computation we want to do.
 
-- **c_code_cleanup(node, name, input_names, output_names, sub)**
+.. function:: c_code_cleanup(node, name, input_names, output_names, sub)
 
-  - This must return C code that cleans up whatever c_code allocated
-    and that we must free.
+  This must return C code that cleans up whatever c_code allocated and
+  that we must free.
 
-  - *Default* The default behavior is to do nothing.
+  *Default* The default behavior is to do nothing.
 
-- **c_compile_args(), c_headers(), c_libraries(), c_support_code()**
+.. function:: c_compile_args()
+              c_headers()
+              c_libraries()
+              c_support_code()
 
-  - Allows you to specify headers, libraries, special g++ arguments or
-    helper functions/structs that the type needs. See :ref:`op`.
+  Allows you to specify headers, libraries, special g++ arguments or
+  helper functions/structs that the type needs. See :ref:`op`.
 
 
 The ``name`` argument is currently given an invalid value, so steer
