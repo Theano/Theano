@@ -31,13 +31,100 @@ password! We are using plain text http which is not secure.
 Theano code
 ===========
 
+*To get the source via mercurial,* you must have `mercurial
+<http://www.selenic.com/mercurial/wiki/>`__ installed.
+
 The code that makes up Theano is in a single repository available in
 `<http://pylearn.org/hg/theano>`__.
 
 As a developer, you should clone this repository like this:
 
-- `hg clone 'http://username:password@pylearn.org/hg/theano' theano`
+.. code-block:: bash
 
+    hg clone 'http://username:password@pylearn.org/hg/theano' theano
+
+You can also clone the code anonymously:
+
+.. code-block:: bash
+
+    hg clone http://pylearn.org/hg/theano Theano
+
+Setting up your environment
+===========================
+
+Some notes on the environment variable $PYTHONPATH.
+
+If theano lives in $DEV/theano, you should have $DEV in your
+$PYTHONPATH. You should '''not''' have $DEV/theano in your $PYTHONPATH.
+
+The subdirectory Theano/theano has to be in your PYTHONPATH. In order to do
+that, you can either create a symbolic link to Theano/theano in a directory
+already mentionned in your PYTHONPATH environment variable, or modify the
+PYTHONPATH so that it mentions Theano.
+
+To create a symbolic link:
+
+.. code-block:: bash
+
+    ln -s Theano/theano <someplace on your PYTHONPATH>/theano
+
+To modify the environment variable PYTHONPATH in bash, you may do this:
+
+.. code-block:: bash
+
+    export PYTHONPATH=<path to Theano's parent dir>/Theano:$PYTHONPATH
+
+In csh:
+
+.. code-block:: csh
+
+    setenv PYTHONPATH <path to Theano's parent dir>/Theano:$PYTHONPATH
+
+Olivier Breuleux explains:
+
+$PYTHONPATH should contain a ":"-separated list of paths, each of which
+contains one or several Python packages, in the order in which you would
+like Python to search for them. If a package has sub-packages of interest
+to you, do _not_ add them in the path: it is not portable, might shadow
+other packages or short-circuit important things in its __init__.
+
+I advise to never import theano's files from outside theano itself
+(and I think that is good advice for Python packages in general). Use
+"from theano import tensor" instead of "import tensor". ... $PYTHONPATH
+... should only contain paths to complete packages, so you don't get
+surprises if I add files that enter in conflict with other packages.
+
+When you install a package, only the package name can be imported
+directly. If you want a sub-package, you must import it from the main
+package. That's how it will work in 99.9% of installs because it is the
+default. Therefore, if you stray from this practice, your code will not
+be portable. Also, some ways to circumvent circular dependencies might
+make it so you have to import files in a certain order, which is best
+handled by the package's own __init__.py.
+
+More instructions
+=================
+
+Once you have completed these steps, you should run the tests like this:
+
+.. code-block:: bash
+
+    cd Theano
+    nosetests #execute all the tests
+
+All tests should pass. If some test fails on your machine, you are
+encouraged to tell us what went wrong on the ``theano-users@googlegroups.com`` mailing
+list.
+
+To update your library to the latest revision, change directory (``cd``)
+to your `Theano` folder and execute the following command:
+
+.. code-block:: bash
+
+    hg pull -u
+
+You may also download the latest source directly as a gzip'd tar file:
+`<http://pylearn.org/hg/theano/archive/tip.tar.gz>`__.
 
 Nightly test
 ============
@@ -48,20 +135,6 @@ Said developer may not read his email obsessively (especially on the weekend)
 so there might be some latency in the process.
 For more detail :ref:`see <metadocumentation_nightly_build>`.
 
-Setting up your environment
-===========================
-
-Some notes on the environment variable $PYTHONPATH.
-
-If theano lives in $DEV/theano, you should have $DEV in your $PYTHONPATH. You should '''not''' have $DEV/theano in your $PYTHONPATH.
-
-Olivier Breuleux explains:
-
-$PYTHONPATH should contain a ":"-separated list of paths, each of which contains one or several Python packages, in the order in which you would like Python to search for them. If a package has sub-packages of interest to you, do _not_ add them in the path: it is not portable, might shadow other packages or short-circuit important things in its __init__.
-
-I advise to never import theano's files from outside theano itself (and I think that is good advice for Python packages in general). Use "from theano import tensor" instead of "import tensor". ... $PYTHONPATH ... should only contain paths to complete packages, so you don't get surprises if I add files that enter in conflict with other packages.
-
-When you install a package, only the package name can be imported directly. If you want a sub-package, you must import it from the main package. That's how it will work in 99.9% of installs because it is the default. Therefore, if you stray from this practice, your code will not be portable. Also, some ways to circumvent circular dependencies might make it so you have to import files in a certain order, which is best handled by the package's own __init__.py. 
 
 
 .. _non-basic python: http://pylearn.org/theano/wiki/NonbasicPython

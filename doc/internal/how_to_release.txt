@@ -1,0 +1,49 @@
+.. _how_to_release:
+
+==================================================
+How to make a release
+==================================================
+
+Clone the code::
+
+    ssh projects@pylearn.org
+    hg clone hg/theano Theano-0.X
+
+Edit ``setup.py`` to contain the newest version number::
+
+    vi setup.py     # Edit the version "field"
+
+The homepage must link to the download URL, for PyPi to correctly get the
+code.
+Edit ``doc/index.txt`` to contain a link to what will be the download URL::
+
+    vi doc/index.txt    # Edit the link to downloads/Theano-0.X.tar.gz
+
+Tag the release. The syntax is something like the following::
+
+    cd Theano-0.X
+    hg tag
+
+Now, package the release and move it to the static theano directory::
+
+    rm -Rf .hg*
+    cd ..
+    tar cvf Theano-0.X.tar Theano-0.X
+    gzip -9 Theano-0.X.tar
+    rm -Rf Theano-0.X
+    mv Theano-0.X.tar.gz www/theano_static/downloads/
+    ~/repos/theano/.hg/refresh-epydoc.sh
+
+Also, copy the latest documentation to the static directory and the target
+directory::
+
+    cp www/theano/theano.pdf www/theano_static/downloads/Theano-0.X.pdf
+    cp www/theano/theano.pdf www/theano/downloads/Theano-0.X.pdf
+
+Finally, use setuptools to register and upload the release::
+
+    python setup.py register sdist bdist_egg upload
+
+I wrote the above without actually running it. This needs to be
+scrutinized when you are actually do a release.
+

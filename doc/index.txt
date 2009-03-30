@@ -8,6 +8,10 @@ efficiently evaluate mathematical expressions involving multi-dimensional
 arrays. Using Theano, it is not uncommon to see speed improvements of
 ten-fold over using pure NumPy.
 
+The latest release is version `0.1 <downloads/Theano-0.1.tar.gz>`.
+You can download the `PDF documentation <theano.pdf>`, rather than reading it
+online.
+
 Choose your own adventure:
 
 * You have no idea what Theano is and you read the :ref:`introduction

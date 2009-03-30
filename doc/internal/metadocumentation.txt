@@ -68,16 +68,32 @@ Let's say you are writing documentation, and want to see
 the `epydoc <http://epydoc.sourceforge.net/>`__ and `sphinx
 <http://sphinx.pocoo.org/>`__ output before you push it.
 
-The following technique uses Olivier's code to insert :api: links::
+The following technique uses Olivier's code to insert :api: links:
+
+.. code-block:: bash
 
     cd Theano/
     python ./doc/scripts/docgen.py
 
-If you don't want to rerun epydoc, do the following::
+If you don't want to rerun epydoc, do the following:
+
+.. code-block:: bash
 
     cd Theano/
     python ./doc/scripts/docgen.py --rst
 
+
+For more details:
+
+.. code-block:: bash
+
+   $ python doc/scripts/docgen.py --help
+   Usage: doc/scripts/docgen.py [OPTIONS]
+     -o <dir>: output the html files in the specified dir
+     --rst: only compile the doc (requires sphinx)
+     --nopdf: do not produce a PDF file from the doc, only HTML
+     --epydoc: only compile the api documentation (requires epydoc)
+     --help: this help
 
 
 How documentation is auto-built on push
@@ -88,12 +104,19 @@ When you push to the main repository, the following file is run::
    projects@pylearn.org:~/repos/theano/.hg/refresh-epydoc.sh
 
 It calls ``epydoc`` and ``sphinx`` on the code.
+Output is written to location ``TARGET_DIR=/home/projects/www/theano``.
+Note that this location is *removed* at each invocation, and a fresh version
+is copied in.
+
+Static files should be kept in
+``STATIC_DIR=/home/projects/www/theano_static``. For example, the
+tar.gz'ed releases are in ``STATIC_DIR``. After ``TARGET_DIR`` is
+recreated, the contents of ``STATIC_DIR`` are copied into ``TARGET_DIR``.
 
 *It would be nice to explain this stuff in a little more depth:*
 
  * Who calls refresh-epydoc.sh ?
  * What exactly does it do?
- * Where does the output go?
  * Can we get links about mercurial hooks?
  * What happens if two people push at the same time? Does documentation get clobbered?
 
@@ -116,7 +139,7 @@ The nightly build/tests process
 
 The user ``lisa`` runs a cronjob on the computer ``boltzmann``.
 This happens nightly.
-The cronjob executes the script ``~/nightly_build/do_nightly_build_theano``.
+The cronjob executes the script ``~/www/nightly_build/do_nightly_build_theano``.
 This script performs a an "hg pull -u" of theano (and pylearn too). 
 Then it executes something like
 
