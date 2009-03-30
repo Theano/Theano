@@ -2,12 +2,14 @@
 
 Here is a proposal on the interface to generate C code:
 
-== What will be passed to C ==
+What will be passed to C
+========================
 
 For each ResultBase, the C code gets a variable called storage_<name> which contains a PyObject* pointing to a 1-element list (a sort of cell). That is the "channel" via which C and Python can communicate data. Of course, the C code will not manipulate that directly. At every execution of the C function, the PyObject* inside the storage is extracted and given the name py_<name> (its reference count is handled automatically).
 
 
-== Extracting the data for use with C ==
+Extracting the data for use with C
+==================================
 
 In ResultBase, we have several methods to generate C code for particular purposes. They should return templated strings of C code (see below) but should not actually fill the template. The caller will fill it.
 
@@ -34,7 +36,8 @@ Important notes:
   * c_cleanup will ''always'' be called. If c_sync decides to relay some data to Python (thus ousting it from the op's scope), it should NULL any pointers that c_cleanup is not allowed to free.
 
 
-== Manipulating the data from C ==
+Manipulating the data from C
+============================
 
 The Op class has in turn several methods that generate C code. As for ResultBase, they should return templated strings of C code (see below) but should not actually fill the template. The caller will fill it.
 
@@ -60,7 +63,8 @@ Important notes:
   * It is not forbidden to just put the validate_update code in c_code. Some situations might require it, but it helps organization to segregate them.
 
 
-== Failure ==
+Failure
+=======
 
 Besides cleanup code, all code has access to the %(fail)s template. For three code blocks, the generated C code will pretty much look like this:
 
@@ -115,7 +119,8 @@ return failure;
 Furthermore, is not necessary to extract the output because we mean to overwrite it anyway. In that case, <extract output> will be a no-op, but of course we may still need to clean up or sync what <perform> will put in the declared outputs.
 
 
-== Example ResultBase ==
+Example ResultBase
+==================
 
 The following ResultBase represents a double (we only care about the C part).
 
@@ -135,7 +140,8 @@ class Double(ResultBase):
 }}}
 
 
-== Example Op ==
+Example Op
+==========
 
 The following ResultBase represents addition of two nonnegative doubles (we only care about the C part).
 
@@ -154,7 +160,8 @@ class Add(Op):
     return "" # nothing to do
 }}}
 
-== Generating a C function ==
+Generating a C function
+=======================
 
 For the example Op, the generated C function will typically look like this:
 
@@ -204,7 +211,8 @@ void add(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
 }
 }}}
 
-== Generating a C struct ==
+Generating a C struct
+=====================
 
 To accelerate processing a tad, a struct can be generated instead of a function. The struct will keep pointers to the storage where to fetch inputs and store outputs, but it will also store fields declared by outputs and temporaries' c_declare methods.
 

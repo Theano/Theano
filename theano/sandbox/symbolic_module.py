@@ -2,7 +2,7 @@ import copy, inspect
 import theano
 import theano.tensor as T
 
-import klass
+#import klass
 
 def symbolic(f):
     f.__is_symbolic = True

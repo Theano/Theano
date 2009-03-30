@@ -171,7 +171,6 @@ explained: :ref:`apply`, :ref:`constant`, :ref:`op`, :ref:`variable` and
 
 .. _apply:
 
------
 Apply
 -----
 
