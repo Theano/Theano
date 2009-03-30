@@ -108,13 +108,6 @@ automatic code generation, but that way is much, much slower.
 
     Omitting this variable defaults the mode to 'FAST_RUN'.
 
-- `THEANO_UNITTEST_SEED`:
-    An integer value specifying which seed should be used when
-    running unit tests. If this variable is not defined, the seed will default
-    to 666. Users wishing for non-deterministic behaviour can set this
-    variable to 'random'.
-
-
 Mac
 ---
 

@@ -184,7 +184,6 @@ boilerplate code.
 All we need to do to use this mechanism is to give a method called
 ``_instance_print_state`` to our Module class.
 
-.. literalinclude:: ../examples/module/mechanism1.py
 
 Any method called like ``_instance_XXX`` will cause the object
 obtained through a call to ``make`` to have a method called ``XXX``.
@@ -204,7 +203,6 @@ If a number of instance methods are going to be defined, and especially if you
 will want to inherit from the kind of class that gets instantiated by make,
 you might prefer to consider using the InstanceType mechanism.
 
-.. literalinclude:: ../examples/module/mechanism2.py
 
 Adding custom initialization
 ============================
@@ -221,7 +219,6 @@ can override the default with your own method, which has to be called
 Here is an example where we take width and height arguments to
 initialize a state with a matrix of zeros:
 
-.. literalinclude:: ../examples/module/accumulator.py
 
 
 Nesting Modules
@@ -231,7 +228,6 @@ Probably the most powerful feature of theano's modules is that one can be
 included as an attribute to another so that the storage of each is available
 to both.
 
-.. literalinclude:: ../examples/module/nested.py
 
 As you read through examples of Theano code, you will probably see many
 instances of Modules being nested in this way.

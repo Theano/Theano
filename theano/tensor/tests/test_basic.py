@@ -1305,6 +1305,9 @@ class test_matinv(unittest.TestCase):
         # and none of the dimensions are constrained to have length 1.
         # Note that TensorType's constructor does not actually allocate any memory.
         # TODO: Make TensorType syntax more explicit, and maybe give shape or number of dimensions.
+
+        unittest_tools.seed_rng()
+
         a, b = matrices('ab')
         ab = a*b
         # Here, as_tensor_variable actually uses the data allocated by numpy.
@@ -1334,7 +1337,7 @@ class test_matinv(unittest.TestCase):
         """Matrix reciprocal by gradient descent"""
         ssd0,ssd = self.mat_reciprocal(3)
 
-        numpy.random.seed(unittest_tools.fetch_seed(1))
+        unittest_tools.seed_rng()
         # hand-coded numpy implementation for verification
         x = numpy.random.rand(3,3)+0.1
         w = numpy.random.rand(3,3)
