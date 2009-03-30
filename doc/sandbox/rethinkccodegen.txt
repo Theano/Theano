@@ -1,0 +1,117 @@
+'''An open proposal.  This is still relevant. 20080904'''
+
+== Issues ==
+
+There are several issues with the current way C code is generated:
+  * Ops cannot declare their own persistent variables.
+  * Reliance on weave, but most of weave's features go unused.
+  * There could easily be conflicts between support code from different Ops/Results.
+    * It is currently impossible to specialize support code based on the self.
+  * Caching of the generated code for graphs is greatly suboptimal.
+
+== Structure ==
+
+Currently, the general structure of the generated C code is approximately as follows:
+
+{{{
+<imports>
+<weave type converters>
+<op/result support code>
+
+struct my_computation {
+  <input/output storage>
+  <persistent fields>
+  init(<input/output storage>) { <initialize persistent fields> }
+  cleanup { <clean up persistent fields> }
+  run { <run the computation> }
+};
+
+<runner for the struct>
+PyObject* instantiate(PyObject* args) {
+  <weave stuff>
+  <make up a CObject out of the runner and a my_computation instance>
+  <weave stuff>
+}
+<python exports for instantiate>
+}}}
+
+The module produced via that method then has to be used as such:
+{{{
+obj = module.instantiate(error_storage, input_storage, output_storage, orphan_storage)
+cutils.run_cthunk(obj)
+}}}
+
+We would like to get rid of weave dependencies, avoid name conflicts with the support code and have a nicer user interface for the produced module. The proposed new structure is as follows:
+
+{{{
+<imports>
+
+struct op1 {
+  <persistent variables>
+  <support code>
+  init() { <initialize persistent fields> }
+  cleanup { <clean up persistent fields> }
+  run(<inputs>) { <run the computation for op1> }
+};
+
+struct op2 { <same> };
+...
+struct opN { <ditto> };
+
+struct driver {
+  op1 o1; op2 o2; ... opN oN;
+  <input storage>
+  <output storage>
+  init(<storage>) { <initialize ops, storage> }
+  cleanup() { <free storage?> }
+  run() {
+    <extract inputs>
+    o1.run(input1, input2);
+    o2.run(o1.output1);
+    ...
+    oN.run(...);
+    <sync outputs>
+  }
+}
+
+PyObject* <name>(PyObject* inputs) {
+  <init driver, input/output storage>
+  <put inputs in input storage>
+  driver.run()
+  <free input storage>
+  <return output storage>
+}
+
+PyObject* <name>_driver(PyObject* storage) {
+  <init driver with storage>
+  <return driver>
+}
+
+<export <name> and <name>_driver>
+}}}
+
+Gains:
+  * support code can be put inside a struct and become private to the Op
+  * we can export several functions that can be used directly, eg {{{z = module.add(1, 2)}}}
+    * this won't do filtering like {{{Result.filter}}} so the usefulness is limited by that
+  * the sequence of operations might be clearer to read
+  * we can use more descriptive names in each Op struct representing its input names (if we can find them using the inspect module) without worrying about name conflicts
+
+Losses:
+  * maybe gcc can't optimize it as well?
+    * make functions static and inline as much as possible
+
+
+== Caching ==
+
+The current way of caching is from a hash of the generated code. That is inefficient because code has to be generated each time, which might be a costly process. Furthermore, usage of hashing in sets make it difficult to ensure a consistent ordering of Ops in graphs where several orderings are valid, so the generated C code is potentially different each time. Here is a proposal for a better way to compute the hash:
+  * Result_hash = Result version + Result desc
+  * Op_hash = Op version + Op desc + input/output hashes
+  * Env_hash = Env version + combination of the Op hashes and their traversal order wrt a consistent traversal method
+
+The version could be set explicitly via a {{{__version__}}} field or it could simply be equal to the file's last modification date. We could also have a {{{__nocache__}}} field indicating that code produced by the Op or Result cannot be cached.
+
+It should also be easier to bypass the cache (eg an option to CLinker to regenerate the code).
+
+
+
