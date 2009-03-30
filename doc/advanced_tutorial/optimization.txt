@@ -30,11 +30,12 @@ global. Optimizations that can be done with a narrow perspective are
 better defined as local optimizations. The majority of optimizations
 we want to define are local.
 
+.. optimizer:
 
 Global optimization
 -------------------
 
-A global optimization is an object which defines the following
+A global optimization (or optimizer) is an object which defines the following
 methods:
 
 - **apply(env)**
