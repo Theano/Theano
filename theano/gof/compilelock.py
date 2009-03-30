@@ -113,7 +113,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
     @type  verbosity: int
     """
     # Create base of lock directory if required.
-    base_lock = os.path.basename(tmp_dir)
+    base_lock = os.path.dirname(tmp_dir)
     if not os.path.isdir(base_lock):
         try:
             os.makedirs(base_lock)
@@ -121,7 +121,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
             # Someone else was probably trying to create it at the same time.
             # We wait two seconds just to make sure the following assert does
             # not fail on some NFS systems.
-            os.sleep(2)
+            time.sleep(2)
     assert os.path.isdir(base_lock)
 
     # Variable initialization.
