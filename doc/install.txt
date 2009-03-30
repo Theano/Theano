@@ -46,81 +46,34 @@ The following libraries and software are optional:
 Easy install
 ------------
 
-The following command will install the latest revision of Theano
+The following command will install the latest release of Theano
 on your system:
-
-.. TODO: Does this install the latest package version, or the latest Mercurial
-.. revision ?
 
 .. code-block:: bash
 
-    easy_install http://pylearn.org/hg/theano/archive/tip.tar.gz
-
-.. TODO: make sure this works
-
-.. TODO: change the command to install the latest *stable* version of
-.. Theano, when we figure out where to put it.
-
+    easy_install Theano
 
 Manual install
 --------------
 
-There are two ways to get the source: through mercurial (required for
-library developers) or through a Unix compressed archive.  There are
-no stable releases yet.
-
-*To get the source via mercurial,* you must have `mercurial <http://www.selenic.com/mercurial/wiki/>`__ installed.
-
-You can get the source like this:
+To install the latest release of Theano from source, visit the `downloads
+<http://pylearn.org/theano/downloads/>` page and download the release you
+want. Unpack the release, and type:
 
 .. code-block:: bash
 
-    hg clone http://pylearn.org/hg/theano Theano
+    python setup.py build
+    python setup.py test
+    python setup.py install
 
-The subdirectory Theano/theano has to be in your PYTHONPATH. In order to do
-that, you can either create a symbolic link to Theano/theano in a directory
-already mentionned in your PYTHONPATH environment variable, or modify the
-PYTHONPATH so that it mentions Theano.
 
-To create a symbolic link:
+Bleeding Edge
+--------------
 
-.. code-block:: bash
+Feeling lucky and want to run bleeding-edge code?
+Then check out the :ref:`dev_start_guide` guide.
 
-    ln -s Theano/theano <someplace on your PYTHONPATH>/theano
-
-To modify the environment variable PYTHONPATH in bash, you may do this:
-
-.. code-block:: bash
-
-    export PYTHONPATH=<path to Theano's parent dir>/Theano:$PYTHONPATH
-
-In csh:
-
-.. code-block:: csh
-
-    setenv PYTHONPATH <path to Theano's parent dir>/Theano:$PYTHONPATH
-
-Once you have completed these steps, you should run the tests like this:
-
-.. code-block:: bash
-
-    cd Theano
-    nosetests #execute all the tests
-
-All tests should pass. If some test fails on your machine, you are
-encouraged to tell us what went wrong on the ``theano-users@googlegroups.com`` mailing
-list.
-
-To update your library to the latest revision, change directory (``cd``)
-to your `Theano` folder and execute the following command:
-
-.. code-block:: bash
-
-    hg pull -u
-
-You may also download the latest source directly as a gzip'd tar file:
-`<http://pylearn.org/hg/theano/archive/tip.tar.gz>`__.
-
+I bet you also run with scissors.
 
 Configuring the environment
 ---------------------------
@@ -180,7 +133,7 @@ Mac
 - Set THEANO_BLAS_LDFLAGS to something which will link against said BLAS
   library.  E.g., `THEANO_BLAS_LDFLAGS='-lcblas -latlas -lgfortran'`.
 
-TODO: check if this is still valid
+This advice has not been tested recently, so please inform us of your results.
 
 
 
@@ -195,16 +148,12 @@ territory and inform us of your progress!
 Generating the documentation
 ----------------------------
 
-This should give you the gist of it:
-
-.. code-block:: bash
-
-   $ python doc/scripts/docgen.py --help
-   Usage: doc/scripts/docgen.py [OPTIONS]
-     -o <dir>: output the html files in the specified dir
-     --rst: only compile the doc (requires sphinx)
-     --nopdf: do not produce a PDF file from the doc, only HTML
-     --epydoc: only compile the api documentation (requires epydoc)
-     --help: this help
+Don't build the documentation, just find it on the web.
+You can read the HTML documentation `here
+<http://pylearn.org/theano/contents.html>`.
+You can download the PDF documentation `here
+<htt
+You can download the latest PDF documentation `here
+<http://pylearn.org/theano/theano.pdf`.
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1

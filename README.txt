@@ -1,4 +1,19 @@
+To install the package, use:
+
+    python setup.py build
+    python setup.py test
+    python setup.py install
+
+For the documentation, see the project website:
+
+    http://pylearn.org/theano/
+
+This may be easier than building the documentation yourself, because we have
+custom ReST hooks that are used.
+
+
 DIRECTORY LAYOUT
+
 Theano (current directory) is the distribution directory.
     * Theano/theano contains the package
     * Theano/theano has several submodules:
