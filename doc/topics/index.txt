@@ -14,6 +14,5 @@ Topics
     profilemode
     debugmode
     debug_faq
-    module_vs_op
     randomstreams
 

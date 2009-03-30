@@ -56,8 +56,9 @@ something that you're not seeing.
 I wrote a new optimization, but it's not getting used...
 ---------------------------------------------------------
 
-Remember that you have to register optimizations with the OptDb, for them to get
-used by the normal modes like FAST_COMPILE, FAST_RUN, and DEBUG_MODE.
+Remember that you have to register optimizations with the :ref:`optdb`
+for them to get used by the normal modes like FAST_COMPILE, FAST_RUN,
+and DEBUG_MODE.
 
 
 I wrote a new optimization, and it changed my results even though I'm pretty sure it is correct.
@@ -71,11 +72,13 @@ something that you're not seeing.
 The function I compiled is too slow, what's up?
 -----------------------------------------------
 
-First, make sure you're running in FAST_RUN mode, by passing ``mode='FAST_RUN'``
-to ``theano.function`` or ``theano.make``.
+First, make sure you're running in FAST_RUN mode, by passing
+``mode='FAST_RUN'`` to ``theano.function`` or ``theano.make``. Some
+operations have excruciatingly slow Python implementations and that
+can negatively effect the performance of FAST_COMPILE.
 
-Second, try the theano :ref:`profilemode`.  This will tell you which Apply nodes,
-and which Ops are eating up your CPU cycles.
+Second, try the theano :ref:`profilemode`.  This will tell you which
+Apply nodes, and which Ops are eating up your CPU cycles.
 
 
 .. _faq_wraplinker:
