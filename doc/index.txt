@@ -9,11 +9,12 @@ arrays. Using Theano, it is not uncommon to see speed improvements of
 ten-fold over using pure NumPy.
 
 The latest release is version `0.1
-<http://pylearn.org/theano/downloads/Theano-0.1.tar.gz>`.
+<http://pylearn.org/theano/downloads/Theano-0.1.tar.gz>`_.
 You can download the latest `PDF documentation
-<http://pylearn.org/theano/theano.pdf>`, rather than reading it online.
+<http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
+You can go to the :ref:`Table of Contents <contents>`.
 
-Choose your own adventure:
+Or, you can choose your own adventure...
 
 * You have no idea what Theano is and you read the :ref:`introduction
   <introduction>`.

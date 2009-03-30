@@ -149,9 +149,9 @@ Generating the documentation
 ----------------------------
 
 You can read the latest HTML documentation `here
-<http://pylearn.org/theano/contents.html>`.
+<http://pylearn.org/theano/contents.html>`_.
 You can download the latest PDF documentation `here
-<http://pylearn.org/theano/theano.pdf`.
+<http://pylearn.org/theano/theano.pdf`_.
 
 We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.
