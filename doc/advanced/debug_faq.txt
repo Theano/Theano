@@ -108,7 +108,7 @@ print something out if a certain kind of Op was used, at a certain program
 position, or if a particular value shows up in one of the inputs or outputs.
 
 This can be a really powerful debugging tool.  Read about more things you can
-do with :api:`WrapLinkerMany`.
+do with :api:`link.WrapLinkerMany`.
 
 Note well the call to ``fn`` inside the call to ``print_eval``; without it,
 the graph wouldn't get computed at all!
