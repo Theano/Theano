@@ -132,6 +132,30 @@ machinery builds a DAG (Directed Acyclic Graph) representing the
 computation, a graph that theano can compile and optimize.
 
 
+Automatic wrapping
+------------------
+
+All nodes in the graph must be instances of ``Apply`` or ``Result``, but
+``<Op subclass>.make_node()`` typically wraps constants to satisfy those
+constraints. For example, the :ref:`tensor.add` op instance is written
+so that:
+
+.. code-block:: python
+
+    e = scalar('x') + 1
+
+builds the following graph:
+
+.. code-block:: python
+
+    node = Apply(op = add,
+                 inputs = [Result(type = float64_scalar, name = 'x'),
+                           Constant(type = int64_scalar, data = 1)],
+                 outputs = [Result(type = float64_scalar)])
+    e = node.outputs[0]
+
+
+
 Graph Structures
 ================
 

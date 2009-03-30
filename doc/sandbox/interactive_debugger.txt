@@ -1,0 +1,54 @@
+'''Seed of discussion for what an interactive debugging tool might look like. 2009.03.27.'''
+
+== Interactive debugger ( #352 ) ==
+
+The interactive debugger should allow the user to go step by step in a graph to debug it. It should allow setting breakpoints on arbitrary Ops or subgraphs. If we can group ops by the user's function that defined them, we could have a logical grouping of the graph into subgraphs.
+
+The debugger should save the inputs at each step so the user loses no info through inplace operations. Ideally, the debugger should be a normal python shell enrished with commands to control the flow and all the inputs should be made available so the user can use numpy interactively on them.
+
+Command wishlist
+ * py_perform (perform the current operation using the python implementation)
+ * c_perform (perform the current operation using the C implementation)
+ * perform (use the Linker's preference)
+ * get_inputs (get the inputs of the current op)
+ * set_inputs (set the inputs of the current op)
+ * get_outputs (get the outputs of the current op)
+ * set_outputs (set the outputs of the current op (bypasses its perform))
+ * next (perform and go to the next breakpoint)
+ * breakpoint (set a breakpoint on the current Op or subgraph)
+ * step (perform and go to the next Op or subgraph)
+ * step_in (go to the first Op inside the current subgraph)
+ * step_out (exit the subgraph containing this Op)
+ * Of course, normal python shell functionality!
+ * The global context where the debugger was called (so the user can define his own helper functions, etc.)
+
+A good, simple way to do it would be to have those commands as methods of a structure that would be returned by a DebugLinker. This would allow an interactive session like the following:
+
+{{{
+>>> a, b, c = Tensor(), Tensor(), Tensor()
+>>> d = b * c
+>>> e = a + d
+>>> debug = DebugLinker(Env([a, b, c], [e])).make_function()
+>>> debug.set_breakpoint(d)
+>>> debug.debug(10, 20, 30) # a, b, c = 10, 20, 30
+Now at: Mul(b, c)
+Context: d = b * c
+>>> debug.get_inputs() # we are at the node d = b * c
+[20, 30]
+>>> debug.get_outputs()
+[None]
+>>> debug.py_perform()
+>>> debug.get_outputs()
+[600]
+>>> debug.step()
+Now at: Add(a, Mul)
+Context: e = a + d
+>>> debug.get_inputs()
+[30, 600]
+>>> debug.step()
+Finished.
+[630]
+>>>
+}}}
+
+
