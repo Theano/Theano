@@ -219,10 +219,18 @@ class Unlocker():
         jobs running in parallel to unlock the same directory at the same time
         (e.g. when reaching their timeout limit).
         """
+        # If any error occurs, we assume this is because someone else tried to
+        # unlock this directory at the same time.
+        # Note that it is important not to have both remove statements within
+        # the same try/except block. The reason is that while the attempt to
+        # remove the file may fail (e.g. because for some reason this file does
+        # not exist), we still want to try and remove the directory.
         try:
             self.os.remove(self.os.path.join(self.tmp_dir, 'lock'))
+        except:
+            pass
+        try:
             self.os.rmdir(self.tmp_dir)
         except:
-            # Assume someone else tried to unlock this directory at the same time.
             pass
 
