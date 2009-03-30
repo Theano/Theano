@@ -148,12 +148,21 @@ territory and inform us of your progress!
 Generating the documentation
 ----------------------------
 
-Don't build the documentation, just find it on the web.
-You can read the HTML documentation `here
+You can read the latest HTML documentation `here
 <http://pylearn.org/theano/contents.html>`.
-You can download the PDF documentation `here
-<htt
 You can download the latest PDF documentation `here
 <http://pylearn.org/theano/theano.pdf`.
+
+We recommend you look at the documentation on the website, since it
+will be more current than the documentation included with the package.
+
+If you really wish to build the documentation yourself, you will need
+epydoc and sphinx, as described above. Issue the following command::
+
+    python ./doc/scripts/docgen.py
+
+Documentation is built into ``html/``.
+The PDF of the documentation is ``html/theano.pdf``.
+
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1

@@ -13,6 +13,7 @@ speed improvements over basic numpy by using theano.
 
 With a little work, Theano could also implement more sophisticated
 optimizations:
+
  * automatic ordering of matrix multiplications 
  * profile-based memory layout decisions (e.g. row-major vs. col-major)
  * gcc intrinsics to use MMX, SSE2 parallelism for faster element-wise arithmetic

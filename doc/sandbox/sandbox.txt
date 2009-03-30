@@ -127,7 +127,8 @@ Guillaume can you make sure to hit these points:
 
         nosetests has ``failUnlessRaises``
 
-    * Convention is that all test files must start with test_, not _test_, so rename all that use the old convention?
+    * Convention is that all test files must start with ``test_``, not
+    ``_test_``, so rename all that use the old convention?
 
 =======================================================
 How to use the PrintOp

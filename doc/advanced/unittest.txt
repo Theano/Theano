@@ -183,7 +183,7 @@ might not be such a good idea.
 
 Here is a list of useful functions, as defined by TestCase: 
 
-* checking the state of boolean variables: assert_, failUnless, assertTrue, failIf, assertFalse
+* checking the state of boolean variables: assert, failUnless, assertTrue, failIf, assertFalse
 * checking for (in)equality constraints: assertEqual, failUnlessEqual, assertNotEqual, failIfEqual
 * checking for (in)equality constraints up to a given precision (very useful in theano): assertAlmostEqual, failUnlessAlmostEqual, assertNotAlmostEqual, failIfAlmostEqual
 

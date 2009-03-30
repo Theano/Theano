@@ -17,22 +17,20 @@ them using a Python implementation and then we will add a C
 implementation.
 
 This tutorial should be of most use to users who want to extend Theano
-with custom types and operations related to these types. Users who
-want to extend Theano with new operations on tensors should check
-:ref:`tensoroptutorial`, but it is a good idea to read this tutorial
-as well since it probably provides better grounding for the many
-concepts at work here.
+with custom types and operations related to these types.
+It is a good idea to read this tutorial as well since it provides
+grounding for fundamental Theano concepts.
 
 
 .. toctree::
 
    theano_vs_python
    graphstructures
-   ex1/type
-   ex1/op
+   type
+   op
    inplace
-   ex1/ctype
-   ex1/cop
+   ctype
+   cop
    optimization
    tips
 

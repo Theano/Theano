@@ -137,7 +137,7 @@ Automatic wrapping
 
 All nodes in the graph must be instances of ``Apply`` or ``Result``, but
 ``<Op subclass>.make_node()`` typically wraps constants to satisfy those
-constraints. For example, the :ref:`tensor.add` op instance is written
+constraints. For example, the :api:`tensor.add` op instance is written
 so that:
 
 .. code-block:: python

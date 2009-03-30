@@ -79,7 +79,8 @@ An Op (:api:`gof.op.Op`) is any object which defines the following methods:
     A, are presented again, then outputs equal to B must be returned again.
   
   - You must be careful about aliasing outputs to inputs, and making
-    modifications to any of the inputs. See `Views and inplace operations`_
+    modifications to any of the inputs. See `Views and inplace operations
+    <views_and_inplace>`_
     before writing a ``perform`` implementation that does either of these
     things.
 

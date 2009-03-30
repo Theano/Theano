@@ -122,7 +122,7 @@ array(10.0)
 Advanced: Sharing Storage Between Functions
 -------------------------------------------
 
-``value`` can be a :api:`theano.gof.Container` as well as a literal.
+``value`` can be a :api:`theano.gof.link.Container` as well as a literal.
 This permits linking a value of a Variable in one function to the value of a Variable in another function.
 By using a ``Container`` as a value we can implement shared variables between functions.
 
@@ -164,7 +164,7 @@ The following restrictions apply to the inputs to ``theano.function``:
   exception?**]
 
 - Two ``In`` instances may not name the same Variable. I.e. you cannot
-give the same parameter multiple times.
+  give the same parameter multiple times.
 
 If no name is specified explicitly for an In instance, then its name
 will be taken from the Variable's name. Note that this feature can cause

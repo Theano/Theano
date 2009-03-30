@@ -4,12 +4,20 @@ To install the package, use:
     python setup.py test
     python setup.py install
 
+
 For the documentation, see the project website:
 
     http://pylearn.org/theano/
 
-This may be easier than building the documentation yourself, because we have
-custom ReST hooks that are used.
+We recommend you look at the documentation on the website, since it
+will be more current than the documentation included with the package.
+If you really wish to build the documentation yourself, you will need
+epydoc and sphinx. Issue the following command:
+
+    python ./doc/scripts/docgen.py
+
+Documentation is built into html/
+The PDF of the documentation is html/theano.pdf
 
 
 DIRECTORY LAYOUT
