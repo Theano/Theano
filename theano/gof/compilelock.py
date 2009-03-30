@@ -10,14 +10,25 @@ def get_lock():
     if not hasattr(get_lock, 'n_lock'):
         # Initialization.
         get_lock.n_lock = 0
-        get_lock.lock_dir = os.path.join(compiledir.get_compiledir(), 'lock_dir')
         if not hasattr(get_lock, 'lock_is_enabled'):
             # Enable lock by default.
             get_lock.lock_is_enabled = True
+        get_lock.lock_dir = os.path.join(compiledir.get_compiledir(),
+                                         'lock_dir')
         get_lock.unlocker = Unlocker(get_lock.lock_dir)
+    else:
+        lock_dir = os.path.join(compiledir.get_compiledir(), 'lock_dir')
+        if lock_dir != get_lock.lock_dir:
+            # Compilation directory has changed.
+            # First ensure all old locks were released.
+            assert get_lock.n_lock == 0
+            # Update members for new compilation directory.
+            get_lock.lock_dir = lock_dir
+            get_lock.unlocker = Unlocker(get_lock.lock_dir)
+
     # Only really try to acquire the lock if we do not have it already.
     if get_lock.lock_is_enabled and get_lock.n_lock == 0:
-        lock(get_lock.lock_dir, timeout = 60, verbosity = 1)
+        lock(get_lock.lock_dir, timeout = 120, verbosity = 1)
     get_lock.n_lock += 1
 
 def release_lock():
@@ -105,7 +116,8 @@ def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
                 except:
                     read_owner = 'failure'
                 if last_owner == read_owner:
-                    if timeout is not None and time.time() - time_start >= timeout:
+                    if (timeout is not None and
+                            time.time() - time_start >= timeout):
                         # Timeout exceeded.
                         get_lock.unlocker.unlock()
                         continue
@@ -146,7 +158,6 @@ def lock(tmp_dir, timeout=60, min_wait=5, max_wait=10, verbosity=0):
 
         except:
             # If something wrong happened, we try again.
-            raise
             continue
     
 class Unlocker():
