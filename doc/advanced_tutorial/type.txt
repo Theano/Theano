@@ -22,69 +22,69 @@ i.e.  the same default argument names and values. If you wish to add
 extra arguments to any of these methods, these extra arguments must have
 default values.
 
-- **filter(value, strict=False)**
+.. function:: filter(value, strict=False)
 
-  - This casts a value to match the Type and returns the
-    casted value. If ``value`` is incompatible with the Type,
-    the method must raise an exception. If ``strict`` is True, ``filter`` must return a
-    reference to ``value`` (i.e. casting prohibited)
+  This casts a value to match the Type and returns the
+  casted value. If ``value`` is incompatible with the Type,
+  the method must raise an exception. If ``strict`` is True, ``filter`` must return a
+  reference to ``value`` (i.e. casting prohibited)
 
-    We need to define ``filter`` with two arguments. The second argument
-    must be called ``strict`` (Theano often calls it by keyword) and must
-    have a default value of ``False``.
+  We need to define ``filter`` with two arguments. The second argument
+  must be called ``strict`` (Theano often calls it by keyword) and must
+  have a default value of ``False``.
 
-- **is_valid_value(value)**
+.. function:: is_valid_value(value)
 
-  - Returns True iff the value is compatible with the Type. If
-    ``filter(value, strict = True)`` does not raise an exception, the
-    value is compatible with the Type.
+  Returns True iff the value is compatible with the Type. If
+  ``filter(value, strict = True)`` does not raise an exception, the
+  value is compatible with the Type.
 
-  - *Default*: True iff ``filter(value, strict = True)`` does not raise an
-    exception.
+  *Default*: True iff ``filter(value, strict = True)`` does not raise
+  an exception.
 
-- **values_eq(a, b)**
+.. function:: values_eq(a, b)
 
-  - Returns True iff ``a`` and ``b`` are equal.
+  Returns True iff ``a`` and ``b`` are equal.
 
-  - *Default*: ``a == b``
+  *Default*: ``a == b``
 
-- **values_eq_approx(a, b)**
+.. function:: values_eq_approx(a, b)
 
-  - Returns True iff ``a`` and ``b``
-    are approximately equal, for a definition of "approximately" which
-    varies from Type to Type.
+  Returns True iff ``a`` and ``b`` are approximately equal, for a
+  definition of "approximately" which varies from Type to Type.
 
-  - *Default*: ``values_eq(a, b)``
+  *Default*: ``values_eq(a, b)``
 
-- **make_variable(name=None)**
+.. function:: make_variable(name=None)
 
-  - Makes a :term:`Variable` of this Type with the specified name, if
-    ``name is not None``. If ``name is ``None``, then the Variable does
-    not have a name. The Variable will have its ``type`` field set to the
-    Type object.
+  Makes a :term:`Variable` of this Type with the specified name, if
+  ``name is not None``. If ``name is ``None``, then the Variable does
+  not have a name. The Variable will have its ``type`` field set to
+  the Type object.
 
-  - *Default*: there is a generic definition of this in Type. The Variable's
-    ``type`` will be the object that defines this method (in other words,
-    ``self``).
+  *Default*: there is a generic definition of this in Type. The
+  Variable's ``type`` will be the object that defines this method (in
+  other words, ``self``).
 
-- **__call__(name=None)**:
+.. function:: __call__(name=None)
 
-  - Syntactic shortcut to ``make_variable``.
+  Syntactic shortcut to ``make_variable``.
 
-  - *Default*: ``make_variable``
+  *Default*: ``make_variable``
 
-- **__eq__(self, other)**:
+.. function:: __eq__(other)
 
-  - Used to compare Type instances themselves
+  Used to compare Type instances themselves
 
-  - *Default*: ``object.__eq__``
+  *Default*: ``object.__eq__``
 
-- **__hash__(self)**:
+.. function:: __hash__()
 
-  - Types should not be mutable, so it should be Ok to define a hash function.
-    Typically this function should hash all of the terms involved in ``__eq__``.
+  Types should not be mutable, so it should be Ok to define a hash
+  function.  Typically this function should hash all of the terms
+  involved in ``__eq__``.
 
-  - *Default*: ``id(self)``
+  *Default*: ``id(self)``
 
 For each method, the *default* is what ``Type`` defines
 for you. So, if you create an instance of ``Type`` or an

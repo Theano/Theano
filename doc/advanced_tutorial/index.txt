@@ -24,7 +24,7 @@ grounding for fundamental Theano concepts.
 
 .. toctree::
 
-   theano_vs_python
+   theano_vs_c
    graphstructures
    type
    op

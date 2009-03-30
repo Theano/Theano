@@ -46,38 +46,41 @@ be found in the documentation for :ref:`type`. Here, we'll focus on
 the most important ones:
 
 
-- **c_declare(name, sub)**
+.. function:: c_declare(name, sub)
 
-  - This must return C code which declares variables. These variables
-    will be available to operations defined in C. You may also write
-    typedefs.
+  This must return C code which declares variables. These variables
+  will be available to operations defined in C. You may also write
+  typedefs.
 
-- **c_init(name, sub)**
+.. function:: c_init(name, sub)
 
-  - This must return C code which initializes the variables declared
-    in c_declare. Either this or c_extract will be called.
+  This must return C code which initializes the variables declared in
+  c_declare. Either this or c_extract will be called.
 
-- **c_extract(name, sub)**
+.. function:: c_extract(name, sub)
 
-  - This must return C code which takes a reference to a Python object
-    and initializes the variables declared in c_declare to match the
-    Python object's data. Either this or c_init will be called.
+  This must return C code which takes a reference to a Python object
+  and initializes the variables declared in c_declare to match the
+  Python object's data. Either this or c_init will be called.
 
-- **c_sync(name, sub)**
+.. function:: c_sync(name, sub)
 
-  - When the computations are done, transfer the variables from the C
-    structure we put them in to the destination Python object. This
-    will only be called for the outputs.
+  When the computations are done, transfer the variables from the C
+  structure we put them in to the destination Python object. This will
+  only be called for the outputs.
 
-- **c_cleanup(name, sub)**
+.. function:: c_cleanup(name, sub)
 
-  - When we are done using the data, clean up whatever we allocated
-    and decrease the appropriate reference counts.
+  When we are done using the data, clean up whatever we allocated and
+  decrease the appropriate reference counts.
 
-- **c_compile_args(), c_headers(), c_libraries(), c_support_code()**
+.. function:: c_compile_args()
+              c_headers()
+              c_libraries()
+              c_support_code()
 
-  - Allows you to specify headers, libraries, special g++ arguments or
-    helper functions/structs that the type needs. See :ref:`type`.
+  Allows you to specify headers, libraries, special g++ arguments or
+  helper functions/structs that the type needs. See :ref:`type`.
 
 
 Each of these functions take two arguments, ``name`` and ``sub`` which

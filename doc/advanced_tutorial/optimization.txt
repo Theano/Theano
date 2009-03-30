@@ -38,24 +38,24 @@ Global optimization
 A global optimization (or optimizer) is an object which defines the following
 methods:
 
-- **apply(env)**
+.. function:: apply(env)
 
-  - This method takes an Env object which contains the computation
-    graph and does modifications in line with what the optimization is
-    meant to do. This is of the main method of the optimizer.
+  This method takes an Env object which contains the computation graph
+  and does modifications in line with what the optimization is meant
+  to do. This is of the main method of the optimizer.
 
-- **add_requirements(env)**
+.. function:: add_requirements(env)
 
-  - This method takes an Env object and adds :ref:`features
-    <envfeature>` to it. These features are "plugins" that are needed
-    for the apply method to do its job properly.
+  This method takes an Env object and adds :ref:`features
+  <envfeature>` to it. These features are "plugins" that are needed
+  for the apply method to do its job properly.
 
-- **optimize(env)**
+.. function:: optimize(env)
 
-  - This is the interface function called by Theano.
+  This is the interface function called by Theano.
 
-  - *Default:* this is defined by Optimizer as ``add_requirement(env);
-    apply(env)``.
+  *Default:* this is defined by Optimizer as ``add_requirement(env);
+  apply(env)``.
 
 See the section about :ref:`env` to understand how to define these
 methods.
@@ -66,14 +66,14 @@ Local optimization
 
 A local optimization is an object which defines the following methods:
 
-- **transform(node)**
+.. function:: transform(node)
 
-  - This method takes an :ref:`apply` node and returns either False to
-    signify that no changes are to be done or a list of Variables which
-    matches the length of the node's ``outputs`` list. When the
-    LocalOptimizer is applied by a Navigator, the outputs of the node
-    passed as argument to the LocalOptimizer will be replaced by the
-    list returned.
+  This method takes an :ref:`apply` node and returns either False to
+  signify that no changes are to be done or a list of Variables which
+  matches the length of the node's ``outputs`` list. When the
+  LocalOptimizer is applied by a Navigator, the outputs of the node
+  passed as argument to the LocalOptimizer will be replaced by the
+  list returned.
 
 
 
@@ -380,21 +380,21 @@ A Query is built by the following call:
 
 theano.gof.Query(include, require = None, exclude = None, subquery = None)
 
-  * **include**: a set of tags (a tag being a string) such that every
-    optimization obtained through this Query must have **one** of the
-    tags listed. This field is required and basically acts as a
-    starting point for the search.
+**include**: a set of tags (a tag being a string) such that every
+optimization obtained through this Query must have **one** of the tags
+listed. This field is required and basically acts as a starting point
+for the search.
 
-  * **require**: a set of tags such that every optimization obtained
-    through this Query must have **all** of these tags.
+**require**: a set of tags such that every optimization obtained
+through this Query must have **all** of these tags.
 
-  * **exclude**: a set of tags such that every optimization obtained
-    through this Query must have **none** of these tags.
+**exclude**: a set of tags such that every optimization obtained
+through this Query must have **none** of these tags.
 
-  * **subquery**: optdb can contain sub-databases; subquery is a
-    dictionary mapping the name of a sub-database to a special Query.
-    If no subquery is given for a sub-database, the original Query
-    will be used again.
+**subquery**: optdb can contain sub-databases; subquery is a
+dictionary mapping the name of a sub-database to a special Query.  If
+no subquery is given for a sub-database, the original Query will be
+used again.
 
 Furthermore, a Query object includes three methods, ``including``,
 ``requiring`` and ``excluding`` which each produce a new Query object
@@ -454,8 +454,8 @@ Theano defines two EquilibriumDBs where you can put local
 optimizations:
 
 
-* **canonicalize**: this contains optimizations that aim to *simplify*
-  the graph:
+**canonicalize**: this contains optimizations that aim to *simplify*
+the graph:
 
   * Replace rare or esoterical operations with their equivalents using
     elementary operations.
@@ -467,8 +467,8 @@ optimizations:
   * Fold constants (Constant(2)*Constant(2) becomes Constant(4))
 
 
-* **specialize**: this contains optimizations that aim to *specialize*
-  the graph:
+**specialize**: this contains optimizations that aim to *specialize*
+the graph:
 
   * Replace a combination of operations with a special operation that
     does the same thing (but better).

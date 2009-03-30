@@ -41,6 +41,7 @@ In the example above, there is no way to guarantee that a future call to say,
 
 There following are DebugMode exceptions you might encounter:
 
+
 BadCLinkerOutput
 ----------------
 
@@ -116,6 +117,7 @@ performed, but the plan is that it will be.  (see ticket #320)
 
 For detailed documentation see :api:`FloatError`.
 
+
 InvalidValueError
 -----------------
 
@@ -125,6 +127,7 @@ variable.  Like if it returned a complex-valued ndarray for a ``dscalar``
 Type.
 
 For detailed documentation see :api:`InvalidValueError`.
+
 
 DebugModeError
 --------------

@@ -1,15 +1,15 @@
 
-.. _theano_vs_python:
+.. _theano_vs_c:
 
-======================
-Theano vs. Python
-======================
+============
+Theano vs. C
+============
 
 We describe some of the patterns in Theano, and present their closest
-analogue in Python:
+analogue in a statically typed language such as C:
 
 =============== ===========================================================
-Theano          Python
+Theano          C
 =============== ===========================================================
 Apply           function application / function call
 Variable          function data / variable
@@ -17,3 +17,25 @@ Op              operations carried out in computation / function definition
 Type            data types
 Module          ??? class?
 =============== ===========================================================
+
+For example:
+
+.. code-block:: c
+
+   int main(int a) {
+       int b = 3;
+       int c = f(b)
+       return g(a, c);
+   }
+
+
+Based on this code snippet, we can relate f and g to Ops, a, b and c
+to Variables, g(a, c) and f(b) (taken as meaning the action of
+computing f or g on their respective inputs) to Applies. Lastly, int
+could be interpreted as the Theano Type of the Variables a and b.
+
+
+
+
+
+

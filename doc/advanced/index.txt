@@ -1,26 +1,18 @@
 
 .. _advanced:
 
-===============
-Advanced Topics
-===============
+====================================
+Advanced Topics (under construction)
+====================================
 
 .. toctree::
     :maxdepth: 2
    
-    pipeline
-    unittest
-    profilemode
-    debug_faq
-    debugmode
-    module_vs_op
-    randomstreams
+    env
+    features
+    optimization
+    compilation
+    ccodegen
+    function
+    module
 
-
-.. env
-.. features
-.. optimization
-.. compilation
-.. ccodegen
-.. function
-.. module

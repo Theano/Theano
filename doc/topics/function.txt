@@ -1,9 +1,9 @@
 
-.. _function:
+.. _usingfunction:
 
-===============
-theano.function
-===============
+=====================
+Using theano.function
+=====================
 
 
 This page is about ``theano.function``, the interface for compiling graphs into callable objects.
@@ -31,47 +31,35 @@ Inputs
 The ``inputs`` argument to ``theano.function`` is a list, containing the ``Variable`` instances for which values will be specified at the time of the function call.  But inputs can be more than just Variables.  
 ``In`` instances let us attach properties to ``Variables`` to tell function more about how to use them.
 
-**In(variable, name=None, value=None, update=None, mutable=False)** returns an ``In`` instance:
 
-  - ``variable``: a Variable instance. 
+.. class:: In
 
-    This will be assigned a value before running the function,
-    not computed from its owner.
+   .. function:: __init__(variable, name=None, value=None, update=None, mutable=False)
+
+      ``variable``: a Variable instance. This will be assigned a value
+      before running the function, not computed from its owner.
   
-  - ``name``: Any type. (If autoname_input=True, defaults to variable.name). 
-
-    If name is a valid Python identifier, this input can be set by
-    ``kwarg``, and its value can be accessed by ``self.<name>``.
-
-    Default: ``None``
+      ``name``: Any type. (If autoname_input=True, defaults to
+      variable.name). If name is a valid Python identifier, this input
+      can be set by ``kwarg``, and its value can be accessed by
+      ``self.<name>``. The default value is ``None``
      
-  - ``value``: literal or Container
+      ``value``: literal or Container. This is the default value of
+      the Input. The default value of this parameter is ``None``
 
-    This is the default value of the Input.
+      ``update``: Variable instance. This expression Variable will
+      replace ``value`` after each function call. The default value is
+      ``None``, indicating that no update is to be done.
 
-    Default: ``None``
+      ``mutable``: Bool (requires value). If ``True``, permit the
+      compiled function to modify the python object being used as the
+      default value. The default value is ``False``.
 
-  - ``update``: Variable instance
+      ``autoname``: Bool. If set to ``True``, if ``name`` is None and
+      the Variable has a name, it will be taken as the input's
+      name. If autoname is set to ``False``, the name is the exact
+      value passed as the name parameter (possibly ``None``).
 
-    This expression Variable will replace ``value`` after each function call.
-
-    Default: ``None``
-
-  - ``mutable``: Bool (requires value)
-
-    If ``True``, permit the compiled function to modify the python object being used as the default value.
-
-    Default: ``False``
-
-  - ``autoname``: Bool
-
-    ``True``: if ``name`` is None and the Variable has a name, it will be taken
-    as the input's name.
-
-    ``False``: the name is the exact value passed as the name parameter
-    (possibly ``None``).
-
-    Default: ???
 
 Value: initial and default values
 ---------------------------------
