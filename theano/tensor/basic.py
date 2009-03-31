@@ -252,7 +252,7 @@ class TensorType(Type):
 
     def __hash__(self):
         """Hash equal for same kinds of TensorType"""
-        return hash(self.dtype) ^ hash(self.broadcastable)
+        return hash(type(self)) ^ hash(self.dtype) ^ hash(self.broadcastable)
 
     ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
     """Number of dimensions
