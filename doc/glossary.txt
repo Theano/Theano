@@ -91,7 +91,7 @@ Glossary of terminology
         WRITEME
 
     type
-        WRITEME
+        See :ref:`tensortypes`
 
     Variable 
         A :ref:`variable` is the main data structure you work with when

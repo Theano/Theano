@@ -164,7 +164,7 @@ you to specify properties of your inputs with greater detail. Here we
 give a default value of 1 for ``y`` by creating an In instance with
 its value field set to 1.
 
-Inputs with default values should (must?) follow inputs without default
+Inputs with default values should follow inputs without default
 values.  There can be multiple inputs with default values. Defaults can
 be set positionally or by name, as in standard Python:
 

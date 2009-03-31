@@ -28,7 +28,7 @@ Predefined types
 ----------------
 
 Predefined types are
-located in the ``theano.tensor`` package. The name of the types follow
+located in the :api:`theano.tensor` package. The name of the types follow
 a recipe:
 
 ``<dtype><dimensionality>``
@@ -59,12 +59,14 @@ matrix [m, n] No                                         No
 ====== ====== ========================================== =============================================
 
 So, if you want a row of 32-bit floats, it is available
-as ``theano.tensor.frow``. If you want a matrix of unsigned
-32-bit integers it is available as ``theano.tensor.imatrix``.
+as :api:`theano.tensor.frow <theano.tensor.basic.frow>`.
+If you want a matrix of unsigned 32-bit integers it is available as
+:api:`theano.tensor.imatrix <theano.tensor.basic.imatrix>`.
 
 Each of the types described above can be constructed by two methods:
-a singular version (e.g., ``dmatrix``) and a plural version
-(``dmatrices``).  When called, the singular version takes a single
+a singular version (e.g., :api:`dmatrix <theano.tensor.basic.dmatrix>`)
+and a plural version (:api:`dmatrices <theano.tensor.dmatrices>`).
+When called, the singular version takes a single
 argument which is the name of the :term:`Variable` we want to make and it
 makes a single Variable of that type. The plural version can either take
 an integer or several strings. If an integer is provided, the method
@@ -89,10 +91,11 @@ Custom tensor types
 
 If you wish to use a type of tensor which is not already available here
 (for example, a 3D tensor) you can build an appropriate type using
-``theano.tensor.TensorType``. The first argument you pass is the ``dtype``
-and the second is the ``broadcastable pattern``.
+:api:`theano.tensor.TensorType <theano.tensor.basic.TensorType>`.
+The first argument you pass is the `dtype` and the second is the
+`broadcastable pattern`.
 
-Where ``dtype`` is one of:
+Where `dtype` is one of:
 
 =========== ================ =================
 dtype       domain           bits
@@ -113,9 +116,10 @@ complex128  complex          128 (two float64)
 
 .. note::
 
-   Even though ``theano.tensor`` does not define any type
+   Even though :api:`theano.tensor` does not define any type
    using ``complex`` dtypes (``complex64`` or ``complex128``),
-   you can define them explicitly with ``TensorType`` (see example
+   you can define them explicitly with
+   :api:`TensorType <theano.tensor.basic.TensorType>` (see example
    below). However, few operations are fully supported for complex
    types: as of version 0.1, only elementary operations (``+-*/``)
    have C implementations. Additionally, complex types have received
@@ -154,7 +158,7 @@ would behave like a row (1xN matrix). In the same way, a matrix (``[False,
 False]``) would behave like a 1xNxP tensor (``[True, False, False]``).
 
 If we wanted to create a type representing a 3D array of unsigned
-bytes, we would do: 
+bytes, we would do:
 
 .. code-block:: python
 
@@ -169,5 +173,5 @@ bytes, we would do:
 Ops
 ===
 
-There are a lot of operations available in the ``theano.tensor`` package.
+There are a lot of operations available in the :api:`theano.tensor` package.
 See :ref:`oplist`.
