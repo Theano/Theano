@@ -59,7 +59,7 @@ Step 2 - Execute main Optimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the Env is made, an :ref:`optimizer <optimization>` is produced
-by the :ref:`mode` passed to ``function`` or to the Method/Module's
+by the :ref:`function_mode` passed to ``function`` or to the Method/Module's
 ``make`` (the Mode basically has two important fields, ``linker`` and
 ``optimizer``). That optimizer is applied on the Env using its
 optimize() method.
