@@ -9,7 +9,7 @@ class AccumulatorInstance(ModuleInstance):
 
 class Accumulator(Module):
 
-    # This line tells theano to instantiate an AccumulatorInstance
+    # This line tells Theano to instantiate an AccumulatorInstance
     # when make() is called.
     InstanceType = AccumulatorInstance
 

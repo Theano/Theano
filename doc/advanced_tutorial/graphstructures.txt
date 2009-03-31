@@ -68,12 +68,12 @@ This is what you would normally type:
 .. code-block:: python
 
     from theano.tensor import *
-            
+
     # create 3 Variables with owner = None
     x = matrix('x')
     y = matrix('y')
     z = matrix('z')
-    
+
     # create 2 Variables (one for 'e', one intermediate for y*z)
     # create 2 Apply instances (one for '+', one for '*')
     e = x + y * z
@@ -86,7 +86,7 @@ This is what you would type to build the graph explicitly:
 .. code-block:: python
 
     from theano.tensor import *
-    
+
     # Instantiate a type that represents a matrix of doubles
     float64_matrix = TensorType(dtype = 'float64',              # double
                                 broadcastable = (False, False)) # matrix
@@ -129,7 +129,7 @@ Note how the call to ``Apply`` modifies the ``owner`` and ``index``
 fields of the :ref:`Variables <variable>` passed as outputs to point to
 itself and the rank they occupy in the output list. This whole
 machinery builds a DAG (Directed Acyclic Graph) representing the
-computation, a graph that theano can compile and optimize.
+computation, a graph that Theano can compile and optimize.
 
 
 Automatic wrapping
@@ -189,8 +189,8 @@ inputs. Therefore, an Apply node may be obtained from an Op
 and a list of inputs by calling ``Op.make_node(*inputs)``.
 
 Comparing with the Python language, an :ref:`apply` node is
-theano's version of a function call whereas an :ref:`op` is
-theano's version of a function definition.
+Theano's version of a function call whereas an :ref:`op` is
+Theano's version of a function definition.
 
 An Apply instance has three important fields:
 

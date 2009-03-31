@@ -94,7 +94,7 @@ operation on ``x``.
 
 .. note::
 
-   Inplace operations in theano still work in a functional setting:
+   Inplace operations in Theano still work in a functional setting:
    they need to return the modified input. Symbolically, Theano
    requires one Variable standing for the input *before* being modified
    and *another* Variable representing the input *after* being
