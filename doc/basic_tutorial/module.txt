@@ -24,11 +24,11 @@ Let's use Module to re-implement :ref:`the example using state
 >>> m.sub = Method(m.inc, None, {m.state: m.state - m.inc})
 >>> acc = m.make(state = 0)
 >>> acc.state, acc.inc
-array(0.0), None
+(array(0.0), None)
 >>> acc.add(2)
 array(2.0)
 >>> acc.state, acc.inc
-array(2.0), None
+(array(2.0), None)
 >>> acc.state = 39.99
 >>> acc.add(0.01)
 array(40.0)
@@ -86,6 +86,10 @@ Here we declare a Method. The three arguments are as follow:
   call the function that this Method compiles to, it will replace (update) the
   values associated with the member Variables.
 
+>>> m.sub = Method(m.inc, None, {m.state: m.state - m.inc})
+
+We declare another Method, that has no outputs.
+
 >>> acc = m.make(state = 0)
 
 This line is what does the magic (well, compilation).
@@ -103,7 +107,7 @@ associate ``None`` to the ``inc`` Variable.
 
 
 >>> acc.state, acc.inc
-array(0.0), None
+(array(0.0), None)
 
 Since ``state`` was declared as a member Variable of ``m``, we can
 access it's value in the ``acc`` object by the same attribute.
@@ -111,16 +115,14 @@ Ditto for ``inc``.
 
 .. note::
 
-  Members can also be accessed using a dictionary-like notation.  The syntax
-  ``acc.value[m.state]`` is equivalent to ``acc[m.state]``, and in this case,
-  ``acc.state``.  The dictionary-like syntax works for member Variables that
-  appear inside sub-modules, lists, dictionaries, and for whatever reason have
-  no name.
+  Members can also be accessed using a dictionary-like notation.
+  The syntax ``acc['state']`` is equivalent to ``acc.state``.
+
 
 >>> acc.add(2)
 array(2.0)
 >>> acc.state, acc.inc
-array(2.0), None
+(array(2.0), None)
 
 When we call the ``acc.add`` method, the value ``2`` is used for the
 symbolic ``m.inc``.  The first line evaluates the output and all the
@@ -143,7 +145,7 @@ The state can also be set.  When we manually set the value of a member
 attribute like this, then subsequent calls to the methods of our module will
 use the new value.
 
->>> acc.call(0.01)
+>>> acc.add(0.01)
 array(40.0)
 >>> acc.state
 array(40.0)
