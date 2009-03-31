@@ -1,4 +1,5 @@
 
+.. _optimization:
 
 ==================
 Graph optimization
