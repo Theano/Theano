@@ -15,7 +15,6 @@ Contents
    basic_tutorial/index
    advanced_tutorial/index
    topics/index
-   advanced/index
    indexes/index
    glossary
    links
@@ -23,3 +22,4 @@ Contents
 
 
 ..   examples/index
+..   advanced/index
