@@ -534,5 +534,9 @@ that it is costly to run. It is cheaper to run most optimizations
 under the assumption there are no inplace operations.
 
 
+.. _navigator:
 
+Navigator
+-------------------
 
+WRITEME
