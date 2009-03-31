@@ -347,8 +347,6 @@ class Method(Component):
 
         """
         super(Method, self).__init__()
-        if outputs is None:
-            outputs = []
         self.inputs = inputs
         self.outputs = outputs
         self.updates = dict(updates)
@@ -483,7 +481,7 @@ class Method(Component):
         outputs = self.outputs
         _inputs = [x.variable for x in inputs]
         # Grab the variables that are not accessible from either the inputs or the updates.
-        outputs_list =  list(outputs) if isinstance(outputs, (list, tuple)) else [outputs]
+        outputs_list = [] if outputs is None else (list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
         outputs_variable_list = [o.variable if isinstance(o, io.Out) else o for o in outputs_list]
         for input in gof.graph.inputs(outputs_variable_list
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
