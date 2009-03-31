@@ -875,6 +875,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         while changed and not max_use_abort:
             changed = False
+            for node in start_from:
+                assert node in env.outputs
 
             q = deque(graph.io_toposort(env.inputs, start_from))
 
@@ -914,6 +916,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
 def _check_chain(r, chain):
     """WRITEME"""
+
     chain = list(reversed(chain))
     while chain:
         elem = chain.pop()
@@ -933,7 +936,10 @@ def _check_chain(r, chain):
                 return False
         if chain:
             r = r.owner.inputs[chain.pop()]
+    #print 'check_chain', _check_chain.n_calls
+    #_check_chain.n_calls += 1
     return r
+#_check_chain.n_calls = 0
 
 def check_chain(r, *chain):
     """WRITEME"""

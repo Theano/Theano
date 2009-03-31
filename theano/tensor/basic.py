@@ -2135,7 +2135,9 @@ class TensorDotGrad(Op):
 tensordot_grad = TensorDotGrad
 
 class TensorDot(Op):
-    """Compute tensor-tensor products over the given axes. See numpy documentation for details.
+    """Compute tensor-tensor products over the given axes.
+    See numpy documentation for details.
+    (http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html)
 
     """
 

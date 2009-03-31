@@ -62,6 +62,15 @@ class test_dimshuffle_lift(unittest.TestCase):
         self.failUnless(str(g) == "[add(add(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle{x,0,1}(y)), z)]", str(g))
 
 
+def test_add_canonizer_problem0():
+    #observed in a real graph
+
+    n_segments = 10
+    label = lscalar('label')
+    segment_labels = label + numpy.asarray([0] * n_segments, dtype='int64')
+
+    r = segment_labels * 5
+    f = function([label], r)
 
 
 
