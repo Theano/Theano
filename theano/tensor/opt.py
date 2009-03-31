@@ -16,6 +16,8 @@ import itertools
 import sys
 from .. import compile  #to register the optimizer built by this file
 
+from ..compile.debugmode import _debugprint
+
 
 # Utilities
 
@@ -669,10 +671,12 @@ class Canonizer(gof.LocalOptimizer):
 
     def transform(self, node):
         op = node.op
-        inputs = node.inputs
-        out = node.outputs[0]
         if op not in [self.main, self.inverse, self.reciprocal]:
             return False
+
+        inputs = node.inputs
+        out = node.outputs[0]
+        assert len(node.outputs) == 1
 
         # I'm not sure if this is actually needed but the following
         # block of code puts into "reorg" whether or not we are going
@@ -713,6 +717,12 @@ class Canonizer(gof.LocalOptimizer):
 
         if new.type.broadcastable != out.type.broadcastable:
             new = T.fill(out, new)
+
+            if 0:
+                print 'BEFORE'
+                _debugprint(out, '  ', depth=4)
+                print 'AFTER'
+                _debugprint(new, '  ', depth=4)
 
         # if our if's above worked, this should be true. OTW investigate.
         if new.type != out.type:
