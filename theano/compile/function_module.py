@@ -792,6 +792,7 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
 
     """
     mode = mode if mode is not None else mode_module.default_mode
+    print >> sys.stderr, "INFO: compiling function with mode", mode
 
     inputs = map(convert_function_input, inputs)
     if outputs is None:

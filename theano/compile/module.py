@@ -149,6 +149,7 @@ class Component(object):
         memo = {}
         self.allocate(memo)
         rval = self.build(mode, memo)
+        print >> sys.stderr, "INFO: compiling component with mode", mode
         return rval
 
     def make(self, *args, **kwargs):
