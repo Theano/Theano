@@ -179,7 +179,7 @@ Extending your Module with Python methods
 
 Let's say we want to add a method to our accumulator to print out the
 state and we want to call it ``print_state``.  There are two mechanisms to do
-this: let's call them instance methods and InstanceType.
+this: let's call them _instance_method and InstanceType.
 
 
 Mechanism 1: _instance_method
@@ -198,7 +198,7 @@ Note that when we define ``_instance_print_state`` there are two "self"
 arguments: ``self`` which is *symbolic* and ``obj`` which is the compiled
 object (the one that contains values).
 
-Hint:``self.state`` is the symbolic state variable and
+Hint: ``self.state`` is the symbolic state variable and
 prints out as "state", whereas ``obj.state`` is the state's actual
 value in the accumulator and prints out as "0.0".
 
@@ -207,7 +207,7 @@ Mechanism 2: InstanceType
 -------------------------
 
 If a number of instance methods are going to be defined, and especially if you
-will want to inherit from the kind of class that gets instantiated by make,
+will want to inherit from the kind of class that gets instantiated by ``make``,
 you might prefer to consider using the InstanceType mechanism.
 
 
@@ -223,15 +223,16 @@ where we give the states' initial values with keyword arguments
 can override the default with your own method, which has to be called
 ``_instance_initialize``.
 
-Here is an example where we take width and height arguments to
-initialize a state with a matrix of zeros:
+.. TODO
+    Here is an example where we take width and height arguments to
+    initialize a state with a matrix of zeros:
 
 
 
 Nesting Modules
 ===============
 
-Probably the most powerful feature of theano's modules is that one can be
+Probably the most powerful feature of Theano's Modules is that one can be
 included as an attribute to another so that the storage of each is available
 to both.
 

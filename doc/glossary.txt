@@ -91,10 +91,10 @@ Glossary of terminology
         WRITEME
 
     type
-        See :ref:`tensortypes`
+        See :ref:`tensortypes` or :ref:`type`.
 
-    Variable 
-        A :ref:`variable` is the main data structure you work with when
+    Variable
+        A :ref:`Variable` is the main data structure you work with when
         using Theano. The symbolic inputs that you operate on are
         Variables and what you get from applying various operations to
         these inputs are also Variables. For example, when I type
