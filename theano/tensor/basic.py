@@ -584,6 +584,8 @@ class _tensor_py_operators:
     T = property(lambda self: transpose(self))
 
     shape = property(lambda self: shape(self))
+    def reshape(self, shape, ndim=None):
+        return reshape(self, shape, ndim=ndim)
 
     #SLICING
 #     def __getitem__(self, args): return Subtensor.from_idxs(self,
