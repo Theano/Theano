@@ -49,19 +49,19 @@ Here we instantiate an empty Module.
 >>> m.state = T.dscalar()
 >>> m.inc = T.dscalar('inc')
 
-Then we declares for use with our Module.
-Since we assign these input Variables as attributes of the Module, 
-they will be *member Variables* of the Module. 
+Then we declare Variables for use with our Module.
+Since we assign these input Variables as attributes of the Module,
+they will be *member Variables* of the Module.
 Member Variables are special in a few ways, which we will see shortly.
 
 .. note::
 
    There is no need to name the Variable explicitly here. ``m.state`` will
-   be given the name 'state' automatically.
+   be given the name ``'state'`` automatically.
 
 
 .. note::
- 
+
   Since we made it a member of ``m``, the ``acc`` object will have an
   attribute called ``inc``.  This attribute will keep its default value of
   None throughout the example.
@@ -70,9 +70,9 @@ Member Variables are special in a few ways, which we will see shortly.
 >>> m.new_state = m.state + m.inc
 
 This line creates a Variable corresponding to some symbolic computation.
-Although this line also assigns a Variable to a Module attribute, it does not
-become a member Variable like state and inc because it represents an expression
-result.
+Although this line also assigns a Variable to a Module attribute, it
+does not become a member Variable like ``state`` and ``inc`` because it
+represents an expression *result*.
 
 
 >>> m.add = Method(m.inc, m.new_state, {m.state: m.new_state})
@@ -88,26 +88,28 @@ Here we declare a Method. The three arguments are as follow:
 >>> acc = m.make(state = 0)
 
 This line is what does the magic (well, compilation).
-The ``m`` object contains symbolic things such as Variables and Methods. 
+The ``m`` object contains symbolic things such as Variables and Methods.
 Calling ``make`` on ``m`` creates an object that can do real
 computation and whose attributes contain values such as numbers and numpy
 ndarrays.
 
 At this point something special happens for our member Variables too.
-In the 'acc' object, make allocates room to store numbers for m's member
-Variables.  By using the string 'state' as a keyword argument, we tell Theano to
-store the number 0 for the member Variable called 'state'.  By not mentioning
-the 'inc' variable, we associate None to the 'inc' Variable.
+In the ``acc`` object, make allocates room to store numbers for ``m``'s
+member Variables.  By using the string ``'state'`` as a keyword
+argument, we tell Theano to store the number ``0`` for the member
+Variable called ``state``.  By not mentioning the ``inc`` variable, we
+associate ``None`` to the ``inc`` Variable.
 
 
 >>> acc.state, acc.inc
 array(0.0), None
 
-Since 'state' was declared as a member Variable of 'm', we can access it's value
-in the 'acc' object by the same attribute.  Ditto for 'inc'.
+Since ``state`` was declared as a member Variable of ``m``, we can
+access it's value in the ``acc`` object by the same attribute.
+Ditto for ``inc``.
 
 .. note::
-  
+
   Members can also be accessed using a dictionary-like notation.  The syntax
   ``acc.value[m.state]`` is equivalent to ``acc[m.state]``, and in this case,
   ``acc.state``.  The dictionary-like syntax works for member Variables that
@@ -119,16 +121,19 @@ array(2.0)
 >>> acc.state, acc.inc
 array(2.0), None
 
-When we call the ``acc.add`` method, the value 2 is used for the symbolic 'm.inc'
-The first line evaluates the output and all the updates given to the
-'acc' Method's ``updates`` field. We only had
-one update which mapped ``state`` to ``new_state`` and you can see
-that it works as intended, adding the argument to the internal state.
+When we call the ``acc.add`` method, the value ``2`` is used for the
+symbolic ``m.inc``.  The first line evaluates the output and all the
+updates given in the ``updates`` argument of the call to Method that
+declared ``acc``. We only had one update which mapped ``state`` to
+``new_state`` and you can see that it works as intended, adding the
+argument to the internal state.
 
-Note also that 'acc.inc' is still None after our call.  Since 'm.inc' was listed
-as an input the Method, the method got it's own private storage container for
-'m.inc'.  If we had left 'm.inc' out of the Method input list,  then it the
-method would have used the module's storage for ``m.inc`` instead.
+Note also that ``acc.inc`` is still ``None`` after our call.  Since
+``m.inc`` was listed as an input in the call to Method that created
+``m.add``, when ``acc.add`` was created by the call to ``m.make``, a
+private storage container was allocated to hold the first parameter.
+If we had left ``m.inc`` out of the Method input list, then ``acc.add``
+would have used ``acc.inc`` instead.
 
 
 >>> acc.state = 39.99

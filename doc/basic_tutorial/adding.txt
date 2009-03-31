@@ -85,7 +85,7 @@ The second step is to combine ``x`` and ``y`` into their sum ``z``:
 function to pretty-print out the computation associated to ``z``.
 
 >>> print pp(z)
-x + y
+(x + y)
 
 -------------------------------------------
 
