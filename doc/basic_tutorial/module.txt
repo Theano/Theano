@@ -80,7 +80,8 @@ result.
 Here we declare a Method. The three arguments are as follow:
 
 * **inputs**: a list of input Variables
-* **outputs**: a list of output Variables
+* **outputs**: a list of output Variables, or ``None``. ``None`` is equivalent
+  to returning an empty list of outputs.
 * **updates**: a dictionary mapping member Variables to Variables.  When we
   call the function that this Method compiles to, it will replace (update) the
   values associated with the member Variables.
