@@ -168,9 +168,10 @@ This is just like the previous example except slightly fancier.
 
 .. warning::
 
-   Do not forget to call the constructor of the parent class! (the
-   call to ``super().__init__`` in the previous code block) If you
-   forget it, you'll get strange behavior :(
+   Do not forget to call the constructor of the parent class!
+   (That's the call to ``super().__init__`` in the previous code block.)
+
+   If you forget it, you'll get strange behavior :(
 
 
 Extending your Module with Python methods
