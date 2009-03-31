@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 setup(name="Theano",
       version="0.1",
       description="Optimizing compiler for mathematical expressions",
-      long_description="""Theano is a Python library that allows you to define, optimize, and efficiently evaluate mathematical expressions involving multi-dimensional arrays. Using Theano, it is not uncommon to see speed improvements of ten-fold over using pure NumPy."""
+      long_description="""Theano is a Python library that allows you to define, optimize, and efficiently evaluate mathematical expressions involving multi-dimensional arrays. Using Theano, it is not uncommon to see speed improvements of ten-fold over using pure NumPy.""",
       author="LISA laboratory, University of Montreal",
       author_email="theano-dev@googlegroups.com",
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
