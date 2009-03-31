@@ -965,6 +965,10 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
+        return_none = False
+        if outputs is None:
+            return_none = True
+            outputs = []
         if not isinstance(outputs, (list, tuple)):
             unpack_single = True
             outputs = [outputs]
@@ -1025,6 +1029,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         self.expanded_inputs = expanded_inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
+        self.return_none = return_none
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.mode = mode
@@ -1120,7 +1125,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
         # Get a function instance
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage)
-        fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self)
+        fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
         return fn
 
 def _pickle_DebugMode_Maker(maker):
