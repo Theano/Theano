@@ -715,21 +715,17 @@ class Canonizer(gof.LocalOptimizer):
             elem_op = T.Elemwise(scalar.Identity(scalar.specific_out(getattr(scalar, out.type.dtype))))
             new = elem_op(new)
 
-        if new.type.broadcastable != out.type.broadcastable:
-            new = T.fill(out, new)
+        if new.type != out.type:
+            for x in orig_num + orig_denum:
+                if x.type == out.type:
+                    new = T.fill(x, new)
+                    break
 
-            if 0:
-                print 'BEFORE'
-                _debugprint(out, '  ', depth=4)
-                print 'AFTER'
-                _debugprint(new, '  ', depth=4)
-
-        # if our if's above worked, this should be true. OTW investigate.
         if new.type != out.type:
             print >> sys.stderr, 'CANONIZE FAILED: new, out = ', new, ',', out, 'types', new.type, ',', out.type
-            assert new.type == out.type
-
-        return [new]
+            return False
+        else:
+            return [new]
 
     def __str__(self):
         return getattr(self, 'name', 'Canonizer(%s, %s, %s)' % (self.main, self.inverse, self.reciprocal))
