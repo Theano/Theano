@@ -7,7 +7,7 @@ How to make a release
 Clone the code::
 
     ssh projects@pylearn.org
-    hg clone hg/theano Theano-0.X
+    hg clone hg/Theano Theano-0.X
 
 Edit ``setup.py`` to contain the newest version number::
 

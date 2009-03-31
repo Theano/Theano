@@ -35,31 +35,29 @@ Theano code
 <http://www.selenic.com/mercurial/wiki/>`__ installed.
 
 The code that makes up Theano is in a single repository available in
-`<http://pylearn.org/hg/theano>`__.
+`<http://pylearn.org/hg/Theano>`__.
 
 As a developer, you should clone this repository like this:
 
 .. code-block:: bash
 
-    hg clone 'http://username:password@pylearn.org/hg/theano' theano
+    hg clone 'http://username:password@pylearn.org/hg/Theano'
 
 You can also clone the code anonymously:
 
 .. code-block:: bash
 
-    hg clone http://pylearn.org/hg/theano Theano
+    hg clone http://pylearn.org/hg/Theano
 
 Setting up your environment
 ===========================
 
 Some notes on the environment variable $PYTHONPATH.
 
-If theano lives in $DEV/theano, you should have $DEV in your
-$PYTHONPATH. You should '''not''' have $DEV/theano in your $PYTHONPATH.
-
-The subdirectory Theano/theano has to be in your PYTHONPATH. In order to do
-that, you can either create a symbolic link to Theano/theano in a directory
-already mentionned in your PYTHONPATH environment variable, or modify the
+The subdirectory Theano/theano has to be located in a location
+mentionned in your PYTHONPATH. In order to do that, you can either
+create a symbolic link to Theano/theano in a directory already
+mentionned in your PYTHONPATH environment variable, or modify the
 PYTHONPATH so that it mentions Theano.
 
 To create a symbolic link:
@@ -92,7 +90,7 @@ I advise to never import theano's files from outside theano itself
 (and I think that is good advice for Python packages in general). Use
 "from theano import tensor" instead of "import tensor". ... $PYTHONPATH
 ... should only contain paths to complete packages, so you don't get
-surprises if I add files that enter in conflict with other packages.
+surprised if I add files that enter in conflict with other packages.
 
 When you install a package, only the package name can be imported
 directly. If you want a sub-package, you must import it from the main
@@ -113,18 +111,18 @@ Once you have completed these steps, you should run the tests like this:
     nosetests #execute all the tests
 
 All tests should pass. If some test fails on your machine, you are
-encouraged to tell us what went wrong on the ``theano-users@googlegroups.com`` mailing
-list.
+encouraged to tell us what went wrong on the ``theano-users@googlegroups.com``
+mailing list.
 
 To update your library to the latest revision, change directory (``cd``)
-to your `Theano` folder and execute the following command:
+to your ``Theano`` folder and execute the following command:
 
 .. code-block:: bash
 
     hg pull -u
 
 You may also download the latest source directly as a gzip'd tar file:
-`<http://pylearn.org/hg/theano/archive/tip.tar.gz>`__.
+`<http://pylearn.org/hg/Theano/archive/tip.tar.gz>`__.
 
 Nightly test
 ============

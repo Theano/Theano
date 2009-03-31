@@ -9,7 +9,7 @@ hg is the unix command that runs `Mercurial` the revision control system.
 
 As a user of Theano, the commands you need to know are:
 
-``hg clone 'ssh://projects@pylearn.org/hg/theano' Theano``
+``hg clone 'ssh://projects@pylearn.org/hg/Theano'``
     Download the freshest version of the code from the remote respository.
 
 ``hg pull -u``
@@ -32,13 +32,13 @@ Typically, your sequence of hg commands should look like this:
 #. ``hg st``
     (Print out differences between local files and local db)
 
-#. ``hg commit -m 'message about what you did' <files to which message applies>``  
+#. ``hg commit -m 'message about what you did' <files to which message applies>``
     (Update the local db to match the files listed.)
 
 #. ``hg pull -u``
     (Download the remote db to the local db, and ``-u`` updates files too.)
 
-#. ``[hg merge]`` 
+#. ``[hg merge]``
     (Downloading the remote db may have created a fork in the
     local db.  This command will try to merge any such fork, and it might bring up
     an editor to merge some stuff manually. This step affects the local files, but
