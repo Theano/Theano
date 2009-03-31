@@ -347,6 +347,8 @@ class Method(Component):
 
         """
         super(Method, self).__init__()
+        if outputs is None:
+            outputs = []
         self.inputs = inputs
         self.outputs = outputs
         self.updates = dict(updates)
