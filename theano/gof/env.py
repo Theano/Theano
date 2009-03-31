@@ -1,6 +1,6 @@
 
 """WRITEME"""
-
+import sys
 from copy import copy
 import graph
 import utils
@@ -172,8 +172,9 @@ class Env(utils.object2):
         Updates the list of clients of r with new_clients.
         """
         if set(r.clients).intersection(set(new_clients)):
-            print 'RCLIENTS of', r, [(n,i, type(n), id(n)) for n,i in r.clients]
-            print 'NCLIENTS of', r, [(n,i, type(n), id(n)) for n,i in new_clients]
+            print >> sys.stderr, 'ERROR: clients intersect!'
+            print >> sys.stderr, '  RCLIENTS of', r, [(n,i, type(n), id(n)) for n,i in r.clients]
+            print >> sys.stderr, '  NCLIENTS of', r, [(n,i, type(n), id(n)) for n,i in new_clients]
         assert not set(r.clients).intersection(set(new_clients))
         r.clients += new_clients
 
@@ -187,8 +188,9 @@ class Env(utils.object2):
         for entry in clients_to_remove:
             r.clients.remove(entry)
             if entry in r.clients:
-                print 'ENTRY', repr(entry), type(entry[0])
-                print 'CLIENTS', repr(r.clients)
+                print >> sys.stderr, 'ERROR: DUPLICATE CLIENT ENTRY...'
+                print >> sys.stderr, '  ENTRY', repr(entry), type(entry[0])
+                print >> sys.stderr, '  CLIENTS', repr(r.clients)
             assert entry not in r.clients # an op,i pair should be unique
         if not r.clients:
             if prune:
@@ -330,9 +332,14 @@ class Env(utils.object2):
             # because it makes it easier to implement some optimizations for multiple-output ops
             return
 
-        for node, i in list(r.clients): #copy the client list for iteration
+        for node, i in list(r.clients): # copy the client list for iteration
             assert (node == 'output' and self.outputs[i] is r) or (node.inputs[i] is r)
             self.change_input(node, i, new_r, reason=reason)
+
+        # sometimes the following is triggered.  If you understand why, please explain to James.
+        # He's curious... -JB20090331
+        #if len(r.clients) != 0:
+        #    print >> sys.stderr, "WARNING: CLIENTS LEFT AFTER REPLACE", r, r.clients
 
     def replace_all(self, pairs, reason=None):
         """WRITEME"""
