@@ -818,85 +818,87 @@ class OpWiseCLinker(link.LocalLinker):
 
         # Acquire lock on compilation directory.
         get_lock()
+        try:
 
-        env = self.env
-        order = env.toposort()
-        no_recycling = self.no_recycling
+            env = self.env
+            order = env.toposort()
+            no_recycling = self.no_recycling
 
-        input_storage, output_storage, storage_map = link.map_storage(env, order, input_storage, output_storage)
-        if self.allow_gc:
-            computed, last_user = link.gc_helper(order)
-            post_thunk_old_storage = []
-        else:
-            post_thunk_old_storage = None
+            input_storage, output_storage, storage_map = link.map_storage(env, order, input_storage, output_storage)
+            if self.allow_gc:
+                computed, last_user = link.gc_helper(order)
+                post_thunk_old_storage = []
+            else:
+                post_thunk_old_storage = None
 
-        thunks = []
-        for node in order:
-            node_input_storage = [storage_map[r] for r in node.inputs]
-            node_output_storage = [storage_map[r] for r in node.outputs]
-            try:
-                e = Env(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.nodes
-
-                if any(isinstance(input, graph.Value) for input in node.inputs):
-                    desc = None
-                else:
-                    desc = (node.op,
-                            tuple(input.type for input in node.inputs),
-                            tuple(input.type for input in node.inputs),
-                            tuple(output in no_recycling for output in node.outputs),
-                            tuple(node.inputs.count(input) for input in node.inputs))
-
+            thunks = []
+            for node in order:
+                node_input_storage = [storage_map[r] for r in node.inputs]
+                node_output_storage = [storage_map[r] for r in node.outputs]
                 try:
-                    cl = self.__cache__.get(desc)
-                except Exception, exc:
-                    #print >> sys.stderr, "INFO: failed to hash %s: %s. Node will not be cached." % (node, exc)
-                    cl = None
-                if cl is None:
-                    cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
-                    if desc is not None:
-                        try:
-                            self.__cache__[desc] = cl
-                        except:
-                            pass
+                    e = Env(*graph.clone(node.inputs, node.outputs))
+                    e.toposort = lambda: e.nodes
 
-                thunk, node_input_filters, node_output_filters = cl.make_thunk(
-                    input_storage = node_input_storage,
-                    output_storage = node_output_storage)
-                thunk.inputs = node_input_storage
-                thunk.outputs = node_output_storage
-                thunks.append(thunk)
-            except (NotImplementedError, utils.MethodNotDefined):
-                if self.fallback_on_perform:
-                    p = node.op.perform
-                    thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
+                    if any(isinstance(input, graph.Value) for input in node.inputs):
+                        desc = None
+                    else:
+                        desc = (node.op,
+                                tuple(input.type for input in node.inputs),
+                                tuple(input.type for input in node.inputs),
+                                tuple(output in no_recycling for output in node.outputs),
+                                tuple(node.inputs.count(input) for input in node.inputs))
+
+                    try:
+                        cl = self.__cache__.get(desc)
+                    except Exception, exc:
+                        #print >> sys.stderr, "INFO: failed to hash %s: %s. Node will not be cached." % (node, exc)
+                        cl = None
+                    if cl is None:
+                        cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
+                        if desc is not None:
+                            try:
+                                self.__cache__[desc] = cl
+                            except:
+                                pass
+
+                    thunk, node_input_filters, node_output_filters = cl.make_thunk(
+                        input_storage = node_input_storage,
+                        output_storage = node_output_storage)
                     thunk.inputs = node_input_storage
                     thunk.outputs = node_output_storage
-                    thunk.perform = p
                     thunks.append(thunk)
-                else:
-                    raise
+                except (NotImplementedError, utils.MethodNotDefined):
+                    if self.fallback_on_perform:
+                        p = node.op.perform
+                        thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
+                        thunk.inputs = node_input_storage
+                        thunk.outputs = node_output_storage
+                        thunk.perform = p
+                        thunks.append(thunk)
+                    else:
+                        raise
 
-            if self.allow_gc:
-                post_thunk_old_storage.append([storage_map[input] 
-                    for input in node.inputs
-                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
+                if self.allow_gc:
+                    post_thunk_old_storage.append([storage_map[input] 
+                        for input in node.inputs
+                        if (input in computed) and (input not in env.outputs) and node == last_user[input]])
 
-        if no_recycling is True:
-            no_recycling = storage_map.values()
-            no_recycling = utils.difference(no_recycling, input_storage)
-        else:
-            no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
+            if no_recycling is True:
+                no_recycling = storage_map.values()
+                no_recycling = utils.difference(no_recycling, input_storage)
+            else:
+                no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
 
-        f = link.streamline(env, thunks, order, 
-                post_thunk_old_storage,
-                no_recycling = no_recycling, 
-                nice_errors = self.nice_errors)
+            f = link.streamline(env, thunks, order, 
+                    post_thunk_old_storage,
+                    no_recycling = no_recycling, 
+                    nice_errors = self.nice_errors)
 
-        f.allow_gc = self.allow_gc
+            f.allow_gc = self.allow_gc
 
-        # Release lock on compilation directory.
-        release_lock()
+        finally:
+            # Release lock on compilation directory.
+            release_lock()
 
         return f, [link.Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
             [link.Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
