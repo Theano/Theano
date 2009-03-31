@@ -1854,6 +1854,10 @@ def test_smallest():
 
     assert -4 == inplace_func([sx,sy], smallest(sx,sy))(-4.0, -2.0)
 
+def test_reshape_member_fn():
+    x = dmatrix()
+    y = x.reshape((4,5,6))
+    assert y.owner.op == Reshape(3)
 
 
 if __name__ == '__main__':
