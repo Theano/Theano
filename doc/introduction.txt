@@ -43,7 +43,7 @@ Theano was written at the LISA_ lab to support the development of
 efficient machine learning algorithms while minimizing human time. We
 use it especially in gradient-based learning techniques.  Theano is
 named after the `Greek mathematician`_, who may have been Pythagoras'
-wife.  Theano is released under a BSD license (:ref:`link <license>`)
+wife.  Theano is released under a BSD license (:ref:`link <license>`).
 
 
 Sneak peek

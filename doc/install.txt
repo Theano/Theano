@@ -40,7 +40,7 @@ The following libraries and software are optional:
         Used to build documentation. latex and dvipng
         are also necessary for math to show up as images.
     `mercurial <http://www.selenic.com/mercurial/>`_
-        To download bleeding-edge 
+        To download bleeding-edge version of Theano.
 
 
 Easy install
@@ -57,7 +57,7 @@ Manual install
 --------------
 
 To install the latest release of Theano from source, visit the `downloads
-<http://pylearn.org/theano/downloads/>` page and download the release you
+<http://pylearn.org/theano/downloads/>`_ page and download the release you
 want. Unpack the release, and type:
 
 .. code-block:: bash
@@ -146,7 +146,7 @@ Generating the documentation
 You can read the latest HTML documentation `here
 <http://pylearn.org/theano/contents.html>`__.
 You can download the latest PDF documentation `here
-<http://pylearn.org/theano/theano.pdf`__.
+<http://pylearn.org/theano/theano.pdf>`__.
 
 We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.

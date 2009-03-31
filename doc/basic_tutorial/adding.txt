@@ -1,3 +1,4 @@
+.. _adding:
 
 ========================================
 Baby steps - Adding two numbers together
@@ -28,7 +29,7 @@ Let's break this down into several steps. The first step is to define
 two symbols, or Variables, representing the quantities that you want
 to add. Note that from now on, we will use the term :term:`Variable`
 to mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Variable
-objects). The output of the function ``f`` is a :api:`numpy.ndarray`
+objects). The output of the function ``f`` is a ``numpy.ndarray``
 with zero dimensions.
 
 If you are following along and typing into an interpreter, you may have
