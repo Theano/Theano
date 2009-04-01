@@ -435,6 +435,9 @@ class T_module(unittest.TestCase):
         """Test that we can manipulate the mutable, strict, etc. flags (see SymbolicInput) of
         Method inputs"""
 
+        if default_mode == 'FAST_COMPILE':
+            return 
+
         M = Module()
         M.x = T.dvector()
         M.y = T.dvector()
@@ -598,7 +601,7 @@ def test_method_updates():
     m = M.make()
     m.f([9,9])
     assert m.x is None
-    assert numpy.all(xval == [0, 1])
+    assert numpy.all(m.f[M.x] == [0, 1])
 
 
     # when a variable is listed explicitly and in an update, then there's a problem.
