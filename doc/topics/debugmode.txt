@@ -39,7 +39,24 @@ Some kinds of errors can only be detected for certain input value combinations.
 In the example above, there is no way to guarantee that a future call to say,
 ``f(-1)`` won't cause a problem.  DebugMode is not a silver bullet.
 
+If you instantiate DebugMode using the constructor ``compile.DebugMode``
+rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
+constructor arguments.  See :api:`DebugMode` for details.
+
+The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
+is quite strict, and can raise several different Exception types.
 There following are DebugMode exceptions you might encounter:
+
+
+DebugModeError
+--------------
+
+This is a generic error.  All the other exceptions inherit from this one.
+This error is typically not raised directly.
+However, you can use ``except DebugModeError: ...`` to catch any of the more
+specific types of Exception.
+
+For detailed documentation see :api:`DebugModeError`.
 
 
 BadCLinkerOutput
@@ -105,18 +122,6 @@ whereby we debug in DEBUG_MODE and then run the full-size jobs in FAST_RUN.
 For detailed documentation see :api:`StochasticOrder`.
 
 
-FloatError
-----------
-
-This happens when invalid floating-point values such as NaN and Inf are
-introduced into the computations.  It indicates which Op created the first
-NaN.
-
-Currently this exception is never raised because the check is not being
-performed, but the plan is that it will be.  (see ticket #320)
-
-For detailed documentation see :api:`FloatError`.
-
 
 InvalidValueError
 -----------------
@@ -126,14 +131,11 @@ an output that is invalid with respect to the type of the corresponding output
 variable.  Like if it returned a complex-valued ndarray for a ``dscalar``
 Type.
 
+This can also be triggered when floating-point values such as NaN and Inf are
+introduced into the computations.  It indicates which Op created the first
+NaN.  These floating-point values can be allowed by passing the
+``check_isfinite=False`` argument to DebugMode. 
+
 For detailed documentation see :api:`InvalidValueError`.
 
-
-DebugModeError
---------------
-
-This is a generic error, pretty unhelpful.  You'll generally have to look at the
-stack trace and then in the code to figure out why DebugMode is complaining.
-
-For detailed documentation see :api:`DebugModeError`.
 

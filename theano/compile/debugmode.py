@@ -170,13 +170,6 @@ class StochasticOrder(DebugModeError):
     """
     pass
 
-class FloatError(DebugModeError):
-    """Exception: Inf or NaN has crept into calculations
-    
-    :note: See #320 for what this exception is for
-    """
-    pass
-
 class InvalidValueError(DebugModeError):
     """Exception: some Op an output value that is inconsistent with the Type of that output"""
     def __init__(self, r, v):
@@ -785,141 +778,153 @@ class _Linker(gof.link.LocalLinker):
             for x in no_recycling:
                 x[0] = None
 
-            equiv_vals = {}
-            problematic = set()
-            # r_vals are the true values associated with each variable in the graph
-            # they should not change during the evaluation of this function, even when the
-            # graph has destructive ops in it
-            #
-            # This dictionary is used to populate the storage_map as necessary
-            r_vals = {} 
+            # nest all this in try-finally to put storage *back* into storage_map when an
+            # exception is raised
+            original_storage_map_keys = [r for r in storage_map if r.owner is None]
 
-            # dr_vals are the values taken by variables after being destroyed
-            dr_vals = {}
-            assert len(thunks_py) == len(order)
+            try:
+                equiv_vals = {}
+                problematic = set()
+                # r_vals are the true values associated with each variable in the graph
+                # they should not change during the evaluation of this function, even when the
+                # graph has destructive ops in it
+                #
+                # This dictionary is used to populate the storage_map as necessary
+                r_vals = {} 
 
-            # transfer the initial values from the storage_map to the r_vals
-            for r in storage_map:
-                if (r.owner is None):
-                    if (storage_map[r][0] is None):
-                        raise Exception('Missing input', r)
-                    if not r.type.is_valid_value(storage_map[r][0]):
-                        raise InvalidValueError(r, storage_map[r][0])
-                    r_vals[r] = storage_map[r][0]
-                    storage_map[r][0] = None
-            #####
-            #  Precondition: the storage map is empty, transferred completely to r_vals
-            #####
-            for r, s in storage_map.iteritems():
-                assert s[0] is None
+                # dr_vals are the values taken by variables after being destroyed
+                dr_vals = {}
+                assert len(thunks_py) == len(order)
 
-            #try:
-            # compute the value of all variables
-            for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
-                this_node_destroyed_variables = set()
-
-                # put a copy of each input into the storage_map
-                # also, check that inputs have valid values
-                for r in node.inputs:
-                    assert isinstance(r, gof.Variable)
-                    assert r in r_vals
-                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
-                    if not r.type.is_valid_value(storage_map[r][0]):
-                        raise InvalidValueError(r, storage_map[r][0])
-
-                if thunk_py:
-                    thunk_py()
-
-                    _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                            clobber_dr_vals=True)
-
-                    _check_viewmap(node, storage_map)
-
-                    # check output values for type-correctness
-                    #retrieve each output from the storage_map
-                    for r in node.outputs:
+                # transfer the initial values from the storage_map to the r_vals
+                for r in storage_map:
+                    if (r.owner is None):
+                        if (storage_map[r][0] is None):
+                            raise Exception('Missing input', r)
                         if not r.type.is_valid_value(storage_map[r][0]):
                             raise InvalidValueError(r, storage_map[r][0])
-                        #if r in r_vals:
-                            #print >> sys.stderr, 'OUTPUT', r, 'ALREADY HAS_VALUE!', r_vals[r], 'WHAT ABOUT', storage_map[r][0]
-                        assert r not in r_vals
                         r_vals[r] = storage_map[r][0]
-                        storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
+                        storage_map[r][0] = None
+                #####
+                #  Precondition: the storage map is empty, transferred completely to r_vals
+                #####
+                for r, s in storage_map.iteritems():
+                    assert s[0] is None
 
-                if thunk_c:
+                #try:
+                # compute the value of all variables
+                for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
+                    this_node_destroyed_variables = set()
 
+                    # put a copy of each input into the storage_map
+                    # also, check that inputs have valid values
                     for r in node.inputs:
-                        # TODO:  we only need to overwrite the non-destroyed inputs
+                        assert isinstance(r, gof.Variable)
+                        assert r in r_vals
                         storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
-
-                    thunk_c()
-
-                    _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                            clobber_dr_vals=False)
-
-                    _check_viewmap(node, storage_map)
-
-                    for r in node.outputs:
-                        # check output values for type-correctness
                         if not r.type.is_valid_value(storage_map[r][0]):
                             raise InvalidValueError(r, storage_map[r][0])
 
-                        if r in r_vals:
-                            # compares the version from thunk_py (in r_vals)
-                            # to the version produced by thunk_c (in storage_map)
-                            if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
-                        else:
-                            #retrieve each output from the storage_map
+                    if thunk_py:
+                        thunk_py()
+
+                        # check output values for type-correctness
+                        for r in node.outputs:
+                            if not r.type.is_valid_value(storage_map[r][0]):
+                                raise InvalidValueError(r, storage_map[r][0])
+                            #if r in r_vals:
+
+                        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                                clobber_dr_vals=True)
+
+                        _check_viewmap(node, storage_map)
+
+                        #retrieve each output from the storage_map
+                        for r in node.outputs:
+                            assert r not in r_vals
                             r_vals[r] = storage_map[r][0]
-                        storage_map[r][0] = None #clear the storage_map for the thunk_c
+                            storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
 
-                # we're done with this thunk
-                # clear everything out of the storage_map
-                for r in node.inputs:
-                    storage_map[r][0] = None
+                    if thunk_c:
 
-            #except:
-            #    raise_with_op(node)
+                        for r in node.inputs:
+                            # TODO:  we only need to overwrite the non-destroyed inputs
+                            storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
-            _find_bad_optimizations(order, env.equivalence_tracker.reasons, r_vals)
+                        thunk_c()
 
-            #####
-            #  Postcondition: the input and output variables are in the storage map, nothing more
-            #####
+                        for r in node.outputs:
+                            # check output values for type-correctness
+                            if not r.type.is_valid_value(storage_map[r][0]):
+                                raise InvalidValueError(r, storage_map[r][0])
 
-            # Nothing should be in storage map after evaluating each the thunk (specifically the
-            # last one)
-            for r, s in storage_map.iteritems():
-                assert type(s) is list
-                assert s[0] is None
+                        _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
+                                clobber_dr_vals=False)
 
-            # store our output variables to their respective storage lists
-            for output, storage in zip(env.outputs, output_storage):
-                storage[0] = r_vals[output]
+                        _check_viewmap(node, storage_map)
 
-            # transfer all inputs back to their respective storage lists
-            for r in r_vals:
-                if r.owner is None:
-                    if r in env.inputs:
-                        assert storage_map[r] is input_storage[env.inputs.index(r)]
-                    storage_map[r][0] = r_vals[r]
+                        for r in node.outputs:
+                            if r in r_vals:
+                                # compares the version from thunk_py (in r_vals)
+                                # to the version produced by thunk_c (in storage_map)
+                                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                                    raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                            else:
+                                #retrieve each output from the storage_map
+                                r_vals[r] = storage_map[r][0]
+                            storage_map[r][0] = None #clear the storage_map for the thunk_c
 
-            # if an input was destroyed, the destroyed value should be returned
-            for r in dr_vals:
-                assert dr_vals[r][0] is not None
-                if r.owner is None:
-                    assert r in env.inputs
-                    #HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
-                    if type(dr_vals[r][0]) is numpy.ndarray \
-                            and dr_vals[r][0].dtype == storage_map[r][0].dtype \
-                            and dr_vals[r][0].shape == storage_map[r][0].shape:
-                        if len(dr_vals[r][0].shape):
-                            storage_map[r][0][:] = dr_vals[r][0]
+                    # we're done with this thunk
+                    # clear everything out of the storage_map
+                    for r in node.inputs:
+                        storage_map[r][0] = None
+
+                #except:
+                #    raise_with_op(node)
+
+                _find_bad_optimizations(order, env.equivalence_tracker.reasons, r_vals)
+
+                #####
+                #  Postcondition: the input and output variables are in the storage map, nothing more
+                #####
+
+                # Nothing should be in storage map after evaluating each the thunk (specifically the
+                # last one)
+                for r, s in storage_map.iteritems():
+                    assert type(s) is list
+                    assert s[0] is None
+
+                # store our output variables to their respective storage lists
+                for output, storage in zip(env.outputs, output_storage):
+                    storage[0] = r_vals[output]
+
+                # transfer all inputs back to their respective storage lists
+                for r in r_vals:
+                    if r.owner is None:
+                        if r in env.inputs:
+                            assert storage_map[r] is input_storage[env.inputs.index(r)]
+                        storage_map[r][0] = r_vals[r]
+
+                # if an input was destroyed, the destroyed value should be returned
+                for r in dr_vals:
+                    assert dr_vals[r][0] is not None
+                    if r.owner is None:
+                        assert r in env.inputs
+                        #HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
+                        if type(dr_vals[r][0]) is numpy.ndarray \
+                                and dr_vals[r][0].dtype == storage_map[r][0].dtype \
+                                and dr_vals[r][0].shape == storage_map[r][0].shape:
+                            if len(dr_vals[r][0].shape):
+                                storage_map[r][0][:] = dr_vals[r][0]
+                            else:
+                                storage_map[r][0].itemset(dr_vals[r][0])
                         else:
-                            storage_map[r][0].itemset(dr_vals[r][0])
-                    else:
-                        storage_map[r][0] = dr_vals[r][0]
+                            storage_map[r][0] = dr_vals[r][0]
+            except:
+                for r in original_storage_map_keys:
+                    if storage_map[r][0] is None:
+                        storage_map[r][0] = r_vals[r]
+                raise
             #print ""
             #print output_storage
             #print dr_vals
@@ -961,7 +966,15 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
+
+        :note: this function sets TensorType.filter_checks_isfinite when `mode.check_isfinite` is True
+
         """
+
+        # WARNING: this is a global mechanism... so it will screw up if we are trying to use
+        # multiple modes at once.
+        from ..tensor import TensorType #to set filter_check_isfinite
+        TensorType.filter_checks_isfinite = mode.check_isfinite
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
@@ -1182,6 +1195,12 @@ class DebugMode(Mode):
     Should we evaluate (and check) the `perform` implementations?
     """
 
+    check_isfinite = True
+    """
+    Should we check for (and complain about) NaN/Inf ndarray elements?
+    """
+
+
     # This function will be used to create a FunctionMaker in 
     # function_module.function
     def function_maker(self, i,o,m, *args, **kwargs):
@@ -1191,18 +1210,32 @@ class DebugMode(Mode):
     
     def __init__(self, 
             optimizer='fast_run', 
-            stability_patience=10,
-            check_c_code=True,
-            check_py_code=True):
-        """Initialize member variables
+            stability_patience=None,
+            check_c_code=None,
+            check_py_code=None,
+            check_isfinite=None):
+        """Initialize member variables.
+
+        If any of these arguments (except optimizer) is not None, it overrides the class default.
         """
-        if not (check_c_code or check_py_code):
-            raise ValueError('DebugMode has to check at least one of c and py code')
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
                 linker=_Linker)
-        self.stability_patience = stability_patience
-        self.check_c_code = check_c_code
-        self.check_py_code = check_py_code
+
+        if stability_patience is not None:
+            self.stability_patience = stability_patience
+
+        if check_c_code is not None:
+            self.check_c_code = check_c_code
+
+        if check_py_code is not None:
+            self.check_py_code = check_py_code
+
+        if check_isfinite is not None:
+            self.check_isfinite = check_isfinite
+
+        if not (self.check_c_code or self.check_py_code):
+            raise ValueError('DebugMode has to check at least one of c and py code')
+
 register_mode('DEBUG_MODE',DebugMode(optimizer='fast_run'))
 

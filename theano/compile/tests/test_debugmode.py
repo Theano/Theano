@@ -531,3 +531,63 @@ class Test_ViewMap(unittest.TestCase):
         # input, but guarantees correctness.
         #custom_op.view_map = {0:[0], 1:[1]}
         #f([1,2,3,4],[5,6,7,8])
+
+class Test_check_isfinite(unittest.TestCase):
+    def setUp(self):
+        print 'Up'
+        self.old_val = theano.tensor.TensorType.filter_checks_isfinite
+    def tearDown(self):
+        print 'Down'
+        theano.tensor.TensorType.filter_checks_isfinite = self.old_val
+
+    def test_check_isfinite(self):
+        x = theano.tensor.dvector()
+        f = theano.function([x], (x+2) * 5, mode='DEBUG_MODE')
+
+        # this should work
+        f(numpy.log([3, 4, 5]))
+
+        # this should raise InvalidValueError
+        try:
+            # insert a NaN
+            f(numpy.log([3, -4, 5]))
+            assert False
+        except debugmode.InvalidValueError:
+            pass
+
+        # this should raise InvalidValueError
+        try:
+            # insert an Nan and Inf
+            f(numpy.asarray([0, 1.0, 0])/0)
+            assert False
+        except debugmode.InvalidValueError:
+            pass
+
+        # this should raise InvalidValueError
+        try:
+            # insert several Inf
+            f(numpy.asarray([1.0, 1.0, 1.0])/0)
+            assert False
+        except debugmode.InvalidValueError:
+            pass
+
+        # this should disable the exception
+        theano.tensor.TensorType.filter_checks_isfinite = False
+        # insert several Inf
+        f(numpy.asarray([1.0, 1.0, 1.0])/0)
+
+
+    def test_check_isfinite_disabled(self):
+        x = theano.tensor.dvector()
+        f = theano.function([x], (x+2) * 5, mode=debugmode.DebugMode(check_isfinite=False))
+
+        # the DestroyMap checker should be triggered by Nan != Nan
+        try:
+            f(numpy.log([3, -4, 5]))
+            assert False
+        except debugmode.BadDestroyMap:
+            pass
+
+        #inf should go through
+        f(numpy.asarray([1.0, 1.0, 1.0])/0)
+
