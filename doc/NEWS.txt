@@ -29,4 +29,4 @@ What's missing?
   component implementations.  Some examples will find their way into
   the Theano repo, but standard algorithms will go into the 'pylearn'
   project (toolbox style). Now that we have a stable foundation, we
-  can arrive at a consensus on style for algorithms.
+  can reach a consensus on style for algorithms.
