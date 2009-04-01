@@ -19,6 +19,7 @@ Contents
    glossary
    links
    internal/index
+   NEWS
 
 
 ..   examples/index
