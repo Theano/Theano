@@ -499,6 +499,9 @@ class Env(utils.object2):
     def __str__(self):
         return "[%s]" % ", ".join(graph.as_string(self.inputs, self.outputs))
 
+    def __repr__(self):
+        return self.__str__()
+
 
     ### clone ###
 
