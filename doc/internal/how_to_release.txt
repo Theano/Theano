@@ -11,6 +11,7 @@ Clone the code::
 
 Edit ``setup.py`` to contain the newest version number::
 
+    cd Theano-0.X
     vi setup.py     # Edit the version "field"
 
 The homepage must link to the download URL, for PyPi to correctly get the
