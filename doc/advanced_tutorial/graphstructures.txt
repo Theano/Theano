@@ -34,6 +34,10 @@ Arrows represent references to the Python objects pointed at. The blue
 box is an :ref:`apply` node. Red boxes are :ref:`variable` nodes. Green
 circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
 
+.. TODO
+    Clarify the 'acyclic' graph and the 'back' pointers or references that
+    'don't count'.
+
 When we create :ref:`Variables <variable>` and then :ref:`apply`
 :ref:`Ops <op>` to them to make more Variables, we build a
 bi-partite, directed, acyclic graph. Variables point to the Apply nodes
@@ -59,7 +63,7 @@ In this example we will compare two ways of defining the same graph.
 First, a short bit of code will build an expression (graph) the *normal* way, with most of the
 graph construction being done automatically.
 Second, we will walk through a longer re-coding of the same thing
-without any shortcuts that will make the graph construction very explicit.
+without any shortcuts, that will make the graph construction very explicit.
 
 **Short example**
 
@@ -90,34 +94,39 @@ This is what you would type to build the graph explicitly:
     # Instantiate a type that represents a matrix of doubles
     float64_matrix = TensorType(dtype = 'float64',              # double
                                 broadcastable = (False, False)) # matrix
-    
+
     # We make the Variable instances we need.
     x = Variable(type = float64_matrix, name = 'x')
     y = Variable(type = float64_matrix, name = 'y')
     z = Variable(type = float64_matrix, name = 'z')
-    
+
     # This is the Variable that we want to symbolically represents y*z
     mul_variable = Variable(type = float64_matrix)
     assert mul_variable.owner is None
-    
+
     # Instantiate a symbolic multiplication
     node_mul = Apply(op = mul,
                      inputs = [y, z],
                      outputs = [mul_variable])
-    assert mul_variable.owner is node_mul and mul_variable.index == 0 # these fields are set by Apply
-    
+    # Fields 'owner' and 'index' are set by Apply
+    assert mul_variable.owner is node_mul
+    # 'index' is the position of mul_variable in mode_mul's outputs
+    assert mul_variable.index == 0
+
     # This is the Variable that we want to symbolically represents x+(y*z)
     add_variable = Variable(type = float64_matrix)
     assert add_variable.owner is None
-    
+
     # Instantiate a symbolic addition
     node_add = Apply(op = add,
                      inputs = [x, mul_variable],
                      outputs = [add_variable])
-    assert add_variable.owner is node_add and add_variable.index == 0 # these fields are set by Apply
-    
+    # Fields 'owner' and 'index' are set by Apply
+    assert add_variable.owner is node_add
+    assert add_variable.index == 0
+
     e = add_variable
-    
+
     # We have access to x, y and z through pointers
     assert e.owner.inputs[0] is x
     assert e.owner.inputs[1] is mul_variable
@@ -137,8 +146,8 @@ Automatic wrapping
 
 All nodes in the graph must be instances of ``Apply`` or ``Result``, but
 ``<Op subclass>.make_node()`` typically wraps constants to satisfy those
-constraints. For example, the :api:`tensor.add` op instance is written
-so that:
+constraints. For example, the :api:`tensor.add <theano.tensor.add>`
+Op instance is written so that:
 
 .. code-block:: python
 
@@ -149,9 +158,9 @@ builds the following graph:
 .. code-block:: python
 
     node = Apply(op = add,
-                 inputs = [Result(type = float64_scalar, name = 'x'),
-                           Constant(type = int64_scalar, data = 1)],
-                 outputs = [Result(type = float64_scalar)])
+                 inputs = [Variable(type = dscalar, name = 'x'),
+                           Constant(type = lscalar, data = 1)],
+                 outputs = [Variable(type = dscalar)])
     e = node.outputs[0]
 
 
@@ -276,7 +285,7 @@ Types. Indeed, the constraints set by ``dmatrix`` are:
 These restrictions are different from those of ``irow`` which are listed above.
 
 There are cases in which a Type can fully correspond to a Python type,
-such as the ``double`` Type we will define here which corresponds to
+such as the ``double`` Type we will define here, which corresponds to
 Python's ``float``. But, it's good to know that this is not necessarily
 the case. Unless specified otherwise, when we say "Type" we mean a
 Theano Type.
@@ -307,7 +316,7 @@ Variables. For example, when I type
 ``y`` is ``theano.tensor.ivector``.
 
 Unlike ``x``, ``y`` is a Variable produced by a computation (in this
-case, it is the negation of x). ``y`` is the Variable corresponding to
+case, it is the negation of ``x``). ``y`` is the Variable corresponding to
 the output of the computation, while ``x`` is the Variable
 corresponding to its input. The computation itself is represented by
 another type of node, an :ref:`apply` node, and may be accessed
@@ -335,7 +344,7 @@ A Variable ``r`` contains four important fields:
 **name**
   a string to use in pretty-printing and debugging.
 
-Variable has one special subclass: :ref:`constant <constant>`.
+Variable has one special subclass: :ref:`Constant <constant>`.
 
 .. index::
    single: Constant
@@ -347,7 +356,7 @@ Variable has one special subclass: :ref:`constant <constant>`.
 Constant
 ^^^^^^^^
 
-A constant is a :ref:`Variable` with one extra field, *data* (only
+A Constant is a :ref:`Variable` with one extra field, *data* (only
 settable once). When used in a computation graph as the input of an
 :ref:`Op` :ref:`application <Apply>`, it is assumed that said input
 will *always* take the value contained in the constant's data

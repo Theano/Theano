@@ -15,7 +15,7 @@ Apply           function application / function call
 Variable          function data / variable
 Op              operations carried out in computation / function definition
 Type            data types
-Module          ??? class?
+Module          class
 =============== ===========================================================
 
 For example:
@@ -29,10 +29,11 @@ For example:
    }
 
 
-Based on this code snippet, we can relate f and g to Ops, a, b and c
-to Variables, g(a, c) and f(b) (taken as meaning the action of
-computing f or g on their respective inputs) to Applies. Lastly, int
-could be interpreted as the Theano Type of the Variables a and b.
+Based on this code snippet, we can relate ``f`` and ``g`` to Ops, ``a``,
+``b`` and ``c`` to Variables, ``g(a, c)`` and ``f(b)`` (taken as meaning
+the action of computing ``f`` or ``g`` on their respective inputs) to
+Applies. Lastly, ``int`` could be interpreted as the Theano Type of the
+Variables ``a`` and ``b``.
 
 
 
