@@ -199,7 +199,7 @@ places. Note that ``add(x, y)`` and ``add(y, x)`` are still considered
 to be different because Theano has no clue that ``add`` is
 commutative. You may write your own global optimizer to identify
 computations that are identical with full knowledge of the rules of
-arithmetics that your ops implement. Theano might provide facilities
+arithmetics that your Ops implement. Theano might provide facilities
 for this somewhere in the future.
 
 .. note::
