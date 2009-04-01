@@ -16,7 +16,7 @@ You can go to the :ref:`Table of Contents <contents>`.
 News
 ----
 
- * 2009-04-01: Theano 0.1 released. See the :ref:`release notes <NEWS>`.
+* 2009-04-01: Theano 0.1 released. See the :ref:`release notes <NEWS>`.
 
 Choose your own adventure...
 ----------------------------
