@@ -35,7 +35,7 @@ There are less methods to define for an Op than for a Type:
   This must return C code that cleans up whatever c_code allocated and
   that we must free.
 
-  *Default* The default behavior is to do nothing.
+  *Default:* The default behavior is to do nothing.
 
 .. function:: c_compile_args()
               c_headers()
@@ -118,14 +118,14 @@ version that it produces in the code I gave above.
 .. code-block:: python
 
    from theano import gof
-   
+
    class BinaryDoubleOp(gof.Op):
-   
+
        def __init__(self, name, fn, ccode):
            self.name = name
            self.fn = fn
            self.ccode = ccode
-   
+
        def make_node(self, x, y):
            if isinstance(x, (int, float)):
                x = gof.Constant(double, x)
@@ -134,29 +134,29 @@ version that it produces in the code I gave above.
            if x.type != double or y.type != double:
                raise TypeError('%s only works on doubles' % self.name)
            return gof.Apply(self, [x, y], [double()])
-   
+
        def perform(self, node, (x, y), (z, )):
            z[0] = self.fn(x, y)
-   
+
        def __str__(self):
            return self.name
-   
+
        def c_code(self, node, name, (x, y), (z, ), sub):
            return self.ccode % locals()
-   
-   
+
+
    add = BinaryDoubleOp(name = 'add',
                         fn = lambda x, y: x + y,
                         ccode = "%(z)s = %(x)s + %(y)s;")
-   
+
    sub = BinaryDoubleOp(name = 'sub',
                         fn = lambda x, y: x - y,
                         ccode = "%(z)s = %(x)s - %(y)s;")
-   
+
    mul = BinaryDoubleOp(name = 'mul',
                         fn = lambda x, y: x * y,
                         ccode = "%(z)s = %(x)s * %(y)s;")
-   
+
    div = BinaryDoubleOp(name = 'div',
                         fn = lambda x, y: x / y,
                         ccode = "%(z)s = %(x)s / %(y)s;")

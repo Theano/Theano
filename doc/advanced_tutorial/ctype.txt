@@ -42,7 +42,7 @@ What needs to be defined
 
 In order to be C-compatible, a Type must define several additional
 methods, which all start with the ``c_`` prefix. The complete list can
-be found in the documentation for :ref:`type`. Here, we'll focus on
+be found in the documentation for :api:`gof.Type`. Here, we'll focus on
 the most important ones:
 
 
@@ -55,13 +55,13 @@ the most important ones:
 .. function:: c_init(name, sub)
 
   This must return C code which initializes the variables declared in
-  c_declare. Either this or c_extract will be called.
+  ``c_declare``. Either this or ``c_extract`` will be called.
 
 .. function:: c_extract(name, sub)
 
   This must return C code which takes a reference to a Python object
-  and initializes the variables declared in c_declare to match the
-  Python object's data. Either this or c_init will be called.
+  and initializes the variables declared in ``c_declare`` to match the
+  Python object's data. Either this or ``c_init`` will be called.
 
 .. function:: c_sync(name, sub)
 
@@ -101,7 +101,7 @@ out:
 .. warning::
    If some error condition occurs and you want to fail and/or raise an
    Exception, you must use the ``fail`` code contained in
-   ``sub['fail']`` (there is an example in the definition of c_extract
+   ``sub['fail']`` (there is an example in the definition of ``c_extract``
    below). You must *NOT* use the ``return`` statement anywhere, ever,
    nor ``break`` outside of your own loops or ``goto`` to strange
    places or anything like that. Failure to comply with this
@@ -109,8 +109,8 @@ out:
    leaks because Theano defines its own cleanup system and assumes
    that you are not meddling with it. Furthermore, advanced operations
    or types might do code transformations on your code such as
-   inserting it in a loop - in that case they can call your code
-   generating methods with custom failure code that takes into account
+   inserting it in a loop -- in that case they can call your
+   code-generating methods with custom failure code that takes into account
    what they are doing!
 
 
@@ -129,7 +129,7 @@ Defining the methods
 
 Very straightforward. All we need to do is write C code to declare a
 double. That double will be named whatever is passed to our function
-in the "name" argument. That will usually be some mangled name like
+in the ``name`` argument. That will usually be some mangled name like
 "V0", "V2" or "V92" depending on how many nodes there are in the
 computation graph and what rank the current node has. This function
 will be called for all Variables whose type is ``double``.
@@ -161,15 +161,15 @@ This function has to initialize the
 double we declared previously to a suitable value. This is useful if
 we want to avoid dealing with garbage values, especially if our data
 type is a pointer. This is not going to be called for all Variables with
-the ``double`` type. Indeed, if a Variable is an input which we pass
-from Python we will want to extract that input from a Python object,
-therefore it is the c_extract method that will be called instead of
-c_init. You can therefore not assume, when writing c_extract, that the
+the ``double`` type. Indeed, if a Variable is an input that we pass
+from Python, we will want to extract that input from a Python object,
+therefore it is the ``c_extract`` method that will be called instead of
+``c_init``. You can therefore not assume, when writing ``c_extract``, that the
 initialization has been done (in fact you can assume that it *hasn't*
 been done).
 
 ``c_init`` will typically be called on output Variables, but in general
-you should only assume that either c_init or c_extract has been
+you should only assume that either ``c_init`` or ``c_extract`` has been
 called, without knowing for sure which of the two.
 
 
@@ -205,7 +205,7 @@ then we insert code for failure. The code for failure is in
 ``sub["fail"]`` and it basically does a ``goto`` to cleanup code.
 
 If the check passes then we convert the Python float into a double
-using the PyFloat_AsDouble function (yet again provided by CPython's C
+using the ``PyFloat_AsDouble`` function (yet again provided by CPython's C
 API) and we put it in our double variable that we declared previously.
 
 
@@ -250,13 +250,14 @@ to a Python ``float``. This returns a new reference which we assign to
 will happily see a Python ``float`` come out of his computations.
 
 The rest of the code is not absolutely necessary and it is basically
-"good practice". PyFloat_FromDouble can return NULL on failure. NULL
-is a pretty bad reference to have and neither Python nor Theano like
-it. If this happens we change the NULL pointer (which will cause us
-problems) to a pointer to None (which is *not* a NULL pointer). Since
-None is an object like the others we need to increase its reference
-count before we can set a new pointer to it. This situation is
-unlikely to ever happen, but if it ever does, better safe than sorry.
+"good practice". ``PyFloat_FromDouble`` can return ``NULL`` on failure.
+``NULL`` is a pretty bad reference to have and neither Python nor Theano
+like it. If this happens, we change the ``NULL`` pointer (which will
+cause us problems) to a pointer to ``None`` (which is *not* a ``NULL``
+pointer). Since ``None`` is an object like the others, we need to
+increase its reference count before we can set a new pointer to it. This
+situation is unlikely to ever happen, but if it ever does, better safe
+than sorry.
 
 .. warning::
    I said this already but it really needs to be emphasized that if
@@ -277,28 +278,29 @@ unlikely to ever happen, but if it ever does, better safe than sorry.
 
 We actually have nothing to do here. We declared a double on the stack
 so the C language will reclaim it for us when its scope ends. We
-didn't malloc() anything so there's nothing to free(). Furthermore,
+didn't ``malloc()`` anything so there's nothing to ``free()``. Furthermore,
 the ``py_%(name)s`` pointer hasn't changed so we don't need to do
 anything with it. Therefore, we have nothing to cleanup. Sweet!
 
 There are however two important things to keep in mind:
 
 First, note that ``c_sync`` and ``c_cleanup`` might be called in
-sequence, so they need to play nice together. In particular, let's say
-that you allocate memory in ``c_init`` or ``c_extract`` for some
-reason. You might want to either embed what you allocated to some
-Python object in ``c_sync`` or to free it in ``c_cleanup``. If you do
-the former, you don't want to free the allocated storage so you should
-set the pointer to it to NULL to avoid that ``c_cleanup`` mistakenly
-frees it. Another option is to declare a variable in c_declare that
-you set to true in c_sync to notify c_cleanup that c_sync was called.
+sequence, so they need to play nice together. In particular, let's
+say that you allocate memory in ``c_init`` or ``c_extract`` for some
+reason. You might want to either embed what you allocated to some Python
+object in ``c_sync`` or to free it in ``c_cleanup``. If you do the
+former, you don't want to free the allocated storage so you should set
+the pointer to it to ``NULL`` to avoid that ``c_cleanup`` mistakenly
+frees it. Another option is to declare a variable in ``c_declare`` that
+you set to true in ``c_sync`` to notify ``c_cleanup`` that ``c_sync``
+was called.
 
-Second, whenever you use %(fail)s in c_extract or in the code of an
-:ref:`operation <op>` you can count on c_cleanup being called right
-after that. Therefore, it's important to make sure that c_cleanup
-doesn't depend on any code prior to a reference to
-%(fail)s. Furthermore, because of the way Theano blocks code together,
-only the variables declared in c_declare will be visible in c_cleanup!
+Second, whenever you use ``%(fail)s`` in ``c_extract`` or in the code of an
+:ref:`operation <op>`, you can count on ``c_cleanup`` being called right
+after that. Therefore, it's important to make sure that ``c_cleanup``
+doesn't depend on any code placed after a reference to
+``%(fail)s``. Furthermore, because of the way Theano blocks code together,
+only the variables declared in ``c_declare`` will be visible in ``c_cleanup``!
 
 
 What the generated C will look like
@@ -307,7 +309,7 @@ What the generated C will look like
 ``c_init`` and ``c_extract`` will only be called if there is a Python
 object on which we want to apply computations using C
 code. Conversely, ``c_sync`` will only be called if we want to
-communicate the values we have computed to Python and ``c_cleanup``
+communicate the values we have computed to Python, and ``c_cleanup``
 will only be called when we don't need to process the data with C
 anymore. In other words, the use of these functions for a given Variable
 depends on the the relationship between Python and C with respect to
@@ -378,13 +380,13 @@ like this:
      //c_cleanup for x
    }
 
-It's not pretty, but it gives you an idea of how things
-work (note that the variable names won't be x, y, z, etc. - they will
-get a unique mangled name). The ``fail`` code runs a goto to the
+It's not pretty, but it gives you an idea of how things work (note that
+the variable names won't be ``x``, ``y``, ``z``, etc. - they will
+get a unique mangled name). The ``fail`` code runs a ``goto`` to the
 appropriate label in order to run all cleanup that needs to be
-done. Note which variables get extracted (the three inputs x, y and
-z), which ones only get initialized (the temporary variable a and the
-output b) and which one is synced (the final output b).
+done. Note which variables get extracted (the three inputs ``x``, ``y`` and
+``z``), which ones only get initialized (the temporary variable ``a`` and the
+output ``b``) and which one is synced (the final output ``b``).
 
 The C code above is a single C block for the whole graph. Depending on
 which :ref:`linker` is used to process the computation graph, it is
@@ -399,26 +401,31 @@ Final version
 
 .. code-block:: python
 
+   from theano import gof
+
    class Double(gof.Type):
-   
+
        def filter(self, x, strict=False):
            if strict and not isinstance(x, float):
                raise TypeError('Expected a float!')
            return float(x)
-   
+
        def values_eq_approx(self, x, y, tolerance=1e-4):
            return abs(x - y) / (x + y) < tolerance
-   
+
+       def __str__(self):
+           return "double"
+
        def c_declare(self, name, sub):
            return """
            double %(name)s;
            """ % dict(name = name)
-   
+
        def c_init(self, name, sub):
            return """
            %(name)s = 0.0;
            """ % dict(name = name)
-   
+
        def c_extract(self, name, sub):
            return """
            if (!PyFloat_Check(py_%(name)s)) {
@@ -427,7 +434,7 @@ Final version
            }
            %(name)s = PyFloat_AsDouble(py_%(name)s);
            """ % dict(sub, name = name)
-   
+
        def c_sync(self, name, sub):
            return """
            Py_XDECREF(py_%(name)s);
@@ -438,8 +445,8 @@ Final version
                py_%(name)s = Py_None;
            }
            """ % dict(name = name)
-   
+
        def c_cleanup(self, name, sub):
            return ""
-   
+
    double = Double()

@@ -151,7 +151,7 @@ Op instance is written so that:
 
 .. code-block:: python
 
-    e = scalar('x') + 1
+    e = dscalar('x') + 1
 
 builds the following graph:
 

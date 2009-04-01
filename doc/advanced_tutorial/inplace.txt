@@ -7,8 +7,8 @@ Views and inplace operations
 
 Theano allows the definition of Ops which return a :term:`view` on one
 of their inputs or operates :term:`inplace` on one or several
-inputs. This allows more efficient operations on numpy's ndarray data type than
-would be possible otherwise.
+inputs. This allows more efficient operations on numpy's ``ndarray``
+data type than would be possible otherwise.
 However, in order to work correctly, these Ops need to
 implement an additional interface.
 
@@ -29,7 +29,7 @@ Views
 
 A "view" on an object ``x`` is an object ``y`` which shares memory
 with ``x`` in some way. In other words, changing ``x`` might also
-change ``y`` and vice versa. For example, imagine a "vector" structure
+change ``y`` and vice versa. For example, imagine a ``vector`` structure
 which contains two fields: an integer length and a pointer to a memory
 buffer. Suppose we have:
 
@@ -51,7 +51,7 @@ range ``0xDEADBEFF - 0xDEADBFDF`` and z the range ``0xCAFEBABE -
 considered to be a view of ``x`` and vice versa.
 
 Suppose you had an Op which took ``x`` as input and returned
-``y``. You would need to tell Theano that y is a view of x. For this
+``y``. You would need to tell Theano that ``y`` is a view of ``x``. For this
 purpose, you would set the ``view_map`` field as follows:
 
 
@@ -103,7 +103,7 @@ operation on ``x``.
 
    .. code-block:: python
 
-      x, y = dscalars('xy')
+      x, y = dscalars('x', 'y')
       r1 = log(x)
 
       # r2 is x AFTER the add_inplace - x still represents the value before adding y
@@ -119,7 +119,7 @@ operation on ``x``.
 
    Needless to say, this goes for user-defined inplace operations as
    well: the modified input must figure in the list of outputs you
-   give to Apply in the definition of make_node.
+   give to ``Apply`` in the definition of ``make_node``.
 
    Also, for technical reasons but also because they are slightly
    confusing to use as evidenced by the previous code, Theano does not
@@ -132,7 +132,7 @@ operation on ``x``.
    introduces inconsistencies.
 
 
-Take the previous definitions of x, y and z and suppose an Op which
+Take the previous definitions of ``x``, ``y`` and ``z`` and suppose an Op which
 adds one to every byte of its input. If we give ``x`` as an input to
 that Op, it can either allocate a new buffer of the same size as ``x``
 (that could be ``z``) and set that new buffer's bytes to the variable of
@@ -141,7 +141,7 @@ it could add one to each byte *in* the buffer ``x``, therefore
 changing it. That would be an inplace Op.
 
 Theano needs to be notified of this fact. The syntax is similar to
-that of view_map:
+that of ``view_map``:
 
 
 .. code-block:: python
@@ -160,10 +160,10 @@ first input (position 0).
    myop.destroy_map = {1: [0]} # second output operates inplace on first input
 
    myop.destroy_map = {0: [0], # first output operates inplace on first input
-                    1: [1]} # *AND* second output operates inplace on second input
+                       1: [1]} # *AND* second output operates inplace on second input
 
    myop.destroy_map = {0: [0], # first output operates inplace on first input
-                    1: [0]} # *AND* second output *ALSO* operates inplace on first input
+                       1: [0]} # *AND* second output *ALSO* operates inplace on first input
 
    myop.destroy_map = {0: [0, 1]} # first output operates inplace on both the first and second input
    # unlike for views, the previous line is legal and supported
@@ -194,7 +194,7 @@ input(s)'s memory). From there, go to the previous section.
    the value of ``x`` it might invert the order and that will
    certainly lead to erroneous computations.
 
-   You can often identify an incorrect view_map or destroy_map by using
-   :ref:`DebugMode`.  *Be sure to use DebugMode when developing a new Op that
-   uses view_map and/or destroy_map.*
+   You can often identify an incorrect ``view_map`` or ``destroy_map``
+   by using :ref:`DebugMode`.  *Be sure to use DebugMode when developing
+   a new Op that uses ``view_map`` and/or ``destroy_map``.*
 
