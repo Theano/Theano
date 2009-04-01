@@ -164,6 +164,11 @@ def value(x, name=None, ndim=None):
 class TensorType(Type):
     """Symbolic `Type` representing a numpy.ndarray value."""
 
+    filter_checks_isfinite = False
+    """
+    When this is True, strict filtering rejects data containing NaN or Inf entries. (Used in `DebugMode`)
+    """
+
     def __init__(self, dtype, broadcastable, name = None):
         """Initialize self.dtype and self.broadcastable.
 
@@ -199,6 +204,8 @@ class TensorType(Type):
                 raise TypeError("%s expected a ndarray object with dtype = %s (got %s)." % (self, self.dtype, data.dtype))
             if not data.ndim == self.ndim:
                 raise TypeError("%s expected a ndarray object with %s dimensions (got %s)." % (self, self.ndim, data.ndim))
+            if self.filter_checks_isfinite and (not numpy.all(numpy.isfinite(data))):
+                raise TypeError("non-finite elements not allowed")
             return data
         else:
             data = numpy.asarray(data, dtype = self.dtype)

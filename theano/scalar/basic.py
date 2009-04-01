@@ -644,6 +644,8 @@ class Abs(UnaryScalarOp):
             return "%(z)s = abs(%(x)s);" % locals()
         if type in float_types:
             return "%(z)s = fabs(%(x)s);" % locals()
+        if type in complex_types:
+            return "%(z)s = sqrt(%(x)s.real*%(x)s.real + %(x)s.imag*%(x)s.imag);" % locals()
         #complex, other?
         raise NotImplementedError('type not supported', type)
 abs_ = Abs(same_out)
