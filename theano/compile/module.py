@@ -970,6 +970,8 @@ class Module(ComponentDict):
     def __init__(self):
         super(Module, self).__init__()
         self.__dict__["local_attr"]={}
+        self.__dict__["_components"]={}
+
         
     def __wrapper__(self, x):
         """
@@ -978,7 +980,47 @@ class Module(ComponentDict):
         """
         return wrap(x)
 
-    def __getattr__(self, attr):
+    def __setattr__(self, attr, value):
+        # a is a new attribute
+        # we will use the local_attr dict to store it
+        v = self.unpack_member_and_external(value)
+
+        # this __setattr__ function overrides property.__set__, so we don't worry about a
+        # setter here
+        self.__dict__[attr] = v
+        self.__dict__["local_attr"][attr] = v
+
+    @staticmethod
+    def unpack_member_and_external(v):
+        if isinstance(v, Member):
+            print >> sys.stderr, ("WARNING: assignment of Member "
+                    "object %s (either directly or indirectly) to Module "
+                    "is deprecated.  Just use Variable." % v)
+            return v.r
+        elif isinstance(v, External):
+            print >> sys.stderr, ("WARNING: assignment of External "
+                    "object %s (either directly or indirectly) to Module "
+                    "is deprecated.  Just use Variable." % v)
+            return v.r
+        elif isinstance(v, (gof.Variable,Method,Module)):
+            return v
+        elif isinstance(v,(int,bool)):
+            return v
+        elif isinstance(v, (list)):
+            return map(Module.unpack_member_and_external,v)
+        elif isinstance(v, (tuple)):
+            return tuple(map(Module.unpack_member_and_external,v))
+        elif isinstance(v,dict):
+            v_copy = dict()
+            for k,vv in v.iteritems():
+                v_copy[k]=Module.unpack_member_and_external(vv)
+            return v
+        else:
+#                raise NotImplementedError
+#                print "WARNING: unknow:",v
+            return v
+
+    def old__getattr__(self, attr):
         if attr == '_components' and '_components' not in self.__dict__:
             self.__dict__['_components'] = {}
         try:
@@ -987,44 +1029,13 @@ class Module(ComponentDict):
             raise AttributeError('%s has no %s attribute.' % (self.__class__, attr))
         return rval
 
-    def __setattr__(self, attr, value):
+    def old__setattr__(self, attr, value):
+        """
+        """
         if attr in ('parent', '_components'):
             self.__dict__[attr] = value
             return
-        elif attr == 'name':
-            self.__set_name__(value)
-            return
-
-        def unpack_member_and_external(v):
-            if isinstance(v, Member):
-                print >> sys.stderr, ("WARNING: assignment of Member "
-                        "object %s (either directly or indirectly) to Module "
-                        "is deprecated.  Just use Variable." % v)
-                return v.r
-            elif isinstance(v, External):
-                print >> sys.stderr, ("WARNING: assignment of External "
-                        "object %s (either directly or indirectly) to Module "
-                        "is deprecated.  Just use Variable." % v)
-                return v.r
-            elif isinstance(v, (gof.Variable,Method,Module)):
-                return v
-            elif isinstance(v,(int,bool)):
-                return v
-            elif isinstance(v, (list)):
-                return map(unpack_member_and_external,v)
-            elif isinstance(v, (tuple)):
-                return tuple(map(unpack_member_and_external,v))
-            elif isinstance(v,dict):
-                v_copy = dict()
-                for k,vv in v.iteritems():
-                    v_copy[k]=unpack_member_and_external(vv)
-                return v
-            else:
-#                raise NotImplementedError
-#                print "WARNING: unknow:",v
-                return v
-        
-        self.__dict__["local_attr"][attr] = unpack_member_and_external(value)
+        self.__dict__["local_attr"][attr] = self.unpack_member_and_external(value)
 
     def build(self, mode, memo):
         if self in memo:
