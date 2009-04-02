@@ -20,7 +20,6 @@ from ..gof.python25 import partial
 
 from .. import compile, printing
 from ..printing import pprint, Print
-from ..tests import unittest_tools
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum

@@ -393,6 +393,12 @@ Here is an example showing how to use verify_grad:
 >>>    # ...
 >>>    tensor.verify_grad(Flatten(), [a_val])
 
+.. note::
+
+    Although ``verify_grad`` is defined in ``theano.tensor.basic``, unittests
+    should use the version of ``verify_grad`` defined in ``theano.tests.unittest_tools``.
+    This is simply a wrapper function which takes care of seeding the random 
+    number generator appropriately before calling ``theano.tensor.basic.verify_grad``
 
 makeTester and makeBroadcastTester
 ==================================
