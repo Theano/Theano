@@ -23,6 +23,7 @@ Edit ``doc/index.txt`` to contain a link to what will be the download URL::
 Tag the release. The syntax is something like the following::
 
     hg tag Theano-0.X
+    hg push
 
 Now, package the release and move it to the static theano directory::
 
