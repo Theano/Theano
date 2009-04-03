@@ -125,7 +125,7 @@ Mac
 
 - Install some kind of BLAS library (TODO: how?)
 
-- Set ``THEANO_BLAS_LDFLAGS to something which will link against said BLAS
+- Set ``THEANO_BLAS_LDFLAGS`` to something which will link against said BLAS
   library.  E.g., ``THEANO_BLAS_LDFLAGS='-lcblas -latlas -lgfortran'``.
 
 This advice has not been tested recently, so please inform us of your results.
