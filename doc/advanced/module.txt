@@ -54,6 +54,7 @@ non-symbolic thing.
 
 Compiling with make
 -------------------
+
 Conversion from a Component graph to a ComponentInstance graph is performed by `Component.make`.
 This method traverses the Component graph in multiple passes. 
 
@@ -77,7 +78,6 @@ allocated in phase 1 with sensible values.
    single: component; External
 
 .. _external:
-
 --------
 External
 --------
@@ -91,7 +91,6 @@ WRITEME
    single: component; Member
 
 .. _member:
-
 ------
 Member
 ------
@@ -104,7 +103,6 @@ WRITEME
    single: component; Method
 
 .. _method:
-
 ------
 Method
 ------
@@ -117,13 +115,17 @@ WRITEME
    single: component; Module
 
 .. _module:
-
 ------
 Module
 ------
 
-WRITEME
+A Module instance can contain objects as attributes.
+This makes it something like a class in the way that Method is
+analogous to a function.
 
-
-
+A Module is meant to contain Components.
+Attributes which are not Components themselves must at least be transform-able
+into Components by :api:`compile.module.wrap`.  If a Module contains something
+that is not convertible into a Component, then it is not possible to compile
+that Module with ``make``.
 

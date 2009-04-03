@@ -771,7 +771,10 @@ class ComponentDict(Composite):
 
     def set(self, item, value):
         if not isinstance(value, Component):
-            raise TypeError('ComponentDict may only contain Components.', value, type(value))
+            msg = """
+            ComponentDict may only contain Components. 
+            (Hint: maybe value here needs to be wrapped, see theano.compile.module.register_wrapper.)"""
+            raise TypeError(msg, value, type(value))
         #value = value.bind(self, item)
         value.name = name_join(self.name, str(item))
         self._components[item] = value
@@ -803,6 +806,16 @@ class ComponentDict(Composite):
 __autowrappers = []
 
 def register_wrapper(condition, wrapper):
+    """
+    :type condition: function x -> bool
+
+    :param condition: this function should return True iff `wrapper` can sensibly turn x into a
+    Component.
+
+    :type wrapper: function x -> Component
+
+    :param wrapper: this function should convert `x` into an instance of a Component subclass.
+    """
     __autowrappers.append((condition, wrapper))
 
 def wrapper(x):
@@ -816,8 +829,13 @@ def wrapper(x):
 
 def wrap(x):
     """
-    Wraps x in a Component. Wrappers can be registered using
-    register_wrapper to allow wrapping more types.
+    Wraps `x` in a `Component`. Wrappers can be registered using
+    `register_wrapper` to allow wrapping more types.
+
+    It is necessary for Module attributes to be wrappable.
+    A Module with an attribute that is not wrappable as a Component, will cause
+    `Component.make` to fail.
+
     """
     w = wrapper(x)
     if w is not None:
