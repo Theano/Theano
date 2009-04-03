@@ -502,6 +502,10 @@ class T_module(unittest.TestCase):
         self.assertRaises(NotImplementedError, c.set,"n",1)
 
 
+    def test_wrappable_as_tensor(self):
+        M = Module()
+        M.a = [1,2,3]
+        M.make()
 
 def test_multiple_references():
 

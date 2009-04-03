@@ -159,6 +159,15 @@ def constant(x, name=None, ndim=None):
 def value(x, name=None, ndim=None):
     return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim)
 
+def _obj_is_wrappable_as_tensor(x):
+    try:
+        constant(x)
+        return True
+    except TypeError:
+        return False
+def _wrap_tensor_into_member(x):
+    return compile.module.Member(constant(x))
+compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
 
 class TensorType(Type):
@@ -929,7 +938,8 @@ def argmax(x, axis=None):
 
 @constructor
 def min(x, axis=None):
-    if 'float'in str(x.dtype):
+    str_x_type = str(x.dtype)
+    if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return -max(-x, axis=axis)
     else:
         #Be careful about unsigned integers, complex
@@ -937,7 +947,8 @@ def min(x, axis=None):
 
 @constructor
 def argmin(x, axis=None):
-    if 'float'in str(x.dtype):
+    str_x_type = str(x.dtype)
+    if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return argmax(-x, axis=axis)
     else:
         #Be careful about unsigned integers, complex
