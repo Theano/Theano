@@ -766,7 +766,7 @@ tan = Tan(upgrade_to_float, name = 'tan')
 
 class Cosh(UnaryScalarOp):
     """
-    sinh(x) = (exp(x) + exp(-x)) / 2
+    cosh(x) = (exp(x) + exp(-x)) / 2
     """
     def impl(self, x):
         return math.cosh(x)
