@@ -184,7 +184,6 @@ class External(_RComponent):
             rval += '\n= %s' % (pprint(self.r, dict(target = self.r)))
         return rval
 
-
 class Member(_RComponent):
     """
     Member represents a Variable which is a state of a Composite. That

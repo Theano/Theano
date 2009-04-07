@@ -506,6 +506,47 @@ class T_module(unittest.TestCase):
         M = Module()
         M.a = [1,2,3]
         M.make()
+        m = M.make()
+        print m.a
+        print m.a[0], type(m.a[0]), m.a[0] == 1
+        print list(m.a)
+        assert list(m.a) == [1,2,3]
+        assert m.a is not M.a
+        try:
+            m.a = [4, 5, 6]
+            assert False
+        except Exception, e:
+            if e[0].startswith("Cannot set readonly"):
+                pass
+            else:
+                raise
+
+        try:
+            m.a[0] = 4
+            assert False
+        except Exception, e:
+            if e[0].startswith("Cannot set readonly"):
+                pass
+            else:
+                raise
+
+    def test_mixed_list(self):
+        M = Module()
+        M.a = [1,2,T.lscalar()]
+        m = M.make()
+        assert list(m.a) == [1,2,None]
+
+        assert m.a is not M.a
+        try:
+            m.a[0] = 4
+            assert False
+        except Exception, e:
+            if e[0].startswith("Cannot set readonly"):
+                pass
+            else:
+                raise
+        m.a[2] = 3
+        assert list(m.a) == [1,2,3]
 
 def test_multiple_references():
 
