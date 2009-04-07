@@ -5,25 +5,28 @@
 Module Interface
 ================
 
-Functions in theano can share containers, when the `value` argument to `In` is a Container
-instance.  This feature makes it possible for multiple functions to use (and update) the same
-inputs.
-Module is a class in Theano that exists to facilitate the compilation of
-multiple Functions that work on (and update) overlapping sets of input
-Variables.
+A Theano Module is like Theano's version of a file.
+When you instantiate a ``Module()``, you are creating a blank file.
+Into this file you can put both symbolic and non-symbolic objects.
+Non-symbolic objects are like constants (technically literals) in the file.
+Symbolic objects are like variables and functions.
+The functions in a Module are called Methods.
+The variables in a Module (and submodules) are global.
+Module Methods have access to all these global variables.
 
-Modules provide a more intuitive syntax that makes this feature easier to use.  
-They draw on the metaphor of a python import--a module has functions and variables, and
-can contain other modules.  All functions have access to all variables, and whenever any
-function modifies a file-level variable, then that change is visible to all other functions.
+To use a Module, you need to compile it.
+This is done by calling `Module.make()`.
+The result of compiling a Module is a ModuleInstance, this is the compiled
+version of your Theano file.
+In the ModuleInstance, your symbolic variables have become containers (containing None),
+and your Methods have become callable functions.
+You should initialize the symbolic variables by calling
+``ModuleInstance.initialize()`` (although make() will call it for you, 
+on the top-level ModuleInstance.)
 
-In the Module system, the analog of the file is the `Module`, the analog of the function is the
-`Method`, and the analog of the variable is the `Member`.  Module, Member, and Method all work
-at the symbolic level.  Once a graph of Modules, Members, and Methods is ready for use, it must
-be compiled with a call to `make` which will return an isomorphic structure in which Modules
-have become `ModuleInstances`, Members have become `Container`s, and Methods have become
-`Function`s.
-This structure contains numbers and functions, and is ready for computation.
+You can compile a Module several times, to create multiple ModuleInstances.
+Each of these will have its own copy of all program literals.
+
 
 
 Module Graph
@@ -128,4 +131,16 @@ Attributes which are not Components themselves must at least be transform-able
 into Components by :api:`compile.module.wrap`.  If a Module contains something
 that is not convertible into a Component, then it is not possible to compile
 that Module with ``make``.
+
+
+Old Text
+--------
+
+In the Module system, the analog of the file is the `Module`, the analog of the function is the
+`Method`, and the analog of the variable is the `Member`.  Module, Member, and Method all work
+at the symbolic level.  Once a graph of Modules, Members, and Methods is ready for use, it must
+be compiled with a call to `make` which will return an isomorphic structure in which Modules
+have become `ModuleInstances`, Members have become `Container`s, and Methods have become
+`Function`s.
+This structure contains numbers and functions, and is ready for computation.
 

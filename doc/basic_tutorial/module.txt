@@ -5,9 +5,11 @@ Using Module
 
 Now that we're familiar with the basics, we introduce Theano's more
 advanced interface, Module. This interface allows you to define Theano
-"objects" which can have many state variables and many methods sharing
-these states. The Module system simplifies the way to define complex
+"files" which can have variables and methods sharing
+those variables. The Module system simplifies the way to define complex
 systems such as a neural network.
+It also lets you load and save these complex systems using Python's pickle
+mechanism.
 
 
 Remake of the "state" example
@@ -44,12 +46,15 @@ This deserves to be broken up a bit...
 >>> m = Module()
 
 Here we instantiate an empty Module.
+If you can imagine that Theano is a way of generating code (expression
+graphs),
+then a ``Module()`` is like a fresh blank file.
 
 
 >>> m.state = T.dscalar()
 >>> m.inc = T.dscalar('inc')
 
-Then we declare Variables for use with our Module.
+Then we declare Variables for use in our Module.
 Since we assign these input Variables as attributes of the Module,
 they will be *member Variables* of the Module.
 Member Variables are special in a few ways, which we will see shortly.
@@ -57,7 +62,8 @@ Member Variables are special in a few ways, which we will see shortly.
 .. note::
 
    There is no need to name the Variable explicitly here. ``m.state`` will
-   be given the name ``'state'`` automatically.
+   be given the name ``'state'`` automatically, because it is being assigned
+   to the attribute named ``'state'``.
 
 
 .. note::
