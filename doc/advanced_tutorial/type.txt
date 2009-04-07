@@ -39,30 +39,30 @@ default values.
   ``filter(value, strict = True)`` does not raise an exception, the
   value is compatible with the Type.
 
-  *Default*: True iff ``filter(value, strict = True)`` does not raise
+  *Default:* True iff ``filter(value, strict = True)`` does not raise
   an exception.
 
 .. function:: values_eq(a, b)
 
   Returns True iff ``a`` and ``b`` are equal.
 
-  *Default*: ``a == b``
+  *Default:* ``a == b``
 
 .. function:: values_eq_approx(a, b)
 
   Returns True iff ``a`` and ``b`` are approximately equal, for a
   definition of "approximately" which varies from Type to Type.
 
-  *Default*: ``values_eq(a, b)``
+  *Default:* ``values_eq(a, b)``
 
 .. function:: make_variable(name=None)
 
   Makes a :term:`Variable` of this Type with the specified name, if
-  ``name is not None``. If ``name is ``None``, then the Variable does
+  ``name`` is not ``None``. If ``name`` is ``None``, then the Variable does
   not have a name. The Variable will have its ``type`` field set to
   the Type object.
 
-  *Default*: there is a generic definition of this in Type. The
+  *Default:* there is a generic definition of this in Type. The
   Variable's ``type`` will be the object that defines this method (in
   other words, ``self``).
 
@@ -70,21 +70,21 @@ default values.
 
   Syntactic shortcut to ``make_variable``.
 
-  *Default*: ``make_variable``
+  *Default:* ``make_variable``
 
 .. function:: __eq__(other)
 
   Used to compare Type instances themselves
 
-  *Default*: ``object.__eq__``
+  *Default:* ``object.__eq__``
 
 .. function:: __hash__()
 
-  Types should not be mutable, so it should be Ok to define a hash
+  Types should not be mutable, so it should be OK to define a hash
   function.  Typically this function should hash all of the terms
   involved in ``__eq__``.
 
-  *Default*: ``id(self)``
+  *Default:* ``id(self)``
 
 For each method, the *default* is what ``Type`` defines
 for you. So, if you create an instance of ``Type`` or an
@@ -99,7 +99,7 @@ For more details you can go see the documentation for :ref:`type`.
 Defining double
 ===============
 
-We are going to base Type ``double`` on Python's ``float``. We are
+We are going to base Type ``double`` on Python's ``float``. We
 must define ``filter`` and shall override ``values_eq_approx``.
 
 
@@ -139,17 +139,17 @@ graph in such a way that it produces slightly different variables, for
 example because of numerical instability like rounding errors at the
 end of the mantissa. For instance, ``a + a + a + a + a + a`` might not
 actually produce the exact same output as ``6 * a`` (try with a=0.1),
-but with ``values_eq_approx`` we with don't necessarily mind.
+but with ``values_eq_approx`` we don't necessarily mind.
 
 We added an extra ``tolerance`` argument here. Since this argument is
-not part of the API, it must have a default value which we
+not part of the API, it must have a default value, which we
 chose to be 1e-4.
 
 .. note::
 
     ``values_eq`` is never actually used by Theano, but it might be used
-    internally in the future. Equality testing in DebugMode is done
-    using ``values_eq_approx``.
+    internally in the future. Equality testing in
+    :ref:`DebugMode <debugmode>` is done using ``values_eq_approx``.
 
 **Putting them together**
 
@@ -160,7 +160,7 @@ the Type is to instantiate a plain Type and set the needed fields:
 
 .. code-block:: python
 
-   from Theano import gof
+   from theano import gof
 
    double = gof.Type()
    double.filter = filter
@@ -175,19 +175,19 @@ and define ``filter`` and ``values_eq_approx`` in the subclass:
    from theano import gof
 
    class Double(gof.Type):
-   
+
        def filter(self, x, strict=False):
            if strict and not isinstance(x, float):
                raise TypeError('Expected a float!')
            return float(x)
-   
+
        def values_eq_approx(self, x, y, tolerance=1e-4):
            return abs(x - y) / (abs(x) + abs(y)) < tolerance
-   
+
    double = Double()
 
 ``double`` is then an instance of Type ``Double``, which in turn is a
-sublcass of ``Type``.
+subclass of ``Type``.
 
 There is a small issue with defining ``double`` this way. All
 instances of ``Double`` are technically the same Type. However, different
@@ -199,7 +199,7 @@ instances of ``Double`` are technically the same Type. However, different
 False
 
 Theano compares Types using ``==`` to see if they are the same.
-This happens in DebugMode.  Also, ops can (and should) ensure that their inputs
+This happens in DebugMode.  Also, Ops can (and should) ensure that their inputs
 have the expected Type by checking something like ``if x.type == lvector``.
 
 There are several ways to make sure that equality testing works properly:
@@ -243,7 +243,7 @@ attempt to clear up the confusion:
   that Type instance. If you were to parse the C expression ``c = a +
   b;``, ``a``, ``b`` and ``c`` would all be Variable instances.
 
-* A **subclass of Type** is a way of implementing 
+* A **subclass of Type** is a way of implementing
   a set of Type instances that share
   structural similarities. In the ``double`` example that we are doing,
   there is actually only one Type in that set, therefore the subclass
@@ -265,18 +265,18 @@ Final version
    from theano import gof
 
    class Double(gof.Type):
-   
+
        def filter(self, x, strict=False):
            if strict and not isinstance(x, float):
                raise TypeError('Expected a float!')
            return float(x)
-   
+
        def values_eq_approx(self, x, y, tolerance=1e-4):
            return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
        def __str__(self):
            return "double"
-   
+
    double = Double()
 
 

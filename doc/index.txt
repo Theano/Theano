@@ -5,8 +5,7 @@ Quick Start
 
 Theano is a Python library that allows you to define, optimize, and
 efficiently evaluate mathematical expressions involving multi-dimensional
-arrays. Using Theano, it is not uncommon to see speed improvements of
-ten-fold over using pure NumPy.
+arrays.
 
 The latest release is version `0.1
 <http://pylearn.org/theano/downloads/Theano-0.1.tar.gz>`_.
@@ -14,7 +13,13 @@ You can download the latest `PDF documentation
 <http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
 You can go to the :ref:`Table of Contents <contents>`.
 
-Or, you can choose your own adventure...
+News
+----
+
+* 2009-04-01: Theano 0.1 released. See the :ref:`release notes <NEWS>`.
+
+Choose your own adventure...
+----------------------------
 
 * You have no idea what Theano is and you read the :ref:`introduction
   <introduction>`.

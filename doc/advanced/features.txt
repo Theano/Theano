@@ -5,11 +5,15 @@
 List of Env Features
 ====================
 
+See :api:`gof.env.Env`.
+
 WRITEME
 
 .. _nodefinder:
 
 NodeFinder
 ==========
+
+See :api:`gof.toolbox.NodeFinder`.
 
 WRITEME

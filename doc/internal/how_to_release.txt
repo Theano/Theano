@@ -11,6 +11,7 @@ Clone the code::
 
 Edit ``setup.py`` to contain the newest version number::
 
+    cd Theano-0.X
     vi setup.py     # Edit the version "field"
 
 The homepage must link to the download URL, for PyPi to correctly get the
@@ -21,8 +22,8 @@ Edit ``doc/index.txt`` to contain a link to what will be the download URL::
 
 Tag the release. The syntax is something like the following::
 
-    cd Theano-0.X
-    hg tag
+    hg tag Theano-0.X
+    hg push
 
 Now, package the release and move it to the static theano directory::
 
@@ -30,7 +31,6 @@ Now, package the release and move it to the static theano directory::
     cd ..
     tar cvf Theano-0.X.tar Theano-0.X
     gzip -9 Theano-0.X.tar
-    rm -Rf Theano-0.X
     mv Theano-0.X.tar.gz www/theano_static/downloads/
     ~/repos/theano/.hg/refresh-epydoc.sh
 
@@ -42,7 +42,13 @@ directory::
 
 Finally, use setuptools to register and upload the release::
 
+    cd Theano-0.X
     python setup.py register sdist bdist_egg upload
+    # If you get an error message about needing to be identified, then store
+    # your pypi information in ~/.pypirc
+    # You can remove this file after upload.
+    cd ..
+    rm -Rf Theano-0.X
 
 I wrote the above without actually running it. This needs to be
 scrutinized when you are actually do a release.

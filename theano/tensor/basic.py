@@ -20,7 +20,6 @@ from ..gof.python25 import partial
 
 from .. import compile, printing
 from ..printing import pprint, Print
-from ..tests import unittest_tools
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -159,6 +158,15 @@ def constant(x, name=None, ndim=None):
 def value(x, name=None, ndim=None):
     return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim)
 
+def _obj_is_wrappable_as_tensor(x):
+    try:
+        constant(x)
+        return True
+    except TypeError:
+        return False
+def _wrap_tensor_into_member(x):
+    return compile.module.Member(constant(x))
+compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
 
 class TensorType(Type):
@@ -250,11 +258,16 @@ class TensorType(Type):
         if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
             if a.shape != b.shape:
                 return False
-            if a.shape == ():
-                ones = numpy.ones(2)
-                return numpy.allclose(ones * a, ones*b)
+            if a.dtype != b.dtype:
+                return False
+            if 'int' in str(a.dtype):
+                return numpy.all(a==b)
             else:
-                return numpy.allclose(a,b)
+                if a.shape == (): #for comparing scalars, use broadcasting.
+                    ones = numpy.ones(2)
+                    return numpy.allclose(ones * a, ones*b)
+                else:
+                    return numpy.allclose(a,b)
         return False
 
     def __hash__(self):
@@ -924,7 +937,8 @@ def argmax(x, axis=None):
 
 @constructor
 def min(x, axis=None):
-    if 'float'in str(x.dtype):
+    str_x_type = str(x.dtype)
+    if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return -max(-x, axis=axis)
     else:
         #Be careful about unsigned integers, complex
@@ -932,7 +946,8 @@ def min(x, axis=None):
 
 @constructor
 def argmin(x, axis=None):
-    if 'float'in str(x.dtype):
+    str_x_type = str(x.dtype)
+    if str_x_type.startswith('float') or str_x_type.startswith('int'):
         return argmax(-x, axis=axis)
     else:
         #Be careful about unsigned integers, complex

@@ -130,6 +130,12 @@ class BadDestroyMap(DebugModeError):
         print >> sio, "  changed input type:", self.node.inputs[self.idx].type
         print >> sio, "  repr (old val):", repr(self.old_val)
         print >> sio, "  repr (new val):", repr(self.new_val)
+        print >> sio, "  value dtype (new <space> old):", self.new_val.dtype, self.old_val.dtype
+        print >> sio, "  value shape (new <space> old):", self.new_val.shape, self.old_val.shape
+        print >> sio, "  value min (new <space> old):", self.new_val.min(), self.old_val.min()
+        print >> sio, "  value max (new <space> old):", self.new_val.max(), self.old_val.max()
+        print >> sio, "  value min (new-old):", (self.new_val-self.old_val).min()
+        print >> sio, "  value max (new-old):", (self.new_val-self.old_val).max()
         print >> sio, ""
         print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
         return sio.getvalue()

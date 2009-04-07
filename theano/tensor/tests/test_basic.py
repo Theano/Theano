@@ -16,10 +16,10 @@ from theano import gof
 from theano.tensor.elemwise import DimShuffle
 from theano.compile.mode import default_mode
 from theano import function
-from theano.tests import unittest_tools
+from theano.tests import unittest_tools as utt
 
 ### seed random number generator so that unittests are deterministic ###
-unittest_tools.seed_rng()
+utt.seed_rng()
 
 def inplace_func(inputs, outputs, mode=default_mode):
     return function(inputs, outputs, mode=mode, accept_inplace=True)
@@ -157,7 +157,7 @@ def makeTester(name, op, expected, checks = {}, good = {}, bad_build = {}, bad_r
                 inputs = [copy(input) for input in inputs]
                 inputrs = [value(input) for input in inputs]
                 try:
-                    verify_grad(self.op, inputs)
+                    utt.verify_grad(self.op, inputs)
                 except:
                     type, exc_value, traceback = sys.exc_info()
                     err_msg = "Test %s::%s: Error occurred while computing the gradient on the following inputs: %s" \
@@ -599,7 +599,7 @@ class T_Cast(unittest.TestCase):
 
 class T_max_and_argmax(unittest.TestCase):
     def setUp(self):
-        unittest_tools.seed_rng()
+        utt.seed_rng()
         MaxAndArgmax.debug = 0
 
     def test0(self):
@@ -670,7 +670,7 @@ class T_max_and_argmax(unittest.TestCase):
 class T_subtensor(unittest.TestCase):
     def setUp(self):
         Subtensor.debug = False
-        unittest_tools.seed_rng()
+        utt.seed_rng()
 
     def test0_err_invalid(self):
         #it is impossible to retrieve a view of a 0-d tensor
@@ -941,7 +941,7 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
 
-        verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
 
     def test_join_matrix1_using_vertical_stack(self):
         a = as_tensor_variable(numpy.array([[1, 2, 3], [4, 5, 6]]))
@@ -963,7 +963,7 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([[1, 2, 3, 7, 3, 2, 1], [4, 5, 6, 8, 6, 5, 4]], dtype='float32')
         self.failUnless((eval_outputs([s]) == want).all())
 
-        verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
+        utt.verify_grad(lambda a, b: join(1,a,b), [av, bv], eps=1.0e-4, tol=1.0e-3)
 
     def test_join_matrixV(self):
         """variable join axis"""
@@ -983,8 +983,8 @@ class T_Join_and_Split(unittest.TestCase):
         got = f(1)
         self.failUnless((got == want).all(), (got, want))
 
-        verify_grad(lambda a, b: join(0,a,b), [v, 2*v])
-        verify_grad(lambda a, b: join(1,a,b), [v, 2*v])
+        utt.verify_grad(lambda a, b: join(0,a,b), [v, 2*v])
+        utt.verify_grad(lambda a, b: join(1,a,b), [v, 2*v])
 
     def test_vector_len(self):
         x = lscalar('x')
@@ -1090,7 +1090,7 @@ class test_bitwise(unittest.TestCase):
 class T_add(unittest.TestCase):
 
     def setUp(self):
-        unittest_tools.seed_rng()
+        utt.seed_rng()
 
     def test_complex_all_ops(self):
         for nbits in (64, 128):
@@ -1107,22 +1107,22 @@ class T_add(unittest.TestCase):
                 self.failUnless(a.type.values_eq_approx(fn(a.data, b.data), f(a.data, b.data)))
 
     def test_grad_scalar_l(self):
-        verify_grad(add, [numpy.asarray([3.0]), numpy.random.rand(3)])
+        utt.verify_grad(add, [numpy.asarray([3.0]), numpy.random.rand(3)])
     def test_grad_scalar_r(self):
-        verify_grad(add, [numpy.random.rand(3), numpy.asarray([3.0])])
+        utt.verify_grad(add, [numpy.random.rand(3), numpy.asarray([3.0])])
     def test_grad_row(self):
-        verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+        utt.verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
     def test_grad_col(self):
-        verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+        utt.verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 class T_exp(unittest.TestCase):
 
     def test_grad_0(self):
-        verify_grad(exp, [
+        utt.verify_grad(exp, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
     def test_grad_1(self):
-        verify_grad(inplace.exp_inplace, [
+        utt.verify_grad(inplace.exp_inplace, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
 
@@ -1139,8 +1139,8 @@ class T_exp(unittest.TestCase):
 #             check_eq(self, t, abs(t), -d, abs(-d))
 
 #     def test_grad(self):
-#         verify_grad(Abs, [numpy.ones(())])
-#         verify_grad(Abs, [numpy.ones(3)])
+#         utt.verify_grad(Abs, [numpy.ones(())])
+#         utt.verify_grad(Abs, [numpy.ones(3)])
 
 #     class AbsBadGrad(Abs):
 #         def grad(self, (x, ), (gz, )):
@@ -1148,9 +1148,9 @@ class T_exp(unittest.TestCase):
 
 #     def test_badgrad(self):
 #         try:
-#             verify_grad(T_abs.AbsBadGrad, [numpy.ones(())])
+#             utt.verify_grad(T_abs.AbsBadGrad, [numpy.ones(())])
 #         except Exception, e:
-#             self.failUnless(str(e) == verify_grad.E_grad, str(e))
+#             self.failUnless(str(e) == utt.verify_grad.E_grad, str(e))
 #             return
 #         self.fail()
 
@@ -1187,7 +1187,7 @@ class T_exp(unittest.TestCase):
 
 # class T_mul(unittest.TestCase):
 #     def setUp(self):
-#         unittest_tools.seed_rng()
+#         utt.seed_rng()
 
 #     def test_elemwise(self):
 #         a = as_tensor_variable(0.0)
@@ -1219,18 +1219,18 @@ class T_exp(unittest.TestCase):
 #         check_eq2_both(self, [a1,a3], mul(a1,a3), [r1, r3], r1*r3)
 
 #     def test_grad_elemwise(self):
-#         verify_grad(Mul, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+#         utt.verify_grad(Mul, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
 #     def test_grad_scalar_l(self):
-#         verify_grad(Mul, [numpy.asarray([3.0]), numpy.random.rand(3)])
+#         utt.verify_grad(Mul, [numpy.asarray([3.0]), numpy.random.rand(3)])
 #     def test_grad_scalar_r(self):
-#         verify_grad(Mul, [numpy.random.rand(3), numpy.asarray([3.0])])
+#         utt.verify_grad(Mul, [numpy.random.rand(3), numpy.asarray([3.0])])
 #     def test_grad_row(self):
-#         verify_grad(Mul, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+#         utt.verify_grad(Mul, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
 #     def test_grad_row2(self):
 #         op = lambda x, y: Mul(x, DimShuffle(y, ['x', 0]).out)
-#         verify_grad(op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
+#         utt.verify_grad(op, [numpy.random.rand(3, 5), numpy.random.rand(5)])
 #     def test_grad_col(self):
-#         verify_grad(Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+#         utt.verify_grad(Mul, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 #     def test_wrong_shapes(self):
 #         a = as_tensor_variable(numpy.ones(3))
@@ -1250,28 +1250,28 @@ class T_exp(unittest.TestCase):
 
 # class T_div(unittest.TestCase):
 #     def setUp(self):
-#         unittest_tools.seed_rng()
+#         utt.seed_rng()
 #     def test_grad_e(self):
-#         verify_grad(Div, [numpy.random.rand(3), numpy.ones(3)])
-#         verify_grad(Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
-#         verify_grad(Div, [numpy.ones(()), numpy.ones(())])
+#         utt.verify_grad(Div, [numpy.random.rand(3), numpy.ones(3)])
+#         utt.verify_grad(Div, [numpy.random.rand(3,5), numpy.random.rand(3,5)+0.1])
+#         utt.verify_grad(Div, [numpy.ones(()), numpy.ones(())])
 
 #     def test_grad_sl(self):
-#         verify_grad(Div, [numpy.ones((3, 5)), numpy.ones((1, 1))])
-#         verify_grad(Div, [numpy.random.rand(3), numpy.ones((1, ))])
-#         verify_grad(Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
+#         utt.verify_grad(Div, [numpy.ones((3, 5)), numpy.ones((1, 1))])
+#         utt.verify_grad(Div, [numpy.random.rand(3), numpy.ones((1, ))])
+#         utt.verify_grad(Div, [numpy.random.rand(3,5), numpy.random.rand(1,1)])
 
 # class T_log2(unittest.TestCase):
 #     def setUp(self):
-#         unittest_tools.seed_rng()
+#         utt.seed_rng()
 #     def test0(self):
-#         verify_grad(Log2, [numpy.random.rand(3,1)+0.0001])
+#         utt.verify_grad(Log2, [numpy.random.rand(3,1)+0.0001])
 
 # class T_log(unittest.TestCase):
 #     def setUp(self):
-#         unittest_tools.seed_rng()
+#         utt.seed_rng()
 #     def test0(self):
-#         verify_grad(Log, [numpy.random.rand(3,1)+0.0001])
+#         utt.verify_grad(Log, [numpy.random.rand(3,1)+0.0001])
 #     def test1(self):
 #         a = as_tensor_variable(numpy.ones(2))
 #         b = as_tensor_variable(numpy.ones(2))
@@ -1281,23 +1281,23 @@ class T_exp(unittest.TestCase):
 
 # class T_pow(unittest.TestCase):
 #     def setUp(self):
-#         unittest_tools.seed_rng()
+#         utt.seed_rng()
 #     def test_elemwise(self):
-#         verify_grad(Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
-#         verify_grad(Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
+#         utt.verify_grad(Div, [numpy.random.rand(3,4), numpy.random.rand(3,4)+0.1])
+#         utt.verify_grad(Pow, [numpy.random.rand(3,4), numpy.random.rand(3,4)])
 #     def test_scalar_l(self):
-#         verify_grad(Pow, [numpy.asarray([3.0]), numpy.random.rand(3)])
+#         utt.verify_grad(Pow, [numpy.asarray([3.0]), numpy.random.rand(3)])
 #     def test_scalar_r(self):
-#         verify_grad(Pow, [numpy.random.rand(3), numpy.asarray([3.0])])
+#         utt.verify_grad(Pow, [numpy.random.rand(3), numpy.asarray([3.0])])
 #     def test_row(self):
-#         verify_grad(Pow, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
+#         utt.verify_grad(Pow, [numpy.random.rand(3, 5), numpy.random.rand(1, 5)])
 #     def test_col(self):
-#         verify_grad(Pow, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
+#         utt.verify_grad(Pow, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
 class test_matinv(unittest.TestCase):
 
     def setUp(self):
-        unittest_tools.seed_rng()
+        utt.seed_rng()
 
     def mat_reciprocal(self,dim):
         # symbolic program
@@ -1306,7 +1306,7 @@ class test_matinv(unittest.TestCase):
         # Note that TensorType's constructor does not actually allocate any memory.
         # TODO: Make TensorType syntax more explicit, and maybe give shape or number of dimensions.
 
-        unittest_tools.seed_rng()
+        utt.seed_rng()
 
         a, b = matrices('ab')
         ab = a*b
@@ -1337,7 +1337,7 @@ class test_matinv(unittest.TestCase):
         """Matrix reciprocal by gradient descent"""
         ssd0,ssd = self.mat_reciprocal(3)
 
-        unittest_tools.seed_rng()
+        utt.seed_rng()
         # hand-coded numpy implementation for verification
         x = numpy.random.rand(3,3)+0.1
         w = numpy.random.rand(3,3)
@@ -1351,7 +1351,7 @@ class test_matinv(unittest.TestCase):
 
 class t_dot(unittest.TestCase):
     def setUp(self):
-        unittest_tools.seed_rng()
+        utt.seed_rng()
     @staticmethod
     def rand(*args):
         return numpy.random.rand(*args)
@@ -1411,13 +1411,13 @@ class t_dot(unittest.TestCase):
     #def test_align_3_3(self): self.not_aligned(self.rand(5,4,3), self.rand(6,7,8))
 
     def test_grad(self):
-        #verify_grad(dot, [self.rand(2,3,4), self.rand(4)])
-        verify_grad(dot, [self.rand(2,3), self.rand(3,2)])
-        verify_grad(dot, [self.rand(2), self.rand(2,3)])
-        verify_grad(dot, [self.rand(3,2), self.rand(2)])
-        verify_grad(dot, [self.rand(2), self.rand(2)])
-        #verify_grad(dot, [self.rand(), self.rand(2)])
-        #verify_grad(dot, [self.rand(), self.rand(2,5)])
+        #utt.verify_grad(dot, [self.rand(2,3,4), self.rand(4)])
+        utt.verify_grad(dot, [self.rand(2,3), self.rand(3,2)])
+        utt.verify_grad(dot, [self.rand(2), self.rand(2,3)])
+        utt.verify_grad(dot, [self.rand(3,2), self.rand(2)])
+        utt.verify_grad(dot, [self.rand(2), self.rand(2)])
+        #utt.verify_grad(dot, [self.rand(), self.rand(2)])
+        #utt.verify_grad(dot, [self.rand(), self.rand(2,5)])
 
 class T_tensorfromscalar(unittest.TestCase):
     def test0(self):
@@ -1464,7 +1464,7 @@ class T_tensorfromscalar(unittest.TestCase):
 
 # class T_tensor(unittest.TestCase):
 #     def setUp(self):
-#         unittest_tools.seed_rng()
+#         utt.seed_rng()
 #     def test0(self): # allocate from a scalar float
 #         t = _tensor(1.0)
 #         self.failUnless(isinstance(t, TensorType))
@@ -1635,7 +1635,7 @@ class test_grad(unittest.TestCase):
 
 class T_op_cache(unittest.TestCase):
     def setUp(self):
-        unittest_tools.seed_rng()
+        utt.seed_rng()
     def test0(self):
         """trigger bug in ticket #162"""
         lr = constant(0.011)
@@ -1679,7 +1679,7 @@ def test_reshape():
     assert numpy.all(a_val == a_val_copy)
 
     # verify gradient
-    tensor.verify_grad(Reshape(2), [a_val,numpy.asarray([2,3], dtype='float64')])
+    utt.verify_grad(Reshape(2), [a_val,numpy.asarray([2,3], dtype='float64')])
 
 
 def test_flatten_outdimNone():
@@ -1695,7 +1695,7 @@ def test_flatten_outdimNone():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    tensor.verify_grad(Flatten(), [a_val])
+    utt.verify_grad(Flatten(), [a_val])
 
 def test_flatten_scalar():
     a = dscalar()
@@ -1707,7 +1707,7 @@ def test_flatten_scalar():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    #tensor.verify_grad(Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
+    #utt.verify_grad(Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
 
 def test_flatten_outdim1():
     a = dmatrix()
@@ -1719,7 +1719,7 @@ def test_flatten_outdim1():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    tensor.verify_grad(Flatten(1), [a_val])
+    utt.verify_grad(Flatten(1), [a_val])
 
 def test_flatten_outdim2():
     a = dmatrix()
@@ -1730,7 +1730,7 @@ def test_flatten_outdim2():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==a_val)
 
-    tensor.verify_grad(Flatten(2), [a_val])
+    utt.verify_grad(Flatten(2), [a_val])
 
 def test_flatten_outdim2_of_3():
     a = TensorType('float64', (False, False, False))()
@@ -1742,7 +1742,7 @@ def test_flatten_outdim2_of_3():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
 
-    tensor.verify_grad(Flatten(2), [a_val])
+    utt.verify_grad(Flatten(2), [a_val])
 
 def test_flatten_outdim_invalid():
     a = dmatrix()
@@ -1765,7 +1765,7 @@ def test_tile():
 
 class test_tensordot(unittest.TestCase):
     def setUp(self):
-        unittest_tools.seed_rng()
+        utt.seed_rng()
 
     def test0(self):
 
@@ -1779,7 +1779,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(5);
         self.failUnless(numpy.tensordot(aval,bval,axes) == \
                         f1(aval,bval))
-        tensor.verify_grad(TensorDot(axes), [aval,bval])
+        utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test matrix-vector
         bmat = dmatrix()
@@ -1790,7 +1790,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(8,5);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f2(aval,bval)))
-        tensor.verify_grad(TensorDot(axes), [aval,bval])
+        utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test matrix-matrix
         amat = dmatrix()
@@ -1801,7 +1801,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(7,9);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f3(aval,bval)))
-        tensor.verify_grad(TensorDot(axes), [aval,bval])
+        utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test ndarray-matrix, sum over one dim of matrix
         atens = TensorType('float64', broadcastable=(False,)*4)()
@@ -1812,7 +1812,7 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(2,3);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f4(aval,bval)))
-        tensor.verify_grad(TensorDot(axes), [aval,bval])
+        utt.verify_grad(TensorDot(axes), [aval,bval])
 
         # test ndarray-ndarray
         atens = TensorType('float64', broadcastable=(False,)*4)()
@@ -1824,14 +1824,14 @@ class test_tensordot(unittest.TestCase):
         bval = numpy.random.rand(3,4,2);
         self.failUnless(numpy.all(numpy.tensordot(aval,bval,axes) == \
                                   f5(aval,bval)))
-        tensor.verify_grad(TensorDot(axes), [aval,bval])
+        utt.verify_grad(TensorDot(axes), [aval,bval])
         
         axes = (axes[1],axes[0])
         c = tensordot(axes)(btens, atens)
         f6 = inplace_func([btens,atens],c)
         self.failUnless(numpy.all(numpy.tensordot(bval,aval,axes) == \
                                   f6(bval,aval)))
-        tensor.verify_grad(TensorDot(axes), [bval,aval])
+        utt.verify_grad(TensorDot(axes), [bval,aval])
 
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()

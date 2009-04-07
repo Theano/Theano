@@ -1,71 +1,6 @@
 """Classes implementing Theano's Module system.
 
-Rationale
-=========
-
-Functions in theano can share containers, when the `value` argument to `In` is a Container
-instance.  This feature makes it possible for multiple functions to use (and update) the same
-inputs.
-
-Modules provide a more intuitive syntax that makes this feature easier to use.  
-They draw on the metaphor of a python import--a module has functions and variables, and
-can contain other modules.  All functions have access to all variables, and whenever any
-function modifies a file-level variable, then that change is visible to all other functions.
-
-In the Module system, the analog of the file is the `Module`, the analog of the function is the
-`Method`, and the analog of the variable is the `Member`.  Module, Member, and Method all work
-at the symbolic level.  Once a graph of Modules, Members, and Methods is ready for use, it must
-be compiled with a call to `make` which will return an isomorphic structure in which Modules
-have become `ModuleInstances`, Members have become `Container`s, and Methods have become
-`Function`s.
-This structure contains numbers and functions, and is ready for computation.
-
-
-Design Documentation
-====================
-
-Module Graph
-------------
-
-Components form a tree structure.  Each component may have a _parent_ to which it is _bound_.
-When we call `make`, this tree structure is replicated with ComponentInstances instead of
-Components.  Wheras Components are primarily symbolic, ComponentInstances are sparse matrices,
-ndarrays, callable functions, etc.
-
-Compilation via make
---------------------
-
-Conversion from a Component graph to a ComponentInstance graph is performed by `Component.make`.
-This method traverses the Component graph in two passes. 
-
-In the first pass (the allocate pass), it creates storage for all Variables that are contained in the graph (see
-`Component.allocate`).  These are the module variables.
-
-In the second pass (the build pass), it creates functions that (in general) operate on these module variables.
-This pass also serves to construct all ComponentInstance-derived instances as well, such as
-`ModuleInstance`s.  The objects that are returned from this second pass are the return value of
-`Component.make`.
-
-In the third pass (the initialize pass), is optional and not necessarily recursive through the
-graph.
-The purpose of the third pass is to call the initialize method of the ComponentInstances built
-during the second pass.
-During this pass the ComponentInstance graph is complete. It is a good time to fill storage
-allocated in phase 1 with sensible values.
-
-Class Structure
----------------
-
-The most important classes for the user API here are `Module`, `ModuleInstance`, and `Method`.  
-Several other classes are defined to factorize functionality.
-
-- `Component`: WRITEME: what properties make something a Component?
-
-- `_RComponent`: WRITEME: what properties make something a Component?
-
-- `External`: WRITEME: what properties hold? What 
-
-- `Member`: WRITEME: what properties hold? What do they do?
+For design notes, see doc/advanced/module.txt
 
 """
 
@@ -248,7 +183,6 @@ class External(_RComponent):
         if self.r.owner:
             rval += '\n= %s' % (pprint(self.r, dict(target = self.r)))
         return rval
-
 
 class Member(_RComponent):
     """
@@ -836,7 +770,10 @@ class ComponentDict(Composite):
 
     def set(self, item, value):
         if not isinstance(value, Component):
-            raise TypeError('ComponentDict may only contain Components.', value, type(value))
+            msg = """
+            ComponentDict may only contain Components. 
+            (Hint: maybe value here needs to be wrapped, see theano.compile.module.register_wrapper.)"""
+            raise TypeError(msg, value, type(value))
         #value = value.bind(self, item)
         value.name = name_join(self.name, str(item))
         self._components[item] = value
@@ -868,6 +805,16 @@ class ComponentDict(Composite):
 __autowrappers = []
 
 def register_wrapper(condition, wrapper):
+    """
+    :type condition: function x -> bool
+
+    :param condition: this function should return True iff `wrapper` can sensibly turn x into a
+    Component.
+
+    :type wrapper: function x -> Component
+
+    :param wrapper: this function should convert `x` into an instance of a Component subclass.
+    """
     __autowrappers.append((condition, wrapper))
 
 def wrapper(x):
@@ -881,8 +828,13 @@ def wrapper(x):
 
 def wrap(x):
     """
-    Wraps x in a Component. Wrappers can be registered using
-    register_wrapper to allow wrapping more types.
+    Wraps `x` in a `Component`. Wrappers can be registered using
+    `register_wrapper` to allow wrapping more types.
+
+    It is necessary for Module attributes to be wrappable.
+    A Module with an attribute that is not wrappable as a Component, will cause
+    `Component.make` to fail.
+
     """
     w = wrapper(x)
     if w is not None:

@@ -146,12 +146,12 @@ Automatic wrapping
 
 All nodes in the graph must be instances of ``Apply`` or ``Result``, but
 ``<Op subclass>.make_node()`` typically wraps constants to satisfy those
-constraints. For example, the :api:`tensor.add <theano.tensor.add>`
+constraints. For example, the :api:`tensor.add <theano.tensor.basic.add>`
 Op instance is written so that:
 
 .. code-block:: python
 
-    e = scalar('x') + 1
+    e = dscalar('x') + 1
 
 builds the following graph:
 

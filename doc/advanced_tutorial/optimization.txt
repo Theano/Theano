@@ -18,7 +18,7 @@ Env is a wrapper around a whole computation graph, you can see its
 :ref:`documentation <env>` for more details) and navigates through it
 in a suitable way, replacing some Variables by others in the process. A
 local optimization, on the other hand, is defined as a function on a
-*single* :ref:`apply` node and must return either False (to mean that
+*single* :ref:`apply` node and must return either ``False`` (to mean that
 nothing is to be done) or a list of new Variables that we would like to
 replace the node's outputs with. A :ref:`navigator` is a special kind
 of global optimization which navigates the computation graph in some
@@ -49,7 +49,7 @@ methods:
 
   This method takes an Env object and adds :ref:`features
   <envfeature>` to it. These features are "plugins" that are needed
-  for the apply method to do its job properly.
+  for the ``apply`` method to do its job properly.
 
 .. function:: optimize(env)
 
@@ -69,7 +69,7 @@ A local optimization is an object which defines the following methods:
 
 .. function:: transform(node)
 
-  This method takes an :ref:`apply` node and returns either False to
+  This method takes an :ref:`apply` node and returns either ``False`` to
   signify that no changes are to be done or a list of Variables which
   matches the length of the node's ``outputs`` list. When the
   LocalOptimizer is applied by a Navigator, the outputs of the node
@@ -99,9 +99,9 @@ Here is the code for a global optimization implementing the
 simplification described above:
 
 .. code-block:: python
-   
+
    from theano.gof import toolbox
-   
+
    class Simplify(gof.Optimizer):
        def add_requirements(self, env):
            env.extend(toolbox.ReplaceValidate())
@@ -116,38 +116,39 @@ simplification described above:
                            env.replace_validate(z, b)
                        elif y == b:
                            env.replace_validate(z, a)
-   
+
    simplify = Simplify()
 
 Here's how it works: first, in ``add_requirements``, we add the
 ``ReplaceValidate`` :ref:`envfeature` located in
-``theano.gof.toolbox``. This feature adds the ``replace_validate``
-method to the env, which is an enhanced version of ``replace`` that
+:api:`theano.gof.toolbox`. This feature adds the ``replace_validate``
+method to ``env``, which is an enhanced version of ``replace`` that
 does additional checks to ensure that we are not messing up the
-computation graph (note: if ReplaceValidate was already added by
+computation graph (note: if ``ReplaceValidate`` was already added by
 another optimizer, ``extend`` will do nothing). In a nutshell,
-``toolbox.ReplaceValidate`` grants access to ``env.replace_validate``
+``toolbox.ReplaceValidate`` grants access to ``env.replace_validate``,
 and ``env.replace_validate`` allows us to replace a Variable with
 another while respecting certain validation constraints. You can
 browse the list of :ref:`features <envfeaturelist>` and see if some of
 them might be useful to write optimizations with. For example, as an
-exercise, try to rewrite Simplify using :ref:`nodefinder` (hint: you
-want to use the method it publishes in place of the call to toposort!)
+exercise, try to rewrite Simplify using :ref:`nodefinder`. (Hint: you
+want to use the method it publishes instead of the call to toposort!)
 
 Then, in ``apply`` we do the actual job of simplification. We start by
 iterating through the graph in topological order. For each node
 encountered, we check if it's a ``div`` node. If not, we have nothing
-to do here. If so, we put in x, y and z the numerator, denominator and
-quotient (output) of the division. The simplification only occurs when
-the numerator is a multiplication, so we check for that. If the
-numerator is a multiplication we put the two operands in a and b, so
+to do here. If so, we put in ``x``, ``y`` and ``z`` the numerator,
+denominator and quotient (output) of the division.
+The simplification only occurs when the numerator is a multiplication,
+so we check for that. If the numerator is a multiplication we put the
+two operands in ``a`` and ``b``, so
 we can now say that ``z == (a*b)/y``. If ``y==a`` then ``z==b`` and if
-``y==b`` then ``z==a``. When either case happens then we can replace z
-by either a or b using ``env.replace_validate`` - else we do
+``y==b`` then ``z==a``. When either case happens then we can replace
+``z`` by either ``a`` or ``b`` using ``env.replace_validate`` - else we do
 nothing. You might want to check the documentation about :ref:`variable`
 and :ref:`apply` to get a better understanding of the
 pointer-following game you need to get ahold of the nodes of interest
-for the simplification (x, y, z, a, b, etc.)
+for the simplification (``x``, ``y``, ``z``, ``a``, ``b``, etc.).
 
 Test time:
 
@@ -198,7 +199,7 @@ places. Note that ``add(x, y)`` and ``add(y, x)`` are still considered
 to be different because Theano has no clue that ``add`` is
 commutative. You may write your own global optimizer to identify
 computations that are identical with full knowledge of the rules of
-arithmetics that your ops implement. Theano might provide facilities
+arithmetics that your Ops implement. Theano might provide facilities
 for this somewhere in the future.
 
 .. note::
@@ -217,7 +218,7 @@ The local version of the above code would be the following:
 
 
 .. code-block:: python
-   
+
    class LocalSimplify(gof.LocalOptimizer):
        def transform(self, node):
            if node.op == div:
@@ -234,7 +235,7 @@ The local version of the above code would be the following:
            # but it isn't now
            # TODO: do this and explain it
            return [] # that's not what you should do
-   
+
    local_simplify = LocalSimplify()
 
 The definition of transform is the inner loop of the global optimizer,

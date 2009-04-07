@@ -12,16 +12,17 @@ computations. We'll start by defining multiplication.
 Op's contract
 =============
 
-An Op (:api:`gof.op.Op`) is any object which defines the following methods:
+An Op (:api:`gof.op.Op`) is any object which defines the
+following methods:
 
 
 .. function:: make_node(*inputs)
-    
+
   This method is responsible for creating output Variables of a
   suitable Type to serve as the outputs of this Op's application.
   This method should put these outputs into an Apply instance, and
   return the Apply instance.
-  
+
   This method creates an Apply node representing the application of
   the Op on the inputs provided. If the Op cannot be applied on
   these inputs, it must raise an appropriate exception.
@@ -30,13 +31,13 @@ An Op (:api:`gof.op.Op`) is any object which defines the following methods:
   ordered correctly: a subsequent ``self.make_node(*apply.inputs)``
   must produce something equivalent to the first ``apply``.
 
-``default_output``
+.. attribute:: default_output
 
-  *Default*: None
+  *Default:* None
 
   If this member variable is an integer, then the default
   implementation of ``__call__`` will return
-  `node.outputs[self.default_output]``, where `node` was returned
+  ``node.outputs[self.default_output]``, where ``node`` was returned
   by ``make_node``.  Otherwise, the entire list of outputs will be
   returned.
 
@@ -45,7 +46,7 @@ An Op (:api:`gof.op.Op`) is any object which defines the following methods:
   Syntactic shortcut to make_node which returns the output
   Variables of the Op.
 
-  *Default*: this is done for you by Op.
+  *Default:* this is done for you by Op.
 
 .. function:: perform(node, inputs, output_storage)
 
@@ -64,26 +65,26 @@ An Op (:api:`gof.op.Op`) is any object which defines the following methods:
 
     - ``output_storage``: This is a list of storage cells.
       A storage cell is a one-element list. It is forbidden to change
-      the length of the list(s) contained in output_storage.  There is
+      the length of the list(s) contained in ``output_storage``.  There is
       one storage cell for each output of the Op.
 
       The data you put in ``output_storage`` must match the type of the
       symbolic output. This is a situation where the ``node`` argument
       can come in handy.
 
-      A function Mode may allow output_storage elements to persist between
-      evaluations, or it may reset output_storage cells to hold a value of
-      None.  This feature can allow perform to reuse memory between calls, for
-      example.
+      A function Mode may allow ``output_storage`` elements to persist between
+      evaluations, or it may reset ``output_storage`` cells to hold a value of
+      ``None``.  This feature can allow ``perform`` to reuse memory between
+      calls, for example.
 
   This method must be determined by the inputs. That is to say, if
   it is evaluated once on inputs A and returned B, then if ever
   inputs C, equal to A, are presented again, then outputs equal to
   B must be returned again.
-  
+
   You must be careful about aliasing outputs to inputs, and making
-  modifications to any of the inputs. See `Views and inplace
-  operations <views_and_inplace>`_ before writing a ``perform``
+  modifications to any of the inputs. See :ref:`Views and inplace
+  operations <views_and_inplace>` before writing a ``perform``
   implementation that does either of these things.
 
 .. function:: __eq__(other)
@@ -95,20 +96,21 @@ An Op (:api:`gof.op.Op`) is any object which defines the following methods:
   (from perform) as this one, given identical inputs. This means it
   will produce the same output values, it will destroy the same
   inputs (same destroy_map), and will alias outputs to the same
-  inputs (same view_map).
+  inputs (same view_map). For more details, see
+  :ref:`views_and_inplace`.
 
 .. function:: __hash__()
 
   If two Op instances compare equal, then they **must** return the
   same hash value.
-      
+
   Equally important, this hash value must not change during the
   lifetime of self.  Op instances should be immutable in this
   sense.
 
 .. function:: __ne__(other)
-  
-  Default: ``(not (self==other))``
+
+  *Default:* ``(not (self==other))``
 
 .. function:: grad(inputs, output_gradients)
 
@@ -116,22 +118,20 @@ An Op (:api:`gof.op.Op`) is any object which defines the following methods:
 
   If the Op you are defining is differentiable, you can define its
   gradient symbolically in this method.
-    
+
   Both the ``inputs`` and ``output_gradients`` will be
   Variables. This method must return a list containing one Variable
-  (or None) for each input. Each returned Variable represents the
+  (or ``None``) for each input. Each returned Variable represents the
   gradient with respect to that input given the symbolic gradients
   with respect to each output.
 
   If the output is not differentiable with respect to any inputs,
-  then this method should be defined to return [None for i in
-  inputs].
+  then this method should be defined to return ``[None for i in
+  inputs]``.
 
-  If this method is not defined, then theano assumes it has been
+  If this method is not defined, then Theano assumes it has been
   forgotten.  Symbolic differentiation will fail on a graph that
   includes this Op.
-
-  For more information on the use of this method, see ``grad``.
 
 
 For each method, the *default* is what :api:`theano.gof.op.Op` defines
@@ -139,7 +139,7 @@ for you.  At a bare minimum, a new Op must define ``make_node`` and
 ``perform``, which have no defaults.
 
 For more details, including the interface for providing a C
-implementation of perform(), refer to the documentation for :ref:`op`.
+implementation of ``perform()``, refer to the documentation for :ref:`op`.
 
 
 Defining an Op: ``mul``
@@ -252,7 +252,7 @@ AttributeError: 'int' object has no attribute 'type'
 Automatic Constant Wrapping
 ---------------------------
 
-Well, ok. We'd like our Op to be a bit more flexible. This can be done
+Well, OK. We'd like our Op to be a bit more flexible. This can be done
 by modifying ``make_node`` to accept Python ``int`` or ``float`` as
 ``x`` and/or ``y``:
 
