@@ -1,10 +1,25 @@
 from theano_object import *
 
+
+RUN_TESTS = False
+def run(TF):
+    def deco(f):
+        if TF and RUN_TESTS:
+            print 'running test', f.__name__
+            f()
+        return f if RUN_TESTS else None
+    return deco
+
+
 class MyModule(TheanoObject):
+
     def __init__(self, a=3, b=9):
         super(MyModule, self).__init__()
-        self.a = self.symbolic_member(a) #creates a variable for a
-        self.b = self.symbolic_member(b) #creates a variable for b
+        self.a = self.symbolic_member(2)
+        self.b = self.symbolic_member(3)
+        self.c = 100 #a constant
+        self.d = [self.symbolic_member(5), self.symbolic_member(6)]
+        self.e = ['a', self.symbolic_member(6)]
 
     @symbolic_fn
     def add(self, x):
@@ -22,14 +37,6 @@ class MyModule(TheanoObject):
     @symbolic_fn
     def use_submodule(self, x):
         return RVal(self.a + x + self.submodule.b)
-
-def run(TF):
-    def deco(f):
-        if TF:
-            print 'running test', f.__name__
-            f()
-        return f
-    return deco
 
 @run(True)
 def test_outputs():
