@@ -1859,6 +1859,23 @@ def test_reshape_member_fn():
     y = x.reshape((4,5,6))
     assert y.owner.op == Reshape(3)
 
+def test_var():
+    a = Tensor(dtype='float64', broadcastable=[False,False,False])()
+    f = function([a], var(a))
+
+    a_val = numpy.arange(60).reshape(3,4,5)
+    print numpy.var(a_val)
+    print f(a_val)
+    assert numpy.allclose(numpy.var(a_val), f(a_val))
+
+    f = function([a], var(a, axis=0))
+    assert numpy.allclose(numpy.var(a_val, axis=0), f(a_val))
+
+    f = function([a], var(a, axis=1))
+    assert numpy.allclose(numpy.var(a_val, axis=1), f(a_val))
+
+    f = function([a], var(a, axis=2))
+    assert numpy.allclose(numpy.var(a_val, axis=2), f(a_val))
 
 if __name__ == '__main__':
     if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':

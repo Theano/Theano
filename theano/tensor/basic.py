@@ -4,6 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
+import traceback #for overriding Op.__call__
 import functools
 
 import numpy
@@ -1196,7 +1197,12 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 
 @constructor
 def mean(input, axis = None):
-    """WRITEME"""
+    """Compute the mean value along the given axis of a tensor `input`
+
+    :param axis: compute the mean along this axis of the tensor.  None means trailing axis.
+    :type axis: None or int or (list of int) (see `Sum`)
+    
+    """
     if str(input.dtype).startswith('int'):
         # we need to cast eventually anyway, and this helps
         # to prevents overflow
@@ -1211,6 +1217,43 @@ def mean(input, axis = None):
         s = s / shp[i]
     return s
 
+@constructor
+def var(input, axis = None):
+    """Compute the variance along the given axis of a tensor `input`
+
+    :param axis: compute the variance along this axis of the tensor.  None means trailing axis.
+    :type axis: None or int or (list of int) (see `Sum`)
+
+    """
+    input_ndim = input.type.ndim
+    if axis == None:
+        axis = range(input_ndim)
+    if isinstance(axis, int):
+        axis = [axis]
+
+    #make a pattern that will undo the reduction of dimensions caused by mean
+    pattern = []
+    next_dim = 0
+    for i in range(input_ndim):
+        if i in axis:
+            pattern.append('x')
+        else:
+            pattern.append(next_dim)
+            next_dim += 1
+
+    #compute the axis-wise mean
+    mean_input_reduced = mean(input, axis)
+
+    #broadcast that back out to match input
+    mean_input = DimShuffle(
+            list(mean_input_reduced.type.broadcastable),
+            pattern)(mean_input_reduced)
+
+    #center the input
+    centered_input = input - mean_input
+
+    #return the mean sqr
+    return mean(centered_input**2, axis)
 
 class Repeat(gof.Op):
 
@@ -1570,6 +1613,14 @@ class Split(Op):
 
     def __hash__(self):
         return hash(Split) ^ self.len_splits
+
+    def __call__(self, *inputs, **kwargs):
+        """Override Op.__call__ to suppress unpacking of output list
+
+        """
+        node = self.make_node(*inputs, **kwargs)
+        node.tag.trace = traceback.extract_stack()[:-1]
+        return node.outputs
  
     def make_node(self, x, axis, splits):
         """WRITEME"""
@@ -1696,9 +1747,10 @@ class Join(Op):
         """
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         if 'float' in tensors[0].dtype or 'complex' in tensors[0].dtype:
-            # assume that this isn't differentiable
+            # assume that this is differentiable
             split = Split(len(tensors))
-            return [None] + split(gz, axis, stack(*[shape(x)[axis] for x in tensors]))
+            split_gz = split(gz, axis, stack(*[shape(x)[axis] for x in tensors]))
+            return [None] + split_gz
         else:
             # assume that this isn't differentiable
             return [None] * (1 + len(tensors)) 
