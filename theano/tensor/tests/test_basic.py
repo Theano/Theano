@@ -434,6 +434,16 @@ Log2InplaceTester = makeBroadcastTester(op = inplace.log2_inplace,
                                           grad = _grad_broadcast_unary_positive,
                                           inplace = True)
 
+Log10Tester = makeBroadcastTester(op = log10,
+                                   expected = numpy.log10,
+                                   good = _good_broadcast_unary_positive,
+                                   grad = _grad_broadcast_unary_positive)
+Log10InplaceTester = makeBroadcastTester(op = inplace.log10_inplace,
+                                          expected = numpy.log10,
+                                          good = _good_broadcast_unary_positive,
+                                          grad = _grad_broadcast_unary_positive,
+                                          inplace = True)
+
 SqrtTester = makeBroadcastTester(op = sqrt,
                                    expected = numpy.sqrt,
                                    good = _good_broadcast_unary_positive,

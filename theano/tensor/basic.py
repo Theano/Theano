@@ -907,7 +907,8 @@ class MaxAndArgmax(Op):
         g_x = eq(xmax_pad, x) * g_max_pad
         return g_x, None
 
-@_redefine_asRoutine(MaxAndArgmax())
+_max_and_argmax = MaxAndArgmax()
+@_redefine_asRoutine(_max_and_argmax)
 def max_and_argmax(a):
     pass
 
@@ -1053,6 +1054,10 @@ def log(a):
 @_scal_elemwise
 def log2(a):
     """base 2 logarithm of a"""
+
+@_scal_elemwise
+def log10(a):
+    """base 10 logarithm of a"""
 
 @_scal_elemwise
 def sgn(a):

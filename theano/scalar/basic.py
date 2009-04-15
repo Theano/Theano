@@ -710,6 +710,15 @@ class Log2(UnaryScalarOp):
         return "%(z)s = log2(%(x)s);" % locals()
 log2 = Log2(upgrade_to_float, name = 'log2')
 
+class Log10(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.log10(x)
+    def grad(self, (x, ), (gz, )):
+        return gz / (x * math.log(10.0)),
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        return "%(z)s = log10(%(x)s);" % locals()
+log10 = Log10(upgrade_to_float, name = 'log10')
+
 class Exp(UnaryScalarOp):
     def impl(self, x):
         return math.exp(x)
