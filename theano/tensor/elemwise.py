@@ -107,7 +107,7 @@ class DimShuffle(Op):
                     self.drop.append(i)
                 else:
                     # we cannot drop non-broadcastable dimensions
-                    raise ValueError("You cannot drop a non-broadcastable dimension.")
+                    raise ValueError("You cannot drop a non-broadcastable dimension.", (input_broadcastable, new_order))
             else:
                 i2j[i] = j
                 j += 1
