@@ -104,6 +104,10 @@ def log2_inplace(a):
     """base 2 logarithm of a (inplace on a)"""
 
 @_scal_inplace
+def log10_inplace(a):
+    """base 10 logarithm of a (inplace on a)"""
+
+@_scal_inplace
 def sgn_inplace(a):
     """sign of `a` (inplace on `a`)"""
 
