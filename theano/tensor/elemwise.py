@@ -183,6 +183,8 @@ class DimShuffle(Op):
         storage[0] = numpy.asarray(res) #asarray puts scalars back into array
 
     def c_code(self, node, name, (input,), (res,), sub):
+        basename = input + '__view_or_copy'
+
         def statements(lst):
             return ';\n'.join(lst) + ';'
 
@@ -194,47 +196,53 @@ class DimShuffle(Op):
 
         clear_output = ['if (%(res)s) {Py_XDECREF(%(res)s);}']
 
+        #get the copy / view of the input depending on whether we're doing things inplace or not.
+        if self.inplace:
+            get_base = ['{ PyArrayObject * %(basename)s = %(input)s', 'Py_INCREF((PyObject*)%(basename)s)']
+        else:
+            get_base = [('{ PyArrayObject * %(basename)s = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
+                    '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
+
         shape_statements = ['npy_intp dimensions[%i]'%nd_out]
-        shape_statements += [('dimensions['+str(i)+'] = %(input)s->dimensions['+str(o)+']')
+        shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')
             if o != 'x' else
             ('dimensions['+str(i)+'] = 1')
             for i, o in enumerate(self.new_order)]
 
 
         strides_statements = ['npy_intp strides[%i]'%nd_out]
-        strides_statements += [('strides['+str(i)+'] = %(input)s->strides['+str(o)+']')
+
+        #set the strides of the non-broadcasted dimensions
+        strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')
             if o != 'x' else
             ('strides['+str(i)+'] = 0')
             for i, o in enumerate(self.new_order)]
 
+        #set the strides of the broadcasted dimensions
+        strides_statements.append('if (strides['+str(nd_out)+'-1] == 0) strides['+str(nd_out)+'-1] = %(basename)s->descr->elsize')
+        for i in xrange(nd_out-2,-1, -1):
+            strides_statements.append("if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * dimensions[%(i)s+1]"%dict(i=str(i)))
 
-        if self.inplace:
-            get_output = ['{ PyArrayObject * base = %(input)s', 'Py_INCREF((PyObject*)base)']
-        else:
-            get_output = [('{ PyArrayObject * base = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
-                    '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
-
-        
         close_bracket = [
                 #create a new array, 
                 ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
                             '' + str(nd_out) + ', dimensions, '
-                            'PyArray_TYPE(base), strides, '
-                            'base->data, base->descr->elsize, '
+                            'PyArray_TYPE(%(basename)s), strides, '
+                            '%(basename)s->data, %(basename)s->descr->elsize, '
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
-                            'PyArray_ISWRITEABLE(base), NULL)'),
+                            'PyArray_ISWRITEABLE(%(basename)s), NULL)'),
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
-                '%(res)s->base = (PyObject*)base', 
+                '%(res)s->base = (PyObject*)%(basename)s', 
                 '}']
 
         full_code = statements(check_input_nd 
                 + clear_output
+                + get_base
                 + shape_statements 
                 + strides_statements
-                + get_output
                 + close_bracket)
 
         if 0:
