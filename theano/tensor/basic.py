@@ -263,12 +263,14 @@ class TensorType(Type):
                 return False
             if 'int' in str(a.dtype):
                 return numpy.all(a==b)
+            elif a.shape == (): #for comparing scalars, use broadcasting.
+                ones = numpy.ones(2)
+                return numpy.allclose(ones * a, ones*b)
+            #elif str(a.dtype).startswith('complex'):
+            #    print >> sys.stderr, 'WARNING: skipping comparison of complex'
+            #    return True
             else:
-                if a.shape == (): #for comparing scalars, use broadcasting.
-                    ones = numpy.ones(2)
-                    return numpy.allclose(ones * a, ones*b)
-                else:
-                    return numpy.allclose(a,b)
+                return numpy.allclose(a,b)
         return False
 
     def __hash__(self):
@@ -661,6 +663,10 @@ class _tensor_py_operators:
             raise NotImplementedError()
         #optimizations will/should catch cases like L=1, L=2
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0/L)
+
+
+    #TO TRUMP NUMPY OPERATORS
+    __array_priority__ = 1000
     
 
 class TensorVariable(Variable, _tensor_py_operators):
@@ -898,7 +904,8 @@ class MaxAndArgmax(Op):
 #       g_max has one less dimension than x, so you need to complete g_max to x's shape
 #        when axis=0 the broadcasting mechanism does it automatically
         
-        assert axis.data == 0 or axis.data == x.ndim-1
+        if not ( axis.data == 0 or axis.data == x.ndim-1):
+            raise NotImplementedError('MaxAndArgmax gradient with axis corresponding to internal dimension')
         g_max_pad = shape_padleft(g_max) if axis.data==0 else \
                     shape_padright(g_max)
         xmax = max(x, axis)
