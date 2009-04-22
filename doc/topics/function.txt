@@ -6,7 +6,9 @@ Using theano.function
 =====================
 
 
-This page is about ``theano.function``, the interface for compiling graphs into callable objects.
+This page is about :api:`theano.function
+<theano.compile.function_module.function>`, the interface for compiling
+graphs into callable objects.
 
 The signature for this function is:
 
@@ -34,16 +36,16 @@ The ``inputs`` argument to ``theano.function`` is a list, containing the ``Varia
 
 .. class:: In
 
-   .. function:: __init__(variable, name=None, value=None, update=None, mutable=False)
+   .. method:: __init__(variable, name=None, value=None, update=None, mutable=False)
 
       ``variable``: a Variable instance. This will be assigned a value
       before running the function, not computed from its owner.
-  
-      ``name``: Any type. (If autoname_input=True, defaults to
-      variable.name). If name is a valid Python identifier, this input
+
+      ``name``: Any type. (If ``autoname_input==True``, defaults to
+      ``variable.name``). If ``name`` is a valid Python identifier, this input
       can be set by ``kwarg``, and its value can be accessed by
-      ``self.<name>``. The default value is ``None``
-     
+      ``self.<name>``. The default value is ``None``.
+
       ``value``: literal or Container. This is the default value of
       the Input. The default value of this parameter is ``None``
 
@@ -52,10 +54,10 @@ The ``inputs`` argument to ``theano.function`` is a list, containing the ``Varia
       ``None``, indicating that no update is to be done.
 
       ``mutable``: Bool (requires value). If ``True``, permit the
-      compiled function to modify the python object being used as the
+      compiled function to modify the Python object being used as the
       default value. The default value is ``False``.
 
-      ``autoname``: Bool. If set to ``True``, if ``name`` is None and
+      ``autoname``: Bool. If set to ``True``, if ``name`` is ``None`` and
       the Variable has a name, it will be taken as the input's
       name. If autoname is set to ``False``, the name is the exact
       value passed as the name parameter (possibly ``None``).
@@ -68,7 +70,7 @@ A non-None `value` argument makes an In() instance an optional parameter
 of the compiled function.  For example, in the following code we are
 defining an arity-2 function ``inc``.
 
->>> u, x, s = T.scalars('uxs')
+>>> u, x, s = T.scalars('u', 'x', 's')
 >>> inc = function([u, In(x, value=3), In(s, update=(s+x*u), value=10.0)], [])
 
 Since we provided a ``value`` for ``s`` and ``x``, we can call it with just a value for ``u`` like this:

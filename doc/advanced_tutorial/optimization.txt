@@ -208,7 +208,7 @@ for this somewhere in the future.
    exposed to the end user. You can use it to test out optimizations,
    etc. if you are comfortable with it, but it is recommended to use
    the function/Module frontends and to interface optimizations with
-   optdb (we'll see how to do that soon).
+   :ref:`optdb <optdb>` (we'll see how to do that soon).
 
 
 Local optimization
@@ -240,12 +240,11 @@ The local version of the above code would be the following:
 
 The definition of transform is the inner loop of the global optimizer,
 where the node is given as argument. If no changes are to be made,
-False must be returned. Else, a list of what to replace the node's
+``False`` must be returned. Else, a list of what to replace the node's
 outputs with must be returned.
 
 In order to apply the local optimizer we must use it in conjunction
-with a :ref:`navigator`. You can follow this :ref:`link <navigator>`
-for further documentation, but basically a Navigator is a global
+with a :ref:`navigator`. Basically, a :ref:`navigator` is a global
 optimizer that loops through all nodes in the graph (or a well-defined
 subset of them) and applies one or several local optimizers on them.
 
@@ -256,12 +255,10 @@ subset of them) and applies one or several local optimizers on them.
 >>> e = gof.Env([x, y, z], [a])
 >>> e
 [add(z, mul(div(mul(y, x), y), div(z, x)))]
->>> simplify = gof.TopoOptimizer([local_simplify])
+>>> simplify = gof.TopoOptimizer(local_simplify)
 >>> simplify.optimize(e)
 >>> e
 [add(z, mul(x, div(z, x)))]
-
-TODO: test this.
 
 
 OpSub, OpRemove, PatternSub
@@ -269,24 +266,29 @@ OpSub, OpRemove, PatternSub
 
 Theano defines some shortcuts to make LocalOptimizers:
 
-* **OpSub(op1, op2)**: replaces all uses of op1 by op2. In other
-  words, the outputs of all :ref:`apply` involving op1 by the outputs
-  of Apply nodes involving op2, where their inputs are the same.
+.. function:: OpSub(op1, op2)
 
-* **OpRemove(op)**: removes all uses of op in the following way: if y
-  = op(x) then y is replaced by x. The op must have as many outputs as
-  it has inputs. The first output becomes the first input, the second
-  output becomes the second input, and so on.
+  Replaces all uses of *op1* by *op2*. In other
+  words, the outputs of all :ref:`apply` involving *op1* by the outputs
+  of Apply nodes involving *op2*, where their inputs are the same.
 
-* **PatternSub(pattern1, pattern2)**: replaces all occurrences of the
-  first pattern by the second pattern. See the api for
-  :api:`theano.gof.opt.PatternSub`.
+.. function:: OpRemove(op)
+
+  Removes all uses of *op* in the following way:
+  if ``y = op(x)`` then ``y`` is replaced by ``x``. *op* must have as many
+  outputs as it has inputs. The first output becomes the first input,
+  the second output becomes the second input, and so on.
+
+.. function:: PatternSub(pattern1, pattern2)
+
+  Replaces all occurrences of the first pattern by the second pattern.
+  See :api:`theano.gof.opt.PatternSub`.
 
 
 .. code-block:: python
 
    from theano.gof.opt import OpSub, OpRemove, PatternSub
-   
+
    # Replacing add by mul (this is not recommended for primarily
    # mathematical reasons):
    add_to_mul = OpSub(add, mul)
@@ -304,16 +306,16 @@ Theano defines some shortcuts to make LocalOptimizers:
 
 .. note::
 
-   OpSub, OpRemove and PatternSub produce local optimizers, which
+   ``OpSub``, ``OpRemove`` and ``PatternSub`` produce local optimizers, which
    means that everything we said previously about local optimizers
    apply: they need to be wrapped in a Navigator, etc.
 
 
-When an optimization can be naturally expressed using OpSub, OpRemove
-or PatternSub, it is highly recommended to use them. Do note that they
+When an optimization can be naturally expressed using ``OpSub``, ``OpRemove``
+or ``PatternSub``, it is highly recommended to use them.
 
 WRITEME: more about using PatternSub (syntax for the patterns, how to
-use constraints, etc. - there's some decent doc in the api
+use constraints, etc. - there's some decent doc at
 :api:`theano.gof.opt.PatternSub` for those interested)
 
 
@@ -346,10 +348,12 @@ optimizations.
 Definition of optdb
 -------------------
 
-optdb is an object which is an instance of ``theano.gof.SequenceDB``,
-itself a subclass of ``theano.gof.DB``. There exist (for now) two
-types of DB, SequenceDB and EquilibriumDB. When given an appropriate
-Query, DB objects build an Optimizer matching the query.
+optdb is an object which is an instance of
+:api:`theano.gof.SequenceDB <theano.gof.optdb.SequenceDB>`,
+itself a subclass of :api:`theano.gof.DB <theano.gof.optdb.DB>`.
+There exist (for now) two types of DB, SequenceDB and EquilibriumDB.
+When given an appropriate Query, DB objects build an Optimizer matching
+the query.
 
 A SequenceDB contains Optimizer or DB objects. Each of them has a
 name, an arbitrary number of tags and an integer representing their
@@ -368,10 +372,10 @@ well and the LocalOptimizers they return will be put in their places
 (note that as of yet no DB can produce LocalOptimizer objects, so this
 is a moot point).
 
-Theano contains one principal DB object, ``theano.optdb`` which
+Theano contains one principal DB object, :api:`theano.gof.optdb`, which
 contains all of Theano's optimizers with proper tags. It is
 recommended to insert new Optimizers in it. As mentioned previously,
-optdb is a SequenceDB, so at the top level Theano applies a sequence
+optdb is a SequenceDB, so, at the top level, Theano applies a sequence
 of global optimizations to the computation graphs.
 
 
@@ -380,27 +384,37 @@ Query
 
 A Query is built by the following call:
 
-theano.gof.Query(include, require = None, exclude = None, subquery = None)
+::
 
-**include**: a set of tags (a tag being a string) such that every
-optimization obtained through this Query must have **one** of the tags
-listed. This field is required and basically acts as a starting point
-for the search.
+   theano.gof.Query(include, require = None, exclude = None, subquery = None)
 
-**require**: a set of tags such that every optimization obtained
-through this Query must have **all** of these tags.
+.. attribute:: include
 
-**exclude**: a set of tags such that every optimization obtained
-through this Query must have **none** of these tags.
+   A set of tags (a tag being a string) such that every
+   optimization obtained through this Query must have **one** of the tags
+   listed. This field is required and basically acts as a starting point
+   for the search.
 
-**subquery**: optdb can contain sub-databases; subquery is a
-dictionary mapping the name of a sub-database to a special Query.  If
-no subquery is given for a sub-database, the original Query will be
-used again.
+.. attribute:: require
+
+   A set of tags such that every optimization obtained
+   through this Query must have **all** of these tags.
+
+.. attribute:: exclude
+
+   A set of tags such that every optimization obtained
+   through this Query must have **none** of these tags.
+
+.. attribute:: subquery
+
+   optdb can contain sub-databases; subquery is a
+   dictionary mapping the name of a sub-database to a special Query.
+   If no subquery is given for a sub-database, the original Query will be
+   used again.
 
 Furthermore, a Query object includes three methods, ``including``,
 ``requiring`` and ``excluding`` which each produce a new Query object
-with include, require and exclude sets refined to contain the new 
+with include, require and exclude sets refined to contain the new [WRITEME]
 
 
 Examples
@@ -439,8 +453,9 @@ it to ``optdb`` as follows:
 Once this is done, the FAST_RUN mode will automatically include your
 optimization (since you gave it the 'fast_run' tag). Of course,
 already-compiled functions will see no change. The 'order' parameter
-(what it means and how to choose it) will be explained in another
-section below.
+(what it means and how to choose it) will be explained in
+:ref:`optdb-structure` below.
+
 
 
 Registering a LocalOptimizer
@@ -456,21 +471,23 @@ Theano defines two EquilibriumDBs where you can put local
 optimizations:
 
 
-**canonicalize**: this contains optimizations that aim to *simplify*
-the graph:
+.. function:: canonicalize
+
+  This contains optimizations that aim to *simplify* the graph:
 
   * Replace rare or esoterical operations with their equivalents using
     elementary operations.
 
   * Order operations in a canonical way (any sequence of
     multiplications and divisions can be rewritten to contain at most
-    one division, for example; x*x can be rewritten x**2; etc.)
+    one division, for example; ``x*x`` can be rewritten ``x**2``; etc.)
 
-  * Fold constants (Constant(2)*Constant(2) becomes Constant(4))
+  * Fold constants (``Constant(2)*Constant(2)`` becomes ``Constant(4)``)
 
 
-**specialize**: this contains optimizations that aim to *specialize*
-the graph:
+.. function:: specialize
+
+  This contains optimizations that aim to *specialize* the graph:
 
   * Replace a combination of operations with a special operation that
     does the same thing (but better).
@@ -480,11 +497,13 @@ For each group, all optimizations of the group that are selected by
 the Query will be applied on the graph over and over again until none
 of them is applicable, so keep that in mind when designing it: check
 carefully that your optimization leads to a fixpoint (a point where it
-cannot apply anymore) at which point it returns False to indicate its
+cannot apply anymore) at which point it returns ``False`` to indicate its
 job is done. Also be careful not to undo the work of another local
 optimizer in the group, because then the graph will oscillate between
 two or more states and nothing will get done.
 
+
+.. _optdb-structure:
 
 optdb structure
 ---------------
