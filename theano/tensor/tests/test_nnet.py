@@ -123,5 +123,133 @@ class T_solve(unittest.TestCase):
         #print numpy.dot(A,x)
 
 
+class T_CrossentropyCategorical1Hot(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def test_grad(self):
+        x = tensor.matrix('x')
+        one_of_n = tensor.lvector('one_of_n')
+
+        op = crossentropy_categorical_1hot
+
+        xe = op(x, one_of_n)
+
+        f = theano.function([x, one_of_n], xe)
+
+        xe_val = f(numpy.asarray([[.4, .6, .0], [.1, .8, .1]]), [0,1])
+
+        assert numpy.allclose(xe_val, -numpy.log([.4, .8]))
+
+        def oplike(x):
+            return op(x, [0,1])
+
+        tensor.verify_grad(oplike, [numpy.asarray([[.4, .6, .0], [.1, .8, .1]])],
+                rng=numpy.random)
+
+
+    def test_softmax_optimizations(self):
+        x = tensor.matrix('x')
+        one_of_n = tensor.lvector('one_of_n')
+        op = crossentropy_categorical_1hot
+
+        xe = op(x, one_of_n)
+
+        env = gof.Env(
+                [x, one_of_n],
+                [op(softmax(x), one_of_n)])
+        assert env.outputs[0].owner.op == op
+
+        theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(env)
+
+        assert env.outputs[0].owner.op == crossentropy_softmax_argmax_1hot_with_bias
+
+    def test_softmax_optimizations_w_bias(self):
+        x = tensor.matrix('x')
+        b = tensor.vector('b')
+        one_of_n = tensor.lvector('one_of_n')
+        op = crossentropy_categorical_1hot
+
+        xe = op(x, one_of_n)
+
+        env = gof.Env(
+                [x, b, one_of_n],
+                [op(softmax(x+b), one_of_n)])
+        assert env.outputs[0].owner.op == op
+
+        print 'BEFORE'
+        for node in env.toposort():
+            print node.op
+        print '----'
+
+        theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(env)
+
+        assert len(env.toposort()) == 1
+
+        assert env.outputs[0].owner.op == crossentropy_softmax_argmax_1hot_with_bias
+
+
+    def test_softmax_grad_optimizations(self):
+        x = tensor.matrix('x')
+        one_of_n = tensor.lvector('one_of_n')
+        op = crossentropy_categorical_1hot
+
+        xe = op(softmax(x), one_of_n)
+
+        sum_xe = tensor.sum(xe)
+        g_x = tensor.grad(sum_xe, x)
+        env = gof.Env(
+                [x, one_of_n],
+                [g_x])
+
+        print 'BEFORE'
+        for node in env.toposort():
+            print node.op
+        print '----'
+        theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(env)
+
+        print 'AFTER'
+        for node in env.toposort():
+            print node.op
+
+        assert env.toposort()[3].op == crossentropy_softmax_argmax_1hot_with_bias
+        assert env.toposort()[5].op == crossentropy_softmax_1hot_with_bias_dx 
+        assert len(env.toposort()) == 6  #shorthand for actually checking what I really 
+
+def test_argmax_pushdown():
+    x = tensor.dmatrix()
+
+    env = gof.Env(
+            [x],
+            [tensor.max(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))])
+
+    theano.compile.mode.optdb.query(
+            theano.compile.mode.OPT_FAST_RUN).optimize(env)
+
+    #print 'AFTER'
+    #for node in env.toposort():
+        #print node.op
+    assert len(env.toposort()) == 1
+    assert env.toposort()[0].op == tensor._max_and_argmax
+
+def test_argmax_pushdown_bias():
+    x = tensor.dmatrix()
+    b = tensor.dvector()
+
+    env = gof.Env(
+            [x,b],
+            [tensor.max(softmax_with_bias(x, b))])
+
+    theano.compile.mode.optdb.query(
+            theano.compile.mode.OPT_FAST_RUN).optimize(env)
+
+    #print 'AFTER'
+    #for node in env.toposort():
+        #print node.op
+    assert len(env.toposort()) == 3
+
 if __name__ == '__main__':
     unittest.main()

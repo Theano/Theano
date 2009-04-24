@@ -10,6 +10,7 @@ import basic as tensor
 import elemwise
 import numpy
 import opt
+from ..compile import optdb
 
 ############
 #
@@ -120,7 +121,7 @@ class SoftmaxWithBias(gof.Op):
 
     def grad(self, (x, b), (g_sm,)):
         sm = softmax_with_bias(x, b)
-        dx = SoftmaxWithBiasDx()(g_sm, sm)
+        dx = softmax_grad(g_sm, sm)
         db = tensor.sum(dx, axis = 0)
         return dx, db
 
@@ -254,13 +255,19 @@ class SoftmaxWithBias(gof.Op):
 softmax_with_bias = SoftmaxWithBias()
 
 
-class SoftmaxWithBiasDx(gof.Op):
+
+class SoftmaxGrad(gof.Op):
+    """Gradient wrt x of the Softmax Op"""
     nin = 2
     nout = 1
-    """Gradient wrt x of the SoftmaxWithBias Op"""
 
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, dy, sm, **kwargs):
         dy = tensor.as_tensor_variable(dy)
@@ -333,18 +340,82 @@ class SoftmaxWithBiasDx(gof.Op):
             }
         }
         ''' % dict(locals(), **sub)
+softmax_grad = SoftmaxGrad()
 
-def softmax(x, **kwargs):
-    b = tensor.zeros_like(x[0,:])
-    return softmax_with_bias(x, b, **kwargs)
+class Softmax(gof.Op):
+    """
+    WRITEME
+    """
+
+    nin = 1
+    nout = 1
+    def __init__(self, **kwargs):
+        gof.Op.__init__(self, **kwargs)
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        x = tensor.as_tensor_variable(x)
+        if x.type.ndim != 2 \
+                or x.type.dtype not in ['float32', 'float64']:
+            raise ValueError('x must be 2-d tensor of floats')
+
+        sm = x.type.make_variable()
+        return gof.Apply(self, [x], [sm])
+
+    def perform(self, node, input_storage, output_storage):
+        x, = input_storage
+        sm = numpy.zeros_like(x)
+        for i in xrange(sm.shape[0]):
+            row = x[i]
+            sm[i] = numpy.exp(row - numpy.max(row))
+            sm[i] *= 1.0 / numpy.sum(sm[i])
+        output_storage[0][0] = sm
+
+    def grad(self, (x,), (g_sm,)):
+        sm = softmax(x)
+        return [softmax_grad(g_sm, sm)]
+softmax = Softmax()
+
+@opt.register_specialize
+@gof.local_optimizer([softmax])
+def local_softmax_with_bias(node):
+    if node.op == softmax:
+        x, = node.inputs
+        if x.owner and x.owner.op == tensor.add:
+            vectors = []
+            non_vectors = []
+            for x_in in x.owner.inputs:
+                if list(x_in.type.broadcastable) == [True, False] \
+                        and isinstance(x_in.owner.op, tensor.DimShuffle):
+                    assert len(x_in.owner.inputs)==1
+                    vectors.append(x_in.owner.inputs[0])
+                else:
+                    non_vectors.append(x_in)
+
+            assert non_vectors #not empty
+            if vectors:
+                #we're in business...
+                vector_sum = tensor.add(*vectors) if len(vectors)>1 else vectors[0]
+                non_vector_sum = tensor.add(*non_vectors) if len(non_vectors)>1 else non_vectors[0]
+                try:
+                    sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
+                except:
+                    #if our arguments have the wrong types, then forget about it
+                    return
+                return [sm_bias]
 
 
 class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     """A special compound L{Op} for the output of neural-net classifiers.
 
-    @type x: is a matrix of floats (32 or 64)
-    @type b: is a [row] vector of floats (32 or 64), length is number of cols in x
-    @type y_idx: a [column] vector of int (32 or 64), length is number of rows in x
+    :type x: is a matrix of floats (32 or 64)
+    :type b: is a [row] vector of floats (32 or 64), length is number of cols in x
+    :type y_idx: a [column] vector of int (32 or 64), length is number of rows in x
+
+    :returns:  row-wise NLL, softmax(x+b), row-wise argmax of (x+b)
 
     @precondition: every entry in y_idx is a valid (non-negative) column index into x
 
@@ -646,8 +717,124 @@ def crossentropy_softmax_max_and_argmax_1hot(x, y_idx, **kwargs):
     b = tensor.zeros_like(x[0,:])
     return crossentropy_softmax_max_and_argmax_1hot_with_bias(x, b, y_idx, **kwargs)
 
-class MultinomialCrossentropy1Hot(gof.Op):
-    pass
+class CrossentropyCategorical1HotGrad(gof.Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+    def make_node(self, g_y, coding_dist, true_one_of_n):
+        return gof.Apply(self, [g_y, coding_dist, true_one_of_n], [coding_dist.type()])
+    def perform(self, node, (g_y, coding_dist, true_one_of_n), (g_coding_strg,)):
+        g_coding = numpy.zeros_like(coding_dist)
+        for i in xrange(len(g_y)):
+            g_coding[i, true_one_of_n[i]] = -g_y[i]/coding_dist[i, true_one_of_n[i]]
+
+        g_coding_strg[0] = g_coding
+crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
+
+class CrossentropyCategorical1Hot(gof.Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+    """Compute the cross entropy between a coding distribution and 
+    a true distribution of the form [0, 0, ... 0, 1, 0, ..., 0]
+
+    .. math::
+
+        y[i] = - \log(coding_dist[i, one_of_n[i])
+
+
+    :note:
+    In the case that the coding distribution is the output of a softmax, an application of this
+    Op will probably be optimized away in favour of one with a C implementation.
+
+    """
+    def make_node(self, coding_dist, true_one_of_n):
+        """
+        :type coding_dist: dense matrix
+
+        :type true_one_of_n: lvector
+
+        :rtype: dvector
+        """
+        _coding_dist = tensor.as_tensor_variable(coding_dist)
+        _true_one_of_n = tensor.as_tensor_variable(true_one_of_n)
+        if _coding_dist.type.ndim != 2:
+            raise TypeError('matrix required for argument: coding_dist')
+        if _true_one_of_n.type != tensor.lvector:
+            raise TypeError('integer vector required for argument: true_one_of_n')
+
+        return gof.Apply(self, [_coding_dist, _true_one_of_n], [tensor.dvector()])
+
+    def perform(self, node, (coding, one_of_n), (y_out,)):
+        y = numpy.zeros_like(coding[:,0])
+        for i in xrange(len(y)):
+            y[i] = -numpy.log(coding[i, one_of_n[i]])
+        y_out[0] = y
+    
+    def grad(self, (coding, one_of_n), (g_y,)):
+        return [crossentropy_categorical_1hot_grad(g_y, coding, one_of_n), None]
+crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
+
+@gof.optimizer
+def crossentropy_to_crossentropy_with_softmax(env):
+    #not a local optimization because we are replacing outputs from several nodes at once
+
+    def search_make_one_sub():
+        for node in env.toposort():
+            if node.op == crossentropy_categorical_1hot:
+                nll, = node.outputs
+                sm, one_of_n = node.inputs
+                if sm.owner and sm.owner.op == softmax:
+                    x, = sm.owner.inputs
+                    new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x,
+                            tensor.zeros_like(x[0]), one_of_n)
+                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)], reason="Merge")
+                    return True
+                if sm.owner and sm.owner.op == softmax_with_bias:
+                    x, b = sm.owner.inputs
+                    new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
+                            one_of_n)
+                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)], reason="Merge")
+                    return True
+
+        return False
+
+    while search_make_one_sub():
+        pass
+    return
+optdb.register('XentThing', crossentropy_to_crossentropy_with_softmax, 60.00,
+        'fast_run', 'inplace', 'xent')
+
+@gof.local_optimizer([softmax_grad])
+def local_crossentropy_to_crossentropy_with_softmax_grad(node):
+    if node.op == softmax_grad:
+        g_coding_dist, coding_dist = node.inputs
+        if g_coding_dist.owner and g_coding_dist.owner.op == crossentropy_categorical_1hot_grad:
+            g_nll, coding_dist, true_one_of_n = g_coding_dist.owner.inputs
+            dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, coding_dist, true_one_of_n)
+            return [dx]
+opt.register_specialize(local_crossentropy_to_crossentropy_with_softmax_grad)
+
+@opt.register_specialize
+@gof.local_optimizer([tensor._max_and_argmax])
+def local_argmax_pushdown(node):
+    if node.op == tensor._max_and_argmax:
+        x_max, x_argmax = node.outputs
+        x, axis = node.inputs
+        #TODO: Make a list/set of monotonic ops...
+        if x.owner and x.owner.op in (softmax, softplus, tensor.exp, tensor.log, tensor.tanh,
+                sigmoid):
+            pre_x, = x.owner.inputs
+            return tensor._max_and_argmax(pre_x, axis)
+        if x.owner and x.owner.op == softmax_with_bias:
+            pre_x, pre_bias = x.owner.inputs
+            return tensor._max_and_argmax(pre_x+tensor.DimShuffle(pre_bias.broadcastable,
+                ('x',0))(pre_bias), axis)
+
 
 
 def binary_crossentropy(output, target):
@@ -659,6 +846,42 @@ def binary_crossentropy(output, target):
     @warning: OUTPUT and TARGET are reversed in cost.cross_entropy
     """
     return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
+
+def categorical_crossentropy(coding_dist, true_dist, axis=1):
+    """Return the cross-entropy between an approximating distribution and a true distribution
+
+    The cross entropy between two probability distributions measures the average number of bits
+    needed to identify an event from a set of possibilities, if a coding scheme is used based
+    on a given probability distribution q, rather than the "true" distribution p.
+
+    Mathematically it is defined as follows:
+
+    .. math::
+
+        H(p,q) = - \sum_x p(x) \log(q(x))
+
+    :type coding_dist: a dense matrix.
+    :param coding_dist: Each slice along axis represents one distribution.
+
+    :type true_dist: a dense matrix or sparse matrix or integer vector.
+    :param coding_dist: In the case of a matrix argument, each slice along axis represents one
+    distribution.  In the case of an integer vector argument, each element represents the
+    position of the '1' in a 1-of-N encoding.
+
+    :type axis: int
+    :param axis: the dimension over which each distribution runs. (1 for row distributions, 0
+    for column distributions)
+
+    :rtype: dvector
+    :returns: the cross entropy between each coding and true distribution.
+
+    """
+    if true_dist.ndim == 2:
+        return -theano.sum(true_dist * log(coding_dist), axis=axis)
+    else:
+        return categorical_crossentropy_1hot(
+                coding_dist.T if axis == 0 else coding_dist,
+                true_dist)
 
 
 
