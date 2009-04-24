@@ -378,6 +378,8 @@ class LT(LogicalComparison):
     associative = False
     def impl(self, x, y):
         return x < y
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        return "%(z)s = (%(x)s < %(y)s);" % locals()
 lt = LT()
 
 class GT(LogicalComparison):
@@ -386,6 +388,8 @@ class GT(LogicalComparison):
     associative = False
     def impl(self, x, y):
         return x > y
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        return "%(z)s = (%(x)s > %(y)s);" % locals()
 gt = GT()
 
 class LE(LogicalComparison):
@@ -394,6 +398,8 @@ class LE(LogicalComparison):
     associative = False
     def impl(self, x, y):
         return x <= y
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        return "%(z)s = (%(x)s <= %(y)s);" % locals()
 le = LE()
 
 class GE(LogicalComparison):
@@ -402,6 +408,8 @@ class GE(LogicalComparison):
     associative = False
     def impl(self, x, y):
         return x >= y
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        return "%(z)s = (%(x)s >= %(y)s);" % locals()
 ge = GE()
 
 class EQ(LogicalComparison):
@@ -410,6 +418,8 @@ class EQ(LogicalComparison):
     associative = False
     def impl(self, x, y):
         return x == y
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        return "%(z)s = (%(x)s == %(y)s);" % locals()
 eq = EQ()
 
 class NEQ(LogicalComparison):
@@ -418,6 +428,8 @@ class NEQ(LogicalComparison):
     associative = False
     def impl(self, x, y):
         return x != y
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        return "%(z)s = (%(x)s != %(y)s);" % locals()
 neq = NEQ()
 
 class InRange(LogicalComparison):
