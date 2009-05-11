@@ -14,23 +14,5 @@ Use the fast BLAS library that Fred installed, by setting
 Tips for running on a cluster
 -----------------------------
 
-
-OUTDATED(was for mammouth1, should be updated for mammouth2)
-Use something like the following in your .bashrc:
-
-.. code-block:: bash
-
-    #use the intel math-kernel library for BLAS routines
-    THEANO_BLAS_LDFLAGS=-lmkl
-
-    # use up to two threads in the MKL routines
-    OMP_NUM_THREADS=2
-
-You may also need to run the following from your shell: 
-
-.. code-block:: bash
-
-    module add python      # for the current shell session 
-    module initadd python  # for this and future sessions 
-
-Lastly,  if ``./filename.py`` doesn't work, try ``python filename.py``.
+:ref:`mammouth`
+    For instructions on running Theano on the mammouth cluster.
