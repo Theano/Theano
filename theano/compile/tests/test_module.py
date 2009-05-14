@@ -8,7 +8,7 @@ from theano.compile.mode import default_mode
 from theano.compile.module import *
 from theano.compile.function_module import AliasedMemoryError
 import theano.tensor as T
-import sys
+import sys, copy
 import theano
 
 #TODO: add test for module.make(member=init_value)
@@ -792,6 +792,24 @@ def test_default_instance_initialize():
     assert m.z.b == 6
     assert all(m.z.c == [7, 8])
 
+class MyModule(Module):
+    def __init__(self):
+        Module.__init__(self)
+        self.a = T.dscalar()
+        self.b = T.dscalar()
+    def _instance_initialize(self, obj):
+        obj.a = 4.5
+        obj.b = 3.5
+
+    def _instance_something(self, obj, a):
+        return obj.a + a
+
+def test_pickle_module():
+    M = MyModule()
+    m = M.make()
+    mm = copy.deepcopy(m)
+    assert m.a == mm.a
+    assert m.b == mm.b
 
 if __name__ == '__main__':
     from theano.tests import main
