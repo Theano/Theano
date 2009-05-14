@@ -137,6 +137,8 @@ if __name__ == '__main__':
                 shutil.rmtree(workdir)
             except OSError, e:
                 print 'OSError:', e
+            except IOError, e:
+                print 'IOError:', e
 
 
 
