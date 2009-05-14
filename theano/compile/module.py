@@ -11,7 +11,6 @@ from theano.printing import pprint
 from collections import defaultdict
 from itertools import chain
 from functools import partial
-from copy import copy
 import io, sys
 import function_module as F
 from mode import default_mode
@@ -291,13 +290,14 @@ class Method(Component):
 
         This works by searching the attribute list of the Module to which this Method is bound.
         """
-        def resolve_variable(x, passthrough=(gof.Variable)):
+        def resolve_variable(x, passthrough=(gof.Variable,)):
             if isinstance(x, passthrough):
                 return x
             elif isinstance(x, _RComponent):
                 return x.r
             else:
-                raise Exception('Cannot resolve symbol', x)
+                raise Exception('The following thing is not of the following types', x,
+                        passthrough + (_RComponent,))
                 # return self.resolve(x).r
 
         def resolve_inputs():
