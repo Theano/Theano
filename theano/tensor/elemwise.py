@@ -686,12 +686,15 @@ class CAReduce(Op):
             self.axis = axis
         self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
+    def _output_dtype(self, input_dtype):
+        return input_dtype
+
     def make_node(self, input):
         input = as_tensor_variable(input)
         axis = self.axis
         if axis is None:
             axis = range(len(input.type.broadcastable))
-        output = TensorType(dtype = input.type.dtype,
+        output = TensorType(dtype = self._output_dtype(input.type.dtype),
                              broadcastable = [x for i, x in enumerate(input.type.broadcastable) if i not in axis])()
         return Apply(self, [input], [output])
 
@@ -816,6 +819,13 @@ class Sum(CAReduce):
     """
     def __init__(self, axis = None):
         CAReduce.__init__(self, scalar.add, axis)
+
+    def _output_dtype(self, idtype):
+        if idtype.startswith('int'):
+            return 'int64' #we want to protect against overflow
+        else:
+            return idtype
+
 
     def grad(self, (x, ), (gz, )):
         gz = as_tensor_variable(gz)
