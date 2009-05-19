@@ -1887,6 +1887,12 @@ def test_var():
     f = function([a], var(a, axis=2))
     assert numpy.allclose(numpy.var(a_val, axis=2), f(a_val))
 
+def test_sum_overflow():
+    """Ensure that overflow errors are a little bit harder to get"""
+    a = Tensor(dtype='int8', broadcastable=[False])()
+    f = function([a], sum(a))
+    assert f([1]*300) == 300
+
 if __name__ == '__main__':
     if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
         default_mode = compile.Mode(linker = 'c&py',
