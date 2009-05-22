@@ -1680,11 +1680,12 @@ class Split(Op):
 
 class Join(Op):
     """
-    Concatenate two `TensorVariable`s along some axis.
+    Concatenate multiple `TensorVariable`s along some axis.
 
-    These tensors must have the same shape along all dimensions other than this axis.
-    Of course, TensorVariable instances don't have a shape, so this error can't be caught until
-    runtime.  See `perform()`.
+    The axis must be given as first argument. All tensors must have the same
+    shape along all dimensions other than this axis.
+    Of course, TensorVariable instances do not have a shape, so this error
+    cannot be caught until runtime.  See `perform()`.
 
     For joins involving scalar values, see @stack.
 
@@ -1695,8 +1696,8 @@ class Join(Op):
 
         r = join(0, x, y, z)
         c = join(1, x, y, z)
-        join(2, x, y, z)     # WRONG: the axis has to be an index into the shape
-        join(0, x, y)        # WRONG: tensors have to have the same rank to be joined
+        join(2, x, y, z)    # WRONG: the axis has to be an index into the shape
+        join(0, x, u)       # WRONG: joined tensors must have the same rank
     """
 
     def make_node(self, *axis_and_tensors):
