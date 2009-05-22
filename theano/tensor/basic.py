@@ -1211,7 +1211,8 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 def mean(input, axis = None):
     """Compute the mean value along the given axis of a tensor `input`
 
-    :param axis: compute the mean along this axis of the tensor.  None means trailing axis.
+    :param axis: compute the mean along this axis of the tensor.  None means all axes (like
+    numpy).
     :type axis: None or int or (list of int) (see `Sum`)
     
     """
@@ -2277,8 +2278,8 @@ class Outer(Op):
         nx = x.type.ndim
         ny = y.type.ndim
 
-        if nx != 1: raise TypeError('not vector', x)
-        if ny != 1: raise TypeError('not vector', y)
+        if nx != 1: raise TypeError('non-vector arg0 to outer()', x)
+        if ny != 1: raise TypeError('not-vector arg1 to outer()', y)
         
         bz = [x.type.broadcastable[0], y.type.broadcastable[0]]
 
