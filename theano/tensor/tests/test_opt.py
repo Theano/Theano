@@ -177,6 +177,14 @@ class test_canonize(unittest.TestCase):
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
         print pprint(g.outputs[0])
+
+
+def test_mixeddiv():
+    """Test that int division is preserved"""
+    i = iscalar()
+    d = dscalar()
+    assert 0 == function([i,d], d*(i/(i+1)))(3, 1.0)
+
         
 #     def test_plusmin(self):
 #         x, y, z = inputs()
