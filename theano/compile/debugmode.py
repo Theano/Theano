@@ -836,6 +836,8 @@ class _Linker(gof.link.LocalLinker):
                 #  Precondition: the storage map is empty, transferred completely to r_vals
                 #####
                 for r, s in storage_map.iteritems():
+                    if s[0] is not None:
+                        print r, s
                     assert s[0] is None
 
                 #try:
@@ -952,9 +954,12 @@ class _Linker(gof.link.LocalLinker):
                         else:
                             storage_map[r][0] = dr_vals[r][0]
             except:
-                for r in original_storage_map_keys:
-                    if storage_map[r][0] is None:
-                        storage_map[r][0] = r_vals[r]
+                for r in storage_map:
+                    if r in original_storage_map_keys:
+                        if storage_map[r][0] is None:
+                            storage_map[r][0] = r_vals[r]
+                    else:
+                        storage_map[r][0] = None # clear out any partially-computed stuff
                 raise
             #print ""
             #print output_storage

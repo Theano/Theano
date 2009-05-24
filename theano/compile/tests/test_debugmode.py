@@ -589,5 +589,8 @@ class Test_check_isfinite(unittest.TestCase):
             pass
 
         #inf should go through
-        f(numpy.asarray([1.0, 1.0, 1.0])/0)
+        infs = numpy.asarray([1.0,1.,1.])/0
+        print infs
+        f(infs)
+        return
 
