@@ -690,9 +690,10 @@ class CAReduce(Op):
         return input_dtype
 
     def make_node(self, input):
-        for axis in self.axis:
-            if axis >= input.type.ndim:
-                raise TypeError('Not enough dimensions on %s to reduce on axis %s' % (input, axis))
+        if self.axis is not None:
+            for axis in self.axis:
+                if axis >= input.type.ndim:
+                    raise TypeError('Not enough dimensions on %s to reduce on axis %s' % (input, axis))
         input = as_tensor_variable(input)
         axis = self.axis
         if axis is None:
