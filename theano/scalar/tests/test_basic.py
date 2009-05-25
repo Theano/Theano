@@ -11,6 +11,7 @@ If you do want to rewrite these tests, bear in mind:
 
 import unittest
 
+import theano
 from theano.gof import Variable, Op, Env
 from theano import gof
 
@@ -25,7 +26,7 @@ class test_ScalarOps(unittest.TestCase):
 
     def test_straightforward(self):
         x, y, z = inputs()
-        e = mul(add(x, y), div(x, y))
+        e = mul(add(x, y), div_proxy(x, y))
         g = Env([x, y], [e])
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
@@ -35,7 +36,7 @@ class test_composite(unittest.TestCase):
 
     def test_straightforward(self):
         x, y, z = inputs()
-        e = mul(add(x, y), div(x, y))
+        e = mul(add(x, y), div_proxy(x, y))
         C = Composite([x, y], [e])
         c = C.make_node(x, y)
         # print c.c_code(['x', 'y'], ['z'], dict(id = 0))
@@ -59,7 +60,7 @@ class test_composite(unittest.TestCase):
 
     def test_with_constants(self):
         x, y, z = inputs()
-        e = mul(add(70.0, y), div(x, y))
+        e = mul(add(70.0, y), div_proxy(x, y))
         C = Composite([x, y], [e])
         c = C.make_node(x, y)
         assert "70.0" in c.op.c_code(c, 'dummy', ['x', 'y'], ['z'], dict(id = 0))
@@ -152,6 +153,27 @@ class test_logical(unittest.TestCase):
         fn = gof.DualLinker().accept(Env([x,y], [~x])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.failUnless(fn(a,b) == ~a, (a,))
+
+
+class test_div(unittest.TestCase):
+    def test_0(self):
+        a = int8()
+        b = int32()
+        c = complex64()
+        d = float64()
+        f = float32()
+
+        print (a/b).owner.op
+        assert isinstance((a/b).owner.op, IntDiv)
+        assert isinstance((b/a).owner.op, IntDiv)
+        assert isinstance((b/d).owner.op, TrueDiv)
+        assert isinstance((b/f).owner.op, TrueDiv)
+        assert isinstance((f/a).owner.op, TrueDiv)
+        assert isinstance((d/b).owner.op, TrueDiv)
+        assert isinstance((d/f).owner.op, TrueDiv)
+        assert isinstance((f/c).owner.op, TrueDiv)
+        assert isinstance((a/c).owner.op, TrueDiv)
+
 
 if __name__ == '__main__':
     unittest.main()

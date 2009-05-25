@@ -168,7 +168,11 @@ def mul_inplace(a, b):
     """elementwise multiplication (inplace on `a`)"""
 
 @_scal_inplace
-def div_inplace(a, b):
+def true_div_inplace(a, b):
+    """elementwise division (inplace on `a`)"""
+
+@_scal_inplace
+def int_div_inplace(a, b):
     """elementwise division (inplace on `a`)"""
 
 @_scal_inplace
@@ -183,7 +187,8 @@ pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
 pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))
 pprint.assign(sub_inplace, printing.OperatorPrinter('-=', -2, 'left'))
 pprint.assign(neg_inplace, printing.OperatorPrinter('-=',  0, 'either'))
-pprint.assign(div_inplace, printing.OperatorPrinter('/=', -1, 'left'))
+pprint.assign(true_div_inplace, printing.OperatorPrinter('/=', -1, 'left'))
+pprint.assign(int_div_inplace, printing.OperatorPrinter('//=', -1, 'left'))
 pprint.assign(pow_inplace, printing.OperatorPrinter('**=', 1, 'right'))
 
 

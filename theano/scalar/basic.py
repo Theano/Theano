@@ -213,7 +213,7 @@ class _scalar_py_operators:
     def __add__(self,other): return add(self,other)
     def __sub__(self,other): return sub(self,other)
     def __mul__(self,other): return mul(self,other)
-    def __div__(self,other): return div(self,other)
+    def __div__(self,other): return div_proxy(self,other)
     def __mod__(self,other): return mod(self,other)
     def __pow__(self,other): return pow(self,other)
 
@@ -221,7 +221,7 @@ class _scalar_py_operators:
     def __radd__(self,other): return add(other,self)
     def __rsub__(self,other): return sub(other,self)
     def __rmul__(self,other): return mul(other,self)
-    def __rdiv__(self,other): return div(other,self)
+    def __rdiv__(self,other): return div_proxy(other,self)
     def __rmod__(self,other): return mod(other,self)
     def __rpow__(self,other): return pow(other,self)
 
@@ -567,16 +567,44 @@ class Sub(BinaryScalarOp):
         return gz, -gz
 sub = Sub(upcast_out, name = 'sub')
 
-class Div(BinaryScalarOp):
+def div_proxy(x, y):
+    """Proxy for either true_div or int_div, depending on types of x, y.
+    """
+    if as_scalar(x).type.dtype.startswith('int') and as_scalar(y).type.dtype.startswith('int'):
+        return int_div(x, y)
+    else:
+        return true_div(x, y)
+
+class TrueDiv(BinaryScalarOp):
+    def output_types(self, types):
+        if all(t.dtype.startswith('int') for t in types):
+            return [float64]
+        else:
+            return super(TrueDiv, self).output_types(types)
     def impl(self, x, y):
-        return x / y
+        x = numpy.asarray(x)
+        y = numpy.asarray(y)
+        if str(x.dtype).startswith('int') and str(y.dtype).startswith('int'):
+            return float(x) / y
+        else:
+            return x / y
     def c_code(self, node, name, (x, y), (z, ), sub):
         if node.inputs[0].type in int_types and node.inputs[1].type in int_types:
-            raise NotImplementedError("For integer arguments the behavior of division in C and in Python differ when the quotient is negative (to implement).")
+            return "%(z)s = ((double)%(x)s) / %(y)s;" % locals()
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         return gz / y, -(gz * x) / (y * y)
-div = Div(upcast_out, name = 'div')
+true_div = TrueDiv(upcast_out, name = 'true_div')
+
+class IntDiv(BinaryScalarOp):
+    def impl(self, x, y):
+        return x // y
+    def c_code(self, node, name, (x,y), (z,), sub):
+        raise NotImplementedError("For integer arguments the behavior of division in C and in Python [can] differ when the quotient is negative.  C actually does not even specify a correct behaviour in this case, it is up to the chip.")
+    def grad(self, inputs, g_output):
+        return [None] * len(inputs)
+int_div = IntDiv(upcast_out, name = 'int_div')
+
 
 class Mod(BinaryScalarOp):
     def impl(self, x, y):

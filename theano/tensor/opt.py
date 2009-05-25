@@ -392,7 +392,7 @@ class Canonizer(gof.LocalOptimizer):
             takes one to an arbitrary number of inputs, e.g. add or
             mul
     * inverse: an Op class such that inverse(main(x, y), y) == x
-               e.g. sub or div
+               e.g. sub or true_div
     * reciprocal: a function such that main(x, reciprocal(y)) ==
                   inverse(x, y) e.g. neg or inv
 
@@ -410,7 +410,7 @@ class Canonizer(gof.LocalOptimizer):
     Examples:
       T = theano.tensor
       add_canonizer = Canonizer(T.add, T.sub, T.neg, lambda n, d: sum(n) - sum(d))
-      mul_canonizer = Canonizer(T.mul, T.div, T.inv, lambda n, d: prod(n) / prod(d))
+      mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, lambda n, d: prod(n) / prod(d))
     
     Examples of optimizations mul_canonizer can perform:
       x / x -> 1
@@ -738,7 +738,7 @@ def mul_calculate(num, denum, aslist = False):
             return [v]
     return v
 
-local_mul_canonizer = Canonizer(T.mul, T.div, T.inv, mul_calculate, False)
+local_mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, mul_calculate, False)
 register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 
 @gof.local_optimizer([T.neg])
@@ -757,9 +757,9 @@ def local_mul_to_neg(node):
         return False
 register_specialize(local_mul_to_neg)
 
-@gof.local_optimizer([T.div])
+@gof.local_optimizer([T.true_div])
 def local_div_to_inv(node):
-    if node.op == T.div and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
+    if node.op == T.true_div and N.all(local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
         return [T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:], []))]
     else:
         return False
@@ -971,7 +971,7 @@ def attempt_distribution(factor, num, denum):
             list(itertools.starmap(local_mul_canonizer.merge_num_denum, neg_pairs))), num, denum
 
 @gof.local_optimizer([T.mul, T.add, T.mul], [T.mul, T.sub, T.mul],
-                     [T.mul, T.add, T.div], [T.mul, T.sub, T.div])
+                     [T.mul, T.add, T.true_div], [T.mul, T.sub, T.true_div])
 def local_greedy_distributor(node):
     """
     This optimization tries to apply distributivity of multiplication

@@ -770,9 +770,13 @@ def _execute(cthunk, init_tasks, tasks, error_storage):
                 trace = task.trace
             except AttributeError:
                 trace = ()
-            exc_type, _exc_value, exc_trace = error_storage
-            exc_value = exc_type(_exc_value, task)
-            exc_value.__thunk_trace__ = trace # this can be used to retrieve the location the Op was declared
+            try:
+                exc_type, _exc_value, exc_trace = error_storage
+                exc_value = exc_type(_exc_value, task)
+                exc_value.__thunk_trace__ = trace # this can be used to retrieve the location the Op was declared
+            except:
+                print >> sys.stderr, 'ERROR retrieving error_storage', error_storage
+                raise
             raise exc_type, exc_value, exc_trace
     execute.cthunk = cthunk
     return execute

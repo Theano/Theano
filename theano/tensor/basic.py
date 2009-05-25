@@ -573,7 +573,7 @@ class _tensor_py_operators:
             return NotImplemented
     def __div__(self,other): 
         try: 
-            return div(self,other)
+            return div_proxy(self,other)
         except Exception, e:
             return NotImplemented
     def __pow__(self,other): 
@@ -599,7 +599,7 @@ class _tensor_py_operators:
     def __radd__(self,other): return add(other,self)
     def __rsub__(self,other): return sub(other,self)
     def __rmul__(self,other): return mul(other,self)
-    def __rdiv__(self,other): return div(other,self)
+    def __rdiv__(self,other): return div_proxy(other,self)
     def __rmod__(self,other): return mod(other,self)
     def __rpow__(self,other): return pow(other,self)
 
@@ -1292,6 +1292,14 @@ repeat = Repeat()
 # Arithmetics
 ##########################
 
+def div_proxy(x, y):
+    """Proxy for either true_div or int_div, depending on types of x, y.
+    """
+    if as_tensor_variable(x).type.dtype.startswith('int') and as_tensor_variable(y).type.dtype.startswith('int'):
+        return int_div(x, y)
+    else:
+        return true_div(x, y)
+
 @_scal_elemwise
 def add(a, b):
     """elementwise addition"""
@@ -1305,8 +1313,12 @@ def mul(a, b):
     """elementwise multiplication"""
 
 @_scal_elemwise
-def div(a, b):
-    """elementwise division"""
+def true_div(a, b):
+    """elementwise [true] division (inverse of multiplication)"""
+
+@_scal_elemwise
+def int_div(a, b):
+    """elementwise integer-division"""
 
 @_scal_elemwise
 def mod(a, b):
@@ -1324,7 +1336,8 @@ pprint.assign(add, printing.OperatorPrinter('+', -2, 'either'))
 pprint.assign(mul, printing.OperatorPrinter('*', -1, 'either'))
 pprint.assign(sub, printing.OperatorPrinter('-', -2, 'left'))
 pprint.assign(neg, printing.OperatorPrinter('-',  0, 'either'))
-pprint.assign(div, printing.OperatorPrinter('/', -1, 'left'))
+pprint.assign(true_div, printing.OperatorPrinter('/', -1, 'left'))
+pprint.assign(int_div, printing.OperatorPrinter('//', -1, 'left'))
 pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 
 

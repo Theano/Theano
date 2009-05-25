@@ -268,7 +268,7 @@ MulInplaceTester = makeBroadcastTester(op = inplace.mul_inplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
-DivTester = makeBroadcastTester(op = div,
+DivTester = makeBroadcastTester(op = true_div,
                                   expected = lambda x, y: x / y,
                                   good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                               scalar = (rand(2, 3), rand(1, 1)),
@@ -286,7 +286,7 @@ DivTester = makeBroadcastTester(op = div,
                                               scalar = (rand(2, 3), rand(1, 1)),
                                               row = (rand(2, 3), rand(1, 3)),
                                               column = (rand(2, 3), rand(2, 1))))
-DivInplaceTester = makeBroadcastTester(op = inplace.div_inplace,
+DivInplaceTester = makeBroadcastTester(op = inplace.true_div_inplace,
                                          expected = lambda x, y: x / y,
                                          good = dict(same_shapes = (rand(2, 3), rand(2, 3)),
                                                      scalar = (rand(2, 3), rand(1, 1)),
@@ -1135,6 +1135,31 @@ class T_exp(unittest.TestCase):
         utt.verify_grad(inplace.exp_inplace, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
+
+class T_divimpl(unittest.TestCase):
+    def test_impls(self):
+        i = iscalar()
+        ii = lscalar()
+        d = dscalar()
+        f = fscalar()
+        c = cscalar()
+
+        assert numpy.allclose(function([i, ii, d, f, c], i/d)(5, 3, 7.0, 11.0, complex(5,3)),
+                (5.0/7.0))
+        assert numpy.allclose(function([i, ii, d, f, c], d/i)(5, 3, 7.0, 11.0, complex(5,3)),
+                (7.0/5.0))
+        assert numpy.allclose(function([i, ii, d, f, c], i/f)(5, 3, 7.0, 11.0, complex(5,3)),
+                (5.0/11.0))
+        assert numpy.allclose(function([i, ii, d, f, c], f/i)(5, 3, 7.0, 11.0, complex(5,3)),
+                (11.0/5.0))
+        assert numpy.allclose(function([i, ii, d, f, c], i/ii)(5, 3, 7.0, 11.0, complex(5,3)),
+                (5/3))
+        assert numpy.allclose(function([i, ii, d, f, c], ii/i)(5, 3, 7.0, 11.0, complex(5,3)),
+                (3/5))
+        assert numpy.allclose(function([i, ii, d, f, c], true_div(i,ii))(5, 3, 7.0, 11.0, complex(5,3)),
+                (5./3.))
+        assert numpy.allclose(function([i, ii, d, f, c], true_div(ii,i))(5, 3, 7.0, 11.0, complex(5,3)),
+                (3./5.))
 
 # class T_abs(unittest.TestCase):
 #     def test_impl(self):
