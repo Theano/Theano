@@ -29,7 +29,7 @@ def make_checks(loop_orders, dtypes, sub):
         var = "%%(lv%i)s" % i
         nonx = [x for x in loop_order if x != 'x']
         if nonx:
-            min_nd = max(nonx)
+            min_nd = max(nonx) + 1
             init += """
             if (%(var)s->nd < %(min_nd)s) {
                 PyErr_SetString(PyExc_ValueError, "Not enough dimensions on input.");

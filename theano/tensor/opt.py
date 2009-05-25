@@ -496,13 +496,8 @@ class Canonizer(gof.LocalOptimizer):
         denum = []
         parent = input.owner
 
-
-        # We get the (num, denum) pairs for each input (input2) *to* input that has the same
-        # type as this one.
-        pairs = [self.get_num_denum(input2)
-                if (getattr(input2.type, 'dtype', None) == input.type.dtype) 
-                else ([input2], [])
-                for input2 in parent.inputs ]
+        # We get the (num, denum) pairs for each input
+        pairs = [self.get_num_denum(input2) if input2.type.dtype == input.type.dtype else ([input2], []) for input2 in parent.inputs]
 
         if parent.op == self.main:
             # If we have main(x, y), numx, denumx, numy and denumy
