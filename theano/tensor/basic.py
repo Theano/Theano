@@ -270,7 +270,34 @@ class TensorType(Type):
             #    print >> sys.stderr, 'WARNING: skipping comparison of complex'
             #    return True
             else:
-                return numpy.allclose(a,b)
+                cmp = numpy.allclose(a,b)
+                if cmp:
+                    # Numpy claims they are close, this is good enough for us.
+                    return True
+                # Numpy is unhappy, but it does not necessarily mean that a and
+                # b are different. Indeed, Numpy does not like missing values
+                # and will return False whenever some are found in a or b.
+                # The proper way would be to use the MaskArray stuff available
+                # in Numpy. However, it looks like it has been added to Numpy's
+                # core recently, so it may not be available to everyone. Thus,
+                # for now we use a home-made recipe, that should probably be
+                # revisited in the future.
+                a_missing = numpy.isnan(a)
+                if not a_missing.any():
+                    # There are no missing values in a, thus this is not the
+                    # reason why numpy.allclose(a, b) returned False.
+                    return False
+                # The following line is what numpy.allclose bases its decision
+                # upon, according to its documentation.
+                rtol = 1.0000000000000001e-05
+                atol = 1e-8
+                cmp_elemwise = (numpy.absolute(a - b) <=
+                        (atol + rtol * numpy.absolute(b)))
+                # Find places where both a and b have missing values.
+                both_missing = a_missing * numpy.isnan(b)
+                # Combine all information.
+                return (cmp_elemwise + both_missing).all()
+
         return False
 
     def __hash__(self):
