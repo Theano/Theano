@@ -15,6 +15,7 @@ import module
 from module import *
 
 import debugmode   # register DEBUG_MODE
+from debugmode import DebugMode
 
 from profilemode import ProfileMode
 
