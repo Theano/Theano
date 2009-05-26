@@ -1,7 +1,9 @@
 
 import theano
-from theano import tensor, scalar
 import numpy
+
+from elemwise import Elemwise
+from theano import scalar
 
 class XlogX(scalar.UnaryScalarOp):
     """
@@ -24,7 +26,7 @@ class XlogX(scalar.UnaryScalarOp):
                 : %(x)s * log(%(x)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
 scalar_xlogx  = XlogX(scalar.upgrade_to_float, name='scalar_xlogx')
-xlogx = tensor.Elemwise(scalar_xlogx, name='xlogx')
+xlogx = Elemwise(scalar_xlogx, name='xlogx')
 
 
 class XlogY0(scalar.BinaryScalarOp):
@@ -48,5 +50,4 @@ class XlogY0(scalar.BinaryScalarOp):
                 : %(x)s * log(%(y)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
 scalar_xlogy0  = XlogY0(scalar.upgrade_to_float, name='scalar_xlogy0')
-xlogy0 = tensor.Elemwise(scalar_xlogy0, name='xlogy0')
-
+xlogy0 = Elemwise(scalar_xlogy0, name='xlogy0')
