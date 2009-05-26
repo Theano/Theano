@@ -13,7 +13,7 @@ from itertools import chain
 from functools import partial
 import io, sys
 import function_module as F
-from mode import default_mode
+import mode as get_mode
 
 
 def name_join(*args):
@@ -73,13 +73,15 @@ class Component(object):
         """
         raise NotImplementedError()
 
-    def make_no_init(self, mode=default_mode):
+    def make_no_init(self, mode=None):
         """
         Allocates the necessary containers using allocate() and uses
         build() with the provided mode to make an instance which will
         be returned.  The initialize() method of the instance will not
         be called.
         """
+        if mode is None:
+            mode = get_mode.default_mode
         memo = {}
         self.allocate(memo)
         rval = self.build(mode, memo)
@@ -93,7 +95,7 @@ class Component(object):
         arguments and the keyword arguments. If 'mode' is in the
         keyword arguments it will be passed to build().
         """
-        mode = kwargs.pop('mode', default_mode)
+        mode = kwargs.pop('mode', get_mode.default_mode)
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)
@@ -1075,7 +1077,7 @@ class Module(ComponentDict):
         """
         self.make_module_instance(args,kwargs)
 
-        mode = kwargs.pop('mode', default_mode)
+        mode = kwargs.pop('mode', get_mode.default_mode)
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)
