@@ -921,8 +921,8 @@ class Module(ComponentDict):
     """
     InstanceType = ModuleInstance # By default, we use build ModuleInstance
    
-    def __init__(self):
-        super(Module, self).__init__()
+    def __init__(self, *args, **kw):
+        super(Module, self).__init__(*args, **kw)
         self.__dict__["local_attr"]={}
         self.__dict__["_components"]={}
 
