@@ -997,6 +997,11 @@ def smallest(*args):
     """Return the [elementwise] smallest of a variable number of arguments (like python's min)."""
     return min(stack(*args), axis=0)
 
+@constructor
+def largest(*args):
+    """Return the [elementwise] largest of a variable number of arguments (like python's max)."""
+    return max(stack(*args), axis=0)
+
 
 ##########################
 # Comparison
