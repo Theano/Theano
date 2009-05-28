@@ -161,61 +161,76 @@ class test_structureddot(unittest.TestCase):
 
     def test_structuredot(self):
         bsize = 2
+        typenames = 'int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'complex64', 'complex128'
        
-        # iterate 10 times just to make sure (cannot get this wrong !)
-        for i in range(10):
-            spmat = sp.lil_matrix((4,6))
-            for i in range(5):
-                x = numpy.floor(numpy.random.rand()*spmat.shape[0])
-                y = numpy.floor(numpy.random.rand()*spmat.shape[1])
-                spmat[x,y] = numpy.random.rand()*10
-            spmat = sp.csc_matrix(spmat)
-       
-            kerns = tensor.dvector('kerns')
-            images = tensor.dmatrix('images')
+        for sparse_dtype in typenames:
+           for dense_dtype in typenames:
+                # iterate for a few different random graph patterns
+                for i in range(10):
+                    spmat = sp.lil_matrix((4,6), dtype=sparse_dtype)
+                    for i in range(5):
+                        # set non-zeros in random locations (row x, col y)
+                        x = numpy.floor(numpy.random.rand()*spmat.shape[0])
+                        y = numpy.floor(numpy.random.rand()*spmat.shape[1])
+                        spmat[x,y] = numpy.random.rand()*10
+                    spmat = sp.csc_matrix(spmat)
+               
+                    kerns = tensor.Tensor(broadcastable=[False], dtype=sparse_dtype)('kerns')
+                    images = tensor.Tensor(broadcastable=[False, False], dtype=dense_dtype)('images')
 
-            ##
-            # Test compressed-sparse column matrices ###
-            ##
+                    output_dtype = theano.scalar.upcast(sparse_dtype, dense_dtype)
+                    assert output_dtype in (sparse_dtype, dense_dtype)
 
-            # build symbolic theano graph
-            def buildgraphCSC(kerns,images):
-                csc = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
-                return structured_dot(csc, images.T)
-            out = buildgraphCSC(kerns,images)
-            f = theano.function([kerns,images], out)
-            # compute theano outputs
-            kernvals = spmat.data[:spmat.size]
-            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
-            outvals = f(kernvals,imvals)
-            # compare to scipy
-            c = spmat * (imvals.T)
-            assert _is_dense(c)
-            assert numpy.all(outvals == c)
+                    ##
+                    # Test compressed-sparse column matrices ###
+                    ##
 
-            utt.verify_grad(buildgraphCSC, [kernvals,imvals])
+                    # build symbolic theano graph
+                    def buildgraphCSC(kerns,images):
+                        csc = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
+                        assert csc.type.dtype == output_dtype
+                        return structured_dot(csc, images.T)
+                    out = buildgraphCSC(kerns,images)
+                    f = theano.function([kerns,images], out)
+                    # compute theano outputs
+                    kernvals = spmat.data[:spmat.size]
+                    imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+                    outvals = f(kernvals,imvals)
+                    # compare to scipy
+                    c = spmat * (imvals.T)
+                    assert _is_dense(c)
+                    assert numpy.all(outvals == c)
+                    assert str(outvals.dtype) == output_dtype
+                    assert c.dtype == outvals.dtype
 
-            ##
-            # Test compressed-sparse row matrices ###
-            ##
-            spmat = spmat.tocsr()
-            
-            # build theano graph
-            def buildgraphCSR(kerns,images):
-                csr = CSR(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
-                return structured_dot(csr, images.T)
-            out = buildgraphCSR(kerns,images)
-            f = theano.function([kerns,images], out)
-            # compute theano output
-            kernvals = spmat.data[:spmat.size]
-            imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
-            outvals = f(kernvals,imvals)
-            # compare to scipy
-            c = spmat * (imvals.T)
-            assert _is_dense(c)
-            assert numpy.all(outvals == c)
+                    if sparse_dtype.startswith('float') and dense_dtype.startswith('float'):
+                        utt.verify_grad(buildgraphCSC, [kernvals,imvals])
 
-            utt.verify_grad( buildgraphCSR, [kernvals,imvals])
+                    ##
+                    # Test compressed-sparse row matrices ###
+                    ##
+                    spmat = spmat.tocsr()
+                    
+                    # build theano graph
+                    def buildgraphCSR(kerns,images):
+                        csr = CSR(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
+                        return structured_dot(csr, images.T)
+                    out = buildgraphCSR(kerns,images)
+                    f = theano.function([kerns,images], out)
+                    # compute theano output
+                    kernvals = spmat.data[:spmat.size]
+                    imvals = 1.0 * numpy.arange(bsize*spmat.shape[1]).reshape(bsize,spmat.shape[1])
+                    outvals = f(kernvals,imvals)
+                    # compare to scipy
+                    c = spmat * (imvals.T)
+                    assert _is_dense(c)
+                    assert numpy.all(outvals == c)
+                    assert str(outvals.dtype) == output_dtype
+                    assert c.dtype == outvals.dtype
+
+                    # we could test more, but hopefully this suffices?
+                    if sparse_dtype.startswith('float') and dense_dtype.startswith('float'):
+                        utt.verify_grad( buildgraphCSR, [kernvals,imvals])
 
 
 if __name__ == '__main__':

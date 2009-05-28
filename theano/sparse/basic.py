@@ -696,7 +696,7 @@ class StructuredDot(gof.Op):
             else:
                 raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s ??? I have no idea why")
 
-        ## Commenting this out because variable should be a numpy.ndarray since the assert above
+        ## Commenting this out because variable should be a numpy.ndarray since the "assert _is_dense(variable)" above
         ## (JB 20090109)
         # out[0] = numpy.asarray(variable)  #TODO: fix this really bad implementation
         #
@@ -714,6 +714,7 @@ def structured_dot(x, y):
     """
     @todo: Maybe the triple-transposition formulation (when x is dense)
     is slow. See if there is a direct way to do this.
+    (JB 20090528: Transposing tensors and sparse matrices is constant-time, inplace, and fast.)
     """
     if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
     if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
