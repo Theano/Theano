@@ -1041,6 +1041,7 @@ def constant_folding(node):
     return [gof.Constant(output.type, s[0]) for s, output in zip(storage, node.outputs)]
 
 register_canonicalize(constant_folding)
+register_specialize(constant_folding)
 
 
 inplace_matrix_transpose = T.DimShuffle([False,False], [1,0], inplace=True)
