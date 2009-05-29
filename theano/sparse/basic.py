@@ -15,6 +15,7 @@ from theano.printing import Print
 from .. import gof
 from .. import tensor
 from .. import compile
+from .. import scalar
 
 #TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
@@ -138,7 +139,7 @@ class SparseType(gof.Type):
             'csr' : sparse.csr_matrix,
             'csc' : sparse.csc_matrix
             }
-    dtype_set = set(['int', 'int32', 'int64', 'float32', 'float64'])
+    dtype_set = set(['int', 'int8', 'int16','int32', 'int64', 'float32', 'float64', 'complex64','complex128'])
     ndim = 2
 
     def __init__(self, format, dtype = 'float64'):
@@ -220,9 +221,25 @@ class SparseVariable(gof.Variable, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
 
+class SparseConstantSignature(tuple):
+    def __eq__(self, other):
+        (a, b), (x,y) = self, other
+        return a == x \
+                and (b.dtype == y.dtype)\
+                and (type(b) == type(y))\
+                and (b.shape == y.shape)\
+                and (abs(b-y).sum() < 1e-6 * b.nnz)
+    def __hash__(self):
+        (a,b) = self
+        return hash(type(self)) ^ hash(a) ^ hash(type(b))
+
 class SparseConstant(gof.Constant, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
+
+    def signature(self):
+        assert self.data is not None
+        return SparseConstantSignature((self.type, self.data))
 
 class SparseValue(gof.Value, _sparse_py_operators):
     dtype = property(lambda self: self.type.dtype)
@@ -269,8 +286,7 @@ class CSMProperties(gof.Op):
             return [CSM('csc')(g_data, indices, indptr, shape)]
         else:
             return [CSR('csm')(g_data, indices, indptr, shape)]
-
-def csm_properties(csm): return CSMProperties()(csm)
+csm_properties = CSMProperties() #don't make this a function or it breaks some optimizations below
 def csm_data(csm): return csm_properties(csm)[0]
 def csm_indices(csm): return csm_properties(csm)[1]
 def csm_indptr(csm): return csm_properties(csm)[2]
@@ -322,18 +338,24 @@ class CSM(gof.Op):
 
         """
         data = tensor.as_tensor_variable(data)
+        if not isinstance(indices, tensor.TensorVariable):
+            indices = numpy.asarray(indices, dtype='int32')
+        if not isinstance(indptr, tensor.TensorVariable):
+            indptr = numpy.asarray(indptr, dtype='int32')
+        if not isinstance(shape, tensor.TensorVariable):
+            shape = numpy.asarray(shape, dtype='int32')
         indices = tensor.as_tensor_variable(indices)
         indptr = tensor.as_tensor_variable(indptr)
         shape = tensor.as_tensor_variable(shape)
 
         if data.type.ndim != 1:
             raise TypeError('data argument must be a vector', data.type)
-        if indices.type not in tensor.int_vector_types:
-            raise TypeError('indices must be vector of integers')
-        if indptr.type not in tensor.int_vector_types:
-            raise TypeError('indices must be vector of integers')
-        if shape.type not in tensor.int_vector_types:
-            raise TypeError('n_rows must be integer type')
+        if indices.type != tensor.ivector:
+            raise TypeError('indices must be vector of integers', indices)
+        if indptr.type != tensor.ivector:
+            raise TypeError('indices must be vector of integers', indptr)
+        if shape.type != tensor.ivector:
+            raise TypeError('n_rows must be integer type', shape)
 
         return gof.Apply(self,
                          [data, indices, indptr, shape],
@@ -342,8 +364,6 @@ class CSM(gof.Op):
 
     def perform(self, node, (data, indices, indptr, shape), (out,)):
         """Build a csc_matrix"""
-        #assert len(data.flatten()) == len(indices.flatten())
-
         # for efficiency, if remap does nothing, then do not apply it
         if self.kmap is not None:
             data = data[self.kmap]
@@ -388,7 +408,6 @@ class CSMGrad(gof.op.Op):
     
     def __hash__(self):
         return 82345 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
-
 
     def make_node(self, data, gout_data, gout_indices):
         g_data = data.type()
@@ -668,11 +687,10 @@ class StructuredDot(gof.Op):
     The output is presumed to be a dense matrix, and is represented by a TensorType instance.
     """
     def make_node(self, a, b):
-        assert a.type.dtype == b.type.dtype
         if type(a) is not SparseVariable and type(a) is not SparseConstant:
             raise TypeError('First argument must be of type SparseVariable or SparseConstant');
-
-        return gof.Apply(self, [a,b], [tensor.tensor(a.type.dtype, (False, False))])
+        dtype_out = scalar.upcast(a.type.dtype, b.type.dtype)
+        return gof.Apply(self, [a,b], [tensor.tensor(dtype_out, (False, False))])
 
     def perform(self, node, (a,b), (out,)):
         if a.shape[1] != b.shape[0]:
@@ -696,7 +714,7 @@ class StructuredDot(gof.Op):
             else:
                 raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s ??? I have no idea why")
 
-        ## Commenting this out because variable should be a numpy.ndarray since the assert above
+        ## Commenting this out because variable should be a numpy.ndarray since the "assert _is_dense(variable)" above
         ## (JB 20090109)
         # out[0] = numpy.asarray(variable)  #TODO: fix this really bad implementation
         #
@@ -714,6 +732,7 @@ def structured_dot(x, y):
     """
     @todo: Maybe the triple-transposition formulation (when x is dense)
     is slow. See if there is a direct way to do this.
+    (JB 20090528: Transposing tensors and sparse matrices is constant-time, inplace, and fast.)
     """
     if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
     if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
@@ -732,9 +751,9 @@ def structured_dot(x, y):
 
 class StructuredDotCSC(gof.Op):
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
-        assert a_val.type.dtype == b.type.dtype
+        dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b], 
-                [tensor.tensor(a_val.type.dtype, (False, False))])
+                [tensor.tensor(dtype_out, (False, False))])
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, a_nrows, b), (out,)):
@@ -756,15 +775,29 @@ class StructuredDotCSC(gof.Op):
         @param z: return value
         @param sub: TODO, not too sure, something to do with weave probably
         """
-        return """
+
+        if node.inputs[0].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for a_val')
+        if node.inputs[4].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for b')
+
+        typenum_z = node.outputs[0].type.dtype_specs()[-1] # retrieve dtype number
+        typenum_a_val = node.inputs[0].type.dtype_specs()[-1] # retrieve dtype number
+        typenum_b = node.inputs[4].type.dtype_specs()[-1] # retrieve dtype number
+
+        rval = """
+
         if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
         if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
         if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
         if (%(a_nrows)s->nd != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(nrows) != 0"); %(fail)s;}
         if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
-        if (%(a_val)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "a_val dtype not NPY_DOUBLE"); %(fail)s;}
+        if (%(a_val)s->descr->type_num != %(typenum_a_val)s) {
+        PyErr_SetString(PyExc_NotImplementedError, "Invalid type for a_val"); %(fail)s;}
+        
+        if (%(b)s->descr->type_num != %(typenum_b)s) {
+        PyErr_SetString(PyExc_NotImplementedError, "Invalid type for b"); %(fail)s;}
 
         if (%(a_ind)s->descr->type_num != PyArray_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
@@ -774,9 +807,6 @@ class StructuredDotCSC(gof.Op):
 
         if (%(a_nrows)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_nrows dtype not INT32"); %(fail)s;}
-
-        if (%(b)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_DOUBLE"); %(fail)s;}
 
         if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a_val and a_ind have different lengths"); %(fail)s;}
@@ -793,7 +823,7 @@ class StructuredDotCSC(gof.Op):
             npy_intp dims[] = {0,0};
             dims[0] = ((npy_int32 *)%(a_nrows)s->data)[0];
             dims[1] = %(b)s->dimensions[1];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(b)s->descr->type_num);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_z)s);
         }
 
         {
@@ -812,9 +842,8 @@ class StructuredDotCSC(gof.Op):
             npy_intp Sptr = %(a_ptr)s->strides[0] / %(a_ptr)s->descr->elsize;
 
             // pointers to access actual data in the arrays passed as params.
-            npy_double * __restrict__ Dz = (npy_double*)%(z)s->data;
-            //const npy_double * __restrict__ Db = (npy_double*)%(b)s->data;
-            const npy_double * __restrict__ Dval = (npy_double*)%(a_val)s->data;
+            dtype_%(z)s*     __restrict__ Dz   = (dtype_%(z)s*)%(z)s->data;
+            const dtype_%(a_val)s* __restrict__ Dval = (dtype_%(a_val)s*)%(a_val)s->data;
             const npy_int32 * __restrict__ Dind = (npy_int32*)%(a_ind)s->data;
             const npy_int32 * __restrict__ Dptr = (npy_int32*)%(a_ptr)s->data;
 
@@ -846,17 +875,17 @@ class StructuredDotCSC(gof.Op):
             for (npy_int32 k = 0; k < K; ++k)
             {
                 // get pointer to k-th row of dense matrix
-                const npy_double * __restrict__ bk = (double *)(%(b)s->data + %(b)s->strides[0] * k);
+                const dtype_%(b)s* __restrict__ bk = (dtype_%(b)s*)(%(b)s->data + %(b)s->strides[0] * k);
                 
                 // loop over sparse column indices through index pointer array 
                 // (amounts to looping over rows M of sparse matrix)
                 for (npy_int32 m_idx = Dptr[k * Sptr]; m_idx < Dptr[(k+1) * Sptr]; ++m_idx)
                 {
                     npy_int32 m = Dind[m_idx * Sind]; // row index of non-null value for column K
-                    const double Amk = Dval[m_idx * Sval]; // actual value at that location
+                    const dtype_%(a_val)s Amk = Dval[m_idx * Sval]; // actual value at that location
     
                     // pointer to m-th row of the output matrix Z
-                    npy_double * __restrict__ zm = (npy_double *)(%(z)s->data + %(z)s->strides[0] * m);
+                    dtype_%(z)s* __restrict__ zm = (dtype_%(z)s*)(%(z)s->data + %(z)s->strides[0] * m);
 
                     //RESOLVE: a.shape[0] equals z.shape[0], why is this not an equality constraint?
                     if (m >= %(z)s->dimensions[0]) 
@@ -871,14 +900,169 @@ class StructuredDotCSC(gof.Op):
             }
         }
         """% dict(locals(), **sub)
+
+        # print rval
+
+        return rval
 sd_csc = StructuredDotCSC()
 
+class StructuredDotCSC1(gof.Op):
+    def __init__(self, avaltype):
+        self.avaltype = avaltype
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.avaltype == other.avaltype
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.avaltype)
+
+    def make_node(self, a_ind, a_ptr, a_nrows, b):
+        dtype_out = scalar.upcast(self.avaltype.dtype, b.type.dtype)
+        r = gof.Apply(self, [a_ind, a_ptr, a_nrows, b], 
+                [tensor.tensor(dtype_out, (False, False))])
+        return r
+
+    def perform(self, node, (a_ind, a_ptr, a_nrows, b), (out,)):
+        ones = numpy.asarray(numpy.ones_like(a_ind), dtype=self.avaltype.dtype)
+        a = sparse.csc_matrix((ones, a_ind, a_ptr), 
+                (a_nrows, b.shape[0]),
+                copy = False)
+        #out[0] = a.dot(b)
+        out[0] = a * b
+        assert _is_dense(out[0]) # scipy 0.7 automatically converts to dense
+
+    def c_code(self, node, name, (a_ind, a_ptr, a_nrows, b), (z,), sub):
+        """
+        C-implementation of the dot product of the sparse matrix A and matrix B.
+        @param a_ind: column indices of the non-null values (.indices of a scipy.csc_matrix)
+        @param a_ptr: a_ptr indicates col indices for col. i are in the range a_ptr[i]:a_ptr[i+1]
+        @param n_rows: number of rows of sparse matrix
+        @param b: dense matrix to perform dot product with, as in dot(a,b)
+        @param z: return value
+        @param sub: TODO, not too sure, something to do with weave probably
+        """
+
+        if node.inputs[3].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for b')
+
+        typenum_z = node.outputs[0].type.dtype_specs()[-1] # retrieve dtype number
+        typenum_b = node.inputs[3].type.dtype_specs()[-1] # retrieve dtype number
+
+        rval = """
+
+        if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
+        if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
+        if (%(a_nrows)s->nd != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(nrows) != 0"); %(fail)s;}
+        if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
+
+        if (%(b)s->descr->type_num != %(typenum_b)s) {
+        PyErr_SetString(PyExc_NotImplementedError, "Invalid type for b"); %(fail)s;}
+
+        if (%(a_ind)s->descr->type_num != PyArray_INT32) {
+        PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
+
+        if (%(a_ptr)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
+
+        if (%(a_nrows)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "a_nrows dtype not INT32"); %(fail)s;}
+
+        if (%(a_ptr)s->dimensions[0] != %(b)s->dimensions[0]+1)
+        {PyErr_SetString(PyExc_NotImplementedError, "a's number of columns doesn't match b's rows"); %(fail)s;}
+
+        if ((!%(z)s)
+            || (%(z)s->dimensions[0] != ((npy_int32 *)%(a_nrows)s->data)[0])
+            || (%(z)s->dimensions[1] != %(b)s->dimensions[1])
+            )
+        {
+            if (%(z)s) Py_DECREF(%(z)s);
+            npy_intp dims[] = {0,0};
+            dims[0] = ((npy_int32 *)%(a_nrows)s->data)[0];
+            dims[1] = %(b)s->dimensions[1];
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_z)s);
+        }
+
+        {
+            // sparse array has size MxK, dense KxN, output MxN
+            npy_intp M = %(z)s->dimensions[0];
+            npy_intp N = %(z)s->dimensions[1];
+            npy_intp K = %(b)s->dimensions[0];
+
+            // strides tell you how many bytes to skip to go to next column/row entry
+            npy_intp Szm = %(z)s->strides[0] / %(z)s->descr->elsize;
+            npy_intp Szn = %(z)s->strides[1] / %(z)s->descr->elsize;
+            //npy_intp Sbm = %(b)s->strides[0] / %(b)s->descr->elsize;
+            npy_intp Sbn = %(b)s->strides[1] / %(b)s->descr->elsize;
+            npy_intp Sind = %(a_ind)s->strides[0] / %(a_ind)s->descr->elsize;
+            npy_intp Sptr = %(a_ptr)s->strides[0] / %(a_ptr)s->descr->elsize;
+
+            // pointers to access actual data in the arrays passed as params.
+            dtype_%(z)s*     __restrict__ Dz   = (dtype_%(z)s*)%(z)s->data;
+            const npy_int32 * __restrict__ Dind = (npy_int32*)%(a_ind)s->data;
+            const npy_int32 * __restrict__ Dptr = (npy_int32*)%(a_ptr)s->data;
+
+            //npy_intp nnz = %(a_ind)s->dimensions[0];
+
+            //clear the output array
+            for (npy_intp m = 0; m < M; ++m)
+            {
+                for (npy_intp n = 0; n < N; ++n)
+                {
+                    Dz[m*Szm + n*Szn] = 0;
+                }
+            }
+
+            //iterate over the sparse array, making the most of an entry wherever we find it.
+            //
+            // Normal matrix matrix multiply: A MxK, B KxN =>  Z = AB
+            // for m
+            //   for n
+            //     for k
+            //        z[m,n] += a[m,k] * b[k,n]
+            // Here instead: Z = 
+            // for k
+            //   for m (sparse)
+            //     for n
+            //        z[m,n] += a[m,k] * b[k,n]
+
+            // loop over inner dimension
+            for (npy_int32 k = 0; k < K; ++k)
+            {
+                // get pointer to k-th row of dense matrix
+                const dtype_%(b)s* __restrict__ bk = (dtype_%(b)s*)(%(b)s->data + %(b)s->strides[0] * k);
+                
+                // loop over sparse column indices through index pointer array 
+                // (amounts to looping over rows M of sparse matrix)
+                for (npy_int32 m_idx = Dptr[k * Sptr]; m_idx < Dptr[(k+1) * Sptr]; ++m_idx)
+                {
+                    npy_int32 m = Dind[m_idx * Sind]; // row index of non-null value for column K
+    
+                    // pointer to m-th row of the output matrix Z
+                    dtype_%(z)s* __restrict__ zm = (dtype_%(z)s*)(%(z)s->data + %(z)s->strides[0] * m);
+
+                    //RESOLVE: a.shape[0] equals z.shape[0], why is this not an equality constraint?
+                    if (m >= %(z)s->dimensions[0]) 
+                    {PyErr_SetString(PyExc_NotImplementedError, "illegal row index in a"); %(fail)s;}
+
+                    // loop over final dimension (cols of dense matrix) and perform dot product
+                    for(npy_int32 n = 0; n < N; ++n)
+                    {
+                        zm[n*Szn] += bk[n*Sbn];
+                    }
+                }
+            }
+        }
+        """% dict(locals(), **sub)
+
+        # print rval
+
+        return rval
 
 class StructuredDotCSR(gof.Op):
     def make_node(self, a_val, a_ind, a_ptr, b):
-        assert a_val.type.dtype == b.type.dtype
+        self.dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, b], 
-                [tensor.tensor(a_val.type.dtype, (False, False))])
+                [tensor.tensor(self.dtype_out, (False, False))])
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, b), (out,)):
@@ -900,14 +1084,17 @@ class StructuredDotCSR(gof.Op):
         @param z: return value
         @param sub: TODO, not too sure, something to do with weave probably
         """
+        typenum_z = tensor.TensorType(self.dtype_out, []).dtype_specs()[-1] # retrieve dtype number
+        if node.inputs[0].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for a_val')
+        if node.inputs[3].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for b')
+
         return """
         if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
         if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
         if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
         if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
-
-        if (%(a_val)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "a_val dtype not NPY_DOUBLE"); %(fail)s;}
 
         if (%(a_ind)s->descr->type_num != PyArray_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
@@ -915,22 +1102,19 @@ class StructuredDotCSR(gof.Op):
         if (%(a_ptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_DOUBLE"); %(fail)s;}
-
         if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a_val and a_ind have different lengths"); %(fail)s;}
 
         if ((!%(z)s)
-            || (%(z)s->dimensions[0] != %(a_ptr)s->dimensions[0]-1)      //a's rows
-            || (%(z)s->dimensions[1] != %(b)s->dimensions[1])                     //b's columns
+            || (%(z)s->dimensions[0] != %(a_ptr)s->dimensions[0]-1) //a's rows
+            || (%(z)s->dimensions[1] != %(b)s->dimensions[1])       //b's columns
             )
         {
             if (%(z)s) Py_DECREF(%(z)s);
             npy_intp dims[] = {0,0};
             dims[0] = %(a_ptr)s->dimensions[0]-1;
             dims[1] = %(b)s->dimensions[1];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(b)s->descr->type_num);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(typenum_z)s);
         }
 
         {
@@ -949,9 +1133,7 @@ class StructuredDotCSR(gof.Op):
             npy_intp Sptr = %(a_ptr)s->strides[0] / %(a_ptr)s->descr->elsize;
 
             // pointers to access actual data in the arrays passed as params.
-            npy_double * __restrict__ Dz = (npy_double*)%(z)s->data;
-            //const npy_double * __restrict__ Db = (npy_double*)%(b)s->data;
-            const npy_double * __restrict__ Dval = (npy_double*)%(a_val)s->data;
+            dtype_%(z)s* __restrict__ Dz = (dtype_%(z)s*)%(z)s->data;
             const npy_int32 * __restrict__ Dind = (npy_int32*)%(a_ind)s->data;
             const npy_int32 * __restrict__ Dptr = (npy_int32*)%(a_ptr)s->data;
 
@@ -979,10 +1161,10 @@ class StructuredDotCSR(gof.Op):
             //        z[m,n] += a[m,k] * b[k,n]
 
             // loop over inner dimension
-            for (npy_int32 m = 0; m < M; ++m)
+            for (npy_int64 m = 0; m < M; ++m)
             {
                 // pointer to m-th row of the output matrix Z
-                npy_double * __restrict__ zm = (npy_double *)(%(z)s->data + %(z)s->strides[0] * m);
+                dtype_%(z)s* __restrict__ zm = (dtype_%(z)s*)(%(z)s->data + %(z)s->strides[0] * m);
 
                 // loop over sparse rows indices through index pointer array 
                 // (amounts to looping over cols k of sparse matrix)
@@ -992,7 +1174,7 @@ class StructuredDotCSR(gof.Op):
                     const double Amk = Dval[k_idx * Sval]; // actual value at that location
                 
                     // get pointer to k-th row of dense matrix
-                    const npy_double * __restrict__ bk = (double *)(%(b)s->data + %(b)s->strides[0] * k);
+                    const dtype_%(b)s* __restrict__ bk = (dtype_%(b)s*)(%(b)s->data + %(b)s->strides[0] * k);
     
                     // loop over final dimension (cols of dense matrix) and perform dot product
                     for(npy_int32 n = 0; n < N; ++n)
@@ -1021,6 +1203,15 @@ def local_structured_dot(node):
     return False
 register_specialize(local_structured_dot)
 
+@gof.local_optimizer([_structured_dot])
+def local_structureddotcsc_w_ones(node):
+    if node.op == sd_csc:
+        aval, aind, aptr, ashp, b = node.inputs
+        if isinstance(aval, gof.Constant):
+            if numpy.all(aval.data == 1):
+                return [StructuredDotCSC1(aval.type)(aind, aptr, ashp, b)]
+    return False
+register_specialize(local_structureddotcsc_w_ones)
 
 def structured_dot_grad(sparse_A, dense_B, ga):
     if sparse_A.type.format in ('csc','csr'):
@@ -1039,7 +1230,8 @@ def structured_dot_grad(sparse_A, dense_B, ga):
 
 class StructuredDotGradCSC(gof.Op):
     def make_node(self, a_indices, a_indptr, b, g_ab):
-        return gof.Apply(self, [a_indices, a_indptr, b, g_ab], [tensor.tensor(b.dtype, (False,))])
+        return gof.Apply(self, [a_indices, a_indptr, b, g_ab], 
+                               [tensor.tensor(g_ab.dtype, (False,))])
     def perform(self, node, (a_indices, a_indptr, b, g_ab), (out,)):
         g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
         for j in xrange(len(a_indptr)-1):
@@ -1050,6 +1242,12 @@ class StructuredDotGradCSC(gof.Op):
                 g_a_data[i_idx] = numpy.dot(g_ab[i], b[j])
         out[0] = g_a_data
     def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
+
+        if node.inputs[2].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for b')
+        if node.inputs[3].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for g_ab')
+
         return """
         if (%(_d)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
         if (%(_g)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(g) != 2"); %(fail)s;}
@@ -1061,12 +1259,6 @@ class StructuredDotGradCSC(gof.Op):
 
         if( %(_indptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
-
-        if( %(_d)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "d's dtype not NPY_DOUBLE"); %(fail)s;}
-
-        if( %(_g)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "g's dtype not NPY_DOUBLE"); %(fail)s;}
 
         if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
@@ -1101,7 +1293,7 @@ class StructuredDotGradCSC(gof.Op):
             for (npy_int32 j = 0; j < N; ++j)
             {
                 // extract j-th row of dense matrix
-                const npy_double * __restrict__ d_row = (double *)(%(_d)s->data + %(_d)s->strides[0] * j);
+                const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(%(_d)s->data + %(_d)s->strides[0] * j);
                 if(j >= %(_d)s->dimensions[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
 
                 // for each non-null value in the sparse column
@@ -1111,7 +1303,7 @@ class StructuredDotGradCSC(gof.Op):
                     npy_int32 i = indices[i_idx * Sindices];
                     
                     // extract corresponding row in gradient
-                    const npy_double * __restrict__ g_row = (npy_double *)(%(_g)s->data + %(_g)s->strides[0] * i);
+                    const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(%(_g)s->data + %(_g)s->strides[0] * i);
                     double ip = 0.0;
 
                     // make sure that row index is not bigger than actual number of rows
@@ -1127,7 +1319,7 @@ class StructuredDotGradCSC(gof.Op):
                     }
 
                     // write resulting gradient to sparse output
-                    ((double * __restrict__)(%(_zout)s->data + i_idx * %(_zout)s->strides[0]))[0] = ip;
+                    ((dtype_%(_zout)s* __restrict__)(%(_zout)s->data + i_idx * %(_zout)s->strides[0]))[0] = ip;
                 }
             }
         }
@@ -1137,8 +1329,10 @@ sdg_csc = StructuredDotGradCSC()
 
 
 class StructuredDotGradCSR(gof.Op):
+
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab], [tensor.tensor(b.dtype, (False,))])
+
     def perform(self, node, (a_indices, a_indptr, b, g_ab), (out,)):
         g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
         for i in xrange(len(a_indptr)-1): # loop over rows
@@ -1149,7 +1343,14 @@ class StructuredDotGradCSR(gof.Op):
                 # grad is dot product of i-th row of gradient with j-th row of b 
                 g_a_data[j_idx] = numpy.dot(g_ab[i], b[j])
         out[0] = g_a_data
+
     def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
+
+        if node.inputs[2].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for b')
+        if node.inputs[3].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for g_ab')
+
         return """
         if (%(_d)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
         if (%(_g)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(g) != 2"); %(fail)s;}
@@ -1161,12 +1362,6 @@ class StructuredDotGradCSR(gof.Op):
 
         if( %(_indptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
-
-        if( %(_d)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "d's dtype not NPY_DOUBLE"); %(fail)s;}
-
-        if( %(_g)s->descr->type_num != PyArray_DOUBLE)
-        {PyErr_SetString(PyExc_NotImplementedError, "g's dtype not NPY_DOUBLE"); %(fail)s;}
 
         if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
@@ -1208,11 +1403,11 @@ class StructuredDotGradCSR(gof.Op):
                     npy_int32 j = indices[j_idx * Sindices];
                  
                     // extract j-th row of dense matrix
-                    const npy_double * __restrict__ d_row = (double *)(%(_d)s->data + %(_d)s->strides[0] * j);
+                    const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(%(_d)s->data + %(_d)s->strides[0] * j);
                     if(j >= %(_d)s->dimensions[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
 
                     // extract corresponding row in gradient
-                    const npy_double * __restrict__ g_row = (npy_double *)(%(_g)s->data + %(_g)s->strides[0] * i);
+                    const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(%(_g)s->data + %(_g)s->strides[0] * i);
                     double ip = 0.0;
 
                     // make sure that row index is not bigger than actual number of rows
@@ -1228,7 +1423,7 @@ class StructuredDotGradCSR(gof.Op):
                     }
 
                     // write resulting gradient to sparse output
-                    ((double * __restrict__)(%(_zout)s->data + j_idx * %(_zout)s->strides[0]))[0] = ip;
+                    ((dtype_%(_zout)s* __restrict__)(%(_zout)s->data + j_idx * %(_zout)s->strides[0]))[0] = ip;
                 }
             }
         }
