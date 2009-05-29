@@ -204,7 +204,7 @@ class Env(utils.object2):
 
     def __import_r__(self, variables):
         # Imports the owners of the variables
-        r_owner_done = set()
+        r_owner_done = set(self.nodes)
         for node in [r.owner for r in variables if r.owner is not None]:
             if node not in r_owner_done:
                 r_owner_done.add(node)
