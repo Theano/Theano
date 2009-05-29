@@ -42,7 +42,7 @@ def seed_rng(pseed=None):
     numpy.random.seed(seed)
     return seed
 
-def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
+def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
     """
     Wrapper for tensor/basic.py:verify_grad
     Takes care of seeding the random number generator if None is given
@@ -50,5 +50,5 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
     if rng is None:
         seed_rng()
         rng = numpy.random
-    T.verify_grad(op, pt, n_tests, rng, eps, tol)
+    T.verify_grad(op, pt, n_tests, rng, *args, **kwargs)
 

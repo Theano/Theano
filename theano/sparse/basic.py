@@ -410,7 +410,7 @@ class CSMGrad(gof.op.Op):
         return 82345 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
 
     def make_node(self, data, gout_data, gout_indices):
-        g_data = data.type()
+        g_data = gout_data.type()
         return gof.Apply(self, [data, gout_data, gout_indices], [g_data])
 
     def perform(self, node, (data, gout_data, gout_indices), (g_data,)):
@@ -1134,6 +1134,7 @@ class StructuredDotCSR(gof.Op):
 
             // pointers to access actual data in the arrays passed as params.
             dtype_%(z)s* __restrict__ Dz = (dtype_%(z)s*)%(z)s->data;
+            const dtype_%(a_val)s* __restrict__ Dval = (dtype_%(a_val)s*)%(a_val)s->data;
             const npy_int32 * __restrict__ Dind = (npy_int32*)%(a_ind)s->data;
             const npy_int32 * __restrict__ Dptr = (npy_int32*)%(a_ptr)s->data;
 

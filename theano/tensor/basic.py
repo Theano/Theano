@@ -264,13 +264,43 @@ class TensorType(Type):
             if 'int' in str(a.dtype):
                 return numpy.all(a==b)
             elif a.shape == (): #for comparing scalars, use broadcasting.
+                # Note: according to James B, there was a reason for the
+                # following two lines, that may seem weird at first glance.
+                # If someone can figure out what it is, please say it here!
                 ones = numpy.ones(2)
                 return numpy.allclose(ones * a, ones*b)
             #elif str(a.dtype).startswith('complex'):
             #    print >> sys.stderr, 'WARNING: skipping comparison of complex'
             #    return True
             else:
-                return numpy.allclose(a,b)
+                cmp = numpy.allclose(a,b)
+                if cmp:
+                    # Numpy claims they are close, this is good enough for us.
+                    return True
+                # Numpy is unhappy, but it does not necessarily mean that a and
+                # b are different. Indeed, Numpy does not like missing values
+                # and will return False whenever some are found in a or b.
+                # The proper way would be to use the MaskArray stuff available
+                # in Numpy. However, it looks like it has been added to Numpy's
+                # core recently, so it may not be available to everyone. Thus,
+                # for now we use a home-made recipe, that should probably be
+                # revisited in the future.
+                a_missing = numpy.isnan(a)
+                if not a_missing.any():
+                    # There are no missing values in a, thus this is not the
+                    # reason why numpy.allclose(a, b) returned False.
+                    return False
+                # The following line is what numpy.allclose bases its decision
+                # upon, according to its documentation.
+                rtol = 1.0000000000000001e-05
+                atol = 1e-8
+                cmp_elemwise = (numpy.absolute(a - b) <=
+                        (atol + rtol * numpy.absolute(b)))
+                # Find places where both a and b have missing values.
+                both_missing = a_missing * numpy.isnan(b)
+                # Combine all information.
+                return (cmp_elemwise + both_missing).all()
+
         return False
 
     def __hash__(self):
@@ -966,6 +996,11 @@ def argmin(x, axis=None):
 def smallest(*args):
     """Return the [elementwise] smallest of a variable number of arguments (like python's min)."""
     return min(stack(*args), axis=0)
+
+@constructor
+def largest(*args):
+    """Return the [elementwise] largest of a variable number of arguments (like python's max)."""
+    return max(stack(*args), axis=0)
 
 
 ##########################
@@ -2355,7 +2390,10 @@ def grad(cost, wrt, g_cost=None, consider_constant=[]):
 
 class numeric_grad:
     """WRITEME"""
-    def __init__(self, f, pt, eps=1.0e-7):
+    type_eps = {'float64': 1e-7,
+            'float32': 3e-3}
+
+    def __init__(self, f, pt, eps=None):
         """Return the gradient of f at pt.
         
         This function computes the gradient by a one-sided finite differences of a
@@ -2363,6 +2401,9 @@ class numeric_grad:
         
         It is assumed that f(...) will return a scalar.
         It is assumed that all f's inputs are numpy.ndarray objects.
+
+        :param eps: the stepsize for the finite differencing.  None means input
+        dtype-dependent. See `type_eps`.
         """
 
         def prod(inputs):
@@ -2388,9 +2429,15 @@ class numeric_grad:
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
 
+        working_dtype = __builtin__.min((self.type_eps[dt], dt) for dt in dtypes)[1]
+
         #create un-initialized memory
-        x = numpy.ndarray((total_size,), dtype=dtypes[0])
-        gx = numpy.ndarray((total_size,), dtype=dtypes[0])
+        x = numpy.ndarray((total_size,), dtype=working_dtype)
+        gx = numpy.ndarray((total_size,), dtype=working_dtype)
+
+        if eps is None:
+            eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
+
 
         #set up aliases so that apt[i] is backed by memory in x
         # and self.gf is backed by memory in gx
@@ -2430,10 +2477,10 @@ class numeric_grad:
         errs = []
         for a, b in zip(g_pt, self.gf):
             errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
-        return numpy.max(errs)
+        return numpy.max(errs), numpy.argmax(errs)
 
 
-def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
+def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None):
     """ WRITEME
     
     Raises an Exception if the difference between the analytic gradient and
@@ -2445,11 +2492,18 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
     :param pt: the list of numpy.ndarrays to use as inputs to the op
     :param n_tests: number of times to run the test
     :param rng: random number generator from which to draw random samples
-    :param eps: stepsize used in the Finite Difference Method
+    :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
     :param tol: relative tolerance used as threshold for gradient comparison
     
     """
     pt = [numpy.array(p) for p in pt]
+
+    _type_tol = dict( # relativ error tolerances for different types
+            float32=1e-2,
+            float64=1e-4)
+
+    if tol is None:
+        tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
 
     if rng is None:
         rng = numpy.random
@@ -2493,9 +2547,9 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=1.0e-7, tol=0.0001):
         if not isinstance(analytic_grad, (list, tuple)):
             analytic_grad = [analytic_grad]
 
-        max_err = num_grad.max_err(analytic_grad)
+        max_err, max_err_pos = num_grad.max_err(analytic_grad)
         if  max_err > tol:
-            raise Exception(verify_grad.E_grad, (max_err, tol))
+            raise Exception(verify_grad.E_grad, (max_err, tol, max_err_pos))
 
 verify_grad.E_grad = 'gradient error exceeded tolerance'
 """This error is raised when a gradient is calculated, but incorrect."""

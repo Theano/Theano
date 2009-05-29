@@ -848,7 +848,13 @@ def binary_crossentropy(output, target):
     return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
 
 def categorical_crossentropy(coding_dist, true_dist, axis=1):
-    """Return the cross-entropy between an approximating distribution and a true distribution
+    """
+    WARNING: THIS FUNCTION IS UNNECESSARILY POLYMORPHIC.
+    We ultimately don't want the polymorphism, and will move this function to pylearn.algorithms.cost.
+    The 1hot version will be removed.
+    The length of the documentation here is a form of code smell.
+    
+    Return the cross-entropy between an approximating distribution and a true distribution
 
     The cross entropy between two probability distributions measures the average number of bits
     needed to identify an event from a set of possibilities, if a coding scheme is used based
@@ -876,6 +882,7 @@ def categorical_crossentropy(coding_dist, true_dist, axis=1):
     :returns: the cross entropy between each coding and true distribution.
 
     """
+    assert true_dist.ndim in (1,2)
     if true_dist.ndim == 2:
         return -theano.sum(true_dist * log(coding_dist), axis=axis)
     else:

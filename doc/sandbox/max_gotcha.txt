@@ -1,0 +1,39 @@
+Guillaume and I just found a bug in some experiment code that was
+basically caused by confusing semantics of max().  The same sort of
+thing applies to min.  This is an FYI email to help others on the list
+avoid this mistake, which is (I think) easy to make.
+
+Python's max() function takes multiple arguments and returns the
+largest one of them. (I won't go into the details of how it deals with
+corner cases.)
+
+IN CONTRAST
+
+numpy's max() function takes multiple arguments and returns the
+largest element[s] from the *first* argument.  The second argument is
+used to identify the axis along which to evaluate the [python-style]
+max.  The third argument is an array into which the result can be
+written.
+
+So for example:
+.. code-block:: python
+
+    >>> max(3, 4)
+    4
+    >>> numpy.max(3, 4)
+    3
+    >>> a,b,c = [numpy.asarray(i) for i in [0,1,2]]
+    >>> numpy.max(a,b,c)
+    0
+    >>> c
+    array(0)
+
+Be careful!
+
+Theano defines a max function (called theano.tensor.max) that is
+similar numpy's max.
+
+Theano also defines a function called theano.tensor.largest that is
+closer to python's, but not identical since it works elemwise for
+tensors.  There is a corresponding 'smallest' function that is like
+min()

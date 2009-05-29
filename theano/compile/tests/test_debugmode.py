@@ -581,12 +581,8 @@ class Test_check_isfinite(unittest.TestCase):
         x = theano.tensor.dvector()
         f = theano.function([x], (x+2) * 5, mode=debugmode.DebugMode(check_isfinite=False))
 
-        # the DestroyMap checker should be triggered by Nan != Nan
-        try:
-            f(numpy.log([3, -4, 5]))
-            assert False
-        except debugmode.BadDestroyMap:
-            pass
+        #nan should go through
+        f(numpy.log([3, -4, 5]))
 
         #inf should go through
         infs = numpy.asarray([1.0,1.,1.])/0

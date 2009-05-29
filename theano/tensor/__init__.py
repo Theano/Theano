@@ -5,6 +5,7 @@ from basic import *
 
 import opt
 import blas
+import xlogx
 
 import raw_random, randomstreams
 from randomstreams import \
