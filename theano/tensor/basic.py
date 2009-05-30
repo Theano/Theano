@@ -2480,7 +2480,7 @@ class numeric_grad:
         return numpy.max(errs), numpy.argmax(errs)
 
 
-def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None):
+def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None):
     """ WRITEME
     
     Raises an Exception if the difference between the analytic gradient and
@@ -2510,7 +2510,10 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None):
         unittest_tools.seed_rng()
 
     def function(inputs, output):
-        f = compile.function(inputs, output, accept_inplace=True)
+        if mode is None:
+            f = compile.function(inputs, output, accept_inplace=True)
+        else:
+            f = compile.function(inputs, output, accept_inplace=True, mode=mode)
         return f
 
     for test_num in xrange(n_tests):
