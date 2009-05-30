@@ -165,7 +165,7 @@ class test_structureddot(unittest.TestCase):
        
         for dense_dtype in typenames:
             for sparse_dtype in typenames:
-                print >> sys.stderr, dense_dtype, sparse_dtype
+                #print >> sys.stderr, dense_dtype, sparse_dtype
                 # iterate for a few different random graph patterns
                 for i in range(10):
                     spmat = sp.csc_matrix((4,6), dtype=sparse_dtype)
@@ -278,33 +278,6 @@ class test_structureddot(unittest.TestCase):
         imvals = 1.0 * numpy.array(numpy.arange(bsize*spmat.shape[1]).\
                 reshape(bsize,spmat.shape[1]), dtype='float32')
         outvals = f(kernvals,imvals)
-        print outvals
-
-    def test_opt_ones(self):
-        spmat = sp.csc_matrix((4,6), dtype='int64')
-        for i in range(5):
-            # set 1s in random locations (row x, col y)
-            x = numpy.floor(numpy.random.rand()*spmat.shape[0])
-            y = numpy.floor(numpy.random.rand()*spmat.shape[1])
-            spmat[x,y] = 1
-        spmat = sp.csc_matrix(spmat)
-               
-        images = tensor.Tensor(dtype='float32', broadcastable=[False, False])('images')
-
-        f = theano.function([images], structured_dot(spmat, images.T))
-        sdones_present = False
-        for i, node in enumerate(f.maker.env.toposort()):
-            print '  ', i, node.op
-            if isinstance(node.op, StructuredDotCSC1):
-                sdones_present = True
-        assert sdones_present
-
-        #print 'kdtype', kernvals.dtype, kernvals.shape, kernvals.ndim, kernvals.dtype.num
-        #print 'type of kernvals = ', kernvals.dtype
-        bsize = 3
-        imvals = 1.0 * numpy.array(numpy.arange(bsize*spmat.shape[1]).\
-                reshape(bsize,spmat.shape[1]), dtype='float32')
-        outvals = f(imvals)
         print outvals
 
 if __name__ == '__main__':
