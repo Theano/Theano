@@ -105,14 +105,21 @@ class ConvOp(Op):
         * inputs needs to be a 4D tensor. Couldn't get 3D to work
         * will crash if filter the same size as input image
         """
-        print '************GRAD**************'
-        print 'self.outshp = ', self.outshp
+
+        # TODO: "full" mode should be supported. When in full mode, the hidden
+        # layer is larger than the input image. It therefore cannot be used as
+        # the kernel in the vis * hid convolution.
+        # Two possible solutions: 
+        # - modify convolution code to support kernels of arbitrary shape
+        # - convolve the hidden w/ the visible layer as the kernel, then
+        # DimShuffle. Also verify that this works :)
+        if self.out_mode != 'valid':
+            raise NotImplementedError('Only "valid" mode is currently supported in the gradient')
 
         ####### Determine gradient on kernels ########
+        mode = self.out_mode
         if inputs.ndim == 3:
-            print 'xxxxxx self.imshp = ', self.imshp
-            print 'inputs.broadcastable = ', inputs.broadcastable
-            print 'inputs.ndim = ', inputs.ndim
+            # TODO 
             img = tensor.shape_padleft(inputs,1)
 
         img = tensor.DimShuffle(inputs.broadcastable, (1,0,2,3))(inputs)
@@ -127,7 +134,6 @@ class ConvOp(Op):
 
         print kshp, imshp
 
-        mode = self.out_mode
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode=mode)(img,filters)
         dw = tensor.DimShuffle(dw.broadcastable, (1,0,2,3))(dw)
         dw = dw[:,:,::-1,::-1]
