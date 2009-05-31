@@ -308,7 +308,7 @@ class TestConvOp(unittest.TestCase):
         imgs  = T.dmatrix('imgs')
         kerns = T.dmatrix('kerns')
      
-        for mode in 'valid',:#'full':
+        for mode in 'valid', 'full':
             for imshp in (2,5,5),(2,10,10): # (12,10), (3,12,11):
                 visdim = 1 if len(imshp)!=3 else imshp[0]
                 for kshp in (3,3),:# (6,7):
@@ -339,7 +339,7 @@ class TestConvOp(unittest.TestCase):
                                        imshp, bsize, mode='valid')
             return out
             
-        for mode in 'valid',:# 'full':
+        for mode in 'valid', 'full':
             for imshp in (1,5,5),(2,10,10): # (12,10), (3,12,11):
                 visdim = 1 if len(imshp)!=3 else imshp[0]
                 for kshp in (3,3),:# (6,7):
