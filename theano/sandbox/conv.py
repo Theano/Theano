@@ -120,7 +120,6 @@ class ConvOp(Op):
         mode = self.out_mode
         if inputs.ndim == 3:
             inputs = tensor.shape_padleft(inputs,1)
-        print 'self.imshp = ', self.imshp
 
         img = tensor.DimShuffle(inputs.broadcastable, (1,0,2,3))(inputs)
         imshp = N.hstack((self.bsize, self.imshp[1:]))
@@ -131,8 +130,6 @@ class ConvOp(Op):
         filters = filters[:,:,::-1,::-1]
 
         kshp  = self.outshp[::-1]
-
-        print kshp, imshp
 
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode=mode)(img,filters)
         dw = tensor.DimShuffle(dw.broadcastable, (1,0,2,3))(dw)
@@ -425,10 +422,6 @@ def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
     kernrshp   = tensor.as_tensor([nkern, nvis_dim] + list(kshp))
     kerntensor = tensor.reshape(kerns, kernrshp)
    
-    print '***** convolve2 *****'
-    print 'imrshp = ', imrshp
-    print 'kernrshp = ', kernrshp
-
     convop = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode=mode)
     convout = convop(imtensor, kerntensor)
    

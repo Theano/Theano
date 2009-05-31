@@ -317,7 +317,10 @@ class TestConvOp(unittest.TestCase):
                     print 'imgvals.shape = ', imgvals.shape
                     imgvals = imgvals.reshape(bsize,-1)
 
-                    kernvals = N.random.rand(nkern,visdim,kshp[0],kshp[1])
+                    if visdim == 1: 
+                        kernvals = N.random.rand(nkern,kshp[0],kshp[1])
+                    else:
+                        kernvals = N.random.rand(nkern,visdim,kshp[0],kshp[1])
                     print 'kernvals.shape = ', kernvals.shape
                     kernvals = kernvals.reshape(nkern,-1)
 
