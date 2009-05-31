@@ -44,14 +44,41 @@ class TestConvOp(unittest.TestCase):
         print '           TEST CONVOLUTION' 
         print '*************************************************'
 
-        # fixed parameters
-        bsize = 10     # batch size
-        imshp = (28,28)# image shape
-        print >> sys.stderr, "WARNING: only square shape tested"
-        kshps = [(5,5),(6,7),(12,8)]   # kernel shaped
-        nkern = 5      # nb kernel
-        ssizes = ((1,1),(2,2),(3,3),(4,4))#step size
-        convmodes = ('full','valid')
+        if 0:
+            # fixed parameters
+            bsize = 10     # batch size
+            imshp = (28,28)# image shape
+            kshps = [(5,5),(6,7),(12,8)]   # kernel shaped
+            nkern = 5      # nb kernel
+            ssizes = ((1,1),(2,2),(3,3),(4,4))#step size
+            convmodes = ('full','valid')
+        elif 0:
+            # fixed parameters
+            bsize = 10     # batch size
+            imshp = (50,50)# image shape
+            print >> sys.stderr, "WARNING: only square shape tested"
+            kshps = [(12,12), (12,12)]
+            nkern = 20      # nb kernel
+            ssizes = [(1,1)] #step size
+            convmodes = ('full','valid')
+        elif 0:
+            # fixed parameters
+            bsize = 7     # batch size
+            imshp = (5,4)# image shape
+            print >> sys.stderr, "WARNING: only square shape tested"
+            kshps = [(2,3)]
+            nkern = 6      # nb kernel
+            ssizes = [(1,1)] #step size
+            convmodes = ('valid',)
+        else:
+            # fixed parameters
+            bsize = 7     # batch size
+            imshp = (5,4)# image shape
+            print >> sys.stderr, "WARNING: only square shape tested"
+            kshps = [(2,3)]
+            nkern = 6      # nb kernel
+            ssizes = [(1,1)] #step size
+            convmodes = ('valid',)
       
         # TODO: ask Fred about this
         # this combination trigered a bug.
@@ -86,7 +113,8 @@ class TestConvOp(unittest.TestCase):
                 for ss in ssizes:
 
                     # now test with real values
-                    img2d = N.arange(bsize*N.prod(imshp)).reshape((bsize,)+imshp)
+                    img2d = 1 + N.arange(bsize*N.prod(imshp)).reshape((bsize,)+imshp)
+                    print 'img2d', img2d
                     img1d = img2d.reshape(bsize,-1)
 
                     # create filters (need to be flipped to use convolve2d)
@@ -95,10 +123,12 @@ class TestConvOp(unittest.TestCase):
                     # compute with new convolve2 (no timing info)
                     output4, outshp4  = convolve2(kerns, kshp, nkern, input,\
                             imshp, bsize, (1,1), bias=bias, mode=conv_mode)
+                    print 'output4', output4
 
                     ttime1 = time.time()
                     f = function([kerns, bias, input], output4)
                     out4 = f(filtersflipped.reshape(nkern,-1), biasvals, img1d)
+                    print 'out4', out4, img1d, filtersflipped
                     tconv2 += [time.time() - ttime1]
                     out4 = out4.reshape(bsize, nkern, outshp4[1], outshp4[2])
                     out4 = out4[:,:,0::ss[0],0::ss[1]]
@@ -307,11 +337,11 @@ class TestConvOp(unittest.TestCase):
         bsize = 2
         imgs  = T.dmatrix('imgs')
         kerns = T.dmatrix('kerns')
-        kshps = [(3,3), (5,5), (12,12)]
+        kshps = [(3,3), (5,5)]
 
         for mode in 'valid', 'full':
 
-            for imshp in (5,5),(2,5,5),(2,10,10): # (12,10), (3,12,11):
+            for imshp in (5,5),(2,3,3),(3,6,6): # (12,10), (3,12,11):
                 # 'full' mode should support kernels bigger than the input
                 if mode == 'valid' and (kshps[0] > imshp[1]):
                     continue
