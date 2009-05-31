@@ -2,8 +2,6 @@ import numpy as N
 import theano
 import theano.tensor as T
 from theano import gof, Op, tensor
-from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
-from scipy.signal.sigtools import _convolve2d
 from theano.printing import Print
 
 def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
@@ -60,6 +58,9 @@ class ConvOp(Op):
         """
         By default if len(img2d.shape)==3, we
         """
+        # TODO: move these back out to global scope when they no longer cause an atexit error
+        from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
+        from scipy.signal.sigtools import _convolve2d
         if z[0] is None:
             z[0] = N.zeros((self.bsize,)+(self.nkern,)+tuple(self.outshp))
         zz=z[0]

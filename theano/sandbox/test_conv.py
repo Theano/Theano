@@ -3,9 +3,6 @@ import sys, time, unittest
 import numpy
 import numpy as N
 
-from scipy.signal import convolve2d
-from scipy.signal.sigtools import _convolve2d
-from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
 from theano.tests import unittest_tools as utt
 
 from theano import function, Mode
@@ -43,6 +40,7 @@ class TestConvOp(unittest.TestCase):
         print '\n\n*************************************************'
         print '           TEST CONVOLUTION' 
         print '*************************************************'
+        from scipy.signal import convolve2d
 
         if 0:
             # fixed parameters
@@ -189,6 +187,9 @@ class TestConvOp(unittest.TestCase):
         print 'speed up ConvOp vs convolve2d: %.3f'%d.mean(),d
 
     def test_multilayer_conv(self):
+        # causes an atexit problem
+        from scipy.signal.sigtools import _convolve2d
+        from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
         
         # fixed parameters
         bsize = 1 # batch size
