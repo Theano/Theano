@@ -309,8 +309,9 @@ class TestConvOp(unittest.TestCase):
         kerns = T.dmatrix('kerns')
      
         for mode in 'valid', 'full':
-            for imshp in (2,5,5),(2,10,10): # (12,10), (3,12,11):
+            for imshp in  (5,5),(2,5,5),(2,10,10): # (12,10), (3,12,11):
                 visdim = 1 if len(imshp)!=3 else imshp[0]
+                print 'visdim = ', visdim
                 for kshp in (3,3),:# (6,7):
                     imgvals = N.random.random(N.hstack((bsize,imshp)))
                     print 'imgvals.shape = ', imgvals.shape

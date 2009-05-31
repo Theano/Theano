@@ -119,8 +119,8 @@ class ConvOp(Op):
         ####### Determine gradient on kernels ########
         mode = self.out_mode
         if inputs.ndim == 3:
-            # TODO 
-            img = tensor.shape_padleft(inputs,1)
+            inputs = tensor.shape_padleft(inputs,1)
+        print 'self.imshp = ', self.imshp
 
         img = tensor.DimShuffle(inputs.broadcastable, (1,0,2,3))(inputs)
         imshp = N.hstack((self.bsize, self.imshp[1:]))
@@ -170,7 +170,7 @@ class ConvOp(Op):
 using namespace std;
 """
     def c_code(self, node, name, (img2d, filtersflipped), (z, ), sub):
-        if node.inputs[0].type != node.inputs[1].type:
+        if node.inputs[0].type.dtype != node.inputs[1].type.dtype:
             raise NotImplementedError()
         code="""
 int mode=-1,typenum;
