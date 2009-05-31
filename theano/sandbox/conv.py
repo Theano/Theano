@@ -106,34 +106,33 @@ class ConvOp(Op):
         * will crash if filter the same size as input image
         """
 
-        # TODO: "full" mode should be supported. When in full mode, the hidden
-        # layer is larger than the input image. It therefore cannot be used as
-        # the kernel in the vis * hid convolution.
-        # Two possible solutions: 
-        # - modify convolution code to support kernels of arbitrary shape
-        # - convolve the hidden w/ the visible layer as the kernel, then
-        # DimShuffle. Also verify that this works :)
-        if self.out_mode != 'valid':
-            raise NotImplementedError('Only "valid" mode is currently supported in the gradient')
-
         ####### Determine gradient on kernels ########
-        mode = self.out_mode
         if inputs.ndim == 3:
             inputs = tensor.shape_padleft(inputs,1)
 
-        img = tensor.DimShuffle(inputs.broadcastable, (1,0,2,3))(inputs)
-        imshp = N.hstack((self.bsize, self.imshp[1:]))
-        bsize = self.imshp[0]
+        newin = tensor.DimShuffle(inputs.broadcastable, (1,0,2,3))(inputs)
+        newgz = tensor.DimShuffle(gz.broadcastable, (1,0,2,3))(gz)
+    
+        if self.out_mode == 'valid':
+            (img, filters) = (newin, newgz)
+            (bsize, nkern) = (self.imshp[0], self.nkern)
+            imshp = N.hstack((self.bsize, self.imshp[1:]))
+            kshp  = self.outshp[::-1]
+        elif self.out_mode == 'full':
+            (img, filters) = (newgz, newin)
+            (bsize, nkern) = (self.nkern, self.imshp[0])
+            imshp = N.hstack((self.bsize, self.outshp))
+            kshp  = self.imshp[1:][::-1]
+        else:
+            raise NotImplementedError('Only [full,valid] modes are currently supported.')
 
-        nkern = self.nkern
-        filters = tensor.DimShuffle(gz.broadcastable, (1,0,2,3))(gz)
         filters = filters[:,:,::-1,::-1]
 
-        kshp  = self.outshp[::-1]
-
-        dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode=mode)(img,filters)
-        dw = tensor.DimShuffle(dw.broadcastable, (1,0,2,3))(dw)
-        dw = dw[:,:,::-1,::-1]
+        dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid')(img,filters)
+        if self.out_mode == 'valid':
+            # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
+            dw = tensor.DimShuffle(dw.broadcastable, (1,0,2,3))(dw)
+            dw = dw[:,:,::-1,::-1]
 
         ####### Determine gradient on inputs ########
         mode = 'valid' if self.out_mode == 'full' else 'full'

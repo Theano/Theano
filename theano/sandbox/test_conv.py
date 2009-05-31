@@ -309,19 +309,17 @@ class TestConvOp(unittest.TestCase):
         kerns = T.dmatrix('kerns')
      
         for mode in 'valid', 'full':
-            for imshp in  (5,5),(2,5,5),(2,10,10): # (12,10), (3,12,11):
+            for imshp in (5,5),(2,5,5),(2,10,10): # (12,10), (3,12,11):
                 visdim = 1 if len(imshp)!=3 else imshp[0]
                 print 'visdim = ', visdim
                 for kshp in (3,3),:# (6,7):
                     imgvals = N.random.random(N.hstack((bsize,imshp)))
-                    print 'imgvals.shape = ', imgvals.shape
                     imgvals = imgvals.reshape(bsize,-1)
 
                     if visdim == 1: 
                         kernvals = N.random.rand(nkern,kshp[0],kshp[1])
                     else:
                         kernvals = N.random.rand(nkern,visdim,kshp[0],kshp[1])
-                    print 'kernvals.shape = ', kernvals.shape
                     kernvals = kernvals.reshape(nkern,-1)
 
                     def testf(imgs, kerns):
