@@ -182,11 +182,6 @@ def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
     kernrshp   = tensor.as_tensor([nkern, nvis_dim] + list(kshp))
     kerntensor = tensor.reshape(kerns, kernrshp)
  
-    print '*** convolve2 ***'
-    print 'imshp = ', imshp
-    print 'kshp = ', kshp
-    print 'nkern = ', nkern
-    print 'bsize = ', bsize
     convop = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode=mode)
     convout = convop(imtensor, kerntensor)
    
