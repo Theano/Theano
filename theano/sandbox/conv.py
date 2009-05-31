@@ -36,7 +36,6 @@ class ConvOp(Op):
         if self.dx!=1 or self.dy!=1:
             print "Warning, dx!=1 or dy!=1 only supported in python mode!"
             raise NotImplementedError()
-
         self.outshp = getFilterOutShp(self.imshp, kshp, (dx,dy), output_mode)
         self.out_mode = output_mode
         if not self.out_mode in ["valid", "full"]:
@@ -51,14 +50,9 @@ class ConvOp(Op):
 #        raise Error("Not implemented")
 
     def make_node(self, inputs, kerns):
-        #all kernels must have the same shape!
-        #output_mode only valid and full are supported!
-        self.dtype = inputs.dtype
-        assert kerns.dtype==self.dtype
-  
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
         outdim = kerns.ndim
-        output = tensor.tensor(dtype=self.dtype, broadcastable=[False]*outdim);
+        output = tensor.tensor(dtype=inputs.type.dtype, broadcastable=[False]*outdim);
 
         return gof.Apply(self, [inputs, kerns], [output])
 
@@ -389,9 +383,9 @@ fail:
         d["self_kshp0"]=self.kshp[0]
         d["self_kshp1"]=self.kshp[1]
         d["affectation"]="=" if self.imshp[0]==1 else "+="
-        if self.dtype=="float32": d["type"]="float"
-        elif self.dtype=="float64": d["type"]="double"
-        else: raise Exception("Type %s not implemented"%self.dtype)
+        if node.inputs[0].type.dtype=="float32": d["type"]="float"
+        elif node.inputs[0].type.dtype=="float64": d["type"]="double"
+        else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
         return code % d
 
 
