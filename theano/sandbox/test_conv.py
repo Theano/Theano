@@ -4,6 +4,8 @@ import numpy
 import numpy as N
 
 from scipy.signal import convolve2d
+from scipy.signal.sigtools import _convolve2d
+from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
 from theano.tests import unittest_tools as utt
 
 from theano import function, Mode
@@ -155,6 +157,150 @@ class TestConvOp(unittest.TestCase):
 
         d=N.asarray(tscipy)/tconvop
         print 'speed up ConvOp vs convolve2d: %.3f'%d.mean(),d
+
+    def test_multilayer_conv(self):
+        
+        # fixed parameters
+        bsize = 1 # batch size
+        imshp_start = (1,28,28)
+        kshps = ([5,6],[7,4])
+        nkerns = [20,40] # per output pixel
+        ssizes = [(1,1),(2,2)]
+        convmodes = ['valid','full']
+        do_theano=True
+
+        # TODO: this version show a bug.
+        imshp_start = (1,4,4)
+        kshps = ([2,2],[2,2])#,[7,4])
+        nkerns = [2,2] # per output pixel
+        ssizes = [(1,1),(2,2)]#2,2)]
+
+        #test speed
+#        bsize = 10 # batch size
+#        imshp_start = (1,50,50)
+#        kshps = ([12,12],[12,12])
+#        nkerns = [20,20] # per output pixel
+#        ssizes = [(1,1),(1,1)]#(2,2) bugged
+#        convmodes = ['valid','full']
+#        do_theano=True
+
+        N.set_printoptions(threshold=N.nan)
+
+        # symbolic stuff
+        kerns = [T.matrix(),T.dmatrix()]
+        img = T.dmatrix()
+        rng = N.random.RandomState(3423489)
+        tctot, tpytot, t2ctot, t2pytot, ntot, convtot = [], [], [], [], [], []
+
+        dmatrix4=T.TensorType('float64', (False, False, False, False))
+        inputs4=dmatrix4()
+        kerns4=dmatrix4()
+        assert len(kshps)==len(nkerns)==len(kerns)
+
+        for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+            for ss, n_ss in zip(ssizes,range(len(ssizes))):
+
+                # build actual input images
+                imgval = rng.rand(bsize, imshp_start[0], imshp_start[1], imshp_start[2])
+                imshp=imshp_start
+
+                # for each layer
+                for kshp, kern, nkern, n_layer in zip(kshps, kerns, nkerns, range(len(kerns))):
+
+                    print '************* layer %i ***************' % n_layer
+
+                    print conv_mode, ss, n_layer, kshp, nkern
+
+                    # actual values
+                    w = rng.random_sample(N.r_[nkern,imshp[0],kshp])
+                    w_flip = flip(w,kshp).reshape(w.shape)
+
+                    ## manual implementation
+                    # check first stage
+                    padimg = imgval
+                    if conv_mode == 'full':
+                        padimg_shp = N.array(imshp[1:]) + 2*(N.array(kshp) - N.array([1,1]))
+                        padimg = N.zeros(N.r_[bsize,imshp[0],padimg_shp])
+                        padimg[:, :, kshp[0]-1:-kshp[0]+1, 
+                                     kshp[1]-1:-kshp[1]+1] = imgval
+
+                    outshp = N.hstack((nkern, getFilterOutShp(imshp, kshp, ss, conv_mode)))
+
+                    time1 = time.time()
+                    outval = N.zeros(N.r_[bsize,outshp])
+                    val = _valfrommode(conv_mode)
+                    bval = _bvalfromboundary('fill')
+                    for b in range(bsize): # loop over batches
+                        for n in range(nkern): # loop over filters
+                            for i in range(imshp[0]): # loop over input feature maps
+                                outval[b,n,...] +=  _convolve2d(\
+                                    imgval[b,i,...], w_flip[n,i,...],1,val, bval, 0)[0::ss[0],0::ss[1]]
+                    ntot += [time.time() - time1]
+
+                    if do_theano:
+                        ####### test with new sp.convolve2 function ######
+                        time1 = time.time()
+                        hid, outshp2 = convolve2(kern, kshp, nkern, img, imshp,  
+                                                 bsize, (1,1), mode=conv_mode)
+                        propup = function([kern, img], hid)
+                        propup1 = function([kern, img], hid,mode=Mode(linker="py"))
+                        
+                        hidval  = propup(w_flip.reshape(nkern,-1), imgval.reshape(bsize,-1))
+                        hidval  = hidval.reshape(bsize,nkern,outshp2[-2],outshp2[-1])[:,:,::ss[0],::ss[1]]
+                        hidval = hidval.reshape(bsize, -1)
+
+                        hidval1 = propup1(w_flip.reshape(nkern,-1), imgval.reshape(bsize,-1))
+                        hidval1  = hidval1.reshape(bsize,nkern,outshp2[-2],outshp2[-1])[:,:,::ss[0],::ss[1]]
+                        hidval1 = hidval1.reshape(bsize, -1)
+
+                        assert (N.abs(hidval-hidval1)<1e-5).all()
+                        temp = N.abs(outval.reshape(bsize,-1) - hidval)
+                        assert (temp < 1e-5).all()
+ 
+                    else:
+                        hid = img #we don't need it, but it make the flow easier flow
+                        convtot+=[-1]
+                        tctot+=[-1]
+                        tpytot+=[-1]
+                        hidval=outval.copy()#to keep the same memory
+                        hidval1=outval.copy()
+                    
+                    # ConvOp
+                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode)(inputs4, kerns4)
+                    l1shp=N.hstack((nkern,
+                                    getFilterOutShp(imshp, kshp, ss, conv_mode)))
+                    propup2 = function([inputs4, kerns4], conv_op)
+                    propup3 = function([inputs4, kerns4], conv_op, mode=Mode(linker="py"))
+                    
+                    time1 = time.time()
+                    hidval2_ = propup2(imgval,w_flip)
+                    hidval2 = hidval2_[:,:,0::ss[0],0::ss[1]]
+                    t2ctot += [time.time() - time1]
+
+                    time1 = time.time()
+                    hidval3_ = propup3(imgval,w_flip)
+                    hidval3 = hidval3_[:,:,0::ss[0],0::ss[1]]
+                    t2pytot += [time.time() - time1]
+                    assert (N.abs(hidval2-hidval3)<1e-5).all()
+
+                    temp = N.abs(outval - hidval2)
+                    assert (temp < 1e-5).all()
+                    temp = N.abs(outval - hidval3)
+                    assert (temp < 1e-5).all()
+
+                    img, imshp = hid, tuple(outshp)
+                    imgval = outval.reshape(bsize,outshp[0],outshp[1],outshp[2])
+
+        print '**** Multilayer Convolution Profiling Results ****'
+        print 'Numpy convolve2d processing time: %.3fs'%sum(ntot),ntot
+        print 'c Theano(ConvOp) processing time: %.3fs'%sum(t2ctot),t2ctot
+        print 'py Theano(ConvOp) processing time: %.3fs'%sum(t2pytot),t2pytot
+        print 'convolve processing time: %.3fs'%sum(convtot),convtot
+        d=N.asarray(ntot)/t2ctot
+        print 'speed up c theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
+        d=N.asarray(ntot)/t2pytot
+        print 'speed up py theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
+
 
     def test_ConvOpGrad(self):
         nkern = 3
