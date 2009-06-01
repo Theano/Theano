@@ -344,11 +344,11 @@ for(int b=0;b< %(self_bsize)s;b++){
             int ind0 = (new_m-j);
 
             if(mode==FULL){
-              const %(type)s * idx2=&hvals[j*dim_ker[1]];
+              const %(type)s * idx_hvals=&hvals[j*dim_ker[1]];
               if(ind0 < 0 || ind0 >= dim_im[0]){
                 if(fill_value!=0)
                   for (int k=0; k < dim_ker[1]; k++) {
-                    sum+= idx2[k] * fill_value;
+                    sum+= idx_hvals[k] * fill_value;
                   }
               }else{
                 //do the part where kernel is to the right of the img
@@ -357,27 +357,27 @@ for(int b=0;b< %(self_bsize)s;b++){
                 if(fill_value!=0){ 
                 
                   for(k=0;k<max_k;k++){
-                    sum+= idx2[k]*fill_value;
+                    sum+= idx_hvals[k]*fill_value;
                   }
                 }else {k=max_k;}
                 
                 //do the part where the kernel is on the img
                 max_k=min(n+1,(int)dim_ker[1]);
-                const %(type)s * idx1=&in[ind0*dim_im[1]];
+                const %(type)s * idx_in=&in[ind0*dim_im[1]];
                 for (int ind1=n-k; k<max_k; k++,ind1--) {
-                  sum+= idx2[k] * idx1[ind1];
+                  sum+= idx_hvals[k] * idx_in[ind1];
                 }
                 //do the part to the left of the img
                 if(fill_value!=0)
-                  for(;k<dim_ker[1];k++) sum+= idx2[k]*fill_value;
+                  for(;k<dim_ker[1];k++) sum+= idx_hvals[k]*fill_value;
               }
             }else{
-              const %(type)s* idx1=&in[ind0*dim_im[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
-              const %(type)s* idx2=&hvals[j*dim_ker[1]];
+              const %(type)s* idx_in=&in[ind0*dim_im[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
+              const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
               int new_n = (n+dim_ker[1]-1);
 
               for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
-                sum+=idx2[k]*idx1[last];
+                sum+=idx_hvals[k]*idx_in[last];
               }
             }
           }//for j
