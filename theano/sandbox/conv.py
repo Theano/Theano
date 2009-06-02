@@ -16,6 +16,9 @@ class ConvOp(Op):
     In development.
     """
 
+    __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode']
+    """These attributes uniquely identify the behaviour of this op for given inputs"""
+
     def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid', unroll_batch=0, unroll_kern=0):
         """
         unroll_batch. If >0 will use a version that will unroll the batch loop by the value of the option. By default don't use this version of the code.
@@ -51,12 +54,24 @@ class ConvOp(Op):
             raise Exception("Mode %s not implemented"%self.out_mode)
        
         assert (self.outshp >= 0).all()
+        hashval = hash(type(self))
+        for a in self.__attrnames:
+            hashval = hashval ^ hash(getattr(self, a))
+        self.__hashval = hashval
 
-#    def __eq__(self, other):
-#        raise Error("Not implemented")
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        for a in self.__attrnames:
+            if getattr(self, a) != getattr(other, a):
+                return False
+        return True
 
-#    def __hash__(self):
-#        raise Error("Not implemented")
+    def __hash__(self):
+        return self.__hashval
+
+    def __str__(self):
+        return "ConvOp{" +",".join(str((a, getattr(self, a))) for a in self.__attrnames)  + "}"
 
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
