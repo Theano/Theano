@@ -366,7 +366,7 @@ class TestConvOp(unittest.TestCase):
             print t
             print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]
             print "min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()]
-            print "speedup %.3fx"% t.max()/t.min()
+            print "speedup %.3fx"% (t.max()/t.min())
             return
 
         for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
