@@ -800,8 +800,9 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unloop_size)s){
               if(ind0 < 0 || ind0 >= dim_im[0]){
                 if(fill_value!=0)
                   for (int k=0; k < dim_ker[1]; k++) {
+                    %(type)s tmp = idx_hvals[k] * fill_value;
 """%d
-    ret+=my_dup("sum%(unloop_iter)s+= idx_hvals[k] * fill_value;\n")
+    ret+=my_dup("sum%(unloop_iter)s += tmp;\n")
     ret+="""
                   }
               }else{
@@ -811,8 +812,9 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unloop_size)s){
                 if(fill_value!=0){ 
                 
                   for(k=0;k<max_k;k++){
+                    %(type)s tmp = idx_hvals[k] * fill_value;
 """%d
-    ret+=my_dup("sum%(unloop_iter)s+= idx_hvals[k] * fill_value;\n")
+    ret+=my_dup("sum%(unloop_iter)s += tmp;\n")
     ret+="""
                   }
                 }else {k=max_k;}
@@ -830,8 +832,9 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unloop_size)s){
                 //do the part to the left of the img
                 if(fill_value!=0)
                   for(;k<dim_ker[1];k++){
+                    %(type)s tmp = idx_hvals[k] * fill_value;
 """%d
-    ret+=my_dup("sum%(unloop_iter)s+= idx_hvals[k] * fill_value;\n")
+    ret+=my_dup("sum%(unloop_iter)s += tmp;\n")
     ret+="""
                   }
               }
