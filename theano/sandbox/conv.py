@@ -16,8 +16,11 @@ class ConvOp(Op):
     In development.
     """
 
-    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid'):
-
+    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid', unroll_batch=0, unroll_kern=0):
+        """
+        unroll_batch. If >0 will use a version that will unroll the batch loop by the value of the option. By default don't use this version of the code.
+        unroll_nkern. idem as unroll_batch but unroll the kernel loop.
+        """
         imshp = tuple(imshp)
         if len(imshp)==2:
             self.imshp = (1,)+imshp
@@ -31,6 +34,14 @@ class ConvOp(Op):
         self.bsize=bsize
         self.dx=dx
         self.dy=dy
+
+        self.unroll_batch=unroll_batch
+        self.unroll_kern=unroll_kern
+
+        if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
+            raise Exception("unroll_batch(%s) should be 0 or a multiple of bsize(%s)"%(str(self.unroll_batch),str(self.bsize)))
+        if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
+            raise Exception("unroll_kern(%s) should be 0 or a multiple of nkern(%s)"%(str(self.unroll_kern),str(self.nkern)))
         if self.dx!=1 or self.dy!=1:
             print "Warning, dx!=1 or dy!=1 only supported in python mode!"
             raise NotImplementedError()
@@ -164,7 +175,12 @@ using namespace std;
         if node.inputs[0].type.dtype=="float32": d["type"]="float"
         elif node.inputs[0].type.dtype=="float64": d["type"]="double"
         else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
+        if self.unroll_kern>0 and self.unroll_batch>0:
+            print "return unrolled batch and kern code by",self.unroll_batch, self.unroll_kern
+            return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
+                                                   self.unroll_kern)
 
+        #TODO: should we choose the unroll size automatically with the bigger divisor under 5? under 10?
         if self.out_mode == 'valid':
             return _conv_op_code_valid_gemm % d
         else:
@@ -344,11 +360,11 @@ for(int b=0;b< %(self_bsize)s;b++){
             int ind0 = (new_m-j);
 
             if(mode==FULL){
-              const %(type)s * idx2=&hvals[j*dim_ker[1]];
+              const %(type)s * idx_hvals=&hvals[j*dim_ker[1]];
               if(ind0 < 0 || ind0 >= dim_im[0]){
                 if(fill_value!=0)
                   for (int k=0; k < dim_ker[1]; k++) {
-                    sum+= idx2[k] * fill_value;
+                    sum+= idx_hvals[k] * fill_value;
                   }
               }else{
                 //do the part where kernel is to the right of the img
@@ -357,27 +373,27 @@ for(int b=0;b< %(self_bsize)s;b++){
                 if(fill_value!=0){ 
                 
                   for(k=0;k<max_k;k++){
-                    sum+= idx2[k]*fill_value;
+                    sum+= idx_hvals[k]*fill_value;
                   }
                 }else {k=max_k;}
                 
                 //do the part where the kernel is on the img
                 max_k=min(n+1,(int)dim_ker[1]);
-                const %(type)s * idx1=&in[ind0*dim_im[1]];
+                const %(type)s * idx_in=&in[ind0*dim_im[1]];
                 for (int ind1=n-k; k<max_k; k++,ind1--) {
-                  sum+= idx2[k] * idx1[ind1];
+                  sum+= idx_hvals[k] * idx_in[ind1];
                 }
                 //do the part to the left of the img
                 if(fill_value!=0)
-                  for(;k<dim_ker[1];k++) sum+= idx2[k]*fill_value;
+                  for(;k<dim_ker[1];k++) sum+= idx_hvals[k]*fill_value;
               }
             }else{
-              const %(type)s* idx1=&in[ind0*dim_im[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
-              const %(type)s* idx2=&hvals[j*dim_ker[1]];
+              const %(type)s* idx_in=&in[ind0*dim_im[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
+              const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
               int new_n = (n+dim_ker[1]-1);
 
               for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
-                sum+=idx2[k]*idx1[last];
+                sum+=idx_hvals[k]*idx_in[last];
               }
             }
           }//for j
@@ -614,3 +630,250 @@ free(kbuf);
 }
 Py_XDECREF(img2d);
 """
+
+def gen_conv_code_unroll_batch_kern(d,unroll_bsize=1, unroll_ksize=1):
+    """ c_code for ConvOp that unroll the batch size loop
+    """
+    assert unroll_bsize>0 and unroll_ksize>0
+    d["unroll_bsize"]=unroll_bsize
+    d["unroll_ksize"]=unroll_ksize
+    def my_dup(st,size):
+        s=""
+        for i in range(size):
+            d["unroll_iter"]=i
+            s+=st%d
+        return s+"\n"
+    def my_dup2(st):
+        s=""
+        iter=0
+        for i in range(unroll_bsize):
+            d["unroll_biter"]=i
+            for j in range(unroll_ksize):
+                d["unroll_kiter"]=j
+                d["unroll_iter"]=iter
+                iter+=1
+                s+=st%d
+        return s+"\n"
+    ret = """
+int mode=-1,typenum=0, typenum_f=0;
+PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
+const %(type)s fill_value = 0;
+
+int type_im=PyArray_TYPE(%(img2d)s);
+int type_ker=PyArray_TYPE(%(filtersflipped)s);
+
+npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
+npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
+npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+
+PyArray_Dims img2d_shape;
+npy_intp img2d_dim[4]={1,1,0,0};
+img2d_shape.ptr=img2d_dim;
+img2d_shape.len=4;
+
+PyArray_Dims kerns_shape;
+npy_intp kerns_dim[4]={1,1,0,0};
+kerns_shape.ptr=kerns_dim;
+kerns_shape.len=4;
+PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
+string s="%(self_out_mode)s";
+
+if(%(img2d)s->nd==2){
+  img2d_dim[3]=%(img2d)s->dimensions[1];
+  img2d_dim[2]=%(img2d)s->dimensions[0];
+}else if(%(img2d)s->nd==3){
+  img2d_dim[3]=%(img2d)s->dimensions[2];
+  img2d_dim[2]=%(img2d)s->dimensions[1];
+  img2d_dim[0]=%(img2d)s->dimensions[0];
+}else if(%(img2d)s->nd==4){
+  img2d_dim[3]=%(img2d)s->dimensions[3];
+  img2d_dim[2]=%(img2d)s->dimensions[2];
+  img2d_dim[1]=%(img2d)s->dimensions[1];
+  img2d_dim[0]=%(img2d)s->dimensions[0];
+}else {
+    PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
+    %(fail)s;
+}
+
+if(%(filtersflipped)s->nd==3){
+  kerns_dim[3]=%(filtersflipped)s->dimensions[2];
+  kerns_dim[2]=%(filtersflipped)s->dimensions[1];
+  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+}else if(%(filtersflipped)s->nd==4){
+  kerns_dim[3]=%(filtersflipped)s->dimensions[3];
+  kerns_dim[2]=%(filtersflipped)s->dimensions[2];
+  kerns_dim[1]=%(filtersflipped)s->dimensions[1];
+  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+}else{
+    PyErr_SetString(PyExc_ValueError, "kernel don't have a good shape");
+    %(fail)s;
+}
+
+img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
+img2d_arr = (PyArrayObject*)img2d;
+if ((img2d_arr->strides[3] != sizeof(%(type)s)) 
+     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
+    contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
+    Py_DECREF(img2d);
+    img2d = contig;
+    if (!PyArray_ISCONTIGUOUS(img2d)){
+        PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
+        %(fail)s;
+    }
+}
+img2d_arr = (PyArrayObject*)img2d;
+
+filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
+filtersflipped_arr = (PyArrayObject*)filtersflipped;
+if ((filtersflipped_arr->strides[3] != sizeof(%(type)s)) 
+     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*sizeof(%(type)s))){
+    contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
+    Py_DECREF(filtersflipped);
+    filtersflipped = contig;
+    if (!PyArray_ISCONTIGUOUS(filtersflipped)){
+        PyErr_SetString(PyExc_ValueError, "filtersflipped isn't contiguous");
+        %(fail)s;
+    }
+}
+filtersflipped_arr = (PyArrayObject*)filtersflipped;
+
+if(s=="valid") mode=0;
+else if(s=="full") mode=2;
+else {PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;};
+typenum = PyArray_ObjectType((PyObject*)%(img2d)s, 0);
+typenum_f = PyArray_ObjectType((PyObject*)%(filtersflipped)s, 0);
+if (typenum < 0) {PyErr_SetString(PyExc_ValueError, "Invalid type"); %(fail)s;}
+if (typenum != typenum_f) {PyErr_SetString(PyExc_ValueError, "Input types must match"); %(fail)s;}
+
+if (!img2d) %(fail)s;
+if (!filtersflipped) %(fail)s;
+if ((!%(z)s)
+  || *PyArray_DIMS(%(z)s)!=4
+  ||(%(z)s->dimensions[0] != %(self_bsize)s)
+  ||(%(z)s->dimensions[1] != %(self_nkern)s)
+  ||(%(z)s->dimensions[2] != dim_zz[0])
+  || (%(z)s->dimensions[3] != dim_zz[1])
+  )
+{
+  if (%(z)s) Py_DECREF(%(z)s);
+  npy_intp dims[4] = {0,0,0,0};
+  if(!dims) %(fail)s;
+  dims[0]=%(self_bsize)s;
+  dims[1]=%(self_nkern)s;
+  dims[2]=dim_zz[0];
+  dims[3]=dim_zz[1];
+  %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0);
+}else{
+  //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
+}
+
+int Os[2];
+if (mode == FULL) {Os[0] = dim_im[0]+dim_ker[0]-1; Os[1] = dim_im[1]+dim_ker[1]-1;}
+else {Os[0] = dim_im[0]-dim_ker[0]+1; Os[1] = dim_im[1]-dim_ker[1]+1;}
+for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
+  for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
+
+    //assertions
+    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
+"""%d
+    ret+=my_dup2("%(type)s * __restrict__ out%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(%(z)s,b+%(unroll_biter)s,n_kern+%(unroll_kiter)s));")
+    ret+=my_dup("for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out%(unroll_iter)s[i] = 0;",unroll_bsize*unroll_ksize)
+    ret+="""
+    for(int stack_size=0;stack_size<%(self_imshp0)s;stack_size++){
+"""%d
+    ret+=my_dup("const %(type)s * __restrict__ in%(unroll_iter)d=(%(type)s *)(PyArray_GETPTR2(img2d,b+%(unroll_iter)s,stack_size));", unroll_bsize)
+    ret+=my_dup("const %(type)s * __restrict__ hvals%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern+%(unroll_iter)s,stack_size));",unroll_ksize)
+    ret+="""
+
+      int new_m;
+
+      for (int m=0; m < Os[0]; m++) {
+        // Reposition index into input image based on requested output size
+        if (mode == FULL) new_m = m ;
+        else new_m = (m+dim_ker[0]-1);
+
+        for (int n=0; n < Os[1]; n++) {  // loop over columns 
+        """%d
+    ret+=my_dup("%(type)s sum%(unroll_iter)s=0;", unroll_bsize*unroll_ksize)
+    ret+="""
+
+          // Sum over kernel, if index into image is out of bounds
+          // fill with the value
+          for (int j=0; j < dim_ker[0]; j++) {
+            int ind0 = (new_m-j);
+
+            if(mode==FULL){
+"""%d
+    ret+=my_dup("const %(type)s * idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker[1]];",unroll_ksize)
+    ret+="""
+              if(ind0 < 0 || ind0 >= dim_im[0]){
+                if(fill_value!=0)
+                  for (int k=0; k < dim_ker[1]; k++) {
+"""%d
+    ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
+    ret+="""
+                  }
+              }else{
+                //do the part where kernel is to the right of the img
+
+                int k=0,max_k=max((int)(n-dim_im[1])+1,0);
+                if(fill_value!=0){ 
+                
+                  for(k=0;k<max_k;k++){
+"""%d
+    ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
+    ret+="""
+                  }
+                }else {k=max_k;}
+                
+                //do the part where the kernel is on the img
+                max_k=min(n+1,(int)dim_ker[1]);
+"""%d
+    ret+=my_dup("const %(type)s * idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
+    ret+="""
+                for (int ind1=n-k; k<max_k; k++,ind1--) {
+
+"""%d
+    ret+=my_dup2("sum%(unroll_iter)s+= idx_hvals%(unroll_kiter)s[k] * idx_in%(unroll_biter)s[ind1];")
+    ret+="""
+                }
+                //do the part to the left of the img
+                if(fill_value!=0)
+                  for(;k<dim_ker[1];k++){
+"""%d
+    ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
+    ret+="""
+                  }
+              }
+            }else{//valid mode
+"""%d
+    ret+=my_dup("const %(type)s* idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
+    ret+=my_dup("const %(type)s* idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker[1]];",unroll_ksize)
+    ret+="""
+              int new_n = (n+dim_ker[1]-1);
+
+              for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
+"""%d
+    ret+=my_dup2("sum%(unroll_iter)s+=idx_hvals%(unroll_kiter)s[k]*idx_in%(unroll_biter)s[last];")
+    ret+="""
+              }
+            }
+
+          }//for j
+"""%d
+#    ret+=my_dup("out%(unroll_iter)s[m*dim_zz[1]+n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize)
+    ret+=my_dup("out%(unroll_iter)s[m*dim_zz[1]+n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize*unroll_ksize)
+#        ret+=my_dup("cout<<sum%(unroll_iter)s<<endl;",unroll_bsize)
+    ret+="""
+        }//for n
+      }//for m
+    }//for stack_size
+  }//for n_kern
+}//for b
+Py_XDECREF(img2d);
+Py_XDECREF(filtersflipped);
+"""
+    return ret
