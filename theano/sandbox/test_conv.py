@@ -50,10 +50,10 @@ class TestConvOp(unittest.TestCase):
             nkern = 5      # nb kernel
             ssizes = ((1,1),(2,2),(3,3),(4,4))#step size
             convmodes = ('full','valid')
-        elif 0:
-            # fixed parameters
-            bsize = 10     # batch size
-            imshp = (50,50)# image shape
+        elif 1:
+            # fixed parameters like NORB JOB
+            bsize = 4     # batch size
+            imshp = (96,96)# image shape
             print >> sys.stderr, "WARNING: only square shape tested"
             kshps = [(12,12), (12,12)]
             nkern = 20      # nb kernel
@@ -102,6 +102,8 @@ class TestConvOp(unittest.TestCase):
 
         #profmode = wraplinker.ProfileMode(OpWiseCLinker(), 'fast_run') 
         tconvop, tscipy, tconv2 = [], [], []
+        tconvop_kern, tconvop_batch = [], []
+        tconvop_gemm = []
 
         for conv_mode in convmodes:
             for kshp in kshps:
@@ -112,7 +114,7 @@ class TestConvOp(unittest.TestCase):
 
                     # now test with real values
                     img2d = 1 + N.arange(bsize*N.prod(imshp)).reshape((bsize,)+imshp)
-                    print 'img2d', img2d
+                    #print 'img2d', img2d
                     img1d = img2d.reshape(bsize,-1)
 
                     # create filters (need to be flipped to use convolve2d)
@@ -121,37 +123,100 @@ class TestConvOp(unittest.TestCase):
                     # compute with new convolve2 (no timing info)
                     output4, outshp4  = convolve2(kerns, kshp, nkern, input,\
                             imshp, bsize, (1,1), bias=bias, mode=conv_mode)
-                    print 'output4', output4
+                    #print 'output4', output4
 
                     ttime1 = time.time()
                     f = function([kerns, bias, input], output4)
                     out4 = f(filtersflipped.reshape(nkern,-1), biasvals, img1d)
-                    print 'out4', out4, img1d, filtersflipped
+                    #print 'out4', out4, img1d, filtersflipped
                     tconv2 += [time.time() - ttime1]
                     out4 = out4.reshape(bsize, nkern, outshp4[1], outshp4[2])
                     out4 = out4[:,:,0::ss[0],0::ss[1]]
                     out4 = out4.reshape(bsize, -1)
 
-                    # compute with ConvOp
-                    dmatrix3=T.TensorType('float64', (False, False, False))
-                    inputs=dmatrix3()
-                    kerns3=dmatrix3()
-                    bia=T.dscalar()
-                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode)(inputs, kerns3)
-                    f2 = function([inputs, kerns3], conv_op, mode=Mode(linker="c"))
-                    f3 = function([inputs, kerns3], conv_op, mode=Mode(linker="py"))
+                    if 1: # compute with ConvOp (code_a)
+                        dmatrix3=T.TensorType('float64', (False, False, False))
+                        inputs=dmatrix3()
+                        kerns3=dmatrix3()
+                        bia=T.dscalar()
+                        conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, use_gemm=False)(inputs, kerns3)
+                        f2 = function([inputs, kerns3], conv_op, mode=Mode(linker="c"))
+                        f3 = function([inputs, kerns3], conv_op, mode=Mode(linker="py"))
 
-                    ttime1 = time.time()
-                    out2_ = f2(img2d, filtersflipped)
-                    out2__ = out2_[:,:,0::ss[0],0::ss[1]]
-                    tconvop += [time.time() - ttime1]
-                    out2___ = out2__.copy()
-                    out2 = out2___ + biasvals.reshape(1,nkern,1,1)
-                    out3_ = f3(img2d, filtersflipped)
-                    out3__ = out3_[:,:,0::ss[0],0::ss[1]]
-                    out3___ = out3__.copy()
-                    out3 = out3___ + biasvals.reshape(1,nkern,1,1)
-                    assert (N.abs(out2_-out3_)<1e-5).all()
+                        ttime1 = time.time()
+                        out2_ = f2(img2d, filtersflipped)
+                        out2__ = out2_[:,:,0::ss[0],0::ss[1]]
+                        tconvop += [time.time() - ttime1]
+                        out2___ = out2__.copy()
+                        out2 = out2___ + biasvals.reshape(1,nkern,1,1)
+                        out3_ = f3(img2d, filtersflipped)
+                        out3__ = out3_[:,:,0::ss[0],0::ss[1]]
+                        out3___ = out3__.copy()
+                        out3 = out3___ + biasvals.reshape(1,nkern,1,1)
+                        assert (N.abs(out2_-out3_)<1e-5).all()
+
+                    if 1: # compute with ConvOp with gemm if possible
+                        dmatrix3=T.TensorType('float64', (False, False, False))
+                        inputs=dmatrix3()
+                        kerns3=dmatrix3()
+                        bia=T.dscalar()
+                        conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, use_gemm=True)(inputs, kerns3)
+                        f2 = function([inputs, kerns3], conv_op, mode=Mode(linker="c"))
+                        f3 = function([inputs, kerns3], conv_op, mode=Mode(linker="py"))
+
+                        ttime1 = time.time()
+                        out2_ = f2(img2d, filtersflipped)
+                        out2__ = out2_[:,:,0::ss[0],0::ss[1]]
+                        tconvop_gemm += [time.time() - ttime1]
+                        out2___ = out2__.copy()
+                        out2 = out2___ + biasvals.reshape(1,nkern,1,1)
+                        out3_ = f3(img2d, filtersflipped)
+                        out3__ = out3_[:,:,0::ss[0],0::ss[1]]
+                        out3___ = out3__.copy()
+                        out3 = out3___ + biasvals.reshape(1,nkern,1,1)
+                        assert (N.abs(out2_-out3_)<1e-5).all()
+
+                    if 1: # compute with ConvOp with unroll_batch
+                        dmatrix3=T.TensorType('float64', (False, False, False))
+                        inputs=dmatrix3()
+                        kerns3=dmatrix3()
+                        bia=T.dscalar()
+                        conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, use_gemm=False, unroll_batch=bsize)(inputs, kerns3)
+                        f2 = function([inputs, kerns3], conv_op, mode=Mode(linker="c"))
+                        f3 = function([inputs, kerns3], conv_op, mode=Mode(linker="py"))
+
+                        ttime1 = time.time()
+                        out2_ = f2(img2d, filtersflipped)
+                        out2__ = out2_[:,:,0::ss[0],0::ss[1]]
+                        tconvop_batch += [time.time() - ttime1]
+                        out2___ = out2__.copy()
+                        out2 = out2___ + biasvals.reshape(1,nkern,1,1)
+                        out3_ = f3(img2d, filtersflipped)
+                        out3__ = out3_[:,:,0::ss[0],0::ss[1]]
+                        out3___ = out3__.copy()
+                        out3 = out3___ + biasvals.reshape(1,nkern,1,1)
+                        assert (N.abs(out2_-out3_)<1e-5).all()
+
+                    if 1: # compute with ConvOp with unroll_kern
+                        dmatrix3=T.TensorType('float64', (False, False, False))
+                        inputs=dmatrix3()
+                        kerns3=dmatrix3()
+                        bia=T.dscalar()
+                        conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, use_gemm=False, unroll_kern=bsize)(inputs, kerns3)
+                        f2 = function([inputs, kerns3], conv_op, mode=Mode(linker="c"))
+                        f3 = function([inputs, kerns3], conv_op, mode=Mode(linker="py"))
+
+                        ttime1 = time.time()
+                        out2_ = f2(img2d, filtersflipped)
+                        out2__ = out2_[:,:,0::ss[0],0::ss[1]]
+                        tconvop_kern += [time.time() - ttime1]
+                        out2___ = out2__.copy()
+                        out2 = out2___ + biasvals.reshape(1,nkern,1,1)
+                        out3_ = f3(img2d, filtersflipped)
+                        out3__ = out3_[:,:,0::ss[0],0::ss[1]]
+                        out3___ = out3__.copy()
+                        out3 = out3___ + biasvals.reshape(1,nkern,1,1)
+                        assert (N.abs(out2_-out3_)<1e-5).all()
 
                     # REFERENCE IMPLEMENTATION: compute output with convolve2d
                     fulloutshp = N.array(imshp) - N.array(kshp) + 1 if conv_mode=='valid'\
@@ -179,12 +244,14 @@ class TestConvOp(unittest.TestCase):
                     assert (temp < 1e-5).all()
                     
         print '**** Convolution Profiling Results ****'
-        print 'Scipy convolve2d processing time: %.3fs'%sum(tscipy),tscipy
-        print 'ConvOp processing time: %.3fs'%sum(tconvop),tconvop
-        print 'convolve2 processing time: %.3fs'%sum(tconv2),tconv2
+        print 'Scipy convolve2d processing time: %.3fs'%sum(tscipy)#,tscipy
+        print 'ConvOp processing time: %.3fs'%sum(tconvop)#,tconvop
+        print 'convolve2 processing time: %.3fs'%sum(tconv2)#,tconv2
 
-        d=N.asarray(tscipy)/tconvop
-        print 'speed up ConvOp vs convolve2d: %.3f'%d.mean(),d
+        print 'speed up ConvOp vs convolve2d: %.3f'% (N.asarray(tscipy)/tconvop).mean()
+        print 'speed up use_gemm     : %.3f'% (N.asarray(tconvop)/tconvop_gemm).mean()
+        print 'speed up unroll_batch : %.3f'% (N.asarray(tconvop)/tconvop_batch).mean()
+        print 'speed up unroll_kern  : %.3f'% (N.asarray(tconvop)/tconvop_kern).mean()
 
     def test_multilayer_conv(self):
         # causes an atexit problem
@@ -350,7 +417,7 @@ class TestConvOp(unittest.TestCase):
                 visdim = 1 if len(imshp)!=3 else imshp[0]
                 for kshp in kshps:
                     imgvals = N.random.random(N.hstack((bsize,imshp)))
-                    print 'imgvals.shape = ', imgvals.shape
+                    #print 'imgvals.shape = ', imgvals.shape
                     imgvals = imgvals.reshape(bsize,-1)
 
                     if visdim == 1: 
