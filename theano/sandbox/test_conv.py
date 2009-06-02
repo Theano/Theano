@@ -208,8 +208,8 @@ class TestConvOp(unittest.TestCase):
 
         #test speed
         bsize = 10 # batch size
-        imshp_start = (1,50,50)
-        kshps = ([12,12],[12,12])
+        imshp_start = (1,50,49)
+        kshps = ([11,12],[12,11])
         nkerns = [20,20] # per output pixel
         ssizes = [(1,1),]#(1,1)]#(2,2) bugged
         convmodes = ['valid','full']
@@ -297,7 +297,7 @@ class TestConvOp(unittest.TestCase):
                         hidval1=outval.copy()
                     
                     # ConvOp
-                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, unroll_batch=10)(inputs4, kerns4)
+                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, unroll_kern=10)(inputs4, kerns4)
                     l1shp=N.hstack((nkern,
                                     getFilterOutShp(imshp, kshp, ss, conv_mode)))
                     propup2 = function([inputs4, kerns4], conv_op)
