@@ -1038,12 +1038,8 @@ def constant_folding(node):
             return False
     storage = [[None] for output in node.outputs]
     node.op.perform(node, [x.data for x in node.inputs], storage)
-    cls = gof.Constant
-    if isinstance(output.type, T.Tensor):
-        #TODO: think about how to extend to more types
-        cls = T.TensorConstant
-
-    return [cls(output.type, s[0]) for s, output in zip(storage, node.outputs)]
+    #TODO: think about how to extend to more types
+    return [(T.TensorConstant if isinstance(s[0], (N.ndarray,int,float)) else gof.Constant)(output.type, s[0]) for s, output in zip(storage, node.outputs)]
 
 register_canonicalize(constant_folding)
 register_specialize(constant_folding)
