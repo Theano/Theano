@@ -207,13 +207,13 @@ class TestConvOp(unittest.TestCase):
         ssizes = [(1,1),(2,2)]#2,2)]
 
         #test speed
-        bsize = 10 # batch size
-        imshp_start = (1,50,49)
-        kshps = ([11,12],[12,11])
-        nkerns = [20,20] # per output pixel
-        ssizes = [(1,1),]#(1,1)]#(2,2) bugged
-        convmodes = ['valid','full']
-        do_theano=False
+#        bsize = 10 # batch size
+#        imshp_start = (1,50,49)#un square shape to test more corner case.
+#        kshps = ([11,12],[12,11])#un square shape to test more corner case.
+#        nkerns = [20,20] # per output pixel
+#        ssizes = [(1,1),]#(1,1)]#(2,2) bugged
+#        convmodes = ['valid','full']
+#        do_theano=False
 
         N.set_printoptions(threshold=N.nan)
 
@@ -221,23 +221,25 @@ class TestConvOp(unittest.TestCase):
         kerns = [T.matrix(),T.dmatrix()]
         img = T.dmatrix()
         rng = N.random.RandomState(3423489)
-        tctot, tpytot, t2ctot, t2pytot, ntot, convtot = [], [], [], [], [], []
+        tctot, tpytot, ntot = [], [], []
 
         dmatrix4=T.TensorType('float64', (False, False, False, False))
         inputs4=dmatrix4()
         kerns4=dmatrix4()
         assert len(kshps)==len(nkerns)==len(kerns)
 
-        for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
-            for ss, n_ss in zip(ssizes,range(len(ssizes))):
-
+        def do_test(conv_mode, ss, unroll_batch=0, unroll_kern=0, img=img):
+            
                 # build actual input images
                 imgval = rng.rand(bsize, imshp_start[0], imshp_start[1], imshp_start[2])
                 imshp=imshp_start
 
                 # for each layer
-                for kshp, kern, nkern, n_layer in zip(kshps, kerns, nkerns, range(len(kerns))):
+                ntot=0 
+                tctot=0
+                tpytot=0
 
+                for kshp, kern, nkern, n_layer in zip(kshps, kerns, nkerns, range(len(kerns))):
                     print '************* layer %i ***************' % n_layer
 
                     print conv_mode, ss, n_layer, kshp, nkern
@@ -266,7 +268,7 @@ class TestConvOp(unittest.TestCase):
                             for i in range(imshp[0]): # loop over input feature maps
                                 outval[b,n,...] +=  _convolve2d(\
                                     imgval[b,i,...], w_flip[n,i,...],1,val, bval, 0)[0::ss[0],0::ss[1]]
-                    ntot += [time.time() - time1]
+                    ntot += time.time() - time1
 
                     if do_theano:
                         ####### test with new sp.convolve2 function ######
@@ -290,14 +292,11 @@ class TestConvOp(unittest.TestCase):
  
                     else:
                         hid = img #we don't need it, but it make the flow easier flow
-                        convtot+=[-1]
-                        tctot+=[-1]
-                        tpytot+=[-1]
                         hidval=outval.copy()#to keep the same memory
                         hidval1=outval.copy()
                     
                     # ConvOp
-                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, unroll_kern=10)(inputs4, kerns4)
+                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, unroll_batch=unroll_batch, unroll_kern=unroll_kern)(inputs4, kerns4)
                     l1shp=N.hstack((nkern,
                                     getFilterOutShp(imshp, kshp, ss, conv_mode)))
                     propup2 = function([inputs4, kerns4], conv_op)
@@ -306,12 +305,12 @@ class TestConvOp(unittest.TestCase):
                     time1 = time.time()
                     hidval2_ = propup2(imgval,w_flip)
                     hidval2 = hidval2_[:,:,0::ss[0],0::ss[1]]
-                    t2ctot += [time.time() - time1]
+                    tctot += time.time() - time1
 
                     time1 = time.time()
 #                    hidval3_ = propup3(imgval,w_flip)
 #                    hidval3 = hidval3_[:,:,0::ss[0],0::ss[1]]
-                    t2pytot += [time.time() - time1]
+                    tpytot += time.time() - time1
 #                    assert (N.abs(hidval2-hidval3)<1e-5).all()
 
                     temp = N.abs(outval - hidval2)
@@ -322,14 +321,47 @@ class TestConvOp(unittest.TestCase):
                     img, imshp = hid, tuple(outshp)
                     imgval = outval.reshape(bsize,outshp[0],outshp[1],outshp[2])
 
+                return tctot, tpytot, ntot
+
+        if False:
+            unroll_batch = [0,1,2,5,10]
+            unroll_kern = [0,1,2,5,10,20]
+
+            # calculate the speed up of different combination of unroll
+            for unroll_b in unroll_batch:
+                for unroll_k in unroll_kern:
+                    
+                    tctot, tpytot, ntot=[],[],[]
+                    for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                        for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                            tctot_, tpytot_, ntot_ = do_test(conv_mode, ss,unroll_batch=unroll_b, unroll_kern=unroll_k)
+                            tctot+=[tctot_]
+                            tpytot+=[tpytot_]
+                            ntot+=[ntot_]
+                            
+                    print '**** Multilayer Convolution Profiling Results ****'
+                    print 'unroll batch', unroll_b, 'unroll kern',unroll_k
+                    print 'Numpy convolve2d processing time: %.3fs'%sum(ntot),ntot
+                    print 'c Theano(ConvOp) processing time: %.3fs'%sum(tctot),tctot
+                    print 'py Theano(ConvOp) processing time: %.3fs'%sum(tpytot),tpytot
+                    d=N.asarray(ntot)/tctot
+                    print 'speed up c theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
+            return
+
+        for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+            for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                tctot_, tpytot_, ntot_ = do_test(conv_mode, ss)
+                tctot+=[tctot_]
+                tpytot+=[tpytot_]
+                ntot+=[ntot_]
+
         print '**** Multilayer Convolution Profiling Results ****'
         print 'Numpy convolve2d processing time: %.3fs'%sum(ntot),ntot
-        print 'c Theano(ConvOp) processing time: %.3fs'%sum(t2ctot),t2ctot
-        print 'py Theano(ConvOp) processing time: %.3fs'%sum(t2pytot),t2pytot
-        print 'convolve processing time: %.3fs'%sum(convtot),convtot
-        d=N.asarray(ntot)/t2ctot
+        print 'c Theano(ConvOp) processing time: %.3fs'%sum(tctot),tctot
+        print 'py Theano(ConvOp) processing time: %.3fs'%sum(tpytot),tpytot
+        d=N.asarray(ntot)/tctot
         print 'speed up c theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
-        d=N.asarray(ntot)/t2pytot
+        d=N.asarray(ntot)/tpytot
         print 'speed up py theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
 
 
