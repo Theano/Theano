@@ -207,13 +207,13 @@ class TestConvOp(unittest.TestCase):
         ssizes = [(1,1),(2,2)]#2,2)]
 
         #test speed
-#        bsize = 10 # batch size
-#        imshp_start = (1,50,50)
-#        kshps = ([12,12],[12,12])
-#        nkerns = [20,20] # per output pixel
-#        ssizes = [(1,1),(1,1)]#(2,2) bugged
-#        convmodes = ['valid','full']
-#        do_theano=True
+        bsize = 10 # batch size
+        imshp_start = (1,50,50)
+        kshps = ([12,12],[12,12])
+        nkerns = [20,20] # per output pixel
+        ssizes = [(1,1),]#(1,1)]#(2,2) bugged
+        convmodes = ['valid','full']
+        do_theano=False
 
         N.set_printoptions(threshold=N.nan)
 
@@ -297,7 +297,7 @@ class TestConvOp(unittest.TestCase):
                         hidval1=outval.copy()
                     
                     # ConvOp
-                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode)(inputs4, kerns4)
+                    conv_op = ConvOp(imshp, kshp, nkern, bsize, 1,1, conv_mode, unroll_batch=10)(inputs4, kerns4)
                     l1shp=N.hstack((nkern,
                                     getFilterOutShp(imshp, kshp, ss, conv_mode)))
                     propup2 = function([inputs4, kerns4], conv_op)
@@ -309,15 +309,15 @@ class TestConvOp(unittest.TestCase):
                     t2ctot += [time.time() - time1]
 
                     time1 = time.time()
-                    hidval3_ = propup3(imgval,w_flip)
-                    hidval3 = hidval3_[:,:,0::ss[0],0::ss[1]]
+#                    hidval3_ = propup3(imgval,w_flip)
+#                    hidval3 = hidval3_[:,:,0::ss[0],0::ss[1]]
                     t2pytot += [time.time() - time1]
-                    assert (N.abs(hidval2-hidval3)<1e-5).all()
+#                    assert (N.abs(hidval2-hidval3)<1e-5).all()
 
                     temp = N.abs(outval - hidval2)
                     assert (temp < 1e-5).all()
-                    temp = N.abs(outval - hidval3)
-                    assert (temp < 1e-5).all()
+#                    temp = N.abs(outval - hidval3)
+#                    assert (temp < 1e-5).all()
 
                     img, imshp = hid, tuple(outshp)
                     imgval = outval.reshape(bsize,outshp[0],outshp[1],outshp[2])

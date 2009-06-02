@@ -16,8 +16,11 @@ class ConvOp(Op):
     In development.
     """
 
-    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid'):
-
+    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid', unroll_batch=0, unroll_kern=0):
+        """
+        unroll_batch. If >0 will use a version that will unroll the batch loop by the value of the option. By default don't use this version of the code.
+        unroll_nkern. idem as unroll_batch but unroll the kernel loop.
+        """
         imshp = tuple(imshp)
         if len(imshp)==2:
             self.imshp = (1,)+imshp
@@ -31,6 +34,11 @@ class ConvOp(Op):
         self.bsize=bsize
         self.dx=dx
         self.dy=dy
+
+        self.unroll_batch=unroll_batch
+        self.unroll_kern=unroll_kern
+        assert not(unroll_batch>0 and unroll_kern>0)
+
         if self.dx!=1 or self.dy!=1:
             print "Warning, dx!=1 or dy!=1 only supported in python mode!"
             raise NotImplementedError()
@@ -164,7 +172,9 @@ using namespace std;
         if node.inputs[0].type.dtype=="float32": d["type"]="float"
         elif node.inputs[0].type.dtype=="float64": d["type"]="double"
         else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
-
+        if self.unroll_batch>0:
+            return gen_conv_code_unroll_bsize(d, self.unroll_batch)
+        #TODO: should we choose the unroll size automatically with the bigger divisor under 5? under 10?
         if self.out_mode == 'valid':
             return _conv_op_code_valid_gemm % d
         else:
@@ -617,6 +627,8 @@ Py_XDECREF(img2d);
 
 
 def gen_conv_code_unroll_bsize(d,unloop_bsize=1):
+    """ c_code for ConvOp that unroll the batch size loop
+    """
     d["unloop_bsize"]=unloop_bsize
     def my_dup(st):
         s=""
