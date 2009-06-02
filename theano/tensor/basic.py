@@ -1956,6 +1956,12 @@ def horizontal_stack(*args):
     L{TensorType}s must have the same shape along all dimensions but the
     second.
     """
+    # Note: 'horizontal_stack' and 'vertical_stack' do not behave exactly like
+    # Numpy's hstack and vstack functions. This is intended, because Numpy's
+    # functions have potentially confusing/incoherent behavior (try them on 1D
+    # arrays). If this is fixed in a future version of Numpy, it may be worth
+    # trying to get closer to Numpy's way of doing things. In the meantime,
+    # better keep different names to emphasize the implementation divergences.
     assert len(args) >= 2
     for arg in args: assert arg.type.ndim == 2
     return concatenate(args, axis=1)
