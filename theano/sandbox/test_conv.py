@@ -326,15 +326,18 @@ class TestConvOp(unittest.TestCase):
 
                 return tctot, tpytot, ntot
 
-        if True:
+        if False:
             # calculate the speed up of different combination of unroll
-            # we don't validate the result to have it much faster!
-            validate=False
+            # put the paramter to the same you will try. 
+            
+            validate=False# we don't validate the result to have it much faster!
 
-            unroll_batch = [0,1,2,5,10]
+            unroll_batch = [0,1,2,5,10,20]
             unroll_kern = [0,1,2,5,10,20]
+#            unroll_batch = [0,2,5]
+#            unroll_kern = [0,2,5]
 
-            bsize = 10 # batch size
+            bsize = 20 # batch size
             imshp_start = (1,50,49)#un square shape to test more corner case.
             kshps = ([11,12],[12,11])#un square shape to test more corner case.
             nkerns = [20,20] # per output pixel
@@ -343,10 +346,10 @@ class TestConvOp(unittest.TestCase):
             do_theano=False
 
             timing = N.zeros((len(unroll_batch),len(unroll_kern),3))
-
+            t_b_k=[]
             for unroll_b, n_b in zip(unroll_batch,range(len(unroll_batch))):
                 for unroll_k, n_k in zip(unroll_kern,range(len(unroll_kern))):
-                    
+                    t_b_k+=[str(unroll_b)+"/"+str(unroll_k)]
                     tctot, tpytot, ntot=[],[],[]
                     for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
                         for ss, n_ss in zip(ssizes,range(len(ssizes))):
@@ -355,20 +358,15 @@ class TestConvOp(unittest.TestCase):
                             tpytot+=[tpytot_]
                             ntot+=[ntot_]
                     timing[n_b,n_k]=[sum(tctot), sum(tpytot), sum(ntot)]
-                    print '**** Multilayer Convolution Profiling Results ****'
-                    print 'unroll batch', unroll_b, 'unroll kern',unroll_k
-                    print 'Numpy convolve2d processing time: %.3fs'%sum(ntot),ntot
-                    print 'c Theano(ConvOp) processing time: %.3fs'%sum(tctot),tctot
-                    print 'py Theano(ConvOp) processing time: %.3fs'%sum(tpytot),tpytot
-                    d=N.asarray(ntot)/tctot
-                    print 'speed up c theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
-            print timing
-            t=timing[:,:,0]
-            for b in unroll_batch:
-                for k in unroll_kern:
-                    print b,"/",k," ",
+
+#            print timing
+            t=timing[:,:,0]#We select only the c timing.
+
+            print t_b_k
             print t
-            print "min", t.min(), "max", t.max(), "speedup", t.max()/t.min()
+            print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]
+            print "min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()]
+            print "speedup %.3fx"% t.max()/t.min()
             return
 
         for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
