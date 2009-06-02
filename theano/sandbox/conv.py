@@ -614,3 +614,237 @@ free(kbuf);
 }
 Py_XDECREF(img2d);
 """
+
+
+def gen_conv_code_unroll_bsize(d,unloop_bsize=1):
+    d["unloop_bsize"]=unloop_bsize
+    def my_dup(st):
+        s=""
+        for i in range(unloop_bsize):
+            d["unloop_iter"]=i
+            s+=st%d
+        return s
+    ret = """
+int mode=-1,typenum=0, typenum_f=0;
+PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
+const %(type)s fill_value = 0;
+
+int type_im=PyArray_TYPE(%(img2d)s);
+int type_ker=PyArray_TYPE(%(filtersflipped)s);
+
+npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
+npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
+npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+
+PyArray_Dims img2d_shape;
+npy_intp img2d_dim[4]={1,1,0,0};
+img2d_shape.ptr=img2d_dim;
+img2d_shape.len=4;
+
+PyArray_Dims kerns_shape;
+npy_intp kerns_dim[4]={1,1,0,0};
+kerns_shape.ptr=kerns_dim;
+kerns_shape.len=4;
+PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
+string s="%(self_out_mode)s";
+
+if(%(img2d)s->nd==2){
+  img2d_dim[3]=%(img2d)s->dimensions[1];
+  img2d_dim[2]=%(img2d)s->dimensions[0];
+}else if(%(img2d)s->nd==3){
+  img2d_dim[3]=%(img2d)s->dimensions[2];
+  img2d_dim[2]=%(img2d)s->dimensions[1];
+  img2d_dim[0]=%(img2d)s->dimensions[0];
+}else if(%(img2d)s->nd==4){
+  img2d_dim[3]=%(img2d)s->dimensions[3];
+  img2d_dim[2]=%(img2d)s->dimensions[2];
+  img2d_dim[1]=%(img2d)s->dimensions[1];
+  img2d_dim[0]=%(img2d)s->dimensions[0];
+}else {
+    PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
+    %(fail)s;
+}
+
+if(%(filtersflipped)s->nd==3){
+  kerns_dim[3]=%(filtersflipped)s->dimensions[2];
+  kerns_dim[2]=%(filtersflipped)s->dimensions[1];
+  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+}else if(%(filtersflipped)s->nd==4){
+  kerns_dim[3]=%(filtersflipped)s->dimensions[3];
+  kerns_dim[2]=%(filtersflipped)s->dimensions[2];
+  kerns_dim[1]=%(filtersflipped)s->dimensions[1];
+  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+}else{
+    PyErr_SetString(PyExc_ValueError, "kernel don't have a good shape");
+    %(fail)s;
+}
+
+img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
+img2d_arr = (PyArrayObject*)img2d;
+if ((img2d_arr->strides[3] != sizeof(%(type)s)) 
+     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
+    contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
+    Py_DECREF(img2d);
+    img2d = contig;
+    if (!PyArray_ISCONTIGUOUS(img2d)){
+        PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
+        %(fail)s;
+    }
+}
+img2d_arr = (PyArrayObject*)img2d;
+
+filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
+filtersflipped_arr = (PyArrayObject*)filtersflipped;
+if ((filtersflipped_arr->strides[3] != sizeof(%(type)s)) 
+     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*sizeof(%(type)s))){
+    contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
+    Py_DECREF(filtersflipped);
+    filtersflipped = contig;
+    if (!PyArray_ISCONTIGUOUS(filtersflipped)){
+        PyErr_SetString(PyExc_ValueError, "filtersflipped isn't contiguous");
+        %(fail)s;
+    }
+}
+filtersflipped_arr = (PyArrayObject*)filtersflipped;
+
+if(s=="valid") mode=0;
+else if(s=="full") mode=2;
+else {PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;};
+typenum = PyArray_ObjectType((PyObject*)%(img2d)s, 0);
+typenum_f = PyArray_ObjectType((PyObject*)%(filtersflipped)s, 0);
+if (typenum < 0) {PyErr_SetString(PyExc_ValueError, "Invalid type"); %(fail)s;}
+if (typenum != typenum_f) {PyErr_SetString(PyExc_ValueError, "Input types must match"); %(fail)s;}
+
+if (!img2d) %(fail)s;
+if (!filtersflipped) %(fail)s;
+if ((!%(z)s)
+  || *PyArray_DIMS(%(z)s)!=4
+  ||(%(z)s->dimensions[0] != %(self_bsize)s)
+  ||(%(z)s->dimensions[1] != %(self_nkern)s)
+  ||(%(z)s->dimensions[2] != dim_zz[0])
+  || (%(z)s->dimensions[3] != dim_zz[1])
+  )
+{
+  if (%(z)s) Py_DECREF(%(z)s);
+  npy_intp dims[4] = {0,0,0,0};
+  if(!dims) %(fail)s;
+  dims[0]=%(self_bsize)s;
+  dims[1]=%(self_nkern)s;
+  dims[2]=dim_zz[0];
+  dims[3]=dim_zz[1];
+  %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0);
+}else{
+  //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
+}
+
+int Os[2];
+if (mode == FULL) {Os[0] = dim_im[0]+dim_ker[0]-1; Os[1] = dim_im[1]+dim_ker[1]-1;}
+else {Os[0] = dim_im[0]-dim_ker[0]+1; Os[1] = dim_im[1]-dim_ker[1]+1;}
+for(int b=0;b< %(self_bsize)s ;b+=%(unloop_bsize)s){
+  for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
+
+    //assertions
+    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
+"""%d
+    ret+=my_dup("%(type)s * __restrict__ out%(unloop_iter)s=(%(type)s *)(PyArray_GETPTR2(%(z)s,b+%(unloop_iter)s,n_kern));\n")
+    ret+=my_dup("for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out%(unloop_iter)s[i] = 0;")
+    ret+="""
+    for(int stack_size=0;stack_size<%(self_imshp0)s;stack_size++){
+"""%d
+    ret+=my_dup("const %(type)s * __restrict__ in%(unloop_iter)d=(%(type)s *)(PyArray_GETPTR2(img2d,b+%(unloop_iter)s,stack_size));\n")
+    ret+="""
+      const %(type)s * __restrict__ hvals=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern,stack_size));
+
+      int new_m;
+
+      for (int m=0; m < Os[0]; m++) {
+        // Reposition index into input image based on requested output size
+        if (mode == FULL) new_m = m ;
+        else new_m = (m+dim_ker[0]-1);
+
+        for (int n=0; n < Os[1]; n++) {  // loop over columns 
+        """%d
+    ret+=my_dup("%(type)s sum%(unloop_iter)s=0;\n")
+    ret+="""
+
+          // Sum over kernel, if index into image is out of bounds
+          // fill with the value
+          for (int j=0; j < dim_ker[0]; j++) {
+            int ind0 = (new_m-j);
+
+            if(mode==FULL){
+              const %(type)s * idx_hvals=&hvals[j*dim_ker[1]];
+              if(ind0 < 0 || ind0 >= dim_im[0]){
+                if(fill_value!=0)
+                  for (int k=0; k < dim_ker[1]; k++) {
+"""%d
+    ret+=my_dup("sum%(unloop_iter)s+= idx_hvals[k] * fill_value;\n")
+    ret+="""
+                  }
+              }else{
+                //do the part where kernel is to the right of the img
+
+                int k=0,max_k=max((int)(n-dim_im[1])+1,0);
+                if(fill_value!=0){ 
+                
+                  for(k=0;k<max_k;k++){
+"""%d
+    ret+=my_dup("sum%(unloop_iter)s+= idx_hvals[k] * fill_value;\n")
+    ret+="""
+                  }
+                }else {k=max_k;}
+                
+                //do the part where the kernel is on the img
+                max_k=min(n+1,(int)dim_ker[1]);
+"""%d
+    ret+=my_dup("const %(type)s * idx_in%(unloop_iter)s=&in%(unloop_iter)s[ind0*dim_im[1]];\n")
+    ret+="""
+                for (int ind1=n-k; k<max_k; k++,ind1--) {
+"""%d
+    ret+=my_dup("sum%(unloop_iter)s+= idx_hvals[k] * idx_in%(unloop_iter)s[ind1];\n")
+    ret+="""
+                }
+                //do the part to the left of the img
+                if(fill_value!=0)
+                  for(;k<dim_ker[1];k++){
+"""%d
+    ret+=my_dup("sum%(unloop_iter)s+= idx_hvals[k] * fill_value;\n")
+    ret+="""
+                  }
+              }
+            }else{
+"""%d
+    ret+=my_dup("const %(type)s* idx_in%(unloop_iter)s=&in%(unloop_iter)s[ind0*dim_im[1]];\n")
+    ret+="""
+              const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
+              int new_n = (n+dim_ker[1]-1);
+
+              for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
+"""%d
+    ret+=my_dup("sum%(unloop_iter)s+=idx_hvals[k]*idx_in%(unloop_iter)s[last];\n")
+    ret+="""
+              }
+            }
+
+          }//for j
+"""%d
+    ret+=my_dup("out%(unloop_iter)s[m*dim_zz[1]+n] %(affectation)s sum%(unloop_iter)s;\n")
+#        ret+=my_dup("cout<<sum%(unloop_iter)s<<endl;")
+    ret+="""
+        }//for n
+      }//for m
+    }//for stack_size
+    if (0 && (mode==FULL)){
+      for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) 
+        std::cout << " " << out0[i];
+      std::cout << "\\n";
+    }
+  }//for n_kern
+}//for b
+Py_XDECREF(img2d);
+Py_XDECREF(filtersflipped);
+"""
+    return ret
