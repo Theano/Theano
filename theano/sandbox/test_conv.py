@@ -334,10 +334,10 @@ class TestConvOp(unittest.TestCase):
             
             validate=False# we don't validate the result to have it much faster!
 
-            unroll_batch = [0,1,2,4,5,10,20]
-            unroll_kern = [0,2,4,5,10,20]
-#            unroll_batch = [0,2,5]
-#            unroll_kern = [0,2,5]
+            unroll_batch = [1,2,4,5,10,20]
+            unroll_kern = [1,2,4,5,10,20]
+#            unroll_batch = [1,2,5]
+#            unroll_kern = [1,2,5]
             
             bsize = 20 # batch size
             imshp_start = (1,50,49)#un square shape to test more corner case.
@@ -353,9 +353,10 @@ class TestConvOp(unittest.TestCase):
         
             timing = N.zeros((len(unroll_batch),len(unroll_kern),3))
             t_b_k=[]
+            #calculate the timing with unrolling
             for unroll_b, n_b in zip(unroll_batch,range(len(unroll_batch))):
                 for unroll_k, n_k in zip(unroll_kern,range(len(unroll_kern))):
-                    t_b_k+=[str(unroll_b)+"/"+str(unroll_k)]
+                    t_b_k.append(str(unroll_b)+"/"+str(unroll_k))
                     tctot, tpytot, ntot=[],[],[]
                     for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
                         for ss, n_ss in zip(ssizes,range(len(ssizes))):
@@ -365,14 +366,24 @@ class TestConvOp(unittest.TestCase):
                             ntot+=[ntot_]
                     timing[n_b,n_k]=[sum(tctot), sum(tpytot), sum(ntot)]
 
+            #calculate the old timing
+            tctot,tpytot,ntot=0,0,0
+            for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                    tctot_, tpytot_, ntot_ = do_test(conv_mode, ss, unroll_batch=0, unroll_kern=0, validate=validate)
+                    tctot+=tctot_
+                    tpytot+=tpytot_
+                    ntot+=ntot_
+            print "old code timing %.3fs"%tctot
+
 #            print timing
             t=timing[:,:,0]#We select only the c timing.
-
+            print "timing for unrolled version"
             print t_b_k
             print t
             print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]
             print "min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()]
-            print "speedup %.3fx"% (t.max()/t.min())
+            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t.min(),tctot/t.min())
             return
 
         for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
@@ -387,9 +398,9 @@ class TestConvOp(unittest.TestCase):
         print 'c Theano(ConvOp) processing time: %.3fs'%sum(tctot),tctot
         print 'py Theano(ConvOp) processing time: %.3fs'%sum(tpytot),tpytot
         d=N.asarray(ntot)/tctot
-        print 'speed up c theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
+        print 'speed up c theano(ConvOp) vs convolve2d: %.3fx'%d.mean(),d
         d=N.asarray(ntot)/tpytot
-        print 'speed up py theano(ConvOp) vs convolve2d: %.3f'%d.mean(),d
+        print 'speed up py theano(ConvOp) vs convolve2d: %.3fx'%d.mean(),d
 
 
     def test_ConvOpGrad(self):
