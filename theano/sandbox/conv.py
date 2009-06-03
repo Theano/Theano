@@ -191,12 +191,14 @@ using namespace std;
         if node.inputs[0].type.dtype=="float32": d["type"]="float"
         elif node.inputs[0].type.dtype=="float64": d["type"]="double"
         else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
-        if self.unroll_kern>0 and self.unroll_batch>0:
-            print "return unrolled batch and kern code by",self.unroll_batch, self.unroll_kern
+        if self.unroll_batch>0 or self.unroll_kern>0:
+            if self.unroll_batch<0: self.unroll_batch=1
+            if self.unroll_kern<0: self.unroll_kern=1
+#            print "return unrolled batch and kern code by",self.unroll_batch, self.unroll_kern
             return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
                                                    self.unroll_kern)
 
-        #TODO: should we choose the unroll size automatically with the bigger divisor under 5? under 10?
+        #TODO: should we choose the unroll size automatically with the bigger divisor under 5? 
         if self.out_mode == 'valid':
             return _conv_op_code_valid_gemm % d
         else:
