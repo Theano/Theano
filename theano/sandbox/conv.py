@@ -635,6 +635,10 @@ def gen_conv_code_unroll_batch_kern(d,unroll_bsize=1, unroll_ksize=1):
     """ c_code for ConvOp that unroll the batch size loop
     """
     assert unroll_bsize>0 and unroll_ksize>0
+    if d.has_key("unroll_bsize") or d.has_key("unroll_ksize") or d.has_key("unroll_iter") or d.has_key("unroll_biter") or d.has_key("unroll_kiter"):
+        raise Exception("We can't use this dictionnary as we will overwrite some of its containt")
+    d=d.copy()
+        
     d["unroll_bsize"]=unroll_bsize
     d["unroll_ksize"]=unroll_ksize
     def my_dup(st,size):
