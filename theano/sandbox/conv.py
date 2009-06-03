@@ -187,7 +187,7 @@ using namespace std;
             return _conv_op_code_a % d
 
 def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
-              bias=None, mode='valid'):
+              bias=None, mode='valid', **d):
 
     # if imshp, is a tuple, images contains one input dimension
     nvis_dim = 1 if len(imshp)!=3 else imshp[0]
@@ -199,7 +199,7 @@ def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
     kernrshp   = tensor.as_tensor([nkern, nvis_dim] + list(kshp))
     kerntensor = tensor.reshape(kerns, kernrshp)
  
-    convop = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode=mode)
+    convop = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode=mode,**d)
     convout = convop(imtensor, kerntensor)
    
     if bias:
