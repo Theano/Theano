@@ -137,8 +137,25 @@ class ConvOp(Op):
             raise NotImplementedError('Only [full,valid] modes are currently supported.')
 
         filters = filters[:,:,::-1,::-1]
+        
+        #find good value for the unroll
+        un_b = self.unroll_batch
+        un_k = self.unroll_kern
+        if un_b!=0 and bsize%un_b!=0:
+            if bsize<un_b:
+                un_b = bsize
+            else:
+                un_b = 1
+                print "WARNING, can't determine a good unroll value for the batch in the gradient. Maybe you can optimize this!"
+        if un_k!=0 and nkern%un_k!=0:
+            if nkern<un_k:
+                un_k = nkern
+            else:
+                un_k = 1
+                print "WARNING, can't determine a good unroll value for the kerner in the gradient. Maybe you can optimize this!"
 
-        dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid')(img,filters)
+        dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
+                    unroll_batch=un_b, unroll_kern=un_k)(img,filters)
         if self.out_mode == 'valid':
             # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
             dw = tensor.DimShuffle(dw.broadcastable, (1,0,2,3))(dw)
