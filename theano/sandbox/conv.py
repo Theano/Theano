@@ -43,9 +43,17 @@ class ConvOp(Op):
         self.unroll_kern=unroll_kern
 
         if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
-            raise Exception("unroll_batch(%s) should be 0 or a multiple of bsize(%s)"%(str(self.unroll_batch),str(self.bsize)))
+            if self.bsize<self.unroll_batch:
+                self.unroll_batch = self.bsize
+            else:
+                self.unroll_batch=1
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a multiple of bsize(%s). We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize))
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
-            raise Exception("unroll_kern(%s) should be 0 or a multiple of nkern(%s)"%(str(self.unroll_kern),str(self.nkern)))
+            if self.nkern<self.unroll_kern:
+                self.unroll_kern = self.nkern
+            else:
+                self.unroll_kern=1
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
         if self.dx!=1 or self.dy!=1:
             print "Warning, dx!=1 or dy!=1 only supported in python mode!"
             raise NotImplementedError()
@@ -146,13 +154,13 @@ class ConvOp(Op):
                 un_b = bsize
             else:
                 un_b = 1
-                print "WARNING, can't determine a good unroll value for the batch in the gradient. Maybe you can optimize this!"
+                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the batch. Maybe you can optimize this!"
         if un_k!=0 and nkern%un_k!=0:
             if nkern<un_k:
                 un_k = nkern
             else:
                 un_k = 1
-                print "WARNING, can't determine a good unroll value for the kerner in the gradient. Maybe you can optimize this!"
+                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the kernel. Maybe you can optimize this!"
 
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
                     unroll_batch=un_b, unroll_kern=un_k)(img,filters)
