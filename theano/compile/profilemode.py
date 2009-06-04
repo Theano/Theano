@@ -38,10 +38,11 @@ class ProfileMode(Mode):
             super(ProfileMode, self).__init__(wrap_linker)
 
     def print_summary(self, n_apply_to_print=15, n_ops_to_print=20):
-        """ Print two summary that show where the time is spend. One show an Apply-wise summary, the other show an Op-wise summary.
+        """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
 
         The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there). 
-        The Op-wise summary print the execution time of all Apply nodes executing the same Op are grouped together and the total execution time per Op is shown (so if you use dot twice, you will see only one entry there corresponding to the sum of the time spent in each of them).
+        The Op-wise summary print the execution time of all Apply nodes executing the same Op are grouped together and the total execution time per Op is shown (so if you use dot twice, you will see only one entry there corresponding to the sum of the time spent in each of them). If two Op have different hash value, they will be separate.
+        The type-Op-wise summary group the result by type of op. So event if two Op have different hash value, they will be merged.
         param: n_apply_to_print the number of apply to print. Default 15.
         param: n_ops_to_print the number of ops to print. Default 20.
         """
@@ -61,23 +62,43 @@ class ProfileMode(Mode):
         tot=0
         for f,t,a in atimes[:n_apply_to_print]:
             tot+=t
-            print '   %.2f%%\t%.3fs\t%.3fs\t%i\t%s' % (f*100, tot, t, a[0], a[1])
+            print '   %.2f%%  %.3fs  %.3fs  %i  %s' % (f*100, tot, t, a[0], a[1])
         print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(atimes)-n_apply_to_print),
                   sum(f for f, t, a in atimes[n_apply_to_print:])*100,
                   sum(t for f, t, a in atimes[n_apply_to_print:]))
 
 
-        print 'Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <Op name>'
+        print '\nOp-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <Op name>'
         otimes = [(t/local_time, t, a, self.op_cimpl[a]) for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         tot=0
         for f,t,a,ci in otimes[:n_ops_to_print]:
             tot+=t
-            print '   %.2f%%\t%.3fs%.3fs\t%s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+            print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci in otimes[n_ops_to_print:])*100,
                   sum(t for f, t, a, ci in otimes[n_ops_to_print:]))
+        print '(*) Op is running a c implementation'
+
+
+        sop_time={}
+        for a,t in op_time.items():
+            sop_time.setdefault(type(a),0)
+            sop_time[type(a)]+=t
+
+        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <Op name>'
+        sotimes = [(t/local_time, t, a) for a, t in sop_time.items()]
+        sotimes.sort()
+        sotimes.reverse()
+        tot=0
+        for f,t,a in sotimes[:n_ops_to_print]:
+            tot+=t
+            print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+        print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
+                %(max(0, len(sotimes)-n_ops_to_print),
+                  sum(f for f, t, a in sotimes[n_ops_to_print:])*100,
+                  sum(t for f, t, a in sotimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
