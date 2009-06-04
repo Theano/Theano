@@ -37,7 +37,14 @@ class ProfileMode(Mode):
         else:
             super(ProfileMode, self).__init__(wrap_linker)
 
-    def print_summary(self):
+    def print_summary(self, n_apply_to_print=15, n_ops_to_print=20):
+        """ Print two summary that show where the time is spend. One show an Apply-wise summary, the other show an Op-wise summary.
+
+        The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there). 
+        The Op-wise summary print the execution time of all Apply nodes executing the same Op are grouped together and the total execution time per Op is shown (so if you use dot twice, you will see only one entry there corresponding to the sum of the time spent in each of them).
+        param: n_apply_to_print the number of apply to print. Default 15.
+        param: n_ops_to_print the number of ops to print. Default 20.
+        """
         local_time = self.local_time[0]
         apply_time = self.apply_time
         op_time = self.op_time
@@ -46,25 +53,31 @@ class ProfileMode(Mode):
         print 'ProfileMode.print_summary()'
         print '---------------------------'
         print ''
-        print 'local_time', local_time, '(Time spent running thunks)'
-        print 'Apply-wise summary: <fraction of local_time spent at this position> (<Apply position>, <Apply Op name>)'
-        atimes = [(t/local_time, (a[0], str(a[1]))) for a, t in apply_time.items()]
+        print 'local_time %fs (Time spent running thunks)'% local_time
+        print 'Apply-wise summary: <% of local_time spent at this position> <total of local_time spent at this position> (<Apply position>, <Apply Op name>)'
+        atimes = [(t/local_time, t, (a[0], str(a[1]))) for a, t in apply_time.items()]
         atimes.sort()
         atimes.reverse()
-        for t,a in atimes[:15]:
-            print '\t%.3f\t%i\t%s' % (t, a[0], a[1])
-        print '   ... (remaining %i Apply instances account for %.2f of the runtime)'\
-                %(max(0, len(atimes)-15), sum(t for t, a in atimes[15:]))
+        tot=0
+        for f,t,a in atimes[:n_apply_to_print]:
+            tot+=t
+            print '   %.2f%%\t%.3fs\t%.3fs\t%i\t%s' % (f*100, tot, t, a[0], a[1])
+        print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
+                %(max(0, len(atimes)-n_apply_to_print),
+                  sum(f for f, t, a in atimes[n_apply_to_print:])*100,
+                  sum(t for f, t, a in atimes[n_apply_to_print:]))
 
 
-        n_ops_to_print = 20
-        print 'Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>'
-        otimes = [(t/local_time, a, self.op_cimpl[a]) for a, t in op_time.items()]
+        print 'Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <Op name>'
+        otimes = [(t/local_time, t, a, self.op_cimpl[a]) for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
-        for t,a,ci in otimes[:n_ops_to_print]:
-            print '\t%.3f\t%s %s' % (t, '*' if ci else ' ', a)
-        print '   ... (remaining %i Ops account for %.2f of the runtime)'\
-                %(max(0, len(otimes)-n_ops_to_print), sum(t for t, a, ci in
-                    otimes[n_ops_to_print:]))
+        tot=0
+        for f,t,a,ci in otimes[:n_ops_to_print]:
+            tot+=t
+            print '   %.2f%%\t%.3fs%.3fs\t%s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+        print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
+                %(max(0, len(otimes)-n_ops_to_print),
+                  sum(f for f, t, a, ci in otimes[n_ops_to_print:])*100,
+                  sum(t for f, t, a, ci in otimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
