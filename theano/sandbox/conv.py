@@ -8,7 +8,7 @@ def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
     s = -1 if mode=='valid' else 1
     inshp, kshp = N.array(inshp), N.array(kshp)
     return  N.int64(N.ceil((inshp[1:] + s*kshp - s*1)/\
-            N.array([dy,dx], dtype='float')))
+            N.array([dx,dy], dtype='float')))
 
 class ConvOp(Op):
     """
@@ -55,9 +55,12 @@ class ConvOp(Op):
             else:
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
                 self.unroll_kern=1
-        if self.dx!=1 or self.dy!=1:
-            print "Warning, dx!=1 or dy!=1 only supported in python mode!"
-            raise NotImplementedError()
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
+        if (self.dx!=1 or self.dy!=1) and self.unroll_batch==0 and self.unroll_kern==0:
+            print "WARNING: dx!=1 or dy!=1 is only supported with unrolling! We will unroll by 1"
+            self.unroll_kern=1
+            self.unroll_batch=1
+
         self.outshp = getFilterOutShp(self.imshp, kshp, (dx,dy), output_mode)
         self.out_mode = output_mode
         if not self.out_mode in ["valid", "full"]:
@@ -132,6 +135,8 @@ class ConvOp(Op):
         * will crash if filter the same size as input image
         """
 
+        assert self.dx==1 and self.dy==1#We didn't implemented the grad for that case. Can this be done?
+        
         ####### Determine gradient on kernels ########
         if inputs.ndim == 3:
             inputs = tensor.shape_padleft(inputs,1)
@@ -846,8 +851,12 @@ if ((!%(z)s)
 }
 
 int Os[2];
-if (mode == FULL) {Os[0] = dim_im[0]+dim_ker[0]-1; Os[1] = dim_im[1]+dim_ker[1]-1;}
-else {Os[0] = dim_im[0]-dim_ker[0]+1; Os[1] = dim_im[1]-dim_ker[1]+1;}
+Os[0]=%(self_outshp0)s;
+Os[1]=%(self_outshp1)s;
+//I keep the formula to calculte Os in case we need it in the futur.
+//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
+//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
+
 for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
 
@@ -868,12 +877,14 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
 
       int new_m;
 
-      for (int m=0; m < Os[0]; m++) {
+      for (int iter_m=0; iter_m < Os[0]; iter_m++) {
         // Reposition index into input image based on requested output size
-        if (mode == FULL) new_m = m ;
-        else new_m = (m+dim_ker[0]-1);
+        int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
+        if (mode == FULL) new_m = pos_m ;
+        else new_m = (pos_m+dim_ker[0]-1);
 
-        for (int n=0; n < Os[1]; n++) {  // loop over columns 
+        for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns 
+          int pos_n=iter_n*%(self_dy)s;
         """%d
     ret+=my_dup("%(type)s sum%(unroll_iter)s=0;", unroll_bsize*unroll_ksize)
     ret+="""
@@ -897,7 +908,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
               }else{
                 //do the part where kernel is to the right of the img
 
-                int k=0,max_k=max((int)(n-dim_im[1])+1,0);
+                int k=0,max_k=max((int)(pos_n-dim_im[1])+1,0);
                 if(fill_value!=0){ 
                 
                   for(k=0;k<max_k;k++){
@@ -908,11 +919,11 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
                 }else {k=max_k;}
                 
                 //do the part where the kernel is on the img
-                max_k=min(n+1,(int)dim_ker[1]);
+                max_k=min(pos_n+1,(int)dim_ker[1]);
 """%d
     ret+=my_dup("const %(type)s * idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
     ret+="""
-                for (int ind1=n-k; k<max_k; k++,ind1--) {
+                for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
 
 """%d
     ret+=my_dup2("sum%(unroll_iter)s+= idx_hvals%(unroll_kiter)s[k] * idx_in%(unroll_biter)s[ind1];")
@@ -931,7 +942,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
     ret+=my_dup("const %(type)s* idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
     ret+=my_dup("const %(type)s* idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker[1]];",unroll_ksize)
     ret+="""
-              int new_n = (n+dim_ker[1]-1);
+              int new_n = (pos_n+dim_ker[1]-1);
 
               for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
 """%d
@@ -942,7 +953,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
 
           }//for j
 """%d
-    ret+=my_dup("out%(unroll_iter)s[m*dim_zz[1]+n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize*unroll_ksize)
+    ret+=my_dup("out%(unroll_iter)s[iter_m*dim_zz[1]+iter_n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize*unroll_ksize)
     ret+="""
         }//for n
       }//for m
