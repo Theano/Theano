@@ -85,16 +85,20 @@ class ProfileMode(Mode):
 
 
         sop_time={}
+        sop_c={}
         for a,t in op_time.items():
             sop_time.setdefault(type(a),0)
             sop_time[type(a)]+=t
-
+            if sop_c.has_key(type(a)):
+                assert sop_c[type(a)]==self.op_cimpl[a]
+            else:
+                sop_c[type(a)]=self.op_cimpl[a]
         print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <Op name>'
-        sotimes = [(t/local_time, t, a) for a, t in sop_time.items()]
+        sotimes = [(t/local_time, t, a, sop_c[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
         tot=0
-        for f,t,a in sotimes[:n_ops_to_print]:
+        for f,t,a,ci in sotimes[:n_ops_to_print]:
             tot+=t
             print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
