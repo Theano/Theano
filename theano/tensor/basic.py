@@ -2486,7 +2486,7 @@ class numeric_grad:
         return numpy.max(errs), numpy.argmax(errs)
 
 
-def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None):
+def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast_to_output_type=False):
     """ WRITEME
     
     Raises an Exception if the difference between the analytic gradient and
@@ -2537,8 +2537,12 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None):
 
         o_fn = function(tensor_pt, o_output)
         o_fn_out = o_fn(*[p.copy() for p in pt])
-
+        
         random_projection = rng.rand(*o_fn_out.shape)
+        if cast_to_output_type:
+            random_projection = numpy.array(random_projection,
+                                            dtype=o_output.dtype)
+
         t_r = as_tensor_variable(random_projection)
 
         #random projection of o onto t_r
@@ -2546,6 +2550,10 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None):
         cost_fn = function(tensor_pt, cost)
 
         num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
+
+        g_cost = as_tensor_variable(1.0,name='g_cost')
+        if cast_to_output_type:
+            g_cost = cast(g_cost, o_output.dtype)
 
         symbolic_grad = grad(cost, tensor_pt,as_tensor_variable(1.0,name='g_cost'))
 
