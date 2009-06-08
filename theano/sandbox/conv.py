@@ -254,7 +254,8 @@ def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
     kernrshp   = tensor.as_tensor([nkern, nvis_dim] + list(kshp))
     kerntensor = tensor.reshape(kerns, kernrshp)
  
-    convop = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode=mode,**d)
+    convop = ConvOp(imshp, kshp, nkern, bsize, step[0], step[1],
+                    output_mode=mode, **d)
     convout = convop(imtensor, kerntensor)
    
     if bias:
