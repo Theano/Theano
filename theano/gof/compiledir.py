@@ -30,7 +30,11 @@ def set_compiledir(path=None):
         else:
             platform_id = platform.platform() + '-' + platform.processor()
             platform_id = re.sub("[\(\)\s]+", "_", platform_id)
-            path = os.path.join(os.getenv('HOME'), '.theano', 'compiledir_'+platform_id)
+            if os.getenv('THEANO_BASE_COMPILEDIR'):
+                base = os.getenv('THEANO_BASE_COMPILEDIR')
+            else:
+                base = os.path.join(os.getenv('HOME'),'.theano')
+            path = os.path.join(base, 'compiledir_'+platform_id)
 
     if not os.access(path, os.R_OK | os.W_OK):
         try:
