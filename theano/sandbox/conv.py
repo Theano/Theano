@@ -17,7 +17,8 @@ class ConvOp(Op):
     """
 
 
-    __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode']
+    
+    __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode', 'unroll_batch', 'unroll_kern']#FRED: I added both unroll as we don't want ops to be merged if they have different value. Otherwise, the tests for the unroll don't work correctly.
     """These attributes uniquely identify the behaviour of this op for given inputs"""
 
     def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid', unroll_batch=0, unroll_kern=0):
