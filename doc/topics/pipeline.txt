@@ -102,6 +102,7 @@ case if ``borrow`` was True, the thunk would be allowed to reuse (or
     which by default is set to ``$HOME/.theano/compiledir_xxx``, where
     ``xxx`` identifies the platform. It may be manually set to a different
     location either by setting the ``THEANO_COMPILEDIR`` environment variable,
+    the ``THEANO_BASE_COMPILEDIR`` environment variable
     or by calling ``theano.gof.compiledir.set_compiledir(..)`` within your
     Python script.
 
