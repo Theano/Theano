@@ -88,7 +88,12 @@ class ConvOp(Op):
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
         outdim = kerns.ndim
-        output = tensor.tensor(dtype=inputs.type.dtype, broadcastable=[False]*outdim);
+        print inputs.type.dtype, kerns.type.dtype
+        if inputs.type.dtype != kerns.type.dtype:
+            raise Exception("The image and the kernel must have the same type.")
+        output = tensor.tensor(dtype=inputs.type.dtype,
+                               broadcastable=[False]*outdim, 
+                               name="ConvOp_Output");
 
         return gof.Apply(self, [inputs, kerns], [output])
 
