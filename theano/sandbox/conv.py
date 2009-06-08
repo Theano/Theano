@@ -62,7 +62,9 @@ class ConvOp(Op):
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented"%self.out_mode)
        
-        assert (self.outshp >= 0).all()
+        if not (self.outshp > 0).all():
+            raise Exception("Bad size for the output shape. Verify that imshp(%s) and kshp(%s) are valid"%(self.imshp,self.kshp))
+
         hashval = hash(type(self))
         for a in self.__attrnames:
             hashval = hashval ^ hash(getattr(self, a))
