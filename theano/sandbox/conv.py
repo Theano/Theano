@@ -205,6 +205,7 @@ using namespace std;
         d["self_nkern"]=self.nkern
         d["self_dx"]=self.dx
         d["self_dy"]=self.dy
+        d["mode"]=self.out_mode.upper()
         d["self_outshp0"]=self.outshp[0]
         d["self_outshp1"]=self.outshp[1]
         d["self_imshp0"]=self.imshp[0]
@@ -254,7 +255,8 @@ def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
 
 
 _conv_op_code_a = """
-int mode=-1,typenum=0, typenum_f=0;
+const int mode=%(mode)s;
+int typenum=0, typenum_f=0;
 PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
 const %(type)s fill_value = 0;
 
@@ -275,7 +277,6 @@ npy_intp kerns_dim[4]={1,1,0,0};
 kerns_shape.ptr=kerns_dim;
 kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
-string s="%(self_out_mode)s";
 
 if(%(img2d)s->nd==2){
   img2d_dim[3]=%(img2d)s->dimensions[1];
@@ -336,9 +337,9 @@ if ((filtersflipped_arr->strides[3] != sizeof(%(type)s))
 }
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 
-if(s=="valid") mode=0;
-else if(s=="full") mode=2;
-else {PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;};
+if(mode != VALID && mode != FULL){
+  PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;
+}
 typenum = PyArray_ObjectType((PyObject*)%(img2d)s, 0);
 typenum_f = PyArray_ObjectType((PyObject*)%(filtersflipped)s, 0);
 if (typenum < 0) {PyErr_SetString(PyExc_ValueError, "Invalid type"); %(fail)s;}
@@ -461,7 +462,7 @@ Py_XDECREF(filtersflipped);
 #########
 
 _conv_op_code_valid_gemm = """
-int mode=-1,typenum=0, typenum_f=0;
+int typenum=0, typenum_f=0;
 PyArrayObject *ain1=NULL, *ain2=NULL, *img2d_arr=NULL;
 const int NKERN = %(self_nkern)s;
 
@@ -702,7 +703,8 @@ def gen_conv_code_unroll_batch_kern(d,unroll_bsize=1, unroll_ksize=1):
                 s+=st%d
         return s+"\n"
     ret = """
-int mode=-1,typenum=0, typenum_f=0;
+const int mode=%(mode)s;
+int typenum=0, typenum_f=0;
 PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
 const %(type)s fill_value = 0;
 
@@ -723,7 +725,6 @@ npy_intp kerns_dim[4]={1,1,0,0};
 kerns_shape.ptr=kerns_dim;
 kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
-string s="%(self_out_mode)s";
 
 if(%(img2d)s->nd==2){
   img2d_dim[3]=%(img2d)s->dimensions[1];
@@ -784,9 +785,9 @@ if ((filtersflipped_arr->strides[3] != sizeof(%(type)s))
 }
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 
-if(s=="valid") mode=0;
-else if(s=="full") mode=2;
-else {PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;};
+if(mode != VALID && mode != FULL){
+  PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;
+}
 typenum = PyArray_ObjectType((PyObject*)%(img2d)s, 0);
 typenum_f = PyArray_ObjectType((PyObject*)%(filtersflipped)s, 0);
 if (typenum < 0) {PyErr_SetString(PyExc_ValueError, "Invalid type"); %(fail)s;}
@@ -911,9 +912,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
 
           }//for j
 """%d
-#    ret+=my_dup("out%(unroll_iter)s[m*dim_zz[1]+n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize)
     ret+=my_dup("out%(unroll_iter)s[m*dim_zz[1]+n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize*unroll_ksize)
-#        ret+=my_dup("cout<<sum%(unroll_iter)s<<endl;",unroll_bsize)
     ret+="""
         }//for n
       }//for m
