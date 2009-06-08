@@ -220,8 +220,8 @@ using namespace std;
         elif node.inputs[0].type.dtype=="float64": d["type"]="double"
         else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
         if self.unroll_batch>0 or self.unroll_kern>0:
-            if self.unroll_batch<0: self.unroll_batch=1
-            if self.unroll_kern<0: self.unroll_kern=1
+            if self.unroll_batch<=0: self.unroll_batch=1
+            if self.unroll_kern<=0: self.unroll_kern=1
 #            print "return unrolled batch and kern code by",self.unroll_batch, self.unroll_kern
             return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
                                                    self.unroll_kern)
