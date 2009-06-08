@@ -208,6 +208,7 @@ using namespace std;
     def c_code(self, node, name, (img2d, filtersflipped), (z, ), sub):
         if node.inputs[0].type.dtype != node.inputs[1].type.dtype:
             raise NotImplementedError()
+        assert node.inputs[0].type.dtype == node.inputs[1].type.dtype
         d=locals()
         d.update(sub)
         d["self_out_mode"]=self.out_mode
