@@ -2555,7 +2555,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
         if cast_to_output_type:
             g_cost = cast(g_cost, o_output.dtype)
 
-        symbolic_grad = grad(cost, tensor_pt,as_tensor_variable(1.0,name='g_cost'))
+        symbolic_grad = grad(cost, tensor_pt, g_cost)
 
         grad_fn = function(tensor_pt, symbolic_grad)
 
