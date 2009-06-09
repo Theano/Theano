@@ -186,7 +186,8 @@ class ConvOp(Op):
         nkern = self.imshp[0]
         imshp = N.hstack((self.nkern,self.outshp))
         din = ConvOp(imshp, self.kshp, nkern, self.bsize, 
-                     1,1, output_mode=mode)(gz,filters)
+                     1,1, output_mode=mode,
+                     unroll_batch=un_b, unroll_kern=un_k)(gz,filters)
 
         return [din, dw]
 
