@@ -224,15 +224,19 @@ class DimShuffle(Op):
         for i in xrange(nd_out-2,-1, -1):
             strides_statements.append("if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * dimensions[%(i)s+1]"%dict(i=str(i)))
 
+        #
+        # PyObject* PyArray_New(PyTypeObject* subtype, int nd, npy_intp* dims, int type_num,
+        #                       npy_intp* strides, void* data, int itemsize, int flags, PyObject* obj)
+        #
         close_bracket = [
                 #create a new array, 
                 ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
                             '' + str(nd_out) + ', dimensions, '
                             'PyArray_TYPE(%(basename)s), strides, '
-                            '%(basename)s->data, %(basename)s->descr->elsize, '
+                            '%(basename)s->data, PyArray_ITEMSIZE(%(basename)s), '
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
-                            'PyArray_ISWRITEABLE(%(basename)s), NULL)'),
+                            '(NPY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
