@@ -68,7 +68,38 @@ def get_impact(root, view_o):
     return impact
 
 class DestroyHandlerHelper2(toolbox.Bookkeeper):
-    """WRITEME"""
+    """
+    The DestroyHandlerHelper2 class detects when a graph is impossible to evaluate because of
+    aliasing and destructive operations.
+
+    Several data structures are used to do this.
+
+    When an Op uses its view_map property to declare that an output may be aliased
+    to an input, then if that output is destroyed, the input is also considering to be
+    destroyed.  The view_maps of several Ops can feed into one another and form a directed graph. 
+    The consequence of destroying any variable in such a graph is that all variables in the graph
+    must be considered to be destroyed, because they could all be refering to the same
+    underlying storage.  In the current implementation, that graph is a tree, and the root of
+    that tree is called the foundation.  The `droot` property of this class maps from every
+    graph variable to its foundation.  The `impact` property maps backward from the foundation
+    to all of the variables that depend on it. When any variable is destroyed, this class marks
+    the foundation of that variable as being destroyed, with the `root_destroyer` property.
+    """
+
+    droot = {} 
+    """
+    destroyed view + nonview variables -> foundation
+    """
+
+    impact = {}
+    """
+    destroyed nonview variable -> it + all views of it
+    """
+
+    root_destroyer = {}
+    """
+    root -> destroyer apply
+    """
 
     def __init__(self, do_imports_on_attach=True):
         self.env = None
@@ -94,8 +125,8 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         self.env = env
         self.destroyers = set() #set of Apply instances with non-null destroy_map
-        self.view_i = {}  # variable -> variable
-        self.view_o = {}  # variable -> set of variables
+        self.view_i = {}  # variable -> variable used in calculation
+        self.view_o = {}  # variable -> set of variables that use this one as a direct input
         #clients: how many times does an apply use a given variable
         self.clients = {} # variable -> apply -> ninputs  
         self.stale_droot = True
