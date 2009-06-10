@@ -144,12 +144,12 @@ class ConvOp(Op):
             (img, filters) = (newin, newgz)
             (bsize, nkern) = (self.imshp[0], self.nkern)
             imshp = N.hstack((self.bsize, self.imshp[1:]))
-            kshp  = self.outshp[::-1]
+            kshp  = self.outshp
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
             (bsize, nkern) = (self.nkern, self.imshp[0])
             imshp = N.hstack((self.bsize, self.outshp))
-            kshp  = self.imshp[1:][::-1]
+            kshp  = self.imshp[1:]
         else:
             raise NotImplementedError('Only [full,valid] modes are currently supported.')
 
