@@ -232,7 +232,7 @@ class DimShuffle(Op):
                             '%(basename)s->data, %(basename)s->descr->elsize, '
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
-                            'PyArray_ISWRITEABLE(%(basename)s), NULL)'),
+                            'PyArray_ISWRITEABLE(%(basename)s) ? NPY_WRITEABLE : 0, NULL)'),
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
