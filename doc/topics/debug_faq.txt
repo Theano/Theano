@@ -101,7 +101,7 @@ Check out this one:
             wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()], [print_eval])
             super(PrintEverythingMode, self).__init__(wrap_linker, optimizer='fast_run')
 
-When you use ``mode=PrintEverythingMode`` as the mode for Function or Method,
+When you use ``mode=PrintEverythingMode()`` as the mode for Function or Method,
 then you should see a lot of output.  Every Apply node will be printed out,
 along with its position in the graph, the arguments to the ``perform`` or
 ``c_code`` and the output it computed.  Admittedly, this is a huge amount of
