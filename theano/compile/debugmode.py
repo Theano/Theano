@@ -891,9 +891,11 @@ class _Linker(gof.link.LocalLinker):
                             if not r.type.is_valid_value(storage_map[r][0]):
                                 raise InvalidValueError(r, storage_map[r][0])
 
-                            # check for stride correctness if we're doing that
-                            _check_strides_match(r_vals[r], storage_map[r][0],
-                                self.maker.mode.require_matching_strides, node.op)
+                            if thunk_py:
+                                assert r in r_vals #because we put it in during the thunk_py branch
+                                # check for stride correctness (may raise exception)
+                                _check_strides_match(r_vals[r], storage_map[r][0],
+                                    self.maker.mode.require_matching_strides, node.op)
 
                         _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
                                 clobber_dr_vals=False)
