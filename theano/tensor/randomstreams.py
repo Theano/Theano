@@ -109,15 +109,20 @@ class RandomStreams(Component):
     def allocate(self, memo):
         """override `Component.allocate` """
         for old_r, new_r in self.random_state_variables:
-            assert old_r not in memo
-            memo[old_r] = In(old_r, 
-                    value=Container(old_r, storage=[None]),
-                    update=new_r,
-                    mutable=True)
+            if old_r in memo:
+                assert memo[old_r].update is new_r
+            else:
+                memo[old_r] = In(old_r, 
+                        value=Container(old_r, storage=[None]),
+                        update=new_r,
+                        mutable=True)
 
     def build(self, mode, memo):
         """override `Component.build` """
-        return RandomStreamsInstance(self, memo, self.default_instance_seed)
+        if self not in memo:
+            print 'creating RandomStreamsInstance'
+            memo[self] = RandomStreamsInstance(self, memo, self.default_instance_seed)
+        return memo[self]
 
     def gen(self, op, *args, **kwargs):
         """Create a new random stream in this container.

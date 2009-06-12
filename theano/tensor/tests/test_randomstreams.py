@@ -122,6 +122,22 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
 
+    def test_multiple(self):
+        M = Module()
+        M.random = RandomStreams(234)
+        out = M.random.uniform((2,2))
+        M.m2 = Module()
+        M.m2.random = M.random
+        out2 = M.m2.random.uniform((2,2))
+        M.fn = Method([], out)
+        M.m2.fn2 = Method([], out2)
+        m = M.make()
+        m.random.initialize()
+        m.m2.initialize()
+
+        assert m.random is m.m2.random
+
+
 
 if __name__ == '__main__':
     from theano.tests import main
