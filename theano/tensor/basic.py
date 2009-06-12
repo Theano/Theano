@@ -783,14 +783,15 @@ def _scal_elemwise(symbol):
     """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
     symbolname = symbol.__name__
     inplace = symbolname.endswith('_inplace')
+    n="Elemwise{%s,%s}"%(symbolname,"inplace" if inplace else "no_inplace")
 
     if inplace:
         scalar_op = getattr(scal, symbolname[:-len('_inplace')])
         inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-        rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=symbolname)
+        rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=n)
     else:
         scalar_op = getattr(scal, symbolname)
-        rval = elemwise.Elemwise(scalar_op, name=symbolname)
+        rval = elemwise.Elemwise(scalar_op, name=n)
 
     if getattr(symbol, '__doc__', False):
         rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
