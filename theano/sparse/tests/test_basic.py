@@ -260,7 +260,7 @@ class test_structureddot(unittest.TestCase):
         images = tensor.Tensor(dtype='float32', broadcastable=[False, False])('images')
 
         cscmat = CSC(kerns, spmat.indices[:spmat.size], spmat.indptr, spmat.shape)
-        f = theano.function([kerns, images], structured_dot(cscmat, images.T))
+        f = theano.function([kerns, images], structured_dot(cscmat, images.T), mode='FAST_RUN')
 
         sdcscpresent = False
         for node in f.maker.env.toposort():
