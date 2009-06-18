@@ -30,7 +30,7 @@ _mtypes = [sparse.csc_matrix, sparse.csr_matrix]
 _mtype_to_str = {sparse.csc_matrix: "csc", sparse.csr_matrix: "csr"}
 
 import scipy
-if scipy.__version__ != '0.7.0':
+if not scipy.__version__.startswith('0.7.'):
     sys.stderr.write("WARNING: scipy version = %s. We prefer version >=0.7.0 because it has bugs fixed in the sparse matrix code.\n" % scipy.__version__)
 
 def _is_sparse_variable(x):
