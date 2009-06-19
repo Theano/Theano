@@ -304,7 +304,7 @@ class TestConvOp(unittest.TestCase):
     def test_multilayer_conv(self):
         # fixed parameters
         bsizes = [6,6] # batch size
-        imshp_starts = [(1,28,28),(1,4,4)]
+        imshp_starts = [(1,13,14),(1,4,3)]
         kshpss = ([[5,6],[7,4]],[[2,2],[2,2]])
         nkernss = [[20,40],[2,2]] # per output pixel
         ssizess = [[(1,1),(2,2)],[(1,1),(2,2)]]
