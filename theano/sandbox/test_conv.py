@@ -304,6 +304,10 @@ class TestConvOp(unittest.TestCase):
         print 'speed up ConvOp vs convolve2d: %.3f'%d.mean(),d
 
     def test_multilayer_conv(self):
+        print '\n\n*************************************************'
+        print '           TEST MULTILAYER CONVOLUTION' 
+        print '*************************************************'
+
         # fixed parameters
         # test multiple configuration at the same time
         bsizes = [6,6] # batch size
@@ -415,47 +419,13 @@ class TestConvOp(unittest.TestCase):
 
 
     def test_ConvOpGrad(self):
-<<<<<<< /u/bastienf/repos/Theano.ConvOp.dx/theano/sandbox/test_conv.py
         """
         test the gradient in float and double
         """
-=======
-        nkern = 3
-        bsize = 2
-        imgs  = T.dmatrix('imgs')
-        kerns = T.dmatrix('kerns')
-        kshps = [(3,3), (5,5)]
+        print '\n\n*************************************************'
+        print '           TEST ConvOp.grad' 
+        print '*************************************************'
 
-        for mode in 'valid', 'full':
-
-            for imshp in (5,5),(2,3,3),(3,6,6): # (12,10), (3,12,11):
-                # 'full' mode should support kernels bigger than the input
-                if mode == 'valid' and (kshps[0] > imshp[1]):
-                    continue
-
-                visdim = 1 if len(imshp)!=3 else imshp[0]
-                for kshp in kshps:
-                    imgvals = N.random.random(N.hstack((bsize,imshp)))
-#                    print 'imgvals.shape = ', imgvals.shape
-                    imgvals = imgvals.reshape(bsize,-1)
-
-                    if visdim == 1: 
-                        kernvals = N.random.rand(nkern,kshp[0],kshp[1])
-                    else:
-                        kernvals = N.random.rand(nkern,visdim,kshp[0],kshp[1])
-                    kernvals = kernvals.reshape(nkern,-1)
-
-                    def testf(imgs, kerns):
-                        out, outshp = convolve2(kerns, kshp, nkern, imgs, 
-                                                   imshp, bsize, mode=mode)
-                        return out
-
-                    try:
-                        utt.verify_grad(testf, [imgvals, kernvals])
-                    except NotImplementedError, e:
-                        print e
-
-    def test_ConvOpGrad32(self):
         nkern = 4
         bsize = 3
         types = ["float32", "float64"]
