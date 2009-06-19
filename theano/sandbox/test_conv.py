@@ -427,7 +427,7 @@ class TestConvOp(unittest.TestCase):
         bsize = 3
         types = ["float32", "float64"]
         kshps = [(5,5), (6,7)]
-        imshps = [(1,5,5), (2,8,8), (3,8,7)]
+        imshps = [(1,5,5), (2,8,7)]
         modes = ['valid', 'full']
         unroll_batch=[0,1,3]
         unroll_kern=[0,1,4]
