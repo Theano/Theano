@@ -44,17 +44,17 @@ class ConvOp(Op):
         self.unroll_kern=unroll_kern
 
         if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
-            if self.bsize<self.unroll_batch:
+            if self.bsize<=self.unroll_batch:
                 self.unroll_batch = self.bsize
             else:
-                self.unroll_batch=1
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a multiple of bsize(%s). We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize))
+                self.unroll_batch=1
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
-            if self.nkern<self.unroll_kern:
+            if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern
             else:
-                self.unroll_kern=1
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
+                self.unroll_kern=1
         if self.dx!=1 or self.dy!=1:
             print "Warning, dx!=1 or dy!=1 only supported in python mode!"
             raise NotImplementedError()
@@ -145,25 +145,27 @@ class ConvOp(Op):
             (bsize, nkern) = (self.imshp[0], self.nkern)
             imshp = N.hstack((self.bsize, self.imshp[1:]))
             kshp  = self.outshp
+            un_b = self.unroll_batch 
+            un_k = self.unroll_kern
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
             (bsize, nkern) = (self.nkern, self.imshp[0])
             imshp = N.hstack((self.bsize, self.outshp))
             kshp  = self.imshp[1:]
+            un_b = self.unroll_kern
+            un_k = self.unroll_batch
         else:
             raise NotImplementedError('Only [full,valid] modes are currently supported.')
 
         filters = filters[:,:,::-1,::-1]
         
         #find good value for the unroll
-        un_b = self.unroll_batch
-        un_k = self.unroll_kern
         if un_b!=0 and bsize%un_b!=0:
             if bsize<un_b:
                 un_b = bsize
             else:
                 un_b = 1
-                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the batch. Maybe you can optimize this!"
+                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the batch. Maybe you can optimize this!", bsize, un_b, self.unroll_batch, self.unroll_kern
         if un_k!=0 and nkern%un_k!=0:
             if nkern<un_k:
                 un_k = nkern
