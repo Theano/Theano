@@ -311,10 +311,10 @@ class TestConvOp(unittest.TestCase):
         # fixed parameters
         # test multiple configuration at the same time
         bsizes = [6,6] # batch size
-        imshp_starts = [(1,13,14),(1,4,3)]
+        imshp_starts = [(1,13,14),(1,4,5)]
         kshpss = ([[5,6],[7,4]],[[2,2],[2,2]])
         nkernss = [[20,40],[2,2]] # per output pixel
-        ssizess = [[(1,1),(2,2)],[(1,1),(2,2)]]
+        ssizess = [[(1,1),(1,2)],[(1,1),(2,2)]]
         convmodes = ['valid','full']
         do_convolve2=True
         unroll = [(0,0),(1,1),(2,2),(3,2)]#(batch,kern)
@@ -416,7 +416,6 @@ class TestConvOp(unittest.TestCase):
         print 'speed up c theano(ConvOp) vs convolve2d: %.3fx'%d.mean(),d
         d=N.asarray(ntot)/tpytot
         print 'speed up py theano(ConvOp) vs convolve2d: %.3fx'%d.mean(),d
-
 
     def test_ConvOpGrad(self):
         """

@@ -55,12 +55,8 @@ class ConvOp(Op):
             else:
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
                 self.unroll_kern=1
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
-        if (self.dx!=1 or self.dy!=1) and self.unroll_batch==0 and self.unroll_kern==0:
-            print "WARNING: dx!=1 or dy!=1 is only supported with unrolling! We will unroll by 1"
-            self.unroll_kern=1
-            self.unroll_batch=1
-
+        if (self.dx!=1 or self.dy!=1):
+            print "WARNING: dx(%d)!=1 or dy(%d)!=1. The gradient is not implemented for those case."
         self.outshp = getFilterOutShp(self.imshp, kshp, (dx,dy), output_mode)
         self.out_mode = output_mode
         if not self.out_mode in ["valid", "full"]:
@@ -95,7 +91,7 @@ class ConvOp(Op):
             raise Exception("The image and the kernel must have the same type."
                             "inputs(%s), kerns(%s)"%(inputs.dtype, kerns.dtype))
         output = tensor.tensor(dtype=inputs.type.dtype,
-                               broadcastable=[False]*outdim, 
+                               broadcastable=[False]*outdim,
                                name="ConvOp_Output");
 
         return gof.Apply(self, [inputs, kerns], [output])
@@ -134,8 +130,8 @@ class ConvOp(Op):
         * inputs needs to be a 4D tensor. Couldn't get 3D to work
         * will crash if filter the same size as input image
         """
-
-        assert self.dx==1 and self.dy==1#We didn't implemented the grad for that case. Can this be done?
+        if self.dx!=1 or self.dy!=1:
+            raise NotImplementedError("I don't know how to implement the grad when dx!=1 or dy!=1! Is this possible?")
         
         ####### Determine gradient on kernels ########
         if inputs.ndim == 3:
@@ -150,7 +146,7 @@ class ConvOp(Op):
             (bsize, nkern) = (self.imshp[0], self.nkern)
             imshp = N.hstack((self.bsize, self.imshp[1:]))
             kshp  = self.outshp
-            un_b = self.unroll_batch 
+            un_b = self.unroll_batch
             un_k = self.unroll_kern
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
@@ -245,7 +241,7 @@ using namespace std;
                                                    self.unroll_kern)
 
         #TODO: should we choose the unroll size automatically with the bigger divisor under 5? 
-        if self.out_mode == 'valid':
+        if self.out_mode == 'valid' and self.dx==0 and self.dy==0:
 #            print "return gemm version"
             return _conv_op_code_valid_gemm % d
         else:
@@ -395,8 +391,11 @@ if ((!%(z)s)
 }
 
 int Os[2];
-if (mode == FULL) {Os[0] = dim_im[0]+dim_ker[0]-1; Os[1] = dim_im[1]+dim_ker[1]-1;}
-else {Os[0] = dim_im[0]-dim_ker[0]+1; Os[1] = dim_im[1]-dim_ker[1]+1;}
+Os[0]=%(self_outshp0)s;
+Os[1]=%(self_outshp1)s;
+//I keep the formula to calculte Os in case we need it in the futur.
+//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
+//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
 
 for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
@@ -417,12 +416,14 @@ for(int b=0;b< %(self_bsize)s;b++){
 
       int new_m;
 
-      for (int m=0; m < Os[0]; m++) {
+      for (int iter_m=0; iter_m < Os[0]; iter_m++) {
         // Reposition index into input image based on requested output size
-        if (mode == FULL) new_m = m ;
-        else new_m = (m+dim_ker[0]-1);
+        int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
+        if (mode == FULL) new_m = pos_m ;
+        else new_m = (pos_m+dim_ker[0]-1);
 
-        for (int n=0; n < Os[1]; n++) {  // loop over columns 
+        for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns
+          int pos_n=iter_n*%(self_dy)s;
           %(type)s sum=0;
 
           // Sum over kernel, if index into image is out of bounds
@@ -440,7 +441,7 @@ for(int b=0;b< %(self_bsize)s;b++){
               }else{
                 //do the part where kernel is to the right of the img
 
-                int k=0,max_k=max((int)(n-dim_im[1])+1,0);
+                int k=0,max_k=max((int)(pos_n-dim_im[1])+1,0);
                 if(fill_value!=0){ 
                 
                   for(k=0;k<max_k;k++){
@@ -449,9 +450,9 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }else {k=max_k;}
                 
                 //do the part where the kernel is on the img
-                max_k=min(n+1,(int)dim_ker[1]);
+                max_k=min(pos_n+1,(int)dim_ker[1]);
                 const %(type)s * idx_in=&in[ind0*dim_im[1]];
-                for (int ind1=n-k; k<max_k; k++,ind1--) {
+                for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                   sum+= idx_hvals[k] * idx_in[ind1];
                 }
                 //do the part to the left of the img
@@ -461,14 +462,13 @@ for(int b=0;b< %(self_bsize)s;b++){
             }else{
               const %(type)s* idx_in=&in[ind0*dim_im[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
               const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
-              int new_n = (n+dim_ker[1]-1);
-
+              int new_n = (pos_n+dim_ker[1]-1);
               for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
                 sum+=idx_hvals[k]*idx_in[last];
               }
             }
           }//for j
-          out[m*dim_zz[1]+n] %(affectation)s sum;
+          out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum;
         }//for n
       }//for m
     }//for stack_size
@@ -770,7 +770,11 @@ if(%(img2d)s->nd==2){
   img2d_dim[1]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
 }else {
-    PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
+    std:stringstream temp;
+    temp << "nddim="<<%(img2d)s->nd;
+    std::string param = temp.str();
+    PyErr_SetString(PyExc_ValueError,
+      ("img don't have a good shape. " + param).c_str());
     %(fail)s;
 }
 
@@ -784,11 +788,7 @@ if(%(filtersflipped)s->nd==3){
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
-    std:stringstream temp;
-    temp << "nddim="<<%(filtersflipped)s->nd;
-    std::string param = temp.str();
-    PyErr_SetString(PyExc_ValueError,
-      ("kernel don't have a good shape. " + param).c_str());
+    PyErr_SetString(PyExc_ValueError, "kernel don't have a good shape");
     %(fail)s;
 }
 
