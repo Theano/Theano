@@ -704,12 +704,18 @@ class CLinker(link.Linker):
                 instantiate.customize.add_support_code(self.struct_code)
                 instantiate.customize.add_support_code(static)
                 for extra_arg in (
-                        "-O2", 
+                        "-O3", 
+#                        "-fno-signaling-nans",
+#"-fno-finite-math-only",
+#"-fmath-errno", "-fno-unsafe-math-optimizations", "-fno-finite-math-only", "-frounding-math", "-fsignaling-nans","-fno-cx-limited-range","-fno-fast-math",
                         "-ffast-math",
+#"-fno-finite-math-only",
+#                        "-fno-signaling-nans",
+#"-fmath-errno", "-fno-unsafe-math-optimizations", "-fno-finite-math-only", "-frounding-math", "-fsignaling-nans","-fno-cx-limited-range","-fno-fast-math",
                         #"-fprefetch-loop-arrays",
                         #"-ftree-vect-loop-version",
                         #"-ftree-loop-optimize",
-                        #"-ftree-vectorize"):
+                        #"-ftree-vectorize",
                         "-w" #-w means supress all warnings
                         ):
                     instantiate.customize.add_extra_compile_arg(extra_arg)

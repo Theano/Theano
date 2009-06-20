@@ -764,8 +764,10 @@ class CrossentropyCategorical1Hot(gof.Op):
         _true_one_of_n = tensor.as_tensor_variable(true_one_of_n)
         if _coding_dist.type.ndim != 2:
             raise TypeError('matrix required for argument: coding_dist')
-        if _true_one_of_n.type != tensor.lvector:
-            raise TypeError('integer vector required for argument: true_one_of_n')
+        if _true_one_of_n.type not in (tensor.lvector, tensor.ivector):
+            raise TypeError('integer vector required for argument: true_one_of_n'
+                    '(got type: %s instead of: %s)' % (_true_one_of_n.type,
+                        tensor.lvector))
 
         return gof.Apply(self, [_coding_dist, _true_one_of_n], [tensor.dvector()])
 
