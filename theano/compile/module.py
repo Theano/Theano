@@ -405,7 +405,8 @@ class Method(Component):
                         variable=k,
                         update=v,
                         value=get_storage(k, not allocate_all).value,
-                        mutable=True)
+                        mutable=True,
+                        implicit = True)
                 inputs.append(input_k)
             else:
                 raise ValueError(('Variable listed in both inputs and updates.'
