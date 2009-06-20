@@ -711,7 +711,11 @@ class FunctionMaker(object):
                         _defaults.append((True, False, None))
                 else:
                     # Default value. It is not required, but we want to put it back into the storage
-                    # everytime so it behaves like most programming languages' default values
+                    # everytime so it behaves like most programming languages' default values.
+                    # Note (OD): why is it not required? If it was not put back
+                    # into the storage, then the default value may be incorrect
+                    # on subsequent calls. Thus, setting 'refeed' to True seems
+                    # very important here.
                     _defaults.append((False, True, default))
         defaults = _defaults
 
