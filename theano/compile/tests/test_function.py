@@ -278,6 +278,13 @@ class T_picklefunction(unittest.TestCase):
         self.failIf(g.container[2].storage is f.container[2].storage)
         self.failIf(x in g.container)
         self.failIf(x in g.value)
+        self.failUnless(len(f.defaults) == len(g.defaults))
+        print 'f.defaults = %s' % (f.defaults, )
+        print 'g.defaults = %s' % (g.defaults, )
+        self.failUnless(all([f_req == g_req and f_feed == g_feed and
+            type(f_val) == type(g_val)
+            for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(
+                f.defaults, g.defaults)]))
 
         self.failIf(g.value[1] is f.value[1]) # should not have been copied
         self.failIf(g.value[2] is f.value[2]) # should have been copied because it is mutable.
@@ -287,6 +294,8 @@ class T_picklefunction(unittest.TestCase):
         self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         f(1,2) # put them out of sync
         self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+        g(1, 2) # put them back in sync
+        self.failIf(f(3) == g(3)) # They should be in sync again.
 
     def test_pickle(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
