@@ -438,6 +438,13 @@ class Method(Component):
                     assert storage.mutable == False 
                 else:
                     storage = get_storage(input, not allocate_all)
+
+                # Declare as an implicit input.
+                # TODO Note from OD: is this dangerous? (in case this storage
+                # is shared, and would sometimes need to be implicit, sometimes
+                # not).
+                storage.implicit = True
+
                 assert type(storage) is io.In
                 inputs.append(storage)
 
