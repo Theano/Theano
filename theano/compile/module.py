@@ -354,7 +354,7 @@ class Method(Component):
             return memo[self]
 
         self.resolve_all() # resolve all so we don't have to mess with strings
-        def get_storage(r, require = False):
+        def get_storage(r, require=False):
             # If require is True, we can only get storage from the memo.
             try:
                 return memo[r]
