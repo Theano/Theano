@@ -254,6 +254,25 @@ class T_function(unittest.TestCase):
         self.failUnless(f[s] == 4)
         self.failUnless(g[s] == 4)
 
+    def test_shared_state_not_implicit(self):
+        # This test is taken from the documentation in
+        # doc/topics/function.txt. If it does not pass anymore and yet the
+        # behavior is still intended the doc and the test should both be
+        # updated accordingly.
+        x, s = T.scalars('xs')
+        inc = function([x, In(s, update=(s+x), value=10.0)], [])
+        dec = function([x, In(s, update=(s-x), value=inc.container[s],
+            implicit = False)], [])
+        self.failUnless(dec[s] is None)
+        inc[s] = 2
+        dec(1)
+        self.failUnless(inc[s] == 1)
+        self.failUnless(dec[s] is None)
+        dec(1, 0)
+        self.failUnless(inc[s] == -1)
+        self.failUnless(dec[s] is None)
+
+
 class T_picklefunction(unittest.TestCase):
 
     def test_deepcopy(self):
