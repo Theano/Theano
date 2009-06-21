@@ -141,7 +141,7 @@ class In(SymbolicInput):
 
     strict: Bool (default: False)
         True: means that the value you pass for this input must have exactly the right type
-        False: the value you pass for this input may be casted automatically to the proper type
+        False: the value you pass for this input may be cast automatically to the proper type
 
     autoname: Bool (default: True)
         See the name option.
@@ -153,7 +153,12 @@ class In(SymbolicInput):
             'value' is an existing container.
         False: The user can provide a value for this input. In this case,
             containers will not be shared (to avoid accidentally overwriting a
-            container's content with an input value provided by the user).
+            container's content with an input value provided by the user). This
+            means a function will create its own container, and will copy in it
+            the content of 'value' at call time when 'value' is a container.
+            Updates (if 'update' is not None) will be stored into the 'value'
+            container and not in the function container (which will be filled
+            with None instead, to make sure noone tries to use it by mistake).
         None: Automatically choose between True or False depending on the
             situation. It will be set to False in all cases except if 'value'
             is a container (so that it can be shared by default).
