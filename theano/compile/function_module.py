@@ -254,6 +254,11 @@ class Function(object):
                         # the function is called.
                         if not input.implicit:
                             c.copy_from_container = value
+                        else:
+                            # Safety check: the container will be shared, so
+                            # there should be no need to refeed the default
+                            # value.
+                            assert not refeed
                     else:
                         c.value = value
                 c.required = required
@@ -428,12 +433,6 @@ class Function(object):
         for i, (required, refeed, value) in enumerate(self.defaults):
             if refeed:
                 if isinstance(value, gof.Container):
-                    if value.implicit and value.copy_from_container is None:
-                        # This is a shared container, so there is no need to
-                        # re-feed anything. Thus refeed should be false.
-                        # This safety check may be removed in the future since
-                        # it should not be needed.
-                        assert False
                     value = value.storage[0]
                 self[i] = value
 
