@@ -427,7 +427,18 @@ class Function(object):
         # Update the inputs that have an update function
         for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
             if input.update is not None:
-                storage.data = outputs.pop()
+                # If the storage is getting its value from another container,
+                # we want to update that other container.
+                store_into = getattr(storage, 'copy_from_container', None)
+                if store_into is None:
+                    storage.data = outputs.pop()
+                else:
+                    store_into.data = outputs.pop()
+                    # Also store None in the function's storage. This ensures
+                    # noone tries to use it by mistake (since it simply mirrors
+                    # the content of 'store_into', but may not always be in
+                    # synch with it).
+                    storage.data = None
 
         # Put default values back in the storage
         for i, (required, refeed, value) in enumerate(self.defaults):
