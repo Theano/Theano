@@ -71,7 +71,7 @@ def __src_version__():
     @rtype: string
 
     @note: This function tries to establish that the source files and the repo
-    are syncronized.  It raises an Exception if there are un-tracked '.py'
+    are synchronized.  It raises an Exception if there are un-tracked '.py'
     files, or if there are un-committed modifications.  This implementation uses
     "hg id" to establish this.  The code returned by "hg id" is not affected by
     hg pull, but pulling might remove the " tip" string which might have
