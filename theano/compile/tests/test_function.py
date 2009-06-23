@@ -250,7 +250,9 @@ class T_function(unittest.TestCase):
         self.failUnless(f[s] == 2)
         self.failUnless(g[s] == 2)
         f(1, 2)
-        g(1, 2)
+        self.failUnless(f[s] == 4)
+        self.failUnless(g[s] == 4)
+        g(1, 2) # has no effect on state
         self.failUnless(f[s] == 4)
         self.failUnless(g[s] == 4)
 
@@ -301,7 +303,7 @@ class T_picklefunction(unittest.TestCase):
         print 'f.defaults = %s' % (f.defaults, )
         print 'g.defaults = %s' % (g.defaults, )
         self.failUnless(all([f_req == g_req and f_feed == g_feed and
-            type(f_val) == type(g_val)
+            f_val == g_val
             for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(
                 f.defaults, g.defaults)]))
 
@@ -314,7 +316,7 @@ class T_picklefunction(unittest.TestCase):
         f(1,2) # put them out of sync
         self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
         g(1, 2) # put them back in sync
-        self.failIf(f(3) == g(3)) # They should be in sync again.
+        self.failUnless(f(3) == g(3)) # They should be in sync again.
 
     def test_pickle(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
