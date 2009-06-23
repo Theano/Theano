@@ -55,9 +55,8 @@ class ConvOp(Op):
             else:
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
                 self.unroll_kern=1
-        if (self.dx!=1 or self.dy!=1):
-            print "WARNING: dx(%d)!=1 or dy(%d)!=1. The gradient is not implemented for those case."
         self.outshp = getFilterOutShp(self.imshp, kshp, (dx,dy), output_mode)
+        self.fulloutshp = getFilterOutShp(self.imshp, kshp, (1,1), output_mode)
         self.out_mode = output_mode
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented"%self.out_mode)
@@ -130,9 +129,14 @@ class ConvOp(Op):
         * inputs needs to be a 4D tensor. Couldn't get 3D to work
         * will crash if filter the same size as input image
         """
+        outshp = self.fulloutshp
         if self.dx!=1 or self.dy!=1:
-            raise NotImplementedError("I don't know how to implement the grad when dx!=1 or dy!=1! Is this possible?")
-        
+            upgz = T.as_tensor(N.zeros((self.bsize,self.nkern)+tuple(self.fulloutshp),
+                                       dtype=gz.type.dtype))
+            gz = T.SetSubtensor([slice(self.bsize), slice(self.nkern),
+                                 slice(0,outshp[0],self.dy),
+                                 slice(0,outshp[1],self.dx)])(upgz,gz)
+
         ####### Determine gradient on kernels ########
         if inputs.ndim == 3:
             inputs = tensor.shape_padleft(inputs,1)
@@ -145,13 +149,13 @@ class ConvOp(Op):
             (img, filters) = (newin, newgz)
             (bsize, nkern) = (self.imshp[0], self.nkern)
             imshp = N.hstack((self.bsize, self.imshp[1:]))
-            kshp  = self.outshp
+            kshp  = outshp
             un_b = self.unroll_batch
             un_k = self.unroll_kern
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
             (bsize, nkern) = (self.nkern, self.imshp[0])
-            imshp = N.hstack((self.bsize, self.outshp))
+            imshp = N.hstack((self.bsize, outshp))
             kshp  = self.imshp[1:]
             un_b = self.unroll_kern
             un_k = self.unroll_batch
@@ -186,11 +190,11 @@ class ConvOp(Op):
         filters = tensor.DimShuffle(gz.broadcastable, (1,0,2,3))(kerns)
         filters = filters[:,:,::-1,::-1]
         nkern = self.imshp[0]
-        imshp = N.hstack((self.nkern,self.outshp))
+        imshp = N.hstack((self.nkern,outshp))
         din = ConvOp(imshp, self.kshp, nkern, self.bsize, 
                      1,1, output_mode=mode,
                      unroll_batch=un_b, unroll_kern=un_k)(gz,filters)
-
+        assert (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
 #def c():

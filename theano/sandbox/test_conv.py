@@ -428,11 +428,12 @@ class TestConvOp(unittest.TestCase):
         nkern = 4
         bsize = 3
         types = ["float32", "float64"]
-        kshps = [(5,5), (6,7)]
-        imshps = [(1,5,5), (2,8,7)]
+        kshps = [(3,4)]
+        imshps = [(2,8,7)]
         modes = ['valid', 'full']
         unroll_batch=[0,1,3]
         unroll_kern=[0,1,4]
+        ssizes = [(1,1),(2,2)]
         
         for typ in types:
             imgs  = T.TensorType(typ, (False, False, False, False),'imgs')
@@ -447,27 +448,23 @@ class TestConvOp(unittest.TestCase):
                             continue
                         for un_b in unroll_batch:
                             for un_k in unroll_kern:
-                                imgvals = N.array(N.random.random(N.hstack((bsize,imshp))),dtype=imgs.dtype)
-#                                print 'imgvals.shape = ', imgvals.shape, imgvals.dtype
-#                                imgvals = imgvals.reshape(bsize,-1)
+                                for ss in ssizes:
+                                    imgvals = N.array(N.random.random(N.hstack((bsize,imshp))),dtype=imgs.dtype)
 
-                                kernvals = N.array(N.random.rand(nkern,visdim,kshp[0],
-                                                         kshp[1]),dtype=kerns.dtype)
+                                    kernvals = N.array(N.random.rand(nkern,visdim,kshp[0],
+                                                             kshp[1]),dtype=kerns.dtype)
 
-#                                print 'kernvals.shape = ', kernvals.shape, kernvals.dtype
-#                                kernvals = kernvals.reshape(nkern,-1)
-
-                                def testf(imgs, kerns):
-                                    out, outshp = convolve2(kerns, kshp, nkern, 
-                                                            imgs, imshp, bsize, 
-                                                            mode=mode,
-                                                            unroll_batch=un_b,
-                                                            unroll_kern=un_k)
-                                    return out
-                                #TODO the tolerance needed to pass is very high for float32(0.16). Is this acceptable? Expected?
-                                utt.verify_grad(testf, [imgvals, kernvals],
-                                                cast_to_output_type=True,
-                                                tol=None if typ!="float32" else 0.16)
+                                    def testf(imgs, kerns):
+                                        out, outshp = convolve2(kerns, kshp, nkern, 
+                                                                imgs, imshp, bsize, 
+                                                                mode=mode, step=ss,
+                                                                unroll_batch=un_b,
+                                                                unroll_kern=un_k)
+                                        return out
+                                    #TODO the tolerance needed to pass is very high for float32(0.16). Is this acceptable? Expected?
+                                    utt.verify_grad(testf, [imgvals, kernvals],
+                                                    cast_to_output_type=True,
+                                                    tol=None if typ!="float32" else 0.16)
 
 if __name__ == '__main__':
     t = TestConvOp("test_convolution")
