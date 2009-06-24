@@ -265,6 +265,7 @@ class T_function(unittest.TestCase):
         inc = function([x, In(s, update=(s+x), value=10.0)], [])
         dec = function([x, In(s, update=(s-x), value=inc.container[s],
             implicit = False)], [])
+        self.failUnless(inc[s] is not dec[s])
         self.failUnless(dec[s] is None)
         inc[s] = 2
         dec(1)
