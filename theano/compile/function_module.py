@@ -215,7 +215,7 @@ class Function(object):
         self.return_none = return_none
         self.maker = maker
 
-        # we'll be popping stuff off this `containers` object.  It's a copy
+        # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage) 
         finder = {}
         inv_finder = {}
@@ -696,11 +696,11 @@ class FunctionMaker(object):
                 (i.value != None and not isinstance(i.value, gof.Container) and i.update == None)
                     for i in self.inputs] 
 
-    def create(self, input_storage = None, trustme = False):
+    def create(self, input_storage=None, trustme=False):
         """
         Create a function.
 
-        defaults -> a list matching the inputs list and providing default values
+        input_storage -> a list matching the inputs list and providing default values
                     if the default for an input is None, then that input is a
                     required input. For an input with an update, the default
                     acts as initialization.
@@ -724,7 +724,8 @@ class FunctionMaker(object):
             if isinstance(input_storage_i, gof.Container):
                 # If the default is a gof.Container and it is an implicit
                 # input, this means we want to share the same storage. This is
-                # done by appending default.storage to input_storage_lists
+                # done by appending input_storage_i.storage to
+                # input_storage_lists.
                 if indices is not None:
                     raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
                 input_storage_lists.append(input_storage_i.storage)
