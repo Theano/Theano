@@ -319,6 +319,27 @@ class T_picklefunction(unittest.TestCase):
         g(1, 2) # put them back in sync
         self.failUnless(f(3) == g(3)) # They should be in sync again.
 
+    def test_deepcopy_shared_container(self):
+        # Ensure that shared containers remain shared after a deep copy.
+        a = T.scalar('a')
+        x,s = T.scalars('xs')
+
+        h = function([In(a, value = 0.0)], a)
+        f = function([x, In(a, value=h.container[a], implicit = True)], x + a)
+
+        try:
+            hc = copy.deepcopy(h)
+            fc = copy.deepcopy(f, memo = {id(h): hc})
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
+        h[a] = 1
+        hc[a] = 2
+        self.failUnless(f[a] == 1)
+        self.failUnless(fc[a] == 2)
+
     def test_pickle(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
         x,s = T.scalars('xs')
