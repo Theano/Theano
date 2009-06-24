@@ -72,20 +72,14 @@ The ``inputs`` argument to ``theano.function`` is a list, containing the ``Varia
 
       ``implicit``: Bool or ``None`` (default: ``None``)
             ``True``: This input is implicit in the sense that the user is not allowed
-        to provide a value for it. Requires ``value`` to be set. Setting an
-        input as implicit allows Theano to directly share containers when
-        ``value`` is an existing container.
-            ``False``: The user can provide a value for this input. In this case,
-        containers will not be shared (to avoid accidentally overwriting a
-        container's content with an input value provided by the user).
-        This means a function will create its own container, and will copy in
-        it the content of ``value`` at call time when ``value`` is a container.
-        Updates (if ``update`` is not ``None``) will be stored into the ``value``
-        container and not in the function container (which will be filled
-        with ``None`` instead, to make sure noone tries to use it by mistake).
+        to provide a value for it. Requires ``value`` to be set.
+            ``False``: The user can provide a value for this input. Be careful
+        when ``value`` is a container, because providing an input value will
+        overwrite the content of this container.
             ``None``: Automatically choose between ``True`` or ``False`` depending on the
-        situation. It will be set to ``False`` in all cases except if 'value'
-        is a container (so that it can be shared by default).
+        situation. It will be set to ``False`` in all cases except if
+        ``value`` is a container (so that there is less risk of accidentally
+        overwriting its content without being aware of it).
 
 
 Value: initial and default values
@@ -165,13 +159,9 @@ Note that when an input's ``value`` parameter is a shared container, this
 input is considered as implicit by default. This means it cannot be set by the
 user.
 If ``implicit`` is manually set to ``False``, then it can be set by the user,
-but the container will not directly be shared: instead, the content of the
-container will be copied at call time into a separate container. However,
-updates will be performed in the container given by ``value``. The behavior
-in such situations may not be obvious, and thus is it advised not to set
-``implicit`` to ``False`` when ``value`` is a shared container, unless you
-understand what it means.
-The following code illustrates this.
+but then it will overwrite the container's content, so one should be careful
+when allowing this.
+This is illustrated in the following example.
 
 >>> dec(1, 0)   # Try to manually set an implicit input
 <type 'exceptions.TypeError'>: Tried to provide value for implicit input: s
@@ -181,16 +171,14 @@ None
 >>> inc[s] = 2
 >>> dec(1)
 []
->>> print inc[s]    # Calling dec did decrease the value in inc's container
+>>> print inc[s]    # Calling dec decreased the value in inc's container
 1.0
->>> print dec[s]    # Set back to None instead of storing the update
-None
 >>> dec(1, 0)       # Update inc[s] with 0 - 1 = -1
 []
 >>> print inc[s]
 -1.0
->>> print dec[s]    # Still set back to None
-None
+>>> print dec[s]    # Still shared.
+-1.0
 
 Input Argument Restrictions
 ---------------------------

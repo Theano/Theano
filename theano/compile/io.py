@@ -148,21 +148,17 @@ class In(SymbolicInput):
 
     implicit: Bool or None (default: None)
         True: This input is implicit in the sense that the user is not allowed
-            to provide a value for it. Requires 'value' to be set. Setting an
-            input as implicit allows Theano to directly share containers when
-            'value' is an existing container.
-        False: The user can provide a value for this input. In this case,
-            containers will not be shared (to avoid accidentally overwriting a
-            container's content with an input value provided by the user). This
-            means a function will create its own container, and will copy in it
-            the content of 'value' at call time when 'value' is a container.
-            Updates (if 'update' is not None) will be stored into the 'value'
-            container and not in the function container (which will be filled
-            with None instead, to make sure noone tries to use it by mistake).
+            to provide a value for it. Requires 'value' to be set.
+        False: The user can provide a value for this input. Be careful when
+            'value' is a container, because providing an input value will
+            overwrite the content of this container.
         None: Automatically choose between True or False depending on the
             situation. It will be set to False in all cases except if 'value'
-            is a container (so that it can be shared by default).
+            is a container (so that there is less risk of accidentally
+            overwriting its content without being aware of it).
     """
+    # Note: the documentation above is duplicated in doc/topics/function.txt,
+    # try to keep it synchronized.
     def __init__(self, variable, name=None, value=None, update=None,
             mutable=None, strict=False, autoname=True,
             implicit=None):

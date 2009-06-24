@@ -236,30 +236,15 @@ class Function(object):
                 if input.strict:
                     c.strict = True
 
-                # Whether the default value will be directly accessible within
-                # the function's container (c.copy_from_container = None), or
-                # if the function has its own container and thus needs to copy
-                # the default value at each call (c.copy_from_container =
-                # pointer towards it).
-                # Shared containers are only used for implicit inputs (so that
-                # there is no risk of overwriting their content with a user-
-                # provided value).
-                c.copy_from_container = None
                 if value is not None:
                     # Always initialize the storage.
                     if isinstance(value, gof.Container):
                         # There is no point in obtaining the current value
-                        # stored in the container, since:
-                        # - for an implicit input, the container is shared
-                        # - for a non implicit input, the value may change
-                        # the function is called.
-                        if not input.implicit:
-                            c.copy_from_container = value
-                        else:
-                            # Safety check: the container will be shared, so
-                            # there should be no need to refeed the default
-                            # value.
-                            assert not refeed
+                        # stored in the container, since the container is
+                        # shared.
+                        # For safety, we make sure 'refeed' is False, since
+                        # there is no need to refeed the defaullt value.
+                        assert not refeed
                     else:
                         c.value = value
                 c.required = required
@@ -379,14 +364,6 @@ class Function(object):
 
         # Check if inputs are missing, or if inputs were set more than once, or
         # if we tried to provide inputs that are supposed to be implicit.
-        # Also initialize default values that are obtained from an external
-        # container. This is required because this container's value may be
-        # modified between function calls.
-        # Other types of default values should not need to be re-initialized:
-        # - shared containers are updated automatically
-        # - default values defined directly by their value are re-fed into the
-        # input storage after a function call, and any modification possibly
-        # made to them (for mutable types) will be reflected there as well.
         for c in self.input_storage:
             if c.required and not c.provided:
                 raise TypeError("Missing required input: %s" % getattr(self.inv_finder[c], 'variable', self.inv_finder[c]))
@@ -396,12 +373,6 @@ class Function(object):
                 raise TypeError('Tried to provide value for implicit input: %s'
                         % getattr(self.inv_finder[c], 'variable',
                             self.inv_finder[c]))
-            if c.provided == 0 and c.copy_from_container is not None:
-                # Copy default value from another (non shared) container.
-                # Safety check, may be removed in the future.
-                assert not c.implicit
-                c.value = c.copy_from_container.value
-                # TODO Would it be better to use self[..] = value?
 
         # Do the actual work
         self.fn()
@@ -409,8 +380,8 @@ class Function(object):
         # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
 
-        #remove internal references to required inputs
-        #these can't be re-used anyway
+        # Remove internal references to required inputs.
+        # These cannot be re-used anyway.
         for x in self.input_storage:
             if c.required:
                 c.storage[0] = None
@@ -428,18 +399,7 @@ class Function(object):
         # Update the inputs that have an update function
         for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
             if input.update is not None:
-                # If the storage is getting its value from another container,
-                # we want to update that other container.
-                store_into = getattr(storage, 'copy_from_container', None)
-                if store_into is None:
-                    storage.data = outputs.pop()
-                else:
-                    store_into.data = outputs.pop()
-                    # Also store None in the function's storage. This ensures
-                    # noone tries to use it by mistake (since it simply mirrors
-                    # the content of 'store_into', but may not always be in
-                    # synch with it).
-                    storage.data = None
+                storage.data = outputs.pop()
 
         # Put default values back in the storage
         for i, (required, refeed, value) in enumerate(self.defaults):
@@ -722,10 +682,9 @@ class FunctionMaker(object):
                 input_storage_i = input_storage_i.container
 
             if isinstance(input_storage_i, gof.Container):
-                # If the default is a gof.Container and it is an implicit
-                # input, this means we want to share the same storage. This is
-                # done by appending input_storage_i.storage to
-                # input_storage_lists.
+                # If the default is a gof.Container, this means we want to
+                # share the same storage. This is done by appending
+                # input_storage_i.storage to input_storage_lists.
                 if indices is not None:
                     raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
                 input_storage_lists.append(input_storage_i.storage)

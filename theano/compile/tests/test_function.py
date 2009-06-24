@@ -7,7 +7,7 @@ from theano.compile.function_module import *
 
 from theano import tensor
 from theano import tensor as T
-import random
+import random, theano
 import numpy as N
 
 
@@ -265,15 +265,13 @@ class T_function(unittest.TestCase):
         inc = function([x, In(s, update=(s+x), value=10.0)], [])
         dec = function([x, In(s, update=(s-x), value=inc.container[s],
             implicit = False)], [])
-        self.failUnless(inc[s] is not dec[s])
-        self.failUnless(dec[s] is None)
+        self.failUnless(dec[s] is inc[s])
         inc[s] = 2
         dec(1)
         self.failUnless(inc[s] == 1)
-        self.failUnless(dec[s] is None)
         dec(1, 0)
         self.failUnless(inc[s] == -1)
-        self.failUnless(dec[s] is None)
+        self.failUnless(dec[s] == -1)
 
 
 class T_picklefunction(unittest.TestCase):
@@ -527,7 +525,7 @@ if __name__ == '__main__':
 
     if 1:
         unittest.main()
-    else:
+    elif 0:
         testcases = []
         testcases.append(T_function)
 
@@ -538,3 +536,11 @@ if __name__ == '__main__':
             suite.addTest(testloader.loadTestsFromTestCase(testcase))
         unittest.TextTestRunner(verbosity=2).run(suite)
         #</boilerplate>
+    elif 0:
+        theano.compile.mode.default_mode = 'FAST_COMPILE'
+        t = T_picklefunction()
+        def fu(b):
+            assert b
+        t.failUnless = fu
+        t.test_deepcopy_shared_container()
+
