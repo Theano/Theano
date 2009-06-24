@@ -321,24 +321,27 @@ class T_picklefunction(unittest.TestCase):
 
     def test_deepcopy_shared_container(self):
         # Ensure that shared containers remain shared after a deep copy.
-        a = T.scalar('a')
-        x,s = T.scalars('xs')
+        a, x = T.scalars('ax')
 
         h = function([In(a, value = 0.0)], a)
         f = function([x, In(a, value=h.container[a], implicit = True)], x + a)
 
         try:
-            hc = copy.deepcopy(h)
-            fc = copy.deepcopy(f, memo = {id(h): hc})
+            memo = {}
+            ac = copy.deepcopy(a)
+            memo.update({id(a): ac})
+            hc = copy.deepcopy(h, memo = memo)
+            memo.update({id(h): hc})
+            fc = copy.deepcopy(f, memo = memo)
         except NotImplementedError, e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
             else:
                 raise
         h[a] = 1
-        hc[a] = 2
+        hc[ac] = 2
         self.failUnless(f[a] == 1)
-        self.failUnless(fc[a] == 2)
+        self.failUnless(fc[ac] == 2)
 
     def test_pickle(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
