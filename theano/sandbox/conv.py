@@ -103,7 +103,8 @@ class ConvOp(Op):
         from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
         from scipy.signal.sigtools import _convolve2d
         if z[0] is None:
-            z[0] = N.zeros((self.bsize,)+(self.nkern,)+tuple(self.outshp))
+            z[0] = N.zeros((self.bsize,)+(self.nkern,)+tuple(self.fulloutshp),
+                           dtype=img2d.dtype)
         zz=z[0]
         val = _valfrommode(self.out_mode)
         bval = _bvalfromboundary('fill')
