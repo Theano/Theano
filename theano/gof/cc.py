@@ -543,7 +543,6 @@ class CLinker(link.Linker):
                     except ValueError: 
                         pass# in case the value is not there
             except utils.MethodNotDefined: pass
-        print ret
         return ret
 
     def headers(self):
