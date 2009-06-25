@@ -148,6 +148,20 @@ class CLinkerType(object):
         """
         raise MethodNotDefined("c_compile_args", type(self), self.__class__.__name__)
 
+    def c_no_compile_args(self):
+        """Optional: Return a list of incompabitle gcc compiler arguments.
+
+        We will remove those argument from the command line of gcc. So if 
+        another Op add a compile args in the graph that is incompatible 
+        with this op, the incompatible args won't be used. 
+        Usefull to remove -ffast-math.
+
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise MethodNotDefined("c_no_compile_args", type(self), self.__class__.__name__)
+
     def c_headers(self):
         """Optional: Return a list of header files required by code returned by
         this class.
