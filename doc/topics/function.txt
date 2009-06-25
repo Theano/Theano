@@ -72,14 +72,16 @@ The ``inputs`` argument to ``theano.function`` is a list, containing the ``Varia
 
       ``implicit``: Bool or ``None`` (default: ``None``)
             ``True``: This input is implicit in the sense that the user is not allowed
-        to provide a value for it. Requires ``value`` to be set.
+            to provide a value for it. Requires ``value`` to be set.
+
             ``False``: The user can provide a value for this input. Be careful
-        when ``value`` is a container, because providing an input value will
-        overwrite the content of this container.
+            when ``value`` is a container, because providing an input value will
+            overwrite the content of this container.
+
             ``None``: Automatically choose between ``True`` or ``False`` depending on the
-        situation. It will be set to ``False`` in all cases except if
-        ``value`` is a container (so that there is less risk of accidentally
-        overwriting its content without being aware of it).
+            situation. It will be set to ``False`` in all cases except if
+            ``value`` is a container (so that there is less risk of accidentally
+            overwriting its content without being aware of it).
 
 
 Value: initial and default values
