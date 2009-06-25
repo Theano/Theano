@@ -267,6 +267,7 @@ class T_function(unittest.TestCase):
             implicit = False)], [])
         self.failUnless(dec[s] is inc[s])
         inc[s] = 2
+        self.failUnless(dec[s] == 2)
         dec(1)
         self.failUnless(inc[s] == 1)
         dec(1, 0)
