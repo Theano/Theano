@@ -118,7 +118,11 @@ class ConvOp(Op):
                 for im0 in range(self.imshp[0]):
                     zz[b,n,...] +=  _convolve2d(\
                         img2d[b,im0,...], filtersflipped[n,im0,...],1,val, bval, 0)
-        zz = zz[:,:,0::self.dx,0::self.dy]
+        #We copy it to remove the Stride mismatch warning from DEBUG_MODE.
+        #The copy make that we return an object with the same stride as the c version.
+        #The copy don't affect the performence during our experience as in that case we
+        #execute the c version which is much faster.
+        zz = zz[:,:,0::self.dx,0::self.dy].copy()
         z[0]=zz
 
 
