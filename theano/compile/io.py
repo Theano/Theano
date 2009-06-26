@@ -163,7 +163,12 @@ class In(SymbolicInput):
             mutable=None, strict=False, autoname=True,
             implicit=None):
         if implicit is None:
-            implicit = isinstance(value, gof.Container)
+            # TODO Having a default value being a Variable only makes sense
+            # if this is a SharedVariable. This should be changed once shared
+            # variables are part of Theano instead of living in a separate
+            # repository.
+            implicit = (isinstance(value, gof.Container) or
+                    isinstance(value, gof.Variable))
         super(In, self).__init__(variable, name, update, mutable, strict,
                 autoname, implicit = implicit)
         self.value = value
