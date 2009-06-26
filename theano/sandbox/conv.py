@@ -185,6 +185,7 @@ class ConvOp(Op):
 
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
                     unroll_batch=un_b, unroll_kern=un_k)(img,filters)
+        assert (dw.owner.op.outshp==self.kshp).all()
         if self.out_mode == 'valid':
             # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
             dw = tensor.DimShuffle(dw.broadcastable, (1,0,2,3))(dw)
