@@ -686,7 +686,7 @@ class Canonizer(gof.LocalOptimizer):
         op = node.op
         if op not in [self.main, self.inverse, self.reciprocal]:
             return False
-
+        
         inputs = node.inputs
         out = node.outputs[0]
         assert len(node.outputs) == 1
@@ -725,8 +725,14 @@ class Canonizer(gof.LocalOptimizer):
         return getattr(self, 'name', 'Canonizer(%s, %s, %s)' % (self.main, self.inverse, self.reciprocal))
 
 
-def mul_calculate(num, denum, aslist = False):
-    v = reduce(N.multiply, num, 1.0) / reduce(N.multiply, denum, 1.0)
+def mul_calculate(num, denum, aslist=False):
+    if not num and not denum:
+        # Smallest 1 possible.
+        return [] if aslist else N.int8(1)
+    # Make sure we do not accidently upcast data types.
+    first = num[0] if num else denum[0]
+    one = N.asarray(first).dtype.type(1)
+    v = reduce(N.multiply, num, one) / reduce(N.multiply, denum, one)
     if aslist:
         if N.all(v == 1):
             return []
