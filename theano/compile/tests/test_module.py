@@ -678,6 +678,23 @@ def test_method_mode():
     assert m.h.maker.mode == m.g.maker.mode
     assert numpy.all(m.f([1,2]) == m.g([1,2]))
 
+def test_method_implicit_ticket_384():
+    """
+    Ensure it is not possible to accidentally overwrite module variables
+    added as implicit inputs.
+    """
+    M = Module()
+    M.x = T.scalar()
+    M.f = Method([M.x], M.x * 3)
+    m = M.make()
+    m.f(0)
+    try:
+        m.f(0, 0)
+        assert False
+    except TypeError, e:
+        if not str(e).startswith('Tried to provide value for implicit input'):
+            raise
+
 def test_pickle():
     """Test that a module can be pickled"""
     M = Module()

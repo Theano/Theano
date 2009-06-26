@@ -57,9 +57,13 @@ class test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs([False]*1, [False]*2, [False]*3)
         e = x + y + z
         g = Env([x, y, z], [e])
-        self.failUnless(str(g) == "[add(InplaceDimShuffle{x,0,1}(add(InplaceDimShuffle{x,0}(x), y)), z)]", str(g))
+        self.failUnless(str(g) == ("[Elemwise{add,no_inplace}("
+            "InplaceDimShuffle{x,0,1}(Elemwise{add,no_inplace}"
+            "(InplaceDimShuffle{x,0}(x), y)), z)]"), str(g))
         dimshuffle_lift.optimize(g)
-        self.failUnless(str(g) == "[add(add(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle{x,0,1}(y)), z)]", str(g))
+        self.failUnless(str(g) == ("[Elemwise{add,no_inplace}(Elemwise"
+            "{add,no_inplace}(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle"
+            "{x,0,1}(y)), z)]"), str(g))
 
 
 def test_add_canonizer_problem0():

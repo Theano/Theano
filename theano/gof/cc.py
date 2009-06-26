@@ -526,9 +526,22 @@ class CLinker(link.Linker):
 
         This might contain duplicates.
         """
-        ret = []
+        ret = ["-O3", "-w"]#-w means supress all warnings
+# this is the param the -ffast-math activate. I put the explicitly as FillMissing must disable "-ffinite-math-only". Putting -ffast-math would make it disable all other parameter at the same time.
+        ret += ["-fno-math-errno", "-funsafe-math-optimizations",
+                "-fno-signaling-nans", "-fcx-limited-range",
+                "-fno-rounding-math", "-ffinite-math-only"]
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_compile_args()
+            except utils.MethodNotDefined: pass
+        ret=list(set(ret))#to remove duplicate
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
+            try: 
+                for i in x.c_no_compile_args():
+                    try:
+                        ret.remove(i)
+                    except ValueError: 
+                        pass# in case the value is not there
             except utils.MethodNotDefined: pass
         return ret
 
@@ -703,22 +716,7 @@ class CLinker(link.Linker):
                     instantiate.customize.add_support_code(support_code)
                 instantiate.customize.add_support_code(self.struct_code)
                 instantiate.customize.add_support_code(static)
-                for extra_arg in (
-                        "-O3", 
-#                        "-fno-signaling-nans",
-#"-fno-finite-math-only",
-#"-fmath-errno", "-fno-unsafe-math-optimizations", "-fno-finite-math-only", "-frounding-math", "-fsignaling-nans","-fno-cx-limited-range","-fno-fast-math",
-                        "-ffast-math",
-#"-fno-finite-math-only",
-#                        "-fno-signaling-nans",
-#"-fmath-errno", "-fno-unsafe-math-optimizations", "-fno-finite-math-only", "-frounding-math", "-fsignaling-nans","-fno-cx-limited-range","-fno-fast-math",
-                        #"-fprefetch-loop-arrays",
-                        #"-ftree-vect-loop-version",
-                        #"-ftree-loop-optimize",
-                        #"-ftree-vectorize",
-                        "-w" #-w means supress all warnings
-                        ):
-                    instantiate.customize.add_extra_compile_arg(extra_arg)
+
                 for arg in self.compile_args():
                     instantiate.customize.add_extra_compile_arg(arg)
                 for header in self.headers():
