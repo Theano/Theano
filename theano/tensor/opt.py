@@ -728,7 +728,7 @@ class Canonizer(gof.LocalOptimizer):
 def mul_calculate(num, denum, aslist=False):
     if not num and not denum:
         # Smallest 1 possible.
-        return [] if asList else N.int8(1)
+        return [] if aslist else N.int8(1)
     # Make sure we do not accidently upcast data types.
     first = num[0] if num else denum[0]
     one = N.asarray(first).dtype.type(1)
