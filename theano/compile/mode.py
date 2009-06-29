@@ -37,6 +37,7 @@ predefined_linkers = {
     'c&py' : gof.DualLinker(checker = check_equal)
     }
 
+#Keep default_linker the same as the one for default_mode
 default_linker = 'c|py'
 
 def register_linker(name, linker):
@@ -63,7 +64,8 @@ predefined_optimizers = {
     'fast_run_stable' : OPT_FAST_RUN_STABLE,
     'fast_compile' : OPT_FAST_COMPILE
     }
-default_optimizer = 'merge'
+#Keep default_optimizer the same as the one for default_mode
+default_optimizer = 'fast_run'
 
 def register_optimizer(name, opt):
     """Add a `Optimizer` which can be referred to by `name` in `Mode`."""
@@ -157,6 +159,7 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
 # The default mode used by functions and modules is read from the environment
 # variable THEANO_DEFAULT_MODE. Unit tests will run using this value. If the env. var.
 # is not set, it will default to 'FAST_RUN'
+# keep default_mode.optimizer==default_optimizer and default_mode.linker==default_linker!
 ##
 default_mode = os.getenv('THEANO_DEFAULT_MODE','FAST_RUN')
 
