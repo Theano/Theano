@@ -3,9 +3,10 @@ import time
 from ..gof.link import WrapLinkerMany
 from ..gof.cutils import run_cthunk
 from ..compile.mode import Mode, predefined_linkers
+from ..gof.cc import OpWiseCLinker
 
 class ProfileMode(Mode):
-    def __init__(self, linker, optimizer=None):
+    def __init__(self, linker=OpWiseCLinker(), optimizer=None):
         local_time = [0.0]
         apply_time = {}
         op_time = {}
