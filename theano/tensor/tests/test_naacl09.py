@@ -551,7 +551,8 @@ def test_naacl_model(iters_per_unsup=10, iters_per_sup=10,
         s0 = str(m.finetuning_update(*(inputs + [targets])))
         print iters_per_sup * (i+1), s0
     if iters_per_sup == 10:
-        assert s0.startswith('15.6511')#should check for the 8 decimal only.
+        s0f = float(s0)
+        assert 15.6510 < s0f and s0f < 15.6512
 
 def jtest_main():
     from theano import gof
