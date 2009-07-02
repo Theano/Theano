@@ -260,7 +260,7 @@ Glossary of terminology
 
             * making :term:`Apply` instances, which mean "apply this TOI to some particular inputs" (via the ``make_node``),
             * performing the calculation of outputs from given inputs (via the ``perform``),
-            * producing c code to perform calculation of outputs from inputs (via ``c_code, c_code_cleanup, c_support_code, c_headers, c_libraries, c_compile_args``)
+            * producing c code to perform calculation of outputs from inputs (via ``c_code, c_code_cleanup, c_support_code, c_headers, c_libraries, c_compile_args, c_no_compile_args``)
             * [optionally] building gradient-calculating graphs (via ``grad``).
 
         See :ref:`intro_to_ops`.

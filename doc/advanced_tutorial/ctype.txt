@@ -75,11 +75,13 @@ the most important ones:
   decrease the appropriate reference counts.
 
 .. function:: c_compile_args()
+              c_no_compile_args()
               c_headers()
               c_libraries()
               c_support_code()
 
-  Allows you to specify headers, libraries, special g++ arguments or
+  Allows you to specify headers, libraries, 
+  special g++ arguments to add/exclude or
   helper functions/structs that the type needs. See :ref:`type`.
 
 

@@ -1,6 +1,8 @@
 """Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out` """
 __docformat__ = 'restructuredtext en'
 
+from theano import gof
+
 class SymbolicInput(object):
     """
     Represents a symbolic input for use with function or FunctionMaker.
@@ -27,9 +29,15 @@ class SymbolicInput(object):
 
     autoname: Bool (default: True)
         See the name option.
+
+    implicit: Bool (default: False)
+        See help(In). Note that 'None' is not allowed here, since we are in the
+        symbolic case.
     """
 
-    def __init__(self, variable, name=None, update=None, mutable=None, strict=False, autoname=True):
+    def __init__(self, variable, name=None, update=None, mutable=None, strict=False, autoname=True,
+            implicit=False):
+        assert implicit is not None # Safety check.
         self.variable = variable
         self.name = variable.name if (autoname and name is None) else name
         if self.name is not None and not isinstance(self.name, str):
@@ -37,6 +45,7 @@ class SymbolicInput(object):
         self.update = update
         self.mutable = mutable if (mutable is not None) else (update is not None)
         self.strict = strict
+        self.implicit = implicit
 
     def __str__(self):
         if self.update:
@@ -132,14 +141,39 @@ class In(SymbolicInput):
 
     strict: Bool (default: False)
         True: means that the value you pass for this input must have exactly the right type
-        False: the value you pass for this input may be casted automatically to the proper type
+        False: the value you pass for this input may be cast automatically to the proper type
 
     autoname: Bool (default: True)
         See the name option.
+
+    implicit: Bool or None (default: None)
+        True: This input is implicit in the sense that the user is not allowed
+            to provide a value for it. Requires 'value' to be set.
+        False: The user can provide a value for this input. Be careful when
+            'value' is a container, because providing an input value will
+            overwrite the content of this container.
+        None: Automatically choose between True or False depending on the
+            situation. It will be set to False in all cases except if 'value'
+            is a container (so that there is less risk of accidentally
+            overwriting its content without being aware of it).
     """
-    def __init__(self, variable, name=None, value=None, update=None, mutable=None, strict=False, autoname=True):
-        super(In, self).__init__(variable, name, update, mutable, strict, autoname)
+    # Note: the documentation above is duplicated in doc/topics/function.txt,
+    # try to keep it synchronized.
+    def __init__(self, variable, name=None, value=None, update=None,
+            mutable=None, strict=False, autoname=True,
+            implicit=None):
+        if implicit is None:
+            # TODO Having a default value being a Variable only makes sense
+            # if this is a SharedVariable. This should be changed once shared
+            # variables are part of Theano instead of living in a separate
+            # repository.
+            implicit = (isinstance(value, gof.Container) or
+                    isinstance(value, gof.Variable))
+        super(In, self).__init__(variable, name, update, mutable, strict,
+                autoname, implicit = implicit)
         self.value = value
+        if self.implicit and value is None:
+            raise TypeError('An implicit input must be given a default value')
 
 
 class SymbolicOutput(object):

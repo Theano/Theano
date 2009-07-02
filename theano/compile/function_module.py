@@ -215,7 +215,7 @@ class Function(object):
         self.return_none = return_none
         self.maker = maker
 
-        # we'll be popping stuff off this `containers` object.  It's a copy
+        # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage) 
         finder = {}
         inv_finder = {}
@@ -229,15 +229,26 @@ class Function(object):
 
         #setters = []
         # Initialize the storage
+        # this loop works by modifying the elements (as variable c) of self.input_storage inplace.
         for i, ((input, indices, sinputs), (required, refeed, value)) in enumerate(zip(self.indices, defaults)):
             if indices is None: # this is true iff input is not a SymbolicInputKit
                 c = containers[0]  #containers is being used as a stack. Here we pop off the next one.
                 if input.strict:
                     c.strict = True
+
                 if value is not None:
-                    # always initialize the storage
-                    c.data = value
+                    # Always initialize the storage.
+                    if isinstance(value, gof.Container):
+                        # There is no point in obtaining the current value
+                        # stored in the container, since the container is
+                        # shared.
+                        # For safety, we make sure 'refeed' is False, since
+                        # there is no need to refeed the defaullt value.
+                        assert not refeed
+                    else:
+                        c.value = value
                 c.required = required
+                c.implicit = input.implicit
                 c.provided = 0 # this is a count of how many times the input has been provided (reinitialized to 0 on __call__)
                 finder[i] = c
                 finder[input.variable] = c
@@ -247,6 +258,9 @@ class Function(object):
                 #setters.append(partial(assign, c))
                 containers[:1] = []
             else:
+                # TODO The following code may need to do something to handle
+                # implicit inputs.
+
                 # The input is a SymbolicInputKit, so we take as many containers as the Kit provides inputs
                 cs = containers[:len(indices)]
                 # distribute does the initialization of the containers
@@ -347,20 +361,27 @@ class Function(object):
         # Set keyword arguments
         for k, arg in kwargs.iteritems():
             self[k] = arg
-        # Check if inputs are missing or if inputs were set more than once
+
+        # Check if inputs are missing, or if inputs were set more than once, or
+        # if we tried to provide inputs that are supposed to be implicit.
         for c in self.input_storage:
             if c.required and not c.provided:
                 raise TypeError("Missing required input: %s" % getattr(self.inv_finder[c], 'variable', self.inv_finder[c]))
             if c.provided > 1:
                 raise TypeError("Multiple values for input: %s" % getattr(self.inv_finder[c], 'variable', self.inv_finder[c]))
+            if c.implicit and c.provided > 0:
+                raise TypeError('Tried to provide value for implicit input: %s'
+                        % getattr(self.inv_finder[c], 'variable',
+                            self.inv_finder[c]))
+
         # Do the actual work
         self.fn()
 
         # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
 
-        #remove internal references to required inputs
-        #these can't be re-used anyway
+        # Remove internal references to required inputs.
+        # These cannot be re-used anyway.
         for x in self.input_storage:
             if c.required:
                 c.storage[0] = None
@@ -377,12 +398,16 @@ class Function(object):
 
         # Update the inputs that have an update function
         for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
-            if input.update:
+            if input.update is not None:
                 storage.data = outputs.pop()
+
         # Put default values back in the storage
         for i, (required, refeed, value) in enumerate(self.defaults):
             if refeed:
+                if isinstance(value, gof.Container):
+                    value = value.storage[0]
                 self[i] = value
+
         if self.return_none:
             return None
         elif self.unpack_single and len(outputs) == 1:
@@ -404,26 +429,26 @@ class Function(object):
 def _pickle_Function(f):
     #copy of the input storage list
     ins = list(f.input_storage)
-    defaults = []
+    input_storage = []
 
     for (input, indices, inputs), (required, refeed, default) in zip(f.indices, f.defaults):
         if isinstance(input, SymbolicInputKit):
             li = len(indices)
             if not default:
-                defaults.append(ins[:li])
+                input_storage.append(ins[:li])
             else:
-                defaults.append(default)
+                input_storage.append(default)
             ins[:li] = []
         else:
-            defaults.append(ins[0])
+            input_storage.append(ins[0])
             del ins[0]
 
     inputs_data = [x.data for x in f.input_storage]
 
     # HACK to detect aliased storage.
-    # aliased relationships will not be preserved across the pickle operation
+    # This is here because aliased relationships are not [currently] preserved across the pickle operation
     if not (f.pickle_aliased_memory_strategy == 'ignore'):
-        all_data = defaults + inputs_data
+        all_data = input_storage + inputs_data # addition here means list append
         for i, d_i in enumerate(all_data):
             for j, d_j in enumerate(all_data):
                 if (i < j) and isinstance(d_i, numpy.ndarray) and isinstance(d_j, numpy.ndarray):
@@ -436,14 +461,14 @@ def _pickle_Function(f):
                         else:
                             raise AliasedMemoryError(d_i, d_j)
 
-    rval = (_constructor_Function, (f.maker, defaults, inputs_data))
+    rval = (_constructor_Function, (f.maker, input_storage, inputs_data))
     return rval
 
-def _constructor_Function(maker, defaults, data):
-    f = maker.create(defaults, trustme = True)
-    assert len(f.input_storage) == len(data)
-    for container, x in zip(f.input_storage, data):
-        container.data = x
+def _constructor_Function(maker, input_storage, inputs_data):
+    f = maker.create(input_storage, trustme = True)
+    assert len(f.input_storage) == len(inputs_data)
+    for container, x in zip(f.input_storage, inputs_data):
+        assert (container.data is x) or (container.data == x)
     return f
 
 copy_reg.pickle(Function, _pickle_Function)
@@ -626,97 +651,53 @@ class FunctionMaker(object):
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
 
-    def create(self, defaults = None, trustme = False):
+        self.required = [(i.value == None) for i in self.inputs]
+        self.refeed = [
+                (i.value != None and not isinstance(i.value, gof.Container) and i.update == None)
+                    for i in self.inputs] 
+
+    def create(self, input_storage=None, trustme=False):
         """
         Create a function.
 
-        defaults -> a list matching the inputs list and providing default values
+        input_storage -> a list matching the inputs list and providing default values
                     if the default for an input is None, then that input is a
                     required input. For an input with an update, the default
                     acts as initialization.
         trustme -> disables some exceptions, used internally
         """
-        if defaults is None:
-            defaults = [None]*len(self.inputs)
-        input_storage = [] # list of independent one-element lists, will be passed to the linker
-        _defaults = []
+        if input_storage is None:
+            input_storage = [None]*len(self.inputs)
+        input_storage_lists = [] # list of independent one-element lists, will be passed to the linker
+        defaults = []
 
-        # The following loop is to fill in the input_storage and _defaults lists.
-        for (input, indices, subinputs), default in zip(self.indices, defaults):
-            __default = default
+        # The following loop is to fill in the input_storage_lists and defaults lists.
+        assert len(self.indices) == len(input_storage)
+        for i, ((input, indices, subinputs), input_storage_i) in enumerate(zip(self.indices, input_storage)):
+            # Replace any default value given as a variable by its container.
+            # Note that this makes sense only in the context of shared variables,
+            # but for now we avoid dealing directly with them to avoid dependency
+            # on the shared variables work-in-progress repository.
+            if isinstance(input_storage_i, gof.Variable):
+                input_storage_i = input_storage_i.container
 
-            if isinstance(default, gof.Container):
-                # If the default is a gof.Container, this means we want to share
-                # the same storage. This is done by appending default.storage
-                # to input_storage
+            if isinstance(input_storage_i, gof.Container):
+                # If the default is a gof.Container, this means we want to
+                # share the same storage. This is done by appending
+                # input_storage_i.storage to input_storage_lists.
                 if indices is not None:
                     raise TypeError("Cannot take a Container instance as default for a SymbolicInputKit.")
-                input_storage.append(default.storage)
-                default = None
-                required = False
-            elif isinstance(input, SymbolicInputKit):
-                # If the input is a SymbolicInputKit, it represents more than
-                # one storage unit. The indices and subinputs lists represent which
-                # of the kit's inputs are active in this graph, so we make as many
-                # storage units as needed
-                if isinstance(default, (list, tuple)) \
-                        and all(isinstance(x, gof.Container) for x in default):
-                    if len(default) == len(indices):
-                        input_storage += [x.storage for x in default]
-                    elif len(default) > len(indices):
-                        input_storage += [default[i].storage for i in indices]
-                    else:
-                        raise ValueError('Not enough storage for SymbolicInputKit', input, indices, default)
-                    default = NODEFAULT
-                else:
-                    input_storage += [[None] for i in indices]
+                input_storage_lists.append(input_storage_i.storage)
+                defaults.append((self.required[i],
+                    self.refeed[i],
+                    input_storage_i.storage[0]))
             else:
                 # Normal case: one new, independent storage unit
-                input_storage.append([None])
-
-            # Filling _defaults. Each entry is a tuple of three elements:
-            # (required, refeed, value)
-            # - required means that the user must provide a value when calling the function
-            # - refeed means that we want to put the default back in the storage after each function call
-            # - value is the value that will be put in the storage initially
-
-            # Even though a SymbolicInputKit represents more than one input,
-            # we still only have one entry for the defaults list.
-            if isinstance(input, SymbolicInputKit):
-                if default is NODEFAULT:
-                    _defaults.append((False, False, None))
-                elif default is None:
-                    _defaults.append((True, True, None))
-                else:
-                    _defaults.append((False, False, default))
-            elif input.update is not None:
-                # If the input has an update, then (logically) it is not required since
-                # it is just a parameter and of course we don't want to refeed the default
-                # back into the storage as it would defeat the point of updating it. We
-                # always do this policy.
-                if default is None:
-                    if trustme or isinstance(__default, gof.Container):
-                        _defaults.append((False, False, None))
-                    else:
-                        # This might catch some bugs early
-                        raise ValueError("A default (initial) value is required for an input which can update itself.", input)
-                else:
-                    _defaults.append((False, False, default))
-            else:
-                if default is None:
-                    if trustme or isinstance(__default, gof.Container):
-                        _defaults.append((False, False, None))
-                    else:
-                        # No default, so this is a required input. Nothing to feed back, initial value is None.
-                        _defaults.append((True, False, None))
-                else:
-                    # Default value. It is not required, but we want to put it back into the storage
-                    # everytime so it behaves like most programming languages' default values
-                    _defaults.append((False, True, default))
-        defaults = _defaults
+                input_storage_lists.append([input_storage_i])
+                defaults.append((self.required[i], self.refeed[i], input_storage_i))
 
         # Get a function instance
-        _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage)
+        _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
         return fn
 
@@ -805,6 +786,7 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
     """
     mode = mode if mode is not None else mode_module.default_mode
 
+
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
         outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
@@ -820,6 +802,7 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
         else:              
             #return a different kind of function
             def dup_defaults():
+                # TODO This may need to be changed to use containers as defaults.
                 return [copy.copy(default.value) if isinstance(default, gof.Container) else
                         copy.copy(default)
                         for default in defaults]

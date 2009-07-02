@@ -38,11 +38,13 @@ There are less methods to define for an Op than for a Type:
   *Default:* The default behavior is to do nothing.
 
 .. function:: c_compile_args()
+              c_no_compile_args()
               c_headers()
               c_libraries()
               c_support_code()
 
-  Allows you to specify headers, libraries, special g++ arguments or
+  Allows you to specify headers, libraries,
+  special g++ arguments to add/exclude or
   helper functions/structs that the type needs. See :ref:`op`.
 
 

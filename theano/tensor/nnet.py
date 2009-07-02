@@ -581,6 +581,11 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 """,
                 inside_row_loop,
                 """
+            if ((y_i >= %(x)s->dimensions[1]) || (y_i < 0))
+            {
+                PyErr_SetString(PyExc_ValueError, "y_i value out of bounds");
+                %(fail)s;
+            }
             nll_i[0] = - x_i[y_i*Sx]
                        - b_i[y_i*Sb]
                        + row_max

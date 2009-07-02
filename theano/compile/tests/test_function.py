@@ -7,7 +7,7 @@ from theano.compile.function_module import *
 
 from theano import tensor
 from theano import tensor as T
-import random
+import random, theano
 import numpy as N
 
 
@@ -250,9 +250,30 @@ class T_function(unittest.TestCase):
         self.failUnless(f[s] == 2)
         self.failUnless(g[s] == 2)
         f(1, 2)
-        g(1, 2)
         self.failUnless(f[s] == 4)
         self.failUnless(g[s] == 4)
+        g(1, 2) # has no effect on state
+        self.failUnless(f[s] == 4)
+        self.failUnless(g[s] == 4)
+
+    def test_shared_state_not_implicit(self):
+        # This test is taken from the documentation in
+        # doc/topics/function.txt. If it does not pass anymore and yet the
+        # behavior is still intended the doc and the test should both be
+        # updated accordingly.
+        x, s = T.scalars('xs')
+        inc = function([x, In(s, update=(s+x), value=10.0)], [])
+        dec = function([x, In(s, update=(s-x), value=inc.container[s],
+            implicit = False)], [])
+        self.failUnless(dec[s] is inc[s])
+        inc[s] = 2
+        self.failUnless(dec[s] == 2)
+        dec(1)
+        self.failUnless(inc[s] == 1)
+        dec(1, 0)
+        self.failUnless(inc[s] == -1)
+        self.failUnless(dec[s] == -1)
+
 
 class T_picklefunction(unittest.TestCase):
 
@@ -278,6 +299,13 @@ class T_picklefunction(unittest.TestCase):
         self.failIf(g.container[2].storage is f.container[2].storage)
         self.failIf(x in g.container)
         self.failIf(x in g.value)
+        self.failUnless(len(f.defaults) == len(g.defaults))
+        print 'f.defaults = %s' % (f.defaults, )
+        print 'g.defaults = %s' % (g.defaults, )
+        self.failUnless(all([f_req == g_req and f_feed == g_feed and
+            f_val == g_val
+            for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(
+                f.defaults, g.defaults)]))
 
         self.failIf(g.value[1] is f.value[1]) # should not have been copied
         self.failIf(g.value[2] is f.value[2]) # should have been copied because it is mutable.
@@ -287,6 +315,32 @@ class T_picklefunction(unittest.TestCase):
         self.failUnless(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         f(1,2) # put them out of sync
         self.failIf(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+        g(1, 2) # put them back in sync
+        self.failUnless(f(3) == g(3)) # They should be in sync again.
+
+    def test_deepcopy_shared_container(self):
+        # Ensure that shared containers remain shared after a deep copy.
+        a, x = T.scalars('ax')
+
+        h = function([In(a, value = 0.0)], a)
+        f = function([x, In(a, value=h.container[a], implicit = True)], x + a)
+
+        try:
+            memo = {}
+            ac = copy.deepcopy(a)
+            memo.update({id(a): ac})
+            hc = copy.deepcopy(h, memo = memo)
+            memo.update({id(h): hc})
+            fc = copy.deepcopy(f, memo = memo)
+        except NotImplementedError, e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
+        h[a] = 1
+        hc[ac] = 2
+        self.failUnless(f[a] == 1)
+        self.failUnless(fc[ac] == 2)
 
     def test_pickle(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
@@ -472,7 +526,7 @@ if __name__ == '__main__':
 
     if 1:
         unittest.main()
-    else:
+    elif 0:
         testcases = []
         testcases.append(T_function)
 
@@ -483,3 +537,11 @@ if __name__ == '__main__':
             suite.addTest(testloader.loadTestsFromTestCase(testcase))
         unittest.TextTestRunner(verbosity=2).run(suite)
         #</boilerplate>
+    elif 0:
+        theano.compile.mode.default_mode = 'FAST_COMPILE'
+        t = T_picklefunction()
+        def fu(b):
+            assert b
+        t.failUnless = fu
+        t.test_deepcopy_shared_container()
+

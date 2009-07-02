@@ -8,7 +8,7 @@ def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
     s = -1 if mode=='valid' else 1
     inshp, kshp = N.array(inshp), N.array(kshp)
     return  N.int64(N.ceil((inshp[1:] + s*kshp - s*1)/\
-            N.array([dy,dx], dtype='float')))
+            N.array([dx,dy], dtype='float')))
 
 class ConvOp(Op):
     """
@@ -44,21 +44,19 @@ class ConvOp(Op):
         self.unroll_kern=unroll_kern
 
         if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
-            if self.bsize<self.unroll_batch:
+            if self.bsize<=self.unroll_batch:
                 self.unroll_batch = self.bsize
             else:
-                self.unroll_batch=1
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a multiple of bsize(%s). We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize))
+                self.unroll_batch=1
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
-            if self.nkern<self.unroll_kern:
+            if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern
             else:
-                self.unroll_kern=1
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
-        if self.dx!=1 or self.dy!=1:
-            print "Warning, dx!=1 or dy!=1 only supported in python mode!"
-            raise NotImplementedError()
+                self.unroll_kern=1
         self.outshp = getFilterOutShp(self.imshp, kshp, (dx,dy), output_mode)
+        self.fulloutshp = getFilterOutShp(self.imshp, kshp, (1,1), output_mode)
         self.out_mode = output_mode
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented"%self.out_mode)
@@ -92,7 +90,7 @@ class ConvOp(Op):
             raise Exception("The image and the kernel must have the same type."
                             "inputs(%s), kerns(%s)"%(inputs.dtype, kerns.dtype))
         output = tensor.tensor(dtype=inputs.type.dtype,
-                               broadcastable=[False]*outdim, 
+                               broadcastable=[False]*outdim,
                                name="ConvOp_Output");
 
         return gof.Apply(self, [inputs, kerns], [output])
@@ -105,7 +103,8 @@ class ConvOp(Op):
         from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
         from scipy.signal.sigtools import _convolve2d
         if z[0] is None:
-            z[0] = N.zeros((self.bsize,)+(self.nkern,)+tuple(self.outshp))
+            z[0] = N.zeros((self.bsize,)+(self.nkern,)+tuple(self.fulloutshp),
+                           dtype=img2d.dtype)
         zz=z[0]
         val = _valfrommode(self.out_mode)
         bval = _bvalfromboundary('fill')
@@ -119,7 +118,11 @@ class ConvOp(Op):
                 for im0 in range(self.imshp[0]):
                     zz[b,n,...] +=  _convolve2d(\
                         img2d[b,im0,...], filtersflipped[n,im0,...],1,val, bval, 0)
-        zz = zz[:,:,0::self.dx,0::self.dy]
+        #We copy it to remove the Stride mismatch warning from DEBUG_MODE.
+        #The copy make that we return an object with the same stride as the c version.
+        #The copy don't affect the performence during our experience as in that case we
+        #execute the c version which is much faster.
+        zz = zz[:,:,0::self.dx,0::self.dy].copy()
         z[0]=zz
 
 
@@ -131,6 +134,13 @@ class ConvOp(Op):
         * inputs needs to be a 4D tensor. Couldn't get 3D to work
         * will crash if filter the same size as input image
         """
+        outshp = self.fulloutshp
+        if self.dx!=1 or self.dy!=1:
+            upgz = T.as_tensor(N.zeros((self.bsize,self.nkern)+tuple(self.fulloutshp),
+                                       dtype=gz.type.dtype))
+            gz = T.SetSubtensor([slice(self.bsize), slice(self.nkern),
+                                 slice(0,outshp[0],self.dy),
+                                 slice(0,outshp[1],self.dx)])(upgz,gz)
 
         ####### Determine gradient on kernels ########
         if inputs.ndim == 3:
@@ -144,26 +154,28 @@ class ConvOp(Op):
             (img, filters) = (newin, newgz)
             (bsize, nkern) = (self.imshp[0], self.nkern)
             imshp = N.hstack((self.bsize, self.imshp[1:]))
-            kshp  = self.outshp
+            kshp  = outshp
+            un_b = self.unroll_batch
+            un_k = self.unroll_kern
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
             (bsize, nkern) = (self.nkern, self.imshp[0])
-            imshp = N.hstack((self.bsize, self.outshp))
+            imshp = N.hstack((self.bsize, outshp))
             kshp  = self.imshp[1:]
+            un_b = self.unroll_kern
+            un_k = self.unroll_batch
         else:
             raise NotImplementedError('Only [full,valid] modes are currently supported.')
 
         filters = filters[:,:,::-1,::-1]
         
         #find good value for the unroll
-        un_b = self.unroll_batch
-        un_k = self.unroll_kern
         if un_b!=0 and bsize%un_b!=0:
             if bsize<un_b:
                 un_b = bsize
             else:
                 un_b = 1
-                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the batch. Maybe you can optimize this!"
+                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the batch. Maybe you can optimize this!", bsize, un_b, self.unroll_batch, self.unroll_kern
         if un_k!=0 and nkern%un_k!=0:
             if nkern<un_k:
                 un_k = nkern
@@ -173,6 +185,7 @@ class ConvOp(Op):
 
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
                     unroll_batch=un_b, unroll_kern=un_k)(img,filters)
+        assert (dw.owner.op.outshp==self.kshp).all()
         if self.out_mode == 'valid':
             # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
             dw = tensor.DimShuffle(dw.broadcastable, (1,0,2,3))(dw)
@@ -183,11 +196,11 @@ class ConvOp(Op):
         filters = tensor.DimShuffle(gz.broadcastable, (1,0,2,3))(kerns)
         filters = filters[:,:,::-1,::-1]
         nkern = self.imshp[0]
-        imshp = N.hstack((self.nkern,self.outshp))
+        imshp = N.hstack((self.nkern,outshp))
         din = ConvOp(imshp, self.kshp, nkern, self.bsize, 
                      1,1, output_mode=mode,
                      unroll_batch=un_b, unroll_kern=un_k)(gz,filters)
-
+        assert (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
 #def c():
@@ -238,7 +251,7 @@ using namespace std;
                                                    self.unroll_kern)
 
         #TODO: should we choose the unroll size automatically with the bigger divisor under 5? 
-        if self.out_mode == 'valid':
+        if self.out_mode == 'valid' and self.dx==0 and self.dy==0:
 #            print "return gemm version"
             return _conv_op_code_valid_gemm % d
         else:
@@ -388,8 +401,11 @@ if ((!%(z)s)
 }
 
 int Os[2];
-if (mode == FULL) {Os[0] = dim_im[0]+dim_ker[0]-1; Os[1] = dim_im[1]+dim_ker[1]-1;}
-else {Os[0] = dim_im[0]-dim_ker[0]+1; Os[1] = dim_im[1]-dim_ker[1]+1;}
+Os[0]=%(self_outshp0)s;
+Os[1]=%(self_outshp1)s;
+//I keep the formula to calculte Os in case we need it in the futur.
+//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
+//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
 
 for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
@@ -410,12 +426,14 @@ for(int b=0;b< %(self_bsize)s;b++){
 
       int new_m;
 
-      for (int m=0; m < Os[0]; m++) {
+      for (int iter_m=0; iter_m < Os[0]; iter_m++) {
         // Reposition index into input image based on requested output size
-        if (mode == FULL) new_m = m ;
-        else new_m = (m+dim_ker[0]-1);
+        int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
+        if (mode == FULL) new_m = pos_m ;
+        else new_m = (pos_m+dim_ker[0]-1);
 
-        for (int n=0; n < Os[1]; n++) {  // loop over columns 
+        for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns
+          int pos_n=iter_n*%(self_dy)s;
           %(type)s sum=0;
 
           // Sum over kernel, if index into image is out of bounds
@@ -433,7 +451,7 @@ for(int b=0;b< %(self_bsize)s;b++){
               }else{
                 //do the part where kernel is to the right of the img
 
-                int k=0,max_k=max((int)(n-dim_im[1])+1,0);
+                int k=0,max_k=max((int)(pos_n-dim_im[1])+1,0);
                 if(fill_value!=0){ 
                 
                   for(k=0;k<max_k;k++){
@@ -442,9 +460,9 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }else {k=max_k;}
                 
                 //do the part where the kernel is on the img
-                max_k=min(n+1,(int)dim_ker[1]);
+                max_k=min(pos_n+1,(int)dim_ker[1]);
                 const %(type)s * idx_in=&in[ind0*dim_im[1]];
-                for (int ind1=n-k; k<max_k; k++,ind1--) {
+                for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                   sum+= idx_hvals[k] * idx_in[ind1];
                 }
                 //do the part to the left of the img
@@ -454,14 +472,13 @@ for(int b=0;b< %(self_bsize)s;b++){
             }else{
               const %(type)s* idx_in=&in[ind0*dim_im[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
               const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
-              int new_n = (n+dim_ker[1]-1);
-
+              int new_n = (pos_n+dim_ker[1]-1);
               for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
                 sum+=idx_hvals[k]*idx_in[last];
               }
             }
           }//for j
-          out[m*dim_zz[1]+n] %(affectation)s sum;
+          out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum;
         }//for n
       }//for m
     }//for stack_size
@@ -763,7 +780,11 @@ if(%(img2d)s->nd==2){
   img2d_dim[1]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
 }else {
-    PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
+    std:stringstream temp;
+    temp << "nddim="<<%(img2d)s->nd;
+    std::string param = temp.str();
+    PyErr_SetString(PyExc_ValueError,
+      ("img don't have a good shape. " + param).c_str());
     %(fail)s;
 }
 
@@ -777,11 +798,7 @@ if(%(filtersflipped)s->nd==3){
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
-    std:stringstream temp;
-    temp << "nddim="<<%(filtersflipped)s->nd;
-    std::string param = temp.str();
-    PyErr_SetString(PyExc_ValueError,
-      ("kernel don't have a good shape. " + param).c_str());
+    PyErr_SetString(PyExc_ValueError, "kernel don't have a good shape");
     %(fail)s;
 }
 
@@ -844,8 +861,12 @@ if ((!%(z)s)
 }
 
 int Os[2];
-if (mode == FULL) {Os[0] = dim_im[0]+dim_ker[0]-1; Os[1] = dim_im[1]+dim_ker[1]-1;}
-else {Os[0] = dim_im[0]-dim_ker[0]+1; Os[1] = dim_im[1]-dim_ker[1]+1;}
+Os[0]=%(self_outshp0)s;
+Os[1]=%(self_outshp1)s;
+//I keep the formula to calculte Os in case we need it in the futur.
+//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
+//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
+
 for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
 
@@ -866,12 +887,14 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
 
       int new_m;
 
-      for (int m=0; m < Os[0]; m++) {
+      for (int iter_m=0; iter_m < Os[0]; iter_m++) {
         // Reposition index into input image based on requested output size
-        if (mode == FULL) new_m = m ;
-        else new_m = (m+dim_ker[0]-1);
+        int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
+        if (mode == FULL) new_m = pos_m ;
+        else new_m = (pos_m+dim_ker[0]-1);
 
-        for (int n=0; n < Os[1]; n++) {  // loop over columns 
+        for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns 
+          int pos_n=iter_n*%(self_dy)s;
         """%d
     ret+=my_dup("%(type)s sum%(unroll_iter)s=0;", unroll_bsize*unroll_ksize)
     ret+="""
@@ -895,7 +918,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
               }else{
                 //do the part where kernel is to the right of the img
 
-                int k=0,max_k=max((int)(n-dim_im[1])+1,0);
+                int k=0,max_k=max((int)(pos_n-dim_im[1])+1,0);
                 if(fill_value!=0){ 
                 
                   for(k=0;k<max_k;k++){
@@ -906,11 +929,11 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
                 }else {k=max_k;}
                 
                 //do the part where the kernel is on the img
-                max_k=min(n+1,(int)dim_ker[1]);
+                max_k=min(pos_n+1,(int)dim_ker[1]);
 """%d
     ret+=my_dup("const %(type)s * idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
     ret+="""
-                for (int ind1=n-k; k<max_k; k++,ind1--) {
+                for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
 
 """%d
     ret+=my_dup2("sum%(unroll_iter)s+= idx_hvals%(unroll_kiter)s[k] * idx_in%(unroll_biter)s[ind1];")
@@ -929,7 +952,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
     ret+=my_dup("const %(type)s* idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
     ret+=my_dup("const %(type)s* idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker[1]];",unroll_ksize)
     ret+="""
-              int new_n = (n+dim_ker[1]-1);
+              int new_n = (pos_n+dim_ker[1]-1);
 
               for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
 """%d
@@ -940,7 +963,7 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
 
           }//for j
 """%d
-    ret+=my_dup("out%(unroll_iter)s[m*dim_zz[1]+n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize*unroll_ksize)
+    ret+=my_dup("out%(unroll_iter)s[iter_m*dim_zz[1]+iter_n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize*unroll_ksize)
     ret+="""
         }//for n
       }//for m

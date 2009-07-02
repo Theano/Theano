@@ -354,7 +354,7 @@ class Method(Component):
             return memo[self]
 
         self.resolve_all() # resolve all so we don't have to mess with strings
-        def get_storage(r, require = False):
+        def get_storage(r, require=False):
             # If require is True, we can only get storage from the memo.
             try:
                 return memo[r]
@@ -405,7 +405,8 @@ class Method(Component):
                         variable=k,
                         update=v,
                         value=get_storage(k, not allocate_all).value,
-                        mutable=True)
+                        mutable=True,
+                        implicit = True)
                 inputs.append(input_k)
             else:
                 raise ValueError(('Variable listed in both inputs and updates.'
@@ -437,6 +438,13 @@ class Method(Component):
                     assert storage.mutable == False 
                 else:
                     storage = get_storage(input, not allocate_all)
+
+                # Declare as an implicit input.
+                # TODO Note from OD: is this dangerous? (in case this storage
+                # is shared, and would sometimes need to be implicit, sometimes
+                # not).
+                storage.implicit = True
+
                 assert type(storage) is io.In
                 inputs.append(storage)
 
