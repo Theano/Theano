@@ -1,0 +1,244 @@
+
+======================================
+Proposal for pfunc  Function Interface
+======================================
+
+Following discussion on theano-dev (titled TheanoObject), the following
+changes are proposed to make function-construction calls more
+readable and intuitive, and to make it easier to share values between
+functions.
+
+The strategy is to 
+
+- introduce a new kind of ``Variable`` (``SharedVariable``) that has a container
+  associated with it, and can allow multiple functions to share a value.
+
+- introduce a class called ``Param`` to serve a role similar to that of ``In``,
+
+- introduce a friendlier version of function (tentative name ``pfunc``),
+
+The following code gives a very quick idea of what is being proposed:
+
+..code-block:: python
+
+    a = lscalar()
+    b = shared(1) #NEW: create a shared variable
+
+    f1 = pfunc([a], a+b)
+    f2 = pfunc([Param(a, default=44)], a + b, updates={b: b + 1})
+
+    b.value # -> 1
+
+    f1(3)   # -> 4
+    f2(3)   # -> 4 (but update b.value with += 1)
+    b.value # -> 2
+
+    f1(3)   # -> 5
+
+    b.value = 0
+    f1(3)   # -> 3
+
+
+Declaring a Shared Variable
+===========================
+
+The proposal is for two new ways of creating a *shared* variable:
+
+.. code-block:: python
+
+    class SharedVariable(Variable):
+        """
+        Variable with a value that is (defaults to being) shared between functions that it appears in.
+        """
+
+        def __init__(self, name, type, value, strict):
+            """
+            :param name: The name for this variable (see `Variable`).
+    
+            :param type: The type for this variable (see `Variable`).
+    
+            :param value: A value to associate with this variable (a new container will be created).
+    
+            :param strict: True -> assignments to .value will not be casted or copied, so they must
+            have the correct type.
+    
+            :param container: The container to use for this variable. Illegal to pass this as well
+            as a value.
+    
+            For more user-friendly constructor, see `shared`
+
+            """
+            ...
+
+
+
+        value = property(...)
+        """Read/write the non-symbolic value associated with this SharedVariable.
+        
+        If the SharedVariable is shared, changes to this value will be visible to all functions using
+        this SharedVariable.  If this SharedVariable is not shared, a change will not be visible to
+        functions that were created before the change.
+    
+        """
+
+    def shared(value, name=None, strict=False, **kwargs):
+        """Return a SharedVariable Variable, initialized with a copy or reference of `value`.
+    
+        This function iterates over constructor functions (see `shared_constructor`) to find a
+        suitable SharedVariable subclass.
+    
+        :note: 
+        By passing kwargs, you effectively limit the set of potential constructors to those that
+        can accept those kwargs.
+        
+        """
+        ...
+
+The function `shared` is a factory-method intended for end-users.
+
+Direct construction of a ``SharedVariable`` is probably not going to be a common
+pattern, it will be more common to subclass it (i.e. ``TensorSharedVariable``,
+``SparseSharedVariable``, etc.) and to register a constructor so that these
+subclasses will be instantiated by the `shared` factory method.
+
+A ``SharedVariable`` instance is meant to change over the duration of a program,
+either because of the updates of a function call, or because of direct
+assignment to its ``.value`` field.
+At any time, the ``.value`` field can be be used to access the current value
+associated with the shared value.
+
+Using SharedVariables as pfunc Parameters
+=========================================
+
+A ``SharedVariable`` instance has a ``value`` property that can be used to get and
+set the value associated with that shared variable in all the ``pfunc``
+functions that use it.
+
+.. code-block:: python
+
+    a = tensor.lscalar()
+    b = shared(7)
+
+    # create two functions that use `b` as an implicit input
+    f1 = pfunc([a], a + b)
+    f2 = pfunc([a], a * b)
+
+    f1(5) # -> 12
+    b.value = 8    # modify the shared variable's value
+
+    f1(5) # -> 13   # the new value is reflected in any compiled functions
+    f2(4) # -> 32   # f2 uses the latest value in b's container
+
+However, SharedVariables cannot be used as inputs to theano functions.
+This is because doing it may yield code that would be either ambiguous, or
+prone to easy mistakes (e.g. accidentally overwriting the content of a shared
+variable).
+
+
+Param and pfunc
+===============
+
+The examples above give the general flavour of what pfunc and Param are for.
+Their signatures are below.
+Corner cases and exotic examples can be found in the tests.
+
+.. code-block:: python
+
+    def pfunc(params, outputs, mode=None, givens={}, updates=[])
+        """Function-constructor for graphs with shared variables.
+    
+        :type params: list of either Variable or Param instances.
+        :param params: function parameters, these are not allowed to be shared
+        variables
+    
+        :type outputs: list of Variables or Out instances
+        :param outputs: expressions to compute
+    
+        :param mode: compilation mode
+    
+        :type updates: iterable over pairs (shared_variable, new_expression). List, tuple or dict.
+        :param updates: update the values for SharedVariable inputs according to these expressions
+    
+        :rtype: theano.compile.Function
+        :returns: a callable object that will compute the outputs (given the inputs)
+        and update the implicit function arguments according to the `updates`.
+    
+        """
+        ...
+
+.. code-block:: python
+
+    class Param(object):
+        def __init__(self, variable, default=None, mutable=False, strict=False):
+            """
+            :param variable: A node in an expression graph to set with each function call.
+    
+            :param default: The default value to use at call-time (can also be a Container where
+            the function will find a value at call-time.)
+    
+            :param name: A string to identify this parameter from function kwargs.
+    
+            :param mutable: True -> function is allowed to modify this argument.
+    
+            :param strict: False -> function arguments may be copied or casted to match the
+            type required by the parameter `variable`.  True -> function arguments must exactly match the type
+            required by `variable`.
+    
+            :param implicit: see help(theano.io.In)
+    
+            """
+
+Note that if some update value is not a variable, it will be cast into
+a ``SharedVariable`` using the ``shared`` function. This ensures it is
+properly taken into account to build the Theano function underlying the
+``pfunc``. A consequence of this is that if this update value is mutable
+(e.g. a Numpy array), it may be modified after the function is created.
+
+
+NNet Example
+============
+
+Of course there are lots of ways to write the following code, but this is one
+simple one.
+
+.. code-block:: python
+
+
+    import numpy, theano
+   
+    from pfunc import pfunc
+    from sharedvalue import shared
+    from theano import tensor
+    from theano.tensor.nnet import sigmoid
+    
+    class NNet(object):
+    
+        def __init__(self, 
+                input = tensor.dvector('input'),
+                target = tensor.dvector('target'),
+                n_input=1, n_hidden=1, n_output=1, lr=1e-3, **kw):
+            super(NNet, self).__init__(**kw)
+        
+            self.input = input
+            self.target = target
+            self.lr = shared(lr, 'learning_rate')
+            self.w1 = shared(numpy.zeros((n_hidden, n_input)), 'w1')
+            self.w2 = shared(numpy.zeros((n_output, n_hidden)), 'w2')
+        
+            self.hidden = sigmoid(tensor.dot(self.w1, self.input))
+            self.output = tensor.dot(self.w2, self.hidden)
+            self.cost = tensor.sum((self.output - self.target)**2)
+        
+            self.sgd_updates = {
+                        self.w1: self.w1 - self.lr * tensor.grad(self.cost, self.w1),
+                        self.w2: self.w2 - self.lr * tensor.grad(self.cost, self.w2)}
+        
+            self.sgd_step = pfunc(
+                    params = [self.input, self.target],
+                    outputs = [self.output, self.cost],
+                    updates = self.sgd_updates)
+        
+            self.compute_output = pfunc([self.input],  self.output)
+        
+            self.output_from_hidden = pfunc([self.hidden], self.output)
+                            
