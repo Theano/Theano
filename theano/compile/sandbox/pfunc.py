@@ -3,8 +3,7 @@ __docformat__ = 'restructuredtext en'
 
 from theano.gof import Container, Variable, generic, graph, Constant, Value
 from theano.compile import function, In
-
-from sharedvalue import SharedVariable, shared
+from theano.compile.sandbox.sharedvalue import SharedVariable, shared
 
 class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False, strict=False,

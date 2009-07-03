@@ -2,13 +2,14 @@
 __docformat__ = 'restructuredtext en'
 
 import copy
-from theano.gof import Container, Variable, generic
+import numpy
+
 import theano.tensor.basic
+from theano.gof import Container, Variable, generic
 from theano.tensor import TensorType
 from theano.scalar import Scalar
 from theano.compile import function
 
-import numpy
 
 class SharedVariable(Variable):
     """

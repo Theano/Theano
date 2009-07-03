@@ -4,7 +4,7 @@ import copy
 import theano
 from theano.tensor import Tensor
 
-from sharedvalue import *
+from theano.compile.sandbox.sharedvalue import *
 
 class Test_SharedVariable(unittest.TestCase):
 
