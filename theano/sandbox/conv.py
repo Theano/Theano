@@ -47,13 +47,13 @@ class ConvOp(Op):
             if self.bsize<=self.unroll_batch:
                 self.unroll_batch = self.bsize
             else:
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a multiple of bsize(%s). We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize))
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a divisor of bsize(%s). We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize))
                 self.unroll_batch=1
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
             if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern
             else:
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a multiple of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
                 self.unroll_kern=1
         self.outshp = getFilterOutShp(self.imshp, kshp, (dx,dy), output_mode)
         self.fulloutshp = getFilterOutShp(self.imshp, kshp, (1,1), output_mode)
@@ -111,7 +111,7 @@ class ConvOp(Op):
 
         img2d = img2d.reshape((self.bsize,)+ self.imshp)
         filtersflipped = filtersflipped.reshape((self.nkern,self.imshp[0])+self.kshp)
-        
+
         for b in range(self.bsize):
             for n in range(self.nkern):
                 zz[b,n,...].fill(0)
