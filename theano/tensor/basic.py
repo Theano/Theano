@@ -638,7 +638,30 @@ class _tensor_py_operators:
 
     shape = property(lambda self: shape(self))
     def reshape(self, shape, ndim=None):
+        """Return a reshaped view/copy of this variable.
+
+        :param shape: something that can be converted to a symbolic vector of integers
+
+        :param ndim: the length of the shape.  Passing None here means for theano to try and
+        guess the length of `shape`.
+        """
         return reshape(self, shape, ndim=ndim)
+
+    def dimshuffle(self, pattern):
+        """Reorder the dimensions of this variable, optionally inserting broadcasted dimensions.
+
+        :param pattern: list of int mixed with 'x' for broadcastable dimensions
+
+        For example, to create a 3D view of a [2D] matrix, call ``dimshuffle([0,'x',1])``.  This
+        will create a 3D view such that the middle dimension is an implicit broadcasted
+        dimension.  To do the same thing on the transpose of that matrix, call ``dimshuffle([1,
+        'x', 0])``.
+
+        For more information, see `DimShuffle`.
+        """
+        op = DimShuffle(list(self.type.broadcastable), pattern)
+        return op(self)
+
 
     #SLICING
 #     def __getitem__(self, args): return Subtensor.from_idxs(self,
@@ -996,12 +1019,20 @@ def argmin(x, axis=None):
 @constructor
 def smallest(*args):
     """Return the [elementwise] smallest of a variable number of arguments (like python's min)."""
-    return min(stack(*args), axis=0)
+    if len(args) == 2:
+        a, b = args
+        return switch(a < b, a, b)
+    else:
+        return min(stack(*args), axis=0)
 
 @constructor
 def largest(*args):
     """Return the [elementwise] largest of a variable number of arguments (like python's max)."""
-    return max(stack(*args), axis=0)
+    if len(args) == 2:
+        a, b = args
+        return switch(a > b, a, b)
+    else:
+        return max(stack(*args), axis=0)
 
 
 ##########################
@@ -2482,9 +2513,13 @@ class numeric_grad:
 
     def max_err(self, g_pt):
         """Return the biggest relative error between g_pt and self.gf"""
-        assert len(g_pt) == len(self.gf)
+        if len(g_pt) != len(self.gf):
+            raise ValueError('argument has wrong number of elements', len(g_pt))
         errs = []
-        for a, b in zip(g_pt, self.gf):
+        for i, (a, b) in enumerate(zip(g_pt, self.gf)):
+            if a.shape != b.shape:
+                raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
+                    b.shape))))
             errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
         return numpy.max(errs), numpy.argmax(errs)
 
