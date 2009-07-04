@@ -5,6 +5,8 @@ from theano import gof, Op, tensor
 from theano.printing import Print
 
 def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
+    """Returns numpy ndarray of len 2
+    """
     s = -1 if mode=='valid' else 1
     inshp, kshp = N.array(inshp), N.array(kshp)
     return  N.int64(N.ceil((inshp[1:] + s*kshp - s*1)/\
@@ -18,11 +20,41 @@ class ConvOp(Op):
 
 
     
-    __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode', 'unroll_batch', 'unroll_kern']#FRED: I added both unroll as we don't want ops to be merged if they have different value. Otherwise, the tests for the unroll don't work correctly.
+    __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode', 
+            'unroll_batch', 'unroll_kern',
+            'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
+    #FRED: I added both unroll as we don't want ops to be merged if they have different value. Otherwise, the tests for the unroll don't work correctly.
     """These attributes uniquely identify the behaviour of this op for given inputs"""
 
-    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid', unroll_batch=0, unroll_kern=0):
+    #TODO: make the stacksize its own parameter, and make imshp a pair
+
+    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid', unroll_batch=0,
+            unroll_kern=0,
+            imshp_logical=None,
+            kshp_logical=None,
+            kshp_logical_top_aligned=True):
         """
+        
+
+        imshp - image shape tuple of 2 or 3: 2 for a 2d image, 3 for a stack of 2d images.
+        kshp - kernel shape 2
+        nkern - # kernels
+        bsize - batch size
+        dx - patch stride rows
+        dy - patch stride cols
+        out_mode - 'valid', 'full'
+        unroll_batch - c code generation option
+        unroll_kern - c code generation option
+
+
+        The reason that this op does the summation over convolutions within the 'stack' is that
+        it allows us to be memory-efficient about how gradients are calculated.  If, for
+        example, we had a convolution op that took a list of images, a list of kernels, and
+        gave you back each image as filtered by each kernel (JB thought he wanted this at one
+        point) then we would have to sum over a potentially very large tensor to get the
+        gradient on the filters.
+
+
         unroll_batch. If >0 will use a version that will unroll the batch loop by the value of the option. By default don't use this version of the code.
         unroll_nkern. idem as unroll_batch but unroll the kernel loop.
         """
@@ -33,12 +65,20 @@ class ConvOp(Op):
             self.imshp = imshp
         else:
             raise Exception("bad len for imshp")
+        del imshp
 
         self.kshp = tuple(kshp)
         self.nkern = nkern
         self.bsize=bsize
         self.dx=dx
         self.dy=dy
+        # a triple
+        self.imshp_logical = self.imshp if imshp_logical is None else tuple(imshp_logical)
+        assert len(self.imshp) == len(self.imshp_logical)
+
+        # a pair
+        self.kshp_logical = self.kshp if kshp_logical is None else tuple(kshp_logical)
+        self.kshp_logical_top_aligned = kshp_logical_top_aligned
 
         self.unroll_batch=unroll_batch
         self.unroll_kern=unroll_kern
@@ -55,14 +95,16 @@ class ConvOp(Op):
             else:
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
                 self.unroll_kern=1
-        self.outshp = getFilterOutShp(self.imshp, kshp, (dx,dy), output_mode)
-        self.fulloutshp = getFilterOutShp(self.imshp, kshp, (1,1), output_mode)
+        self.outshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
+        self.fulloutshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
         self.out_mode = output_mode
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented"%self.out_mode)
        
         if not (self.outshp > 0).all():
-            raise Exception("Bad size for the output shape. Verify that imshp(%s) and kshp(%s) are valid"%(self.imshp,self.kshp))
+            raise Exception(("Bad size for the output shape. Verify that [post-supersampling] input shape (%s)"
+                "and kern shape(%s) are ok. (hint: kerns must fit inside image in"
+                "'valid' mode)")%(self.imshp_logical,self.kshp_logical))
 
         hashval = hash(type(self))
         for a in self.__attrnames:
@@ -85,15 +127,25 @@ class ConvOp(Op):
 
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
+        """
+        inputs - 4 dim: batches x stacksize x rows x cols
+        kerns - 4 dim: nkern x stackidx x rows x cols
+        """
         outdim = kerns.ndim
-        if inputs.type.dtype != kerns.type.dtype:
-            raise Exception("The image and the kernel must have the same type."
-                            "inputs(%s), kerns(%s)"%(inputs.dtype, kerns.dtype))
-        output = tensor.tensor(dtype=inputs.type.dtype,
-                               broadcastable=[False]*outdim,
-                               name="ConvOp_Output");
+        _inputs = tensor.as_tensor_variable(inputs)
+        _kerns = tensor.as_tensor_variable(kerns)
+        # TODO: lift this restriction by upcasting either inputs or kerns
+        if _inputs.ndim != 4:
+            raise TypeError('make_node requires 4D tensor of inputs')
+        if _kerns.ndim != 4:
+            raise TypeError('make_node requires 4D tensor of kernels')
+        if _inputs.type.dtype != _kerns.type.dtype:
+            raise NotImplementedError("The image and the kernel must have the same type."
+                            "inputs(%s), kerns(%s)"%(_inputs.dtype, _kerns.dtype))
+        output = tensor.tensor(dtype=_inputs.type.dtype,
+                               broadcastable=[False]*outdim); 
 
-        return gof.Apply(self, [inputs, kerns], [output])
+        return gof.Apply(self, [_inputs, _kerns], [output])
 
     def perform(self,node, (img2d, filtersflipped), (z,)):
         """
@@ -102,6 +154,8 @@ class ConvOp(Op):
         # TODO: move these back out to global scope when they no longer cause an atexit error
         from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
         from scipy.signal.sigtools import _convolve2d
+        #print 'img2d (%s)'%str(self.imshp_logical), img2d
+        #print 'filtersflipped (%s)'%str(self.kshp_logical), filtersflipped
         if z[0] is None:
             z[0] = N.zeros((self.bsize,)+(self.nkern,)+tuple(self.fulloutshp),
                            dtype=img2d.dtype)
@@ -109,13 +163,42 @@ class ConvOp(Op):
         val = _valfrommode(self.out_mode)
         bval = _bvalfromboundary('fill')
 
-        img2d = img2d.reshape((self.bsize,)+ self.imshp)
-        filtersflipped = filtersflipped.reshape((self.nkern,self.imshp[0])+self.kshp)
+        batchsize = self.bsize
+        stacklen = self.imshp[0]
 
-        for b in range(self.bsize):
+        img2d = img2d.reshape((batchsize,)+ self.imshp)
+        filtersflipped = filtersflipped.reshape((self.nkern,stacklen)+self.kshp)
+
+        if self.imshp != self.imshp_logical:
+            # assuming that to get from imshp to imshp logical we insert zeros in missing spots
+            rstride = int(N.ceil(self.imshp_logical[1] / float(self.imshp[1])))
+            cstride = int(N.ceil(self.imshp_logical[2] / float(self.imshp[2])))
+            buf = N.zeros((batchsize,)+ self.imshp_logical, dtype=img2d.dtype)
+            buf[:,:,::rstride, ::cstride] = img2d
+            img2d = buf
+            print 'A'
+            del buf, rstride, cstride
+
+        if self.kshp != self.kshp_logical:
+            rstride = int(N.ceil(self.kshp_logical[0] / float(self.kshp[0])))
+            cstride = int(N.ceil(self.kshp_logical[1] / float(self.kshp[1])))
+            buf = N.zeros((self.nkern,stacklen)+ self.kshp_logical, dtype=filtersflipped.dtype)
+            if self.kshp_logical_top_aligned:
+                roffset=coffset=0
+            else:
+                roffset=(self.kshp_logical[0] - (self.kshp[0]*rstride) - 1+rstride) % rstride
+                coffset=(self.kshp_logical[1] - (self.kshp[1]*rstride) - 1+rstride) % rstride
+                assert roffset >= 0
+                assert coffset >= 0
+            buf[:,:,roffset::rstride, coffset::cstride] = filtersflipped
+            filtersflipped = buf
+            print 'B'
+            del buf, rstride, cstride
+
+        for b in range(batchsize):
             for n in range(self.nkern):
                 zz[b,n,...].fill(0)
-                for im0 in range(self.imshp[0]):
+                for im0 in range(stacklen):
                     zz[b,n,...] +=  _convolve2d(\
                         img2d[b,im0,...], filtersflipped[n,im0,...],1,val, bval, 0)
         #We copy it to remove the Stride mismatch warning from DEBUG_MODE.
@@ -123,6 +206,7 @@ class ConvOp(Op):
         #The copy don't affect the performence during our experience as in that case we
         #execute the c version which is much faster.
         zz = zz[:,:,0::self.dx,0::self.dy].copy()
+        #print 'zz (%s)'%str((self.dx, self.dy)), zz
         z[0]=zz
 
 
@@ -134,17 +218,19 @@ class ConvOp(Op):
         * inputs needs to be a 4D tensor. Couldn't get 3D to work
         * will crash if filter the same size as input image
         """
-        outshp = self.fulloutshp
-        if self.dx!=1 or self.dy!=1:
-            upgz = T.as_tensor(N.zeros((self.bsize,self.nkern)+tuple(self.fulloutshp),
-                                       dtype=gz.type.dtype))
-            gz = T.SetSubtensor([slice(self.bsize), slice(self.nkern),
-                                 slice(0,outshp[0],self.dy),
-                                 slice(0,outshp[1],self.dx)])(upgz,gz)
+        if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
+            raise NotImplementedError('todo')
+
+        grad_hack_necessary = False
+        if grad_hack_necessary:
+            if self.dx!=1 or self.dy!=1:
+                upgz = T.as_tensor(N.zeros((self.bsize,self.nkern)+tuple(self.fulloutshp),
+                                           dtype=gz.type.dtype))
+                gz = T.SetSubtensor([slice(self.bsize), slice(self.nkern),
+                                     slice(0,self.fulloutshp[0],self.dy),
+                                     slice(0,self.fulloutshp[1],self.dx)])(upgz,gz)
 
         ####### Determine gradient on kernels ########
-        if inputs.ndim == 3:
-            inputs = tensor.shape_padleft(inputs,1)
         assert inputs.ndim==4 and kerns.ndim==4
 
         newin = tensor.DimShuffle(inputs.broadcastable, (1,0,2,3))(inputs)
@@ -152,22 +238,30 @@ class ConvOp(Op):
     
         if self.out_mode == 'valid':
             (img, filters) = (newin, newgz)
+            imshp_logical = None
+            kshp_logical = self.fulloutshp
+            kshp_logical_top_aligned=False
             (bsize, nkern) = (self.imshp[0], self.nkern)
-            imshp = N.hstack((self.bsize, self.imshp[1:]))
-            kshp  = outshp
+            imshp = (self.bsize, self.imshp[1], self.imshp[2])
+            kshp  = self.outshp
             un_b = self.unroll_batch
             un_k = self.unroll_kern
+            print 'dw_valid', imshp, kshp, nkern, bsize
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
+            imshp_logical = (self.bsize, self.fulloutshp[0], self.fulloutshp[1])
+            kshp_logical = None
+            kshp_logical_top_aligned=True
             (bsize, nkern) = (self.nkern, self.imshp[0])
-            imshp = N.hstack((self.bsize, outshp))
+            imshp = (self.bsize, self.outshp[0], self.outshp[1])
             kshp  = self.imshp[1:]
             un_b = self.unroll_kern
             un_k = self.unroll_batch
+            print 'dw_full', imshp, kshp, nkern, bsize
         else:
             raise NotImplementedError('Only [full,valid] modes are currently supported.')
 
-        filters = filters[:,:,::-1,::-1]
+        filters = filters[:,:,::-1,::-1] #flip them
         
         #find good value for the unroll
         if un_b!=0 and bsize%un_b!=0:
@@ -184,7 +278,10 @@ class ConvOp(Op):
                 print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the kernel. Maybe you can optimize this!"
 
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
-                    unroll_batch=un_b, unroll_kern=un_k)(img,filters)
+                    unroll_batch=un_b, unroll_kern=un_k,
+                    imshp_logical=imshp_logical,
+                    kshp_logical=kshp_logical,
+                    kshp_logical_top_aligned=kshp_logical_top_aligned)(img,filters)
         assert (dw.owner.op.outshp==self.kshp).all()
         if self.out_mode == 'valid':
             # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
@@ -193,13 +290,16 @@ class ConvOp(Op):
 
         ####### Determine gradient on inputs ########
         mode = 'valid' if self.out_mode == 'full' else 'full'
-        filters = tensor.DimShuffle(gz.broadcastable, (1,0,2,3))(kerns)
+        filters = tensor.DimShuffle(kerns.broadcastable, (1,0,2,3))(kerns)
         filters = filters[:,:,::-1,::-1]
         nkern = self.imshp[0]
-        imshp = N.hstack((self.nkern,outshp))
+        imshp = (self.nkern, self.outshp[0], self.outshp[1])
+        print 'din', imshp, self.kshp, nkern
         din = ConvOp(imshp, self.kshp, nkern, self.bsize, 
                      1,1, output_mode=mode,
-                     unroll_batch=un_b, unroll_kern=un_k)(gz,filters)
+                     unroll_batch=un_b, unroll_kern=un_k,
+                     imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1]),
+                     kshp_logical=None)(gz,filters)
         assert (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
@@ -221,6 +321,8 @@ using namespace std;
     def c_code(self, node, name, (img2d, filtersflipped), (z, ), sub):
         if node.inputs[0].type.dtype != node.inputs[1].type.dtype:
             raise NotImplementedError()
+        if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
+            raise NotImplementedError('todo')
         assert node.inputs[0].type.dtype == node.inputs[1].type.dtype
         d=locals()
         d.update(sub)
@@ -260,6 +362,7 @@ using namespace std;
 
 def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
               bias=None, mode='valid', **d):
+    #TODO: remove the bias argument from this function because convolution has nothing to do with a bias
 
     # if imshp, is a tuple, images contains one input dimension
     nvis_dim = 1 if len(imshp)!=3 else imshp[0]
