@@ -89,7 +89,9 @@ def grad_sources_inputs(sources, graph_inputs):
                     node.op, 
                     len(g_inputs),
                     len(node.inputs))
-        for r, g_r in zip(node.inputs, g_inputs):
+        for ii, (r, g_r) in enumerate(zip(node.inputs, g_inputs)):
+            if g_r and (r.type != g_r.type):
+                print 'WARNING: %s.grad returned a different type for input %i: %s vs. %s'%(node.op, ii, r.type, g_r.type)
             if g_r and len(sources) == 1 and sources[0][0].name and r.name:
                 g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None: 
