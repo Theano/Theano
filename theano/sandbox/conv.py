@@ -187,7 +187,7 @@ class ConvOp(Op):
                 roffset=coffset=0
             else:
                 roffset=(self.kshp_logical[0] - (self.kshp[0]*rstride) - 1+rstride) % rstride
-                coffset=(self.kshp_logical[1] - (self.kshp[1]*rstride) - 1+rstride) % rstride
+                coffset=(self.kshp_logical[1] - (self.kshp[1]*cstride) - 1+cstride) % cstride
                 assert roffset >= 0
                 assert coffset >= 0
             buf[:,:,roffset::rstride, coffset::cstride] = filtersflipped
@@ -246,7 +246,7 @@ class ConvOp(Op):
             kshp  = self.outshp
             un_b = self.unroll_batch
             un_k = self.unroll_kern
-            print 'dw_valid', imshp, kshp, nkern, bsize
+            #print 'dw_valid', imshp, kshp, nkern, bsize
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
             imshp_logical = (self.bsize, self.fulloutshp[0], self.fulloutshp[1])
@@ -257,7 +257,7 @@ class ConvOp(Op):
             kshp  = self.imshp[1:]
             un_b = self.unroll_kern
             un_k = self.unroll_batch
-            print 'dw_full', imshp, kshp, nkern, bsize
+            #print 'dw_full', imshp, kshp, nkern, bsize
         else:
             raise NotImplementedError('Only [full,valid] modes are currently supported.')
 
@@ -294,7 +294,7 @@ class ConvOp(Op):
         filters = filters[:,:,::-1,::-1]
         nkern = self.imshp[0]
         imshp = (self.nkern, self.outshp[0], self.outshp[1])
-        print 'din', imshp, self.kshp, nkern
+        #print 'din', imshp, self.kshp, nkern
         din = ConvOp(imshp, self.kshp, nkern, self.bsize, 
                      1,1, output_mode=mode,
                      unroll_batch=un_b, unroll_kern=un_k,
@@ -313,6 +313,7 @@ class ConvOp(Op):
 #define FULL  2
 #define SAME  1
 #define VALID 0
+#define MOD %
 #include <iostream>
 using namespace std;
 """ + tensor.blas.blas_header_text()
@@ -321,8 +322,6 @@ using namespace std;
     def c_code(self, node, name, (img2d, filtersflipped), (z, ), sub):
         if node.inputs[0].type.dtype != node.inputs[1].type.dtype:
             raise NotImplementedError()
-        if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
-            raise NotImplementedError('todo')
         assert node.inputs[0].type.dtype == node.inputs[1].type.dtype
         d=locals()
         d.update(sub)
@@ -339,11 +338,35 @@ using namespace std;
         d["self_imshp2"]=self.imshp[2]
         d["self_kshp0"]=self.kshp[0]
         d["self_kshp1"]=self.kshp[1]
+        d["self_kshp_logical_r"] = self.kshp_logical[0]
+        d["self_kshp_logical_c"] = self.kshp_logical[1]
+        d["self_kshp_logical_stride_r"] = int(N.ceil(self.kshp_logical[0] / float(self.kshp[0])))
+        d["self_kshp_logical_stride_c"] = int(N.ceil(self.kshp_logical[1] / float(self.kshp[1])))
+        if self.kshp_logical_top_aligned:
+            d["self_kshp_logical_offset_r"] = 0
+            d["self_kshp_logical_offset_c"] = 0
+        else:
+            rstride = d["self_kshp_logical_stride_r"]
+            cstride = d["self_kshp_logical_stride_c"]
+            d["self_kshp_logical_offset_r"] = (self.kshp_logical[0] - (self.kshp[0]*rstride) - 1+rstride) % rstride
+            d["self_kshp_logical_offset_c"] = (self.kshp_logical[1] - (self.kshp[1]*cstride) - 1+cstride) % cstride
+            del rstride, cstride
+        d["self_imshp_logical_r"] = self.imshp_logical[1] #N.B. 1  not 0
+        d["self_imshp_logical_c"] = self.imshp_logical[2]#N.B. 2  not 1
+        d["self_imshp_logical_stride_r"] = int(N.ceil(self.imshp_logical[1] / float(self.imshp[1])))
+        d["self_imshp_logical_stride_c"] = int(N.ceil(self.imshp_logical[2] / float(self.imshp[2])))
         d["affectation"]="=" if self.imshp[0]==1 else "+="
         if node.inputs[0].type.dtype=="float32": d["type"]="float"
         elif node.inputs[0].type.dtype=="float64": d["type"]="double"
         else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
         d["gemm"]='dgemm_' if d["type"]=="double" else 'sgemm_'
+
+        #print 'LOGICAL OFFSET', self.kshp_logical_top_aligned, d["self_kshp_logical_r"],
+        #print d["self_kshp0"], d["self_kshp_logical_offset_r"], d["self_kshp_logical_stride_r"],
+        #print self.out_mode, d["self_imshp_logical_stride_r"]
+
+        if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
+            return _conv_op_code_a % d
 
         if self.unroll_batch>0 or self.unroll_kern>0:
             if self.unroll_batch<=0: self.unroll_batch=1
@@ -396,8 +419,10 @@ int type_im=PyArray_TYPE(%(img2d)s);
 int type_ker=PyArray_TYPE(%(filtersflipped)s);
 
 npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
-npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
-npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+npy_intp dim_im_phys[2]={%(self_imshp1)s,%(self_imshp2)s};
+npy_intp dim_im_log[2]={%(self_imshp_logical_r)s,%(self_imshp_logical_c)s};
+npy_intp dim_ker_phys[2]={%(self_kshp0)s,%(self_kshp1)s};
+npy_intp dim_ker_log[2]={%(self_kshp_logical_r)s,%(self_kshp_logical_c)s};
 
 PyArray_Dims img2d_shape;
 npy_intp img2d_dim[4]={1,1,0,0};
@@ -409,6 +434,7 @@ npy_intp kerns_dim[4]={1,1,0,0};
 kerns_shape.ptr=kerns_dim;
 kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
+
 
 if(%(img2d)s->nd==2){
   img2d_dim[3]=%(img2d)s->dimensions[1];
@@ -527,57 +553,82 @@ for(int b=0;b< %(self_bsize)s;b++){
       const %(type)s * __restrict__ in=(%(type)s *)(PyArray_GETPTR2(img2d,b,stack_size));
       const %(type)s * __restrict__ hvals=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern,stack_size));
 
-      int new_m;
 
       for (int iter_m=0; iter_m < Os[0]; iter_m++) {
-        // Reposition index into input image based on requested output size
-        int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
+                                               /// Reposition index into input image based on requested output size
+        int pos_m = iter_m*%(self_dx)s;        //row position in logical output image
+        int new_m;                             //row anchor in logical input image (we will loop upward from here)
         if (mode == FULL) new_m = pos_m ;
-        else new_m = (pos_m+dim_ker[0]-1);
+        else new_m = (pos_m+dim_ker_log[0]-1);
 
         for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns
-          int pos_n=iter_n*%(self_dy)s;
+          int pos_n=iter_n*%(self_dy)s;        // current col position in logical output image
           %(type)s sum=0;
 
           // Sum over kernel, if index into image is out of bounds
           // fill with the value
-          for (int j=0; j < dim_ker[0]; j++) {
-            int ind0 = (new_m-j);
+          for (int j_log=0; j_log < %(self_kshp_logical_r)s; j_log++) { // loop over logical rows in kernel
+
+            int ind0_log = (new_m-j_log);                                   // ind0_log: row position in logical input image
+
+            if ((j_log < %(self_kshp_logical_offset_r)s) || (j_log - %(self_kshp_logical_offset_r)s) MOD %(self_kshp_logical_stride_r)s)
+                continue;
+
+            if (ind0_log MOD %(self_imshp_logical_stride_r)s)
+                continue;
+
+            int j_phys = ((j_log- %(self_kshp_logical_offset_r)s) / %(self_kshp_logical_stride_r)s);
+            int ind0_phys = (ind0_log / %(self_imshp_logical_stride_r)s);
+            //std::cerr <<"j_log" << j_log << " j_phys " << j_phys << " " << ind0_phys << "\\n";
 
             if(mode==FULL){
-              const %(type)s * idx_hvals=&hvals[j*dim_ker[1]];
-              if(ind0 < 0 || ind0 >= dim_im[0]){
-                if(fill_value!=0)
-                  for (int k=0; k < dim_ker[1]; k++) {
-                    sum+= idx_hvals[k] * fill_value;
-                  }
+              const %(type)s * idx_hvals=&hvals[j_phys*dim_ker_phys[1]]; //This is a pointer to the current row of the kernel
+              if(ind0_log < 0 || ind0_log >= dim_im_log[0]){
+                   // the current row of the kernel is off the image
               }else{
-                //do the part where kernel is to the right of the img
+                int k = max((int)(pos_n-dim_im_log[1])+1,0);
+                int max_k=min(pos_n+1,(int)dim_ker_log[1]);
+                const %(type)s * idx_in=&in[ind0_phys*dim_im_phys[1]];
+                for (int ind1_log=pos_n-k; k<max_k; k++,ind1_log--) {
+                    if (1)
+                    {
+                                if ((k < %(self_kshp_logical_offset_c)s) || (k - %(self_kshp_logical_offset_c)s) MOD %(self_kshp_logical_stride_c)s)
+                                    continue;
 
-                int k=0,max_k=max((int)(pos_n-dim_im[1])+1,0);
-                if(fill_value!=0){ 
-                
-                  for(k=0;k<max_k;k++){
-                    sum+= idx_hvals[k]*fill_value;
-                  }
-                }else {k=max_k;}
-                
-                //do the part where the kernel is on the img
-                max_k=min(pos_n+1,(int)dim_ker[1]);
-                const %(type)s * idx_in=&in[ind0*dim_im[1]];
-                for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
-                  sum+= idx_hvals[k] * idx_in[ind1];
+                                if (ind1_log MOD %(self_imshp_logical_stride_c)s)
+                                    continue;
+                    }
+                  sum+= idx_hvals[(k-%(self_kshp_logical_offset_c)s) / %(self_kshp_logical_stride_c)s] * idx_in[ind1_log / %(self_imshp_logical_stride_c)s];
                 }
-                //do the part to the left of the img
-                if(fill_value!=0)
-                  for(;k<dim_ker[1];k++) sum+= idx_hvals[k]*fill_value;
               }
             }else{
-              const %(type)s* idx_in=&in[ind0*dim_im[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
-              const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
-              int new_n = (pos_n+dim_ker[1]-1);
-              for (int k=0,last=new_n; k < dim_ker[1]; k++,last--) {
-                sum+=idx_hvals[k]*idx_in[last];
+              const %(type)s* idx_in=&in[ind0_phys*dim_im_phys[1]]; //JB: should be dim_im[1] right? (was dim_im[0])
+              const %(type)s* idx_hvals=&hvals[j_phys*dim_ker_phys[1]];
+              int new_n = (pos_n+dim_ker_log[1]-1);
+              if (%(self_imshp_logical_stride_c)s != 1)  // a general loop
+              {
+                  for (int k=0,last=new_n; k < dim_ker_log[1]; k++,last--) {
+                        if ((k < %(self_kshp_logical_offset_c)s) || (k - %(self_kshp_logical_offset_c)s) MOD %(self_kshp_logical_stride_c)s)
+                            continue;
+
+                        else if (last MOD %(self_imshp_logical_stride_c)s)
+                            continue;
+                            else
+                            {
+                    sum+=idx_hvals[(k-%(self_kshp_logical_offset_c)s) / %(self_kshp_logical_stride_c)s]*idx_in[last/%(self_imshp_logical_stride_c)s];
+                    }
+                  }
+              }
+              else  // self_imshp_stride_c == 1
+              {
+                  int offset = %(self_kshp_logical_offset_c)s;
+                  int k_phys=0;
+                  for (int k_log=offset,last=new_n-offset; k_log < dim_ker_log[1]; ) {
+                    sum += idx_hvals[k_phys]*idx_in[last];
+                    ++k_phys;
+                    last -= %(self_kshp_logical_stride_c)s;
+                    k_log += %(self_kshp_logical_stride_c)s;
+                  }
               }
             }
           }//for j
