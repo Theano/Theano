@@ -47,7 +47,9 @@ class ProfileMode(Mode):
         The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there). 
         The Op-wise summary print the execution time of all Apply nodes executing the same Op are grouped together and the total execution time per Op is shown (so if you use dot twice, you will see only one entry there corresponding to the sum of the time spent in each of them). If two Op have different hash value, they will be separate.
         The type-Op-wise summary group the result by type of op. So event if two Op have different hash value, they will be merged.
+
         param: n_apply_to_print the number of apply to print. Default 15.
+
         param: n_ops_to_print the number of ops to print. Default 20.
         """
         local_time = self.local_time[0]
@@ -89,14 +91,12 @@ class ProfileMode(Mode):
 
 
         sop_time={}
-        sop_c={}
+        sop_c={} #map each op class to Bool. True iff all applies were done in c.
         for a,t in op_time.items():
             sop_time.setdefault(type(a),0)
             sop_time[type(a)]+=t
-            if sop_c.has_key(type(a)):
-                assert sop_c[type(a)]==self.op_cimpl[a]
-            else:
-                sop_c[type(a)]=self.op_cimpl[a]
+            sop_c.setdefault(type(a),True)
+            sop_c[type(a)]=sop_c[type(a)] and self.op_cimpl[a]
         print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <Op name>'
         sotimes = [(t/local_time, t, a, sop_c[a]) for a, t in sop_time.items()]
         sotimes.sort()
