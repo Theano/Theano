@@ -3,10 +3,10 @@ __docformat__ = "restructuredtext en"
 import sys
 import unittest
 import numpy 
-
-from theano.tensor.randomstreams import RandomStreams, raw_random
+from theano.tensor.randomstreams import RandomStreams, raw_random, getRandomStream, randstream_singleton
 from theano.compile import Module, Method, Member
 
+import theano
 from theano import tensor
 from theano import compile, gof
 
@@ -138,6 +138,40 @@ class T_RandomStreams(unittest.TestCase):
         assert m.random is m.m2.random
 
 
+
+    def test_singleton(self):
+
+        moda = Module()
+        moda.randa = getRandomStream(12)
+        a = moda.randa.uniform((2,2))
+        moda.fn = Method([], a)
+        imoda = moda.make()
+        imoda.randa.initialize()
+
+        modb = Module()
+        modb.randb = getRandomStream()
+        b = modb.randb.uniform((2,2))
+        modb.fn = Method([], b)
+        imodb = modb.make()
+        imodb.randb.initialize()
+
+        avals1 = imoda.fn()
+        bvals1 = imodb.fn()
+       
+        modc = Module()
+        modc.randc = getRandomStream(12, force_new=True)
+        a2 = modc.randc.uniform((2,2))
+        b2 = modc.randc.uniform((2,2))
+        modc.fna = Method([], a2)
+        modc.fnb = Method([], b2)
+        imodc = modc.make()
+        imodc.randc.initialize()
+
+        avals2 = imodc.fna()
+        bvals2 = imodc.fnb()
+
+        assert (avals1 == avals2).all()
+        assert (bvals1 == bvals2).all()
 
 if __name__ == '__main__':
     from theano.tests import main

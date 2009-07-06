@@ -648,7 +648,7 @@ class First(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return gz if x.type in grad_type else None, None
+        return gz if x.type in grad_types else None, None
 first = First(transfer_type(0), name = 'first')
 
 class Second(BinaryScalarOp):
@@ -668,7 +668,7 @@ class Identity(UnaryScalarOp):
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = %(x)s;" % locals()
     def grad(self, (x, ), (gz, )):
-        return gz if x.type in grad_type else None,
+        return gz if x.type in grad_types else None,
 identity = Identity(same_out, name = 'identity')
 
 class Abs(UnaryScalarOp):

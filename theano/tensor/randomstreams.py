@@ -172,3 +172,15 @@ class RandomStreams(Component):
         """
         return self.gen(raw_random.random_integers, *args, **kwargs)
 
+
+randstream_singleton = []
+
+def getRandomStream(seed=None, force_new=False):
+    global randstream_singleton
+    if force_new or not randstream_singleton:
+        print 'creating random stream with seed %i' % seed
+        randstream_singleton = []
+        randstream_singleton.append(RandomStreams(seed))
+    elif seed:
+        print >> sys.stderr, 'Warning: RandomStream singleton already instantiated. Seed %i will be ignored'%seed
+    return randstream_singleton[0]
