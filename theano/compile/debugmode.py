@@ -865,6 +865,7 @@ class _Linker(gof.link.LocalLinker):
                         for r in node.outputs:
                             if not r.type.is_valid_value(storage_map[r][0]):
                                 raise InvalidValueError(r, storage_map[r][0])
+                            #if r in r_vals:
 
                         _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
                                 clobber_dr_vals=True)
