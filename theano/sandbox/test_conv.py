@@ -437,8 +437,7 @@ class TestConvOp(unittest.TestCase):
         kshps = [(3,4)]
         imshps = [(2,8,7)]
         modes = ['valid', 'full']
-        unroll_batch=[0,1,3]
-        unroll_kern=[0,1,4]
+        unroll = [(0,0),(1,1),(1,4),(3,1),(3,4)]
         ssizes = [(1,1),(2,2)]
         
         for typ in types:
@@ -452,8 +451,7 @@ class TestConvOp(unittest.TestCase):
                         # 'full' mode should support kernels bigger than the input
                         if mode == 'valid' and (t<0).any():
                             continue
-                        for un_b in unroll_batch:
-                            for un_k in unroll_kern:
+                        for un_b,un_k in unroll:
                                 for ss in ssizes:
                                     imgvals = N.array(N.random.random(N.hstack((bsize,imshp))),dtype=imgs.dtype)
 
