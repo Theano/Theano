@@ -12,7 +12,13 @@ from conv import ConvOp, convolve2, getFilterOutShp
 def flip(kern, kshp):
     "flip the kernel as scipy.convolv2d do it flipped."
     flip = N.zeros(kern.shape)
-    if len(kern.shape)==3:
+    if len(kern.shape)==2:
+        kern=kern.reshape(-1)
+        it = reversed(kern)
+        for i in range(kshp[0]):
+            for j in range(kshp[1]):
+                flip[i,j] = it.next()
+    elif len(kern.shape)==3:
         kern=kern.reshape(kern.shape[0],-1)
         for k in range(kern.shape[0]):
             it = reversed(kern[k,:])
