@@ -12,7 +12,13 @@ from conv import ConvOp, convolve2, getFilterOutShp
 def flip(kern, kshp):
     "flip the kernel as scipy.convolv2d do it flipped."
     flip = N.zeros(kern.shape)
-    if len(kern.shape)==3:
+    if len(kern.shape)==2:
+        kern=kern.reshape(-1)
+        it = reversed(kern)
+        for i in range(kshp[0]):
+            for j in range(kshp[1]):
+                flip[i,j] = it.next()
+    elif len(kern.shape)==3:
         kern=kern.reshape(kern.shape[0],-1)
         for k in range(kern.shape[0]):
             it = reversed(kern[k,:])
@@ -152,6 +158,9 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll
 
 
 class TestConvOp(unittest.TestCase):
+    """NOTE: we test only when we pass 4d tensor.
+    """
+
     def setUp(self):
         utt.seed_rng()
 
@@ -164,7 +173,7 @@ class TestConvOp(unittest.TestCase):
         if 0:
             # fixed parameters
             bsize = 10     # batch size
-            imshp = (28,28)# image shape
+            imshp = (1,28,28)# image shape
             kshps = [(5,5),(6,7),(12,8)]   # kernel shaped
             nkern = 5      # nb kernel
             ssizes = ((1,1),(2,2),(3,3),(4,4))#step size
@@ -172,7 +181,7 @@ class TestConvOp(unittest.TestCase):
         elif 0:
             # fixed parameters
             bsize = 10     # batch size
-            imshp = (50,50)# image shape
+            imshp = (1,50,50)# image shape
             print >> sys.stderr, "WARNING: only square shape tested"
             kshps = [(12,12), (12,12)]
             nkern = 20      # nb kernel
@@ -181,7 +190,7 @@ class TestConvOp(unittest.TestCase):
         elif 0:
             # fixed parameters
             bsize = 7     # batch size
-            imshp = (5,4)# image shape
+            imshp = (1,5,4)# image shape
             kshps = [(2,3)]
             nkern = 6      # nb kernel
             ssizes = [(1,1)] #step size
@@ -189,7 +198,7 @@ class TestConvOp(unittest.TestCase):
         else:
             # fixed parameters
             bsize = 7     # batch size
-            imshp = (5,4)# image shape
+            imshp = (1,5,4)# image shape
             kshps = [(2,3)]
             nkern = 6      # nb kernel
             ssizes = [(1,1)] #step size
@@ -198,13 +207,13 @@ class TestConvOp(unittest.TestCase):
         # TODO: ask Fred about this
         # this combination trigered a bug.
         #        bsize=1
-        #        imshp=(9,9)#fail with 9,9
+        #        imshp=(1,9,9)#fail with 9,9
         #        kshp=(2,2)
         #        nkern=5
         #        ssizes=((1,1),)
         # this combination trigered a bug.
         #        bsize = 1     # batch size
-        #        imshp = (3,3)# image shape
+        #        imshp = (1,3,3)# image shape
         #        kshp = (2,3)#(5,5)   # kernel shaped
         #        nkern = 1      # nb kernel
         #        ssizes = ((1,1),)#(2,2),(3,3),(4,4))#step size
@@ -251,34 +260,34 @@ class TestConvOp(unittest.TestCase):
 
                     # compute with ConvOp
                     dmatrix3=T.TensorType('float64', (False, False, False))
-                    inputs=dmatrix3()
-                    kerns3=dmatrix3()
+                    inputs4=dmatrix4()
+                    kerns4=dmatrix4()
                     bia=T.dscalar()
-                    conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode)(inputs, kerns3)
-                    f2 = function([inputs, kerns3], conv_op, mode=Mode(linker="c"))
-                    f3 = function([inputs, kerns3], conv_op, mode=Mode(linker="py"))
+                    conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode)(inputs4, kerns4)
+                    f2 = function([inputs4, kerns4], conv_op, mode=Mode(linker="c"))
+                    f3 = function([inputs4, kerns4], conv_op, mode=Mode(linker="py"))
 
                     ttime1 = time.time()
-                    out2_ = f2(img2d, filtersflipped)
-                    out2__ = out2_#[:,:,0::ss[0],0::ss[1]]
+                    out2_ = f2(img2d, filtersflipped.reshape(nkern,1,*kshp))
+                    out2__ = out2_
                     tconvop += [time.time() - ttime1]
                     out2___ = out2__.copy()
                     out2 = out2___ + biasvals.reshape(1,nkern,1,1)
-                    out3_ = f3(img2d, filtersflipped)
-                    out3__ = out3_#[:,:,0::ss[0],0::ss[1]]
+                    out3_ = f3(img2d, filtersflipped.reshape(nkern,1,*kshp))
+                    out3__ = out3_
                     out3___ = out3__.copy()
                     out3 = out3___ + biasvals.reshape(1,nkern,1,1)
                     assert (N.abs(out2_-out3_)<1e-5).all()
 
                     # REFERENCE IMPLEMENTATION: compute output with convolve2d
-                    fulloutshp = N.array(imshp) - N.array(kshp) + 1 if conv_mode=='valid'\
-                             else N.array(imshp) + N.array(kshp) - 1
+                    fulloutshp = N.array(imshp[1:]) - N.array(kshp) + 1 if conv_mode=='valid'\
+                             else N.array(imshp[1:]) + N.array(kshp) - 1
                     ntime1 = time.time()
                     refout = N.zeros((bsize,)+tuple(fulloutshp)+(nkern,))
                     for b in range(bsize):
                         for n in range(nkern):
                             refout[b,...,n] = convolve2d(\
-                                    img2d[b,:,:], filtersflipped[n,...],conv_mode)
+                                    img2d[b,0,:,:], filtersflipped[n,...],conv_mode)
                     tscipy += [time.time() - ntime1]
 
                     # need to flatten images
@@ -431,8 +440,7 @@ class TestConvOp(unittest.TestCase):
         kshps = [(3,4)]
         imshps = [(2,8,7)]
         modes = ['valid', 'full']
-        unroll_batch=[0,1,3]
-        unroll_kern=[0,1,4]
+        unroll = [(0,0),(1,1),(1,4),(3,1),(3,4)]
         ssizes = [(1,1),(2,2)]
         
         for typ in types:
@@ -446,8 +454,7 @@ class TestConvOp(unittest.TestCase):
                         # 'full' mode should support kernels bigger than the input
                         if mode == 'valid' and (t<0).any():
                             continue
-                        for un_b in unroll_batch:
-                            for un_k in unroll_kern:
+                        for un_b,un_k in unroll:
                                 for ss in ssizes:
                                     imgvals = N.array(N.random.random(N.hstack((bsize,imshp))),dtype=imgs.dtype)
 

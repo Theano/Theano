@@ -194,8 +194,8 @@ def refresh_lock(lock_file):
     lock_write.write(unique_id + '\n')
     lock_write.close()
     return unique_id
-    
-class Unlocker():
+
+class Unlocker(object):
     """
     Class wrapper around release mechanism so that the lock is automatically
     released when the program exits (even when crashing or being interrupted),

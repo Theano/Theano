@@ -850,14 +850,8 @@ class StructuredDotCSC(gof.Op):
             //npy_intp nnz = %(a_ind)s->dimensions[0];
 
             //clear the output array
-            for (npy_intp m = 0; m < M; ++m)
-            {
-                for (npy_intp n = 0; n < N; ++n)
-                {
-                    Dz[m*Szm + n*Szn] = 0.0;
-                }
-            }
-
+            memset(Dz, 0, M*N*sizeof(dtype_%(z)s));
+ 
             //iterate over the sparse array, making the most of an entry wherever we find it.
             //
             // Normal matrix matrix multiply: A MxK, B KxN =>  Z = AB
@@ -879,6 +873,7 @@ class StructuredDotCSC(gof.Op):
                 
                 // loop over sparse column indices through index pointer array 
                 // (amounts to looping over rows M of sparse matrix)
+
                 for (npy_int32 m_idx = Dptr[k * Sptr]; m_idx < Dptr[(k+1) * Sptr]; ++m_idx)
                 {
                     npy_int32 m = Dind[m_idx * Sind]; // row index of non-null value for column K
@@ -900,8 +895,6 @@ class StructuredDotCSC(gof.Op):
             }
         }
         """% dict(locals(), **sub)
-
-        # print rval
 
         return rval
 sd_csc = StructuredDotCSC()
@@ -989,14 +982,8 @@ class StructuredDotCSR(gof.Op):
             //npy_intp nnz = %(a_ind)s->dimensions[0];
 
             //clear the output array
-            for (npy_intp m = 0; m < M; ++m)
-            {
-                for (npy_intp n = 0; n < N; ++n)
-                {
-                    Dz[m*Szm + n*Szn] = 0.0;
-                }
-            }
-
+            memset(Dz, 0, M*N*sizeof(dtype_%(z)s));
+ 
             //iterate over the sparse array, making the most of an entry wherever we find it.
             // Normal matrix matrix multiply:
             // for m
