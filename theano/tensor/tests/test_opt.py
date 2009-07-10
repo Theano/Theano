@@ -373,7 +373,36 @@ def test_mixeddiv():
 # #         print g
 # # #        print g.outputs[0].owner.c_code(['x', 'y', 'z'], ['e'], dict(fail = "FAIL;", id = 0))
 # #         print gof.OpWiseCLinker(g).make_function()(numpy.ones((5, 5)), numpy.ones((5, 5)), numpy.ones((5, 5)))
-        
+
+
+def test_const_type_in_mul_canonizer():
+    input = dmatrix()
+    w = dmatrix()
+    visb = dvector()
+    hidb = dvector()
+    betas = dvector()
+    a = dvector()
+
+    def sigm(x): return 1./(1+exp(-x))
+
+    hid = sigm( (dot(w,input) + hidb) * betas )
+
+    vis_gauss1 = (dot(w.T, hid) + visb) * betas / (2 * a * a)
+    vis_gauss2 = (dot(w.T, hid) + visb) * betas / (2. * a * a)
+
+    f1 = function([input,w,visb,hidb,betas,a],vis_gauss1)
+    f2 = function([input,w,visb,hidb,betas,a],vis_gauss2)
+
+    ival = numpy.random.rand(5,5)
+    wval = numpy.random.rand(5,5)
+    visbval = numpy.random.rand(5)
+    hidbval = numpy.random.rand(5)
+    betaval = numpy.random.rand(5)
+    aval = numpy.random.rand(5)
+
+    assert numpy.allclose(
+        f2(ival, wval, visbval, hidbval, betaval, aval),
+        f1(ival, wval, visbval, hidbval, betaval, aval))
     
 
 
