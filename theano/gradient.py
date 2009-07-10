@@ -2,16 +2,21 @@
 
 __docformat__ = "restructuredtext en"
 
+import sys
 import gof #, gof.variable
 import numpy #for numeric_grad
 
 from gof.python25 import all
 import gof.utils
 
+def warning(msg):
+    # replace this with logger.warning when adding logging support
+    print >> sys.stderr, 'WARNING', msg
+
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
-def grad_sources_inputs(sources, graph_inputs):
+def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """
     A gradient source is a pair (``r``, ``g_r``), in which ``r`` is a `Variable`, and ``g_r`` is a
     `Variable` that is a gradient wrt ``r``.
@@ -96,8 +101,9 @@ def grad_sources_inputs(sources, graph_inputs):
                     len(g_inputs),
                     len(node.inputs))
         for ii, (r, g_r) in enumerate(zip(node.inputs, g_inputs)):
-            if g_r and (r.type != g_r.type):
-                print 'WARNING: %s.grad returned a different type for input %i: %s vs. %s'%(node.op, ii, r.type, g_r.type)
+            if warn_type:
+                if g_r and (getattr(r,'type',0) != getattr(g_r,'type', 1)):
+                    warning('%s.grad returned a different type for input %i: %s vs. %s'%(node.op, ii, r, g_r))
             if g_r and len(sources) == 1 and sources[0][0].name and r.name:
                 g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None: 
