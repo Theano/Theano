@@ -28,8 +28,9 @@ class ConvOp(Op):
 
     #TODO: make the stacksize its own parameter, and make imshp a pair
 
-    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid', unroll_batch=0,
-            unroll_kern=0,
+    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid',
+            unroll_batch=4,
+            unroll_kern=4,
             imshp_logical=None,
             kshp_logical=None,
             kshp_logical_top_aligned=True):
@@ -57,6 +58,10 @@ class ConvOp(Op):
 
         unroll_batch. If >0 will use a version that will unroll the batch loop by the value of the option. By default don't use this version of the code.
         unroll_nkern. idem as unroll_batch but unroll the kernel loop.
+
+        The version is with unroll_batch=4 and unroll_nkern if possible(currenctly it don't support logical shape != physical shape) as this is what give the best performance in practice. This also tell that to have the best performance, you should have a batch size and a number of kernel multiple of 4. In the article:
+        Anatomy of High-Performance Matrix Multiplication by Kazushige Goto and Robert A. Van De Geijn, ACM Transactions on Mathematical Software, vol 34, No. 3, article 12, May 2008.
+        In figure 12, it give the value mr x nr, those value are the optimum to use for unroll_batch and unroll_kern. For x86_64 bits computer it is 4x4. Other architecture can have different value.(2x4 for x86, 8x8 for itanium,...)
         """
         imshp = tuple(imshp)
         if len(imshp)==2:
@@ -517,9 +522,8 @@ if ((!%(z)s)
   || (%(z)s->dimensions[3] != dim_zz[1])
   )
 {
-  if (%(z)s) Py_DECREF(%(z)s);
+  {Py_XDECREF(%(z)s);}
   npy_intp dims[4] = {0,0,0,0};
-  if(!dims) %(fail)s;
   dims[0]=%(self_bsize)s;
   dims[1]=%(self_nkern)s;
   dims[2]=dim_zz[0];
@@ -746,7 +750,7 @@ if ((!%(z)s)
   || (%(z)s->dimensions[3] != dim_zz[1])
   )
 {
-  if (%(z)s) Py_DECREF(%(z)s);
+  {Py_XDECREF(%(z)s);}
   npy_intp dims[4] = {0,0,0,0};
   dims[0]=%(self_bsize)s;
   dims[1]=%(self_nkern)s;
@@ -1002,9 +1006,8 @@ if ((!%(z)s)
   || (%(z)s->dimensions[3] != dim_zz[1])
   )
 {
-  if (%(z)s) Py_DECREF(%(z)s);
+  {Py_XDECREF(%(z)s);}
   npy_intp dims[4] = {0,0,0,0};
-  if(!dims) %(fail)s;
   dims[0]=%(self_bsize)s;
   dims[1]=%(self_nkern)s;
   dims[2]=dim_zz[0];

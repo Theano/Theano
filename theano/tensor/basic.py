@@ -394,15 +394,15 @@ class TensorType(Type):
     def c_sync(self, name, sub):
         """Override `CLinkerOp.c_sync` """
         return """
-        Py_XDECREF(py_%(name)s);
+        {Py_XDECREF(py_%(name)s);}
         if (!%(name)s) {
-            Py_XINCREF(Py_None);
+            Py_INCREF(Py_None);
             py_%(name)s = Py_None;
         }
         else if ((void*)py_%(name)s != (void*)%(name)s) {
             py_%(name)s = (PyObject*)%(name)s;
         }
-        Py_XINCREF(py_%(name)s);
+        {Py_XINCREF(py_%(name)s);}
         """ % locals()
 
     def c_headers(self):
