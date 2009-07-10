@@ -478,8 +478,8 @@ if(%(filtersflipped)s->nd==3){
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
-if ((img2d_arr->strides[3] != sizeof(%(type)s)) 
-     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
+if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
+     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
@@ -492,8 +492,8 @@ img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
-if ((filtersflipped_arr->strides[3] != sizeof(%(type)s)) 
-     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*sizeof(%(type)s))){
+if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s)) 
+     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
@@ -544,10 +544,10 @@ for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
 
     //assertions
-    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
 
     %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(%(z)s,b,n_kern));
     for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out[i] = 0;
@@ -721,8 +721,8 @@ if (NKERN != kerns_dim[0])
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
-if ((img2d_arr->strides[3] != sizeof(%(type)s)) 
-     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
+if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s)) 
+     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
@@ -768,7 +768,7 @@ Os[1] = dim_im[1]-dim_ker[1]+1;
 // allocate a temporary buffer for storing the inner product of each nth kernel row 
 // with each row of an image
 {
-%(type)s * kbuf = (%(type)s *)malloc((Os[0] * NKERN + PyArray_Size((PyObject*)%(filtersflipped)s))* sizeof(%(type)s));
+%(type)s * kbuf = (%(type)s *)malloc((Os[0] * NKERN + PyArray_Size((PyObject*)%(filtersflipped)s))* (npy_intp)sizeof(%(type)s));
 int kbufstride = NKERN;
 %(type)s * myfilters = kbuf + Os[0] * NKERN;
 
@@ -813,7 +813,7 @@ for(int b=0;b< %(self_bsize)s;b++){
                 int imgview_stride = dim_im[1];
                 int filter_rows_stride =kerns_dim[1]*kerns_dim[2]*kerns_dim[3];
                 //remember, Fortran wants a column-major interpretation
-                assert(img2d->strides[3] == sizeof(%(type)s));
+                assert(img2d->strides[3] == (npy_intp)sizeof(%(type)s));
 
                 if (0){
                     std::cerr << "b " << b << " img_col " << img_col << " filterrow " << filter_row << " stackidx " <<stackidx << "\\n";
@@ -962,8 +962,8 @@ if(%(filtersflipped)s->nd==3){
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
-if ((img2d_arr->strides[3] != sizeof(%(type)s)) 
-     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
+if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s)) 
+     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
@@ -976,8 +976,8 @@ img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
-if ((filtersflipped_arr->strides[3] != sizeof(%(type)s)) 
-     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*sizeof(%(type)s))){
+if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s)) 
+     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
@@ -1028,10 +1028,10 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
 
     //assertions
-    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
 """%d
     ret+=my_dup2("%(type)s * __restrict__ out%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(%(z)s,b+%(unroll_biter)s,n_kern+%(unroll_kiter)s));")
     ret+=my_dup("for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out%(unroll_iter)s[i] = 0;",unroll_bsize*unroll_ksize)
