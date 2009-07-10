@@ -819,7 +819,7 @@ class StructuredDotCSC(gof.Op):
             || (%(z)s->dimensions[1] != %(b)s->dimensions[1])
             )
         {
-            {Py_XDECREF(%(z)s)};
+            {Py_XDECREF(%(z)s);}
             npy_intp dims[] = {0,0};
             dims[0] = ((npy_int32 *)%(a_nrows)s->data)[0];
             dims[1] = %(b)s->dimensions[1];
