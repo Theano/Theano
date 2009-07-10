@@ -2389,19 +2389,23 @@ outer = Outer()
 
 def grad(cost, wrt, g_cost=None, consider_constant=[]):
     """
-    @type cost: L{Variable}
-    @type wrt: L{Variable} or list of L{Variable}s.
-    @type g_cost: L{Variable} broadcastable to size of I{cost}, or None
-    @param g_cost: an expression for the gradient through cost.  The default is
-        {{{ones_like(cost)}}}
-    @param consider_constant: a list of expressions not to backpropagate through
+    :type cost: `Variable`
+    :type wrt: `Variable` or list of `Variable`s.
+    :type g_cost: `Variable` broadcastable to size of `cost`, or None
+    :param g_cost: an expression for the gradient through cost.  The default is
+        ``ones_like(cost)``.
+    :param consider_constant: a list of expressions not to backpropagate through
 
-    @rtype: L{Variable} or list of L{Variable}s (depending upon I{wrt})
-    @return: symbolic expression of gradient of I{cost} with respect to I{wrt}.
-    If I{wrt} is a list, then return a list containing the gradient of I{cost} wrt
-    each element of the list.  If an element of I{wrt} is not differentiable
-    with respect to the output, then a L{TensorConstant} with an appropriate
+    :rtype: `Variable` or list of `Variable`s (depending upon `wrt`)
+
+    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
+    If `wrt` is a list, then return a list containing the gradient of `cost` wrt
+    each element of the list.  If an element of `wrt` is not differentiable
+    with respect to the output, then a `TensorConstant` with an appropriate
     kind of zero is returned.
+
+    This function is a wrapper around a the more general function
+    `theano.gradient.grad_sources_inputs``.
 
     """
     if not isinstance(cost, TensorVariable):
