@@ -153,9 +153,9 @@ def struct_gen(args, struct_builders, blocks, sub):
             PyList_SET_ITEM(__ERROR, 0, err_type);
             PyList_SET_ITEM(__ERROR, 1, err_msg);
             PyList_SET_ITEM(__ERROR, 2, err_traceback);
-            Py_XDECREF(old_err_type);
-            Py_XDECREF(old_err_msg);
-            Py_XDECREF(old_err_traceback);
+            {Py_XDECREF(old_err_type);}
+            {Py_XDECREF(old_err_msg);}
+            {Py_XDECREF(old_err_traceback);}
         }
         // The failure code is returned to index what code block failed.
         return %(failure_var)s;
@@ -237,7 +237,7 @@ def get_c_extract(r, name, sub):
 def get_c_cleanup(r, name, sub):
     """WRITEME"""
     post = """
-    Py_XDECREF(py_%(name)s);
+    {Py_XDECREF(py_%(name)s);}
     """ % locals()
     return r.type.c_cleanup(name, sub) + post
 
@@ -249,7 +249,7 @@ def get_c_sync(r, name, sub):
       PyObject* old = PyList_GET_ITEM(storage_%(name)s, 0);
       {Py_XINCREF(py_%(name)s);}
       PyList_SET_ITEM(storage_%(name)s, 0, py_%(name)s);
-      Py_XDECREF(old);
+      {Py_XDECREF(old);}
     }
     """ % dict(sync = r.type.c_sync(name, sub), name = name, **sub)
 

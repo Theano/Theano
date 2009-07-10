@@ -522,9 +522,8 @@ if ((!%(z)s)
   || (%(z)s->dimensions[3] != dim_zz[1])
   )
 {
-  if (%(z)s) Py_DECREF(%(z)s);
+  {Py_XDECREF(%(z)s);}
   npy_intp dims[4] = {0,0,0,0};
-  if(!dims) %(fail)s;
   dims[0]=%(self_bsize)s;
   dims[1]=%(self_nkern)s;
   dims[2]=dim_zz[0];
@@ -751,7 +750,7 @@ if ((!%(z)s)
   || (%(z)s->dimensions[3] != dim_zz[1])
   )
 {
-  if (%(z)s) Py_DECREF(%(z)s);
+  {Py_XDECREF(%(z)s);}
   npy_intp dims[4] = {0,0,0,0};
   dims[0]=%(self_bsize)s;
   dims[1]=%(self_nkern)s;
@@ -1007,9 +1006,8 @@ if ((!%(z)s)
   || (%(z)s->dimensions[3] != dim_zz[1])
   )
 {
-  if (%(z)s) Py_DECREF(%(z)s);
+  {Py_XDECREF(%(z)s);}
   npy_intp dims[4] = {0,0,0,0};
-  if(!dims) %(fail)s;
   dims[0]=%(self_bsize)s;
   dims[1]=%(self_nkern)s;
   dims[2]=dim_zz[0];
