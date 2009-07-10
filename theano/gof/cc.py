@@ -144,9 +144,9 @@ def struct_gen(args, struct_builders, blocks, sub):
             PyObject* err_msg = NULL;
             PyObject* err_traceback = NULL;
             PyErr_Fetch(&err_type, &err_msg, &err_traceback);
-            if (!err_type) {err_type = Py_None; Py_XINCREF(Py_None);}
-            if (!err_msg) {err_msg = Py_None; Py_XINCREF(Py_None);}
-            if (!err_traceback) {err_traceback = Py_None; Py_XINCREF(Py_None);}
+            if (!err_type) {err_type = Py_None;Py_INCREF(Py_None);}
+            if (!err_msg) {err_msg = Py_None; Py_INCREF(Py_None);}
+            if (!err_traceback) {err_traceback = Py_None; Py_INCREF(Py_None);}
             PyObject* old_err_type = PyList_GET_ITEM(__ERROR, 0);
             PyObject* old_err_msg = PyList_GET_ITEM(__ERROR, 1);
             PyObject* old_err_traceback = PyList_GET_ITEM(__ERROR, 2);
@@ -222,7 +222,7 @@ def get_c_init(r, name, sub):
     """WRITEME"""
     pre = "" """
     py_%(name)s = Py_None;
-    Py_XINCREF(py_%(name)s);
+    {Py_XINCREF(py_%(name)s);}
     """ % locals()
     return pre + r.type.c_init(name, sub)
 
@@ -230,7 +230,7 @@ def get_c_extract(r, name, sub):
     """WRITEME"""
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
-    Py_XINCREF(py_%(name)s);
+    {Py_XINCREF(py_%(name)s);}
     """ % locals()
     return pre + r.type.c_extract(name, sub)
 
@@ -247,7 +247,7 @@ def get_c_sync(r, name, sub):
     if (!%(failure_var)s) {
       %(sync)s
       PyObject* old = PyList_GET_ITEM(storage_%(name)s, 0);
-      Py_XINCREF(py_%(name)s);
+      {Py_XINCREF(py_%(name)s);}
       PyList_SET_ITEM(storage_%(name)s, 0, py_%(name)s);
       Py_XDECREF(old);
     }
