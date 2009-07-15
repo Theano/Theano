@@ -72,7 +72,7 @@ class BROKEN_ON_PURPOSE_StructuredDotCSC(gof.Op):
             || (%(z)s->dimensions[1] != %(b)s->dimensions[1])
             )
         {
-            if (%(z)s) Py_DECREF(%(z)s);
+            {Py_XDECREF(%(z)s);}
             npy_intp dims[] = {0,0};
             dims[0] = ((npy_int32 *)%(a_nrows)s->data)[0];
             dims[1] = %(b)s->dimensions[1];
@@ -189,13 +189,13 @@ class WeirdBrokenOp(gof.Op):
     def c_code(self, node, name, (a,), (z,), sub):
         if "inplace" in self.behaviour:
             z_code = """
-            if (%(z)s) Py_DECREF(%(z)s);
+            {Py_XDECREF(%(z)s);}
             Py_INCREF(%(a)s);
             %(z)s = %(a)s;
             """
         else:
             z_code = """
-            if (%(z)s) Py_DECREF(%(z)s);
+            {Py_XDECREF(%(z)s);}
             %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, %(a)s->dimensions, %(a)s->descr->type_num);
             """
         prep_vars = """

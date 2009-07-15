@@ -760,6 +760,10 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
 
      - EXPENSIVE_OPTIMIZATION TODO: NotImplemented
 
+     - PROFILE_MODE : allow to print a profile mode with mode.print_summary
+
+     - DEBUG_MODE : make all the check that we taught of(compare python and c,...)
+
     :param accept_inplace:  True iff the graph can contain inplace operations prior to the
     optimization phase (default is False)
 

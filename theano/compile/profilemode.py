@@ -1,8 +1,8 @@
-import time
+import time, atexit
 
 from ..gof.link import WrapLinkerMany
 from ..gof.cutils import run_cthunk
-from ..compile.mode import Mode, predefined_linkers
+from ..compile.mode import Mode, predefined_linkers, register_mode, predefined_modes
 from ..gof.cc import OpWiseCLinker
 
 class ProfileMode(Mode):
@@ -110,3 +110,19 @@ class ProfileMode(Mode):
                   sum(f for f, t, a in sotimes[n_ops_to_print:])*100,
                   sum(t for f, t, a in sotimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
+
+
+register_mode('PROFILE_MODE',ProfileMode())
+
+def atexit_print_default_profile_mode():
+    """Print the summary of the predefied mode PROFILE_MODE if used.
+    
+    This all to have the summary printed at exit when we do
+    THEANO_DEFAULT_MODE=PROFILE_MODE
+    """
+    prof_mode=predefined_modes["PROFILE_MODE"]
+    if prof_mode.local_time[0]>0: prof_mode.print_summary()
+
+#Register atexit_print_default_profile_mode to have the summary of the
+#predefined mode PROFILE_MODE if it is used printed when the program terminate.
+atexit.register(atexit_print_default_profile_mode)

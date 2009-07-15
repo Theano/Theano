@@ -1,40 +1,51 @@
+"""Driver for general gradient calculations."""
+
+__docformat__ = "restructuredtext en"
+
+import sys
 import gof #, gof.variable
 import numpy #for numeric_grad
 
 from gof.python25 import all
 import gof.utils
 
+def warning(msg):
+    # replace this with logger.warning when adding logging support
+    print >> sys.stderr, 'WARNING', msg
+
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
-def grad_sources_inputs(sources, graph_inputs):
+def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """
-    A gradient source is a pair (r, g_r), in which r is a variable, and g_r is a
-    variable that is a gradient wrt r.
+    A gradient source is a pair (``r``, ``g_r``), in which ``r`` is a `Variable`, and ``g_r`` is a
+    `Variable` that is a gradient wrt ``r``.
 
-    This function traverses the graph backward from the 'r' sources,
-    calling L{Op.grad}(...) when it is provided by an L{Op}, and at least one of the
-    outputs of the L{Op} has an associated gradient.
+    This function traverses the graph backward from the ``r`` sources,
+    calling ``op.grad(...)`` for all ops with some non-None gradient on an output.
 
-    The L{Op.grad}(...) functions are called as such:
-        op.grad( op.inputs[0], grad(op.outputs[0]))
+    The ``op.grad(...)`` functions are called like this:
 
-    This function expects the L{Op.grad}(...) function to return the gradient
-    expression [variables] associated with the inputs of the L{Op}. The L{Op} should
-    return a list of variables corresponding to the gradients in the same order
-    as the inputs. If it has a single output it should return a list or tuple
-    of length 1.
+    .. code-block:: python
+        op.grad(op.inputs[:], [total_gradient(v for v in op.outputs)])
 
-    For each input wrt to which an L{Op} is not differentiable, it should return
-    None instead of a variable instance.
+    This call to ``op.grad`` should return a list or tuple: one symbolic gradient per input.
+    If ``op`` has a single input, then ``op.grad``  should return a list or tuple of length 1.
 
-    @type sources: list
-    @param sources: gradient sources (explained below)
-    @type graph_inputs: list
-    @param graph_inputs: variables considered to be constant
+    For each input wrt to which ``op`` is not differentiable, it should return ``None`` instead
+    of a `Variable` instance.
 
-    @rtype: dictionary
-    @return: dictionary mapping each variable necessary for a source to its gradient.
+    If a source ``r`` receives a gradient from another source ``r2``, then the effective
+    gradient on ``r`` is the sum of both gradients.
+
+    :type sources: list of pairs of Variable: (v, gradient-on-v)
+    :param sources: gradients to back-propagate using chain rule
+    :type graph_inputs: list of Variable
+    :param graph_inputs: variables considered to be constant (do not backpropagate through
+    them)
+
+    :rtype: dictionary whose keys and values are of type `Variable`
+    :return: mapping from each Variable encountered in the backward traversal to its gradient.
     """
     gmap = {}
     for (r, g_r) in sources:
@@ -90,8 +101,9 @@ def grad_sources_inputs(sources, graph_inputs):
                     len(g_inputs),
                     len(node.inputs))
         for ii, (r, g_r) in enumerate(zip(node.inputs, g_inputs)):
-            if g_r and (r.type != g_r.type):
-                print 'WARNING: %s.grad returned a different type for input %i: %s vs. %s'%(node.op, ii, r.type, g_r.type)
+            if warn_type:
+                if g_r and (getattr(r,'type',0) != getattr(g_r,'type', 1)):
+                    warning('%s.grad returned a different type for input %i: %s vs. %s'%(node.op, ii, r, g_r))
             if g_r and len(sources) == 1 and sources[0][0].name and r.name:
                 g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None: 
