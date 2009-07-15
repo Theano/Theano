@@ -428,7 +428,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     argmax(x) is the index of x's greatest element
     y_idx[i] is an integer index, encoding a 1-hot distribution. 
 
-    In practice, when we're trying to do classification, we have one row in x
+    In practice, when we are trying to do classification, we have one row in x
     and y_idx per example, and y[i] is the index of the (correct) class of the
     i'th example.
 
