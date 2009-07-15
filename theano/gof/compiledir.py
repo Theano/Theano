@@ -60,3 +60,18 @@ def get_compiledir():
     if not hasattr(set_compiledir, 'compiledir'):
         set_compiledir()
     return set_compiledir.compiledir
+
+def clear_compiledir(verbose=False):
+    if not hasattr(set_compiledir, 'compiledir'):
+        set_compiledir()
+    compiledir = get_compiledir()
+    for l in os.listdir(compiledir):
+        if l.endswith('.so'):
+            if verbose: print 'removing', l
+            os.remove(os.path.join(compiledir, l))
+        elif l.endswith('.cpp'):
+            if verbose: print 'removing', l
+            os.remove(os.path.join(compiledir, l))
+        else:
+            if verbose: print 'skipping ', l
+            pass

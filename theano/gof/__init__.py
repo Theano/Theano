@@ -3,7 +3,7 @@ from cc import \
     CLinker, OpWiseCLinker, DualLinker
 
 from compiledir import \
-        set_compiledir, get_compiledir
+        set_compiledir, get_compiledir, clear_compiledir
 
 from env import \
     InconsistencyError, Env

@@ -35,7 +35,7 @@ from gof import \
      toolbox, \
      Type, Generic, generic, \
      object2, utils, \
-     set_compiledir, get_compiledir
+     set_compiledir, get_compiledir, clear_compiledir
 
 from compile import \
     SymbolicInput, SymbolicInputKit, In, \
