@@ -6,7 +6,7 @@ Defines Linkers that deal with C implementations.
 from copy import copy
 import md5
 import re #for set_compiledir
-import os, sys, platform
+import os, sys, platform, StringIO, time
 
 # weave import
 from scipy import weave
@@ -21,6 +21,39 @@ import utils
 from compiledir import *
 from compilelock import get_lock, release_lock
 
+import cmodule
+
+import logging
+_logger=logging.getLogger("theano.gof.cc")
+def info(*args):
+    sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.info(' '.join(str(a) for a in args))
+def debug(*args):
+    _logger.debug(' '.join(str(a) for a in args))
+def warning(*args):
+    sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.warning(' '.join(str(a) for a in args))
+def error(*args):
+    sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.error(' '.join(str(a) for a in args))
+
+from .callcache import CallCache
+
+_timers = {}
+
+_module_cache = None
+def get_module_cache():
+    global _module_cache
+    if _module_cache is None:
+        _module_cache = CallCache() #TODO: put a filename here for persistence
+    return _module_cache
+_persistent_module_cache = None
+def get_persistent_module_cache():
+    global _persistent_module_cache
+    if _persistent_module_cache is None:
+        _persistent_module_cache = CallCache() #TODO: put a filename here for persistence
+    return _persistent_module_cache
+ 
 class CodeBlock:
     """WRITEME
     Represents a computation unit composed of declare, behavior, and cleanup.
@@ -324,6 +357,7 @@ class CLinker(link.Linker):
         self.env = env
         self.fetch_variables()
         self.no_recycling = no_recycling
+        self.module_compile_str = cmodule.gcc_module_compile_str
         return self
 
     def fetch_variables(self):
@@ -500,6 +534,8 @@ class CLinker(link.Linker):
         self.tasks = tasks
         all = self.inputs + self.outputs + self.orphans
 
+        assert (self.init_tasks, self.tasks) == self.get_init_tasks()
+
         # List of indices that should be ignored when passing the arguments
         # (basically, everything that the previous call to uniq eliminated)
         self.dupidx = [i for i, x in enumerate(all) if all.count(x) > 1 and all.index(x) != i]
@@ -609,6 +645,19 @@ class CLinker(link.Linker):
             [link.Container(output, storage, True) for output, storage in zip(self.env.outputs, output_storage)], \
             error_storage
 
+    def get_init_tasks(self):
+        init_tasks = []
+        tasks = []
+        id=1
+        for v in self.variables:
+            init_tasks.append((v, 'init', id))
+            tasks.append((v, 'get', id+1))
+            id += 2
+        for node in self.node_order:
+            tasks.append((node, 'code', id))
+            id += 1 
+        return init_tasks, tasks
+
     def make_thunk(self, input_storage = None, output_storage = None):
         """WRITEME
         Compiles this linker's env and returns a function to perform the
@@ -632,17 +681,138 @@ class CLinker(link.Linker):
           f()
           first_output = ostor[0].data
         """
-        # Note: acquiring the lock here may not be necessary. However, it is
-        # cheap enough that it should not matter.
+        init_tasks, tasks = self.get_init_tasks()
+        cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
+        res = _execute(cthunk, init_tasks, tasks, error_storage), in_storage, out_storage
+        return res
+
+    def cmodule_key(self):
+        """Return a complete hashable signature of the module we compiled
+
+        The signature has the following form:
+        {{{
+            'CLinker.cmodule_key',
+            op0, (input0.type, input1.type, input0 pos, input1 pos)
+            op1, (...)
+            ...
+            opK, (...)
+            }}}
+
+        The signature is a tuple of tuples.
+
+        The outer tuple has one element for every node in the topological ordering of
+        `self.env`.
+
+        The inner tuple has one element for the op used at that node, and one element for the
+        inputs to that node.  The inputs are identified by their type and "graph position"
+
+        The graph position of a typical variable is encoded by integer pairs ``(a,b)``: 
+        ``a`` is the topological position of the input's owner (-1 for graph inputs),
+        ``b`` is the index of the variable in the owner's output list.
+
+        The graph position of a Constant is defined as its signature.
+
+        If the Op of any Apply in the Env does not have c_code_cache_ok()==True, then this
+        function raises a KeyError exception.
+        
+        """
+        order = list(self.env.toposort())
+        env_inputs_set = dict((i, (-1, pos)) for pos, i in enumerate(self.env.inputs))
+        env_computed_set = set()
+        op_pos = {} # Apply -> topological position
+        rval = ['CLinker.cmodule_key'] # will be cast to tuple on return
+
+        # assert that every input to every node is one of'
+        # - an env input
+        # - an output from a node in the Env
+        # - a Constant
+        def graphpos(i):
+            if isinstance(i, graph.Constant):
+                return i.signature()
+            elif i in env_inputs_set:
+                return env_inputs_set[i]
+            else:
+                if i.owner is None:
+                    assert all( all(out is not None for out in o.outputs) for o in order)
+                    assert all( input.owner is None for input in self.env.inputs)
+                    raise Exception('what is this?', (i, type(i), i.clients, self.env))
+                return (op_pos[i.owner], i.owner.outputs.index(i))
+
+        for opos, o in enumerate(order):
+            rval.append((o.op, tuple((i.type, graphpos(i)) for i in o.inputs)))
+            op_pos[o] = opos
+            env_computed_set.update(o.outputs)
+
+        rval = tuple(rval)
+        return rval
+
+    def compile_cmodule(self):
+        """Generate the code for this module, compile it, return the imported dynamic module.
+        """
+        self.code_gen()
+        module_name = self.hash
+
+        cthunk = object() # dummy so weave can get the type
+        mod = cmodule.DynamicModule(module_name)
+
+        if 0:
+            # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
+            out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
+            in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
+
+
+            argnames = ["i%i" % i for i in xrange(len(in_storage))] \
+                + ["o%i" % i for i in xrange(len(out_storage))] \
+                + ["orph%i" % i for i in xrange(len(self.orphans))]
+
+        # The code of instantiate
+        #code = self.instantiate_code(1+len(argnames)) #the 1 is for error_storage
+        code = self.instantiate_code(1+len(self.args)) #the 1 is for error_storage
+        instantiate = cmodule.ExtFunction('instantiate', code, method=cmodule.METH_VARARGS)
+                #['error_storage'] + argnames,
+                #local_dict = d,
+                #global_dict = {})
+
+        # Static methods that can run and destroy the struct built by instantiate.
+        static = """
+        int %(struct_name)s_executor(%(struct_name)s* self) {
+            return self->run();
+        }
+
+        void %(struct_name)s_destructor(void* executor, void* self) {
+            //printf("doing cleanup\\n");
+            //fflush(stdout);
+            // ((%(struct_name)s*)self)->cleanup();
+            // free(self);
+            delete ((%(struct_name)s*)self);
+            //printf("done cleanup\\n");
+            //fflush(stdout);
+        }
+        """ % dict(struct_name = self.struct_name)
+
+        # We add all the support code, compile args, headers and libs we need.
+        for support_code in self.support_code():
+            mod.add_support_code(support_code)
+        mod.add_support_code(self.struct_code)
+        mod.add_support_code(static)
+        mod.add_function(instantiate)
+        for header in self.headers():
+            mod.add_include(header)
+
         get_lock()
         try:
-            cthunk, in_storage, out_storage, error_storage = self.__compile__(input_storage, output_storage)
-            res = _execute(cthunk, self.init_tasks, self.tasks, error_storage), in_storage, out_storage
-        except:
+            module = self.module_compile_str(
+                    module_name=mod.name,
+                    src_code = mod.code(),
+                    location=get_compiledir(),
+                    include_dirs=[],
+                    libs=self.libraries(),
+                    preargs=self.compile_args())
+        finally:
             release_lock()
-            raise
-        release_lock()
-        return res
+
+        return module
+
 
     def cthunk_factory(self, error_storage, in_storage, out_storage):
         """WRITEME
@@ -656,106 +826,43 @@ class CLinker(link.Linker):
         outputs in out_storage and if an error occurs will put the
         type, value and traceback of the exception in error_storage.
         """
-
-        get_lock()
-
         try:
+            key = self.cmodule_key()
+        except KeyError:
+            key = None
+        if key is None:
+            module = self.compile_cmodule()
+        else:
+            module = get_module_cache().call(self.compile_cmodule, key=key)
 
-            # check if we already compiled this
-            if not getattr(self, 'instantiate', False):
-    
-    
-                self.code_gen()
-                module_name = self.hash
-    
-                # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
-                out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
-                in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
-    
-                cthunk = object() # dummy so weave can get the type
-                mod = weave.ext_tools.ext_module(module_name)
-    
-                argnames = ["i%i" % i for i in xrange(len(in_storage))] \
-                    + ["o%i" % i for i in xrange(len(out_storage))] \
-                    + ["orph%i" % i for i in xrange(len(self.orphans))]
-    
-                # The code of instantiate
-                code = """
-                %(struct_name)s* struct_ptr = new %(struct_name)s();
-                struct_ptr->init(error_storage, %(args)s);
-                PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);
-                return thunk;
-                // return_val = thunk; // oh my god weave why does this leak >:\
-                """ % dict(struct_name = self.struct_name,
-                        args = ", ".join(argnames))
-    
-                d = dict(error_storage = object())
-                for argname in argnames:
-                    d[argname] = object()
-    
-                instantiate = weave.ext_tools.ext_function('instantiate',
-                                                        code,
-                                                        ['error_storage'] + argnames,
-                                                        local_dict = d,
-                                                        global_dict = {})
-    
-                # Static methods that can run and destroy the struct built by instantiate.
-                static = """
-                int %(struct_name)s_executor(%(struct_name)s* self) {
-                    return self->run();
-                }
-    
-                void %(struct_name)s_destructor(void* executor, void* self) {
-                    //printf("doing cleanup\\n");
-                    //fflush(stdout);
-                    ((%(struct_name)s*)self)->cleanup();
-                    free(self);
-                    //printf("done cleanup\\n");
-                    //fflush(stdout);
-                }
-                """ % dict(struct_name = self.struct_name)
-    
-                # We add all the support code, compile args, headers and libs we need.
-                for support_code in self.support_code():
-                    instantiate.customize.add_support_code(support_code)
-                instantiate.customize.add_support_code(self.struct_code)
-                instantiate.customize.add_support_code(static)
+        vars = self.inputs + self.outputs + self.orphans
+        # List of indices that should be ignored when passing the arguments
+        # (basically, everything that the previous call to uniq eliminated)
+        dupidx = [i for i, x in enumerate(vars) if vars.count(x) > 1 and vars.index(x) != i]
 
-                for arg in self.compile_args():
-                    instantiate.customize.add_extra_compile_arg(arg)
-                for header in self.headers():
-                    instantiate.customize.add_header(header)
-                for lib in self.libraries():
-                    instantiate.customize.add_library(lib)
-    
-                mod.add_function(instantiate)
-    
-                mod.compile(location = get_compiledir())
-    
-                module = __import__("%s" % (module_name), {}, {}, [module_name])
-    
-                self.instantiate = module.instantiate
-                
-    
-            else:
-                # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
-                out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
-                in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
-                module_name = self.hash
-                module = __import__("%s" % (module_name), {}, {}, [module_name])
-    
-            orphd = [[orphan.data] for orphan in self.orphans]
-            ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
-            #win pdb add 3 ref count, so we disable it by default.
-            #assert sys.getrefcount(ret) == 2 # refcount leak check
+        out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in dupidx]
+        in_storage = [x for i, x in enumerate(in_storage) if i not in dupidx]
+        orphd = [[orphan.data] for orphan in self.orphans]
 
-        except:
-            release_lock()
-            raise
-        release_lock()
+        ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
 
         return ret
 
+    def instantiate_code(self, n_args):
+        code = StringIO.StringIO()
+        struct_name = self.struct_name
+        print >> code, "static PyObject * instantiate(PyObject * self, PyObject *argtuple) {"
+        print >> code, '  assert(PyTuple_Check(argtuple));'
+        print >> code, '  if (%(n_args)i != PyTuple_Size(argtuple)){ ' %locals()
+        print >> code, '     PyErr_Format(PyExc_TypeError, "Wrong number of arguments, expected %(n_args)i, got %%i", (int)PyTuple_Size(argtuple));' %locals()
+        print >> code, '     return NULL;'
+        print >> code, '  }'
+        print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' %locals()
+        print >> code, '  ', ''.join('Py_INCREF(PyTuple_GET_ITEM(argtuple, %i));'%n for n in xrange(n_args))
+        print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)'%n for n in xrange(n_args)), ');'
+        print >> code, '  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' %locals()
+        print >> code, "  return thunk; }"
+        return code.getvalue()
 
 def _execute(cthunk, init_tasks, tasks, error_storage):
     """WRITEME"""
@@ -828,7 +935,8 @@ class OpWiseCLinker(link.LocalLinker):
 
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
 
-        # Acquire lock on compilation directory.
+        # Acquire lock on compilation directory, and
+        # hold it throughout the compilation of all internal nodes.
         get_lock()
         try:
 
@@ -849,7 +957,6 @@ class OpWiseCLinker(link.LocalLinker):
                 node_output_storage = [storage_map[r] for r in node.outputs]
                 try:
                     e = Env(*graph.clone(node.inputs, node.outputs))
-                    e.toposort = lambda: e.nodes
 
                     if any(isinstance(input, graph.Value) for input in node.inputs):
                         desc = None

@@ -126,7 +126,7 @@ class SoftmaxWithBias(gof.Op):
         return dx, db
 
     def c_headers(self):
-        return ['<iostream> <math>']
+        return ['<iostream>','<cmath>']
 
     @staticmethod
     def c_code_template():
@@ -514,7 +514,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         db = tensor.sum(dx, axis = [0])
         return dx, db, None
 
-    def c_headers(self): return ['<iostream>']
+    def c_headers(self):
+        return ['<iostream>', '<cmath>']
 
     @staticmethod
     def c_code_template():

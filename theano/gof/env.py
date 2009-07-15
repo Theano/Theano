@@ -434,6 +434,10 @@ class Env(utils.object2):
         {node: predecessors} where predecessors is a list of nodes
         that should be computed before the key node.
         """
+        if len(self.nodes) < 2:
+            # optimization
+            # when there are 0 or 1 nodes, no sorting is necessary
+            return list(self.nodes)
         env = self
         ords = {}
         for feature in env._features:
