@@ -1714,7 +1714,9 @@ def test_reshape():
     assert numpy.all(a_val == a_val_copy)
 
     # verify gradient
-    utt.verify_grad(Reshape(2), [a_val,numpy.asarray([2,3], dtype='float64')])
+    def just_vals(v):
+        return Reshape(2)(v, numpy.asarray([2,3], dtype='float64'))
+    utt.verify_grad(just_vals, [a_val])
 
 
 def test_flatten_outdimNone():
