@@ -189,6 +189,22 @@ def test_mixeddiv():
     d = dscalar()
     assert 0 == function([i,d], d*(i/(i+1)))(3, 1.0)
 
+def test_local_shape_lift_dot():
+    args_to_result = {
+        (fvector, fvector): "[]",
+        (fvector, fmatrix): "[<TensorType(float32, matrix)>.shape[1]]",
+        (fmatrix, fvector): "[<TensorType(float32, matrix)>.shape[0]]",
+        (fmatrix, fmatrix): "[<TensorType(float32, matrix)>.shape[0], <TensorType(float32, matrix)>.shape[1]]",
+        }
+
+    for x in [fvector, fmatrix]:
+        for y in [fvector, fmatrix]:
+            i = x()
+            j = y()
+            d = shape(dot(i,j))
+            g = Env([i,j], [d])
+            gof.TopoOptimizer(gof.LocalOptGroup(local_shape_lift_dot), order='out_to_in').optimize(g)
+            assert pprint(g.outputs[0]) == args_to_result[(x,y)]
         
 #     def test_plusmin(self):
 #         x, y, z = inputs()

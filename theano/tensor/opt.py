@@ -186,7 +186,16 @@ def local_shape_lift_dot(node):
     if not opt.check_chain(node, T.shape, T.dot):
         return False
     a, b = node.inputs[0].owner.inputs
-    return T.make_lvector.make_node(T.shape(a)[0], T.shape(b)[1]).outputs
+    if a.type.ndim == 2 and b.type.ndim == 2:
+        return T.make_lvector.make_node(T.shape(a)[0], T.shape(b)[1]).outputs
+    elif a.type.ndim == 1 and b.type.ndim == 2:
+        return T.make_lvector.make_node(T.shape(b)[1]).outputs
+    elif a.type.ndim == 2 and b.type.ndim == 1:
+        return T.make_lvector.make_node(T.shape(a)[0]).outputs
+    elif a.type.ndim == 1 and b.type.ndim == 1:
+        return T.make_lvector.make_node().outputs
+    else:
+        return False
 
 register_canonicalize(local_shape_lift_dot, 'shape_lift')
 
