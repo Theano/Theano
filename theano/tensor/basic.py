@@ -2091,12 +2091,12 @@ class Reshape(Op):
     view_map = {0: [0]} #output 0 is potentially aliased to inputs [0]
     def __init__(self, ndim, name = None):
         self.ndim = ndim
-        if name:
-            self.name = name
+        self.name = name
+
     def __eq__(self, other):
-        return (type(other) is Reshape) and (other.ndim == self.ndim)
+        return (type(other) is Reshape) and (other.ndim == self.ndim) and self.name == other.name
     def __hash__(self):
-        return hash(Reshape) ^ hash(self.ndim)
+        return hash(Reshape) ^ hash(self.ndim) ^ hash(self.name)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
         shp = as_tensor_variable(shp)
