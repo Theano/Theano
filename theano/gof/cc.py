@@ -4,9 +4,8 @@ Defines Linkers that deal with C implementations.
 
 # Python imports
 from copy import copy
-import md5
 import re #for set_compiledir
-import os, sys, platform, StringIO, time
+import os, sys, platform, StringIO, time, hashlib
 
 # weave import
 from scipy import weave
@@ -515,7 +514,7 @@ class CLinker(link.Linker):
 
         # The hash calculated on the code identifies it so weave can cache properly.
         # (the hash has to be used outside of the support code because weave does not consider changes in the support code)
-        hash = md5.md5(struct_code).hexdigest()
+        hash = hashlib.md5(struct_code).hexdigest()
         struct_name = '__struct_compiled_op_%s' % hash
         #struct_code %= dict(name = struct_name)
         struct_code = re.sub("<<<<NAME>>>>", struct_name, struct_code)
