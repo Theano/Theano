@@ -162,6 +162,16 @@ class CLinkerOp(object):
         raise utils.MethodNotDefined('%s.c_support_code' \
                 % self.__class__.__name__)
 
+    def c_code_cache_version(self):
+        """Return a tuple of integers indicating the version of this Op.
+
+        An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
+
+        The cache mechanism may erase cached modules that have been superceded by newer
+        versions.  See `ModuleCache` for details.
+        """
+        return (1,)
+
 class PureOp(object):
     """
     An :term:`Op` is a type of operation.

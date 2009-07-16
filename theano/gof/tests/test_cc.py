@@ -57,6 +57,9 @@ class TDouble(Type):
             free(%(name)s_bad_thing);
         """ % locals()
 
+    def c_code_cache_version(self):
+        return ()
+
 tdouble = TDouble()
 
 def double(name):
@@ -83,6 +86,8 @@ class MyOp(Op):
     
     def perform(self, node, inputs, (out, )):
         out[0] = self.impl(*inputs)
+    def c_code_cache_version(self):
+        return ()
 
 
 class Unary(MyOp):

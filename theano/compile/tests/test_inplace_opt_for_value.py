@@ -81,6 +81,11 @@ class TanhRnn(Op):
     in which z[0] = z0.
 
     """
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, x, z0, A):
         """
@@ -121,7 +126,7 @@ class TanhRnnGrad(Op):
     def __eq__(self, other):
         return (type(self) == type(other))
 
-    def __hash__(self, other):
+    def __hash__(self):
         return hash(type(self))
 
     def make_node(self, A, z, gz):

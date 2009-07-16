@@ -26,10 +26,10 @@ import cmodule
 import logging
 _logger=logging.getLogger("theano.gof.cc")
 def info(*args):
-    sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
+    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
-    sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
+    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug(' '.join(str(a) for a in args))
 def warning(*args):
     sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
@@ -367,6 +367,7 @@ class CLinker(link.Linker):
         # The orphans field is listified to ensure a consistent order.
         self.orphans = list(r for r in self.variables if isinstance(r, graph.Value) and r not in self.inputs) #list(env.orphans.difference(self.outputs))
         self.temps = list(set(self.variables).difference(self.inputs).difference(self.outputs).difference(self.orphans))
+        self.consts = []
         self.node_order = env.toposort()
 
     def code_gen(self):
@@ -390,7 +391,7 @@ class CLinker(link.Linker):
 
         env = self.env
 
-        consts = []
+        self.consts = []
 
         symbol = {}
 
@@ -428,7 +429,7 @@ class CLinker(link.Linker):
                 if isinstance(variable, graph.Constant):
                     try:
                         symbol[variable] = "(" + variable.type.c_literal(variable.data) + ")"
-                        consts.append(variable)
+                        self.consts.append(variable)
                         self.orphans.remove(variable)
                         continue
                     except (utils.MethodNotDefined, NotImplementedError):
@@ -530,7 +531,12 @@ class CLinker(link.Linker):
         self.tasks = tasks
         all = self.inputs + self.outputs + self.orphans
 
-        assert (self.init_tasks, self.tasks) == self.get_init_tasks()
+        if (self.init_tasks, self.tasks) != self.get_init_tasks():
+            print >> sys.stderr, "init_tasks\n", self.init_tasks
+            print >> sys.stderr, self.get_init_tasks()[0]
+            print >> sys.stderr, "tasks\n", self.tasks
+            print >> sys.stderr, self.get_init_tasks()[1]
+            assert (self.init_tasks, self.tasks) == self.get_init_tasks()
 
         # List of indices that should be ignored when passing the arguments
         # (basically, everything that the previous call to uniq eliminated)
@@ -646,6 +652,14 @@ class CLinker(link.Linker):
         tasks = []
         id=1
         for v in self.variables:
+            if v in self.consts:
+                continue
+            if v in self.orphans and isinstance(v, graph.Constant):
+                try:
+                    v.type.c_literal(v.data) #constant will be inlined, no need to get
+                    continue 
+                except (utils.MethodNotDefined, NotImplementedError):
+                    pass
             init_tasks.append((v, 'init', id))
             tasks.append((v, 'get', id+1))
             id += 2
@@ -687,7 +701,7 @@ class CLinker(link.Linker):
 
         The signature has the following form:
         {{{
-            'CLinker.cmodule_key',
+            'CLinker.cmodule_key', compilation args, libraries,
             op0, (input0.type, input1.type, input0 pos, input1 pos)
             op1, (...)
             ...
@@ -717,6 +731,9 @@ class CLinker(link.Linker):
         env_computed_set = set()
         op_pos = {} # Apply -> topological position
         rval = ['CLinker.cmodule_key'] # will be cast to tuple on return
+        rval.append(tuple(self.compile_args()))
+        rval.append(tuple(self.libraries()))
+        version = []
 
         # assert that every input to every node is one of'
         # - an env input
@@ -735,12 +752,19 @@ class CLinker(link.Linker):
                 return (op_pos[i.owner], i.owner.outputs.index(i))
 
         for opos, o in enumerate(order):
+            version.append(o.op.c_code_cache_version())
+            for i in o.inputs:
+                version.append(i.type.c_code_cache_version())
+            for i in o.outputs:
+                version.append(i.type.c_code_cache_version())
             rval.append((o.op, tuple((i.type, graphpos(i)) for i in o.inputs)))
             op_pos[o] = opos
             env_computed_set.update(o.outputs)
 
-        rval = tuple(rval)
-        return rval
+        for v in version:
+            if not v: #one of the ops or types here is unversioned
+                return ((), tuple(rval))
+        return tuple(version), tuple(rval)
 
     def compile_cmodule(self, location=None):
         """

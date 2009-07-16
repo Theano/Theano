@@ -444,6 +444,10 @@ class DenseFromSparse(gof.op.Op):
     """
     sparse_grad = True
     """WRITEME"""
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, x):
         x = as_sparse_variable(x)
@@ -495,6 +499,10 @@ csc_from_dense = SparseFromDense('csc')
 class Transpose(gof.op.Op):
     format_map = {'csr' : 'csc',
                   'csc' : 'csr'}
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(self,
@@ -510,6 +518,10 @@ class Transpose(gof.op.Op):
 transpose = Transpose()
 
 class Neg(gof.op.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(self, [x], [x.type()])
@@ -523,6 +535,10 @@ neg = Neg()
 
 class AddSS(gof.op.Op):
     '''Add two sparse matrices '''
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
         if x.type.dtype != y.type.dtype:
@@ -545,6 +561,10 @@ class AddSS(gof.op.Op):
 add_s_s = AddSS()
 class AddSD(gof.op.Op):
     ''' Add a sparse and a dense matrix '''
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
         if x.type.dtype != y.type.dtype:
@@ -586,6 +606,10 @@ def sub(x,y):
 
 class MulSS(gof.op.Op):
     ''' Elementwise multiply a sparse and a ndarray '''
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
         if x.type != y.type:
@@ -605,6 +629,10 @@ class MulSS(gof.op.Op):
 mul_s_s = MulSS()
 class MulSD(gof.op.Op):
     ''' Elementwise multiply a sparse and a ndarray '''
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
         if x.type.dtype != y.type.dtype:
@@ -686,6 +714,10 @@ class StructuredDot(gof.Op):
 
     The output is presumed to be a dense matrix, and is represented by a TensorType instance.
     """
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, a, b):
         if type(a) is not SparseVariable and type(a) is not SparseConstant:
             raise TypeError('First argument must be of type SparseVariable or SparseConstant');
@@ -750,6 +782,10 @@ def structured_dot(x, y):
         return _structured_dot(y.T, x.T).T
 
 class StructuredDotCSC(gof.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
         dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b], 
@@ -900,6 +936,10 @@ class StructuredDotCSC(gof.Op):
 sd_csc = StructuredDotCSC()
 
 class StructuredDotCSR(gof.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, a_val, a_ind, a_ptr, b):
         self.dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, b], 
@@ -1055,6 +1095,10 @@ def structured_dot_grad(sparse_A, dense_B, ga):
 
 
 class StructuredDotGradCSC(gof.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab], 
                                [tensor.tensor(g_ab.dtype, (False,))])
@@ -1155,6 +1199,10 @@ sdg_csc = StructuredDotGradCSC()
 
 
 class StructuredDotGradCSR(gof.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab], [tensor.tensor(b.dtype, (False,))])
@@ -1256,3 +1304,4 @@ class StructuredDotGradCSR(gof.Op):
  
         """% dict(locals(), **sub)
 sdg_csr = StructuredDotGradCSR()
+

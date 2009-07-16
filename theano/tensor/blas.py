@@ -49,6 +49,10 @@ class GemmRelated(Op):
     
     This class provides a kind of templated gemm Op.
     """
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return hash(type(self))
     def c_support_code(self):
         #return cblas_header_text()
         mod_str = """

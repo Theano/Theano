@@ -147,3 +147,13 @@ def dot(l, r):
         raise NotImplementedError("Dot failed for the following reaons:", (e0, e1))
     return rval
 
+
+### 
+#   Set a default logger
+#
+import logging
+logging_default_handler = logging.StreamHandler()
+logging.getLogger("theano").addHandler(logging_default_handler)
+logging.getLogger("theano").setLevel(logging.WARNING)
+
+
