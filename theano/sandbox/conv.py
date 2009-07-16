@@ -111,10 +111,7 @@ class ConvOp(Op):
                 "and kern shape(%s) are ok. (hint: kerns must fit inside image in"
                 "'valid' mode)")%(self.imshp_logical,self.kshp_logical))
 
-        hashval = hash(type(self))
-        for a in self.__attrnames:
-            hashval = hashval ^ hash(getattr(self, a))
-        self.__hashval = hashval
+        self._rehash()
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -123,6 +120,16 @@ class ConvOp(Op):
             if getattr(self, a) != getattr(other, a):
                 return False
         return True
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self._rehash()
+
+    def _rehash(self):
+        hashval = hash(type(self))
+        for a in self.__attrnames:
+            hashval = hashval ^ hash(getattr(self, a))
+        self.__hashval = hashval
 
     def __hash__(self):
         return self.__hashval
@@ -310,7 +317,7 @@ class ConvOp(Op):
 
 #def c():
     def c_headers(self):
-        return ['"Python.h"', '"numpy/noprefix.h"']
+        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
     def c_support_code(self):
         return """
@@ -319,7 +326,6 @@ class ConvOp(Op):
 #define SAME  1
 #define VALID 0
 #define MOD %
-#include <iostream>
 using namespace std;
 """ + tensor.blas.blas_header_text()
     def c_libraries(self):
