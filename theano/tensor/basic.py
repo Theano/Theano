@@ -41,6 +41,10 @@ def check_equal_numpy(x, y):
 
 compile.register_checker(check_equal_numpy)
 
+def hashtype(self):
+    t = type(self)
+    return hash(t.__name__) ^ hash(t.__module__)
+elemwise.hashtype = hashtype
 
 
 __oplist_constructor_list = []
@@ -305,7 +309,7 @@ class TensorType(Type):
 
     def __hash__(self):
         """Hash equal for same kinds of TensorType"""
-        return hash(type(self)) ^ hash(self.dtype) ^ hash(self.broadcastable)
+        return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable)
 
     ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
     """Number of dimensions
@@ -732,7 +736,7 @@ class TensorConstantSignature(tuple):
         return (x == a) and (b.shape == y.shape) and (numpy.all(b == y)) 
     def __hash__(self):
         a, b = self
-        return hash(type(self)) ^ hash(a) ^ hash(b.shape)
+        return hashtype(self) ^ hash(a) ^ hash(b.shape)
 
 class TensorConstant(Constant, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Constant` class.
@@ -1607,7 +1611,7 @@ class SetSubtensor(Op):
                          if isinstance(entry, slice)
                          else entry
                          for entry in self.idx_list)
-        return hash(type(self)) ^ hash(idx_list) ^ hash(self.inplace)
+        return hashtype(self) ^ hash(idx_list) ^ hash(self.inplace)
 
     def __str__(self):
         indices = []
@@ -2125,7 +2129,7 @@ class Flatten(Op):
     def __eq__(self, other):
         return type(self) == type(other) and self.outdim == other.outdim
     def __hash__(self):
-        return hash(type(self))^hash(self.outdim)
+        return hashtype(self)^hash(self.outdim)
     def make_node(self, x):
         t_x = as_tensor_variable(x)
         if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
@@ -2277,7 +2281,7 @@ class TensorDotGrad(Op):
         return type(self) == type(other) and self.axes == other.axes
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.axes) ^ 89234
+        return hashtype(self) ^ hash(self.axes) ^ 89234
 
     def make_node(self, x, y, gz):
         assert isinstance(x, Variable)
@@ -2324,7 +2328,7 @@ class TensorDot(Op):
         return type(self) == type(other) and self.axes == other.axes
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.axes) ^ 89234
+        return hashtype(self) ^ hash(self.axes) ^ 89234
 
     def make_node(self, x, y):
 

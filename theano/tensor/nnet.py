@@ -94,6 +94,11 @@ class SoftmaxWithBias(gof.Op):
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return tensor.hashtype(self)
+
     def make_node(self, x, b):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
@@ -266,8 +271,9 @@ class SoftmaxGrad(gof.Op):
 
     def __eq__(self, other):
         return type(self) == type(other)
+
     def __hash__(self):
-        return hash(type(self))
+        return tensor.hashtype(self)
 
     def make_node(self, dy, sm, **kwargs):
         dy = tensor.as_tensor_variable(dy)
@@ -437,6 +443,10 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     nout=3
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return tensor.hashtype(self)
 
     def make_node(self, x, b, y_idx):
         x = tensor.as_tensor_variable(x)
@@ -608,6 +618,10 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
     """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
     def __init__(self, **kwargs):
         gof.Op.__init__(self,**kwargs)
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return tensor.hashtype(self)
     def make_node(self, dy, sm, y_idx,**kwargs):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
@@ -728,7 +742,7 @@ class CrossentropyCategorical1HotGrad(gof.Op):
     def __eq__(self, other):
         return type(self) == type(other)
     def __hash__(self):
-        return hash(type(self))
+        return tensor.hashtype(self)
     def make_node(self, g_y, coding_dist, true_one_of_n):
         return gof.Apply(self, [g_y, coding_dist, true_one_of_n], [coding_dist.type()])
     def perform(self, node, (g_y, coding_dist, true_one_of_n), (g_coding_strg,)):
@@ -741,10 +755,6 @@ crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
 class CrossentropyCategorical1Hot(gof.Op):
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-    def __hash__(self):
-        return hash(type(self))
     """Compute the cross entropy between a coding distribution and 
     a true distribution of the form [0, 0, ... 0, 1, 0, ..., 0]
 
@@ -758,6 +768,11 @@ class CrossentropyCategorical1Hot(gof.Op):
     Op will probably be optimized away in favour of one with a C implementation.
 
     """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return tensor.hashtype(self)
     def make_node(self, coding_dist, true_one_of_n):
         """
         :type coding_dist: dense matrix
@@ -906,6 +921,11 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
             val = scalar.constant(val)
         self.val = val
 
+    def __eq__(self, other):
+        return (type(self) == type(other)) and (self.val == other.val)
+    def __hash__(self):
+        return tensor.hashtype(self) ^ hash(self.val.value)
+
     def make_node(self, mat):
         #check type of input
         if not isinstance(mat,gof.Variable) or not mat.type==tensor.matrix().type:
@@ -938,6 +958,11 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         return goutput[:,1:]
 
 class Prepend_scalar_to_each_row(gof.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+    def __hash__(self):
+        return tensor.hashtype(self)
+
     def make_node(self, val, mat):
         #check type of input
         if isinstance(val, float):

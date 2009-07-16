@@ -29,6 +29,7 @@ def info(*args):
     sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
+    sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug(' '.join(str(a) for a in args))
 def warning(*args):
     sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
@@ -39,19 +40,14 @@ def error(*args):
 
 from .callcache import CallCache
 
-_timers = {}
-
-_module_cache = None
 def get_module_cache():
-    global _module_cache
-    if _module_cache is None:
-        _module_cache = CallCache() #TODO: put a filename here for persistence
-    return _module_cache
+    return cmodule.get_module_cache(get_compiledir())
+
 _persistent_module_cache = None
 def get_persistent_module_cache():
     global _persistent_module_cache
     if _persistent_module_cache is None:
-        _persistent_module_cache = CallCache() #TODO: put a filename here for persistence
+        _persistent_module_cache = CallCache(os.path.join(get_compiledir(), 'persistent_cache'))
     return _persistent_module_cache
  
 class CodeBlock:
@@ -746,7 +742,29 @@ class CLinker(link.Linker):
         rval = tuple(rval)
         return rval
 
-    def compile_cmodule(self):
+    def compile_cmodule(self, location=None):
+        """
+        This method is a callback for `ModuleCache.module_from_key`
+        """
+        location = get_compiledir() if location is None else location
+        mod = self.build_dynamic_module()
+        get_lock()
+        try:
+            debug("LOCATION", location)
+            module = self.module_compile_str(
+                    module_name=mod.name,
+                    src_code = mod.code(),
+                    location=location,
+                    include_dirs=[],
+                    libs=self.libraries(),
+                    preargs=self.compile_args())
+        finally:
+            release_lock()
+
+        return module
+
+
+    def build_dynamic_module(self):
         """Generate the code for this module, compile it, return the imported dynamic module.
         """
         self.code_gen()
@@ -755,18 +773,7 @@ class CLinker(link.Linker):
         cthunk = object() # dummy so weave can get the type
         mod = cmodule.DynamicModule(module_name)
 
-        if 0:
-            # Eliminate duplicate inputs and outputs from the storage that we will pass to instantiate
-            out_storage = [x for i, x in enumerate(out_storage) if (i+len(in_storage)) not in self.dupidx]
-            in_storage = [x for i, x in enumerate(in_storage) if i not in self.dupidx]
-
-
-            argnames = ["i%i" % i for i in xrange(len(in_storage))] \
-                + ["o%i" % i for i in xrange(len(out_storage))] \
-                + ["orph%i" % i for i in xrange(len(self.orphans))]
-
         # The code of instantiate
-        #code = self.instantiate_code(1+len(argnames)) #the 1 is for error_storage
         code = self.instantiate_code(1+len(self.args)) #the 1 is for error_storage
         instantiate = cmodule.ExtFunction('instantiate', code, method=cmodule.METH_VARARGS)
                 #['error_storage'] + argnames,
@@ -799,19 +806,7 @@ class CLinker(link.Linker):
         for header in self.headers():
             mod.add_include(header)
 
-        get_lock()
-        try:
-            module = self.module_compile_str(
-                    module_name=mod.name,
-                    src_code = mod.code(),
-                    location=get_compiledir(),
-                    include_dirs=[],
-                    libs=self.libraries(),
-                    preargs=self.compile_args())
-        finally:
-            release_lock()
-
-        return module
+        return mod
 
 
     def cthunk_factory(self, error_storage, in_storage, out_storage):
@@ -831,9 +826,10 @@ class CLinker(link.Linker):
         except KeyError:
             key = None
         if key is None:
+            #if we can't get a key, then forget the cache mechanism
             module = self.compile_cmodule()
         else:
-            module = get_module_cache().call(self.compile_cmodule, key=key)
+            module = get_module_cache().module_from_key(key=key, fn=self.compile_cmodule)
 
         vars = self.inputs + self.outputs + self.orphans
         # List of indices that should be ignored when passing the arguments

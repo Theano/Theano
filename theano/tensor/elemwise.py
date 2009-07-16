@@ -123,8 +123,15 @@ class DimShuffle(Op):
         if self.inplace:
             self.view_map = {0: [0]}
 
-        self._hashval = hash(type(self)) ^ hash(self.inplace) \
-                ^ hash(self.new_order) ^ hash(self.input_broadcastable)
+        self._rehash()
+
+    def __getstate__(self):
+        d = dict(self.__dict__)
+        del d['_hashval']
+        return d
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self._rehash()
 
     def make_node(self, input):
         ib = tuple(input.type.broadcastable)
@@ -147,6 +154,10 @@ class DimShuffle(Op):
             and self.inplace == other.inplace \
             and self.new_order == other.new_order \
             and self.input_broadcastable == other.input_broadcastable
+
+    def _rehash(self):
+        self._hashval = hash(type(self).__name__) ^ hash(type(self).__module__) ^ hash(self.inplace) \
+                ^ hash(self.new_order) ^ hash(self.input_broadcastable)
 
     def __hash__(self):
         return self._hashval
@@ -353,15 +364,13 @@ class Elemwise(Op):
             self.ufunc = None
 
         #precompute the hash of this node
-        items = self.inplace_pattern.items()
-        items.sort()
-        tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
-        self._hashval = hash(self.scalar_op) ^ hash(tuple_items)
+        self._rehash()
 
     def __getstate__(self):
         d = copy(self.__dict__)
         d.pop('ufunc')
         d.pop('__epydoc_asRoutine', None)
+        d.pop('_hashval')
         return d
     
     def __setstate__(self, d):
@@ -370,6 +379,7 @@ class Elemwise(Op):
             self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
         else:
             self.ufunc = None
+        self._rehash()
 
     def make_node(self, *inputs):
         """
@@ -428,6 +438,14 @@ class Elemwise(Op):
             rval = (self.scalar_op == other.scalar_op) and (items == other_items)
             return rval
         return False
+
+    def _rehash(self):
+        items = self.inplace_pattern.items()
+        items.sort()
+        tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
+        h = hash('Elemwise') ^ hash(self.scalar_op) ^ hash(tuple_items)
+        assert h == getattr(self,'_hashval', h)
+        self._hashval = h
 
     def __hash__(self):
         return self._hashval

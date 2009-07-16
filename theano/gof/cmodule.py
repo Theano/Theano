@@ -1,14 +1,14 @@
 """Generate and compile C modules for Python
 """
-import os, tempfile, StringIO, sys, logging, subprocess
+import os, tempfile, StringIO, sys, logging, subprocess, cPickle, atexit
 
 _logger=logging.getLogger("theano.gof.cmodule")
 
 def warning(*args):
-    sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
+    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.warning(' '.join(str(a) for a in args))
 def info(*args):
-    sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
+    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
     #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
@@ -115,10 +115,138 @@ class DynamicModule(object):
 
     #TODO: add_type
 
+def dlimport(fullpath, suffix=None):
+    """Dynamically load a .so, .dll, or .py file
 
+    :type fullpath: string
+    :param fullpath: a fully-qualified path do a compiled python module
+    :param suffix: a suffix to strip from the end of fullpath to get the import name
+    :type suffix: string
+
+    :returns: the dynamically loaded module (from __import__)
+
+    """
+    if suffix is None:
+        if fullpath.endswith('.so'):
+            suffix = '.so'
+        elif fullpath.endswith('.dll'):
+            suffix = '.dll'
+        elif fullpath.endswith('.py'):
+            suffix = '.py'
+        else:
+            suffix = ''
+    rval = None
+    if fullpath.endswith(suffix):
+        module_name = '.'.join(fullpath.split(os.path.sep)[-2:])[:-len(suffix)]
+    else:
+        raise ValueError('path has wrong suffix', (fullpath, suffix))
+    workdir = fullpath[:-len(module_name)- 1 - len(suffix)]
+    #debug("WORKDIR", workdir)
+    #debug("module_name", module_name)
+
+    pathcopy = list(sys.path)
+    sys.path = [workdir]
+    try:
+        rval = __import__(module_name, {}, {}, [module_name])
+        if not rval:
+            error('__import__ failed', fullpath)
+    finally:
+        sys.path = pathcopy
+
+    assert fullpath.startswith(rval.__file__)
+    return rval
+
+class ModuleCache(object):
+    def __init__(self, dirname, force_fresh=False):
+        self.dirname = dirname
+        self.module_from_name = {}
+        self.name_from_key_filename = os.path.join(self.dirname, 'module_cache.pkl')
+        self.name_from_key = {}      
+        self.stats = [0, 0, 0]
+
+        if not force_fresh:
+            try:
+                f = file(self.name_from_key_filename, 'r')
+                self.name_from_key = cPickle.load(f)
+                debug('ModuleCache loaded', len(self.name_from_key))
+                f.close()
+            except (IOError, EOFError):
+                debug('cache load failed. Using fresh cache')
+                pass
+
+    def persist(self):
+        f = file(self.name_from_key_filename, 'w')
+        cPickle.dump(self.name_from_key, f)
+        f.close()
+
+    def module_from_key(self, key, fn=None):
+        rval = None
+        if key in self.name_from_key:
+            # we have seen this key either in this process or previously
+            #debug('OLD KEY HASH', hash(key), hash(key[1][0]), key[1][0])
+            name = self.name_from_key[key]
+
+            if name not in self.module_from_name:
+                #debug('loading name', name)
+                self.module_from_name[name] = dlimport(name)
+                self.stats[1] += 1
+            else:
+                self.stats[0] += 1
+            rval = self.module_from_name[name]
+        else:
+            # we have never seen this key before
+            location = tempfile.mkdtemp(dir=self.dirname)
+            #debug("LOCATION*", location)
+            try:
+                module = fn(location=location)  # WILL FAIL FOR BAD C CODE
+            finally:
+                #   >>TODO: erase location
+                pass 
+
+            debug('NEW KEY HASH', hash(key), hash(key[1][0]), key[1][0])
+            for k,n in self.name_from_key.iteritems():
+                if k == key:
+                    debug("HASH OF RELOAD IS DIFFERENT", hash(k), hash(key))
+                    print ''
+                    print hash(k[0])
+                    print hash(key[0])
+                    print ''
+                    print "OLD",
+                    print hash(k[1][0])
+                    print k[1][0].rehash()
+                    print ""
+                    print "NEW", hash(key[1][0]), key[1][0].rehash()
+                    print ''
+                    print hash(k[1][1])
+                    print hash(key[1][1])
+                    assert k != key
+            name = module.__file__
+            #debug("LOCATION**", location)
+            #debug("NAME**", name)
+            assert name.startswith(location)
+
+            assert name not in self.module_from_name
+            assert key not in self.name_from_key
+            self.name_from_key[key] = name
+            self.module_from_name[name] = module
+
+            self.stats[2] += 1
+            rval = module
+        #debug('stats', self.stats, sum(self.stats))
+        return rval
+
+
+_module_cache = None
+def get_module_cache(dirname):
+    global _module_cache
+    if _module_cache is None:
+        _module_cache = ModuleCache(dirname, force_fresh=False)
+        atexit.register(_module_cache.persist)
+    return _module_cache
 
 def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[], tmpdir=None):
+    #TODO: don't to the dlimport in this function
     preargs= [] if preargs is None else list(preargs)
     preargs.append('-fPIC')
     no_opt = False
@@ -127,7 +255,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     include_dirs = ['/usr/include/python2.6'] + include_dirs
     libs = ['python2.6'] + libs
 
-    workdir = tempfile.mkdtemp(dir=location)
+    workdir = location
 
     cppfilename = os.path.join(workdir, 'mod.cpp')
     cppfile = file(cppfilename, 'w')
@@ -157,19 +285,12 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         status = p.wait()
 
         if status:
-            warning('g++ return status', status)
+            error('g++ return status', status)
         else:
             #touch the __init__ file
             file(os.path.join(workdir, "__init__.py"),'w').close()      
 
-            #load the module
-            sys.path.insert(0, workdir)
-            try:
-                rval = __import__(module_name, {}, {}, [module_name])
-                if not rval:
-                    debug('__import__ failed')
-            finally:
-                del sys.path[0]
+            rval = dlimport(lib_filename)
 
     finally:
         warning("TODO: cleanup")
@@ -228,7 +349,6 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
             file(os.path.join(workdir, "__init__.py"),'w').close()      
 
             #load the module
-            pathcopy = list(sys.path)
             sys.path.insert(0, workdir)
             try:
                 rval = __import__(module_name, {}, {}, [module_name])

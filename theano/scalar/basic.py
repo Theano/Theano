@@ -59,7 +59,7 @@ class Scalar(Type):
         return type(self) == type(other) and other.dtype == self.dtype
 
     def __hash__(self):
-        return hash(self.dtype)
+        return hash('theano.scalar.Scalar') ^ hash(self.dtype)
 
     def dtype_specs(self):
         try:
@@ -348,7 +348,7 @@ class ScalarOp(Op):
         return test
 
     def __hash__(self):
-        return hash(getattr(self, 'output_types_preference', 0))
+        return hash(type(self).__name__) ^ hash(getattr(self, 'output_types_preference', 0))
 
     def __str__(self):
         if hasattr(self, 'name') and self.name:

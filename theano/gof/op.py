@@ -196,7 +196,7 @@ class PureOp(object):
     variable or an instance variable.
 
     """
-    
+
     #############
     # make_node #
     #############
