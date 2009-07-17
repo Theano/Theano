@@ -7,7 +7,7 @@ import numpy.distutils #TODO: TensorType should handle this
 import compilelock # we will abuse the lockfile mechanism when reading and writing the registry
 
 _logger=logging.getLogger("theano.gof.cmodule")
-_logger.setLevel(logging.DEBUG)
+_logger.setLevel(logging.WARN)
 
 def error(*args):
     #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
