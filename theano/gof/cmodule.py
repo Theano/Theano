@@ -1,11 +1,13 @@
 """Generate and compile C modules for Python, 
 """
 import os, tempfile, StringIO, sys, logging, subprocess, cPickle, atexit, time, shutil, stat
+import distutils.sysconfig
+import numpy.distutils #TODO: TensorType should handle this
 
 import compilelock # we will abuse the lockfile mechanism when reading and writing the registry
 
 _logger=logging.getLogger("theano.gof.cmodule")
-_logger.setLevel(logging.INFO)
+_logger.setLevel(logging.DEBUG)
 
 def error(*args):
     #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
@@ -446,9 +448,10 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     preargs.append('-fPIC')
     no_opt = False
 
-    #TODO: where to find these strings?  sys? distutils?
-    include_dirs = ['/usr/include/python2.6'] + include_dirs
-    libs = ['python2.6'] + libs
+    include_dirs = [distutils.sysconfig.get_python_inc()] + \
+                    numpy.distutils.misc_util.get_numpy_include_dirs()\
+                    + include_dirs
+    libs = [os.path.split(distutils.sysconfig.get_python_inc())[-1]] + libs
 
     workdir = location
 
@@ -497,6 +500,8 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     preargs.append('-fPIC')
     no_opt = False
 
+
+    raise NotImplementedError()
 
     #TODO: -O preargs should be passed globally, not to -Xcompiler
 
