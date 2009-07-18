@@ -13,3 +13,21 @@ def test_bug_2009_06_02_trac_387():
     #z = tensor.lscalar('z')
     #f = theano.function([z], tensor.DimShuffle([], ['x'])(z) / 2)
 
+def test_bug_2009_07_17_borrowed_output():
+    """Regression test for a bug where output was borrowed by mistake."""
+    a = theano.tensor.dmatrix()
+    b = theano.tensor.dmatrix()
+    # The output should *NOT* be borrowed.
+    g = theano.function([a, b],
+            theano.Out(theano.tensor.dot(a, b), borrow=False))
+    
+    x = numpy.zeros((1, 2))
+    y = numpy.ones((2, 5))
+    
+    z = g(x, y)
+    print z         # Should be zero.
+    x.fill(1)
+    print g(x, y)   # Should be non-zero.
+    print z         # Should still be zero.
+    assert numpy.linalg.norm(z) == 0
+
