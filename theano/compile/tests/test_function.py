@@ -275,6 +275,12 @@ class T_function(unittest.TestCase):
         self.failUnless(dec[s] == -1)
 
 
+    def test_borrow_output(self):
+        a = T.dmatrix()
+        f = function([a], Out(a, borrow=False))
+        o = N.ones((3,3))
+        assert o is not f(o)
+
 class T_picklefunction(unittest.TestCase):
 
     def test_deepcopy(self):
