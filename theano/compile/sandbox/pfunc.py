@@ -86,12 +86,8 @@ def pfunc(params, outputs=None, mode=None, updates=[]):
     # Add update values as quantities that must be computed.
     new_updates = {}
     for (store_into, update_val) in iter_over_pairs(updates):
-        if not isinstance(update_val, Variable):
-            # The value for the update is not a Variable: we cast it into
-            # a shared Variable so that it can be used by 'function'. Note that
-            # it means the update value may change if it is mutable and its
-            # value is modified after the function is created.
-            update_val = shared(update_val)
+        assert isinstance(store_into, SharedVariable)
+        update_val = store_into.filter_update(update_val)
         computed_list.append(update_val)
         new_updates[store_into] = update_val
     updates = new_updates

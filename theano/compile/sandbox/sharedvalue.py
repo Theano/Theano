@@ -83,6 +83,24 @@ class SharedVariable(Variable):
 
     """
 
+    def filter_update(self, update):
+        """When this shared variable is updated by a pfunc, the update value will be run through this function.
+        This is a good spot to cast or convert the update expression as necessary.
+
+        Default behaviour is to return `update` unmodified if it is a Variable, otherwise to create a SharedVariable for it by calling ``shared(update)``.
+
+        :param update: the new value for this shared variable when updated by a pfunc.
+
+        :returns: a Variable whose value will be assigned to this SharedVariable by a pfunc.
+        """
+        if not isinstance(update, Variable):
+            # The value for the update is not a Variable: we cast it into
+            # a shared Variable so that it can be used by 'function'. Note that
+            # it means the update value may change if it is mutable and its
+            # value is modified after the function is created.
+            update = shared(update)
+        return update
+
 def shared_constructor(ctor):
     shared.constructors.append(ctor)
     return ctor
