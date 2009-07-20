@@ -352,17 +352,17 @@ If a list of ``Variable`` or ``Out`` instances is given as argument, then the co
     x, y, s = T.matrices('xys')
 
     # print a list of 2 ndarrays
-    fn1 = theano.function([x], [x+x, Out((x+x).T, borrow=True])
-    print fn1(ndarray([[1,0],[0,1]]))
+    fn1 = theano.function([x], [x+x, Out((x+x).T, borrow=True)])
+    print fn1(numpy.asarray([[1,0],[0,1]]))
 
 
     # print a list of 1 ndarray
     fn2 = theano.function([x], [x+x])
-    print fn2(ndarray([[1,0],[0,1]]))
+    print fn2(numpy.asarray([[1,0],[0,1]]))
 
     # print an ndarray
     fn3 = theano.function([x], outputs=x+x)
-    print fn3(ndarray([[1,0],[0,1]]))
+    print fn3(numpy.asarray([[1,0],[0,1]]))
 
 
 .. _function_mode:
