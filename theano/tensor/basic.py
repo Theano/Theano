@@ -84,6 +84,8 @@ def as_tensor_variable(x, name = None, ndim=None):
      - `TypeError`: raised if `x` cannot be converted to a TensorType Variable
 
     """
+    if hasattr(x, '_as_TensorVariable'):
+        return x._as_TensorVariable()
 
     if isinstance(x, gof.Apply):
         #TODO: use Apply's default output mechanism
