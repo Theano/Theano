@@ -50,13 +50,28 @@ class CLinkerType(object):
         """Required: Return c code to declare variables that will be
         instantiated by `c_extract`.
 
-        Example: WRITEME
+        Example: 
+        .. code-block: python
 
-        :Parameters:
-         - `name`: WRITEME
-            WRITEME
-         - `sub`: WRITEME
-            WRITEME
+            return "PyObject ** addr_of_%(name)s;"
+
+        :param name: the name of the ``PyObject *`` pointer that will  the value for this Type
+
+        :type name: string
+
+        :param sub: a dictionary of special codes.  Most importantly sub['fail'].  See CLinker
+        for more info on `sub` and ``fail``.
+
+        :type sub: dict string -> string
+
+        :note: It is important to include the `name` inside of variables which are declared
+        here, so that name collisions do not occur in the source file that is generated.
+
+        :note: The variable called ``name`` is not necessarily defined yet where this code is
+        inserted.  This code might be inserted to create class variables for example, whereas
+        the variable ``name`` might only exist inside certain functions in that class.
+
+        :todo: Why should variable declaration fail?  Is it even allowed to?
 
         :Exceptions:
          - `MethodNotDefined`: Subclass does not implement this method
@@ -64,29 +79,54 @@ class CLinkerType(object):
         raise MethodNotDefined()
 
     def c_init(self, name, sub):
+        """Required: Return c code to initialize the variables that were declared by
+        self.c_declare()
+
+        Example: 
+        .. code-block: python
+
+            return "addr_of_%(name)s = NULL;"
+
+        :note: The variable called ``name`` is not necessarily defined yet where this code is
+        inserted.  This code might be inserted in a class constructor for example, whereas
+        the variable ``name`` might only exist inside certain functions in that class.
+
+        :todo: Why should variable initialization fail?  Is it even allowed to?
+        """
         raise MethodNotDefined("c_init", type(self), self.__class__.__name__)
 
     def c_extract(self, name, sub):
         """Required: Return c code to extract a PyObject * instance.
 
         The code returned from this function must be templated using
-        "%(name)s", representing the name that the caller wants to
+        ``%(name)s``, representing the name that the caller wants to
         call this `Variable`. The Python object self.data is in a
         variable called "py_%(name)s" and this code must set the
         variables declared by c_declare to something representative
         of py_%(name)s. If the data is improper, set an appropriate
         exception and insert "%(fail)s".
 
-        @todo: Point out that template filling (via sub) is now performed
+        :todo: Point out that template filling (via sub) is now performed
         by this function. --jpt
 
-        WRITEME
 
-        :Parameters:
-         - `name`: WRITEME
-            WRITEME
-         - `sub`: WRITEME
-            WRITEME
+        Example: 
+        .. code-block: python
+
+            return "if (py_%(name)s == Py_None)" + \\\
+                        addr_of_%(name)s = &py_%(name)s;" + \\\
+                   "else" + \\\
+                   { PyErr_SetString(PyExc_ValueError, 'was expecting None'); %(fail)s;}"
+
+
+        :param name: the name of the ``PyObject *`` pointer that will  the value for this Type
+
+        :type name: string
+
+        :param sub: a dictionary of special codes.  Most importantly sub['fail'].  See CLinker
+        for more info on `sub` and ``fail``.
+
+        :type sub: dict string -> string
 
         :Exceptions:
          - `MethodNotDefined`: Subclass does not implement this method
