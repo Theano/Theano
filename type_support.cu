@@ -7,15 +7,14 @@
 #define DECL(s) static PyObject * s(PyObject * self, PyObject *args)
 
 static PyObject * 
-filter(PyObject* self, PyObject *args) // args = (data, typenum, broadcastable, strict)
+filter(PyObject* self, PyObject *args) // args = (data, broadcastable, strict)
 {
     PyObject *py_data=NULL;
     PyArrayObject * data = NULL;
-    int dtype_typenum=-1;
     int strict = 0;
     PyObject * broadcastable=NULL;
 
-    if (!PyArg_ParseTuple(args, "OiOi", &py_data, &dtype_typenum, &broadcastable, &strict)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOi", &py_data, &broadcastable, &strict)) return NULL;
 
     if (!PyTuple_Check(broadcastable)){
         PyErr_SetString(PyExc_TypeError, "broadcastable arg should be a tuple of int.");
@@ -99,9 +98,9 @@ static PyMethodDef MyMethods[] = {
 
 
 PyMODINIT_FUNC
-init_theano_cuda_ndarray(void)
+inittype_support(void)
 {
-        (void) Py_InitModule("_theano_cuda_ndarray", MyMethods);
+        (void) Py_InitModule("type_support", MyMethods);
         import_array();
 }
 
