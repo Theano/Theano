@@ -28,6 +28,7 @@ class HostFromGpu(Op):
         z[0] = numpy.asarray(x)
     def grad(self, inputs, (gz,)):
         return [GpuFromHost()(gz)]
+host_from_gpu = HostFromGpu()
 
 class GpuFromHost(Op):
     def __eq__(self, other):
@@ -44,10 +45,10 @@ class GpuFromHost(Op):
         z[0] = type_support_filter(numpy.asarray(x, dtype='float32'), tuple([0]*x.ndim), 0)
     def grad(self, inputs, (gz,)):
         return [HostFromGpu()(gz)]
+gpu_from_host = GpuFromHost()
 
 
 class GpuElemwise(Op):
-
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -177,7 +178,6 @@ class GpuElemwise(Op):
     def c_src_callkernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
         d = dict()
-        assert nd == 2
         #input_params and output_params go into the function declaration/definition
         input_params = ", ".join("const float * i%i_data, const int * i%i_str"%(ipos, ipos) 
                 for ipos in xrange(len(node.inputs)))
@@ -191,14 +191,15 @@ class GpuElemwise(Op):
                 for ipos in xrange(len(node.outputs)))
 
         # kernel_call_args are used to invoke the cuda kernel
-        kernel_call_args = ["numEls, log2_dims[0], log2_dims[1]"]
+        kernel_call_args = ["numEls"]
+        kernel_call_args.extend("log2_dims[%i]"%di for di in xrange(nd))
         for ipos in xrange(len(node.inputs)):
             strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(nd))
             kernel_call_args.append( "%s, i%i_data" % (strides, ipos))
         for ipos in xrange(len(node.outputs)):
-            strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(nd))
+            strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(nd))
             kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
-        kernel_call_args = ",".join(kernel_call_args)
+        kernel_call_args = ", ".join(kernel_call_args)
 
         # the data_pointer_increments are inserted after each recursive call
         data_ptr_inc = []
@@ -370,16 +371,165 @@ class GpuElemwise(Op):
     def c_code_cache_version(self):
         return ()
 
-if 0:
-    class GpuAdd(GpuElemwise):
-        def __init__(self):
-            super(GpuAdd, self).__init__(scalar.add)
 
-        def perform(self, node, args, (z,)):
-            print "GpuAdd perform"
-            zval = numpy.asarray(args[0])
-            for a in args[1:]:
-                zval += numpy.asarray(a)
-            z[0] = type_support_filter(zval, (0,)*len(zval.shape), 0)
+class GpuDimShuffle(Op):
+    def __init__(self, input_broadcastable, new_order):
+        input_broadcastable = tuple(input_broadcastable)
+        self.input_broadcastable = input_broadcastable
+        new_order = tuple(new_order)
+        self.new_order = new_order
 
-    gpu_add = GpuAdd()
+        # list of dimensions of the input to drop
+        self.drop = []
+        i2j = {} # this maps i before dropping dimensions to j after dropping dimensions so self.shuffle can be set properly later on
+        j = 0
+        for i, b in enumerate(input_broadcastable):
+            if i not in new_order:
+                # we want to drop this dimension because it's not a value in new_order
+                if b == 1: # 1 aka True
+                    self.drop.append(i)
+                else:
+                    # we cannot drop non-broadcastable dimensions
+                    raise ValueError("You cannot drop a non-broadcastable dimension.", (input_broadcastable, new_order))
+            else:
+                i2j[i] = j
+                j += 1
+
+        # transposition of non-broadcastable dimensions
+        # This is how the dimensions will be permuted, without accounting for the extra
+        # 'x' broadcastable dimensions to insert.
+        self.shuffle = [i2j[x] for x in new_order if x != 'x']
+
+        # list of dimensions of the output that are broadcastable and were not in the original input
+        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
+
+        self.view_map = {0: [0]}
+
+        self._rehash()
+
+    def __getstate__(self):
+        d = dict(self.__dict__)
+        del d['_hashval']
+        return d
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self._rehash()
+
+    def make_node(self, input):
+        ib = tuple(input.type.broadcastable)
+        if not ib == self.input_broadcastable:
+            raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (self.input_broadcastable, ib))
+        ob = []
+        for value in self.new_order:
+            if value == 'x':
+                ob.append(True)
+            else:
+                ob.append(ib[value])
+        return Apply(self, [input], [CudaNdarrayType(broadcastable=ob)()])
+
+    def __eq__(self, other):
+        # it's probably not necessary to compare input_broadcastable
+        return type(self) == type(other) \
+            and self.new_order == other.new_order \
+            and self.input_broadcastable == other.input_broadcastable
+
+    def _rehash(self):
+        self._hashval = hash(type(self).__name__) ^ hash(type(self).__module__) \
+                ^ hash(self.new_order) ^ hash(self.input_broadcastable)
+
+    def __hash__(self):
+        return self._hashval
+
+    def __str__(self):
+        return "GpuDimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
+
+    def c_code(self, node, name, (input,), (res,), sub):
+        basename = input + '__view_or_copy'
+
+        nd_in = len(self.input_broadcastable)
+        nd_out = len(self.new_order)
+        sio = StringIO.StringIO()
+        fail = sub['fail']
+
+        #check input
+        print >> sio, """
+        if (cnda_%(input)s->nd != %(nd_in)s)
+        {
+            PyErr_Format(PyExc_TypeError, "required nd=%(nd_in)s, got nd=%%i", cnda_%(input)s->nd);
+            %(fail)s;
+        }
+        """ %locals()
+
+        #alloc an output
+        print >> sio, """
+        if (NULL == cnda_%(res)s) {
+            cnda_%(res)s = (CudaNdarray*) CudaNdarray_new_null();
+            if (NULL == cnda_%(res)s)
+            {
+                PyErr_SetString(PyExc_MemoryError, "Failed to allocate result");
+                %(fail)s;
+            }
+        }
+        """ %locals()
+
+        #get the copy / view of the input depending on whether we're doing things inplace or not.
+        print >> sio, """
+        if (CudaNdarray_set_nd(cnda_%(res)s, %(nd_out)s))
+        {
+            // err message set
+            Py_XDECREF(cnda_%(res)s);
+            cnda_%(res)s = NULL;
+            %(fail)s;
+        }
+        if (CudaNdarray_set_device_data(cnda_%(res)s, CudaNdarray_DEV_DATA(cnda_%(input)s)))
+        {
+            // err message set
+            Py_XDECREF(cnda_%(res)s);
+            cnda_%(res)s = NULL;
+            %(fail)s;
+        }
+        """ %locals()
+
+        #reassign the dimension and strides in the host pointers
+        for i, o in enumerate(self.new_order):
+            if o == 'x':
+                print >> sio, """
+        cnda_%(res)s->dim[%(i)s] = 1;
+        cnda_%(res)s->str[%(i)s] = 0;
+                """ %locals()
+            else:
+                print >> sio, """
+        cnda_%(res)s->dim[%(i)s] = cnda_%(input)s->dim[%(o)s];
+        cnda_%(res)s->str[%(i)s] = cnda_%(input)s->str[%(o)s];
+                """ %locals()
+
+        # copy the host dims and stride -> device
+        print >> sio, """
+        if (CudaNdarray_copy_structure_to_device(cnda_%(res)s))
+        {
+            //err msg set
+            Py_XDECREF(cnda_%(res)s);
+            cnda_%(res)s = NULL;
+            %(fail)s;
+        }
+        """ %locals()
+
+        if 1:
+            print '--------------------------------------'
+            print 'C_CODE'
+            print ''
+            print self
+            print "IN BROAD", self.input_broadcastable
+            print "NEW ORDER", self.new_order
+            print "SHUFFLE", self.shuffle
+            print "AUGMENT", self.augment
+            print '------------'
+            print ''
+            print sio.getvalue()
+            print '--------------------------------------'
+            if 0:
+                import sys
+                sys.exit()
+
+        return sio.getvalue()
+
