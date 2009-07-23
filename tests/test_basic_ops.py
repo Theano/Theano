@@ -110,7 +110,7 @@ def test_elemwise4():
     a = tcn.shared_constructor(numpy.random.rand(*shape), 'a')
     b = tensor.fvector()
     c = tensor.fvector()
-    f = pfunc([b,c], [], updates=[(a, (a+b.dimshuffle('x', 0)*x.dimshuffle(0, 'x')))])
+    f = pfunc([b,c], [], updates=[(a, (a+b.dimshuffle('x', 0)*c.dimshuffle(0, 'x')))])
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
         print >> sys.stderr, i, node
