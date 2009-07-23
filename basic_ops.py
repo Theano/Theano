@@ -19,7 +19,7 @@ class HostFromGpu(Op):
     def __hash__(self):
         return hash(type(self))
     def __str__(self):
-        return '<HostFromGpu@%i>' % id(self)
+        return 'HostFromGpu'
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):
             raise TypeError(x)
@@ -36,7 +36,7 @@ class GpuFromHost(Op):
     def __hash__(self):
         return hash(type(self))
     def __str__(self):
-        return '<GpuFromHost@%i>' % id(self)
+        return 'GpuFromHost'
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
@@ -102,9 +102,21 @@ class GpuElemwise(Op):
         if self.nin > 0 and len(_inputs) != self.nin:
             raise TypeError('Wrong argument count', (self.nin, len(_inputs)))
         for i in _inputs[1:]:
-            if i.type.broadcastable != inputs[0].type.broadcastable:
-                raise NotImplementedError('different bcastable')
-        otype = CudaNdarrayType(broadcastable=_inputs[0].broadcastable)
+            if i.type.ndim != inputs[0].type.ndim:
+                raise TypeError('different ranks among inputs')
+
+        # output is broadcastable only along dimensions where all inputs are broadcastable
+        broadcastable = []
+        for d in xrange(_inputs[0].type.ndim):
+            bcast_d = True
+            for i in _inputs:
+                if not i.type.broadcastable[d]:
+                    bcast_d = False
+                    break
+            broadcastable.append(bcast_d)
+        assert len(broadcastable) == _inputs[0].type.ndim
+
+        otype = CudaNdarrayType(broadcastable=broadcastable)
         assert self.nout > 0
         return Apply(self, _inputs, [otype() for o in xrange(self.nout)])
     def c_support_code(self):
@@ -274,37 +286,38 @@ class GpuElemwise(Op):
         nout = len(outputs)
         fail = sub['fail']
         opname = str(self.scalar_op)
-        print >> sio, """
-        //std::cerr << "C_CODE %(opname)s START\\n";
+        initial_dims = ','.join('1' for i in xrange(nd))
+        if 1 or self.scalar_op == scalar.pow:
+            print >> sio, """
+        std::cerr << "C_CODE %(opname)s START\\n";
         //standard elemwise size checks
-        const int * dims = NULL;
+            """ %locals()
+        print >> sio, """
+        int dims[%(nd)s] = {%(initial_dims)s};
         """ %locals()
         for iname in inputs:
             print >> sio, """
+        std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
         if (%(nd)s != cnda_%(iname)s->nd)
         {
             PyErr_Format(PyExc_TypeError, "need %(nd)s dims, not %%i", cnda_%(iname)s->nd);
             %(fail)s;
         }
-            """ %locals()
-        for iname0, iname1 in zip(inputs[1:], inputs[:-1]):
-            print >> sio, """
-        //standard elemwise dim checks
         for (int i = 0; i< %(nd)s; ++i)
         {
-            if (cnda_%(iname0)s->dim[i] != cnda_%(iname1)s->dim[i])
+            dims[i] = (dims[i] == 1) ? cnda_%(iname)s->dim[i] : dims[i];
+            if ((cnda_%(iname)s->dim[i] != 1) && (dims[i] != cnda_%(iname)s->dim[i]))
             {
-                PyErr_SetString(PyExc_TypeError, "need same dimensions");
+                std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
+                PyErr_Format(PyExc_TypeError, "GpuElemwise input has incompatible dim[%%i] == %%i, where output has size %%i",
+                    i,
+                    cnda_%(iname)s->dim[i],
+                    dims[i]
+                    );
                 %(fail)s;
             }
         }
             """ %locals()
-        iname0 = inputs[0]
-        print >> sio, """
-        dims = cnda_%(iname0)s->dim;
-        //unsigned int size = CudaNdarray_SIZE(cnda_%(iname0)s);
-        //std::cerr << "ADD size " << size << "\\n";
-        """ %locals()
 
         for oname in outputs:
             print >> sio, """
@@ -329,13 +342,14 @@ class GpuElemwise(Op):
                 %(fail)s;
             }
         }
-        //std::cerr << "ELEMWISE NEW %(oname)s nd" << cnda_%(oname)s->nd << "\\n";
+        std::cerr << "ELEMWISE NEW %(oname)s nd" << cnda_%(oname)s->nd << "\\n";
         //std::cerr << "ELEMWISE NEW %(oname)s data" << cnda_%(oname)s->devdata << "\\n";
         """ % locals()
         print >> sio, """
         { 
             //new block so that failure gotos don't skip over variable initialization
             int log2_dims[%(nd)s];
+            std::cerr << "calling callkernel\\n";
             callkernel_%(nodename)s(1, 0, dims, log2_dims
             """ % locals()
         for iname in inputs:
@@ -349,6 +363,7 @@ class GpuElemwise(Op):
         print >> sio, """
                         );
 
+            std::cerr << "calling callkernel returned\\n";
             cudaThreadSynchronize();
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err) 
@@ -462,6 +477,12 @@ class GpuDimShuffle(Op):
 
         #alloc an output
         print >> sio, """
+        if (cnda_%(res)s)
+        {
+            //TODO: re-use previously-allocated stuff
+            Py_DECREF(cnda_%(res)s);
+            cnda_%(res)s = NULL;
+        }
         if (NULL == cnda_%(res)s) {
             cnda_%(res)s = (CudaNdarray*) CudaNdarray_new_null();
             if (NULL == cnda_%(res)s)
@@ -493,14 +514,21 @@ class GpuDimShuffle(Op):
         #reassign the dimension and strides in the host pointers
         for i, o in enumerate(self.new_order):
             if o == 'x':
+                assert node.outputs[0].type.broadcastable[i]
                 print >> sio, """
         cnda_%(res)s->dim[%(i)s] = 1;
         cnda_%(res)s->str[%(i)s] = 0;
                 """ %locals()
             else:
+                assert not node.outputs[0].type.broadcastable[i]
                 print >> sio, """
         cnda_%(res)s->dim[%(i)s] = cnda_%(input)s->dim[%(o)s];
         cnda_%(res)s->str[%(i)s] = cnda_%(input)s->str[%(o)s];
+                """ %locals()
+
+        for i, o in enumerate(self.new_order):
+                print >> sio, """
+        std::cerr << "GpuDimShuffle " << cnda_%(res)s << " str[%(i)s] = " << cnda_%(res)s->str[%(i)s] << "\\n";
                 """ %locals()
 
         # copy the host dims and stride -> device

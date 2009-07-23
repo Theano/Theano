@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, StringIO
 import numpy
 
 from theano import Op, Type, Apply, Variable, Constant
@@ -130,10 +130,45 @@ class CudaNdarrayType(Type):
         return "cnda_%(name)s = NULL;" % locals()
 
     def c_extract(self, name, sub):
-        return """
+        sio = StringIO.StringIO()
+        fail = sub['fail']
+        nd = self.ndim
+        print >> sio, """
         if (CudaNdarray_Check(py_%(name)s))
         {
             cnda_%(name)s = (CudaNdarray*)py_%(name)s;
+            std::cerr << "c_extract " << cnda_%(name)s << '\\n';
+            if (cnda_%(name)s->nd != %(nd)s)
+            {
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s", cnda_%(name)s->nd);
+                cnda_%(name)s = NULL;
+                %(fail)s;
+            }
+            std::cerr << "c_extract " << cnda_%(name)s << " nd check passed\\n";
+        """ %locals()
+        for i, b in enumerate(self.broadcastable):
+            if b:
+                print >> sio, """
+            if (cnda_%(name)s->dim[%(i)s] != 1)
+            {
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has dim %%i on broadcastable dimension %%i", cnda_%(name)s->dim[%(i)s], %(i)s);
+                cnda_%(name)s = NULL;
+                %(fail)s;
+            }
+            std::cerr << "c_extract " << cnda_%(name)s << "dim check %(i)s passed\\n";
+            std::cerr << "c_extract " << cnda_%(name)s << "checking bcast %(i)s <" << cnda_%(name)s->str<< ">\\n";
+            std::cerr << "c_extract " << cnda_%(name)s->str[%(i)s] << "\\n";
+            if (cnda_%(name)s->str[%(i)s])
+            {
+                std::cerr << "c_extract bad stride detected...\\n";
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i", cnda_%(name)s->str[%(i)s], %(i)s);
+                cnda_%(name)s = NULL;
+                %(fail)s;
+            }
+            std::cerr << "c_extract " << cnda_%(name)s << "bcast check %(i)s passed\\n";
+                """ %locals()
+        print >> sio, """
+            assert(cnda_%(name)s);
             Py_INCREF(py_%(name)s);
         }
         else
@@ -142,12 +177,19 @@ class CudaNdarrayType(Type):
             cnda_%(name)s = NULL;
             %(fail)s;
         }
-        """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
+        std::cerr << "c_extract done " << cnda_%(name)s << '\\n';
+        """ % locals()
+        #print sio.getvalue()
+        return sio.getvalue()
 
     def c_cleanup(self, name, sub):
         return """
-        //std::cerr << "cleanup " << py_%(name)s << "\\n";
-        Py_XDECREF(py_%(name)s);
+        std::cerr << "cleanup " << py_%(name)s << " " << cnda_%(name)s << "\\n";
+        if (cnda_%(name)s)
+        {
+            Py_XDECREF(cnda_%(name)s);
+        }
+        std::cerr << "cleanup done" << py_%(name)s << "\\n";
         """ % locals()
 
     def c_sync(self, name, sub):
@@ -194,12 +236,6 @@ class CudaNdarrayType(Type):
     def c_code_cache_version(self):
         return () #do not cache this stuff until it matures
 
-
-    def c_compiler(self): return nvcc_module_compile_str
-
-
-
-
-
-
+    def c_compiler(self):
+        return nvcc_module_compile_str
 

@@ -87,9 +87,34 @@ def test_elemwise3():
     
     shape = (3,4,5,6)
     a = tcn.shared_constructor(numpy.random.rand(*shape), 'a')
-    b = tensor.dvector()
+    b = tensor.fvector()
+    print b.type
+    print tensor.constant(1).type
+    print (1 + b).type
+    print (1 + b**a).type
+    print tensor.exp((1 + b**a)).type
     f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) * tensor.exp(1 +
         b**a).dimshuffle([2,0,3,1]))])
+    has_elemwise = False
+    for i, node in enumerate(f.maker.env.toposort()):
+        print >> sys.stderr, i, node
+        has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
+    assert not has_elemwise
     #let debugmode catch errors
     f(numpy.random.rand(6))
 
+def test_elemwise4():
+    """ Test that two vectors can be broadcast to form an outer product (by performing rank-1 matrix update"""
+    
+    shape = (3,4)
+    a = tcn.shared_constructor(numpy.random.rand(*shape), 'a')
+    b = tensor.fvector()
+    c = tensor.fvector()
+    f = pfunc([b,c], [], updates=[(a, (a+b.dimshuffle('x', 0)*x.dimshuffle(0, 'x')))])
+    has_elemwise = False
+    for i, node in enumerate(f.maker.env.toposort()):
+        print >> sys.stderr, i, node
+        has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
+    assert not has_elemwise
+    #let debugmode catch errors
+    f(numpy.random.rand(4), numpy.random.rand(3))

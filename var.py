@@ -49,10 +49,14 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
         if hasattr(other, '_as_CudaNdarrayVariable'):
             return other._as_CudaNdarrayVariable()
 
-        if isinstance(other.type, tensor.TensorType) and (other.type.dtype == self.dtype) and (other.broadcastable == self.broadcastable):
-            return GpuFromHost()(other)
-        else:
-            raise TypeError((other, other.type))
+        if not isinstance(other.type, tensor.TensorType):
+            raise TypeError('Incompatible type', other.type)
+        if (other.type.dtype != self.dtype):
+            raise TypeError('Incompatible dtype', (self.dtype, other.type.dtype))
+        if (other.type.broadcastable != self.broadcastable):
+            raise TypeError('Incompatible broadcastable', (self.broadcastable, other.type.broadcastable))
+        return GpuFromHost()(other)
+
 CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
 def shared_constructor(value, name, strict=False):
