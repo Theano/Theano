@@ -90,6 +90,7 @@ class GpuElemwise(Op):
 
     def __hash__(self):
         return self._hashval
+
     def __str__(self):
         if self.inplace_pattern:
             items = self.inplace_pattern.items()
@@ -97,6 +98,7 @@ class GpuElemwise(Op):
             return "GpuElemwise{%s}%s" % (self.scalar_op, str(items))
         else:
             return "GpuElemwise{%s}" % (self.scalar_op)
+
     def make_node(self, *inputs):
         _inputs = [as_cuda_ndarray_variable(i) for i in inputs]
         if self.nin > 0 and len(_inputs) != self.nin:
@@ -119,6 +121,7 @@ class GpuElemwise(Op):
         otype = CudaNdarrayType(broadcastable=broadcastable)
         assert self.nout > 0
         return Apply(self, _inputs, [otype() for o in xrange(self.nout)])
+
     def c_support_code(self):
         return """
         #define INTDIV_POW2(a, b) (a >> b)
@@ -128,8 +131,10 @@ class GpuElemwise(Op):
     def c_src_kernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
         sio = StringIO.StringIO()
-        #TODO: optimize by passing the log2 of each dim, as well as the mask of 1s that we need 
-        #      to compute the modulo
+        print 'C_SRC_KERNEL', sio.getvalue()
+
+        def _logical_scalar(x):
+            return all(x.type.broadcastable)
 
         print >> sio, "static __global__ void kernel_%s(unsigned int numEls," %nodename
         print >> sio, "\t ", ", ".join("unsigned int log2_dim%i" % i for i in xrange(nd))
@@ -144,6 +149,14 @@ class GpuElemwise(Op):
         print >> sio, "\t)\n{"
         print >> sio, "    const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;"
         print >> sio, "    const unsigned int numThreads = blockDim.x * gridDim.x;"
+
+        # For each input that is a scalar which has been broadcasted to a tensor,
+        #     load it into a local variable
+        for ipos, i in enumerate(node.inputs):
+            if _logical_scalar(i):
+                print >> sio, "    const float ii_i%i_value = i%i_data[0];" % (ipos, ipos)
+
+        
         #TODO: insert code to check for strides of 1, and use a different loop
         
         #loop over the elements to be treated by this kernel call
@@ -151,7 +164,8 @@ class GpuElemwise(Op):
         # calculate the data pointers for all arguments
         print >> sio, "        unsigned int ii = i;"
         for ipos, i in enumerate(node.inputs):
-            print >> sio, "        const float * ii_i%i_data = i%i_data;" % (ipos, ipos)
+            if not _logical_scalar(i):
+                print >> sio, "        const float * ii_i%i_data = i%i_data;" % (ipos, ipos)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "        float * ii_o%i_data = o%i_data;" % (ipos, ipos)
         for d in xrange(nd-1, -1, -1):
@@ -161,16 +175,23 @@ class GpuElemwise(Op):
             else:
                 print >> sio, "        unsigned int pos%i = ii;" %d
             for ipos, i in enumerate(node.inputs):
-                print >> sio, "        ii_i%i_data += pos%i * i%i_str_%i;" % (ipos, d, ipos, d)
+                if not _logical_scalar(i):
+                    print >> sio, "        ii_i%i_data += pos%i * i%i_str_%i;" % (ipos, d, ipos, d)
             for ipos, i in enumerate(node.outputs):
                 print >> sio, "        ii_o%i_data += pos%i * o%i_str_%i;" % (ipos, d, ipos, d)
 
         # perform the scalar operation on the input and output references
             if d == 0:
-                print >> sio, "       ", self.scalar_op.c_code(None, None, 
-                        ['ii_i%i_data[0]'%ipos for ipos, i in enumerate(node.inputs)], 
-                        ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)], 
-                        sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+                #TODO: What if the scalar_op needs support_code??
+                task_code = self.scalar_op.c_code(
+                        Apply(self.scalar_op,
+                            [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                            [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                        , nodename + '_scalar_'
+                        , [('ii_i%i_value' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
+                        , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
+                        , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+                print >> sio, "       ", task_code
         print >> sio, "    }"
 
         #TODO: insert runtime stride checks that select the best loop order either here, or in
@@ -180,13 +201,14 @@ class GpuElemwise(Op):
         #for ipos, i in enumerate(node.inputs):
             #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
         print >> sio, "}"
-        if 0:
-            print sio.getvalue()
+
+        print sio.getvalue()
         return sio.getvalue()
 
     def c_support_code_apply(self, node, nodename):
         return self.c_src_kernel(node, nodename) + \
                 self.c_src_callkernel(node, nodename)
+
     def c_src_callkernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
         d = dict()
@@ -289,7 +311,7 @@ class GpuElemwise(Op):
         initial_dims = ','.join('1' for i in xrange(nd))
         if 1 or self.scalar_op == scalar.pow:
             print >> sio, """
-        std::cerr << "C_CODE %(opname)s START\\n";
+        //std::cerr << "C_CODE %(opname)s START\\n";
         //standard elemwise size checks
             """ %locals()
         print >> sio, """
@@ -297,7 +319,7 @@ class GpuElemwise(Op):
         """ %locals()
         for iname in inputs:
             print >> sio, """
-        std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
+        //std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
         if (%(nd)s != cnda_%(iname)s->nd)
         {
             PyErr_Format(PyExc_TypeError, "need %(nd)s dims, not %%i", cnda_%(iname)s->nd);
@@ -308,7 +330,7 @@ class GpuElemwise(Op):
             dims[i] = (dims[i] == 1) ? cnda_%(iname)s->dim[i] : dims[i];
             if ((cnda_%(iname)s->dim[i] != 1) && (dims[i] != cnda_%(iname)s->dim[i]))
             {
-                std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
+                //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
                 PyErr_Format(PyExc_TypeError, "GpuElemwise input has incompatible dim[%%i] == %%i, where output has size %%i",
                     i,
                     cnda_%(iname)s->dim[i],
@@ -342,14 +364,14 @@ class GpuElemwise(Op):
                 %(fail)s;
             }
         }
-        std::cerr << "ELEMWISE NEW %(oname)s nd" << cnda_%(oname)s->nd << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s nd" << cnda_%(oname)s->nd << "\\n";
         //std::cerr << "ELEMWISE NEW %(oname)s data" << cnda_%(oname)s->devdata << "\\n";
         """ % locals()
         print >> sio, """
         { 
             //new block so that failure gotos don't skip over variable initialization
             int log2_dims[%(nd)s];
-            std::cerr << "calling callkernel\\n";
+            //std::cerr << "calling callkernel\\n";
             callkernel_%(nodename)s(1, 0, dims, log2_dims
             """ % locals()
         for iname in inputs:
@@ -363,7 +385,7 @@ class GpuElemwise(Op):
         print >> sio, """
                         );
 
-            std::cerr << "calling callkernel returned\\n";
+            //std::cerr << "calling callkernel returned\\n";
             cudaThreadSynchronize();
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err) 
@@ -385,7 +407,6 @@ class GpuElemwise(Op):
 
     def c_code_cache_version(self):
         return ()
-
 
 class GpuDimShuffle(Op):
     def __init__(self, input_broadcastable, new_order):
@@ -528,7 +549,7 @@ class GpuDimShuffle(Op):
 
         for i, o in enumerate(self.new_order):
                 print >> sio, """
-        std::cerr << "GpuDimShuffle " << cnda_%(res)s << " str[%(i)s] = " << cnda_%(res)s->str[%(i)s] << "\\n";
+        //std::cerr << "GpuDimShuffle " << cnda_%(res)s << " str[%(i)s] = " << cnda_%(res)s->str[%(i)s] << "\\n";
                 """ %locals()
 
         # copy the host dims and stride -> device

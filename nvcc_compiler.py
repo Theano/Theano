@@ -52,6 +52,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
             (module_name, get_lib_extension()))
 
     debug('Generating shared lib', lib_filename)
+    # TODO: Why do these args cause failure on gtx285 that has 1.3 compute capability? '--gpu-architecture=compute_13', '--gpu-code=compute_13', 
     cmd = ['nvcc', '-shared', '-g'] + [pa for pa in preargs if pa.startswith('-O')]
     cmd.extend(['-Xcompiler', ','.join(pa for pa in preargs if not pa.startswith('-O'))])
     cmd.extend('-I%s'%idir for idir in include_dirs)
