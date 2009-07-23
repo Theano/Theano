@@ -50,6 +50,10 @@ class CudaNdarrayType(Type):
     def filter(self, data, strict=False):
         return type_support_filter(data, self.broadcastable, strict)
 
+    @staticmethod
+    def values_eq_approx(a, b):
+        return tensor.TensorType.values_eq_approx(numpy.asarray(a), numpy.asarray(b))
+
     def dtype_specs(self):
         """Return a tuple (python type, c type, numpy typenum) that corresponds to
         self.dtype.
@@ -130,6 +134,7 @@ class CudaNdarrayType(Type):
         if (CudaNdarray_Check(py_%(name)s))
         {
             cnda_%(name)s = (CudaNdarray*)py_%(name)s;
+            Py_INCREF(py_%(name)s);
         }
         else
         {
@@ -141,22 +146,29 @@ class CudaNdarrayType(Type):
 
     def c_cleanup(self, name, sub):
         return """
-        std::cerr << "cleanup " << py_%(name)s << "\\n";
+        //std::cerr << "cleanup " << py_%(name)s << "\\n";
+        Py_XDECREF(py_%(name)s);
         """ % locals()
 
     def c_sync(self, name, sub):
         """Override `CLinkerOp.c_sync` """
         return """
-        std::cerr << "sync\\n";
+        //std::cerr << "sync\\n";
         if (NULL == cnda_%(name)s) {  
             // failure: sync None to storage
             Py_XDECREF(py_%(name)s);
             py_%(name)s = Py_None;
-            Py_XINCREF(py_%(name)s);
+            Py_INCREF(py_%(name)s);
         }
         else
         {
-            py_%(name)s = (PyObject*)cnda_%(name)s;
+            if (py_%(name)s != (PyObject*)cnda_%(name)s)
+            {
+                Py_XDECREF(py_%(name)s);
+                py_%(name)s = (PyObject*)cnda_%(name)s;
+                Py_INCREF(py_%(name)s);
+            }
+            assert(py_%(name)s->ob_refcnt);
         }
         """ % locals()
 

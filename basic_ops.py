@@ -275,7 +275,7 @@ class GpuElemwise(Op):
         fail = sub['fail']
         opname = str(self.scalar_op)
         print >> sio, """
-        std::cerr << "C_CODE %(opname)s START\\n";
+        //std::cerr << "C_CODE %(opname)s START\\n";
         //standard elemwise size checks
         const int * dims = NULL;
         """ %locals()
@@ -310,7 +310,7 @@ class GpuElemwise(Op):
             print >> sio, """
         if (cnda_%(oname)s){
             //TODO: check if we can maybe use existing storage
-            Py_XDECREF(cnda_%(oname)s);
+            Py_DECREF(cnda_%(oname)s);
             cnda_%(oname)s = NULL;
         }
         if (NULL == cnda_%(oname)s)
@@ -324,13 +324,13 @@ class GpuElemwise(Op):
             if (CudaNdarray_alloc_contiguous(cnda_%(oname)s, %(nd)s, dims))
             {
                 //error string already set
-                Py_XDECREF(cnda_%(oname)s);
+                Py_DECREF(cnda_%(oname)s);
                 cnda_%(oname)s = NULL;
                 %(fail)s;
             }
         }
-        std::cerr << "ELEMWISE NEW %(oname)s nd" << cnda_%(oname)s->nd << "\\n";
-        std::cerr << "ELEMWISE NEW %(oname)s data" << cnda_%(oname)s->devdata << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s nd" << cnda_%(oname)s->nd << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s data" << cnda_%(oname)s->devdata << "\\n";
         """ % locals()
         print >> sio, """
         { 
@@ -357,14 +357,14 @@ class GpuElemwise(Op):
                 """ % locals()
         for oname in outputs:
             print >> sio, """
-                Py_XDECREF(cnda_%(oname)s);
+                Py_DECREF(cnda_%(oname)s);
                 cnda_%(oname)s = NULL;
                 """ % locals()
         print >> sio, """
                 %(fail)s;
             }                         
         }
-        std::cerr << "C_CODE %(opname)s END\\n";
+        //std::cerr << "C_CODE %(opname)s END\\n";
         """ % locals()
         return sio.getvalue()
 
@@ -477,14 +477,14 @@ class GpuDimShuffle(Op):
         if (CudaNdarray_set_nd(cnda_%(res)s, %(nd_out)s))
         {
             // err message set
-            Py_XDECREF(cnda_%(res)s);
+            Py_DECREF(cnda_%(res)s);
             cnda_%(res)s = NULL;
             %(fail)s;
         }
-        if (CudaNdarray_set_device_data(cnda_%(res)s, CudaNdarray_DEV_DATA(cnda_%(input)s)))
+        if (CudaNdarray_set_device_data(cnda_%(res)s, CudaNdarray_DEV_DATA(cnda_%(input)s), cnda_%(input)s))
         {
             // err message set
-            Py_XDECREF(cnda_%(res)s);
+            Py_DECREF(cnda_%(res)s);
             cnda_%(res)s = NULL;
             %(fail)s;
         }
@@ -508,13 +508,13 @@ class GpuDimShuffle(Op):
         if (CudaNdarray_copy_structure_to_device(cnda_%(res)s))
         {
             //err msg set
-            Py_XDECREF(cnda_%(res)s);
+            Py_DECREF(cnda_%(res)s);
             cnda_%(res)s = NULL;
             %(fail)s;
         }
         """ %locals()
 
-        if 1:
+        if 0:
             print '--------------------------------------'
             print 'C_CODE'
             print ''

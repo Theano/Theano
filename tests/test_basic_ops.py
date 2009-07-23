@@ -1,4 +1,4 @@
-import sys
+import sys, time
 from theano.compile.sandbox.sharedvalue import shared
 from theano.compile.sandbox.pfunc import pfunc
 from theano import tensor
@@ -18,8 +18,9 @@ def test_elemwise0():
 
     a0 = a.value * 1.0
     print 'BEFORE ADD', a.value
+    for i, node in enumerate(f.maker.env.toposort()):
+        print i, node
     f(numpy.ones((4,4)))
-    print f.maker.env.toposort()
     print 'AFTER ADD', a.value
 
     assert numpy.all(a0 + 1.0 == a.value)
@@ -52,9 +53,24 @@ def test_elemwise1():
 
 def test_elemwise2():
     """ Several kinds of elemwise expressions with dimension permutations """
+    rng = numpy.random.RandomState(int(time.time()))
+    print 'random?', rng.rand(3)
+    shape = (3,5)
+    for pattern in [(0,1), (1,0)]:
+        a = tcn.shared_constructor(rng.rand(*shape), name=None)
+        b = tensor.Tensor(dtype='float32', broadcastable=[0]*len(shape))()
+        f = pfunc([b], [], updates=[(a, (a+b).dimshuffle(pattern))])
+        has_elemwise = False
+        for i, node in enumerate(f.maker.env.toposort()):
+            print >> sys.stderr, i, node
+            has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
+        assert not has_elemwise
+        #let debugmode catch errors
+        print >> sys.stderr, 'pattern', pattern
+        f(rng.rand(*shape)*.3)
     
     shape = (3,4,5,6)
-    a = tcn.shared_constructor(numpy.random.rand(*shape), 'a')
+    a = tcn.shared_constructor(rng.rand(*shape), 'a')
     b = tensor.Tensor(dtype='float32', broadcastable=[0]*len(shape))()
     f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) *
         tensor.exp(b**a).dimshuffle([2,0,3,1]))])
@@ -64,7 +80,7 @@ def test_elemwise2():
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
-    f(numpy.ones(shape))
+    f(rng.rand(*shape))
 
 def test_elemwise3():
     """ Several kinds of elemwise expressions with dimension permutations and broadcasting"""
@@ -75,5 +91,5 @@ def test_elemwise3():
     f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) * tensor.exp(1 +
         b**a).dimshuffle([2,0,3,1]))])
     #let debugmode catch errors
-    f(numpy.ones(6))
+    f(numpy.random.rand(6))
 
