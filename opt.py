@@ -1,5 +1,6 @@
+import sys
 from theano import tensor, scalar, compile
-from theano.gof import local_optimizer, EquilibriumDB
+from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
 
 from .basic_ops import *
 from .blas import gpu_dot22, gpu_gemm
@@ -8,8 +9,12 @@ from theano.compile import optdb
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
 
 gpu_optimizer = EquilibriumDB()
+gpu_cut_copies = EquilibriumDB()
+gpu_seqopt = SequenceDB()
+gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1, 'fast_run', 'inplace')
+gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2, 'fast_run', 'inplace')
 optdb.register('gpu', 
-        gpu_optimizer, 
+        gpu_seqopt, 
         optdb.__priority__.get('inplace_opt', 75) + 5, 
         'fast_run',
         'inplace')
@@ -21,25 +26,23 @@ def register_opt(*tags, **kwargs):
         return local_opt
     return f
 
-@register_opt()
-@local_optimizer([GpuFromHost(), None])
-def local_gpu_host_gpu(node):
-    if not tensor.opt.opt.check_chain(node, GpuFromHost(), HostFromGpu()):
-        return False
-    return [node.inputs[0].owner.inputs[0]]
-
-@register_opt()
-@local_optimizer([HostFromGpu(), None])
-def local_host_gpu_host(node):
-    if not tensor.opt.opt.check_chain(node, HostFromGpu(), GpuFromHost()):
-        return False
-    return [node.inputs[0].owner.inputs[0]]
+@local_optimizer([])
+def local_cut_gpu_host_gpu(node):
+    if tensor.opt.opt.check_chain(node, GpuFromHost(), HostFromGpu()):
+        return [node.inputs[0].owner.inputs[0]]
+    if tensor.opt.opt.check_chain(node, HostFromGpu(), GpuFromHost()):
+        return [node.inputs[0].owner.inputs[0]]
+    return False
+gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu, 'fast_run', 'inplace', 'gpu')
 
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise):
         if any(hasattr(i.owner, 'op') and isinstance(i.owner.op, HostFromGpu) for i in node.inputs):
+            if any(o.type.dtype == 'float64' for o in node.outputs):
+                print 'EXITING FROM local_gpu_elemwise_0', node
+                sys.exit()
             # move the add to a GpuAdd
             new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
             return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
@@ -132,3 +135,21 @@ def local_gpu_gemm(node):
         if x_on_gpu or y_on_gpu or z_on_gpu:
             return [host_from_gpu(gpu_gemm(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
     return False
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_sum(node):
+    if isinstance(node.op, tensor.elemwise.CAReduce):
+        if node.op.scalar_op == scalar.add:
+            x, = node.inputs
+            if x.owner and x.owner.op == host_from_gpu:
+                if node.op.axis is None:
+                    reduce_mask = [1] * x.type.ndim
+                else:
+                    reduce_mask = [0] * x.type.ndim
+                    for a in node.op.axis:
+                        assert reduce_mask[a] == 0
+                        reduce_mask[a] = 1
+                return [host_from_gpu(GpuSum(reduce_mask)(gpu_from_host(x)))]
+    return False
+

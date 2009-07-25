@@ -131,7 +131,7 @@ class GpuElemwise(Op):
     def c_src_kernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
         sio = StringIO.StringIO()
-        print 'C_SRC_KERNEL', sio.getvalue()
+        #print 'C_SRC_KERNEL', sio.getvalue()
 
         def _logical_scalar(x):
             return all(x.type.broadcastable)
@@ -202,7 +202,7 @@ class GpuElemwise(Op):
             #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
         print >> sio, "}"
 
-        print sio.getvalue()
+        #print sio.getvalue()
         return sio.getvalue()
 
     def c_support_code_apply(self, node, nodename):
@@ -581,4 +581,26 @@ class GpuDimShuffle(Op):
                 sys.exit()
 
         return sio.getvalue()
+
+class GpuSum(Op):
+    def __init__(self, reduce_mask):
+        self.reduce_mask = tuple(reduce_mask)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.reduce_mask == other.reduce_mask
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.reduce_mask)
+
+    def __str__(self):
+        return "GpuSum{%s}" % str(self.reduce_mask)
+
+    def make_node(self, x):
+        if (x.type.ndim != len(self.reduce_mask)):
+            raise TypeError("x must have rank %i"%len(self.reduce_mask))
+        o_broadcast = [x.type.broadcastable[i] for i in xrange(x.type.ndim) if not self.reduce_mask[i]]
+        return Apply(self, [x], [CudaNdarrayType(o_broadcast)()])
+
+    def perform(self, node, (x,), (z,)):
+        z[0] = x.reduce_sum(self.reduce_mask)
 

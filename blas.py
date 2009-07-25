@@ -3,6 +3,8 @@ from theano import tensor, scalar
 import StringIO
 
 class GpuDot22(Op):
+    def __str__(self):
+        return 'GpuDot22'
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -67,6 +69,8 @@ gpu_dot22 = GpuDot22()
 
 class GpuGemm(Op):
     destroy_map = {0:[0]}
+    def __str__(self):
+        return 'GpuGemm'
     def __eq__(self, other):
         return type(self) == type(other)
 
