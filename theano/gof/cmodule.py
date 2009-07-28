@@ -464,6 +464,13 @@ def get_lib_extension():
     else:
         return 'so'
 
+def get_gcc_shared_library_arg():
+    """Return the platform-dependent GCC argument for shared libraries."""
+    if sys.platform == 'darwin':
+        return '-dynamiclib'
+    else:
+        return '-shared'
+
 def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[], tmpdir=None):
     #TODO: don't to the dlimport in this function
@@ -503,7 +510,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
             (module_name, get_lib_extension()))
 
     debug('Generating shared lib', lib_filename)
-    cmd = ['g++', '-shared', '-g']
+    cmd = ['g++', get_gcc_shared_library_arg(), '-g']
     if no_opt:
         cmd.extend(p for p in preargs if not p.startswith('-O'))
     else:
