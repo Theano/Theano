@@ -24,10 +24,10 @@ def run_nnet(use_gpu):
         v = tcn.shared_constructor(numpy.zeros((n_hid, n_out)), 'c')
         c = tcn.shared_constructor(numpy.zeros(n_out), 'c')
     else:
-        w = shared(0.01*(numpy.random.rand(n_in,n_hid)-0.5), 'w')
-        b = shared(numpy.zeros(n_hid), 'b')
-        v = shared(numpy.zeros((n_hid, n_out)), 'c')
-        c = shared(numpy.zeros(n_out), 'c')
+        w = shared(numpy.asarray(0.01*(numpy.random.rand(n_in,n_hid)-0.5), dtype='float32'), 'w')
+        b = shared(numpy.asarray(numpy.zeros(n_hid), dtype='float32'), 'b')
+        v = shared(numpy.asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
+        c = shared(numpy.asarray(numpy.zeros(n_out), dtype='float32'), 'c')
 
     x = tensor.fmatrix('x')
     y = tensor.fmatrix('y')
@@ -54,10 +54,14 @@ def run_nnet(use_gpu):
     lr = numpy.asarray(0.01, dtype='float32')
 
     for i in xrange(100):
-        train(xval, yval, lr)
+        rval = train(xval, yval, lr)
     mode.print_summary()
+    return rval
     
-def test_nnet_cpu():
-    run_nnet(False)
-def test_nnet_gpu():
-    run_nnet(True)
+def test_nnet_cpu_gpu():
+    numpy.random.seed(23456)
+    rval_cpu = run_nnet(False)
+    numpy.random.seed(23456)
+    rval_gpu = run_nnet(True)
+    assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
+

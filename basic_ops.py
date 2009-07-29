@@ -27,7 +27,8 @@ class HostFromGpu(Op):
     def perform(self, node, (x,), (z,)):
         z[0] = numpy.asarray(x)
     def grad(self, inputs, (gz,)):
-        return [GpuFromHost()(gz)]
+        return gz,
+        #return [GpuFromHost()(gz)]
 host_from_gpu = HostFromGpu()
 
 class GpuFromHost(Op):
@@ -44,7 +45,8 @@ class GpuFromHost(Op):
     def perform(self, node, (x,), (z,)):
         z[0] = type_support_filter(numpy.asarray(x, dtype='float32'), tuple([0]*x.ndim), 0)
     def grad(self, inputs, (gz,)):
-        return [HostFromGpu()(gz)]
+        return gz,
+        #return [HostFromGpu()(gz)]
 gpu_from_host = GpuFromHost()
 
 
@@ -256,7 +258,7 @@ class GpuElemwise(Op):
             {
                 int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 //a ceil would be better here
-                int n_blocks = std::min(numEls/threads_per_block + 1, (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
                 kernel_%(nodename)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
                 //std::cerr << "ADDCALL a str" << i0_str[0] << " "<< i0_str[1] << "\\n";
                 //std::cerr << "ADDCALL a data" << i0_data << "\\n";
@@ -498,31 +500,34 @@ class GpuDimShuffle(Op):
 
         #alloc an output
         print >> sio, """
-        if (cnda_%(res)s)
+        if (cnda_%(res)s && (cnda_%(res)s->nd == %(nd_out)s))
         {
-            //TODO: re-use previously-allocated stuff
-            Py_DECREF(cnda_%(res)s);
-            cnda_%(res)s = NULL;
+            //re-use previously-allocated cnda
         }
-        if (NULL == cnda_%(res)s) {
+        else
+        {
+            if (cnda_%(res)s)
+            {
+                Py_DECREF(cnda_%(res)s);
+                cnda_%(res)s = NULL;
+            }
             cnda_%(res)s = (CudaNdarray*) CudaNdarray_new_null();
             if (NULL == cnda_%(res)s)
             {
                 PyErr_SetString(PyExc_MemoryError, "Failed to allocate result");
                 %(fail)s;
             }
+            if (CudaNdarray_set_nd(cnda_%(res)s, %(nd_out)s))
+            {
+                // err message set
+                Py_DECREF(cnda_%(res)s);
+                cnda_%(res)s = NULL;
+                %(fail)s;
+            }
         }
         """ %locals()
 
-        #get the copy / view of the input depending on whether we're doing things inplace or not.
         print >> sio, """
-        if (CudaNdarray_set_nd(cnda_%(res)s, %(nd_out)s))
-        {
-            // err message set
-            Py_DECREF(cnda_%(res)s);
-            cnda_%(res)s = NULL;
-            %(fail)s;
-        }
         if (CudaNdarray_set_device_data(cnda_%(res)s, CudaNdarray_DEV_DATA(cnda_%(input)s), cnda_%(input)s))
         {
             // err message set
