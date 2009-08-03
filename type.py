@@ -149,19 +149,19 @@ class CudaNdarrayType(Type):
         for i, b in enumerate(self.broadcastable):
             if b:
                 print >> sio, """
-            if (cnda_%(name)s->dim[%(i)s] != 1)
+            if (CudaNdarray_HOST_DIMS(cnda_%(name)s)[%(i)s] != 1)
             {
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has dim %%i on broadcastable dimension %%i", cnda_%(name)s->dim[%(i)s], %(i)s);
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has dim %%i on broadcastable dimension %%i", CudaNdarray_HOST_DIMS(cnda_%(name)s)[%(i)s], %(i)s);
                 cnda_%(name)s = NULL;
                 %(fail)s;
             }
             //std::cerr << "c_extract " << cnda_%(name)s << "dim check %(i)s passed\\n";
             //std::cerr << "c_extract " << cnda_%(name)s << "checking bcast %(i)s <" << cnda_%(name)s->str<< ">\\n";
             //std::cerr << "c_extract " << cnda_%(name)s->str[%(i)s] << "\\n";
-            if (cnda_%(name)s->str[%(i)s])
+            if (CudaNdarray_HOST_STRIDES(cnda_%(name)s)[%(i)s])
             {
                 //std::cerr << "c_extract bad stride detected...\\n";
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i", cnda_%(name)s->str[%(i)s], %(i)s);
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i", CudaNdarray_HOST_STRIDES(cnda_%(name)s)[%(i)s], %(i)s);
                 cnda_%(name)s = NULL;
                 %(fail)s;
             }

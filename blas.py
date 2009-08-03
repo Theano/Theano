@@ -39,13 +39,13 @@ class GpuDot22(Op):
             %(fail)s;
         }
         if ((NULL == cnda_%(z)s)
-            || (cnda_%(z)s->dim[0] != cnda_%(x)s->dim[0])
-            || (cnda_%(z)s->dim[1] != cnda_%(y)s->dim[1]))
+            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[0] != CudaNdarray_HOST_DIMS(cnda_%(x)s)[0])
+            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[1] != CudaNdarray_HOST_DIMS(cnda_%(y)s)[1]))
         {
             if (cnda_%(z)s) Py_DECREF(cnda_%(z)s);
             npy_intp dims[2];
-            dims[0] = cnda_%(x)s->dim[0];
-            dims[1] = cnda_%(y)s->dim[1];
+            dims[0] = CudaNdarray_HOST_DIMS(cnda_%(x)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(cnda_%(y)s)[1];
             cnda_%(z)s = (CudaNdarray*)CudaNdarray_new_null();
             if ((NULL == cnda_%(z)s) || CudaNdarray_alloc_contiguous(cnda_%(z)s, 2, dims))
             {

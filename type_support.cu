@@ -44,7 +44,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         }
         for (int i = 0; i < cnda->nd; ++i)
         {
-            if ((cnda->dim[i] > 1) and PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
+            if ((CudaNdarray_HOST_DIMS(cnda)[i] > 1) and PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
             {
                 std::cerr << "Non-unit size in bcastable dim:\n";
                 PyErr_Format(PyExc_TypeError, "Non-unit size in broadcastable vt dimension %i", i);

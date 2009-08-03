@@ -329,13 +329,13 @@ class GpuElemwise(Op):
         }
         for (int i = 0; i< %(nd)s; ++i)
         {
-            dims[i] = (dims[i] == 1) ? cnda_%(iname)s->dim[i] : dims[i];
-            if ((cnda_%(iname)s->dim[i] != 1) && (dims[i] != cnda_%(iname)s->dim[i]))
+            dims[i] = (dims[i] == 1) ? CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i] : dims[i];
+            if ((CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i] != 1) && (dims[i] != CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i]))
             {
                 //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
                 PyErr_Format(PyExc_TypeError, "GpuElemwise input has incompatible dim[%%i] == %%i, where output has size %%i",
                     i,
-                    cnda_%(iname)s->dim[i],
+                    CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i],
                     dims[i]
                     );
                 %(fail)s;
@@ -378,11 +378,11 @@ class GpuElemwise(Op):
             """ % locals()
         for iname in inputs:
             print >> sio, """
-                        , CudaNdarray_DEV_DATA(cnda_%(iname)s), CudaNdarray_STRIDES(cnda_%(iname)s)
+                        , CudaNdarray_DEV_DATA(cnda_%(iname)s), CudaNdarray_HOST_STRIDES(cnda_%(iname)s)
             """ % locals()
         for oname in outputs:
             print >> sio, """
-                        , CudaNdarray_DEV_DATA(cnda_%(oname)s), CudaNdarray_STRIDES(cnda_%(oname)s)
+                        , CudaNdarray_DEV_DATA(cnda_%(oname)s), CudaNdarray_HOST_STRIDES(cnda_%(oname)s)
             """ % locals()
         print >> sio, """
                         );
@@ -508,21 +508,20 @@ class GpuDimShuffle(Op):
         {
             if (cnda_%(res)s)
             {
-                Py_DECREF(cnda_%(res)s);
-                cnda_%(res)s = NULL;
+                if (CudaNdarray_set_nd(cnda_%(res)s, %(nd_out)s))
+                {
+                    Py_DECREF(cnda_%(res)s);
+                    cnda_%(res)s = NULL;
+                    %(fail)s;
+                }
             }
-            cnda_%(res)s = (CudaNdarray*) CudaNdarray_new_null();
-            if (NULL == cnda_%(res)s)
+            else
             {
-                PyErr_SetString(PyExc_MemoryError, "Failed to allocate result");
-                %(fail)s;
-            }
-            if (CudaNdarray_set_nd(cnda_%(res)s, %(nd_out)s))
-            {
-                // err message set
-                Py_DECREF(cnda_%(res)s);
-                cnda_%(res)s = NULL;
-                %(fail)s;
+                cnda_%(res)s = (CudaNdarray*) CudaNdarray_New(%(nd_out)s);
+                if (NULL == cnda_%(res)s)
+                {
+                    %(fail)s;
+                }
             }
         }
         """ %locals()
@@ -542,14 +541,14 @@ class GpuDimShuffle(Op):
             if o == 'x':
                 assert node.outputs[0].type.broadcastable[i]
                 print >> sio, """
-        cnda_%(res)s->dim[%(i)s] = 1;
-        cnda_%(res)s->str[%(i)s] = 0;
+        CudaNdarray_set_dim(cnda_%(res)s, %(i)s, 1);
+        CudaNdarray_set_stride(cnda_%(res)s, %(i)s, 0);
                 """ %locals()
             else:
                 assert not node.outputs[0].type.broadcastable[i]
                 print >> sio, """
-        cnda_%(res)s->dim[%(i)s] = cnda_%(input)s->dim[%(o)s];
-        cnda_%(res)s->str[%(i)s] = cnda_%(input)s->str[%(o)s];
+        CudaNdarray_set_dim(cnda_%(res)s, %(i)s, CudaNdarray_HOST_DIMS(cnda_%(input)s)[%(o)s]);
+        CudaNdarray_set_stride(cnda_%(res)s, %(i)s, CudaNdarray_HOST_STRIDES(cnda_%(input)s)[%(o)s]);
                 """ %locals()
 
         for i, o in enumerate(self.new_order):
@@ -558,17 +557,18 @@ class GpuDimShuffle(Op):
                 """ %locals()
 
         # copy the host dims and stride -> device
-        print >> sio, """
-        if (CudaNdarray_copy_structure_to_device(cnda_%(res)s))
-        {
-            //err msg set
-            Py_DECREF(cnda_%(res)s);
-            cnda_%(res)s = NULL;
-            %(fail)s;
-        }
-        """ %locals()
-
         if 0:
+            print >> sio, """
+            if (CudaNdarray_copy_structure_to_device(cnda_%(res)s))
+            {
+                //err msg set
+                Py_DECREF(cnda_%(res)s);
+                cnda_%(res)s = NULL;
+                %(fail)s;
+            }
+            """ %locals()
+
+        if 1:
             print '--------------------------------------'
             print 'C_CODE'
             print ''
