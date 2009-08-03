@@ -609,3 +609,124 @@ class GpuSum(Op):
     def perform(self, node, (x,), (z,)):
         z[0] = x.reduce_sum(self.reduce_mask)
 
+class GpuReshape(tensor.Reshape):
+    def make_node(self, x, shp):
+        return Apply(self, [x, shp], [CudaNdarrayType([False]*self.ndim)()])
+    def perform(self, node, (x, shp), (out,)):
+        if (len(shp) != self.ndim):
+            raise ValueError('shape argument to Reshape.perform has incorrect length %i'
+                    ', should be %i' % (len(shp), self.ndim), shp)
+        out[0] = x.reshape(tuple(shp))
+
+class GpuDimFlip(Op):
+    """This Op implements a very special case of Subtensor, in which some (or all) of the
+    strides are negated.
+
+    This Op should be erased when a proper GpuSubtensor is implemented.
+    """
+
+    def __init__(self, mask):
+        Op.__init__(self)
+        self.mask = mask
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.mask == other.mask
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.mask)
+
+    def __str__(self):
+        return '%s{%s}' %(self.__class__.__name__, str(self.mask))
+
+    def perform(self, node, (x,), (out,)):
+        z = x.view()
+        total_dev_data_offset = 0
+        for i, f in enumerate(self.mask):
+            if f and z.shape[i] > 1:
+                dev_data_offset += (z.dim[i] - 1) * z.str[i]
+                z.str[i] *= -1
+        z.dev_data += total_dev_data_offset
+        out[0] = z
+
+
+class GpuSubtensor(tensor.Subtensor):
+    def make_node(self, x, *inputs):
+        rval = tensor.Subtensor.make_node(self, x, *inputs)
+        rval.inputs[0] = x # clobber the 'astensor'
+        rval.outputs[0].type = CudaNdarrayType(rval.outputs[0].type.broadcastable)
+        return rval
+
+    def perform(self, node, inputs, (out, )):
+        indices = list(reversed(inputs[1:]))
+
+        def convert(entry):
+            if isinstance(entry, Type):
+                return indices.pop()
+            elif isinstance(entry, slice):
+                return slice(convert(entry.start),
+                             convert(entry.stop),
+                             convert(entry.step))
+            else:
+                return entry
+
+        x = inputs[0].view()
+        out[0] = x
+        #todo; when this works, put it into CudaNdarray.__getitem__
+        #      (sequence protocol)
+        x_shape = x.shape
+        x_strides = x._strides
+        offset = 0
+        for i, thing in enumerate(map(convert, self.idx_list)):
+            if isinstance(thing, int):
+                #this requires reducing the rank of the 
+                # view....
+                raise NotImplementedError()
+
+            if isinstance(thing, slice):
+                #stride
+                if thing.step is None:
+                    stride = 1
+                else:
+                    stride = thing.step
+
+                #start
+                if thing.start is None:
+                    if stride > 0:
+                        start = 0
+                    else:
+                        start = x_shape[i]-1
+                else:
+                    if thing.start < 0:
+                        start = x_shape[i] - thing.start
+                    else:
+                        start = thing.start
+
+                #stop
+                if thing.stop is None:
+                    if stride > 0:
+                        stop = x_shape[i]
+                    else:
+                        stop = -1
+                else:
+                    if thing.stop < 0:
+                        stop = x_shape[i] - thing.stop
+                    else:
+                        stop = thing.stop
+
+                newlen = (stop - start) // stride
+                offset += x_strides[i] * start
+                x._set_shape_i(i, newlen)
+                x._set_stride(i, x_strides[i] * stride)
+
+            #print 'perform', id(x), x.shape, i, thing
+        sizeof_float = 4
+        x._dev_data += offset * sizeof_float
+        #sys.stdout.flush()
+        #sys.exit()
+
+
+class GpuShape(tensor.Shape):
+    def make_node(self, x):
+        return Apply(self, [x], [tensor.lvector()])
+gpu_shape = GpuShape()
+
