@@ -174,10 +174,8 @@ def module_name_from_dir(dirname):
     """Scan the contents of a cache directory and return full path of the dynamic lib in it.
     """
     files = os.listdir(dirname)
-    names = [file for file in files if file.endswith('.so') or file.endswith('.pyd')]
-    if len(names) != 1:
-        raise Exception('Failed to load dynamic libraries from dir', dirname)
-    return os.path.join(dirname, names[0])
+    name, = [file for file in files if file.endswith('.so') or file.endswith('.pyd')]
+    return os.path.join(dirname, name)
 
 class ModuleCache(object):
     """Interface to the cache of dynamically compiled modules on disk
@@ -264,6 +262,8 @@ class ModuleCache(object):
         Add entries that are not in the entry_from_key dictionary.
 
         Remove entries which have been removed from the filesystem.
+
+        Also, remove malformed cache directories.
         """
         compilelock.get_lock()
         try:
@@ -278,16 +278,25 @@ class ModuleCache(object):
                         key = cPickle.load(file(key_pkl))
                     except:
                         error("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
-                        info("Erasing broken file", key_pkl)
-                        os.remove(key_pkl)
+                        info("Erasing broken cache directory", key_pkl)
+                        shutil.rmtree(root)
                         continue
+
                     if not key[0]: #if the version is False
                         warning("ModuleCache.refresh() Found unversioned key in cache, deleting it.", key_pkl)
-                        info("Erasing broken file", key_pkl)
-                        os.remove(key_pkl)
+                        info("Erasing broken cache directory", key_pkl)
+                        shutil.rmtree(root)
                         continue
+
                     if key not in self.entry_from_key:
-                        entry = module_name_from_dir(root)
+                        try:
+                            entry = module_name_from_dir(root)
+                        except ValueError: # there is a key but no dll!
+                            warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
+                            info("Erasing broken cache directory", key_pkl)
+                            shutil.rmtree(root)
+                            continue
+
                         self.entry_from_key[key] = entry
                         # assert that we haven't already got this entry somehow
                         assert entry not in self.module_from_name
