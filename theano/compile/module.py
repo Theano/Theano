@@ -11,10 +11,12 @@ from theano.printing import pprint
 import io, sys
 
 if sys.version_info[:2] >= (2,5):
-  from collections import defaultdict
-from itertools import chain
-if sys.version_info[:2] >= (2,5):
   from functools import partial
+  from collections import defaultdict
+else:
+  from theano.gof.python25 import any, all, defaultdict, partial
+
+from itertools import chain
 
 import function_module as F
 import mode as get_mode

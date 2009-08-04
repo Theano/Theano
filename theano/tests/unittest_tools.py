@@ -18,10 +18,18 @@ def fetch_seed(pseed=None):
     """
      
     seed = pseed or os.getenv("THEANO_UNITTEST_SEED", 666)
-    seed = None if seed=='random' else seed
+    if seed=='random':
+      seed = None
+    #backport
+    #seed = None if seed=='random' else seed
 
     try:
-        seed = int(seed) if seed else None
+        if seed:
+          seed = int(seed)
+        else:
+          seed = None
+        #backport
+        #seed = int(seed) if seed else None
     except ValueError:
         print >> sys.stderr, 'Error: THEANO_UNITTEST_SEED contains '\
                 'invalid seed, using None instead'

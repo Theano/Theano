@@ -2,15 +2,15 @@
 ## Not all of those ops have been thoroughly tested.
 
 #from theano import tensor, scalar
-from .. import gof
-from .. import scalar
-from .. import printing
-from ..printing import pprint
+from theano import gof
+from theano import scalar
+from theano import printing
+from theano.printing import pprint
 import basic as tensor
 import elemwise
 import numpy
 import opt
-from ..compile import optdb
+from theano.compile import optdb
 
 ############
 #
@@ -404,8 +404,19 @@ def local_softmax_with_bias(node):
             assert non_vectors #not empty
             if vectors:
                 #we're in business...
-                vector_sum = tensor.add(*vectors) if len(vectors)>1 else vectors[0]
-                non_vector_sum = tensor.add(*non_vectors) if len(non_vectors)>1 else non_vectors[0]
+                if len(vectors)>1:
+                  vector_sum = tensor.add(*vectors)
+                else:
+                  vector_sum = vectors[0]
+                #backport
+                #vector_sum = tensor.add(*vectors) if len(vectors)>1 else vectors[0]
+
+                if len(non_vectors)>1:
+                  non_vector_sum = tensor.add(*non_vectors)
+                else:
+                  non_vector_sum = non_vectors[0]
+
+                #non_vector_sum = tensor.add(*non_vectors) if len(non_vectors)>1 else non_vectors[0]
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
                 except:
@@ -909,8 +920,14 @@ def categorical_crossentropy(coding_dist, true_dist, axis=1):
     if true_dist.ndim == 2:
         return -theano.sum(true_dist * log(coding_dist), axis=axis)
     else:
+        if axis == 0:
+          retval = coding_dist.T
+        else:
+          retval = coding_dist,
         return categorical_crossentropy_1hot(
-                coding_dist.T if axis == 0 else coding_dist,
+                #backport
+                #coding_dist.T if axis == 0 else coding_dist,
+                retval,
                 true_dist)
 
 

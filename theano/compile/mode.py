@@ -1,7 +1,7 @@
 import numpy
 import os
 import scipy.sparse as sp
-from .. import gof
+from theano import gof
 
 def check_equal(x, y):
     """

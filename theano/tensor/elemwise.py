@@ -8,7 +8,7 @@ from theano import scalar
 from theano.scalar import Scalar
 from theano import printing
 from theano.printing import pprint
-from theano.gof.python25 import all
+from theano.gof.python25 import all, any
 from copy import copy, deepcopy
 
 

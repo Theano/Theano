@@ -6,7 +6,7 @@ import numpy
 
 from theano import gof
 from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
-from theano.gof.python25 import partial, all
+from theano.gof.python25 import partial, all, any
 
 def upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)

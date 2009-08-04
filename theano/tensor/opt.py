@@ -17,7 +17,7 @@ import sys
 from theano import compile  #to register the optimizer built by this file
 
 from theano.compile.debugmode import _debugprint
-from theano.gof.python25 import any
+from theano.gof.python25 import any, all
 
 # Utilities
 

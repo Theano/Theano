@@ -2,6 +2,8 @@ import sys
 
 if sys.version_info[:2] >= (2,5):
   from functools import partial
+else:
+  from theano.gof.python25 import partial
 
 import graph
 

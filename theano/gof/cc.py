@@ -10,6 +10,8 @@ import md5
 if sys.version_info[:2] >= (2,5):
   import hashlib
 
+from theano.gof.python25 import any, all
+
 # weave import
 from scipy import weave
 

@@ -1,18 +1,21 @@
 """Define RModule, a Module providing random number streams in Theano graphs."""
 __docformat__ = "restructuredtext en"
 import sys
-import functools
-from functools import partial
+if sys.version_info[:2] >= (2,5):
+  from functools import partial
+else:
+  from theano.gof.python25 import partial
+
 from collections import deque
 
 import numpy
 from copy import copy
 
-from ...compile import (SymbolicInputKit, SymbolicInput, 
+from theano.compile import (SymbolicInputKit, SymbolicInput, 
         Module, module, Method, Member, In, Component)
-from ...gof import Container
+from theano.gof import Container
 
-from ...tensor import raw_random
+from theano.tensor import raw_random
 
 class KitComponent(Component):
     """

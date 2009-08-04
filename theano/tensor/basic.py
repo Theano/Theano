@@ -18,7 +18,7 @@ from theano import gradient
 
 import elemwise
 from theano import scalar as scal
-from theano.gof.python25 import partial, any
+from theano.gof.python25 import partial, any, all
 
 from theano import compile, printing
 from theano.printing import pprint, Print
