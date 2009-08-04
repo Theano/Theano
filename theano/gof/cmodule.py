@@ -237,7 +237,12 @@ class ModuleCache(object):
         self.module_from_name = dict(self.module_from_name)
         self.entry_from_key = dict(self.entry_from_key)
         self.stats = [0, 0, 0]
-        self.force_fresh = self.force_fresh if force_fresh is None else force_fresh
+        if force_fresh is None:
+          self.force_fresh = self.force_fresh
+        else:
+          self.force_fresh = force_fresh
+        #backport
+        #self.force_fresh = self.force_fresh if force_fresh is None else force_fresh
         self.loaded_key_pkl = set()
 
         self.refresh()
@@ -393,7 +398,11 @@ class ModuleCache(object):
         :param age_thresh: dynamic modules whose last access time is more than ``age_thresh``
         seconds ago will be erased.
         """
-        age_thresh = self.age_thresh if age_thresh is None else age_thresh
+        if age_thresh is None:
+          age_thresh = self.age_thresh
+
+        #backport
+        #age_thresh = self.age_thresh if age_thresh is None else age_thresh
         compilelock.get_lock()
         try:
             # update the age of modules that have been accessed by other processes
@@ -474,7 +483,14 @@ def get_gcc_shared_library_arg():
 def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[], tmpdir=None):
     #TODO: don't to the dlimport in this function
-    preargs= [] if preargs is None else list(preargs)
+    
+    if preargs is None:
+      preargs = []
+    else:
+      preargs = list(preargs)
+
+    #backport
+    #preargs= [] if preargs is None else list(preargs)
     preargs.append('-fPIC')
     no_opt = False
 
@@ -537,7 +553,13 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
 def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[], tmpdir=None):
-    preargs= [] if preargs is None else list(preargs)
+    if preargs is None:
+      preargs = []
+    else:
+      preargs = list(preargs)
+
+    #backport
+    #preargs= [] if preargs is None else list(preargs)
     preargs.append('-fPIC')
     no_opt = False
 

@@ -8,10 +8,14 @@ __docformat__ = "restructuredtext en"
 
 from theano import gof
 from theano.printing import pprint
-from collections import defaultdict
-from itertools import chain
-from functools import partial
 import io, sys
+
+if sys.version_info[:2] >= (2,5):
+  from collections import defaultdict
+from itertools import chain
+if sys.version_info[:2] >= (2,5):
+  from functools import partial
+
 import function_module as F
 import mode as get_mode
 
@@ -418,8 +422,26 @@ class Method(Component):
         outputs = self.outputs
         _inputs = [x.variable for x in inputs]
         # Grab the variables that are not accessible from either the inputs or the updates.
-        outputs_list = [] if outputs is None else (list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
-        outputs_variable_list = [o.variable if isinstance(o, io.Out) else o for o in outputs_list]
+        if outputs is None:
+          outputs_list = []
+        else:
+          if isinstance(outputs, (list, tuple)):
+            outputs_list = list(outputs)
+          else:
+            outputs_list = [outputs]
+
+        #backport          
+        #outputs_list = [] if outputs is None else (list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
+  
+        outputs_variable_list = []
+        for o in outputs_list:
+          if isinstance(o, io.Out):
+            outputs_variable_list += [o.variable]
+          else:
+            outputs_variable_list += [o]
+
+        #backport
+        #outputs_variable_list = [o.variable if isinstance(o, io.Out) else o for o in outputs_list]
         for input in gof.graph.inputs(outputs_variable_list
                                       + [x.update for x in inputs if getattr(x, 'update', False)],
                                       blockers = _inputs):
@@ -448,7 +470,13 @@ class Method(Component):
                 assert type(storage) is io.In
                 inputs.append(storage)
 
-        effective_mode = mode if self.mode is None else self.mode
+        if self.mode is None:
+          effective_mode = mode
+        else:
+          effective_mode = self.mode
+
+        #backport
+        #effective_mode = mode if self.mode is None else self.mode
         rval = F.function(inputs, outputs, effective_mode)
         memo[self] = rval
         return rval
@@ -459,7 +487,13 @@ class Method(Component):
             rval = 'inputs: %s\n' % ", ".join(map(str, self.inputs))
         else:
             rval = ''
-        inputs, outputs, updates = self.inputs, self.outputs if isinstance(self.outputs, (list, tuple)) else [self.outputs], self.updates
+        if isinstance(self.outputs, (list, tuple)):
+          inputs, outputs, updates = self.inputs, self.outputs 
+        else:
+          inputs, outputs, updates =  [self.outputs], self.updates
+
+        #backport
+        #inputs, outputs, updates = self.inputs, self.outputs if isinstance(self.outputs, (list, tuple)) else [self.outputs], self.updates
         
         # If mode is in kwargs, prints the optimized version of the method
         mode = kwargs.pop('mode', None)
@@ -472,10 +506,16 @@ class Method(Component):
         return rval
 
     def __str__(self):
+        if self.updates:
+          sep = "; "
+        else:
+          sep = ""
         return "Method(%s -> %s%s%s)" % \
             (self.inputs,
              self.outputs,
-             "; " if self.updates else "",
+             sep,
+             #backport
+             #"; " if self.updates else "",
              ", ".join("%s <= %s" % (old, new) for old, new in self.updates.iteritems()))
 
     def __call__(self, *args, **kwargs):
@@ -603,7 +643,16 @@ class Composite(Component):
         self.set(item, value)
 
     def __iter__(self):
-        return (c.r if isinstance(c, (External, Member)) else c for c in self.components())
+        retval = []
+        for c in self.components():
+            if isinstance(c, (External, Member)):
+          	   retval += [c.r]
+            else:
+               retval += [c]
+
+	return retval
+        #backport
+        #return (c.r if isinstance(c, (External, Member)) else c for c in self.components())
 
 
 
@@ -1047,7 +1096,12 @@ class Module(ComponentDict):
         # Function to go through member lists and dictionaries recursively,
         # to look for submodules on which make_module_instance needs to be called
         def recurse(v):
-            iter = enumerate(v) if isinstance(v,list) else v.iteritems()
+            if isinstance(v,list):
+              iter = enumerate(v)
+            else:
+              iter = v.iteritems()
+            #backport
+            #iter = enumerate(v) if isinstance(v,list) else v.iteritems()
             for sk,sv in iter:
                 if isinstance(sv,(list,dict)):
                     sv = recurse(sv)

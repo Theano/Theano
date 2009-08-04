@@ -1,9 +1,9 @@
 import time, atexit
 
-from ..gof.link import WrapLinkerMany
-from ..gof.cutils import run_cthunk
-from ..compile.mode import Mode, predefined_linkers, register_mode, predefined_modes
-from ..gof.cc import OpWiseCLinker
+from theano.gof.link import WrapLinkerMany
+from theano.gof.cutils import run_cthunk
+from theano.compile.mode import Mode, predefined_linkers, register_mode, predefined_modes
+from theano.gof.cc import OpWiseCLinker
 
 class ProfileMode(Mode):
     def __init__(self, linker=OpWiseCLinker(), optimizer=None):
@@ -82,7 +82,13 @@ class ProfileMode(Mode):
         tot=0
         for f,t,a,ci in otimes[:n_ops_to_print]:
             tot+=t
-            print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+            if ci:
+              msg = '*'
+            else:
+              msg = ' '
+            print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, msg, a)
+            #backport
+            #print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci in otimes[n_ops_to_print:])*100,
@@ -104,7 +110,13 @@ class ProfileMode(Mode):
         tot=0
         for f,t,a,ci in sotimes[:n_ops_to_print]:
             tot+=t
-            print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+            if ci:
+              msg = '*'
+            else:
+              msg = ' '
+            print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, msg, a)
+            #backport
+            #print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
                   sum(f for f, t, a in sotimes[n_ops_to_print:])*100,

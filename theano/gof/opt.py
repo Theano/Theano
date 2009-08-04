@@ -4,6 +4,7 @@ amount of useful generic optimization tools.
 """
 
 
+import sys
 import graph
 from env import InconsistencyError
 import utils
@@ -11,9 +12,13 @@ import unify
 import toolbox
 import op
 from copy import copy
-from collections import deque, defaultdict
+from theano.gof.python25 import any, all
+
+#if sys.version_info[:2] >= (2,5):
+#  from collections import defaultdict
+
+from collections import deque
 import destroyhandler as dh
-import sys
 import traceback
 
 _optimizer_idx = [0]
@@ -900,7 +905,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                             max_use_abort = True
                         else:
                             lopt_change = self.process_node(env, node, lopt)
-                            process_count[lopt] += 1 if lopt_change else 0
+                            if lopt_change:
+                              process_count[lopt] += 1
+                            else:
+                              process_count[lopt] += 0
+                            #backport
+                            #process_count[lopt] += 1 if lopt_change else 0
                             changed |= lopt_change
             finally:
                 self.detach_updater(env, u)

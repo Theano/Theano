@@ -1,6 +1,6 @@
 
-from .. import gof
-from .. import gradient as G
+from theano import gof
+from theano import gradient as G
 from function_module import function
 
 

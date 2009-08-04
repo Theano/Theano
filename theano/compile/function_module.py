@@ -6,11 +6,14 @@ __docformat__ = "restructuredtext en"
 import copy_reg
 import cPickle
 
-from functools import partial
+import sys
+
+if sys.version_info[:2] >= (2,5):
+  from functools import partial
 
 import numpy
-from .. import gof
-import sys
+import theano.gof
+#from theano import gof
 import copy
 
 import mode as mode_module
@@ -33,8 +36,18 @@ def infer_reuse_pattern(env, outputs_to_disown):
         do_not_reuse.append(r)
         node = r.owner
         op = node.op
-        dmap = op.destroy_map if hasattr(op, 'destroy_map') else {}
-        vmap = op.view_map if hasattr(op, 'view_map') else {}
+        if hasattr(op, 'destroy_map'):
+          dmap = op.destroy_map
+        else:
+          dmap = {}
+
+        if hasattr(op, 'view_map'):
+          vmap = op.view_map
+        else:
+          vmap = {}
+        #backport
+        #dmap = op.destroy_map if hasattr(op, 'destroy_map') else {}
+        #vmap = op.view_map if hasattr(op, 'view_map') else {}
         for l in dmap.values() + vmap.values():
             for i in l:
                 walk(node.inputs[i])
@@ -252,7 +265,12 @@ class Function(object):
                 c.provided = 0 # this is a count of how many times the input has been provided (reinitialized to 0 on __call__)
                 finder[i] = c
                 finder[input.variable] = c
-                finder[input.name] = c if input.name not in finder else DUPLICATE
+                if input.name not in finder:
+                  finder[input.name] = c 
+                else:
+                  finder[input.name] = DUPLICATE
+                #backport
+                #finder[input.name] = c if input.name not in finder else DUPLICATE
                 # inv_finder maps the container to the input (useful for one error message)
                 inv_finder[c] = input
                 #setters.append(partial(assign, c))
@@ -271,7 +289,12 @@ class Function(object):
                 # can reinitialize all the containers
                 finder[i] = f
                 finder[input] = f
-                finder[input.name] = f if input.name not in finder else DUPLICATE
+                if input.name not in finder:
+                  finder[input.name] = f
+                else:
+                  finder[input.name] = DUPLICATE
+                #backport
+                #finder[input.name] = f if input.name not in finder else DUPLICATE
                 #setters.append(f)
                 # For each input in the kit and its corresponding container, we put an entry in finder.
                 # This allows the user to micro-manage elements of the kit if need be.
@@ -279,7 +302,12 @@ class Function(object):
                 for c, sin in zip(cs, sinputs):
                     finder[sin.variable] = c
                     finder[sin.name] = c
-                    finder[sin.name] = c if sin.name not in finder else DUPLICATE
+                    if sin.name not in finder:
+                      finder[sin.name] = c
+                    else:
+                      finder[sin.name] = DUPLICATE
+                    #backport
+                    #finder[sin.name] = c if sin.name not in finder else DUPLICATE
                     inv_finder[c] = input
                     c.required = required
                     c.provided = 0
@@ -507,9 +535,15 @@ class SanityCheckFunction(Function):
                 if not input.mutable:
                     if not self.check_equal(c1.value, c2.value):
                         name = c2.name
+                        if name:
+                          the_name = name
+                        else:
+                          the_name = ""
                         raise ValueError("Input #%i%s using %s and %s differs."
                                          % (i,
-                                            " (%s)" % name if name else "",
+                                            #backport
+                                            #" (%s)" % name if name else "",
+                                            " (%s)" % the_name,
                                             self.maker.mode,
                                             fn.maker.mode),
                                          c1.value, c2.value)
@@ -520,9 +554,15 @@ class SanityCheckFunction(Function):
                 r2 = c2.value
                 if not self.check_equal(r1, r2):
                     name = c2.name
+                    if name:
+                      the_name = name
+                    else:
+                     the_name = ""
                     raise ValueError("Variable #%i%s using %s and %s differs."
                                      % (i,
-                                        " (%s)" % name if name else "",
+                                        #backport
+                                        #" (%s)" % name if name else "",
+                                        " (%s)" % the_name,
                                         self.maker.mode,
                                         fn.maker.mode),
                                      r1, r2)
@@ -598,7 +638,10 @@ class FunctionMaker(object):
                     in the graph from the inputs to the outputs
         """
 
-        mode = mode if mode is not None else mode_module.default_mode
+        if mode is None:
+          mode = mode_module.default_mode
+        #backport
+        #mode = mode if mode is not None else mode_module.default_mode
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
@@ -703,7 +746,16 @@ class FunctionMaker(object):
 
 
 def _pickle_FunctionMaker(fm):
-    outputs = None if fm.return_none else (fm.outputs[0] if fm.unpack_single else fm.outputs)
+    if fm.return_none:
+      outputs = None
+    else:
+      if fm.unpack_single:
+        outputs = fm.outputs[0]
+      else:
+        outputs = fm.outputs
+
+    #backport
+    #outputs = None if fm.return_none else (fm.outputs[0] if fm.unpack_single else fm.outputs)
     rval = (_constructor_FunctionMaker, (fm.inputs, outputs, fm.mode, fm.accept_inplace))
     return rval
 
@@ -788,12 +840,19 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
         f[<kitname>] = seed   #re-seed the elements of a RandomKit
 
     """
-    mode = mode if mode is not None else mode_module.default_mode
-
+    if mode is None:
+      mode = mode_module.default_mode
+    #backport
+    #mode = mode if mode is not None else mode_module.default_mode
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
-        outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
+      if isinstance(outputs, (list, tuple)):
+        outputs = map(FunctionMaker.wrap_out, outputs)
+      else:
+        outputs = FunctionMaker.wrap_out(outputs)
+      #backport
+      #outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
@@ -807,9 +866,17 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
             #return a different kind of function
             def dup_defaults():
                 # TODO This may need to be changed to use containers as defaults.
-                return [copy.copy(default.value) if isinstance(default, gof.Container) else
-                        copy.copy(default)
-                        for default in defaults]
+                retval = []
+                for default in defaults:
+                  if isinstance(default, gof.Container):
+                    retval +=[copy.copy(default.value)]
+                  else:
+                    retval +=[copy.copy(default)]
+                return retval
+                #backport
+                #return [copy.copy(default.value) if isinstance(default, gof.Container) else
+                #        copy.copy(default)
+                #        for default in defaults]
             makers = [FunctionMaker(inputs, outputs, m, accept_inplace = accept_inplace) for m in mode[1:]]
             fns = [maker.create(dup_defaults(), trustme = True) for maker in makers]
             builder = partial(SanityCheckFunction, fns, check_equal)

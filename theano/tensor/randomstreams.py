@@ -4,9 +4,9 @@ __docformat__ = "restructuredtext en"
 import sys
 import numpy
 
-from ..compile import module, In, Component
-from ..gof import Container
-from ..tensor import raw_random
+from theano.compile import module, In, Component
+from theano.gof import Container
+from theano.tensor import raw_random
 
 class RandomStreamsInstance(object):
     """RandomStreamsInstance"""
@@ -37,7 +37,10 @@ class RandomStreamsInstance(object):
 
         :rtype: None
         """
-        seed = self.default_seed if seed is None else seed
+        if seed is None:
+          seed = self.default_seed
+        #backport
+        #seed = self.default_seed if seed is None else seed
         seedgen = numpy.random.RandomState(seed)
         for old_r, new_r in self.random_streams.random_state_variables:
             old_r_seed = seedgen.randint(2**30)

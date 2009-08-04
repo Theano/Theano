@@ -4,9 +4,9 @@ from copy import copy
 
 import numpy
 
-from .. import gof
-from ..gof import Op, utils, Variable, Constant, Type, Apply, Env
-from ..gof.python25 import partial
+from theano import gof
+from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
+from theano.gof.python25 import partial, all
 
 def upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)
@@ -263,7 +263,14 @@ class transfer_type(gof.utils.object2):
         self.transfer = transfer
     def __call__(self, *types):
         upcast = upcast_out(*types)
-        return [upcast if i is None else types[i] for i in self.transfer]
+        retval = []
+        for i in self.transfer:
+          if i is None:
+            retval += [upcast]
+          else:
+            retval += [types[i]]
+        return retval
+        #return [upcast if i is None else types[i] for i in self.transfer]
     def __eq__(self, other):
         return type(self) == type(other) and self.transfer == other.transfer
     def __hash__(self):
@@ -450,8 +457,21 @@ class InRange(LogicalComparison):
             return False
         return True
     def c_code(self, node, name, (x, low, hi), (z, ), sub):
-        cmp1 = '>' if self.openlow else '>='
-        cmp2 = '<' if self.openhi else '<='
+        if self.openlow:
+          cmp1 = '>'
+        else:
+          cmp1 = '>='
+
+        #backport
+        #cmp1 = '>' if self.openlow else '>='
+
+        if self.openhi:
+          cmp2 = '<'
+        else:
+          cmp2 = '<='
+
+        #backport
+        #cmp2 = '<' if self.openhi else '<='
         return "%(z)s = %(x)s %(cmp1)s %(low)s && %(x)s %(cmp2)s %(hi)s;" % locals()
     def grad(self, (x, low, hi), (gz, )):
         return None, None, None
@@ -461,13 +481,32 @@ inclosedrange = InRange(False, False)
 class Switch(ScalarOp):
     nin = 3
     def impl(self, cond, ift, iff):
-        return ift if cond else iff
+      if cond:
+        return ift
+      else:
+        return iff
+
+        #backport
+        #return ift if cond else iff
     def c_code(self, node, name, (cond, ift, iff), (z, ), sub):
         return "%(z)s = %(cond)s ? %(ift)s : %(iff)s;" % locals()
     def grad(self, (cond, ift, iff), (gz, )):
-        return (None,
-                switch(cond, gz, 0) if ift.type in grad_types else None,
-                switch(cond, 0, gz) if iff.type in grad_types else None)
+        if ift.type in grad_types:
+          first_part = switch(cond, gz, 0)
+        else:
+          first_part = None
+
+        if iff.type in grad_types:
+          second_part = switch(cond, 0, gz)
+        else:
+          second_part = None
+
+        return (None, first_part, second_part)
+
+        #return (None,
+        #        switch(cond, gz, 0) if ift.type in grad_types else None,
+        #        switch(cond, 0, gz) if iff.type in grad_types else None)
+
     def output_types(self, (cond_t, ift_t, iff_t)):
         return upcast_out(ift_t, iff_t)
 switch = Switch()
@@ -543,7 +582,15 @@ class Add(ScalarOp):
         else:
             return z + " = " + " + ".join(inputs) + ";"
     def grad(self, inputs, (gz, )):
-        return [(gz if i.type in grad_types else None) for i in inputs]
+      retval = []
+      for i in inputs:
+        if i.type in grad_types:
+          retval += [gz]
+        else:
+          retval += [None]
+      return retval
+      #backport
+      #return [(gz if i.type in grad_types else None) for i in inputs]
 add = Add(upcast_out, name = 'add')
 
 class Mul(ScalarOp):
@@ -558,9 +605,18 @@ class Mul(ScalarOp):
         else:
             return z + " = " + " * ".join(inputs) + ";"
     def grad(self, inputs, (gz, )):
-        return [(mul(*([gz] + utils.difference(inputs, [input]))) 
-            if input.type in grad_types else None)
-                for input in inputs]
+      retval = []
+      for input in inputs:
+        if input.type in grad_types:
+          retval += [mul(*([gz] + utils.difference(inputs, [input])))]
+        else:
+          retval += [None]
+
+      return retval
+
+        #return [(mul(*([gz] + utils.difference(inputs, [input]))) 
+        #    if input.type in grad_types else None)
+        #        for input in inputs]
 mul = Mul(upcast_out, name = 'mul')
 
 class Sub(BinaryScalarOp):
@@ -569,7 +625,19 @@ class Sub(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s - %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return gz if x.type in grad_types else None, -gz if y.type in grad_types else None
+        if x.type in grad_types:
+          first_part = gz
+        else:
+          first_part = None
+
+        if y.type in grad_types:
+          second_part = -gz
+        else:
+          second_part = None
+        
+        return first_part, second_part
+
+        #return gz if x.type in grad_types else None, -gz if y.type in grad_types else None
 sub = Sub(upcast_out, name = 'sub')
 
 def div_proxy(x, y):
@@ -598,8 +666,20 @@ class TrueDiv(BinaryScalarOp):
             return "%(z)s = ((double)%(x)s) / %(y)s;" % locals()
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return (gz / y if x.type in grad_types else None,
-                -(gz * x) / (y * y) if y.type in grad_types else None)
+        if x.type in grad_types:
+          first_part = gz / y
+        else:
+          first_part = None
+
+        if y.type in grad_types:
+          second_part = -(gz * x) / (y * y)
+        else:
+          second_part = None
+
+        return (first_part, second_part)
+
+        #return (gz / y if x.type in grad_types else None,
+        #        -(gz * x) / (y * y) if y.type in grad_types else None)
 true_div = TrueDiv(upcast_out, name = 'true_div')
 
 class IntDiv(BinaryScalarOp):
@@ -627,19 +707,43 @@ class Pow(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = pow(%(x)s, %(y)s);" % locals()
     def grad(self, (x, y), (gz, )):
-        return (gz * y * x**(y - 1) if x.type in grad_types else None,
-                gz * log(x) * x**y if y.type in grad_types else None)
+        if x.type in grad_types:
+          first_part = gz * y * x**(y - 1)
+        else:
+          first_part = None
+
+        if y.type in grad_types:
+          second_part = gz * log(x) * x**y 
+        else:
+          second_part = None
+
+        return (first_part, second_part)
+
+        #return (gz * y * x**(y - 1) if x.type in grad_types else None,
+        #        gz * log(x) * x**y if y.type in grad_types else None)
 pow = Pow(upcast_out, name = 'pow')
 
 class Clip(ScalarOp):
     nin = 3
     def impl(self, x, min, max):
-        return min if x < min else max if x > max else x
+        if x < min:
+          return min
+        elif x > max:
+          return max
+        else:
+          return x
+
+        #return min if x < min else max if x > max else x
     def c_code(self, node, name, (x, min, max), (z, ), sub):
         return "%(z)s = %(x)s < %(min)s ? %(min)s : %(x)s > %(max)s ? %(max)s : %(x)s;" % locals()
     def grad(self, (x, min, max), (gz, )):
         gx = ((x > min) & (x < max)) * gz
-        return gx if x.type in grad_types else None, None, None
+        if x.type in grad_types:
+          return gx
+        else:
+          return None,None,None
+
+        #return gx if x.type in grad_types else None, None, None
 clip = Clip(transfer_type(0), name = 'clip')
 
 class First(BinaryScalarOp):
@@ -648,7 +752,12 @@ class First(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(x)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return gz if x.type in grad_types else None, None
+        if x.type in grad_types:
+          return gz
+        else:
+          return None,None
+        #backport
+        #return gz if x.type in grad_types else None, None
 first = First(transfer_type(0), name = 'first')
 
 class Second(BinaryScalarOp):
@@ -657,7 +766,13 @@ class Second(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
-        return None, gz if y.type in grad_types else None
+        if y.type in grad_types:
+          return None, gz
+        else:
+          return None
+
+        #backport
+        #return None, gz if y.type in grad_types else None
 second = Second(transfer_type(1), name = 'second')
 
 
@@ -668,7 +783,13 @@ class Identity(UnaryScalarOp):
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = %(x)s;" % locals()
     def grad(self, (x, ), (gz, )):
-        return gz if x.type in grad_types else None,
+        if x.type in grad_types:
+          return gz,
+        else:
+          return None,
+
+        #backport
+        #return gz if x.type in grad_types else None,
 identity = Identity(same_out, name = 'identity')
 
 class Abs(UnaryScalarOp):
@@ -684,7 +805,12 @@ class Abs(UnaryScalarOp):
     def impl(self, x):
         return numpy.abs(x)
     def grad(self, (x, ), (gz, )):
-        return gz * sgn(x) if x.type in grad_types else None,
+        if x.type in grad_types:
+          return gz * sgn(x),
+        else:
+          return None,
+        #backport
+        #return gz * sgn(x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         type = node.inputs[0].type
         if type in int_types:
@@ -720,7 +846,12 @@ class Neg(UnaryScalarOp):
     def impl(self, x):
         return -x
     def grad(self, (x, ), (gz, )):
-        return -gz if x.type in grad_types else None,
+        if x.type in grad_types:
+          return -gz,
+        else:
+          return None,
+        #backport
+        #return -gz if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = -%(x)s;" % locals()
 neg = Neg(same_out, name = 'neg')
@@ -729,7 +860,13 @@ class Inv(UnaryScalarOp):
     def impl(self, x):
         return 1.0 / x
     def grad(self, (x, ), (gz, )):
-        return -gz / (x * x) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return -gz / (x * x),
+      else:
+        return None,
+
+      #backport
+      #return -gz / (x * x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = 1.0 / %(x)s;" % locals()
 inv = Inv(upgrade_to_float, name = 'inv')
@@ -738,7 +875,12 @@ class Log(UnaryScalarOp):
     def impl(self, x):
         return math.log(x)
     def grad(self, (x, ), (gz, )):
-        return gz / x if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz / x,
+      else:
+        return None,
+      #backport
+      #return gz / x if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         #todo: the version using log2 seems to be very slightly faster
         # on some machines for some reason, check if it's worth switching
@@ -750,7 +892,13 @@ class Log2(UnaryScalarOp):
     def impl(self, x):
         return numpy.log2(x)
     def grad(self, (x, ), (gz, )):
-        return gz / (x * math.log(2.0)) if x.type in grad_types else None,
+        if x.type in grad_types:
+          return gz / (x * math.log(2.0)),
+        else:
+          return None,
+
+        #backport
+        #return gz / (x * math.log(2.0)) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = log2(%(x)s);" % locals()
 log2 = Log2(upgrade_to_float, name = 'log2')
@@ -759,7 +907,13 @@ class Log10(UnaryScalarOp):
     def impl(self, x):
         return numpy.log10(x)
     def grad(self, (x, ), (gz, )):
-        return gz / (x * math.log(10.0)) if x.type in grad_types else None,
+        if x.type in grad_types:
+           return gz / (x * math.log(10.0)),
+        else:
+           return None
+
+        #backport
+        #return gz / (x * math.log(10.0)) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = log10(%(x)s);" % locals()
 log10 = Log10(upgrade_to_float, name = 'log10')
@@ -768,7 +922,13 @@ class Exp(UnaryScalarOp):
     def impl(self, x):
         return math.exp(x)
     def grad(self, (x, ), (gz, )):
-        return gz * exp(x) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz * exp(x),
+      else:
+        return None,
+
+     #backport
+     #return gz * exp(x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = exp(%(x)s);" % locals()
 exp = Exp(upgrade_to_float, name = 'exp')
@@ -777,7 +937,13 @@ class Sqr(UnaryScalarOp):
     def impl(self, x):
         return x*x
     def grad(self, (x, ), (gz, )):
-        return gz * x * 2 if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz * x * 2,
+      else:
+        return None,
+
+       #backport
+       # return gz * x * 2 if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = %(x)s * %(x)s;" % locals()
 sqr = Sqr(same_out, name = 'sqr')
@@ -786,7 +952,12 @@ class Sqrt(UnaryScalarOp):
     def impl(self, x):
         return math.sqrt(x)
     def grad(self, (x, ), (gz, )):
-        return (gz * 0.5) / sqrt(x) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return (gz * 0.5) / sqrt(x),
+      else:
+        return None,
+      #backport
+      #return (gz * 0.5) / sqrt(x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = sqrt(%(x)s);" % locals()
 sqrt = Sqrt(upgrade_to_float, name = 'sqrt')
@@ -795,7 +966,12 @@ class Cos(UnaryScalarOp):
     def impl(self, x):
         return math.cos(x)
     def grad(self, (x, ), (gz, )):
-        return -gz * sin(x) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return -gz * sin(x), 
+      else:
+        return None,
+      #backport
+      #  return -gz * sin(x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = cos(%(x)s);" % locals()
 cos = Cos(upgrade_to_float, name = 'cos')
@@ -804,7 +980,12 @@ class Sin(UnaryScalarOp):
     def impl(self, x):
         return math.sin(x)
     def grad(self, (x, ), (gz, )):
-        return gz * cos(x) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz * cos(x), 
+      else:
+        return None,
+      #backport
+      #  return gz * cos(x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = sin(%(x)s);" % locals()
 sin = Sin(upgrade_to_float, name = 'sin')
@@ -813,7 +994,12 @@ class Tan(UnaryScalarOp):
     def impl(self, x):
         return math.tan(x)
     def grad(self, (x, ), (gz, )):
-        return gz / sqr(cos(x)) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz / sqr(cos(x)),
+      else:
+        return None,
+      #backport
+      #return gz / sqr(cos(x)) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = tan(%(x)s);" % locals()
 tan = Tan(upgrade_to_float, name = 'tan')
@@ -825,7 +1011,12 @@ class Cosh(UnaryScalarOp):
     def impl(self, x):
         return math.cosh(x)
     def grad(self, (x, ), (gz, )):
-        return gz * sinh(x) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz * sinh(x),
+      else:
+        return None,
+      #backport
+      #return gz * sinh(x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = cosh(%(x)s);" % locals()
 cosh = Cosh(upgrade_to_float, name = 'cosh')
@@ -837,7 +1028,12 @@ class Sinh(UnaryScalarOp):
     def impl(self, x):
         return math.sinh(x)
     def grad(self, (x, ), (gz, )):
-        return gz * cosh(x) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz * cosh(x),
+      else:
+        return None,
+    #backport
+    #return gz * cosh(x) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = sinh(%(x)s);" % locals()
 sinh = Sinh(upgrade_to_float, name = 'sinh')
@@ -850,7 +1046,12 @@ class Tanh(UnaryScalarOp):
     def impl(self, x):
         return math.tanh(x)
     def grad(self, (x, ), (gz, )):
-        return gz * (1 - sqr(tanh(x))) if x.type in grad_types else None,
+      if x.type in grad_types:
+        return gz * (1 - sqr(tanh(x))),
+      else:
+        return None,
+    #backport
+    #return gz * (1 - sqr(tanh(x))) if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = tanh(%(x)s);" % locals()
 tanh = Tanh(upgrade_to_float, name = 'tanh')

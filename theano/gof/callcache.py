@@ -29,13 +29,21 @@ class CallCache(object):
             self.cache = {}
 
     def persist(self, filename=None):
-        filename = self.filename if filename is None else filename
+        if filename is None:
+          filename = self.filename
+
+        #backport
+        #filename = self.filename if filename is None else filename
         f = file(filename, 'w')
         cPickle.dump(self.cache, f)
         f.close()
 
     def call(self, fn, args=(), key=None):
-        key = (fn, tuple(args)) if key is None else key
+        if key is None:
+          key = (fn, tuple(args))
+
+        #backport
+        #key = (fn, tuple(args)) if key is None else key
         if key not in self.cache:
             debug('cache miss', len(self.cache))
             self.cache[key] = fn(*args)
