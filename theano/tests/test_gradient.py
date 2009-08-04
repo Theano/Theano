@@ -10,9 +10,7 @@ from theano.gradient import *
 from theano import gradient
 
 
-def _grad_sources_inputs(*args):
-    # warn_type was introduced after this code, it complains throughout for nothing.
-    return grad_sources_inputs(warn_type=False, *args)
+_grad_sources_inputs = grad_sources_inputs
 
 class test_grad_sources_inputs(unittest.TestCase):
     def test_retNone1(self): 
@@ -150,7 +148,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 return [1]
         i = gof.generic()
         a1 = O(self).make_node(i)
-        g = grad_sources_inputs([(a1.outputs[0], 1)], None, warn_type=False)
+        g = grad_sources_inputs([(a1.outputs[0], 1)], None)
         self.failUnless(g[i] is 1)
 
     def test_some_None_igrads(self):
@@ -172,7 +170,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         k = gof.generic()
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(a1.outputs[1], k)
-        g = grad_sources_inputs([(a2.outputs[0], 1)], None, warn_type=False)
+        g = grad_sources_inputs([(a2.outputs[0], 1)], None)
         self.failUnless(g[i] is 1 and j not in g and k not in g)
 
         a1 = O(self, True).make_node(i,j)
