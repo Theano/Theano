@@ -740,6 +740,10 @@ class CAReduce(Op):
             self.axis = axis
         self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
+        # CAReduce output views input when reducing scalars
+        # See ticket #417: http://www.pylearn.org/theano/trac/ticket/417
+        self.view_map = {0: [0]}
+
     def _output_dtype(self, input_dtype):
         return input_dtype
 
