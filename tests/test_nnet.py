@@ -190,6 +190,8 @@ def test_conv_nnet2():
 
 def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
 
+    n_train_iter = 2
+
     n_batch = 60
     shape_img = (n_batch, 1, 32, 32)
 
@@ -205,9 +207,9 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
     n_out = 10
 
     w0 = shared_fn(numpy.asarray(0.01*(numpy.random.rand(*shape_kern)-0.5), dtype='float32'), 'w0')
-    b0 = shared_fn(numpy.asarray(numpy.zeros((n_kern,1,1)), dtype='float32'), 'b0')
+    b0 = shared_fn(numpy.asarray(numpy.zeros(n_kern), dtype='float32'), 'b0')
     w1 = shared_fn(numpy.asarray(0.01*(numpy.random.rand(*shape_kern1)-0.5), dtype='float32'), 'w1')
-    b1 = shared_fn(numpy.asarray(numpy.zeros((n_kern1,1,1)), dtype='float32'), 'b1')
+    b1 = shared_fn(numpy.asarray(numpy.zeros(n_kern1), dtype='float32'), 'b1')
     v = shared_fn(numpy.asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
     c = shared_fn(numpy.asarray(numpy.zeros(n_out), dtype='float32'), 'c')
 
@@ -218,17 +220,19 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
     conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op1 = theano.sandbox.conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
 
-    hid = tensor.tanh(conv_op(x, w0)+b0)
-    hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1)
+    hid = tensor.tanh(conv_op(x, w0)+b0.dimshuffle('x', 0, 'x', 'x'))
+    hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1.dimshuffle('x', 0, 'x', 'x'))
     hid_flat = hid1.reshape((n_batch, n_hid))
-    out = tensor.tanh(tensor.dot(hid_flat, v)+c)
-    loss = tensor.sum(0.5 * (out-y)**2 * lr)
+    loss = lr * tensor.nnet.crossentropy_categorical_1hot(
+            tensor.nnet.softmax(tensor.dot(hid_flat, v)+c),
+            tensor.argmax(y, axis=1))
     print 'loss type', loss.type
 
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = theano.compile.ProfileMode()
+    #mode = theano.compile.ProfileMode()
+    mode = None
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -240,7 +244,7 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
     yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='int32')
     lr = numpy.asarray(0.01, dtype='float32')
 
-    for i in xrange(10):
+    for i in xrange(n_train_iter):
         rval = train(xval, yval, lr)
     try:
         mode.print_summary()
@@ -250,8 +254,8 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
 
 def test_conv_nnet2_classif():
     numpy.random.seed(23456)
-    rval_cpu = run_conv_nnet2(shared)
+    rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor)
     numpy.random.seed(23456)
-    rval_gpu = run_conv_nnet2(tcn.shared_constructor)
+    rval_cpu = run_conv_nnet2_classif(shared)
     assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
