@@ -133,6 +133,8 @@ class SoftmaxWithBias(gof.Op):
     def c_headers(self):
         return ['<iostream>','<cmath>']
 
+    def c_code_cache_version(self):
+        return ()
     @staticmethod
     def c_code_template():
         # this implementation was lifted from
@@ -157,14 +159,14 @@ class SoftmaxWithBias(gof.Op):
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if (%(x)s->descr->type_num != PyArray_DOUBLE)
+        if ((%(x)s->descr->type_num != PyArray_DOUBLE)&&(%(x)s->descr->type_num != PyArray_DOUBLE))
         {
-            PyErr_SetString(PyExc_TypeError, "a not float64");
+            PyErr_SetString(PyExc_TypeError, "a not float");
             %(fail)s;
         }
-        if (%(b)s->descr->type_num != PyArray_DOUBLE)
+        if ((%(b)s->descr->type_num != PyArray_DOUBLE) && (%(b)s->descr->type_num != PyArray_DOUBLE))
         {
-            PyErr_SetString(PyExc_TypeError, "b not float64");
+            PyErr_SetString(PyExc_TypeError, "b not float");
             %(fail)s;
         }
         if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
@@ -193,22 +195,22 @@ class SoftmaxWithBias(gof.Op):
             double sum = 0.0;
             bool  discount_max = false;
 
-            const double* __restrict__ x_i = (double*)(%(x)s->data + %(x)s->strides[0] * i);
-            const double* __restrict__ b_i = (double*)(%(b)s->data);
-            double* __restrict__ sm_i = (double*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            const REAL* __restrict__ x_i = (REAL*)(%(x)s->data + %(x)s->strides[0] * i);
+            const REAL* __restrict__ b_i = (REAL*)(%(b)s->data);
+            REAL* __restrict__ sm_i = (REAL*)(%(sm)s->data + %(sm)s->strides[0] * i);
         """
 
         inside_row_loop = """
-            npy_intp Sx = %(x)s->strides[1]/sizeof(double);
-            npy_intp Sb = %(b)s->strides[0]/sizeof(double);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(double);
+            npy_intp Sx = %(x)s->strides[1]/sizeof(REAL);
+            npy_intp Sb = %(b)s->strides[0]/sizeof(REAL);
+            npy_intp Ssm = %(sm)s->strides[1]/sizeof(REAL);
 
             size_t row_max_j=0;
-            double row_max = x_i[0] + b_i[0];
+            REAL row_max = x_i[0] + b_i[0];
             // Get the maximum value of the row
             for (j = 0; j < Nx[1]; ++j)
             {
-                double row_ij = x_i[j * Sx] +  b_i[j * Sb];
+                REAL row_ij = x_i[j * Sx] +  b_i[j * Sb];
 //                std::cout << "1" << row_ij << "\\n";
                 row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
@@ -216,9 +218,9 @@ class SoftmaxWithBias(gof.Op):
 
             for (j = 0; j < Nx[1]; ++j)
             {
-                double row_ij = x_i[j * Sx] +  b_i[j * Sb];
+                REAL row_ij = x_i[j * Sx] +  b_i[j * Sb];
 //                std::cout << "2" << row_ij << "\\n";
-                double sm_ij = exp(row_ij - row_max);
+                REAL sm_ij = exp(row_ij - row_max);
 //                std::cout << "3" << sm_ij << "\\n";
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
@@ -292,12 +294,24 @@ class SoftmaxGrad(gof.Op):
     def grad(self, *args):
         raise NotImplementedError()
 
+    def c_code_cache_version(self):
+        return ()
     def c_code(self, node, name, (dy, sm), (dx,), sub):
+        if node.inputs[1].type.dtype != node.inputs[0].type.dtype:
+            raise NotImplementedError()
+        if node.inputs[0].type.dtype == 'float32':
+            REAL = 'float'
+        else:
+            REAL = 'double'
         return '''
-        if ((%(dy)s->descr->type_num != PyArray_DOUBLE)
-            || (%(sm)s->descr->type_num != PyArray_DOUBLE))
+        if ((%(dy)s->descr->type_num != PyArray_DOUBLE) && ((%(dy)s->descr->type_num != PyArray_FLOAT)
         {
-            PyErr_SetString(PyExc_TypeError, "types should be float64, float64");
+            PyErr_SetString(PyExc_TypeError, "types should be float or float64");
+            %(fail)s;
+        }
+        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) && ((%(sm)s->descr->type_num != PyArray_FLOAT)
+        {
+            PyErr_SetString(PyExc_TypeError, "types should be float or float64");
             %(fail)s;
         }
         if ((%(dy)s->nd != 2)
@@ -327,12 +341,12 @@ class SoftmaxGrad(gof.Op):
 
         for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
         {
-            const double* __restrict__ dy_i = (double*) (%(dy)s->data + %(dy)s->strides[0] * i);
-            npy_intp Sdy = %(dy)s->strides[1]/sizeof(double);
-            const double* __restrict__ sm_i = (double*) (%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(double);
-            double* __restrict__ dx_i = (double*) (%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(double);
+            const REAL* __restrict__ dy_i = (REAL*) (%(dy)s->data + %(dy)s->strides[0] * i);
+            npy_intp Sdy = %(dy)s->strides[1]/sizeof(REAL);
+            const REAL* __restrict__ sm_i = (REAL*) (%(sm)s->data + %(sm)s->strides[0] * i);
+            npy_intp Ssm = %(sm)s->strides[1]/sizeof(REAL);
+            REAL* __restrict__ dx_i = (REAL*) (%(dx)s->data + %(dx)s->strides[0] * i);
+            npy_intp Sdx = %(dx)s->strides[1]/sizeof(REAL);
 
             double sum_dy_times_sm = 0.;
             for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
@@ -587,7 +601,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 begin_row_loop,
                 """
             const %(y_idx_type)s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
-            double* __restrict__ nll_i = (double*)(%(nll)s->data + %(nll)s->strides[0] * i);
+            REAL* __restrict__ nll_i = (REAL*)(%(nll)s->data + %(nll)s->strides[0] * i);
             %(am_type)s* __restrict__ am_i = (%(am_type)s*) (%(am)s->data + %(am)s->strides[0] * i);
                 """,
                 inside_row_loop,
@@ -610,6 +624,10 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
         code_template = ''.join(self.c_code_template())
+        if node.inputs[0].type.dtype == 'float32':
+            REAL = 'float'
+        else:
+            REAL = 'double'
         return code_template % dict(locals(), **sub)
 
 class CrossentropySoftmax1HotWithBiasDx (gof.Op):
@@ -686,15 +704,15 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
 
         for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
         {
-            const double dnll_i = ((double*)(%(dnll)s->data + %(dnll)s->strides[0] * i))[0];
+            const REAL dnll_i = ((REAL*)(%(dnll)s->data + %(dnll)s->strides[0] * i))[0];
 
             const %(y_idx_type)s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
 
-            const double* __restrict__ sm_i = (double*)(%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(double);
+            const REAL* __restrict__ sm_i = (REAL*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            npy_intp Ssm = %(sm)s->strides[1]/sizeof(REAL);
 
-            double* __restrict__ dx_i = (double*)(%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(double);
+            REAL* __restrict__ dx_i = (REAL*)(%(dx)s->data + %(dx)s->strides[0] * i);
+            npy_intp Sdx = %(dx)s->strides[1]/sizeof(REAL);
 
             for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
             {
@@ -790,7 +808,8 @@ class CrossentropyCategorical1Hot(gof.Op):
                     '(got type: %s instead of: %s)' % (_true_one_of_n.type,
                         tensor.lvector))
 
-        return gof.Apply(self, [_coding_dist, _true_one_of_n], [tensor.dvector()])
+        return gof.Apply(self, [_coding_dist, _true_one_of_n],
+                [tensor.Tensor(dtype=_coding_dist.dtype, broadcastable=[False])()])
 
     def perform(self, node, (coding, one_of_n), (y_out,)):
         y = numpy.zeros_like(coding[:,0])

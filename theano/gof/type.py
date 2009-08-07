@@ -12,8 +12,9 @@ import traceback
 ########
 # Type #
 ########
+from .op import CLinkerObject
 
-class CLinkerType(object):
+class CLinkerType(CLinkerObject):
     """Interface specification for Types that can be arguments to a `CLinkerOp`.
 
     A CLinkerType instance is mainly reponsible  for providing the C code that
@@ -176,89 +177,8 @@ class CLinkerType(object):
         """
         raise MethodNotDefined("c_sync", type(self), self.__class__.__name__)
 
-    def c_compile_args(self):
-        """Optional: Return a list of compile args recommended to compile the
-        code returned by other methods in this class.
 
-        WRITEME: example of formatting for -I, -L, -f args.
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
-
-        """
-        raise MethodNotDefined("c_compile_args", type(self), self.__class__.__name__)
-
-    def c_no_compile_args(self):
-        """Optional: Return a list of incompatible gcc compiler arguments.
-
-        We will remove those arguments from the command line of gcc. So if 
-        another Op adds a compile arg in the graph that is incompatible 
-        with this Op, the incompatible arg will not be used. 
-        Useful for instance to remove -ffast-math.
-
-        EXAMPLE
-
-        WRITEME
-
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
-
-        """
-        raise MethodNotDefined("c_no_compile_args", type(self), self.__class__.__name__)
-
-    def c_headers(self):
-        """Optional: Return a list of header files required by code returned by
-        this class.
-
-        WRITEME: example of local file, standard file.
-
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
-
-        """
-        raise MethodNotDefined("c_headers", type(self), self.__class__.__name__)
-
-    def c_libraries(self):
-        """Optional: Return a list of libraries required by code returned by
-        this class.
-
-        For example: return ['gsl', 'gslcblas', 'm', 'fftw3', 'g2c'].
-
-        The compiler will search the directories specified by the environment
-        variable LD_LIBRARY_PATH.  No option is provided for an Op to provide an
-        extra library directory because this would change the linking path for
-        other Ops in a potentially disasterous way.
-
-        QUESTION: What about via the c_compile_args? a -L option is allowed no?
-
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
-
-        """
-        raise MethodNotDefined("c_libraries", type(self), self.__class__.__name__)
-
-    def c_support_code(self):
-        """Optional: Return utility code for use by a `Variable` or `Op` to be
-        included at global scope prior to the rest of the code for this class.
-
-        QUESTION: How many times will this support code be emitted for a graph
-        with many instances of the same type?
-
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
-
-        """
-        raise MethodNotDefined("c_support_code", type(self), self.__class__.__name__)
-
-    def c_code_cache_version(self):
-        """Return a tuple of integers indicating the version of this Op.
-
-        An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
-
-        The cache mechanism may erase cached modules that have been superceded by newer
-        versions.  See `ModuleCache` for details.
-        """
-        return (1,)
 
 class PureType(object):
     """Interface specification for variable type instances.

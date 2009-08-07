@@ -140,10 +140,25 @@ def constant_or_value(x, rtype, name=None, ndim=None):
      - `ValueError`: `x` could not be expanded to have ndim dimensions
 
     """
-    if isinstance(x, numpy.ndarray):
+    x_ = None
+    if rtype is TensorConstant and isinstance(x, int):
+        for dtype in ['int8', 'int16', 'int32', 'int64']:
+            x_ = numpy.asarray(x, dtype=dtype)
+            if numpy.all(x == x_):
+                break
+            x_ = None
+    elif rtype is TensorConstant and isinstance(x, float):
+        for dtype in ['float32', 'float64']:
+            x_ = numpy.asarray(x, dtype=dtype)
+            if numpy.all(x == x_):
+                break
+            x_ = None
+    elif isinstance(x, numpy.ndarray):
         x_ = x
     else:
         x_ = numpy.asarray(x)
+
+    assert type(x_) == numpy.ndarray
 
     bcastable = [d == 1 for d in x_.shape]
     if ndim is not None:
@@ -261,7 +276,8 @@ class TensorType(Type):
         """Compare True iff other is the same kind of TensorType"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
-    def values_eq_approx(self, a, b):
+    @staticmethod
+    def values_eq_approx(a, b):
         if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
             if a.shape != b.shape:
                 return False
@@ -653,18 +669,22 @@ class _tensor_py_operators:
         """
         return reshape(self, shape, ndim=ndim)
 
-    def dimshuffle(self, pattern):
+    def dimshuffle(self, *pattern):
         """Reorder the dimensions of this variable, optionally inserting broadcasted dimensions.
 
-        :param pattern: list of int mixed with 'x' for broadcastable dimensions
+        :param pattern: list/tuple of int mixed with 'x' for broadcastable dimensions
 
         For example, to create a 3D view of a [2D] matrix, call ``dimshuffle([0,'x',1])``.  This
         will create a 3D view such that the middle dimension is an implicit broadcasted
         dimension.  To do the same thing on the transpose of that matrix, call ``dimshuffle([1,
         'x', 0])``.
 
+        This function supports the pattern passed as a tuple, or as a variable-length argument (e.g. ``a.dimshuffle(pattern)`` is equivalent to ``a.dimshuffle(*pattern)`` where ``pattern`` is a list/tuple of ints mixed with 'x' characters).
+
         For more information, see `DimShuffle`.
         """
+        if (len(pattern) == 1) and (isinstance(pattern[0], (list, tuple))):
+            pattern = pattern[0]
         op = DimShuffle(list(self.type.broadcastable), pattern)
         return op(self)
 
@@ -683,7 +703,8 @@ class _tensor_py_operators:
         return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Variable)))
     
     #COPYING
-    def copy(self): return tensor_copy(self)
+    def copy(self):
+        return tensor_copy(self)
 
     def __iter__(self): 
         try:
@@ -1542,6 +1563,7 @@ class Subtensor(Op):
         return type(self) == type(other) and self.idx_list == other.idx_list
 
     def __hash__(self):
+        #TODO: optimize by cache this hash value
         idx_list = tuple((entry.start, entry.stop, entry.step)
                          if isinstance(entry, slice)
                          else entry
@@ -2096,9 +2118,13 @@ class Reshape(Op):
         self.name = name
 
     def __eq__(self, other):
-        return (type(other) is Reshape) and (other.ndim == self.ndim) and self.name == other.name
+        # .name does not participate because it doesn't affect computations
+        return (type(other) == type(self)) and (other.ndim == self.ndim)
     def __hash__(self):
-        return hash(Reshape) ^ hash(self.ndim) ^ hash(self.name)
+        # .name does not participate because it doesn't affect computations
+        return hash(type(self)) ^ hash(self.ndim)
+    def __str__(self):
+        return '%s{%i}' % (self.__class__.__name__, self.ndim)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
         shp = as_tensor_variable(shp)

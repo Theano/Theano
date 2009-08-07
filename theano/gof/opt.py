@@ -745,6 +745,7 @@ class NavigatorOptimizer(Optimizer):
                 raise
         if replacements is False or replacements is None:
             return False
+        assert len(node.outputs) == len(replacements)
         repl_pairs = zip(node.outputs, replacements)
         try:
             env.replace_all_validate(repl_pairs, reason=lopt)

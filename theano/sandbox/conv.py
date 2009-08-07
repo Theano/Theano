@@ -188,7 +188,6 @@ class ConvOp(Op):
             buf = N.zeros((batchsize,)+ self.imshp_logical, dtype=img2d.dtype)
             buf[:,:,::rstride, ::cstride] = img2d
             img2d = buf
-            print 'A'
             del buf, rstride, cstride
 
         if self.kshp != self.kshp_logical:
@@ -204,7 +203,6 @@ class ConvOp(Op):
                 assert coffset >= 0
             buf[:,:,roffset::rstride, coffset::cstride] = filtersflipped
             filtersflipped = buf
-            print 'B'
             del buf, rstride, cstride
 
         for b in range(batchsize):
