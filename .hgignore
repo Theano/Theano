@@ -1,23 +1,4 @@
 syntax: glob
-
-*.o
-*.orig
 *.pyc
-*.pyo
-*.so
-*.sw?
 *~
-Theano.egg-info
-\#*\#
-build
-compiled/*.cpp
-core.*
-cutils_ext.cpp
-dist
-doc/.build/
-doc/indexes/oplist.txt
-doc/indexes/typelist.txt
-html
-pdf
-pull.sh
-setuptools-*.egg
+*.so
