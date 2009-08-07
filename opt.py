@@ -3,7 +3,7 @@ from theano import tensor, scalar, compile
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
 
 from .basic_ops import *
-from .blas import gpu_dot22, gpu_gemm, GpuConv
+from .blas import gpu_dot22, gpu_gemm, GpuConv, GpuCrossentropySoftmaxArgmax1HotWithBias
 
 from theano.compile import optdb
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
@@ -229,3 +229,26 @@ def local_gpu_shape(node):
             return [gpu_shape(gpu_x)]
     return False
 
+
+def cast(x, dtype):
+    stype = theano.scalar.Scalar(dtype)
+    cast_op = theano.tensor.Elemwise(scalar.Identity(scalar.specific_out(stype)))
+    return cast_op(x)
+
+import theano.tensor.nnet
+@register_opt()
+@local_optimizer([])
+def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
+    if isinstance(node.op, tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias):
+        x,b,y = node.inputs
+        if x.owner and x.owner.op == host_from_gpu:
+            gpu_x, = x.owner.inputs
+            gpu_nll, gpu_sm, gpu_am = GpuCrossentropySoftmaxArgmax1HotWithBias()(
+                gpu_x,
+                gpu_from_host(b),
+                gpu_from_host(cast(y, 'float32')))
+            am_dtype = node.outputs[2].type.dtype
+            return [host_from_gpu(gpu_nll), 
+                    host_from_gpu(gpu_sm), 
+                    cast(host_from_gpu(gpu_am), am_dtype)]
+    return False

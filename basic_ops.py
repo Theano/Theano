@@ -138,16 +138,24 @@ class GpuElemwise(Op):
         def _logical_scalar(x):
             return all(x.type.broadcastable)
 
-        print >> sio, "static __global__ void kernel_%s(unsigned int numEls," %nodename
-        print >> sio, "\t ", ", ".join("unsigned int log2_dim%i" % i for i in xrange(nd))
+        print >> sio, "// Elemwise kernel for ", str(self.scalar_op)
+        for ipos, i in enumerate(node.inputs):
+            print >> sio, "//    Input  ", ipos, str(i.type)
+        for ipos, i in enumerate(node.outputs):
+            print >> sio, "//    Output ", ipos, str(i.type)
+        print >> sio, "static __global__ void kernel_%s(unsigned int numEls" %nodename
+        if (nd):
+            print >> sio, "\t,", ", ".join("unsigned int log2_dim%i" % i for i in xrange(nd))
         #declare inputs
         for ipos, i in enumerate(node.inputs):
-            print >> sio, "\t,", ", ".join("int i%i_str_%i" % (ipos, d) for d in xrange(nd))
-            print >> sio, "\t,", "const float * i%i_data" % ipos
+            s = ", ".join(["const float * i%i_data" % ipos] + list("int i%i_str_%i" % (ipos, d) for d in xrange(nd)))
+            print >> sio, "\t,", s
         #declare outputs
         for ipos, i in enumerate(node.outputs):
-            print >> sio, "\t,", ", ".join("int o%i_str_%i" % (ipos, d) for d in xrange(nd))
-            print >> sio, "\t,", "float * o%i_data" % ipos
+            s = ", ".join(["float * o%i_data" % ipos] + list("int o%i_str_%i" % (ipos, d) for d in xrange(nd)))
+            print >> sio, "\t,", s
+            #print >> sio, "\t,", ", ".join("int o%i_str_%i" % (ipos, d) for d in xrange(nd))
+            #print >> sio, "\t,", "float * o%i_data" % ipos
         print >> sio, "\t)\n{"
         print >> sio, "    const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;"
         print >> sio, "    const unsigned int numThreads = blockDim.x * gridDim.x;"
@@ -183,17 +191,16 @@ class GpuElemwise(Op):
                 print >> sio, "        ii_o%i_data += pos%i * o%i_str_%i;" % (ipos, d, ipos, d)
 
         # perform the scalar operation on the input and output references
-            if d == 0:
-                #TODO: What if the scalar_op needs support_code??
-                task_code = self.scalar_op.c_code(
-                        Apply(self.scalar_op,
-                            [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                            [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
-                        , nodename + '_scalar_'
-                        , [('ii_i%i_value' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
-                        , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
-                        , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
-                print >> sio, "       ", task_code
+        #TODO: What if the scalar_op needs support_code??
+        task_code = self.scalar_op.c_code(
+                Apply(self.scalar_op,
+                    [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                    [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                , nodename + '_scalar_'
+                , [('ii_i%i_value' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
+                , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
+                , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+        print >> sio, "       ", task_code
         print >> sio, "    }"
 
         #TODO: insert runtime stride checks that select the best loop order either here, or in
@@ -230,11 +237,17 @@ class GpuElemwise(Op):
         kernel_call_args = ["numEls"]
         kernel_call_args.extend("log2_dims[%i]"%di for di in xrange(nd))
         for ipos in xrange(len(node.inputs)):
-            strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(nd))
-            kernel_call_args.append( "%s, i%i_data" % (strides, ipos))
+            kernel_call_args.append(
+                    ", ".join(["i%i_data"%ipos] + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd)))
+                    )
+            #strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(nd))
+            #kernel_call_args.append( "%s, i%i_data" % (strides, ipos))
         for ipos in xrange(len(node.outputs)):
-            strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(nd))
-            kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
+            kernel_call_args.append(
+                    ", ".join(["o%i_data"%ipos] + list("o%i_str[%i]"%(ipos, di) for di in xrange(nd)))
+                    )
+            #strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(nd))
+            #kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
         kernel_call_args = ", ".join(kernel_call_args)
 
         # the data_pointer_increments are inserted after each recursive call
@@ -388,7 +401,7 @@ class GpuElemwise(Op):
                         );
 
             //std::cerr << "calling callkernel returned\\n";
-            cudaThreadSynchronize();
+            CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err) 
             {
@@ -568,7 +581,7 @@ class GpuDimShuffle(Op):
             }
             """ %locals()
 
-        if 1:
+        if 0: # print full code to stdout
             print '--------------------------------------'
             print 'C_CODE'
             print ''
@@ -723,7 +736,6 @@ class GpuSubtensor(tensor.Subtensor):
         x._dev_data += offset * sizeof_float
         #sys.stdout.flush()
         #sys.exit()
-
 
 class GpuShape(tensor.Shape):
     def make_node(self, x):
