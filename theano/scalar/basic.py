@@ -165,9 +165,31 @@ class Scalar(Type):
                 ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
                 return ret;
             }
-        };
-        """
-        return template % dict(nbits = 64, half_nbits = 32) + template % dict(nbits = 128, half_nbits = 64)
+            complex_type operator =(scalar_type y) {
+                complex_type ret;
+                ret.real=y;
+                ret.imag=0;
+                return ret;
+            }
+            complex_type operator =(scalar_type y) {
+                complex_type ret;
+                ret.real=y;
+                ret.imag=0;
+                return ret;
+            }
+            %(upcast)s
+         };
+         """
+        # todo: use C templating
+        return template % dict(nbits = 64, half_nbits = 32, upcast="") + template % dict(nbits = 128, half_nbits = 64, upcast="""
+        complex_type operator =(npy_float64 y) {
+                complex_type ret;
+                ret.real=y;
+                ret.imag=0;
+                return ret;
+            }
+        """)
+    
 
 
 int8 = Scalar('int8')
