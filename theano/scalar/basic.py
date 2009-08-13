@@ -171,18 +171,12 @@ class Scalar(Type):
                 ret.imag=0;
                 return ret;
             }
-            complex_type operator =(scalar_type y) {
-                complex_type ret;
-                ret.real=y;
-                ret.imag=0;
-                return ret;
-            }
             %(upcast)s
          };
          """
         # todo: use C templating
         return template % dict(nbits = 64, half_nbits = 32, upcast="") + template % dict(nbits = 128, half_nbits = 64, upcast="""
-        complex_type operator =(npy_float64 y) {
+        complex_type operator =(npy_float32 y) {
                 complex_type ret;
                 ret.real=y;
                 ret.imag=0;

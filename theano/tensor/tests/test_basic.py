@@ -1920,6 +1920,21 @@ def test_sum_overflow():
     f = function([a], sum(a))
     assert f([1]*300) == 300
 
+def test_bug_complext_10_august_09():
+    v0 = dmatrix()
+    v1 = dscalar()
+    v2 = dvector()
+    v3 = dscalar()
+    v5 = sub(v3,v3)
+    v6 = basic.convert_to_complex128(v0)
+#    v7 = basic.convert_to_float64(v6)
+
+    inputs = [v0, v1, v2, v3]
+    outputs = [v5,v6]
+    function(inputs, outputs, mode=compile.Mode('py', 'fast_compile'))
+    function(inputs, outputs, mode=compile.debugmode.DebugMode())
+
+
 if __name__ == '__main__':
     if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
         default_mode = compile.Mode(linker = 'c&py',
