@@ -165,22 +165,25 @@ class Scalar(Type):
                 ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
                 return ret;
             }
-            complex_type operator =(scalar_type y) {
-                complex_type ret;
-                ret.real=y;
-                ret.imag=0;
-                return ret;
+            complex_type& operator =(const scalar_type& y) {
+            this->real=y;
+            this->imag=0;
+            return *this;
             }
             %(upcast)s
          };
          """
         # todo: use C templating
         return template % dict(nbits = 64, half_nbits = 32, upcast="") + template % dict(nbits = 128, half_nbits = 64, upcast="""
-        complex_type operator =(npy_float32 y) {
-                complex_type ret;
-                ret.real=y;
-                ret.imag=0;
-                return ret;
+        complex_type& operator =(npy_float32 y) {
+            this->real=y;
+            this->imag=0;
+            return *this;
+            }
+        complex_type& operator =(theano_complex64 y) {
+            this->real=y.real;
+            this->imag=y.imag;
+            return *this;
             }
         """)
     
