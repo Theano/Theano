@@ -175,11 +175,6 @@ class Scalar(Type):
          """
         # todo: use C templating
         return template % dict(nbits = 64, half_nbits = 32, upcast="") + template % dict(nbits = 128, half_nbits = 64, upcast="""
-        complex_type& operator =(npy_float32 y) {
-            this->real=y;
-            this->imag=0;
-            return *this;
-            }
         complex_type& operator =(theano_complex64 y) {
             this->real=y.real;
             this->imag=y.imag;
