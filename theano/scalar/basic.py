@@ -265,6 +265,9 @@ def _multi(*fns):
 
 ints = _multi(int64)
 floats = _multi(float64)
+complexs = _multi(complex128)
+complexs64 = _multi(complex64)
+complexs128 = _multi(complex128)
 
 
 
