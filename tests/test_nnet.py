@@ -13,6 +13,15 @@ import logging
 logging.getLogger('theano.gradient').setLevel(logging.INFO)
 
 
+def get_mode():
+    return None if theano.compile.default_mode != "PROFILE_MODE" else theano.compile.ProfileMode()
+def print_mode(mode):
+    try:
+        if mode != None:
+            mode.print_summary()
+    except:
+        pass
+
 def run_nnet(use_gpu):
     n_batch = 16
     n_in = 1024
@@ -42,7 +51,7 @@ def run_nnet(use_gpu):
     params = [w, b, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = theano.compile.ProfileMode()
+    mode = get_mode()
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -56,7 +65,8 @@ def run_nnet(use_gpu):
 
     for i in xrange(100):
         rval = train(xval, yval, lr)
-    mode.print_summary()
+        
+    print_mode(mode)
     return rval
     
 def test_run_nnet():
@@ -97,7 +107,7 @@ def run_conv_nnet1(shared_fn):
     params = [w, b, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = theano.compile.ProfileMode()
+    mode = get_mode()
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -111,7 +121,8 @@ def run_conv_nnet1(shared_fn):
 
     for i in xrange(10):
         rval = train(xval, yval, lr)
-    mode.print_summary()
+    print 'training done'
+    print_mode(mode)
     return rval
 
 def test_conv_nnet1():
@@ -161,7 +172,7 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = theano.compile.ProfileMode()
+    mode = get_mode()
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -175,10 +186,8 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
 
     for i in xrange(10):
         rval = train(xval, yval, lr)
-    try:
-        mode.print_summary()
-    except:
-        pass
+
+    print_mode(mode)
     return rval
 
 def test_conv_nnet2():
@@ -228,7 +237,7 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = theano.compile.ProfileMode()
+    mode = get_mode()
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -242,10 +251,7 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
 
     for i in xrange(10):
         rval = train(xval, yval, lr)
-    try:
-        mode.print_summary()
-    except:
-        pass
+    print_mode(mode)
     return rval
 
 def test_conv_nnet2_classif():
