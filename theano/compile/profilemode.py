@@ -31,6 +31,7 @@ class ProfileMode(Mode):
         self.apply_time = apply_time
         self.op_time = op_time
         self.op_cimpl = op_cimpl
+        self.compile_time = 0 #time passed in function()
 
         if isinstance(linker, str):
             linker = predefined_linkers[linker]
@@ -110,7 +111,7 @@ class ProfileMode(Mode):
                   sum(f for f, t, a in sotimes[n_ops_to_print:])*100,
                   sum(t for f, t, a in sotimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
-
+        print 'compile time: %.3fs'%self.compile_time
 
 register_mode('PROFILE_MODE',ProfileMode())
 
