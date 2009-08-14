@@ -7,6 +7,19 @@ from theano import tensor, scalar
 from .type import CudaNdarrayType
 from .type_support import filter as type_support_filter
 
+import logging
+_logger_name = 'theano_cuda_ndarray.basic_ops'
+_logger = logging.getLogger(_logger_name)
+_logger.setLevel(logging.DEBUG)
+_logger.addHandler(logging.StreamHandler()) #TO REMOVE
+def warning(*msg):
+    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
+def info(*msg):
+    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
+def debug(*msg):
+    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
+
+
 def as_cuda_ndarray_variable(x):
     if hasattr(x, '_as_CudaNdarrayVariable'):
         return x._as_CudaNdarrayVariable()
@@ -631,37 +644,6 @@ class GpuReshape(tensor.Reshape):
                     ', should be %i' % (len(shp), self.ndim), shp)
         out[0] = x.reshape(tuple(shp))
 
-class GpuDimFlip(Op):
-    """This Op implements a very special case of Subtensor, in which some (or all) of the
-    strides are negated.
-
-    This Op should be erased when a proper GpuSubtensor is implemented.
-    """
-
-    def __init__(self, mask):
-        Op.__init__(self)
-        self.mask = mask
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.mask == other.mask
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.mask)
-
-    def __str__(self):
-        return '%s{%s}' %(self.__class__.__name__, str(self.mask))
-
-    def perform(self, node, (x,), (out,)):
-        z = x.view()
-        total_dev_data_offset = 0
-        for i, f in enumerate(self.mask):
-            if f and z.shape[i] > 1:
-                dev_data_offset += (z.dim[i] - 1) * z.str[i]
-                z.str[i] *= -1
-        z.dev_data += total_dev_data_offset
-        out[0] = z
-
-
 class GpuSubtensor(tensor.Subtensor):
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
@@ -728,6 +710,8 @@ class GpuSubtensor(tensor.Subtensor):
 
                 newlen = (stop - start) // stride
                 offset += x_strides[i] * start
+                debug('GpuSubtensor slice', i, ': ', start, stop, stride)
+                debug('GpuSubtensor shape', i, ': ', x_shape[i], newlen)
                 x._set_shape_i(i, newlen)
                 x._set_stride(i, x_strides[i] * stride)
 
@@ -741,4 +725,36 @@ class GpuShape(tensor.Shape):
     def make_node(self, x):
         return Apply(self, [x], [tensor.lvector()])
 gpu_shape = GpuShape()
+
+if 0:
+    class GpuDimFlip(Op):
+        """This Op implements a very special case of Subtensor, in which some (or all) of the
+        strides are negated.
+
+        This Op should be erased when a proper GpuSubtensor is implemented.
+        """
+
+        def __init__(self, mask):
+            Op.__init__(self)
+            self.mask = mask
+
+        def __eq__(self, other):
+            return type(self) == type(other) and self.mask == other.mask
+
+        def __hash__(self):
+            return hash(type(self)) ^ hash(self.mask)
+
+        def __str__(self):
+            return '%s{%s}' %(self.__class__.__name__, str(self.mask))
+
+        def perform(self, node, (x,), (out,)):
+            z = x.view()
+            total_dev_data_offset = 0
+            for i, f in enumerate(self.mask):
+                if f and z.shape[i] > 1:
+                    dev_data_offset += (z.dim[i] - 1) * z.str[i]
+                    z.str[i] *= -1
+            z.dev_data += total_dev_data_offset
+            out[0] = z
+
 

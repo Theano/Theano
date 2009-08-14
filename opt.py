@@ -67,6 +67,7 @@ def local_gpu_elemwise_1(node):
 def local_gpu_dimshuffle_0(node):
     """
     dimshuffle(host_from_gpu()) -> host_from_gpu(gpu_dimshuffle)
+    gpu_from_host(dimshuffle) -> gpu_dimshuffle(gpu_from_host)
     """
     if isinstance(node.op, tensor.DimShuffle):
         input, = node.inputs
@@ -78,14 +79,6 @@ def local_gpu_dimshuffle_0(node):
                 return [host_from_gpu(new_op(gpu_from_host(input)))]
             else:
                 return [host_from_gpu(new_op(gpu_from_host(tensor.tensor_copy(input))))]
-    return False
-
-@register_opt()
-@local_optimizer([])
-def local_gpu_dimshuffle_1(node):
-    """
-    gpu_from_host(dimshuffle) -> gpu_dimshuffle(gpu_from_host)
-    """
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, tensor.DimShuffle):
