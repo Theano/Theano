@@ -92,14 +92,25 @@ class ConvOp(Op):
             if self.bsize<=self.unroll_batch:
                 self.unroll_batch = self.bsize
             else:
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a divisor of bsize(%s). We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize))
-                self.unroll_batch=1
+                #find the maximum value under unroll_batch that would work
+                new=self.unroll_batch
+                assert(new>=1)
+                while self.bsize % new!=0:
+                    new-=1
+
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a divisor of bsize(%s). We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize),new)
+                self.unroll_batch=mew
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
             if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern
             else:
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
-                self.unroll_kern=1
+                #find the maximum value under unroll_kern that would work
+                new=self.unroll_kern
+                assert(new>=1)
+                while self.nkern % new!=0:
+                    new-=1
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern),new)
+                self.unroll_kern=new
         self.outshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
         self.fulloutshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
         self.out_mode = output_mode
