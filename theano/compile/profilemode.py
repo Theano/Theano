@@ -69,7 +69,7 @@ class ProfileMode(Mode):
         tot=0
         for f,t,a in atimes[:n_apply_to_print]:
             tot+=t
-            print '   %.2f%%  %.3fs  %.3fs  %i  %s' % (f*100, tot, t, a[0], a[1])
+            print '   %4.1f%%  %.3fs  %.3fs  %i  %s' % (f*100, tot, t, a[0], a[1])
         print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(atimes)-n_apply_to_print),
                   sum(f for f, t, a in atimes[n_apply_to_print:])*100,
@@ -105,7 +105,7 @@ class ProfileMode(Mode):
         tot=0
         for f,t,a,ci in sotimes[:n_ops_to_print]:
             tot+=t
-            print '   %.2f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+            print '   %4.1f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
                   sum(f for f, t, a in sotimes[n_ops_to_print:])*100,
