@@ -156,12 +156,16 @@ def local_gpu_conv(node):
     conv(host_from_gpu) -> host_from_gpu(conv)
     """
     def GpuConvOp_from_ConvOp(op):
-        return GpuConv(border_mode=op.out_mode,
+        ret = GpuConv(border_mode=op.out_mode,
                     subsample=(op.dx, op.dy),
                     logical_img_hw=op.imshp_logical[1:3],
                     logical_kern_hw=op.kshp_logical,
                     logical_kern_align_top=op.kshp_logical_top_aligned
                     )
+        #HACK to print the number of MFlops in the profiler output.
+        if hasattr(op,'flops'):
+            ret.flops=op.flops
+        return ret
 
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
