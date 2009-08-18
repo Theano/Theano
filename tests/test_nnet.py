@@ -173,14 +173,9 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
 
     conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op1 = theano.sandbox.conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
-    flops=shape_kern[2]*shape_kern[3]*2#nb mul and add by output pixed
-    flops*=logical_hid_shape[0]*logical_hid_shape[1]#nb mul by output image
-    flops*=n_kern*n_batch#for all outputs images#n_stack==1
-    conv_op.flops = flops
-    flops=shape_kern1[2]*shape_kern1[3]*2#nb mul and add by output pixed
-    flops*=logical_hid_shape1[0]*logical_hid_shape1[1]#nb mul by output image
-    flops*=n_kern1*n_batch*n_kern#for all outputs images#n_stack==n_kern
-    conv_op1.flops = flops
+    conv_op.set_flops()
+    conv_op1.set_flops()
+    
 
     hid = tensor.tanh(conv_op(x, w0)+b0)
     hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1)
