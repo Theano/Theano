@@ -22,7 +22,7 @@ from ..compile.mode import Mode, register_mode
 
 import logging
 _logger=logging.getLogger("theano.compile.debugmode")
-_logger.setLevel(logging.DEBUG)
+_logger.setLevel(logging.WARNING)
 
 def error(*args):
     #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
