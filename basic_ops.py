@@ -7,7 +7,7 @@ from theano import tensor, scalar
 from .type import CudaNdarrayType
 from .type_support import filter as type_support_filter
 
-import logging
+import logging, copy
 _logger_name = 'theano_cuda_ndarray.basic_ops'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.INFO)
@@ -78,7 +78,7 @@ class GpuElemwise(Op):
         self._rehash()
 
     def __getstate__(self):
-        d = copy(self.__dict__)
+        d = copy.copy(self.__dict__)
         d.pop('ufunc')
         d.pop('__epydoc_asRoutine', None)
         d.pop('_hashval')
