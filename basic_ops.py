@@ -156,7 +156,7 @@ class GpuElemwise(Op):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s(unsigned int numEls" %nodename
+        print >> sio, "static __global__ void kernel_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename)
         if (nd):
             print >> sio, "\t,", ", ".join("unsigned int log2_dim%i" % i for i in xrange(nd))
         #declare inputs
@@ -273,6 +273,7 @@ class GpuElemwise(Op):
 
 
         d.update(locals())
+        d["scalar_op"]=self.scalar_op.__class__.__name__
         return """
 
         static void callkernel_%(nodename)s(const unsigned int numEls, const int d,
@@ -285,7 +286,7 @@ class GpuElemwise(Op):
                 int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 //a ceil would be better here
                 int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
-                kernel_%(nodename)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                kernel_%(scalar_op)s_%(nodename)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
                 //std::cerr << "ADDCALL a str" << i0_str[0] << " "<< i0_str[1] << "\\n";
                 //std::cerr << "ADDCALL a data" << i0_data << "\\n";
                 //std::cerr << "ADDCALL b str" << i1_str[0] << " "<< i1_str[1] << "\\n";
