@@ -23,7 +23,8 @@ def print_mode(mode):
         pass
 
 def run_nnet(use_gpu):
-    n_batch = 16
+    #n_batch = 16
+    n_batch = 60 #Fred recommends a nice big batch
     n_in = 1024
     n_hid = 2048
     n_out = 10
