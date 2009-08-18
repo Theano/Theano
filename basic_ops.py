@@ -143,7 +143,7 @@ class GpuElemwise(Op):
         #define INTMOD_POW2(a, b) (a & ((1<<b)-1))
         """
 
-    def c_src_kernel(self, node, nodename):
+    def recalgo_c_src_kernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
         sio = StringIO.StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
@@ -151,7 +151,6 @@ class GpuElemwise(Op):
         def _logical_scalar(x):
             return all(x.type.broadcastable)
 
-        print >> sio, "// Elemwise kernel for ", str(self.scalar_op)
         for ipos, i in enumerate(node.inputs):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
@@ -227,11 +226,7 @@ class GpuElemwise(Op):
         #print sio.getvalue()
         return sio.getvalue()
 
-    def c_support_code_apply(self, node, nodename):
-        return self.c_src_kernel(node, nodename) + \
-                self.c_src_callkernel(node, nodename)
-
-    def c_src_callkernel(self, node, nodename):
+    def recalgo_c_src_callkernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
         d = dict()
         #input_params and output_params go into the function declaration/definition
@@ -327,6 +322,167 @@ class GpuElemwise(Op):
             }
         }
         """ %d
+
+    def recalgo_c_support_code_apply(self, node, nodename):
+        return self.recalgo_c_src_kernel(node, nodename) + self.recalgo_c_src_callkernel(node, nodename)
+
+    def naivealgo_c_src_kernel(self, node, nodename):
+        nd = node.outputs[0].type.ndim
+        sio = StringIO.StringIO()
+        #print 'C_SRC_KERNEL', sio.getvalue()
+
+        def _logical_scalar(x):
+            return all(x.type.broadcastable)
+
+        for ipos, i in enumerate(node.inputs):
+            print >> sio, "//    Input  ", ipos, str(i.type)
+        for ipos, i in enumerate(node.outputs):
+            print >> sio, "//    Output ", ipos, str(i.type)
+        print >> sio, "static __global__ void kernel_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename)
+        if (nd):
+            print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
+        if (nd):
+            print >> sio, "\t,", ", ".join("const int log2_dim%i" % i for i in xrange(nd))
+        #declare inputs
+        for ipos, i in enumerate(node.inputs):
+            s = ", ".join(["const float * i%i_data" % ipos] + list("int i%i_str_%i" % (ipos, d) for d in xrange(nd)))
+            print >> sio, "\t,", s
+        #declare outputs
+        for ipos, i in enumerate(node.outputs):
+            s = ", ".join(["float * o%i_data" % ipos] + list("int o%i_str_%i" % (ipos, d) for d in xrange(nd)))
+            print >> sio, "\t,", s
+            #print >> sio, "\t,", ", ".join("int o%i_str_%i" % (ipos, d) for d in xrange(nd))
+            #print >> sio, "\t,", "float * o%i_data" % ipos
+        print >> sio, "\t)\n{"
+        print >> sio, "    const int idx = blockIdx.x * blockDim.x + threadIdx.x;"
+        print >> sio, "    const int numThreads = blockDim.x * gridDim.x;"
+
+        # For each input that is a scalar which has been broadcasted to a tensor,
+        #     load it into a local variable
+        for ipos, i in enumerate(node.inputs):
+            if _logical_scalar(i):
+                print >> sio, "    const float ii_i%i_value = i%i_data[0];" % (ipos, ipos)
+
+        
+        #TODO: insert code to check for strides of 1, and use a different loop
+        
+        #loop over the elements to be treated by this kernel call
+        print >> sio, "    for (int i = idx; i < numEls; i += numThreads) {"
+        # calculate the data pointers for all arguments
+        print >> sio, "        int ii = i;"
+        for ipos, i in enumerate(node.inputs):
+            if not _logical_scalar(i):
+                print >> sio, "        const float * ii_i%i_data = i%i_data;" % (ipos, ipos)
+        for ipos, i in enumerate(node.outputs):
+            print >> sio, "        float * ii_o%i_data = o%i_data;" % (ipos, ipos)
+        for d in xrange(nd-1, -1, -1):
+            if d > 0:
+                #print >> sio, "        int pos%i = INTMOD_POW2(ii, log2_dim%i);" %(d, d)
+                #print >> sio, "        ii = INTDIV_POW2(ii, log2_dim%i);" %d
+                print >> sio, "        int pos%i = ii %% dim%i;" %(d, d)
+                print >> sio, "        ii = ii / dim%i;" %d
+            else:
+                print >> sio, "        int pos%i = ii;" %d
+
+            for ipos, i in enumerate(node.inputs):
+                if not _logical_scalar(i):
+                    print >> sio, "        ii_i%i_data += pos%i * i%i_str_%i;" % (ipos, d, ipos, d)
+            for ipos, i in enumerate(node.outputs):
+                print >> sio, "        ii_o%i_data += pos%i * o%i_str_%i;" % (ipos, d, ipos, d)
+
+        # perform the scalar operation on the input and output references
+        #TODO: What if the scalar_op needs support_code??
+        task_code = self.scalar_op.c_code(
+                Apply(self.scalar_op,
+                    [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                    [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                , nodename + '_scalar_'
+                , [('ii_i%i_value' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
+                , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
+                , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+        print >> sio, "       ", task_code
+        print >> sio, "    }"
+
+        #TODO: insert runtime stride checks that select the best loop order either here, or in
+        # the host code that launched the  kernel (host code probably better spot)
+
+        #indent = " "*(4*d+7)
+        #for ipos, i in enumerate(node.inputs):
+            #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
+        print >> sio, "}"
+
+        #print sio.getvalue()
+        return sio.getvalue()
+
+    def naivealgo_c_src_callkernel(self, node, nodename):
+        nd = node.outputs[0].type.ndim
+        d = dict()
+        #input_params and output_params go into the function declaration/definition
+        input_params = ", ".join("const float * i%i_data, const int * i%i_str"%(ipos, ipos) 
+                for ipos in xrange(len(node.inputs)))
+        output_params = ", ".join("float * o%i_data, const int * o%i_str"%(ipos, ipos) 
+                for ipos in xrange(len(node.outputs)))
+
+        #input_args and output_args go into the recursive call.
+        input_args = ", ".join("i%i_data, i%i_str"%(ipos, ipos) 
+                for ipos in xrange(len(node.inputs)))
+        output_args = ", ".join("o%i_data, o%i_str"%(ipos, ipos) 
+                for ipos in xrange(len(node.outputs)))
+
+        prod_dims = '*'.join("dims[%i]"%di for di in xrange(nd))
+
+        # kernel_call_args are used to invoke the cuda kernel
+        kernel_call_args = ["numEls"]
+        kernel_call_args.extend("dims[%i]"%di for di in xrange(nd))
+        kernel_call_args.extend("log2_dims[%i]"%di for di in xrange(nd))
+        for ipos in xrange(len(node.inputs)):
+            kernel_call_args.append(
+                    ", ".join(["i%i_data"%ipos] + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd)))
+                    )
+            #strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(nd))
+            #kernel_call_args.append( "%s, i%i_data" % (strides, ipos))
+        for ipos in xrange(len(node.outputs)):
+            kernel_call_args.append(
+                    ", ".join(["o%i_data"%ipos] + list("o%i_str[%i]"%(ipos, di) for di in xrange(nd)))
+                    )
+            #strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(nd))
+            #kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
+        kernel_call_args = ", ".join(kernel_call_args)
+
+        d.update(locals())
+        d["scalar_op"]=self.scalar_op.__class__.__name__
+
+        ### NOTE WELL: log2_dims is not initialized on input to this function... it is meant as
+        ### storage space where the log2_dims *could* be computed and stored.
+        rval = """
+
+        static void callkernel_%(nodename)s(unsigned int numEls, const int d,
+            const int * dims, const int * log2_dims,
+            %(input_params)s,
+            %(output_params)s)
+        {
+            numEls = %(prod_dims)s;
+            int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+            int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+            kernel_%(scalar_op)s_%(nodename)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+            //std::cerr << "ADDCALL a str" << i0_str[0] << " "<< i0_str[1] << "\\n";
+            //std::cerr << "ADDCALL a data" << i0_data << "\\n";
+            //std::cerr << "ADDCALL b str" << i1_str[0] << " "<< i1_str[1] << "\\n";
+            //std::cerr << "ADDCALL b data" << i1_data << "\\n";
+            //std::cerr << "ADDCALL z str" << o0_str[0] << " "<< o0_str[1] << "\\n";
+            //std::cerr << "ADDCALL z data" << o0_data << "\\n";
+        }
+        """ %d
+        return rval
+
+    def naivealgo_c_support_code_apply(self, node, nodename):
+        return self.naivealgo_c_src_kernel(node, nodename) + self.naivealgo_c_src_callkernel(node, nodename)
+
+    def c_support_code_apply(self, node, nodename):
+        #rval = self.naivealgo_c_support_code_apply(node, nodename)
+        rval = self.recalgo_c_support_code_apply(node, nodename)
+        #print rval
+        return rval
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         d = dict(sub)
@@ -432,10 +588,12 @@ class GpuElemwise(Op):
         }
         //std::cerr << "C_CODE %(opname)s END\\n";
         """ % locals()
+        #print sio.getvalue()
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (1,0)
+        #return (1,0)
+        return ()
 
 class GpuDimShuffle(Op):
     def __init__(self, input_broadcastable, new_order):
