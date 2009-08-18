@@ -234,7 +234,7 @@ class CudaNdarrayType(Type):
         return ""
 
     def c_code_cache_version(self):
-        return () #do not cache this stuff until it matures
+        return (1,0)
 
     def c_compiler(self):
         return nvcc_module_compile_str

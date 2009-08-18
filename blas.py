@@ -22,7 +22,7 @@ class GpuDot22(Op):
         return Apply(self, [x,y], [x.type()])
 
     def c_code_cache_version(self):
-        return ()
+        return (1,0)
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         x, y = inputs
@@ -86,7 +86,7 @@ class GpuGemm(Op):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
-        return ()
+        return (1,0)
 
     def c_code(self, node, name, inputs, outputs, sub):
         z_in, a, x, y, b = inputs
@@ -346,3 +346,5 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         """ % locals()
         return sio.getvalue()
 
+    def c_code_cache_version(self):
+        return (1,0)
