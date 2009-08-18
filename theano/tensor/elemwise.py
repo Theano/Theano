@@ -133,7 +133,8 @@ class DimShuffle(Op):
         self.__dict__.update(d)
         self._rehash()
 
-    def make_node(self, input):
+    def make_node(self, _input):
+        input = as_tensor_variable(_input)
         ib = tuple(input.type.broadcastable)
         if not ib == self.input_broadcastable:
             raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (self.input_broadcastable, ib))
