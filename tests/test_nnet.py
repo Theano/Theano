@@ -16,11 +16,8 @@ logging.getLogger('theano.gradient').setLevel(logging.INFO)
 def get_mode():
     return None if theano.compile.default_mode != "PROFILE_MODE" else theano.compile.ProfileMode()
 def print_mode(mode):
-    try:
-        if mode != None:
-            mode.print_summary()
-    except:
-        pass
+    if mode != None and isinstance(mode,(theano.compile.ProfileMode,)):
+        mode.print_summary()
 
 def run_nnet(use_gpu):
     #n_batch = 16
@@ -159,8 +156,8 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
 
     n_train=30
 
-    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((32, 32), (5, 5), 'valid')
-    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2, logical_hid_shape[1]/2), (5, 5), 'valid')
+    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d(tuple(shape_img[2:]),tuple(shape_kern[2:]), 'valid')
+    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2, logical_hid_shape[1]/2), tuple(shape_kern1[2:]), 'valid')
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
     n_out = 10
 
@@ -177,6 +174,9 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
 
     conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op1 = theano.sandbox.conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
+    conv_op.set_flops()
+    conv_op1.set_flops()
+    
 
     hid = tensor.tanh(conv_op(x, w0)+b0)
     hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1)
