@@ -16,11 +16,8 @@ logging.getLogger('theano.gradient').setLevel(logging.INFO)
 def get_mode():
     return None if theano.compile.default_mode != "PROFILE_MODE" else theano.compile.ProfileMode()
 def print_mode(mode):
-    try:
-        if mode != None:
-            mode.print_summary()
-    except:
-        pass
+    if mode != None and isinstance(mode,(theano.compile.ProfileMode,)):
+        mode.print_summary()
 
 def run_nnet(use_gpu):
     n_batch = 16
