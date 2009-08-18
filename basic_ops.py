@@ -435,7 +435,7 @@ class GpuElemwise(Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return ()
+        return (1,0)
 
 class GpuDimShuffle(Op):
     def __init__(self, input_broadcastable, new_order):
@@ -613,6 +613,9 @@ class GpuDimShuffle(Op):
                 sys.exit()
 
         return sio.getvalue()
+    
+    def c_code_cache_version(self):
+        return (1,0)
 
 class GpuSum(Op):
     def __init__(self, reduce_mask):
