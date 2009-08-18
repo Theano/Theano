@@ -970,11 +970,11 @@ class MaxAndArgmax(Op):
         inputs = [x, axis]
         broadcastable = [False] * (x.type.ndim - 1) #TODO: be less conservative
         outputs = [tensor(x.type.dtype, broadcastable), 
-                   tensor(axis.type.dtype, broadcastable)]
+                   tensor('int32', broadcastable)]
         return Apply(self, inputs, outputs)
     def perform(self, node, (x, axis), (max, max_idx)):
         max[0] = numpy.asarray(numpy.max(x, axis))
-        max_idx[0] = numpy.asarray(numpy.argmax(x, axis))
+        max_idx[0] = numpy.asarray(numpy.argmax(x, axis), dtype='int32')
     def grad(self, (x, axis), (g_max, g_max_idx)):
         # @warning: This only works if axis is 0, else the max is
         # broadcasted wrong in the call to eq.
