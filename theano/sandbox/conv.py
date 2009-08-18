@@ -148,6 +148,16 @@ class ConvOp(Op):
     def __str__(self):
         return "ConvOp{" +",".join(str((a, getattr(self, a))) for a in self.__attrnames)  + "}"
 
+    def set_flops(self):
+        """ Usefull with the hack in profilemode to print the MFlops"""
+        if self.out_mode=="valid":
+            self.flops=self.kshp[0]*self.kshp[1]*2#nb mul and add by output pixed
+            self.flops*=self.outshp[0]*self.outshp[1]#nb flops by output image
+            self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
+        else: #full mode not implemented
+            self.flops=-1
+
+
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
         """
@@ -302,7 +312,10 @@ class ConvOp(Op):
                     unroll_batch=un_b, unroll_kern=un_k,
                     imshp_logical=imshp_logical,
                     kshp_logical=kshp_logical,
-                    kshp_logical_top_aligned=kshp_logical_top_aligned)(img,filters)
+                    kshp_logical_top_aligned=kshp_logical_top_aligned)
+        if hasattr(self,'flops'):
+            dw.set_flops()
+        dw = dw(img,filters)
         assert (dw.owner.op.outshp==self.kshp).all()
         if self.out_mode == 'valid':
             # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
@@ -320,7 +333,10 @@ class ConvOp(Op):
                      1,1, output_mode=mode,
                      unroll_batch=un_b, unroll_kern=un_k,
                      imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1]),
-                     kshp_logical=None)(gz,filters)
+                     kshp_logical=None)
+        if hasattr(self,'flops'):
+            din.set_flops()
+        din = din(gz,filters)
         assert (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
