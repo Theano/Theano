@@ -192,8 +192,8 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-    for i, n in enumerate(train.maker.env.toposort()):
-        print i, n
+#    for i, n in enumerate(train.maker.env.toposort()):
+#        print i, n
 
     xval = numpy.asarray(numpy.random.rand(*shape_img), dtype='float32')
     yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='float32')#int32 make all 0...
@@ -206,10 +206,12 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
 
 def test_conv_nnet2():
     numpy.random.seed(23456)
-    rval_cpu = run_conv_nnet2(shared)
-    numpy.random.seed(23456)
     rval_gpu = run_conv_nnet2(tcn.shared_constructor)
-    assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
+    if True:
+        numpy.random.seed(23456)
+        rval_cpu = run_conv_nnet2(shared)
+        print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
+        assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
 def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
 

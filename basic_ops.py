@@ -10,7 +10,7 @@ from .type_support import filter as type_support_filter
 import logging
 _logger_name = 'theano_cuda_ndarray.basic_ops'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.DEBUG)
+_logger.setLevel(logging.INFO)
 _logger.addHandler(logging.StreamHandler()) #TO REMOVE
 def warning(*msg):
     _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
