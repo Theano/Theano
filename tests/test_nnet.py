@@ -155,8 +155,8 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
 
     n_train=30
 
-    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((32, 32), (5, 5), 'valid')
-    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2, logical_hid_shape[1]/2), (5, 5), 'valid')
+    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d(tuple(shape_img[2:]),tuple(shape_kern[2:]), 'valid')
+    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2, logical_hid_shape[1]/2), tuple(shape_kern1[2:]), 'valid')
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
     n_out = 10
 
