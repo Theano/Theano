@@ -547,6 +547,11 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     status = p.wait()
 
     if status:
+        print '==============================='
+        for i, l in enumerate(src_code.split('\n')):
+            #gcc put its messages to stderr, so we add ours now
+            print >> sys.stderr, '%05i\t%s'%(i+1, l)
+        print '==============================='
         raise Exception('g++ return status', status)
 
     #touch the __init__ file
