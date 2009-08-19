@@ -133,7 +133,7 @@ _as_tensor_variable = as_tensor_variable
 as_tensor = as_tensor_variable
 
 
-def constant_or_value(x, rtype, name=None, ndim=None):
+def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
     """Return a symbolic `Constant` with value `x`
     
     :Exceptions:
@@ -141,23 +141,26 @@ def constant_or_value(x, rtype, name=None, ndim=None):
      - `ValueError`: `x` could not be expanded to have ndim dimensions
 
     """
-    x_ = None
-    if rtype is TensorConstant and isinstance(x, int):
-        for dtype in ['int8', 'int16', 'int32', 'int64']:
-            x_ = numpy.asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
-                break
-            x_ = None
-    elif rtype is TensorConstant and isinstance(x, float):
-        for dtype in ['float32', 'float64']:
-            x_ = numpy.asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
-                break
-            x_ = None
-    elif isinstance(x, numpy.ndarray):
-        x_ = x
+    if dtype is not None:
+        x_ = numpy.asarray(x, dtype=dtype)
     else:
-        x_ = numpy.asarray(x)
+        x_ = None
+        if rtype is TensorConstant and isinstance(x, int):
+            for dtype in ['int8', 'int16', 'int32', 'int64']:
+                x_ = numpy.asarray(x, dtype=dtype)
+                if numpy.all(x == x_):
+                    break
+                x_ = None
+        elif rtype is TensorConstant and isinstance(x, float):
+            for dtype in ['float32', 'float64']:
+                x_ = numpy.asarray(x, dtype=dtype)
+                if numpy.all(x == x_):
+                    break
+                x_ = None
+        elif isinstance(x, numpy.ndarray):
+            x_ = x
+        else:
+            x_ = numpy.asarray(x)
 
     assert type(x_) == numpy.ndarray
 
@@ -175,11 +178,11 @@ def constant_or_value(x, rtype, name=None, ndim=None):
     except:
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
-def constant(x, name=None, ndim=None):
-    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim)
+def constant(x, name=None, ndim=None, dtype=None):
+    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim, dtype=dtype)
 
-def value(x, name=None, ndim=None):
-    return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim)
+def value(x, name=None, ndim=None, dtype=None):
+    return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim, dtype=dtype)
 
 def _obj_is_wrappable_as_tensor(x):
     try:
@@ -1234,13 +1237,14 @@ pprint.assign(fill, printing.FunctionPrinter('fill'))
 def ones_like(model):
     """WRITEME"""
     #return Ones(model.type.ndim)(shape(model))
-    return fill(model, 1.0)
+    ret= fill(model, constant(1.0, dtype=model.type.dtype))
+    return ret
 
 @constructor
 def zeros_like(model):
     """WRITEME"""
     #return Zeros(model.type.ndim)(shape(model))
-    return fill(model, 0.0)
+    return fill(model, constant(0.0, dtype=model.type.dtype))
 
 class Filler(gof.Op):
     """WRITEME"""
