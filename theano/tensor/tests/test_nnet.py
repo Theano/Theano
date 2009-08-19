@@ -206,18 +206,21 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
 
         print 'BEFORE'
         for node in env.toposort():
-            print node.op
+            print node.op, node.inputs
         print '----'
         theano.compile.mode.optdb.query(
                 theano.compile.mode.OPT_FAST_RUN).optimize(env)
 
         print 'AFTER'
         for node in env.toposort():
-            print node.op
+            print node.op, node.inputs
+
+        # the function has 9 ops because the dimshuffle and elemwise{second} aren't getting
+        # cleaned up as well as we'd like.
 
         assert env.toposort()[3].op == crossentropy_softmax_argmax_1hot_with_bias
-        assert env.toposort()[5].op == crossentropy_softmax_1hot_with_bias_dx 
-        assert len(env.toposort()) == 6  #shorthand for actually checking what I really 
+        assert env.toposort()[8].op == crossentropy_softmax_1hot_with_bias_dx 
+        assert len(env.toposort()) == 9  #shorthand for actually checking what I really 
 
 def test_argmax_pushdown():
     x = tensor.dmatrix()
