@@ -12,10 +12,10 @@ from scipy import sparse
 import scipy.sparse
 from theano.printing import Print
 
-from .. import gof
-from .. import tensor
-from .. import compile
-from .. import scalar
+from theano import gof
+from theano import tensor
+from theano import compile
+from theano import scalar
 
 #TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
@@ -273,7 +273,12 @@ class CSMProperties(gof.Op):
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
     def perform(self, node, (csm,), out):
-        out[0][0] = csm.data if self.kmap is None else csm.data[self.kmap]
+        if self.kmap is None:
+          out[0][0] = csm.data
+        else:
+          out[0][0] = csm.data[self.kmap]
+        #backport
+        #out[0][0] = csm.data if self.kmap is None else csm.data[self.kmap]
         out[1][0] = numpy.asarray(csm.indices, dtype='int32')
         out[2][0] = numpy.asarray(csm.indptr, dtype='int32')
         out[3][0] = numpy.asarray(csm.shape, dtype='int32')
@@ -1082,8 +1087,19 @@ register_specialize(local_structured_dot)
 def structured_dot_grad(sparse_A, dense_B, ga):
     if sparse_A.type.format in ('csc','csr'):
 
-        sdgcsx = sdg_csc if sparse_A.type.format == 'csc' else sdg_csr
-        CSx = CSC if sparse_A.type.format == 'csc' else CSR
+        if sparse_A.type.format == 'csc':
+          sdgcsx = sdg_csc
+        else:
+          sdgcsx = sdg_csr
+        #backport
+        #sdgcsx = sdg_csc if sparse_A.type.format == 'csc' else sdg_csr
+
+        if sparse_A.type.format == 'csc':
+          CSx = CSC
+        else:
+          CSx = CSR
+        #backport
+        #CSx = CSC if sparse_A.type.format == 'csc' else CSR
 
         g_A_data = sdgcsx(csm_indices(sparse_A),\
                           csm_indptr(sparse_A), dense_B, ga)

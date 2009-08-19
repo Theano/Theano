@@ -5,7 +5,10 @@ Defines Linkers that deal with C implementations.
 # Python imports
 from copy import copy
 import re #for set_compiledir
-import os, sys, platform, StringIO, time, hashlib
+import os, sys, platform, StringIO, time
+import md5
+if sys.version_info[:2] >= (2,5):
+  import hashlib
 
 # weave import
 from scipy import weave
@@ -37,7 +40,7 @@ def error(*args):
     sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.error(' '.join(str(a) for a in args))
 
-from .callcache import CallCache
+from theano.gof.callcache import CallCache
 
 def get_module_cache():
     return cmodule.get_module_cache(get_compiledir())
@@ -520,7 +523,12 @@ class CLinker(link.Linker):
 
         # The hash calculated on the code identifies it so weave can cache properly.
         # (the hash has to be used outside of the support code because weave does not consider changes in the support code)
-        hash = hashlib.md5(struct_code).hexdigest()
+        # hashlib is new to 2.5
+        if sys.version_info[:2] < (2,5):
+          hash = md5.new(struct_code).hexdigest()
+        else:
+          hash = hashlib.md5(struct_code).hexdigest()
+
         struct_name = '__struct_compiled_op_%s' % hash
         #struct_code %= dict(name = struct_name)
         struct_code = re.sub("<<<<NAME>>>>", struct_name, struct_code)
@@ -819,7 +827,10 @@ class CLinker(link.Linker):
         """
         This method is a callback for `ModuleCache.module_from_key`
         """
-        location = get_compiledir() if location is None else location
+        if location is None:
+          location = get_compiledir()
+        #backport
+        #location = get_compiledir() if location is None else location
         mod = self.build_dynamic_module()
         get_lock()
         try:

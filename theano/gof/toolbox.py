@@ -1,7 +1,9 @@
-
-from functools import partial
-import graph
 import sys
+
+if sys.version_info[:2] >= (2,5):
+  from functools import partial
+
+import graph
 
 
 class AlreadyThere(Exception):

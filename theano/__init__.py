@@ -24,6 +24,7 @@ To learn more, check out:
 """
 
 __docformat__ = "restructuredtext en"
+import gof
 
 from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \

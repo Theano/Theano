@@ -1,5 +1,10 @@
 import sys, StringIO
-from collections import defaultdict
+
+if sys.version_info[:2] >= (2,5):
+  from collections import defaultdict
+else:
+  from python25 import defaultdict
+
 import opt
 
 

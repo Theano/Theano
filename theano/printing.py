@@ -32,7 +32,13 @@ class Print(Op):
         xout[0] = xin
         for attr in self.attrs:
             temp = getattr(xin, attr)
-            print self.message, attr,'=', temp() if callable(temp) else temp
+            if callable(temp):
+              pmsg = temp()
+            else:
+              psmg = temp
+            print self.message, attr,'=', pmsg
+            #backport
+            #print self.message, attr,'=', temp() if callable(temp) else temp
 
     def grad(self,input,output_gradients):
         return output_gradients
@@ -233,7 +239,12 @@ class PPrinter:
                     strings.append((i + 1000, "%s <- %s" % (name, pprinter.process(output))))
                     i += 1
                 if output.name is not None or output in outputs:
-                    name = 'out[%i]' % outputs.index(output) if output.name is None else output.name
+                    if output.name is None:
+                      name = 'out[%i]' % outputs.index(output)
+                    else:
+                      name = output.name
+                    #backport
+                    #name = 'out[%i]' % outputs.index(output) if output.name is None else output.name
                     current = output
                     try:
                         idx = 2000 + outputs.index(output)

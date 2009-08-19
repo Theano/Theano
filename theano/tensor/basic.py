@@ -5,22 +5,23 @@ __docformat__ = "restructuredtext en"
 import __builtin__
 import sys # for sys.maxint
 import traceback #for overriding Op.__call__
-import functools
+if sys.version_info >= (2,5):
+  import functools
 
 import numpy
 from copy import copy
 
-from .. import gof
-from ..gof import Variable, Op, utils, Type, Constant, Apply, Value
+from theano import gof
+from theano.gof import Variable, Op, utils, Type, Constant, Apply, Value
 
-from .. import gradient
+from theano import gradient
 
 import elemwise
-from .. import scalar as scal
-from ..gof.python25 import partial
+from theano import scalar as scal
+from theano.gof.python25 import partial, any
 
-from .. import compile, printing
-from ..printing import pprint, Print
+from theano import compile, printing
+from theano.printing import pprint, Print
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -352,12 +353,18 @@ class TensorType(Type):
             return self.name
         else:
             b = self.broadcastable
-            #bcast = str(self.broadcastable)
-            bcast = {(): 'scalar',
+            named_broadcastable = {(): 'scalar',
                      (False,): 'vector',
                      (False, True): 'col',
                      (True, False): 'row',
-                     (False, False): 'matrix'}.get(b, "%iD" % len(b) if not any(b) else str(b))
+                     (False, False): 'matrix'}
+            if b in named_broadcastable:
+                bcast = named_broadcastable[b]
+            else:
+                if any(b):
+			bcast = str(b)
+                else:
+                        bcast = '%iD' % len(b)
             return "TensorType(%s, %s)" % (str(self.dtype), bcast)
 
     def __repr__(self):
@@ -833,7 +840,11 @@ def _scal_elemwise(symbol):
     """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
     symbolname = symbol.__name__
     inplace = symbolname.endswith('_inplace')
-    n="Elemwise{%s,%s}"%(symbolname,"inplace" if inplace else "no_inplace")
+    if inplace:
+      msg = "inplace"
+    else:
+      msg = "no_inplace"
+    n="Elemwise{%s,%s}"%(symbolname,msg)
 
     if inplace:
         scalar_op = getattr(scal, symbolname[:-len('_inplace')])
@@ -987,11 +998,15 @@ class MaxAndArgmax(Op):
         
         if not ( axis.data == 0 or axis.data == x.ndim-1):
             raise NotImplementedError('MaxAndArgmax gradient with axis corresponding to internal dimension')
-        g_max_pad = shape_padleft(g_max) if axis.data==0 else \
-                    shape_padright(g_max)
+        if axis.data==0:
+          g_max_pad = shape_padleft(g_max)
+        else:
+           g_max_pad = shape_padright(g_max)
         xmax = max(x, axis)
-        xmax_pad = shape_padleft(xmax) if axis.data==0 else \
-                   shape_padright(xmax)
+        if axis.data==0:
+          xmax_pad = shape_padleft(xmax)
+        else:
+          xmax_pad = shape_padright(xmax)
         g_x = eq(xmax_pad, x) * g_max_pad
         return g_x, None
 
@@ -1261,10 +1276,10 @@ class Filler(gof.Op):
     def __hash__(self):
         return hash(self.ndim) ^ hash(self.dtype)
 
-Zeros = functools.partial(Filler, 0)
+Zeros = partial(Filler, 0)
 """WRITEME"""
 
-Ones = functools.partial(Filler, 1)
+Ones = partial(Filler, 1)
 """WRITEME"""
 
 @constructor
@@ -1368,8 +1383,18 @@ class Repeat(gof.Op):
         assert isinstance(input.type, TensorType)
         assert repeats.type == iscalar
         assert axis.type == iscalar
-        type = TensorType(dtype = input.type.dtype,
-                      broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
+        broadcastable = []
+        for i,x in enumerate(input.broadcastable):
+          if i==axis:
+            broadcastable += [False]
+          else:
+            broadcastable += [x]
+
+        type = TensorType(dtype = input.type.dtype, broadcastable = \
+                          broadcastable)
+        #backport
+        #type = TensorType(dtype = input.type.dtype,
+        #              broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
         return gof.Apply(self, [inputs, repeats, axis], [type()])
 
     def perform(self, node, (input, repeats, axis), (out, )):
@@ -1480,27 +1505,46 @@ class Subtensor(Op):
 
     @staticmethod
     def convert(entry, slice_ok=True):
-        scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
-        tensor_types = [bscalar, iscalar, lscalar]
-        if isinstance(entry, gof.Variable) and entry.type in scal_types:
-            return entry.type
-        elif isinstance(entry, gof.Type) and entry in scal_types:
-            return entry
-        if isinstance(entry, gof.Variable) and entry.type in tensor_types:
-            return scal.Scalar(entry.type.dtype)
-        elif isinstance(entry, gof.Type) and entry in tensor_types:
-            return scal.Scalar(entry.dtype)
-        elif slice_ok and isinstance(entry, slice):
-            a = entry.start
-            b = entry.stop
-            c = entry.step
-            return slice(Subtensor.convert(a, False) if a is not None else None,
-                         Subtensor.convert(b, False) if b is not None else None,
-                         Subtensor.convert(c, False) if c is not None else None)
-        elif isinstance(entry, int):
-            return entry
+      scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
+      tensor_types = [bscalar, iscalar, lscalar]
+      if isinstance(entry, gof.Variable) and entry.type in scal_types:
+        return entry.type
+      elif isinstance(entry, gof.Type) and entry in scal_types:
+        return entry
+      if isinstance(entry, gof.Variable) and entry.type in tensor_types:
+        return scal.Scalar(entry.type.dtype)
+      elif isinstance(entry, gof.Type) and entry in tensor_types:
+        return scal.Scalar(entry.dtype)
+      elif slice_ok and isinstance(entry, slice):
+        a = entry.start
+        b = entry.stop
+        c = entry.step
+
+        if a is not None:
+          slice_a = Subtensor.convert(a, False)
         else:
-            raise TypeError(Subtensor.e_indextype, entry)
+          slice_a = None
+
+        if b is not None:
+           slice_b = Subtensor.convert(b, False)
+        else:
+           slice_b = None
+
+        if c is not None:
+           slice_c = Subtensor.convert(c, False)
+        else:
+           slice_c = None
+
+        return slice(slice_a,slice_b,slice_c)
+          #backport
+          #return slice(Subtensor.convert(a, False) if a is not None else None,
+            #             Subtensor.convert(b, False) if b is not None else None,
+            #             Subtensor.convert(c, False) if c is not None else None)
+
+      elif isinstance(entry, int):
+        return entry
+      else:
+        raise TypeError(Subtensor.e_indextype, entry)
 
     def __init__(self, idx_list):
         self.idx_list = map(self.convert, idx_list)
@@ -1564,17 +1608,34 @@ class Subtensor(Op):
 
     def __hash__(self):
         #TODO: optimize by cache this hash value
-        idx_list = tuple((entry.start, entry.stop, entry.step)
-                         if isinstance(entry, slice)
-                         else entry
-                         for entry in self.idx_list)
+        msg = []
+        for entry in self.idx_list:
+          if isinstance(entry, slice):
+            msg += [(entry.start, entry.stop, entry.step)]
+          else:
+            msg += [entry]
+        
+        idx_list = tuple(msg)
+        #backport
+        #idx_list = tuple((entry.start, entry.stop, entry.step)
+        #                 if isinstance(entry, slice)
+        #                 else entry
+        #                 for entry in self.idx_list)
         return hash(idx_list)
 
     def __str__(self):
         indices = []
         for entry in self.idx_list:
             if isinstance(entry, slice):
-                indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
+              msg = []
+              for x in [entry.start, entry.stop, entry.step]:
+                if x is None:
+                  msg += ""
+                else:
+                  msg += [str(x)]
+                indices.append(":".join(msg))
+                #backport
+                #indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
             else:
                 indices.append(str(entry))
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
@@ -1598,11 +1659,27 @@ class SubtensorPrinter:
                 elif isinstance(entry, scal.Scalar):
                     sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))
                 elif isinstance(entry, slice):
-                    sidxs.append("%s:%s%s" % ("" if entry.start is None or entry.start == 0 else entry.start,
-                                              "" if entry.stop is None or entry.stop == sys.maxint else entry.stop,
-                                              "" if entry.step is None else ":%s" % entry.step))
-            return "%s[%s]" % (pstate.pprinter.process(input, pstate.clone(precedence = 1000)),
-                               ", ".join(sidxs))
+                    if entry.start is None or entry.start==0:
+                      msg1 = ""
+                    else:
+                      msg1 =  entry.start
+
+                    if entry.stop is None or entry.stop == sys.maxint:
+                      msg2 = ""
+                    else:
+                      msg2 =  entry.stop
+
+                    if entry.step is None:
+                      msg3 = ""
+                    else:
+                      msg3 =  ":%s" % entry.step
+                    
+                    sidxs.append("%s:%s%s"  % (msg1, msg2, msg3))
+                    #backport
+                    #sidxs.append("%s:%s%s" % ("" if entry.start is None or entry.start == 0 else entry.start,
+                    #                          "" if entry.stop is None or entry.stop == sys.maxint else entry.stop,
+                    #                          "" if entry.step is None else ":%s" % entry.step))
+            return "%s[%s]" % (pstate.pprinter.process(input, pstate.clone(precedence = 1000)), ", ".join(sidxs))
         else:
             raise TypeError("Can only print Subtensor.")
 
@@ -1631,20 +1708,44 @@ class SetSubtensor(Op):
                 and self.inplace == other.inplace
 
     def __hash__(self):
-        idx_list = tuple((entry.start, entry.stop, entry.step)
-                         if isinstance(entry, slice)
-                         else entry
-                         for entry in self.idx_list)
+        msg = []
+        for entry in self.idx_list:
+          if isinstance(entry, slice):
+            msg += [(entry.start, entry.stop, entry.step)]
+          else:
+            msg += [entry]
+
+        idx_list = tuple(msg)
+        #backport
+        #idx_list = tuple((entry.start, entry.stop, entry.step)
+        #                 if isinstance(entry, slice)
+        #                 else entry
+        #                 for entry in self.idx_list)
         return hashtype(self) ^ hash(idx_list) ^ hash(self.inplace)
 
     def __str__(self):
         indices = []
         for entry in self.idx_list:
             if isinstance(entry, slice):
-                indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
+              msg = []
+              for x in [entry.start, entry.stop, entry.step]:
+                if x  is None:
+                  msg += ""
+                else:
+                  msg += [str(x)]
+                indices.append(":".join(msg))
+                #backport
+                #indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
             else:
                 indices.append(str(entry))
-        return "%s%s{%s}" % ('Inplace' if self.inplace else '',
+        if self.inplace:
+          msg = 'Inplace'
+        else:
+          msg = ''
+
+        #backport
+        #return "%s%s{%s}" % ('Inplace' if self.inplace else '',
+        return  "%s%s{%s}" % (msg,
                 self.__class__.__name__, ", ".join(indices))
 
     def make_node(self, x, y, *inputs):
@@ -2119,12 +2220,10 @@ class Reshape(Op):
 
     def __eq__(self, other):
         # .name does not participate because it doesn't affect computations
-        return (type(other) == type(self)) and (other.ndim == self.ndim)
+        return (type(other) is Reshape) and (other.ndim == self.ndim)
     def __hash__(self):
         # .name does not participate because it doesn't affect computations
-        return hash(type(self)) ^ hash(self.ndim)
-    def __str__(self):
-        return '%s{%i}' % (self.__class__.__name__, self.ndim)
+        return hash(Reshape) ^ hash(self.ndim)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
         shp = as_tensor_variable(shp)
@@ -2218,7 +2317,11 @@ class Tile(Op):
 def tile(x, reps, ndim=None):
     if not hasattr(tile, 'op'):
         tile.op = {}
-    ndim = len(reps) if ndim is None else ndim #not sure if len(shp) is going to work.
+    if ndim is None:
+      ndim = len(reps)
+    
+    #backport
+    #ndim = len(reps) if ndim is None else ndim #not sure if len(shp) is going to work.
     if ndim not in tile.op:
         tile.op[ndim] = Tile(ndim)
     return tile.op[ndim](x, reps)

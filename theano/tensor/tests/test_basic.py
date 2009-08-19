@@ -10,7 +10,7 @@ from copy import copy
 from theano import compile
 from theano import gradient
 from theano import gof
-from theano.gof.python25 import any
+from theano.gof.python25 import any, all
 from theano import gof
 
 from theano.tensor.elemwise import DimShuffle

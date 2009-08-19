@@ -3,19 +3,19 @@
 import os, sys, traceback
 import numpy
 
-from ..gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
+from theano.gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox)
-from ..printing import pprint, FunctionPrinter
-from .opt import register_specialize, out2in, insert_inplace_optimizer
+from theano.printing import pprint, FunctionPrinter
+from theano.tensor.opt import register_specialize, out2in, insert_inplace_optimizer
 # opt.py
 
 import basic as T
 
 #NB: this clobbers the builtin 'compile' symbol
-from .. import compile  #to register the optimizer built by this file 
+from theano import compile  #to register the optimizer built by this file 
 
-from .blas_headers import cblas_header_text, blas_header_text
+from theano.tensor.blas_headers import cblas_header_text, blas_header_text
 
 @utils.memoize
 def ldflags(libs=True, flags=False):
@@ -363,11 +363,16 @@ class Gemm(GemmRelated):
 gemm = Gemm()
 
 pprint.assign(gemm, FunctionPrinter('gemm'))
-
 def res_is_a(node, op, maxclients=None):
-    return node.owner \
+  if maxclients is not None:
+    retval = (len(node.clients) <= maxclients)
+  else:
+    retval = True
+
+  return node.owner \
             and node.owner.op == op \
-            and (len(node.clients) <= maxclients if maxclients is not None else True)
+            and retval
+
 
 def _as_scalar(res):
     """Return None or a TensorVariable whose type is in T.float_scalar_types"""
@@ -504,7 +509,6 @@ def _gemm_from_node(node):
 
         assert len(sM_list) == len(sM_orig)
         assert len(sM_list) + len(other_inputs) == len(node.inputs)
-
         if len(sM_list) == 2:
             (sL, mL), (sR, mR) = sM_list
             gemm_of_sM_list = _beta_L_plus_alpha_M(sL, mL, sR, mR)
