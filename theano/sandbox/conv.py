@@ -99,7 +99,7 @@ class ConvOp(Op):
                     new-=1
 
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a divisor of bsize(%s). We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize),new)
-                self.unroll_batch=mew
+                self.unroll_batch=new
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
             if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern

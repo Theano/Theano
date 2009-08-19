@@ -1,5 +1,9 @@
 """WRITEME"""
-from collections import defaultdict
+import sys
+if sys.version_info[:2] >= (2,5):
+  from collections import defaultdict
+
+# otherwise it's implemented in python25.py
 
 import toolbox
 import graph

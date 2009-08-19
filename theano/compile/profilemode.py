@@ -1,9 +1,9 @@
 import time, atexit
 
-from ..gof.link import WrapLinkerMany
-from ..gof.cutils import run_cthunk
-from ..compile.mode import Mode, predefined_linkers, register_mode, predefined_modes
-from ..gof.cc import OpWiseCLinker
+from theano.gof.link import WrapLinkerMany
+from theano.gof.cutils import run_cthunk
+from theano.compile.mode import Mode, predefined_linkers, register_mode, predefined_modes
+from theano.gof.cc import OpWiseCLinker
 
 class ProfileMode(Mode):
     def __init__(self, linker=OpWiseCLinker(), optimizer=None):
@@ -93,20 +93,24 @@ class ProfileMode(Mode):
                 break
             
         print '\nOp-wise summary: < of local_time spent on this kind of Op> <cumulative seconds> <self seconds>%s <Op name>'%(flops_msg)
-            
+
         otimes = [(t/local_time, t, a, self.op_cimpl[a]) for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         tot=0
         for f,t,a,ci in otimes[:n_ops_to_print]:
             tot+=t
+            if ci:
+              msg = '*'
+            else:
+              msg = ' '
             m=-1
             if hasattr(a,'flops'):
                 m=a.flops*self.op_call[a]/t/1e6
             if flops:
-                print '   %4.1f%%  %.3fs  %.3fs  %s %7.1f %s' % (f*100, tot, t, '*' if ci else ' ', m,a)
+                print '   %4.1f%%  %.3fs  %.3fs  %s %7.1f %s' % (f*100, tot, t, msg, m,a)
             else:
-                print '   %4.1f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+                print '   %4.1f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, msg, a)
         print '   ... (remaining %i Ops account for %6.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci in otimes[n_ops_to_print:])*100,
@@ -128,7 +132,11 @@ class ProfileMode(Mode):
         tot=0
         for f,t,a,ci in sotimes[:n_ops_to_print]:
             tot+=t
-            print '   %4.1f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, '*' if ci else ' ', a)
+            if ci:
+              msg = '*'
+            else:
+              msg = ' '
+            print '   %4.1f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, msg, a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
                   sum(f for f, t, a in sotimes[n_ops_to_print:])*100,
@@ -150,3 +158,4 @@ def atexit_print_default_profile_mode():
 #Register atexit_print_default_profile_mode to have the summary of the
 #predefined mode PROFILE_MODE if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
+

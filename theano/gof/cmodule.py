@@ -242,7 +242,8 @@ class ModuleCache(object):
         self.module_from_name = dict(self.module_from_name)
         self.entry_from_key = dict(self.entry_from_key)
         self.stats = [0, 0, 0]
-        self.force_fresh = self.force_fresh if force_fresh is None else force_fresh
+        if force_fresh is not None:
+          self.force_fresh = force_fresh
         self.loaded_key_pkl = set()
 
         self.refresh()
@@ -398,7 +399,9 @@ class ModuleCache(object):
         :param age_thresh: dynamic modules whose last access time is more than ``age_thresh``
         seconds ago will be erased.
         """
-        age_thresh = self.age_thresh if age_thresh is None else age_thresh
+        if age_thresh is None:
+          age_thresh = self.age_thresh
+
         compilelock.get_lock()
         try:
             # update the age of modules that have been accessed by other processes
@@ -469,6 +472,12 @@ def get_lib_extension():
     else:
         return 'so'
 
+def get_gcc_shared_library_arg():
+    """Return the platform-dependent GCC argument for shared libraries."""
+    if sys.platform == 'darwin':
+        return '-dynamiclib'
+    else:
+        return '-shared'
 
 def std_include_dirs():
     return [distutils.sysconfig.get_python_inc()] + numpy.distutils.misc_util.get_numpy_include_dirs()
@@ -494,7 +503,6 @@ def std_libs():
 def std_lib_dirs():
     return std_lib_dirs_and_libs()[1]
 
-
 def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[]):
     """
@@ -509,13 +517,34 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     :returns: dynamically-imported python module of the compiled code.
     """
     #TODO: don't to the dlimport in this function
-    preargs= [] if preargs is None else list(preargs)
+
+    if preargs is None:
+      preargs = []
+    else:
+      preargs = list(preargs)
+
     preargs.append('-fPIC')
     no_opt = False
 
     include_dirs = std_include_dirs() + include_dirs
     libs = std_libs() + libs
     lib_dirs = std_lib_dirs() + lib_dirs
+    if sys.platform == 'win32':
+        python_inc = distutils.sysconfig.get_python_inc()
+        # Typical include directory: C:\Python26\include
+        libname = os.path.basename(os.path.dirname(python_inc)).lower()
+        # Also add directory containing the Python library to the library
+        # directories.
+        python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
+        lib_dirs = [python_lib_dir] + lib_dirs
+    else:
+        # Typical include directory: /usr/include/python2.6
+        python_inc = distutils.sysconfig.get_python_inc()
+        libname = os.path.basename(python_inc)
+    libs = [libname] + libs
+
+    workdir = location
+
 
     cppfilename = os.path.join(location, 'mod.cpp')
     cppfile = file(cppfilename, 'w')
@@ -531,7 +560,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
             (module_name, get_lib_extension()))
 
     debug('Generating shared lib', lib_filename)
-    cmd = ['g++', '-shared', '-g']
+    cmd = ['g++', get_gcc_shared_library_arg(), '-g']
     if no_opt:
         cmd.extend(p for p in preargs if not p.startswith('-O'))
     else:
@@ -556,9 +585,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
     #touch the __init__ file
     file(os.path.join(location, "__init__.py"),'w').close()      
-
     return dlimport(lib_filename)
-
 
 def icc_module_compile_str(*args):
     raise NotImplementedError()

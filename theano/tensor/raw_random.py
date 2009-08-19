@@ -7,8 +7,8 @@ import numpy
 #local imports
 import basic as tensor
 import opt
-from .. import gof
-from ..compile import optdb
+from theano import gof
+from theano.compile import optdb
 
 class RandomStateType(gof.Type):
     """A Type wrapper for numpy.RandomState
@@ -85,7 +85,12 @@ class RandomFunction(gof.Op):
     def __setstate__(self, state):
         self.state = state
         fn, outtype, args, kwargs = state
-        self.fn = getattr(numpy.random.RandomState, fn) if isinstance(fn, str) else fn
+        if isinstance(fn, str):
+          self.fn = getattr(numpy.random.RandomState, fn)
+        else:
+          self.fn = fn
+        #backport
+        #self.fn = getattr(numpy.random.RandomState, fn) if isinstance(fn, str) else fn
         self.outtype = outtype
         self.args = tuple(tensor.as_tensor_variable(arg) for arg in args)
         self.inplace = kwargs.pop('inplace', False)
@@ -139,7 +144,12 @@ class RandomFunction(gof.Op):
         inputs = []
         for arg, default in zip(args, self.args):
             assert arg is None or default.type.dtype == arg.type.dtype
-            input = default if arg is None else arg
+            if arg is None:
+              input = default
+            else:
+              input = arg
+            #backport
+            #input = default if arg is None else arg
             inputs.append(input)
 
         return gof.Apply(self,

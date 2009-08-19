@@ -138,7 +138,11 @@ class Container(object):
             self.type = r
         else:
             self.type = r.type
-        self.name = r.name if name is None else name
+        if name is None:
+          self.name = r.name
+
+        #backport
+        #self.name = r.name if name is None else name
         self.storage = storage
         self.readonly = readonly
         self.strict = strict

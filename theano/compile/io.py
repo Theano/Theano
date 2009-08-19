@@ -39,11 +39,23 @@ class SymbolicInput(object):
             implicit=False):
         assert implicit is not None # Safety check.
         self.variable = variable
-        self.name = variable.name if (autoname and name is None) else name
+        if  (autoname and name is None):
+          self.name = variable.name
+        else:
+          self.name = name
+
+        #backport
+        #self.name = variable.name if (autoname and name is None) else name
         if self.name is not None and not isinstance(self.name, str):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
-        self.mutable = mutable if (mutable is not None) else (update is not None)
+        if (mutable is not None):
+          self.mutable = mutable
+        else:
+          self.mutable = (update is not None)
+
+        #backport
+        #self.mutable = mutable if (mutable is not None) else (update is not None)
         self.strict = strict
         self.implicit = implicit
 

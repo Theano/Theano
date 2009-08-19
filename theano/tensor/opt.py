@@ -4,20 +4,20 @@
 # TODO: 0*x -> 0
 
 
-from .. import gof
-from ..gof import opt, InconsistencyError, TopoOptimizer, graph
+from theano import gof
+from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from elemwise import Elemwise, DimShuffle
-from .. import scalar
+from theano import scalar
 import basic as T
 import inplace as I
 import numpy as N
 import operator
 import itertools
 import sys
-from .. import compile  #to register the optimizer built by this file
+from theano import compile  #to register the optimizer built by this file
 
-from ..compile.debugmode import _debugprint
-
+from theano.compile.debugmode import _debugprint
+from theano.gof.python25 import any
 
 # Utilities
 
@@ -738,11 +738,20 @@ class Canonizer(gof.LocalOptimizer):
 def mul_calculate(num, denum, aslist=False, out_type=None):
     if not num and not denum:
         # Smallest 1 possible.
-        return [] if aslist else N.int8(1)
+        if aslist:
+          return []
+        else:
+          return N.int8(1)
+
+        #return [] if aslist else N.int8(1)
     # Make sure we do not accidently upcast data types.
     if out_type is None:
         # TODO: remove this error-causing heuristic
-        first = num[0] if num else denum[0]
+        if num:
+          first = num[0]
+        else:
+          first = denum[0]
+        #first = num[0] if num else denum[0]
         one = N.asarray(first).dtype.type(1)
     else:
         one = N.asarray(1, dtype=out_type.dtype)
@@ -850,15 +859,29 @@ def local_mul_specialize(node):
                 new_inputs.append(input)
         if len(new_inputs) < len(node.inputs):
             if len(new_inputs) == 0:
-                newval = -y.flatten()[0] if neg else y.flatten()[0]
+                if neg:
+                   newval = -y.flatten()[0]
+                else:
+                   newval = y.flatten()[0]
+                #newval = -y.flatten()[0] if neg else y.flatten()[0]
                 return fill_chain(T.TensorConstant(T.TensorType(dtype=node.outputs[0].type.dtype,
                     broadcastable = [True] * node.outputs[0].ndim), N.asarray(newval)))
 
             if len(new_inputs) == 1:
-                return fill_chain(-new_inputs[0] if neg else new_inputs[0])
+              if neg:
+                msg = -new_inputs[0]
+              else:
+                msg = new_inputs[0]
+              return fill_chain(msg)
+              #  return fill_chain(-new_inputs[0] if neg else new_inputs[0])
             else:
-                return fill_chain(-T.mul(*new_inputs) if neg else \
-                        T.mul(*new_inputs))
+                if neg:
+                  msg = -T.mul(*new_inputs)
+                else:
+                  msg = T.mul(*new_inputs)
+
+                #return fill_chain(-T.mul(*new_inputs) if neg else \
+                #        T.mul(*new_inputs))
     else:
         return False
 register_specialize(local_mul_specialize)
@@ -914,7 +937,11 @@ mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, lo
 
 def add_calculate(num, denum, aslist = False, out_type=None):
     #TODO: make sure that this function and mul_calculate are similar
-    zero = 0.0 if out_type is None else N.asarray(0, dtype=out_type.dtype)
+    if out_type is None:
+      zero = 0.0
+    else:
+      zero = N.asarray(0, dtype=out_type.dtype)
+    #zero = 0.0 if out_type is None else N.asarray(0, dtype=out_type.dtype)
     v = reduce(N.add, num, zero) - reduce(N.add, denum, zero)
     if aslist:
         if N.all(v == 0):
@@ -1061,7 +1088,15 @@ def constant_folding(node):
     storage = [[None] for output in node.outputs]
     node.op.perform(node, [x.data for x in node.inputs], storage)
     #TODO: think about how to extend to more types
-    return [(T.TensorConstant if isinstance(s[0], (N.ndarray,int,float)) else gof.Constant)(output.type, s[0]) for s, output in zip(storage, node.outputs)]
+    msg = []
+    for s, output in zip(storage, node.outputs):
+      if isinstance(s[0], (N.ndarray,int,float)):
+        msg += [T.TensorConstant(output.type,s[0])]
+      else:
+        msg += [gof.Constant(output.type, s[0])]
+    return msg
+    #TODO: verify this backport!!
+    #return [(T.TensorConstant if isinstance(s[0], (N.ndarray,int,float)) else gof.Constant)(output.type, s[0]) for s, output in zip(storage, node.outputs)]
 
 register_canonicalize(constant_folding)
 register_specialize(constant_folding)

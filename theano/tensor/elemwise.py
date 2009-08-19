@@ -2,13 +2,13 @@ import sys
 import elemwise_cgen as cgen
 
 import numpy
-from .. import gof
-from ..gof import Op, Apply
-from .. import scalar
-from ..scalar import Scalar
-from .. import printing
-from ..printing import pprint
-from ..gof.python25 import all
+from theano import gof
+from theano.gof import Op, Apply
+from theano import scalar
+from theano.scalar import Scalar
+from theano import printing
+from theano.printing import pprint
+from theano.gof.python25 import all
 from copy import copy, deepcopy
 
 
@@ -216,19 +216,31 @@ class DimShuffle(Op):
                     '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
 
         shape_statements = ['npy_intp dimensions[%i]'%nd_out]
-        shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')
-            if o != 'x' else
-            ('dimensions['+str(i)+'] = 1')
-            for i, o in enumerate(self.new_order)]
+        for i, o in enumerate(self.new_order):
+          if o != 'x':
+            shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')]
+          else:
+            shape_statements += [('dimensions['+str(i)+'] = 1')]
+        #backport
+        #shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')
+        #    if o != 'x' else
+        #    ('dimensions['+str(i)+'] = 1')
+        #    for i, o in enumerate(self.new_order)]
 
 
         strides_statements = ['npy_intp strides[%i]'%nd_out]
 
         #set the strides of the non-broadcasted dimensions
-        strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')
-            if o != 'x' else
-            ('strides['+str(i)+'] = 0')
-            for i, o in enumerate(self.new_order)]
+        for i, o in enumerate(self.new_order):
+          if o != 'x':
+             strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')]
+          else:
+             strides_statements += [('strides['+str(i)+'] = 0')]
+        #backport
+        #strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')
+        #    if o != 'x' else
+        #    ('strides['+str(i)+'] = 0')
+        #    for i, o in enumerate(self.new_order)]
 
         # set the strides of the broadcasted dimensions
         # this algorithm is from numpy: PyArray_Newshape() in cvs/numpy/numpy/core/src/multiarraymodule.c
@@ -443,7 +455,16 @@ class Elemwise(Op):
     def _rehash(self):
         items = self.inplace_pattern.items()
         items.sort()
-        tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
+        first_part = [k for k,v in items]
+        second_part = []
+        for k,v in items:
+          if isinstance(v, (tuple, list)):
+            second_part += [tuple(v)]
+          else:
+            second_part += [v]
+        tuple_items = tuple(first_part + second_part)
+        #backport
+        #tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
         h = hash('Elemwise') ^ hash(self.scalar_op) ^ hash(tuple_items)
         assert h == getattr(self,'_hashval', h)
         self._hashval = h
@@ -518,10 +539,21 @@ class Elemwise(Op):
         for dims in zip(*[[(1, True)]*(maxsize - len(input.shape)) + zip(input.shape, sinput.type.broadcastable)
                           for input, sinput in zip(inputs, node.inputs)]):
             if max(d for d,b in dims) != 1 and (1, False) in dims:
+                msg = []
+                for input, sinput in zip(inputs, node.inputs):
+                  for d, b in zip(input.shape, sinput.type.broadcastable):
+                    if b:
+                      msg += ['*'] 
+                    else:
+                      msg += [str(d)]
+
                 raise ValueError('Dimension mismatch; shapes are %s' %
-                                 ', '.join('(%s)' % ', '.join('*' if b else str(d)
-                                                              for d, b in zip(input.shape, sinput.type.broadcastable))
-                                           for input, sinput in zip(inputs, node.inputs)))
+                                 ', '.join('(%s)' % ', '.join(msg)))
+                #backport
+                #raise ValueError('Dimension mismatch; shapes are %s' %
+                #                 ', '.join('(%s)' % ', '.join('*' if b else str(d)
+                #                                              for d, b in zip(input.shape, sinput.type.broadcastable))
+                #                           for input, sinput in zip(inputs, node.inputs)))
                 # Other mismatches will be caught by the ufunc
         if not self.inplace_pattern:
             for output, storage in zip(node.outputs, output_storage):

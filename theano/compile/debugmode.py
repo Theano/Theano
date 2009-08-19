@@ -6,19 +6,19 @@ from StringIO import StringIO
 
 import numpy
 
-from .. import gof
-from ..gof import Env, graph, utils, link
-from ..gof.link import WrapLinkerMany, raise_with_op
-from ..gof.cutils import run_cthunk
-from ..gof.cc import OpWiseCLinker, CLinker
-from ..compile.function_module import (FunctionMaker,
+from theano import gof
+from theano.gof import Env, graph, utils, link
+from theano.gof.link import WrapLinkerMany, raise_with_op
+#from theano.gof.cutils import run_cthunk
+from theano.gof.cc import OpWiseCLinker, CLinker
+from theano.compile.function_module import (FunctionMaker,
         Function, 
         infer_reuse_pattern,
         SymbolicInput,
         SymbolicInputKit,
         SymbolicOutput,
         Supervisor)
-from ..compile.mode import Mode, register_mode
+from theano.compile.mode import Mode, register_mode
 
 import logging
 _logger=logging.getLogger("theano.compile.debugmode")
@@ -260,7 +260,10 @@ def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
     """
     if depth==0:
         return
-    done = set() if done is None else done
+    #backport    
+    if done is None:
+      done = set()
+    #done = set() if done is None else done
     if hasattr(r.owner, 'op'):
         # this variable is the output of computation,
         # so just print out the apply
@@ -548,9 +551,15 @@ def _find_bad_optimizations2(order, reasons, r_vals):
         checked_variables.add(r)
 
         # (recursively) first check all the variables that could make r look bad:
+        list_of_vars = [old_r for (reason, old_r, olds, news) in reasons[r]]
+        if (None is not r.owner):
+          list_of_vars += r.owner.inputs
+
         for var_that_could_make_r_look_bad in \
-                [old_r for (reason, old_r, olds, news) in reasons[r]] \
-                + ([] if (None is r.owner) else r.owner.inputs):
+              list_of_vars:
+                #backport
+                #[old_r for (reason, old_r, olds, news) in reasons[r]] \
+                #+ ([] if (None is r.owner) else r.owner.inputs):
             check_variable(var_that_could_make_r_look_bad)
 
         check_variable_norec(r)
@@ -598,11 +607,18 @@ class _EnvEvent(object):
 
     def __str__(self):
         if self.kind == 'change':
+            if (self.op != 'output'):
+              msg = str(len(self.node.inputs))
+            else:
+              msg = ''
+
             return ' '.join(['change', 
                 self.reason, 
                 str(self.op), 
                 str(self.idx),
-                str(len(self.node.inputs)) if (self.op != 'output') else ''])
+                msg])
+                #backport
+                #str(len(self.node.inputs)) if (self.op != 'output') else ''])
         else:
             return str(self.__dict__)
 
@@ -1087,7 +1103,7 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
 
         # WARNING: this is a global mechanism... so it will screw up if we are trying to use
         # multiple modes at once.
-        from ..tensor import TensorType #to set filter_check_isfinite
+        from theano.tensor import TensorType #to set filter_check_isfinite
         TensorType.filter_checks_isfinite = mode.check_isfinite
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
@@ -1125,8 +1141,19 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                     for j in xrange(max(len(li), len(l0))):
                         if j >= len(li) or j >= len(l0) or li[j] != l0[j]:
                             print >> infolog, "* ", j,
-                            print >> infolog, "  ", str(li[j]) if j < len(li) else '-',
-                            print >> infolog, "  ", str(l0[j]) if j < len(l0) else '-'
+                            if j < len(li):
+                              msg =  str(li[j])
+                            else:
+                              msg = '-'
+                            print >> infolog, "  ", msg
+                            if j < len(l0):
+                              msg = str(l0[j])
+                            else:
+                              msg = '-'
+                            print >> infolog, "  ", msg
+                            #backport
+                            #print >> infolog, "  ", str(li[j]) if j < len(li) else '-',
+                            #print >> infolog, "  ", str(l0[j]) if j < len(l0) else '-'
                         else:
                             pass
                     raise StochasticOrder(infolog.getvalue())
