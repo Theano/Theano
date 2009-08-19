@@ -870,7 +870,7 @@ class TensorFromScalar(Op):
     def perform(self, node, (s, ), (out, )):
         out[0] = numpy.asarray(s)
     def grad(self, (s,), (dt,)):
-        return [ScalarFromTensor(dt)]
+        return [scalar_from_tensor(dt)]
 tensor_from_scalar = TensorFromScalar()
 
 class ScalarFromTensor(Op):

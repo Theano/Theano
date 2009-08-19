@@ -87,7 +87,6 @@ class ProfileMode(Mode):
         flops_msg=''
         for a,t in op_time.items():
             if hasattr(a,'flops'):
-                print "if true!"
                 flops=True
                 flops_msg=' <MFlops/s>'
                 print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
