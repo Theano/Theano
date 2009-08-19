@@ -1,4 +1,4 @@
-
+import sys, StringIO
 from collections import defaultdict
 import opt
 
@@ -139,5 +139,15 @@ class SequenceDB(DB):
         opts = list(opts)
         opts.sort(key = lambda obj: self.__priority__[obj.name])
         return opt.SeqOptimizer(opts, failure_callback = self.failure_callback)
+
+    def print_summary(self, stream=sys.stdout):
+        print >> stream, "SequenceDB (id %i)"%id(self)
+        print >> stream, "  priority", self.__priority__
+        print >> stream, "  names", self._names
+        print >> stream, "  db", self.__db__
+    def __str__(self):
+        sio = StringIO.StringIO()
+        self.print_summary(sio)
+        return sio.getvalue()
 
 
