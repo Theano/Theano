@@ -861,7 +861,7 @@ class _Linker(gof.link.LocalLinker):
         # This is the function that runs when you evaluate the graph
         #####
         def f():
-            print >> sys.stderr, "starting f"
+            debug("starting f")
             for x in no_recycling:
                 x[0] = None
 
