@@ -77,7 +77,6 @@ pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 # TENSOR OPS
 #
 
-
 class SoftmaxWithBias(gof.Op):
     """
     An L{Op} for the output of neural-net multiclass classifiers.
@@ -159,12 +158,12 @@ class SoftmaxWithBias(gof.Op):
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if ((%(x)s->descr->type_num != PyArray_DOUBLE)&&(%(x)s->descr->type_num != PyArray_DOUBLE))
+        if ((%(x)s->descr->type_num != PyArray_DOUBLE)&&(%(x)s->descr->type_num != PyArray_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "a not float");
             %(fail)s;
         }
-        if ((%(b)s->descr->type_num != PyArray_DOUBLE) && (%(b)s->descr->type_num != PyArray_DOUBLE))
+        if ((%(b)s->descr->type_num != PyArray_DOUBLE) && (%(b)s->descr->type_num != PyArray_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "b not float");
             %(fail)s;
@@ -195,22 +194,22 @@ class SoftmaxWithBias(gof.Op):
             double sum = 0.0;
             bool  discount_max = false;
 
-            const REAL* __restrict__ x_i = (REAL*)(%(x)s->data + %(x)s->strides[0] * i);
-            const REAL* __restrict__ b_i = (REAL*)(%(b)s->data);
-            REAL* __restrict__ sm_i = (REAL*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(%(x)s->data + %(x)s->strides[0] * i);
+            const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(%(b)s->data);
+            dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
         """
 
         inside_row_loop = """
-            npy_intp Sx = %(x)s->strides[1]/sizeof(REAL);
-            npy_intp Sb = %(b)s->strides[0]/sizeof(REAL);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(REAL);
+            npy_intp Sx = %(x)s->strides[1]/sizeof(dtype_%(x)s);
+            npy_intp Sb = %(b)s->strides[0]/sizeof(dtype_%(b)s);
+            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
 
             size_t row_max_j=0;
-            REAL row_max = x_i[0] + b_i[0];
+            dtype_%(sm)s row_max = x_i[0] + b_i[0];
             // Get the maximum value of the row
             for (j = 0; j < Nx[1]; ++j)
             {
-                REAL row_ij = x_i[j * Sx] +  b_i[j * Sb];
+                dtype_%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
 //                std::cout << "1" << row_ij << "\\n";
                 row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
@@ -218,9 +217,9 @@ class SoftmaxWithBias(gof.Op):
 
             for (j = 0; j < Nx[1]; ++j)
             {
-                REAL row_ij = x_i[j * Sx] +  b_i[j * Sb];
+                dtype_%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
 //                std::cout << "2" << row_ij << "\\n";
-                REAL sm_ij = exp(row_ij - row_max);
+                dtype_%(sm)s sm_ij = exp(row_ij - row_max);
 //                std::cout << "3" << sm_ij << "\\n";
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
@@ -297,19 +296,13 @@ class SoftmaxGrad(gof.Op):
     def c_code_cache_version(self):
         return ()
     def c_code(self, node, name, (dy, sm), (dx,), sub):
-        if node.inputs[1].type.dtype != node.inputs[0].type.dtype:
-            raise NotImplementedError()
-        if node.inputs[0].type.dtype == 'float32':
-            REAL = 'float'
-        else:
-            REAL = 'double'
         return '''
-        if ((%(dy)s->descr->type_num != PyArray_DOUBLE) && ((%(dy)s->descr->type_num != PyArray_FLOAT)
+        if ((%(dy)s->descr->type_num != PyArray_DOUBLE) && (%(dy)s->descr->type_num != PyArray_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "types should be float or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) && ((%(sm)s->descr->type_num != PyArray_FLOAT)
+        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) && (%(sm)s->descr->type_num != PyArray_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "types should be float or float64");
             %(fail)s;
@@ -341,12 +334,12 @@ class SoftmaxGrad(gof.Op):
 
         for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
         {
-            const REAL* __restrict__ dy_i = (REAL*) (%(dy)s->data + %(dy)s->strides[0] * i);
-            npy_intp Sdy = %(dy)s->strides[1]/sizeof(REAL);
-            const REAL* __restrict__ sm_i = (REAL*) (%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(REAL);
-            REAL* __restrict__ dx_i = (REAL*) (%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(REAL);
+            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (%(dy)s->data + %(dy)s->strides[0] * i);
+            npy_intp Sdy = %(dy)s->strides[1]/sizeof(dtype_%(dy)s);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (%(sm)s->data + %(sm)s->strides[0] * i);
+            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+            dtype_%(dx)s* __restrict__ dx_i = (dtype_%(dx)s*) (%(dx)s->data + %(dx)s->strides[0] * i);
+            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
 
             double sum_dy_times_sm = 0.;
             for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
@@ -506,7 +499,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             raise ValueError('y_idx must have same number of rows as x')
 
         sm = numpy.zeros_like(x) # softmax
-        nll = numpy.zeros(x.shape[0]) #nll(y | softmax(x))
+        nll = numpy.zeros(x.shape[0], dtype=node.outputs[0].type.dtype) #nll(y | softmax(x))
         am = numpy.zeros_like(y_idx)
         for i in xrange(sm.shape[0]):
             #add the bias vector to the i'th row of x
@@ -601,7 +594,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 begin_row_loop,
                 """
             const %(y_idx_type)s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
-            REAL* __restrict__ nll_i = (REAL*)(%(nll)s->data + %(nll)s->strides[0] * i);
+            dtype_%(nll)s* __restrict__ nll_i = (dtype_%(nll)s*)(%(nll)s->data + %(nll)s->strides[0] * i);
             %(am_type)s* __restrict__ am_i = (%(am_type)s*) (%(am)s->data + %(am)s->strides[0] * i);
                 """,
                 inside_row_loop,
@@ -620,14 +613,12 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 end_row_loop)
 
 
+    def c_code_cache_version(self):
+        return ()
     def c_code(self, node, name, (x, b, y_idx), (nll, sm, am), sub):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
         code_template = ''.join(self.c_code_template())
-        if node.inputs[0].type.dtype == 'float32':
-            REAL = 'float'
-        else:
-            REAL = 'double'
         return code_template % dict(locals(), **sub)
 
 class CrossentropySoftmax1HotWithBiasDx (gof.Op):
@@ -654,15 +645,20 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         output_storage[0][0] = dx
     def grad(self, *args):
         raise NotImplementedError()
+    def c_code_cache_version(self):
+        return ()
     def c_code(self, node, name, (dnll, sm, y_idx), (dx,), sub):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """
 
-        if ((%(dnll)s->descr->type_num != PyArray_DOUBLE)
-            || (%(sm)s->descr->type_num != PyArray_DOUBLE)
-            )
+        if ((%(dnll)s->descr->type_num != PyArray_DOUBLE) && (%(dnll)s->descr->type_num != PyArray_FLOAT))
         {
-            PyErr_SetString(PyExc_TypeError, "types should be float64, float64, int64");
+            PyErr_SetString(PyExc_TypeError, "dnll type should be float32 or float64");
+            %(fail)s;
+        }
+        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) && (%(sm)s->descr->type_num != PyArray_FLOAT))
+        {
+            PyErr_SetString(PyExc_TypeError, "sm type should be float32 or float64");
             %(fail)s;
         }
         if ((%(y_idx)s->descr->type_num != PyArray_INT64)
@@ -704,15 +700,15 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
 
         for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
         {
-            const REAL dnll_i = ((REAL*)(%(dnll)s->data + %(dnll)s->strides[0] * i))[0];
+            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(%(dnll)s->data + %(dnll)s->strides[0] * i))[0];
 
             const %(y_idx_type)s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
 
-            const REAL* __restrict__ sm_i = (REAL*)(%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(REAL);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
 
-            REAL* __restrict__ dx_i = (REAL*)(%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(REAL);
+            dtype_%(dx)s* __restrict__ dx_i = (dtype_%(dx)s*)(%(dx)s->data + %(dx)s->strides[0] * i);
+            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
 
             for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
             {
