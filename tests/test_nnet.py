@@ -80,7 +80,7 @@ def run_conv_nnet1(shared_fn):
     shape_img = (n_batch, 1, 32, 32)
     shape_kern = (n_kern, 1, 5, 5)
 
-    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((32,32),(5,5), 'valid')
+    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d(shape_img[2:],shape_kern[2:], 'valid')
     n_hid = n_kern * logical_hid_shape[0] * logical_hid_shape[1]
     n_out = 10
 
