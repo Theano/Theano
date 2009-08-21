@@ -3,7 +3,7 @@ from theano import tensor, scalar, compile
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
 
 from theano_cuda_ndarray.basic_ops import *
-from theano_cude_ndarray.blas import gpu_dot22, gpu_gemm, GpuConv, GpuCrossentropySoftmaxArgmax1HotWithBias
+from theano_cuda_ndarray.blas import gpu_dot22, gpu_gemm, GpuConv, GpuCrossentropySoftmaxArgmax1HotWithBias
 
 from theano.compile import optdb
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
