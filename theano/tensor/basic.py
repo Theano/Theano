@@ -1627,19 +1627,20 @@ class Subtensor(Op):
         #                 for entry in self.idx_list)
         return hash(idx_list)
 
+    @staticmethod
+    def str_from_slice(entry):
+        msg = []
+        for x in [entry.start, entry.stop, entry.step]:
+            if x is None:
+                msg.append("")
+            else:
+                msg.append(str(x))
+        return ":".join(msg)
     def __str__(self):
         indices = []
         for entry in self.idx_list:
             if isinstance(entry, slice):
-              msg = []
-              for x in [entry.start, entry.stop, entry.step]:
-                if x is None:
-                  msg += ""
-                else:
-                  msg += [str(x)]
-                indices.append(":".join(msg))
-                #backport
-                #indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
+                indices.append(self.str_from_slice(entry))
             else:
                 indices.append(str(entry))
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
@@ -1731,24 +1732,13 @@ class SetSubtensor(Op):
         indices = []
         for entry in self.idx_list:
             if isinstance(entry, slice):
-              msg = []
-              for x in [entry.start, entry.stop, entry.step]:
-                if x  is None:
-                  msg += ""
-                else:
-                  msg += [str(x)]
-                indices.append(":".join(msg))
-                #backport
-                #indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
+                indices.append(Subtensor.str_from_slice(entry))
             else:
                 indices.append(str(entry))
         if self.inplace:
-          msg = 'Inplace'
+            msg = 'Inplace'
         else:
-          msg = ''
-
-        #backport
-        #return "%s%s{%s}" % ('Inplace' if self.inplace else '',
+            msg = ''
         return  "%s%s{%s}" % (msg,
                 self.__class__.__name__, ", ".join(indices))
 
