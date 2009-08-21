@@ -109,8 +109,8 @@ def run_conv_nnet1(shared_fn):
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-    for i, n in enumerate(train.maker.env.toposort()):
-        print i, n
+#    for i, n in enumerate(train.maker.env.toposort()):
+#        print i, n
 
     xval = numpy.asarray(numpy.random.rand(*shape_img), dtype='float32')
     yval = numpy.asarray(numpy.random.rand(n_batch, n_out), dtype='float32')
