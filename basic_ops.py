@@ -1,4 +1,4 @@
-import StringIO
+import StringIO, sys
 import numpy
 
 from theano import Op, Type, Apply, Variable, Constant
@@ -338,7 +338,7 @@ class GpuElemwise(Op):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename)
+        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename, id(self))
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
         if (nd):
@@ -411,11 +411,178 @@ class GpuElemwise(Op):
             #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
         print >> sio, "}"
 
-        #print sio.getvalue()
+        print sio.getvalue()
+        return sio.getvalue()
+
+    def naivealgo_c_src_kernel_tiling(self, node, nodename):
+        """ The kernel applies to problems with <= 5 dimensions """
+
+        #The kernel is intended to be structured roughly like this:
+        """
+        static __global__ void kernel()
+        {
+            for (int v = blockIdx.y; v < dim0; v += gridDim.x)
+            {
+                for (int w = blockIdx.y; w < dim1; w += gridDim.y)
+                {
+                    for (int x = threadIdx.x; x < dim2; x += blockDim.x)
+                    {
+                        for (int y = threadIdx.y; y < dim3; y += blockDim.y)
+                        {
+                            for (int z = threadIdx.z; z < dim4; z += blockDim.z)
+                            {
+                                out[v * out_stride[0] + ...] = f(in1[...],  in2[...])
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        """
+
+        nd = node.outputs[0].type.ndim
+        sio = StringIO.StringIO()
+        #print 'C_SRC_KERNEL', sio.getvalue()
+
+        def _logical_scalar(x):
+            return all(x.type.broadcastable)
+
+        if nd in (4,):
+            # print some leading comments to make the code easier to read
+            for ipos, i in enumerate(node.inputs):
+                print >> sio, "//    Input  ", ipos, str(i.type)
+            for ipos, i in enumerate(node.outputs):
+                print >> sio, "//    Output ", ipos, str(i.type)
+            print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(
+                    self.scalar_op.__class__.__name__,
+                    nodename, 
+                    id(self),
+                    'tiling%i'%nd)
+            if (nd):
+                print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
+            if (nd):
+                print >> sio, "\t,", ", ".join("const int log2_dim%i" % i for i in xrange(nd))
+            #declare inputs
+            for ipos, i in enumerate(node.inputs):
+                s = ", ".join(["const float * i%i_data" % ipos] + list("int i%i_str_%i" % (ipos, d) for d in xrange(nd)))
+                print >> sio, "\t,", s
+            #declare outputs
+            for ipos, i in enumerate(node.outputs):
+                s = ", ".join(["float * o%i_data" % ipos] + list("int o%i_str_%i" % (ipos, d) for d in xrange(nd)))
+                print >> sio, "\t,", s
+                #print >> sio, "\t,", ", ".join("int o%i_str_%i" % (ipos, d) for d in xrange(nd))
+                #print >> sio, "\t,", "float * o%i_data" % ipos
+            print >> sio, "\t)\n{"
+
+            # For each input that is a scalar which has been broadcasted to a tensor,
+            #     load it into a local variable
+            print >> sio, "    __shared__ float value0[%i];" % len(node.inputs)
+            print >> sio, "    if ((threadIdx.x == 0) && (threadIdx.y == 0)) {"
+            for ipos, i in enumerate(node.inputs):
+                if _logical_scalar(i):
+                    print >> sio, "    value0[%i] = i%i_data[0];" % (ipos, ipos)
+            print >> sio, "    }"
+
+            if (nd == 4):
+                print >> sio, """
+                for (int pos0 = blockIdx.x; pos0 < dim0; pos0 += gridDim.x)
+                {
+                    for (int pos1 = blockIdx.y; pos1 < dim1; pos1 += gridDim.y)
+                    {
+                        //for (int pos2 = threadIdx.x; pos2 < dim2; pos2 += blockDim.x)
+                        for (int pos2 = threadIdx.y; pos2 < dim2; pos2 += blockDim.y)
+                        {
+                            //for (int pos3 = threadIdx.y; pos3 < dim3; pos3 += blockDim.y)
+                            for (int pos3 = threadIdx.x; pos3 < dim3; pos3 += blockDim.x)
+                            {
+                """
+            else:
+                raise NotImplementedError()
+            
+            for ipos, i in enumerate(node.inputs):
+                if not _logical_scalar(i):
+                    print >> sio, "        const float * ii_i%i_data = i%i_data;" % (ipos, ipos)
+            for ipos, i in enumerate(node.outputs):
+                print >> sio, "        float * ii_o%i_data = o%i_data;" % (ipos, ipos)
+            for d in xrange(nd):
+                for ipos, i in enumerate(node.inputs):
+                    if not _logical_scalar(i):
+                        print >> sio, "        ii_i%i_data += pos%i * i%i_str_%i;" % (ipos, d, ipos, d)
+                for ipos, i in enumerate(node.outputs):
+                    print >> sio, "        ii_o%i_data += pos%i * o%i_str_%i;" % (ipos, d, ipos, d)
+
+            # perform the scalar operation on the input and output references
+            #TODO: What if the scalar_op needs support_code??
+            task_code = self.scalar_op.c_code(
+                    Apply(self.scalar_op,
+                        [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                        [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                    , nodename + '_scalar_'
+                    , [('value0[%i]' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
+                    , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
+                    , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+            print >> sio, "       ", task_code
+
+            print >> sio, "    }" * nd
+
+            #TODO: insert runtime stride checks that select the best loop order either here, or in
+            # the host code that launched the  kernel (host code probably better spot)
+
+            #indent = " "*(4*d+7)
+            #for ipos, i in enumerate(node.inputs):
+                #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
+            print >> sio, "}"
+
+        print sio.getvalue()
+        return sio.getvalue()
+
+
+    def naivealgo_c_src_kernel_Ccontiguous(self, node, nodename):
+        nd = node.outputs[0].type.ndim
+        sio = StringIO.StringIO()
+        #print 'C_SRC_KERNEL', sio.getvalue()
+
+        def _logical_scalar(x):
+            return all(x.type.broadcastable)
+
+        for ipos, i in enumerate(node.inputs):
+            print >> sio, "//    Input  ", ipos, str(i.type)
+        for ipos, i in enumerate(node.outputs):
+            print >> sio, "//    Output ", ipos, str(i.type)
+        print >> sio, "static __global__ void kernel_%s_%s_Ccontiguous (unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename)
+        #declare inputs
+        for ipos, i in enumerate(node.inputs):
+            print >> sio, "\t,", "const float * i%i_data" % ipos
+        #declare outputs
+        for ipos, i in enumerate(node.outputs):
+            print >> sio, "\t,", "float * o%i_data" % ipos
+        print >> sio, "\t)\n{"
+        print >> sio, "    const int idx = blockIdx.x * blockDim.x + threadIdx.x;"
+        print >> sio, "    const int numThreads = blockDim.x * gridDim.x;"
+
+        #loop over the elements to be treated by this kernel call
+        print >> sio, "    for (int i = idx; i < numEls; i += numThreads) {"
+        # perform the scalar operation on the input and output references
+        #TODO: What if the scalar_op needs support_code??
+        task_code = self.scalar_op.c_code(
+                Apply(self.scalar_op,
+                    [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                    [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                , nodename + '_scalar_'
+                , ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)] 
+                , ['o%i_data[i]'%ipos for ipos, i in enumerate(node.outputs)] 
+                , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+        print >> sio, "       ", task_code
+        print >> sio, "    }"
+        print >> sio, "}"
+
+        print sio.getvalue()
         return sio.getvalue()
 
     def naivealgo_c_src_callkernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
+        id_self = id(self)
         d = dict()
         #input_params and output_params go into the function declaration/definition
         input_params = ", ".join("const float * i%i_data, const int * i%i_str"%(ipos, ipos) 
@@ -430,6 +597,73 @@ class GpuElemwise(Op):
                 for ipos in xrange(len(node.outputs)))
 
         prod_dims = '*'.join("dims[%i]"%di for di in xrange(nd))
+
+        scalar_op=self.scalar_op.__class__.__name__
+
+        ### NOTE WELL: log2_dims is not initialized on input to this function... it is meant as
+        ### storage space where the log2_dims *could* be computed and stored.
+        sio = StringIO.StringIO()
+        print >> sio, """
+        static inline bool 
+        _is_c_contiguous_%(nodename)s(const int nd, const int * dims, const int * strides)
+        {
+            bool c_contiguous = true;
+            int size = 1;
+            for (int i = nd-1; (i >= 0) and c_contiguous; --i)
+            {
+                if (dims[i] == 1)
+                    continue;
+                if (strides[i] != size)
+                {
+                    c_contiguous = false;
+                }
+                size = size * dims[i];
+            }
+            return c_contiguous;
+        }
+        static void callkernel_%(nodename)s(unsigned int numEls, const int d,
+            const int * dims, const int * log2_dims,
+            %(input_params)s,
+            %(output_params)s)
+        {
+            numEls = %(prod_dims)s;
+            std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s_%(id_self)s     w numEls" << numEls << "\\n";
+        """ %locals()
+        # DEBUGPRINT
+        print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
+            for di in xrange(nd)) + ["'\\n';"])
+        # DEBUGPRINT
+        for ipos in xrange(len(node.inputs)):
+            print >> sio, """
+            std::cerr << "   %(ipos)s " << 
+        """ %locals() + " << ' ' <<  ".join(["i%i_data"%ipos]
+                + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
+
+        # Try to launch the Ccontiguous version
+        kernel_call_args = ["numEls"]
+        for ipos in xrange(len(node.inputs)):
+            kernel_call_args.append("i%i_data"%ipos)
+        for ipos in xrange(len(node.outputs)):
+            kernel_call_args.append("o%i_data"%ipos)
+        kernel_call_args = ", ".join(kernel_call_args)
+        print >> sio, "if (" \
+                + " && ".join(["_is_c_contiguous_%s(%i, dims, i%i_str)" % (nodename, nd, ipos) for ipos in xrange(len(node.inputs))]) \
+                + ')'
+        print >> sio, """
+            {
+                std::cerr << "   Running Ccontiguous version \\n";
+                int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+
+                //TODO: check error value.  If success, return.
+            }
+            """ %locals()
+        
+
+        #
+        # Try to launch a general version        
+        #
 
         # kernel_call_args are used to invoke the cuda kernel
         kernel_call_args = ["numEls"]
@@ -449,38 +683,57 @@ class GpuElemwise(Op):
             #kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
         kernel_call_args = ", ".join(kernel_call_args)
 
-        d.update(locals())
-        d["scalar_op"]=self.scalar_op.__class__.__name__
+        if (nd == 4): # tiling kernel
+            print >> sio, """
+                else
+                {
+                    std::cerr << "   Running tiling 4D \\n";
+                    dim3 gridDim(dims[0], dims[1]);
+                    dim3 blockDim;
+                    if (0) {
+                        blockDim.y = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                        blockDim.x = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.y));
+                    }
+                    else {
+                        blockDim.x = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                        blockDim.y = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.x));
+                    }
 
-        ### NOTE WELL: log2_dims is not initialized on input to this function... it is meant as
-        ### storage space where the log2_dims *could* be computed and stored.
-        rval = """
+                    kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_tiling4<<<gridDim, blockDim>>>(%(kernel_call_args)s);
 
-        static void callkernel_%(nodename)s(unsigned int numEls, const int d,
-            const int * dims, const int * log2_dims,
-            %(input_params)s,
-            %(output_params)s)
-        {
-            numEls = %(prod_dims)s;
-            int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-            int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
-            kernel_%(scalar_op)s_%(nodename)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
-            //std::cerr << "ADDCALL a str" << i0_str[0] << " "<< i0_str[1] << "\\n";
-            //std::cerr << "ADDCALL a data" << i0_data << "\\n";
-            //std::cerr << "ADDCALL b str" << i1_str[0] << " "<< i1_str[1] << "\\n";
-            //std::cerr << "ADDCALL b data" << i1_data << "\\n";
-            //std::cerr << "ADDCALL z str" << o0_str[0] << " "<< o0_str[1] << "\\n";
-            //std::cerr << "ADDCALL z data" << o0_data << "\\n";
+                    if( cudaSuccess != cudaGetLastError()) 
+                    {
+                        std::cerr << "   DEBUG: tiling4 call failure... falling back to general version \\n";
+                        int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                        int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                        kernel_%(scalar_op)s_%(nodename)s_%(id_self)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                    }
+                }
         }
-        """ %d
-        return rval
+            """ %locals()
+        else:
+            print >> sio, """
+                else
+                {
+                    std::cerr << "   Running general version \\n";
+                    int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                    int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                    kernel_%(scalar_op)s_%(nodename)s_%(id_self)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                }
+        }
+            """ %locals()
+        #N.B. cudaGetLastError is called by c_code
+        return sio.getvalue()
 
     def naivealgo_c_support_code_apply(self, node, nodename):
-        return self.naivealgo_c_src_kernel(node, nodename) + self.naivealgo_c_src_callkernel(node, nodename)
+        return self.naivealgo_c_src_kernel(node, nodename) \
+                + self.naivealgo_c_src_kernel_Ccontiguous(node, nodename) \
+                + self.naivealgo_c_src_kernel_tiling(node, nodename) \
+                + self.naivealgo_c_src_callkernel(node, nodename)
 
     def c_support_code_apply(self, node, nodename):
-        #rval = self.naivealgo_c_support_code_apply(node, nodename)
-        rval = self.recalgo_c_support_code_apply(node, nodename)
+        rval = self.naivealgo_c_support_code_apply(node, nodename)
+        #rval = self.recalgo_c_support_code_apply(node, nodename)
         #print rval
         return rval
 
