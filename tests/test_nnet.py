@@ -20,7 +20,8 @@ def print_mode(mode):
         mode.print_summary()
 
 def run_nnet(use_gpu):
-    n_batch = 16
+    #n_batch = 16
+    n_batch = 60 #Fred recommends a nice big batch
     n_in = 1024
     n_hid = 2048
     n_out = 10
@@ -213,19 +214,20 @@ def test_conv_nnet2():
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
-def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
+def run_conv_nnet2_classif(shared_fn, isize, ksize):
 
     n_batch = 60
-    shape_img = (n_batch, 1, 32, 32)
+    shape_img = (n_batch, 1, isize, isize)
 
-    n_kern = 20
-    shape_kern = (n_kern, 1, 5, 5)
+    n_kern = 20  # 6 were used in LeNet5
+    shape_kern = (n_kern, 1, ksize, ksize)
 
-    n_kern1 = 30
-    shape_kern1 = (n_kern1, n_kern, 5, 5)
+    n_kern1 = 30 # 16 were used in LeNet5
+    shape_kern1 = (n_kern1, n_kern, ksize, ksize)
 
-    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((32, 32), (5, 5), 'valid')
-    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2, logical_hid_shape[1]/2), (5, 5), 'valid')
+    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((isize, isize), (ksize, ksize), 'valid')
+    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2,
+        logical_hid_shape[1]/2), (ksize, ksize), 'valid')
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
     n_out = 10
 
@@ -246,8 +248,8 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
     hid = tensor.tanh(conv_op(x, w0)+b0)
     hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1)
     hid_flat = hid1.reshape((n_batch, n_hid))
-    out = tensor.tanh(tensor.dot(hid_flat, v)+c)
-    loss = tensor.sum(0.5 * (out-y)**2 * lr)
+    out = tensor.nnet.softmax(tensor.dot(hid_flat, v)+c)
+    loss = tensor.sum(tensor.nnet.crossentropy_categorical_1hot(out, tensor.argmax(y, axis=1)) * lr)
     print 'loss type', loss.type
 
     params = [w0, b0, w1, b1, v, c]
@@ -270,10 +272,21 @@ def run_conv_nnet2_classif(shared_fn): # pretend we are training LeNet for MNIST
     print_mode(mode)
     return rval
 
-def test_conv_nnet2_classif():
-    numpy.random.seed(23456)
-    rval_cpu = run_conv_nnet2(shared)
-    numpy.random.seed(23456)
-    rval_gpu = run_conv_nnet2(tcn.shared_constructor)
+def run_test_conv_nnet2_classif(seed, isize, ksize):
+    numpy.random.seed(seed)
+    rval_cpu = run_conv_nnet2_classif(shared, isize, ksize)
+    numpy.random.seed(seed)
+    rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize)
     assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
+def test_lenet_28(): #MNIST
+    run_test_conv_nnet2_classif(23485, 28, 5)
+
+def test_lenet_32(): #CIFAR10 / Shapeset
+    run_test_conv_nnet2_classif(23485, 32, 5)
+
+def test_lenet_108(): # NORB
+    run_test_conv_nnet2_classif(23485, 108, 7)
+
+def test_lenet_256(): # ImageNet
+    run_test_conv_nnet2_classif(23485, 256, 9)
