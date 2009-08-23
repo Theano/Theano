@@ -501,11 +501,14 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #backport
     #preargs= [] if preargs is None else list(preargs)
     preargs.append('-fPIC')
+    
+
+    #DSE allow for undefined symbols
     if sys.platform=='darwin' :
         preargs.extend(['-undefined','dynamic_lookup'])
 
-
     no_opt = False
+
 
     include_dirs = [distutils.sysconfig.get_python_inc()] + \
                     numpy.distutils.misc_util.get_numpy_include_dirs()\
@@ -521,11 +524,11 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
-    if sys.platform=='darwin' :
-        #we will not link against -lpython2.5. Instead we will use -undefined dynamic_lookup. This makes it easier to avoid problems with frameworks
-        pass
-    else :
-        libs = [libname] + libs
+
+
+    #we will not link against -lpython2.5. Linux doesn't mind the undefined symbols. Neither does OS X if we use -undefined dynamic_lookup. 
+    #This makes it easier to avoid problems with frameworks
+    #libs = [libname] + libs
 
     workdir = location
 
@@ -554,7 +557,6 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
     debug('Running cmd', ' '.join(cmd))
-
     p = subprocess.Popen(cmd)
     status = p.wait()
 
