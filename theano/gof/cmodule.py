@@ -501,6 +501,10 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #backport
     #preargs= [] if preargs is None else list(preargs)
     preargs.append('-fPIC')
+    if sys.platform=='darwin' :
+        preargs.extend(['-undefined','dynamic_lookup'])
+
+
     no_opt = False
 
     include_dirs = [distutils.sysconfig.get_python_inc()] + \
@@ -517,7 +521,11 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
-    libs = [libname] + libs
+    if sys.platform=='darwin' :
+        #we will not link against -lpython2.5. Instead we will use -undefined dynamic_lookup. This makes it easier to avoid problems with frameworks
+        pass
+    else :
+        libs = [libname] + libs
 
     workdir = location
 
