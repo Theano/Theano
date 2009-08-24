@@ -503,9 +503,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     preargs.append('-fPIC')
     
 
-    #DSE allow for undefined symbols
-    if sys.platform=='darwin' :
-        preargs.extend(['-undefined','dynamic_lookup'])
+
 
     no_opt = False
 
@@ -527,8 +525,12 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
 
     #we will not link against -lpython2.5. Linux doesn't mind the undefined symbols. Neither does OS X if we use -undefined dynamic_lookup. 
-    #This makes it easier to avoid problems with frameworks
-    #libs = [libname] + libs
+    #DSE This makes it easier to avoid problems with frameworks
+    if sys.platform=='darwin' :
+        preargs.extend(['-undefined','dynamic_lookup'])
+    else :
+        #DSE I don't think it's necessary to ever link against -lpython2.x but i left it in for non-osx
+        libs = [libname] + libs
 
     workdir = location
 
