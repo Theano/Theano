@@ -1944,6 +1944,20 @@ def test_convert_to_complex():
             b = value(numpy.ones(3, dtype='complex128'))
             f = function([a],basic.convert_to_complex128(a))
             assert a.type.values_eq_approx(b.data, f(a.data))
+        for t in ['int8','int16','int32','int64','float32']:
+            a = value(numpy.ones(3, dtype=t))
+            b = value(numpy.ones(3, dtype='complex64'))
+            f = function([a],basic.convert_to_complex64(a))
+            assert a.type.values_eq_approx(b.data, f(a.data))
+
+        #this work, but should we allow it? How well it is implemented?
+        for t in ['float64']:
+            a = value(numpy.ones(3, dtype=t))
+            b = value(numpy.ones(3, dtype='complex64'))
+            f = function([a],basic.convert_to_complex64(a))
+            assert a.type.values_eq_approx(b.data, f(a.data))
+      
+
     
 def test_bug_complext_10_august_09():
     v0 = dmatrix()
