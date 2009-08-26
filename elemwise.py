@@ -201,6 +201,7 @@ class RecAlgo(object):
         return self.c_src_kernel(node, nodename) + self.c_src_callkernel(node, nodename)
 
 class NaiveAlgo(object):
+    verbose = False
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
@@ -287,7 +288,7 @@ class NaiveAlgo(object):
             #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
         print >> sio, "}"
 
-        print sio.getvalue()
+        #print sio.getvalue()
         return sio.getvalue()
 
     def c_src_kernel_tiling(self, node, nodename):
@@ -425,7 +426,7 @@ class NaiveAlgo(object):
         n_out = len(node.outputs)
         sio = StringIO.StringIO()
 
-        if nd not in (4,):
+        if nd not in (2,):
             return sio.getvalue()
 
         # print some leading comments to make the code easier to read
@@ -620,7 +621,7 @@ class NaiveAlgo(object):
         print >> sio, "    }"
         print >> sio, "}"
 
-        print sio.getvalue()
+        #print sio.getvalue()
         return sio.getvalue()
 
     def c_src_callkernel(self, node, nodename):
@@ -672,17 +673,18 @@ class NaiveAlgo(object):
             %(output_params)s)
         {
             numEls = %(prod_dims)s;
-            std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s_%(id_self)s     w numEls" << numEls << "\\n";
         """ %locals()
-        # DEBUGPRINT
-        print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
-            for di in xrange(nd)) + ["'\\n';"])
-        # DEBUGPRINT
-        for ipos in xrange(len(node.inputs)):
+        if self.verbose:
             print >> sio, """
-            std::cerr << "   %(ipos)s " << 
-        """ %locals() + " << ' ' <<  ".join(["i%i_data"%ipos]
-                + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
+                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s_%(id_self)s     w numEls" << numEls << "\\n";
+            """ %locals()
+            print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
+                for di in xrange(nd)) + ["'\\n';"])
+            for ipos in xrange(len(node.inputs)):
+                print >> sio, """
+                std::cerr << "   %(ipos)s " << 
+            """ %locals() + " << ' ' <<  ".join(["i%i_data"%ipos]
+                    + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
 
         # collapse contiguous right-most dimensions (ignoring scalars)
         # this is a good idea because [we assume that] the output has been allocated c_contiguous
@@ -700,8 +702,8 @@ class NaiveAlgo(object):
                         nd_collapse_size = nd_collapse_size_%(ipos)s;
                     }
                 """ %locals()
-        # DEBUGPRINT
-        print >> sio, 'std::cerr << "  nd_collapse " << nd_collapse << " " << nd_collapse_size << "\\n";'
+        if self.verbose:
+            print >> sio, 'std::cerr << "  nd_collapse " << nd_collapse << " " << nd_collapse_size << "\\n";'
         for ipos in xrange(len(node.inputs)):
             print >> sio, "int local_i%(ipos)s_str[%(nd)s];"%locals()
             for d in xrange(nd):
@@ -713,7 +715,6 @@ class NaiveAlgo(object):
         print >> sio, "int local_dims[%(nd)s];"%locals()
         for d in xrange(nd):
             print >> sio, "local_dims[%(d)s] = (%(d)s == nd_collapse) ? nd_collapse_size : dims[%(d)s];"%locals()
-
 
         def launch_Ccontiguous(nodename, id_self, scalar_op):
             kernel_call_args = ["numEls"]
@@ -739,51 +740,50 @@ class NaiveAlgo(object):
                 return 0;
                 """ %locals()
 
-        def launch_tile4():
-            if (False and nd == 4): # tiling kernel
+        def launch_nd_collapse_2(nodename, id_self, scalar_op):
+            if self.verbose:
                 print >> sio, """
-                {
-                    std::cerr << "   Running tiling 4D \\n";
-                    dim3 gridDim(dims[0], dims[1]);
-                    dim3 blockDim;
-                    if (0) {
-                        blockDim.y = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                        blockDim.x = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.y));
-                    }
-                    else
-                    {
-                        blockDim.x = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                        blockDim.y = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.x));
-                    }
-                    if ((o0_str[0] <= 0) || (o0_str[1] <= 0) || (o0_str[2] <= 0) || (o0_str[3] <= 0))
-                    {
-                        kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_tiling4<<<gridDim, blockDim>>>(%(kernel_call_args)s);
-                    } else {
-                        kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_tiling4_less_registers<<<gridDim, blockDim>>>(%(kernel_call_args)s);
-                    }
-
-                    cudaError_t err = cudaGetLastError();
-                    if( cudaSuccess != err) 
-                    {
-                        std::cerr << "   DEBUG: tiling4 call failure... falling back to general version \\n";
-                        std::cerr << "   DEBUG: tiling4 call failure... " << cudaGetErrorString(err) << "\\n";
-                        std::cerr << "   DEBUG: tiling4 call failure... grid" <<  gridDim.x<< " " << gridDim.y<< "\\n";
-                        std::cerr << "   DEBUG: tiling4 call failure... block" <<  blockDim.x<< " " << blockDim.y<< "\\n";
-                        int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                        int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
-                        kernel_%(scalar_op)s_%(nodename)s_%(id_self)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
-                        CNDA_THREAD_SYNC;
-                        err = cudaGetLastError();
-                        if( cudaSuccess != err) 
-                        {
-                            PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s", cudaGetErrorString(err));
-                            return -1;
-                        
-                        }                         
-                    }
-                    return 0;
-                }
+                std::cerr << "   Running tiling 2D \\n";
+                """
+            print >> sio, """
+            dim3 gridDim(dims[0], dims[1]);
+            dim3 blockDim;
+            if (0) {
+                blockDim.y = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                blockDim.x = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.y));
             }
+            else
+            {
+                blockDim.x = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                blockDim.y = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.x));
+            }
+            if ((o0_str[0] <= 0) || (o0_str[1] <= 0) || (o0_str[2] <= 0) || (o0_str[3] <= 0))
+            {
+                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_tiling4<<<gridDim, blockDim>>>(%(kernel_call_args)s);
+            } else {
+                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_tiling4_less_registers<<<gridDim, blockDim>>>(%(kernel_call_args)s);
+            }
+
+            cudaError_t err = cudaGetLastError();
+            if( cudaSuccess != err) 
+            {
+                std::cerr << "   DEBUG: tiling4 call failure... falling back to general version \\n";
+                std::cerr << "   DEBUG: tiling4 call failure... " << cudaGetErrorString(err) << "\\n";
+                std::cerr << "   DEBUG: tiling4 call failure... grid" <<  gridDim.x<< " " << gridDim.y<< "\\n";
+                std::cerr << "   DEBUG: tiling4 call failure... block" <<  blockDim.x<< " " << blockDim.y<< "\\n";
+                int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                CNDA_THREAD_SYNC;
+                err = cudaGetLastError();
+                if( cudaSuccess != err) 
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s", cudaGetErrorString(err));
+                    return -1;
+                
+                }                         
+            }
+            return 0;
                 """ %locals()
 
         def launch_General(nodename, id_self, scalar_op):
@@ -792,7 +792,7 @@ class NaiveAlgo(object):
             kernel_call_args.extend("dims[%i]"%di for di in xrange(nd))
             for ipos in xrange(len(node.inputs)):
                 kernel_call_args.append(
-                        ", ".join(["i%i_data"%ipos] + list("local_i%i_str[%i]"%(ipos, di) for di in xrange(nd)))
+                        ", ".join(["i%i_data"%ipos] + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd)))
                         )
                 #strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(nd))
                 #kernel_call_args.append( "%s, i%i_data" % (strides, ipos))
@@ -803,8 +803,11 @@ class NaiveAlgo(object):
                 #strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(nd))
                 #kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
             kernel_call_args = ", ".join(kernel_call_args)
+            if self.verbose:
+                print >> sio, """
+                    std::cerr << "   Running general version \\n";
+                    """
             print >> sio, """
-                std::cerr << "   Running general version \\n";
                 int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
                 kernel_%(scalar_op)s_%(nodename)s_%(id_self)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
@@ -837,11 +840,13 @@ class NaiveAlgo(object):
 
 
     def c_support_code_apply(self, node, nodename):
-        return self.c_src_kernel(node, nodename) \
-                + self.c_src_kernel_Ccontiguous(node, nodename) \
-                + self.c_src_kernel_tiling(node, nodename) \
-                + self.c_src_kernel_tiling_less_registers(node, nodename) \
-                + self.c_src_callkernel(node, nodename)
+        return "".join([ 
+            self.c_src_kernel(node, nodename),
+            self.c_src_kernel_Ccontiguous(node, nodename),
+            #self.c_src_kernel_tiling(node, nodename),
+            #self.c_src_kernel_tiling_less_registers(node, nodename),
+            self.c_src_callkernel(node, nodename),
+            ])
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         d = dict(sub)
