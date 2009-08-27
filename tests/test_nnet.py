@@ -221,9 +221,8 @@ def test_conv_nnet2():
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
-def run_conv_nnet2_classif(shared_fn, isize, ksize, n_iter=25):
+def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch=60, n_iter=25):
 
-    n_batch = 60
     shape_img = (n_batch, 1, isize, isize)
 
     n_kern = 20  # 6 were used in LeNet5
@@ -267,13 +266,13 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_iter=25):
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-    if theano.compile.mode.default_mode == 'PROFILE_MODE':
+    if False:
         for i, n in enumerate(train.maker.env.toposort()):
             print i, n
 
     xval = numpy.asarray(numpy.random.rand(*shape_img), dtype='float32')
     yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='float32')
-    lr = numpy.asarray(0.001, dtype='float32')
+    lr = numpy.asarray(0.01, dtype='float32')
 
     for i in xrange(n_iter):
         rval = train(xval, yval, lr)
@@ -282,26 +281,26 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_iter=25):
     print_mode(mode)
     return rval
 
-def run_test_conv_nnet2_classif(seed, isize, ksize, ignore_error=False):
+def run_test_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False):
     if ignore_error:
         numpy.random.seed(seed)
         rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize)
         return
 
     numpy.random.seed(seed)
-    rval_cpu = run_conv_nnet2_classif(shared, isize, ksize)
+    rval_cpu = run_conv_nnet2_classif(shared, isize, ksize, bsize)
     numpy.random.seed(seed)
-    rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize)
+    rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize)
     assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
 def test_lenet_28(): #MNIST
     run_test_conv_nnet2_classif(23485, 28, 5)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
-    run_test_conv_nnet2_classif(23485, 32, 5, ignore_error=False)
+    run_test_conv_nnet2_classif(23485, 32, 5, 60, ignore_error=False)
 
 def test_lenet_108(): # NORB
-    run_test_conv_nnet2_classif(23485, 108, 7)
+    run_test_conv_nnet2_classif(23485, 108, 7, 10)
 
 def test_lenet_256(): # ImageNet
-    run_test_conv_nnet2_classif(23485, 256, 9)
+    run_test_conv_nnet2_classif(23485, 256, 9, 2)
