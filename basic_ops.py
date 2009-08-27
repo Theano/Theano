@@ -21,7 +21,6 @@ def info(*msg):
 def debug(*msg):
     _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
 
-
 def as_cuda_ndarray_variable(x):
     if hasattr(x, '_as_CudaNdarrayVariable'):
         return x._as_CudaNdarrayVariable()
@@ -63,7 +62,6 @@ class GpuFromHost(Op):
         return gz,
         #return [HostFromGpu()(gz)]
 gpu_from_host = GpuFromHost()
-
 
 class GpuElemwise(Op):
     nin = property(lambda self: self.scalar_op.nin)
