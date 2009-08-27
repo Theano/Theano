@@ -279,7 +279,12 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize):
     print_mode(mode)
     return rval
 
-def run_test_conv_nnet2_classif(seed, isize, ksize):
+def run_test_conv_nnet2_classif(seed, isize, ksize, ignore_error=False):
+    if ignore_error:
+        numpy.random.seed(seed)
+        rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize)
+        return
+
     numpy.random.seed(seed)
     rval_cpu = run_conv_nnet2_classif(shared, isize, ksize)
     numpy.random.seed(seed)
@@ -290,7 +295,7 @@ def test_lenet_28(): #MNIST
     run_test_conv_nnet2_classif(23485, 28, 5)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
-    run_test_conv_nnet2_classif(23485, 32, 5)
+    run_test_conv_nnet2_classif(23485, 32, 5, ignore_error=False)
 
 def test_lenet_108(): # NORB
     run_test_conv_nnet2_classif(23485, 108, 7)
