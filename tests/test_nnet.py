@@ -264,7 +264,7 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize):
         print i, n
 
     xval = numpy.asarray(numpy.random.rand(*shape_img), dtype='float32')
-    yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='int32')#FRED: THIS DON'T WORK. THIS SET YVAL TO ALL ZERO!
+    yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='float32')
     lr = numpy.asarray(0.01, dtype='float32')
 
     for i in xrange(10):
