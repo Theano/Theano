@@ -214,9 +214,8 @@ def test_conv_nnet2():
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
-def run_conv_nnet2_classif(shared_fn, isize, ksize):
+def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch=60):
 
-    n_batch = 60
     shape_img = (n_batch, 1, isize, isize)
 
     n_kern = 20  # 6 were used in LeNet5
@@ -286,7 +285,9 @@ def test_lenet_32(): #CIFAR10 / Shapeset
     run_test_conv_nnet2_classif(23485, 32, 5)
 
 def test_lenet_108(): # NORB
-    run_test_conv_nnet2_classif(23485, 108, 7)
+    #nbatch=10 as otherwise too slow for test
+    run_test_conv_nnet2_classif(23485, 108, 7, 10)
 
 def test_lenet_256(): # ImageNet
-    run_test_conv_nnet2_classif(23485, 256, 9)
+    #nbatch=10 as otherwise too slow for test
+    run_test_conv_nnet2_classif(23485, 256, 9, 10)
