@@ -359,6 +359,7 @@ class GpuSum(Op):
         z[0] = x.reduce_sum(self.reduce_mask)
 
 class GpuReshape(tensor.Reshape):
+    # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, shp):
         return Apply(self, [x, shp], [CudaNdarrayType([False]*self.ndim)()])
     def perform(self, node, (x, shp), (out,)):
@@ -368,6 +369,7 @@ class GpuReshape(tensor.Reshape):
         out[0] = x.reshape(tuple(shp))
 
 class GpuSubtensor(tensor.Subtensor):
+    # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
         rval.inputs[0] = x # clobber the 'astensor'
@@ -448,36 +450,4 @@ class GpuShape(tensor.Shape):
     def make_node(self, x):
         return Apply(self, [x], [tensor.lvector()])
 gpu_shape = GpuShape()
-
-if 0:
-    class GpuDimFlip(Op):
-        """This Op implements a very special case of Subtensor, in which some (or all) of the
-        strides are negated.
-
-        This Op should be erased when a proper GpuSubtensor is implemented.
-        """
-
-        def __init__(self, mask):
-            Op.__init__(self)
-            self.mask = mask
-
-        def __eq__(self, other):
-            return type(self) == type(other) and self.mask == other.mask
-
-        def __hash__(self):
-            return hash(type(self)) ^ hash(self.mask)
-
-        def __str__(self):
-            return '%s{%s}' %(self.__class__.__name__, str(self.mask))
-
-        def perform(self, node, (x,), (out,)):
-            z = x.view()
-            total_dev_data_offset = 0
-            for i, f in enumerate(self.mask):
-                if f and z.shape[i] > 1:
-                    dev_data_offset += (z.dim[i] - 1) * z.str[i]
-                    z.str[i] *= -1
-            z.dev_data += total_dev_data_offset
-            out[0] = z
-
 
