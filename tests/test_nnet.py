@@ -259,8 +259,8 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch=60):
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-    for i, n in enumerate(train.maker.env.toposort()):
-        print i, n
+#    for i, n in enumerate(train.maker.env.toposort()):
+#        print i, n
 
     xval = numpy.asarray(numpy.random.rand(*shape_img), dtype='float32')
     yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='float32')
@@ -271,11 +271,11 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch=60):
     print_mode(mode)
     return rval
 
-def run_test_conv_nnet2_classif(seed, isize, ksize):
+def run_test_conv_nnet2_classif(seed, isize, ksize, bsize):
     numpy.random.seed(seed)
-    rval_cpu = run_conv_nnet2_classif(shared, isize, ksize)
+    rval_cpu = run_conv_nnet2_classif(shared, isize, ksize, bsize)
     numpy.random.seed(seed)
-    rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize)
+    rval_gpu = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize)
     assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
 def test_lenet_28(): #MNIST
