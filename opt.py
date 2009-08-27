@@ -255,7 +255,6 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
 @register_opt()
 @local_optimizer([])
 def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
-    print 'REPLACING ', node, '??'
     if isinstance(node.op, tensor.nnet.CrossentropySoftmax1HotWithBiasDx):
         dnll,sm,yidx = node.inputs
         if sm.owner and sm.owner.op == host_from_gpu:
@@ -264,6 +263,5 @@ def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
                 gpu_from_host(dnll),
                 gpu_sm,
                 gpu_from_host(cast(yidx, 'float32')))
-            print 'YEP ', node
             return [host_from_gpu(gpu_dx)]
     return False

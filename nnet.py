@@ -224,8 +224,6 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
             }
         }
         {
-            std::cerr << "LAUNCHING NeW KEWNEL\\n";
-
             kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s
                 <<<
                     CudaNdarray_HOST_DIMS(cnda_%(dx)s)[0],
@@ -233,6 +231,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
                 >>>(
                         CudaNdarray_HOST_DIMS(cnda_%(dx)s)[0],
                         CudaNdarray_HOST_DIMS(cnda_%(dx)s)[1], 
+
                         CudaNdarray_DEV_DATA(cnda_%(dnll)s),
                         CudaNdarray_HOST_STRIDES(cnda_%(dnll)s)[0],
 
@@ -265,23 +264,25 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
            const float * y_idx, const int y_idx_s0,
            float * dx)
         {
-        return;
-            for (size_t i = blockIdx.x; i < N; i += gridDim.x)
+            for (int i = blockIdx.x; i < N; i += gridDim.x)
             {
                 float dnll_i = dnll[i * dnll_s0];
                 int y_i = (int)y_idx[i * y_idx_s0];
 
-                for (size_t j = threadIdx.x; j < K; j += blockDim.x)
+                for (int j = threadIdx.x; j < K; j += blockDim.x)
                 {
                     if (y_i == j)
                     {
-                        dx[i * K + j] = dnll_i * (sm[i * sm_s0 + j * sm_s1]-1);
+                        dx[i * K + j] = dnll_i * (sm[i * sm_s0 + j * sm_s1]-1.0);
                     }
                     else
                     {
                         dx[i * K + j] = dnll_i * sm[i * sm_s0 + j * sm_s1];
                     }
+                    //dx[i * K + j] = dnll_i * sm[i * sm_s0 + j * sm_s1];
+                    //dx[i*K+j] = 0;
                 }
             }
         }
         """ % locals()
+

@@ -221,7 +221,7 @@ def test_conv_nnet2():
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
-def run_conv_nnet2_classif(shared_fn, isize, ksize):
+def run_conv_nnet2_classif(shared_fn, isize, ksize, n_iter=25):
 
     n_batch = 60
     shape_img = (n_batch, 1, isize, isize)
@@ -242,7 +242,7 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize):
     b0 = shared_fn(numpy.asarray(numpy.zeros((n_kern,1,1)), dtype='float32'), 'b0')
     w1 = shared_fn(numpy.asarray(0.01*(numpy.random.rand(*shape_kern1)-0.5), dtype='float32'), 'w1')
     b1 = shared_fn(numpy.asarray(numpy.zeros((n_kern1,1,1)), dtype='float32'), 'b1')
-    v = shared_fn(numpy.asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
+    v = shared_fn(numpy.asarray(0.01*numpy.random.randn(n_hid, n_out), dtype='float32'), 'c')
     c = shared_fn(numpy.asarray(numpy.zeros(n_out), dtype='float32'), 'c')
 
     x = tensor.Tensor(dtype='float32', broadcastable=(0,0,0,0))('x')
@@ -267,15 +267,18 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize):
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-    for i, n in enumerate(train.maker.env.toposort()):
-        print i, n
+    if theano.compile.mode.default_mode == 'PROFILE_MODE':
+        for i, n in enumerate(train.maker.env.toposort()):
+            print i, n
 
     xval = numpy.asarray(numpy.random.rand(*shape_img), dtype='float32')
-    yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='int32')#FRED: THIS DON'T WORK. THIS SET YVAL TO ALL ZERO!
-    lr = numpy.asarray(0.01, dtype='float32')
+    yval = numpy.asarray(numpy.random.rand(n_batch,n_out), dtype='float32')
+    lr = numpy.asarray(0.001, dtype='float32')
 
-    for i in xrange(10):
+    for i in xrange(n_iter):
         rval = train(xval, yval, lr)
+        if i % 10 == 0:
+            print 'rval', rval
     print_mode(mode)
     return rval
 

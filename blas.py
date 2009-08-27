@@ -185,5 +185,5 @@ class GpuConv(Op):
                 logical_img_shape=self.logical_img_hw,
                 logical_kern_shape=self.logical_kern_hw,
                 kern_align=self.logical_kern_align_top,
-                verbose=1)
+                verbose=0)
 
