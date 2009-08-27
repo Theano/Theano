@@ -12,6 +12,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
         return type(self) == type(other)
     def __hash__(self):
         return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, x, b, y_idx):
         nll = y_idx.type() #N.B. won't work when we don't cast y_idx to float anymore
         sm = x.type()
@@ -180,6 +182,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
         return type(self) == type(other)
     def __hash__(self):
         return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, dy, sm, y_idx):
         return Apply(self, [dy, sm, y_idx],[sm.type()])
     def perform(self, node, input_storage, output_storage):
