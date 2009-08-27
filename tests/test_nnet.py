@@ -14,17 +14,15 @@ logging.getLogger('theano.gradient').setLevel(logging.INFO)
 
 
 def get_mode():
+    if theano.compile.default_mode == 'CLINKER_MODE':
+        return theano.compile.mode.Mode(optimizer='fast_run', linker='c')
     return None if theano.compile.default_mode != "PROFILE_MODE" else theano.compile.ProfileMode()
+
 def print_mode(mode):
     if mode != None and isinstance(mode,(theano.compile.ProfileMode,)):
         mode.print_summary()
 
-def run_nnet(use_gpu):
-    #n_batch = 16
-    n_batch = 60 #Fred recommends a nice big batch
-    n_in = 1024
-    n_hid = 2048
-    n_out = 10
+def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_iter=100):
 
     if use_gpu:
         w = tcn.shared_constructor(0.01*(numpy.random.rand(n_in,n_hid)-0.5), 'w')
@@ -61,8 +59,10 @@ def run_nnet(use_gpu):
     yval = numpy.asarray(numpy.random.rand(n_batch, n_out), dtype='float32')
     lr = numpy.asarray(0.01, dtype='float32')
 
-    for i in xrange(100):
+    t0 = time.time()
+    for i in xrange(n_iter):
         rval = train(xval, yval, lr)
+    print 'LOOP TIME', time.time() - t0
         
     print_mode(mode)
     return rval
@@ -74,6 +74,13 @@ def test_run_nnet():
     rval_gpu = run_nnet(True)
     assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
+def test_run_nnet_med():
+    numpy.random.seed(23456)
+    rval_cpu = run_nnet(False, 10, 128, 50, 4, n_iter=10000)
+
+def test_run_nnet_small():
+    numpy.random.seed(23456)
+    rval_cpu = run_nnet(False, 10, 10, 4, 4, n_iter=100000)
 
 def run_conv_nnet1(shared_fn):
     n_batch = 16
