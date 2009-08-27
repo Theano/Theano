@@ -202,8 +202,8 @@ class RecAlgo(object):
 
 class NaiveAlgo(object):
     verbose = False
-    #cache_version = ()
-    cache_version = ('debug', 2)
+    cache_version = ()
+    cache_version = ('debug', 3)
 
     def __init__(self, scalar_op):
         self.scalar_op = scalar_op
@@ -893,10 +893,12 @@ class NaiveAlgo(object):
 
         for oname in outputs:
             print >> sio, """
-        if (cnda_%(oname)s) {
-            //TODO: check if we can maybe use existing storage
-            Py_DECREF(cnda_%(oname)s);
-            cnda_%(oname)s = NULL;
+        for (int i = 0; (i< %(nd)s) && (cnda_%(oname)s); ++i) {
+            if (dims[i] != CudaNdarray_HOST_DIMS(cnda_%(oname)s)[i])
+            {
+                Py_DECREF(cnda_%(oname)s);
+                cnda_%(oname)s = NULL;
+            }
         }
         if (NULL == cnda_%(oname)s)
         {
