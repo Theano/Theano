@@ -1807,6 +1807,12 @@ class Split(Op):
         if axis.type not in int_types: 
             raise TypeError('axis must have type lscalar', axis.type)
 
+#         # The following lines are necessary if we allow splits of zero
+#         if isinstance(axis, gof.Constant):
+#             x = unbroadcast(x, int(axis.data))
+#         else:
+#             x = unbroadcast(x, *range(x.type.ndim))
+
         inputs = [x, axis, splits]
         outputs = [x.type() for i in xrange(self.len_splits)]
 
@@ -1823,6 +1829,11 @@ class Split(Op):
         if len(splits) != self.len_splits:
             raise ValueError('In Split.perform(), len(splits) != len_splits.', 
                     (len(splits), self.len_splits))
+
+        if numpy.sum(splits) != len_along_axis:
+            raise ValueError('The splits sum to %s, expected %s' % (numpy.sum(splits), len_along_axis))
+        if not all(splits):
+            raise ValueError('Cannot have a split of zero.')
          
         # Checking is done, let's roll the splitting algorithm!
         # Basically we step along the given axis of x, extracting subtensors of size splits[i]
