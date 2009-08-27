@@ -79,7 +79,7 @@ class GpuElemwise(Op):
             self.ufunc = None
         self._rehash()
 
-        self.src_generator = NaiveAlgo(**self.__dict__)
+        self.src_generator = NaiveAlgo(self.scalar_op)
 
     def __getstate__(self):
         d = copy.copy(self.__dict__)

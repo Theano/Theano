@@ -202,10 +202,11 @@ class RecAlgo(object):
 
 class NaiveAlgo(object):
     verbose = False
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    #cache_version = ()
+    cache_version = ('debug', 2)
 
-        self.cache_version = ()
+    def __init__(self, scalar_op):
+        self.scalar_op = scalar_op
 
     def c_src_kernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
