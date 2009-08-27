@@ -3,8 +3,10 @@ from theano import tensor, scalar, compile
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
 
 from theano_cuda_ndarray.basic_ops import *
-from theano_cuda_ndarray.blas import gpu_dot22, gpu_gemm, GpuConv, GpuCrossentropySoftmaxArgmax1HotWithBias
-
+from theano_cuda_ndarray.blas import gpu_dot22, gpu_gemm, GpuConv
+from theano_cuda_ndarray.nnet import (
+        GpuCrossentropySoftmaxArgmax1HotWithBias,
+        GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.compile import optdb
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
 
@@ -248,4 +250,20 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
             return [host_from_gpu(gpu_nll), 
                     host_from_gpu(gpu_sm), 
                     cast(host_from_gpu(gpu_am), am_dtype)]
+    return False
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
+    print 'REPLACING ', node, '??'
+    if isinstance(node.op, tensor.nnet.CrossentropySoftmax1HotWithBiasDx):
+        dnll,sm,yidx = node.inputs
+        if sm.owner and sm.owner.op == host_from_gpu:
+            gpu_sm, = sm.owner.inputs
+            gpu_dx = GpuCrossentropySoftmax1HotWithBiasDx()(
+                gpu_from_host(dnll),
+                gpu_sm,
+                gpu_from_host(cast(yidx, 'float32')))
+            print 'YEP ', node
+            return [host_from_gpu(gpu_dx)]
     return False
