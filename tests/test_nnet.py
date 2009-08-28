@@ -1,9 +1,13 @@
 import sys, time
-import theano, theano.sandbox.conv
+import theano
+
 from theano.compile.sandbox.sharedvalue import shared
 from theano.compile.sandbox.pfunc import pfunc
 from theano import tensor
 import theano.tensor.nnet
+
+import theano.sandbox.conv
+import theano.sandbox.downsample
 
 import numpy
 
@@ -251,8 +255,10 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch=60, n_iter=25):
     conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op1 = theano.sandbox.conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
 
-    hid = tensor.tanh(conv_op(x, w0)+b0)
-    hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1)
+    ds_op = theano.sandbox.downsample.DownsampleFactorMax((2,2), ignore_border=False)
+
+    hid = tensor.tanh(ds_op(conv_op(x, w0)+b0))
+    hid1 = tensor.tanh(conv_op1(hid, w1) + b1)
     hid_flat = hid1.reshape((n_batch, n_hid))
     out = tensor.nnet.softmax(tensor.dot(hid_flat, v)+c)
     loss = tensor.sum(tensor.nnet.crossentropy_categorical_1hot(out, tensor.argmax(y, axis=1)) * lr)

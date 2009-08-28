@@ -4,6 +4,7 @@ from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
 
 from theano_cuda_ndarray.basic_ops import *
 from theano_cuda_ndarray.blas import gpu_dot22, gpu_gemm, GpuConv
+from theano_cuda_ndarray.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from theano_cuda_ndarray.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx)
@@ -148,42 +149,6 @@ def local_gpu_sum(node):
                 return [host_from_gpu(GpuSum(reduce_mask)(gpu_from_host(x)))]
     return False
 
-import theano.sandbox.conv
-@register_opt()
-@local_optimizer([])
-def local_gpu_conv(node):
-    """
-    gpu_from_host(conv) -> gpu_conv(gpu_from_host)
-
-    conv(host_from_gpu) -> host_from_gpu(conv)
-    """
-    def GpuConvOp_from_ConvOp(op):
-        ret = GpuConv(border_mode=op.out_mode,
-                    subsample=(op.dx, op.dy),
-                    logical_img_hw=op.imshp_logical[1:3],
-                    logical_kern_hw=op.kshp_logical,
-                    logical_kern_align_top=op.kshp_logical_top_aligned
-                    )
-        #HACK to print the number of MFlops in the profiler output.
-        if hasattr(op,'flops'):
-            ret.flops=op.flops
-        return ret
-
-    if node.op == gpu_from_host:
-        host_input = node.inputs[0]
-        if host_input.owner and isinstance(host_input.owner.op, theano.sandbox.conv.ConvOp):
-            gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
-            img, kern = host_input.owner.inputs
-            return [gpu_conv(gpu_from_host(img), gpu_from_host(kern))]
-
-    if isinstance(node.op, theano.sandbox.conv.ConvOp):
-        img, kern = node.inputs
-        img_on_gpu = (img.owner and img.owner.op == host_from_gpu)
-        kern_on_gpu = (kern.owner and kern.owner.op == host_from_gpu)
-        if img_on_gpu or kern_on_gpu:
-            gpu_conv = GpuConvOp_from_ConvOp(node.op)
-            return [host_from_gpu(gpu_conv(gpu_from_host(img), gpu_from_host(kern)))]
-
 @register_opt()
 @local_optimizer([])
 def local_gpu_reshape(node):
@@ -265,3 +230,61 @@ def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
                 gpu_from_host(cast(yidx, 'float32')))
             return [host_from_gpu(gpu_dx)]
     return False
+
+
+#### Convolution, maxpooling
+import theano.sandbox.conv
+@register_opt()
+@local_optimizer([])
+def local_gpu_conv(node):
+    """
+    gpu_from_host(conv) -> gpu_conv(gpu_from_host)
+
+    conv(host_from_gpu) -> host_from_gpu(conv)
+    """
+    def GpuConvOp_from_ConvOp(op):
+        ret = GpuConv(border_mode=op.out_mode,
+                    subsample=(op.dx, op.dy),
+                    logical_img_hw=op.imshp_logical[1:3],
+                    logical_kern_hw=op.kshp_logical,
+                    logical_kern_align_top=op.kshp_logical_top_aligned
+                    )
+        #HACK to print the number of MFlops in the profiler output.
+        if hasattr(op,'flops'):
+            ret.flops=op.flops
+        return ret
+
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and isinstance(host_input.owner.op, theano.sandbox.conv.ConvOp):
+            gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
+            img, kern = host_input.owner.inputs
+            return [gpu_conv(gpu_from_host(img), gpu_from_host(kern))]
+
+    if isinstance(node.op, theano.sandbox.conv.ConvOp):
+        img, kern = node.inputs
+        img_on_gpu = (img.owner and img.owner.op == host_from_gpu)
+        kern_on_gpu = (kern.owner and kern.owner.op == host_from_gpu)
+        if img_on_gpu or kern_on_gpu:
+            gpu_conv = GpuConvOp_from_ConvOp(node.op)
+            return [host_from_gpu(gpu_conv(gpu_from_host(img), gpu_from_host(kern)))]
+
+import theano.sandbox.downsample
+@register_opt()
+@local_optimizer([])
+def local_gpu_downsample_factor_max(node):
+    if isinstance(node.op, theano.sandbox.downsample.DownsampleFactorMax):
+        x, = node.inputs
+        if (x.owner and x.owner.op == host_from_gpu):
+            gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
+            return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_downsample_factor_max_grad(node):
+    if isinstance(node.op, theano.sandbox.downsample.DownsampleFactorMaxGrad):
+        x,z,gz = node.inputs
+        if (x.owner and x.owner.op == host_from_gpu):
+            gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
+            return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0], gpu_from_host(z), gpu_from_host(gz)))]
+
