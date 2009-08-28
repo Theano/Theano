@@ -8,6 +8,8 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 
 from theano import sparse, gof, Op, tensor, Variable, Apply
 from theano.printing import Print
+import numpy
+import __builtin__
 
 class DownsampleFactorMaxGrad(Op):
     def __init__(self, ds, ignore_border):
@@ -30,7 +32,7 @@ class DownsampleFactorMaxGrad(Op):
         return Apply(self, [x, maxout, gz], [x.type()])
 
     def perform(self, node, (x, maxout, gz), (gx_stg,)):
-        gx = N.zeros_like(x)
+        gx = numpy.zeros_like(x)
 
         ds0, ds1 = self.ds
         shape2 = (x.shape[2] / ds0 * ds0) if self.ignore_border else x.shape[2]
@@ -118,14 +120,14 @@ class DownsampleFactorMaxGrad(Op):
               mini_i = (mini_i + 1 == %(ds0)s) ? 0 : mini_i+1;
               zi += (mini_i == 0);
 
-              for (int j = x_shp1_usable; j < %(x)->dimensions[3]; ++j) {
+              for (int j = x_shp1_usable; j < %(x)s->dimensions[3]; ++j) {
                 dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
                 gxp[0] = 0;
               }
             }//for i
 
             for(int i = x_shp0_usable; i < %(x)s->dimensions[2]; i++){
-                for (int j = 0; j < %(x)->dimensions[3]; ++j) {
+                for (int j = 0; j < %(x)s->dimensions[3]; ++j) {
                     dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
                     gxp[0] = 0;
                 }
@@ -141,15 +143,17 @@ class DownsampleFactorMax(Op):
     This Op downsamples these images by taking the max over non-overlapping rectangular regions.
     """
 
-    def out_shape(imgshape, ignore_border=False):
+    @staticmethod
+    def out_shape(imgshape, ds, ignore_border=False):
         #old code not tested (not evenread)
-        rval = [imgshape[0], imgshape[1], imgshape[2]/self.ds[0], imgshape[3]/self.ds[1]]
-        if imgshape[2] % self.ds[0]:
-            rval[2] += 1
-        if imgshape[3] % self.ds[1]:
-            rval[3] += 1
-        return tuple(rval)
-
+        a, b, c, d = imgshape
+        rval = [a, b, c/ds[0], d/ds[1]]
+        if not ignore_border:
+            if c % ds[0]:
+                rval[2] += 1
+            if d % ds[1]:
+                rval[3] += 1
+        return rval;
 
     def __init__(self, ds, ignore_border=False):
         self.ds = tuple(ds)
@@ -173,7 +177,7 @@ class DownsampleFactorMax(Op):
         if len(x.shape)!=4:
             raise NotImplementedError('DownsampleFactorMax requires 4D input for now')
         if z[0] is None:
-            z[0] = N.zeros(self.out_shape(x.shape, self.ignore_border)) -float('inf')
+            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.ignore_border)) -float('inf')
         zz=z[0]
         ds0, ds1 = self.ds
 
