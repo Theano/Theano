@@ -5,8 +5,6 @@ from type import Type
 
 import sys, traceback
 from copy import copy
-from cutils import run_cthunk
-
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):

@@ -127,7 +127,6 @@ class Div(Binary):
         return x / y
 div = Div()
 
-
 def inputs():
     x = double('x')
     y = double('y')
@@ -250,3 +249,33 @@ def test_duallinker_mismatch():
         raise Exception("An exception should have been raised here!")
     except MyExc, e:
         pass
+
+
+################################
+# Test that failure code works #
+################################
+        
+class AddFail(Binary):
+    def c_code(self, node, name, (x, y), (z, ), sub):
+        fail=sub['fail']
+        return """%(z)s = %(x)s + %(y)s;
+            PyErr_SetString(PyExc_RuntimeError, "failing here");
+            %(fail)s;""" % locals()
+    def impl(self, x, y):
+        return x + y
+add_fail = AddFail()
+
+def test_fail_error():
+    x, y, z = inputs()
+    x = Constant(tdouble, 7.2, name = 'x')
+    e = add_fail(mul(x, y), mul(y, z))
+    lnk = OpWiseCLinker().accept(Env([y, z], [e]))
+    fn = lnk.make_function()
+    try:
+        res = fn(1.5, 3.0)
+    except RuntimeError:
+        print 'Yay, TEST PASSED'
+        return #test passed
+    assert 0 #test failed
+
+
