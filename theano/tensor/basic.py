@@ -446,42 +446,7 @@ class TensorType(Type):
 
     def c_support_code(cls):
         """Override `CLinkerOp.c_support_code` """
-        template = """
-        struct theano_complex%(nbits)s : public npy_complex%(nbits)s
-        {
-            typedef theano_complex%(nbits)s complex_type;
-            typedef npy_float%(half_nbits)s scalar_type;
-
-            complex_type operator +(complex_type y) {
-                complex_type ret;
-                ret.real = this->real + y.real;
-                ret.imag = this->imag + y.imag;
-                return ret;
-            }
-            complex_type operator -(complex_type y) {
-                complex_type ret;
-                ret.real = this->real - y.real;
-                ret.imag = this->imag - y.imag;
-                return ret;
-            }
-            complex_type operator *(complex_type y) {
-                complex_type ret;
-                ret.real = this->real * y.real - this->imag * y.imag;
-                ret.imag = this->real * y.imag + this->imag * y.real;
-                return ret;
-            }
-            complex_type operator /(complex_type y) {
-                complex_type ret;
-                scalar_type y_norm_square = y.real * y.real + y.imag * y.imag;
-                ret.real = (this->real * y.real + this->imag * y.imag) / y_norm_square;
-                ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
-                return ret;
-            }
-        };
-        """
-        return template % dict(nbits = 64, half_nbits = 32) + template % dict(nbits = 128, half_nbits = 64)
-        # todo: use C templating
-
+        return scal.Scalar("int8").c_support_code()
 
 # Easy constructors
 

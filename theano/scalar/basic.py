@@ -180,9 +180,23 @@ class Scalar(Type):
                 ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
                 return ret;
             }
-        };
-        """
-        return template % dict(nbits = 64, half_nbits = 32) + template % dict(nbits = 128, half_nbits = 64)
+            complex_type& operator =(const scalar_type& y) {
+            this->real=y;
+            this->imag=0;
+            return *this;
+            }
+            %(upcast)s
+         };
+         """
+        # todo: use C templating
+        return template % dict(nbits = 64, half_nbits = 32, upcast="") + template % dict(nbits = 128, half_nbits = 64, upcast="""
+        complex_type& operator =(theano_complex64 y) {
+            this->real=y.real;
+            this->imag=y.imag;
+            return *this;
+            }
+        """)
+    
 
 
 int8 = Scalar('int8')
@@ -264,6 +278,9 @@ def _multi(*fns):
 
 ints = _multi(int64)
 floats = _multi(float64)
+complexs = _multi(complex128)
+complexs64 = _multi(complex64)
+complexs128 = _multi(complex128)
 
 
 
