@@ -11,8 +11,138 @@ __docformat__ = "restructuredtext en"
 import utils
 import traceback
 
+class CLinkerObject(object):
+    """Standard elements of an Op or Type used with the CLinker
+    """
+    def c_headers(self):
+        """Optional: Return a list of header files required by code returned by
+        this class.
 
-class CLinkerOp(object):
+        For example: return ['<iostream>', '<math.h>', '/full/path/to/header.h']
+
+        These strings will be prefixed with "#include " and inserted at the beginning of the c
+        source code.
+
+        Strings in this list that start neither with '<' nor '"' will be enclosed in
+        double-quotes.
+
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise utils.MethodNotDefined("c_headers", type(self), self.__class__.__name__)
+
+    def c_header_dirs(self):
+        """Optional: Return a list of header search paths required by code returned by
+        this class.
+
+        For example: return ['/usr/local/include', '/opt/weirdpath/src/include'].
+
+        Provide search paths for headers, in addition to those in any relevant environment
+        variables.
+        
+        Hint: for unix compilers, these are the things that get '-I' prefixed in the compiler
+        cmdline.
+        
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise utils.MethodNotDefined("c_lib_dirs", type(self), self.__class__.__name__)
+
+    def c_libraries(self):
+        """Optional: Return a list of libraries required by code returned by
+        this class.
+
+        For example: return ['gsl', 'gslcblas', 'm', 'fftw3', 'g2c'].
+
+        The compiler will search the directories specified by the environment
+        variable LD_LIBRARY_PATH in addition to any returned by `c_lib_dirs`.
+
+        Hint: for unix compilers, these are the things that get '-l' prefixed in the compiler
+        cmdline.
+
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise utils.MethodNotDefined("c_libraries", type(self), self.__class__.__name__)
+
+    def c_lib_dirs(self):
+        """Optional: Return a list of library search paths required by code returned by
+        this class.
+
+        For example: return ['/usr/local/lib', '/opt/weirdpath/build/libs'].
+
+        Provide search paths for libraries, in addition to those in any relevant environment
+        variables (e.g. LD_LIBRARY_PATH).
+        
+        Hint: for unix compilers, these are the things that get '-L' prefixed in the compiler
+        cmdline.
+        
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise utils.MethodNotDefined("c_lib_dirs", type(self), self.__class__.__name__)
+
+    def c_support_code(self):
+        """Optional: Return utility code for use by a `Variable` or `Op` to be
+        included at global scope prior to the rest of the code for this class.
+
+        QUESTION: How many times will this support code be emitted for a graph
+        with many instances of the same type?
+
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise utils.MethodNotDefined("c_support_code", type(self), self.__class__.__name__)
+
+    def c_code_cache_version(self):
+        """Return a tuple of integers indicating the version of this Op.
+
+        An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
+
+        The cache mechanism may erase cached modules that have been superceded by newer
+        versions.  See `ModuleCache` for details.
+        """
+        return (1,)
+
+    def c_compile_args(self):
+        """Optional: Return a list of compile args recommended to compile the
+        code returned by other methods in this class.
+
+        Example: return ['-ffast-math']
+
+        Compiler arguments related to headers, libraries and search paths should be provided
+        via the functions `c_headers`, `c_libraries`, `c_header_dirs`, and `c_lib_dirs`.
+
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise utils.MethodNotDefined("c_compile_args", type(self), self.__class__.__name__)
+
+    def c_no_compile_args(self):
+        """Optional: Return a list of incompatible gcc compiler arguments.
+
+        We will remove those arguments from the command line of gcc. So if 
+        another Op adds a compile arg in the graph that is incompatible 
+        with this Op, the incompatible arg will not be used. 
+        Useful for instance to remove -ffast-math.
+
+        EXAMPLE
+
+        WRITEME
+
+        :Exceptions:
+         - `MethodNotDefined`: the subclass does not override this method
+
+        """
+        raise utils.MethodNotDefined("c_no_compile_args", type(self), self.__class__.__name__)
+
+class CLinkerOp(CLinkerObject):
     """
     Interface definition for `Op` subclasses compiled by `CLinker`.
 
@@ -83,94 +213,22 @@ class CLinkerOp(object):
         raise utils.MethodNotDefined('%s.c_code_cleanup' \
                 % self.__class__.__name__)
 
-    def c_compile_args(self):
-        """Optional: Return a list of recommended gcc compiler arguments.
+    def c_support_code_apply(self, node, name):
+        """Optional: Return utility code for use by an `Op` that will be inserted at global
+        scope, that can be specialized for the support of a particular `Apply` node.
 
-        QUESTION: is this function optional?
-        
-        This is only a hint.
+        :param node: an Apply instance in the graph being compiled
 
-        EXAMPLE
-
-        WRITEME
-        """
-        raise utils.MethodNotDefined('%s.c_compile_args' \
-                % self.__class__.__name__)
-
-    def c_no_compile_args(self):
-        """Optional: Return a list of incompatible gcc compiler arguments.
-
-        We will remove those arguments from the command line of gcc. So if 
-        another Op adds a compile arg in the graph that is incompatible 
-        with this Op, the incompatible arg will not be used. 
-        Useful for instance to remove -ffast-math.
-
-        EXAMPLE
-
-        WRITEME
+        :param node_id: a string or number that serves to uniquely identify this node.
+        Symbol names defined by this support code should include the node_id, so that they can
+        be called from the c_code, and so that they do not cause name collisions.
 
         :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
+         - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise utils.MethodNotDefined('%s.c_no_compile_args' \
-                % self.__class__.__name__)
+        raise utils.MethodNotDefined("c_support_code_apply", type(self), self.__class__.__name__)
 
-    def c_headers(self):
-        """Optional: Return a list of header files that must be included to compile the C code.
-
-        A subclass should override this method.
-
-        EXAMPLE
-
-        WRITEME
-
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
-
-        """
-        raise utils.MethodNotDefined('%s.c_headers' \
-                % self.__class__.__name__)
-
-    def c_libraries(self):
-        """Optional: Return a list of libraries to link against to manipulate this `Op`.
-
-        A subclass should override this method.
-
-        WRITEME
-
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
-
-        """
-        raise utils.MethodNotDefined('%s.c_libraries' \
-                % self.__class__.__name__)
-
-    def c_support_code(self):
-        """Optional: Return support code for use by the code that is returned by `c_code`.
-        
-        Support code is inserted into the C code at global scope.
-
-        A subclass should override this method.
-
-        WRITEME
-
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
-
-        """
-        raise utils.MethodNotDefined('%s.c_support_code' \
-                % self.__class__.__name__)
-
-    def c_code_cache_version(self):
-        """Return a tuple of integers indicating the version of this Op.
-
-        An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
-
-        The cache mechanism may erase cached modules that have been superceded by newer
-        versions.  See `ModuleCache` for details.
-        """
-        return (1,)
 
 class PureOp(object):
     """
