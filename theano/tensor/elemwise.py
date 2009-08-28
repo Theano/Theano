@@ -67,6 +67,9 @@ class DimShuffle(Op):
       DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
       DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
       DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
+
+    The reordering of the dimensions can be done in numpy with the transpose function.
+    Adding, subtracting dimensions can be done with reshape.
     """
 
     def __init__(self, input_broadcastable, new_order, inplace = False):
