@@ -10,26 +10,16 @@ from gof.python25 import all
 import gof.utils
 
 import logging
-_logger=logging.getLogger("theano.gradient")
-_logger.setLevel(logging.WARN)
-
-def error(*args):
-    #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.error("ERROR: "+' '.join(str(a) for a in args))
-def warning(*args):
-    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.warning("WARNING: "+' '.join(str(a) for a in args))
-def info(*args):
-    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.info("INFO: "+' '.join(str(a) for a in args))
-def debug(*args):
-    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
-    _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
+_logger = logging.getLogger('theano.gradient')
+def warning(*msg):
+    _logger.warning('WARNING theano.gradient: '+' '.join(msg))
+def info(*msg):
+    _logger.info('INFO theano.gradient: '+' '.join(msg))
 
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
-def grad_sources_inputs(sources, graph_inputs):
+def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """
     A gradient source is a pair (``r``, ``g_r``), in which ``r`` is a `Variable`, and ``g_r`` is a
     `Variable` that is a gradient wrt ``r``.
@@ -114,6 +104,11 @@ def grad_sources_inputs(sources, graph_inputs):
                     len(g_inputs),
                     len(node.inputs))
         for ii, (r, g_r) in enumerate(zip(node.inputs, g_inputs)):
+            if warn_type:
+                if g_r and (getattr(r,'type',0) != getattr(g_r,'type', 1)):
+                    r_type = getattr(r,'type', None)
+                    g_r_type = getattr(g_r,'type', None)
+                    info('%s.grad returned a different type for input %i: %s vs.  %s'%(node.op, ii, r_type, g_r_type))
             if g_r and len(sources) == 1 and sources[0][0].name and r.name:
                 g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None: 
