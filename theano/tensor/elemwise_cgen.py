@@ -57,20 +57,48 @@ def make_checks(loop_orders, dtypes, sub):
                 """ % locals()
                 adjust = []
     check = ""
-    for matches in zip(*loop_orders):
-        to_compare = [(j, x) for j, x in enumerate(matches) if x != "x"]
-        if len(to_compare) < 2:
-            continue
-        j, x = to_compare[0]
-        first = "%%(lv%(j)s)s_n%(x)s" % locals()
-        cond = " || ".join(["%(first)s != %%(lv%(j)s)s_n%(x)s" % locals() for j, x in to_compare[1:]])
-        if cond:
-            check += """
-            if (%(cond)s) {
-                PyErr_SetString(PyExc_ValueError, "Input dimensions do not match (Try re-running with py linker for more information).");
-                %%(fail)s
-            }
-            """ % locals()
+    if 0: 
+        # original dimension-checking loop builds a single if condition, and if it is true, it
+        # raises a generic error message
+        for matches in zip(*loop_orders):
+            to_compare = [(j, x) for j, x in enumerate(matches) if x != "x"]
+            if len(to_compare) < 2:
+                continue
+            j, x = to_compare[0]
+            first = "%%(lv%(j)s)s_n%(x)s" % locals()
+            cond = " || ".join(["%(first)s != %%(lv%(j)s)s_n%(x)s" % locals() for j, x in to_compare[1:]])
+            if cond:
+                check += """
+                if (%(cond)s) {
+                    PyErr_SetString(PyExc_ValueError, "Input dimensions do not match (Try re-running with py linker for more information).");
+                    %%(fail)s
+                }
+                """ % locals()
+    else:
+        # revised dimension-checking loop build multiple if conditions, and the first one that
+        # is true raises a more informative error message
+        for matches in zip(*loop_orders):
+            to_compare = [(j, x) for j, x in enumerate(matches) if x != "x"]
+
+            #elements of to_compare are pairs ( input_variable_idx, input_variable_dim_idx )
+            if len(to_compare) < 2:
+                continue
+            j0, x0 = to_compare[0]
+            for (j, x) in to_compare[1:]:
+                check += """
+                if (%%(lv%(j0)s)s_n%(x0)s != %%(lv%(j)s)s_n%(x)s)
+                {
+                    PyErr_Format(PyExc_ValueError, "Input dimension mis-match. (input[%%%%i].shape[%%%%i] = %%%%i, input[%%%%i].shape[%%%%i] = %%%%i)",
+                       %(j0)s,
+                       %(x0)s,
+                       %%(lv%(j0)s)s_n%(x0)s,
+                       %(j)s,
+                       %(x)s,
+                       %%(lv%(j)s)s_n%(x)s
+                    );
+                    %%(fail)s
+                }
+                """ % locals()
     return init % sub + check % sub
 
 

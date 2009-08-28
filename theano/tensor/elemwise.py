@@ -688,6 +688,9 @@ class Elemwise(Op):
     def c_support_code(self):
         return self.scalar_op.c_support_code()
 
+    def c_code_cache_version(self):
+        return (4,)
+
 # def elemwise_to_scal(env):
 #     mapping = {}
 #     inputs = []
