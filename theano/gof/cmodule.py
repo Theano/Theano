@@ -93,7 +93,12 @@ class DynamicModule(object):
     def code(self):
         sio = StringIO.StringIO()
         for inc in self.includes:
-            print >> sio, "#include", inc
+            if not inc:
+                continue
+            if inc[0] == '<' or inc[0] == '"':
+                print >> sio, "#include", inc
+            else:
+                print >> sio, '#include "%s"'%inc
 
         print  >> sio, "//////////////////////"
         print  >> sio, "////  Support Code"
@@ -235,12 +240,8 @@ class ModuleCache(object):
         self.module_from_name = dict(self.module_from_name)
         self.entry_from_key = dict(self.entry_from_key)
         self.stats = [0, 0, 0]
-        if force_fresh is None:
-          self.force_fresh = self.force_fresh
-        else:
+        if force_fresh is not None:
           self.force_fresh = force_fresh
-        #backport
-        #self.force_fresh = self.force_fresh if force_fresh is None else force_fresh
         self.loaded_key_pkl = set()
 
         self.refresh()
@@ -410,8 +411,6 @@ class ModuleCache(object):
         if age_thresh is None:
           age_thresh = self.age_thresh
 
-        #backport
-        #age_thresh = self.age_thresh if age_thresh is None else age_thresh
         compilelock.get_lock()
         try:
             # update the age of modules that have been accessed by other processes
@@ -489,30 +488,58 @@ def get_gcc_shared_library_arg():
     else:
         return '-shared'
 
+def std_include_dirs():
+    return [distutils.sysconfig.get_python_inc()] + numpy.distutils.misc_util.get_numpy_include_dirs()
+
+def std_lib_dirs_and_libs():
+    python_inc = distutils.sysconfig.get_python_inc()
+    if sys.platform == 'win32':
+        # Typical include directory: C:\Python26\include
+        libname = os.path.basename(os.path.dirname(python_inc)).lower()
+        # Also add directory containing the Python library to the library
+        # directories.
+        python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
+        lib_dirs = [python_lib_dir]
+        return [libname], [python_lib_dir]
+    else:
+        # Typical include directory: /usr/include/python2.6
+        libname = os.path.basename(python_inc)
+        return [libname], []
+
+def std_libs():
+    return std_lib_dirs_and_libs()[0]
+
+def std_lib_dirs():
+    return std_lib_dirs_and_libs()[1]
+
 def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
-        preargs=[], tmpdir=None):
+        preargs=[]):
+    """
+    :param module_name: string (this has been embedded in the src_code
+    :param src_code: a complete c or c++ source listing for the module
+    :param location: a pre-existing filesystem directory where the cpp file and .so will be written
+    :param include_dirs: a list of include directory names (each gets prefixed with -I)
+    :param lib_dirs: a list of library search path directory names (each gets prefixed with -L)
+    :param libs: a list of libraries to link with (each gets prefixed with -l)
+    :param preargs: a list of extra compiler arguments
+
+    :returns: dynamically-imported python module of the compiled code.
+    """
     #TODO: don't to the dlimport in this function
-    
+
     if preargs is None:
       preargs = []
     else:
       preargs = list(preargs)
 
-    #backport
-    #preargs= [] if preargs is None else list(preargs)
     preargs.append('-fPIC')
-    
-
-
-
     no_opt = False
 
-
-    include_dirs = [distutils.sysconfig.get_python_inc()] + \
-                    numpy.distutils.misc_util.get_numpy_include_dirs()\
-                    + include_dirs
-    python_inc = distutils.sysconfig.get_python_inc()
+    include_dirs = std_include_dirs() + include_dirs
+    libs = std_libs() + libs
+    lib_dirs = std_lib_dirs() + lib_dirs
     if sys.platform == 'win32':
+        python_inc = distutils.sysconfig.get_python_inc()
         # Typical include directory: C:\Python26\include
         libname = os.path.basename(os.path.dirname(python_inc)).lower()
         # Also add directory containing the Python library to the library
@@ -521,6 +548,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         lib_dirs = [python_lib_dir] + lib_dirs
     else:
         # Typical include directory: /usr/include/python2.6
+        python_inc = distutils.sysconfig.get_python_inc()
         libname = os.path.basename(python_inc)
 
 
@@ -534,7 +562,8 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
     workdir = location
 
-    cppfilename = os.path.join(workdir, 'mod.cpp')
+
+    cppfilename = os.path.join(location, 'mod.cpp')
     cppfile = file(cppfilename, 'w')
 
     debug('Writing module C++ code to', cppfilename)
@@ -544,7 +573,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     cppfile.write(src_code)
     cppfile.close()
 
-    lib_filename = os.path.join(workdir, '%s.%s' %
+    lib_filename = os.path.join(location, '%s.%s' %
             (module_name, get_lib_extension()))
 
     debug('Generating shared lib', lib_filename)
@@ -559,93 +588,21 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
     debug('Running cmd', ' '.join(cmd))
+
     p = subprocess.Popen(cmd)
     status = p.wait()
 
     if status:
-        error('g++ return status', status)
-    else:
-        #touch the __init__ file
-        file(os.path.join(workdir, "__init__.py"),'w').close()      
+        print '==============================='
+        for i, l in enumerate(src_code.split('\n')):
+            #gcc put its messages to stderr, so we add ours now
+            print >> sys.stderr, '%05i\t%s'%(i+1, l)
+        print '==============================='
+        raise Exception('g++ return status', status)
 
-        rval = dlimport(lib_filename)
-    return rval
-
-
-def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
-        preargs=[], tmpdir=None):
-    if preargs is None:
-      preargs = []
-    else:
-      preargs = list(preargs)
-
-    #backport
-    #preargs= [] if preargs is None else list(preargs)
-    preargs.append('-fPIC')
-    no_opt = False
-
-
-    raise NotImplementedError()
-
-    #TODO: -O preargs should be passed globally, not to -Xcompiler
-
-    #TODO: where to find these strings?  sys? distutils?
-    include_dirs = ['/usr/include/python2.6'] + include_dirs
-    libs = ['python2.6', 'cudart'] + libs
-    lib_dirs = ['/usr/local/cuda/lib']+lib_dirs
-
-    workdir = tempfile.mkdtemp(dir=location)
-
-    cppfilename = os.path.join(workdir, 'mod.cpp') #.cpp to use g++
-    cppfilename = os.path.join(workdir, 'mod.cu') #.cu to use nvopencc
-    cppfile = file(cppfilename, 'w')
-
-    debug('Writing module C++ code to', cppfilename)
-    ofiles = []
-    rval = None
-    try:
-        cppfile.write(src_code)
-        cppfile.close()
-        lib_filename = os.path.join(workdir, '%s.%s' %
-                (module_name, get_lib_extension()))
-
-        debug('Generating shared lib', lib_filename)
-        cmd = ['nvcc', '-shared', '-g']
-        cmd.extend(['-Xcompiler', ','.join(preargs)])
-        cmd.extend('-I%s'%idir for idir in include_dirs)
-        cmd.extend(['-o',lib_filename]) 
-        cmd.append(cppfilename)
-        cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
-        cmd.extend(['-l%s'%l for l in libs])
-        debug('Running cmd', ' '.join(cmd))
-
-        p = subprocess.Popen(cmd)
-        status = p.wait()
-
-        if status:
-            warning('nvcc return status', status)
-        else:
-            #touch the __init__ file
-            file(os.path.join(workdir, "__init__.py"),'w').close()      
-
-            #load the module
-            sys.path.insert(0, workdir)
-            try:
-                rval = __import__(module_name, {}, {}, [module_name])
-                if not rval:
-                    debug('__import__ failed')
-            finally:
-                del sys.path[0]
-
-            assert pathcopy == sys.path
-
-    finally:
-        warning("TODO: cleanup")
-        #os.remove(cppfilename)
-        for ofile in ofiles:
-            #os.remove(ofiles[0])
-            pass
-    return rval
+    #touch the __init__ file
+    file(os.path.join(location, "__init__.py"),'w').close()      
+    return dlimport(lib_filename)
 
 def icc_module_compile_str(*args):
     raise NotImplementedError()

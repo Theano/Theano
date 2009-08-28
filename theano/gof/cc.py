@@ -357,7 +357,6 @@ class CLinker(link.Linker):
         self.env = env
         self.fetch_variables()
         self.no_recycling = no_recycling
-        self.module_compile_str = cmodule.gcc_module_compile_str
         return self
 
     def fetch_variables(self):
@@ -396,6 +395,8 @@ class CLinker(link.Linker):
         env = self.env
 
         self.consts = []
+
+        c_support_code_apply = []
 
         symbol = {}
 
@@ -477,7 +478,7 @@ class CLinker(link.Linker):
 
             id += 2
 
-        for node in self.node_order:
+        for node_num, node in enumerate(self.node_order):
 
             # We populate sub with a mapping from the variable names specified by the op's c_var_names
             # method to the actual variable names that we will use.
@@ -486,7 +487,7 @@ class CLinker(link.Linker):
 ##            for variable, vname in zip(op.inputs + op.outputs, ivnames + ovnames):
 ##                sub[vname] = symbol[variable]
 
-            name = "<invalid_c_thing>"
+            name = "node_%i" % node_num
             isyms, osyms = [symbol[r] for r in node.inputs], [symbol[r] for r in node.outputs]
 
             # c_validate_update is deprecated
@@ -498,6 +499,11 @@ class CLinker(link.Linker):
             sub['fail'] = failure_code(sub)
 
             op = node.op
+            # type-specific support code
+            try: c_support_code_apply.append(op.c_support_code_apply(node, name))
+            except utils.MethodNotDefined: pass
+
+            # emit c_code 
             try: behavior = op.c_code(node, name, isyms, osyms, sub)
             except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
@@ -539,6 +545,7 @@ class CLinker(link.Linker):
         self.blocks = blocks
         self.tasks = tasks
         all = self.inputs + self.outputs + self.orphans
+        self.c_support_code_apply = c_support_code_apply
 
         if (self.init_tasks, self.tasks) != self.get_init_tasks():
             print >> sys.stderr, "init_tasks\n", self.init_tasks
@@ -561,6 +568,7 @@ class CLinker(link.Linker):
         This might contain duplicates.
         """
         ret = []
+        # generic support code
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret.append(x.c_support_code())
             except utils.MethodNotDefined: pass
@@ -599,28 +607,70 @@ class CLinker(link.Linker):
     def headers(self):
         """WRITEME
         Returns a list of headers that are needed by one
-        or more Variables or Ops.
+        or more Types or Ops.
 
-        This might contain duplicates.
+        The return value will not contain duplicates.
         """
         ret = []
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_headers()
             except utils.MethodNotDefined: pass
-        return ret
+        return list(set(ret))
+
+    def c_compiler(self):
+        c_compiler = None
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
+            if hasattr(x, 'c_compiler'):
+                x_compiler = x.c_compiler()
+            else:
+                continue
+
+            if c_compiler is None:
+                c_compiler = x_compiler
+            else:
+                if x_compiler and (x_compiler != c_compiler):
+                    raise Exception('Nodes have requested specific different compilers',
+                            (c_compiler, x_compiler))
+        return cmodule.gcc_module_compile_str if (c_compiler is None) else c_compiler
+
+    def header_dirs(self):
+        """WRITEME
+        Returns a list of lib directories that are needed by one
+        or more Types or Ops.
+
+        The return value will not contain duplicates.
+        """
+        ret = []
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
+            try: ret += x.c_header_dirs()
+            except utils.MethodNotDefined: pass
+        return list(set(ret))
 
     def libraries(self):
         """WRITEME
         Returns a list of libraries that are needed by one
-        or more Variables or Ops.
+        or more Types or Ops.
 
-        This might contain duplicates.
+        The return value will not contain duplicates.
         """
         ret = []
         for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
             try: ret += x.c_libraries()
             except utils.MethodNotDefined: pass
-        return ret
+        return list(set(ret))
+
+    def lib_dirs(self):
+        """WRITEME
+        Returns a list of lib directories that are needed by one
+        or more Types or Ops.
+
+        The return value will not contain duplicates.
+        """
+        ret = []
+        for x in [y.type for y in self.variables] + [y.op for y in self.node_order]:
+            try: ret += x.c_lib_dirs()
+            except utils.MethodNotDefined: pass
+        return list(set(ret))
 
     def __compile__(self, input_storage = None, output_storage = None):
         """WRITEME
@@ -787,11 +837,13 @@ class CLinker(link.Linker):
         get_lock()
         try:
             debug("LOCATION", location)
-            module = self.module_compile_str(
+            c_compiler = self.c_compiler()
+            module = c_compiler(
                     module_name=mod.name,
                     src_code = mod.code(),
                     location=location,
-                    include_dirs=[],
+                    include_dirs=self.header_dirs(),
+                    lib_dirs=self.lib_dirs(),
                     libs=self.libraries(),
                     preargs=self.compile_args())
         finally:
@@ -834,7 +886,7 @@ class CLinker(link.Linker):
         """ % dict(struct_name = self.struct_name)
 
         # We add all the support code, compile args, headers and libs we need.
-        for support_code in self.support_code():
+        for support_code in self.support_code() + self.c_support_code_apply:
             mod.add_support_code(support_code)
         mod.add_support_code(self.struct_code)
         mod.add_support_code(static)
