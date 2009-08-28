@@ -342,9 +342,14 @@ class Generic(SingletonType):
         PyObject* %(name)s;
         """ % locals()
 
+    def c_init(self, name, sub):
+        return """
+        %(name)s = NULL;
+        """ % locals()
+
     def c_extract(self, name, sub):
         return """
-        Py_XINCREF(py_%(name)s);
+        Py_INCREF(py_%(name)s);
         %(name)s = py_%(name)s;
         """ % locals()
     
@@ -355,9 +360,10 @@ class Generic(SingletonType):
 
     def c_sync(self, name, sub):
         return """
-        Py_XDECREF(py_%(name)s);
-        py_%(name)s = %(name)s;
-        Py_XINCREF(py_%(name)s);
+        assert(py_%(name)s->ob_refcnt > 1);
+        Py_DECREF(py_%(name)s);
+        py_%(name)s = %(name)s ? %(name)s : Py_None;
+        Py_INCREF(py_%(name)s);
         """ % locals()
 
 

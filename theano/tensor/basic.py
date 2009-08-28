@@ -1814,6 +1814,12 @@ class Split(Op):
         if axis.type not in int_types: 
             raise TypeError('axis must have type lscalar', axis.type)
 
+#         # The following lines are necessary if we allow splits of zero
+#         if isinstance(axis, gof.Constant):
+#             x = unbroadcast(x, int(axis.data))
+#         else:
+#             x = unbroadcast(x, *range(x.type.ndim))
+
         inputs = [x, axis, splits]
         outputs = [x.type() for i in xrange(self.len_splits)]
 
@@ -1830,6 +1836,11 @@ class Split(Op):
         if len(splits) != self.len_splits:
             raise ValueError('In Split.perform(), len(splits) != len_splits.', 
                     (len(splits), self.len_splits))
+
+        if numpy.sum(splits) != len_along_axis:
+            raise ValueError('The splits sum to %s, expected %s' % (numpy.sum(splits), len_along_axis))
+        if not all(splits):
+            raise ValueError('Cannot have a split of zero.')
          
         # Checking is done, let's roll the splitting algorithm!
         # Basically we step along the given axis of x, extracting subtensors of size splits[i]
@@ -1846,6 +1857,47 @@ class Split(Op):
     def grad(self, (x, axis, splits), g_outputs):
         """Join the gradients along the axis that was used to split x."""
         return [join(axis, *g_outputs), None, None]
+
+
+
+class Rebroadcast(Op):
+    """
+    Change the input's broadcastable fields in
+    some predetermined way.
+    e.g.: Rebroadcast((0, True), (1, False))(x)
+          would make x broadcastable in axis 0
+          and not broadcastable in axis 1
+    See also the unbroadcast function.
+    """
+    view_map = {0: [0]}
+    def __init__(self, *axis):
+        self.axis = dict(axis)
+    def make_node(self, x):
+        t = TensorType(dtype = x.type.dtype,
+                       broadcastable = [self.axis.get(i, b)
+                                        for i, b in enumerate(x.type.broadcastable)])
+        return Apply(self, [x], [t()])
+    def perform(self, node, (x, ), (out, )):
+        for axis, value in self.axis.iteritems():
+            if value and x.shape[axis] != 1:
+                raise ValueError('Dimension %s in Rebroadcast\'s input was supposed to be 1 (got %s instead)' % (axis, x.shape[axis]))
+        out[0] = x
+    def grad(self, (x, ), (gz,)):
+        # restore the broadcasting pattern of the input
+        return Rebroadcast(*[(axis, x.type.broadcastable[axis]) for axis, value in self.axis.iteritems()])(gz),
+
+def addbroadcast(x, *axes):
+    """
+    Make the input broadcastable in the specified axes.
+    """
+    return Rebroadcast(*[(axis, True) for axis in axes])(x)
+
+def unbroadcast(x, *axes):
+    """
+    Make the input impossible to broadcast in the specified axes.
+    """
+    return Rebroadcast(*[(axis, False) for axis in axes])(x)
+
 
 class Join(Op):
     """
@@ -1909,6 +1961,9 @@ class Join(Op):
                 bcastable[axis] = False
             except IndexError, e:
                 raise ValueError('Join argument "axis" is out of range (given input dimensions)')
+            as_tensor_variable_args = [unbroadcast(x, axis) for x in as_tensor_variable_args]
+        else:
+            as_tensor_variable_args = [unbroadcast(x, *range(x.type.ndim)) for x in as_tensor_variable_args]
 
         inputs = [as_tensor_variable(axis)] + as_tensor_variable_args
         if inputs[0].type not in int_types: 

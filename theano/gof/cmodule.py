@@ -199,20 +199,21 @@ class ModuleCache(object):
     If the ``version`` is either 0 or (), then the corresponding module is unversioned, and
     will be deleted in an atexit() handler.
     If the ``version`` is neither 0 nor (), then the module will be kept in the cache between
-    processes, but it may be deleted if another key comes
-    along that has the same ``rest``, and a ``version`` that is considered higher than the
-    first one.  
+    processes.
     
-    :todo: Versioning functionality is planned for implementation later, it is not implemented
-    yet.
-
+    
+    An unversioned module is not deleted by the process that creates it.  Deleting such modules
+    does not work on NFS filesystems because the tmpdir in which the library resides is in use
+    until the end of the process' lifetime.  Instead, unversioned modules are left in their
+    tmpdirs without corresponding .pkl files.  These modules and their directories are erased
+    by subsequent processes' refresh() functions.
     """
 
     dirname = ""
     """The working directory that is managed by this interface"""
 
     module_from_name = {}
-    """maps module names to loaded module objects"""
+    """maps a module filename to the loaded module object"""
     
     entry_from_key = {}
     """Maps keys to the filename of a .so/.pyd.
@@ -272,7 +273,17 @@ class ModuleCache(object):
             for root, dirs, files in os.walk(self.dirname):
                 if os.path.join(root, 'key.pkl') in self.loaded_key_pkl:
                     continue
-                if 'key.pkl' in files:
+                elif 'delete.me' in files or len(files)==0:
+                    # On NFS filesystems, it is impossible to delete a directory with open
+                    # files in it.  So instead, some commands in this file will respond to a
+                    # failed rmtree() by touching a 'delete.me' file.  This file is a message
+                    # for a future process to try deleting the directory.
+                    try:
+                        shutil.rmtree(root)
+                    except:
+                        # the directory is still in use??  We just leave it for future removal.
+                        pass
+                elif 'key.pkl' in files:
                     key_pkl = os.path.join(root, 'key.pkl')
                     debug('refresh adding', key_pkl)
                     try:
@@ -318,14 +329,19 @@ class ModuleCache(object):
                     # If so, it should not have been deleted.  This should be considered a
                     # failure of the OTHER process, that deleted it.
                     if entry in self.module_from_name:
-                        error("The module %s that was loaded by this ModuleCache can no longer be read from file... this could lead to problems." % name)
+                        error("The module %s that was loaded by this ModuleCache can no longer be read from file %s ... this could lead to problems." % (key,entry))
                         del self.module_from_name[entry]
 
                     info("deleting ModuleCache entry", entry)
                     del self.entry_from_key[key]
                     if key[0]: 
-                        #this is a versioned entry, so should have been on disk
-                        self.loaded_key_pkl.remove(os.path.join(os.path.dirname(entry), 'key.pkl'))
+                        # this is a versioned entry, so should have been on disk
+                        # Something weird happened to cause this, so we are responding by
+                        # printing a warning, removing evidence that we ever saw this mystery
+                        # key.
+                        pkl_file_to_remove = os.path.join(os.path.dirname(entry), 'key.pkl')
+                        warn('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
+                        self.loaded_key_pkl.remove(pkl_file_to_remove)
 
         finally:
             compilelock.release_lock()
@@ -432,8 +448,8 @@ class ModuleCache(object):
                     del self.entry_from_key[key]
                     parent = os.path.dirname(entry)
                     assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                    debug("Removing cache dir", parent)
-                    shutil.rmtree(parent)
+                    info("clear_old removing cache dir", parent)
+                    _rmtree(parent)
 
         finally:
             compilelock.release_lock()
@@ -462,12 +478,23 @@ class ModuleCache(object):
 
                 parent = os.path.dirname(entry)
                 assert parent.startswith(os.path.join(self.dirname, 'tmp'))
-                debug("Removing unversioned dir", parent)
-                shutil.rmtree(parent)
+                info("clear_unversioned removing cache dir", parent)
+                _rmtree(parent)
+
     def _on_atexit(self):
         self.refresh()
         self.clear_old()
         self.clear_unversioned()
+
+def _rmtree(parent):
+    try:
+        shutil.rmtree(parent)
+    except Exception, e:
+        try:
+            # mark this directory for deletion by a future refresh()
+            open(os.path.join(parent,'delete.me'), 'w').close()
+        except Exception, ee:
+            warning('Failed to remove or mark cache directory %s for removal' % parent, ee)
 
 _module_cache = None
 def get_module_cache(dirname, force_fresh=None):
