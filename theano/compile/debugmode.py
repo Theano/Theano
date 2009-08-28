@@ -1,7 +1,7 @@
 """Provides `DebugMode`, an evaluation mode for debugging theano internals."""
 __docformat__ = "restructuredtext en"
 
-import time, copy, sys, copy_reg
+import time, copy, sys, copy_reg, gc
 from StringIO import StringIO
 
 import numpy
@@ -20,6 +20,22 @@ from theano.compile.function_module import (FunctionMaker,
         Supervisor)
 from theano.compile.mode import Mode, register_mode
 
+import logging
+_logger=logging.getLogger("theano.compile.debugmode")
+_logger.setLevel(logging.WARNING)
+
+def error(*args):
+    #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.error("ERROR: "+' '.join(str(a) for a in args))
+def warning(*args):
+    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.warning("WARNING: "+' '.join(str(a) for a in args))
+def info(*args):
+    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.info("INFO: "+' '.join(str(a) for a in args))
+def debug(*args):
+    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
+    _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
 
 ########################
 #
@@ -116,8 +132,16 @@ class BadOptimization(DebugModeError):
         print >> sio, "  Variable: id", id(self.new_r), self.new_r 
         print >> sio, "  Op", self.new_r.owner
         print >> sio, "  Value Type:", type(self.new_r_val)
-        print >> sio, "  Old Value: ", self.old_r_val
-        print >> sio, "  New Value: ", self.new_r_val
+        str_old_r_val = str(self.old_r_val)
+        if len(str_old_r_val) > 80:
+            print >> sio, "  Old Value: ", str(self.old_r_val)[:80], '...'
+        else:
+            print >> sio, "  Old Value: ", str(self.old_r_val)
+        str_new_r_val = str(self.new_r_val)
+        if len(str_new_r_val) > 80:
+            print >> sio, "  New Value: ", str(self.new_r_val)[:80], '...'
+        else:
+            print >> sio, "  New Value: ", str(self.new_r_val)
         print >> sio, "  Reason: ", str(self.reason)
         print >> sio, "  Old Graph:"
         print >> sio, self.old_graph
@@ -135,23 +159,28 @@ class BadDestroyMap(DebugModeError):
         self.new_val = new_val
     
     def __str__(self):
-        sio = StringIO()
-        print >> sio, "  node:", self.node
-        print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
-        print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
-        print >> sio, "  changed input idx:", self.idx
-        print >> sio, "  changed input type:", self.node.inputs[self.idx].type
-        print >> sio, "  repr (old val):", repr(self.old_val)
-        print >> sio, "  repr (new val):", repr(self.new_val)
-        print >> sio, "  value dtype (new <space> old):", self.new_val.dtype, self.old_val.dtype
-        print >> sio, "  value shape (new <space> old):", self.new_val.shape, self.old_val.shape
-        print >> sio, "  value min (new <space> old):", self.new_val.min(), self.old_val.min()
-        print >> sio, "  value max (new <space> old):", self.new_val.max(), self.old_val.max()
-        print >> sio, "  value min (new-old):", (self.new_val-self.old_val).min()
-        print >> sio, "  value max (new-old):", (self.new_val-self.old_val).max()
-        print >> sio, ""
-        print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
-        return sio.getvalue()
+        npy_old_val = numpy.asarray(self.old_val)
+        npy_new_val = numpy.asarray(self.new_val)
+        try:
+            sio = StringIO()
+            print >> sio, "  node:", self.node
+            print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
+            print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
+            print >> sio, "  changed input idx:", self.idx
+            print >> sio, "  changed input type:", self.node.inputs[self.idx].type
+            print >> sio, "  repr (old val):", repr(self.old_val)
+            print >> sio, "  repr (new val):", repr(self.new_val)
+            print >> sio, "  value dtype (new <space> old):", npy_new_val.dtype, npy_old_val.dtype
+            print >> sio, "  value shape (new <space> old):", npy_new_val.shape, npy_old_val.shape
+            print >> sio, "  value min (new <space> old):", npy_new_val.min(), npy_old_val.min()
+            print >> sio, "  value max (new <space> old):", npy_new_val.max(), npy_old_val.max()
+            print >> sio, "  value min (new-old):", (npy_new_val-npy_old_val).min()
+            print >> sio, "  value max (new-old):", (npy_new_val-npy_old_val).max()
+            print >> sio, ""
+            print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation that compares node input values"
+            return sio.getvalue()
+        except Exception, e:
+            return str(e)
 
 class BadViewMap(DebugModeError):
     """Exception: Some perform() or c_code() created a memory alias that wasn't in the view_map"""
@@ -191,15 +220,25 @@ class StochasticOrder(DebugModeError):
 
 class InvalidValueError(DebugModeError):
     """Exception: some Op an output value that is inconsistent with the Type of that output"""
-    def __init__(self, r, v):
+    def __init__(self, r, v, client_node=None):
         super(InvalidValueError, self).__init__()
         self.r = r
         self.v = v
+        self.client_node = client_node
 
     def __str__(self):
         r, v = self.r, self.v
-        return "InvalidValueError: Variable %s,  Type %s, type(Value) %s, Value %s"\
-                % (str(r), str(r.type), str(type(v)), str(v)[0:100])
+        type_r = type(r)
+        type_v = type(v)
+        v_val = str(v)[0:100]
+        client_node = self.client_node
+        return """InvalidValueError
+        type(variable) = %(type_r)s
+        variable       = %(r)s
+        type(value)    = %(type_v)s
+        value          = %(v_val)s
+        client_node    = %(client_node)s
+        """ % locals()
 
 ########################
 #
@@ -393,7 +432,7 @@ def _lessbroken_deepcopy(a):
 
     Returns a copy of `a` that shares no internal storage with the original.  A deep copy.
     This function handles numpy arrays specially to avoid some bug I had one time... (possibly
-    about copying 1-d arrays?)
+    about copying 0-d arrays?)
     """
     # this exists because numpy copies are broken
     if type(a) is numpy.ndarray:
@@ -822,6 +861,7 @@ class _Linker(gof.link.LocalLinker):
         # This is the function that runs when you evaluate the graph
         #####
         def f():
+            debug("starting f")
             for x in no_recycling:
                 x[0] = None
 
@@ -844,6 +884,7 @@ class _Linker(gof.link.LocalLinker):
                 assert len(thunks_py) == len(order)
 
                 # transfer the initial values from the storage_map to the r_vals
+                debug("DEBUGMODE: transfer initial values")
                 for r in storage_map:
                     if (r.owner is None):
                         if (storage_map[r][0] is None):
@@ -865,18 +906,27 @@ class _Linker(gof.link.LocalLinker):
                 for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py, thunks_c, order)):
                     this_node_destroyed_variables = set()
 
+                    debug(i, "DEBUGMODE: starting node", i, node)
+                    debug(i, "DEBUGMODE: inputs broadcastable", [i.type.broadcastable for i in node.inputs])
+                    debug(i, "DEBUGMODE: outputs broadcastable", [i.type.broadcastable for i in node.outputs])
+
                     # put a copy of each input into the storage_map
                     # also, check that inputs have valid values
                     for r in node.inputs:
                         assert isinstance(r, gof.Variable)
                         assert r in r_vals
+                        # print >> sys.stderr,i,  "DEBUGMODE: deepcopy input ", r
                         storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
                         if not r.type.is_valid_value(storage_map[r][0]):
-                            raise InvalidValueError(r, storage_map[r][0])
+                            raise InvalidValueError(r, storage_map[r][0], client_node=node)
 
+                    debug(i, "DEBUGMODE running thunk_py")
                     if thunk_py:
-                        thunk_py()
-
+                        try:
+                            thunk_py()
+                        except utils.MethodNotDefined:
+                            thunk_py = None #shouldn't have put it into the list in the first place
+                    if thunk_py:
                         # check output values for type-correctness
                         for r in node.outputs:
                             if not r.type.is_valid_value(storage_map[r][0]):
@@ -888,9 +938,15 @@ class _Linker(gof.link.LocalLinker):
 
                         _check_viewmap(node, storage_map)
 
+                        # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.outputs])
+                        sys.stdout.flush()
+
                         #retrieve each output from the storage_map
                         for r in node.outputs:
                             assert r not in r_vals
+                            # print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                             r_vals[r] = storage_map[r][0]
                             storage_map[r][0] = None #clear the storage_map of outputs for the thunk_c
 
@@ -898,8 +954,10 @@ class _Linker(gof.link.LocalLinker):
 
                         for r in node.inputs:
                             # TODO:  we only need to overwrite the non-destroyed inputs
+                            # print >> sys.stderr, i, "DEBUGMODE replacing input", r
                             storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
+                        debug(i, "DEBUGMODE running thunk_c")
                         thunk_c()
 
                         for r in node.outputs:
@@ -918,21 +976,35 @@ class _Linker(gof.link.LocalLinker):
 
                         _check_viewmap(node, storage_map)
 
+                        # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
+                            #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.outputs])
+                        sys.stdout.flush()
+
                         for r in node.outputs:
                             if r in r_vals:
+                                #print >> sys.stderr, i, "DEBUGMODE clearing output", r
                                 # compares the version from thunk_py (in r_vals)
                                 # to the version produced by thunk_c (in storage_map)
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                                     raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
                             else:
+                                #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                                 #retrieve each output from the storage_map
                                 r_vals[r] = storage_map[r][0]
                             storage_map[r][0] = None #clear the storage_map for the thunk_c
 
+
+
                     # we're done with this thunk
                     # clear everything out of the storage_map
                     for r in node.inputs:
+                        #print >> sys.stderr, i, "DEBUGMODE clearing input", r
                         storage_map[r][0] = None
+                    debug("done with node")
+
+                    if True: 
+                        gc.collect()
 
                 #except:
                 #    raise_with_op(node)

@@ -114,7 +114,7 @@ def local_dimshuffle_lift(node):
 
     input = node.inputs[0]
     inode = input.owner
-    if inode and isinstance(inode.op, Elemwise):
+    if inode and isinstance(inode.op, Elemwise) and (len(input.clients)==1):
         return inode.op.make_node(*[DimShuffle(input.type.broadcastable,
                                                op.new_order,
                                                op.inplace)(input) for input in inode.inputs]).outputs
