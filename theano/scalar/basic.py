@@ -31,10 +31,25 @@ def as_scalar(x, name = None):
 
 def constant(x):
     if isinstance(x, float):
-        return ScalarConstant(float64, x)
+        for dtype in ['float32', 'float64']:
+            x_ = numpy.asarray(x, dtype=dtype)
+            if numpy.all(x == x_):
+                break
+            x_ = None
+        assert x_ is not None
+        return ScalarConstant(Scalar(str(x_.dtype)), x)
     if isinstance(x, int):
-        return ScalarConstant(int64, x)
-    return ScalarConstant(float64, float(x))
+        for dtype in ['int8', 'int16', 'int32', 'int64']:
+            x_ = numpy.asarray(x, dtype=dtype)
+            if numpy.all(x == x_):
+                break
+            x_ = None
+        assert x_ is not None
+        return ScalarConstant(Scalar(str(x_.dtype)), x)
+    if isinstance(x, complex):
+        raise NotImplementedError()
+    raise TypeError(x)
+    #return ScalarConstant(float64, float(x))
 
 
 class Scalar(Type):
@@ -206,9 +221,9 @@ class _scalar_py_operators:
     def __neg__(self): return neg(self)
 
     #CASTS
-    def __int__(self): return AsInt(self).out
-    def __float__(self): return AsInt(self).out
-    def __complex__(self): return AsComplex(self).out
+    #def __int__(self): return AsInt(self).out
+    #def __float__(self): return AsDouble(self).out
+    #def __complex__(self): return AsComplex(self).out
 
     #BITWISE
     def __invert__(self): return invert(self) 

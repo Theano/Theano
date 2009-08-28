@@ -67,6 +67,9 @@ class DimShuffle(Op):
       DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
       DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
       DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
+
+    The reordering of the dimensions can be done in numpy with the transpose function.
+    Adding, subtracting dimensions can be done with reshape.
     """
 
     def __init__(self, input_broadcastable, new_order, inplace = False):
@@ -133,7 +136,8 @@ class DimShuffle(Op):
         self.__dict__.update(d)
         self._rehash()
 
-    def make_node(self, input):
+    def make_node(self, _input):
+        input = as_tensor_variable(_input)
         ib = tuple(input.type.broadcastable)
         if not ib == self.input_broadcastable:
             raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (self.input_broadcastable, ib))
@@ -656,7 +660,7 @@ class Elemwise(Op):
 
         task_code = self.scalar_op.c_code(Apply(self.scalar_op,
                                                 [Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                                                [Scalar(dtype = output.type.dtype)() for input in node.outputs]),
+                                                [Scalar(dtype = output.type.dtype)() for output in node.outputs]),
                                           name + '_scalar_',
                                           ["%s_i" % s for s in _inames],
                                           ["%s_i" % s for s in onames],
@@ -883,11 +887,12 @@ class Sum(CAReduce):
         CAReduce.__init__(self, scalar.add, axis)
 
     def _output_dtype(self, idtype):
-        if idtype.startswith('int'):
-            return 'int64' #we want to protect against overflow
-        else:
-            return idtype
-
+        # we want to protect against overflow
+        return dict(
+                int8='int32',
+                int16='int32',
+                int32='int64',
+                ).get(idtype, idtype)
 
     def grad(self, (x, ), (gz, )):
         gz = as_tensor_variable(gz)
