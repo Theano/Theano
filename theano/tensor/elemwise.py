@@ -136,7 +136,8 @@ class DimShuffle(Op):
         self.__dict__.update(d)
         self._rehash()
 
-    def make_node(self, input):
+    def make_node(self, _input):
+        input = as_tensor_variable(_input)
         ib = tuple(input.type.broadcastable)
         if not ib == self.input_broadcastable:
             raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (self.input_broadcastable, ib))
@@ -659,7 +660,7 @@ class Elemwise(Op):
 
         task_code = self.scalar_op.c_code(Apply(self.scalar_op,
                                                 [Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                                                [Scalar(dtype = output.type.dtype)() for input in node.outputs]),
+                                                [Scalar(dtype = output.type.dtype)() for output in node.outputs]),
                                           name + '_scalar_',
                                           ["%s_i" % s for s in _inames],
                                           ["%s_i" % s for s in onames],
@@ -886,11 +887,12 @@ class Sum(CAReduce):
         CAReduce.__init__(self, scalar.add, axis)
 
     def _output_dtype(self, idtype):
-        if idtype.startswith('int'):
-            return 'int64' #we want to protect against overflow
-        else:
-            return idtype
-
+        # we want to protect against overflow
+        return dict(
+                int8='int32',
+                int16='int32',
+                int32='int64',
+                ).get(idtype, idtype)
 
     def grad(self, (x, ), (gz, )):
         gz = as_tensor_variable(gz)
