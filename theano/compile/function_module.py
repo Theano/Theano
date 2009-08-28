@@ -15,7 +15,7 @@ import numpy
 import theano.gof
 #from theano import gof
 import copy
-
+import time
 import mode as mode_module
 from io import *
 
@@ -840,6 +840,7 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
         f[<kitname>] = seed   #re-seed the elements of a RandomKit
 
     """
+    t1 = time.time()
     if mode is None:
       mode = mode_module.default_mode
     #backport
@@ -885,6 +886,10 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
     else:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         fn = Maker(inputs, outputs, mode, accept_inplace = accept_inplace).create(defaults)
+    
+    t2 = time.time()
+    if hasattr(mode, 'compile_time'):
+        mode.compile_time+=t2-t1
 
     return fn
 

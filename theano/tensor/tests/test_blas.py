@@ -4,13 +4,10 @@ from theano.gof import Env
 from theano.printing import pp
 import numpy
 from theano.tensor.blas import *
-from theano.tensor.blas import _dot22, res_is_a
+from theano.tensor.blas import _dot22, res_is_a, _as_scalar, _is_real_matrix
 from unittest import TestCase
 from theano.tests import unittest_tools
 from copy import copy
-
-_as_scalar = GemmLocalOptimizer._as_scalar
-_is_real_matrix = GemmLocalOptimizer._is_real_matrix
 
 from theano import In, Out
 from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
