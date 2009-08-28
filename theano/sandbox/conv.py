@@ -154,7 +154,24 @@ class ConvOp(Op):
             self.flops*=self.outshp[0]*self.outshp[1]#nb flops by output image
             self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
         else: #full mode not implemented
-            self.flops=-1
+            self.flops=0
+            for out_row in range(self.outshp[0]):#loop over output row
+                for out_col in range(self.outshp[0]):#loop over output col
+                    for row in range(self.kshp[0]):#loop over kern row
+                        if row+out_row-self.kshp[0]+1<0 or row+out_row-self.kshp[0]+1>=self.imshp[1]: continue
+                        col=0
+                        max_col=self.kshp[1]
+                        img_col=out_col-self.kshp[1]+1
+                        max_col=min(max_col,self.imshp[2]-img_col)
+
+                        if img_col<0:
+                            col=-img_col
+                            img_col+=col
+                        while col < max_col: #loop over kern col
+                            self.flops+=1
+                            col+=1
+            
+            self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
 
 
     def make_node(self, inputs, kerns):
