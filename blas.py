@@ -240,7 +240,8 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
             //dim3 block(std::min(dims[3], 512)); //TODO: implement this by supporting more
             //outputs than threads
             dim3 block(dims[3]);
-            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block, xdim3>>>(
+            int shared= xdim3*sizeof(float);
+            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block, shared>>>(
                 dims[0], dims[1], dims[2], dims[3], xdim2, xdim3,
                 CudaNdarray_DEV_DATA(cnda_%(x)s),
                 CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
