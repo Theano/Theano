@@ -118,14 +118,14 @@ class DownsampleFactorMaxGrad(Op):
               mini_i = (mini_i + 1 == %(ds0)s) ? 0 : mini_i+1;
               zi += (mini_i == 0);
 
-              for (int j = x_shp1_usable; j < %(x)->dimensions[3]; ++j) {
+              for (int j = x_shp1_usable; j < %(x)s->dimensions[3]; ++j) {
                 dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
                 gxp[0] = 0;
               }
             }//for i
 
             for(int i = x_shp0_usable; i < %(x)s->dimensions[2]; i++){
-                for (int j = 0; j < %(x)->dimensions[3]; ++j) {
+                for (int j = 0; j < %(x)s->dimensions[3]; ++j) {
                     dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
                     gxp[0] = 0;
                 }
