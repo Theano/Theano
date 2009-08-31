@@ -106,6 +106,7 @@ def run_conv_nnet1(shared_fn):
     lr = tensor.fscalar('lr')
 
     conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
+    conv_op.set_flops()
 
     hid = tensor.tanh(conv_op(x, w)+b)
     hid_flat = hid.reshape((n_batch, n_hid))
@@ -254,6 +255,8 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch=60, n_iter=25):
 
     conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op1 = theano.sandbox.conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
+    conv_op.set_flops()
+    conv_op1.set_flops()
 
     ds_op = theano.sandbox.downsample.DownsampleFactorMax((2,2), ignore_border=False)
 
