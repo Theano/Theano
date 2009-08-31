@@ -253,7 +253,8 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err) 
             {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kMaxPool_%(nodename)s", cudaGetErrorString(err));
+                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.threads.x=%%d threads.y=%%d threads.z=%%d grid.x=%%d grid.y=%%d shared=%%d\\n", "kMaxPool_%(nodename)s",
+                cudaGetErrorString(err), block.x, block.y, block.z, grid.x, grid.y, shared);
                 %(fail)s;
             }                         
         }
