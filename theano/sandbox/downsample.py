@@ -139,10 +139,12 @@ class DownsampleFactorMax(Op):
     """
     For N-dimensional tensors, consider that the last two dimensions span images.
     This Op downsamples these images by taking the max over non-overlapping rectangular regions.
+    TODO: what ignore_border do?
     """
 
     def out_shape(imgshape, ignore_border=False):
         #old code not tested (not evenread)
+        #TODO:DON'T use ignore_border!!! 
         rval = [imgshape[0], imgshape[1], imgshape[2]/self.ds[0], imgshape[3]/self.ds[1]]
         if imgshape[2] % self.ds[0]:
             rval[2] += 1
