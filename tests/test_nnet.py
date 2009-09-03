@@ -313,6 +313,9 @@ def test_lenet_28(): #MNIST
 def test_lenet_32(): #CIFAR10 / Shapeset
     run_test_conv_nnet2_classif(23485, 32, 5, 60, ignore_error=False)
 
+def test_lenet_64(): # ???
+    run_test_conv_nnet2_classif(23485, 64, 7, 10, ignore_error=True)
+
 def test_lenet_108(): # NORB
     run_test_conv_nnet2_classif(23485, 108, 7, 10)
 
