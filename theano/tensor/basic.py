@@ -359,9 +359,11 @@ class TensorType(Type):
 
     def c_extract(self, name, sub):
         """Override `CLinkerOp.c_extract` """
+        # TODO: make the error message print out the dtype of the
+        # input received.
         return """
         %(name)s = NULL;
-        type_num_%(name)s = %(type_num)s;
+        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
         if (py_%(name)s == Py_None) {
             // We can either fail here or set %(name)s to NULL and rely on Ops using
             // tensors to handle the NULL case, but if they fail to do so they'll end up
@@ -373,7 +375,7 @@ class TensorType(Type):
             PyErr_SetString(PyExc_ValueError, "expected an ndarray");
             %(fail)s
         }
-        else if (((PyArrayObject*)py_%(name)s)->descr->type_num != %(type_num)s) {
+        else if (type_num_%(name)s != %(type_num)s) {
             PyErr_SetString(PyExc_ValueError, "expected %(type_num)s");
             %(fail)s
         }
@@ -1353,6 +1355,15 @@ class Repeat(gof.Op):
 
 repeat = Repeat()
 
+class SetDefault(gof.Op):
+    view_map = {0: [1]}
+    def make_node(self, x, default):
+        assert x.type == default.type
+        return gof.Apply(self, [x, default], [default.type()])
+    def perform(self, node, (x, default), (out, )):
+        out[0] = default.copy() if x is None else x
+
+setdefault = SetDefault()
 
 
 ##########################
@@ -1758,6 +1769,7 @@ class Split(Op):
     def grad(self, (x, axis, splits), g_outputs):
         """Join the gradients along the axis that was used to split x."""
         return [join(axis, *g_outputs), None, None]
+
 
 class Join(Op):
     """
@@ -2382,6 +2394,7 @@ class Outer(Op):
     def __str__(self):
         return "outer"
 outer = Outer()
+
 
 #########################
 # Gradient

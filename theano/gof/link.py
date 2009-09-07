@@ -142,9 +142,9 @@ class Container(object):
         self.storage = storage
         self.readonly = readonly
         self.strict = strict
-    def __get(self):
+    def __get__(self):
         return self.storage[0]
-    def __set(self, value):
+    def __set__(self, value):
         if self.readonly:
             raise Exception("Cannot set readonly storage: %s" % self.name)
         try:
@@ -158,8 +158,8 @@ class Container(object):
         except Exception, e:
             e.args = e.args + (('Container name "%s"' % self.name),)
             raise
-    data = property(__get, __set)
-    value = property(__get, __set)
+    data = property(__get__, __set__)
+    value = property(__get__, __set__)
     def __str__(self):
         return "<" + str(self.storage[0]) + ">"
     def __repr__(self):
