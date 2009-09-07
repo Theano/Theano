@@ -394,10 +394,12 @@ def local_softmax_with_bias(node):
             vectors = []
             non_vectors = []
             for x_in in x.owner.inputs:
-                if list(x_in.type.broadcastable) == [True, False] \
-                        and isinstance(x_in.owner.op, tensor.DimShuffle):
-                    assert len(x_in.owner.inputs)==1
-                    vectors.append(x_in.owner.inputs[0])
+                if list(x_in.type.broadcastable) == [True, False]:
+                    if x_in.owner and isinstance(x_in.owner.op, tensor.DimShuffle):
+                        assert len(x_in.owner.inputs)==1
+                        vectors.append(x_in.owner.inputs[0])
+                    else:
+                        vectors.append(tensor.DimShuffle((True, False), (1,))(x_in))
                 else:
                     non_vectors.append(x_in)
 
