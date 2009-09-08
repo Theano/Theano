@@ -346,6 +346,11 @@ class ModuleCache(object):
             compilelock.release_lock()
 
     def module_from_key(self, key, fn=None):
+        """
+        :param fn: a callable object that will return a module for the key (it is called only if the key isn't in
+        the cache).  This function will be called with a single keyword argument "location"
+        that is a path on the filesystem wherein the function should write the module.
+        """
         rval = None
         try:
             _version, _rest = key
