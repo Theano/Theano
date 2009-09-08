@@ -279,7 +279,7 @@ class T_function(unittest.TestCase):
         a = T.dmatrix()
         f = function([a], Out(a, borrow=False))
         o = N.ones((3,3))
-        assert o is not f(o)
+        assert o is f(o) #borrow does not imply copy. 
 
 class T_picklefunction(unittest.TestCase):
 

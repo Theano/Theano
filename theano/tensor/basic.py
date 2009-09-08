@@ -133,7 +133,7 @@ _as_tensor_variable = as_tensor_variable
 as_tensor = as_tensor_variable
 
 
-def constant_or_value(x, rtype, name=None, ndim=None):
+def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
     """Return a symbolic `Constant` with value `x`
     
     :Exceptions:
@@ -141,10 +141,28 @@ def constant_or_value(x, rtype, name=None, ndim=None):
      - `ValueError`: `x` could not be expanded to have ndim dimensions
 
     """
-    if isinstance(x, numpy.ndarray):
-        x_ = x
+    if dtype is not None:
+        x_ = numpy.asarray(x, dtype=dtype)
     else:
-        x_ = numpy.asarray(x)
+        x_ = None
+        if rtype is TensorConstant and isinstance(x, int):
+            for dtype in ['int8', 'int16', 'int32', 'int64']:
+                x_ = numpy.asarray(x, dtype=dtype)
+                if numpy.all(x == x_):
+                    break
+                x_ = None
+        elif rtype is TensorConstant and isinstance(x, float):
+            for dtype in ['float32', 'float64']:
+                x_ = numpy.asarray(x, dtype=dtype)
+                if numpy.all(x == x_):
+                    break
+                x_ = None
+        elif isinstance(x, numpy.ndarray):
+            x_ = x
+        else:
+            x_ = numpy.asarray(x)
+
+    assert type(x_) == numpy.ndarray
 
     bcastable = [d == 1 for d in x_.shape]
     if ndim is not None:
@@ -160,11 +178,11 @@ def constant_or_value(x, rtype, name=None, ndim=None):
     except:
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
-def constant(x, name=None, ndim=None):
-    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim)
+def constant(x, name=None, ndim=None, dtype=None):
+    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim, dtype=dtype)
 
-def value(x, name=None, ndim=None):
-    return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim)
+def value(x, name=None, ndim=None, dtype=None):
+    return constant_or_value(x, rtype=TensorValue, name=name, ndim=ndim, dtype=dtype)
 
 def _obj_is_wrappable_as_tensor(x):
     try:
@@ -262,7 +280,8 @@ class TensorType(Type):
         """Compare True iff other is the same kind of TensorType"""
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
-    def values_eq_approx(self, a, b):
+    @staticmethod
+    def values_eq_approx(a, b):
         if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
             if a.shape != b.shape:
                 return False
@@ -337,19 +356,18 @@ class TensorType(Type):
             return self.name
         else:
             b = self.broadcastable
-            #bcast = str(self.broadcastable)
-            # TODO: verify this backport
-            if not any(b):
-              retval = len(b)
-            else:
-              retval = str(b)
-
-            bcast = {(): 'scalar',
+            named_broadcastable = {(): 'scalar',
                      (False,): 'vector',
                      (False, True): 'col',
                      (True, False): 'row',
-                     #(False, False): 'matrix'}.get(b, "%iD" % retval) #TODO backport
-                     (False, False): 'matrix'}.get(b, "%iD" % len(b) if not any(b) else str(b))
+                     (False, False): 'matrix'}
+            if b in named_broadcastable:
+                bcast = named_broadcastable[b]
+            else:
+                if any(b):
+			bcast = str(b)
+                else:
+                        bcast = '%iD' % len(b)
             return "TensorType(%s, %s)" % (str(self.dtype), bcast)
 
     def __repr__(self):
@@ -628,18 +646,22 @@ class _tensor_py_operators:
         """
         return reshape(self, shape, ndim=ndim)
 
-    def dimshuffle(self, pattern):
+    def dimshuffle(self, *pattern):
         """Reorder the dimensions of this variable, optionally inserting broadcasted dimensions.
 
-        :param pattern: list of int mixed with 'x' for broadcastable dimensions
+        :param pattern: list/tuple of int mixed with 'x' for broadcastable dimensions
 
         For example, to create a 3D view of a [2D] matrix, call ``dimshuffle([0,'x',1])``.  This
         will create a 3D view such that the middle dimension is an implicit broadcasted
         dimension.  To do the same thing on the transpose of that matrix, call ``dimshuffle([1,
         'x', 0])``.
 
+        This function supports the pattern passed as a tuple, or as a variable-length argument (e.g. ``a.dimshuffle(pattern)`` is equivalent to ``a.dimshuffle(*pattern)`` where ``pattern`` is a list/tuple of ints mixed with 'x' characters).
+
         For more information, see `DimShuffle`.
         """
+        if (len(pattern) == 1) and (isinstance(pattern[0], (list, tuple))):
+            pattern = pattern[0]
         op = DimShuffle(list(self.type.broadcastable), pattern)
         return op(self)
 
@@ -658,7 +680,8 @@ class _tensor_py_operators:
         return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Variable)))
     
     #COPYING
-    def copy(self): return tensor_copy(self)
+    def copy(self):
+        return tensor_copy(self)
 
     def __iter__(self): 
         try:
@@ -792,8 +815,6 @@ def _scal_elemwise(symbol):
     else:
       msg = "no_inplace"
     n="Elemwise{%s,%s}"%(symbolname,msg)
-    #backport
-    #n="Elemwise{%s,%s}"%(symbolname,"inplace" if inplace else "no_inplace")
 
     if inplace:
         scalar_op = getattr(scal, symbolname[:-len('_inplace')])
@@ -930,11 +951,11 @@ class MaxAndArgmax(Op):
         inputs = [x, axis]
         broadcastable = [False] * (x.type.ndim - 1) #TODO: be less conservative
         outputs = [tensor(x.type.dtype, broadcastable), 
-                   tensor(axis.type.dtype, broadcastable)]
+                   tensor('int32', broadcastable)]
         return Apply(self, inputs, outputs)
     def perform(self, node, (x, axis), (max, max_idx)):
         max[0] = numpy.asarray(numpy.max(x, axis))
-        max_idx[0] = numpy.asarray(numpy.argmax(x, axis))
+        max_idx[0] = numpy.asarray(numpy.argmax(x, axis), dtype='int32')
     def grad(self, (x, axis), (g_max, g_max_idx)):
         # @warning: This only works if axis is 0, else the max is
         # broadcasted wrong in the call to eq.
@@ -951,17 +972,11 @@ class MaxAndArgmax(Op):
           g_max_pad = shape_padleft(g_max)
         else:
            g_max_pad = shape_padright(g_max)
-        #backport
-        #g_max_pad = shape_padleft(g_max) if axis.data==0 else \
-        #            shape_padright(g_max)
         xmax = max(x, axis)
         if axis.data==0:
           xmax_pad = shape_padleft(xmax)
         else:
           xmax_pad = shape_padright(xmax)
-        #backport
-        #xmax_pad = shape_padleft(xmax) if axis.data==0 else \
-        #           shape_padright(xmax)
         g_x = eq(xmax_pad, x) * g_max_pad
         return g_x, None
 
@@ -1189,13 +1204,14 @@ pprint.assign(fill, printing.FunctionPrinter('fill'))
 def ones_like(model):
     """WRITEME"""
     #return Ones(model.type.ndim)(shape(model))
-    return fill(model, 1.0)
+    ret= fill(model, constant(1.0, dtype=model.type.dtype))
+    return ret
 
 @constructor
 def zeros_like(model):
     """WRITEME"""
     #return Zeros(model.type.ndim)(shape(model))
-    return fill(model, 0.0)
+    return fill(model, constant(0.0, dtype=model.type.dtype))
 
 class Filler(gof.Op):
     """WRITEME"""
@@ -1571,6 +1587,7 @@ class Subtensor(Op):
         return type(self) == type(other) and self.idx_list == other.idx_list
 
     def __hash__(self):
+        #TODO: optimize by cache this hash value
         msg = []
         for entry in self.idx_list:
           if isinstance(entry, slice):
@@ -1586,19 +1603,20 @@ class Subtensor(Op):
         #                 for entry in self.idx_list)
         return hash(idx_list)
 
+    @staticmethod
+    def str_from_slice(entry):
+        msg = []
+        for x in [entry.start, entry.stop, entry.step]:
+            if x is None:
+                msg.append("")
+            else:
+                msg.append(str(x))
+        return ":".join(msg)
     def __str__(self):
         indices = []
         for entry in self.idx_list:
             if isinstance(entry, slice):
-              msg = []
-              for x in [entry.start, entry.stop, entry.step]:
-                if x is None:
-                  msg += ""
-                else:
-                  msg += [str(x)]
-                indices.append(":".join(msg))
-                #backport
-                #indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
+                indices.append(self.str_from_slice(entry))
             else:
                 indices.append(str(entry))
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
@@ -1690,24 +1708,13 @@ class SetSubtensor(Op):
         indices = []
         for entry in self.idx_list:
             if isinstance(entry, slice):
-              msg = []
-              for x in [entry.start, entry.stop, entry.step]:
-                if x  is None:
-                  msg += ""
-                else:
-                  msg += [str(x)]
-                indices.append(":".join(msg))
-                #backport
-                #indices.append(":".join("" if x is None else str(x) for x in [entry.start, entry.stop, entry.step]))
+                indices.append(Subtensor.str_from_slice(entry))
             else:
                 indices.append(str(entry))
         if self.inplace:
-          msg = 'Inplace'
+            msg = 'Inplace'
         else:
-          msg = ''
-
-        #backport
-        #return "%s%s{%s}" % ('Inplace' if self.inplace else '',
+            msg = ''
         return  "%s%s{%s}" % (msg,
                 self.__class__.__name__, ", ".join(indices))
 
@@ -2237,9 +2244,11 @@ class Reshape(Op):
         self.name = name
 
     def __eq__(self, other):
-        return (type(other) is Reshape) and (other.ndim == self.ndim) and self.name == other.name
+        # .name does not participate because it doesn't affect computations
+        return (type(other) is Reshape) and (other.ndim == self.ndim)
     def __hash__(self):
-        return hash(Reshape) ^ hash(self.ndim) ^ hash(self.name)
+        # .name does not participate because it doesn't affect computations
+        return hash(Reshape) ^ hash(self.ndim)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
         shp = as_tensor_variable(shp)

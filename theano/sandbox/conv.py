@@ -47,7 +47,6 @@ class ConvOp(Op):
         unroll_batch - c code generation option
         unroll_kern - c code generation option
 
-
         The reason that this op does the summation over convolutions within the 'stack' is that
         it allows us to be memory-efficient about how gradients are calculated.  If, for
         example, we had a convolution op that took a list of images, a list of kernels, and
@@ -92,14 +91,25 @@ class ConvOp(Op):
             if self.bsize<=self.unroll_batch:
                 self.unroll_batch = self.bsize
             else:
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a divisor of bsize(%s). We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize))
-                self.unroll_batch=1
+                #find the maximum value under unroll_batch that would work
+                new=self.unroll_batch
+                assert(new>=1)
+                while self.bsize % new!=0:
+                    new-=1
+
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a divisor of bsize(%s). We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize),new)
+                self.unroll_batch=new
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
             if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern
             else:
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to 1. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern))
-                self.unroll_kern=1
+                #find the maximum value under unroll_kern that would work
+                new=self.unroll_kern
+                assert(new>=1)
+                while self.nkern % new!=0:
+                    new-=1
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern),new)
+                self.unroll_kern=new
         self.outshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
         self.fulloutshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
         self.out_mode = output_mode
@@ -136,6 +146,33 @@ class ConvOp(Op):
 
     def __str__(self):
         return "ConvOp{" +",".join(str((a, getattr(self, a))) for a in self.__attrnames)  + "}"
+
+    def set_flops(self):
+        """ Usefull with the hack in profilemode to print the MFlops"""
+        if self.out_mode=="valid":
+            self.flops=self.kshp[0]*self.kshp[1]*2#nb mul and add by output pixed
+            self.flops*=self.outshp[0]*self.outshp[1]#nb flops by output image
+            self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
+        else: #full mode not implemented
+            self.flops=0
+            for out_row in range(self.outshp[0]):#loop over output row
+                for out_col in range(self.outshp[0]):#loop over output col
+                    for row in range(self.kshp[0]):#loop over kern row
+                        if row+out_row-self.kshp[0]+1<0 or row+out_row-self.kshp[0]+1>=self.imshp[1]: continue
+                        col=0
+                        max_col=self.kshp[1]
+                        img_col=out_col-self.kshp[1]+1
+                        max_col=min(max_col,self.imshp[2]-img_col)
+
+                        if img_col<0:
+                            col=-img_col
+                            img_col+=col
+                        while col < max_col: #loop over kern col
+                            self.flops+=1
+                            col+=1
+            
+            self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
+
 
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
@@ -188,7 +225,6 @@ class ConvOp(Op):
             buf = N.zeros((batchsize,)+ self.imshp_logical, dtype=img2d.dtype)
             buf[:,:,::rstride, ::cstride] = img2d
             img2d = buf
-            print 'A'
             del buf, rstride, cstride
 
         if self.kshp != self.kshp_logical:
@@ -204,7 +240,6 @@ class ConvOp(Op):
                 assert coffset >= 0
             buf[:,:,roffset::rstride, coffset::cstride] = filtersflipped
             filtersflipped = buf
-            print 'B'
             del buf, rstride, cstride
 
         for b in range(batchsize):
@@ -293,7 +328,10 @@ class ConvOp(Op):
                     unroll_batch=un_b, unroll_kern=un_k,
                     imshp_logical=imshp_logical,
                     kshp_logical=kshp_logical,
-                    kshp_logical_top_aligned=kshp_logical_top_aligned)(img,filters)
+                    kshp_logical_top_aligned=kshp_logical_top_aligned)
+        if hasattr(self,'flops'):
+            dw.set_flops()
+        dw = dw(img,filters)
         assert (dw.owner.op.outshp==self.kshp).all()
         if self.out_mode == 'valid':
             # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
@@ -311,7 +349,10 @@ class ConvOp(Op):
                      1,1, output_mode=mode,
                      unroll_batch=un_b, unroll_kern=un_k,
                      imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1]),
-                     kshp_logical=None)(gz,filters)
+                     kshp_logical=None)
+        if hasattr(self,'flops'):
+            din.set_flops()
+        din = din(gz,filters)
         assert (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
