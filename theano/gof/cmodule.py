@@ -596,6 +596,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
     if status:
         error('g++ return status', status)
+        raise RuntimeError('g++ failed', status)
     else:
         #touch the __init__ file
         file(os.path.join(workdir, "__init__.py"),'w').close()      
