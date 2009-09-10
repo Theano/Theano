@@ -782,6 +782,7 @@ class CLinker(link.Linker):
         get_lock()
         try:
             debug("LOCATION", location)
+            debug("module name", mod.name)
             module = self.module_compile_str(
                     module_name=mod.name,
                     src_code = mod.code(),
