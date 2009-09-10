@@ -74,6 +74,7 @@ class GemmRelated(Op):
 
     declare_NS = """
         int unit = 0;
+        printf("Hello World\\n");
 
         int type_num = %(_x)s->descr->type_num;
         int type_size = %(_x)s->descr->elsize; // in bytes
