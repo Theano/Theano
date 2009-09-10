@@ -134,6 +134,8 @@ def dlimport(fullpath, suffix=None):
     :returns: the dynamically loaded module (from __import__)
 
     """
+    if not os.path.isabs(fullpath):
+        raise ValueError('`fullpath` must be an absolute path', fullpath)
     if suffix is None:
         if fullpath.endswith('.so'):
             suffix = '.so'
@@ -151,17 +153,17 @@ def dlimport(fullpath, suffix=None):
     else:
         raise ValueError('path has wrong suffix', (fullpath, suffix))
     workdir = fullpath[:-len(module_name)- 1 - len(suffix)]
-    #debug("WORKDIR", workdir)
-    #debug("module_name", module_name)
 
-    pathcopy = list(sys.path)
-    sys.path = [workdir]
+    debug("WORKDIR", workdir)
+    debug("module_name", module_name)
+
+    sys.path[0:0] = [workdir] #insert workdir at beginning (temporarily)
     try:
         rval = __import__(module_name, {}, {}, [module_name])
         if not rval:
-            error('__import__ failed', fullpath)
+            raise Exception('__import__ failed', fullpath)
     finally:
-        sys.path = pathcopy
+        del sys.path[0]
 
     assert fullpath.startswith(rval.__file__)
     return rval
