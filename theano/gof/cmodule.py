@@ -166,6 +166,11 @@ def dlimport(fullpath, suffix=None):
     assert fullpath.startswith(rval.__file__)
     return rval
 
+def dlimport_workdir(basedir):
+    """Return a directory where you should put your .so file for dlimport to be able to load
+    it, given a basedir which should normally be the result of get_compiledir()"""
+    return tempfile.mkdtemp(dir=basedir)
+
 def last_access_time(path):
     """Return the number of seconds since the epoch of the last access of a given file"""
     return os.stat(path)[stat.ST_ATIME]
@@ -370,7 +375,7 @@ class ModuleCache(object):
             rval = self.module_from_name[name]
         else:
             # we have never seen this key before
-            location = tempfile.mkdtemp(dir=self.dirname)
+            location = dlimport_workdir(self.dirname)
             #debug("LOCATION*", location)
             try:
                 module = fn(location=location)  # WILL FAIL FOR BAD C CODE
@@ -627,7 +632,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     libs = ['python2.6', 'cudart'] + libs
     lib_dirs = ['/usr/local/cuda/lib']+lib_dirs
 
-    workdir = tempfile.mkdtemp(dir=location)
+    workdir = dlimport_workdir(location)
 
     cppfilename = os.path.join(workdir, 'mod.cpp') #.cpp to use g++
     cppfilename = os.path.join(workdir, 'mod.cu') #.cu to use nvopencc
