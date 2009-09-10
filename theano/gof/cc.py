@@ -5,7 +5,7 @@ Defines Linkers that deal with C implementations.
 # Python imports
 from copy import copy
 import re #for set_compiledir
-import os, sys, platform, StringIO, time
+import os, sys, platform, StringIO, time 
 import md5
 if sys.version_info[:2] >= (2,5):
   import hashlib
@@ -29,17 +29,14 @@ import cmodule
 
 import logging
 _logger=logging.getLogger("theano.gof.cc")
+_logger.setLevel(logging.WARN)
 def info(*args):
-    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
-    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug(' '.join(str(a) for a in args))
 def warning(*args):
-    sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.warning(' '.join(str(a) for a in args))
 def error(*args):
-    sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.error(' '.join(str(a) for a in args))
 
 from theano.gof.callcache import CallCache
