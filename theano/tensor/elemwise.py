@@ -542,16 +542,23 @@ class Elemwise(Op):
         for dims in zip(*[[(1, True)]*(maxsize - len(input.shape)) + zip(input.shape, sinput.type.broadcastable)
                           for input, sinput in zip(inputs, node.inputs)]):
             if max(d for d,b in dims) != 1 and (1, False) in dims:
+                # yes there may be more compact ways to write this code,
+                # but please maintain python 2.4 compatibility (no "x if c else y")
                 msg = []
+                assert len(inputs) == len(node.inputs)
                 for input, sinput in zip(inputs, node.inputs):
-                  for d, b in zip(input.shape, sinput.type.broadcastable):
-                    if b:
-                      msg += ['*'] 
-                    else:
-                      msg += [str(d)]
+                    assert len(input.shape) == len(sinput.type.broadcastable)
+                    msg2 = []
+                    for d, b in zip(input.shape, sinput.type.broadcastable):
+                        if b:
+                            msg2 += ['*'] 
+                        else:
+                            msg2 += [str(d)]
+                    msg.append('(%s)' % ", ".join(msg2))
 
                 raise ValueError('Dimension mismatch; shapes are %s' %
-                                 ', '.join('(%s)' % ', '.join(msg)))
+                        ', '.join(msg))
+                                 #', '.join('(%s)' % ', '.join(msg)))
                 #backport
                 #raise ValueError('Dimension mismatch; shapes are %s' %
                 #                 ', '.join('(%s)' % ', '.join('*' if b else str(d)
