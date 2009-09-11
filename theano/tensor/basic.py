@@ -199,6 +199,15 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
+def _allclose(a, b):
+    narrow = 'float32', 'complex64'
+    if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
+        atol = 1e-5
+        rtol = 1e-3 #  Sensible??
+        return numpy.allclose(a,b, atol=atol, rtol=rtol)
+    else:
+        # keep defaults of in numpy.allclose
+        return numpy.allclose(a,b)
 
 class TensorType(Type):
     """Symbolic `Type` representing a numpy.ndarray value."""
@@ -299,12 +308,9 @@ class TensorType(Type):
                 # following two lines, that may seem weird at first glance.
                 # If someone can figure out what it is, please say it here!
                 ones = numpy.ones(2)
-                return numpy.allclose(ones * a, ones*b)
-            #elif str(a.dtype).startswith('complex'):
-            #    print >> sys.stderr, 'WARNING: skipping comparison of complex'
-            #    return True
+                return _allclose(ones * a, ones*b)
             else:
-                cmp = numpy.allclose(a,b)
+                cmp = _allclose(a, b)
                 if cmp:
                     # Numpy claims they are close, this is good enough for us.
                     return True
@@ -320,6 +326,9 @@ class TensorType(Type):
                 if not a_missing.any():
                     # There are no missing values in a, thus this is not the
                     # reason why numpy.allclose(a, b) returned False.
+                    _info('numpy allclose failed for abs_err %f and rel_err %f' %(
+                        numpy.max( abs(a-b)),
+                        numpy.max( abs(a-b)/(abs(a)+abs(b)))))
                     return False
                 # The following line is what numpy.allclose bases its decision
                 # upon, according to its documentation.
