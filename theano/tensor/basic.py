@@ -2257,7 +2257,7 @@ class Reshape(Op):
         return (type(other) is type(self)) and (other.ndim == self.ndim)
     def __hash__(self):
         # .name does not participate because it doesn't affect computations
-        return hash(type(other)) ^ hash(self.ndim)
+        return hash(type(self)) ^ hash(self.ndim)
     def __str__(self):
         return '%s{%s}' %(self.__class__.__name__, self.ndim)
     def make_node(self, x, shp):
