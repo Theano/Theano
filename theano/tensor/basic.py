@@ -935,6 +935,12 @@ class Shape(Op):
 
     @note: Non-differentiable.
     """
+    def __hash__(self):
+        return hash(type(self))
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, x):
         x = as_tensor_variable(x)
         return Apply(self, [x], [lvector()])
