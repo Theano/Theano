@@ -384,7 +384,7 @@ class Softmax(gof.Op):
         for i in xrange(sm.shape[0]):
             row = x[i]
             sm[i] = numpy.exp(row - numpy.max(row))
-            sm[i] *= 1.0 / numpy.sum(sm[i])
+            sm[i] /= numpy.sum(sm[i])
         output_storage[0][0] = sm
 
     def grad(self, (x,), (g_sm,)):
