@@ -26,7 +26,12 @@ from theano.printing import pprint, Print
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
-
+import logging
+_logger=logging.getLogger("theano.tensor.basic")
+def _info(*msg):
+    _logger.info(' '.join(msg))
+def _warn(*msg):
+    _logger.warn(' '.join(msg))
 
 def check_equal_numpy(x, y):
     """
