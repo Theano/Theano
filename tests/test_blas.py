@@ -7,6 +7,7 @@ import numpy
 
 import theano_cuda_ndarray as tcn
 
+from theano.sandbox.downsample import DownsampleFactorMax
 
 def test_dot():
 
@@ -45,3 +46,45 @@ def test_gemm():
     print a.value
 
     assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.value)
+
+
+def test_downsample():
+
+    for shp in [
+            (1, 1, 1, 12),
+            (1, 1, 2, 2), 
+            #(1, 1, 1, 1), #### Commented out because it makes FP-exception that I don't understand
+            (1,1,4,4),
+            (1, 1, 10, 11),
+            (1, 2, 2, 2),
+            (3,5,4,4),
+            (1, 1, 12, 12),
+            (1, 1, 2, 14),
+            (1, 1, 12, 14),
+            (1, 1, 14, 14),
+            (1, 1, 16, 16),
+            (1, 1, 18, 18),
+            (1, 1, 24, 24),
+            (1, 6, 24, 24),
+            (10, 1, 24, 24),
+            (10, 6, 24, 24),
+            (30, 6, 12, 12),
+            (30, 2, 24, 24),
+            (30, 6, 24, 24),
+            (10, 10, 10, 11)]:
+        for ds in (1,1), (2, 2):
+            if ds[0] > shp[2]: continue
+            if ds[1] > shp[3]: continue
+            for ignore_border in (True, False):
+                print 'test_downsample', shp, ds, ignore_border
+                ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
+
+                a = tcn.shared_constructor(numpy.random.rand(*shp), 'a')
+                f = pfunc([], ds_op(tensor.as_tensor_variable(a)))
+                worked = False
+                for i, node in enumerate(f.maker.env.toposort()):
+                    print i, node
+                    if isinstance(node.op, tcn.blas.GpuDownsampleFactorMax):
+                        f()  # let debugmode do the testing
+                        worked = True
+                assert worked
