@@ -14,7 +14,7 @@ import numpy
 import theano_cuda_ndarray as tcn
 
 import logging
-logging.getLogger('theano.gradient').setLevel(logging.INFO)
+logging.getLogger('test_cuda_ndarray.tests.test_nnet').setLevel(logging.INFO)
 
 
 def get_mode():
