@@ -46,7 +46,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_iter=100):
     hid = tensor.tanh(tensor.dot(x, w)+b)
     out = tensor.tanh(tensor.dot(hid, v)+c)
     loss = tensor.sum(0.5 * (out-y)**2 * lr)
-    print 'loss type', loss.type
+    if 0: print 'loss type', loss.type
 
     params = [w, b, v, c]
     gparams = tensor.grad(loss, params)
@@ -56,27 +56,35 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_iter=100):
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-    for i, n in enumerate(train.maker.env.toposort()):
-        print i, n
+    if 0:
+        for i, n in enumerate(train.maker.env.toposort()):
+            print i, n
 
     xval = numpy.asarray(numpy.random.rand(n_batch, n_in), dtype='float32')
     yval = numpy.asarray(numpy.random.rand(n_batch, n_out), dtype='float32')
     lr = numpy.asarray(0.01, dtype='float32')
 
     t0 = time.time()
+    rval = []
     for i in xrange(n_iter):
-        rval = train(xval, yval, lr)
-    print 'LOOP TIME', time.time() - t0
+        rval.append(train(xval, yval, lr))
+    dt = time.time() - t0
         
     print_mode(mode)
-    return rval
+    return numpy.asarray(rval), dt
     
 def test_run_nnet():
-    numpy.random.seed(23456)
-    rval_cpu = run_nnet(False)
-    numpy.random.seed(23456)
-    rval_gpu = run_nnet(True)
-    assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
+    for n_in in 1024, 2048, 4096:
+        for n_hid in 1024, 2048, 4096:
+            numpy.random.seed(23456)
+            rval_cpu, tc = run_nnet(False, n_in=n_in, n_hid=n_hid)
+            numpy.random.seed(23456)
+            rval_gpu, tg = run_nnet(True, n_in=n_in, n_hid=n_hid)
+            #print "cpu:", rval_cpu
+            #print "gpu:", rval_gpu
+            print "max abs diff:", numpy.max(numpy.absolute(rval_gpu-rval_cpu))
+            print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
+            assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
 def test_run_nnet_med():
     numpy.random.seed(23456)
@@ -308,7 +316,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
     print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
     if not ignore_error:
-        assert numpy.allclose(rval_cpu[:2], rval_gpu[:2],rtol=1e-4,atol=1e-6)
+        assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=1e-5)
 
 def test_lenet_28(): #MNIST
     cmp_run_conv_nnet2_classif(23485, 28, 5, 60, n_iter=3)
