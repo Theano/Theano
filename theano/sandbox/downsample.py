@@ -175,10 +175,10 @@ class DownsampleFactorMax(Op):
         return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
 
     def make_node(self, x):
-        dmatrix4 = tensor.TensorType(x.type.dtype, (False, False, False, False))
-        if x.type != dmatrix4:
-            raise NotImplementedError()
-        return gof.Apply(self, [x], [dmatrix4()])
+        if x.type.ndim != 4:
+            raise TypeError()
+        # TODO: consider restrucing the dtype?
+        return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z,)):
         """
