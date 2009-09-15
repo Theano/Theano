@@ -54,13 +54,16 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
         if (other.type.dtype != self.dtype):
             raise TypeError('Incompatible dtype', (self.dtype, other.type.dtype))
         if (other.type.broadcastable != self.broadcastable):
-            raise TypeError('Incompatible broadcastable', (self.broadcastable, other.type.broadcastable))
+            raise TypeError('Incompatible broadcastable', (self, (self.broadcastable,
+                other.type.broadcastable)))
         return GpuFromHost()(other)
 
 CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
-def shared_constructor(value, name, strict=False):
+def shared_constructor(value, name, strict=False, broadcastable=None):
     """SharedVariable Constructor for TensorType"""
+
+    #TODO: what should strict mean in this context, since we always have to make a copy?
     if strict:
         _value = value
     else:
@@ -71,8 +74,9 @@ def shared_constructor(value, name, strict=False):
     if _value.dtype.num != CudaNdarrayType.typenum:
         raise TypeError('float32 ndarray required')
 
-    bcast = [0 for b in value.shape]
-    type = CudaNdarrayType(broadcastable=bcast)
+    if broadcastable is None:
+        broadcastable = [b==1 for b in value.shape]
+    type = CudaNdarrayType(broadcastable=broadcastable)
     return CudaNdarraySharedVariable(type=type, value=_value, name=name, strict=strict)
 
 
