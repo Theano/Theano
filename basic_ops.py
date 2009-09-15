@@ -283,13 +283,15 @@ class GpuDimShuffle(Op):
         #reassign the dimension and strides in the host pointers
         for i, o in enumerate(self.new_order):
             if o == 'x':
+                #TODO: remove this assertion
+                #      the correct thing to do is to insert a run-time check 
+                #      that the size in this dimension is 1
                 assert node.outputs[0].type.broadcastable[i]
                 print >> sio, """
         CudaNdarray_set_dim(cnda_%(res)s, %(i)s, 1);
         CudaNdarray_set_stride(cnda_%(res)s, %(i)s, 0);
                 """ %locals()
             else:
-                assert not node.outputs[0].type.broadcastable[i]
                 print >> sio, """
         CudaNdarray_set_dim(cnda_%(res)s, %(i)s, CudaNdarray_HOST_DIMS(cnda_%(input)s)[%(o)s]);
         CudaNdarray_set_stride(cnda_%(res)s, %(i)s, CudaNdarray_HOST_STRIDES(cnda_%(input)s)[%(o)s]);
@@ -356,6 +358,176 @@ class GpuSum(Op):
     def perform(self, node, (x,), (z,)):
         z[0] = x.reduce_sum(self.reduce_mask)
 
+    def c_code(self, node, name, (x,), (z,), sub):
+
+        nd_in = node.inputs[0].type.ndim
+        nd_out = node.outputs[0].type.ndim
+
+        assert nd_in - nd_out == sum(self.reduce_mask)
+
+        sio = StringIO.StringIO()
+        fail = sub['fail']
+
+        #check input
+        print >> sio, """
+        if (cnda_%(x)s->nd != %(nd_in)s)
+        {
+            PyErr_Format(PyExc_TypeError, "required nd=%(nd_in)s, got nd=%%i", cnda_%(x)s->nd);
+            %(fail)s;
+        }
+        """ %locals()
+
+        #
+        # alloc an output if we need one
+        #
+
+        # check the basics of out output
+        print >> sio, """
+        if (  !cnda_%(z)s 
+           || (cnda_%(z)s->nd != %(nd_out)s)
+        """ % locals()
+
+        #ensure that the output has the right non-reduced dimensions
+        j = 0
+        for i in xrange(nd_in):
+            if not self.reduce_mask[i]: 
+                print >> sio, " || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(cnda_%(x)s)[%(i)s]) " % locals()
+                j += 1
+
+        print >> sio, """
+           )
+        {
+            """ %locals()
+        print >> sio, "int new_dims[%(nd_out)s]; " % locals()
+
+        j = 0
+        for i in xrange(nd_in):
+            if not self.reduce_mask[i]: 
+                print >> sio, 'new_dims[%(j)s] = CudaNdarray_HOST_DIMS(cnda_%(x)s)[%(i)s];' % locals()
+                j += 1
+
+        print >> sio, """
+            Py_XDECREF(cnda_%(z)s);
+            cnda_%(z)s = (CudaNdarray*) CudaNdarray_NewDims(%(nd_out)s, new_dims);
+            if (NULL == cnda_%(z)s)
+            {
+                %(fail)s;
+            }
+        }
+        """ %locals()
+
+        #
+        # Now perform the reduction
+        #
+        if self.reduce_mask == (1,):
+            self.c_code_reduce_1(sio)
+        elif self.reduce_mask == (1,0):
+            self.c_code_reduce_10(sio)
+        elif self.reduce_mask == (1,0,1,1):
+            self.c_code_reduce_1011(sio, node, name, x, z, fail)
+        else:
+            print 'UNWRITTEN REDUCE MASK', self.reduce_mask
+            assert 0
+
+        return sio.getvalue()
+    def c_code_reduce_1(self, sio):
+        warning('WRITEME')
+        return
+    def c_code_reduce_10(self, sio):
+        warning('WRITEME')
+        return
+    def c_code_reduce_1011(self, sio, node, name, x, z, fail):
+        print >> sio, """
+        {
+            int verbose = 1;
+            dim3 n_threads(CudaNdarray_HOST_DIMS(cnda_%(x)s)[3], CudaNdarray_HOST_DIMS(cnda_%(x)s)[2]);
+            dim3 n_blocks(CudaNdarray_HOST_DIMS(cnda_%(x)s)[1]);
+            while (n_threads.x * n_threads.y * n_threads.z < NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
+            n_threads.z -= 1;
+            if (n_threads.z > 64) n_threads.z = 64;
+            if (n_threads.z)
+            {
+                if (verbose) printf("trying kernel_reduce_sum_1011\\n");
+                int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
+                kernel_reduce_sum_1011<<<n_blocks, n_threads, n_shared>>>(
+                        CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
+                        CudaNdarray_HOST_DIMS(cnda_%(x)s)[1],
+                        CudaNdarray_HOST_DIMS(cnda_%(x)s)[2],
+                        CudaNdarray_HOST_DIMS(cnda_%(x)s)[3],
+                        CudaNdarray_DEV_DATA(A),
+                        CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
+                        CudaNdarray_HOST_STRIDES(cnda_%(x)s)[1],
+                        CudaNdarray_HOST_STRIDES(cnda_%(x)s)[2],
+                        CudaNdarray_HOST_STRIDES(cnda_%(x)s)[3],
+                        CudaNdarray_DEV_DATA(self),
+                        CudaNdarray_HOST_STRIDES(self)[1]);
+                CNDA_THREAD_SYNC;
+                if (cudaSuccess != cudaGetLastError()) 
+                {
+                    %(fail)s;
+                }
+            }
+        }
+        """ %locals()
+    
+    def c_code_cache_version(self):
+        return ()
+
+    def c_support_code_apply(self, node, nodename):
+        sio = StringIO.StringIO()
+        print >> sio, """
+        static __global__ void kernel_reduce_sum_1011_%(nodename)s(
+                const unsigned int d0,
+                const unsigned int d1,
+                const unsigned int d2,
+                const unsigned int d3,
+                const float *A, const int sA0, const int sA1, const int sA2, const int sA3,
+                float * Z, const int sZ0)
+        {
+            const int threadCount = blockDim.x * blockDim.y * blockDim.z;
+            const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
+            extern __shared__ float buf[];
+            float mysum = 0.0f;
+
+            if (warpSize != 32)
+            {
+                return;  //TODO: set error code
+            }
+
+            for (int i0 = threadIdx.z; i0 < d0; i0 += blockDim.z)
+            {
+                float Ai = A[i0 * sA0 + blockIdx.x * sA1 + threadIdx.y * sA2 + threadIdx.x * sA3];
+                mysum += Ai;
+            }
+            buf[threadNum] = mysum;
+            __syncthreads();
+
+            // rest of function is handled by one warp
+            if (threadNum < warpSize)
+            {
+                for (int i = threadNum + warpSize; i < threadCount; i += warpSize)
+                {
+                    mysum += buf[i];
+                }
+                buf[threadNum] = mysum;
+                if (threadNum < 16)
+                {
+                    //reduce so that threadNum 0 has the sum of everything
+                    if(threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
+                    if(threadNum + 8 < threadCount) buf[threadNum] += buf[threadNum+8];
+                    if(threadNum + 4 < threadCount) buf[threadNum] += buf[threadNum+4];
+                    if(threadNum + 2 < threadCount) buf[threadNum] += buf[threadNum+2];
+                    if(threadNum + 1 < threadCount) buf[threadNum] += buf[threadNum+1];
+                    if (threadNum == 0)
+                    {
+                        Z[blockIdx.x*sZ0] = buf[0];
+                    }
+                }
+            }
+        }
+        """ %locals()
+        return sio.getvalue()
+
 class GpuReshape(tensor.Reshape):
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, shp):
@@ -375,6 +547,25 @@ class GpuSubtensor(tensor.Subtensor):
         return rval
 
     def perform(self, node, inputs, (out, )):
+        x = inputs[0]
+        indices = list(reversed(inputs[1:]))
+
+        def convert(entry):
+            if isinstance(entry, Type):
+                return indices.pop()
+            elif isinstance(entry, slice):
+                return slice(convert(entry.start),
+                             convert(entry.stop),
+                             convert(entry.step))
+            else:
+                return entry
+
+        cdata = tuple(map(convert, self.idx_list))
+        if len(cdata) == 1:
+            cdata = cdata[0]
+        out[0] = x.__getitem__(cdata)
+
+    def old_perform(self, node, inputs, (out, )):
         indices = list(reversed(inputs[1:]))
 
         def convert(entry):

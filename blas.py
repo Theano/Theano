@@ -174,9 +174,11 @@ class GpuConv(Op):
     def make_node(self, img, kern):
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
-        if img.type != kern.type:
-            raise TypeError('img and kern must have same type')
-        return Apply(self, [img, kern], [img.type()])
+        if kern.type.ndim != 4:
+            raise TypeError('kern must be 4D tensor')
+
+        broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0], False, False]
+        return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def perform(self, node, (img, kern), (out,)):
         out[0] = cuda_ndarray.conv(img, kern, 
@@ -187,13 +189,24 @@ class GpuConv(Op):
                 kern_align=self.logical_kern_align_top,
                 verbose=0)
 
-from theano.sandbox.downsample import DownsampleFactorMax
-class GpuDownsampleFactorMax(DownsampleFactorMax):
-    # inherit __eq__, __hash__, __str__
+class GpuDownsampleFactorMax(Op):
+    def __init__(self, ds, ignore_border=False):
+        self.ds = tuple(ds)
+        self.ignore_border = ignore_border
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+
+    def __str__(self):
+        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
-    def perform(self, node, input_storage, output_storage):
-        raise NotImplementedError('only C is implemented')
+    #def perform(self, node, input_storage, output_storage):
+        #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
         return ()
     def c_code(self, node, nodename, (x,), (z,), sub):
@@ -240,8 +253,8 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
             //dim3 block(std::min(dims[3], 512)); //TODO: implement this by supporting more
             //outputs than threads
             dim3 block(dims[3]);
-            int shared= xdim3*sizeof(float);
-            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block, shared>>>(
+            if ((grid.x*grid.y) && dims[3])
+            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block, xdim3*sizeof(float)>>>(
                 dims[0], dims[1], dims[2], dims[3], xdim2, xdim3,
                 CudaNdarray_DEV_DATA(cnda_%(x)s),
                 CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
@@ -253,8 +266,14 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err) 
             {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.threads.x=%%d threads.y=%%d threads.z=%%d grid.x=%%d grid.y=%%d shared=%%d\\n", "kMaxPool_%(nodename)s",
-                cudaGetErrorString(err), block.x, block.y, block.z, grid.x, grid.y, shared);
+                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                    "kMaxPool_%(nodename)s",
+                    cudaGetErrorString(err),
+                    grid.x,
+                    grid.y,
+                    block.x,
+                    block.y,
+                    block.z);
                 %(fail)s;
             }                         
         }
@@ -270,8 +289,8 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
            float *z)
         {
             float cur_max, cur_x;
-            int i0 = blockIdx.x / D0;
-            int i1 = blockIdx.x %% D0;
+            int i0 = blockIdx.x %% D0;
+            int i1 = blockIdx.x / D0;
             int i2 = blockIdx.y;
 
             extern __shared__ float xbuf[]; //size [xD3]
@@ -280,9 +299,9 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
             {
                 __syncthreads();
                 // load the current row of the image into shared memory
-                for (int i3 = threadIdx.x; i3 < xD3; i3 += blockDim.x)
+                for (int j = threadIdx.x; j < xD3; j += blockDim.x)
                 {
-                    xbuf[i3] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + i3*xS3];
+                    xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
                 }
                 __syncthreads();
                  
@@ -290,10 +309,24 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
                 cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
 
                 // do a mini-reduction over the pf3 relevant elements in the current row
-                for (int k = 0; k < pf3; ++k)
+                if (%(ignore_border)s)
                 {
-                    cur_x = xbuf[threadIdx.x*pf3+k];
-                    cur_max = (cur_x < cur_max) ? cur_x : cur_max;
+                    for (int k = 0; k < pf3; ++k)
+                    {
+                        cur_x = xbuf[threadIdx.x*pf3+k];
+                        cur_max = (cur_x > cur_max) ? cur_x : cur_max;
+                    }
+                }
+                else
+                {
+                    for (int k = 0; k < pf3; ++k)
+                    {
+                        if (threadIdx.x*pf3 + k < xD3)
+                        {
+                            cur_x = xbuf[threadIdx.x*pf3+k];
+                            cur_max = (cur_x > cur_max) ? cur_x : cur_max;
+                        }
+                    }
                 }
             }
 
@@ -302,13 +335,24 @@ class GpuDownsampleFactorMax(DownsampleFactorMax):
         }
         """ % locals()
 
-from theano.sandbox.downsample import DownsampleFactorMaxGrad
-class GpuDownsampleFactorMaxGrad(DownsampleFactorMaxGrad):
-    # inherit __eq__, __hash__, __str__
+class GpuDownsampleFactorMaxGrad(Op):
+    def __init__(self, ds, ignore_border):
+        self.ds = tuple(ds)
+        self.ignore_border = ignore_border
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+
+    def __str__(self):
+        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+
     def make_node(self, x, z, gz):
         return Apply(self, [x, z, gz], [x.type()])
-    def perform(self, node, input_storage, output_storage):
-        raise NotImplementedError('only C is implemented')
+    #def perform(self, node, input_storage, output_storage):
+        #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
         return ()
     def c_code(self, node, nodename, (x, z, gz), (gx,), sub):
@@ -340,9 +384,9 @@ class GpuDownsampleFactorMaxGrad(DownsampleFactorMaxGrad):
             }
         }
         {
-            dim3 grid(CudaNdarray_HOST_DIMS(cnda_%(x)s)[0], CudaNdarray_HOST_DIMS(cnda_%(x)s)[2]);
             //TODO: implement this by supporting more
             //outputs than threads
+            dim3 grid(CudaNdarray_HOST_DIMS(cnda_%(x)s)[0], CudaNdarray_HOST_DIMS(cnda_%(x)s)[2]);
             dim3 block(CudaNdarray_HOST_DIMS(cnda_%(x)s)[3]);
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
                 CudaNdarray_HOST_DIMS(cnda_%(z)s)[0],
@@ -401,9 +445,11 @@ class GpuDownsampleFactorMaxGrad(DownsampleFactorMaxGrad):
             int i2 = blockIdx.y;       // row wrt z and/or gz
             int x_col = threadIdx.x;
 
-            // The algorithm here is that every thread writes one output pixel per line
+            //TODO: raise occupancy.  Use threadIdx.y to run several iterations of this i1 loop
+            //in parallel
             for (i1 = 0; i1 < D1; ++i1)
             {
+                // The algorithm here is that every thread writes one output pixel per line
                 if (%(ignore_border)s && (x_col >= ds1 * D3))
                 {
                     my_gz = 0;
@@ -417,7 +463,7 @@ class GpuDownsampleFactorMaxGrad(DownsampleFactorMaxGrad):
                 for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (%(ignore_border)s || (x_row < xD2)); ++x_row)
                 {
                     gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
-                       = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col]) ? my_gz : 0;
+                       = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0;
                 }
             }
         }

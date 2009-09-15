@@ -186,9 +186,6 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
         return self.__class__.__name__
     def make_node(self, dy, sm, y_idx):
         return Apply(self, [dy, sm, y_idx],[sm.type()])
-    def perform(self, node, input_storage, output_storage):
-        raise NotImplementedError('only C is implemented')
-
     def c_code_cache_version(self):
         return ()
     def c_code(self, node, nodename, (dnll, sm, y_idx), (dx,), sub):
