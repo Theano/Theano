@@ -291,8 +291,8 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch=60, n_iter=25):
     print_mode(mode)
     return rvals, t1-t0
 
-def run_test_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False):
-    if ignore_error:
+def run_test_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False, gpu_only=False):
+    if gpu_only:
         numpy.random.seed(seed)
         rval_gpu, t = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize)
         return
@@ -305,7 +305,8 @@ def run_test_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False):
     print "gpu:", rval_gpu
     print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
     print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
-    assert numpy.allclose(rval_cpu[:2], rval_gpu[:2],rtol=1e-4,atol=1e-6)
+    if not ignore_error:
+        assert numpy.allclose(rval_cpu[:2], rval_gpu[:2],rtol=1e-4,atol=1e-6)
 
 def test_lenet_28(): #MNIST
     run_test_conv_nnet2_classif(23485, 28, 5, 60)
