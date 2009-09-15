@@ -2570,7 +2570,7 @@ outer = Outer()
 # Gradient
 #########################
 
-def grad(cost, wrt, g_cost=None, consider_constant=[]):
+def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     """
     :type cost: `Variable`
     :type wrt: `Variable` or list of `Variable`s.
@@ -2578,6 +2578,9 @@ def grad(cost, wrt, g_cost=None, consider_constant=[]):
     :param g_cost: an expression for the gradient through cost.  The default is
         ``ones_like(cost)``.
     :param consider_constant: a list of expressions not to backpropagate through
+
+    :param warn_type: a value of True will cause warnings to be logged for any Op that emits a
+        gradient that does not match its input type.
 
     :rtype: `Variable` or list of `Variable`s (depending upon `wrt`)
 
@@ -2597,7 +2600,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=[]):
     if g_cost is None:
         g_cost = ones_like(cost)
     inputs = gof.graph.inputs([cost])
-    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs + consider_constant)
+    gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs + consider_constant,
+            warn_type=warn_type)
 
     def zero(p):
         return TensorConstant(
