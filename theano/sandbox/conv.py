@@ -192,7 +192,8 @@ class ConvOp(Op):
             raise NotImplementedError("The image and the kernel must have the same type."
                             "inputs(%s), kerns(%s)"%(_inputs.dtype, _kerns.dtype))
         output = tensor.tensor(dtype=_inputs.type.dtype,
-                               broadcastable=[False]*outdim); 
+                               broadcastable=[_inputs.broadcastable[0],
+                                   _kerns.broadcastable[0], False, False]); 
 
         return gof.Apply(self, [_inputs, _kerns], [output])
 
