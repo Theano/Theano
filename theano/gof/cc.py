@@ -830,9 +830,7 @@ class CLinker(link.Linker):
         This method is a callback for `ModuleCache.module_from_key`
         """
         if location is None:
-          location = get_compiledir()
-        #backport
-        #location = get_compiledir() if location is None else location
+            location = cmodule.dlimport_workdir(get_compiledir())
         mod = self.build_dynamic_module()
         get_lock()
         try:

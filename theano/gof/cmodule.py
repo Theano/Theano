@@ -139,6 +139,8 @@ def dlimport(fullpath, suffix=None):
     :returns: the dynamically loaded module (from __import__)
 
     """
+    if not os.path.isabs(fullpath):
+        raise ValueError('`fullpath` must be an absolute path', fullpath)
     if suffix is None:
         if fullpath.endswith('.so'):
             suffix = '.so'
@@ -156,20 +158,25 @@ def dlimport(fullpath, suffix=None):
     else:
         raise ValueError('path has wrong suffix', (fullpath, suffix))
     workdir = fullpath[:-len(module_name)- 1 - len(suffix)]
-    #debug("WORKDIR", workdir)
-    #debug("module_name", module_name)
 
-    pathcopy = list(sys.path)
-    sys.path = [workdir]
+    debug("WORKDIR", workdir)
+    debug("module_name", module_name)
+
+    sys.path[0:0] = [workdir] #insert workdir at beginning (temporarily)
     try:
         rval = __import__(module_name, {}, {}, [module_name])
         if not rval:
-            error('__import__ failed', fullpath)
+            raise Exception('__import__ failed', fullpath)
     finally:
-        sys.path = pathcopy
+        del sys.path[0]
 
     assert fullpath.startswith(rval.__file__)
     return rval
+
+def dlimport_workdir(basedir):
+    """Return a directory where you should put your .so file for dlimport to be able to load
+    it, given a basedir which should normally be the result of get_compiledir()"""
+    return tempfile.mkdtemp(dir=basedir)
 
 def last_access_time(path):
     """Return the number of seconds since the epoch of the last access of a given file"""
@@ -347,6 +354,11 @@ class ModuleCache(object):
             compilelock.release_lock()
 
     def module_from_key(self, key, fn=None):
+        """
+        :param fn: a callable object that will return a module for the key (it is called only if the key isn't in
+        the cache).  This function will be called with a single keyword argument "location"
+        that is a path on the filesystem wherein the function should write the module.
+        """
         rval = None
         try:
             _version, _rest = key
@@ -366,7 +378,7 @@ class ModuleCache(object):
             rval = self.module_from_name[name]
         else:
             # we have never seen this key before
-            location = tempfile.mkdtemp(dir=self.dirname)
+            location = dlimport_workdir(self.dirname)
             #debug("LOCATION*", location)
             try:
                 module = fn(location=location)  # WILL FAIL FOR BAD C CODE
