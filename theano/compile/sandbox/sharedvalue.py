@@ -141,7 +141,7 @@ class TensorSharedVariable(SharedVariable, theano.tensor.basic._tensor_py_operat
 def tensor_constructor(value, name=None, strict=False):
     """SharedVariable Constructor for TensorType"""
     if not isinstance(value, numpy.ndarray):
-        raise TypeError
+        raise TypeError()
 
     bcast = [b==1 for b in value.shape]
     type = TensorType(value.dtype, broadcastable=bcast)
@@ -151,7 +151,7 @@ def tensor_constructor(value, name=None, strict=False):
 def scalar_constructor(value, name=None, dtype=None, strict=False):
     """SharedVariable constructor for scalar values. Defaults to int64 or float64"""  
     if not isinstance(value, (float,int)):
-        raise TypeError
+        raise TypeError()
     # use float64 and int64 by default, user can override
     if not dtype:
         dtype = 'int64' if isinstance(value,int) else 'float64'
