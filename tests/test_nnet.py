@@ -308,7 +308,7 @@ def run_test_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False):
     assert numpy.allclose(rval_cpu[:2], rval_gpu[:2],rtol=1e-4,atol=1e-6)
 
 def test_lenet_28(): #MNIST
-    run_test_conv_nnet2_classif(23485, 28, 5)
+    run_test_conv_nnet2_classif(23485, 28, 5, 60)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
     run_test_conv_nnet2_classif(23485, 32, 5, 60, ignore_error=False)
