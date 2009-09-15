@@ -204,6 +204,10 @@ class GpuDownsampleFactorMax(Op):
         return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
 
     def make_node(self, x):
+        if not isinstance(x.type, CudaNdarrayType):
+            raise TypeError()
+        if not x.type.ndim == 4:
+            raise TypeError()
         return Apply(self, [x], [x.type()])
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
