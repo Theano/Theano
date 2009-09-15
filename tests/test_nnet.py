@@ -101,14 +101,14 @@ def run_conv_nnet1(shared_fn):
     v = shared_fn(numpy.asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
     c = shared_fn(numpy.asarray(numpy.zeros(n_out), dtype='float32'), 'c')
 
-    x = tensor.Tensor(dtype='float32', broadcastable=(0,0,0,0))('x')
+    x = tensor.Tensor(dtype='float32', broadcastable=(0,1,0,0))('x')
     y = tensor.fmatrix('y')
     lr = tensor.fscalar('lr')
 
     conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op.set_flops()
 
-    hid = tensor.tanh(conv_op(x, w)+b.reshape((n_kern,1,1)))
+    hid = tensor.tanh(conv_op(x, w)+b.dimshuffle((0,'x','x')))
     hid_flat = hid.reshape((n_batch, n_hid))
     out = tensor.tanh(tensor.dot(hid_flat, v)+c)
     loss = tensor.sum(0.5 * (out-y)**2 * lr)
@@ -180,7 +180,7 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
     v = shared_fn(numpy.asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
     c = shared_fn(numpy.asarray(numpy.zeros(n_out), dtype='float32'), 'c')
 
-    x = tensor.Tensor(dtype='float32', broadcastable=(0,0,0,0))('x')
+    x = tensor.Tensor(dtype='float32', broadcastable=(0,1,0,0))('x')
     y = tensor.fmatrix('y')
     lr = tensor.fscalar('lr')
 
@@ -188,10 +188,9 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
     conv_op1 = theano.sandbox.conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
     conv_op.set_flops()
     conv_op1.set_flops()
-    
 
-    hid = tensor.tanh(conv_op(x, w0)+b0.reshape((n_kern,1,1)))
-    hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1.reshape((n_kern1,1,1)))
+    hid = tensor.tanh(conv_op(x, w0)+b0.dimshuffle((0,'x','x')))
+    hid1 = tensor.tanh(conv_op1(hid[:,:,::2,::2], w1) + b1.dimshuffle((0,'x','x')))
     hid_flat = hid1.reshape((n_batch, n_hid))
     out = tensor.tanh(tensor.dot(hid_flat, v)+c)
     loss = tensor.sum(0.5 * (out-y)**2 * lr)
@@ -291,16 +290,16 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter):
     print_mode(mode)
     return rvals, t1-t0
 
-def run_test_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False, n_iter=10):
+def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False, n_iter=10):
     if ignore_error:
         numpy.random.seed(seed)
-        rval_gpu, t = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize)
+        rval_gpu, t = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize, n_iter)
         return
 
     numpy.random.seed(seed)
-    rval_cpu, tc = run_conv_nnet2_classif(shared, isize, ksize, bsize, n_iter)
-    numpy.random.seed(seed)
     rval_gpu, tg = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize, n_iter)
+    numpy.random.seed(seed)
+    rval_cpu, tc = run_conv_nnet2_classif(shared, isize, ksize, bsize, n_iter)
     print "cpu:", rval_cpu
     print "gpu:", rval_gpu
     print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
@@ -308,16 +307,16 @@ def run_test_conv_nnet2_classif(seed, isize, ksize, bsize, ignore_error=False, n
     assert numpy.allclose(rval_cpu[:2], rval_gpu[:2],rtol=1e-4,atol=1e-6)
 
 def test_lenet_28(): #MNIST
-    run_test_conv_nnet2_classif(23485, 28, 5, 60, n_iter=3)
+    cmp_run_conv_nnet2_classif(23485, 28, 5, 60, n_iter=3)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
-    run_test_conv_nnet2_classif(23485, 32, 5, 60, ignore_error=False, n_iter=3)
+    cmp_run_conv_nnet2_classif(23485, 32, 5, 60, ignore_error=False, n_iter=3)
 
 def test_lenet_64(): # ???
-    run_test_conv_nnet2_classif(23485, 64, 7, 10, ignore_error=True, n_iter=3)
+    cmp_run_conv_nnet2_classif(23485, 64, 7, 10, ignore_error=False, n_iter=3)
 
 #def test_lenet_108(): # NORB
-    #run_test_conv_nnet2_classif(23485, 108, 7, 10)
+    #cmp_run_conv_nnet2_classif(23485, 108, 7, 10)
 
 #def test_lenet_256(): # ImageNet
-    #run_test_conv_nnet2_classif(23485, 256, 9, 2)
+    #cmp_run_conv_nnet2_classif(23485, 256, 9, 2)
