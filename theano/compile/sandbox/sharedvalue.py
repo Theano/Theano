@@ -149,7 +149,7 @@ def tensor_constructor(value, name=None, strict=False, broadcastable=None):
     return TensorSharedVariable(type=type, value=value, name=name, strict=strict)
 
 @shared_constructor
-def scalar_constructor(value, name=None, dtype=None, strict=False):
+def scalar_constructor(value, name=None, strict=False, dtype=None):
     """SharedVariable constructor for scalar values. Defaults to int64 or float64"""  
     if not isinstance(value, (float,int)):
         raise TypeError()
