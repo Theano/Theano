@@ -88,6 +88,10 @@ def pfunc(params, outputs=None, mode=None, updates=[]):
     for (store_into, update_val) in iter_over_pairs(updates):
         assert isinstance(store_into, SharedVariable)
         update_val = store_into.filter_update(update_val)
+        if update_val.type != store_into.type:
+            raise TypeError('an update must have the same type as the original shared variable', 
+                    (store_into, store_into.type,
+                        update_val, update_val.type))
         computed_list.append(update_val)
         new_updates[store_into] = update_val
     updates = new_updates
