@@ -318,22 +318,31 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     if not ignore_error:
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=1e-5)
 
+gpu_only=False
+ignore_error=False
+
 def test_lenet_28(): #MNIST
-    cmp_run_conv_nnet2_classif(23485, 28, 5, 60, n_iter=3)
+    cmp_run_conv_nnet2_classif(23485, 28, 5, 60, n_iter=3,
+                                ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
-    cmp_run_conv_nnet2_classif(23485, 32, 5, 60, ignore_error=False, n_iter=3)
+    cmp_run_conv_nnet2_classif(23485, 32, 5, 60, n_iter=3,
+                               ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_32_long(): #CIFAR10 / Shapeset
     # this tests the gradient of downsample on the GPU, 
     # which does not recieve specific testing
-    cmp_run_conv_nnet2_classif(23485, 32, 5, 30, ignore_error=False, n_iter=50)
+    cmp_run_conv_nnet2_classif(23485, 32, 5, 30, n_iter=50,
+                               ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_64(): # ???
-    cmp_run_conv_nnet2_classif(23485, 64, 7, 10, ignore_error=False, n_iter=3)
+    cmp_run_conv_nnet2_classif(23485, 64, 7, 10, n_iter=3,
+                               ignore_error=ignore_error, gpu_only=gpu_only)
 
-#def test_lenet_108(): # NORB
-    #cmp_run_conv_nnet2_classif(23485, 108, 7, 10)
+def test_lenet_108(): # NORB
+    cmp_run_conv_nnet2_classif(23485, 108, 7, 10,
+                                ignore_error=ignore_error, gpu_only=gpu_only)
 
-#def test_lenet_256(): # ImageNet
-    #cmp_run_conv_nnet2_classif(23485, 256, 9, 2)
+def test_lenet_256(): # ImageNet
+    cmp_run_conv_nnet2_classif(23485, 256, 9, 2,
+                                ignore_error=ignore_error, gpu_only=gpu_only)
