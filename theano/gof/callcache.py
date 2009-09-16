@@ -1,6 +1,7 @@
 import cPickle, logging, sys
 
 _logger=logging.getLogger("theano.gof.callcache")
+_logger.setLevel(logging.DEBUG)
 
 def warning(*args):
     sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
