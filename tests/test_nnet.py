@@ -322,11 +322,11 @@ gpu_only=False
 ignore_error=False
 
 def test_lenet_28(): #MNIST
-    cmp_run_conv_nnet2_classif(23485, 28, 5, 60, n_iter=3,
+    cmp_run_conv_nnet2_classif(23485, 28, 5, 60, n_iter=10,
                                 ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_32(): #CIFAR10 / Shapeset
-    cmp_run_conv_nnet2_classif(23485, 32, 5, 60, n_iter=3,
+    cmp_run_conv_nnet2_classif(23485, 32, 5, 60, n_iter=10,
                                ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_32_long(): #CIFAR10 / Shapeset
@@ -336,13 +336,13 @@ def test_lenet_32_long(): #CIFAR10 / Shapeset
                                ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_64(): # ???
-    cmp_run_conv_nnet2_classif(23485, 64, 7, 10, n_iter=3,
+    cmp_run_conv_nnet2_classif(23485, 64, 7, 10, n_iter=10,
                                ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_108(): # NORB
-    cmp_run_conv_nnet2_classif(23485, 108, 7, 10,
-                                ignore_error=ignore_error, gpu_only=gpu_only)
+    cmp_run_conv_nnet2_classif(23485, 108, 7, 10, n_iter=5,
+                               ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_256(): # ImageNet
-    cmp_run_conv_nnet2_classif(23485, 256, 9, 2,
-                                ignore_error=ignore_error, gpu_only=gpu_only)
+    cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_iter=3,
+                               ignore_error=ignore_error, gpu_only=gpu_only)
