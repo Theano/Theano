@@ -1396,7 +1396,7 @@ class Repeat(gof.Op):
 
 repeat = Repeat()
 
-class SetDefault(gof.Op):
+class Default(gof.Op):
     """
     Takes an input x and a default value. If the input is not None, a
     reference to it is returned. If the input is None, a copy of the
@@ -1411,7 +1411,8 @@ class SetDefault(gof.Op):
     def perform(self, node, (x, default), (out, )):
         out[0] = default.copy() if x is None else x
 
-setdefault = SetDefault()
+default = Default()
+setdefault = default # legacy
 
 
 ##########################
