@@ -100,6 +100,9 @@ class SharedVariable(Variable):
         :param update: the new value for this shared variable when updated by a pfunc.
 
         :returns: a Variable whose value will be assigned to this SharedVariable by a pfunc.
+
+        :note: The return value of this function must match the self.type, or else pfunc()
+        will raise a TypeError.
         """
         if not isinstance(update, Variable):
             # The value for the update is not a Variable: we cast it into
