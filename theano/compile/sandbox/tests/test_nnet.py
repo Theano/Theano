@@ -18,6 +18,7 @@ class NNet(object):
        self.lr = shared(lr, 'learning_rate')
        self.w1 = shared(numpy.zeros((n_hidden, n_input)), 'w1')
        self.w2 = shared(numpy.zeros((n_output, n_hidden)), 'w2')
+       print self.lr.type
 
        self.hidden = sigmoid(tensor.dot(self.w1, self.input))
        self.output = tensor.dot(self.w2, self.hidden)

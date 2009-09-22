@@ -10,9 +10,15 @@ class Test_SharedVariable(unittest.TestCase):
 
     def test_ctors(self):
 
-        assert shared(7).type == Scalar('int64')
-        assert shared(7.0).type == Scalar('float64')
-        assert shared(7, dtype='float64').type == Scalar('float64')
+        if 0: #when using an implementation that handles scalars with Scalar type
+            assert shared(7).type == Scalar('int64')
+            assert shared(7.0).type == Scalar('float64')
+            assert shared(7, dtype='float64').type == Scalar('float64')
+
+        else:
+            assert shared(7).type == theano.tensor.lscalar
+            assert shared(7.0).type == theano.tensor.dscalar
+            assert shared(7, dtype='float64').type == theano.tensor.dscalar
 
         # test tensor constructor
         b = shared(numpy.zeros((5,5), dtype='int32'))
@@ -107,13 +113,17 @@ class Test_SharedVariable(unittest.TestCase):
     def test_strict(self):
         def f(var, val): var.value = val
 
-        b = shared(7, strict=True)
-        self.failUnlessRaises(TypeError, f(b,8.23))
-        b = shared(7.234, strict=True)
-        self.failUnlessRaises(TypeError, f(b,8))
+        b = shared(numpy.int64(7), strict=True)
+        #assert b.type == Scalar('int64')
+        assert b.type == theano.tensor.lscalar
+        self.failUnlessRaises(TypeError, f, b, 8.23)
+        b = shared(numpy.float64(7.234), strict=True)
+        #assert b.type == Scalar('float64')
+        assert b.type == theano.tensor.dscalar
+        self.failUnlessRaises(TypeError, f, b, 8)
 
         c = shared(numpy.zeros((5,5), dtype='float32'))
-        self.failUnlessRaises(TypeError, f(b, numpy.random.rand(5,5)))
+        self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
 
 
 
