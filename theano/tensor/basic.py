@@ -901,28 +901,28 @@ def _conversion(real_value, name):
     pprint.assign(real_value, printing.FunctionPrinter(name))
     return real_value
 
-convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))), 'int8')
+convert_to_int8  = _conversion(elemwise.Elemwise(scal.convert_to_int8), 'int8')
 """Cast to 8-bit integer"""
     
-convert_to_int16 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16))), 'int16')
+convert_to_int16 = _conversion(elemwise.Elemwise(scal.convert_to_int16), 'int16')
 """Cast to 16-bit integer"""
 
-convert_to_int32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32))), 'int32')
+convert_to_int32 = _conversion(elemwise.Elemwise(scal.convert_to_int32), 'int32')
 """Cast to 32-bit integer"""
 
-convert_to_int64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64))), 'int64')
+convert_to_int64 = _conversion(elemwise.Elemwise(scal.convert_to_int64), 'int64')
 """Cast to 64-bit integer"""
 
-convert_to_float32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32))), 'float32')
+convert_to_float32 = _conversion(elemwise.Elemwise(scal.convert_to_float32), 'float32')
 """Cast to single-precision floating point"""
 
-convert_to_float64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64))), 'float64')
+convert_to_float64 = _conversion(elemwise.Elemwise(scal.convert_to_float64), 'float64')
 """Cast to double-precision floating point"""
 
-convert_to_complex64  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64))), 'complex64')
+convert_to_complex64  = _conversion(elemwise.Elemwise(scal.convert_to_complex64), 'complex64')
 """Cast to single-precision complex"""
 
-convert_to_complex128 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128))), 'complex128')
+convert_to_complex128 = _conversion(elemwise.Elemwise(scal.convert_to_complex128), 'complex128')
 """Cast to double-precision complex"""
 
 
