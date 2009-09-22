@@ -61,7 +61,9 @@ class Scalar(Type):
     def filter(self, data, strict = False):
         py_type = self.dtype_specs()[0]
         if strict and not isinstance(data, py_type):
-            raise TypeError("%s expected a %s" % (self, self.dtype), data)
+            raise TypeError("%s expected a %s, got %s of type %s" % (self, py_type, data,
+                type(data)), 
+                    data)
         try:
             return py_type(data)
         except Exception, e:
