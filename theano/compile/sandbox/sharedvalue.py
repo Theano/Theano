@@ -10,6 +10,14 @@ from theano.tensor import TensorType
 from theano.scalar import Scalar
 from theano.compile import function
 
+import logging
+_logger = logging.getLogger('theano.compile.sandbox.sharedvalue')
+_logger.setLevel(logging.DEBUG)
+def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
+def info(*msg): _logger.info(' '.join(str(m) for m in msg))
+def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
+def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
+def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
 class SharedVariable(Variable):
     """
