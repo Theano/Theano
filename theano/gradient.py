@@ -108,7 +108,8 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                 if g_r and (getattr(r,'type',0) != getattr(g_r,'type', 1)):
                     r_type = getattr(r,'type', None)
                     g_r_type = getattr(g_r,'type', None)
-                    warning('%s.grad returned a different type for input %i: %s vs.  %s'%(node.op, ii, r_type, g_r_type))
+                    warning('%s.grad returned a different type (%s) for input %i of type (%s)'%(
+                        node.op, g_r_type, ii, r_type))
             if g_r and len(sources) == 1 and sources[0][0].name and r.name:
                 g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None: 
