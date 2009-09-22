@@ -116,7 +116,7 @@ def shared_constructor(ctor):
     shared.constructors.append(ctor)
     return ctor
 
-def shared(value, name=None, strict=False, **kwargs):
+def shared(value, name=None, strict=True, **kwargs):
     """Return a SharedVariable Variable, initialized with a copy or reference of `value`.
 
     This function iterates over constructor functions (see `shared_constructor`) to find a
