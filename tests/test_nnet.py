@@ -234,8 +234,13 @@ def test_conv_nnet2():
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
 def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter):
+    isize1=isize
+    isize2=isize
+    if isinstance(isize,(tuple,)):
+        isize1=isize[0]
+        isize2=isize[1]
 
-    shape_img = (n_batch, 1, isize, isize)
+    shape_img = (n_batch, 1, isize1, isize2)
 
     n_kern = 20  # 6 were used in LeNet5
     shape_kern = (n_kern, 1, ksize, ksize)
@@ -243,7 +248,7 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter):
     n_kern1 = 30 # 16 were used in LeNet5
     shape_kern1 = (n_kern1, n_kern, ksize, ksize)
 
-    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((isize, isize), (ksize, ksize), 'valid')
+    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((isize1, isize2), (ksize, ksize), 'valid')
     logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2,
         logical_hid_shape[1]/2), (ksize, ksize), 'valid')
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
@@ -345,4 +350,14 @@ def test_lenet_108(): # NORB
 
 def test_lenet_256(): # ImageNet
     cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_iter=3,
+                               ignore_error=ignore_error, gpu_only=gpu_only)
+
+#I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
+def tes_lenet_hd(): #HD 720p: 1280(wid)x720(len)
+    cmp_run_conv_nnet2_classif(23485, (720,1280), 9, 2, n_iter=3,
+                               ignore_error=ignore_error, gpu_only=gpu_only)
+
+#I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
+def tes_lenet_full_hd(): #HD 1080p: 1920(wid)x1080(len)
+    cmp_run_conv_nnet2_classif(23485, (1080,1920), 9, 2, n_iter=3,
                                ignore_error=ignore_error, gpu_only=gpu_only)
