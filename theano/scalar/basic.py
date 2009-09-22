@@ -617,7 +617,7 @@ class Add(ScalarOp):
       retval = []
       for i in inputs:
         if i.type in grad_types:
-          retval += [gz]
+          retval += [cast(gz, i.type.dtype)]
         else:
           retval += [None]
       return retval
@@ -656,15 +656,14 @@ class Sub(BinaryScalarOp):
         return "%(z)s = %(x)s - %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         if x.type in grad_types:
-          first_part = gz
+            first_part = cast(gz, x.type.dtype)
         else:
-          first_part = None
+            first_part = None
 
         if y.type in grad_types:
-          second_part = -gz
+            second_part = cast(-gz, y.type.dtype)
         else:
-          second_part = None
-        
+            second_part = None
         return first_part, second_part
 sub = Sub(upcast_out, name = 'sub')
 
@@ -695,12 +694,12 @@ class TrueDiv(BinaryScalarOp):
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         if x.type in grad_types:
-          first_part = gz / y
+          first_part = cast(gz / y, x.type.dtype)
         else:
           first_part = None
 
         if y.type in grad_types:
-          second_part = -(gz * x) / (y * y)
+          second_part = cast(-(gz * x) / (y * y), y.type.dtype)
         else:
           second_part = None
         return first_part, second_part
