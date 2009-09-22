@@ -1956,8 +1956,24 @@ def test_convert_to_complex():
             b = value(numpy.ones(3, dtype='complex64'))
             f = function([a],basic.convert_to_complex64(a))
             assert a.type.values_eq_approx(b.data, f(a.data))
-      
 
+def test_default():
+    x, y = dscalars('xy')
+    z = default(x, y)
+    f = function([x, y], z)
+    assert f(1, 2) == 1
+    assert f(None, 2) == 2
+    assert f(1, None) == 1
+
+def test_default_state():
+    x, y = dscalars('xy')
+    z = default(x, 3.8)
+    new_x = y + z
+    f = function([y, compile.In(x, update = new_x, value = 12.0)], new_x)
+    assert f(3) == 15
+    f['x'] = None
+    assert f(1) == 4.8
+    assert f(2.2) == 7
     
 def test_bug_complext_10_august_09():
     v0 = dmatrix()
