@@ -1,4 +1,4 @@
-import time, atexit
+import time, atexit, copy
 
 from theano.gof.link import WrapLinkerMany
 from theano.gof.cutils import run_cthunk
@@ -64,28 +64,86 @@ class ProfileMode(Mode):
         param: n_ops_to_print the number of ops to print. Default 20.
         """
         local_time = self.local_time[0]
+        compile_time = self.compile_time
         apply_time = self.apply_time
         apply_call = self.apply_call
         op_time = self.op_time
         op_call = self.op_call
+        op_cimpl = self.op_cimpl
+
+        self.print_summary_("print_summary",local_time, compile_time, apply_time, apply_call, op_time, op_call, op_cimpl, n_apply_to_print, n_ops_to_print)
+
+
+    def print_diff_summary(self, other, n_apply_to_print=15, n_ops_to_print=20):
+        """ As print_summary, but print the absolute difference on two different profile mode.
+        TODO: Also we don't print the Apply-wise summary as it don't work for now.
+        TODO: make flops the difference of flops
+        TODO: make comparaison with gpu code.
+        
+        param: other the other instance of ProfileMode that we want to be compared to.
+        
+        param: n_apply_to_print the number of apply to print. Default 15.
+
+        param: n_ops_to_print the number of ops to print. Default 20.
+        """
+
+        def diff_dict(a,b_):
+            r = {}
+            b = copy.copy(b_)
+            for a,t in a.items():
+                r.setdefault(a,0)
+                t2 = b.pop(a,0)
+                #print t,t2,abs(t-t2),a
+                r[a]+=abs(t-t2)
+                
+            #they are missing in a
+            print "missing items",len(b)
+            for a,t in b.items():
+                r.setdefault(a,0)
+                r[a]+=t
+            return r
+        
+        local_time = abs(self.local_time[0]-other.local_time[0])
+        compile_time = abs(self.compile_time-other.compile_time)
+        apply_time = diff_dict(self.apply_time, other.apply_time)
+        apply_call = diff_dict(self.apply_call, other.apply_call)
+        op_time = diff_dict(self.op_time, other.op_time)
+        op_call = diff_dict(self.op_call, other.op_call)
+        op_cimpl = self.op_cimpl and other.op_cimpl
+       
+        self.print_summary_("print_diff_summary",local_time, compile_time, apply_time, apply_call, op_time, op_call, op_cimpl, n_apply_to_print, n_ops_to_print, print_apply=False)
+
+    @staticmethod
+    def print_summary_(fct_name, local_time, compile_time, apply_time, apply_call, op_time, op_call, op_cimpl,
+                       n_apply_to_print=15, n_ops_to_print=20, print_apply=True):
+        """
+        do the actual printing of print_summary and print_diff_summary.
+
+        param: n_apply_to_print the number of apply to print. Default 15.
+
+        param: n_ops_to_print the number of ops to print. Default 20.
+        """
 
         print ''
-        print 'ProfileMode.print_summary()'
+        print 'ProfileMode.%s()'%(fct_name)
         print '---------------------------'
         print ''
+        
         print 'local_time %fs (Time spent running thunks)'% local_time
-        print 'Apply-wise summary: <% of local_time spent at this position> <total of local_time spent at this position> <nb_call> <Apply position> <Apply Op name>'
-        atimes = [(t/local_time, t, (a[0], str(a[1])), apply_call[a]) for a, t in apply_time.items()]
-        atimes.sort()
-        atimes.reverse()
-        tot=0
-        for f,t,a,nb_call in atimes[:n_apply_to_print]:
-            tot+=t
-            print '   %4.1f%%  %.3fs  %.3fs  %i  %i %s' % (f*100, tot, t, nb_call, a[0], a[1])
-        print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(atimes)-n_apply_to_print),
-                  sum(f for f, t, a, nb_call in atimes[n_apply_to_print:])*100,
-                  sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
+
+        if print_apply:
+            print 'Apply-wise summary: <% of local_time spent at this position> <total of local_time spent at this position> <nb_call> <Apply position> <Apply Op name>'
+            atimes = [(t/local_time, t, (a[0], str(a[1])), apply_call[a]) for a, t in apply_time.items()]
+            atimes.sort()
+            atimes.reverse()
+            tot=0
+            for f,t,a,nb_call in atimes[:n_apply_to_print]:
+                tot+=t
+                print '   %4.1f%%  %.3fs  %.3fs  %i  %i %s' % (f*100, tot, t, nb_call, a[0], a[1])
+            print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
+                    %(max(0, len(atimes)-n_apply_to_print),
+                      sum(f for f, t, a, nb_call in atimes[n_apply_to_print:])*100,
+                      sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
 
         flops=False
         flops_msg=''
@@ -98,7 +156,7 @@ class ProfileMode(Mode):
             
         print '\nOp-wise summary: < of local_time spent on this kind of Op> <cumulative seconds> <self seconds>%s <nb_call> <Op name>'%(flops_msg)
 
-        otimes = [(t/local_time, t, a, self.op_cimpl[a], op_call[a]) for a, t in op_time.items()]
+        otimes = [(t/local_time, t, a, op_cimpl[a], op_call[a]) for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         tot=0
@@ -110,7 +168,7 @@ class ProfileMode(Mode):
               msg = ' '
             m=-1
             if hasattr(a,'flops'):
-                m=a.flops*self.op_call[a]/t/1e6
+                m=a.flops*op_call[a]/t/1e6
             if flops:
                 print '   %4.1f%%  %.3fs  %.3fs  %s %7.1f %d %s' % (f*100, tot, t, msg, m, nb_call, a)
             else:
@@ -129,7 +187,7 @@ class ProfileMode(Mode):
             sop_time.setdefault(type(a),0)
             sop_time[type(a)]+=t
             sop_c.setdefault(type(a),True)
-            sop_c[type(a)]=sop_c[type(a)] and self.op_cimpl[a]
+            sop_c[type(a)]=sop_c[type(a)] and op_cimpl[a]
             sop_call[type(a)]=sop_call.get(type(a),0)+op_call[a]
         print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <nb_call> <Op name>'
         sotimes = [(t/local_time, t, a, sop_c[a], sop_call[a]) for a, t in sop_time.items()]
@@ -148,7 +206,7 @@ class ProfileMode(Mode):
                   sum(f for f, t, a, nb_call in sotimes[n_ops_to_print:])*100,
                   sum(t for f, t, a, nb_call in sotimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
-        print 'compile time: %.3fs'%self.compile_time
+        print 'compile time: %.3fs'%compile_time
 
 register_mode('PROFILE_MODE',ProfileMode())
 
