@@ -518,6 +518,8 @@ class CLinker(link.Linker):
             except utils.MethodNotDefined:
                 cleanup = ""
 
+            info('compiling un-versioned Apply', node)
+
             blocks.append(CodeBlock("", behavior, cleanup, sub))
             tasks.append((node, 'code', id))
             id += 1
