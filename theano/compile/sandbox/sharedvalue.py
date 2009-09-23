@@ -1,6 +1,7 @@
 """Provide a simple user friendly API """
 __docformat__ = 'restructuredtext en'
 
+import traceback
 import copy
 import numpy
 
@@ -10,6 +11,14 @@ from theano.tensor import TensorType
 from theano.scalar import Scalar
 from theano.compile import function
 
+import logging
+_logger = logging.getLogger('theano.compile.sandbox.sharedvalue')
+_logger.setLevel(logging.DEBUG)
+def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
+def info(*msg): _logger.info(' '.join(str(m) for m in msg))
+def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
+def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
+def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
 class SharedVariable(Variable):
     """
@@ -92,6 +101,9 @@ class SharedVariable(Variable):
         :param update: the new value for this shared variable when updated by a pfunc.
 
         :returns: a Variable whose value will be assigned to this SharedVariable by a pfunc.
+
+        :note: The return value of this function must match the self.type, or else pfunc()
+        will raise a TypeError.
         """
         if not isinstance(update, Variable):
             # The value for the update is not a Variable: we cast it into
@@ -148,14 +160,35 @@ def tensor_constructor(value, name=None, strict=False, broadcastable=None):
     type = TensorType(value.dtype, broadcastable=broadcastable)
     return TensorSharedVariable(type=type, value=value, name=name, strict=strict)
 
+# TensorSharedVariable brings in the tensor operators, is not ideal, but works as long as we
+# dont do purely scalar-scalar operations 
+class ScalarSharedVariable(SharedVariable, theano.tensor.basic._tensor_py_operators):
+    pass
 @shared_constructor
 def scalar_constructor(value, name=None, strict=False, dtype=None):
-    """SharedVariable constructor for scalar values. Defaults to int64 or float64"""  
-    if not isinstance(value, (float,int)):
+    """SharedVariable constructor for scalar values. Defaults to int64 or float64. 
+
+    :note: We implement this using 0-d tensors for now.
+    
+    """  
+    if not isinstance (value, (numpy.number, float, int)):
         raise TypeError()
-    # use float64 and int64 by default, user can override
-    if not dtype:
-        dtype = 'int64' if isinstance(value,int) else 'float64'
-    type = Scalar(dtype)
-    return TensorSharedVariable(type=type, value=numpy.asarray(value), name=name, strict=strict)
+    if dtype is None:
+        if isinstance(value, float):
+            dtype = 'float64'
+        elif isinstance(value, int):
+            dtype = 'int64'
+        else:
+            dtype = type(value).__name__
+
+    type = TensorType(dtype=dtype, broadcastable=[])
+
+    try:
+        # don't pass the dtype to asarray because we want this to fail if strict is True and the
+        # types do not match
+        rval = ScalarSharedVariable(type=type, value=numpy.asarray(value), name=name, strict=strict)
+        return rval
+    except:
+        traceback.print_exc()
+        raise
 

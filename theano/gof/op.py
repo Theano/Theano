@@ -106,8 +106,27 @@ class CLinkerObject(object):
 
         The cache mechanism may erase cached modules that have been superceded by newer
         versions.  See `ModuleCache` for details.
+
+        :note: See also `c_code_cache_version_apply()`
         """
-        return (1,)
+        return ()
+
+    def c_code_cache_version_apply(self, node):
+        """Return a tuple of integers indicating the version of this Op.
+
+        An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
+
+        The cache mechanism may erase cached modules that have been superceded by newer
+        versions.  See `ModuleCache` for details.
+
+        :note: See also `c_code_cache_version()`
+
+        :note: This function overrides `c_code_cache_version` unless it explicitly calls
+        `c_code_cache_version`.  The default implementation simply calls `c_code_cache_version`
+        and ignores the `node` argument.
+        """
+        return self.c_code_cache_version()
+
 
     def c_compile_args(self):
         """Optional: Return a list of compile args recommended to compile the

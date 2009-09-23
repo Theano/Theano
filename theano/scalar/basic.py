@@ -61,7 +61,9 @@ class Scalar(Type):
     def filter(self, data, strict = False):
         py_type = self.dtype_specs()[0]
         if strict and not isinstance(data, py_type):
-            raise TypeError("%s expected a %s" % (self, self.dtype), data)
+            raise TypeError("%s expected a %s, got %s of type %s" % (self, py_type, data,
+                type(data)), 
+                    data)
         try:
             return py_type(data)
         except Exception, e:
@@ -180,23 +182,44 @@ class Scalar(Type):
                 ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
                 return ret;
             }
-            complex_type& operator =(const scalar_type& y) {
-            this->real=y;
-            this->imag=0;
-            return *this;
-            }
-            %(upcast)s
+            template <typename T>
+            complex_type& operator =(const T& y);
          };
          """
+        operator_eq = """
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int8 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int16 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int32 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int64 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_float32 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_float64 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const theano_complex128 & y)
+        { this->real=y.real; this->imag=y.imag; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const theano_complex64 & y)
+        { this->real=y.real; this->imag=y.imag; return *this; }
+
+        """
         # todo: use C templating
-        return template % dict(nbits = 64, half_nbits = 32, upcast="") + template % dict(nbits = 128, half_nbits = 64, upcast="""
-        complex_type& operator =(theano_complex64 y) {
-            this->real=y.real;
-            this->imag=y.imag;
-            return *this;
-            }
-        """)
-    
+        return template % dict(nbits = 64, half_nbits = 32) \
+                + template % dict(nbits = 128, half_nbits = 64) \
+                + operator_eq % dict(mytype='theano_complex128') \
+                + operator_eq % dict(mytype='theano_complex64')
+
+    def c_code_cache_version(self):
+        return (2,)
 
 
 int8 = Scalar('int8')
@@ -293,6 +316,8 @@ class transfer_type(gof.utils.object2):
     def __init__(self, *transfer):
         assert all(type(x) == int for x in transfer)
         self.transfer = transfer
+    def __str__(self):
+        return 'transfer_type{%s}'%self.transfer
     def __call__(self, *types):
         upcast = upcast_out(*types)
         retval = []
@@ -394,6 +419,9 @@ class ScalarOp(Op):
             return self.name
         else:
             return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%s" % (k, v) for k, v in self.__dict__.items() if k != "name"))
+
+    def c_code_cache_version(self):
+        return (2,)
 
 
 class UnaryScalarOp(ScalarOp):
@@ -617,12 +645,10 @@ class Add(ScalarOp):
       retval = []
       for i in inputs:
         if i.type in grad_types:
-          retval += [gz]
+          retval += [cast(gz, i.type.dtype)]
         else:
           retval += [None]
       return retval
-      #backport
-      #return [(gz if i.type in grad_types else None) for i in inputs]
 add = Add(upcast_out, name = 'add')
 
 class Mul(ScalarOp):
@@ -658,18 +684,15 @@ class Sub(BinaryScalarOp):
         return "%(z)s = %(x)s - %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         if x.type in grad_types:
-          first_part = gz
+            first_part = cast(gz, x.type.dtype)
         else:
-          first_part = None
+            first_part = None
 
         if y.type in grad_types:
-          second_part = -gz
+            second_part = cast(-gz, y.type.dtype)
         else:
-          second_part = None
-        
+            second_part = None
         return first_part, second_part
-
-        #return gz if x.type in grad_types else None, -gz if y.type in grad_types else None
 sub = Sub(upcast_out, name = 'sub')
 
 def div_proxy(x, y):
@@ -699,19 +722,15 @@ class TrueDiv(BinaryScalarOp):
         return "%(z)s = %(x)s / %(y)s;" % locals()
     def grad(self, (x, y), (gz, )):
         if x.type in grad_types:
-          first_part = gz / y
+          first_part = cast(gz / y, x.type.dtype)
         else:
           first_part = None
 
         if y.type in grad_types:
-          second_part = -(gz * x) / (y * y)
+          second_part = cast(-(gz * x) / (y * y), y.type.dtype)
         else:
           second_part = None
-
-        return (first_part, second_part)
-
-        #return (gz / y if x.type in grad_types else None,
-        #        -(gz * x) / (y * y) if y.type in grad_types else None)
+        return first_part, second_part
 true_div = TrueDiv(upcast_out, name = 'true_div')
 
 class IntDiv(BinaryScalarOp):
@@ -811,19 +830,60 @@ second = Second(transfer_type(1), name = 'second')
 
 
 class Identity(UnaryScalarOp):
-    def impl(self, x):
-        return x
+    def impl(self, input):
+        return input
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = %(x)s;" % locals()
     def grad(self, (x, ), (gz, )):
         if x.type in grad_types:
-          return gz,
+            return gz,
+        else:
+            return None,
+identity = Identity(same_out, name = 'identity')
+
+#### CASTING OPERATIONS
+class Cast(UnaryScalarOp):
+    def __init__(self, o_type, name=None):
+        if not isinstance(o_type, Scalar):
+            raise TypeError(o_type)
+        super(Cast, self).__init__(specific_out(o_type), name=name)
+        self.o_type = o_type
+        self.ctor = getattr(numpy, o_type.dtype)
+    def impl(self, input):
+        return self.ctor(input)
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        return "%(z)s = %(x)s;" % locals()
+    def grad(self, (x, ), (gz, )):
+        if x.type in grad_types:
+          return [cast(gz, x.type.dtype)]
         else:
           return None,
 
-        #backport
-        #return gz if x.type in grad_types else None,
-identity = Identity(same_out, name = 'identity')
+convert_to_int8 = Cast(int8, name='convert_to_int8')
+convert_to_int16 = Cast(int16, name='convert_to_int16')
+convert_to_int32 = Cast(int32, name='convert_to_int32')
+convert_to_int64 = Cast(int64, name='convert_to_int64')
+convert_to_float32 = Cast(float32, name='convert_to_float32')
+convert_to_float64 = Cast(float64, name='convert_to_float64')
+convert_to_complex64 = Cast(complex64, name='convert_to_complex64')
+convert_to_complex128 = Cast(complex128, name='convert_to_complex128')
+
+_cast_mapping = {'int8': convert_to_int8,
+           'int16': convert_to_int16,
+           'int32': convert_to_int32,
+           'int64': convert_to_int64,
+           'float32': convert_to_float32,
+           'float64': convert_to_float64,
+           'complex64': convert_to_complex64,
+           'complex128': convert_to_complex128}
+def cast(x, dtype):
+    """Symbolically cast `x` to a Scalar of given `dtype`.""" 
+    _x = as_scalar(x)
+    if _x.type.dtype == dtype:
+        return _x
+    if _x.type.dtype.startswith('complex') and not dtype.startswith('complex'):
+        raise TypeError('Casting from complex to real is ambiguous: consider real(), imag(), angle() or abs()')
+    return _cast_mapping[dtype](_x)
 
 class Abs(UnaryScalarOp):
     def make_node(self, x):
@@ -883,8 +943,6 @@ class Neg(UnaryScalarOp):
           return -gz,
         else:
           return None,
-        #backport
-        #return -gz if x.type in grad_types else None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = -%(x)s;" % locals()
 neg = Neg(same_out, name = 'neg')

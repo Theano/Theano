@@ -172,7 +172,7 @@ class Test_pfunc(unittest.TestCase):
         # Same but using a mutable constant to show how it can be used to
         # modify the update value after the function is created.
         x.value = 0
-        y = numpy.ones(())
+        y = numpy.ones((), dtype='int64')
         assign_mutable = pfunc([], [], updates = {x: y})
         assign_mutable()
         self.failUnless(x.value == 1)

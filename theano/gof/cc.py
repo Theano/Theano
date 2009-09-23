@@ -6,9 +6,15 @@ Defines Linkers that deal with C implementations.
 from copy import copy
 import re #for set_compiledir
 import os, sys, platform, StringIO, time
-import md5
+
 if sys.version_info[:2] >= (2,5):
-  import hashlib
+    import hashlib
+    def hash_from_code(msg):
+        return hashlib.md5(msg).hexdigest()
+else:
+    import md5
+    def hash_from_code(msg):
+        return md5.new(struct_code).hexdigest()
 
 from theano.gof.python25 import any, all
 
@@ -512,6 +518,8 @@ class CLinker(link.Linker):
             except utils.MethodNotDefined:
                 cleanup = ""
 
+            info('compiling un-versioned Apply', node)
+
             blocks.append(CodeBlock("", behavior, cleanup, sub))
             tasks.append((node, 'code', id))
             id += 1
@@ -525,11 +533,7 @@ class CLinker(link.Linker):
 
         # The hash calculated on the code identifies it so weave can cache properly.
         # (the hash has to be used outside of the support code because weave does not consider changes in the support code)
-        # hashlib is new to 2.5
-        if sys.version_info[:2] < (2,5):
-          hash = md5.new(struct_code).hexdigest()
-        else:
-          hash = hashlib.md5(struct_code).hexdigest()
+        hash = hash_from_code(struct_code)
 
         struct_name = '__struct_compiled_op_%s' % hash
         #struct_code %= dict(name = struct_name)
@@ -811,7 +815,7 @@ class CLinker(link.Linker):
                 return (op_pos[i.owner], i.owner.outputs.index(i))
 
         for opos, o in enumerate(order):
-            version.append(o.op.c_code_cache_version())
+            version.append(o.op.c_code_cache_version_apply(o))
             for i in o.inputs:
                 version.append(i.type.c_code_cache_version())
             for i in o.outputs:

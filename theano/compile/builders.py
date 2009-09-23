@@ -35,11 +35,21 @@ class OpFromGraph(gof.Op):
     """
     
     def __init__(self, inputs, outputs, grad_depth = 1, **kwargs):
+        if not isinstance(outputs, list):
+            raise TypeError('outputs must be list', outputs)
+        for i in inputs + outputs:
+            if not isinstance(i, gof.Variable):
+                raise TypeError('inputs and outputs must be Variable instances', i)
+        if 'updates' in kwargs:
+            raise TypeError('updates are not allowed in kwargs')
+        # TODO: the graph may have implicit inputs like Value and SharedVariable instances.
+        #       what impact to they have on the validity of this Op?
         self.fn = function(inputs, outputs, **kwargs)
         self.inputs = inputs
         self.outputs = outputs
         self.input_types = [input.type for input in inputs]
         self.output_types = [output.type for output in outputs]
+
         if grad_depth > 0:
             output_grads = [t() for t in self.output_types]
             gd = G.grad_sources_inputs(zip(self.outputs, output_grads), self.inputs)
@@ -52,6 +62,13 @@ class OpFromGraph(gof.Op):
                     self.grad_ops.append(OpFromGraph(inputs + output_grads,
                                                      [g],
                                                      grad_depth = grad_depth - 1))
+    def __eq__(self, other):
+        #TODO: recognize a copy
+        return self is other
+
+    def __hash__(self):
+        #TODO: use internal variables in hash
+        return hash(type(self))
 
     def make_node(self, *inputs):
         for input, type in zip(inputs, self.input_types):
@@ -63,8 +80,11 @@ class OpFromGraph(gof.Op):
 
     def perform(self, node, inputs, outputs):
         variables = self.fn(*inputs)
+        assert len(variables) == len(outputs)
         for output, variable in zip(outputs, variables):
-            output[0] = variable
+            ##TODO: when function's output-borrowing semantics are correct, we wont need this
+            # copy anymore
+            output[0] = variable.copy()
 
     def grad(self, inputs, output_grads):
         if hasattr(self, 'grad_ops'):

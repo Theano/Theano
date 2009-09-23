@@ -1,7 +1,8 @@
-## This file contain ops that are not currently integrated in the core of threano. 
-## Not all of those ops have been thoroughly tested.
+"""Provides neural-network specific Ops.
 
-#from theano import tensor, scalar
+:note: TODO: factor this out into a neural-network toolbox.
+"""
+
 from theano import gof
 from theano import scalar
 from theano import printing
@@ -39,6 +40,8 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
                    ? 1.0
                    : 1.0 /(1.0+exp(-%(x)s));""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
+    def c_code_cache_version(self):
+        return (1,)
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
@@ -66,6 +69,8 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
                    ? %(x)s
                    : log1p(exp(%(x)s));""" % locals()
         raise NotImplementedError('only floating point x is implemented')
+    def c_code_cache_version(self):
+        return (1,)
 scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
 softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
@@ -133,7 +138,7 @@ class SoftmaxWithBias(gof.Op):
         return ['<iostream>','<cmath>']
 
     def c_code_cache_version(self):
-        return ()
+        return (3,)
     @staticmethod
     def c_code_template():
         # this implementation was lifted from
@@ -294,7 +299,7 @@ class SoftmaxGrad(gof.Op):
         raise NotImplementedError()
 
     def c_code_cache_version(self):
-        return ()
+        return (3,)
     def c_code(self, node, name, (dy, sm), (dx,), sub):
         return '''
         if ((%(dy)s->descr->type_num != PyArray_DOUBLE) && (%(dy)s->descr->type_num != PyArray_FLOAT))
@@ -402,10 +407,15 @@ def local_softmax_with_bias(node):
             non_vectors = []
             for x_in in x.owner.inputs:
                 if list(x_in.type.broadcastable) == [True, False]:
-                    if x_in.owner and isinstance(x_in.owner.op, tensor.DimShuffle):
-                        assert len(x_in.owner.inputs)==1
+                    print isinstance(x_in.owner.op, tensor.DimShuffle)
+                    #since specialization comes relatively late in optimization, 
+                    # we don't want to put in extra DimShuffles un-necessarily.
+                    if x_in.owner and isinstance(x_in.owner.op, tensor.DimShuffle)\
+                            and list(x_in.owner.inputs[0].type.broadcastable)==[False]:
+                        # cut out the DimShuffle that was broadcasting a vector
                         vectors.append(x_in.owner.inputs[0])
                     else:
+                        # insert an extra DimShuffle to correct the old one
                         vectors.append(tensor.DimShuffle((True, False), (1,))(x_in))
                 else:
                     non_vectors.append(x_in)
@@ -627,7 +637,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
 
     def c_code_cache_version(self):
-        return ()
+        return (2,)
     def c_code(self, node, name, (x, b, y_idx), (nll, sm, am), sub):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
@@ -659,7 +669,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
     def grad(self, *args):
         raise NotImplementedError()
     def c_code_cache_version(self):
-        return ()
+        return (2,)
     def c_code(self, node, name, (dnll, sm, y_idx), (dx,), sub):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """

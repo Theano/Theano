@@ -177,6 +177,16 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_sync", type(self), self.__class__.__name__)
 
+    def c_code_cache_version(self):
+        """Return a tuple of integers indicating the version of this Type.
+
+        An empty tuple indicates an 'unversioned' Type that will not be cached between processes.
+
+        The cache mechanism may erase cached modules that have been superceded by newer
+        versions.  See `ModuleCache` for details.
+
+        """
+        return ()
 
 
 

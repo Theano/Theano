@@ -465,9 +465,16 @@ class TensorType(Type):
     def c_libraries(self):
         return []
 
-    def c_support_code(cls):
+    def c_support_code(self):
         """Override `CLinkerOp.c_support_code` """
-        return scal.Scalar("int8").c_support_code()
+        return scal.Scalar(self.dtype).c_support_code()
+
+    def c_code_cache_version(self):
+        scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
+        if scalar_version:
+            return (1,) + scalar_version
+        else:
+            return ()
 
 # Easy constructors
 
@@ -887,18 +894,6 @@ class ScalarFromTensor(Op):
 scalar_from_tensor = ScalarFromTensor()
 
 
-@constructor
-def cast(t, dtype):
-    mapping = {'int8': convert_to_int8,
-               'int16': convert_to_int16,
-               'int32': convert_to_int32,
-               'int64': convert_to_int64,
-               'float32': convert_to_float32,
-               'float64': convert_to_float64,
-               'complex64': convert_to_complex64,
-               'complex128': convert_to_complex128}
-    return mapping[dtype](t)
-
 #to be removed as we get the epydoc routine-documenting thing going -JB 20080924
 def _conversion(real_value, name):
     __oplist_tag(real_value, 'casting')
@@ -906,29 +901,51 @@ def _conversion(real_value, name):
     pprint.assign(real_value, printing.FunctionPrinter(name))
     return real_value
 
-convert_to_int8  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int8))), 'int8')
+
+#
+#  These _conver_to_<type> functions have leading underscores to indicate that they should not
+#  be called directly.  They do not perform sanity checks about what types you are casting to
+#  what.  That logic is implemented by the `cast()` function below.
+#
+
+_convert_to_int8  = _conversion(elemwise.Elemwise(scal.convert_to_int8), 'int8')
 """Cast to 8-bit integer"""
     
-convert_to_int16 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int16))), 'int16')
+_convert_to_int16 = _conversion(elemwise.Elemwise(scal.convert_to_int16), 'int16')
 """Cast to 16-bit integer"""
 
-convert_to_int32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int32))), 'int32')
+_convert_to_int32 = _conversion(elemwise.Elemwise(scal.convert_to_int32), 'int32')
 """Cast to 32-bit integer"""
 
-convert_to_int64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.int64))), 'int64')
+_convert_to_int64 = _conversion(elemwise.Elemwise(scal.convert_to_int64), 'int64')
 """Cast to 64-bit integer"""
 
-convert_to_float32 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float32))), 'float32')
+_convert_to_float32 = _conversion(elemwise.Elemwise(scal.convert_to_float32), 'float32')
 """Cast to single-precision floating point"""
 
-convert_to_float64 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.float64))), 'float64')
+_convert_to_float64 = _conversion(elemwise.Elemwise(scal.convert_to_float64), 'float64')
 """Cast to double-precision floating point"""
 
-convert_to_complex64  = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex64))), 'complex64')
+_convert_to_complex64  = _conversion(elemwise.Elemwise(scal.convert_to_complex64), 'complex64')
 """Cast to single-precision complex"""
 
-convert_to_complex128 = _conversion(elemwise.Elemwise(scal.Identity(scal.specific_out(scal.complex128))), 'complex128')
+_convert_to_complex128 = _conversion(elemwise.Elemwise(scal.convert_to_complex128), 'complex128')
 """Cast to double-precision complex"""
+
+_cast_mapping = {'int8': _convert_to_int8,
+           'int16': _convert_to_int16,
+           'int32': _convert_to_int32,
+           'int64': _convert_to_int64,
+           'float32': _convert_to_float32,
+           'float64': _convert_to_float64,
+           'complex64': _convert_to_complex64,
+           'complex128': _convert_to_complex128}
+@constructor
+def cast(x, dtype):
+    """Symbolically cast `x` to a Tensor of type `dtype`.""" 
+    if x.type.dtype.startswith('complex') and not dtype.startswith('complex'):
+        raise TypeError('Casting from complex to real is ambiguous: consider real(), imag(), angle() or abs()')
+    return _cast_mapping[dtype](x)
 
 
 
@@ -1145,7 +1162,6 @@ def abs_(a):
 
 pprint.assign(abs_, printing.PatternPrinter(('|%(0)s|', -1000)))
 
-
 @_scal_elemwise
 def exp(a):
     """e^`a`"""
@@ -1209,6 +1225,83 @@ def sinh(a):
 @_scal_elemwise
 def tanh(a):
     """hyperbolic tangent of a"""
+
+class Real(Op):
+    """Extract the real elements of a complex ndarray"""
+    view_map = {0:[0]}
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+    def make_node(self, x):
+        _x = as_tensor(x)
+        y_dtype = _x.type.dtype
+        if y_dtype == 'complex64':
+            y_dtype = 'float32'
+        if y_dtype == 'complex128':
+            y_dtype = 'float64'
+        _y = Tensor(y_dtype, _x.type.broadcastable)()
+        return Apply(self, [_x], [_y])
+    def perform(self, node, (x,), (y,)):
+        if str(x.dtype).startswith('complex'):
+            y[0] = x.real
+        else:
+            y[0] = x
+    def grad(self, inputs, (g_y,)):
+        #TODO: waiting on a Complex(real=, imag=) op that can merge
+        #things back into a complex tensor
+        raise NotImplementedError()
+_real = Real()
+@constructor
+def real(x):
+    """Return the real part of real or complex-valued `x`
+
+    For real-valued `x`, `x` itself is returned.
+    """
+    _x = as_tensor_variable(x)
+    if _x.type.dtype.startswith('complex'):
+        return _real(x)
+    else:
+        return _x
+
+class Imag(Op):
+    """Extract the imaginary elements of a complex ndarray"""
+    view_map = {0:[0]}
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+    def make_node(self, x):
+        _x = as_tensor_variable(x)
+        if not _x.type.dtype.startswith('complex'):
+            raise TypeError('Imag(x) requires complex x', x)
+        if _x.type.dtype == 'complex64': y_dtype = 'float32'
+        elif _x.type.dtype == 'complex128': y_dtype = 'float64'
+        else:
+            raise NotImplementedError('what is this?', y_dtype)
+        _y = Tensor(y_dtype, _x.type.broadcastable)()
+        return Apply(self, [_x], [_y])
+    def perform(self, node, (x,), (y,)):
+        if str(x.dtype).startswith('complex'):
+            y[0] = x.imag
+        else:
+            y[0] = x * 0
+    def grad(self, inputs, (g_y,)):
+        # TODO: waiting on a complex(real=, imag=) op that can merge
+        # things back into a complex tensor
+        raise NotImplementedError()
+_imag = Imag()
+@constructor
+def imag(x):
+    """Return the imaginary part of real or complex-valued `x`
+
+    For real-valued 'x' this returns `zeros_like(x)`.
+    """
+    _x = as_tensor_variable(x)
+    if _x.type.dtype.startswith('complex'):
+        return _imag(x)
+    else:
+        return zeros_like(x)
 
 
 ##########################
