@@ -6,9 +6,15 @@ Defines Linkers that deal with C implementations.
 from copy import copy
 import re #for set_compiledir
 import os, sys, platform, StringIO, time
-import md5
+
 if sys.version_info[:2] >= (2,5):
-  import hashlib
+    import hashlib
+    def hash_from_code(msg):
+        return hashlib.md5(msg).hexdigest()
+else:
+    import md5
+    def hash_from_code(msg):
+        return md5.new(struct_code).hexdigest()
 
 from theano.gof.python25 import any, all
 
@@ -525,11 +531,7 @@ class CLinker(link.Linker):
 
         # The hash calculated on the code identifies it so weave can cache properly.
         # (the hash has to be used outside of the support code because weave does not consider changes in the support code)
-        # hashlib is new to 2.5
-        if sys.version_info[:2] < (2,5):
-          hash = md5.new(struct_code).hexdigest()
-        else:
-          hash = hashlib.md5(struct_code).hexdigest()
+        hash = hash_from_code(struct_code)
 
         struct_name = '__struct_compiled_op_%s' % hash
         #struct_code %= dict(name = struct_name)
