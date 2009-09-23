@@ -199,11 +199,16 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
+#If you change those value in test don't forget to put them back when the test end.
+#Don't forget the case when the test fail.
+float_atol = 1e-5
+float_rtol = 1e-3 #  Sensible??
+
 def _allclose(a, b):
     narrow = 'float32', 'complex64'
     if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
-        atol = 1e-5
-        rtol = 1e-3 #  Sensible??
+        atol = float_atol
+        rtol = float_rtol
         return numpy.allclose(a,b, atol=atol, rtol=rtol)
     else:
         # keep defaults of in numpy.allclose
