@@ -1,7 +1,8 @@
-## This file contain ops that are not currently integrated in the core of threano. 
-## Not all of those ops have been thoroughly tested.
+"""Provides neural-network specific Ops.
 
-#from theano import tensor, scalar
+:note: TODO: factor this out into a neural-network toolbox.
+"""
+
 from theano import gof
 from theano import scalar
 from theano import printing
