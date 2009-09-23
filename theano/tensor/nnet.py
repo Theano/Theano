@@ -403,10 +403,15 @@ def local_softmax_with_bias(node):
             non_vectors = []
             for x_in in x.owner.inputs:
                 if list(x_in.type.broadcastable) == [True, False]:
-                    if x_in.owner and isinstance(x_in.owner.op, tensor.DimShuffle):
-                        assert len(x_in.owner.inputs)==1
+                    print isinstance(x_in.owner.op, tensor.DimShuffle)
+                    #since specialization comes relatively late in optimization, 
+                    # we don't want to put in extra DimShuffles un-necessarily.
+                    if x_in.owner and isinstance(x_in.owner.op, tensor.DimShuffle)\
+                            and list(x_in.owner.inputs[0].type.broadcastable)==[False]:
+                        # cut out the DimShuffle that was broadcasting a vector
                         vectors.append(x_in.owner.inputs[0])
                     else:
+                        # insert an extra DimShuffle to correct the old one
                         vectors.append(tensor.DimShuffle((True, False), (1,))(x_in))
                 else:
                     non_vectors.append(x_in)
