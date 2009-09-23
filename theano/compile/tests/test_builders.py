@@ -20,9 +20,12 @@ class T_OpFromGraph(unittest.TestCase):
         x, y, z = T.matrices('xyz')
         e = x + y * z
         op = OpFromGraph([x, y, z], [e], mode='FAST_RUN')
-        f = op(x, y, z) - op(y, z, x)
+        f = op(x, y, z) - op(y, z, x) #(1+3*5=array of 16) - (3+1*5=array of 8)
         fn = function([x, y, z], f)
         xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
+        print function, function.__module__
+        print fn.maker.env.toposort()
+        print fn(xv, yv, zv)
         assert numpy.all(8.0 == fn(xv, yv, zv))
         assert numpy.all(8.0 == fn(xv, yv, zv))
     
