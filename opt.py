@@ -44,11 +44,11 @@ def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise):
         if any(hasattr(i.owner, 'op') and isinstance(i.owner.op, HostFromGpu) for i in node.inputs):
             if any(o.type.dtype == 'float64' for o in node.outputs):
-                print 'EXITING FROM local_gpu_elemwise_0', node
-                sys.exit()
-            # move the add to a GpuAdd
-            new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
-            return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
+                print 'WARNING: THERE ARE STILL float64s in your graph local_gpu_elemwise_0', node
+            else:
+                # move the add to a GpuAdd
+                new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
+                return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
     return False
 
 @register_opt()
