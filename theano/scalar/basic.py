@@ -182,23 +182,44 @@ class Scalar(Type):
                 ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
                 return ret;
             }
-            complex_type& operator =(const scalar_type& y) {
-            this->real=y;
-            this->imag=0;
-            return *this;
-            }
-            %(upcast)s
+            template <typename T>
+            complex_type& operator =(const T& y);
          };
          """
+        operator_eq = """
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int8 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int16 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int32 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_int64 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_float32 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const npy_float64 & y)
+        { this->real=y; this->imag=0; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const theano_complex128 & y)
+        { this->real=y.real; this->imag=y.imag; return *this; }
+
+        template <> %(mytype)s & %(mytype)s::operator =(const theano_complex64 & y)
+        { this->real=y.real; this->imag=y.imag; return *this; }
+
+        """
         # todo: use C templating
-        return template % dict(nbits = 64, half_nbits = 32, upcast="") + template % dict(nbits = 128, half_nbits = 64, upcast="""
-        complex_type& operator =(theano_complex64 y) {
-            this->real=y.real;
-            this->imag=y.imag;
-            return *this;
-            }
-        """)
-    
+        return template % dict(nbits = 64, half_nbits = 32) \
+                + template % dict(nbits = 128, half_nbits = 64) \
+                + operator_eq % dict(mytype='theano_complex128') \
+                + operator_eq % dict(mytype='theano_complex64')
+
+    def c_code_cache_version(self):
+        return (2,)
 
 
 int8 = Scalar('int8')
