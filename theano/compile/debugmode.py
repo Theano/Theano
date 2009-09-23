@@ -165,6 +165,11 @@ class BadOptimization(DebugModeError):
             print >> sio, "  New Value: ", str(self.new_r_val)[:val_str_len_limit], '...'
         else:
             print >> sio, "  New Value: ", str(self.new_r_val)
+            
+        print >> sio, "  Max Abs Diff: ", numpy.max(numpy.absolute(self.new_r_val-self.old_r_val))
+        print >> sio, "  Mean Abs Diff: ", numpy.mean(numpy.absolute(self.new_r_val-self.old_r_val))
+        print >> sio, "  Median Abs Diff: ", numpy.median(numpy.absolute(self.new_r_val-self.old_r_val))
+        print >> sio, "  Std Abs Diff: ", numpy.std(numpy.absolute(self.new_r_val-self.old_r_val))
 
         print >> sio, "  Reason: ", str(self.reason)
         print >> sio, "  Old Graph:"
