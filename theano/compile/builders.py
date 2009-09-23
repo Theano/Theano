@@ -62,6 +62,13 @@ class OpFromGraph(gof.Op):
                     self.grad_ops.append(OpFromGraph(inputs + output_grads,
                                                      [g],
                                                      grad_depth = grad_depth - 1))
+    def __eq__(self, other):
+        #TODO: recognize a copy
+        return self is other
+
+    def __hash__(self):
+        #TODO: use internal variables in hash
+        return hash(type(self))
 
     def make_node(self, *inputs):
         for input, type in zip(inputs, self.input_types):
