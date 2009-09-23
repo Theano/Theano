@@ -697,7 +697,7 @@ class Elemwise(Op):
         return self.scalar_op.c_support_code()
 
     def c_code_cache_version(self):
-        return (4,)
+        return (4, 1)
 
 # def elemwise_to_scal(env):
 #     mapping = {}
@@ -884,6 +884,9 @@ class CAReduce(Op):
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
+
+    def c_code_cache_version(self):
+        return (1, 0)
 
 
 class Sum(CAReduce):
