@@ -420,6 +420,9 @@ class ScalarOp(Op):
         else:
             return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%s" % (k, v) for k, v in self.__dict__.items() if k != "name"))
 
+    def c_code_cache_version(self):
+        return (2,)
+
 
 class UnaryScalarOp(ScalarOp):
     nin = 1
