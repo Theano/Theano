@@ -460,9 +460,16 @@ class TensorType(Type):
     def c_libraries(self):
         return []
 
-    def c_support_code(cls):
+    def c_support_code(self):
         """Override `CLinkerOp.c_support_code` """
-        return scal.Scalar("int8").c_support_code()
+        return scal.Scalar(self.dtype).c_support_code()
+
+    def c_code_cache_version(self):
+        scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
+        if scalar_version:
+            return (1,) + scalar_version
+        else:
+            return ()
 
 # Easy constructors
 

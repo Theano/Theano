@@ -815,7 +815,7 @@ class CLinker(link.Linker):
                 return (op_pos[i.owner], i.owner.outputs.index(i))
 
         for opos, o in enumerate(order):
-            version.append(o.op.c_code_cache_version())
+            version.append(o.op.c_code_cache_version_apply(o))
             for i in o.inputs:
                 version.append(i.type.c_code_cache_version())
             for i in o.outputs:

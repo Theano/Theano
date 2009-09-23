@@ -295,6 +295,9 @@ class DimShuffle(Op):
 
         return full_code % dict(locals(), **sub)
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def grad(self, (x, ), (gz, )):
         gz = as_tensor_variable(gz)
         grad_order = ['x'] * len(x.type.broadcastable)
@@ -696,8 +699,20 @@ class Elemwise(Op):
     def c_support_code(self):
         return self.scalar_op.c_support_code()
 
-    def c_code_cache_version(self):
-        return (4, 1)
+    def c_code_cache_version_apply(self, node):
+        version = [4] # the version corresponding to the c code in this Op
+
+        # now we insert versions for the ops on which we depend...
+        scalar_node = Apply(self.scalar_op,
+                [Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                [Scalar(dtype = output.type.dtype)() for output in node.outputs])
+        version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
+        for i in node.inputs + node.outputs:
+            version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
+        if all(version):
+            return tuple(version)
+        else:
+            return ()
 
 # def elemwise_to_scal(env):
 #     mapping = {}
@@ -885,8 +900,20 @@ class CAReduce(Op):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
         return code
 
-    def c_code_cache_version(self):
-        return (1, 0)
+    def c_code_cache_version_apply(self, node):
+        version = [2] # the version corresponding to the c code in this Op
+
+        # now we insert versions for the ops on which we depend...
+        scalar_node = Apply(self.scalar_op,
+                [Scalar(dtype = input.type.dtype)() for input in node.inputs],
+                [Scalar(dtype = output.type.dtype)() for output in node.outputs])
+        version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
+        for i in node.inputs + node.outputs:
+            version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
+        if all(version):
+            return tuple(version)
+        else:
+            return ()
 
 
 class Sum(CAReduce):

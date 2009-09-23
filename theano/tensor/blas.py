@@ -252,6 +252,8 @@ class GemmRelated(Op):
             self.case_double_gemm,
             self.end_switch_typenum), '')
 
+    def build_gemm_version(self):
+        return (1,)
 
 class Gemm(GemmRelated):
     """In-place version of matrix-matrix multiplication (with accumulation):
@@ -360,7 +362,14 @@ class Gemm(GemmRelated):
     def c_code(self, node, name, (_z, _a, _x, _y, _b), (_zout, ), sub): #DEBUG
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
+
+    def c_code_cache_version(self):
+        return (1,) + self.build_gemm_version()
+
 gemm = Gemm()
+    
+
+
 
 pprint.assign(gemm, FunctionPrinter('gemm'))
 def res_is_a(node, op, maxclients=None):
@@ -632,6 +641,9 @@ class Dot22(GemmRelated):
     def c_code(self, node, name, (_x, _y), (_z, ), sub): #DEBUG
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
+    def c_code_cache_version(self):
+        return (1,) + self.build_gemm_version()
+
 _dot22 = Dot22()
 
 @local_optimizer([T.dot])
