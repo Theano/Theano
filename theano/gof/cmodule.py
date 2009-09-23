@@ -598,6 +598,11 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #DSE This makes it easier to avoid problems with frameworks
     if sys.platform=='darwin' :
         preargs.extend(['-undefined','dynamic_lookup'])
+        # for framework builds *only* we need to add these args
+        if 'Python.framework' in sys.prefix:
+            preargs.extend(['-framework','Python'])
+
+
     else :
         #DSE I don't think it's necessary to ever link against -lpython2.x but i left it in for non-osx
         libs = [libname] + libs
