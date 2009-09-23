@@ -316,6 +316,8 @@ class transfer_type(gof.utils.object2):
     def __init__(self, *transfer):
         assert all(type(x) == int for x in transfer)
         self.transfer = transfer
+    def __str__(self):
+        return 'transfer_type{%s}'%self.transfer
     def __call__(self, *types):
         upcast = upcast_out(*types)
         retval = []
