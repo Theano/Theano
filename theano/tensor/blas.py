@@ -69,6 +69,9 @@ class GemmRelated(Op):
     def c_libraries(self):
         return ldflags()
 
+    def c_code_cache_version(self):
+        return (0,0,1)
+
     def c_compile_args(self):
         return ldflags(libs=False, flags=True)
 
