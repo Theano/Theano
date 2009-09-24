@@ -208,7 +208,6 @@ class DownsampleFactorMax(Op):
     def c_code(self, node, name, (x,), (z, ), sub):
         fail=sub['fail']
         ignore_border = int(self.ignore_border)
-        print "IGNORE_BORDER", ignore_border
         ds0, ds1 = self.ds
         return """
         int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
