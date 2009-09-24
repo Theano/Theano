@@ -53,8 +53,6 @@ class ProfileMode(Mode):
             local_time[0] += dt
             apply_time[(i,node.op)] = apply_time.get((i,node.op), 0.0) + dt
             apply_call[(i,node.op)] = apply_call.get((i,node.op), 0) + 1
-            #apply_time[(i,node.op, tuple(node.inputs))] = apply_time.get((i,node.op, tuple(node.inputs)), 0.0) + dt
-            #apply_call[(i,node.op, tuple(node.inputs))] = apply_call.get((i,node.op, tuple(node.inputs)), 0) + 1
             op_time[node.op] = op_time.get(node.op, 0.0) + dt
             op_cimpl[node.op] = hasattr(th, 'cthunk')
             op_call[node.op] = op_call.get(node.op,0) + 1
