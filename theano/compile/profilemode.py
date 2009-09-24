@@ -29,7 +29,6 @@ class ProfileMode(Mode):
     def __setstate__(self, (linker, optimizer, local_time,
                            apply_time, apply_call,
                            op_time, op_cimpl, op_call, compile_time)):
-        print "__setstate__", optimizer
         
         self.local_time = local_time
         self.apply_time = apply_time
@@ -71,8 +70,6 @@ class ProfileMode(Mode):
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
-#        if isinstance(optimizer, gof.Query):
-#            self.provided_optimizer = optimizer
         self._optimizer = optimizer
 
     def print_summary(self, n_apply_to_print=15, n_ops_to_print=20):
@@ -127,7 +124,6 @@ class ProfileMode(Mode):
                 r[a]+=abs(ta-tb)
                 
             #they are missing in a
-            print "missing items",len(b_time)
             for a,t in b_time.items():
                 r.setdefault(a,0)
                 r[a]+=t
