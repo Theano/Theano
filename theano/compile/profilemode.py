@@ -2,17 +2,42 @@ import time, atexit, copy
 
 from theano.gof.link import WrapLinkerMany
 from theano.gof.cutils import run_cthunk
-from theano.compile.mode import Mode, predefined_linkers, register_mode, predefined_modes
+from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers, default_linker, default_optimizer
 from theano.gof.cc import OpWiseCLinker
+from theano import gof
 
 class ProfileMode(Mode):
-    def __init__(self, linker=OpWiseCLinker(), optimizer=None):
+    def __init__(self, linker=default_linker, optimizer=default_optimizer):
         local_time = [0.0]
         apply_time = {}
         apply_call = {}
         op_time = {}
         op_cimpl = {}
         op_call = {}
+        compile_time = 0 #time passed in function()
+
+        self.__setstate__((linker, optimizer, local_time,
+                           apply_time, apply_call,
+                           op_time, op_cimpl, op_call, compile_time))
+
+    def __getstate__(self):
+        print "__getstate__",self.provided_linker,self.provided_optimizer
+        return (self.provided_linker, self.provided_optimizer, self.local_time,
+                           self.apply_time, self.apply_call,
+                           self.op_time, self.op_cimpl, self.op_call, self.compile_time)
+
+    def __setstate__(self, (linker, optimizer, local_time,
+                           apply_time, apply_call,
+                           op_time, op_cimpl, op_call, compile_time)):
+        print "__setstate__", optimizer
+        
+        self.local_time = local_time
+        self.apply_time = apply_time
+        self.apply_call = apply_call
+        self.op_time = op_time
+        self.op_cimpl = op_cimpl
+        self.op_call = op_call
+        self.compile_time = compile_time
 
         def blah(i, node, th):
             if hasattr(th, 'cthunk'):
@@ -27,28 +52,28 @@ class ProfileMode(Mode):
                 dt = time.time() - t0
 
             local_time[0] += dt
-            apply_time[(i,node.op, tuple(node.inputs))] = apply_time.get((i,node.op, tuple(node.inputs)), 0.0) + dt
-            apply_call[(i,node.op, tuple(node.inputs))] = apply_call.get((i,node.op, tuple(node.inputs)), 0) + 1
+            apply_time[(i,node.op)] = apply_time.get((i,node.op), 0.0) + dt
+            apply_call[(i,node.op)] = apply_call.get((i,node.op), 0) + 1
+            #apply_time[(i,node.op, tuple(node.inputs))] = apply_time.get((i,node.op, tuple(node.inputs)), 0.0) + dt
+            #apply_call[(i,node.op, tuple(node.inputs))] = apply_call.get((i,node.op, tuple(node.inputs)), 0) + 1
             op_time[node.op] = op_time.get(node.op, 0.0) + dt
             op_cimpl[node.op] = hasattr(th, 'cthunk')
             op_call[node.op] = op_call.get(node.op,0) + 1
 
-        self.local_time = local_time
-        self.apply_time = apply_time
-        self.apply_call = apply_call
-        self.op_time = op_time
-        self.op_cimpl = op_cimpl
-        self.op_call = op_call
-        self.compile_time = 0 #time passed in function()
-
-        if isinstance(linker, str):
+        
+        self.provided_linker = linker
+        self.provided_optimizer = optimizer
+        if isinstance(linker, str) or linker is None:
             linker = predefined_linkers[linker]
 
-        wrap_linker = WrapLinkerMany([linker], [blah])
-        if optimizer:
-            super(ProfileMode, self).__init__(wrap_linker, optimizer)
-        else:
-            super(ProfileMode, self).__init__(wrap_linker)
+        linker = WrapLinkerMany([linker], [blah])
+            
+        self.linker = linker
+        if isinstance(optimizer, str) or optimizer is None:
+            optimizer = predefined_optimizers[optimizer]
+#        if isinstance(optimizer, gof.Query):
+#            self.provided_optimizer = optimizer
+        self._optimizer = optimizer
 
     def print_summary(self, n_apply_to_print=15, n_ops_to_print=20):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
