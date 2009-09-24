@@ -235,6 +235,10 @@ class GpuDownsampleFactorMax(Op):
             dims[2] += (xdim2%%(%(ds0)s)?1:0);
             dims[3] += (xdim3%%(%(ds1)s)?1:0);
         }
+        if(dims[3]>512){
+            PyErr_SetString(PyExc_ValueError, "last dimention bigger then 512. This case is not implemented.");
+            %(fail)s;
+        }
 
         if ((NULL == cnda_%(z)s)
             || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[0] != dims[0])
@@ -249,6 +253,7 @@ class GpuDownsampleFactorMax(Op):
             {
                 Py_XDECREF(cnda_%(z)s);
                 cnda_%(z)s = NULL;
+                PyErr_SetString(PyExc_ValueError, "Was not able to allocate output!");
                 %(fail)s;
             }
         }
