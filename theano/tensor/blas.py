@@ -1,6 +1,6 @@
 """Ops and optimizations for using BLAS function calls to evaluate linear algebra expressions"""
 
-import os, sys, traceback
+import os, sys, traceback, logging
 import numpy
 
 from theano.gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
@@ -16,6 +16,13 @@ import basic as T
 from theano import compile  #to register the optimizer built by this file 
 
 from theano.tensor.blas_headers import cblas_header_text, blas_header_text
+
+_logger = logging.getLogger('theano.tensor.blas')
+def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
+def info(*msg): _logger.info(' '.join(str(m) for m in msg))
+def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
+def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
+def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
 @utils.memoize
 def ldflags(libs=True, flags=False):
@@ -655,6 +662,8 @@ def local_dot_to_dot22(node):
         x,y = node.inputs
         if _is_real_matrix(x) and y.type == x.type:
             return [_dot22(*node.inputs)]
+        else:
+            info('Not optimizing dot with inputs', x, y)
     else:
         return False
 register_specialize(local_dot_to_dot22)
