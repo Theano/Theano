@@ -667,10 +667,10 @@ class Mul(ScalarOp):
       retval = []
       for input in inputs:
         if input.type in grad_types:
-          retval += [mul(*([gz] + utils.difference(inputs, [input])))]
+          retval += [cast(mul(*([gz] + utils.difference(inputs, [input]))), input.type.dtype)]
         else:
           retval += [None]
-
+      
       return retval
 
         #return [(mul(*([gz] + utils.difference(inputs, [input]))) 
