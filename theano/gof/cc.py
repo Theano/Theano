@@ -522,6 +522,8 @@ class CLinker(link.Linker):
 
         # List of arg names for use in struct_gen. Note the call to uniq: duplicate inputs
         # must only be passed once because they are mapped to the same name.
+        # Duplicates are defined by (a is b), rather than (a==b) since Constant instances can
+        # compare equal to equivalent Constant instances.
         args = []
         args += ["storage_%s" % symbol[variable] for variable in utils.uniq(self.inputs + self.outputs + self.orphans)]
 
