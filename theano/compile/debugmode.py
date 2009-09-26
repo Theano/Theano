@@ -1,7 +1,7 @@
 """Provides `DebugMode`, an evaluation mode for debugging theano internals."""
 __docformat__ = "restructuredtext en"
 
-import time, copy, sys, copy_reg, gc
+import time, copy, sys, copy_reg, gc, os
 from StringIO import StringIO
 
 import numpy
@@ -1352,27 +1352,27 @@ class DebugMode(Mode):
 
     """
 
-    stability_patience = 10
+    stability_patience = int(os.getenv('THEANO_DEBUGMODE_PATIENCE', 10))
     """
     When checking for the stability of optimization, recompile the graph this many times.
     """
 
-    check_c_code = True
+    check_c_code = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_C', 1)))
     """
     Should we evaluate (and check) the `c_code` implementations?
     """
 
-    check_py_code = True
+    check_py_code = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_PY', 1)))
     """
     Should we evaluate (and check) the `perform` implementations?
     """
 
-    check_isfinite = True
+    check_isfinite = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_FINITE', 1)))
     """
     Should we check for (and complain about) NaN/Inf ndarray elements?
     """
 
-    require_matching_strides = False
+    require_matching_strides = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_STRIDES', 0)))
     """
     Should we check for (and complain about) Ops whose python and C outputs are ndarrays with
     different strides? (This can catch bugs, but is generally overly strict.)
