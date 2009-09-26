@@ -781,15 +781,21 @@ class CLinker(link.Linker):
         ``a`` is the topological position of the input's owner (-1 for graph inputs),
         ``b`` is the index of the variable in the owner's output list.
 
-        The graph position of a Constant is defined as its signature.
+        The graph position of a Constant instance is defined as its signature, together with
+        two integers: the topological position of the first Apply using that Constant instance,
+        and the lowest index into that Apply's inputs that refers to that Constant.  (These two
+        integers are a surrogate for the id() of the Constant.  The integers are important
+        because merge-able constants have the same signature, but require separate containers
+        in C code.)
 
         If the Op of any Apply in the Env does not have c_code_cache_ok()==True, then this
         function raises a KeyError exception.
         
         """
         order = list(self.env.toposort())
-        env_inputs_set = dict((i, (-1, pos)) for pos, i in enumerate(self.env.inputs))
+        env_inputs_dict = dict((i, (-1, pos)) for pos, i in enumerate(self.env.inputs))
         env_computed_set = set()
+        constant_ids = dict()
         op_pos = {} # Apply -> topological position
         rval = ['CLinker.cmodule_key'] # will be cast to tuple on return
         rval.append(tuple(self.compile_args()))
@@ -800,11 +806,15 @@ class CLinker(link.Linker):
         # - an env input
         # - an output from a node in the Env
         # - a Constant
-        def graphpos(i):
+        def graphpos(i, topological_pos, i_idx):
             if isinstance(i, graph.Constant):
-                return i.signature()
-            elif i in env_inputs_set:
-                return env_inputs_set[i]
+                if id(i) not in constant_ids:
+                    constant_ids[id(i)] = (i.signature(), topological_pos, i_idx)
+                return constant_ids[id(i)]
+                #print 'SIGNATURE', i.signature()
+                #return i.signature()
+            elif i in env_inputs_dict:
+                return env_inputs_dict[i]
             else:
                 if i.owner is None:
                     assert all( all(out is not None for out in o.outputs) for o in order)
@@ -812,15 +822,16 @@ class CLinker(link.Linker):
                     raise Exception('what is this?', (i, type(i), i.clients, self.env))
                 return (op_pos[i.owner], i.owner.outputs.index(i))
 
-        for opos, o in enumerate(order):
-            version.append(o.op.c_code_cache_version_apply(o))
-            for i in o.inputs:
+        for node_pos, node in enumerate(order):
+            version.append(node.op.c_code_cache_version_apply(node))
+            for i in node.inputs:
                 version.append(i.type.c_code_cache_version())
-            for i in o.outputs:
-                version.append(i.type.c_code_cache_version())
-            rval.append((o.op, tuple((i.type, graphpos(i)) for i in o.inputs)))
-            op_pos[o] = opos
-            env_computed_set.update(o.outputs)
+            for o in node.outputs:
+                version.append(o.type.c_code_cache_version())
+            rval.append((node.op, tuple((i.type, graphpos(i, node_pos, ipos)) 
+                for ipos,i in enumerate(node.inputs))))
+            op_pos[node] = node_pos
+            env_computed_set.update(node.outputs)
 
         for v in version:
             if not v: #one of the ops or types here is unversioned
