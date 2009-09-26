@@ -850,6 +850,8 @@ class Cast(UnaryScalarOp):
         super(Cast, self).__init__(specific_out(o_type), name=name)
         self.o_type = o_type
         self.ctor = getattr(numpy, o_type.dtype)
+    def __str__(self):
+        return '%s{%s}' % (self.__class__.__name__, self.o_type.dtype)
     def impl(self, input):
         return self.ctor(input)
     def c_code(self, node, name, (x, ), (z, ), sub):
