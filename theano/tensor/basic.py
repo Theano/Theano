@@ -4,6 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
+import os  # for getenv THEANO_CMP_SLOPPY
 import traceback #for overriding Op.__call__
 if sys.version_info >= (2,5):
   import functools
@@ -199,20 +200,33 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
-#If you change those value in test don't forget to put them back when the test end.
-#Don't forget the case when the test fail.
-float_atol = 1e-5
-float_rtol = 1e-3 #  Sensible??
+if int(os.getenv('THEANO_CMP_SLOPPY', 0)):
+    # This environment variable is a quick-and-dirty way to get low-precision comparisons.
+    # For a more precise setting of these tolerances set them explicitly in your user code by
+    # assigning, for example, "theano.tensor.basic.float32_atol = ..."
+    float32_atol = 1e-4
+    float32_rtol = 1e-3 
+    float64_rtol = 1e-4
+    float64_atol = 1e-3
+else:
+    #If you change those value in test don't forget to put them back when the test end.
+    #Don't forget the case when the test fail.
+    float32_atol = 1e-5
+    float32_rtol = 1e-3 
+
+    # defaults in numpy.allclose
+    float64_rtol = 1.0000000000000001e-05
+    float64_atol = 1e-8
 
 def _allclose(a, b):
     narrow = 'float32', 'complex64'
     if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
-        atol = float_atol
-        rtol = float_rtol
-        return numpy.allclose(a,b, atol=atol, rtol=rtol)
+        atol = float32_atol
+        rtol = float32_rtol
     else:
-        # keep defaults of in numpy.allclose
-        return numpy.allclose(a,b)
+        atol = float64_atol
+        rtol = float64_rtol
+    return numpy.allclose(a,b, atol=atol, rtol=rtol)
 
 class TensorType(Type):
     """Symbolic `Type` representing a numpy.ndarray value."""
