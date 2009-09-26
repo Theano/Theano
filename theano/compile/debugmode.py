@@ -298,7 +298,7 @@ class InvalidValueError(DebugModeError):
 
 
 
-def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
+def debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -322,7 +322,7 @@ def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
-                _debugprint(i, prefix+'  ', depth=depth-1, done=done, file=file)
+                debugprint(i, prefix+'  ', depth=depth-1, done=done, file=file)
     else:
         #this is a variable
         print >> file, prefix, r, id(r)
@@ -772,12 +772,12 @@ class _VariableEquivalenceTracker(object):
                 append_reason = False
 
         if append_reason:
-            # N.B. compute the _debugprint now, because future optimizations will change the
+            # N.B. compute the debugprint now, because future optimizations will change the
             # graph
             self.reasons[new_r].append((reason
                 , r
-                , _debugprint(r, prefix='  ', depth=6, file=StringIO()).getvalue()
-                , _debugprint(new_r, prefix='  ',  depth=6, file=StringIO()).getvalue()))
+                , debugprint(r, prefix='  ', depth=6, file=StringIO()).getvalue()
+                , debugprint(new_r, prefix='  ',  depth=6, file=StringIO()).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
         if r in self.equiv:
