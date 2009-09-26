@@ -36,16 +36,12 @@ import cmodule
 import logging
 _logger=logging.getLogger("theano.gof.cc")
 def info(*args):
-    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
-    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug(' '.join(str(a) for a in args))
 def warning(*args):
-    sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.warning(' '.join(str(a) for a in args))
 def error(*args):
-    sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.error(' '.join(str(a) for a in args))
 
 from theano.gof.callcache import CallCache
