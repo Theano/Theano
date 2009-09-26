@@ -864,12 +864,12 @@ class CLinker(link.Linker):
 
 
     def build_dynamic_module(self):
-        """Generate the code for this module, compile it, return the imported dynamic module.
+        """Return a cmodule.DynamicModule instance full of the code for our env.
         """
         self.code_gen()
         module_name = self.hash
 
-        cthunk = object() # dummy so weave can get the type
+        cthunk = object() # dummy so weave can get the type ##TODO: REMOVE ME
         mod = cmodule.DynamicModule(module_name)
 
         # The code of instantiate
@@ -940,7 +940,7 @@ class CLinker(link.Linker):
         orphd = [[orphan.data] for orphan in self.orphans]
 
         ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
-
+        
         return ret
 
     def instantiate_code(self, n_args):
@@ -1007,6 +1007,11 @@ class OpWiseCLinker(link.LocalLinker):
     no_recycling can contain a list of Variables that belong to the env.
     If a Variable is in no_recycling, CLinker will clear the output storage
     associated to it prior to computation (to avoid reusing it).
+
+    :note: This is in a sense the 'default' linker for Theano.  The overhead of using the
+    OpWiseCLinker as compared with the CLinker is only noticeable for graphs of very small
+    tensors (such as 20 elements or less)
+
     """
 
     __cache__ = {}
@@ -1053,6 +1058,8 @@ class OpWiseCLinker(link.LocalLinker):
                 try:
                     e = Env(*graph.clone(node.inputs, node.outputs))
 
+                    # TODO: 20090926 Replace this code with th cl = CLinker().... line.  Trust
+                    # ModuleCache for cache mechanism.
                     if any(isinstance(input, graph.Value) for input in node.inputs):
                         desc = None
                     else:
