@@ -856,29 +856,10 @@ class _Linker(gof.link.LocalLinker):
                 if not self.maker.mode.check_c_code:
                     raise utils.MethodNotDefined()
                 e = Env(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER
+                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER 
+                #  Specifically... e.nodes is a set, but of only 1 element
 
-                if any(isinstance(input, graph.Value) for input in node.inputs):
-                    desc = None
-                else:
-                    desc = (node.op,
-                            tuple(input.type for input in node.inputs),
-                            tuple(input.type for input in node.inputs),
-                            tuple(output in no_recycling for output in node.outputs),
-                            tuple(node.inputs.count(input) for input in node.inputs))
-
-                try:
-                    cl = self.__cache__.get(desc)
-                except Exception, exc:
-                    #print >> sys.stderr, "INFO: failed to hash %s: %s. Node will not be cached." % (node, exc)
-                    cl = None
-                if cl is None:
-                    cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
-                    if desc is not None:
-                        try:
-                            self.__cache__[desc] = cl
-                        except:
-                            pass
+                cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
 
                 thunk, node_input_filters, node_output_filters = cl.make_thunk(
                     input_storage = node_input_storage,
