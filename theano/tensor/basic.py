@@ -1750,7 +1750,7 @@ class Subtensor(Op):
     def grad(self, inputs, (gz,)):
         x = inputs[0]
         rest = inputs[1:]
-        return [SetSubtensor(self.idx_list)(zeros_like(x), gz, *rest)] + [None] * len(rest)
+        return [IncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)] + [None] * len(rest)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.idx_list == other.idx_list
@@ -1837,13 +1837,14 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), S
 
 
 
-class SetSubtensor(Op):
-    """Set just some elements of a larger TensorType.
+class IncSubtensor(Op):
+    """Increment a subtensor.
 
     This is like numpy's 
 
-        z[i,j,k] = <something> 
+        z[i,j,k] += <something> 
     
+    It is used internally to implement the gradient on SubTensor.
     """
 
     def __init__(self, idx_list, inplace=False):
@@ -1901,7 +1902,7 @@ class SetSubtensor(Op):
         broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable) if isinstance(p, slice)]
 
         if y.type.broadcastable != tuple(broadcastable):
-            raise TypeError("Invalid broadcastable pattern for y in SetSubtensor.make_node")
+            raise TypeError("Invalid broadcastable pattern for y in IncSubtensor.make_node")
 
         input_types = Subtensor.collapse(idx_list, lambda entry: isinstance(entry, gof.Type))
         if len(inputs) != len(input_types):
@@ -1933,7 +1934,8 @@ class SetSubtensor(Op):
             cdata = cdata[0]
         if not self.inplace:
             x = x.copy()
-        x.__setitem__(cdata, y)
+        sub_x = x.__getitem__(cdata)
+        sub_x += y
         out[0] = x
 
 def split(x, splits_size, n_splits, axis=0):

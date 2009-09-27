@@ -291,13 +291,73 @@ def local_subtensor_make_vector(node):
 
 register_canonicalize(local_subtensor_make_vector)
 
+@register_canonicalize
+@gof.local_optimizer([None])
+def local_IncSubtensor_serialize(node):
+    """
+    When using Subtensor, gradient graphs can be ugly.
+
+    If we ask for grad(f(a[0]), a), we are going to get something like
+
+        IncSubtensor(Elemwise{second}(a, 0), g(f(a[0])), [0])
+
+    This might be ugly, but at least it's as fast as you could want.  If we ask for
+    grad(f(a[0], a[1], a[2]), a), it's much worse...
+
+        Elemwise{Add}
+            IncSubtensor(Elemwise{second}(a, 0), g(f(a[0])), [0])
+            IncSubtensor(Elemwise{second}(a, 0), g(f(a[1])), [1])
+            IncSubtensor(Elemwise{second}(a, 0), g(f(a[2])), [2])
+
+    This is much worse because this time we have to produce 3 matrices the size of 'a', just so
+    we can add them together. 
+    
+    This Op rearranges IncSubtensor's that all work on the same initial argument (here,
+    Elemwise{second}(a,0)) into a chain.  The advantage of the chain structure is that each one
+    can be optimized later in the pipeline to operate inplace.
+
+    Ideally, the op will do something like this:
+
+    #
+    #  add(x, incsubtensor(b, c), incsubtensor(b, d))
+    #  -> incsubtensor(incsubtensor(add(x,b), c), d)
+    
+    """
+    def movable(i):
+        # Return True iff this is a incsubtensor that we can move
+        return i.owner \
+                and isinstance(i.owner.op, T.IncSubtensor) \
+                and i.type == o_type \
+                and len(i.clients) == 1
+
+    if node.op == T.add:
+        o_type = node.outputs[0].type
+
+        movable_inputs = [i for i in node.inputs if movable(i)]
+
+        if movable_inputs:
+            new_inputs = [i for i in node.inputs if not movable(i)] \
+                    + [mi.owner.inputs[0] for mi in movable_inputs]
+            new_add = T.add(*new_inputs)
+
+            # stack up the new incsubtensors
+            tip = new_add
+            for mi in movable_inputs:
+                assert tip.type == o_type
+                assert tip.type == mi.owner.inputs[0].type
+                tip = mi.owner.op(tip, *mi.owner.inputs[1:])
+            return [tip]
+
+        #print incsub_inputs, [id(i.owner.inputs[0]) for i in incsub_inputs]
+
+
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
 
 @gof.local_optimizer([None])
 def local_inplace_setsubtensor(node):
-    if isinstance(node.op, T.SetSubtensor) and not node.op.inplace:
-        new_op = T.SetSubtensor(node.op.idx_list, inplace=True)
+    if isinstance(node.op, T.IncSubtensor) and not node.op.inplace:
+        new_op = T.IncSubtensor(node.op.idx_list, inplace=True)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
