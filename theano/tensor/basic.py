@@ -1624,6 +1624,12 @@ class Subtensor(Op):
     inputs array is the tensor x, followed by scalar integer variables.
     
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
+
+    The idx_list is a tuple similar in structure to the sort of key you might expect in numpy's
+    basic indexing mode.  It has one element for each explicitly named dimension.  In numpy, the elements
+    can be either  integers or slices containing integers and None.  In Subtensor, each element
+    can additionally be a Scalar instance, and slice components can also be Scalar instances
+    too.
     """
     e_invalid = 'The index list is longer than the number of dimensions of the tensor.'
     e_subslice = 'nested slicing is not supported'
