@@ -973,6 +973,9 @@ _cast_mapping = {'int8': _convert_to_int8,
 @constructor
 def cast(x, dtype):
     """Symbolically cast `x` to a Tensor of type `dtype`.""" 
+    _x = as_tensor_variable(x)
+    if _x.type.dtype == dtype:
+        return _x
     if x.type.dtype.startswith('complex') and not dtype.startswith('complex'):
         raise TypeError('Casting from complex to real is ambiguous: consider real(), imag(), angle() or abs()')
     return _cast_mapping[dtype](x)
