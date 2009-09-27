@@ -1935,7 +1935,12 @@ class IncSubtensor(Op):
         if not self.inplace:
             x = x.copy()
         sub_x = x.__getitem__(cdata)
-        sub_x += y
+        if sub_x.shape:
+            # we've sliced out an N-D tensor with N > 0
+            sub_x += y
+        else:
+            # scalar case
+            x.__setitem__(cdata, sub_x + y)
         out[0] = x
 
 def split(x, splits_size, n_splits, axis=0):
