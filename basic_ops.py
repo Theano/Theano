@@ -1229,75 +1229,13 @@ class GpuSubtensor(tensor.Subtensor):
             cdata = cdata[0]
         out[0] = x.__getitem__(cdata)
 
-    def old_perform(self, node, inputs, (out, )):
-        indices = list(reversed(inputs[1:]))
-
-        def convert(entry):
-            if isinstance(entry, Type):
-                return indices.pop()
-            elif isinstance(entry, slice):
-                return slice(convert(entry.start),
-                             convert(entry.stop),
-                             convert(entry.step))
-            else:
-                return entry
-
-        x = inputs[0].view()
-        out[0] = x
-        #todo; when this works, put it into CudaNdarray.__getitem__
-        #      (sequence protocol)
-        x_shape = x.shape
-        x_strides = x._strides
-        offset = 0
-        for i, thing in enumerate(map(convert, self.idx_list)):
-            if isinstance(thing, int):
-                #this requires reducing the rank of the 
-                # view....
-                raise NotImplementedError()
-
-            if isinstance(thing, slice):
-                #stride
-                if thing.step is None:
-                    stride = 1
-                else:
-                    stride = thing.step
-
-                #start
-                if thing.start is None:
-                    if stride > 0:
-                        start = 0
-                    else:
-                        start = x_shape[i]-1
-                else:
-                    if thing.start < 0:
-                        start = x_shape[i] - thing.start
-                    else:
-                        start = thing.start
-
-                #stop
-                if thing.stop is None:
-                    if stride > 0:
-                        stop = x_shape[i]
-                    else:
-                        stop = -1
-                else:
-                    if thing.stop < 0:
-                        stop = x_shape[i] - thing.stop
-                    else:
-                        stop = thing.stop
-
-                newlen = (stop - start) // stride
-                offset += x_strides[i] * start
-                debug('GpuSubtensor slice', i, ': ', start, stop, stride)
-                debug('GpuSubtensor shape', i, ': ', x_shape[i], newlen)
-                x._set_shape_i(i, newlen)
-                x._set_stride(i, x_strides[i] * stride)
-
-            #print 'perform', id(x), x.shape, i, thing
-        sizeof_float = 4
-        x._dev_data += offset * sizeof_float
-        #sys.stdout.flush()
-        #sys.exit()
+class GpuIncSubtensor(tensor.IncSubtensor):
+    def make_node(self, x, y, *inputs):
+        rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
+        rval.inputs[0] = x # clobber the 'astensor(x)'
+        rval.inputs[1] = y # clobber the 'astensor(y)'
+        rval.outputs[0].type = CudaNdarrayType(rval.outputs[0].type.broadcastable)
+        return rval
 
 class GpuShape(tensor.Shape):
     def make_node(self, x):
