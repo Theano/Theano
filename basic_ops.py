@@ -117,7 +117,8 @@ class GpuElemwise(Op):
                 items = self.inplace_pattern.items()
                 items.sort()
                 return "GpuElemwise{%s}%s" % (self.scalar_op.__class__.__name__, str(items))
-        return "GpuElemwise{%s}" % (self.scalar_op.__class__.__name__)
+        #return "GpuElemwise{%s}" % (self.scalar_op.__class__.__name__)
+        return "GpuElemwise{%s}" % (self.scalar_op)
 
     def make_node(self, *inputs):
         _inputs = [as_cuda_ndarray_variable(i) for i in inputs]
