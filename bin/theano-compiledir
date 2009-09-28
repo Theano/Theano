@@ -1,13 +1,14 @@
 #!/usr/bin/env python
-from theano.gof import cc
 import sys
-compiledir = cc.get_compiledir()
+from theano.gof.cc import get_compiledir, get_module_cache
 
 if len(sys.argv) == 1:
-    print compiledir
+    print get_compiledir()
 elif sys.argv[1] in ('clear'):
-    cc.clear_compiledir()
+    get_module_cache().clear()
 else:
     print 'command "%s" not recognized' % sys.argv[1]
+    print 'Type "theano-cache" to print the cache location'
+    print 'Type "theano-cache clear" to erase the cache'
     sys.exit(1)
 
