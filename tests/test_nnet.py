@@ -344,7 +344,6 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
         numpy.random.seed(seed)
         rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(shared, isize, ksize, bsize, n_iter)
         if isinstance(cpu_mode,(theano.compile.ProfileMode,)):
-            rval_cpu2, tc2, cpu_mode2 = run_conv_nnet2_classif(shared, isize, ksize, bsize, n_iter*3)
             import pickle
             print "BEGIN GPU profile mode dump"
             #print pickle.dumps(gpu_mode)
@@ -353,10 +352,6 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             print pickle.dumps(cpu_mode)
             print "END CPU profile mode dump"
 
-            cpu_mode.print_diff_summary(cpu_mode2)
-            cpu_mode2.print_diff_summary(cpu_mode)
-            cpu_mode2.print_diff_summary(cpu_mode2)
-    
     finally:
         predefined_modes["DEBUG_MODE"].check_isfinite = orig_check_isfinite
         theano.tensor.basic.float32_atol=orig_float32_atol
@@ -365,6 +360,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     print "gpu:", rval_gpu
     print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
     print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
+
     if not ignore_error:
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol)
 
