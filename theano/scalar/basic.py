@@ -187,28 +187,28 @@ class Scalar(Type):
          };
          """
         operator_eq = """
-        template <> %(mytype)s & %(mytype)s::operator =(const npy_int8 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<npy_int8>(const npy_int8 & y)
         { this->real=y; this->imag=0; return *this; }
 
-        template <> %(mytype)s & %(mytype)s::operator =(const npy_int16 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<npy_int16>(const npy_int16 & y)
         { this->real=y; this->imag=0; return *this; }
 
-        template <> %(mytype)s & %(mytype)s::operator =(const npy_int32 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<npy_int32>(const npy_int32 & y)
         { this->real=y; this->imag=0; return *this; }
 
-        template <> %(mytype)s & %(mytype)s::operator =(const npy_int64 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<npy_int64>(const npy_int64 & y)
         { this->real=y; this->imag=0; return *this; }
 
-        template <> %(mytype)s & %(mytype)s::operator =(const npy_float32 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<npy_float32>(const npy_float32 & y)
         { this->real=y; this->imag=0; return *this; }
 
-        template <> %(mytype)s & %(mytype)s::operator =(const npy_float64 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<npy_float64>(const npy_float64 & y)
         { this->real=y; this->imag=0; return *this; }
 
-        template <> %(mytype)s & %(mytype)s::operator =(const theano_complex128 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<theano_complex128>(const theano_complex128 & y)
         { this->real=y.real; this->imag=y.imag; return *this; }
 
-        template <> %(mytype)s & %(mytype)s::operator =(const theano_complex64 & y)
+        template <> %(mytype)s & %(mytype)s::operator=<theano_complex64>(const theano_complex64 & y)
         { this->real=y.real; this->imag=y.imag; return *this; }
 
         """
@@ -219,7 +219,8 @@ class Scalar(Type):
                 + operator_eq % dict(mytype='theano_complex64')
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)  #explicit T given in specialization of operator= lines.  This makes it compile with open64
+        #2,
 
 
 int8 = Scalar('int8')
@@ -666,10 +667,10 @@ class Mul(ScalarOp):
       retval = []
       for input in inputs:
         if input.type in grad_types:
-          retval += [mul(*([gz] + utils.difference(inputs, [input])))]
+          retval += [cast(mul(*([gz] + utils.difference(inputs, [input]))), input.type.dtype)]
         else:
           retval += [None]
-
+      
       return retval
 
         #return [(mul(*([gz] + utils.difference(inputs, [input]))) 
@@ -849,6 +850,8 @@ class Cast(UnaryScalarOp):
         super(Cast, self).__init__(specific_out(o_type), name=name)
         self.o_type = o_type
         self.ctor = getattr(numpy, o_type.dtype)
+    def __str__(self):
+        return '%s{%s}' % (self.__class__.__name__, self.o_type.dtype)
     def impl(self, input):
         return self.ctor(input)
     def c_code(self, node, name, (x, ), (z, ), sub):

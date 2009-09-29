@@ -102,7 +102,7 @@ class ProfileMode(Mode):
 
 
     def print_diff_summary(self, other, n_apply_to_print=15, n_ops_to_print=20):
-        """ As print_summary, but print the absolute difference on two different profile mode.
+        """ As print_summary, but print the difference on two different profile mode.
         TODO: Also we don't print the Apply-wise summary as it don't work for now.
         TODO: make comparaison with gpu code.
         
@@ -119,7 +119,7 @@ class ProfileMode(Mode):
             for a,ta in a_time.items():
                 r.setdefault(a,0)
                 tb = b_time.pop(a,0)
-                r[a]+=abs(ta-tb)
+                r[a]+=ta-tb
                 
             #they are missing in a
             for a,t in b_time.items():
@@ -133,7 +133,7 @@ class ProfileMode(Mode):
             for a,ta in a_time.items():
                 tb = b_time.pop(a,0)
                 if hasattr(a,'flops'):
-                    flops[a]=abs(a.flops*a_call[a]/ta - a.flops*b_call[a]/tb)/1e6
+                    flops[a]=a.flops*a_call[a]/ta - a.flops*b_call[a]/tb/1e6
                 
             #they are missing in a
             for b,tb in b_time.items():
@@ -142,8 +142,8 @@ class ProfileMode(Mode):
 
             return flops
 
-        local_time = abs(self.local_time[0]-other.local_time[0])
-        compile_time = abs(self.compile_time-other.compile_time)
+        local_time = self.local_time[0]-other.local_time[0]
+        compile_time = self.compile_time-other.compile_time
         apply_time = diff_dict(self.apply_time, other.apply_time)
         apply_call = diff_dict(self.apply_call, other.apply_call)
         op_time = diff_dict(self.op_time, other.op_time)

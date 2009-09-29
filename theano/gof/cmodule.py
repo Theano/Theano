@@ -10,16 +10,12 @@ _logger=logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARN)
 
 def error(*args):
-    #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.error("ERROR: "+' '.join(str(a) for a in args))
 def warning(*args):
-    #sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.warning("WARNING: "+' '.join(str(a) for a in args))
 def info(*args):
-    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info("INFO: "+' '.join(str(a) for a in args))
 def debug(*args):
-    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
 
 METH_VARARGS="METH_VARARGS"
@@ -470,7 +466,8 @@ class ModuleCache(object):
         """
         Clear all the elements of the cache
         """
-        return self.clear_old(-1.0)
+        self.clear_old(-1.0)
+        self.clear_unversioned()
 
     def clear_unversioned(self):
         """Delete unversioned dynamic modules from the internal dictionaries and from the
@@ -493,6 +490,17 @@ class ModuleCache(object):
                 info("clear_unversioned removing cache dir", parent)
                 _rmtree(parent)
 
+        for filename in os.listdir(self.dirname):
+            if filename.startswith('tmp'):
+                try:
+                    open(os.path.join(self.dirname, filename, 'key.pkl')).close()
+                    has_key = True
+                except IOError:
+                    has_key = False
+                if not has_key:
+                    info("clear_unversioned removing cache dir", filename)
+                    _rmtree(os.path.join(self.dirname, filename))
+
     def _on_atexit(self):
         self.refresh()
         self.clear_old()
@@ -514,6 +522,8 @@ def get_module_cache(dirname, force_fresh=None):
     if _module_cache is None:
         _module_cache = ModuleCache(dirname, force_fresh=force_fresh)
         atexit.register(_module_cache._on_atexit)
+    if _module_cache.dirname != dirname:
+        warning("Returning module cache instance with different dirname than you requested")
     return _module_cache
 
 def get_lib_extension():

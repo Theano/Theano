@@ -1,7 +1,7 @@
 """Provides `DebugMode`, an evaluation mode for debugging theano internals."""
 __docformat__ = "restructuredtext en"
 
-import time, copy, sys, copy_reg, gc
+import time, copy, sys, copy_reg, gc, os
 from StringIO import StringIO
 
 import numpy
@@ -298,7 +298,7 @@ class InvalidValueError(DebugModeError):
 
 
 
-def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
+def debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -322,7 +322,7 @@ def _debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
-                _debugprint(i, prefix+'  ', depth=depth-1, done=done, file=file)
+                debugprint(i, prefix+'  ', depth=depth-1, done=done, file=file)
     else:
         #this is a variable
         print >> file, prefix, r, id(r)
@@ -772,12 +772,12 @@ class _VariableEquivalenceTracker(object):
                 append_reason = False
 
         if append_reason:
-            # N.B. compute the _debugprint now, because future optimizations will change the
+            # N.B. compute the debugprint now, because future optimizations will change the
             # graph
             self.reasons[new_r].append((reason
                 , r
-                , _debugprint(r, prefix='  ', depth=6, file=StringIO()).getvalue()
-                , _debugprint(new_r, prefix='  ',  depth=6, file=StringIO()).getvalue()))
+                , debugprint(r, prefix='  ', depth=6, file=StringIO()).getvalue()
+                , debugprint(new_r, prefix='  ',  depth=6, file=StringIO()).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
         if r in self.equiv:
@@ -856,29 +856,10 @@ class _Linker(gof.link.LocalLinker):
                 if not self.maker.mode.check_c_code:
                     raise utils.MethodNotDefined()
                 e = Env(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER
+                e.toposort = lambda: e.nodes #WARNING: STOCHASTIC ORDER 
+                #  Specifically... e.nodes is a set, but of only 1 element
 
-                if any(isinstance(input, graph.Value) for input in node.inputs):
-                    desc = None
-                else:
-                    desc = (node.op,
-                            tuple(input.type for input in node.inputs),
-                            tuple(input.type for input in node.inputs),
-                            tuple(output in no_recycling for output in node.outputs),
-                            tuple(node.inputs.count(input) for input in node.inputs))
-
-                try:
-                    cl = self.__cache__.get(desc)
-                except Exception, exc:
-                    #print >> sys.stderr, "INFO: failed to hash %s: %s. Node will not be cached." % (node, exc)
-                    cl = None
-                if cl is None:
-                    cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
-                    if desc is not None:
-                        try:
-                            self.__cache__[desc] = cl
-                        except:
-                            pass
+                cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
 
                 thunk, node_input_filters, node_output_filters = cl.make_thunk(
                     input_storage = node_input_storage,
@@ -1371,27 +1352,27 @@ class DebugMode(Mode):
 
     """
 
-    stability_patience = 10
+    stability_patience = int(os.getenv('THEANO_DEBUGMODE_PATIENCE', 10))
     """
     When checking for the stability of optimization, recompile the graph this many times.
     """
 
-    check_c_code = True
+    check_c_code = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_C', 1)))
     """
     Should we evaluate (and check) the `c_code` implementations?
     """
 
-    check_py_code = True
+    check_py_code = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_PY', 1)))
     """
     Should we evaluate (and check) the `perform` implementations?
     """
 
-    check_isfinite = True
+    check_isfinite = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_FINITE', 1)))
     """
     Should we check for (and complain about) NaN/Inf ndarray elements?
     """
 
-    require_matching_strides = False
+    require_matching_strides = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_STRIDES', 0)))
     """
     Should we check for (and complain about) Ops whose python and C outputs are ndarrays with
     different strides? (This can catch bugs, but is generally overly strict.)

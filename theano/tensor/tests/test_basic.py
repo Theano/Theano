@@ -852,7 +852,10 @@ class T_subtensor(unittest.TestCase):
         n = as_tensor_variable(data)
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
-        gval = eval_outputs([gn])
+        f = function([], gn, mode=None)
+        print 'toposort', f.maker.env.toposort()
+        gval = f()
+        print gval
         good = numpy.zeros_like(data)
         good[1,0] = numpy.exp(data[1,0])
         self.failUnless(numpy.all(gval == good), (gval, good))

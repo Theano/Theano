@@ -4,6 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
+import os  # for getenv THEANO_CMP_SLOPPY
 import traceback #for overriding Op.__call__
 if sys.version_info >= (2,5):
   import functools
@@ -199,20 +200,33 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
-#If you change those value in test don't forget to put them back when the test end.
-#Don't forget the case when the test fail.
-float_atol = 1e-5
-float_rtol = 1e-3 #  Sensible??
+if int(os.getenv('THEANO_CMP_SLOPPY', 0)):
+    # This environment variable is a quick-and-dirty way to get low-precision comparisons.
+    # For a more precise setting of these tolerances set them explicitly in your user code by
+    # assigning, for example, "theano.tensor.basic.float32_atol = ..."
+    float32_atol = 1e-4
+    float32_rtol = 1e-3 
+    float64_rtol = 1e-4
+    float64_atol = 1e-3
+else:
+    #If you change those value in test don't forget to put them back when the test end.
+    #Don't forget the case when the test fail.
+    float32_atol = 1e-5
+    float32_rtol = 1e-3 
+
+    # defaults in numpy.allclose
+    float64_rtol = 1.0000000000000001e-05
+    float64_atol = 1e-8
 
 def _allclose(a, b):
     narrow = 'float32', 'complex64'
     if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
-        atol = float_atol
-        rtol = float_rtol
-        return numpy.allclose(a,b, atol=atol, rtol=rtol)
+        atol = float32_atol
+        rtol = float32_rtol
     else:
-        # keep defaults of in numpy.allclose
-        return numpy.allclose(a,b)
+        atol = float64_atol
+        rtol = float64_rtol
+    return numpy.allclose(a,b, atol=atol, rtol=rtol)
 
 class TensorType(Type):
     """Symbolic `Type` representing a numpy.ndarray value."""
@@ -756,13 +770,29 @@ class TensorVariable(Variable, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Variable` class."""
 
 class TensorConstantSignature(tuple):
+    """A Signature object for comparing TensorConstant instances
+
+    An instance is a pair: (Type instance, ndarray).
+    """
     def __eq__(self, other):
-        (a, b), (x,y) = self, other
+        try:
+            (t0, d0), (t1,d1) = self, other
+        except:
+            return False
         #N.B. compare shape to ensure no broadcasting in ==
-        return (x == a) and (b.shape == y.shape) and (numpy.all(b == y)) 
+        return (t0 == t1) and (d0.shape == d1.shape) \
+                and (self.sum == other.sum) and (numpy.all(d0 == d1)) 
     def __hash__(self):
-        a, b = self
-        return hashtype(self) ^ hash(a) ^ hash(b.shape)
+        t, d = self
+        return hashtype(self) ^ hash(t) ^ hash(d.shape) ^ hash(self.sum)
+    def _get_sum(self):
+        try:
+            return self._sum
+        except:
+            self._sum = self[1].sum()
+        return self._sum
+    sum = property(_get_sum)
+
 
 class TensorConstant(Constant, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Constant` class.
@@ -943,6 +973,9 @@ _cast_mapping = {'int8': _convert_to_int8,
 @constructor
 def cast(x, dtype):
     """Symbolically cast `x` to a Tensor of type `dtype`.""" 
+    _x = as_tensor_variable(x)
+    if _x.type.dtype == dtype:
+        return _x
     if x.type.dtype.startswith('complex') and not dtype.startswith('complex'):
         raise TypeError('Casting from complex to real is ambiguous: consider real(), imag(), angle() or abs()')
     return _cast_mapping[dtype](x)
@@ -1417,15 +1450,19 @@ def mean(input, axis = None):
     if str(input.dtype).startswith('int'):
         # we need to cast eventually anyway, and this helps
         # to prevents overflow
-        input = convert_to_float64(input)
+        input = cast(input, 'float64')
     s = sum(input, axis)
     shp = shape(input)
+    if input.dtype == 'float32':
+        shp = cast(shp, 'float32')
     if axis is None:
         axis = range(input.type.ndim)
     elif isinstance(axis, int):
         axis = [axis]
     for i in axis:
         s = s / shp[i]
+    if input.dtype.startswith('float'):
+        assert input.dtype == s.dtype
     return s
 
 @constructor
@@ -1587,6 +1624,12 @@ class Subtensor(Op):
     inputs array is the tensor x, followed by scalar integer variables.
     
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
+
+    The idx_list is a tuple similar in structure to the sort of key you might expect in numpy's
+    basic indexing mode.  It has one element for each explicitly named dimension.  In numpy, the elements
+    can be either  integers or slices containing integers and None.  In Subtensor, each element
+    can additionally be a Scalar instance, and slice components can also be Scalar instances
+    too.
     """
     e_invalid = 'The index list is longer than the number of dimensions of the tensor.'
     e_subslice = 'nested slicing is not supported'
@@ -1707,7 +1750,7 @@ class Subtensor(Op):
     def grad(self, inputs, (gz,)):
         x = inputs[0]
         rest = inputs[1:]
-        return [SetSubtensor(self.idx_list)(zeros_like(x), gz, *rest)] + [None] * len(rest)
+        return [IncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)] + [None] * len(rest)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.idx_list == other.idx_list
@@ -1794,13 +1837,14 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), S
 
 
 
-class SetSubtensor(Op):
-    """Set just some elements of a larger TensorType.
+class IncSubtensor(Op):
+    """Increment a subtensor.
 
     This is like numpy's 
 
-        z[i,j,k] = <something> 
+        z[i,j,k] += <something> 
     
+    It is used internally to implement the gradient on SubTensor.
     """
 
     def __init__(self, idx_list, inplace=False):
@@ -1858,7 +1902,7 @@ class SetSubtensor(Op):
         broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable) if isinstance(p, slice)]
 
         if y.type.broadcastable != tuple(broadcastable):
-            raise TypeError("Invalid broadcastable pattern for y in SetSubtensor.make_node")
+            raise TypeError("Invalid broadcastable pattern for y in IncSubtensor.make_node")
 
         input_types = Subtensor.collapse(idx_list, lambda entry: isinstance(entry, gof.Type))
         if len(inputs) != len(input_types):
@@ -1890,7 +1934,13 @@ class SetSubtensor(Op):
             cdata = cdata[0]
         if not self.inplace:
             x = x.copy()
-        x.__setitem__(cdata, y)
+        sub_x = x.__getitem__(cdata)
+        if sub_x.shape:
+            # we've sliced out an N-D tensor with N > 0
+            sub_x += y
+        else:
+            # scalar case
+            x.__setitem__(cdata, sub_x + y)
         out[0] = x
 
 def split(x, splits_size, n_splits, axis=0):
@@ -2543,12 +2593,15 @@ class Dot(Op):
 
     def grad(self, (x, y), (gz,)):
         if gz.type.ndim == 0:
-            return gz * y, gz * x
-        if x.type.ndim == 1 and y.type.ndim > 1:
-            return dot(gz, y.T), outer(x.T, gz)
-        if x.type.ndim > 1 and y.type.ndim == 1:
-            return outer(gz, y.T), dot(x.T, gz) 
-        return dot(gz, y.T), dot(x.T, gz)
+            rval = gz * y, gz * x
+        elif x.type.ndim == 1 and y.type.ndim > 1:
+            rval = dot(gz, y.T), outer(x.T, gz)
+        elif x.type.ndim > 1 and y.type.ndim == 1:
+            rval = outer(gz, y.T), dot(x.T, gz) 
+        else:
+            rval = dot(gz, y.T), dot(x.T, gz)
+        return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
+
     def __str__(self):
         return "dot"
 dot = Dot()

@@ -36,16 +36,12 @@ import cmodule
 import logging
 _logger=logging.getLogger("theano.gof.cc")
 def info(*args):
-    #sys.stderr.write('INFO:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.info(' '.join(str(a) for a in args))
 def debug(*args):
-    #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug(' '.join(str(a) for a in args))
 def warning(*args):
-    sys.stderr.write('WARNING:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.warning(' '.join(str(a) for a in args))
 def error(*args):
-    sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.error(' '.join(str(a) for a in args))
 
 from theano.gof.callcache import CallCache
@@ -526,6 +522,8 @@ class CLinker(link.Linker):
 
         # List of arg names for use in struct_gen. Note the call to uniq: duplicate inputs
         # must only be passed once because they are mapped to the same name.
+        # Duplicates are defined by (a is b), rather than (a==b) since Constant instances can
+        # compare equal to equivalent Constant instances.
         args = []
         args += ["storage_%s" % symbol[variable] for variable in utils.uniq(self.inputs + self.outputs + self.orphans)]
 
@@ -783,15 +781,21 @@ class CLinker(link.Linker):
         ``a`` is the topological position of the input's owner (-1 for graph inputs),
         ``b`` is the index of the variable in the owner's output list.
 
-        The graph position of a Constant is defined as its signature.
+        The graph position of a Constant instance is defined as its signature, together with
+        two integers: the topological position of the first Apply using that Constant instance,
+        and the lowest index into that Apply's inputs that refers to that Constant.  (These two
+        integers are a surrogate for the id() of the Constant.  The integers are important
+        because merge-able constants have the same signature, but require separate containers
+        in C code.)
 
         If the Op of any Apply in the Env does not have c_code_cache_ok()==True, then this
         function raises a KeyError exception.
         
         """
         order = list(self.env.toposort())
-        env_inputs_set = dict((i, (-1, pos)) for pos, i in enumerate(self.env.inputs))
+        env_inputs_dict = dict((i, (-1, pos)) for pos, i in enumerate(self.env.inputs))
         env_computed_set = set()
+        constant_ids = dict()
         op_pos = {} # Apply -> topological position
         rval = ['CLinker.cmodule_key'] # will be cast to tuple on return
         rval.append(tuple(self.compile_args()))
@@ -802,11 +806,15 @@ class CLinker(link.Linker):
         # - an env input
         # - an output from a node in the Env
         # - a Constant
-        def graphpos(i):
+        def graphpos(i, topological_pos, i_idx):
             if isinstance(i, graph.Constant):
-                return i.signature()
-            elif i in env_inputs_set:
-                return env_inputs_set[i]
+                if id(i) not in constant_ids:
+                    constant_ids[id(i)] = (i.signature(), topological_pos, i_idx)
+                return constant_ids[id(i)]
+                #print 'SIGNATURE', i.signature()
+                #return i.signature()
+            elif i in env_inputs_dict:
+                return env_inputs_dict[i]
             else:
                 if i.owner is None:
                     assert all( all(out is not None for out in o.outputs) for o in order)
@@ -814,15 +822,16 @@ class CLinker(link.Linker):
                     raise Exception('what is this?', (i, type(i), i.clients, self.env))
                 return (op_pos[i.owner], i.owner.outputs.index(i))
 
-        for opos, o in enumerate(order):
-            version.append(o.op.c_code_cache_version_apply(o))
-            for i in o.inputs:
+        for node_pos, node in enumerate(order):
+            version.append(node.op.c_code_cache_version_apply(node))
+            for i in node.inputs:
                 version.append(i.type.c_code_cache_version())
-            for i in o.outputs:
-                version.append(i.type.c_code_cache_version())
-            rval.append((o.op, tuple((i.type, graphpos(i)) for i in o.inputs)))
-            op_pos[o] = opos
-            env_computed_set.update(o.outputs)
+            for o in node.outputs:
+                version.append(o.type.c_code_cache_version())
+            rval.append((node.op, tuple((i.type, graphpos(i, node_pos, ipos)) 
+                for ipos,i in enumerate(node.inputs))))
+            op_pos[node] = node_pos
+            env_computed_set.update(node.outputs)
 
         for v in version:
             if not v: #one of the ops or types here is unversioned
@@ -855,12 +864,12 @@ class CLinker(link.Linker):
 
 
     def build_dynamic_module(self):
-        """Generate the code for this module, compile it, return the imported dynamic module.
+        """Return a cmodule.DynamicModule instance full of the code for our env.
         """
         self.code_gen()
         module_name = self.hash
 
-        cthunk = object() # dummy so weave can get the type
+        cthunk = object() # dummy so weave can get the type ##TODO: REMOVE ME
         mod = cmodule.DynamicModule(module_name)
 
         # The code of instantiate
@@ -931,7 +940,7 @@ class CLinker(link.Linker):
         orphd = [[orphan.data] for orphan in self.orphans]
 
         ret = module.instantiate(error_storage, *(in_storage + out_storage + orphd))
-
+        
         return ret
 
     def instantiate_code(self, n_args):
@@ -998,6 +1007,11 @@ class OpWiseCLinker(link.LocalLinker):
     no_recycling can contain a list of Variables that belong to the env.
     If a Variable is in no_recycling, CLinker will clear the output storage
     associated to it prior to computation (to avoid reusing it).
+
+    :note: This is in a sense the 'default' linker for Theano.  The overhead of using the
+    OpWiseCLinker as compared with the CLinker is only noticeable for graphs of very small
+    tensors (such as 20 elements or less)
+
     """
 
     __cache__ = {}
@@ -1044,6 +1058,8 @@ class OpWiseCLinker(link.LocalLinker):
                 try:
                     e = Env(*graph.clone(node.inputs, node.outputs))
 
+                    # TODO: 20090926 Replace this code with th cl = CLinker().... line.  Trust
+                    # ModuleCache for cache mechanism.
                     if any(isinstance(input, graph.Value) for input in node.inputs):
                         desc = None
                     else:
