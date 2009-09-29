@@ -13,7 +13,6 @@ from theano import pprint
 import numpy
 #import scalar_opt
 
-from theano.compile.debugmode import DebugMode
 from theano import function
 
 
