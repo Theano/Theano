@@ -438,6 +438,18 @@ using namespace std;
 
 def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
               bias=None, mode='valid', **d):
+    """
+    param kerns: kernel tensor
+    param kshp:  tuple(kern row, kern wid)
+    param nkern: int the number of kernel
+    param images:image tensor
+    param imshp: tuple([stack size,] image row, image wid)
+    param bsize: batch size
+    param step:  subsampling to apply to the output tuple(row, wid)
+    param bias:  if True, will add a bias
+    param mode:  'valid' or 'full'
+    return:      tuple(theano graph with the output of ConvOp flattened to 2 dimensions, ?)
+    """
     #TODO: remove the bias argument from this function because convolution has nothing to do with a bias
 
     # if imshp, is a tuple, images contains one input dimension
@@ -460,7 +472,6 @@ def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
         
     rval = tensor.flatten(convout, 2)
     return rval, N.hstack((nkern, convop.outshp))
-
 
 _conv_op_code_a = """
 const int mode=%(mode)s;
