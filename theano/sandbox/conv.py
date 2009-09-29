@@ -253,7 +253,8 @@ class ConvOp(Op):
         #The copy make that we return an object with the same stride as the c version.
         #The copy don't affect the performence during our experience as in that case we
         #execute the c version which is much faster.
-        zz = zz[:,:,0::self.dx,0::self.dy].copy()
+        if self.dx>1 or self.dy>1:
+            zz = zz[:,:,0::self.dx,0::self.dy].copy()
         #print 'zz (%s)'%str((self.dx, self.dy)), zz
         z[0]=zz
 
