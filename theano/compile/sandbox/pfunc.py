@@ -148,7 +148,7 @@ def _pfunc_param_to_in(param):
                 mutable=param.mutable,
                 strict=param.strict,
                 implicit = param.implicit)
-    raise NotImplementedError()
+    raise NotImplementedError('Unknown parameter type: %s' % type(param))
 
 
 def iter_over_pairs(pairs):
