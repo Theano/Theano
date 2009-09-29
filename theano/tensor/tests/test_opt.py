@@ -13,7 +13,7 @@ from theano import pprint
 import numpy
 #import scalar_opt
 
-from theano import function
+from theano import function, compile
 
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
@@ -181,6 +181,18 @@ class test_canonize(unittest.TestCase):
         gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
         print pprint(g.outputs[0])
 
+    def test_elemwise_multiple_inputs_optimisation(self):
+        """
+        verify that the Canonizer merge sequential Elemwise({mul,add})
+        """
+        x, y, z = matrices('xyz')
+        for g,n in [
+            (x+y+z,1),
+            (x*y*z,1),
+            (x*y*(x+y+z),2),            
+            ]:
+            f = compile.function([x,y,z], g, mode=compile.Mode(optimizer='fast_run'))
+            assert(len(f.maker.env.toposort())==n)
 
 def test_mixeddiv():
     """Test that int division is preserved"""
