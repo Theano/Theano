@@ -311,7 +311,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                                ignore_error=False, 
                                n_iter=10,
                                gpu_only=False,
-                               float_atol=None,
+                               float_atol=1e-08,
                                check_isfinite=True):
     """
        float_atol: None mean use the default value.
