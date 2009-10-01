@@ -2891,12 +2891,17 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
     the given tolerance.
 
     :param op: something that behaves like an Op instance with a single output
-               (can be a python function combining multiple ops)
+               (can be a python function combining multiple ops, but see note below)
     :param pt: the list of numpy.ndarrays to use as inputs to the op
     :param n_tests: number of times to run the test
     :param rng: random number generator from which to draw random samples
     :param eps: stepsize used in the Finite Difference Method (Default None is type-dependent)
     :param tol: relative tolerance used as threshold for gradient comparison
+
+    :note: WARNING to unit-test writers: if `op` is a function that builds a graph,
+           try to make it a SMALL graph.  Often verify grad is run in
+           debug mode, which can be very slow if it has to verify a lot
+           of intermediate computations.
     
     """
     pt = [numpy.array(p) for p in pt]

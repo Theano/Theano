@@ -583,14 +583,17 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
 
     :returns: dynamically-imported python module of the compiled code.
     """
-    #TODO: don't to the dlimport in this function
+    #TODO: Do not do the dlimport in this function
 
     if preargs is None:
       preargs = []
     else:
       preargs = list(preargs)
 
-    preargs.append('-fPIC')
+    if sys.platform != 'win32':
+        # Under Windows it looks like fPIC is useless. Compiler warning:
+        # '-fPIC ignored for target (all code is position independent)'
+        preargs.append('-fPIC')
     no_opt = False
 
     include_dirs = std_include_dirs() + include_dirs

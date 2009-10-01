@@ -3,6 +3,17 @@
 
 import compiledir
 import os, random, time
+import logging
+_logger=logging.getLogger("theano.gof.compilelock")
+_logger.setLevel(logging.INFO) # INFO will show the the messages "Refreshing lock" message
+def info(*args):
+    _logger.info(' '.join(str(a) for a in args))
+def debug(*args):
+    _logger.debug(' '.join(str(a) for a in args))
+def warning(*args):
+    _logger.warning(' '.join(str(a) for a in args))
+def error(*args):
+    _logger.error(' '.join(str(a) for a in args))
 
 # In seconds, time that a process will wait before deciding to override an
 # existing lock. An override only happens when the existing lock is held by
@@ -51,8 +62,9 @@ def get_lock():
             # our lock after their 'timeout_before_override' timeout period.
             now = time.time()
             if now - get_lock.start_time > refresh_every:
-                print 'Refreshing lock'
-                refresh_lock(os.path.join(get_lock.lock_dir, 'lock'))
+                lockpath = os.path.join(get_lock.lock_dir, 'lock')
+                info('Refreshing lock', lockpath)
+                refresh_lock(lockpath)
                 get_lock.start_time = now
     get_lock.n_lock += 1
 
@@ -151,8 +163,9 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                     time_start = time.time()
                     no_display = (verbosity == 0)
                 if not no_display:
-                    print 'Waiting for existing lock by %s (I am %s)' % (
-                            read_owner, my_pid)
+                    info('Waiting for existing lock by %s (I am %s)' % (
+                            read_owner, my_pid))
+                    info("To manually release the lock, delete", lock_file)
                     if verbosity <= 1:
                         no_display = True
                 time.sleep(random.uniform(min_wait, max_wait))
