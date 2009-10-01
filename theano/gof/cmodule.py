@@ -292,9 +292,15 @@ class ModuleCache(object):
                     try:
                         key = cPickle.load(file(key_pkl))
                     except:
-                        error("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
-                        info("Erasing broken cache directory", key_pkl)
-                        shutil.rmtree(root)
+                        warn("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
+                        if 0:
+                            info("Erasing broken cache directory", key_pkl)
+                            shutil.rmtree(root)
+                        else:
+                            ## This exception is often triggered by keys that contain
+                            # references to classes that have not yet been imported.  They are
+                            # not necessarily broken
+                            pass
                         continue
 
                     if not key[0]: #if the version is False
