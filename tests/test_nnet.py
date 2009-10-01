@@ -26,6 +26,10 @@ def print_mode(mode):
     if mode != None and isinstance(mode,(theano.compile.ProfileMode,)):
         mode.print_summary()
 
+def print_diff_mode(a,b):
+    if a != None and isinstance(a,(theano.compile.ProfileMode,)) and isinstance(b,(theano.compile.ProfileMode,)):
+        a.print_diff_summary(b)
+
 def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_iter=100):
 
     if use_gpu:
@@ -301,27 +305,64 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter):
         rvals[i] = train(xval, yval, lr)[0]
     t1 = time.time()
     print_mode(mode)
-    return rvals, t1-t0
+    return rvals, t1-t0, mode
 
 def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize, 
-        ignore_error=False, 
-        n_iter=10,
-        gpu_only=False):
-    if gpu_only:
-        numpy.random.seed(seed)
-        rval_gpu, t = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize)
-        return
+                               ignore_error=False, 
+                               n_iter=10,
+                               gpu_only=False,
+                               float_atol=1e-08,
+                               check_isfinite=True):
+    """
+       float_atol: None mean use the default value.
+       check_isfinite: the debug mode option. We forward this value to debug mode.
+                       For some parameter CrossentropyCategorical1Hot op generate inf when not optimized.
+    """
+    numpy.random.seed(seed)
 
-    numpy.random.seed(seed)
-    rval_gpu, tg = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize, n_iter)
-    numpy.random.seed(seed)
-    rval_cpu, tc = run_conv_nnet2_classif(shared, isize, ksize, bsize, n_iter)
+    import theano.tensor.basic
+    import theano.compile.debugmode
+    from theano.compile.mode import predefined_modes
+    orig_float32_atol = theano.tensor.basic.float32_atol
+    orig_check_isfinite = predefined_modes["DEBUG_MODE"].check_isfinite
+    
+    try:
+        predefined_modes["DEBUG_MODE"].check_isfinite = check_isfinite
+        if float_atol:
+            print "float_atol",float_atol
+            theano.tensor.basic.float32_atol=float_atol
+        rval_gpu, tg, gpu_mode = run_conv_nnet2_classif(tcn.shared_constructor, isize, ksize, bsize, n_iter)
+    finally:
+        predefined_modes["DEBUG_MODE"].check_isfinite = orig_check_isfinite
+        theano.tensor.basic.float32_atol=orig_float32_atol
+
+    if gpu_only:
+        return
+    
+    try:
+        predefined_modes["DEBUG_MODE"].check_isfinite = check_isfinite
+        numpy.random.seed(seed)
+        rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(shared, isize, ksize, bsize, n_iter)
+        if isinstance(cpu_mode,(theano.compile.ProfileMode,)):
+            import pickle
+            print "BEGIN GPU profile mode dump"
+            #print pickle.dumps(gpu_mode)
+            print "END GPU profile mode dump"
+            print "BEGIN CPU profile mode dump"
+            print pickle.dumps(cpu_mode)
+            print "END CPU profile mode dump"
+
+    finally:
+        predefined_modes["DEBUG_MODE"].check_isfinite = orig_check_isfinite
+        theano.tensor.basic.float32_atol=orig_float32_atol
+
     print "cpu:", rval_cpu
     print "gpu:", rval_gpu
     print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
     print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
+
     if not ignore_error:
-        assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=1e-5)
+        assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol)
 
 gpu_only=False
 ignore_error=False
@@ -341,23 +382,30 @@ def test_lenet_32_long(): #CIFAR10 / Shapeset
                                ignore_error=ignore_error, gpu_only=gpu_only)
 
 def test_lenet_64(): # ???
+    #float_atol needd to pass in debug mode
+    #needed as cpu use extended precision and gpu don't
     cmp_run_conv_nnet2_classif(23485, 64, 7, 10, n_iter=10,
-                               ignore_error=ignore_error, gpu_only=gpu_only)
+                               ignore_error=ignore_error, gpu_only=gpu_only,
+                               float_atol=5e-4, check_isfinite=True)
 
 def test_lenet_108(): # NORB
     cmp_run_conv_nnet2_classif(23485, 108, 7, 10, n_iter=5,
-                               ignore_error=ignore_error, gpu_only=gpu_only)
+                               ignore_error=ignore_error, gpu_only=gpu_only,
+                               check_isfinite=True)
 
 def test_lenet_256(): # ImageNet
     cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_iter=3,
-                               ignore_error=ignore_error, gpu_only=gpu_only)
+                               ignore_error=ignore_error, gpu_only=gpu_only,
+                               check_isfinite=True)
 
 #I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
 def tes_lenet_hd(): #HD 720p: 1280(wid)x720(len)
     cmp_run_conv_nnet2_classif(23485, (720,1280), 9, 2, n_iter=3,
-                               ignore_error=ignore_error, gpu_only=gpu_only)
+                               ignore_error=ignore_error, gpu_only=gpu_only,
+                               check_isfinite=True)
 
 #I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
 def tes_lenet_full_hd(): #HD 1080p: 1920(wid)x1080(len)
     cmp_run_conv_nnet2_classif(23485, (1080,1920), 9, 2, n_iter=3,
-                               ignore_error=ignore_error, gpu_only=gpu_only)
+                               ignore_error=ignore_error, gpu_only=gpu_only,
+                               check_isfinite=True)
