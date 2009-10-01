@@ -705,6 +705,8 @@ class _tensor_py_operators:
         op = DimShuffle(list(self.type.broadcastable), pattern)
         return op(self)
 
+    def flatten(self, ndim=1):
+        return flatten(self, ndim)
 
     #SLICING
 #     def __getitem__(self, args): return Subtensor.from_idxs(self,
@@ -761,6 +763,13 @@ class _tensor_py_operators:
         #optimizations will/should catch cases like L=1, L=2
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0/L)
 
+    def mean(self, axis=None):
+        """See `theano.tensor.mean`"""
+        return mean(self, axis)
+
+    def var(self, axis=None):
+        """See `theano.tensor.var`"""
+        return var(self, axis)
 
     #TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
