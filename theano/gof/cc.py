@@ -1060,31 +1060,12 @@ class OpWiseCLinker(link.LocalLinker):
 
                     # TODO: 20090926 Replace this code with th cl = CLinker().... line.  Trust
                     # ModuleCache for cache mechanism.
-                    if any(isinstance(input, graph.Value) for input in node.inputs):
-                        desc = None
-                    else:
-                        desc = (node.op,
-                                tuple(input.type for input in node.inputs),
-                                tuple(input.type for input in node.inputs),
-                                tuple(output in no_recycling for output in node.outputs),
-                                tuple(node.inputs.count(input) for input in node.inputs))
-
-                    try:
-                        cl = self.__cache__.get(desc)
-                    except Exception, exc:
-                        #print >> sys.stderr, "INFO: failed to hash %s: %s. Node will not be cached." % (node, exc)
-                        cl = None
-                    if cl is None:
-                        cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
-                        if desc is not None:
-                            try:
-                                self.__cache__[desc] = cl
-                            except:
-                                pass
+                    cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
 
                     thunk, node_input_filters, node_output_filters = cl.make_thunk(
                         input_storage = node_input_storage,
                         output_storage = node_output_storage)
+                    assert callable(thunk)
                     thunk.inputs = node_input_storage
                     thunk.outputs = node_output_storage
                     thunks.append(thunk)
