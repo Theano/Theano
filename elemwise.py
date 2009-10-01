@@ -641,7 +641,7 @@ class NaiveAlgo(object):
         output_args = ", ".join("o%i_data, o%i_str"%(ipos, ipos) 
                 for ipos in xrange(len(node.outputs)))
 
-        prod_dims = '*'.join("dims[%i]"%di for di in xrange(nd))
+        prod_dims = '*'.join(["dims[%i]"%di for di in xrange(nd)]+['1'])
 
         scalar_op=self.scalar_op.__class__.__name__
 

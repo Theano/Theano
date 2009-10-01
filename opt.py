@@ -185,6 +185,41 @@ def local_gpu_subtensor(node):
 
 @register_opt()
 @local_optimizer([])
+def local_gpu_incsubtensor(node):
+    if node.op == gpu_from_host:
+        host_output = node.inputs[0]
+        if host_output.owner and type(host_output.owner.op) == tensor.IncSubtensor:
+            incsubt = host_output.owner.op
+            x, y = host_output.owner.inputs[0:2]
+            coords = host_output.owner.inputs[2:]
+            return [GpuIncSubtensor(incsubt.idx_list, inplace=incsubt.inplace)(
+                gpu_from_host(x),
+                gpu_from_host(y),
+                *coords)]
+    if type(node.op) == tensor.IncSubtensor:
+        x, y = node.inputs[0:2]
+        assert isinstance(x.type, tensor.TensorType)
+        assert isinstance(y.type, tensor.TensorType)
+        coords = node.inputs[2:]
+        go_gpu = False
+        if x.owner and x.owner.op == host_from_gpu:
+            go_gpu = True
+            gpu_x, = x.owner.inputs
+        else:
+            gpu_x = gpu_from_host(x)
+        if y.owner and y.owner.op == host_from_gpu:
+            go_gpu = True
+            gpu_y, = y.owner.inputs
+        else:
+            gpu_y = gpu_from_host(y)
+        if go_gpu:
+            return [host_from_gpu(GpuIncSubtensor(
+                node.op.idx_list, inplace=node.op.inplace)(
+                    gpu_x, gpu_y, *coords))]
+    return False
+
+@register_opt()
+@local_optimizer([])
 def local_gpu_shape(node):
     if isinstance(node.op, tensor.Shape):
         x, = node.inputs
