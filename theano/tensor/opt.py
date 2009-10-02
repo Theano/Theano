@@ -981,7 +981,7 @@ def local_mul_specialize(node):
         return False
 register_specialize(local_mul_specialize)
 
-@gof.local_optimizer([T.mul])
+@gof.local_optimizer([T.add])
 def local_add_specialize(node):
     def fill_chain(v):
         return _fill_chain(v, node.inputs)
