@@ -10,7 +10,6 @@ from elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T
 import inplace as I
-import numpy
 import numpy as N
 import operator
 import itertools
@@ -873,9 +872,9 @@ def local_mul_zero(node):
             except TypeError:
                 continue
             #print 'MUL by value', value, node.inputs
-            if numpy.all(value == 0):
+            if N.all(value == 0):
                 #print '... returning zeros'
-                return _fill_chain(numpy.asarray(0, dtype=otype.dtype), node.inputs)
+                return _fill_chain(N.asarray(0, dtype=otype.dtype), node.inputs)
 register_canonicalize(local_mul_zero)
 
 @gof.local_optimizer([T.true_div])
