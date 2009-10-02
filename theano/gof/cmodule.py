@@ -292,7 +292,7 @@ class ModuleCache(object):
                     try:
                         key = cPickle.load(file(key_pkl))
                     except:
-                        warn("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
+                        warning("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
                         if 0:
                             info("Erasing broken cache directory", key_pkl)
                             shutil.rmtree(root)
@@ -349,7 +349,7 @@ class ModuleCache(object):
                         # printing a warning, removing evidence that we ever saw this mystery
                         # key.
                         pkl_file_to_remove = os.path.join(os.path.dirname(entry), 'key.pkl')
-                        warn('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
+                        warning('Removing key file %s because the corresponding module is gone from the file system.' % pkl_file_to_remove)
                         self.loaded_key_pkl.remove(pkl_file_to_remove)
 
         finally:
