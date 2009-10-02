@@ -463,7 +463,12 @@ def _is_function_output(node):
 def _is_used_in_graph(node):
     return not(_is_function_output(node) or node.clients==[])
 
-def _check_strides_match(a, b, raise_on_err, op):
+def _check_strides_match(a, b, warn_err, op):
+    """
+    param: warn_err: if 0, no warning, if 1 warning, if 2 error
+    """
+    if warn_err==0: return
+
     try:
         strides_eq = a.strides == b.strides
     except:
@@ -471,7 +476,7 @@ def _check_strides_match(a, b, raise_on_err, op):
 
     if not strides_eq:
         e = TypeError('Stride mismatch', (a.shape, b.shape, a.strides, b.strides, str(op)))
-        if raise_on_err:
+        if warn_err==2:
             raise e
         else:
             print >> sys.stderr, 'WARNING:', e
@@ -1372,10 +1377,10 @@ class DebugMode(Mode):
     Should we check for (and complain about) NaN/Inf ndarray elements?
     """
 
-    require_matching_strides = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_STRIDES', 0)))
+    require_matching_strides = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_STRIDES', 1)))
     """
     Should we check for (and complain about) Ops whose python and C outputs are ndarrays with
-    different strides? (This can catch bugs, but is generally overly strict.)
+    different strides? (This can catch bugs, but is generally overly strict.) 0 no check, 1 warn, 2 err.
     """
 
     # This function will be used to create a FunctionMaker in 
