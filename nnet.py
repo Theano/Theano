@@ -168,8 +168,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return ()
-        return (1,0)
+        #return ()
+        return (2,)
 
 
 class GpuCrossentropySoftmax1HotWithBiasDx (Op):
@@ -187,7 +187,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx (Op):
     def make_node(self, dy, sm, y_idx):
         return Apply(self, [dy, sm, y_idx],[sm.type()])
     def c_code_cache_version(self):
-        return ()
+        return (2,)
+        #return ()
     def c_code(self, node, nodename, (dnll, sm, y_idx), (dx,), sub):
         fail = sub['fail']
         return """
