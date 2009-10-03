@@ -938,8 +938,6 @@ class _Linker(gof.link.LocalLinker):
                     this_node_destroyed_variables = set()
 
                     debug(i, "DEBUGMODE: starting node", i, node)
-                    debug(i, "DEBUGMODE: inputs broadcastable", [i.type.broadcastable for i in node.inputs])
-                    debug(i, "DEBUGMODE: outputs broadcastable", [i.type.broadcastable for i in node.outputs])
 
                     # put a copy of each input into the storage_map
                     # also, check that inputs have valid values
