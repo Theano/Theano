@@ -292,7 +292,7 @@ class ModuleCache(object):
                     try:
                         key = cPickle.load(file(key_pkl))
                     except:
-                        warning("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
+                        info("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
                         if 0:
                             info("Erasing broken cache directory", key_pkl)
                             shutil.rmtree(root)
