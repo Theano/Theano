@@ -31,9 +31,9 @@ def register_opt(*tags, **kwargs):
 
 @local_optimizer([])
 def local_cut_gpu_host_gpu(node):
-    if tensor.opt.opt.check_chain(node, GpuFromHost(), HostFromGpu()):
+    if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
         return [node.inputs[0].owner.inputs[0]]
-    if tensor.opt.opt.check_chain(node, HostFromGpu(), GpuFromHost()):
+    if tensor.opt.opt.check_chain(node, host_from_gpu, gpu_from_host):
         return [node.inputs[0].owner.inputs[0]]
     return False
 gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu, 'fast_run', 'inplace', 'gpu')
