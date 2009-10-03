@@ -594,6 +594,23 @@ def col(name = None, dtype = 'float64'):
     return type(name)
 cols, fcols, dcols, icols, lcols = _multi(col, fcol, dcol, icol, lcol)
 
+ctensor3 = TensorType('complex64', (False,)*3)
+ztensor3 = TensorType('complex128', (False,)*3)
+ftensor3 = TensorType('float32', (False,)*3)
+dtensor3 = TensorType('float64', (False,)*3)
+btensor3 = TensorType('int8', (False,)*3)
+wtensor3 = TensorType('int16', (False,)*3)
+itensor3 = TensorType('int32', (False,)*3)
+ltensor3 = TensorType('int64', (False,)*3)
+
+ctensor4 = TensorType('complex64', (False,)*4)
+ztensor4 = TensorType('complex128', (False,)*4)
+ftensor4 = TensorType('float32', (False,)*4)
+dtensor4 = TensorType('float64', (False,)*4)
+btensor4 = TensorType('int8', (False,)*4)
+wtensor4 = TensorType('int16', (False,)*4)
+itensor4 = TensorType('int32', (False,)*4)
+ltensor4 = TensorType('int64', (False,)*4)
 
 class _tensor_py_operators:
     #UNARY
