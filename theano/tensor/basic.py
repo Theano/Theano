@@ -794,6 +794,7 @@ class _tensor_py_operators:
 
 class TensorVariable(Variable, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Variable` class."""
+TensorType.Variable = TensorVariable
 
 class TensorConstantSignature(tuple):
     """A Signature object for comparing TensorConstant instances
@@ -829,19 +830,18 @@ class TensorConstant(Constant, _tensor_py_operators):
     """
     def signature(self):
         return TensorConstantSignature((self.type, self.data))
+TensorType.Constant = TensorConstant
 
 class TensorValue(Value, _tensor_py_operators):
     """Subclass to add the tensor operators to the basic `Value` class.
     
     To create a TensorValue, use the `value` function in this module.
+
+    :note: Value is deprecated by SharedVariable
     """
 
 
 Tensor = TensorType
-TensorVariable = TensorVariable
-TensorConstant = TensorConstant
-TensorValue = TensorValue
-
 
 #QUESTION: why are we doing this!?
 elemwise.as_tensor_variable = as_tensor_variable    
