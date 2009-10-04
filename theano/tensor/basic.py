@@ -801,6 +801,8 @@ class TensorConstantSignature(tuple):
     An instance is a pair: (Type instance, ndarray).
     """
     def __eq__(self, other):
+        if type(self) != type(other):
+            return False
         try:
             (t0, d0), (t1,d1) = self, other
         except:
