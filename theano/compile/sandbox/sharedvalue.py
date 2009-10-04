@@ -151,12 +151,22 @@ class TensorSharedVariable(SharedVariable, theano.tensor.basic._tensor_py_operat
     pass
 @shared_constructor
 def tensor_constructor(value, name=None, strict=False, broadcastable=None):
-    """SharedVariable Constructor for TensorType"""
+    """SharedVariable Constructor for TensorType
+    
+    :note: Regarding the inference of the broadcastable pattern... 
+    The default is to assume that the value might be resized in any dimension, so the default
+    broadcastable is ``(False,)*len(value.shape)``.  The optional `broadcastable` argument will
+    override this default.
+    
+    """
     if not isinstance(value, numpy.ndarray):
         raise TypeError()
 
+    # if no broadcastable is given, then the default is to assume that the value might be
+    # resized in any dimension in the future.
+    # 
     if broadcastable is None:
-        broadcastable = [b==1 for b in value.shape]
+        broadcastable = (False,)*len(value.shape)
     type = TensorType(value.dtype, broadcastable=broadcastable)
     return TensorSharedVariable(type=type, value=value, name=name, strict=strict)
 

@@ -26,7 +26,7 @@ class Test_SharedVariable(unittest.TestCase):
         b = shared(numpy.random.rand(4,5))
         assert b.type == TensorType('float64', broadcastable=[False,False])
         b = shared(numpy.random.rand(5,1,2))
-        assert b.type == TensorType('float64', broadcastable=[False,True,False])
+        assert b.type == TensorType('float64', broadcastable=[False,False,False])
 
         assert shared([]).type == generic
         def badfunc():
