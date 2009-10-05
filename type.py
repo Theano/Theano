@@ -1,3 +1,5 @@
+"""Provide CudaNdarrayType
+"""
 import sys, os, StringIO
 import numpy
 
