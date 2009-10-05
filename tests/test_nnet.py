@@ -237,7 +237,8 @@ def test_conv_nnet2():
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
-def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter):
+def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter,
+                           downsample_ops=True):
     isize1=isize
     isize2=isize
     if isinstance(isize,(tuple,)):
@@ -275,8 +276,10 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter):
     conv_op1.set_flops()
 
     ds_op = theano.sandbox.downsample.DownsampleFactorMax((2,2), ignore_border=False)
-
-    hid = tensor.tanh(ds_op(conv_op(x, w0)+b0.dimshuffle((0,'x','x'))))
+    if downsample_ops:
+        hid = tensor.tanh(ds_op(conv_op(x, w0)+b0.dimshuffle((0,'x','x'))))
+    else:
+        hid = tensor.tanh((conv_op(x, w0)+b0.dimshuffle((0,'x','x')))[:,:,::2,::2])
     hid1 = tensor.tanh(conv_op1(hid, w1) + b1.dimshuffle((0,'x','x')))
     hid_flat = hid1.reshape((n_batch, n_hid))
     out = tensor.nnet.softmax(tensor.dot(hid_flat, v)+c)
