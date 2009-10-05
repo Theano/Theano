@@ -193,6 +193,22 @@ class Test_pfunc(unittest.TestCase):
         inc_by_y()
         self.failUnless(x.value == 1)
 
+    def test_givens(self):
+        x = shared(0)
+        assign = pfunc([], x, givens = {x: 3})
+        assert assign() == 3
+        assert x.value == 0
+
+        y = tensor.ivector()
+        f = pfunc([y], y*x, givens = {x : 6})
+        assert numpy.all(f([1,1,1]) == [6,6,6])
+        assert x.value == 0
+
+        z = tensor.ivector()
+        c = z*y
+        f = pfunc([y], c+7, givens = {z : numpy.asarray([4,4,4], dtype='int32')})
+        assert numpy.all(f([1,1,1]) == [11,11,11])
+        assert x.value == 0
 
 if __name__ == '__main__':
     theano.compile.mode.default_mode = 'FAST_COMPILE'
