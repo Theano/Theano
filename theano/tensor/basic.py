@@ -2570,6 +2570,8 @@ def tile(x, reps, ndim=None):
 class Dot(Op):
     """Compute matrix-matrix, matrix-vector products and vector inner-products.
 
+    :note: matrix-matrix products are sometimes optimized to Dot22 ops (see tensor.blas)
+
     """
     def make_node(self, *inputs):
         inputs = map(as_tensor_variable, inputs)
@@ -2613,6 +2615,8 @@ class Dot(Op):
 
     def perform(self, node, (x, y), (z, )):
         try:
+            # the asarray is here because dot between two vectors gives a numpy float object
+            # but we need to return a 0d ndarray
             z[0] = numpy.asarray(numpy.dot(x, y))
         except ValueError, e:
             # The error raised by numpy has no shape information, we mean to add that
