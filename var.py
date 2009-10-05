@@ -79,7 +79,7 @@ def shared_constructor(value, name, strict=False, broadcastable=None):
         raise TypeError('float32 ndarray required')
 
     if broadcastable is None:
-        broadcastable = [b==1 for b in value.shape]
+        broadcastable = (False,) * len(value.shape)
     type = CudaNdarrayType(broadcastable=broadcastable)
     return CudaNdarraySharedVariable(type=type, value=_value, name=name, strict=strict)
 
