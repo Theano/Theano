@@ -33,8 +33,12 @@ class CudaNdarrayVariable(Variable, _operators):
     pass
 CudaNdarrayType.Variable = CudaNdarrayVariable
 
-class CudaNdarrayConstant(Constant, _operators):
+class CudaNdarrayConstantSignature(tensor.TensorConstantSignature):
     pass
+
+class CudaNdarrayConstant(Constant, _operators):
+    def signature(self):
+        return CudaNdarrayConstantSignature((self.type, numpy.asarray(self.data)))
 CudaNdarrayType.Constant = CudaNdarrayConstant
 
 class CudaNdarraySharedVariable(SharedVariable, _operators):

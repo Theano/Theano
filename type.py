@@ -1,3 +1,5 @@
+"""Provide CudaNdarrayType
+"""
 import sys, os, StringIO
 import numpy
 
@@ -238,4 +240,19 @@ class CudaNdarrayType(Type):
 
     def c_compiler(self):
         return nvcc_module_compile_str
+
+
+# THIS WORKS
+# But CudaNdarray instances don't compare equal to one another, and what about __hash__ ?
+# So the unpickled version doesn't equal the pickled version, and the cmodule cache is not
+# happy with the situation.
+import copy_reg
+def CudaNdarray_unpickler(npa):
+    return cuda_ndarray.CudaNdarray(npa)
+copy_reg.constructor(CudaNdarray_unpickler)
+
+def CudaNdarray_pickler(cnda):
+    return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
+
+copy_reg.pickle(cuda_ndarray.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
 
