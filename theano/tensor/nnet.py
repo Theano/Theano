@@ -32,16 +32,18 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         y = scalar_sigmoid(x)
         return [gz * y * (1.0 - y)]
     def c_code(self, node, name, (x,), (z,), sub):
-        if node.inputs[0].type in [scalar.float32, scalar.float64]:
-            return """%(z)s =
-                %(x)s < -30.0 
-                ? 0.0 
-                : %(x)s > 30.0 
-                   ? 1.0
-                   : 1.0 /(1.0+exp(-%(x)s));""" % locals()
-        raise NotImplementedError('only floatingpoint is implemented')
+        if node.inputs[0].type == scalar.float32:
+            # These constants were obtained by looking at the output of python commands like:
+            #  for i in xrange(750):
+            #      print i, repr( numpy.asarray(1.0, dtype=dt) / (numpy.asarray(1.0, dtype=dt) + numpy.exp(-numpy.asarray([i,-i], dtype=dt))))
+            # the boundary checks prevent us from generating inf
+            return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()
+        elif node.inputs[0].type == scalar.float64:
+            return """%(z)s = %(x)s < -709.0 ? 0.0 : %(x)s > 19.0 ? 1.0 : 1.0 /(1.0+exp(-%(x)s));""" % locals()
+        else:
+            raise NotImplementedError('only floatingpoint is implemented')
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
@@ -61,16 +63,18 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         return [gz * scalar_sigmoid(x)]
     def c_code(self, node, name, (x,), (z,), sub):
-        if node.inputs[0].type in [scalar.float32, scalar.float64]:
-            return """%(z)s =
-                %(x)s < -30.0 
-                ? 0.0 
-                : %(x)s > 30.0 
-                   ? %(x)s
-                   : log1p(exp(%(x)s));""" % locals()
-        raise NotImplementedError('only floating point x is implemented')
+        if node.inputs[0].type == scalar.float32:
+            # These constants were obtained by looking at the output of python commands like:
+            #  for i in xrange(750):
+            #      print i, repr( numpy.log1p(numpy.exp(numpy.asarray([i,-i], dtype=dt))))
+            # the boundary checks prevent us from generating inf
+            return """%(z)s = %(x)s < -103.0f ? 0.0 : %(x)s > 14.0f ? %(x)s : log1p(exp(%(x)s));""" % locals()
+        elif node.inputs[0].type == scalar.float64:
+            return """%(z)s = %(x)s < -745.0 ? 0.0 : %(x)s > 16.0 ? %(x)s : log1p(exp(%(x)s));""" % locals()
+        else:
+            raise NotImplementedError('only floatingpoint is implemented')
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
 softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
