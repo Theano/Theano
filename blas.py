@@ -181,7 +181,6 @@ class GpuConv(Op):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def perform(self, node, (img, kern), (out,)):
-        print "out", out
         out[0] = cuda_ndarray.conv(img, kern, 
                 mode=self.border_mode,
                 out=out[0],
