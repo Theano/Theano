@@ -141,7 +141,8 @@ class SoftmaxWithBias(gof.Op):
     def c_headers(self):
         return ['<iostream>','<cmath>']
 
-    def c_code_cache_version(self):
+    @staticmethod
+    def c_code_cache_version():
         return (3,)
     @staticmethod
     def c_code_template():
@@ -215,11 +216,12 @@ class SoftmaxWithBias(gof.Op):
 
             size_t row_max_j=0;
             dtype_%(sm)s row_max = x_i[0] + b_i[0];
+            //std::cout << "0 " << row_max << "\\n";
             // Get the maximum value of the row
-            for (j = 0; j < Nx[1]; ++j)
+            for (j = 1; j < Nx[1]; ++j)
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
-//                std::cout << "1" << row_ij << "\\n";
+                //std::cout << "1 " << row_ij << "\\n";
                 row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
             }
@@ -227,12 +229,13 @@ class SoftmaxWithBias(gof.Op):
             for (j = 0; j < Nx[1]; ++j)
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
-//                std::cout << "2" << row_ij << "\\n";
+                //std::cout << "2 " << j << " " << row_ij << " " << row_max << "\\n";
                 dtype_%(sm)s sm_ij = exp(row_ij - row_max);
-//                std::cout << "3" << sm_ij << "\\n";
+                //std::cout << "3 " << j << " " << sm_ij << "\\n";
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
             }
+            //std::cout << "\\n";
             if (std::isinf(sum))
             {
                 //that was our best...
@@ -641,7 +644,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,) + SoftmaxWithBias.c_code_cache_version()
     def c_code(self, node, name, (x, b, y_idx), (nll, sm, am), sub):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
