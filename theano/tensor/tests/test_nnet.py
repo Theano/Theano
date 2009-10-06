@@ -268,5 +268,49 @@ def test_argmax_pushdown_bias():
         #print node.op
     assert len(env.toposort()) == 3
 
+def test_asymptotic_32():
+    """
+    This test makes sure that our functions behave sensibly when huge values are present
+    """
+    for dtype in 'float32', 'float64':
+        if dtype == 'float32':
+            x = tensor.fmatrix()
+            x2 = tensor.fvector()
+        else:
+            x = tensor.dmatrix()
+            x2 = tensor.dvector()
+        y = tensor.lvector()
+
+        c = categorical_crossentropy(softmax(x+x2), y)
+        f = theano.function([x,y,x2], [c.sum(), tensor.grad(c, x)])
+        if 0:
+            for i, n in enumerate( f.maker.env.toposort()):
+                print i, n
+
+        xval = numpy.zeros((5, 5), dtype=dtype)
+        x2val = numpy.zeros(5, dtype=xval.dtype)
+        for i in xrange(100):
+
+            cval, gxval =  f(xval, numpy.arange(5), x2val)
+            xval -= 100.3 * gxval
+            #print cval, gxval
+        assert cval == 0 # no problem going to zero error
+
+        #what about when x gets really big?
+
+        xval = numpy.zeros((5, 5), dtype=dtype)
+        x2val = numpy.zeros(5, dtype=xval.dtype)
+        for i in xrange(100):
+
+            cval, gxval =  f(xval, numpy.arange(5), x2val)
+            xval += 100000.3 * gxval
+            #print cval, gxval
+
+        assert cval > 61750000
+        assert gxval[0,0] == -1.0
+        assert gxval[0,1] == 0.25
+
+
+
 if __name__ == '__main__':
     unittest.main()
