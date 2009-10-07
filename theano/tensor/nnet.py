@@ -143,7 +143,7 @@ class SoftmaxWithBias(gof.Op):
 
     @staticmethod
     def c_code_cache_version():
-        return (3,)
+        return (4,)
     @staticmethod
     def c_code_template():
         # this implementation was lifted from
@@ -180,7 +180,8 @@ class SoftmaxWithBias(gof.Op):
         }
         if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
         {
-            PyErr_SetString(PyExc_ValueError, "dimension mismatch in arguments");
+            PyErr_Format(PyExc_ValueError, "number of columns in x (%%i) does not match length of b (%%i)",
+            %(x)s->dimensions[1], %(b)s->dimensions[0]);
             %(fail)s;
         }
 
@@ -594,7 +595,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         }
         if (%(x)s->dimensions[0] != %(y_idx)s->dimensions[0])
         {
-            PyErr_SetString(PyExc_ValueError, "dimension mismatch in arguments");
+            PyErr_Format(PyExc_ValueError, "number of rows in x (%%i) does not match length of y (%%i)",
+            %(x)s->dimensions[0], %(y_idx)s->dimensions[0]);
             %(fail)s;
         }
 
@@ -644,7 +646,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
 
     def c_code_cache_version(self):
-        return (3,) + SoftmaxWithBias.c_code_cache_version()
+        return (4,) + SoftmaxWithBias.c_code_cache_version()
     def c_code(self, node, name, (x, b, y_idx), (nll, sm, am), sub):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
