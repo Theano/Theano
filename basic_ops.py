@@ -1284,6 +1284,14 @@ class GpuIncSubtensor(tensor.IncSubtensor):
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         return Apply(self, [x,y]+rval.inputs[2:], [x.type()])
 
+class GpuFlatten(tensor.Flatten):
+    def make_node(self, x ):
+        assert isinstance(x.type, CudaNdarrayType)
+        rval = tensor.Flatten.make_node(self, x)
+        host_out_broadcastable = rval.outputs[0].type.broadcastable
+        out_type = CudaNdarrayType(broadcastable=host_out_broadcastable)
+        return Apply(self, [x], [out_type()])
+
 class GpuShape(tensor.Shape):
     def make_node(self, x):
         return Apply(self, [x], [tensor.lvector()])
