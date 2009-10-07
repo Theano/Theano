@@ -136,8 +136,12 @@ class CudaNdarrayType(Type):
         fail = sub['fail']
         nd = self.ndim
         print >> sio, """
+        assert(py_%(name)s->ob_refcnt >= 2); // There should be at least one ref from the container object, 
+        // and one ref from the local scope.
+
         if (CudaNdarray_Check(py_%(name)s))
         {
+            //fprintf(stderr, "c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
             cnda_%(name)s = (CudaNdarray*)py_%(name)s;
             //std::cerr << "c_extract " << cnda_%(name)s << '\\n';
             if (cnda_%(name)s->nd != %(nd)s)
@@ -175,6 +179,7 @@ class CudaNdarrayType(Type):
         }
         else
         {
+            //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
             PyErr_SetString(PyExc_TypeError, "Argument not a CudaNdarray");
             cnda_%(name)s = NULL;
             %(fail)s;
@@ -187,8 +192,10 @@ class CudaNdarrayType(Type):
     def c_cleanup(self, name, sub):
         return """
         //std::cerr << "cleanup " << py_%(name)s << " " << cnda_%(name)s << "\\n";
+        //fprintf(stderr, "c_cleanup CNDA py_object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
         if (cnda_%(name)s)
         {
+            //fprintf(stderr, "c_cleanup CNDA cn_object w refcnt %%p %%i\\n", cnda_%(name)s, (cnda_%(name)s->ob_refcnt));
             Py_XDECREF(cnda_%(name)s);
         }
         //std::cerr << "cleanup done" << py_%(name)s << "\\n";
@@ -236,7 +243,8 @@ class CudaNdarrayType(Type):
         return ""
 
     def c_code_cache_version(self):
-        return (1,0)
+        #return ()
+        return (2,) # with assertion about refcounts
 
     def c_compiler(self):
         return nvcc_module_compile_str
