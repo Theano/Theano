@@ -507,6 +507,8 @@ class Canonizer(gof.LocalOptimizer):
       (a / b) * (b / c) * (c / d) -> a / d
       (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
       2 * x / 2 -> x
+      x * y * z -> Elemwise(T.mul){x,y,z} #only one pass over the memory.
+                !-> Elemwise(T.mul){x,Elemwise(T.mul){y,z}}
     """
 
     def __init__(self, main, inverse, reciprocal, calculate, use_reciprocal = True):
@@ -538,6 +540,7 @@ class Canonizer(gof.LocalOptimizer):
         a / (b / c) -> ([a, c], [b])
         log(x) -> ([log(x)], [])
         x**y -> ([x**y], [])
+        x * y * z -> ([x, y, z], [])
 
         """
 
