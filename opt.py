@@ -175,7 +175,7 @@ def local_gpu_flatten(node):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, tensor.Flatten):
             outdim = host_input.owner.op.outdim
-            return [GpuFlatten(outdim)(gpu_from_host(host_input.inputs[0]))]
+            return [GpuFlatten(outdim)(gpu_from_host(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
         x, = node.inputs
         outdim = node.op.outdim
