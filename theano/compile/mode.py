@@ -33,7 +33,8 @@ def check_equal(x, y):
 predefined_linkers = {
     'py'   : gof.PerformLinker(),
     'c'    : gof.CLinker(),
-    'c|py' : gof.OpWiseCLinker(),
+    'c|py' : gof.OpWiseCLinker(allow_gc=True),
+    'c|py_nogc' : gof.OpWiseCLinker(allow_gc=False),
     'c&py' : gof.DualLinker(checker = check_equal)
     }
 
@@ -148,10 +149,12 @@ class Mode(object):
 # string as the key
 FAST_COMPILE = Mode('py', 'fast_compile')
 FAST_RUN = Mode('c|py', 'fast_run')
+FAST_RUN_NOGC = Mode("c|py_nogc", 'fast_run')
 SANITY_CHECK = [Mode('c|py', None),
                 Mode('c|py', 'fast_run')]
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,
+                    'FAST_RUN_NOGC':FAST_RUN_NOGC,
                     'SANITY_CHECK': SANITY_CHECK}
 
 

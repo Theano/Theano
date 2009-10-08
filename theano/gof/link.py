@@ -271,11 +271,12 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
                     raise_with_op(node)
         f = streamline_default_f
     elif nice_errors:
+        thunk_node_list = zip(thunks, order)
         def streamline_nice_errors_f():
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node in zip(thunks, order):
+                for thunk, node in thunk_node_list:
                     thunk()
             except:
                 raise_with_op(node)
