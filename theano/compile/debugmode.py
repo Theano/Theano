@@ -372,7 +372,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
     destroyed_res_list = [node.inputs[i] for i in destroyed_idx_list]
 
     for r_idx, r in enumerate(node.inputs):
-        if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+        if not r.type.values_eq(r_vals[r], storage_map[r][0]):
             # some input node 'r' got changed by running the node
             # this may or may not be ok...
             if r in destroyed_res_list:
