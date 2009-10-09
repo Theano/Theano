@@ -507,6 +507,8 @@ class Canonizer(gof.LocalOptimizer):
       (a / b) * (b / c) * (c / d) -> a / d
       (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
       2 * x / 2 -> x
+      x * y * z -> Elemwise(T.mul){x,y,z} #only one pass over the memory.
+                !-> Elemwise(T.mul){x,Elemwise(T.mul){y,z}}
     """
 
     def __init__(self, main, inverse, reciprocal, calculate, use_reciprocal = True):
@@ -538,6 +540,7 @@ class Canonizer(gof.LocalOptimizer):
         a / (b / c) -> ([a, c], [b])
         log(x) -> ([log(x)], [])
         x**y -> ([x**y], [])
+        x * y * z -> ([x, y, z], [])
 
         """
 
@@ -546,6 +549,14 @@ class Canonizer(gof.LocalOptimizer):
         # one of (main, inverse, reciprocal, DimShuffle) and the internal data nodes all have
         # the dtype of the 'input' argument. The leaf-Variables of the graph covered by the
         # recursion may be of any Variable type.
+
+        if len(input.clients) > 1:
+            # this logic is too conservative, but doing it is better than not doing it.
+            #
+            # we don't want to canonize a subgraph that we will need to compute anyway for the other clients.
+            # This check is too conservative because if the other clients are also in the subgraph we are canonizing,
+            # then we should [probably?] recurse anyway.
+            return [input], []
 
         if input.owner is None or input.owner.op not in [self.main, self.inverse, self.reciprocal]:
             if input.owner and isinstance(input.owner.op, T.DimShuffle):
@@ -778,6 +789,18 @@ class Canonizer(gof.LocalOptimizer):
         out = node.outputs[0]
         assert len(node.outputs) == 1
 
+        # check if any of the clients of this node would be part of this canonized graph...
+        # if so, we do nothing and wait for them to be transformed.
+        def _bypass_dimshuffle(n):
+            if isinstance(n.op, DimShuffle) and len(n.outputs[0].clients) <= 1:
+                return _bypass_dimshuffle(n.outputs[0].clients.__iter__().next()[0])
+            else:
+                return n
+        for c,c_idx in out.clients:
+            if c=='output': continue
+            if _bypass_dimshuffle(c).op in [self.main, self.inverse, self.reciprocal]:
+                return False
+            
         # Here we make the canonical version of the graph around this node
         # See the documentation of get_num_denum and simplify
         orig_num, orig_denum = self.get_num_denum(node.outputs[0])
