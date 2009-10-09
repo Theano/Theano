@@ -372,11 +372,12 @@ class ModuleCache(object):
             name = self.entry_from_key[key]
 
             if name not in self.module_from_name:
-                #debug('loading name', name)
+                debug('loading name', name)
                 self.module_from_name[name] = dlimport(name)
                 self.stats[1] += 1
             else:
                 self.stats[0] += 1
+            debug('returning compiled module from cache', name)
             rval = self.module_from_name[name]
         else:
             # we have never seen this key before
