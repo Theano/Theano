@@ -640,8 +640,6 @@ class FunctionMaker(object):
 
         if mode is None:
           mode = mode_module.default_mode
-        #backport
-        #mode = mode if mode is not None else mode_module.default_mode
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
