@@ -19,6 +19,9 @@ import time
 import mode as mode_module
 from io import *
 
+import logging
+_logger = logging.getLogger('theano.compile.function_module')
+
 def infer_reuse_pattern(env, outputs_to_disown):
     """
     Given an env and a list of variables, returns the list of all
@@ -482,10 +485,9 @@ def _pickle_Function(f):
                 if (i < j) and isinstance(d_i, numpy.ndarray) and isinstance(d_j, numpy.ndarray):
                     if numpy.may_share_memory(d_i, d_j):
                         if f.pickle_aliased_memory_strategy == 'warn':
-                            print >> sys.stderr, ('WARNING: '
-                                    'aliased relationship between Function arguments '
+                            _logger.warning('aliased relationship between Function arguments '
                                     'will not be preserved by un-pickling operation')
-                            #print >> sys.stderr, d_i, d_j, id(d_i), id(d_j)
+                            #_logger.debug(str([d_i, d_j, id(d_i), id(d_j)]))
                         else:
                             raise AliasedMemoryError(d_i, d_j)
 
