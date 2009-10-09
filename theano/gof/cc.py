@@ -793,7 +793,7 @@ class CLinker(link.Linker):
         
         """
         order = list(self.env.toposort())
-        env_inputs_dict = dict((i, (-1, pos)) for pos, i in enumerate(self.env.inputs))
+        env_inputs_dict = dict((i, [-1, pos]) for pos, i in enumerate(self.env.inputs))
         env_computed_set = set()
         constant_ids = dict()
         op_pos = {} # Apply -> topological position
@@ -806,21 +806,33 @@ class CLinker(link.Linker):
         # - an env input
         # - an output from a node in the Env
         # - a Constant
+
+        # It is important that a variable (i)
+        # yield a 'position' that reflects its role in code_gen()
         def graphpos(i, topological_pos, i_idx):
-            if isinstance(i, graph.Constant):
+            rval = []
+            if isinstance(i, graph.Constant): #orphans
                 if id(i) not in constant_ids:
-                    constant_ids[id(i)] = (i.signature(), topological_pos, i_idx)
-                return constant_ids[id(i)]
+                    constant_ids[id(i)] = [i.signature(), topological_pos, i_idx]
+                rval += constant_ids[id(i)]
                 #print 'SIGNATURE', i.signature()
                 #return i.signature()
-            elif i in env_inputs_dict:
-                return env_inputs_dict[i]
+            elif i in env_inputs_dict:   #inputs
+                rval += env_inputs_dict[i]
             else:
                 if i.owner is None:
                     assert all( all(out is not None for out in o.outputs) for o in order)
                     assert all( input.owner is None for input in self.env.inputs)
                     raise Exception('what is this?', (i, type(i), i.clients, self.env))
-                return (op_pos[i.owner], i.owner.outputs.index(i))
+                if i in self.env.outputs:
+                    rval += [op_pos[i.owner], # outputs
+                            i.owner.outputs.index(i),
+                            self.env.outputs.index(i)]
+                else:
+                    rval += [op_pos[i.owner], i.owner.outputs.index(i)] # temps
+            assert rval
+            rval.append(i in self.no_recycling)
+            return tuple(rval)
 
         for node_pos, node in enumerate(order):
             version.append(node.op.c_code_cache_version_apply(node))
