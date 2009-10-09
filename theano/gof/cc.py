@@ -1064,16 +1064,15 @@ class OpWiseCLinker(link.LocalLinker):
                 post_thunk_old_storage = None
 
             thunks = []
-            for node in order:
+            for node_idx, node in enumerate(order):
                 node_input_storage = [storage_map[r] for r in node.inputs]
                 node_output_storage = [storage_map[r] for r in node.outputs]
+                debug('Compiling node %i of graph' % node_idx)
                 try:
                     e = Env(*graph.clone(node.inputs, node.outputs))
-
-                    # TODO: 20090926 Replace this code with th cl = CLinker().... line.  Trust
-                    # ModuleCache for cache mechanism.
                     cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
 
+                    debug('Trying CLinker.make_thunk')
                     thunk, node_input_filters, node_output_filters = cl.make_thunk(
                         input_storage = node_input_storage,
                         output_storage = node_output_storage)
@@ -1083,6 +1082,7 @@ class OpWiseCLinker(link.LocalLinker):
                     thunks.append(thunk)
                 except (NotImplementedError, utils.MethodNotDefined):
                     if self.fallback_on_perform:
+                        debug('Falling back on perform')
                         p = node.op.perform
                         thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
                         thunk.inputs = node_input_storage
