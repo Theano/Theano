@@ -44,7 +44,9 @@ class ProfileMode(Mode):
                 failure = run_cthunk(th.cthunk)
                 dt = time.time() - t0
                 if failure:
-                    raise RuntimeError('A C Op raised an exception.  PerformLinker cannot tell you what it was though.  Use a standard mode such as FAST_RUN to correct the problem.')
+                    raise RuntimeError(('A C Op raised an exception.  PerformLinker cannot' 
+                        ' tell you what it was though.  Use a standard mode such as'
+                        ' FAST_RUN_NOGC to correct the problem.'))
             else:
                 t0 = time.time()
                 th()
