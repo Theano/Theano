@@ -314,6 +314,15 @@ class TensorType(Type):
         return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
 
     @staticmethod
+    def values_eq(a, b):
+        #TODO: check to see if the dtype and shapes must match
+        #      for now, we err on safe side...
+        if a.shape != b.shape:
+            return False
+        if a.dtype != b.dtype:
+            return False
+        return numpy.all(a==b)
+    @staticmethod
     def values_eq_approx(a, b):
         if type(a) is numpy.ndarray and type(b) is numpy.ndarray:
             if a.shape != b.shape:
