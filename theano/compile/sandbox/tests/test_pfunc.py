@@ -210,6 +210,23 @@ class Test_pfunc(unittest.TestCase):
         assert numpy.all(f([1,1,1]) == [11,11,11])
         assert x.value == 0
 
+    def test_clone0(self):
+        x = shared(numpy.asarray([4,4,4]))
+        y = shared(numpy.asarray([4,4,4]))
+        z = shared(numpy.asarray([2,2,2]))
+        up = pfunc([], [], updates = {x: (x*5), y:(x*5)+y, z: ((x*5)+y)**z})
+
+        up()
+        print x.value
+        assert numpy.all(x.value==20)
+        assert numpy.all(y.value==24)
+        assert numpy.all(z.value==24**2)
+
+
+
+
+
+
 if __name__ == '__main__':
     theano.compile.mode.default_mode = 'FAST_COMPILE'
     Test_pfunc().test_default_scalar_container()
