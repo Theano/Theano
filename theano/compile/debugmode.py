@@ -1174,21 +1174,31 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                 if li != l0 :
                     infolog = StringIO()
                     print >> infolog, "WARNING: Optimization process is unstable..."
+                    print >> infolog, "  (HINT: Ops that the nodes point to must compare equal)"
                     print >> infolog, "(event index)  (one event trace)  (other event trace)"
                     print >> infolog, "-----------------------------------------------------"
                     for j in xrange(max(len(li), len(l0))):
-                        if j >= len(li) or j >= len(l0) or li[j] != l0[j]:
-                            print >> infolog, "* ", j
-                            if j < len(li):
-                              msg =  str(li[j])
-                            else:
-                              msg = '-'
-                            print >> infolog, "  ", msg
-                            if j < len(l0):
-                              msg = str(l0[j])
-                            else:
-                              msg = '-'
-                            print >> infolog, "  ", msg
+                        if j >= len(li):
+                            print >> infolog, 'trailing event in optimization 0 :', j
+                            print >> infolog, '   ', str(l0[j])
+                        elif j >= len(l0):
+                            print >> infolog, 'trailing event in optimization', i, ':', j
+                            print >> infolog, '   ', str(li[j])
+                        elif li[j] != l0[j]:
+                            print 'non-equal optimization events', i, ':', j
+                            print >>infolog, '   ', str(l0[j])
+                            print >>infolog, '   ', str(li[j])
+                            #print >> infolog, "* ", j,
+                            #if j < len(li):
+                            #  msg =  str(li[j])
+                            #else:
+                            #  msg = '-'
+                            #print >> infolog, "  ", msg
+                            #if j < len(l0):
+                            #  msg = str(l0[j])
+                            #else:
+                            #  msg = '-'
+                            #print >> infolog, "  ", msg
                             #backport
                             #print >> infolog, "  ", str(li[j]) if j < len(li) else '-',
                             #print >> infolog, "  ", str(l0[j]) if j < len(l0) else '-'
