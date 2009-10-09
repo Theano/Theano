@@ -450,9 +450,13 @@ def _check_viewmap(node, storage_map):
                     raise BadViewMap(node, oi, outstorage, out_alias_idx=other_oi)
 
 def _may_share_memory(a, b):
-    return (hasattr(a,'__array_interface__') and
-            hasattr(b,'__array_interface__') and
-            numpy.may_share_memory(a,b))
+    try:
+        return numpy.may_share_memory(a, b)
+    except:
+        return False
+    #return (hasattr(a,'__array_interface__') and
+            #hasattr(b,'__array_interface__') and
+            #numpy.may_share_memory(a,b))
             
 def _is_function_output(node):
     """
