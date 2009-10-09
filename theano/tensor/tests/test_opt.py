@@ -184,18 +184,21 @@ class test_canonize(unittest.TestCase):
     def test_elemwise_multiple_inputs_optimisation(self):
         """
         verify that the Canonizer merge sequential Elemwise({mul,add})
+        Test with and without DimShuffle
         """
         shp=(5,5)
         fx, fy, fz = fmatrices('xyz')
         dx, dy, dz = dmatrices('xyz')
         fv = fvector('r').dimshuffle('x',0)
+        dv = dvector('s').dimshuffle('x',0)
         fxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
         fyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
         fzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        dxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
         fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        dxv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
+        dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
+        dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
+        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
         cases = [
             (fx+fy,(fx,fy),(fxv,fyv),1,'float32'),
             (fx*fy,(fx,fy),(fxv,fyv),1,'float32'),
@@ -226,6 +229,13 @@ class test_canonize(unittest.TestCase):
             (fx*fy*fv*(fx+fy+fz),(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),2,'float32'),
             (fx*fy*(fv+fx+fy+fz),(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),2,'float32'),
             (fx*fy*fv*(fv+fx+fy+fz),(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),2,'float32'),
+            (dx+dy+dz+dv,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+            (dx*dy*dz*dv,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+            (dv+dx+dy+dz,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+            (dv*dx*dy*dz,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+            (dx*dy*dv*(dx+dy+dz),(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),2,'float64'),
+            (dx*dy*(dv+dx+dy+dz),(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),2,'float64'),
+            (dx*dy*dv*(dv+dx+dy+dz),(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),2,'float64'),
 
             ]#[10:11]
 #        print cases
