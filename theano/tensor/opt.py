@@ -1231,72 +1231,70 @@ register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 def local_elemwise_fusion(node):
     """As part of specialisation, we fusion two consecutif elemwise op of the same shape.
     """
-    TODO:implement Composite.__eq__ by using CLinker.cmodule_key() to compare the graph.
+#    TODO:implement Composite.__eq__ by using CLinker.cmodule_key() to compare the graph.
+#TODO: check dtype and broadcastable(type)
+#TODO: test nb_clients?
+
     if not isinstance(node.op, T.Elemwise):
         return False
-    if isinstance(node.op.scalar_op, scalar.Composite):
-        print "local_elemwise_fusion of Composite"
     nb_elemwise=0
-    inputs=[]
-    s_inputs = []
+    inputs=[]#inputs of the new Elemwise op.
+    s_inputs = []#inputs of the new scalar op.
     s_g=[]#graph of scalar, what will by done in the inner loop.
     for i in node.inputs:
         if i.owner and isinstance(i.owner.op,T.Elemwise):
-            if False and len(i.owner.inputs)!=2:
-                print "local_elemwise_fusion: Elemwise inputs have more then 2 inputs"
-                return False
             if len(i.clients)>1:
+                #should we put this in the first if, then we would go to the elif to don't fuse it?
                 print "local_elemwise_fusion: Elemwise inputs have more then 1 client. Don't optimise for now"
-                return False
-            if False and i.owner.inputs[0].owner != None:
-                print "local_elemwise_fusion: Elemwise inputs inputs[0] have an owner"
-                return False
-            if i.owner.inputs[1].owner != None:
-                print "local_elemwise_fusion: Elemwise inputs inputs[1] have an owner"
                 return False
             
             nb_elemwise+=1
             inputs.extend(i.owner.inputs)
             s_input = [scalar.Scalar(x.dtype).make_variable() for x in i.owner.inputs]
             s_inputs.extend(s_input)
-#            print s_input
-#            print i.owner.op.scalar_op, type(i.owner.op.scalar_op)
             s_op=i.owner.op.scalar_op(*s_input)
             s_g.append(s_op)
-#            s_g.append(scalar.Mul(*s_input))
         elif not i.owner:
             inputs.append(i)
-            s_inputs.append(scalar.Scalar(i.dtype).make_variable())
+            s=scalar.Scalar(i.dtype).make_variable()
+            s_inputs.append(s)
+            s_g.append(s)
         else:
-            print "local_elemwise_fusion: have an owner."
+            print "local_elemwise_fusion: have an owner that is not an Elemwise."
             return False
-        #TODO: test nb_clients?
-    if len(node.inputs)!=2:
-        print "local_elemwise_fusion: node have more then 2 inputs."
+
+    if nb_elemwise==0:
+#        print "local_elemwise_fusion: node have no elemwise in inputs. Nothing to fuse."
         return False
-    if nb_elemwise!=1:
-        print "local_elemwise_fusion: node have more then 1 elemwise in its inputs."
-        return False
-    if any([len(x.clients)!=1 for x in node.inputs]):#len(node.inputs[0].clients)!=1:
-        print "local_elemwise_fusion: node have more then 1 clients."
+
+    #if one of the inputs have more then 1 clients and it is an intermediate result. We don't fuse.
+    if any([len(x.clients)!=1 and x.owner for x in node.inputs]):#len(node.inputs[0].clients)!=1:
+        print "local_elemwise_fusion: node have more then 1 clients.", [x.clients for x in node.inputs]
         return False       
         
     otype = node.outputs[0].type
 #    print "local_elemwise_fusion"
 #    print [type(x) for x in s_inputs]
-    new_out=node.op.scalar_op(*s_g)
-    #print "s_g",s_g,"new_out",new_out, type(new_out), new_out.owner.op, new_out.owner.inputs
+#    print "node",node
+#    print "node.inputs",node.inputs
+#    print "node.inputs[0].op",node.inputs[0].op
+#    print "node.inputs[1].op",node.inputs[1].op
+#    print "node.outputs",node.outputs
+#    print "s_g",s_g, [type(x) for x in s_g]
+#    print "s_inpust",s_inputs
+    s_new_out=node.op.scalar_op(*s_g)
+#    print "s_new_out",s_new_out
+
     #create the composite op.
-    #print "Composite",s_inputs, new_out
-    C = scalar.Composite(s_inputs,[new_out])
-    #print "inputs",inputs
-    #print type(T.Elemwise(C))
+    C = scalar.Composite(s_inputs,[s_new_out])
+
+    #create the new node.
     n=T.Elemwise(C).make_node(*inputs)
-#    print n, n.outputs
     assert len(n.outputs)==1
     assert node.outputs[0].dtype==n.outputs[0].dtype
+
+#    print "local_elemwise_fusion: FUSED some elements!"
     return n.outputs
-#TODO: check dtype and broadcastable(type)
          
 #register_specialize(local_elemwise_fusion)
 # def make_composite(inputs, outputs):
