@@ -348,6 +348,9 @@ def int_out(*types):
 def float_out(*types):
     return float64,
 def upgrade_to_float(*types):
+    """
+    This upgrade the types to float32 or float64 to don't loose any precision.
+    """
     conv = {int8: float32,
             int16: float32,
             int32: float64,
