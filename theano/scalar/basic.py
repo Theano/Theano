@@ -980,6 +980,7 @@ class Inv(UnaryScalarOp):
 inv = Inv(upgrade_to_float, name = 'inv')
 
 class Log(UnaryScalarOp):
+    """ log base e """
     def impl(self, x):
         return math.log(x)
     def grad(self, (x, ), (gz, )):
@@ -997,6 +998,7 @@ class Log(UnaryScalarOp):
 log = Log(upgrade_to_float, name = 'log')
 
 class Log2(UnaryScalarOp):
+    """ log base 2 """
     def impl(self, x):
         return numpy.log2(x)
     def grad(self, (x, ), (gz, )):
@@ -1012,6 +1014,7 @@ class Log2(UnaryScalarOp):
 log2 = Log2(upgrade_to_float, name = 'log2')
 
 class Log10(UnaryScalarOp):
+    """ log base 10 """
     def impl(self, x):
         return numpy.log10(x)
     def grad(self, (x, ), (gz, )):
