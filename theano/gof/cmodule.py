@@ -516,10 +516,7 @@ class ModuleCache(object):
 def _rmtree(parent):
     try:
         if not os.getenv('THEANO_NOCLEANUP',0):
-            print "cmodule.py do cleanup"
             shutil.rmtree(parent)
-        else:
-            print "cmodule.py don't cleanup"
     except Exception, e:
         try:
             # mark this directory for deletion by a future refresh()
