@@ -83,7 +83,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
         print '==============================='
         for i, l in enumerate(src_code.split('\n')):
             print i+1, l
-        raise Exception('nvcc return status', p.returncode)
+        raise Exception('nvcc return status', p.returncode, 'for file',cppfilename)
 
     #touch the __init__ file
     file(os.path.join(location, "__init__.py"),'w').close()      
