@@ -792,7 +792,6 @@ def test_const_type_in_mul_canonizer():
     
 from theano.compile.sandbox.pfunc import pfunc
 from theano.compile.sandbox.sharedvalue import shared
-import theano_cuda_ndarray as tcn
 import theano
 
 class test_fusion(unittest.TestCase):
@@ -933,6 +932,8 @@ class test_fusion(unittest.TestCase):
             assert numpy.allclose(out,answer*nb_repeat,atol=1e-6 if out_dtype=='float32' else 1e-8)
             topo=f.maker.env.toposort()
             if gpu:
+                import theano_cuda_ndarray as tcn
+
                 topo = [x for x in topo if not isinstance(x.op,tcn.basic_ops.GpuFromHost)]
                 gpu_ = [x for x in topo if isinstance(x.op,tcn.basic_ops.GpuFromHost)]
                 assert len(gpu_)==len(sym_inputs)
@@ -958,6 +959,7 @@ class test_fusion(unittest.TestCase):
         mode=compile.mode.predefined_modes['FAST_COMPILE']
         mode=compile.mode.predefined_modes['FAST_RUN']
         mode=compile.mode.predefined_modes['DEBUG_MODE']
+        import theano_cuda_ndarray as tcn
 
         self.do(mode, tcn.shared_constructor, shp, gpu=True)
 
