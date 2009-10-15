@@ -1176,6 +1176,14 @@ class Composite(ScalarOp):
     implement the loop fusion optimizer (which I have yet to do
     someday...)
     """
+    def __str__(self):
+        if hasattr(self, 'name') and self.name:
+            return self.name
+        else:
+            return "%s{%s}" % (self.__class__.__name__, ", ".join(
+                "%s=%s" % (k, v) for k, v in self.__dict__.items()
+                if k not in ["name","env","_c_code"] ))
+
     def __init__(self, inputs, outputs):
         env = Env(*gof.graph.clone(inputs, outputs))
         gof.MergeOptimizer().optimize(env)
