@@ -626,6 +626,19 @@ class NaiveAlgo(object):
         return sio.getvalue()
 
     def c_src_callkernel(self, node, nodename):
+        #
+        # This function serves two main goals:
+        #
+        # The first is stride unpacking:
+        # it accepts input and output arguments as 
+        #    float * , int* 
+        # pairs, and it constructs a kernel function call where inputs and arguments are named
+        # like 
+        #    float *, int, int, int ...
+        #
+        # The second is to recognize when trailing (right-most in numpy) dimensions can be collapsed as
+        # being contiguous... (confusing... read code)
+        #
         nd = node.outputs[0].type.ndim
         id_self = id(self)
         d = dict()

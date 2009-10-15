@@ -68,6 +68,15 @@ class GpuElemwise(Op):
     nout = property(lambda self: self.scalar_op.nout)
 
     def __init__(self, scalar_op, inplace_pattern):
+        ##
+        # TODO: implement inplace operations.  
+        #       It's ok that we set the DestroyMap to something but then don't actually destroy
+        #       anything.  It's just a bit of a waste of memory.
+        #
+        #       As current GPUs don't have cache, this probably doesn't make any difference to
+        #       the amount of loading and storing to global memory that we would have to do.
+        #       That's why it isn't implemented yet.
+        #
         self.scalar_op = scalar_op
         self.inplace_pattern = inplace_pattern
         self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
