@@ -937,6 +937,7 @@ class test_fusion(unittest.TestCase):
                 topo_ = [x for x in topo if not isinstance(x.op,tcn.basic_ops.GpuFromHost)]
                 gpu_ = [x for x in topo if isinstance(x.op,tcn.basic_ops.GpuFromHost)]
                 assert len(gpu_)==len(sym_inputs)
+            else: topo_=topo
             if assert_len_topo:
                 assert(len(topo_)==nb_elemwise)
             assert(out_dtype==out.dtype)
