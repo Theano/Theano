@@ -1273,6 +1273,11 @@ class Composite(ScalarOp):
                      onames),
                  **sub)
         d['name'] = name
+        if not sub.has_key('id'):
+            #The use of a dummy id is safe as the code is in a separate block.
+            #It won't generate conflicting variable name.
+            d['id']='_DUMMY_ID_'
+            
         return self._c_code % d
 
     def __eq__(self, other):
