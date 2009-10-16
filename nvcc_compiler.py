@@ -34,10 +34,12 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     preargs= [] if preargs is None else list(preargs)
     preargs.append('-fPIC')
     no_opt = False
-
+    cuda_root = os.getenv('CUDA_ROOT')
     include_dirs = std_include_dirs() + include_dirs
     libs = std_libs() + ['cudart'] + libs
-    lib_dirs = std_lib_dirs() + [os.path.join(os.getenv('CUDA_ROOT'), 'lib')] + lib_dirs
+    lib_dirs = std_lib_dirs() + lib_dirs
+    if cuda_root:
+        lib_dirs.append(os.path.join(cuda_root, 'lib'))
 
     cppfilename = os.path.join(location, 'mod.cu')
     cppfile = file(cppfilename, 'w')
