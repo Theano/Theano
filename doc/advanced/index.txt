@@ -15,4 +15,5 @@ Advanced Topics (under construction)
     ccodegen
     function
     module
+    debugging_with_stepmode
 
