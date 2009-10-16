@@ -2857,6 +2857,11 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     if not isinstance(cost, TensorVariable):
         raise TypeError('In tensor.grad(), cost argument should be a TensorVariable.', cost)
 
+    if cost.type.ndim:
+        _warn('the passing of a non-scalar cost to theano.tensor.grad() is deprecated.'
+                '  Use the lower-level '
+                'theano.gradient if you really want to do this')
+
     if g_cost is None:
         g_cost = ones_like(cost)
     inputs = gof.graph.inputs([cost])
