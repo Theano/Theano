@@ -53,7 +53,13 @@ class CudaNdarrayType(Type):
         return type_support_filter(data, self.broadcastable, strict)
 
     @staticmethod
+    def values_eq(a, b):
+        #TODO: make the comparaison without transfert.
+        return tensor.TensorType.values_eq(numpy.asarray(a), numpy.asarray(b))
+
+    @staticmethod
     def values_eq_approx(a, b):
+        #TODO: make the comparaison without transfert.
         return tensor.TensorType.values_eq_approx(numpy.asarray(a), numpy.asarray(b))
 
     def dtype_specs(self):
@@ -229,12 +235,18 @@ class CudaNdarrayType(Type):
 
     def c_header_dirs(self):
         """Override `CLinkerOp.c_headers` """
-        return [os.path.dirname(cuda_ndarray.__file__),
-                os.path.join(os.getenv("CUDA_ROOT"),'include')]
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = os.getenv("CUDA_ROOT")
+        if cuda_root:
+            ret.append(os.path.join(cuda_root,'include'))
+        return ret
 
     def c_lib_dirs(self):
-        return [os.path.dirname(cuda_ndarray.__file__),
-                os.path.join(os.getenv("CUDA_ROOT"),'lib')]
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = os.getenv("CUDA_ROOT")
+        if cuda_root:
+            ret.append(os.path.join(cuda_root,'lib'))
+        return ret
 
     def c_libraries(self):
         return ['cuda_ndarray', 'cudart']
