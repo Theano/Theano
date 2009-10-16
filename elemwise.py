@@ -867,6 +867,8 @@ class NaiveAlgo(object):
         print >> sio, """
         int dims[%(nd)s] = {%(initial_dims)s};
         """ %locals()
+
+        #check that all inputs have valid dimensions
         for iname in inputs:
             print >> sio, """
         //std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
@@ -891,6 +893,7 @@ class NaiveAlgo(object):
         }
             """ %locals()
 
+        #check that all outputs have valid dimensions
         for oname in outputs:
             print >> sio, """
         for (int i = 0; (i< %(nd)s) && (cnda_%(oname)s); ++i) {
