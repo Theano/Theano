@@ -1229,11 +1229,15 @@ register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 
 @gof.local_optimizer([T.Elemwise, T.Elemwise])
 def local_elemwise_fusion(node):
-    """As part of specialisation, we fusion two consecutif elemwise op of the same shape.
+    """
+    As part of specialisation, we fusion two consecutif elemwise op of the same shape.
+
+    For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
+    The number of dimension is validated at call time by theano itself.
+    TODO:The broadcast flag?
     """
 #    TODO:implement Composite.__eq__ by using CLinker.cmodule_key() to compare the graph.
-#TODO: check dtype and broadcastable(type)
-#TODO: test nb_clients?
+#TODO: Merge when nb_clients>1? When this optimisation could introduce duplication of computation? When this will be faster?
 
     if not isinstance(node.op, T.Elemwise):
         return False
@@ -1267,6 +1271,7 @@ def local_elemwise_fusion(node):
 
     #if no inputs have are an elemwise, their is nothing to fuse.
     if nb_elemwise==0:
+#        print "local_elemwise_fusion: no elemwise in inputs. Nothing to fuse."
         return False
 
     otype = node.outputs[0].type
@@ -1280,7 +1285,7 @@ def local_elemwise_fusion(node):
     assert len(n.outputs)==1
     assert node.outputs[0].dtype==n.outputs[0].dtype
 
-#    print "local_elemwise_fusion: FUSED some elements!"
+#    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
     return n.outputs
          
 #register_specialize(local_elemwise_fusion)
