@@ -18,6 +18,7 @@ from theano import compile  #to register the optimizer built by this file
 from theano.tensor.blas_headers import cblas_header_text, blas_header_text
 
 _logger = logging.getLogger('theano.tensor.blas')
+_logger.setLevel(logging.INFO)
 def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
 def info(*msg): _logger.info(' '.join(str(m) for m in msg))
 def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
@@ -604,10 +605,15 @@ class Dot22(GemmRelated):
     This is a specialization of the more general Dot()
     """
     def make_node(self, x, y):
-        assert _is_real_matrix(x)
-        assert y.type == x.type               #makes sure y is a matrix
+        if not _is_real_matrix(x):
+            raise TypeError(x)
+        if not _is_real_matrix(x):
+            raise TypeError(y)
+        if y.type.dtype != x.type.dtype:
+            raise TypeError('dtype mismatch to Dot22')
+        out_shape = (x.type.shape[0], y.type.shape[1])
         bz = [False, False]
-        outputs = [T.tensor(x.type.dtype, bz)]
+        outputs = [T.tensor(x.type.dtype, bz, shape=out_shape)]
         return Apply(self, [x,y], outputs)
 
     def perform(self, node, (x, y), (z, )):
@@ -660,10 +666,10 @@ _dot22 = Dot22()
 def local_dot_to_dot22(node):
     if node.op == T.dot:
         x,y = node.inputs
-        if _is_real_matrix(x) and y.type == x.type:
+        if _is_real_matrix(x) and _is_real_matrix(y) and y.type.dtype == x.type.dtype:
             return [_dot22(*node.inputs)]
         else:
-            info('Not optimizing dot with inputs', x, y)
+            info('Not optimizing dot with inputs', x, y, x.type, y.type)
     else:
         return False
 register_specialize(local_dot_to_dot22)
