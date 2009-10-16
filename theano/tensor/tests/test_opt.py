@@ -823,33 +823,33 @@ class test_fusion(unittest.TestCase):
 #        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
         fwx=fw+fx
         cases = [
-            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),
+            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#1
             (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),
             (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),
             (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),
-            (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
             ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             (((fw+fx)+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             ((fw+(fx+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             ((fw+(fx+fy)+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
-            (fw+(fx+(fy+fz)),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (fw+(fx+(fy+fz)),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#10
             ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
             (fw*fx*fy*fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv*fxv*fyv*fzv,'float32'),
             (fw+fx*fy*fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv*fyv*fzv,'float32'),
             (fx+fy*fz*fx,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv*fxv,'float32'),
-            (fx*fy+fz+fy,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv+fyv,'float32'),
+            (fx*fy+fz+fy,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv+fyv,'float32'),#15
             (fx*fy*fz*fw+fx+fy+fz+fw,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv,'float32'),
             #test with constant
             ((fw+fx)+(fy+fz)+2,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             (((fw+fx)+2+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             ((fw+(fx+2+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),#20
             (fw+(fx+(fy+fz)+2),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
             #mix float32 and float64
             (2+(dw+fx)+(fy+fz),(dw,fx,fy,fz),(dwv,fxv,fyv,fzv),1,dwv+fxv+fyv+fzv+2,'float64'),
             (2+(fw+dw)+(fy+fz),(fw,dw,fy,fz),(fwv,dwv,fyv,fzv),1,fwv+dwv+fyv+fzv+2,'float64'),
-            (2+(fw+fx)+(dw+fz),(fw,fx,dw,fz),(fwv,fxv,dwv,fzv),1,fwv+fxv+dwv+fzv+2,'float64'),
+            (2+(fw+fx)+(dw+fz),(fw,fx,dw,fz),(fwv,fxv,dwv,fzv),1,fwv+fxv+dwv+fzv+2,'float64'),#25
             (2+(fw+fx)+(fy+dw),(fw,fx,fy,dw),(fwv,fxv,fyv,dwv),1,fwv+fxv+fyv+dwv+2,'float64'),
             #test when their is other op then elemwise.
             #the good output for the next test.
@@ -863,16 +863,15 @@ class test_fusion(unittest.TestCase):
 #}
 #, nout=1, env=[add(add(<float32>, <float32>), add(<float32>, <float32>))]}}(InplaceDimShuffle{x,x}.0, Elemwise{add,no_inplace}.0, y, z)]
             ((fwx.sum())+(fwx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),4,(fwv+fxv).sum()+fwv+fxv+fyv+fzv,'float32'),
-            #26 elem before this line
             #test other elemwise op
             (fx+fy+cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
             (fx+fy+cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
-            (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),
+            (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),#30
             (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
             (fx+fy+theano.tensor.log2(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log2(fzv),'float32'),
             (fx+fy+theano.tensor.log10(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log10(fzv),'float32'),
             (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,'float32'),#pow
-            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),
+            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),#35
             (fx-fy-fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv-fzv,'float32'),
             (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
 #            (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),#TODO: c_code not implemented for %
@@ -905,6 +904,7 @@ class test_fusion(unittest.TestCase):
             print "new cases", id
 
             if shared_fn == None:
+                assert gpu==False
                 f = compile.function(list(sym_inputs), g,mode=mode)
                 #pre-call to have the data in cache if it fit to don't penalise the first iteration
 #                if id==0:
@@ -934,11 +934,11 @@ class test_fusion(unittest.TestCase):
             if gpu:
                 import theano_cuda_ndarray as tcn
 
-                topo = [x for x in topo if not isinstance(x.op,tcn.basic_ops.GpuFromHost)]
+                topo_ = [x for x in topo if not isinstance(x.op,tcn.basic_ops.GpuFromHost)]
                 gpu_ = [x for x in topo if isinstance(x.op,tcn.basic_ops.GpuFromHost)]
                 assert len(gpu_)==len(sym_inputs)
             if assert_len_topo:
-                assert(len(topo)==nb_elemwise)
+                assert(len(topo_)==nb_elemwise)
             assert(out_dtype==out.dtype)
         print "Executed",len(cases),"cases"
         return times
@@ -963,31 +963,46 @@ class test_fusion(unittest.TestCase):
 
         self.do(mode, tcn.shared_constructor, shp, gpu=True)
 
-    def speed_fusion(self):
+    def speed_fusion(self, shared_fn = shared, gpu = False, s=None):
+        """
+        param type s: a slice object
+        param s: a slice to apply to the case to execute. If None, exec all case.
+        """
+        
         import copy
         shp=(3000,3000)
         #mode1=copy.copy(compile.mode.predefined_modes['FAST_RUN'])
-        mode1=compile.Mode(gof.CLinker(), copy.copy(compile.mode.OPT_FAST_RUN))
+        linker=gof.CLinker
+        linker=gof.OpWiseCLinker
+        mode1=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
         #TODO:clinker is much faster... but use to much memory
         #Possible cause: as their is do deletion of intermediate value when we don't keep the fct.
         #More plausible cause: we keep a link to the output data?
         #Follow up. Clinker do the same... second cause?
-        mode2=compile.Mode(gof.CLinker(), copy.copy(compile.mode.OPT_FAST_RUN))
+        mode2=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
 #        mode2=copy.copy(compile.mode.predefined_modes['FAST_RUN'])
         mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
 #        mode2=compile.Mode(gof.OpWiseCLinker(allow_gc=True), compile.mode.OPT_FAST_COMPILE)
 
-        s=slice(0,30)
+        if s is None:
+            s=slice(0,49)
+            #s=slice(49,59)
         nb_repeat=10
-        times1=self.do(mode1, shared, shp, gpu=False, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
-        times2=self.do(mode2, shared, shp, gpu=False, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
-        print "times1 FAST_RUN",times1, times1.min(), times1.max(), times1.sum()
-        print "times2 FAST_RUN with CLinker without local_elemwise_fusion optimisation"
+        print "test with linker", str(linker)
+        times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+        times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+        print "times1 FAST_RUN optimisation"
+        print times1, times1.min(), times1.max(), times1.sum()
+        print "times2 FAST_RUN optimisation without local_elemwise_fusion"
         print times2, times2.min(), times2.max(), times2.sum()
         d=times2/times1
 #        d.sort()
         print "times2/times1",d,d.min(), d.max(), d.mean(), d.std()
 
+    def speed_fusion_gpu(self):
+        import theano_cuda_ndarray as tcn
+        self.speed_fusion(shared_fn=tcn.shared_constructor, gpu=True, s=slice(0,15))
+        
 if __name__ == '__main__':
     unittest.main()
 
