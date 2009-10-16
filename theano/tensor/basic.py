@@ -835,6 +835,14 @@ class _tensor_py_operators:
         """See `theano.tensor.var`"""
         return var(self, axis)
 
+    def min(self, axis=None):
+        """See `theano.tensor.min`"""
+        return min(self, axis)
+
+    def max(self, axis=None):
+        """See `theano.tensor.max`"""
+        return max(self, axis)
+
     #TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
     
