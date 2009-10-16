@@ -53,7 +53,13 @@ class CudaNdarrayType(Type):
         return type_support_filter(data, self.broadcastable, strict)
 
     @staticmethod
+    def values_eq(a, b):
+        #TODO: make the comparaison without transfert.
+        return tensor.TensorType.values_eq(numpy.asarray(a), numpy.asarray(b))
+
+    @staticmethod
     def values_eq_approx(a, b):
+        #TODO: make the comparaison without transfert.
         return tensor.TensorType.values_eq_approx(numpy.asarray(a), numpy.asarray(b))
 
     def dtype_specs(self):
