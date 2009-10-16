@@ -792,14 +792,24 @@ class CLinker(link.Linker):
         function raises a KeyError exception.
         
         """
-        order = list(self.env.toposort())
-        env_inputs_dict = dict((i, [-1, pos]) for pos, i in enumerate(self.env.inputs))
+        return self.cmodule_key_(self.env, self.no_recycling,
+                          compile_args=self.compile_args(),
+                          libraries=self.libraries()
+                          )
+    @staticmethod
+    def cmodule_key_(env, no_recycling, compile_args=None, libraries=None):
+        """
+        Do the actual computation of cmodule_key in a static method
+        to allow it to be reused in scalar.Composite.__eq__
+        """
+        order = list(env.toposort())
         env_computed_set = set()
+        env_inputs_dict = dict((i, [-1, pos]) for pos, i in enumerate(env.inputs))
         constant_ids = dict()
         op_pos = {} # Apply -> topological position
         rval = ['CLinker.cmodule_key'] # will be cast to tuple on return
-        rval.append(tuple(self.compile_args()))
-        rval.append(tuple(self.libraries()))
+        if compile_args is not None: rval.append(tuple(compile_args))
+        if libraries is not None: rval.append(tuple(libraries))
         version = []
 
         # assert that every input to every node is one of'
@@ -822,16 +832,16 @@ class CLinker(link.Linker):
             else:
                 if i.owner is None:
                     assert all( all(out is not None for out in o.outputs) for o in order)
-                    assert all( input.owner is None for input in self.env.inputs)
-                    raise Exception('what is this?', (i, type(i), i.clients, self.env))
-                if i in self.env.outputs:
+                    assert all( input.owner is None for input in env.inputs)
+                    raise Exception('what is this?', (i, type(i), i.clients, env))
+                if i in env.outputs:
                     rval += [op_pos[i.owner], # outputs
                             i.owner.outputs.index(i),
-                            self.env.outputs.index(i)]
+                            env.outputs.index(i)]
                 else:
                     rval += [op_pos[i.owner], i.owner.outputs.index(i)] # temps
             assert rval
-            rval.append(i in self.no_recycling)
+            rval.append(i in no_recycling)
             return tuple(rval)
 
         for node_pos, node in enumerate(order):

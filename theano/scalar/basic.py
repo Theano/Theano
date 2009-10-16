@@ -348,6 +348,9 @@ def int_out(*types):
 def float_out(*types):
     return float64,
 def upgrade_to_float(*types):
+    """
+    This upgrade the types to float32 or float64 to don't loose any precision.
+    """
     conv = {int8: float32,
             int16: float32,
             int32: float64,
@@ -370,8 +373,8 @@ class ScalarOp(Op):
     def make_node(self, *inputs):
         if self.nin >= 0:
             if len(inputs) != self.nin:
-                raise TypeError("Wrong number of inputs for %s.make_node (got %i, expected %i)" \
-                                    % (self, len(inputs), self.nin))
+                raise TypeError("Wrong number of inputs for %s.make_node (got %i(%s), expected %i)" \
+                                    % (self, len(inputs), str(inputs), self.nin))
         inputs = [as_scalar(input) for input in inputs]
         outputs = [t() for t in self.output_types([input.type for input in inputs])]
         if len(outputs) != self.nout:
@@ -977,6 +980,7 @@ class Inv(UnaryScalarOp):
 inv = Inv(upgrade_to_float, name = 'inv')
 
 class Log(UnaryScalarOp):
+    """ log base e """
     def impl(self, x):
         return math.log(x)
     def grad(self, (x, ), (gz, )):
@@ -994,6 +998,7 @@ class Log(UnaryScalarOp):
 log = Log(upgrade_to_float, name = 'log')
 
 class Log2(UnaryScalarOp):
+    """ log base 2 """
     def impl(self, x):
         return numpy.log2(x)
     def grad(self, (x, ), (gz, )):
@@ -1009,6 +1014,7 @@ class Log2(UnaryScalarOp):
 log2 = Log2(upgrade_to_float, name = 'log2')
 
 class Log10(UnaryScalarOp):
+    """ log base 10 """
     def impl(self, x):
         return numpy.log10(x)
     def grad(self, (x, ), (gz, )):
@@ -1170,6 +1176,14 @@ class Composite(ScalarOp):
     implement the loop fusion optimizer (which I have yet to do
     someday...)
     """
+    def __str__(self):
+        if hasattr(self, 'name') and self.name:
+            return self.name
+        else:
+            return "%s{%s}" % (self.__class__.__name__, ", ".join(
+                "%s=%s" % (k, v) for k, v in self.__dict__.items()
+                if k not in ["name","env","_c_code"] ))
+
     def __init__(self, inputs, outputs):
         env = Env(*gof.graph.clone(inputs, outputs))
         gof.MergeOptimizer().optimize(env)
@@ -1233,12 +1247,15 @@ class Composite(ScalarOp):
         self.nin = len(inputs)
         self.nout = len(outputs)
         self.env = env
+        self.inputs_type = tuple([input.type for input in self.env.inputs])
+        self.outputs_type = tuple([output.type for output in self.env.outputs])
+        self._rehash()
 
     def output_types(self, input_types):
-        if tuple(input_types) != tuple([input.type for input in self.env.inputs]):
+        if tuple(input_types) != self.inputs_type:
             raise TypeError("Wrong types for Composite. Expected %s, got %s."
-                            % (tuple([input.type for input in self.env.inputs]), tuple(input_types)))
-        return [output.type for output in self.env.outputs]
+                            % (self.inputs_type, tuple(input_types)))
+        return self.outputs_type
 
     def perform(self, node, inputs, output_storage):
         for storage, impl in zip(output_storage, self._impls):
@@ -1259,10 +1276,36 @@ class Composite(ScalarOp):
                      onames),
                  **sub)
         d['name'] = name
+        if not sub.has_key('id'):
+            #The use of a dummy id is safe as the code is in a separate block.
+            #It won't generate conflicting variable name.
+            d['id']='_DUMMY_ID_'
+            
         return self._c_code % d
 
     def __eq__(self, other):
-        return self is other
+        if self is other: return True
+        if not isinstance(other, self.__class__): return False
+        if self.nin!=other.nin or self.nout != other.nout: return False
+        return self._hashval == other._hashval
+        return self._cmodule_key == other._cmodule_key
+
+    def _rehash(self):
+#TODO: What no_recycling is used for? What I need to put their?
+#        no_recycling = []
+        self._cmodule_key = gof.CLinker.cmodule_key_(self.env, [])
+        self._hashval = hash(self._cmodule_key)
 
     def __hash__(self):
-        return id(self)
+        return self._hashval
+
+#    def __getstate__(self):
+#        d = copy(self.__dict__)
+#        d.pop('env')
+#        d.pop('_impls')
+#        #TODO: the self._impls must be restored to allow the perform to work.(c version continue to work.
+#        return d
+    
+#    def __setstate__(self, d):
+#        self.__dict__.update(d)
+#        #TODO: how to restore the _impls?

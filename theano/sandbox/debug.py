@@ -1,5 +1,5 @@
 
-from .. import gof
+from theano import gof
 import sys
 
 

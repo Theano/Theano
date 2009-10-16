@@ -1227,6 +1227,68 @@ register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 # # Loop fusion #
 # ###############
 
+@gof.local_optimizer([T.Elemwise, T.Elemwise])
+def local_elemwise_fusion(node):
+    """
+    As part of specialisation, we fusion two consecutif elemwise op of the same shape.
+
+    For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
+    The number of dimension is validated at call time by theano itself.
+    TODO:The broadcast flag?
+    """
+#    TODO:implement Composite.__eq__ by using CLinker.cmodule_key() to compare the graph.
+#TODO: Merge when nb_clients>1? When this optimisation could introduce duplication of computation? When this will be faster?
+
+    if not isinstance(node.op, T.Elemwise):
+        return False
+    nb_elemwise=0
+    inputs=[]#inputs of the new Elemwise op.
+    s_inputs = []#inputs of the new scalar op.
+    s_g=[]#graph of scalar, what will by done in the inner loop.
+    for i in node.inputs:
+        if i.owner and isinstance(i.owner.op,T.Elemwise) and len(i.clients)<=1:
+            if len(i.clients)>1:
+                #should we put this in the first if, then we would go to the elif to don't fuse it?
+    #if one of the inputs have more then 1 clients and it is an intermediate result. We don't fuse.        
+                print "local_elemwise_fusion: Elemwise inputs have more then 1 client. Don't optimise for now"
+                return False
+            
+            nb_elemwise+=1
+            inputs.extend(i.owner.inputs)
+            s_input = [scalar.Scalar(x.dtype).make_variable() for x in i.owner.inputs]
+            s_inputs.extend(s_input)
+            s_op=i.owner.op.scalar_op(*s_input)
+            s_g.append(s_op)
+        else:
+            if i.owner and isinstance(i.owner.op,T.Elemwise) and len(i.clients)>1:
+                #should we put this in the first if, then we would go to the elif to don't fuse it?
+                print "local_elemwise_fusion: inputs have more then 1 client. Don't fuse it for now.!"
+                return False
+            inputs.append(i)
+            s=scalar.Scalar(i.dtype).make_variable()
+            s_inputs.append(s)
+            s_g.append(s)
+
+    #if no inputs have are an elemwise, their is nothing to fuse.
+    if nb_elemwise==0:
+#        print "local_elemwise_fusion: no elemwise in inputs. Nothing to fuse."
+        return False
+
+    otype = node.outputs[0].type
+    s_new_out=node.op.scalar_op(*s_g)
+
+    #create the composite op.
+    C = scalar.Composite(s_inputs,[s_new_out])
+
+    #create the new node.
+    n=T.Elemwise(C).make_node(*inputs)
+    assert len(n.outputs)==1
+    assert node.outputs[0].dtype==n.outputs[0].dtype
+
+#    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
+    return n.outputs
+         
+#register_specialize(local_elemwise_fusion)
 # def make_composite(inputs, outputs):
 #     scalar_inputs = [scalar.Scalar(dtype = i.type.dtype)() for i in inputs]
 #     def transform(r):

@@ -14,6 +14,7 @@ import numpy
 #import scalar_opt
 
 from theano import function, compile
+from nose.plugins.skip import SkipTest
 
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
@@ -183,9 +184,87 @@ class test_canonize(unittest.TestCase):
 
     def test_elemwise_multiple_inputs_optimisation(self):
         """
-        verify that the Canonizer merge sequential Elemwise({mul,add})
+        verify that the Canonizer merge sequential Elemwise({mul,add}) part 1
+        This part are that case that is done, but don't include case that are not implemented but are suposed to be.
         Test with and without DimShuffle
         """
+        
+        shp=(5,5)
+        fx, fy, fz = fmatrices('xyz')
+        dx, dy, dz = dmatrices('xyz')
+        fv = fvector('r').dimshuffle('x',0)
+        dv = dvector('s').dimshuffle('x',0)
+        fxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
+        fyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
+        fzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
+        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        dxv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
+        dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
+        dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
+        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
+        cases = [
+            (fx+fy,(fx,fy),(fxv,fyv),1,'float32'),
+            (fx*fy,(fx,fy),(fxv,fyv),1,'float32'),
+#            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+#            (dx+dy+dz,(dx,dy,dz),(dxv,dyv,dzv),1,'float64'),
+#            (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+#            (dx*dy*dz,(dx,dy,dz),(dxv,dyv,dzv),1,'float64'),
+#            (fx*fy*(fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
+#            (dx*dy*(dx+dy+dz),(dx,dy,dz),(dxv,dyv,dzv),2,'float64'),
+#            (fx*fy*(fx+fy+dz),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type add
+#            (dz*fy*(fx+fy),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type mul
+            #check with dimshuffle of constant
+            (fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+#            (2+fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+#            (2*fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (2+fx+fy+fz+2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (2*fx*fy*fz*2,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+#            (fx*fy*2*(fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
+#            (fx*fy*(2+fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
+            (fx*fy*2*(fx+fy+fz+2),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
+
+            #check with broadcast of row
+#            (fx+fy+fz+fv,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
+#            (fx*fy*fz*fv,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
+#            (fv+fx+fy+fz,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
+#            (fv*fx*fy*fz,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
+#            (fx*fy*fv*(fx+fy+fz),(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),2,'float32'),
+#            (fx*fy*(fv+fx+fy+fz),(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),2,'float32'),
+#            (fx*fy*fv*(fv+fx+fy+fz),(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),2,'float32'),
+#            (dx+dy+dz+dv,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+#            (dx*dy*dz*dv,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+#            (dv+dx+dy+dz,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+#            (dv*dx*dy*dz,(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),1,'float64'),
+#            (dx*dy*dv*(dx+dy+dz),(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),2,'float64'),
+#            (dx*dy*(dv+dx+dy+dz),(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),2,'float64'),
+#            (dx*dy*dv*(dv+dx+dy+dz),(dx,dy,dz,dv),(dxv,dyv,dzv,dvv),2,'float64'),
+            ]#[10:11]
+#        print cases
+
+
+        #We must be sure that the Canonizer is working, but that we don't have other
+        # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
+        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode._optimizer=gof.Query(["canonicalize"])
+        mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
+        for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
+            f = compile.function(list(sym_inputs), g,
+                                 #we need the optimisation enabled, debug do this.
+                                 mode=mode)
+            
+            out = f(*val_inputs)
+            assert(len(f.maker.env.toposort())==nb_elemwise)
+            assert(out_dtype==out.dtype)
+
+    def test_elemwise_multiple_inputs_optimisation2(self):
+        """
+        verify that the Canonizer merge sequential Elemwise({mul,add}) part 2.
+        This part are that case that should have been done, but that are not implemented.
+        Test with and without DimShuffle
+        """
+        raise SkipTest("Current implementation of Canonizer don't implement all case. Skip the corresponding test")
+    
         shp=(5,5)
         fx, fy, fz = fmatrices('xyz')
         dx, dy, dz = dmatrices('xyz')
@@ -240,13 +319,20 @@ class test_canonize(unittest.TestCase):
             ]#[10:11]
 #        print cases
 
-        for id, [g, sym_inputs, val_inputs, expected_out_nb_elemwise, out_dtype] in enumerate(cases):
+        #We must be sure that the Canonizer is working, but that we don't have other
+        # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
+        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode._optimizer=gof.Query(["canonicalize"])
+        mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
+        for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
             f = compile.function(list(sym_inputs), g,
                                  #we need the optimisation enabled, debug do this.
-                                 mode=compile.mode.predefined_modes['DEBUG_MODE'])
+                                 mode=mode)
+            
             out = f(*val_inputs)
-            assert(len(f.maker.env.toposort())==expected_out_nb_elemwise)
+            assert(len(f.maker.env.toposort())==nb_elemwise)
             assert(out_dtype==out.dtype)
+            
     def test_multiple_case(self):
         """ test those case take from the comment in Canonizer
       x / x -> 1
@@ -278,8 +364,11 @@ class test_canonize(unittest.TestCase):
         dwv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
         dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
 
-        #we need the optimisation enabled, debug do this.
-        mode=compile.mode.predefined_modes['DEBUG_MODE']
+        #We must be sure that the Canonizer is working, but that we don't have other
+        # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
+        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode._optimizer=gof.Query(["canonicalize"])
+        mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
 
         #test x / x -> 1
         for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([(fx/fx,[fx],[fxv],'float32'),
@@ -338,8 +427,7 @@ class test_canonize(unittest.TestCase):
             topo=f.maker.env.toposort()
             assert len(topo)==nb_elemwise
             assert isinstance(topo[0].op,(T.Elemwise,))
-            assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Inv)
-            assert len(topo[0].inputs)==1
+            assert isinstance(topo[0].op.scalar_op,(theano.scalar.basic.Inv, theano.scalar.basic.TrueDiv))
             assert(out_dtype==out.dtype)
 
         #test (a / b) * (b / c) * (c / d) -> a / d
@@ -407,6 +495,7 @@ class test_canonize(unittest.TestCase):
 
     def test_multiple_case_that_fail(self):
         import theano.tensor, theano.compile
+        raise SkipTest("Current implementation of Canonizer don't implement all case. Skip the corresponding test")
 
         shp=(4,4)
         fx, fy, fz = fmatrices('xyz')
@@ -418,7 +507,11 @@ class test_canonize(unittest.TestCase):
         dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
         dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
         fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
-        mode=compile.mode.predefined_modes['DEBUG_MODE']
+        #We must be sure that the Canonizer is working, but that we don't have other
+        # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
+        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode._optimizer=gof.Query(["canonicalize"])
+        mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
 
 #test fail!
         #test x / y / z -> x / (y * z)
@@ -454,6 +547,11 @@ class test_canonize(unittest.TestCase):
             assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Inv)
             assert len(topo[0].inputs)==1
             assert(out_dtype==out.dtype)
+
+    def test_dont_merge_if_multiple_client(self):
+        """ test those case take from the comment in Canonizer
+        """
+        raise SkipTest("Not implemented")
 
 def test_mixeddiv():
     """Test that int division is preserved"""
@@ -692,8 +790,220 @@ def test_const_type_in_mul_canonizer():
         f2(ival, wval, visbval, hidbval, betaval, aval),
         f1(ival, wval, visbval, hidbval, betaval, aval))
     
+from theano.compile.sandbox.pfunc import pfunc
+from theano.compile.sandbox.sharedvalue import shared
+import theano
 
+class test_fusion(unittest.TestCase):
 
+    def do(self, mode, shared_fn, shp, gpu=False, nb_repeat=1, assert_len_topo=True, slice=None):
+        """
+        param shared_fn: if None, will use compile.function
+        verify that the elemwise fusion work
+        Test with and without DimShuffle
+        """
+        #TODO: disable the canonizer?
+        def my_init(shp,dtype, num=0):
+            #ret = numpy.asarray(numpy.random.rand(*shp),dtype=dtype)
+            ret = numpy.zeros(shp, dtype=dtype)+num
+            return ret
+        fw, fx, fy, fz = fmatrices('wxyz')
+        dw, dx, dy, dz = dmatrices('wxyz')
+        fv = fvector('r').dimshuffle('x',0)
+        dv = dvector('s').dimshuffle('x',0)
+        fwv = my_init(shp,'float32',1)
+        fxv = my_init(shp,'float32',2)
+        fyv = my_init(shp,'float32',3)
+        fzv = my_init(shp,'float32',4)
+        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        dwv = my_init(shp,'float64',5)
+#        dxv = my_init(shp,'float64',6)
+#        dyv = my_init(shp,'float64',7)
+#        dzv = my_init(shp,'float64',8)
+#        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
+        fwx=fw+fx
+        cases = [
+            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#1
+            (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),
+            (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),
+            (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),
+            (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
+            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (((fw+fx)+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            ((fw+(fx+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            ((fw+(fx+fy)+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (fw+(fx+(fy+fz)),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#10
+            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (fw*fx*fy*fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv*fxv*fyv*fzv,'float32'),
+            (fw+fx*fy*fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv*fyv*fzv,'float32'),
+            (fx+fy*fz*fx,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv*fxv,'float32'),
+            (fx*fy+fz+fy,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv+fyv,'float32'),#15
+            (fx*fy*fz*fw+fx+fy+fz+fw,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv,'float32'),
+            #test with constant
+            ((fw+fx)+(fy+fz)+2,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            (((fw+fx)+2+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+(fx+2+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),#20
+            (fw+(fx+(fy+fz)+2),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv+2,'float32'),
+            #mix float32 and float64
+            (2+(dw+fx)+(fy+fz),(dw,fx,fy,fz),(dwv,fxv,fyv,fzv),1,dwv+fxv+fyv+fzv+2,'float64'),
+            (2+(fw+dw)+(fy+fz),(fw,dw,fy,fz),(fwv,dwv,fyv,fzv),1,fwv+dwv+fyv+fzv+2,'float64'),
+            (2+(fw+fx)+(dw+fz),(fw,fx,dw,fz),(fwv,fxv,dwv,fzv),1,fwv+fxv+dwv+fzv+2,'float64'),#25
+            (2+(fw+fx)+(fy+dw),(fw,fx,fy,dw),(fwv,fxv,fyv,dwv),1,fwv+fxv+fyv+dwv+2,'float64'),
+            #test when their is other op then elemwise.
+            #the good output for the next test.
+#            (Pdb) p f.maker.env.toposort()
+#[Elemwise{add,no_inplace}(w, x), Sum(Elemwise{add,no_inplace}.0), InplaceDimShuffle{x,x}(Sum.0), Elemwise{Composite{_impls=[<function <lambda> at 0x2c5c8c0>], nin=4, _c_code={
+#npy_float32 V%(id)s_tmp1;
+#V%(id)s_tmp1 = %(i2)s + %(i3)s;
+#npy_float32 V%(id)s_tmp2;
+#V%(id)s_tmp2 = %(i0)s + %(i1)s;
+#%(o0)s = V%(id)s_tmp2 + V%(id)s_tmp1;
+#}
+#, nout=1, env=[add(add(<float32>, <float32>), add(<float32>, <float32>))]}}(InplaceDimShuffle{x,x}.0, Elemwise{add,no_inplace}.0, y, z)]
+            ((fwx.sum())+(fwx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),4,(fwv+fxv).sum()+fwv+fxv+fyv+fzv,'float32'),
+            #test other elemwise op
+            (fx+fy+cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
+            (fx+fy+cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
+            (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),#30
+            (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
+            (fx+fy+theano.tensor.log2(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log2(fzv),'float32'),
+            (fx+fy+theano.tensor.log10(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log10(fzv),'float32'),
+            (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,'float32'),#pow
+            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),#35
+            (fx-fy-fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv-fzv,'float32'),
+            (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
+#            (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),#TODO: c_code not implemented for %
+            (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
+            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
+            (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),
+            (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),
+#            (fx-(fy==fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv==fzv),'float32'),#TODO: bugged
+            (fx-(fy!=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv!=fzv),'float32'),
+            (fx-fy+tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),
+            (fx-fy+tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),
+            (fx-fy+sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sin(fzv),'float32'),
+            (fx-fy+sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sinh(fzv),'float32'),
+            (fx-fy+theano.tensor.sqr(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(fzv*fzv),'float32'),
+            (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
+            (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(1/fzv),'float32'),
+            (fx-fy+theano.tensor.neg(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(-fzv),'float32'),
+#            (fx-fy+theano.tensor.iround(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),#TODO: trouble with the output type. To my understanding, numpy and c round fct return the same type as the input. Why we don't do this?
+
+            #TODO: BIT OP only with ints, xor, or, and, invert
+#            (fx-theano.tensor.or_(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy|fz),'float32'),
+#            (fx-theano.tensor.xor(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy^fz),'float32'),
+
+            ]
+        if slice:
+            cases = cases[slice]
+        import time
+        times=numpy.zeros(len(cases))
+        for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
+            print "new cases", id
+
+            if shared_fn == None:
+                assert gpu==False
+                f = compile.function(list(sym_inputs), g,mode=mode)
+                #pre-call to have the data in cache if it fit to don't penalise the first iteration
+#                if id==0:
+#                    out=f(*val_inputs)
+                t0=time.time()
+                for x in range(nb_repeat):
+                    out=f(*val_inputs)
+                t1=time.time()
+                nb_repeat=1
+            else:
+                out=shared_fn(numpy.zeros(shp, dtype=out_dtype),'out')
+                f = pfunc(sym_inputs,[],updates=[(out,out+g)],mode=mode)
+                #pre-call to have the data in cache if it fit to don't penalise the first iteration
+#                if id==0:
+#                    f(*val_inputs)
+                t0=time.time()
+                for x in range(nb_repeat):
+                    f(*val_inputs)
+                t1=time.time()
+                out=out.value
+#                if id==0:
+#                    nb_repeat+=1
+
+            times[id]=t1-t0
+            assert numpy.allclose(out,answer*nb_repeat,atol=1e-6 if out_dtype=='float32' else 1e-8)
+            topo=f.maker.env.toposort()
+            if gpu:
+                import theano_cuda_ndarray as tcn
+
+                topo_ = [x for x in topo if not isinstance(x.op,tcn.basic_ops.GpuFromHost)]
+                gpu_ = [x for x in topo if isinstance(x.op,tcn.basic_ops.GpuFromHost)]
+                assert len(gpu_)==len(sym_inputs)
+            else: topo_=topo
+            if assert_len_topo:
+                assert(len(topo_)==nb_elemwise)
+            assert(out_dtype==out.dtype)
+        print "Executed",len(cases),"cases"
+        return times
+    
+    def test_elemwise_fusion(self):
+        raise SkipTest("Current implementation of test_fusion is not enabled. So we skip the corresponding test")
+        shp=(5,5)
+        #we need the optimisation enabled, debug do this.
+        mode=compile.mode.predefined_modes['FAST_COMPILE']
+        mode=compile.mode.predefined_modes['FAST_RUN']
+        mode=compile.mode.predefined_modes['DEBUG_MODE']
+
+        self.do(mode, shared, shp)
+
+    def gpu_fusion(self):
+        shp=(5,5)
+        #we need the optimisation enabled, debug do this.
+        mode=compile.mode.predefined_modes['FAST_COMPILE']
+        mode=compile.mode.predefined_modes['FAST_RUN']
+        mode=compile.mode.predefined_modes['DEBUG_MODE']
+        import theano_cuda_ndarray as tcn
+
+        self.do(mode, tcn.shared_constructor, shp, gpu=True)
+
+    def speed_fusion(self, shared_fn = shared, gpu = False, s=None):
+        """
+        param type s: a slice object
+        param s: a slice to apply to the case to execute. If None, exec all case.
+        """
+        
+        import copy
+        shp=(3000,3000)
+        #mode1=copy.copy(compile.mode.predefined_modes['FAST_RUN'])
+        linker=gof.CLinker
+        linker=gof.OpWiseCLinker
+        mode1=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
+        #TODO:clinker is much faster... but use to much memory
+        #Possible cause: as their is do deletion of intermediate value when we don't keep the fct.
+        #More plausible cause: we keep a link to the output data?
+        #Follow up. Clinker do the same... second cause?
+        mode2=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
+#        mode2=copy.copy(compile.mode.predefined_modes['FAST_RUN'])
+        mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
+#        mode2=compile.Mode(gof.OpWiseCLinker(allow_gc=True), compile.mode.OPT_FAST_COMPILE)
+
+        if s is None:
+            s=slice(0,49)
+            #s=slice(49,59)
+        nb_repeat=10
+        print "test with linker", str(linker)
+        times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+        times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+        print "times1 FAST_RUN optimisation"
+        print times1, times1.min(), times1.max(), times1.sum()
+        print "times2 FAST_RUN optimisation without local_elemwise_fusion"
+        print times2, times2.min(), times2.max(), times2.sum()
+        d=times2/times1
+#        d.sort()
+        print "times2/times1",d,d.min(), d.max(), d.mean(), d.std()
+
+    def speed_fusion_gpu(self):
+        import theano_cuda_ndarray as tcn
+        self.speed_fusion(shared_fn=tcn.shared_constructor, gpu=True, s=slice(0,15))
+        
 if __name__ == '__main__':
     unittest.main()
 

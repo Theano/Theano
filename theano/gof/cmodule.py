@@ -386,7 +386,7 @@ class ModuleCache(object):
             try:
                 module = fn(location=location)  # WILL FAIL FOR BAD C CODE
             except Exception, e:
-                shutil.rmtree(location)
+                _rmtree(location)
                 #try:
                 #except Exception, ee:
                     #error('failed to cleanup location', location, ee)
@@ -515,7 +515,8 @@ class ModuleCache(object):
 
 def _rmtree(parent):
     try:
-        shutil.rmtree(parent)
+        if not os.getenv('THEANO_NOCLEANUP',0):
+            shutil.rmtree(parent)
     except Exception, e:
         try:
             # mark this directory for deletion by a future refresh()
