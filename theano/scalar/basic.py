@@ -752,7 +752,30 @@ class Mod(BinaryScalarOp):
     def impl(self, x, y):
         return x % y
     def c_code(self, node, name, (x, y), (z, ), sub):
-        raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
+        """
+        We want the result to have the same sign as python, not the other implementaiton of mod.
+        """
+        #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
+        return """
+    if (%(x)s == 0 || %(y)s == 0) {
+        if (%(y)s == 0) %(z)s = %(x)s %% %(y)s;
+        %(z)s = 0;
+    }
+//was #if @neg@, I suspect @neg@ to be platform dependant.
+//should be true under X86, but could be false for other architecture!
+#if 1
+    else if ((%(x)s > 0) == (%(y)s > 0)) {
+        %(z)s = %(x)s %% %(y)s;
+    }
+    else { /* handled like Python does */
+        %(z)s = %(x)s %% %(y)s;
+        if (%(z)s) %(z)s += %(y)s;
+    }
+#else
+    else
+        %(z)s = %(x)s %% %(y)s;
+#endif
+"""%locals()
     def grad(self, (x, y), (gz, )):
         return None, None
 mod = Mod(upcast_out, name = 'mod')

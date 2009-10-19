@@ -31,6 +31,19 @@ class test_ScalarOps(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
+    def test_mod(self):
+        """
+        We add this test as not all language and C implementation give the same 
+        signe to the result. This check that the c_code of `Mod` is implemented
+        as Python. That is what we want.
+        """
+        x, y = ints('xy')
+        fn = gof.DualLinker().accept(Env([x,y], [x%y])).make_function()
+        for a,b in ((0,1), (1,1), (0,-1), (1,-1), (-1,-1),
+                    (1,2), (-1,2), (1,-2), (-1,-2),
+                    (5,3), (-5,3), (5,-3), (-5,-3)
+                    ):
+            self.failUnless(fn(a,b) == a%b, (a,))
 
 class test_composite(unittest.TestCase):
 
