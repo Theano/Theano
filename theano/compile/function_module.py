@@ -879,6 +879,7 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
 
     mode = mode_module.predefined_modes.get(mode, mode)
     if isinstance(mode, (list, tuple)): # "mode comparison" semantics
+        _logger.warning('Passing multiple modes is deprecated (20091019)')
         if not mode:
             raise ValueError("Please provide at least one mode.")
         elif len(mode) == 1:
