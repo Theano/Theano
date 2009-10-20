@@ -259,12 +259,17 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter,
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
     n_out = 10
 
+
     w0 = shared_fn(numpy.asarray(0.01*(numpy.random.rand(*shape_kern)-0.5), dtype='float32'), 'w0')
     b0 = shared_fn(numpy.asarray(numpy.zeros((n_kern,)), dtype='float32'), 'b0')
     w1 = shared_fn(numpy.asarray(0.01*(numpy.random.rand(*shape_kern1)-0.5), dtype='float32'), 'w1')
     b1 = shared_fn(numpy.asarray(numpy.zeros((n_kern1,)), dtype='float32'), 'b1')
-    v = shared_fn(numpy.asarray(0.01*numpy.random.randn(n_hid, n_out), dtype='float32'), 'c')
+    v = shared_fn(numpy.asarray(0.01*numpy.random.randn(n_hid, n_out), dtype='float32'), 'v')
     c = shared_fn(numpy.asarray(numpy.zeros(n_out), dtype='float32'), 'c')
+
+    print 'ALLOCATING ARCH: w0 shape', w0.value.shape
+    print 'ALLOCATING ARCH: w1 shape', w1.value.shape
+    print 'ALLOCATING ARCH: v shape', v.value.shape
 
     x = tensor.Tensor(dtype='float32', broadcastable=(0,1,0,0))('x')
     y = tensor.fmatrix('y')
@@ -363,6 +368,8 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     print "gpu:", rval_gpu
     print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
     print "time cpu: %f, time gpu: %f, speed up %f"%(tc, tg, tc/tg)
+    print "estimated time for one pass through MNIST with cpu: %f" % (tc * (60000.0 / (n_iter*bsize)))
+    print "estimated time for one pass through MNIST with gpu: %f" % (tg * (60000.0 / (n_iter*bsize)))
 
     if not ignore_error:
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol)
