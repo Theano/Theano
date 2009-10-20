@@ -832,7 +832,7 @@ def register_checker(checker):
 
 def function(inputs, outputs, mode=None, accept_inplace = False):
     """
-    Return a function calculating the outputs from the inputs.
+    Return a Function that will calculate the outputs from the inputs.
 
     :param inputs: list of `SymbolicInput` or `In` instances
 
@@ -845,42 +845,25 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
     
     Currently, the library provides the following mode strings:
 
-     - SANITY_CHECK TODO: NotImplemented
-
-     - FAST_COMPILE (apply only optimization that are fast to apply)
-
      - FAST_RUN (default) (optimize without too much time)
 
-     - EXPENSIVE_OPTIMIZATION TODO: NotImplemented
+     - FAST_COMPILE (minimal optimization)
 
      - PROFILE_MODE : allow to print a profile mode with mode.print_summary
 
-     - DEBUG_MODE : make all the check that we taught of(compare python and c,...)
+     - DEBUG_MODE : verify many internal conditions that are normally assumed (SLOW)
 
     :param accept_inplace:  True iff the graph can contain inplace operations prior to the
     optimization phase (default is False)
 
-    Every element of the input list will be upgraded to an `In` instance if necessary,
-    using the rules implemented by the `convert_function_input` function.
-
-    Similarly, every element of the output list will be upgraded to an
-    `Out` instance if necessary:
-
-    * a `Variable` instance r will be upgraded like `Out`(r)
-
-
-    Random Numbers
-    --------------
-
-    If your computation involves random numbers, then you have to pass the `RandomKit` as an
-    input argument.  That RandomKit must have a name to be able to seed the generator.  To seed
-    the generator, use the `__setitem__` method: 
-
-    ..code-block: python
-    
-        f[<kitname>] = seed   #re-seed the elements of a RandomKit
-
     """
+
+    #Every element of the input list will be upgraded to an `In` instance if necessary,
+    #using the rules implemented by the `convert_function_input` function.
+
+    #Similarly, every element of the output list will be upgraded to an
+    #`Out` instance if necessary:
+
     t1 = time.time()
     if mode is None:
       mode = mode_module.default_mode
