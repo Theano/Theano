@@ -416,6 +416,7 @@ def test_lenet_64(): # ???
     #needed as cpu use extended precision and gpu don't
     cmp_run_conv_nnet2_classif(23485, 64, 7, 10, n_iter=10,
                                ignore_error=ignore_error, gpu_only=gpu_only,
+                               cpu_only=cpu_only, verbose=verbose,
                                float_atol=5e-4, check_isfinite=True)
 
 def test_lenet_108(): # NORB
@@ -427,6 +428,7 @@ def test_lenet_108(): # NORB
 def test_lenet_256(): # ImageNet
     cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_iter=3,
                                ignore_error=ignore_error, gpu_only=gpu_only,
+                               cpu_only=cpu_only, verbose=verbose,
                                check_isfinite=True)
 
 #I did a wanted error in the name as we don't want it to execute automatically for now as it don't work
