@@ -131,6 +131,9 @@ class GpuElemwise(Op):
         #return "GpuElemwise{%s}" % (self.scalar_op.__class__.__name__)
         return "GpuElemwise{%s}" % (self.scalar_op)
 
+    def __repr__(self):
+        return self.__str__()
+
     def make_node(self, *inputs):
         _inputs = [as_cuda_ndarray_variable(i) for i in inputs]
         if self.nin > 0 and len(_inputs) != self.nin:
