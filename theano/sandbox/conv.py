@@ -33,7 +33,8 @@ class ConvOp(Op):
             unroll_kern=4,
             imshp_logical=None,
             kshp_logical=None,
-            kshp_logical_top_aligned=True):
+            kshp_logical_top_aligned=True,
+            verbose=0):
         """
         
 
@@ -46,6 +47,7 @@ class ConvOp(Op):
         out_mode - 'valid', 'full'
         unroll_batch - c code generation option
         unroll_kern - c code generation option
+        verbose - passed to GpuConv
 
         The reason that this op does the summation over convolutions within the 'stack' is that
         it allows us to be memory-efficient about how gradients are calculated.  If, for
@@ -76,6 +78,7 @@ class ConvOp(Op):
         self.bsize=bsize
         self.dx=dx
         self.dy=dy
+        self.verbose=verbose
         # a triple
         self.imshp_logical = self.imshp if imshp_logical is None else tuple(imshp_logical)
         assert len(self.imshp) == len(self.imshp_logical)
