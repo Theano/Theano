@@ -764,19 +764,17 @@ class Pow(BinaryScalarOp):
         return "%(z)s = pow(%(x)s, %(y)s);" % locals()
     def grad(self, (x, y), (gz, )):
         if x.type in grad_types:
-          first_part = gz * y * x**(y - 1)
+            first_part = gz * y * x**(y - 1)
         else:
-          first_part = None
+            first_part = None
 
         if y.type in grad_types:
-          second_part = gz * log(x) * x**y 
+            second_part = gz * log(x) * x**y 
         else:
-          second_part = None
+            second_part = None
 
         return (first_part, second_part)
 
-        #return (gz * y * x**(y - 1) if x.type in grad_types else None,
-        #        gz * log(x) * x**y if y.type in grad_types else None)
 pow = Pow(upcast_out, name = 'pow')
 
 class Clip(ScalarOp):
