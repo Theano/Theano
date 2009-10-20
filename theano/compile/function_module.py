@@ -866,18 +866,14 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
 
     t1 = time.time()
     if mode is None:
-      mode = mode_module.default_mode
-    #backport
-    #mode = mode if mode is not None else mode_module.default_mode
+        mode = mode_module.default_mode
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
-      if isinstance(outputs, (list, tuple)):
-        outputs = map(FunctionMaker.wrap_out, outputs)
-      else:
-        outputs = FunctionMaker.wrap_out(outputs)
-      #backport
-      #outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
+        if isinstance(outputs, (list, tuple)):
+            outputs = map(FunctionMaker.wrap_out, outputs)
+        else:
+            outputs = FunctionMaker.wrap_out(outputs)
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
