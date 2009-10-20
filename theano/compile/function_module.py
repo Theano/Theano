@@ -22,7 +22,58 @@ from io import *
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
+def view_map_root(v):
+    """Return the variable that v is ultimately a view of"""
+    if v.owner is None: return v
+    vmap = getattr(v.owner.op, 'view_map', {})
+    dmap = getattr(v.owner.op, 'destroy_map', {})
+    outpos = v.owner.outputs.index(v)
+    v_views = vmap.get(outpos, []) + dmap.get(outpos, [])
+    if len(v_views) > 1:
+        raise NotImplementedError()
+    elif v_views:
+        return view_map_root(v.owner.inputs[v_views[0]])
+    else:
+        return v
+
+def view_tree_set(v, treeset):
+    """Add to `treeset` all variables that are views of v, given that v is not a view"""
+    treeset.add(v)
+    for cl, v_input_pos_to_cl in v.clients:
+        if cl == 'output': 
+            continue
+        vmap = getattr(cl.op, 'view_map', {})
+        dmap = getattr(cl.op, 'destroy_map', {})
+        for opos, iposlist in vmap.items() + dmap.items():
+            if v_input_pos_to_cl in iposlist:
+                if cl.outputs[opos] not in treeset:
+                    view_tree_set(cl.outputs[opos], treeset)
+
 def infer_reuse_pattern(env, outputs_to_disown):
+    """
+    Given an env and a list of variables, returns the list or set of all variables which may
+    share the same underlying data storage as any of the specified variables. Used internally
+    by function, FunctionMaker.
+
+    This list (or set) is also refered to as no_recycling sometimes, especially by linker code.
+    """
+    rval1 = set()
+    for o in outputs_to_disown:
+        view_tree_set(view_map_root(o), rval1)
+
+    if 1:
+        # DEBUG STUFF
+        # verify that we return a superset of what we've been returning so far...
+        rval0 = _old_infer_reuse_pattern(env, outputs_to_disown)
+        rval0_set = set(rval0)
+
+        for blah in rval0_set:
+            print blah
+            assert blah in rval1
+
+    return rval1
+
+def _old_infer_reuse_pattern(env, outputs_to_disown):
     """
     Given an env and a list of variables, returns the list of all
     variables which may share the same underlying data storage as any of
