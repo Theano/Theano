@@ -104,13 +104,15 @@ class GpuElemwise(Op):
         self._rehash()
 
     def __eq__(self, other):
-        return type(self) == type(other) and (self.scalar_op == other.scalar_op)
+        return type(self) == type(other) and (self.scalar_op == other.scalar_op) \
+                and self.inplace_pattern == other.inplace_pattern
 
     def _rehash(self):
         items = self.inplace_pattern.items()
         items.sort()
         tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
-        h = hash('Elemwise') ^ hash(self.scalar_op) ^ hash(tuple_items)
+        h = hash(type(self)) ^ hash(self.scalar_op) ^ hash(tuple_items)
+        # don't change a code that has already been  computed for this object
         assert h == getattr(self,'_hashval', h)
         self._hashval = h
 
