@@ -90,18 +90,8 @@ def _old_infer_reuse_pattern(env, outputs_to_disown):
         do_not_reuse.append(r)
         node = r.owner
         op = node.op
-        if hasattr(op, 'destroy_map'):
-          dmap = op.destroy_map
-        else:
-          dmap = {}
-
-        if hasattr(op, 'view_map'):
-          vmap = op.view_map
-        else:
-          vmap = {}
-        #backport
-        #dmap = op.destroy_map if hasattr(op, 'destroy_map') else {}
-        #vmap = op.view_map if hasattr(op, 'view_map') else {}
+        dmap = getattr(op, 'destroy_map', {})
+        vmap = getattr(op, 'view_map', {})
         for l in dmap.values() + vmap.values():
             for i in l:
                 walk(node.inputs[i])
