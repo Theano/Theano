@@ -21,7 +21,7 @@ class ProfileMode(Mode):
                            op_time, op_cimpl, op_call, compile_time))
 
     def __getstate__(self):
-        print "__getstate__",self.provided_linker,self.provided_optimizer
+        #print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker, self.provided_optimizer, self.local_time,
                            self.apply_time, self.apply_call,
                            self.op_time, self.op_cimpl, self.op_call, self.compile_time)
@@ -255,7 +255,8 @@ def atexit_print_default_profile_mode():
     THEANO_DEFAULT_MODE=PROFILE_MODE
     """
     prof_mode=predefined_modes["PROFILE_MODE"]
-    if prof_mode.local_time[0]>0: prof_mode.print_summary()
+    if prof_mode.local_time[0]>0:
+        prof_mode.print_summary()
 
 #Register atexit_print_default_profile_mode to have the summary of the
 #predefined mode PROFILE_MODE if it is used printed when the program terminate.
