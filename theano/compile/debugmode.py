@@ -1199,9 +1199,6 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
                             #else:
                             #  msg = '-'
                             #print >> infolog, "  ", msg
-                            #backport
-                            #print >> infolog, "  ", str(li[j]) if j < len(li) else '-',
-                            #print >> infolog, "  ", str(l0[j]) if j < len(l0) else '-'
                         else:
                             pass
                     raise StochasticOrder(infolog.getvalue())
