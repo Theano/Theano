@@ -1,7 +1,12 @@
+"""WRITEME
+"""
+import os, logging
+
 import numpy
-import os
 import scipy.sparse as sp
 from theano import gof
+
+_logger = logging.getLogger('theano.compile.mode')
 
 def check_equal(x, y):
     """
@@ -79,10 +84,23 @@ class OutputGuard(gof.Op):
     view_map = {0:[0]}
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
     def perform(self, node, (x,), (z,)):
         z[0] = x
     def __str__(self):
         return '%s' % self.__class__.__name__
+    def c_code(self, node, nodename, (x,), (z,), sub):
+        return """
+        Py_XDECREF(%(z)s);
+        %(z)s = %(x)s;
+        Py_XINCREF(%(z)s);
+        """ %locals()
+    def c_code_cache_version(self):
+        return (1,)
+_output_guard = OutputGuard()
 
 class AddDestroyHandler(gof.Optimizer):
     """This optimizer performs two important functions:
@@ -97,11 +115,10 @@ class AddDestroyHandler(gof.Optimizer):
     not be possible to destroy outputs.
     """
     def apply(self, env):
-        output_guard = OutputGuard()
         for o in env.outputs:
             try:
-                env.replace_validate(o, output_guard(o), reason='output_guard')
-                warning("Output variable %s required output_guard,"
+                env.replace_validate(o, _output_guard(o), reason='output_guard')
+                _logger.warning("Output variable %s required output_guard,"
                         " how was this output left unprotected against destructive operations?"
                         % o)
             except gof.InconsistencyError:
