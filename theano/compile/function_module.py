@@ -57,9 +57,11 @@ def infer_reuse_pattern(env, outputs_to_disown):
 
     This list (or set) is also refered to as no_recycling sometimes, especially by linker code.
     """
-    rval1 = set()
+    rval = set()
     for o in outputs_to_disown:
-        view_tree_set(view_map_root(o), rval1)
+        view_tree_set(view_map_root(o), rval)
+    # remove from rval all of the inputs, constants, values.
+    rval = set(r for r in rval if r.owner is not None)
 
     if 1:
         # DEBUG STUFF
@@ -67,11 +69,10 @@ def infer_reuse_pattern(env, outputs_to_disown):
         rval0 = _old_infer_reuse_pattern(env, outputs_to_disown)
         rval0_set = set(rval0)
 
-        for blah in rval0_set:
-            print blah
-            assert blah in rval1
+        for r in rval0_set:
+            assert r in rval
 
-    return rval1
+    return rval
 
 def _old_infer_reuse_pattern(env, outputs_to_disown):
     """
@@ -556,6 +557,7 @@ class SanityCheckFunction(Function):
         super(SanityCheckFunction, self).__init__(*args, **kwargs)
         self.others = others
         self.check_equal = check_equal
+        # DEPRECATED?  Is this just for DualLinker?
 
     def __setitem__(self, item, value):
         super(SanityCheckFunction, self).__setitem__(item, value)
@@ -779,6 +781,7 @@ class FunctionMaker(object):
                 # Normal case: one new, independent storage unit
                 input_storage_lists.append([input_storage_i])
                 defaults.append((self.required[i], self.refeed[i], input_storage_i))
+
 
         # Get a function instance
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
