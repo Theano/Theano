@@ -737,18 +737,19 @@ def test_pickle_aliased_memory():
     m.x[0,0] = 3.14
     assert m.y[0,0] == 3.14
 
-    import StringIO
+    import StringIO, logging
 
     sio = StringIO.StringIO()
+    handler = logging.StreamHandler(sio)
+    logging.getLogger('theano.compile.function_module').addHandler(handler)
+    try:
+        m.f.pickle_aliased_memory_strategy = 'warn'
+        m.g.pickle_aliased_memory_strategy = 'warn'
+        m_dup = cPickle.loads(cPickle.dumps(m))
+        assert sio.getvalue().startswith('aliased relat')
+    finally:
+        logging.getLogger('theano.compile.function_module').removeHandler(handler)
 
-    old_stderr = sys.stderr
-    sys.stderr = sio
-
-    m.f.pickle_aliased_memory_strategy = 'warn'
-    m.g.pickle_aliased_memory_strategy = 'warn'
-    m_dup = cPickle.loads(cPickle.dumps(m))
-    sys.stderr = old_stderr
-    assert sio.getvalue().startswith('WARNING: aliased relat')
     try:
         m.f.pickle_aliased_memory_strategy = 'raise'
         m.g.pickle_aliased_memory_strategy = 'raise'
