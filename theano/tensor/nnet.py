@@ -142,9 +142,6 @@ class SoftmaxWithBias(gof.Op):
         return ['<iostream>','<cmath>']
 
     @staticmethod
-    def c_code_cache_version():
-        return (4,)
-    @staticmethod
     def c_code_template():
         # this implementation was lifted from
         # /u/bergstrj/cvs/bergstrj/src/feb07/nn.cxx
@@ -180,7 +177,7 @@ class SoftmaxWithBias(gof.Op):
         }
         if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
         {
-            PyErr_Format(PyExc_ValueError, "number of columns in x (%%i) does not match length of b (%%i)",
+            PyErr_Format(PyExc_ValueError, "number of columns in x (%%zi) does not match length of b (%%zi)",
             %(x)s->dimensions[1], %(b)s->dimensions[0]);
             %(fail)s;
         }
@@ -236,20 +233,6 @@ class SoftmaxWithBias(gof.Op):
                 sum += sm_ij;
                 sm_i[j * Ssm] = sm_ij;
             }
-            //std::cout << "\\n";
-            if (std::isinf(sum))
-            {
-                //that was our best...
-                PyErr_SetString(PyExc_ValueError, "softmax is impossible (inf)!");
-                %(fail)s;
-            }
-
-            if (0.0 == sum)
-            {
-                //that was our best...
-                PyErr_SetString(PyExc_ValueError, "softmax is impossible (zero)!");
-                %(fail)s;
-            }
 
             //cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
             double sum_inv = 1.0 / sum;
@@ -270,6 +253,10 @@ class SoftmaxWithBias(gof.Op):
     def c_code(self, node, name, (x, b), (sm,), sub):
         code_template = ''.join(self.c_code_template())
         return code_template % dict(locals(), **sub)
+
+    @staticmethod
+    def c_code_cache_version():
+        return (5,)
 
 softmax_with_bias = SoftmaxWithBias()
 

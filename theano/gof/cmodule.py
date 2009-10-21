@@ -257,9 +257,13 @@ class ModuleCache(object):
                         warning(("The __eq__ and __hash__ functions are broken for some element"
                                 " in the following two keys. The cache mechanism will say that"
                                 " graphs like this need recompiling, when they could have been"
-                                " retrieved):"))
+                                " retrieved:"))
                         warning("Key 0:", k0)
+                        warning("Entry 0:", self.entry_from_key[k0])
+                        warning("hash 0:", hash(k0))
                         warning("Key 1:", k1)
+                        warning("Entry 1:", self.entry_from_key[k1])
+                        warning("hash 1:", hash(k1))
 
     def refresh(self):
         """Update self.entry_from_key by walking the cache directory structure.

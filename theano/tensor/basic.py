@@ -180,7 +180,24 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         assert len(bcastable) == ndim
 
     try:
-        return rtype(TensorType(dtype = x_.dtype, broadcastable = bcastable), x_, name=name)
+        if rtype is TensorConstant:
+            if 0:
+                # put the shape into the type
+
+                # This is disabled because if a tensor has shape, then the following fails:
+                # theano.lvector == as_tensor_variable([0,1]).type
+                # I think the solution is that we should implement something more like
+                # compatability instead of equality in our Type comparisons... but we're not
+                # there yet.
+                x_shape = x_.shape
+            else:
+                x_shape = None
+            return rtype(
+                    TensorType(dtype = x_.dtype, broadcastable = bcastable, shape=x_shape),
+                    x_, name=name)
+        else:
+            # leave the shape out of the type
+            return rtype(TensorType(dtype = x_.dtype, broadcastable = bcastable), x_, name=name)
     except:
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
@@ -236,7 +253,7 @@ class TensorType(Type):
     When this is True, strict filtering rejects data containing NaN or Inf entries. (Used in `DebugMode`)
     """
 
-    def __init__(self, dtype, broadcastable, name = None):
+    def __init__(self, dtype, broadcastable, name = None, shape=None):
         """Initialize self.dtype and self.broadcastable.
 
         :Parameters:
@@ -256,6 +273,20 @@ class TensorType(Type):
         self.broadcastable = tuple(broadcastable)
         self.dtype_specs() # error checking is done there
         self.name = name
+        if shape is None:
+            self.shape = tuple((1 if b else None) for b in self.broadcastable)
+        else:
+            self.shape = tuple(shape)
+        if len(self.shape) != len(self.broadcastable):
+            raise ValueError('shape and broadcastable must have equal lengths', (self.shape,
+                self.broadcastable))
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+
+        #add shape when unpickling  old pickled things
+        if 'shape' not in dct:
+            self.shape = tuple(1 if b else None for b in self.broadcastable)
     
     def filter(self, data, strict = False):
         """Convert `data` to something which can be associated to a `TensorVariable`.
@@ -273,6 +304,11 @@ class TensorType(Type):
                 raise TypeError("%s expected a ndarray object with %s dimensions (got %s)." % (self, self.ndim, data.ndim))
             if self.filter_checks_isfinite and (not numpy.all(numpy.isfinite(data))):
                 raise TypeError("non-finite elements not allowed")
+
+            for si, di in zip(self.shape, data.shape):
+                if not (si is None or si == di):
+                    raise TypeError('%s requires ndarray with shape matching %s (got %s)'%(
+                        self, self.shape, data.shape))
             return data
         else:
             data = numpy.asarray(data, dtype = self.dtype)
@@ -311,7 +347,9 @@ class TensorType(Type):
 
     def __eq__(self, other):
         """Compare True iff other is the same kind of TensorType"""
-        return type(self) == type(other) and other.dtype == self.dtype and other.broadcastable == self.broadcastable
+        return type(self) == type(other) and other.dtype == self.dtype \
+                and other.broadcastable == self.broadcastable \
+                and other.shape == self.shape
 
     @staticmethod
     def values_eq(a, b):
@@ -382,7 +420,7 @@ class TensorType(Type):
 
     def __hash__(self):
         """Hash equal for same kinds of TensorType"""
-        return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable)
+        return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable) ^ hash(self.shape)
 
     ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
     """Number of dimensions
@@ -405,6 +443,8 @@ class TensorType(Type):
     def __str__(self):
         if self.name:
             return self.name
+        elif not all(None == si for si in self.shape):
+            return 'TensorType{%s, %s}' % (self.dtype, self.shape)
         else:
             b = self.broadcastable
             named_broadcastable = {(): 'scalar',
@@ -782,7 +822,6 @@ class _tensor_py_operators:
     dtype = property(lambda self: self.type.dtype)
     """ The dtype of this tensor.  """
 
-
     #extra pseudo-operator symbols
     def __dot__(left, right): return dot(left, right)
     def __rdot__(right, left): return dot(left, right)
@@ -805,6 +844,14 @@ class _tensor_py_operators:
     def var(self, axis=None):
         """See `theano.tensor.var`"""
         return var(self, axis)
+
+    def min(self, axis=None):
+        """See `theano.tensor.min`"""
+        return min(self, axis)
+
+    def max(self, axis=None):
+        """See `theano.tensor.max`"""
+        return max(self, axis)
 
     #TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
@@ -1051,11 +1098,25 @@ class Shape(Op):
         out[0] = numpy.asarray(x.shape, dtype = 'int64')
     def grad(self, (x,), (gz,)):
         return [None]
-@_redefine_asRoutine(Shape())
+_shape = Shape()
+@constructor
 def shape(a):
-    pass
+    """Return the shape tuple of a TensorType Variable, it may be either symbolic or nonsymbolic.
 
-pprint.assign(shape, printing.MemberPrinter('shape'))
+    If the shape of the expression is not known at graph-construction time, then a symbolic
+    lvector will be returned, corresponding to the actual shape at graph-execution time.
+    """
+    va = as_tensor_variable(a)
+    #print 'HERE', va, va.type
+    if None in va.type.shape:
+        # Some shape components are unknown at this time
+        return _shape(va)
+    else:
+        # all shape components are known at compile time, so we return
+        # a tuple directly.  This tuple is like the numpy.ndarray.shape tuple.
+        return va.type.shape
+
+pprint.assign(_shape, printing.MemberPrinter('shape'))
 
 
 class MaxAndArgmax(Op):
@@ -2352,7 +2413,7 @@ def get_vector_length(v):
             return join.vec_length(v)
         except ValueError:
             pass
-    if v.owner and v.owner.op == shape:
+    if v.owner and v.owner.op == _shape:
         return v.owner.inputs[0].type.ndim
     raise ValueError("length not known")
 
@@ -2805,6 +2866,11 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     """
     if not isinstance(cost, TensorVariable):
         raise TypeError('In tensor.grad(), cost argument should be a TensorVariable.', cost)
+
+    if cost.type.ndim:
+        _warn('the passing of a non-scalar cost to theano.tensor.grad() is deprecated.'
+                '  Use the lower-level '
+                'theano.gradient if you really want to do this')
 
     if g_cost is None:
         g_cost = ones_like(cost)

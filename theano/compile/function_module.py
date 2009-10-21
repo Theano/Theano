@@ -22,7 +22,59 @@ from io import *
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
+def view_map_root(v):
+    """Return the variable that v is ultimately a view of"""
+    if v.owner is None: return v
+    vmap = getattr(v.owner.op, 'view_map', {})
+    dmap = getattr(v.owner.op, 'destroy_map', {})
+    outpos = v.owner.outputs.index(v)
+    v_views = vmap.get(outpos, []) + dmap.get(outpos, [])
+    if len(v_views) > 1:
+        raise NotImplementedError()
+    elif v_views:
+        return view_map_root(v.owner.inputs[v_views[0]])
+    else:
+        return v
+
+def view_tree_set(v, treeset):
+    """Add to `treeset` all variables that are views of v, given that v is not a view"""
+    treeset.add(v)
+    for cl, v_input_pos_to_cl in v.clients:
+        if cl == 'output': 
+            continue
+        vmap = getattr(cl.op, 'view_map', {})
+        dmap = getattr(cl.op, 'destroy_map', {})
+        for opos, iposlist in vmap.items() + dmap.items():
+            if v_input_pos_to_cl in iposlist:
+                if cl.outputs[opos] not in treeset:
+                    view_tree_set(cl.outputs[opos], treeset)
+
 def infer_reuse_pattern(env, outputs_to_disown):
+    """
+    Given an env and a list of variables, returns the list or set of all variables which may
+    share the same underlying data storage as any of the specified variables. Used internally
+    by function, FunctionMaker.
+
+    This list (or set) is also refered to as no_recycling sometimes, especially by linker code.
+    """
+    rval = set()
+    for o in outputs_to_disown:
+        view_tree_set(view_map_root(o), rval)
+    # remove from rval all of the inputs, constants, values.
+    rval = set(r for r in rval if r.owner is not None)
+
+    if 1:
+        # DEBUG STUFF
+        # verify that we return a superset of what we've been returning so far...
+        rval0 = _old_infer_reuse_pattern(env, outputs_to_disown)
+        rval0_set = set(rval0)
+
+        for r in rval0_set:
+            assert r in rval
+
+    return rval
+
+def _old_infer_reuse_pattern(env, outputs_to_disown):
     """
     Given an env and a list of variables, returns the list of all
     variables which may share the same underlying data storage as any of
@@ -39,18 +91,8 @@ def infer_reuse_pattern(env, outputs_to_disown):
         do_not_reuse.append(r)
         node = r.owner
         op = node.op
-        if hasattr(op, 'destroy_map'):
-          dmap = op.destroy_map
-        else:
-          dmap = {}
-
-        if hasattr(op, 'view_map'):
-          vmap = op.view_map
-        else:
-          vmap = {}
-        #backport
-        #dmap = op.destroy_map if hasattr(op, 'destroy_map') else {}
-        #vmap = op.view_map if hasattr(op, 'view_map') else {}
+        dmap = getattr(op, 'destroy_map', {})
+        vmap = getattr(op, 'view_map', {})
         for l in dmap.values() + vmap.values():
             for i in l:
                 walk(node.inputs[i])
@@ -515,6 +557,7 @@ class SanityCheckFunction(Function):
         super(SanityCheckFunction, self).__init__(*args, **kwargs)
         self.others = others
         self.check_equal = check_equal
+        # DEPRECATED?  Is this just for DualLinker?
 
     def __setitem__(self, item, value):
         super(SanityCheckFunction, self).__setitem__(item, value)
@@ -739,6 +782,7 @@ class FunctionMaker(object):
                 input_storage_lists.append([input_storage_i])
                 defaults.append((self.required[i], self.refeed[i], input_storage_i))
 
+
         # Get a function instance
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
@@ -791,7 +835,7 @@ def register_checker(checker):
 
 def function(inputs, outputs, mode=None, accept_inplace = False):
     """
-    Return a function calculating the outputs from the inputs.
+    Return a Function that will calculate the outputs from the inputs.
 
     :param inputs: list of `SymbolicInput` or `In` instances
 
@@ -804,61 +848,41 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
     
     Currently, the library provides the following mode strings:
 
-     - SANITY_CHECK TODO: NotImplemented
-
-     - FAST_COMPILE (apply only optimization that are fast to apply)
-
      - FAST_RUN (default) (optimize without too much time)
 
-     - EXPENSIVE_OPTIMIZATION TODO: NotImplemented
+     - FAST_COMPILE (minimal optimization)
 
      - PROFILE_MODE : allow to print a profile mode with mode.print_summary
 
-     - DEBUG_MODE : make all the check that we taught of(compare python and c,...)
+     - DEBUG_MODE : verify many internal conditions that are normally assumed (SLOW)
 
     :param accept_inplace:  True iff the graph can contain inplace operations prior to the
     optimization phase (default is False)
 
-    Every element of the input list will be upgraded to an `In` instance if necessary,
-    using the rules implemented by the `convert_function_input` function.
-
-    Similarly, every element of the output list will be upgraded to an
-    `Out` instance if necessary:
-
-    * a `Variable` instance r will be upgraded like `Out`(r)
-
-
-    Random Numbers
-    --------------
-
-    If your computation involves random numbers, then you have to pass the `RandomKit` as an
-    input argument.  That RandomKit must have a name to be able to seed the generator.  To seed
-    the generator, use the `__setitem__` method: 
-
-    ..code-block: python
-    
-        f[<kitname>] = seed   #re-seed the elements of a RandomKit
-
     """
+
+    #Every element of the input list will be upgraded to an `In` instance if necessary,
+    #using the rules implemented by the `convert_function_input` function.
+
+    #Similarly, every element of the output list will be upgraded to an
+    #`Out` instance if necessary:
+
     t1 = time.time()
     if mode is None:
-      mode = mode_module.default_mode
-    #backport
-    #mode = mode if mode is not None else mode_module.default_mode
+        mode = mode_module.default_mode
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
-      if isinstance(outputs, (list, tuple)):
-        outputs = map(FunctionMaker.wrap_out, outputs)
-      else:
-        outputs = FunctionMaker.wrap_out(outputs)
-      #backport
-      #outputs = map(FunctionMaker.wrap_out, outputs) if isinstance(outputs, (list, tuple)) else FunctionMaker.wrap_out(outputs)
+        if isinstance(outputs, (list, tuple)):
+            outputs = map(FunctionMaker.wrap_out, outputs)
+        else:
+            outputs = FunctionMaker.wrap_out(outputs)
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
     mode = mode_module.predefined_modes.get(mode, mode)
     if isinstance(mode, (list, tuple)): # "mode comparison" semantics
+        _logger.warning('Passing multiple modes is deprecated (20091019)')
         if not mode:
             raise ValueError("Please provide at least one mode.")
         elif len(mode) == 1:

@@ -260,15 +260,15 @@ def streamline(env, thunks, order, post_thunk_old_storage = None, no_recycling =
                     (len(thunks), len(post_thunk_old_storage)))
 
         def streamline_default_f():
-                for x in no_recycling:
-                    x[0] = None
-                try:
-                    for thunk, node, old_storage in zip(thunks, order, post_thunk_old_storage):
-                        thunk()
-                        for old_s in old_storage:
-                            old_s[0] = None
-                except:
-                    raise_with_op(node)
+            for x in no_recycling:
+                x[0] = None
+            try:
+                for thunk, node, old_storage in zip(thunks, order, post_thunk_old_storage):
+                    thunk()
+                    for old_s in old_storage:
+                        old_s[0] = None
+            except:
+                raise_with_op(node)
         f = streamline_default_f
     elif nice_errors:
         thunk_node_list = zip(thunks, order)

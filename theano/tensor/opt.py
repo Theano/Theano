@@ -196,20 +196,20 @@ def local_shape_lift_sum(node):
 register_canonicalize(local_shape_lift_sum, 'shape_lift')
 
 
-@gof.local_optimizer([T.shape, T.dot])
+@gof.local_optimizer([T._shape, T.dot])
 def local_shape_lift_dot(node):
     """
     shape(dot(a, b)) -> [shape(a)[0], shape(b)[1]]
     """
-    if not opt.check_chain(node, T.shape, T.dot):
+    if not opt.check_chain(node, T._shape, T.dot):
         return False
     a, b = node.inputs[0].owner.inputs
     if a.type.ndim == 2 and b.type.ndim == 2:
-        return T.make_lvector.make_node(T.shape(a)[0], T.shape(b)[1]).outputs
+        return T.make_lvector.make_node(T._shape(a)[0], T._shape(b)[1]).outputs
     elif a.type.ndim == 1 and b.type.ndim == 2:
-        return T.make_lvector.make_node(T.shape(b)[1]).outputs
+        return T.make_lvector.make_node(T._shape(b)[1]).outputs
     elif a.type.ndim == 2 and b.type.ndim == 1:
-        return T.make_lvector.make_node(T.shape(a)[0]).outputs
+        return T.make_lvector.make_node(T._shape(a)[0]).outputs
     elif a.type.ndim == 1 and b.type.ndim == 1:
         return T.make_lvector.make_node().outputs
     else:
