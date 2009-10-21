@@ -246,16 +246,20 @@ class test_canonize(unittest.TestCase):
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode=compile.mode.predefined_modes[compile.mode.default_mode]
-        mode._optimizer=gof.Query(["canonicalize"])
-        mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
-        for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
-            f = compile.function(list(sym_inputs), g,
-                                 #we need the optimisation enabled, debug do this.
-                                 mode=mode)
-            
-            out = f(*val_inputs)
-            assert(len(f.maker.env.toposort())==nb_elemwise)
-            assert(out_dtype==out.dtype)
+        old_optimizer = mode._optimizer
+        try:
+            mode._optimizer=gof.Query(["canonicalize"])
+            mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
+            for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
+                f = compile.function(list(sym_inputs), g,
+                                     #we need the optimisation enabled, debug do this.
+                                     mode=mode)
+                
+                out = f(*val_inputs)
+                assert(len(f.maker.env.toposort())==nb_elemwise)
+                assert(out_dtype==out.dtype)
+        finally:
+            mode._optimizer = old_optimizer
 
     def test_elemwise_multiple_inputs_optimisation2(self):
         """
@@ -367,130 +371,134 @@ class test_canonize(unittest.TestCase):
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode=compile.mode.predefined_modes[compile.mode.default_mode]
-        mode._optimizer=gof.Query(["canonicalize"])
-        mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
+        old_optimizer = mode._optimizer
+        try:
+            mode._optimizer=gof.Query(["canonicalize"])
+            mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
 
-        #test x / x -> 1
-        for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([(fx/fx,[fx],[fxv],'float32'),
-                                                       (dx/dx,[dx],[dxv],'float64'),
-                                                       (fv/fv,[fv],[fvv],'float32'),
-                                                       (dv/dv,[dv],[dvv],'float64'),
-                                                       ]):
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert (out==numpy.ones(shp, dtype=out_dtype)).all()
-            topo=f.maker.env.toposort()
-            assert len(topo)==1
-            assert isinstance(topo[0].op,(T.Elemwise,))
-            assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Second)
-            assert len(topo[0].inputs)==2
-            assert(out_dtype==out.dtype)
+            #test x / x -> 1
+            for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([(fx/fx,[fx],[fxv],'float32'),
+                                                           (dx/dx,[dx],[dxv],'float64'),
+                                                           (fv/fv,[fv],[fvv],'float32'),
+                                                           (dv/dv,[dv],[dvv],'float64'),
+                                                           ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert (out==numpy.ones(shp, dtype=out_dtype)).all()
+                topo=f.maker.env.toposort()
+                assert len(topo)==1
+                assert isinstance(topo[0].op,(T.Elemwise,))
+                assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Second)
+                assert len(topo[0].inputs)==2
+                assert(out_dtype==out.dtype)
 
-        #test (x * y) / x -> y
-        for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
-                                                       ((dx*dy)/dx,[dx,dy],[dxv,dyv],0,'float64'),
-                                                       ((fx*fy)/fx,[fx,fy],[fxv,fyv],0,'float32'),
-                                                       ((dv*dy)/dv,[dv,dy],[dvv,dyv],0,'float64'),
-                                                       ((fv*fy)/fv,[fv,fy],[fvv,fyv],0,'float32'),
-            #must broadcast as their is a dimshuffle in the computation
-                                                       ((dx*dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
-            #topo: [Elemwise{second,no_inplace}(x, <TensorType(float64, row)>)]
-                                                       ((fx*fv)/fx,[fx,fv],[fxv,fvv],1,'float32')
-            #topo: [Elemwise{second,no_inplace}(x, <TensorType(float32, row)>)]
-            ]):
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert numpy.allclose(out,val_inputs[1])
-            topo=f.maker.env.toposort()
-            assert len(topo)==nb_elemwise
-            assert(out_dtype==out.dtype)
+            #test (x * y) / x -> y
+            for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
+                                                           ((dx*dy)/dx,[dx,dy],[dxv,dyv],0,'float64'),
+                                                           ((fx*fy)/fx,[fx,fy],[fxv,fyv],0,'float32'),
+                                                           ((dv*dy)/dv,[dv,dy],[dvv,dyv],0,'float64'),
+                                                           ((fv*fy)/fv,[fv,fy],[fvv,fyv],0,'float32'),
+                #must broadcast as their is a dimshuffle in the computation
+                                                           ((dx*dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
+                #topo: [Elemwise{second,no_inplace}(x, <TensorType(float64, row)>)]
+                                                           ((fx*fv)/fx,[fx,fv],[fxv,fvv],1,'float32')
+                #topo: [Elemwise{second,no_inplace}(x, <TensorType(float32, row)>)]
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.allclose(out,val_inputs[1])
+                topo=f.maker.env.toposort()
+                assert len(topo)==nb_elemwise
+                assert(out_dtype==out.dtype)
 
-        #test x / y / x -> 1 / y
-        for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
-                                                       ((dx/dy)/dx,[dx,dy],[dxv,dyv],1,'float64'),
-                                                       ((fx/fy)/fx,[fx,fy],[fxv,fyv],1,'float32'),
-                                                       ((dv/dy)/dv,[dv,dy],[dvv,dyv],1,'float64'),
-                                                       ((fv/fy)/fv,[fv,fy],[fvv,fyv],1,'float32'),
-                        #must broadcast as their is a dimshuffle in the computation
+            #test x / y / x -> 1 / y
+            for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
+                                                           ((dx/dy)/dx,[dx,dy],[dxv,dyv],1,'float64'),
+                                                           ((fx/fy)/fx,[fx,fy],[fxv,fyv],1,'float32'),
+                                                           ((dv/dy)/dv,[dv,dy],[dvv,dyv],1,'float64'),
+                                                           ((fv/fy)/fv,[fv,fy],[fvv,fyv],1,'float32'),
+                            #must broadcast as their is a dimshuffle in the computation
 
-                                                       ((dx/dv)/dx,[dx,dv],[dxv,dvv],2,'float64'),
-#topo:            [Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Elemwise{second,no_inplace}(x, Elemwise{inv,no_inplace}.0)]
-                                                       ((fx/fv)/fx,[fx,fv],[fxv,fvv],2,'float32'),
-            #topo:[Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Elemwise{second,no_inplace}(x, Elemwise{inv,no_inplace}.0)]
-            ]):
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert numpy.allclose(out,(1/val_inputs[1]))
-            topo=f.maker.env.toposort()
-            assert len(topo)==nb_elemwise
-            assert isinstance(topo[0].op,(T.Elemwise,))
-            assert isinstance(topo[0].op.scalar_op,(theano.scalar.basic.Inv, theano.scalar.basic.TrueDiv))
-            assert(out_dtype==out.dtype)
+                                                           ((dx/dv)/dx,[dx,dv],[dxv,dvv],2,'float64'),
+    #topo:            [Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Elemwise{second,no_inplace}(x, Elemwise{inv,no_inplace}.0)]
+                                                           ((fx/fv)/fx,[fx,fv],[fxv,fvv],2,'float32'),
+                #topo:[Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Elemwise{second,no_inplace}(x, Elemwise{inv,no_inplace}.0)]
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.allclose(out,(1/val_inputs[1]))
+                topo=f.maker.env.toposort()
+                assert len(topo)==nb_elemwise
+                assert isinstance(topo[0].op,(T.Elemwise,))
+                assert isinstance(topo[0].op.scalar_op,(theano.scalar.basic.Inv, theano.scalar.basic.TrueDiv))
+                assert(out_dtype==out.dtype)
 
-        #test (a / b) * (b / c) * (c / d) -> a / d
-        for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                       ((dx / dy) * (dy / dz) * (dz / dw),[dx,dy,dz,dw],[dxv,dyv,dzv,dwv],'float64'),
-                                                       ((fx / fy) * (fy / fz) * (fz / fw),[fx,fy,fz,fw],[fxv,fyv,fzv,fwv],'float32'),
-                                                       ((dv / dy) * (dy / dz) * (dz / dw),[dv,dy,dz,dw],[dvv,dyv,dzv,dwv],'float64'),
-                                                       ((fv / fy) * (fy / fz) * (fz / fw),[fv,fy,fz,fw],[fvv,fyv,fzv,fwv],'float32'),
-                                                       ((dx / dv) * (dv / dz) * (dz / dw),[dx,dv,dz,dw],[dxv,dvv,dzv,dwv],'float64'),
-                                                       ((fx / fv) * (fv / fz) * (fz / fw),[fx,fv,fz,fw],[fxv,fvv,fzv,fwv],'float32'),
-                                                       ((dx / dy) * (dy / dv) * (dv / dw),[dx,dy,dv,dw],[dxv,dyv,dvv,dwv],'float64'),
-                                                       ((fx / fy) * (fy / fv) * (fv / fw),[fx,fy,fv,fw],[fxv,fyv,fvv,fwv],'float32'),
-                                                       ((dx / dy) * (dy / dz) * (dz / dv),[dx,dy,dz,dv],[dxv,dyv,dzv,dvv],'float64'),
-                                                       ((fx / fy) * (fy / fz) * (fz / fv),[fx,fy,fz,fv],[fxv,fyv,fzv,fvv],'float32'),
-            ]):
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert numpy.allclose(out,(val_inputs[0]/val_inputs[3]))
-            topo=f.maker.env.toposort()
-            assert len(topo)==1
-            assert isinstance(topo[0].op,(T.Elemwise,))
-            assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.TrueDiv)
-            assert len(topo[0].inputs)==2
-            assert(out_dtype==out.dtype)
+            #test (a / b) * (b / c) * (c / d) -> a / d
+            for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
+                                                           ((dx / dy) * (dy / dz) * (dz / dw),[dx,dy,dz,dw],[dxv,dyv,dzv,dwv],'float64'),
+                                                           ((fx / fy) * (fy / fz) * (fz / fw),[fx,fy,fz,fw],[fxv,fyv,fzv,fwv],'float32'),
+                                                           ((dv / dy) * (dy / dz) * (dz / dw),[dv,dy,dz,dw],[dvv,dyv,dzv,dwv],'float64'),
+                                                           ((fv / fy) * (fy / fz) * (fz / fw),[fv,fy,fz,fw],[fvv,fyv,fzv,fwv],'float32'),
+                                                           ((dx / dv) * (dv / dz) * (dz / dw),[dx,dv,dz,dw],[dxv,dvv,dzv,dwv],'float64'),
+                                                           ((fx / fv) * (fv / fz) * (fz / fw),[fx,fv,fz,fw],[fxv,fvv,fzv,fwv],'float32'),
+                                                           ((dx / dy) * (dy / dv) * (dv / dw),[dx,dy,dv,dw],[dxv,dyv,dvv,dwv],'float64'),
+                                                           ((fx / fy) * (fy / fv) * (fv / fw),[fx,fy,fv,fw],[fxv,fyv,fvv,fwv],'float32'),
+                                                           ((dx / dy) * (dy / dz) * (dz / dv),[dx,dy,dz,dv],[dxv,dyv,dzv,dvv],'float64'),
+                                                           ((fx / fy) * (fy / fz) * (fz / fv),[fx,fy,fz,fv],[fxv,fyv,fzv,fvv],'float32'),
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.allclose(out,(val_inputs[0]/val_inputs[3]))
+                topo=f.maker.env.toposort()
+                assert len(topo)==1
+                assert isinstance(topo[0].op,(T.Elemwise,))
+                assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.TrueDiv)
+                assert len(topo[0].inputs)==2
+                assert(out_dtype==out.dtype)
 
-        #test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
-        for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                       (((2.0*dx)/(4.0*dy)),[dx,dy],[dxv,dyv],'float64'),
-                                                       (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv],'float32'),
-                                                       (((2.0*dv)/(4.0*dy)),[dv,dy],[dvv,dyv],'float64'),
-                                                       (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv],'float32'),
-                                                       (((2.0*dx)/(4.0*dv)),[dx,dv],[dxv,dvv],'float64'),
-                                                       (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv],'float32'),
-            ]):
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert numpy.allclose(out,(0.5*val_inputs[0]/val_inputs[1]))
-            topo=f.maker.env.toposort()
-            assert len(topo)==2
-            assert isinstance(topo[0].op,(T.Elemwise,))
-            assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Mul)
-            assert len(topo[0].inputs)==2
-            assert isinstance(topo[1].op,(T.Elemwise,))
-            assert isinstance(topo[1].op.scalar_op,theano.scalar.basic.TrueDiv)
-            assert len(topo[1].inputs)==2
-            assert(out_dtype==out.dtype)
-            
-        #test 2 * x / 2 -> x
-        for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                       ((2*dx)/2,[dx],[dxv],'float64'),
-                                                       ((2*fx)/2,[fx],[fxv],'float32'),
-                                                       ((2*dv)/2,[dv],[dvv],'float64'),
-                                                       ((2*fv)/2,[fv],[fvv],'float32'),
-            ]):
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert numpy.allclose(out,val_inputs[0])
-            topo=f.maker.env.toposort()
-            assert len(topo)==0
-            assert(out_dtype==out.dtype)
+            #test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
+            for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
+                                                           (((2.0*dx)/(4.0*dy)),[dx,dy],[dxv,dyv],'float64'),
+                                                           (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv],'float32'),
+                                                           (((2.0*dv)/(4.0*dy)),[dv,dy],[dvv,dyv],'float64'),
+                                                           (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv],'float32'),
+                                                           (((2.0*dx)/(4.0*dv)),[dx,dv],[dxv,dvv],'float64'),
+                                                           (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv],'float32'),
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.allclose(out,(0.5*val_inputs[0]/val_inputs[1]))
+                topo=f.maker.env.toposort()
+                assert len(topo)==2
+                assert isinstance(topo[0].op,(T.Elemwise,))
+                assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Mul)
+                assert len(topo[0].inputs)==2
+                assert isinstance(topo[1].op,(T.Elemwise,))
+                assert isinstance(topo[1].op.scalar_op,theano.scalar.basic.TrueDiv)
+                assert len(topo[1].inputs)==2
+                assert(out_dtype==out.dtype)
+                
+            #test 2 * x / 2 -> x
+            for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
+                                                           ((2*dx)/2,[dx],[dxv],'float64'),
+                                                           ((2*fx)/2,[fx],[fxv],'float32'),
+                                                           ((2*dv)/2,[dv],[dvv],'float64'),
+                                                           ((2*fv)/2,[fv],[fvv],'float32'),
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.allclose(out,val_inputs[0])
+                topo=f.maker.env.toposort()
+                assert len(topo)==0
+                assert(out_dtype==out.dtype)
+        finally:
+            mode._optimizer = old_optimizer
 
 
     def test_multiple_case_that_fail(self):
@@ -510,43 +518,48 @@ class test_canonize(unittest.TestCase):
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode=compile.mode.predefined_modes[compile.mode.default_mode]
-        mode._optimizer=gof.Query(["canonicalize"])
-        mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
+        old_optimizer = mode._optimizer
+        try:
+            mode._optimizer=gof.Query(["canonicalize"])
+            mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
 
-#test fail!
-        #test x / y / z -> x / (y * z)
-        for (g, sym_inputs, val_inputs, out_dtype) in [
-                                                       ((dx/dy)/dz,[dx,dy,dz],[dxv,dyv,dzv],'float64'),
-                                                       ((fx/fy)/fz,[fx,fy,fz],[fxv,fyv,fzv],'float32')
-            ]:
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert numpy.allclose(out,val_inputs[0]/val_inputs[1]/val_inputs[2])
-            topo=f.maker.env.toposort()
-            print topo
-            assert len(topo)==2
-            assert isinstance(topo[0].op,(T.Elemwise,))
-            assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Inv)
-            assert len(topo[0].inputs)==1
-            assert(out_dtype==out.dtype)
+    #test fail!
+            #test x / y / z -> x / (y * z)
+            for (g, sym_inputs, val_inputs, out_dtype) in [
+                                                           ((dx/dy)/dz,[dx,dy,dz],[dxv,dyv,dzv],'float64'),
+                                                           ((fx/fy)/fz,[fx,fy,fz],[fxv,fyv,fzv],'float32')
+                ]:
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.allclose(out,val_inputs[0]/val_inputs[1]/val_inputs[2])
+                topo=f.maker.env.toposort()
+                print topo
+                assert len(topo)==2
+                assert isinstance(topo[0].op,(T.Elemwise,))
+                assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Inv)
+                assert len(topo[0].inputs)==1
+                assert(out_dtype==out.dtype)
 
-        #test x / (y / z) -> (x * z) / y
-        for (g, sym_inputs, val_inputs, out_dtype) in [
-                                                       (dx/(dy/dz),[dx,dy,dz],[dxv,dyv,dzv],'float64'),
-                                                       (fx/(fy/fz),[fx,fy,fz],[fxv,fyv,fzv],'float32')
-            ]:
-            f = compile.function(list(sym_inputs), g,
-                                 mode=mode)
-            out = f(*val_inputs)
-            assert numpy.allclose(out,val_inputs[0]/(val_inputs[1]/val_inputs[2]))
-            topo=f.maker.env.toposort()
-            print topo
-            assert len(topo)==2
-            assert isinstance(topo[0].op,(T.Elemwise,))
-            assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Inv)
-            assert len(topo[0].inputs)==1
-            assert(out_dtype==out.dtype)
+            #test x / (y / z) -> (x * z) / y
+            for (g, sym_inputs, val_inputs, out_dtype) in [
+                                                           (dx/(dy/dz),[dx,dy,dz],[dxv,dyv,dzv],'float64'),
+                                                           (fx/(fy/fz),[fx,fy,fz],[fxv,fyv,fzv],'float32')
+                ]:
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                assert numpy.allclose(out,val_inputs[0]/(val_inputs[1]/val_inputs[2]))
+                topo=f.maker.env.toposort()
+                print topo
+                assert len(topo)==2
+                assert isinstance(topo[0].op,(T.Elemwise,))
+                assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Inv)
+                assert len(topo[0].inputs)==1
+                assert(out_dtype==out.dtype)
+
+        finally:
+            mode._optimizer = old_optimizer
 
     def test_dont_merge_if_multiple_client(self):
         """ test those case take from the comment in Canonizer
@@ -571,10 +584,16 @@ def test_local_shape_lift_dot():
         for y in [fvector, fmatrix]:
             i = x()
             j = y()
+            print 'I SHAPE', i.type.shape
+            print 'J SHAPE', j.type.shape
             d = shape(dot(i,j))
-            g = Env([i,j], [d])
-            gof.TopoOptimizer(gof.LocalOptGroup(local_shape_lift_dot), order='out_to_in').optimize(g)
-            assert pprint(g.outputs[0]) == args_to_result[(x,y)]
+            if x is fvector and y is fvector:
+                assert d == ()
+            else:
+                g = Env([i,j], [d])
+                gof.TopoOptimizer(gof.LocalOptGroup(local_shape_lift_dot), order='out_to_in').optimize(g)
+                print pprint(g.outputs[0]), args_to_result[(x,y)]
+                assert pprint(g.outputs[0]) == args_to_result[(x,y)]
         
 #     def test_plusmin(self):
 #         x, y, z = inputs()
@@ -982,23 +1001,27 @@ class test_fusion(unittest.TestCase):
         #Follow up. Clinker do the same... second cause?
         mode2=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
 #        mode2=copy.copy(compile.mode.predefined_modes['FAST_RUN'])
-        mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
-#        mode2=compile.Mode(gof.OpWiseCLinker(allow_gc=True), compile.mode.OPT_FAST_COMPILE)
+        old_optimizer = mode2._optimizer
+        try:
+            mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
+    #        mode2=compile.Mode(gof.OpWiseCLinker(allow_gc=True), compile.mode.OPT_FAST_COMPILE)
 
-        if s is None:
-            s=slice(0,49)
-            #s=slice(49,59)
-        nb_repeat=10
-        print "test with linker", str(linker)
-        times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
-        times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
-        print "times1 FAST_RUN optimisation"
-        print times1, times1.min(), times1.max(), times1.sum()
-        print "times2 FAST_RUN optimisation without local_elemwise_fusion"
-        print times2, times2.min(), times2.max(), times2.sum()
-        d=times2/times1
-#        d.sort()
-        print "times2/times1",d,d.min(), d.max(), d.mean(), d.std()
+            if s is None:
+                s=slice(0,49)
+                #s=slice(49,59)
+            nb_repeat=10
+            print "test with linker", str(linker)
+            times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+            times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+            print "times1 FAST_RUN optimisation"
+            print times1, times1.min(), times1.max(), times1.sum()
+            print "times2 FAST_RUN optimisation without local_elemwise_fusion"
+            print times2, times2.min(), times2.max(), times2.sum()
+            d=times2/times1
+    #        d.sort()
+            print "times2/times1",d,d.min(), d.max(), d.mean(), d.std()
+        finally:
+            mode2._optimizer = old_optimizer
 
     def speed_fusion_gpu(self):
         import theano_cuda_ndarray as tcn
