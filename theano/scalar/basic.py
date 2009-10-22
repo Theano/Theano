@@ -756,24 +756,32 @@ class Mod(BinaryScalarOp):
         We want the result to have the same sign as python, not the other implementaiton of mod.
         """
         #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
+        t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
+        if t in int_types:
+            x_mod_y = "%(x)s %% %(y)s"%locals()
+        elif t in float_types:
+            x_mod_y = "fmod(%(x)s,%(y)s)"%locals()
+        else:
+            raise NotImplementedError('type not supported', type)
+        
         return """
     if (%(x)s == 0 || %(y)s == 0) {
-        if (%(y)s == 0) %(z)s = %(x)s %% %(y)s;
+        if (%(y)s == 0) %(z)s = %(x_mod_y)s;
         %(z)s = 0;
     }
 //was #if @neg@, I suspect @neg@ to be platform dependant.
 //should be true under X86, but could be false for other architecture!
 #if 1
     else if ((%(x)s > 0) == (%(y)s > 0)) {
-        %(z)s = %(x)s %% %(y)s;
+        %(z)s = %(x_mod_y)s;
     }
     else { /* handled like Python does */
-        %(z)s = %(x)s %% %(y)s;
+        %(z)s = %(x_mod_y)s;
         if (%(z)s) %(z)s += %(y)s;
     }
 #else
     else
-        %(z)s = %(x)s %% %(y)s;
+        %(z)s = %(x_mod_y)s;
 #endif
 """%locals()
     def grad(self, (x, y), (gz, )):
