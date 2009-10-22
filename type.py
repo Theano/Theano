@@ -132,10 +132,10 @@ class CudaNdarrayType(Type):
     def c_declare(self, name, sub):
         ndim = self.ndim
         c_typename = self.dtype_specs()[1]
-        return """ CudaNdarray * cnda_%(name)s;""" %locals()
+        return """ CudaNdarray * %(name)s;""" %locals()
 
     def c_init(self, name, sub):
-        return "cnda_%(name)s = NULL;" % locals()
+        return "%(name)s = NULL;" % locals()
 
     def c_extract(self, name, sub):
         sio = StringIO.StringIO()
@@ -148,61 +148,61 @@ class CudaNdarrayType(Type):
         if (CudaNdarray_Check(py_%(name)s))
         {
             //fprintf(stderr, "c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
-            cnda_%(name)s = (CudaNdarray*)py_%(name)s;
-            //std::cerr << "c_extract " << cnda_%(name)s << '\\n';
-            if (cnda_%(name)s->nd != %(nd)s)
+            %(name)s = (CudaNdarray*)py_%(name)s;
+            //std::cerr << "c_extract " << %(name)s << '\\n';
+            if (%(name)s->nd != %(nd)s)
             {
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s", cnda_%(name)s->nd);
-                cnda_%(name)s = NULL;
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s", %(name)s->nd);
+                %(name)s = NULL;
                 %(fail)s;
             }
-            //std::cerr << "c_extract " << cnda_%(name)s << " nd check passed\\n";
+            //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
         """ %locals()
         for i, b in enumerate(self.broadcastable):
             if b:
                 print >> sio, """
-            if (CudaNdarray_HOST_DIMS(cnda_%(name)s)[%(i)s] != 1)
+            if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
             {
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has dim %%i on broadcastable dimension %%i", CudaNdarray_HOST_DIMS(cnda_%(name)s)[%(i)s], %(i)s);
-                cnda_%(name)s = NULL;
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has dim %%i on broadcastable dimension %%i", CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
+                %(name)s = NULL;
                 %(fail)s;
             }
-            //std::cerr << "c_extract " << cnda_%(name)s << "dim check %(i)s passed\\n";
-            //std::cerr << "c_extract " << cnda_%(name)s << "checking bcast %(i)s <" << cnda_%(name)s->str<< ">\\n";
-            //std::cerr << "c_extract " << cnda_%(name)s->str[%(i)s] << "\\n";
-            if (CudaNdarray_HOST_STRIDES(cnda_%(name)s)[%(i)s])
+            //std::cerr << "c_extract " << %(name)s << "dim check %(i)s passed\\n";
+            //std::cerr << "c_extract " << %(name)s << "checking bcast %(i)s <" << %(name)s->str<< ">\\n";
+            //std::cerr << "c_extract " << %(name)s->str[%(i)s] << "\\n";
+            if (CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s])
             {
                 //std::cerr << "c_extract bad stride detected...\\n";
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i", CudaNdarray_HOST_STRIDES(cnda_%(name)s)[%(i)s], %(i)s);
-                cnda_%(name)s = NULL;
+                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i", CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
+                %(name)s = NULL;
                 %(fail)s;
             }
-            //std::cerr << "c_extract " << cnda_%(name)s << "bcast check %(i)s passed\\n";
+            //std::cerr << "c_extract " << %(name)s << "bcast check %(i)s passed\\n";
                 """ %locals()
         print >> sio, """
-            assert(cnda_%(name)s);
+            assert(%(name)s);
             Py_INCREF(py_%(name)s);
         }
         else
         {
             //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
             PyErr_SetString(PyExc_TypeError, "Argument not a CudaNdarray");
-            cnda_%(name)s = NULL;
+            %(name)s = NULL;
             %(fail)s;
         }
-        //std::cerr << "c_extract done " << cnda_%(name)s << '\\n';
+        //std::cerr << "c_extract done " << %(name)s << '\\n';
         """ % locals()
         #print sio.getvalue()
         return sio.getvalue()
 
     def c_cleanup(self, name, sub):
         return """
-        //std::cerr << "cleanup " << py_%(name)s << " " << cnda_%(name)s << "\\n";
+        //std::cerr << "cleanup " << py_%(name)s << " " << %(name)s << "\\n";
         //fprintf(stderr, "c_cleanup CNDA py_object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
-        if (cnda_%(name)s)
+        if (%(name)s)
         {
-            //fprintf(stderr, "c_cleanup CNDA cn_object w refcnt %%p %%i\\n", cnda_%(name)s, (cnda_%(name)s->ob_refcnt));
-            Py_XDECREF(cnda_%(name)s);
+            //fprintf(stderr, "c_cleanup CNDA cn_object w refcnt %%p %%i\\n", %(name)s, (%(name)s->ob_refcnt));
+            Py_XDECREF(%(name)s);
         }
         //std::cerr << "cleanup done" << py_%(name)s << "\\n";
         """ % locals()
@@ -211,7 +211,7 @@ class CudaNdarrayType(Type):
         """Override `CLinkerOp.c_sync` """
         return """
         //std::cerr << "sync\\n";
-        if (NULL == cnda_%(name)s) {  
+        if (NULL == %(name)s) {  
             // failure: sync None to storage
             Py_XDECREF(py_%(name)s);
             py_%(name)s = Py_None;
@@ -219,10 +219,10 @@ class CudaNdarrayType(Type):
         }
         else
         {
-            if (py_%(name)s != (PyObject*)cnda_%(name)s)
+            if (py_%(name)s != (PyObject*)%(name)s)
             {
                 Py_XDECREF(py_%(name)s);
-                py_%(name)s = (PyObject*)cnda_%(name)s;
+                py_%(name)s = (PyObject*)%(name)s;
                 Py_INCREF(py_%(name)s);
             }
             assert(py_%(name)s->ob_refcnt);

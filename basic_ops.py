@@ -250,34 +250,34 @@ class GpuDimShuffle(Op):
 
         #check input
         print >> sio, """
-        if (cnda_%(input)s->nd != %(nd_in)s)
+        if (%(input)s->nd != %(nd_in)s)
         {
-            PyErr_Format(PyExc_TypeError, "required nd=%(nd_in)s, got nd=%%i", cnda_%(input)s->nd);
+            PyErr_Format(PyExc_TypeError, "required nd=%(nd_in)s, got nd=%%i", %(input)s->nd);
             %(fail)s;
         }
         """ %locals()
 
         #alloc an output
         print >> sio, """
-        if (cnda_%(res)s && (cnda_%(res)s->nd == %(nd_out)s))
+        if (%(res)s && (%(res)s->nd == %(nd_out)s))
         {
             //re-use previously-allocated cnda
         }
         else
         {
-            if (cnda_%(res)s)
+            if (%(res)s)
             {
-                if (CudaNdarray_set_nd(cnda_%(res)s, %(nd_out)s))
+                if (CudaNdarray_set_nd(%(res)s, %(nd_out)s))
                 {
-                    Py_DECREF(cnda_%(res)s);
-                    cnda_%(res)s = NULL;
+                    Py_DECREF(%(res)s);
+                    %(res)s = NULL;
                     %(fail)s;
                 }
             }
             else
             {
-                cnda_%(res)s = (CudaNdarray*) CudaNdarray_New(%(nd_out)s);
-                if (NULL == cnda_%(res)s)
+                %(res)s = (CudaNdarray*) CudaNdarray_New(%(nd_out)s);
+                if (NULL == %(res)s)
                 {
                     %(fail)s;
                 }
@@ -286,11 +286,11 @@ class GpuDimShuffle(Op):
         """ %locals()
 
         print >> sio, """
-        if (CudaNdarray_set_device_data(cnda_%(res)s, CudaNdarray_DEV_DATA(cnda_%(input)s), cnda_%(input)s))
+        if (CudaNdarray_set_device_data(%(res)s, CudaNdarray_DEV_DATA(%(input)s), %(input)s))
         {
             // err message set
-            Py_DECREF(cnda_%(res)s);
-            cnda_%(res)s = NULL;
+            Py_DECREF(%(res)s);
+            %(res)s = NULL;
             %(fail)s;
         }
         """ %locals()
@@ -303,28 +303,28 @@ class GpuDimShuffle(Op):
                 #      that the size in this dimension is 1
                 assert node.outputs[0].type.broadcastable[i]
                 print >> sio, """
-        CudaNdarray_set_dim(cnda_%(res)s, %(i)s, 1);
-        CudaNdarray_set_stride(cnda_%(res)s, %(i)s, 0);
+        CudaNdarray_set_dim(%(res)s, %(i)s, 1);
+        CudaNdarray_set_stride(%(res)s, %(i)s, 0);
                 """ %locals()
             else:
                 print >> sio, """
-        CudaNdarray_set_dim(cnda_%(res)s, %(i)s, CudaNdarray_HOST_DIMS(cnda_%(input)s)[%(o)s]);
-        CudaNdarray_set_stride(cnda_%(res)s, %(i)s, CudaNdarray_HOST_STRIDES(cnda_%(input)s)[%(o)s]);
+        CudaNdarray_set_dim(%(res)s, %(i)s, CudaNdarray_HOST_DIMS(%(input)s)[%(o)s]);
+        CudaNdarray_set_stride(%(res)s, %(i)s, CudaNdarray_HOST_STRIDES(%(input)s)[%(o)s]);
                 """ %locals()
 
         for i, o in enumerate(self.new_order):
                 print >> sio, """
-        //std::cerr << "GpuDimShuffle " << cnda_%(res)s << " str[%(i)s] = " << cnda_%(res)s->str[%(i)s] << "\\n";
+        //std::cerr << "GpuDimShuffle " << %(res)s << " str[%(i)s] = " << %(res)s->str[%(i)s] << "\\n";
                 """ %locals()
 
         # copy the host dims and stride -> device
         if 0:
             print >> sio, """
-            if (CudaNdarray_copy_structure_to_device(cnda_%(res)s))
+            if (CudaNdarray_copy_structure_to_device(%(res)s))
             {
                 //err msg set
-                Py_DECREF(cnda_%(res)s);
-                cnda_%(res)s = NULL;
+                Py_DECREF(%(res)s);
+                %(res)s = NULL;
                 %(fail)s;
             }
             """ %locals()
@@ -405,9 +405,9 @@ class GpuSum(Op):
 
         #check input
         print >> sio, """
-        if (cnda_%(x)s->nd != %(nd_in)s)
+        if (%(x)s->nd != %(nd_in)s)
         {
-            PyErr_Format(PyExc_TypeError, "required nd=%(nd_in)s, got nd=%%i", cnda_%(x)s->nd);
+            PyErr_Format(PyExc_TypeError, "required nd=%(nd_in)s, got nd=%%i", %(x)s->nd);
             %(fail)s;
         }
         """ %locals()
@@ -418,15 +418,15 @@ class GpuSum(Op):
 
         # check the basics of out output
         print >> sio, """
-        if (  !cnda_%(z)s 
-           || (cnda_%(z)s->nd != %(nd_out)s)
+        if (  !%(z)s 
+           || (%(z)s->nd != %(nd_out)s)
         """ % locals()
 
         #ensure that the output has the right non-reduced dimensions
         j = 0
         for i in xrange(nd_in):
             if not self.reduce_mask[i]: 
-                print >> sio, " || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(cnda_%(x)s)[%(i)s]) " % locals()
+                print >> sio, " || (CudaNdarray_HOST_DIMS(%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]) " % locals()
                 j += 1
 
         print >> sio, """
@@ -438,13 +438,13 @@ class GpuSum(Op):
         j = 0
         for i in xrange(nd_in):
             if not self.reduce_mask[i]: 
-                print >> sio, 'new_dims[%(j)s] = CudaNdarray_HOST_DIMS(cnda_%(x)s)[%(i)s];' % locals()
+                print >> sio, 'new_dims[%(j)s] = CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];' % locals()
                 j += 1
 
         print >> sio, """
-            Py_XDECREF(cnda_%(z)s);
-            cnda_%(z)s = (CudaNdarray*) CudaNdarray_NewDims(%(nd_out)s, new_dims);
-            if (NULL == cnda_%(z)s)
+            Py_XDECREF(%(z)s);
+            %(z)s = (CudaNdarray*) CudaNdarray_NewDims(%(nd_out)s, new_dims);
+            if (NULL == %(z)s)
             {
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
                 %(fail)s;
@@ -469,13 +469,13 @@ class GpuSum(Op):
                 if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
                 int n_shared = sizeof(float) * n_threads.x;
                 kernel_reduce_sum_10_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                        CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(cnda_%(x)s)[1],
-                        CudaNdarray_DEV_DATA(cnda_%(x)s),
-                        CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
-                        CudaNdarray_HOST_STRIDES(cnda_%(x)s)[1],
-                        CudaNdarray_DEV_DATA(cnda_%(z)s),
-                        CudaNdarray_HOST_STRIDES(cnda_%(z)s)[0]
+                        CudaNdarray_HOST_DIMS(%(x)s)[0],
+                        CudaNdarray_HOST_DIMS(%(x)s)[1],
+                        CudaNdarray_DEV_DATA(%(x)s),
+                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                        CudaNdarray_DEV_DATA(%(z)s),
+                        CudaNdarray_HOST_STRIDES(%(z)s)[0]
                         );
                 CNDA_THREAD_SYNC;
                 if (cudaSuccess != cudaGetLastError()) 
@@ -495,21 +495,21 @@ class GpuSum(Op):
             """ %locals()
         for i in xrange(ndim):
             print >> sio, """
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[%(i)s],
+                    CudaNdarray_HOST_DIMS(%(x)s)[%(i)s],
             """ %locals()
         print >> sio, """
-                    CudaNdarray_DEV_DATA(cnda_%(x)s)
+                    CudaNdarray_DEV_DATA(%(x)s)
             """ %locals()
         for i in xrange(ndim):
             print >> sio, """
-                    ,CudaNdarray_HOST_STRIDES(cnda_%(x)s)[%(i)s]
+                    ,CudaNdarray_HOST_STRIDES(%(x)s)[%(i)s]
             """ %locals()
         print >> sio, """
-                    ,CudaNdarray_DEV_DATA(cnda_%(z)s)
+                    ,CudaNdarray_DEV_DATA(%(z)s)
             """ %locals()
         for i in xrange(nd_out):
             print >> sio, """
-                    ,CudaNdarray_HOST_STRIDES(cnda_%(z)s)[%(i)s]
+                    ,CudaNdarray_HOST_STRIDES(%(z)s)[%(i)s]
             """ %locals()
         print >> sio, """
                     );
@@ -626,16 +626,16 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             dim3 n_blocks(1);
             if (verbose) printf("running kernel_reduce_sum_1_%(name)s\\n");
             int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
             kernel_reduce_sum_1_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
-                    CudaNdarray_DEV_DATA(cnda_%(x)s),
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
-                    CudaNdarray_DEV_DATA(cnda_%(z)s));
+                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_DEV_DATA(%(z)s));
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts) 
@@ -658,24 +658,24 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[1],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             while (n_threads.y * n_threads.x <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
             n_threads.y -= 1;
-            if (n_threads.y > CudaNdarray_HOST_DIMS(cnda_%(x)s)[0]) 
-                n_threads.y = CudaNdarray_HOST_DIMS(cnda_%(x)s)[0]; 
+            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
+                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
 
             dim3 n_blocks(1);
             if (verbose) fprintf(stdout, "running kernel_reduce_sum_11_%(name)s\\n");
-            if (verbose) fprint_CudaNdarray(stdout, cnda_%(x)s);
+            if (verbose) fprint_CudaNdarray(stdout, %(x)s);
             int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
             kernel_reduce_sum_11_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[1],
-                    CudaNdarray_DEV_DATA(cnda_%(x)s),
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[1],
-                    CudaNdarray_DEV_DATA(cnda_%(z)s));
+                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_DEV_DATA(%(z)s));
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts) 
@@ -699,19 +699,19 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(cnda_%(x)s)[1]);
+            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
             if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
             int n_shared = sizeof(float) * n_threads.x;
             kernel_reduce_sum_10_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[1],
-                    CudaNdarray_DEV_DATA(cnda_%(x)s),
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[1],
-                    CudaNdarray_DEV_DATA(cnda_%(z)s),
-                    CudaNdarray_HOST_STRIDES(cnda_%(z)s)[0]
+                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0]
                     );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
@@ -740,12 +740,12 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(cnda_%(x)s)[1]);
+            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
             while (n_blocks.x * n_blocks.y <= NUM_VECTOR_OP_BLOCKS)
             {
-                if (n_blocks.y > CudaNdarray_HOST_DIMS(cnda_%(x)s)[2])
+                if (n_blocks.y > CudaNdarray_HOST_DIMS(%(x)s)[2])
                     break;
                 n_blocks.y += 1;
             }
@@ -760,17 +760,17 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[1],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             while (n_threads.x*n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
             {
-                if (n_threads.y > CudaNdarray_HOST_DIMS(cnda_%(x)s)[0])
+                if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[0])
                     break;
                 n_threads.y += 1;
             }
             n_threads.y -= 1;
 
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(cnda_%(x)s)[2]);
+            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[2]);
             %(makecall)s
         }
         """ % locals()
@@ -781,14 +781,14 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[2],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[2],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             dim3 n_blocks(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                         NUM_VECTOR_OP_BLOCKS));
             while (n_blocks.x * n_blocks.y <= NUM_VECTOR_OP_BLOCKS)
             {
-                if (n_blocks.y > CudaNdarray_HOST_DIMS(cnda_%(x)s)[1])
+                if (n_blocks.y > CudaNdarray_HOST_DIMS(%(x)s)[1])
                     break;
                 n_blocks.y += 1;
             }
@@ -802,13 +802,13 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[2],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[2],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
             //get as many y threads as we can fit
             while (n_threads.x * n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
             {
-                if (n_threads.y > CudaNdarray_HOST_DIMS(cnda_%(x)s)[1])
+                if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[1])
                     break;
                 n_threads.y += 1;
             }
@@ -817,7 +817,7 @@ class GpuSum(Op):
             //get as many z threads as we can fit
             while (n_threads.x * n_threads.y * n_threads.z <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
             {
-                if (n_threads.z > CudaNdarray_HOST_DIMS(cnda_%(x)s)[0])
+                if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0])
                     break;
                 n_threads.z += 1;
             }
@@ -833,39 +833,39 @@ class GpuSum(Op):
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(cnda_%(x)s)[3],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[3],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
             while (n_threads.y * n_threads.x < NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
             n_threads.y -= 1;
-            if (n_threads.y > CudaNdarray_HOST_DIMS(cnda_%(x)s)[2]) 
-                n_threads.y = CudaNdarray_HOST_DIMS(cnda_%(x)s)[2]; 
+            if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[2]) 
+                n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[2]; 
 
             while (n_threads.x * n_threads.y * n_threads.z < NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
             n_threads.z -= 1;
             if (n_threads.z > 64)
                 n_threads.z = 64;
-            if (n_threads.z > CudaNdarray_HOST_DIMS(cnda_%(x)s)[0]) 
-                n_threads.z = CudaNdarray_HOST_DIMS(cnda_%(x)s)[0]; 
+            if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
+                n_threads.z = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
             
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(cnda_%(x)s)[1]);
+            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
 
             if (verbose) printf("running kernel_reduce_sum_1011_%(name)s\\n");
-            if (verbose) fprint_CudaNdarray(stdout, cnda_%(x)s);
-            if (verbose) fprint_CudaNdarray(stdout, cnda_%(z)s);
+            if (verbose) fprint_CudaNdarray(stdout, %(x)s);
+            if (verbose) fprint_CudaNdarray(stdout, %(z)s);
             int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
             kernel_reduce_sum_1011_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[1],
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[2],
-                    CudaNdarray_HOST_DIMS(cnda_%(x)s)[3],
-                    CudaNdarray_DEV_DATA(cnda_%(x)s),
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[1],
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[2],
-                    CudaNdarray_HOST_STRIDES(cnda_%(x)s)[3],
-                    CudaNdarray_DEV_DATA(cnda_%(z)s),
-                    CudaNdarray_HOST_STRIDES(cnda_%(z)s)[0]);
+                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    CudaNdarray_HOST_DIMS(%(x)s)[2],
+                    CudaNdarray_HOST_DIMS(%(x)s)[3],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0]);
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts) 

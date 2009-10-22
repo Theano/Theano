@@ -29,42 +29,42 @@ class GpuDot22(Op):
         z, = outputs
         fail = sub['fail']
         return """
-        if (cnda_%(x)s->nd != 2)
+        if (%(x)s->nd != 2)
         {
-            PyErr_Format(PyExc_TypeError, "rank(x)==%%i must be 2", cnda_%(x)s->nd);
+            PyErr_Format(PyExc_TypeError, "rank(x)==%%i must be 2", %(x)s->nd);
             %(fail)s;
         }
-        if (cnda_%(y)s->nd != 2)
+        if (%(y)s->nd != 2)
         {
-            PyErr_Format(PyExc_TypeError, "rank(y)==%%i must be 2", cnda_%(y)s->nd);
+            PyErr_Format(PyExc_TypeError, "rank(y)==%%i must be 2", %(y)s->nd);
             %(fail)s;
         }
-        if ((NULL == cnda_%(z)s)
-            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[0] != CudaNdarray_HOST_DIMS(cnda_%(x)s)[0])
-            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[1] != CudaNdarray_HOST_DIMS(cnda_%(y)s)[1]))
+        if ((NULL == %(z)s)
+            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(y)s)[1]))
         {
-            //if (cnda_%(z)s) Py_DECREF(cnda_%(z)s);
-            Py_XDECREF(cnda_%(z)s);
+            //if (%(z)s) Py_DECREF(%(z)s);
+            Py_XDECREF(%(z)s);
             npy_intp dims[2];
-            dims[0] = CudaNdarray_HOST_DIMS(cnda_%(x)s)[0];
-            dims[1] = CudaNdarray_HOST_DIMS(cnda_%(y)s)[1];
-            cnda_%(z)s = (CudaNdarray*)CudaNdarray_new_null();
-            if ((NULL == cnda_%(z)s) || CudaNdarray_alloc_contiguous(cnda_%(z)s, 2, dims))
+            dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[1];
+            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            if ((NULL == %(z)s) || CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
             {
-                if (cnda_%(z)s)
+                if (%(z)s)
                 {
-                    Py_DECREF(cnda_%(z)s);
-                    cnda_%(z)s = NULL;
+                    Py_DECREF(%(z)s);
+                    %(z)s = NULL;
                 }
                 %(fail)s;
             }
         }
-        if (CudaNdarray_gemm(1.0f, cnda_%(x)s, cnda_%(y)s, 0.0f, cnda_%(z)s))
+        if (CudaNdarray_gemm(1.0f, %(x)s, %(y)s, 0.0f, %(z)s))
         {
-            if (cnda_%(z)s)
+            if (%(z)s)
             {
-                Py_DECREF(cnda_%(z)s);
-                cnda_%(z)s = NULL;
+                Py_DECREF(%(z)s);
+                %(z)s = NULL;
             }
             %(fail)s;
         }
@@ -105,12 +105,12 @@ class GpuGemm(Op):
         : (REAL)(((double*)%(b)s->data)[0]);
         #undef REAL
 
-        if (CudaNdarray_gemm(%(name)s_a, cnda_%(x)s, cnda_%(y)s, %(name)s_b, cnda_%(z_in)s))
+        if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, %(name)s_b, %(z_in)s))
         {
             %(fail)s;
         }
-        cnda_%(z_out)s = cnda_%(z_in)s;
-        Py_INCREF(cnda_%(z_out)s);
+        %(z_out)s = %(z_in)s;
+        Py_INCREF(%(z_out)s);
         """ % locals()
 gpu_gemm = GpuGemm()
 
@@ -222,15 +222,15 @@ class GpuDownsampleFactorMax(Op):
         ignore_border = int(self.ignore_border)
         return """
         int dims[4], xdim2, xdim3;
-        if (cnda_%(x)s->nd != 4)
+        if (%(x)s->nd != 4)
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        xdim2 = CudaNdarray_HOST_DIMS(cnda_%(x)s)[2];
-        xdim3 = CudaNdarray_HOST_DIMS(cnda_%(x)s)[3];
-        dims[0] = CudaNdarray_HOST_DIMS(cnda_%(x)s)[0];
-        dims[1] = CudaNdarray_HOST_DIMS(cnda_%(x)s)[1];
+        xdim2 = CudaNdarray_HOST_DIMS(%(x)s)[2];
+        xdim3 = CudaNdarray_HOST_DIMS(%(x)s)[3];
+        dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
+        dims[1] = CudaNdarray_HOST_DIMS(%(x)s)[1];
         dims[2] = xdim2 / %(ds0)s;
         dims[3] = xdim3 / %(ds1)s;
         if (! %(ignore_border)s)
@@ -243,19 +243,19 @@ class GpuDownsampleFactorMax(Op):
             %(fail)s;
         }
 
-        if ((NULL == cnda_%(z)s)
-            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[0] != dims[0])
-            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[1] != dims[1])
-            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[2] != dims[2])
-            || (CudaNdarray_HOST_DIMS(cnda_%(z)s)[3] != dims[3]))
+        if ((NULL == %(z)s)
+            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != dims[0])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != dims[1])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[2] != dims[2])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[3] != dims[3]))
         {
-            Py_XDECREF(cnda_%(z)s);
-            cnda_%(z)s = (CudaNdarray*)CudaNdarray_new_null();
-            if ((NULL == cnda_%(z)s)
-                || CudaNdarray_alloc_contiguous(cnda_%(z)s, 4, dims))
+            Py_XDECREF(%(z)s);
+            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            if ((NULL == %(z)s)
+                || CudaNdarray_alloc_contiguous(%(z)s, 4, dims))
             {
-                Py_XDECREF(cnda_%(z)s);
-                cnda_%(z)s = NULL;
+                Py_XDECREF(%(z)s);
+                %(z)s = NULL;
                 PyErr_SetString(PyExc_ValueError, "Was not able to allocate output!");
                 %(fail)s;
             }
@@ -268,12 +268,12 @@ class GpuDownsampleFactorMax(Op):
             if ((grid.x*grid.y) && dims[3])
             kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block, xdim3*sizeof(float)>>>(
                 dims[0], dims[1], dims[2], dims[3], xdim2, xdim3,
-                CudaNdarray_DEV_DATA(cnda_%(x)s),
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[1],
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[2],
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[3],
-                CudaNdarray_DEV_DATA(cnda_%(z)s));
+                CudaNdarray_DEV_DATA(%(x)s),
+                CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                CudaNdarray_DEV_DATA(%(z)s));
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err) 
@@ -372,57 +372,57 @@ class GpuDownsampleFactorMaxGrad(Op):
         ds0, ds1 = self.ds
         ignore_border = int(self.ignore_border)
         return """
-        if (cnda_%(x)s->nd != 4
-            || cnda_%(z)s->nd != 4
-            || cnda_%(gz)s->nd != 4)
+        if (%(x)s->nd != 4
+            || %(z)s->nd != 4
+            || %(gz)s->nd != 4)
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if ((NULL == cnda_%(gx)s)
-            || (CudaNdarray_HOST_DIMS(cnda_%(gx)s)[0] != CudaNdarray_HOST_DIMS(cnda_%(x)s)[0])
-            || (CudaNdarray_HOST_DIMS(cnda_%(gx)s)[1] != CudaNdarray_HOST_DIMS(cnda_%(x)s)[1])
-            || (CudaNdarray_HOST_DIMS(cnda_%(gx)s)[2] != CudaNdarray_HOST_DIMS(cnda_%(x)s)[2])
-            || (CudaNdarray_HOST_DIMS(cnda_%(gx)s)[3] != CudaNdarray_HOST_DIMS(cnda_%(x)s)[3]))
+        if ((NULL == %(gx)s)
+            || (CudaNdarray_HOST_DIMS(%(gx)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(gx)s)[1] != CudaNdarray_HOST_DIMS(%(x)s)[1])
+            || (CudaNdarray_HOST_DIMS(%(gx)s)[2] != CudaNdarray_HOST_DIMS(%(x)s)[2])
+            || (CudaNdarray_HOST_DIMS(%(gx)s)[3] != CudaNdarray_HOST_DIMS(%(x)s)[3]))
         {
-            Py_XDECREF(cnda_%(gx)s);
-            cnda_%(gx)s = (CudaNdarray*)CudaNdarray_new_null();
-            if ((NULL == cnda_%(gx)s)
-                || CudaNdarray_alloc_contiguous(cnda_%(gx)s, 4, CudaNdarray_HOST_DIMS(cnda_%(x)s)))
+            Py_XDECREF(%(gx)s);
+            %(gx)s = (CudaNdarray*)CudaNdarray_new_null();
+            if ((NULL == %(gx)s)
+                || CudaNdarray_alloc_contiguous(%(gx)s, 4, CudaNdarray_HOST_DIMS(%(x)s)))
             {
-                Py_XDECREF(cnda_%(gx)s);
-                cnda_%(gx)s = NULL;
+                Py_XDECREF(%(gx)s);
+                %(gx)s = NULL;
                 %(fail)s;
             }
         }
         {
             //TODO: implement this by supporting more
             //outputs than threads
-            dim3 grid(CudaNdarray_HOST_DIMS(cnda_%(x)s)[0], CudaNdarray_HOST_DIMS(cnda_%(x)s)[2]);
-            dim3 block(CudaNdarray_HOST_DIMS(cnda_%(x)s)[3]);
+            dim3 grid(CudaNdarray_HOST_DIMS(%(x)s)[0], CudaNdarray_HOST_DIMS(%(x)s)[2]);
+            dim3 block(CudaNdarray_HOST_DIMS(%(x)s)[3]);
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
-                CudaNdarray_HOST_DIMS(cnda_%(z)s)[0],
-                CudaNdarray_HOST_DIMS(cnda_%(z)s)[1],
-                CudaNdarray_HOST_DIMS(cnda_%(z)s)[2],
-                CudaNdarray_HOST_DIMS(cnda_%(z)s)[3],
-                CudaNdarray_HOST_DIMS(cnda_%(x)s)[2],
-                CudaNdarray_HOST_DIMS(cnda_%(x)s)[3],
-                CudaNdarray_DEV_DATA(cnda_%(x)s),
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[0],
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[1],
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[2],
-                CudaNdarray_HOST_STRIDES(cnda_%(x)s)[3],
-                CudaNdarray_DEV_DATA(cnda_%(z)s),
-                CudaNdarray_HOST_STRIDES(cnda_%(z)s)[0],
-                CudaNdarray_HOST_STRIDES(cnda_%(z)s)[1],
-                CudaNdarray_HOST_STRIDES(cnda_%(z)s)[2],
-                CudaNdarray_HOST_STRIDES(cnda_%(z)s)[3],
-                CudaNdarray_DEV_DATA(cnda_%(gz)s),
-                CudaNdarray_HOST_STRIDES(cnda_%(gz)s)[0],
-                CudaNdarray_HOST_STRIDES(cnda_%(gz)s)[1],
-                CudaNdarray_HOST_STRIDES(cnda_%(gz)s)[2],
-                CudaNdarray_HOST_STRIDES(cnda_%(gz)s)[3],
-                CudaNdarray_DEV_DATA(cnda_%(gx)s));
+                CudaNdarray_HOST_DIMS(%(z)s)[0],
+                CudaNdarray_HOST_DIMS(%(z)s)[1],
+                CudaNdarray_HOST_DIMS(%(z)s)[2],
+                CudaNdarray_HOST_DIMS(%(z)s)[3],
+                CudaNdarray_HOST_DIMS(%(x)s)[2],
+                CudaNdarray_HOST_DIMS(%(x)s)[3],
+                CudaNdarray_DEV_DATA(%(x)s),
+                CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                CudaNdarray_DEV_DATA(%(z)s),
+                CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                CudaNdarray_HOST_STRIDES(%(z)s)[2],
+                CudaNdarray_HOST_STRIDES(%(z)s)[3],
+                CudaNdarray_DEV_DATA(%(gz)s),
+                CudaNdarray_HOST_STRIDES(%(gz)s)[0],
+                CudaNdarray_HOST_STRIDES(%(gz)s)[1],
+                CudaNdarray_HOST_STRIDES(%(gz)s)[2],
+                CudaNdarray_HOST_STRIDES(%(gz)s)[3],
+                CudaNdarray_DEV_DATA(%(gx)s));
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err) 

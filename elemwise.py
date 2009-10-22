@@ -885,20 +885,20 @@ class NaiveAlgo(object):
         for iname in inputs:
             print >> sio, """
         //std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
-        if (%(nd)s != cnda_%(iname)s->nd)
+        if (%(nd)s != %(iname)s->nd)
         {
-            PyErr_Format(PyExc_TypeError, "need %(nd)s dims, not %%i", cnda_%(iname)s->nd);
+            PyErr_Format(PyExc_TypeError, "need %(nd)s dims, not %%i", %(iname)s->nd);
             %(fail)s;
         }
         for (int i = 0; i< %(nd)s; ++i)
         {
-            dims[i] = (dims[i] == 1) ? CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i] : dims[i];
-            if ((CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i] != 1) && (dims[i] != CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i]))
+            dims[i] = (dims[i] == 1) ? CudaNdarray_HOST_DIMS(%(iname)s)[i] : dims[i];
+            if ((CudaNdarray_HOST_DIMS(%(iname)s)[i] != 1) && (dims[i] != CudaNdarray_HOST_DIMS(%(iname)s)[i]))
             {
                 //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
                 PyErr_Format(PyExc_TypeError, "GpuElemwise input has incompatible dim[%%i] == %%i, where output has size %%i",
                     i,
-                    CudaNdarray_HOST_DIMS(cnda_%(iname)s)[i],
+                    CudaNdarray_HOST_DIMS(%(iname)s)[i],
                     dims[i]
                     );
                 %(fail)s;
@@ -909,31 +909,31 @@ class NaiveAlgo(object):
         #check that all outputs have valid dimensions
         for oname in outputs:
             print >> sio, """
-        for (int i = 0; (i< %(nd)s) && (cnda_%(oname)s); ++i) {
-            if (dims[i] != CudaNdarray_HOST_DIMS(cnda_%(oname)s)[i])
+        for (int i = 0; (i< %(nd)s) && (%(oname)s); ++i) {
+            if (dims[i] != CudaNdarray_HOST_DIMS(%(oname)s)[i])
             {
-                Py_DECREF(cnda_%(oname)s);
-                cnda_%(oname)s = NULL;
+                Py_DECREF(%(oname)s);
+                %(oname)s = NULL;
             }
         }
-        if (NULL == cnda_%(oname)s)
+        if (NULL == %(oname)s)
         {
-            cnda_%(oname)s = (CudaNdarray*)CudaNdarray_new_null();
-            if (!cnda_%(oname)s)
+            %(oname)s = (CudaNdarray*)CudaNdarray_new_null();
+            if (!%(oname)s)
             { 
                 //error string already set
                 %(fail)s;
             }
-            if (CudaNdarray_alloc_contiguous(cnda_%(oname)s, %(nd)s, dims))
+            if (CudaNdarray_alloc_contiguous(%(oname)s, %(nd)s, dims))
             {
                 //error string already set
-                Py_DECREF(cnda_%(oname)s);
-                cnda_%(oname)s = NULL;
+                Py_DECREF(%(oname)s);
+                %(oname)s = NULL;
                 %(fail)s;
             }
         }
-        //std::cerr << "ELEMWISE NEW %(oname)s nd" << cnda_%(oname)s->nd << "\\n";
-        //std::cerr << "ELEMWISE NEW %(oname)s data" << cnda_%(oname)s->devdata << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s nd" << %(oname)s->nd << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s data" << %(oname)s->devdata << "\\n";
         """ % locals()
         print >> sio, """
         { 
@@ -943,11 +943,11 @@ class NaiveAlgo(object):
             """ % locals()
         for iname in inputs:
             print >> sio, """
-                        , CudaNdarray_DEV_DATA(cnda_%(iname)s), CudaNdarray_HOST_STRIDES(cnda_%(iname)s)
+                        , CudaNdarray_DEV_DATA(%(iname)s), CudaNdarray_HOST_STRIDES(%(iname)s)
             """ % locals()
         for oname in outputs:
             print >> sio, """
-                        , CudaNdarray_DEV_DATA(cnda_%(oname)s), CudaNdarray_HOST_STRIDES(cnda_%(oname)s)
+                        , CudaNdarray_DEV_DATA(%(oname)s), CudaNdarray_HOST_STRIDES(%(oname)s)
             """ % locals()
         print >> sio, """
                         ))
@@ -956,8 +956,8 @@ class NaiveAlgo(object):
             """
         for oname in outputs:
             print >> sio, """
-                Py_DECREF(cnda_%(oname)s);
-                cnda_%(oname)s = NULL;
+                Py_DECREF(%(oname)s);
+                %(oname)s = NULL;
                 """ % locals()
         print >> sio, """
                 %(fail)s;
