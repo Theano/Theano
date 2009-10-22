@@ -1253,8 +1253,11 @@ def local_elemwise_fusion(node):
             #if the scalar_op don't have a c implementation, we skip its fusion to allow the fusion of the other ops.
             do_fusion=True
             try:
-                i.owner.op.scalar_op.c_code(i,"test_presence_of_c_code",
-                                            i.owner.inputs,i.owner.outputs,{})
+                s_input = [scalar.Scalar(x.dtype).make_variable() for x in i.owner.inputs]
+                s_op=i.owner.op.scalar_op(*s_input)
+                i.owner.op.scalar_op.c_code(s_op.owner,"test_presence_of_c_code",
+                                            ["x" for x in i.owner.inputs],
+                                            "z",{})
             except MethodNotDefined:
                 catch = True
             except NotImplementedError:
@@ -1272,9 +1275,7 @@ def local_elemwise_fusion(node):
             
             nb_elemwise+=1
             inputs.extend(i.owner.inputs)
-            s_input = [scalar.Scalar(x.dtype).make_variable() for x in i.owner.inputs]
             s_inputs.extend(s_input)
-            s_op=i.owner.op.scalar_op(*s_input)
             s_g.append(s_op)
         else:
             if i.owner and isinstance(i.owner.op,T.Elemwise) and len(i.clients)>1:
