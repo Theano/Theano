@@ -822,12 +822,13 @@ class test_fusion(unittest.TestCase):
         Test with and without DimShuffle
         """
         #TODO: disable the canonizer?
-        def my_init(shp,dtype, num=0):
+        def my_init(shp, dtype='float64', num=0):
             #ret = numpy.asarray(numpy.random.rand(*shp),dtype=dtype)
             ret = numpy.zeros(shp, dtype=dtype)+num
             return ret
         fw, fx, fy, fz = fmatrices('wxyz')
         dw, dx, dy, dz = dmatrices('wxyz')
+        ix, iy, iz = imatrices('xyz')
         fv = fvector('r').dimshuffle('x',0)
         dv = dvector('s').dimshuffle('x',0)
         fwv = my_init(shp,'float32',1)
@@ -836,6 +837,9 @@ class test_fusion(unittest.TestCase):
         fzv = my_init(shp,'float32',4)
         fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
         dwv = my_init(shp,'float64',5)
+        ixv = numpy.asarray(my_init(shp,num=60),dtype='int32')
+        iyv = numpy.asarray(my_init(shp,num=70),dtype='int32')
+        izv = numpy.asarray(my_init(shp,num=70),dtype='int32')
 #        dxv = my_init(shp,'float64',6)
 #        dyv = my_init(shp,'float64',7)
 #        dzv = my_init(shp,'float64',8)
@@ -886,16 +890,21 @@ class test_fusion(unittest.TestCase):
             (fx+fy+cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cos(fzv),'float32'),
             (fx+fy+cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.cosh(fzv),'float32'),
             (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.absolute(fzv),'float32'),#30
+            (ix+iy+abs(iz),(ix,iy,iz),(ixv,iyv,izv),1,ixv+iyv+numpy.absolute(izv),'int32'),
             (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
             (fx+fy+theano.tensor.log2(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log2(fzv),'float32'),
             (fx+fy+theano.tensor.log10(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.log10(fzv),'float32'),
-            (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,'float32'),#pow
-            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),#35
+            (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,'float32'),#pow #35
+            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),
             (fx-fy-fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv-fzv,'float32'),
             (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
+            (fx-theano.tensor.true_div(fy,2),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/2),'float32'),
+            (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),#40
+            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)),'float64'),#int32 - float32 = float64 #No c_code for int_div
+            (fx-(fy/2),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/2),'float32'),
             (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),2,fxv-(fyv%fzv),'float32'),
             (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
-            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),#40
+            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
             (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),
             (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),#TODO: bugged on the gpu
             (fx-(fy==fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv==fzv),'float32'),#TODO: bugged
@@ -910,7 +919,7 @@ class test_fusion(unittest.TestCase):
             (fx-fy+theano.tensor.neg(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(-fzv),'float32'),
 #            (fx-fy+theano.tensor.iround(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),#TODO: trouble with the output type. To my understanding, numpy and c round fct return the same type as the input. Why we don't do this?
 
-            #TODO: BIT OP only with ints, xor, or, and, invert
+            #TODO: BIT OP only with ints, xor, or, and, invert, cast
 #            (fx-theano.tensor.or_(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy|fz),'float32'),
 #            (fx-theano.tensor.xor(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy^fz),'float32'),
 
