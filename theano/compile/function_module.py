@@ -6,7 +6,7 @@ __docformat__ = "restructuredtext en"
 import copy_reg
 import cPickle
 
-import sys
+import sys, time, copy
 
 if sys.version_info[:2] >= (2,5):
   from functools import partial
@@ -14,8 +14,6 @@ if sys.version_info[:2] >= (2,5):
 import numpy
 import theano.gof
 #from theano import gof
-import copy
-import time
 import mode as mode_module
 from io import *
 
@@ -713,7 +711,9 @@ class FunctionMaker(object):
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
+        t0 = time.time()
         optimizer(env)
+        _logger.debug('Optimizing took %f seconds' % (time.time() - t0))
 
         # initialize the linker
         if not hasattr(linker, 'accept'):
@@ -784,7 +784,9 @@ class FunctionMaker(object):
 
 
         # Get a function instance
+        t0 = time.time()
         _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
+        _logger.debug('Linking took %f seconds' % (time.time() - t0))
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs, defaults, self.unpack_single, self.return_none, self)
         return fn
 
