@@ -1294,6 +1294,16 @@ def local_elemwise_fusion(node):
 
     otype = node.outputs[0].type
     s_new_out=node.op.scalar_op(*s_g)
+    try:
+        s_new_out.owner.op.c_code(s_inputs, "test_presence_of_c_code",
+                         ["x" for x in s_g],
+                         "z",{}) 
+    except MethodNotDefined:
+        print "OPTIMISATION WARNING: ",i.owner.op.scalar_op,"don't implement the c_code fonction. This is not fast and disable the fusion of loop."
+        return False
+    except NotImplementedError:
+        print "OPTIMISATION WARNING: ",s_new_out.owner.op,"don't implement the c_code fonction. This disable the fusion of loop."
+        return False
 
     #create the composite op.
     C = scalar.Composite(s_inputs,[s_new_out])
