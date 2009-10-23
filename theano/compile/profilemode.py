@@ -210,7 +210,7 @@ class ProfileMode(Mode):
             if op_flops:
                 print '   %4.1f%%  %.3fs  %.3fs  %s %7.1f %d %s' % (f*100, tot, t, msg, op_flops.get(a,-1), nb_call, a)
             else:
-                print '   %4.1f%%  %.3fs  %.3fs  %s %s' % (f*100, tot, t, msg, a)
+                print '   %4.1f%%  %.3fs  %.3fs  %s %d %s' % (f*100, tot, t, msg, nb_call, a)
         print '   ... (remaining %i Ops account for %6.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call in otimes[n_ops_to_print:])*100,
