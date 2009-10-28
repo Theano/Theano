@@ -1278,10 +1278,6 @@ def local_elemwise_fusion(node):
             s_inputs.extend(s_input)
             s_g.append(s_op)
         else:
-            if i.owner and isinstance(i.owner.op,T.Elemwise) and len(i.clients)>1:
-                #should we put this in the first if, then we would go to the elif to don't fuse it?
-                print "local_elemwise_fusion: inputs have more then 1 client. Don't fuse it for now.!"
-                return False
             inputs.append(i)
             s=scalar.Scalar(i.dtype).make_variable()
             s_inputs.append(s)
