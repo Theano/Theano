@@ -1295,7 +1295,7 @@ def local_elemwise_fusion(node):
     otype = node.outputs[0].type
     s_new_out=node.op.scalar_op(*s_g)
     try:
-        s_new_out.owner.op.c_code(s_inputs, "test_presence_of_c_code",
+        s_new_out.owner.op.c_code(s_new_out.owner, "test_presence_of_c_code",
                          ["x" for x in s_g],
                          "z",{}) 
     except MethodNotDefined:
