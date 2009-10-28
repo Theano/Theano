@@ -301,8 +301,8 @@ class GpuSoftmax (Op):
     def make_node(self, x):
         return Apply(self, [x],[x.type()])
     def c_code_cache_version(self):
-        return ()
-        # reduce (1,) + device_softmax.code_version
+        #return ()
+        return (1,) + inline_softmax.code_version
     def c_code(self, node, nodename, (x,), (z,), sub):
         fail = sub['fail']
         return """
