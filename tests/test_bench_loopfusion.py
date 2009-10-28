@@ -224,7 +224,7 @@ class Kouh2008(object):
         return Image.fromarray(out_array, 'RGB')
 
 class Config(object):
-    use_gpu = False
+    use_gpu = True
     dtype='float32'
     rng_seed = 23498
 
@@ -254,14 +254,14 @@ class Config(object):
 
     lr = 0.001
 
-def test_bench_elemwise(n_iter=100, **kwargs):
+def test_bench_elemwise(n_iter=1000, **kwargs):
     conf = Config()
     for k in kwargs:
         setattr(conf, k, kwargs[k])
 
     if conf.use_gpu:
         import theano_cuda_ndarray
-        theano_cuda_ndarray.handle_shared_float32(True) 
+        theano_cuda_ndarray.use()
 
     # get symbolic train set
     s_lr = theano.tensor.fscalar()
