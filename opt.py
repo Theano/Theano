@@ -7,7 +7,8 @@ from theano_cuda_ndarray.blas import gpu_dot22, gpu_gemm, GpuConv
 from theano_cuda_ndarray.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from theano_cuda_ndarray.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
-        GpuCrossentropySoftmax1HotWithBiasDx)
+        GpuCrossentropySoftmax1HotWithBiasDx,
+        GpuSoftmax)
 from theano.compile import optdb
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
 
@@ -285,6 +286,16 @@ def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
             return [host_from_gpu(gpu_dx)]
     return False
 
+@register_opt()
+@local_optimizer([])
+def local_gpu_softmax(node):
+    if isinstance(node.op, tensor.nnet.Softmax):
+        x, = node.inputs
+        if x.owner and x.owner.op == host_from_gpu:
+            gpu_x, = x.owner.inputs
+            gpu_sm = GpuSoftmax()(gpu_x)
+            return [host_from_gpu(gpu_sm)]
+    return False
 
 #### Convolution, maxpooling
 import theano.sandbox.conv
