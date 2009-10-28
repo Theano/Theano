@@ -1211,7 +1211,8 @@ class Composite(ScalarOp):
         else:
             return "%s{%s}" % (self.__class__.__name__, ", ".join(
                 "%s=%s" % (k, v) for k, v in self.__dict__.items()
-                if k not in ["name","env","_c_code"] ))
+                if k not in ["env","_c_code", "_cmodule_key", "_impls",
+                             "_hashval"] ))
 
     def __init__(self, inputs, outputs):
         env = Env(*gof.graph.clone(inputs, outputs))
@@ -1233,6 +1234,9 @@ class Composite(ScalarOp):
                     subd[orphan] = orphan.type.c_literal(orphan.data)
                 else:
                     raise ValueError("All orphans in the env to Composite must be Constant instances.")
+
+        if not hasattr(self,"name"):
+            self.name="".join([n.op.__class__.__name__ if not hasattr(n,"name") else n.name for n in env.nodes])
 
         _c_code = "{\n"
         i = 0
