@@ -1236,7 +1236,7 @@ class Composite(ScalarOp):
                     raise ValueError("All orphans in the env to Composite must be Constant instances.")
 
         if not hasattr(self,"name"):
-            self.name="".join([n.op.__class__.__name__ if not hasattr(n,"name") else n.name for n in env.nodes])
+            self.name="Composite{"+"".join([n.op.__class__.__name__ if not hasattr(n,"name") else n.name for n in env.nodes])+"}"
 
         _c_code = "{\n"
         i = 0
