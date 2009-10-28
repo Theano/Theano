@@ -1267,12 +1267,6 @@ def local_elemwise_fusion(node):
                 do_fusion=False
 
         if do_fusion:
-            if len(i.clients)>1:
-                #should we put this in the first if, then we would go to the elif to don't fuse it?
-    #if one of the inputs have more then 1 clients and it is an intermediate result. We don't fuse.        
-                print "local_elemwise_fusion: Elemwise inputs have more then 1 client. Don't optimise for now"
-                return False
-            
             nb_elemwise+=1
             inputs.extend(i.owner.inputs)
             s_inputs.extend(s_input)
