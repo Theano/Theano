@@ -1028,7 +1028,8 @@ class test_fusion(unittest.TestCase):
             print times2, times2.min(), times2.max(), times2.sum()
             d=times2/times1
     #        d.sort()
-            print "times2/times1",d,d.min(), d.max(), d.mean(), d.std()
+            print "times2/times1",d
+            print "min", d.min(), "argmin", d.argmin(), "max", d.max(), "mean", d.mean(), "std", d.std()
         finally:
             mode2._optimizer = old_optimizer
 
