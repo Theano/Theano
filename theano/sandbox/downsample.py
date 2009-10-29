@@ -304,37 +304,3 @@ class DownsampleFactorMax(Op):
     def c_code_cache_version(self):
         return ()
 
-def max_pool(images=None, imshp=None, maxpoolshp=None, ignore_border=True):
-    """Implements a max pooling layer
-
-    Uses the same API as sp.max_pool but uses the Downsample op instead.
-
-    Takes as input a 2D tensor of shape batch_size x img_size and performs max pooling.
-    Max pooling downsamples by taking the max value in a given area, here defined by
-    maxpoolshp. Outputs a 2D tensor of shape batch_size x output_size.
-
-    Parameters are keyword arguments in order to use func_to_mod.
-
-    @param images: 2D tensor containing images on which to apply convolution.
-                   Assumed to be of shape batch_size x img_size
-    @param imgshp: tuple containing image dimensions
-    @param maxpoolshp: tuple containing shape of area to max pool over
-    
-    @output out1: symbolic result (2D tensor)
-    @output out2: logical shape of the output
-
-    """
-    if len(imshp) == 2:
-        imshp = (1,) + imshp
-    elif len(imshp)!=3:
-        raise NotImplementedError("!")
-    
-    # all these reshapes should happen in place
-    imrshp = tensor.stack(images.shape[0],
-                          *[tensor.as_tensor(x) for x in imshp])
-    imtensor = tensor.reshape(images, imrshp)
-
-    maxpop = DownsampleFactorMax(maxpoolshp, ignore_border)
-    rval = maxpop(imtensor)
-
-    return tensor.flatten(rval,2), maxpop.out_shape(imshp, maxpoolshp, ignore_border)
