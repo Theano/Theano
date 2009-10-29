@@ -3,6 +3,8 @@
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 
+import logging
+_logger = logging.getLogger('theano.tensor.opt')
 
 from theano import gof
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
@@ -829,7 +831,8 @@ class Canonizer(gof.LocalOptimizer):
         if new.type == out.type:
             return [new]
         else:
-            print >> sys.stderr, 'CANONIZE FAILED: new, out = ', new, ',', out, 'types', new.type, ',', out.type
+            _logger.warning(' '.join(('CANONIZE FAILED: new, out = ', new, ',', out, 'types',
+                new.type, ',', out.type)))
             return False
 
     def __str__(self):
@@ -1262,7 +1265,7 @@ def local_elemwise_fusion(node):
             except NotImplementedError:
                 catch = True
             if catch:
-                print "OPTIMISATION WARNING: ",i.owner.op.scalar_op,"don't implement the c_code fonction. This is not fast and disable the fusion of loop."
+                _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion." % str(i.owner.op.scalar_op))
                 do_fusion=False
 
         if do_fusion:
@@ -1288,10 +1291,10 @@ def local_elemwise_fusion(node):
                          ["x" for x in s_g],
                          "z",{}) 
     except MethodNotDefined:
-        print "OPTIMISATION WARNING: ",i.owner.op.scalar_op,"don't implement the c_code fonction. This is not fast and disable the fusion of loop."
+        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion." % str(i.owner.op.scalar_op))
         return False
     except NotImplementedError:
-        print "OPTIMISATION WARNING: ",s_new_out.owner.op,"don't implement the c_code fonction. This disable the fusion of loop."
+        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion." % str(s_new_out.op.scalar_op))
         return False
 
     #create the composite op.
@@ -1309,10 +1312,10 @@ flags=os.getenv('THEANO_FLAGS',None)
 if flags:
     flags=flags.split(',')
     if 'local_elemwise_fusion' in flags:
-        print "Will fusion elemwise"
+        _logger.debug("enabling optimization: fusion elemwise")
         register_specialize(local_elemwise_fusion)
     else:
-        print "Won't fuse elemwise"
+        _logger.debug("not enabling optimization: fusion elemwise")
 
 # def make_composite(inputs, outputs):
 #     scalar_inputs = [scalar.Scalar(dtype = i.type.dtype)() for i in inputs]
