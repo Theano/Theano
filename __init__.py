@@ -17,7 +17,12 @@ def use(device=None):
     if use.device_number is None:
         # No successful call to use() has been made yet
         if device is None:
-            device = int(os.getenv("THEANO_GPU",0))
+            device = os.getenv("THEANO_GPU",0)
+        import pdb
+        pdb.set_trace()
+        if device=="-1" or device=="CPU":
+            return
+        device=int(device)
         try:
             cuda_ndarray.gpu_init(device)
             handle_shared_float32(True)
