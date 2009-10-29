@@ -228,12 +228,17 @@ int8 = Scalar('int8')
 int16 = Scalar('int16')
 int32 = Scalar('int32')
 int64 = Scalar('int64')
+uint8 = Scalar('uint8')
+uint16 = Scalar('uint16')
+uint32 = Scalar('uint32')
+uint64 = Scalar('uint64')
 float32 = Scalar('float32')
 float64 = Scalar('float64')
 complex64 = Scalar('complex64')
 complex128 = Scalar('complex128')
 
 int_types = int8, int16, int32, int64
+uint_types = uint8, uint16, uint32, uint64
 float_types = float32, float64
 complex_types = complex64, complex128
 
@@ -905,15 +910,24 @@ convert_to_int8 = Cast(int8, name='convert_to_int8')
 convert_to_int16 = Cast(int16, name='convert_to_int16')
 convert_to_int32 = Cast(int32, name='convert_to_int32')
 convert_to_int64 = Cast(int64, name='convert_to_int64')
+convert_to_uint8 = Cast(uint8, name='convert_to_uint8')
+convert_to_uint16 = Cast(uint16, name='convert_to_uint16')
+convert_to_uint32 = Cast(uint32, name='convert_to_uint32')
+convert_to_uint64 = Cast(uint64, name='convert_to_uint64')
 convert_to_float32 = Cast(float32, name='convert_to_float32')
 convert_to_float64 = Cast(float64, name='convert_to_float64')
 convert_to_complex64 = Cast(complex64, name='convert_to_complex64')
 convert_to_complex128 = Cast(complex128, name='convert_to_complex128')
 
-_cast_mapping = {'int8': convert_to_int8,
+_cast_mapping = {
+           'int8': convert_to_int8,
            'int16': convert_to_int16,
            'int32': convert_to_int32,
            'int64': convert_to_int64,
+           'uint8': convert_to_uint8,
+           'uint16': convert_to_uint16,
+           'uint32': convert_to_uint32,
+           'uint64': convert_to_uint64,
            'float32': convert_to_float32,
            'float64': convert_to_float64,
            'complex64': convert_to_complex64,
