@@ -26,7 +26,7 @@ class test_casting(unittest.TestCase):
         assert 0
 
     def test_basic(self):
-        for type1 in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:
+        for type1 in ['uint8', 'uint16', 'uint32', 'uint64', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64']:
             x = TensorType(dtype = type1, broadcastable = (False, )).make_variable()
             for type2, converter in zip(['int8', 'int16', 'int32', 'int64', 'float32', 'float64'],
                                         [_convert_to_int8, _convert_to_int16,
