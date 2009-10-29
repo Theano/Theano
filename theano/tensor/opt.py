@@ -1321,6 +1321,21 @@ def local_elemwise_fusion(node):
     assert len(n.outputs)==1
     assert node.outputs[0].dtype==n.outputs[0].dtype
 
+    # There is a hard limit of 256 bytes for the formal argument list to a GPU kernel function.
+    # Here, we estimate how many bytes the new Op will need, and abort if it needs too much.
+    if True:
+        argument_limit = 200  # 256 didn't work, but a lower number did... so something funny
+        # is going on 
+        int_size = 4
+        ptr_size = 4
+        argument_size = 4 #for numels
+        argument_size += int_size *  inputs[0].type.ndim # for the shape
+        argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.inputs)
+        argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.outputs)
+        if argument_size >= argument_limit:
+            _logger.warning('loop fusion failed because Op would exceed kernel argument limit.')
+            return False
+
 #    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
     return n.outputs
 
