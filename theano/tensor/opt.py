@@ -1238,9 +1238,25 @@ def local_elemwise_fusion(node):
 
     For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
     The number of dimension is validated at call time by theano itself.
-    TODO:The broadcast flag?
+
     """
-#TODO: Merge with multiple output to merge when an inputs have multiple clients. This can't be done with a local optimiser.
+    # META TODO:  PUT THESE THINGS IN TRAC, NOT TODO NOTES!!
+    # TODO: use broadcast flag?
+
+    # TODO: don't do this optimization as a localOptimizer.  Analyze the graph in terms of
+    # elemwise subgraphs, and then replace each subgraph with a Composite version.
+
+    # TODO: use malloc and copy to transfer arguments that don't fit within the parameter space
+    # of 256 bytes
+    #
+    # TODO: Merge with multiple output to merge when an inputs have multiple clients. This can't be done with a local optimiser.
+    # TODO: Related: Support composites with multiple outputs
+
+    # TODO: Use Composite to combine Elemwise and Reduce operations.  We have to loop over the
+    # data anyway... might as well sum it up while we're at it (this can be trickier than i'm
+    # making it seound here. The data-traversal should be done contiguously, and the summing-up
+    # might not be easy or worthwhile if the summation axis doesn't line up with a contiguous
+    # dimension)
 
     if not isinstance(node.op, T.Elemwise):
         return False
@@ -1279,7 +1295,7 @@ def local_elemwise_fusion(node):
             s_inputs.append(s)
             s_g.append(s)
 
-    #if no inputs have are an elemwise, their is nothing to fuse.
+    #if no inputs have are an elemwise, there is nothing to fuse.
     if nb_elemwise==0:
 #        print "local_elemwise_fusion: no elemwise in inputs. Nothing to fuse."
         return False
