@@ -1056,6 +1056,18 @@ _convert_to_int32 = _conversion(elemwise.Elemwise(scal.convert_to_int32), 'int32
 _convert_to_int64 = _conversion(elemwise.Elemwise(scal.convert_to_int64), 'int64')
 """Cast to 64-bit integer"""
 
+_convert_to_uint8  = _conversion(elemwise.Elemwise(scal.convert_to_uint8), 'uint8')
+"""Cast to unsigned 8-bit integer"""
+    
+_convert_to_uint16 = _conversion(elemwise.Elemwise(scal.convert_to_uint16), 'uint16')
+"""Cast to unsigned 16-bit integer"""
+
+_convert_to_uint32 = _conversion(elemwise.Elemwise(scal.convert_to_uint32), 'uint32')
+"""Cast to unsigned 32-bit integer"""
+
+_convert_to_uint64 = _conversion(elemwise.Elemwise(scal.convert_to_uint64), 'uint64')
+"""Cast to unsigned 64-bit integer"""
+
 _convert_to_float32 = _conversion(elemwise.Elemwise(scal.convert_to_float32), 'float32')
 """Cast to single-precision floating point"""
 
@@ -1068,10 +1080,15 @@ _convert_to_complex64  = _conversion(elemwise.Elemwise(scal.convert_to_complex64
 _convert_to_complex128 = _conversion(elemwise.Elemwise(scal.convert_to_complex128), 'complex128')
 """Cast to double-precision complex"""
 
-_cast_mapping = {'int8': _convert_to_int8,
+_cast_mapping = {
+           'int8': _convert_to_int8,
            'int16': _convert_to_int16,
            'int32': _convert_to_int32,
            'int64': _convert_to_int64,
+           'uint8': _convert_to_uint8,
+           'uint16': _convert_to_uint16,
+           'uint32': _convert_to_uint32,
+           'uint64': _convert_to_uint64,
            'float32': _convert_to_float32,
            'float64': _convert_to_float64,
            'complex64': _convert_to_complex64,
