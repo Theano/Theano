@@ -18,8 +18,6 @@ def use(device=None):
         # No successful call to use() has been made yet
         if device is None:
             device = os.getenv("THEANO_GPU",0)
-        import pdb
-        pdb.set_trace()
         if device=="-1" or device=="CPU":
             return
         device=int(device)
