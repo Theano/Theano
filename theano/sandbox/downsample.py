@@ -151,17 +151,44 @@ class DownsampleFactorMax(Op):
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False):
-        #old code not tested (not evenread)
-        a, b = imgshape[-2:]
-        rval = list(imgshape[:-2])+[ a/ds[0], b/ds[1]]
+        """Return the shape of the output from this op, for input of given shape and flags.
+
+        :param imgshape: the shape of a tensor of images. The last two elements are interpreted
+        as the number of rows, and the number of cols.
+        :type imgshape: tuple, list, or similar.
+
+        :param ds: downsample factor over rows and columns
+        :type ds: list or tuple of two ints
+
+        :param ignore_border: if ds doesn't divide imgshape, do we include an extra row/col of
+        partial downsampling (False) or ignore it (True).
+        :type ignore_border: bool
+
+        :rtype: list
+        :returns: the shape of the output from this op, for input of given shape.  This will
+        have the same length as imgshape, but with last two elements reduced as per the
+        downsampling & ignore_border flags.  
+        """
+        if len(imgshape) < 2:
+            raise TypeError('imgshape must have at least two elements (rows, cols)')
+        r, c = imgshape[-2:]
+        rval = list(imgshape[:-2])+[ r/ds[0], c/ds[1]]
         if not ignore_border:
-            if a % ds[0]:
+            if r % ds[0]:
                 rval[-2] += 1
-            if b % ds[1]:
+            if c % ds[1]:
                 rval[-1] += 1
         return rval
 
     def __init__(self, ds, ignore_border=False):
+        """
+        :param ds: downsample factor over rows and columns
+        :type ds: list or tuple of two ints
+
+        :param ignore_border: if ds doesn't divide imgshape, do we include an extra row/col of
+        partial downsampling (False) or ignore it (True).
+        :type ignore_border: bool
+        """
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
 
