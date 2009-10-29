@@ -253,6 +253,11 @@ class TensorType(Type):
     When this is True, strict filtering rejects data containing NaN or Inf entries. (Used in `DebugMode`)
     """
 
+    use_shape = False
+    """
+    This should be removed (hardcoded to be False) after AISTATS09
+    """
+
     def __init__(self, dtype, broadcastable, name = None, shape=None):
         """Initialize self.dtype and self.broadcastable.
 
@@ -305,10 +310,11 @@ class TensorType(Type):
             if self.filter_checks_isfinite and (not numpy.all(numpy.isfinite(data))):
                 raise TypeError("non-finite elements not allowed")
 
-            for si, di in zip(self.shape, data.shape):
-                if not (si is None or si == di):
-                    raise TypeError('%s requires ndarray with shape matching %s (got %s)'%(
-                        self, self.shape, data.shape))
+            if TensorType.use_shape:
+                for si, di in zip(self.shape, data.shape):
+                    if not (si is None or si == di):
+                        raise TypeError('%s requires ndarray with shape matching %s (got %s)'%(
+                            self, self.shape, data.shape))
             return data
         else:
             data = numpy.asarray(data, dtype = self.dtype)
@@ -347,9 +353,13 @@ class TensorType(Type):
 
     def __eq__(self, other):
         """Compare True iff other is the same kind of TensorType"""
-        return type(self) == type(other) and other.dtype == self.dtype \
-                and other.broadcastable == self.broadcastable \
-                and other.shape == self.shape
+        if TensorType.use_shape:
+            return type(self) == type(other) and other.dtype == self.dtype \
+                    and other.broadcastable == self.broadcastable \
+                    and other.shape == self.shape
+        else:
+            return type(self) == type(other) and other.dtype == self.dtype \
+                    and other.broadcastable == self.broadcastable
 
     @staticmethod
     def values_eq(a, b):
@@ -420,7 +430,10 @@ class TensorType(Type):
 
     def __hash__(self):
         """Hash equal for same kinds of TensorType"""
-        return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable) ^ hash(self.shape)
+        if TensorType.use_shape:
+            return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable) ^ hash(self.shape)
+        else:
+            return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable)
 
     ndim = property(lambda self: len(self.broadcastable), doc = "number of dimensions")
     """Number of dimensions
@@ -1043,6 +1056,18 @@ _convert_to_int32 = _conversion(elemwise.Elemwise(scal.convert_to_int32), 'int32
 _convert_to_int64 = _conversion(elemwise.Elemwise(scal.convert_to_int64), 'int64')
 """Cast to 64-bit integer"""
 
+_convert_to_uint8  = _conversion(elemwise.Elemwise(scal.convert_to_uint8), 'uint8')
+"""Cast to unsigned 8-bit integer"""
+    
+_convert_to_uint16 = _conversion(elemwise.Elemwise(scal.convert_to_uint16), 'uint16')
+"""Cast to unsigned 16-bit integer"""
+
+_convert_to_uint32 = _conversion(elemwise.Elemwise(scal.convert_to_uint32), 'uint32')
+"""Cast to unsigned 32-bit integer"""
+
+_convert_to_uint64 = _conversion(elemwise.Elemwise(scal.convert_to_uint64), 'uint64')
+"""Cast to unsigned 64-bit integer"""
+
 _convert_to_float32 = _conversion(elemwise.Elemwise(scal.convert_to_float32), 'float32')
 """Cast to single-precision floating point"""
 
@@ -1055,10 +1080,15 @@ _convert_to_complex64  = _conversion(elemwise.Elemwise(scal.convert_to_complex64
 _convert_to_complex128 = _conversion(elemwise.Elemwise(scal.convert_to_complex128), 'complex128')
 """Cast to double-precision complex"""
 
-_cast_mapping = {'int8': _convert_to_int8,
+_cast_mapping = {
+           'int8': _convert_to_int8,
            'int16': _convert_to_int16,
            'int32': _convert_to_int32,
            'int64': _convert_to_int64,
+           'uint8': _convert_to_uint8,
+           'uint16': _convert_to_uint16,
+           'uint32': _convert_to_uint32,
+           'uint64': _convert_to_uint64,
            'float32': _convert_to_float32,
            'float64': _convert_to_float64,
            'complex64': _convert_to_complex64,

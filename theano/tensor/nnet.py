@@ -582,7 +582,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         }
         if (%(x)s->dimensions[0] != %(y_idx)s->dimensions[0])
         {
-            PyErr_Format(PyExc_ValueError, "number of rows in x (%%i) does not match length of y (%%i)",
+            PyErr_Format(PyExc_ValueError, "number of rows in x (%%zi) does not match length of y (%%zi)",
             %(x)s->dimensions[0], %(y_idx)s->dimensions[0]);
             %(fail)s;
         }
@@ -633,7 +633,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
 
     def c_code_cache_version(self):
-        return (4,) + SoftmaxWithBias.c_code_cache_version()
+        return (5,) + SoftmaxWithBias.c_code_cache_version()
     def c_code(self, node, name, (x, b, y_idx), (nll, sm, am), sub):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type

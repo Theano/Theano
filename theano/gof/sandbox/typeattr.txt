@@ -1,0 +1,123 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!  This is a working proposal, not done.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Type Attributes: Proposal for Propagating extra type information in graphs
+==========================================================================
+
+For various reasons, we would often like to know more about arguments to an Op than just their
+type.
+
+In a very obvious way, it is essential to know the size of various inputs to be able to
+reorganize graphs for minimal runtime.
+
+Also, to generate better C code, there are many reasons why we would like to know the size, the
+shape, and the numeric range of the arguments.  Algebraic properties such as positive
+semi-definiteness might be interesting to add down the road, but are not necessary for our work
+now.
+
+To generate better C code:
+
+  - On GPU, shape and strides have a big impact on the choice of algorithm for many ops.
+
+  - knowing the shape and stride we can generate faster GPU code that uses fewer registers
+    (parallelizes better)
+    
+  - Conv needs to know the shape (and possibly even the stride) of the arguments
+
+  - Gemm needs to know the strides (it currently should deal with things by copying internally)
+
+  - Reduce needs to know the strides
+
+  - Many scalar ops need to know if NaN or Inf might be coming in on input.
+
+  - Loop-unrolling methods need to know the shape
+
+  - knowing strides in advance means that array indexes can be pre-computed
+
+
+Attempt 1: Adding things to TensorType
+--------------------------------------
+
+One way to include this information would be to add it into the the TensorType class.  This
+failed though, because throughout the library there are checks of type equality.  When one
+TensorType Variable might have any shape, but another TensorType Variable must have a
+particular shape, they are neither of equal type nor unequal type.... one is a special case
+allowed by the other.  I tried to add a .shape attribute to the TensorType that would default
+to a tuple of 1 and None, where 1 was in broadcastable positions, and None meant 'unknown'.
+However I did not see a correct way of incorporating this shape into the __eq__ and __hash__
+functions.
+
+
+Lessons learned from Attempt 1
+------------------------------
+
+The meaning of a Type is that it identifies a set of values that are allowed.  Membership in
+that set is defined by filter(x, strict=True).
+
+TypeAttributes are typically unknown in current graphs, and we can represent that with a
+special UNKNOWN singleton or with None.
+
+Setting TypeAttributes in a Type to be non-None must not add to that Membership set, but can
+(and typically will) reduce the membership set.   For example, the set of vectors that may
+contain NaN is smaller than the set of vectors that do not contain NaN.
+
+Two types are equal when their membership sets are equal.  Equality of all attributes implies
+equality, but not vice versa since an attribute might make another one irrelevant.  ***HOW CAN
+WE IMPLEMENT THIS?***
+
+We should allow an env to replace a variable with one of a different (non-equal) type, as long
+as the new type's membership set is a subclass of the original.  In other words, we can add
+restrictions to a type during optimization.
+
+Furthermore, I think we should add a restrict_type env operation, similar to replace.  This
+operation would swap the type of a given variable for one that is stricter (or equally strict).
+
+It is ok to add new attributes at any time, even after graphs have been constructed, as long as
+things are implemented such that the new attribute is UNKNOWN for all variables that were
+created before the attribute was introduced.  This way, a user can
+just make up an attribute and use it for a special variable in his graph.  This should not
+interfere with anything.  Type Attributes might supercede the 'tags' of variables in this way.
+
+
+Challenge learned from Attempt 1: asymmetry in type-checking
+-------------------------------------------------------------
+
+Many make_node implementations and optimizations (especially local ones) follow patterns like:
+
+.. code-block:: python
+
+    if node.inputs[0].type == tensor.lvector:
+        ... 
+    
+What this typically means is  "if the set of potential values for inputs[0] is a subset of the
+ones identified by lvector".  But this meaning in terms of subsets is not symmetric, so it
+requires reading through a lot of our code, and rethinking and rewriting many cases.
+
+
+Challenge learned from Attempt 1: equality checking with user-defined Attributes
+---------------------------------------------------------------------------------
+
+If a user makes up a new attribute, how is he/she supposed to define the way in which that
+attribute restricts the type set?
+
+This is required in order to support important API functions:
+
+  - type0.is_subset_of(type1)
+
+  - type0 == type1
+
+In the absence of any attributes, or in the case where attributes are known ahead of time, 
+the Type class can simply use the programmers knowledge of the meaning of the attributes to
+define the is_subset_of function correctly.
+
+I think that if a user adds a new attribute at runtime, then the options are very limited: the
+user-defined attribute either restricts the membership set or it doesn't.   If it does restrict
+the set, then we can use the cmp() function on the attribute value as the definition of how
+much it restricts the set.
+
+If cmp() is not sufficient, then a Type subclass is necessary.  That subclass will override the
+is_subset_of and __eq__ functions as required.
+
+"""
+
