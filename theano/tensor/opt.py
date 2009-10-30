@@ -8,7 +8,7 @@ _logger = logging.getLogger('theano.tensor.opt')
 
 from theano import gof
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
-from theano.gof.utils import MethodNotDefined
+from theano.gof.utils import MethodNotDefined, get_theano_flag
 from elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T
@@ -1339,14 +1339,11 @@ def local_elemwise_fusion(node):
 #    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
     return n.outputs
 
-flags=os.getenv('THEANO_FLAGS',None)
-if flags:
-    flags=flags.split(',')
-    if 'local_elemwise_fusion' in flags:
-        _logger.debug("enabling optimization: fusion elemwise")
-        register_specialize(local_elemwise_fusion)
-    else:
-        _logger.debug("not enabling optimization: fusion elemwise")
+if get_theano_flag('local_elemwise_fusion',False):
+    _logger.debug("enabling optimization: fusion elemwise")
+    register_specialize(local_elemwise_fusion)
+else:
+    _logger.debug("not enabling optimization: fusion elemwise")
 
 # def make_composite(inputs, outputs):
 #     scalar_inputs = [scalar.Scalar(dtype = i.type.dtype)() for i in inputs]

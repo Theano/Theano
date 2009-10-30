@@ -2,7 +2,7 @@
 # import op
 # import variable
 
-import re
+import re, os
 
 def hashgen():
     hashgen.next += 1
@@ -369,3 +369,27 @@ def type_guard(type1):
         return new_f
     return wrap
 
+
+def get_theano_flag(key, default=None):
+    """
+    This function parse the environement variable THEANO_FLAGS.
+
+    if the variable don't exist return None
+    if the key is not in the variable return None
+    if the key is in the variable but without a value return True
+    if the key is in the variable with a value return the value
+
+    if the key appear many times, we return the last value
+
+    the THEANO_FLAGS environement variable is a list of key[=value] that is separated by comma.
+    """
+    f=os.getenv("THEANO_FLAGS")
+    ret = default
+    key2=key+"="
+    for fl in f.split(','):
+        if fl==key:
+            ret = True
+        elif fl.startswith(key2):
+            ret = fl.split('=',1)[1]
+                
+    return ret

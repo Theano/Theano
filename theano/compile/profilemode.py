@@ -5,6 +5,7 @@ from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers, default_linker, default_optimizer
 from theano.gof.cc import OpWiseCLinker
 from theano import gof
+from theano.gof.utils import get_theano_flag
 
 class ProfileMode(Mode):
     def __init__(self, linker=default_linker, optimizer=default_optimizer):
@@ -85,6 +86,10 @@ class ProfileMode(Mode):
 
         param: n_ops_to_print the number of ops to print. Default 20.
         """
+
+        n_ops_to_print=int(get_theano_flag("n_ops_to_print", n_ops_to_print))
+        n_apply_to_print=int(get_theano_flag("n_apply_to_print", n_apply_to_print))
+        
         local_time = self.local_time[0]
         compile_time = self.compile_time
         apply_time = self.apply_time
