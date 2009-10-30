@@ -82,9 +82,9 @@ class ProfileMode(Mode):
 
         Their is an hack with the Op-wise summary. Go see it if you want to know more.
 
-        param: n_apply_to_print the number of apply to print. Default 15.
+        :param n_apply_to_print: the number of apply to print. Default 15, or n_ops_to_print flag.
 
-        param: n_ops_to_print the number of ops to print. Default 20.
+        :param n_ops_to_print: the number of ops to print. Default 20, or n_apply_to_print flag.
         """
 
         n_ops_to_print=int(get_theano_flag("n_ops_to_print", n_ops_to_print))
@@ -113,11 +113,11 @@ class ProfileMode(Mode):
         TODO: Also we don't print the Apply-wise summary as it don't work for now.
         TODO: make comparaison with gpu code.
         
-        param: other the other instance of ProfileMode that we want to be compared to.
+        :param other: the other instance of ProfileMode that we want to be compared to.
         
-        param: n_apply_to_print the number of apply to print. Default 15.
+        :param n_apply_to_print: the number of apply to print. Default 15.
 
-        param: n_ops_to_print the number of ops to print. Default 20.
+        :param n_ops_to_print: the number of ops to print. Default 20.
         """
 
         def diff_dict(a_time,b_time_):
