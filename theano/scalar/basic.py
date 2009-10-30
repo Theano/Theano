@@ -1225,6 +1225,9 @@ class Composite(ScalarOp):
                              "_hashval"] ))
 
     def __init__(self, inputs, outputs):
+        self.inputs=copy(inputs)
+        self.outputs=copy(outputs)
+
         env = Env(*gof.graph.clone(inputs, outputs))
         gof.MergeOptimizer().optimize(env)
         inputs, outputs = env.inputs, env.outputs
@@ -1342,13 +1345,15 @@ class Composite(ScalarOp):
     def __hash__(self):
         return self._hashval
 
-#    def __getstate__(self):
-#        d = copy(self.__dict__)
-#        d.pop('env')
-#        d.pop('_impls')
-#        #TODO: the self._impls must be restored to allow the perform to work.(c version continue to work.
-#        return d
+    def __getstate__(self):
+        d = copy(self.__dict__)
+        d.pop('env')
+        d.pop('_impls')
+        return d
     
-#    def __setstate__(self, d):
-#        self.__dict__.update(d)
-#        #TODO: how to restore the _impls?
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        #we must call init to set env and _impls again.
+        #otherwise self.perform won't work.
+        self.__init__(self.inputs, self.outputs)
+
