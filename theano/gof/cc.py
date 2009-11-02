@@ -636,7 +636,9 @@ class CLinker(link.Linker):
                 if x_compiler and (x_compiler != c_compiler):
                     raise Exception('Nodes have requested specific different compilers',
                             (c_compiler, x_compiler))
-        return cmodule.gcc_module_compile_str if (c_compiler is None) else c_compiler
+        if (c_compiler is None):
+            return cmodule.gcc_module_compile_str
+        else: return c_compiler
 
     def header_dirs(self):
         """WRITEME
