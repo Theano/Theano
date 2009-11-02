@@ -246,8 +246,8 @@ class ProfileMode(Mode):
             print '   %4.1f%%  %.3fs  %.3fs  %s %d %s' % (f*100, tot, t, msg, nb_call, a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
-                  sum(f for f, t, a, nb_call in sotimes[n_ops_to_print:])*100,
-                  sum(t for f, t, a, nb_call in sotimes[n_ops_to_print:]))
+                  sum(f for f, t, a, ci, nb_call in sotimes[n_ops_to_print:])*100,
+                  sum(t for f, t, a, ci, nb_call in sotimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
         print 'compile time: %.3fs'%compile_time
 
