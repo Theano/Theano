@@ -3,6 +3,7 @@
 # import variable
 
 import re, os
+import ConfigParser
 
 def hashgen():
     hashgen.next += 1
@@ -369,31 +370,103 @@ def type_guard(type1):
         return new_f
     return wrap
 
+default_={
+'ProfileMode.n_apply_to_print':15,
+'ProfileMode.n_ops_to_print':20,
+'tensor_opt.local_elemwise_fusion':False,
+'scalar_basic.amdlibm':False,
+}
 
-def get_theano_flag(key, default=None):
-    """Return the value for a key passed via the THEANO_FLAGS environment variable.
 
-    :type key: a string
-    :param key: the key to lookup
-    :type default: any
-    :param default: the value to be returned if the key is not present. (Default: None)
-
-    if the variable don't exist return `default`
-    if the key is not in the variable return `default`
-    if the key is in the variable but without a value return True
-    if the key is in the variable with a value return the value
-
-    if the key appears many times, we return the last value
-
-    The THEANO_FLAGS environement variable should be a list of comma-separated key[=value] entries.
+class TheanoConfig(object):
+    """Return the value for a key after parsing ~/.theano.cfg and 
+    the THEANO_FLAGS environment variable.
+    
+    We parse in that order the value to have:
+    1)the pair 'section.option':value in default_ 
+    2)The ~/.theano.cfg file
+    3)The value value provided in the get*() fct.
+    The last value found is the value returned.
+    
+    The THEANO_FLAGS environement variable should be a list of comma-separated [section.]option[=value] entries. If the section part is omited, their should be only one section with that contain the gived option.
     """
-    f=os.getenv("THEANO_FLAGS", "")
-    ret = default
-    key2=key+"="
-    for fl in f.split(','):
-        if fl==key:
-            ret = True
-        elif fl.startswith(key2):
-            ret = fl.split('=',1)[1]
+
+    def __init__(self):
+        d={} # no section
+        for k,v in default_.items():
+            if len(k.split('.'))==1:
+                d[k]=v
+
+        #set default value common for all section
+        self.config = ConfigParser.SafeConfigParser(d)
+        
+        #set default value specific for each section
+        for k, v in default_.items():
+            sp = k.split('.',1)
+            if len(sp)==2:
+                if not self.config.has_section(sp[0]):
+                    self.config.add_section(sp[0])
+                self.config.set(sp[0], sp[1], str(v))
+
+
+        #user config file override the default value
+        self.config.read(['site.cfg', os.path.expanduser('~/.theano.cfg')])
+
+        self.env_flags=os.getenv("THEANO_FLAGS","")
+        #The value in the env variable THEANO_FLAGS override the previous value
+        for flag in self.env_flags.split(','):
+            if not flag:
+                continue
+            sp=flag.split('=',1)
+            if len(sp)==1:
+                val=True
+            else:
+                val=sp[1]
+            val=str(val)
+            sp=sp[0].split('.',1)#option or section.option
+            if len(sp)==2:
+                self.config.set(sp[0],sp[1],val)
+            else:
+                found=0
+                for sec in self.config.sections():
+                    for opt in self.config.options(sec):
+                        if opt == sp[0]:
+                            found+=1
+                            section=sec
+                            option=opt
+                if found==1:
+                    self.config.set(section,option,val)
+                elif found>1:
+                    raise Exception("Ambiguous option (%s) in THEANO_FLAGS"%(sp[0]))
                 
-    return ret
+    def __getitem__(self, key):
+        return self.get(key)
+
+    def get(self, key, val=None):
+        #self.config.get(section, option, raw, vars=os.geteng('THEANO_DEFAULT'))
+        if val is not None:
+            return val
+        sp = key.split('.',1)
+        return self.config.get(sp[0],sp[1], False)
+
+    def getfloat(self, key, val=None):
+        if val is not None:
+            return float(val)
+        return float(self.get(key))
+
+    def getboolean(self, key, val=None):
+        if val is None:
+            val=self.get(key)
+        if val == "False" or val == "0" or not val:
+            val = False
+        else:
+            val = True
+        return val
+
+    def getint(self, key, val=None):
+        if val is not None:
+            return int(val)
+        return int(self.get(key))
+
+config = TheanoConfig()
+
