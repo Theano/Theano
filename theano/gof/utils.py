@@ -410,7 +410,7 @@ class TheanoConfig(object):
 
 
         #user config file override the default value
-        self.config.read(['site.cfg', os.path.expanduser('~/.theano.cfg')])
+        self.config.read(['theano.cfg', os.path.expanduser('~/.theano.cfg')])
 
         self.env_flags=os.getenv("THEANO_FLAGS","")
         #The value in the env variable THEANO_FLAGS override the previous value
