@@ -72,6 +72,23 @@ class Scalar(Type):
     def values_eq_approx(self, a, b, tolerance = 1e-4):
         return abs(a - b) / (a+b) < tolerance
 
+    def c_headers(self):
+        l=['<math.h>']
+        if utils.config.getboolean('lib.amdlibm'):
+            l+=['<amdlibm.h>']
+        return l
+
+    def c_libraries(self):
+        l=[]
+        if utils.config.getboolean('lib.amdlibm'):
+            l+=['amdlibm']
+        return l
+
+    def c_compile_args(self):
+        if utils.config.getboolean('lib.amdlibm'):
+            return ['-DREPLACE_WITH_AMDLIBM']
+        else: return []
+
     def __eq__(self, other):
         return type(self) == type(other) and other.dtype == self.dtype
 
@@ -220,7 +237,7 @@ class Scalar(Type):
 
     def c_code_cache_version(self):
         #return ()
-        return (3,)  #explicit T given in specialization of operator= lines.  This makes it compile with open64
+        return (4,)  #explicit T given in specialization of operator= lines.  This makes it compile with open64
         #2,
 
 

@@ -374,7 +374,7 @@ default_={
 'ProfileMode.n_apply_to_print':15,
 'ProfileMode.n_ops_to_print':20,
 'tensor_opt.local_elemwise_fusion':False,
-'scalar_basic.amdlibm':False,
+'lib.amdlibm':False,
 }
 
 

@@ -545,10 +545,13 @@ class TensorType(Type):
 
     def c_headers(self):
         """Override `CLinkerOp.c_headers` """
-        return []
+        return scal.Scalar(self.dtype).c_headers()
 
     def c_libraries(self):
-        return []
+        return scal.Scalar(self.dtype).c_libraries()
+
+    def c_compile_args(self):
+        return scal.Scalar(self.dtype).c_compile_args()
 
     def c_support_code(self):
         """Override `CLinkerOp.c_support_code` """
