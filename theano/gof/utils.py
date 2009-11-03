@@ -440,21 +440,32 @@ class TheanoConfig(object):
                     raise Exception("Ambiguous option (%s) in THEANO_FLAGS"%(sp[0]))
                 
     def __getitem__(self, key):
+        """:returns: a str with the value associated to the key"""
         return self.get(key)
 
     def get(self, key, val=None):
-        #self.config.get(section, option, raw, vars=os.geteng('THEANO_DEFAULT'))
+        """ 
+        :param key: the key that we want the value
+        :type key: str
+
+        :returns: a str with the value associated to the key
+        """
+        #self.config.get(section, option, raw, vars)
         if val is not None:
             return val
         sp = key.split('.',1)
+        if len(sp)!=2:
+            raise Exception("When we get a key, their must be a section and an option")
         return self.config.get(sp[0],sp[1], False)
 
     def getfloat(self, key, val=None):
+        """ :return: cast the output of self.get to a float"""
         if val is not None:
             return float(val)
         return float(self.get(key))
 
     def getboolean(self, key, val=None):
+        """ :return: cast the output of self.get to a boolean"""
         if val is None:
             val=self.get(key)
         if val == "False" or val == "0" or not val:
@@ -464,6 +475,7 @@ class TheanoConfig(object):
         return val
 
     def getint(self, key, val=None):
+        """ :return: cast the output of self.get to an int"""
         if val is not None:
             return int(val)
         return int(self.get(key))
