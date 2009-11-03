@@ -1339,7 +1339,7 @@ def local_elemwise_fusion(node):
 #    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
     return n.outputs
 
-if config.get('tensor_opt.local_elemwise_fusion'):
+if config.getboolean('tensor_opt.local_elemwise_fusion'):
     _logger.debug("enabling optimization: fusion elemwise")
     register_specialize(local_elemwise_fusion)
 else:
