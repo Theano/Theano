@@ -232,51 +232,6 @@ def print_for_dot(self):
              if input.owner:
                  print input.owner.__class__.__name__ + str(abs(id(input.owner))), " -> ", op.__class__.__name__ + str(abs(id(op))), ";"
 
-# def schedule(**kwargs):
-    
-#     after = kwargs.get('after', [])
-#     if not isinstance(after, (list, tuple)):
-#         after = [after]
-        
-#     before = kwargs.get('before', [])
-#     if not isinstance(before, (list, tuple)):
-#         before = [before]
-
-#     def decorate(fn):
-#         name = fn.__name__
-#         fn.prereqs_d = {}
-#         for postreq in after:
-#             prereqs_d[postreq] = name
-#         for prereq in before:
-#             prereqs_d[name] = prereq
-#         return fn
-    
-#     return decorate
-
-
-# def after(*others):
-#     return schedule(after = others)
-
-
-# def before(*others):
-#     return schedule(before = others)
-
-
-# class TopoList(list):
-
-#     def add(self, item, **kwargs):
-#         after = kwargs.get('after', [])
-#         if not isinstance(after, (list, tuple)):
-#             after = [after]
-        
-#         before = kwargs.get('before', [])
-#         if not isinstance(before, (list, tuple)):
-#             before = [before]
-        
-
-
-
-
 class Keyword:
 
     def __init__(self, name, nonzero=True):
