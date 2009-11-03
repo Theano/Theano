@@ -279,7 +279,12 @@ class TensorType(Type):
         self.dtype_specs() # error checking is done there
         self.name = name
         if shape is None:
-            self.shape = tuple((1 if b else None) for b in self.broadcastable)
+          #backport self.shape = tuple((1 if b else None) for b in self.broadcastable)
+            l=[]
+            for b in self.broadcastable:
+              if b: l.append(1)
+              else: l.append(None)
+            self.shape = tuple(l)
         else:
             self.shape = tuple(shape)
         if len(self.shape) != len(self.broadcastable):
@@ -291,8 +296,12 @@ class TensorType(Type):
 
         #add shape when unpickling  old pickled things
         if 'shape' not in dct:
-            self.shape = tuple(1 if b else None for b in self.broadcastable)
-    
+            l=[]
+            for b in self.broadcastable:
+              if b: l.append(1)
+              else: l.append(None)
+            self.shape = tuple(l)
+            #backport  self.shape = tuple(1 if b else None for b in self.broadcastable)
     def filter(self, data, strict = False):
         """Convert `data` to something which can be associated to a `TensorVariable`.
 
@@ -1684,8 +1693,11 @@ class Default(gof.Op):
         assert x.type == default.type
         return gof.Apply(self, [x, default], [default.type()])
     def perform(self, node, (x, default), (out, )):
-        out[0] = default.copy() if x is None else x
-
+      if x is None:
+        out[0] = default.copy()
+      else:
+        out[0] = x
+      #backport out[0] = default.copy() if x is None else x
 default = Default()
 setdefault = default # legacy
 
@@ -2300,7 +2312,11 @@ class Join(Op):
         outputs = [tensor(dtype = out_dtype,
                           broadcastable = bcastable)]
         node = Apply(self, inputs, outputs)
-        node.tag.shape_zero = None if any(not x.type.broadcastable[0] for x in orig) else len(orig)
+        if any(not x.type.broadcastable[0] for x in orig):
+          node.tag.shape_zero = None
+        else:
+          node.tag.shape_zero = len(orig)
+        #backport node.tag.shape_zero = None if any(not x.type.broadcastable[0] for x in orig) else len(orig)
         return node
 
     def perform(self, node, axis_and_tensors, (out, )):
