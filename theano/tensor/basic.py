@@ -2566,8 +2566,15 @@ class Reshape(Op):
         return '%s{%s}' %(self.__class__.__name__, self.ndim)
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
-        shp = as_tensor_variable(shp)
-        return gof.Apply(self, [x, shp], [tensor(x.type.dtype, [False]*self.ndim)])
+        shp = as_tensor_variable(shp, ndim=1)
+        if not shp.dtype.startswith('int'):
+            raise TypeError("Shape must be integers")
+        assert shp.ndim == 1
+        if isinstance(shp, TensorConstant):
+            bcast = [s==1 for s in shp.data]
+            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcast)])
+        else:
+            return gof.Apply(self, [x, shp], [tensor(x.type.dtype, [False]*self.ndim)])
     def perform(self, node, (x, shp), (out,)):
         if (len(shp) != self.ndim):
             raise ValueError('shape argument to Reshape.perform has incorrect length %i'
