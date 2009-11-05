@@ -14,7 +14,7 @@ if sys.version_info[:2] >= (2,5):
 else:
     import md5
     def hash_from_code(msg):
-        return md5.new(struct_code).hexdigest()
+        return md5.new(msg).hexdigest()
 
 from theano.gof.python25 import any, all
 
