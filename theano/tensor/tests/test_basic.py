@@ -1705,7 +1705,7 @@ def test_reshape():
 
     # verify gradient
     def just_vals(v):
-        return Reshape(2)(v, numpy.asarray([2,3], dtype='float64'))
+        return Reshape(2)(v, numpy.asarray([2,3], dtype='int32'))
     utt.verify_grad(just_vals, [a_val])
 
 
