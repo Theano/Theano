@@ -4,6 +4,7 @@ __docformat__ = 'restructuredtext en'
 from theano.gof import Container, Variable, generic, graph, Constant, Value
 from theano.compile import function, In
 from theano.compile.sandbox.sharedvalue import SharedVariable, shared
+import numpy # for backport to 2.4, to get any().
 
 class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False, strict=False,
@@ -113,7 +114,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[]):
     # used as function inputs. Although it is technically possible, it is also
     # potentially ambiguous and dangerous. This restriction may be revisited in
     # the future if there is a need for such a feature.
-    if any([isinstance(v, SharedVariable) for v in set_of_param_variables]):
+    if numpy.any([isinstance(v, SharedVariable) for v in set_of_param_variables]):
         raise TypeError('Cannot use a shared variable (%s) as explicit input '
                 % v)
 
