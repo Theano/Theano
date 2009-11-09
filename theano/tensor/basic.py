@@ -2707,7 +2707,12 @@ class Dot(Op):
 
     :note: matrix-matrix products are sometimes optimized to Dot22 ops (see tensor.blas)
 
+    :note: non matrix-matrix products (including matrix-vector products) are handled by numpy.  Ensure that you have linked numpy with a fast BLAS.
+
     """
+
+    # the rationale for Dot22 is related to getting GEMM Ops into the graph.  See Dot22 in tensor.blas for details.
+    
     def make_node(self, *inputs):
         inputs = map(as_tensor_variable, inputs)
 
