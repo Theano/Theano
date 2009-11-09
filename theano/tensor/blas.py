@@ -597,6 +597,7 @@ class GemmOptimizer(Optimizer):
                         #TODO: retry other applications of gemm (see comment in _gemm_from_node
                         pass
 
+#neede to make the gemm optimisation(step 70) happen before the fusion of elemwise(step 71)
 compile.optdb.register('inplace_gemm', GemmOptimizer(), 70.00, 'fast_run', 'inplace', 'gemm')
 
 
