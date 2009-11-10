@@ -18,7 +18,7 @@ from theano import compile  #to register the optimizer built by this file
 from theano.tensor.blas_headers import cblas_header_text, blas_header_text
 
 _logger = logging.getLogger('theano.tensor.blas')
-_logger.setLevel(logging.INFO)
+_logger.setLevel(logging.WARN)
 def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
 def info(*msg): _logger.info(' '.join(str(m) for m in msg))
 def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
