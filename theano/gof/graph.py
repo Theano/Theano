@@ -13,8 +13,6 @@ from collections import deque
 
 import utils
 
-_creation_idx = [0]
-
 class Apply(utils.object2):
     """
     An :term:`Apply` instance is a node in an expression graph which represents the application
@@ -84,9 +82,6 @@ class Apply(utils.object2):
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
 
-        self._creation_idx = _creation_idx[0]
-        _creation_idx[0] += 1
-
     def default_output(self):
         """Returns the default output for this node.
         
@@ -124,10 +119,6 @@ class Apply(utils.object2):
 
     def __asapply__(self):
         return self
-
-    def __hash__(self):
-        return self._creation_idx
-
 
     def clone(self):
         """Duplicate this Apply instance with inputs = self.inputs.
