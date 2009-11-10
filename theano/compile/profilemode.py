@@ -87,8 +87,8 @@ class ProfileMode(Mode):
         :param n_ops_to_print: the number of ops to print. Default 20, or n_apply_to_print flag.
         """
 
-        n_apply_to_print=config.getint("n_apply_to_print", n_apply_to_print)
-        n_ops_to_print=config.getint("n_ops_to_print", n_ops_to_print)
+        n_apply_to_print=config.getint("ProfileMode.n_apply_to_print", n_apply_to_print)
+        n_ops_to_print=config.getint("ProfileMode.n_ops_to_print", n_ops_to_print)
         
         local_time = self.local_time[0]
         compile_time = self.compile_time
