@@ -1281,7 +1281,7 @@ def local_elemwise_fusion(node):
             except NotImplementedError:
                 catch = True
             if catch:
-                _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion." % str(i.owner.op.scalar_op))
+                _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(i.owner.op.scalar_op))
                 do_fusion=False
 
         if do_fusion:
@@ -1307,10 +1307,10 @@ def local_elemwise_fusion(node):
                          ["x" for x in s_g],
                          "z",{}) 
     except MethodNotDefined:
-        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion." % str(i.owner.op.scalar_op))
+        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(s_new_out.owner.op))
         return False
     except NotImplementedError:
-        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion." % str(s_new_out.op.scalar_op))
+        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(s_new_out.owner.op))
         return False
 
     #create the composite op.
