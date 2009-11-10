@@ -1268,8 +1268,8 @@ class Composite(ScalarOp):
         if not hasattr(self,"name"):
             l=[]
             for n in env.nodes:
-                if hasattr(n,"name"):
-                    v=n.name
+                if hasattr(n.op,"name"):
+                    v=n.op.name
                 else: v=n.op.__class__.__name__
                 l.append(v)
             self.name="Composite{"+"".join(l)+"}"
