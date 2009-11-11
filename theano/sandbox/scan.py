@@ -4,14 +4,13 @@ __docformat__ = 'restructedtext en'
 import traceback
 import numpy 
 import theano
+import theano.compile.sandbox
 from theano.tensor import opt
 from theano import gof
 from theano.compile import optdb
 
 '''
- TODO : test_gradinet 
-        test_time_taps 
-        add_class_description -- postponed: re-write/extend
+ TODO : move out of sandbox !
 '''
 
 class Scan(theano.Op):
@@ -53,7 +52,8 @@ class Scan(theano.Op):
     """
     @classmethod
     def symbolic(cls,(in_args,out_args), n_ins, n_outs,\
-                n_inplace=0, n_inplace_ignore=0, grad_inplace=0,taps={}):
+                n_inplace=0, n_inplace_ignore=0, taps={},
+                mode = 'FAST_RUN'):
         
         # if in_args is not a list assume it is just a variable and 
         # convert it to a list (if this is neither the case the code will 
@@ -66,7 +66,7 @@ class Scan(theano.Op):
             out_args = [out_args]
  
         # Create fn 
-        my_fn   = theano.function(in_args, out_args)
+        my_fn   = theano.compile.sandbox.pfunc(in_args, out_args, mode = mode)
 
         # Create gradient function 
         gy_next  = [out_args[0].type()]
@@ -76,12 +76,12 @@ class Scan(theano.Op):
             g_ls = theano.tensor.grad(y_next,in_args,g_cost=gy_next[-1])
             for i in xrange(len(in_args)):
                 g_inputs[i] += g_ls[i]
-            
-        g_fn=theano.function(inputs=gy_next+in_args,outputs=g_inputs)
+        g_fn=theano.compile.sandbox.pfunc(gy_next+in_args,g_inputs,
+                             mode=mode)
 
     
         return cls(my_fn, g_fn, n_ins, n_outs,\
-                   n_inplace,n_inplace_ignore, grad_inplace,taps)
+                   n_inplace,n_inplace_ignore, taps)
 
     @classmethod
     def compiled(cls,fn,n_ins, n_outs,\
@@ -92,8 +92,7 @@ class Scan(theano.Op):
 
 
     def __init__(self,fn,grad_fn,n_ins,n_outs,
-                 n_inplace=0, n_inplace_ignore=0,
-                 grad_inplace=0, 
+                 n_inplace=0, n_inplace_ignore=0,                 
                  taps={}, inplace=False):
         """Create an instance of the scan class
 
@@ -108,7 +107,10 @@ class Scan(theano.Op):
         need to give the initial state of each outputs, this will be from 
         'n_ins' to 'n_outs'; each initial state should be a matrix where 
         the first dimension is time and should be sufficiently large to 
-        cover the time taps.
+        cover the time taps. The matrix for an initial state should be 
+        ordered such that if you use k delays, index 0 of matrix stands for 
+        the value at time -k, index 1 for value at time 1-k, index 2 for 
+        value at time 2-k and index k-1 for value at time -1
 
         :param n_inplace: indicates the number of outputs that should be 
         computed inplace; in the list of arguments there will be the first
@@ -119,8 +121,6 @@ class Scan(theano.Op):
         should not be given as arguments to the function applied 
         recursevly
 
-        :param grad_inplace: the number of gradients to be computed in 
-        place of their corresponding inputs
 
         :param taps: a dictionary which for each output index gives
         a list of what taps it uses; a tap is given as an int, 
@@ -139,10 +139,6 @@ class Scan(theano.Op):
            (n_inplace > n_outs):
            raise ValueError('Number of inline outs should be smaller then'\
              'the number of inputs or outputs')
-        if (grad_inplace <0) or \
-           (grad_inplace >n_ins+n_outs - n_inplace_ignore):
-            raise ValueError('Wrong number of gradients to be computed'\
-                             'inplace')
         if (n_inplace < 0):
             raise ValueError('Number of inplace outputs should be larger '\
                              'or equal to 0')
@@ -170,7 +166,6 @@ class Scan(theano.Op):
         self.n_inplace_ignore = n_inplace_ignore
         self.fn = fn
         self.grad_fn = grad_fn
-        self.grad_inplace = grad_inplace
 
     def make_node(self,*inputs):
         """Create an node for the Scan operation
@@ -192,7 +187,7 @@ class Scan(theano.Op):
         out_types = []
         for i in xrange(self.n_ins,self.n_ins+self.n_outs):
             out_types += [theano.tensor.Tensor(dtype=inputs[i].dtype,\
-                    broadcastable=list(inputs[i].broadcastable))()]
+                    broadcastable=(False,)+inputs[i].broadcastable[1:])()]
         return theano.Apply(self,inputs, out_types)
 
 
@@ -208,8 +203,7 @@ class Scan(theano.Op):
                    (self.n_inplace == other.n_inplace) and \
                    (self.n_inplace_ignore == other.n_inplace_ignore) and\
                    (self.inplace == other.inplace) and\
-                   (self.taps == other.taps) and\
-                   (self.grad_inplace == other.grad_inplace)
+                   (self.taps == other.taps) 
         return rval
 
     def __hash__(self):
@@ -228,8 +222,7 @@ class Scan(theano.Op):
                hash(self.n_inplace) ^ \
                hash(self.n_inplace_ignore) ^\
                hash(self.inplace) ^\
-               taps_hash ^\
-               hash(self.grad_inplace)
+               taps_hash 
 
 
 
@@ -240,26 +233,26 @@ class Scan(theano.Op):
             print 'Warning! no gradient for the recursive function was given'
             return [None for i in inputs]
         else:
-            y = self(*inputs).owner.outputs
-#            if not( type(y) in (list,tuple)):
-#                y = [y]
+            y = self(*inputs)
+            if not( type(y) in (list,tuple)):
+                y = [y]
  
-            for o,go in zip(y,g_outs):
-                print o.type
-                print go.type
-                assert o.type == go.type
+            for i in xrange(len(y)):
+                if g_outs[i] == None:
+                    g_outs[i] = theano.tensor.zeros_like(y[i])
 
             # Construct my gradient class: 
             gradScan = ScanGrad(self.grad_fn, 
                             self.n_ins- self.n_inplace_ignore, self.n_outs,
-                            self.grad_inplace, self.taps)
+                            self.taps)
 
-
-            args = g_outs[self.n_inplace_ignore:] + y + \
+             
+            args = g_outs + y + \
                    inputs[self.n_inplace_ignore:]
+            
             grads = gradScan(*args)
-              
-            return [None for i in inputs[:self.n_inplace_ignore]]+grads
+            rval = [None for i in inputs[:self.n_inplace_ignore]]+grads
+            return rval
 
 
     def perform(self,node,args, outs):
@@ -324,7 +317,6 @@ class Scan(theano.Op):
             fn_args += list(args[(self.n_ins+self.n_outs):])
             # compute output
             something = self.fn(*fn_args)
-            
             # update y and inplace outputs
             for j in xrange(self.n_outs):
                 y[j][i] = something[j]
@@ -341,7 +333,7 @@ def scan_make_inplace(node):
     if isinstance(op, Scan) and (not op.inplace) and (op.n_inplace>0):
         return Scan(op.fn, op.grad_fn, op.n_ins,\
                     op.n_outs, op.n_inplace, op.n_inplace_ignore,\
-                    op.grad_inplace,op.taps,inplace=True\
+                    op.taps,inplace=True\
                                        ).make_node(*node.inputs).outputs
     return False
 
@@ -354,18 +346,20 @@ optdb.register('scan_make_inplace', opt.in2out(scan_make_inplace,\
 class ScanGrad(theano.Op):
     """Gradient Op for Scan"""
 
-    def __init__(self, grad_fn, n_ins, n_outs, grad_inplace=0,
+    def __init__(self, grad_fn, n_ins, n_outs, 
                  taps = {},inplace=False):
         self.grad_fn = grad_fn
         self.n_ins = n_ins # number of inputs of Scan op not of Grad Scan !!
         self.n_outs = n_outs # number of outs of Scan op not of Grad Scan !!
-        self.grad_inplace = grad_inplace
         self.inplace = inplace
         self.taps = taps
         self.destroy_map = {}
         if self.inplace:
-          for i in xrange(self.grad_inplace):
-            self.destroy_map.update( {i:[i+n_ins+n_outs]} )
+          for i in xrange(self.n_outs):
+            # claiming that output "-i" is destroying inputs is the way to
+            # declare that no real output is aliased to any inputs.  We just
+            # trash the inputs by using them as workspace.
+            self.destroy_map.update( {-i:[i]})
 
 
     def __eq__(self,other): 
@@ -374,9 +368,8 @@ class ScanGrad(theano.Op):
            rval = (self.grad_fn is other.grad_fn) and \
                   (self.n_ins == other.n_ins) and \
                   (self.n_outs == other.n_outs) and \
-                  (self.grad_inplace == other.grad_inplace) and \
                   (self.inplace == other.inplace) and \
-                  (self.taps == taps)
+                  (self.taps == other.taps)
         return rval
 
     def __hash__(self):
@@ -390,61 +383,43 @@ class ScanGrad(theano.Op):
                hash(self.grad_fn) ^ \
                hash(self.n_ins) ^ \
                hash(self.n_outs) ^ \
-               hash(self.grad_inplace) ^ \
                hash(self.inplace) ^ taps_hash
 
     def make_node(self, *args):
         # input of the gradient op : 
-        # |g_outs | y      | ins   | outs   | other_args |
-        # | n_ins | n_outs | n_ins | n_outs | unknown    |
+        # | g_outs | y      | ins   | outs   | other_args |
+        # | n_outs | n_outs | n_ins | n_outs | unknown    |
         # return 
         # | grad of ins | grad of outs | grad of other_args|
         # |   n_ins     |  n_outs      |  unknown          |
         return theano.Apply(self, list(args),
-                    [i.type() for i in args[self.n_ins+self.n_outs:] ])
+                    [i.type() for i in args[self.n_outs+self.n_outs:] ])
 
     def perform(self, node, args, storage):
             # get scan inputs
-            inputs = args[self.n_ins+self.n_outs:]
+            inputs = args[self.n_outs+self.n_outs:]
             ins = inputs[:self.n_ins]
             initSt = inputs[self.n_ins:self.n_ins+self.n_outs]
             otherArgs = inputs[self.n_outs+self.n_ins:]
             
             # generate space for gradient 
             # not do if inplace !?
-            if not self.inplace:
-                g_ins   = [numpy.zeros_like(k) for k in ins]
-                g_initSt = [numpy.zeros_like(k) for k in initSt]
-            else:
-                if self.grad_inplace > self.n_ins:
-                    g_ins = ins
-                    g_initSt = initSt[:self.grad_inplace-self.n_ins]
-                    g_initSt += [numpy.zeros_like(k) for k in \
-                                initSt[self.grad_inplace-self.n_ins:]]
-                else:
-                    g_ins = ins[:self.grad_inplace]
-                    g_ins += [numpy.zeros_like(k) for k in \
-                              ins[self.grad_inplace:]]
-                    g_initSt = [numpy.zeros_like(k) for k in initSt]
-
+            g_ins   = [numpy.zeros_like(k) for k in ins]
+            g_initSt = [numpy.zeros_like(k) for k in initSt]
             g_otherArgs = [numpy.zeros_like(k) for k in otherArgs]
-            
             # get gradient from above
-            g_outs = args[:self.n_ins]
+            g_outs = args[:self.n_outs]
             # we modify g_outs inplace ..
             if not self.inplace:
                 g_outs = [gout.copy() for gout in g_outs]
 
-
             # get the output of the scan operation
-            outs = args[self.n_ins:self.n_ins+self.n_outs]
+            outs = args[self.n_outs:2*self.n_outs]
 
-            # diagnostic:
-            print 'g_outs:' ,g_outs
-            print 'outs:', outs
-            print 'ins:', ins
-            print 'initSt:', initSt
-            print 'otherArgs:', otherArgs
+            # check for Nones (non - differentiable )
+            #for i,g_o in enumerate(g_outs):
+            #    if numpy.all(g_o == 0.):
+            #        g_outs[i] = numpy.zeros_like(outs[i])
 
             # go back through time to 0 (use a time window !?)
             for i in xrange(len(ins[0])-1,-1,-1):
@@ -464,8 +439,9 @@ class ScanGrad(theano.Op):
                         _outs += [outs[j][i- tap_value]]
 
               g_out = [arg[i] for arg in g_outs]
-              grads=self.grad_fn(g_out,_ins,_outs,otherArgs)
-
+              grad_args = g_out + _ins + _outs + otherArgs
+              grads=self.grad_fn(*grad_args)
+ 
               # get gradient for inputs 
               for j in xrange(self.n_ins):
                 g_ins[j][i] = grads[j]
@@ -479,14 +455,13 @@ class ScanGrad(theano.Op):
                 maxVal = max(ls_taps)
                 for tap_value in ls_taps:
                     if i - tap_value < 0:
-                        g_initSt[maxVal-tap_value+i] = grads[pos]
+                        g_initSt[j][maxVal-tap_value+i] += grads[pos]
                         pos +=1
                     else:
-                       g_outs[i-tap_value]+= grads[pos]
+                       g_outs[j][i-tap_value]+= grads[pos]
                        pos += 1
               for j in xrange(len(g_otherArgs)):
                 g_otherArgs[j] += grads[j+pos]
-            
             # return the gradient 
             for i in xrange(len(g_ins)):
                 storage[i][0] = g_ins[i] 
@@ -497,17 +472,17 @@ class ScanGrad(theano.Op):
             for i in xrange(len(g_otherArgs)):
                 storage[i+self.n_ins+self.n_outs][0] = g_otherArgs[i]
 
-'''
+
 @gof.local_optimizer([None])
 def grad_scan_make_inplace(node):
     op = node.op
     if isinstance(op, ScanGrad) and (not op.inplace):
-        return ScanGrad(op.grad_fn, op.n_ins, op.n_outs, op.grad_inplace, 
+        return ScanGrad(op.grad_fn, op.n_ins, op.n_outs, op.taps, 
                    inplace=True).make_node(*node.inputs).outputs
     return False
 
 optdb.register('grad_scan_make_inplace', opt.in2out(grad_scan_make_inplace,\
                ignore_newtrees=True), 75, 'fast_run', 'inplace')
 
-'''
+
 
