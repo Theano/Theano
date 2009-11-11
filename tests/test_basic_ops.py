@@ -6,7 +6,7 @@ from theano import tensor
 import numpy
 
 import theano_cuda_ndarray as tcn
-
+import cuda_ndarray
 
 def test_elemwise0():
 
@@ -118,3 +118,28 @@ def test_elemwise4():
     assert not has_elemwise
     #let debugmode catch errors
     f(numpy.random.rand(4), numpy.random.rand(3))
+
+
+def speed_elemwise_collapse():
+    """ used to time if the collapse of ccontiguous row are usefull """
+    
+    shape = (30,40,50,600)
+    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a2 = tcn.shared_constructor(a, 'a')
+    a3 = a2[:,::2,:,:]
+    b = tcn.CudaNdarrayType((False, False, False, False))()
+    c = a3+b * tensor.exp(1 + b**a3)
+    f = pfunc([b], [c])
+
+
+    v = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    v = v[:,::2,:,:]
+    v=cuda_ndarray.CudaNdarray(v)
+    for id,n in enumerate(f.maker.env.toposort()):
+        print id, n
+    t1=time.time()
+    for i in range(100):
+       #let debugmode catch errors
+       f(v)
+    t2=time.time()
