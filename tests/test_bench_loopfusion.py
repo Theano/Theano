@@ -263,15 +263,21 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
         import theano_cuda_ndarray
         theano_cuda_ndarray.use()
 
+    debug=False
+    if theano.compile.default_mode=="DEBUG_MODE": debug=True
+
     # get symbolic train set
     s_lr = theano.tensor.fscalar()
-    x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0,0), shape=(None, 784))()
+    x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0,0), shape=(None, 784 if not debug else 3))()
     y = theano.tensor.lvector()
 
     rng = numpy.random.RandomState(conf.rng_seed)
 
-    layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], conf.n_hid, conf.n_terms)
-
+    if not debug:
+        layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], conf.n_hid, conf.n_terms)
+    else:
+        layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], 3, 2)
+        n_iter=3
     cost = layer.output.mean()
 
     assert cost.type.ndim == 0
