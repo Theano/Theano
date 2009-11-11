@@ -747,7 +747,7 @@ class NaiveAlgo(object):
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err));
                     return -1;
                 
                 }                         
