@@ -92,23 +92,24 @@ class DB(object):
 class Query(object):
 
     def __init__(self, include, require = None, exclude = None, subquery = None):
-        self.include = include
+        self.include = set(include)
         self.require = require or set()
         self.exclude = exclude or set()
         self.subquery = subquery or {}
 
+    #add all opt with this tag
     def including(self, *tags):
         return Query(self.include.union(tags),
                      self.require,
                      self.exclude,
                      self.subquery)
-
+    #remove all opt with this tag
     def excluding(self, *tags):
         return Query(self.include,
                      self.require,
                      self.exclude.union(tags),
                      self.subquery)
-
+    #keep only opt with this tag.
     def requiring(self, *tags):
         return Query(self.include,
                      self.require.union(tags),
