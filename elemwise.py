@@ -630,10 +630,8 @@ class NaiveAlgo(object):
         # being contiguous... (confusing... read code)
         #
         # The thrid is to make a special case for scalar element. We allow the collapsing of them.
-        # In the not ccontiguous case, we set their stride to 0 later
-        # In the ccontiguous case, we put them into register to lower the number of memory access.
+        # In the ccontiguous and not contiguous case, we use registers to lower the number of memory access.
 
-        #TODO: in the not ccontiguous case, we should not reload scalar from memory each time.
         #TODO: make a special case for broadcasting, to store the data in shared memory.
 
         nd = node.outputs[0].type.ndim
@@ -729,10 +727,7 @@ class NaiveAlgo(object):
         for ipos in xrange(len(node.inputs)):
             print >> sio, "int local_i%(ipos)s_str[%(nd)s];"%locals()
             for d in xrange(nd):
-                if not _logical_scalar(node.inputs[ipos]):
-                    print >> sio, "local_i%(ipos)s_str[%(d)s] = (%(d)s == nd_collapse) ? 1 : i%(ipos)s_str[%(d)s];"%locals()
-                else:
-                    print >> sio, "local_i%(ipos)s_str[%(d)s] = 0;"%locals()
+                print >> sio, "local_i%(ipos)s_str[%(d)s] = (%(d)s == nd_collapse) ? 1 : i%(ipos)s_str[%(d)s];"%locals()
 
         for ipos in xrange(len(node.outputs)):
             print >> sio, "int local_o%(ipos)s_str[%(nd)s];"%locals()
