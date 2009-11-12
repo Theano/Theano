@@ -1367,7 +1367,8 @@ class test_matinv(unittest.TestCase):
         x = numpy.random.rand(3,3)+0.1
         w = numpy.random.rand(3,3)
         myssd0 = numpy.sum((x*w - numpy.ones((3,3)))**2.0)
-        for i in xrange(300):
+        # we want at least a test that is not too fast. So we make one here.
+        for i in xrange(100):
             gw = 2*(x*w - numpy.ones((3,3)))*x  # derivative of dMSE/dw
             myssd = numpy.sum((x*w - numpy.ones((3,3)))**2)
             w -= 0.4 * gw
