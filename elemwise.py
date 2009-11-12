@@ -319,9 +319,6 @@ class NaiveAlgo(object):
         sio = StringIO.StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
 
-        def _logical_scalar(x):
-            return all(x.type.broadcastable)
-
         if nd in (4,):
             # print some leading comments to make the code easier to read
             for ipos, i in enumerate(node.inputs):
@@ -575,9 +572,6 @@ class NaiveAlgo(object):
         nd = node.outputs[0].type.ndim
         sio = StringIO.StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
-
-        def _logical_scalar(x):
-            return all(x.type.broadcastable)
 
         for ipos, i in enumerate(node.inputs):
             print >> sio, "//    Input  ", ipos, str(i.type)
