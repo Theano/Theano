@@ -61,7 +61,7 @@ def infer_reuse_pattern(env, outputs_to_disown):
     # remove from rval all of the inputs, constants, values.
     rval = set(r for r in rval if r.owner is not None)
 
-    if 1:
+    if 0:
         # DEBUG STUFF
         # verify that we return a superset of what we've been returning so far...
         rval0 = _old_infer_reuse_pattern(env, outputs_to_disown)
