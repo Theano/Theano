@@ -203,24 +203,20 @@ class RecAlgo(object):
 class NaiveAlgo(object):
     verbose = False
     cache_version = ()
-    cache_version = ('debug', 3)
+    cache_version = ('debug', 4)
 
     def __init__(self, scalar_op):
         self.scalar_op = scalar_op
 
-    def c_src_kernel(self, node, nodename):
-        nd = node.outputs[0].type.ndim
+    def c_src_kernel(self, node, nodename, nd):
         sio = StringIO.StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
-
-        def _logical_scalar(x):
-            return all(x.type.broadcastable)
 
         for ipos, i in enumerate(node.inputs):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename, id(self))
+        print >> sio, "static __global__ void kernel_%s_%s_%s_%s(unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename, id(self), nd)
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
         #declare inputs
@@ -627,7 +623,7 @@ class NaiveAlgo(object):
 
     def c_src_callkernel(self, node, nodename):
         #
-        # This function serves two main goals:
+        # This function serves three main goals:
         #
         # The first is stride unpacking:
         # it accepts input and output arguments as 
@@ -639,6 +635,13 @@ class NaiveAlgo(object):
         # The second is to recognize when trailing (right-most in numpy) dimensions can be collapsed as
         # being contiguous... (confusing... read code)
         #
+        # The thrid is to make a special case for scalar element. We allow the collapsing of them.
+        # In the not ccontiguous case, we set their stride to 0 later
+        # In the ccontiguous case, we put them into register to lower the number of memory access.
+
+        #TODO: in the not ccontiguous case, we should not reload scalar from memory each time.
+        #TODO: make a special case for broadcasting, to store the data in shared memory.
+
         nd = node.outputs[0].type.ndim
         id_self = id(self)
         d = dict()
@@ -666,6 +669,9 @@ class NaiveAlgo(object):
             // return the dimension such that it and all greater dimensions are c-contiguous
             // if everything is c_contiguous then this function returns 0, and size is left
             // with the number of elements.
+            // The dims we receive here are the same for each inputs.
+            // In the case where their is a few inputs with broadcast in one of the dims, this considers the broadcast as not c_contiguous.
+            // In the case where all inputs have a broadcast flags at the same dimenstions, dims[i] will be one and will collapse that dimensions.
 
             size = 1;
             while (nd > 0)
@@ -690,15 +696,21 @@ class NaiveAlgo(object):
         """ %locals()
         if self.verbose:
             print >> sio, """
-                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s_%(id_self)s     w numEls" << numEls << "\\n";
+                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s_%(id_self)s     w numEls" << numEls << " dims"<< d << "\\n";
             """ %locals()
             print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
                 for di in xrange(nd)) + ["'\\n';"])
             for ipos in xrange(len(node.inputs)):
                 print >> sio, """
-                std::cerr << "   %(ipos)s " << 
-            """ %locals() + " << ' ' <<  ".join(["i%i_data"%ipos]
-                    + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
+                std::cerr << "   %(ipos)s data strides" << 
+                """ %locals() + " << ' ' <<  ".join(["i%s_data"%ipos]
+                + list("i%s_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
+
+            for ipos in xrange(len(node.outputs)):
+                print >> sio, """
+                std::cerr << "   %(ipos)s data strides" << 
+                """ %locals() + " << ' ' <<  ".join(["o%s_data"%ipos]
+                    + list("o%s_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
 
         # collapse contiguous right-most dimensions (ignoring scalars)
         # this is a good idea because [we assume that] the output has been allocated c_contiguous
@@ -716,16 +728,27 @@ class NaiveAlgo(object):
                         nd_collapse_size = nd_collapse_size_%(ipos)s;
                     }
                 """ %locals()
-        if self.verbose:
-            print >> sio, 'std::cerr << "  nd_collapse " << nd_collapse << " " << nd_collapse_size << "\\n";'
+                if self.verbose:
+                    print >>sio, """
+                    std::cerr<< "nd_collapse_%(ipos)s "<< nd_collapse_%(ipos)s << "\\n";
+                    """%locals()
         for ipos in xrange(len(node.inputs)):
             print >> sio, "int local_i%(ipos)s_str[%(nd)s];"%locals()
             for d in xrange(nd):
-                print >> sio, "local_i%(ipos)s_str[%(d)s] = (%(d)s == nd_collapse) ? 1 : i%(ipos)s_str[%(d)s];"%locals()
+                if not _logical_scalar(node.inputs[ipos]):
+                    print >> sio, "local_i%(ipos)s_str[%(d)s] = (%(d)s == nd_collapse) ? 1 : i%(ipos)s_str[%(d)s];"%locals()
+                else:
+                    print >> sio, "local_i%(ipos)s_str[%(d)s] = 0;"%locals()
+
         for ipos in xrange(len(node.outputs)):
             print >> sio, "int local_o%(ipos)s_str[%(nd)s];"%locals()
             for d in xrange(nd):
                 print >> sio, "local_o%(ipos)s_str[%(d)s] = (%(d)s == nd_collapse) ? 1 : o%(ipos)s_str[%(d)s];"%locals()
+        if self.verbose:
+            print >> sio, 'std::cerr << "  nd_collapse " << nd_collapse << " " << nd_collapse_size << "\\n";'
+            for ipos in ["i"+ str(x) for x in xrange(len(node.inputs))]+["o"+ str(x) for x in xrange(len(node.outputs))]:
+                print >> sio, 'std::cerr << " local_%(ipos)s_str " <<'%locals()+' << " " << '.join(["local_%(ipos)s_str[%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
+
         print >> sio, "int local_dims[%(nd)s];"%locals()
         for d in xrange(nd):
             print >> sio, "local_dims[%(d)s] = (%(d)s == nd_collapse) ? nd_collapse_size : dims[%(d)s];"%locals()
@@ -754,111 +777,65 @@ class NaiveAlgo(object):
                 return 0;
                 """ %locals()
 
-        def launch_nd_collapse_2(nodename, id_self, scalar_op):
-            if self.verbose:
-                print >> sio, """
-                std::cerr << "   Running tiling 2D \\n";
-                """
-            print >> sio, """
-            dim3 gridDim(dims[0], dims[1]);
-            dim3 blockDim;
-            if (0) {
-                blockDim.y = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                blockDim.x = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.y));
-            }
-            else
-            {
-                blockDim.x = std::min(dims[3], NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                blockDim.y = std::min(dims[2], (int)(NUM_VECTOR_OP_THREADS_PER_BLOCK/ blockDim.x));
-            }
-            if ((o0_str[0] <= 0) || (o0_str[1] <= 0) || (o0_str[2] <= 0) || (o0_str[3] <= 0))
-            {
-                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_tiling4<<<gridDim, blockDim>>>(%(kernel_call_args)s);
-            } else {
-                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_tiling4_less_registers<<<gridDim, blockDim>>>(%(kernel_call_args)s);
-            }
-
-            cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err) 
-            {
-                std::cerr << "   DEBUG: tiling4 call failure... falling back to general version \\n";
-                std::cerr << "   DEBUG: tiling4 call failure... " << cudaGetErrorString(err) << "\\n";
-                std::cerr << "   DEBUG: tiling4 call failure... grid" <<  gridDim.x<< " " << gridDim.y<< "\\n";
-                std::cerr << "   DEBUG: tiling4 call failure... block" <<  blockDim.x<< " " << blockDim.y<< "\\n";
-                int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
-                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
-                CNDA_THREAD_SYNC;
-                err = cudaGetLastError();
-                if( cudaSuccess != err) 
-                {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s", cudaGetErrorString(err));
-                    return -1;
-                
-                }                         
-            }
-            return 0;
-                """ %locals()
-
-        def launch_General(nodename, id_self, scalar_op):
+        def launch_General(nodename, id_self, scalar_op, force_nd):
             # kernel_call_args are used to invoke the cuda kernel
+            local="local_"
             kernel_call_args = ["numEls"]
-            kernel_call_args.extend("dims[%i]"%di for di in xrange(nd))
+            kernel_call_args.extend(local+"dims[%i]"%di for di in xrange(force_nd))
             for ipos in xrange(len(node.inputs)):
-                kernel_call_args.append(
-                        ", ".join(["i%i_data"%ipos] + list("i%i_str[%i]"%(ipos, di) for di in xrange(nd)))
-                        )
-                #strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(nd))
+                kernel_call_args+=["i%i_data"%ipos] + list(local+"i%i_str[%i]"%(ipos, di) for di in xrange(force_nd))
+                #strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(force_nd))
                 #kernel_call_args.append( "%s, i%i_data" % (strides, ipos))
             for ipos in xrange(len(node.outputs)):
-                kernel_call_args.append(
-                        ", ".join(["o%i_data"%ipos] + list("o%i_str[%i]"%(ipos, di) for di in xrange(nd)))
-                        )
-                #strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(nd))
+                kernel_call_args+=["o%i_data"%ipos] + list(local+"o%i_str[%i]"%(ipos, di) for di in xrange(force_nd))
+                #strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(force_nd))
                 #kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
-            kernel_call_args = ", ".join(kernel_call_args)
             if self.verbose:
                 print >> sio, """
-                    std::cerr << "   Running general version \\n";
-                    """
+                    std::cerr << "   Running general version with %(force_nd)s  dims\\n";
+                    """%locals()
+                print >> sio, "std::cerr << "+ ' << " " << '.join(kernel_call_args)+' << "\\n";'
+                #std::cerr << numEls << dims[0] << i0_data, i0_str[0] << o0_data, o0_str[0]\n;
+                
+            kernel_call_args = ", ".join(kernel_call_args)
+            
             print >> sio, """
                 int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
-                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err));
                     return -1;
                 
                 }                         
                 return 0;
                 """ %locals()
 
-        print >> sio, "switch (nd_collapse) {"
+        print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse+1)) {"%locals()
         print >> sio, "case 0: {"
         launch_Ccontiguous(nodename, id_self, scalar_op)
         print >> sio, "        } break;"
-        #print >> sio, "case 4: {" 
-        #launch_tile4()
-        #print >> sio, "        } break;"
-        print >> sio, "default: {" 
-        launch_General(nodename, id_self, scalar_op)
-        print >> sio, "        }"
-        print >> sio, "}"
-        print >> sio, "}"
+        for i in range(1, nd+1):
+            print >> sio, "case "+str(i)+": {"
+            launch_General(nodename, id_self, scalar_op, i)
+            print >> sio, "        } break;"
+                                   
+        print >> sio, "}"#end case
+        print >> sio, "}"#end fct
 
         #N.B. cudaGetLastError is called by c_code
         return sio.getvalue()
 
 
     def c_support_code_apply(self, node, nodename):
-        return "".join([ 
-            self.c_src_kernel(node, nodename),
+        nd = node.outputs[0].type.ndim
+        return "".join(
+            [self.c_src_kernel(node, nodename,x) for x in range(1,nd+1)]+
+            [
             self.c_src_kernel_Ccontiguous(node, nodename),
-            #self.c_src_kernel_tiling(node, nodename),
-            #self.c_src_kernel_tiling_less_registers(node, nodename),
             self.c_src_callkernel(node, nodename),
             ])
 
