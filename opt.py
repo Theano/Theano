@@ -1,4 +1,5 @@
 import sys
+import theano
 from theano import tensor, scalar, compile
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
 

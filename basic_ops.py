@@ -1257,7 +1257,8 @@ class GpuSum(Op):
 class GpuReshape(tensor.Reshape):
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, shp):
-        return Apply(self, [x, shp], [CudaNdarrayType([False]*self.ndim)()])
+        host_reshaped = host_from_gpu(x).reshape(shp)
+        return Apply(self, [x, shp], [CudaNdarrayType(host_reshaped.broadcastable)()])
     def perform(self, node, (x, shp), (out,)):
         if (len(shp) != self.ndim):
             raise ValueError('shape argument to Reshape.perform has incorrect length %i'
