@@ -363,10 +363,8 @@ class GpuDownsampleFactorMaxGrad(Op):
 
     def make_node(self, x, z, gz):
         return Apply(self, [x, z, gz], [x.type()])
-    #def perform(self, node, input_storage, output_storage):
-        #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return ()
+        return (1,)
     def c_code(self, node, nodename, (x, z, gz), (gx,), sub):
         fail = sub['fail']
         ds0, ds1 = self.ds
@@ -396,9 +394,8 @@ class GpuDownsampleFactorMaxGrad(Op):
             }
         }
         {
-            //TODO: implement this by supporting more
-            //outputs than threads
-            dim3 grid(CudaNdarray_HOST_DIMS(%(x)s)[0], CudaNdarray_HOST_DIMS(%(x)s)[2]);
+            //TODO: supporting more output columns than threads
+            dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0], CudaNdarray_HOST_DIMS(%(z)s)[2]);
             dim3 block(CudaNdarray_HOST_DIMS(%(x)s)[3]);
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
                 CudaNdarray_HOST_DIMS(%(z)s)[0],
@@ -441,9 +438,11 @@ class GpuDownsampleFactorMaxGrad(Op):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        ignore_border = int(self.ignore_border)
+        # This code is not sensitive to the ignore_border flag.
+        # It runs for every position in the output z, and then computes the gradient for the
+        # input pixels that were downsampled to that z-position.
         return """
-        template<int ds0, int ds1>
+        template<int ds0, int ds1> // ds0 is the downsampling factor in rows, ds1 in columns
         __global__ void kDownsampleMaxGrad_%(nodename)s(
            int D0, int D1, int D2, int D3, int xD2, int xD3,
            const float * x, int xS0, int xS1, int xS2, int xS3, 
@@ -457,14 +456,21 @@ class GpuDownsampleFactorMaxGrad(Op):
             int i2 = blockIdx.y;       // row wrt z and/or gz
             int x_col = threadIdx.x;
 
+
             //TODO: raise occupancy.  Use threadIdx.y to run several iterations of this i1 loop
             //in parallel
-            for (i1 = 0; i1 < D1; ++i1)
+
+            for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
             {
-                // The algorithm here is that every thread writes one output pixel per line
-                if (%(ignore_border)s && (x_col >= ds1 * D3))
+                if (x_col >= ds1 * D3)
                 {
-                    my_gz = 0;
+                    // This happens only if x_col was ignored (via ignore_border)
+                    // TODO: if ignore_border is False, this is impossible and we don't even
+                    //       need to generate this code.
+
+                    my_gz = 0.0f;
+                    //any fp number suffices for my_z, so we don't even need to set it to
+                    //anything in particular.
                 }
                 else
                 {
@@ -472,10 +478,10 @@ class GpuDownsampleFactorMaxGrad(Op):
                     my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + (x_col/ds1)* zS3];
                 }
 
-                for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (%(ignore_border)s || (x_row < xD2)); ++x_row)
+                for (int x_row = i2*ds0; (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
                 {
                     gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 + x_row*xD3 + x_col]
-                       = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0;
+                       = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) ? my_gz : 0.0f;
                 }
             }
         }
