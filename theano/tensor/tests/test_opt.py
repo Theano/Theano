@@ -1073,7 +1073,7 @@ class test_fusion(unittest.TestCase):
         fw, fx, fy, fz = fmatrices('wxyz')
         dw, dx, dy, dz = dmatrices('wxyz')
         ix, iy, iz = imatrices('xyz')
-       fv = fvector('r').dimshuffle('x',0)
+        fv = fvector('r').dimshuffle('x',0)
         fwv = my_init(shp,'float32',1)
         fxv = my_init(shp,'float32',2)
         fyv = my_init(shp,'float32',3)
