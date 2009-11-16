@@ -1059,56 +1059,69 @@ class test_fusion(unittest.TestCase):
         print "time", self.do(mode, shared, shp=(1000,1000),gpu=False, assert_len_topo=False,slice=s, nb_repeat=100)
 
 
-    def tes_memory_leak(self, mode=compile.mode.predefined_modes['FAST_RUN'], shared_fn=shared, shp=(3000,3000), gpu=False, nb_repeat=1, assert_len_topo=True, slice=None):
+    def tes_memory_leak(self, mode=compile.mode.predefined_modes['FAST_RUN'], shared_fn=shared, shp=(3000,3000), gpu=False, nb_repeat=30, assert_len_topo=True, slice=None):
         """
         param shared_fn: if None, will use compile.function
         verify that the elemwise fusion work
         Test with and without DimShuffle
         """
         #TODO: disable the canonizer?
-        def my_init(shp, dtype='float64', num=0):
-            #ret = numpy.asarray(numpy.random.rand(*shp),dtype=dtype)
-            ret = numpy.zeros(shp, dtype=dtype)+num
-            return ret
-        fw, fx, fy, fz = fmatrices('wxyz')
-        dw, dx, dy, dz = dmatrices('wxyz')
-        ix, iy, iz = imatrices('xyz')
-        fv = fvector('r').dimshuffle('x',0)
-        fwv = my_init(shp,'float32',1)
-        fxv = my_init(shp,'float32',2)
-        fyv = my_init(shp,'float32',3)
-        fzv = my_init(shp,'float32',4)
-        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
-        ixv = numpy.asarray(my_init(shp,num=60),dtype='int32')
-        iyv = numpy.asarray(my_init(shp,num=70),dtype='int32')
-        izv = numpy.asarray(my_init(shp,num=70),dtype='int32')
-        fwx=fw+fx
+        fx, fy = fmatrices('xy')
+        fxv = numpy.zeros(shp, dtype='float32')+ 2
+        fyv = numpy.zeros(shp, dtype='float32')+ 3
         cases = [
-            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#1
-            (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),
-            (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),
-            (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),
-            (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
-            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            (fx+fy,(fx,fy),(fxv,fyv),1,fxv+fyv,'float32'),#1
             ]
-        import gc, pdb, objgraph
+        import gc, pdb, objgraph, weakref
+        d={}
+        dl=[]
+        v1=None
         for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
-            if gpu and out_dtype!='float32':
-                print "Skip test %d as the gpu code currently support only float32" % id
-                continue
-            print "new cases", id
-
-            out=shared_fn(numpy.zeros(shp, dtype=out_dtype),'out')
-            f = pfunc(sym_inputs,[],updates=[(out,out+g)],mode=mode)
-
-            gc.collect();gc.collect();gc.collect()
-            pdb.set_trace()
-
-            for x in range(nb_repeat):
+            for zzzz in range(nb_repeat):
+                v=numpy.zeros(shp, dtype=out_dtype)
                 gc.collect();gc.collect();gc.collect()
-                pdb.set_trace()
-                objgraph.show__most_common_types(limit=40)
-                f(*val_inputs)
+                print 'v1',v1
+                v1=weakref.ref(v)
+                out=shared_fn(v,'out')
+                f = pfunc(sym_inputs,[],updates=[(out,out+g)],mode=mode)
+                del v
+
+                if True:
+                    gc.collect();gc.collect();gc.collect()
+                    nd=objgraph.typestats()
+                    print 'key, old val, new val, diff'
+                    for key in set(d.keys()+nd.keys()):
+                        if d.has_key(key) and nd.has_key(key) and nd[key]!=d[key]:
+                            print key, d.get(key),nd.get(key), nd[key]-d[key] if d.has_key(key) and nd.has_key(key) else None
+                    gc.collect();gc.collect();gc.collect()
+                    d=nd
+            
+#                pdb.set_trace()
+                if True:
+                    gc.collect();gc.collect();gc.collect()
+                    ndl=objgraph.by_type('list')
+                    ll=[]
+                    if len(dl)>0:
+                        nb=0
+                        for x in ndl:
+                            cmp = not isinstance(x, list)
+                            if not cmp and x:
+                                cmp=x[0].__class__.__name__!='array_converter'
+                                cmp=x[0]!='Option' if cmp else cmp
+                                cmp=x[0]!=270 if cmp else cmp
+                                cmp=False
+                            if cmp and x in dl:
+                                nb+=1
+                                ll.append(x)
+#                                pdb.set_trace()
+                                pass
+                        pdb.set_trace()
+                    dl=ndl
+
+                gc.collect();gc.collect();gc.collect()
+#                objgraph.show_most_common_types(limit=40)
+#                f(*val_inputs)
+                gc.collect();gc.collect();gc.collect()
 
 #            cases[id]=None #to remove g, that link to out that link to the ndarray!
             #g.owner.inputs[0] is out... make owner a weakref?
@@ -1116,7 +1129,8 @@ class test_fusion(unittest.TestCase):
         
 
 if __name__ == '__main__':
-    unittest.main()
+#    unittest.main()
+    test_fusion().tes_memory_leak()
 
 
 
