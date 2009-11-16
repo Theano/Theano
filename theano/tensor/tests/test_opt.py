@@ -929,6 +929,10 @@ class test_fusion(unittest.TestCase):
             cases = cases[slice]
         import time
         times=numpy.zeros(len(cases))
+        fail1=[]
+        fail2=[]
+        fail3=[]
+        fail4=[]
         for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
             print "new cases", id
 
@@ -958,19 +962,33 @@ class test_fusion(unittest.TestCase):
 #                    nb_repeat+=1
 
             times[id]=t1-t0
-            assert numpy.allclose(out,answer*nb_repeat,atol=1e-6 if out_dtype=='float32' else 1e-8)
+            atol=1e-8
+            if out_dtype=='float32':atol=1e-6
+            if not numpy.allclose(out,answer*nb_repeat,atol=atol):
+                fail1.append(id)
             topo=f.maker.env.toposort()
             if gpu:
                 import theano_cuda_ndarray as tcn
 
                 topo_ = [x for x in topo if not isinstance(x.op,tcn.basic_ops.GpuFromHost)]
                 gpu_ = [x for x in topo if isinstance(x.op,tcn.basic_ops.GpuFromHost)]
-                assert len(gpu_)==len(sym_inputs)
+                if not len(gpu_)==len(sym_inputs):
+                    fail2.append((id,gpu_,sym_inputs))
             else: topo_=topo
             if assert_len_topo:
-                assert(len(topo_)==nb_elemwise)
-            assert(out_dtype==out.dtype)
-        print "Executed",len(cases),"cases"
+                if not len(topo_)==nb_elemwise:
+                    fail3.append((id,topo_,nb_elemwise))
+            if not out_dtype==out.dtype:
+                fail4.append((id,out_dtype,out.dtype))
+
+#            cases[id]=None #to remove g, that link to out that link to the ndarray!
+            #g.owner.inputs[0] is out... make owner a weakref?
+            
+        failed=len(fail1+fail2+fail3+fail4)
+        print "Executed",len(cases),"cases", "failed", failed
+        if failed>0:
+            raise Exception("Failed %d cases"%failed, fail1, fail2, fail3, fail4)
+        
         return times
     
     def test_elemwise_fusion(self):
