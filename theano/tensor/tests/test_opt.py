@@ -1035,6 +1035,71 @@ class test_fusion(unittest.TestCase):
         import theano_cuda_ndarray as tcn
         self.speed_fusion(shared_fn=tcn.shared_constructor, gpu=True, s=slice(0,15))
         
+    def speed_log_exp(self):
+        s=slice(31,36)
+#        linker=gof.CLinker
+        linker=gof.OpWiseCLinker
+        mode=compile.Mode(linker(), cp(compile.mode.OPT_FAST_RUN))
+        mode=compile.ProfileMode()
+        print "time", self.do(mode, shared, shp=(1000,1000),gpu=False, assert_len_topo=False,slice=s, nb_repeat=100)
+
+
+    def test_memory_leak(self, mode=compile.mode.predefined_modes['FAST_RUN'], shared_fn=shared, shp=(3000,3000), gpu=False, nb_repeat=1, assert_len_topo=True, slice=None):
+        """
+        param shared_fn: if None, will use compile.function
+        verify that the elemwise fusion work
+        Test with and without DimShuffle
+        """
+        #TODO: disable the canonizer?
+        def my_init(shp, dtype='float64', num=0):
+            #ret = numpy.asarray(numpy.random.rand(*shp),dtype=dtype)
+            ret = numpy.zeros(shp, dtype=dtype)+num
+            return ret
+        fw, fx, fy, fz = fmatrices('wxyz')
+        dw, dx, dy, dz = dmatrices('wxyz')
+        ix, iy, iz = imatrices('xyz')
+        fv = fvector('r').dimshuffle('x',0)
+        fwv = my_init(shp,'float32',1)
+        fxv = my_init(shp,'float32',2)
+        fyv = my_init(shp,'float32',3)
+        fzv = my_init(shp,'float32',4)
+        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        ixv = numpy.asarray(my_init(shp,num=60),dtype='int32')
+        iyv = numpy.asarray(my_init(shp,num=70),dtype='int32')
+        izv = numpy.asarray(my_init(shp,num=70),dtype='int32')
+        fwx=fw+fx
+        cases = [
+            (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#1
+            (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv*fzv,'float32'),
+            (fx+fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv*fzv,'float32'),
+            (fx*fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv*fyv+fzv,'float32'),
+            (fw+fx+fy+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),#5
+            ((fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),1,fwv+fxv+fyv+fzv,'float32'),
+            ]
+        import gc, pdb, objgraph
+        for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
+            if gpu and out_dtype!='float32':
+                print "Skip test %d as the gpu code currently support only float32" % id
+                continue
+            print "new cases", id
+
+            out=shared_fn(numpy.zeros(shp, dtype=out_dtype),'out')
+            f = pfunc(sym_inputs,[],updates=[(out,out+g)],mode=mode)
+
+            gc.collect();gc.collect();gc.collect()
+            pdb.set_trace()
+
+            for x in range(nb_repeat):
+                gc.collect();gc.collect();gc.collect()
+                pdb.set_trace()
+                objgraph.show__most_common_types(limit=40)
+                f(*val_inputs)
+
+#            cases[id]=None #to remove g, that link to out that link to the ndarray!
+            #g.owner.inputs[0] is out... make owner a weakref?
+            
+        
+
 if __name__ == '__main__':
     unittest.main()
 
