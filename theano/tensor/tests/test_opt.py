@@ -1,7 +1,6 @@
 ## PENDING REWRITE OF tensor_opt.py
 
 
-import unittest
 
 from theano import gof
 from theano.tensor.opt import *
@@ -934,6 +933,9 @@ class test_fusion(unittest.TestCase):
         fail3=[]
         fail4=[]
         for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
+            if gpu and out_dtype!='float32':
+                print "Skip test %d as the gpu code currently support only float32" % id
+                continue
             print "new cases", id
 
             if shared_fn == None:
