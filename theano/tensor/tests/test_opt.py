@@ -15,7 +15,8 @@ import numpy
 
 from theano import function, compile
 from nose.plugins.skip import SkipTest
-
+import unittest, copy
+from copy import copy as cp
 
 def inputs(xbc = (0, 0), ybc = (0, 0), zbc = (0, 0)):
     x = TensorType(broadcastable = xbc, dtype = 'float64')('x')
@@ -973,13 +974,10 @@ class test_fusion(unittest.TestCase):
         return times
     
     def test_elemwise_fusion(self):
-        raise SkipTest("Current implementation of test_fusion is not enabled. So we skip the corresponding test")
         shp=(5,5)
         #we need the optimisation enabled, debug do this.
-        mode=compile.mode.predefined_modes['FAST_COMPILE']
-        mode=compile.mode.predefined_modes['FAST_RUN']
-        mode=compile.mode.predefined_modes['DEBUG_MODE']
-
+        mode=cp(compile.mode.get_default_mode())
+        mode._optimizer=mode._optimizer.including('local_elemwise_fusion')
         self.do(mode, shared, shp)
 
     def gpu_fusion(self):
