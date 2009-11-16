@@ -1014,40 +1014,35 @@ class test_fusion(unittest.TestCase):
         param s: a slice to apply to the case to execute. If None, exec all case.
         """
         
-        import copy
         shp=(3000,3000)
-        #mode1=copy.copy(compile.mode.predefined_modes['FAST_RUN'])
-        linker=gof.CLinker
-        linker=gof.OpWiseCLinker
-        mode1=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
+#        linker=gof.CLinker
+#        linker=gof.OpWiseCLinker
+        
+        mode1=cp(compile.get_default_mode())
+        mode1._optimizer=mode1._optimizer.including('local_elemwise_fusion')
         #TODO:clinker is much faster... but use to much memory
         #Possible cause: as their is do deletion of intermediate value when we don't keep the fct.
         #More plausible cause: we keep a link to the output data?
         #Follow up. Clinker do the same... second cause?
-        mode2=compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
-#        mode2=copy.copy(compile.mode.predefined_modes['FAST_RUN'])
-        old_optimizer = mode2._optimizer
-        try:
-            mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
-    #        mode2=compile.Mode(gof.OpWiseCLinker(allow_gc=True), compile.mode.OPT_FAST_COMPILE)
-
-            if s is None:
-                s=slice(0,49)
-                #s=slice(49,59)
-            nb_repeat=10
-            print "test with linker", str(linker)
-            times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
-            times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
-            print "times1 FAST_RUN optimisation"
-            print times1, times1.min(), times1.max(), times1.sum()
-            print "times2 FAST_RUN optimisation without local_elemwise_fusion"
-            print times2, times2.min(), times2.max(), times2.sum()
-            d=times2/times1
-    #        d.sort()
-            print "times2/times1",d
-            print "min", d.min(), "argmin", d.argmin(), "max", d.max(), "mean", d.mean(), "std", d.std()
-        finally:
-            mode2._optimizer = old_optimizer
+        mode2=cp(compile.get_default_mode())
+        mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
+        if s is None:
+            s=slice(0,49)
+            s=slice(0,10)
+            #s=slice(49,59)
+        nb_repeat=10
+        print "test with linker", str(mode1.linker)
+        times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+        times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
+        print "times1 with local_elemwise_fusion"
+        print times1, times1.min(), times1.max(), times1.sum()
+        print "times2 without local_elemwise_fusion"
+        print times2, times2.min(), times2.max(), times2.sum()
+        d=times2/times1
+        
+        print "times2/times1"
+        print d
+        print "min", d.min(), "argmin", d.argmin(), "max", d.max(), "mean", d.mean(), "std", d.std()
 
     def speed_fusion_gpu(self):
         import theano_cuda_ndarray as tcn
