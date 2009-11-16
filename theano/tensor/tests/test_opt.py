@@ -1059,7 +1059,7 @@ class test_fusion(unittest.TestCase):
         print "time", self.do(mode, shared, shp=(1000,1000),gpu=False, assert_len_topo=False,slice=s, nb_repeat=100)
 
 
-    def test_memory_leak(self, mode=compile.mode.predefined_modes['FAST_RUN'], shared_fn=shared, shp=(3000,3000), gpu=False, nb_repeat=1, assert_len_topo=True, slice=None):
+    def tes_memory_leak(self, mode=compile.mode.predefined_modes['FAST_RUN'], shared_fn=shared, shp=(3000,3000), gpu=False, nb_repeat=1, assert_len_topo=True, slice=None):
         """
         param shared_fn: if None, will use compile.function
         verify that the elemwise fusion work
