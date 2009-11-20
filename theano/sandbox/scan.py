@@ -211,17 +211,18 @@ class Scan(theano.Op):
             raise ValueError('Scan should iterate over at least on one input')
 
         if n_outs <1:
-           raise ValueError('Scan should have at least one output')
-        if (n_inplace > n_ins) or \
-           (n_inplace > n_outs):
-           raise ValueError('Number of inline outs should be smaller then'\
-             'the number of inputs or outputs')
+            raise ValueError('Scan should have at least one output')
+        if (n_inplace > n_ins):
+            raise ValueError('Number of inplace outputs should be smaller than '
+                     'the number of inputs.')
         if (n_inplace < 0):
-            raise ValueError('Number of inplace outputs should be larger '\
+            raise ValueError('Number of inplace outputs should be larger '
                              'or equal to 0')
         if (n_inplace_ignore > n_inplace):
             raise ValueError('Number of inputs to ignore should not be '\
                              'larger than number of inplace outputs')
+        if (n_inplace_ignore < 0):
+            raise ValueError('n_inplace_ignore should be non-negative')
 
         self.destroy_map = {}
         if inplace:
