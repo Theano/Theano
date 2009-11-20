@@ -250,7 +250,7 @@ class Scan(theano.Op):
         self.fn = fn
         self.grad_fn = grad_fn
 
-    def make_node(self,*inputs):
+    def make_node(self, *inputs):
         """Create an node for the Scan operation
 
         :param inputs: list of inputs for the operations; they should be 
