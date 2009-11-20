@@ -233,6 +233,11 @@ class Scan(theano.Op):
             if k < 0 or k > n_outs:
                 raise ValueError('Taps dictionary contains wrong key!')
             for vi in v:
+                # why is it illegal to specify  vi < 2?  
+                # what is special about vi == 1?
+                #
+                # Would it be simpler to just leave v alone if it is non-empty (checking that
+                # all vi are >=1) and set v = [1] for all missing output keys?
               if vi < 2:
                 raise ValueError('Taps dictionary contains wrong values!')
 
