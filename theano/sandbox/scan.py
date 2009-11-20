@@ -1,4 +1,30 @@
-"""Provide Scan an related funations"""
+"""Provide Scan and related functions
+
+
+Scanning a function over sequential input(s) producing sequential output(s).
+
+Scanning is a general form of recurrence, which can be used for looping.
+
+The idea is that you 'scan' a function along some input sequence, producing an output at each
+time-step that can be seen (but not modified) by the function at the next time-step.
+(Technically, the function can see the previous K time-steps.)
+
+So for example, ``sum()`` could be computed by scanning the ``z+x_i`` function over a list,
+given an initial state of ``z=0``. 
+
+Special cases:
+
+    - A ``reduce()`` operation can be performed by returning only the last output of a scan.
+    
+    - A ``map()`` operation can be performed by applying a function that ignores each previous
+      output.
+
+Often a for loop can be expressed as a scan() operation, and scan is the closest that theano
+comes to looping.
+
+This module provides scanning functionality with the `Scan` Op.
+
+"""
 __docformat__ = 'restructedtext en'
 
 import traceback
@@ -14,40 +40,80 @@ from theano.compile import optdb
 '''
 
 class Scan(theano.Op):
-    """Scan a function 'fn' over several inputs producing several outputs 
-   
-    The Scan operation is a multipurpose operation to be used to generate 
-    recurrent neural networks. One can understand it as going over the 
-    length of the inputs applying the function: 
+    """Scan a function `fn` over several inputs producing several outputs 
 
-     (y_1(t),y_2(t),..) = fn(x_1(t),x_2(t),..,y_1(t-1),y_1(t-2),..,y_1(t-k),
-                             y_2(t-1),y_2(t-2),..,w_1,w_2,..)
+    This Op implements a generalization of scan in which `fn` may consult several previous
+    outputs from the past, from positions (taps) relative to the current time.   The number of
+    taps (T_j) to use for each output (y_j) must be provided when creating a Scan Op.
 
-     All the 'y' are called outputs in this case, while 'x' are called inputs.
-     As one can see, the operation supports multiple inputs and multiple 
-     outputs.For each output several time delays can be used (taps), as well
-     as some of the outputs can be computed 'inplace' over some of the 
-     inputs. As long as the function 'fn' does not update any of the other
-     parameters (w_1,..) a gradient of this operation is supported.
+    Apply Inputs:
 
-     To use the op first you need to create it specifying the number of 
-     inputs, outputs, inplace outputs, and inputs to be ignored, a 
-     dictionary describing the time taps used, the function that will 
-     be applied recursively and if available the gradient function (or 
-     a symbolic definition of the function and the op will compute the 
-     gradient on its own). Secondly you just call the op with a list of 
-     parameters.
+        X sequence inputs x_1, x_2, ... x_X
 
-     The order of parameters given to the op is very important. The 
-     following order applies : 
-       1) List of inputs that are replaced by outputs which should not be 
-       given by the op to the function fn
-       2) List of inputs that are replaced by outputs which should be given
-       by the op to the function fn
-       3) List of output states corresponding to the outputs that are 
-       computed inplace
-       4) The other outputs 
-       5) Other arguments
+        Y initial states (u_1, u_2, ... u_Y) for our outputs. Each must have appropriate length
+        (T_1, T_2, ..., T_Y).
+
+        W other inputs w_1, w_2, ... w_W
+
+    Apply Outputs:
+
+        Y sequence outputs y_1, y_2, ... y_Y
+
+    Each output y_j is computed one time-step at a time according to the formula:
+
+    .. code-block:: python
+
+        (y_1[t], y_2[t],.., y_Y[t]) = fn(
+            x_1[t], x_2[t], ... x_X[t],          # X current input values
+            y_1(t-1), y_1(t-2), .., y_1(t-T_1),  # T_1 previous outputs for y_1
+            y_2(t-1), y_2(t-2), ..., y_2(t-T_2), # T_2 previous outputs for y_2
+            ...,                                 # ...
+            y_Y(t-1), y_Y(t-2), ..., y_Y(t-T_Y), # T_Y previous outputs for y_Y
+            w_1, w_2,..., w_W)                   # W 'timeless' inputs
+
+    So `fn` must accept X + T_1 + T_2 + ... + T_Y + W arguments.
+
+    There are two high-level methods (`symbolic`, `compiled`) for creating a Scan Op besides
+    the low-level `__init__` constructor.  ***Why would you call them?***
+
+    When applying a Scan Op to theano Variables, the order of arguments is very important! When
+    using the full flexibility of Scan there can be a lot of arguments, but it is essential to
+    put them in the following order: 
+
+     1. "Ignored inputs" (x_i with i < n_inplace_ignore) that will be overwritten by an inplace scan.
+
+     2. Inputs that will be overwritten by an inplace scan (x_i with i < n_inplace)
+
+     3. Remaining Inputs (x_i with i >= n_inplace)
+
+     3. Output states (u_j) corresponding to the outputs that are computed inplace (j <
+     n_inplace)
+
+     4. Remaining output states not given in 3 (u_j with j >= n_inplace)
+
+     5. Other inputs (w_1, w_2, ... w_W)
+
+
+    Inplace Operation
+    =================
+
+    The Scan Op supports computing some (`n_inplace`) of the outputs y_j using the memory from
+    corresponding inputs x_j.
+    It is not possible to indicate precisely which outputs overwrite which inputs, but without
+    loss of generality we assume that each of the first `n_inplace` outputs (y_j) overwrites
+    the corresponding input (x_j).
+
+    Note that using inplace computations destroys information, and may make it
+    impossible to compute the gradient.
+    As long as the function 'fn' does not update any of the other
+    parameters (w_1,..) a gradient of this operation is supported.
+    ***Who will care about this?  Someone just using the Op? Someone writing an inplace
+    optimization?*** 
+
+    Ignored Inputs
+    ==============
+
+    **** Behaviour?  Rationale?  Use case?
 
     """
     @classmethod
@@ -85,7 +151,12 @@ class Scan(theano.Op):
 
     @classmethod
     def compiled(cls,fn,n_ins, n_outs,\
-                 n_inplace=0, n_inplace_ignore=0, taps={}):
+            n_inplace=0, n_inplace_ignore=0, taps={}):
+        """Return a Scan instance that will scan the callable `fn` over `n_ins` inputs and
+        `n_outs` outputs.
+
+
+        """
         return cls(fn, None, n_ins, n_outs, \
                    n_inplace, n_inplace_ignore, taps= taps)
 
@@ -95,6 +166,12 @@ class Scan(theano.Op):
                  n_inplace=0, n_inplace_ignore=0,                 
                  taps={}, inplace=False):
         """Create an instance of the scan class
+
+        To use Scan, first you need to create it specifying the number of inputs, outputs,
+        inplace outputs (see notes below), and inputs to be ignored, a dictionary describing
+        the time taps used, the function that will be applied recursively and optionally, the
+        gradient function (or a symbolic definition of the function and the op will compute the
+        gradient on its own). Secondly you just call the op with a list of parameters.
 
         :param fn: compiled function that takes you from time step t-1 to t
 
@@ -131,7 +208,7 @@ class Scan(theano.Op):
         computation
         """
         if n_ins < 1:
-           raise ValueError('Scan should iterate over at least on one input')
+            raise ValueError('Scan should iterate over at least on one input')
 
         if n_outs <1:
            raise ValueError('Scan should have at least one output')
