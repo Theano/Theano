@@ -1,4 +1,4 @@
-CUDA_NDARRAY?=$(HOME)/cvs/lgcm/cuda_ndarray
+CUDA_NDARRAY?=../../../../cuda_ndarray
 NUMPY_INCLUDE?=/usr/include/python2.6
 
 type_support.so : type_support.cu $(CUDA_NDARRAY)/cuda_ndarray.so
