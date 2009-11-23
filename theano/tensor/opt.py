@@ -1369,10 +1369,11 @@ class FusionOptimizer(Optimizer):
 
 
 if config.getboolean('tensor_opt.local_elemwise_fusion'):
-    _logger.debug("enabling optimization: fusion elemwise")
-    compile.optdb.register('elemwise_fusion', FusionOptimizer(), 71.00, 'fast_run', 'fusion')
+    _logger.debug("enabling optimization fusion elemwise in fast_run")
+    compile.optdb.register('elemwise_fusion', FusionOptimizer(), 71.00, 'fast_run', 'fusion', 'local_elemwise_fusion')
 else:
-    _logger.debug("not enabling optimization: fusion elemwise")
+    _logger.debug("not enabling optimization fusion elemwise in fast_run")
+    compile.optdb.register('elemwise_fusion', FusionOptimizer(), 71.00, 'fusion', 'local_elemwise_fusion')
 
 # def make_composite(inputs, outputs):
 #     scalar_inputs = [scalar.Scalar(dtype = i.type.dtype)() for i in inputs]
