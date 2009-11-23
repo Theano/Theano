@@ -683,7 +683,7 @@ class NaiveAlgo(object):
             """ %locals()
             print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
                 for di in xrange(nd)) + ["'\\n';"])
-        if self.verbose>2:
+        if self.verbose>1:
             for ipos in xrange(len(node.inputs)):
                 print >> sio, """
                 std::cerr << "   %(ipos)s data strides" << 
@@ -711,7 +711,7 @@ if(nd_collapse_%(ipos)s[i]==0)
 nd_collapse_[i]=0;
 }
                 """ %locals()
-                if self.verbose>2:
+                if self.verbose>1:
                     print >>sio, """
                     std::cerr<< "nd_collapse_%(ipos)s "<< 
                     """%locals()
@@ -749,7 +749,7 @@ nd_collapse_[i]=0;
 
         """%locals()
 
-        if self.verbose>2:
+        if self.verbose>1:
             for d in xrange(nd):
                 print >> sio, 'std::cerr << "local_dims %(d)s " << local_dims[%(d)s] << "\\n"; '%locals()
 
@@ -789,7 +789,7 @@ nd_collapse_[i]=0;
             }
             """%locals()
 
-        if self.verbose>2:
+        if self.verbose>1:
             for ipos in ["i"+ str(x) for x in xrange(len(node.inputs))]+["o"+ str(x) for x in xrange(len(node.outputs))]:
                 print >> sio, 'std::cerr << " local_%(ipos)s_str " <<'%locals()+' << " " << '.join(["local_%(ipos)s_str[%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
 
