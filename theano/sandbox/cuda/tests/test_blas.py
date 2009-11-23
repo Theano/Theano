@@ -5,7 +5,7 @@ from theano import tensor
 
 import numpy
 
-import theano_cuda_ndarray as tcn
+import theano.sandbox.cuda as tcn
 
 from theano.sandbox.downsample import DownsampleFactorMax
 

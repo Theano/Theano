@@ -260,8 +260,8 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
         setattr(conf, k, kwargs[k])
 
     if conf.use_gpu:
-        import theano_cuda_ndarray
-        theano_cuda_ndarray.use()
+        import theano.sandbox.cuda
+        theano.sandbox.cuda.use()
 
     debug=False
     if theano.compile.default_mode=="DEBUG_MODE": debug=True

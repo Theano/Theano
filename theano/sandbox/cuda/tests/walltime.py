@@ -5,8 +5,8 @@ from theano import tensor
 
 import numpy
 
-import theano_cuda_ndarray as tcn
-from theano_cuda_ndarray.basic_ops import host_from_gpu, gpu_from_host
+import theano.sandbox.cuda as tcn
+from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
 
 def compare_fns(fns, input, reps=10):
     times = {}

@@ -3,10 +3,10 @@ import theano
 from theano import tensor, scalar, compile
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
 
-from theano_cuda_ndarray.basic_ops import *
-from theano_cuda_ndarray.blas import gpu_dot22, gpu_gemm, GpuConv
-from theano_cuda_ndarray.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
-from theano_cuda_ndarray.nnet import (
+from theano.sandbox.cuda.basic_ops import *
+from theano.sandbox.cuda.blas import gpu_dot22, gpu_gemm, GpuConv
+from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
+from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax)

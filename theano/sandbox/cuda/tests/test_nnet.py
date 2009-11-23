@@ -11,10 +11,10 @@ import theano.sandbox.downsample
 
 import numpy
 
-import theano_cuda_ndarray as tcn
+import theano.sandbox.cuda as tcn
 
 import logging
-logging.getLogger('test_cuda_ndarray.tests.test_nnet').setLevel(logging.INFO)
+logging.getLogger('theano.sandbox.cuda.tests.test_nnet').setLevel(logging.INFO)
 
 
 def get_mode():
