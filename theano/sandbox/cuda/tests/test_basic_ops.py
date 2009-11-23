@@ -153,7 +153,7 @@ def test_elemwise_collapse():
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle(0,'x',1,2)
     b = tcn.CudaNdarrayType((False, True, False, False))()
-    c = a3+b * tensor.exp(1 + b**a3)
+    c = a3+b
     f = pfunc([b], [c])
 
 
@@ -163,9 +163,10 @@ def test_elemwise_collapse():
         print id, n
     #let debugmode catch errors
     f(v)
+    print "Expected collapse of all dimensions"
 
 def test_elemwise_collapse2():
-    """ used to test if the case where some inputs are broadcast """
+    """ used to test if the case where one inputs have a broadcast """
     
     shape = (4,5,60)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -173,7 +174,7 @@ def test_elemwise_collapse2():
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle(0,'x',1,2)
     b = tcn.CudaNdarrayType((False, False, False, False))()
-    c = a3+b * tensor.exp(1 + b**a3)
+    c = a3+b
     f = pfunc([b], [c])
 
 
@@ -183,3 +184,25 @@ def test_elemwise_collapse2():
         print id, n
     #let debugmode catch errors
     f(v)
+    print "Expected collapse to 3 dimensions"
+
+def test_elemwise_collapse3():
+    """ used to test if the case where one inputs have 2 broadcast dimensions at each ends."""
+    
+    shape = (4,5)
+    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a2 = tcn.shared_constructor(a, 'a')
+    a3 = a2.dimshuffle('x',0,1,'x')
+    b = tcn.CudaNdarrayType((False, False, False, False))()
+    c = (a3+b)
+    f = pfunc([b], [c])
+
+
+    v = numpy.asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
+    v=cuda_ndarray.CudaNdarray(v)
+    for id,n in enumerate(f.maker.env.toposort()):
+        print id, n
+    #let debugmode catch errors
+    f(v)
+    print "Expected collapse to 3 dimensions"
