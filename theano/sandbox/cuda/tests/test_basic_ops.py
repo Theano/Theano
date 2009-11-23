@@ -8,6 +8,9 @@ import numpy
 import theano.sandbox.cuda as tcn
 import cuda_ndarray
 
+def tes_use():
+    tcn.use()
+
 def test_elemwise0():
 
     a = tcn.shared_constructor(numpy.random.rand(4,4), 'a')
