@@ -201,9 +201,9 @@ class RecAlgo(object):
         return self.c_src_kernel(node, nodename) + self.c_src_callkernel(node, nodename)
 
 class NaiveAlgo(object):
-    verbose = False
+    verbose = 0 # 1 or 2 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 4)
+    cache_version = ('debug', 5)
 
     def __init__(self, scalar_op):
         self.scalar_op = scalar_op
@@ -655,27 +655,18 @@ class NaiveAlgo(object):
 
         sio = StringIO.StringIO()
         print >> sio, """
-        static inline int 
-        c_contiguous_beyond_%(nodename)s(int nd, const int * dims, const int * strides, int &size)
+        static void can_collapse_%(nodename)s(int nd, const int * dims, const int * strides, int collapse[])
         {
-            // return the dimension such that it and all greater dimensions are c-contiguous
-            // if everything is c_contiguous then this function returns 0, and size is left
-            // with the number of elements.
-            // The dims we receive here are the same for each inputs.
-            // In the case where their is a few inputs with broadcast in one of the dims, this considers the broadcast as not c_contiguous.
-            // In the case where all inputs have a broadcast flags at the same dimenstions, dims[i] will be one and will collapse that dimensions.
-
-            size = 1;
-            while (nd > 0)
-            {
-                if ((dims[nd-1] > 1) && (strides[nd-1] != size))
-                {
-                    return nd;
-                }
-                size = size * dims[nd-1];
-                --nd;
+            //can we collapse dims[i] and dims[i-1]
+            for(int i=nd-1;i>0;i--){
+                if(dims[i]==1 && strides[i]==0){//
+                    collapse[i]=1;
+                }else if(dims[i-1]==1 && strides[i-1]==0){
+                    collapse[i]=1;
+                }else   if(strides[i]*dims[i]==strides[i-1]){//the dims nd-1 are not strided again dimension nd
+                    collapse[i]=1;
+                }else collapse[i]=0;
             }
-            return nd;
         }
         """ %locals()
         print >> sio, """
@@ -692,6 +683,7 @@ class NaiveAlgo(object):
             """ %locals()
             print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
                 for di in xrange(nd)) + ["'\\n';"])
+        if self.verbose>2:
             for ipos in xrange(len(node.inputs)):
                 print >> sio, """
                 std::cerr << "   %(ipos)s data strides" << 
@@ -704,43 +696,103 @@ class NaiveAlgo(object):
                 """ %locals() + " << ' ' <<  ".join(["o%s_data"%ipos]
                     + list("o%s_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
 
-        # collapse contiguous right-most dimensions (ignoring scalars)
-        # this is a good idea because [we assume that] the output has been allocated c_contiguous
+    # collapse contiguous dimensions (ignoring scalars, generic version(collapse any dimensions, right, left, middle))
+    # this is a good idea because [we assume that] the output has been allocated c_contiguous
 
-        print >> sio, "int nd_collapse = 0;" #because the outputs are assumed to be c_contiguous
-        print >> sio, "int nd_collapse_size = numEls;" #because the outputs are assumed to be c_contiguous
+        print >> sio, "int nd_collapse_[%(nd)s] = {"%locals() +','.join(['1' for x in range(nd)]) +"};"
         for ipos in xrange(len(node.inputs)):
             if not _logical_scalar(node.inputs[ipos]):
                 print >> sio, """
-                    int nd_collapse_size_%(ipos)s;
-                    int nd_collapse_%(ipos)s = c_contiguous_beyond_%(nodename)s(%(nd)s, dims, i%(ipos)s_str, nd_collapse_size_%(ipos)s);
-                    if (nd_collapse_%(ipos)s > nd_collapse)
-                    {
-                        nd_collapse = nd_collapse_%(ipos)s;
-                        nd_collapse_size = nd_collapse_size_%(ipos)s;
-                    }
+                    int nd_collapse_%(ipos)s[%(nd)s] = {"""%locals() +','.join(['1' for x in range(nd)]) +"};"
+                print >> sio, """
+can_collapse_%(nodename)s(%(nd)s, dims, i%(ipos)s_str, nd_collapse_%(ipos)s);
+for(int i=0;i<%(nd)s;i++){
+if(nd_collapse_%(ipos)s[i]==0)
+nd_collapse_[i]=0;
+}
                 """ %locals()
-                if self.verbose:
+                if self.verbose>2:
                     print >>sio, """
-                    std::cerr<< "nd_collapse_%(ipos)s "<< nd_collapse_%(ipos)s << "\\n";
+                    std::cerr<< "nd_collapse_%(ipos)s "<< 
                     """%locals()
-        for ipos in xrange(len(node.inputs)):
-            print >> sio, "int local_i%(ipos)s_str[%(nd)s];"%locals()
+                    print >>sio, ' << " " << '.join(["nd_collapse_%(ipos)s["%locals()+str(i)+"]" for i in range(nd)])
+                    print >>sio, '<< "\\n";'
+                    print >>sio, """
+                    std::cerr<< "nd_collapse_ "<< 
+                    """%locals()
+                    print >>sio, ' << " " << '.join(["nd_collapse_["%locals()+str(i)+"]" for i in range(nd)])
+                    print >>sio, '<< "\\n";'
+        print >> sio, """
+        int nd_collapse=%(nd)s;
+        for(int i=1;i<%(nd)s;i++){
+        if(nd_collapse_[i]==1)nd_collapse--;
+        }
+        if(nd_collapse==1 && """%locals()
+        print >> sio, " && ".join([ "i%(ipos)s_str[%(nd)s-1]==1 "%locals()for x in range(len(node.inputs))])
+        print >> sio,"""){nd_collapse=0;} """
+        if self.verbose:
+            print >> sio, """std::cerr << "nd_collapse " << nd_collapse << "\\n"; """ %locals()
+
+    # set the new dims.
+        print >> sio, "int local_dims[%(nd)s];"%locals()
+        print >> sio, """
+        for(int i=0;i<%(nd)s;i++){//init new dim
+          local_dims[i]=dims[i];
+        }
+        for(int i=%(nd)s-1;i>0;i--){
+          if(nd_collapse_[i]==1){
+            local_dims[i-1]*=local_dims[i];//set new dims
+            for(int j=i+1;j<%(nd)s;j++)//remove dims i from the array
+              local_dims[j-1]=local_dims[j];
+          }
+        }
+
+        """%locals()
+
+        if self.verbose>2:
             for d in xrange(nd):
-                print >> sio, "local_i%(ipos)s_str[%(d)s] = (%(d)s == nd_collapse) ? 1 : i%(ipos)s_str[%(d)s];"%locals()
+                print >> sio, 'std::cerr << "local_dims %(d)s " << local_dims[%(d)s] << "\\n"; '%locals()
+
+        # set the new stride.
+        for ipos in xrange(len(node.inputs)):
+            print >> sio, """
+            int local_i%(ipos)s_str[%(nd)s];
+            """%locals()
+            print >> sio, """
+            for(int i=0;i<%(nd)s;i++){//init new strides
+              local_i%(ipos)s_str[i]=i%(ipos)s_str[i];
+            }
+
+            for(int i=%(nd)s-1;i>0;i--){
+              if(nd_collapse_[i]==1){
+                local_i%(ipos)s_str[i-1]=local_i%(ipos)s_str[i];//set new strides
+                for(int j=i+1;j<%(nd)s;j++)//remove stride i from the array
+                  local_i%(ipos)s_str[j-1]=local_i%(ipos)s_str[j];
+                }
+            }
+            """%locals()
+
 
         for ipos in xrange(len(node.outputs)):
             print >> sio, "int local_o%(ipos)s_str[%(nd)s];"%locals()
-            for d in xrange(nd):
-                print >> sio, "local_o%(ipos)s_str[%(d)s] = (%(d)s == nd_collapse) ? 1 : o%(ipos)s_str[%(d)s];"%locals()
-        if self.verbose:
-            print >> sio, 'std::cerr << "  nd_collapse " << nd_collapse << " " << nd_collapse_size << "\\n";'
+            print >> sio, """
+            for(int i=0;i<%(nd)s;i++){//init new strides
+              local_o%(ipos)s_str[i]=o%(ipos)s_str[i];
+            }
+
+            for(int i=%(nd)s-1;i>0;i--){
+              if(nd_collapse_[i]==1){
+                local_o%(ipos)s_str[i-1]=local_o%(ipos)s_str[i];//set new strides
+                for(int j=i+1;j<%(nd)s;j++)//remove stride i from the array
+                  local_o%(ipos)s_str[j-1]=local_o%(ipos)s_str[j];
+                }
+            }
+            """%locals()
+
+        if self.verbose>2:
             for ipos in ["i"+ str(x) for x in xrange(len(node.inputs))]+["o"+ str(x) for x in xrange(len(node.outputs))]:
                 print >> sio, 'std::cerr << " local_%(ipos)s_str " <<'%locals()+' << " " << '.join(["local_%(ipos)s_str[%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
 
-        print >> sio, "int local_dims[%(nd)s];"%locals()
-        for d in xrange(nd):
-            print >> sio, "local_dims[%(d)s] = (%(d)s == nd_collapse) ? nd_collapse_size : dims[%(d)s];"%locals()
 
         def launch_Ccontiguous(nodename, id_self, scalar_op):
             kernel_call_args = ["numEls"]
@@ -749,6 +801,9 @@ class NaiveAlgo(object):
             for ipos in xrange(len(node.outputs)):
                 kernel_call_args.append("o%i_data"%ipos)
             kernel_call_args = ", ".join(kernel_call_args)
+            verb=""
+            if self.verbose:
+                verb='std::cerr << "   Running ccontiguous version\\n";'
             print >> sio, """
                 int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
@@ -762,7 +817,8 @@ class NaiveAlgo(object):
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err));
                     return -1;
                 
-                }                         
+                }
+                %(verb)s
                 return 0;
                 """ %locals()
 
@@ -803,7 +859,7 @@ class NaiveAlgo(object):
                 return 0;
                 """ %locals()
 
-        print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse+1)) {"%locals()
+        print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse)) {"%locals()
         print >> sio, "case 0: {"
         launch_Ccontiguous(nodename, id_self, scalar_op)
         print >> sio, "        } break;"
