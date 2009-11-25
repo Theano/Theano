@@ -394,7 +394,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
 gpu_only=False
 cpu_only=False
 ignore_error=False
-verbose=1
+verbose=0
 version=-1
 
 def test_lenet_28(): #MNIST
