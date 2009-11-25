@@ -314,6 +314,7 @@ def local_gpu_conv(node):
                     logical_img_hw=op.imshp_logical[1:3],
                     logical_kern_hw=op.kshp_logical,
                     logical_kern_align_top=op.kshp_logical_top_aligned,
+                    version=op.version,
                     verbose=op.verbose
                     )
         #HACK to print the number of MFlops in the profiler output.

@@ -131,6 +131,7 @@ class GpuConv(Op):
             logical_img_hw=None, 
             logical_kern_hw=None,
             logical_kern_align_top=True,
+            version=-1,
             verbose=0):
         self.border_mode = border_mode
         self.subsample = subsample
@@ -147,6 +148,7 @@ class GpuConv(Op):
             # grid
         self.logical_kern_hw = tuple(logical_kern_hw)
         self.logical_kern_align_top = logical_kern_align_top
+        self.version=version
         self.verbose=verbose
 
     def __eq__(self, other):
@@ -190,6 +192,7 @@ class GpuConv(Op):
                 logical_img_shape=self.logical_img_hw,
                 logical_kern_shape=self.logical_kern_hw,
                 kern_align=self.logical_kern_align_top,
+                version=self.version,
                 verbose=self.verbose)
 
 class GpuDownsampleFactorMax(Op):

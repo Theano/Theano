@@ -336,7 +336,9 @@ class ConvOp(Op):
                     unroll_batch=un_b, unroll_kern=un_k,
                     imshp_logical=imshp_logical,
                     kshp_logical=kshp_logical,
-                    kshp_logical_top_aligned=kshp_logical_top_aligned)
+                    kshp_logical_top_aligned=kshp_logical_top_aligned,
+                    version=self.version,
+                    verbose=self.verbose)
         if hasattr(self,'flops'):
             dw.set_flops()
         dw = dw(img,filters)
@@ -357,7 +359,9 @@ class ConvOp(Op):
                      1,1, output_mode=mode,
                      unroll_batch=un_b, unroll_kern=un_k,
                      imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1]),
-                     kshp_logical=None)
+                     kshp_logical=None,
+                     version=self.version,
+                     verbose=self.verbose)
         if hasattr(self,'flops'):
             din.set_flops()
         din = din(gz,filters)
