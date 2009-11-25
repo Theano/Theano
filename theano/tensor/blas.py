@@ -1,8 +1,8 @@
 """Ops and optimizations for using BLAS function calls to evaluate linear algebra expressions"""
 
-import os, sys, traceback, logging
+import sys, traceback, logging
 import numpy
-
+import theano.config as config
 from theano.gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox)
@@ -33,8 +33,8 @@ def ldflags(libs=True, flags=False):
     Default: ['blas'], but environment variable THEANO_BLAS_LDFLAGS overrides this.
     """
     rval = []
-    if os.getenv('THEANO_BLAS_LDFLAGS'):
-        tokens = os.getenv('THEANO_BLAS_LDFLAGS').split()
+    if config.THEANO_BLAS_LDFLAGS:
+        tokens = config.THEANO_BLAS_LDFLAGS.split()
         for t in tokens:
             try:
                 t0, t1, t2 = t[0:3]

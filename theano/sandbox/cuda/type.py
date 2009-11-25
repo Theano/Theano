@@ -5,6 +5,7 @@ import numpy
 
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor
+import theano.config as config
 
 import cuda_ndarray
 
@@ -236,14 +237,14 @@ class CudaNdarrayType(Type):
     def c_header_dirs(self):
         """Override `CLinkerOp.c_headers` """
         ret = [os.path.dirname(cuda_ndarray.__file__)]
-        cuda_root = os.getenv("CUDA_ROOT")
+        cuda_root = config.CUDA_ROOT
         if cuda_root:
             ret.append(os.path.join(cuda_root,'include'))
         return ret
 
     def c_lib_dirs(self):
         ret = [os.path.dirname(cuda_ndarray.__file__)]
-        cuda_root = os.getenv("CUDA_ROOT")
+        cuda_root = config.CUDA_ROOT
         if cuda_root:
             ret.append(os.path.join(cuda_root,'lib'))
         return ret

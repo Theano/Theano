@@ -5,6 +5,7 @@ import os, logging
 import numpy
 import scipy.sparse as sp
 from theano import gof
+import theano.config as config
 
 _logger = logging.getLogger('theano.compile.mode')
 
@@ -211,7 +212,7 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
 # is not set, it will default to 'FAST_RUN'
 # keep default_mode.optimizer==default_optimizer and default_mode.linker==default_linker!
 ##
-default_mode = os.getenv('THEANO_DEFAULT_MODE','FAST_RUN')
+default_mode = config.THEANO_DEFAULT_MODE
 
 def get_default_mode():
     if not predefined_modes.has_key(default_mode):

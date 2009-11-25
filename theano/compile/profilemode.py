@@ -5,7 +5,7 @@ from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers, default_linker, default_optimizer
 from theano.gof.cc import OpWiseCLinker
 from theano import gof
-from theano.gof.utils import config
+import theano.config as config
 
 class ProfileMode(Mode):
     def __init__(self, linker=default_linker, optimizer=default_optimizer):

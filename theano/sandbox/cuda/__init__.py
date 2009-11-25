@@ -11,7 +11,8 @@ import cuda_ndarray
 
 import theano.compile.sandbox
 
-import logging, os
+import os
+import theano.config as config
 
 import logging, copy
 _logger_name = 'theano_cuda_ndarray'
@@ -26,11 +27,9 @@ def debug(*msg):
     _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
 
 
-def use(device=None):
+def use(device=config.THEANO_GPU):
     if use.device_number is None:
         # No successful call to use() has been made yet
-        if device is None:
-            device = os.getenv("THEANO_GPU",0)
         if device=="-1" or device=="CPU":
             return
         device=int(device)

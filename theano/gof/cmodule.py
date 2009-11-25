@@ -2,6 +2,7 @@
 """
 import os, tempfile, StringIO, sys, logging, subprocess, cPickle, atexit, time, shutil, stat
 import distutils.sysconfig
+import theano.config as config
 import numpy.distutils #TODO: TensorType should handle this
 
 import compilelock # we will abuse the lockfile mechanism when reading and writing the registry
@@ -519,7 +520,7 @@ class ModuleCache(object):
 
 def _rmtree(parent):
     try:
-        if not os.getenv('THEANO_NOCLEANUP',0):
+        if not config.THEANO_NOCLEANUP:
             shutil.rmtree(parent)
     except Exception, e:
         try:
