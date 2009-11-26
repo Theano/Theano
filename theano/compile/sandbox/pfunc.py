@@ -81,6 +81,9 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[]):
     # from the inputs and the givens.
     #
 
+    if not isinstance(params,(list,tuple)):
+        raise Exception("in pfunc() the first argument must be a list or a tuple")
+
     # initialize the clone_d mapping with the `givens` argument
     clone_d = {}
     def v_clone(v):
