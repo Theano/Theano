@@ -665,7 +665,7 @@ class FunctionMaker(object):
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
     def __init__(self, inputs, outputs, 
-            mode = None, accept_inplace = False, function_builder = Function):
+            mode = mode_module.get_default_mode(), accept_inplace = False, function_builder = Function):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -680,9 +680,6 @@ class FunctionMaker(object):
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
         """
-
-        if mode is None:
-          mode = mode_module.default_mode
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
@@ -707,7 +704,6 @@ class FunctionMaker(object):
         self.env = env
 
         # Fetch the mode and then the optimizer and linker
-        mode = mode_module.predefined_modes.get(mode, mode)
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
@@ -835,7 +831,7 @@ def register_checker(checker):
 
 
 
-def function(inputs, outputs, mode=None, accept_inplace = False):
+def function(inputs, outputs, mode=mode_module.get_default_mode(), accept_inplace = False):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -870,8 +866,6 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
     #`Out` instance if necessary:
 
     t1 = time.time()
-    if mode is None:
-        mode = mode_module.default_mode
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
@@ -882,7 +876,6 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
-    mode = mode_module.predefined_modes.get(mode, mode)
     if isinstance(mode, (list, tuple)): # "mode comparison" semantics
         _logger.warning('Passing multiple modes is deprecated (20091019)')
         if not mode:
