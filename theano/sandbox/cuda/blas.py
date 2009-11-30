@@ -3,7 +3,7 @@ from theano import tensor, scalar
 import StringIO
 
 import cuda_ndarray
-from .type import CudaNdarrayType
+from theano.sandbox.cuda.type import CudaNdarrayType
 
 class GpuDot22(Op):
     def __str__(self):

@@ -4,10 +4,10 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor
 from theano.compile.sandbox.sharedvalue import shared, SharedVariable, shared_constructor
 
-from .type import CudaNdarrayType
-from .type_support import filter as type_support_filter
+from theano.sandbox.cuda.type import CudaNdarrayType
+from theano.sandbox.cuda.type_support import filter as type_support_filter
 
-from .basic_ops import HostFromGpu, GpuFromHost
+from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost
 
 class _operators(tensor.basic._tensor_py_operators):
     """Define a few properties and conversion methods for CudaNdarray Variables.

@@ -1,6 +1,6 @@
-from .type import CudaNdarrayType
+from theano.sandbox.cuda.type import CudaNdarrayType
 
-from .var import (CudaNdarrayVariable,
+from theano.sandbox.cuda.var import (CudaNdarrayVariable,
     CudaNdarrayConstant,
     CudaNdarraySharedVariable,
     shared_constructor)

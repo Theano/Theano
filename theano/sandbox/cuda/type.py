@@ -9,9 +9,9 @@ import theano.config as config
 
 import cuda_ndarray
 
-from .type_support import filter as type_support_filter
+from theano.sandbox.cuda.type_support import filter as type_support_filter
 
-from .nvcc_compiler import nvcc_module_compile_str
+from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
 
 class CudaNdarrayType(Type):
 

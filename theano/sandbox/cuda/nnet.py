@@ -3,9 +3,9 @@ from theano import tensor, scalar
 import StringIO
 
 import cuda_ndarray
-from .type import CudaNdarrayType
+from theano.sandbox.cuda.type import CudaNdarrayType
 
-from .kernel_codegen import nvcc_kernel, inline_reduce_max, inline_reduce_sum, inline_softmax
+from theano.sandbox.cuda.kernel_codegen import nvcc_kernel, inline_reduce_max, inline_reduce_sum, inline_softmax
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias (Op):
     nin=3

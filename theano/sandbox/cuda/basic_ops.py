@@ -4,10 +4,10 @@ import numpy
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar
 
-from .type import CudaNdarrayType
-from .type_support import filter as type_support_filter
+from theano.sandbox.cuda.type import CudaNdarrayType
+from theano.sandbox.cuda.type_support import filter as type_support_filter
 
-from .elemwise import NaiveAlgo
+from theano.sandbox.cuda.elemwise import NaiveAlgo
 
 import logging, copy
 _logger_name = 'theano_cuda_ndarray.basic_ops'
