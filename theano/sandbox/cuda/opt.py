@@ -48,9 +48,10 @@ gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_foldin
 @local_optimizer([])
 def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise):
-        if numpy.any(hasattr(i.owner, 'op') and isinstance(i.owner.op, HostFromGpu) for i in node.inputs):
-            if numpy.any(o.type.dtype == 'float64' for o in node.outputs):
+        if numpy.any([hasattr(i.owner, 'op') and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
+            if numpy.any([o.type.dtype == 'float64' for o in node.outputs]):
                 print 'WARNING: THERE ARE STILL float64s in your graph local_gpu_elemwise_0', node
+                import pdb; pdb.set_trace()
             else:
                 # move the add to a GpuAdd
                 new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
@@ -111,7 +112,7 @@ def local_gpu_dot(node):
             x, y = host_input.owner.inputs
             return [gpu_dot22(gpu_from_host(x), gpu_from_host(y))]
     if node.op == tensor.blas._dot22:
-        if numpy.any((i.owner and i.owner.op == host_from_gpu) for i in node.inputs):
+        if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
             x, y = node.inputs
             return [host_from_gpu(gpu_dot22(gpu_from_host(x), gpu_from_host(y)))]
     return False
