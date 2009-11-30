@@ -38,15 +38,19 @@ class DownsampleFactorMaxGrad(Op):
         gx = numpy.zeros_like(x)
 
         ds0, ds1 = self.ds
-        shape2 = (x.shape[2] / ds0 * ds0) if self.ignore_border else x.shape[2]
-        shape3 = (x.shape[3] / ds1 * ds1) if self.ignore_border else x.shape[3]
+        shape2 = (x.shape[2] / ds0 * ds0)
+        if not self.ignore_border: shape2 = x.shape[2]
+        shape3 = (x.shape[3] / ds1 * ds1)
+        if not self.ignore_border: shape3 = x.shape[3]
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for i in xrange(shape2):
                     zi = i / ds0
                     for j in xrange(shape3):
                         zj = j / ds1
-                        gx[n,k,i,j] = gz[n,k,zi,zj] if (maxout[n,k,zi,zj] == x[n,k,i,j]) else 0
+                        if (maxout[n,k,zi,zj] == x[n,k,i,j]):
+                            gx[n,k,i,j] = gz[n,k,zi,zj]
+                        else: gx[n,k,i,j] = 0
         gx_stg[0] = gx
 
     def c_code(self, node, name, (x, z, gz), (gx,), sub):
@@ -217,9 +221,12 @@ class DownsampleFactorMax(Op):
             z[0] = numpy.asarray(z[0], dtype=x.dtype)
         zz=z[0]
         ds0, ds1 = self.ds
-
-        x_usable2 = (x.shape[2] / ds0 * ds0) if self.ignore_border else x.shape[2]
-        x_usable3 = (x.shape[3] / ds1 * ds1) if self.ignore_border else x.shape[3]
+        if self.ignore_border:
+            x_usable2 = (x.shape[2] / ds0 * ds0)
+        else: x_usable2 = x.shape[2]
+        if self.ignore_border:
+            x_usable3 = (x.shape[3] / ds1 * ds1)
+        else: x_usable3 = x.shape[3]
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for i in xrange(x_usable2):

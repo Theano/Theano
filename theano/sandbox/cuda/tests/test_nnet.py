@@ -20,7 +20,10 @@ logging.getLogger('theano.sandbox.cuda.tests.test_nnet').setLevel(logging.INFO)
 def get_mode():
     if theano.compile.default_mode == 'CLINKER_MODE':
         return theano.compile.mode.Mode(optimizer='fast_run', linker='c')
-    return None if theano.compile.default_mode != "PROFILE_MODE" else theano.compile.ProfileMode()
+    if theano.compile.default_mode != "PROFILE_MODE":
+        return None
+    else:
+        return theano.compile.ProfileMode()
 
 def print_mode(mode):
     if mode != None and isinstance(mode,(theano.compile.ProfileMode,)):

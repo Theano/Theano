@@ -7,7 +7,8 @@ from theano.printing import Print
 def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
     """Returns numpy ndarray of len 2
     """
-    s = -1 if mode=='valid' else 1
+    if mode=='valid': s = -1
+    else: s = 1
     inshp, kshp = N.array(inshp), N.array(kshp)
     return  N.int64(N.ceil((inshp[1:] + s*kshp - s*1)/\
             N.array([dx,dy], dtype='float')))
@@ -83,11 +84,13 @@ class ConvOp(Op):
         self.verbose=verbose
         self.version=version
         # a triple
-        self.imshp_logical = self.imshp if imshp_logical is None else tuple(imshp_logical)
+        self.imshp_logical = self.imshp
+        if imshp_logical is not None: self.imshp_logical = tuple(imshp_logical)
         assert len(self.imshp) == len(self.imshp_logical)
 
         # a pair
-        self.kshp_logical = self.kshp if kshp_logical is None else tuple(kshp_logical)
+        self.kshp_logical = self.kshp
+        if kshp_logical is not None: self.kshp_logical = tuple(kshp_logical)
         self.kshp_logical_top_aligned = kshp_logical_top_aligned
 
         self.unroll_batch=unroll_batch
@@ -349,7 +352,8 @@ class ConvOp(Op):
             dw = dw[:,:,::-1,::-1]
 
         ####### Determine gradient on inputs ########
-        mode = 'valid' if self.out_mode == 'full' else 'full'
+        mode = 'valid'
+        if not self.out_mode == 'full': mode = 'full'
         filters = kerns.dimshuffle((1,0,2,3))
         filters = filters[:,:,::-1,::-1]
         nkern = self.imshp[0]
@@ -419,11 +423,13 @@ using namespace std;
         d["self_imshp_logical_c"] = self.imshp_logical[2]#N.B. 2  not 1
         d["self_imshp_logical_stride_r"] = int(N.ceil(self.imshp_logical[1] / float(self.imshp[1])))
         d["self_imshp_logical_stride_c"] = int(N.ceil(self.imshp_logical[2] / float(self.imshp[2])))
-        d["affectation"]="=" if self.imshp[0]==1 else "+="
+        d["affectation"]="="
+        if not self.imshp[0]==1: d["affectation"]="+="
         if node.inputs[0].type.dtype=="float32": d["type"]="float"
         elif node.inputs[0].type.dtype=="float64": d["type"]="double"
         else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
-        d["gemm"]='dgemm_' if d["type"]=="double" else 'sgemm_'
+        d["gemm"]='dgemm_'
+        if not d["type"]=="double":d["gemm"]='sgemm_'
 
         #print 'LOGICAL OFFSET', self.kshp_logical_top_aligned, d["self_kshp_logical_r"],
         #print d["self_kshp0"], d["self_kshp_logical_offset_r"], d["self_kshp_logical_stride_r"],
@@ -464,7 +470,9 @@ def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
     #TODO: remove the bias argument from this function because convolution has nothing to do with a bias
 
     # if imshp, is a tuple, images contains one input dimension
-    nvis_dim = 1 if len(imshp)!=3 else imshp[0]
+    if len(imshp)!=3:
+        nvis_dim = 1
+    else: nvis_dim = imshp[0]
 
     # all these reshapes should happen in place
     imrshp   = tensor.as_tensor([bsize] + list(imshp))

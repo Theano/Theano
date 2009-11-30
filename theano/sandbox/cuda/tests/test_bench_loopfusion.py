@@ -180,9 +180,11 @@ class Kouh2008(object):
         if rows is None and cols is None:
             rows = int(numpy.sqrt(n_out))
         if cols is None:
-            cols = n_out // rows + (1 if n_out % rows else 0)
+            cols = n_out // rows
+            if n_out % rows: cols+=1
         if rows is None:
-            rows = n_out // cols + (1 if n_out % cols else 0)
+            rows = n_out // cols
+            if n_out % cols: rows+=1
 
         filter_shape = self.filter_shape
         height = rows * (row_gap + filter_shape[0]) - row_gap
@@ -268,7 +270,10 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
 
     # get symbolic train set
     s_lr = theano.tensor.fscalar()
-    x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0,0), shape=(None, 784 if not debug else 3))()
+    if not debug:
+        sshape = (None, 784)
+    else: sshape = (None, 3)
+    x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0,0), shape=sshape)()
     y = theano.tensor.lvector()
 
     rng = numpy.random.RandomState(conf.rng_seed)

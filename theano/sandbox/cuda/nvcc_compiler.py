@@ -32,7 +32,9 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
 
     :returns: dynamically-imported python module of the compiled code.
     """
-    preargs= [] if preargs is None else list(preargs)
+    if preargs is None:
+        preargs= []
+    else: preargs = list(preargs)
     preargs.append('-fPIC')
     no_opt = False
     cuda_root = config.CUDA_ROOT
