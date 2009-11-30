@@ -1,4 +1,5 @@
 import StringIO, sys
+import numpy
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar
 
@@ -16,8 +17,16 @@ def debug(*msg):
 
 
 def _logical_scalar(x):
-    return all(x.type.broadcastable)
+    return numpy.all(x.type.broadcastable)
 
+def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i_data[0]'):
+    l=[]
+    for ipos, i in enumerate(node.inputs):
+        if _logical_scalar(i):
+            l+=[value_str%ipos]
+        else: l+=[data_str%ipos]
+    return l
+        
 class RecAlgo(object):
     def c_src_kernel(self, node, nodename):
         nd = node.outputs[0].type.ndim
@@ -83,7 +92,7 @@ class RecAlgo(object):
                     [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
                     [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                 , nodename + '_scalar_'
-                , [('ii_i%i_value' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
+                , get_str_list_logical_scalar(node)
                 , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
                 , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
         print >> sio, "       ", task_code
@@ -271,7 +280,7 @@ class NaiveAlgo(object):
                     [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
                     [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                 , nodename + '_scalar_'
-                , [('ii_i%i_value' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
+                , get_str_list_logical_scalar(node)
                 , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
                 , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
         print >> sio, "       ", task_code
@@ -394,7 +403,7 @@ class NaiveAlgo(object):
                         [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
                         [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                     , nodename + '_scalar_'
-                    , [('value0[%i]' if _logical_scalar(i) else 'ii_i%i_data[0]')%ipos for ipos, i in enumerate(node.inputs)] 
+                    , get_str_list_logical_scalar(node, value_str='value0[%i]')
                     , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)] 
                     , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
             print >> sio, "       ", task_code
@@ -605,7 +614,7 @@ class NaiveAlgo(object):
                     [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
                 , nodename + '_scalar_'
                 #, ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)] 
-                , [('ii_i%i_value' if _logical_scalar(i) else 'i%i_data[i]')%ipos for ipos, i in enumerate(node.inputs)] 
+                , get_str_list_logical_scalar(node, data_str='i%i_data[i]')
                 , ['o%i_data[i]'%ipos for ipos, i in enumerate(node.outputs)] 
                 , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
         print >> sio, "       ", task_code

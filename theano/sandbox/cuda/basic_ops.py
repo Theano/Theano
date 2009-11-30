@@ -110,7 +110,12 @@ class GpuElemwise(Op):
     def _rehash(self):
         items = self.inplace_pattern.items()
         items.sort()
-        tuple_items = tuple([k for k,v in items] + [(tuple(v) if isinstance(v, (tuple, list)) else v) for k,v in items])
+        tuple_items=[k for k,v in items]
+        for k,v in items:
+            if isinstance(v, (tuple, list)):
+                tuple_items+=[tuple(v)]
+            else: tuple_items+=[v]
+        tuple_items = tuple(tuple_items)
         h = hash(type(self)) ^ hash(self.scalar_op) ^ hash(tuple_items)
         # don't change a code that has already been  computed for this object
         assert h == getattr(self,'_hashval', h)
