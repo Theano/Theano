@@ -119,13 +119,15 @@ class CudaNdarrayType(Type):
         else:
             b = self.broadcastable
             #bcast = str(self.broadcastable)
-            s=len(b)
-            if numpy.any(b): s = str(b)
+            if not any(b):
+                s="%iD" % len(b)
+            else: s=str(b)
+
             bcast = {(): 'scalar',
                      (False,): 'vector',
                      (False, True): 'col',
                      (True, False): 'row',
-                     (False, False): 'matrix'}.get(b, "%iD" % s)
+                     (False, False): 'matrix'}.get(b, s)
             return "CudaNdarrayType(%s, %s)" % (str(self.dtype), bcast)
 
     def __repr__(self):
