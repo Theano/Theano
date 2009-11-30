@@ -670,7 +670,7 @@ class NaiveAlgo(object):
             for(int i=nd-1;i>0;i--){
                 if(dims[i]==1 && strides[i]==0){//
                     collapse[i]=1;
-                }else if(dims[i-1]==1 && strides[i-1]==0){
+                }else if(false && dims[i-1]==1 && strides[i-1]==0){
                     collapse[i]=1;
                 }else   if(strides[i]*dims[i]==strides[i-1]){//the dims nd-1 are not strided again dimension nd
                     collapse[i]=1;
