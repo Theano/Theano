@@ -668,7 +668,7 @@ class NaiveAlgo(object):
         {
             //can we collapse dims[i] and dims[i-1]
             for(int i=nd-1;i>0;i--){
-                if(dims[i]==1 && strides[i]==0){//
+                if(false && dims[i]==1 && strides[i]==0){//
                     collapse[i]=1;
                 }else if(false && dims[i-1]==1 && strides[i-1]==0){
                     collapse[i]=1;
