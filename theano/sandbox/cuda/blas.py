@@ -600,7 +600,7 @@ conv_full_patch_stack_padded( float* img, float* kern, float* out,
         out_dim_2, out_dim_3 = self.logical_output_shape_2d(self.logical_img_hw,self.logical_kern_hw,self.border_mode)
 
         fail=sub['fail']
-        if True and self.subsample==(1,1) and self.border_mode=='full' and self.version in [3,4,5,-1] and out_dim_3<=512 and ((self.logical_kern_hw[0]+2*self.logical_kern_hw[0]-2)*img_wid_padded*4 + self.logical_kern_hw[0]*self.logical_kern_hw[1]*4<(16*1024-128)) and out_.dtype=='float32' and kern_.dtype=='float32' and img_.dtype=='float32':#-128 as this is the number of shared memory used statically
+        if False and self.subsample==(1,1) and self.border_mode=='full' and self.version in [3,4,5,-1] and out_dim_3<=512 and ((self.logical_kern_hw[0]+2*self.logical_kern_hw[0]-2)*img_wid_padded*4 + self.logical_kern_hw[0]*self.logical_kern_hw[1]*4<(16*1024-128)) and out_.dtype=='float32' and kern_.dtype=='float32' and img_.dtype=='float32':#-128 as this is the number of shared memory used statically
             return """
 
 CudaNdarray* img = %(img)s;
