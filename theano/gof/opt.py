@@ -17,7 +17,7 @@ from theano.gof.python25 import any, all
 #if sys.version_info[:2] >= (2,5):
 #  from collections import defaultdict
 
-from collections import deque
+from theano.gof import deque
 import destroyhandler as dh
 import traceback
 

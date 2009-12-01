@@ -9,7 +9,7 @@ To read about what theano graphs are from a user perspective, have a look at
 __docformat__ = "restructuredtext en"
 
 from copy import copy
-from collections import deque
+from theano.gof import deque
 
 import utils
 

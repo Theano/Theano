@@ -119,7 +119,7 @@ class CudaNdarrayType(Type):
         else:
             b = self.broadcastable
             #bcast = str(self.broadcastable)
-            if not any(b):
+            if not numpy.any(b):
                 s="%iD" % len(b)
             else: s=str(b)
 
