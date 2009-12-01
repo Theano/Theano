@@ -22,7 +22,8 @@ HOME = os.getenv('HOME')
 THEANO_CMP_SLOPPY = os.getenv('THEANO_CMP_SLOPPY', 0)
 
 #flag for compiling with an optimized blas library. Used for gemm operation
-THEANO_BLAS_LDFLAGS = os.getenv('THEANO_BLAS_LDFLAGS')
+#if THEANO_BLAS_LDFLAGS exist but empty, we will use numpy.dot()
+THEANO_BLAS_LDFLAGS = os.getenv('THEANO_BLAS_LDFLAGS','-lblas')
 
 #for gpu
 CUDA_ROOT = os.getenv('CUDA_ROOT')
