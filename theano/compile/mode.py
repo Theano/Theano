@@ -214,10 +214,15 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
 ##
 default_mode = config.THEANO_DEFAULT_MODE
 
+def get_mode(string):
+    if string is None: string = default_mode
+    if not isinstance(string, str): return string #it is already a mode...
+    if not predefined_modes.has_key(string):
+        raise Exception("No predefixed mode exist for string: %s"%string)
+    return predefined_modes[string]
+
 def get_default_mode():
-    if not predefined_modes.has_key(default_mode):
-        raise Exception("No predefixed mode exist for string: %s"%default_mode)
-    return predefined_modes[default_mode]
+    return get_mode(default_mode)
 
 def register_mode(name, mode):
     """Add a `Mode` which can be referred to by `name` in `function`."""
