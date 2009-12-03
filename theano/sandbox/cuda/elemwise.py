@@ -212,7 +212,7 @@ class RecAlgo(object):
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 6, verbose)
+    cache_version = ('debug', 7, verbose)
 
     def __init__(self, scalar_op):
         self.scalar_op = scalar_op
