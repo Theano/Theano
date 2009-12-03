@@ -217,10 +217,17 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
-if int(config.THEANO_CMP_SLOPPY):
+if int(config.THEANO_CMP_SLOPPY)>1:
     # This environment variable is a quick-and-dirty way to get low-precision comparisons.
     # For a more precise setting of these tolerances set them explicitly in your user code by
     # assigning, for example, "theano.tensor.basic.float32_atol = ..."
+
+    #when THEANO_CMP_SLOPPY>1 we are even more sloppy. This is usefull to test the gpu as they don't use extended precision and this cause some difference bigger then the normal sloppy.
+    float32_atol = 5e-4
+    float32_rtol = 1e-3 
+    float64_rtol = 1e-4
+    float64_atol = 1e-3
+elif int(config.THEANO_CMP_SLOPPY):
     float32_atol = 1e-4
     float32_rtol = 1e-3 
     float64_rtol = 1e-4
