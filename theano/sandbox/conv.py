@@ -177,11 +177,12 @@ class ConvOp(Op):
                             col=-img_col
                             img_col+=col
                         while col < max_col: #loop over kern col
-                            self.flops+=1
+                            self.flops+=2
                             col+=1
             
             self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
-
+            
+            assert self.flops==self.bsize * self.nkern * self.imshp[0] * self.kshp[0] * self.kshp[1] * self.imshp[1] * self.imshp[2] * 2
 
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
