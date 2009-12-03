@@ -681,8 +681,7 @@ class FunctionMaker(object):
                     in the graph from the inputs to the outputs
         """
 
-        if mode is None:
-          mode = mode_module.default_mode
+        mode = mode_module.get_mode(mode)
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False
@@ -706,8 +705,7 @@ class FunctionMaker(object):
         env, additional_outputs = std_env(expanded_inputs, outputs, accept_inplace)
         self.env = env
 
-        # Fetch the mode and then the optimizer and linker
-        mode = mode_module.predefined_modes.get(mode, mode)
+        # Fetch the optimizer and linker
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         # optimize the env
@@ -870,8 +868,7 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
     #`Out` instance if necessary:
 
     t1 = time.time()
-    if mode is None:
-        mode = mode_module.default_mode
+    mode = mode_module.get_mode(mode)
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
@@ -882,7 +879,6 @@ def function(inputs, outputs, mode=None, accept_inplace = False):
 
     defaults = [getattr(input, 'value', None) for input in inputs]
 
-    mode = mode_module.predefined_modes.get(mode, mode)
     if isinstance(mode, (list, tuple)): # "mode comparison" semantics
         _logger.warning('Passing multiple modes is deprecated (20091019)')
         if not mode:

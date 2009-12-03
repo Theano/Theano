@@ -364,7 +364,7 @@ class ConvOp(Op):
                      unroll_batch=un_b, unroll_kern=un_k,
                      imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1]),
                      kshp_logical=None,
-                     version=self.version,
+                     version=-1,#we we change the mode, we don't forward the version.
                      verbose=self.verbose)
         if hasattr(self,'flops'):
             din.set_flops()
