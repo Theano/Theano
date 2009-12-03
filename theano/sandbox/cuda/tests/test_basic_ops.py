@@ -172,7 +172,7 @@ def speed_elemwise_collapse2():
     t2=time.time()
 
 def test_elemwise_collapse():
-    """ used to test if the case where all inputs are broadcast """
+    """ Test when all inputs have one(and the same) broadcastable dimension """
     
     shape = (4,5,60)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -189,11 +189,12 @@ def test_elemwise_collapse():
     for id,n in enumerate(f.maker.env.toposort()):
         print id, n
     #let debugmode catch errors
-    f(v)
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(shape[0],1,*shape[1:])+v)
     print "Expected collapse of all dimensions"
 
 def test_elemwise_collapse2():
-    """ used to test if the case where one inputs have a broadcast """
+    """ Test when only one inputs have one broadcastable dimension """
     
     shape = (4,5,60)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -210,11 +211,12 @@ def test_elemwise_collapse2():
     for id,n in enumerate(f.maker.env.toposort()):
         print id, n
     #let debugmode catch errors
-    f(v)
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(shape[0],1,*shape[1:])+v)
     print "Expected collapse to 3 dimensions"
 
 def test_elemwise_collapse3():
-    """ used to test if the case where one inputs have 2 broadcast dimensions at each ends."""
+    """ Test when only one inputs have two broadcastable dimension at each ends """
     
     shape = (4,5)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -231,11 +233,12 @@ def test_elemwise_collapse3():
     for id,n in enumerate(f.maker.env.toposort()):
         print id, n
     #let debugmode catch errors
-    f(v)
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(1,shape[0],shape[1],1)+v)
     print "Expected collapse to 3 dimensions"
 
 def test_elemwise_collapse4():
-    """ used to test if the case where one inputs have 2 broadcast dimensions at each ends and a scalar"""
+    """ Test when only one inputs have two broadcastable dimension at each ends and we add a scalar"""
     
     shape = (4,5)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
