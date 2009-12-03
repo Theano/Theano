@@ -171,7 +171,7 @@ class RandomFunction(gof.Op):
         if not self.inplace:
             r = copy(r)
         rout[0] = r
-        rval = self.fn(r, *(args + [shape]))
+        rval = self.fn(r, *(args + [tuple(shape)]))
         if not isinstance(rval, numpy.ndarray) \
                or str(rval.dtype) != node.outputs[1].type.dtype:
             out[0] = numpy.asarray(rval, dtype = node.outputs[1].type.dtype)
@@ -299,6 +299,12 @@ permutation = random_function(permutation_helper, 'int64', 1)
 permutation.__doc__ = """
 Usage: permutation(random_state, size, n)
 Returns a permutation of the integers between 0 and n-1.
+"""
+
+multinomial = random_function('multinomial', 'float64', 1, [0.5, 0.5])
+multinomial.__doc__ = """
+Usage: multinomial(random_state, size, n, pvals)
+Sample from a multinomial distribution defined by probabilities pvals.
 """
 
 

@@ -182,3 +182,10 @@ class RandomStreams(Component):
         """
         return self.gen(raw_random.permutation, *args, **kwargs)
 
+    def multinomial(self, *args, **kwargs):
+        """Return a symbolic multinomial sample
+
+        This is a shortcut for a call to `self.gen`
+        """
+        return self.gen(raw_random.multinomial, *args, **kwargs)
+
