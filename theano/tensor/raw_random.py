@@ -272,6 +272,35 @@ dimensions, the first argument may be a plain integer
 to supplement the missing information.
 """
 
+def permutation_helper(random_state, n, shape):
+    """Helper function to generate permutations from integers.
+
+    permutation_helper(random_state, n, (1,)) will generate a permutation of
+    integers 0..n-1.
+    In general, it will generate as many such permutation as required by shape.
+    For instance, if shape=(p,q), p*q permutations will be generated, and the
+    output shape will be (p,q,n), because each permutation is of size n.
+
+    If you wish to perform a permutation of the elements of an existing vector,
+    see shuffle (to be implemented).
+    """
+    # n should be a 0-dimension array
+    assert n.shape == ()
+    n = n.item()
+
+    out_shape = list(shape)
+    out_shape.append(n)
+    out = numpy.zeros(out_shape, int)
+    for i in numpy.ndindex(*shape):
+        out[i] = random_state.permutation(n)
+    return out
+
+permutation = random_function(permutation_helper, 'int64', 1)
+permutation.__doc__ = """
+Usage: permutation(random_state, size, n)
+Returns a permutation of the integers between 0 and n-1.
+"""
+
 
 @gof.local_optimizer([None])
 def random_make_inplace(node):
