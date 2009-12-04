@@ -186,8 +186,9 @@ def test_elemwise_collapse():
 
     v = numpy.asarray(numpy.random.rand(shape[0],1,*shape[1:]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
     out=f(v)[0]
     assert numpy.allclose(out,a.reshape(shape[0],1,*shape[1:])+v)
@@ -208,8 +209,9 @@ def test_elemwise_collapse2():
 
     v = numpy.asarray(numpy.random.rand(shape[0],5,*shape[1:]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
     out=f(v)[0]
     assert numpy.allclose(out,a.reshape(shape[0],1,*shape[1:])+v)
@@ -230,8 +232,9 @@ def test_elemwise_collapse3():
 
     v = numpy.asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
     out=f(v)[0]
     assert numpy.allclose(out,a.reshape(1,shape[0],shape[1],1)+v)
@@ -252,13 +255,13 @@ def test_elemwise_collapse4():
 
     v = numpy.asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
     out=f(v)[0]
     assert numpy.allclose(out,a.reshape(1,shape[0],shape[1],1)+v+2)
     print "Expected collapse to 3 dimensions"
-
 
 def test_elemwise_collapse5():
     """ Test when only one inputs have two broadcastable dimension at the beginning and we add a scalar"""
@@ -275,8 +278,9 @@ def test_elemwise_collapse5():
 
     v = numpy.asarray(numpy.random.rand(5,4,shape[0],shape[1]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
     out=f(v)[0]
     assert numpy.allclose(out,a.reshape(1,1,shape[0],shape[1])+v+2)
@@ -295,8 +299,9 @@ def test_elemwise_collapse6():
 
     v = numpy.asarray(numpy.random.rand(1,1,shape[0],shape[1]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
     out=f(v)[0]
     assert numpy.allclose(out,a.reshape(1,1,shape[0],shape[1])+v)
@@ -313,13 +318,11 @@ def test_elemwise_collapse7(atol=1e-6):
     a3 = a2.dimshuffle(0, 'x', 1, 2)
     f = pfunc([], [a3+2])
 
-
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
     out=f()[0]
     ans=(a+2).reshape(shape[0],1,shape[1],shape[2])
     assert numpy.allclose(out,ans, atol=atol)
     print "Expected collapse to c contiguous"
-
-
