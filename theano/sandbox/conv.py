@@ -1,7 +1,7 @@
 import numpy as N
 import theano
 import theano.tensor as T
-from theano import gof, Op, tensor
+from theano import gof, Op, tensor, config
 from theano.printing import Print
 
 def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
@@ -131,6 +131,8 @@ class ConvOp(Op):
                 "'valid' mode)")%(self.imshp_logical,self.kshp_logical))
 
         self._rehash()
+        if config.config.getboolean('op.set_flops'):
+            self.set_flops()
 
     def __eq__(self, other):
         if type(self) != type(other):

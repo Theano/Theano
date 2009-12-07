@@ -8,6 +8,7 @@ default_={
 'ProfileMode.n_ops_to_print':20,
 'tensor_opt.local_elemwise_fusion':False,
 'lib.amdlibm':False,
+'op.set_flops':False,#currently used only in ConvOp. The profile mode will print the flops/s for the op.
 }
 
 #default value taked from env variable
@@ -37,6 +38,8 @@ THEANO_DEBUGMODE_CHECK_C = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_C', 1)))
 THEANO_DEBUGMODE_CHECK_PY = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_PY', 1)))
 THEANO_DEBUGMODE_CHECK_FINITE = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_FINITE', 1)))
 THEANO_DEBUGMODE_CHECK_STRIDES = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_STRIDES', 1)))
+
+THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 
 class TheanoConfig(object):
     """Return the value for a key after parsing ~/.theano.cfg and 
@@ -72,7 +75,7 @@ class TheanoConfig(object):
         #user config file override the default value
         self.config.read(['theano.cfg', os.path.expanduser('~/.theano.cfg')])
 
-        self.env_flags=os.getenv("THEANO_FLAGS","")
+        self.env_flags=THEANO_FLAGS
         #The value in the env variable THEANO_FLAGS override the previous value
         for flag in self.env_flags.split(','):
             if not flag:
