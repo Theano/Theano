@@ -238,8 +238,8 @@ class Scalar(Type):
 
     def c_code_cache_version(self):
         #return ()
+        # no need to put lib.amdlibm here as c_compile_args() are put in the key.
         return (4,)  #explicit T given in specialization of operator= lines.  This makes it compile with open64
-        #2,
 
 
 int8 = Scalar('int8')
