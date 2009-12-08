@@ -199,9 +199,9 @@ def __oplist_tag(thing, tag):
 
 def random_function(fn, dtype, *rfargs, **rfkwargs):
     """
-    Returns a wrapper around RandomFunction which automatically infers the number 
+    Returns a wrapper around RandomFunction which automatically infers the number
     of dimensions of the output from the given shape. If the shape cannot be inferred,
-    the user can give an integer as first argument, which will be interpreted as the 
+    the user can give an integer as first argument, which will be interpreted as the
     number of dimensions.
 
     The number of dimensions for the following shape arguments can be inferred:
@@ -210,11 +210,12 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
     - constants
     """
     @constructor
-    def f(ndim, *args, **kwargs):
+    def f(r, ndim, *args, **kwargs):
+        print 'f(', ndim, args, ')'
         if isinstance(ndim, int):
-            r, shape, args = args[0], args[1], args[2:]
+            shape, args = args[0], args[1:]
         else:
-            r, shape, args = ndim, args[0], args[1:]
+            shape = ndim
             if shape == () or shape == []:
                 shape = tensor.TensorConstant(type = tensor.lvector, data = shape)
             else:
