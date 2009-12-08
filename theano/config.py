@@ -92,16 +92,17 @@ class TheanoConfig(object):
                 self.config.set(sp[0],sp[1],val)
             else:
                 found=0
+                sp=sp[0].lower()#the ConfigParser seam to use only lower letter.
                 for sec in self.config.sections():
                     for opt in self.config.options(sec):
-                        if opt == sp[0]:
+                        if opt == sp:
                             found+=1
                             section=sec
                             option=opt
                 if found==1:
                     self.config.set(section,option,val)
                 elif found>1:
-                    raise Exception("Ambiguous option (%s) in THEANO_FLAGS"%(sp[0]))
+                    raise Exception("Ambiguous option (%s) in THEANO_FLAGS"%(sp))
                 
     def __getitem__(self, key):
         """:returns: a str with the value associated to the key"""
