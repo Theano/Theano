@@ -10,6 +10,7 @@ default_={
 'lib.amdlibm':False,
 'op.set_flops':False,#currently used only in ConvOp. The profile mode will print the flops/s for the op.
 'nvcc.fastmath':False,
+'scalar.floatX':'float64',
 }
 
 #default value taked from env variable
@@ -147,3 +148,5 @@ class TheanoConfig(object):
 
 config = TheanoConfig()
 
+if config.get('scalar.floatX') not in ['float32', 'float64']:
+    raise Exception("the configuration scalar.real must have value float32 or float64")
