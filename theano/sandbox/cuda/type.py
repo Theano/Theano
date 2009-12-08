@@ -261,11 +261,17 @@ class CudaNdarrayType(Type):
 
     def c_code_cache_version(self):
         #return ()
+        #no need to put nvcc.fastmath in the tuple as the c_compile_args is put in the key.
         return (2,) # with assertion about refcounts
 
     def c_compiler(self):
         return nvcc_module_compile_str
 
+    def c_compile_args(self):
+        ret = []
+        if config.config.getboolean('nvcc.fastmath'):
+            ret.append('-use_fast_math')
+        return ret
 
 # THIS WORKS
 # But CudaNdarray instances don't compare equal to one another, and what about __hash__ ?

@@ -9,6 +9,7 @@ default_={
 'tensor_opt.local_elemwise_fusion':False,
 'lib.amdlibm':False,
 'op.set_flops':False,#currently used only in ConvOp. The profile mode will print the flops/s for the op.
+'nvcc.fastmath':False,
 }
 
 #default value taked from env variable
