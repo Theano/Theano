@@ -51,7 +51,6 @@ def local_gpu_elemwise_0(node):
         if numpy.any([hasattr(i.owner, 'op') and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
             if numpy.any([o.type.dtype == 'float64' for o in node.outputs]):
                 print 'WARNING: THERE ARE STILL float64s in your graph local_gpu_elemwise_0', node
-                import pdb; pdb.set_trace()
             else:
                 # move the add to a GpuAdd
                 new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
