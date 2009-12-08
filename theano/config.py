@@ -149,4 +149,4 @@ class TheanoConfig(object):
 config = TheanoConfig()
 
 if config.get('scalar.floatX') not in ['float32', 'float64']:
-    raise Exception("the configuration scalar.real must have value float32 or float64")
+    raise Exception("the configuration scalar.floatX must have value float32 or float64")
