@@ -1929,6 +1929,63 @@ def test_default_state():
     assert f(1) == 4.8
     assert f(2.2) == 7
 
+def test_cast_floatX():
+    floatx=config.config.get('scalar.floatX')
+
+    #float64 cast to float64 should not generate an op
+    x = dvector('x')
+    f = function([x],[cast(x,'float64')])
+#    print f.maker.env.toposort()
+    assert len(f.maker.env.toposort())==0
+
+    #float32 cast to float32 should not generate an op
+    x = fvector('x')
+    f = function([x],[cast(x,'float32')])
+#    print f.maker.env.toposort()
+    assert len(f.maker.env.toposort())==0
+
+    #floatX cast to float64
+    x = xvector('x')
+    f = function([x],[cast(x,'float64')])
+#    print f.maker.env.toposort()
+    if floatx=='float64':
+        assert len(f.maker.env.toposort()) == 0 
+    else:
+        assert len(f.maker.env.toposort()) == 1
+
+    #floatX cast to float32
+    x = xvector('x')
+    f = function([x],[cast(x,'float32')])
+#    print f.maker.env.toposort()
+    if floatx=='float32':
+        assert len(f.maker.env.toposort()) == 0 
+    else:
+        assert len(f.maker.env.toposort()) == 1
+
+    #float64 cast to floatX
+    x = dvector('x')
+    f = function([x],[cast(x,'floatX')])
+#    print f.maker.env.toposort()
+    if floatx=='float64':
+        assert len(f.maker.env.toposort()) == 0 
+    else:
+        assert len(f.maker.env.toposort()) == 1
+
+    #float32 cast to floatX
+    x = fvector('x')
+    f = function([x],[cast(x,'floatX')])
+#    print f.maker.env.toposort()
+    if floatx=='float32':
+        assert len(f.maker.env.toposort()) == 0 
+    else:
+        assert len(f.maker.env.toposort()) == 1
+
+    #floatX cast to floatX
+    x = xvector('x')
+    f = function([x],[cast(x,'floatX')])
+#    print f.maker.env.toposort()
+    assert len(f.maker.env.toposort()) == 0 
+
 if __name__ == '__main__':
     if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
         default_mode = compile.Mode(linker = 'c&py',

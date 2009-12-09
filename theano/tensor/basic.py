@@ -1128,6 +1128,8 @@ _cast_mapping = {
 @constructor
 def cast(x, dtype):
     """Symbolically cast `x` to a Tensor of type `dtype`.""" 
+    if dtype=='floatX': dtype = config.config.get('scalar.floatX')
+    
     _x = as_tensor_variable(x)
     if _x.type.dtype == dtype:
         return _x

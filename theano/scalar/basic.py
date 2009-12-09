@@ -957,6 +957,8 @@ _cast_mapping = {
            'complex128': convert_to_complex128}
 def cast(x, dtype):
     """Symbolically cast `x` to a Scalar of given `dtype`.""" 
+    if dtype=='floatX': dtype = config.config.get('scalar.floatX')
+
     _x = as_scalar(x)
     if _x.type.dtype == dtype:
         return _x
