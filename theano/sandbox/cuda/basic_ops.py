@@ -2,7 +2,7 @@ import StringIO, sys
 import numpy
 
 from theano import Op, Type, Apply, Variable, Constant
-from theano import tensor, scalar
+from theano import tensor, scalar, config
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.type_support import filter as type_support_filter
@@ -67,7 +67,7 @@ class GpuElemwise(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern):
+    def __init__(self, scalar_op, inplace_pattern, sync=None):
         ##
         # TODO: implement inplace operations.  
         #       It's ok that we set the DestroyMap to something but then don't actually destroy
@@ -77,6 +77,7 @@ class GpuElemwise(Op):
         #       the amount of loading and storing to global memory that we would have to do.
         #       That's why it isn't implemented yet.
         #
+        sync = config.config.getboolean('gpuelemwise.sync',sync)
         self.scalar_op = scalar_op
         self.inplace_pattern = inplace_pattern
         self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
@@ -86,7 +87,8 @@ class GpuElemwise(Op):
             self.ufunc = None
         self._rehash()
 
-        self.src_generator = NaiveAlgo(self.scalar_op)
+        self.src_generator = NaiveAlgo(self.scalar_op, sync=sync)
+        self.sync = sync
 
     def __getstate__(self):
         d = copy.copy(self.__dict__)

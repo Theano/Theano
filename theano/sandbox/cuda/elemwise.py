@@ -214,8 +214,15 @@ class NaiveAlgo(object):
     cache_version = ()
     cache_version = ('debug', 7, verbose)
 
-    def __init__(self, scalar_op):
+    def __init__(self, scalar_op, sync=True):
+        """ 
+        :param scalar_op: the scalar operation to execute on each element.
+        :param sync: if True, will wait after the kernel launch and check for error call.
+        """
         self.scalar_op = scalar_op
+        self.sync = sync
+        if not self.sync:
+            self.cache_version+=('nosync',)
 
     def c_src_kernel(self, node, nodename, nd):
         sio = StringIO.StringIO()
@@ -860,7 +867,7 @@ nd_collapse_[i]=0;
                 print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%(ipos)s][%(x)s]"%locals() for x in range(nd)])+'<<"\\n";'
 
 
-        def launch_Ccontiguous(nodename, id_self, scalar_op):
+        def launch_Ccontiguous(nodename, id_self, scalar_op, sync=True):
             kernel_call_args = ["numEls"]
             for ipos in xrange(len(node.inputs)):
                 kernel_call_args.append("i%i_data"%ipos)
@@ -876,6 +883,9 @@ nd_collapse_[i]=0;
                 kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
 
                 //std::cerr << "calling callkernel returned\\n";
+                """ %locals()
+            if sync:
+                print >> sio, """
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
@@ -887,8 +897,10 @@ nd_collapse_[i]=0;
                 %(verb)s
                 return 0;
                 """ %locals()
+            else:
+                print >> sio, " return 0; " %locals()
 
-        def launch_General(nodename, id_self, scalar_op, force_nd):
+        def launch_General(nodename, id_self, scalar_op, force_nd, sync=True):
             # kernel_call_args are used to invoke the cuda kernel
             local="local_"
             kernel_call_args = ["numEls"]
@@ -914,6 +926,9 @@ nd_collapse_[i]=0;
                 int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
                 kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                """ %locals()
+            if sync:
+                print >> sio, """
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
@@ -924,14 +939,15 @@ nd_collapse_[i]=0;
                 }                         
                 return 0;
                 """ %locals()
-
+            else:
+                print >> sio, " return 0; " %locals()
         print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse)) {"%locals()
         print >> sio, "case 0: {"
-        launch_Ccontiguous(nodename, id_self, scalar_op)
+        launch_Ccontiguous(nodename, id_self, scalar_op, self.sync)
         print >> sio, "        } break;"
         for i in range(1, nd+1):
             print >> sio, "case "+str(i)+": {"
-            launch_General(nodename, id_self, scalar_op, i)
+            launch_General(nodename, id_self, scalar_op, i, self.sync)
             print >> sio, "        } break;"
                                    
         print >> sio, "}"#end case

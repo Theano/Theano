@@ -11,6 +11,7 @@ default_={
 'op.set_flops':False,#currently used only in ConvOp. The profile mode will print the flops/s for the op.
 'nvcc.fastmath':False,
 'scalar.floatX':'float64',
+'gpuelemwise.sync':True, #when true, wait that the gpu fct finished and check it error code.
 }
 
 #default value taked from env variable
