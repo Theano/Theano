@@ -6,7 +6,7 @@ import numpy
 
 from theano.compile import module, In, Component
 from theano.gof import Container
-from theano.tensor import raw_random
+from theano.tensor import raw_random, reorder_row_elements
 
 class RandomStreamsInstance(object):
     """RandomStreamsInstance"""
@@ -188,4 +188,11 @@ class RandomStreams(Component):
         This is a shortcut for a call to `self.gen`
         """
         return self.gen(raw_random.multinomial, *args, **kwargs)
+
+    def shuffle_rows(self, input):
+        """Return a variable with every row (rightmost index) shuffled"""
+        perm = self.permutation(input.ndim-1, input.shape[:-1], input.shape[-1])
+        shuffled = reorder_row_elements(input, perm)
+        return shuffled
+
 
