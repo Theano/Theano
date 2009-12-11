@@ -848,9 +848,11 @@ nd_collapse_[i]=0;
         for(int i=1, end=nd_collapse;i<end;i++){
           if(nd_collapse_[i]==1)nd_collapse--;
         }
-        if(nd_collapse == 1 && """%locals()
-        print >> sio, " && ".join(["local_str[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]+
-                                  ["local_ostr[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])])
+        if(nd_collapse == 1 """%locals()
+        l=["local_str[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]
+        l+=["local_ostr[%(ipos)s][nd_collapse-1]==1 "%locals()for ipos in range(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])]
+        if len(l)>0:
+              print >> sio," && "," && ".join(l)
         print >> sio,"""){nd_collapse=0;} """
 
         if self.verbose:
