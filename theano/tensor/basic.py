@@ -2484,7 +2484,7 @@ def get_vector_length(v):
             return join.vec_length(v)
         except ValueError:
             pass
-    if v.owner and v.owner.op == _shape:
+    if v.owner and isinstance(v.owner.op, Shape):
         return v.owner.inputs[0].type.ndim
     raise ValueError("length not known")
 
