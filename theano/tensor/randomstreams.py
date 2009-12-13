@@ -189,7 +189,7 @@ class RandomStreams(Component):
         """
         return self.gen(raw_random.multinomial, *args, **kwargs)
 
-    def shuffle_rows(self, input):
+    def shuffle_row_elements(self, input):
         """Return a variable with every row (rightmost index) shuffled"""
         perm = self.permutation(input.ndim-1, input.shape[:-1], input.shape[-1])
         shuffled = reorder_row_elements(input, perm)
