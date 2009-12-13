@@ -2745,11 +2745,12 @@ class ReorderRowElements(Op):
     """
 
     def make_node(self, x, y):
-        assert x.type.ndim >= y.type.ndim
         x = as_tensor_variable(x)
-        # extend y dimension to match x
+        y = as_tensor_variable(y)
         assert y.type.dtype.startswith('int') or y.type.dtype.startswith('uint')
-        y = as_tensor_variable(y, ndim = x.type.ndim)
+        # extend y dimension to match x
+        assert x.type.ndim >= y.type.ndim
+        y = shape_padleft(y, n_ones=(x.type.ndim - y.type.ndim))
 
         inputlist = [x, y]
         outputlist = [x.type()]
