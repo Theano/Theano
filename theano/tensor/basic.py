@@ -2721,13 +2721,14 @@ class InversePermutation(Op):
     """
 
     def make_node(self, x):
+        x = as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (outs,)):
         if outs[0] is None or outs[0].shape != x.shape:
             outs[0] = numpy.empty_like(x)
         for i in numpy.ndindex(x.shape[:-1]):
-            outs[0][i][x[i]] = numpy.arange(x.shape[0])
+            outs[0][i][x[i]] = numpy.arange(x.shape[-1], dtype=x.dtype)
 
     def grad(self, (x,), (gz,)):
         return [None]
