@@ -1,7 +1,7 @@
 import numpy as N
 import theano
 import theano.tensor as T
-from theano import gof, Op, tensor
+from theano import gof, Op, tensor, config
 from theano.printing import Print
 
 def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
@@ -131,6 +131,8 @@ class ConvOp(Op):
                 "'valid' mode)")%(self.imshp_logical,self.kshp_logical))
 
         self._rehash()
+        if config.config.getboolean('op.set_flops'):
+            self.set_flops()
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -177,11 +179,12 @@ class ConvOp(Op):
                             col=-img_col
                             img_col+=col
                         while col < max_col: #loop over kern col
-                            self.flops+=1
+                            self.flops+=2
                             col+=1
             
             self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
-
+            
+            assert self.flops==self.bsize * self.nkern * self.imshp[0] * self.kshp[0] * self.kshp[1] * self.imshp[1] * self.imshp[2] * 2
 
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)

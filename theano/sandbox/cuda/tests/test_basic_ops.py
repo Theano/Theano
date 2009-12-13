@@ -172,7 +172,7 @@ def speed_elemwise_collapse2():
     t2=time.time()
 
 def test_elemwise_collapse():
-    """ used to test if the case where all inputs are broadcast """
+    """ Test when all inputs have one(and the same) broadcastable dimension """
     
     shape = (4,5,60)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -186,14 +186,16 @@ def test_elemwise_collapse():
 
     v = numpy.asarray(numpy.random.rand(shape[0],1,*shape[1:]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
-    f(v)
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(shape[0],1,*shape[1:])+v)
     print "Expected collapse of all dimensions"
 
 def test_elemwise_collapse2():
-    """ used to test if the case where one inputs have a broadcast """
+    """ Test when only one inputs have one broadcastable dimension """
     
     shape = (4,5,60)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -207,14 +209,16 @@ def test_elemwise_collapse2():
 
     v = numpy.asarray(numpy.random.rand(shape[0],5,*shape[1:]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
-    f(v)
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(shape[0],1,*shape[1:])+v)
     print "Expected collapse to 3 dimensions"
 
 def test_elemwise_collapse3():
-    """ used to test if the case where one inputs have 2 broadcast dimensions at each ends."""
+    """ Test when only one inputs have two broadcastable dimension at each ends """
     
     shape = (4,5)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -228,14 +232,16 @@ def test_elemwise_collapse3():
 
     v = numpy.asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
-    f(v)
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(1,shape[0],shape[1],1)+v)
     print "Expected collapse to 3 dimensions"
 
 def test_elemwise_collapse4():
-    """ used to test if the case where one inputs have 2 broadcast dimensions at each ends and a scalar"""
+    """ Test when only one inputs have two broadcastable dimension at each ends and we add a scalar"""
     
     shape = (4,5)
     a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
@@ -249,8 +255,74 @@ def test_elemwise_collapse4():
 
     v = numpy.asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
-    for id,n in enumerate(f.maker.env.toposort()):
-        print id, n
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
     #let debugmode catch errors
-    f(v)
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(1,shape[0],shape[1],1)+v+2)
     print "Expected collapse to 3 dimensions"
+
+def test_elemwise_collapse5():
+    """ Test when only one inputs have two broadcastable dimension at the beginning and we add a scalar"""
+    
+    shape = (4,5)
+    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a2 = tcn.shared_constructor(a, 'a')
+    a3 = a2.dimshuffle('x','x',0,1)
+    b = tcn.CudaNdarrayType((False, False, False, False))()
+    c = (a3+b+2)
+    f = pfunc([b], [c])
+
+
+    v = numpy.asarray(numpy.random.rand(5,4,shape[0],shape[1]),dtype='float32')
+    v=cuda_ndarray.CudaNdarray(v)
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
+    #let debugmode catch errors
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(1,1,shape[0],shape[1])+v+2)
+    print "Expected collapse to 2 dimensions"
+
+def test_elemwise_collapse6():
+    """ Test when all inputs have two broadcastable dimension at the beginning"""
+    
+    shape = (4,5)
+    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a2 = tcn.shared_constructor(a, 'a')
+    a3 = a2.dimshuffle('x','x',0,1)
+    b = tcn.CudaNdarrayType((True, True, False, False))()
+    f = pfunc([b], [a3+b])
+
+    v = numpy.asarray(numpy.random.rand(1,1,shape[0],shape[1]),dtype='float32')
+    v=cuda_ndarray.CudaNdarray(v)
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
+    #let debugmode catch errors
+    out=f(v)[0]
+    assert numpy.allclose(out,a.reshape(1,1,shape[0],shape[1])+v)
+    print "Expected collapse to c contiguous"
+
+
+def test_elemwise_collapse7(atol=1e-6):
+    """ Test when one input have one broadcastable dimension and the other is a scalar"""
+    
+    shape = (5,4,1)
+    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a2 = tcn.shared_constructor(a.copy(), 'a')
+    a3 = a2.dimshuffle(0, 'x', 1, 2)
+    f = pfunc([], [a3+2])
+
+    if False:
+        for id,n in enumerate(f.maker.env.toposort()):
+            print id, n
+    #let debugmode catch errors
+    out=f()[0]
+    ans=(a+2).reshape(shape[0],1,shape[1],shape[2])
+    assert numpy.allclose(out,ans, atol=atol)
+    print "Expected collapse to c contiguous"

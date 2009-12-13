@@ -8,6 +8,10 @@ default_={
 'ProfileMode.n_ops_to_print':20,
 'tensor_opt.local_elemwise_fusion':False,
 'lib.amdlibm':False,
+'op.set_flops':False,#currently used only in ConvOp. The profile mode will print the flops/s for the op.
+'nvcc.fastmath':False,
+'scalar.floatX':'float64',
+'gpuelemwise.sync':True, #when true, wait that the gpu fct finished and check it error code.
 }
 
 #default value taked from env variable
@@ -37,6 +41,8 @@ THEANO_DEBUGMODE_CHECK_C = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_C', 1)))
 THEANO_DEBUGMODE_CHECK_PY = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_PY', 1)))
 THEANO_DEBUGMODE_CHECK_FINITE = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_FINITE', 1)))
 THEANO_DEBUGMODE_CHECK_STRIDES = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_STRIDES', 1)))
+
+THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 
 class TheanoConfig(object):
     """Return the value for a key after parsing ~/.theano.cfg and 
@@ -72,7 +78,7 @@ class TheanoConfig(object):
         #user config file override the default value
         self.config.read(['theano.cfg', os.path.expanduser('~/.theano.cfg')])
 
-        self.env_flags=os.getenv("THEANO_FLAGS","")
+        self.env_flags=THEANO_FLAGS
         #The value in the env variable THEANO_FLAGS override the previous value
         for flag in self.env_flags.split(','):
             if not flag:
@@ -88,16 +94,17 @@ class TheanoConfig(object):
                 self.config.set(sp[0],sp[1],val)
             else:
                 found=0
+                sp=sp[0].lower()#the ConfigParser seam to use only lower letter.
                 for sec in self.config.sections():
                     for opt in self.config.options(sec):
-                        if opt == sp[0]:
+                        if opt == sp:
                             found+=1
                             section=sec
                             option=opt
                 if found==1:
                     self.config.set(section,option,val)
                 elif found>1:
-                    raise Exception("Ambiguous option (%s) in THEANO_FLAGS"%(sp[0]))
+                    raise Exception("Ambiguous option (%s) in THEANO_FLAGS"%(sp))
                 
     def __getitem__(self, key):
         """:returns: a str with the value associated to the key"""
@@ -142,3 +149,5 @@ class TheanoConfig(object):
 
 config = TheanoConfig()
 
+if config.get('scalar.floatX') not in ['float32', 'float64']:
+    raise Exception("the configuration scalar.floatX must have value float32 or float64")

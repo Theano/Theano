@@ -217,10 +217,17 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
-if int(config.THEANO_CMP_SLOPPY):
+if int(config.THEANO_CMP_SLOPPY)>1:
     # This environment variable is a quick-and-dirty way to get low-precision comparisons.
     # For a more precise setting of these tolerances set them explicitly in your user code by
     # assigning, for example, "theano.tensor.basic.float32_atol = ..."
+
+    #when THEANO_CMP_SLOPPY>1 we are even more sloppy. This is usefull to test the gpu as they don't use extended precision and this cause some difference bigger then the normal sloppy.
+    float32_atol = 5e-4
+    float32_rtol = 1e-3 
+    float64_rtol = 1e-4
+    float64_atol = 1e-3
+elif int(config.THEANO_CMP_SLOPPY):
     float32_atol = 1e-4
     float32_rtol = 1e-3 
     float64_rtol = 1e-4
@@ -275,6 +282,8 @@ class TensorType(Type):
            Optional name for this type.
         """
         self.dtype = str(dtype)
+        if self.dtype=='floatX':
+          self.dtype=config.config.get('scalar.floatX')
         self.broadcastable = tuple(broadcastable)
         self.dtype_specs() # error checking is done there
         self.name = name
@@ -601,6 +610,7 @@ cscalar = TensorType('complex64', ())
 zscalar = TensorType('complex128', ())
 fscalar = TensorType('float32', ())
 dscalar = TensorType('float64', ())
+xscalar = TensorType('floatX',())
 bscalar = TensorType('int8', ())
 wscalar = TensorType('int16', ())
 iscalar = TensorType('int32', ())
@@ -621,6 +631,7 @@ cvector = TensorType('complex64', (False, ))
 zvector = TensorType('complex128', (False, ))
 fvector = TensorType('float32', (False, ))
 dvector = TensorType('float64', (False, ))
+xvector = TensorType('floatX', (False, ))
 bvector = TensorType('int8', (False,))
 wvector = TensorType('int16', (False,))
 ivector = TensorType('int32', (False, ))
@@ -638,6 +649,7 @@ cmatrix = TensorType('complex64', (False, False))
 zmatrix = TensorType('complex128', (False, False))
 fmatrix = TensorType('float32', (False, False))
 dmatrix = TensorType('float64', (False, False))
+xmatrix = TensorType('floatX', (False, False))
 bmatrix = TensorType('int8', (False, False))
 wmatrix = TensorType('int16', (False, False))
 imatrix = TensorType('int32', (False, False))
@@ -655,6 +667,7 @@ crow = TensorType('complex64', (True, False))
 zrow = TensorType('complex128', (True, False))
 frow = TensorType('float32', (True, False))
 drow = TensorType('float64', (True, False))
+xrow = TensorType('floatX', (True, False))
 brow = TensorType('int8', (True, False))
 wrow = TensorType('int16', (True, False))
 irow = TensorType('int32', (True, False))
@@ -668,6 +681,7 @@ ccol = TensorType('complex64', (False, True))
 zcol = TensorType('complex128', (False, True))
 fcol = TensorType('float32', (False, True))
 dcol = TensorType('float64', (False, True))
+xcol = TensorType('floatX', (False, True))
 bcol = TensorType('int8', (False, True))
 wcol = TensorType('int16', (False, True))
 icol = TensorType('int32', (False, True))
@@ -681,6 +695,7 @@ ctensor3 = TensorType('complex64', (False,)*3)
 ztensor3 = TensorType('complex128', (False,)*3)
 ftensor3 = TensorType('float32', (False,)*3)
 dtensor3 = TensorType('float64', (False,)*3)
+xtensor3 = TensorType('floatX', (False,)*3)
 btensor3 = TensorType('int8', (False,)*3)
 wtensor3 = TensorType('int16', (False,)*3)
 itensor3 = TensorType('int32', (False,)*3)
@@ -690,6 +705,7 @@ ctensor4 = TensorType('complex64', (False,)*4)
 ztensor4 = TensorType('complex128', (False,)*4)
 ftensor4 = TensorType('float32', (False,)*4)
 dtensor4 = TensorType('float64', (False,)*4)
+xtensor4 = TensorType('floatX', (False,)*4)
 btensor4 = TensorType('int8', (False,)*4)
 wtensor4 = TensorType('int16', (False,)*4)
 itensor4 = TensorType('int32', (False,)*4)
@@ -1086,6 +1102,9 @@ _convert_to_float32 = _conversion(elemwise.Elemwise(scal.convert_to_float32), 'f
 _convert_to_float64 = _conversion(elemwise.Elemwise(scal.convert_to_float64), 'float64')
 """Cast to double-precision floating point"""
 
+_convert_to_floatX = _conversion(elemwise.Elemwise(scal.convert_to_floatX), 'floatX')
+"""Cast to floatX floating point"""
+
 _convert_to_complex64  = _conversion(elemwise.Elemwise(scal.convert_to_complex64), 'complex64')
 """Cast to single-precision complex"""
 
@@ -1103,11 +1122,14 @@ _cast_mapping = {
            'uint64': _convert_to_uint64,
            'float32': _convert_to_float32,
            'float64': _convert_to_float64,
+           'floatX': _convert_to_floatX,
            'complex64': _convert_to_complex64,
            'complex128': _convert_to_complex128}
 @constructor
 def cast(x, dtype):
     """Symbolically cast `x` to a Tensor of type `dtype`.""" 
+    if dtype=='floatX': dtype = config.config.get('scalar.floatX')
+    
     _x = as_tensor_variable(x)
     if _x.type.dtype == dtype:
         return _x
@@ -2462,7 +2484,7 @@ def get_vector_length(v):
             return join.vec_length(v)
         except ValueError:
             pass
-    if v.owner and v.owner.op == _shape:
+    if v.owner and isinstance(v.owner.op, Shape):
         return v.owner.inputs[0].type.ndim
     raise ValueError("length not known")
 

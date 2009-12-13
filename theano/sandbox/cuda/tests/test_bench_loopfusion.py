@@ -228,6 +228,11 @@ class Kouh2008(object):
 class Config(object):
     use_gpu = True
     dtype='float32'
+    dtype2=dtype
+    if dtype2=='floatX':
+        import theano.config as c
+        dtype2 = c.config.get('scalar.floatX')
+        
     rng_seed = 23498
 
     n_hid = 300
@@ -296,7 +301,7 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
 
     xval = numpy.asarray(
         rng.uniform(size=(conf.ft_batchsize, x.type.shape[1])),
-        dtype=conf.dtype,
+        dtype=conf.dtype2,
         )
     yval = numpy.arange(conf.ft_batchsize)
     for i in xrange(n_iter):
