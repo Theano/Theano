@@ -1349,7 +1349,7 @@ class test_matinv(unittest.TestCase):
         # use the function
         x = numpy.random.rand(dim,dim)+0.1      # Initialized s.t. x is not too tiny
         w = numpy.random.rand(dim,dim)
-        for i in xrange(300):
+        for i in xrange(100):
             ssd, gw = fn(x,w)
             #print ssd, x*w, x, w
             if i == 0:
