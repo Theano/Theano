@@ -232,7 +232,6 @@ def random_function(fn, dtype, *rfargs, **rfkwargs):
     """
     @constructor
     def f(r, ndim, *args, **kwargs):
-        print 'f(', ndim, args, ')'
         if isinstance(ndim, int):
             shape, args = args[0], args[1:]
         else:
