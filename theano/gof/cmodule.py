@@ -295,7 +295,7 @@ class ModuleCache(object):
                     key_pkl = os.path.join(root, 'key.pkl')
                     debug('refresh adding', key_pkl)
                     try:
-                        key = cPickle.load(file(key_pkl))
+                        key = cPickle.load(open(key_pkl, 'rb'))
                     except:
                         info("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
                         if 0:
@@ -404,15 +404,10 @@ class ModuleCache(object):
             assert key not in self.entry_from_key
             if _version: # save they key
                 key_pkl = os.path.join(location, 'key.pkl')
-                key_file = file(key_pkl, 'w')
+                # Note that using a binary file is important under Windows.
+                key_file = open(key_pkl, 'wb')
                 try:
-                    if sys.platform == 'win32':
-                        # Looks like there is a bug under Windows, where using the
-                        # highest protocol will result in a pickle file that cannot
-                        # be loaded afterwards.
-                        cPickle.dump(key, key_file)
-                    else:
-                        cPickle.dump(key, key_file, cPickle.HIGHEST_PROTOCOL)
+                    cPickle.dump(key, key_file, cPickle.HIGHEST_PROTOCOL)
                     key_file.close()
                     key_broken = False
                 except cPickle.PicklingError:
@@ -423,7 +418,7 @@ class ModuleCache(object):
 
                 if not key_broken:
                     try:
-                        key_from_file = cPickle.load(file(key_pkl))
+                        key_from_file = cPickle.load(open(key_pkl, 'rb'))
                         if key != key_from_file:
                             raise Exception("key not equal to unpickled version (Hint: verify the __eq__ and __hash__ functions for your Ops", (key, key_from_file))
                         self.loaded_key_pkl.add(key_pkl) # adding the key file to this set means it is a versioned key
