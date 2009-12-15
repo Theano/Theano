@@ -139,12 +139,18 @@ class T_RandomStreams(unittest.TestCase):
         assert m.random is m.m2.random
 
     def test_ndim(self):
+        """Test that the behaviour of 'ndim' optional parameter"""
+        # 'ndim' is an optional integer parameter, specifying the length
+        # of the 'shape', placed as first argument.
+
+        # ndim not specified, OK
         m1 = Module()
         m1.random = RandomStreams(234)
         m1.fn = Method([], m1.random.uniform((2,2)))
         made1 = m1.make()
         made1.random.initialize()
 
+        # ndim specified, consistent with shape, OK
         m2 = Module()
         m2.random = RandomStreams(234)
         m2.fn = Method([], m2.random.uniform(2, (2,2)))
@@ -155,6 +161,7 @@ class T_RandomStreams(unittest.TestCase):
         val2 = made2.fn()
         assert numpy.all(val1 == val2)
 
+        # ndim specified, inconsistent with shape, should raise ValueError
         m3 = Module()
         m3.random = RandomStreams(234)
         m3.fn = Method([], m3.random.uniform(1, (2,2)))
@@ -163,6 +170,8 @@ class T_RandomStreams(unittest.TestCase):
         self.assertRaises(ValueError, made3.fn)
 
     def test_uniform(self):
+        """Test that RandomStreams.uniform generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
         m = Module()
         m.random = RandomStreams(234)
         m.fn = Method([], m.random.uniform((2,2), -1, 1))
@@ -186,6 +195,8 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val1 == numpy_val1)
 
     def test_normal(self):
+        """Test that RandomStreams.normal generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
         m = Module()
         m.random = RandomStreams(234)
         m.fn = Method([], m.random.normal((2,2), -1, 2))
@@ -204,6 +215,8 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val1 == numpy_val1)
 
     def test_random_integers(self):
+        """Test that RandomStreams.random_integers generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
         m = Module()
         m.random = RandomStreams(234)
         m.fn = Method([], m.random.random_integers((20,20), -5, 5))
@@ -222,6 +235,8 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val1 == numpy_val1)
 
     def test_permutation(self):
+        """Test that RandomStreams.uniform generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
         m = Module()
         m.random = RandomStreams(234)
         m.fn = Method([], m.random.permutation((20,), 10))
@@ -233,6 +248,8 @@ class T_RandomStreams(unittest.TestCase):
 
         rng_seed = numpy.random.RandomState(234).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+
+        # rng.permutation outputs one vector at a time, so we iterate.
         numpy_val0 = numpy.asarray([rng.permutation(10) for i in range(20)])
         numpy_val1 = numpy.asarray([rng.permutation(10) for i in range(20)])
 
@@ -240,6 +257,8 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val1 == numpy_val1)
 
     def test_multinomial(self):
+        """Test that RandomStreams.multinomial generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
         m = Module()
         m.random = RandomStreams(234)
         m.fn = Method([], m.random.multinomial((20,20), 1, [0.1]*10))
@@ -258,6 +277,12 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val1 == numpy_val1)
 
     def test_shuffle_row_elements(self):
+        """Test that RandomStreams.shuffle_row_elements generates the right results"""
+        # Check over two calls to see if the random state is correctly updated.
+
+        # On matrices, for each row, the elements of that row should be shuffled.
+        # Note that this differs from numpy.random.shuffle, where all the elements
+        # of the matrix are shuffled.
         mm = Module()
         mm.random = RandomStreams(234)
         m_input = tensor.dmatrix()
@@ -288,6 +313,8 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(numpy_mval0 == fn_mval0)
         assert numpy.all(numpy_mval1 == fn_mval1)
 
+        # On vectors, the behaviour is the same as numpy.random.shuffle,
+        # except that it does not work in place, but returns a shuffled vector.
         vm = Module()
         vm.random = RandomStreams(234)
         v_input = tensor.dvector()
@@ -305,6 +332,8 @@ class T_RandomStreams(unittest.TestCase):
         print numpy_vval
         assert numpy.all(numpy_vval == fn_vval)
 
+        # Trying to shuffle a vector with function that should shuffle
+        # matrices, or vice versa, raises a TypeError
         self.assertRaises(TypeError, vmade.f, in_mval)
         self.assertRaises(TypeError, mmade.f, in_vval)
 

@@ -1795,28 +1795,38 @@ class TestInversePermutation(unittest.TestCase):
         utt.seed_rng()
 
     def test_dim1(self):
+        """Test the inversion of one permutation (int vector)"""
         p = ivector()
         inv = inverse_permutation(p)
         f_inverse = function([p], inv)
 
+        # Generate a random permutation
         rng = numpy.random.RandomState(utt.fetch_seed())
         p_val = rng.permutation(10)
         inv_val = f_inverse(p_val)
 
+        # Check that the inverse of the inverse is the original permutation
         assert numpy.all(f_inverse(inv_val) == p_val)
+        # Check that permutation(inverse) == inverse(permutation) = identity
         assert numpy.all(p_val[inv_val] == numpy.arange(10))
         assert numpy.all(inv_val[p_val] == numpy.arange(10))
 
     def test_dim2(self):
+        """Test the inversion of several permutation at a time"""
+        # Each row of p is a different permutation to inverse
         p = imatrix()
         inv = inverse_permutation(p)
         f_inverse = function([p], inv)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
+        # Generate 10 random permutations
         p_val = numpy.asarray([rng.permutation(10) for i in range(7)])
         inv_val = f_inverse(p_val)
 
+        # Check that the inverse of the inverse is the original permutation list
         assert numpy.all(f_inverse(inv_val) == p_val)
+        # Check that, for each permutation,
+        # permutation(inverse) == inverse(permutation) = identity
         for p_row, i_row in zip(p_val, inv_val):
             assert numpy.all(p_row[i_row] == numpy.arange(10))
             assert numpy.all(i_row[p_row] == numpy.arange(10))
@@ -1827,6 +1837,7 @@ class TestReorderRowElements(unittest.TestCase):
         utt.seed_rng()
 
     def test_1_1(self):
+        """Test ReorderRowElements(vector, vector)"""
         input = vector()
         p = ivector()
         out = reorder_row_elements(input, p)
@@ -1837,15 +1848,18 @@ class TestReorderRowElements(unittest.TestCase):
         p_val = rng.permutation(5)
         out_val = reorder(input_val, p_val)
 
+        # Should be equivalent to advanced indexing
         out_bis = input_val[p_val]
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
         def reorder_fixed(s_input):
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return reorder_row_elements(s_input, p_val)
         utt.verify_grad(reorder_fixed, [input_val])
 
     def test_2_1(self):
+        """Test broadcasting in ReorderRowElements(matrix, vector)"""
         input = matrix()
         p = ivector()
         out = reorder_row_elements(input, p)
@@ -1856,15 +1870,18 @@ class TestReorderRowElements(unittest.TestCase):
         p_val = rng.permutation(5)
         out_val = reorder(input_val, p_val)
 
+        # The same permutation should be applied to every row of the input matrix.
         out_bis = numpy.asarray([row[p_val] for row in input_val])
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
         def reorder_fixed(s_input):
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return reorder_row_elements(s_input, p_val)
         utt.verify_grad(reorder_fixed, [input_val])
 
     def test_2_2(self):
+        """Test ReorderRowElements(matrix, matrix)"""
         input = matrix()
         p = imatrix()
         out = reorder_row_elements(input, p)
@@ -1875,11 +1892,14 @@ class TestReorderRowElements(unittest.TestCase):
         p_val = numpy.asarray([rng.permutation(5) for i in range(3)])
         out_val = reorder(input_val, p_val)
 
+        # Each row of p contains a permutation to apply to the corresponding
+        # row of input
         out_bis = numpy.asarray([i_row[p_row] for i_row, p_row in zip(input_val, p_val)])
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
         def reorder_fixed(s_input):
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return reorder_row_elements(s_input, p_val)
         utt.verify_grad(reorder_fixed, [input_val])
 

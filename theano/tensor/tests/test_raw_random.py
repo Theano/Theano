@@ -95,9 +95,15 @@ class T_random_function(unittest.TestCase):
         rf2 = random_function(numpy.random.RandomState.uniform, 'float64', -2.0, 2.0)
         rng_R = random_state_type()
 
+        # ndim is an optional argument indicating the length of the 'shape'
+        # ndim not specified, OK
         post_out4,      out4    =   rf2(rng_R, (4,))
+
+        # ndim specified, consistent with shape, OK
         post_out1_4,    out1_4  =   rf2(rng_R, 1, (4,))
         post_out2_4_4,  out2_4_4=   rf2(rng_R, 2, (4, 4))
+
+        # ndim specified, but not compatible with shape
         post_out2_4,    out2_4  =   rf2(rng_R, 2, (4,))
 
         f_ok = compile.function(
@@ -109,17 +115,24 @@ class T_random_function(unittest.TestCase):
                 [out2_4],
                 accept_inplace=True)
 
+        # The correct cases should execute properly
         o4, o1_4, o2_4_4 = f_ok()
 
+        # Check the sanity of the answers
         self.assertTrue(numpy.allclose(o4, o1_4))
         self.assertTrue(numpy.allclose(o4, o2_4_4[0]))
+
+        # The incorrect case should raise ValueError
         self.assertRaises(ValueError, f_no)
 
     def test_random_function_ndim_added(self):
         """Test that random_function helper function accepts ndim_added as keyword argument"""
-        # On a uniform distribution, ndim_added=-1 means that the shape
-        # provided should be one dimension bigger, and its last value
-        # will be ignored
+        # If using numpy's uniform distribution, ndim_added should be 0,
+        # because the shape provided as argument is the output shape.
+        # Specifying a different ndim_added will change the Op's output ndim,
+        # so numpy.uniform will produce a result of incorrect shape,
+        # and a ValueError should be raised.
+
         uni_1 = random_function(numpy.random.RandomState.uniform, 'float64', -2.0, 2.0, ndim_added=1)
         uni_0 = random_function(numpy.random.RandomState.uniform, 'float64', -2.0, 2.0, ndim_added=0)
         uni_m1 = random_function(numpy.random.RandomState.uniform, 'float64', -2.0, 2.0, ndim_added=-1)
@@ -164,7 +177,10 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.allclose(u01, u02[0]))
 
     def test_uniform(self):
+        """Test that raw_random.uniform generates the same results as numpy."""
+        # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
+        # Use non-default parameters
         post_r, out = uniform(rng_R, (4,), -2.0, 2.0)
 
         f = compile.function(
@@ -184,7 +200,11 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_binomial(self):
+        """Test that raw_random.binomial generates the same results as numpy."""
+        # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
+        # Use non-default parameters, and larger dimensions because of
+        # the integer nature of the result
         post_r, bin = binomial(rng_R, (7,12), 5, 0.8)
 
         f = compile.function(
@@ -204,7 +224,10 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.all(val1 == numpy_val1))
 
     def test_normal(self):
+        """Test that raw_random.normal generates the same results as numpy."""
+        # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
+        # Use non-default parameters
         post_r, out = normal(rng_R, (2,3), 4.0, 2.0)
 
         f = compile.function(
@@ -224,7 +247,11 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_random_integers(self):
+        """Test that raw_random.random_integers generates the same results as numpy."""
+        # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
+        # Use non-default parameters, and larger dimensions because of
+        # the integer nature of the result
         post_r, out = random_integers(rng_R, (11,8), -3, 16)
 
         f = compile.function(
@@ -244,6 +271,13 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_permutation_helper(self):
+        """Test that raw_random.permutation_helper generates the same results as numpy,
+        and that the 'ndim_added' keyword behaves correctly."""
+        # permutation_helper needs "ndim_added=1", because its output
+        # is one dimension more than its "shape" argument (and there's
+        # no way to determine that automatically).
+        # Check the working case, over two calls to see if the random
+        # state is correctly updated.
         rf = RandomFunction(permutation_helper, tensor.imatrix, 8, ndim_added=1)
         rng_R = random_state_type()
         post_r, out = rf(rng_R, (7,), 8)
@@ -255,6 +289,8 @@ class T_random_function(unittest.TestCase):
         numpy_rng = numpy.random.RandomState(55)
         val0 = f()
         val1 = f()
+        # numpy_rng.permutation outputs one vector at a time,
+        # so we call it iteratively to generate all the samples.
         numpy_val0 = numpy.asarray([numpy_rng.permutation(8) for i in range(7)])
         numpy_val1 = numpy.asarray([numpy_rng.permutation(8) for i in range(7)])
         print val0
@@ -264,6 +300,8 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.all(val0 == numpy_val0))
         self.assertTrue(numpy.all(val1 == numpy_val1))
 
+        # This call lacks "ndim_added=1", so ndim_added defaults to 0.
+        # A ValueError should be raised.
         rf0 = RandomFunction(permutation_helper, tensor.imatrix, 8)
         post_r0, out0 = rf0(rng_R, (7,), 8)
         f0 = compile.function(
@@ -271,6 +309,7 @@ class T_random_function(unittest.TestCase):
                 [out0], accept_inplace=True)
         self.assertRaises(ValueError, f0)
 
+        # Here, ndim_added is 2 instead of 1. A ValueError should be raised.
         rf2 = RandomFunction(permutation_helper, tensor.imatrix, 8, ndim_added=2)
         post_r2, out2 = rf2(rng_R, (7,), 8)
         f2 = compile.function(
@@ -279,6 +318,7 @@ class T_random_function(unittest.TestCase):
         self.assertRaises(ValueError, f2)
 
     def test_permutation(self):
+        """Test that raw_random.permutation generates the same results as numpy."""
         rng_R = random_state_type()
         post_r, out = permutation(rng_R, (9,), 6)
         f = compile.function(
@@ -286,6 +326,9 @@ class T_random_function(unittest.TestCase):
                 [out], accept_inplace=True)
 
         numpy_rng = numpy.random.RandomState(55)
+        # Check over two calls to see if the random state is correctly updated.
+        # numpy_rng.permutation outputs one vector at a time,
+        # so we call it iteratively to generate all the samples.
         val0 = f()
         val1 = f()
         numpy_val0 = numpy.asarray([numpy_rng.permutation(6) for i in range(9)])
@@ -298,6 +341,8 @@ class T_random_function(unittest.TestCase):
         self.assertTrue(numpy.all(val1 == numpy_val1))
 
     def test_multinomial(self):
+        """Test that raw_random.multinomial generates the same results as numpy."""
+        # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
         post_r, out = multinomial(rng_R, (7,3), 6, [0.2]*5)
 
