@@ -267,6 +267,12 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
         setattr(conf, k, kwargs[k])
 
     if conf.use_gpu:
+        # Skip test if cuda_ndarray is not available.
+        from nose.plugins.skip import SkipTest
+        try:
+            import cuda_ndarray
+        except ImportError:
+            raise SkipTest('Optional package cuda_ndarray not available')
         import theano.sandbox.cuda
         theano.sandbox.cuda.use()
 

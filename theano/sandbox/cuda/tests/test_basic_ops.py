@@ -5,8 +5,14 @@ from theano import tensor
 
 import numpy
 
+# Skip test if cuda_ndarray is not available.
+from nose.plugins.skip import SkipTest
+try:
+    import cuda_ndarray
+except ImportError:
+    raise SkipTest('Optional package cuda_ndarray not available')
+
 import theano.sandbox.cuda as tcn
-import cuda_ndarray
 
 def tes_use():
     tcn.use()
