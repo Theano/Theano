@@ -307,7 +307,7 @@ def local_gpu_conv(node):
     """
     gpu_from_host(conv) -> gpu_conv(gpu_from_host)
 
-    conv(host_from_gpu) -> host_from_gpu(conv)
+    conv(host_from_gpu) -> host_from_gpu(gpu_conv)
     """
     def GpuConvOp_from_ConvOp(op):
         ret = GpuConv(border_mode=op.out_mode,
