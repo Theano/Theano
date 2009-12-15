@@ -2735,8 +2735,8 @@ class InversePermutation(Op):
 
 inverse_permutation = InversePermutation()
 
-class ReorderRowElements(Op):
-    """Reorder each row (inner-most dim) of a tensor wrt a permutation.
+class PermuteRowElements(Op):
+    """Permute the elements of each row (inner-most dim) of a tensor.
 
     The permutation argument (y) will be broadcasted to fit x, then each
     row (vector) of x will be reordered according to the corresponding row
@@ -2784,10 +2784,10 @@ class ReorderRowElements(Op):
         self._rec_perform(node, x, y, outs[0], curdim=0)
 
     def grad(self, (x, y), (gz,)):
-        gx = reorder_row_elements(gz, inverse_permutation(y))
+        gx = permute_row_elements(gz, inverse_permutation(y))
         return [gx, None]
 
-reorder_row_elements = ReorderRowElements()
+permute_row_elements = PermuteRowElements()
 
 
 #########################

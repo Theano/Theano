@@ -1832,65 +1832,65 @@ class TestInversePermutation(unittest.TestCase):
             assert numpy.all(i_row[p_row] == numpy.arange(10))
 
 
-class TestReorderRowElements(unittest.TestCase):
+class TestPermuteRowElements(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
     def test_1_1(self):
-        """Test ReorderRowElements(vector, vector)"""
+        """Test PermuteRowElements(vector, vector)"""
         input = vector()
         p = ivector()
-        out = reorder_row_elements(input, p)
-        reorder = function([input, p], out)
+        out = permute_row_elements(input, p)
+        permute = function([input, p], out)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(5,))
         p_val = rng.permutation(5)
-        out_val = reorder(input_val, p_val)
+        out_val = permute(input_val, p_val)
 
         # Should be equivalent to advanced indexing
         out_bis = input_val[p_val]
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
-        def reorder_fixed(s_input):
+        def permute_fixed(s_input):
             """Auxiliary op defined to get rid of gradient wrt p_val"""
-            return reorder_row_elements(s_input, p_val)
-        utt.verify_grad(reorder_fixed, [input_val])
+            return permute_row_elements(s_input, p_val)
+        utt.verify_grad(permute_fixed, [input_val])
 
     def test_2_1(self):
-        """Test broadcasting in ReorderRowElements(matrix, vector)"""
+        """Test broadcasting in PermuteRowElements(matrix, vector)"""
         input = matrix()
         p = ivector()
-        out = reorder_row_elements(input, p)
-        reorder = function([input, p], out)
+        out = permute_row_elements(input, p)
+        permute = function([input, p], out)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(3,5))
         p_val = rng.permutation(5)
-        out_val = reorder(input_val, p_val)
+        out_val = permute(input_val, p_val)
 
         # The same permutation should be applied to every row of the input matrix.
         out_bis = numpy.asarray([row[p_val] for row in input_val])
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
-        def reorder_fixed(s_input):
+        def permute_fixed(s_input):
             """Auxiliary op defined to get rid of gradient wrt p_val"""
-            return reorder_row_elements(s_input, p_val)
-        utt.verify_grad(reorder_fixed, [input_val])
+            return permute_row_elements(s_input, p_val)
+        utt.verify_grad(permute_fixed, [input_val])
 
     def test_2_2(self):
-        """Test ReorderRowElements(matrix, matrix)"""
+        """Test PermuteRowElements(matrix, matrix)"""
         input = matrix()
         p = imatrix()
-        out = reorder_row_elements(input, p)
-        reorder = function([input, p], out)
+        out = permute_row_elements(input, p)
+        permute = function([input, p], out)
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         input_val = rng.uniform(size=(3,5))
         p_val = numpy.asarray([rng.permutation(5) for i in range(3)])
-        out_val = reorder(input_val, p_val)
+        out_val = permute(input_val, p_val)
 
         # Each row of p contains a permutation to apply to the corresponding
         # row of input
@@ -1898,10 +1898,10 @@ class TestReorderRowElements(unittest.TestCase):
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
-        def reorder_fixed(s_input):
+        def permute_fixed(s_input):
             """Auxiliary op defined to get rid of gradient wrt p_val"""
-            return reorder_row_elements(s_input, p_val)
-        utt.verify_grad(reorder_fixed, [input_val])
+            return permute_row_elements(s_input, p_val)
+        utt.verify_grad(permute_fixed, [input_val])
 
 class test_tensordot(unittest.TestCase):
     def setUp(self):
