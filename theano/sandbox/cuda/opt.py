@@ -2,9 +2,10 @@ import sys
 import theano
 import numpy
 from theano import tensor, scalar, compile
-from theano.gof import local_optimizer, EquilibriumDB, SequenceDB
+from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, toolbox, DestroyHandler
 
 from theano.sandbox.cuda.basic_ops import *
+from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import gpu_dot22, gpu_gemm, GpuConv
 from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from theano.sandbox.cuda.nnet import (
@@ -31,6 +32,33 @@ def register_opt(*tags, **kwargs):
         gpu_optimizer.register(name, local_opt, 'fast_run', 'inplace', *tags)
         return local_opt
     return f
+
+class InputToGpuOptimizer(Optimizer):
+    """Transfert the input of a graph to the gpu if needed
+    It should make this part of the optimizer faster we will will need only 1 pass on the env.
+    """
+    def __init__(self):
+        Optimizer.__init__(self)
+
+    def add_requirements(self, env):
+        env.extend(toolbox.ReplaceValidate())
+        env.extend(DestroyHandler())
+
+    def apply(self, env):
+        for input in env.inputs:
+            if not isinstance(input.type, CudaNdarrayType):
+                try:
+                    new_input = host_from_gpu(gpu_from_host(input))
+
+                    env.replace_validate(input, new_input, "To allow further optimisation to move Ops to gpu")
+                except Exception, e:
+                    #as we currently only support float32, this can fail. 
+                    #Using try except make that we won't need 
+                    pass
+
+#we register it before all other gpu optimizer to be sure that the input are on the gpu.
+gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(), 
+                    0, 'fast_run', 'fast_compile', 'merge')#TODO: how to make it mandatory for gpu_seqopt?
 
 @local_optimizer([])
 def local_cut_gpu_host_gpu(node):
