@@ -204,6 +204,12 @@ class Scalar(Type):
             }
             template <typename T>
             complex_type& operator =(const T& y);
+
+            theano_complex%(nbits)s() {}
+
+            template <typename T>
+            theano_complex%(nbits)s(const T& y) { *this = y; }
+
          };
          """
         operator_eq = """
@@ -241,6 +247,7 @@ class Scalar(Type):
     def c_code_cache_version(self):
         #return ()
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.
+        return (5,)  #added constructors to theano_complex class
         return (4,)  #explicit T given in specialization of operator= lines.  This makes it compile with open64
 
 
