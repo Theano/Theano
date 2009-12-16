@@ -249,6 +249,25 @@ class ProfileMode(Mode):
                   sum(t for f, t, a, ci, nb_call in sotimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
         print 'compile time: %.3fs'%compile_time
+        
+        if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
+            cpu=[]
+            gpu=[]
+            trans=[]
+            for so in sotimes:
+                if so[2].__name__ in ["HostFromGpu", "GpuFromHost"]:
+                    trans.append(so)
+                elif so[2].__name__.startswith("Gpu"):
+                    gpu.append(so)
+                else:
+                    cpu.append(so)
+            sum_cpu=sum(so[1] for so in cpu)
+            sum_gpu=sum(so[1] for so in gpu)
+            sum_trans=sum(so[1] for so in trans)
+            print sum_cpu+sum_gpu+sum_trans,local_time
+
+            print "Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op"%(
+                sum_cpu, sum_cpu/local_time*100, sum_gpu, sum_gpu/local_time*100, sum_trans, sum_trans/local_time*100)
 
 register_mode('PROFILE_MODE',ProfileMode())
 
