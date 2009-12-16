@@ -6,6 +6,9 @@ from theano.sandbox.cuda.var import (CudaNdarrayVariable,
     shared_constructor)
 
 import basic_ops
+from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
+                       GpuDimShuffle, GpuSum, GpuReshape, 
+                       GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape)
 import opt
 import cuda_ndarray
 
