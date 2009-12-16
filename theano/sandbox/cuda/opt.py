@@ -324,6 +324,7 @@ def local_gpu_conv(node):
         return ret
 
     if node.op == gpu_from_host:
+        #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, theano.sandbox.conv.ConvOp):
             gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
@@ -331,6 +332,7 @@ def local_gpu_conv(node):
             return [gpu_conv(gpu_from_host(img), gpu_from_host(kern))]
 
     if isinstance(node.op, theano.sandbox.conv.ConvOp):
+        #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
         img, kern = node.inputs
         img_on_gpu = (img.owner and img.owner.op == host_from_gpu)
         kern_on_gpu = (kern.owner and kern.owner.op == host_from_gpu)
