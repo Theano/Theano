@@ -2765,29 +2765,6 @@ def arange(start, stop=None, step=1, dtype=None):
     return _arange[dtype](start, stop, step)
 
 
-class InversePermutation(Op):
-    """Computes the inverse of permutations.
-
-    Each row of input should contain a permutation of the first integers.
-    """
-
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        return Apply(self, [x], [x.type()])
-
-    def perform(self, node, (x,), (outs,)):
-        if outs[0] is None or outs[0].shape != x.shape:
-            outs[0] = numpy.empty_like(x)
-        for i in numpy.ndindex(x.shape[:-1]):
-            outs[0][i][x[i]] = numpy.arange(x.shape[-1], dtype=x.dtype)
-
-    def grad(self, (x,), (gz,)):
-        return [None]
-
-#inverse_permutation = InversePermutation()
-def inverse_permutation(perm):
-    return permute_row_elements(arange(perm.shape[-1]), perm, inverse=True)
-
 class PermuteRowElements(Op):
     """Permute the elements of each row (inner-most dim) of a tensor.
 
@@ -2934,6 +2911,12 @@ class PermuteRowElements(Op):
 _permute_row_elements = PermuteRowElements()
 def permute_row_elements(x, y, inverse=0):
     return _permute_row_elements(x, y, inverse)
+
+def inverse_permutation(perm):
+    """Computes the inverse of permutations.
+    Each row of input should contain a permutation of the first integers.
+    """
+    return permute_row_elements(arange(perm.shape[-1]), perm, inverse=True)
 
 
 #########################
