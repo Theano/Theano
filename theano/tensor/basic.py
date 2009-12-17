@@ -2740,7 +2740,6 @@ class ARange(Op):
         return Apply(self, inputs, outputs)
 
     def perform(self, node, (start, stop, step), (out,)):
-        print repr(start), repr(stop), repr(step)
         start = start.item()
         stop = stop.item()
         step = step.item()
@@ -2812,7 +2811,6 @@ class PermuteRowElements(Op):
         x = as_tensor_variable(x)
         y = as_tensor_variable(y)
         inverse = as_tensor_variable(inverse)
-        print 'in make_node: inverse =', inverse
 
         # y should contain integers
         assert y.type.dtype.startswith('int') or y.type.dtype.startswith('uint')
@@ -2820,6 +2818,7 @@ class PermuteRowElements(Op):
         assert inverse.type.ndim == 0 and\
                 (inverse.type.dtype.startswith('int') or\
                  inverse.type.dtype.startswith('uint'))
+
         # extend y dimension to match x
         assert x.type.ndim >= y.type.ndim
         y = shape_padleft(y, n_ones=(x.type.ndim - y.type.ndim))
