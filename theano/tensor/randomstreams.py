@@ -6,7 +6,7 @@ import numpy
 
 from theano.compile import module, In, Component
 from theano.gof import Container
-from theano.tensor import raw_random, reorder_row_elements
+from theano.tensor import raw_random, permute_row_elements
 
 class RandomStreamsInstance(object):
     """RandomStreamsInstance"""
@@ -192,7 +192,7 @@ class RandomStreams(Component):
     def shuffle_row_elements(self, input):
         """Return a variable with every row (rightmost index) shuffled"""
         perm = self.permutation(input.ndim-1, input.shape[:-1], input.shape[-1])
-        shuffled = reorder_row_elements(input, perm)
+        shuffled = permute_row_elements(input, perm)
         return shuffled
 
 

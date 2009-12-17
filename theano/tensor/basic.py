@@ -1590,7 +1590,6 @@ def one():
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
 
-
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
@@ -2707,87 +2706,217 @@ def tile(x, reps, ndim=None):
         tile.op = {}
     if ndim is None:
       ndim = len(reps)
-    
+
     #backport
     #ndim = len(reps) if ndim is None else ndim #not sure if len(shp) is going to work.
     if ndim not in tile.op:
         tile.op[ndim] = Tile(ndim)
     return tile.op[ndim](x, reps)
 
-class InversePermutation(Op):
-    """Computes the inverse of permutations.
 
-    Each row of input should contain a permutation of the first integers.
+class ARange(Op):
+    """Create an array containing evenly spaced values within a given interval.
+
+    Parameters and behaviour are the same as numpy.arange().
     """
 
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        return Apply(self, [x], [x.type()])
+    def __init__(self, dtype):
+        self.dtype = dtype
 
-    def perform(self, node, (x,), (outs,)):
-        if outs[0] is None or outs[0].shape != x.shape:
-            outs[0] = numpy.empty_like(x)
-        for i in numpy.ndindex(x.shape[:-1]):
-            outs[0][i][x[i]] = numpy.arange(x.shape[-1], dtype=x.dtype)
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
 
-    def grad(self, (x,), (gz,)):
-        return [None]
+    def __hash__(self):
+        return hash(self.dtype)
 
-inverse_permutation = InversePermutation()
+    def make_node(self, start, stop, step):
+        start, stop, step = map(as_tensor_variable, (start, stop, step))
+        assert start.ndim == 0
+        assert stop.ndim == 0
+        assert step.ndim == 0
 
-class ReorderRowElements(Op):
-    """Reorder each row (inner-most dim) of a tensor wrt a permutation.
+        inputs = [start, stop, step]
+        outputs = [tensor(self.dtype, (False,))]
+        return Apply(self, inputs, outputs)
 
-    The permutation argument (y) will be broadcasted to fit x, then each
-    row (vector) of x will be reordered according to the corresponding row
-    of y.
-    WARNING: x will not be broadcasted to fit y (not implemented yet).
+    def perform(self, node, (start, stop, step), (out,)):
+        start = start.item()
+        stop = stop.item()
+        step = step.item()
+        out[0] = numpy.arange(start, stop, step, dtype=self.dtype)
+
+    def grad(self, inputs, (gz,)):
+        return [None] * len(inputs)
+
+_arange = {}
+def arange(start, stop=None, step=1, dtype=None):
+    # If only one argument is provided, it is in fact the "stop" argument,
+    # and start is 0.
+    if stop is None:
+        start, stop = 0, start
+
+    start, stop, step = map(as_tensor_variable, (start, stop, step))
+    # If dtype is not provided, infer it from the other arguments
+    if dtype is None:
+        dtype = scal.upcast(start.type.dtype, stop.type.dtype, step.type.dtype)
+
+    if dtype not in _arange:
+        _arange[dtype] = ARange(dtype)
+    return _arange[dtype](start, stop, step)
+
+
+class PermuteRowElements(Op):
+    """Permute the elements of each row (inner-most dim) of a tensor.
+
+    A permutation will be applied to every row (vector) of the input tensor x.
+    Depending on the dimensionality of x and the permutation tensor y,
+    different cases are possible.
+    If y.ndim = 1, y is a single permutation, that will be applied to every
+    vector of x. For instance, if x is a matrix, the same permutation will be
+    applied to each row of x.
+    If x.ndim = y.ndim, each row of x corresponds to a row of y, containing
+    a permutation that will be applied to that row. For instance, if x and y
+    are two matrices, a different permutation will be applied to each row of x.
+    If x.ndim > y.ndim, y will be broadcasted to fit x, then each row (vector)
+    of x will be reordered according to the corresponding row of y. (This is
+    a generalization of the first case).
+    If x.ndim = 1, every permutation in y will be applied to x, and the output
+    will contain all the results.
+    If x.ndim < y.ndim, x will be broadcasted to fit y, and different
+    permutations contained in y will be applied to each vector in x. (This is
+    a generalization of the previous case).
+
+    If the "inverse" argument is True, the Op will perform the inverse
+    permutation instead.
     """
 
-    def make_node(self, x, y):
+    def make_node(self, x, y, inverse):
         x = as_tensor_variable(x)
         y = as_tensor_variable(y)
-        assert y.type.dtype.startswith('int') or y.type.dtype.startswith('uint')
-        # extend y dimension to match x
-        assert x.type.ndim >= y.type.ndim
-        y = shape_padleft(y, n_ones=(x.type.ndim - y.type.ndim))
+        inverse = as_tensor_variable(inverse)
 
-        inputlist = [x, y]
-        outputlist = [x.type()]
+        # y should contain integers
+        assert y.type.dtype.startswith('int') or y.type.dtype.startswith('uint')
+        # Inverse should be an integer scalar
+        assert inverse.type.ndim == 0 and\
+                (inverse.type.dtype.startswith('int') or\
+                 inverse.type.dtype.startswith('uint'))
+
+        # Match shapes of x and y
+        x_dim = x.type.ndim
+        y_dim = y.type.ndim
+
+        if x_dim > y_dim:
+            y = shape_padleft(y, n_ones=(x_dim - y_dim))
+        elif x_dim < y_dim:
+            x = shape_padleft(x, n_ones=(y_dim - x_dim))
+
+        # Compute the broadcastable pattern of the output
+        out_broadcastable = [xb and yb for xb, yb in zip(x.type.broadcastable, y.type.broadcastable)]
+        out_type = tensor(dtype = x.type.dtype, broadcastable = out_broadcastable)
+
+        inputlist = [x, y, inverse]
+        outputlist = [out_type]
         return Apply(self, inputlist, outputlist)
 
-    def _rec_perform(self, node, x, y, out, curdim):
+    def _rec_perform(self, node, x, y, inverse, out, curdim):
+        """Perform the permutation by doing a recursion over the input dimensions.
+
+        For every dimension, starting with the leftmost, the right set of
+        indices is determined (depending if broadcasting or not), then
+        the function is recursively called on the appropriate subtensors.
+
+        The terminal case is reached when the current tensors are vector,
+        then the permutation contained in y is applied to x.
+
+        :param x: The input tensor, on which the permutation is applied
+        :param y: Tensor containing the permutations to apply
+        :param out: Tensor storing the output result
+        :param curdim: Counter of the current depth of recursion
+        :param inverse: Wether to apply permutations or their inverse
+        """
         if len(x.shape) == 1:
             # Numpy advanced indexing works in this case
-            out[:] = x[y]
+            if inverse:
+                out[y] = x[:]
+            else:
+                out[:] = x[y]
         else:
             xs0 = x.shape[0]
             ys0 = y.shape[0]
             if xs0 == ys0:
                 for i in range(xs0):
-                    self._rec_perform(node, x[i], y[i], out[i], curdim+1)
-            elif node.inputs[1].type.broadcastable[curdim]:
+                    self._rec_perform(node, x[i], y[i], inverse, out[i], curdim+1)
+            elif ys0 == 1 and node.inputs[1].type.broadcastable[curdim]:
                 # Broadcast y
                 for i in range(xs0):
-                    self._rec_perform(node, x[i], y[0], out[i], curdim+1)
+                    self._rec_perform(node, x[i], y[0], inverse, out[i], curdim+1)
+            elif xs0 == 1 and node.inputs[0].type.broadcastable[curdim]:
+                # Broadcast x
+                for i in range(ys0):
+                    self._rec_perform(node, x[0], y[i], inverse, out[i], curdim+1)
             else:
                 raise ValueError('Dimension mismatch: %s, %s' % (xs0, ys0))
 
-    def perform(self, node, (x, y), (outs,)):
+    def perform(self, node, (x, y, inverse), (outs,)):
         x_s = x.shape
         y_s = y.shape
         assert len(x_s) == len(y_s)
 
-        if outs[0] is None or outs[0].shape != x_s:
-            outs[0] = numpy.empty_like(x)
+        # Make sure the output is big enough
+        out_s = []
+        for xdim, ydim in zip(x_s, y_s):
+            if xdim == ydim:
+                outdim = xdim
+            elif xdim == 1:
+                outdim = ydim
+            elif ydim == 1:
+                outdim = xdim
+            else:
+                raise ValueError('Dimension mismatch: %s, %s' % (xdim, ydim))
+            out_s.append(outdim)
 
-        self._rec_perform(node, x, y, outs[0], curdim=0)
+        if outs[0] is None or outs[0].shape != out_s:
+            outs[0] = numpy.empty(out_s, dtype=x.dtype)
 
-    def grad(self, (x, y), (gz,)):
-        gx = reorder_row_elements(gz, inverse_permutation(y))
-        return [gx, None]
+        self._rec_perform(node, x, y, inverse, outs[0], curdim=0)
 
-reorder_row_elements = ReorderRowElements()
+    def grad(self, (x, y, inverse), (gz,)):
+        # First, compute the gradient wrt the broadcasted x.
+        # If 'inverse' is False (0), apply the inverse of y on gz.
+        # Else, apply y on gz.
+        gx = permute_row_elements(gz, y, eq(inverse, 0))
+
+        # If x has been broadcasted along some axes, we need to sum
+        # the gradient over these axes, but keep the dimension (as
+        # broadcastable)
+        broadcasted_dims = [dim for dim in range(gz.type.ndim)\
+                if x.type.broadcastable[dim] and not gz.type.broadcastable[dim]]
+        gx = Sum(axis = broadcasted_dims)(gx)
+
+        # Sum(...) removed the dimensions in broadcasted_dims,
+        # so we need to put them back.
+        newdims = []
+        i = 0
+        for dim in range(gz.type.ndim):
+            if dim in broadcasted_dims:
+                newdims.append('x')
+            else:
+                newdims.append(i)
+                i += 1
+
+        gx = DimShuffle(gx.type.broadcastable, newdims)(gx)
+        return [gx, None, None]
+
+_permute_row_elements = PermuteRowElements()
+def permute_row_elements(x, y, inverse=0):
+    return _permute_row_elements(x, y, inverse)
+
+def inverse_permutation(perm):
+    """Computes the inverse of permutations.
+    Each row of input should contain a permutation of the first integers.
+    """
+    return permute_row_elements(arange(perm.shape[-1]), perm, inverse=True)
 
 
 #########################
