@@ -1939,7 +1939,7 @@ class TestInversePermutation(unittest.TestCase):
         assert numpy.all(inv_val[p_val] == numpy.arange(10))
 
     def test_dim2(self):
-        """Test the inversion of several permutation at a time"""
+        """Test the inversion of several permutations at a time"""
         # Each row of p is a different permutation to inverse
         p = imatrix()
         inv = inverse_permutation(p)
@@ -2029,6 +2029,56 @@ class TestPermuteRowElements(unittest.TestCase):
             """Auxiliary op defined to get rid of gradient wrt p_val"""
             return permute_row_elements(s_input, p_val)
         utt.verify_grad(permute_fixed, [input_val])
+
+    def test_1_2(self):
+        """Test PermuteRowElements(vector, matrix)
+        Different permutations will be applied to the same input vector"""
+        input = vector()
+        p = imatrix()
+        out = permute_row_elements(input, p)
+        permute = function([input, p], out)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        input_val = rng.uniform(size=(5,))
+        p_val = numpy.asarray([rng.permutation(5) for i in range(3)])
+        out_val = permute(input_val, p_val)
+
+        # Each row of p contains a permutation to apply to the input vector
+        out_bis = numpy.asarray([input_val[p_row] for p_row in p_val])
+        assert numpy.all(out_val == out_bis)
+
+        # Verify gradient
+        def permute_fixed(s_input):
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
+            return permute_row_elements(s_input, p_val)
+        utt.verify_grad(permute_fixed, [input_val])
+
+    def test_3b_2(self):
+        """Test permute_row_elements on a more complex broadcasting pattern:
+        input.type.broadcastable = (False, True, False),
+        p.type.broadcastable = (False, False)."""
+
+        input = TensorType('float64', (False, True, False))()
+        p = imatrix()
+        out = permute_row_elements(input, p)
+        permute = function([input, p], out)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        input_val = rng.uniform(size=(4,1,5))
+        p_val = numpy.asarray([rng.permutation(5) for i in range(3)])
+        out_val = permute(input_val, p_val)
+
+        # Each row of p contains a permutation to apply to each row
+        # of the input tensor
+        out_bis = numpy.asarray([[in_mat[0,p_row] for p_row in p_val] for in_mat in input_val])
+        assert numpy.all(out_val == out_bis)
+
+        # Verify gradient
+        def permute_fixed(s_input):
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
+            return permute_row_elements(s_input, p_val)
+        utt.verify_grad(permute_fixed, [input_val])
+
 
 class test_tensordot(unittest.TestCase):
     def setUp(self):
