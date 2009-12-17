@@ -1790,6 +1790,133 @@ def test_tile():
     print >> sys.stderr, "WARNING: No testcase for Tile"
     pass 
 
+
+class TestARange(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def test_Op_integers(self):
+        """Test behaviour of ARange Op on integer inputs"""
+        start, stop, step = iscalars('start', 'stop', 'step')
+        out = ARange(start.type.dtype)(start, stop, step)
+        f = function([start, stop, step], out)
+
+        assert numpy.all(f(0,5,1) == numpy.arange(0,5,1))
+        assert numpy.all(f(2,11,4) == numpy.arange(2,11,4))
+        assert numpy.all(f(-5,1,1) == numpy.arange(-5,1,1))
+        assert numpy.all(f(10,2,-2) == numpy.arange(10,2,-2))
+        assert numpy.all(f(10,2,2) == numpy.arange(10,2,2))
+        assert numpy.all(f(0,0,1) == numpy.arange(0,0,1))
+
+    def test_integers(self):
+        """Test arange constructor, on integer outputs"""
+        start, stop, step = iscalars('start', 'stop', 'step')
+        out = arange(start, stop, step)
+        f = function([start, stop, step], out)
+
+        assert out.dtype == start.type.dtype
+        assert numpy.all(f(0,5,1) == numpy.arange(0,5,1))
+        assert numpy.all(f(2,11,4) == numpy.arange(2,11,4))
+        assert numpy.all(f(-5,1,1) == numpy.arange(-5,1,1))
+        assert numpy.all(f(10,2,-2) == numpy.arange(10,2,-2))
+        assert numpy.all(f(10,2,2) == numpy.arange(10,2,2))
+        assert numpy.all(f(0,0,1) == numpy.arange(0,0,1))
+
+    def test_float32(self):
+        """Test arange constructor, on integer outputs"""
+        start, stop, step = fscalars('start', 'stop', 'step')
+        out = arange(start, stop, step)
+        f = function([start, stop, step], out)
+
+        assert out.dtype == start.type.dtype
+        assert numpy.all(f(0,5,1) == numpy.arange(0,5,1, dtype=start.type.dtype))
+        assert numpy.all(f(2,11,4) == numpy.arange(2,11,4, dtype=start.type.dtype))
+        assert numpy.all(f(-5,1.1,1.2) == numpy.arange(-5,1.1,1.2, dtype=start.type.dtype))
+        assert numpy.all(f(1.3,2,-2.1) == numpy.arange(1.3,2,-2.1, dtype=start.type.dtype))
+        assert numpy.all(f(10,2,2) == numpy.arange(10,2,2, dtype=start.type.dtype))
+
+    def test_float64(self):
+        """Test arange constructor, on integer outputs"""
+        start, stop, step = dscalars('start', 'stop', 'step')
+        out = arange(start, stop, step)
+        f = function([start, stop, step], out)
+
+        assert out.dtype == start.type.dtype
+        assert numpy.all(f(0,5,1) == numpy.arange(0,5,1, dtype=start.type.dtype))
+        assert numpy.all(f(2,11,4) == numpy.arange(2,11,4, dtype=start.type.dtype))
+        assert numpy.all(f(-5,1.1,1.2) == numpy.arange(-5,1.1,1.2, dtype=start.type.dtype))
+        assert numpy.all(f(1.3,2,-2.1) == numpy.arange(1.3,2,-2.1, dtype=start.type.dtype))
+        assert numpy.all(f(10,2,2) == numpy.arange(10,2,2, dtype=start.type.dtype))
+
+    def test_default_step(self):
+        """Test that arange constructor uses the correct default step"""
+        start, stop = iscalars('start', 'stop')
+        out = arange(start, stop)
+        f = function([start, stop], out)
+
+        assert out.dtype == start.type.dtype
+        assert numpy.all(f(0,5) == numpy.arange(0,5))
+        assert numpy.all(f(-5,1) == numpy.arange(-5,1))
+        assert numpy.all(f(0,0) == numpy.arange(0,0))
+
+        dstart, dstop = dscalars('start', 'stop')
+        dout = arange(dstart, dstop)
+        df = function([dstart, dstop], dout)
+
+        assert dout.dtype == dstart.type.dtype
+        print df(0.2, 5.3)
+        print numpy.arange(0.2, 5.3)
+        assert numpy.all(df(0.2, 5.3) == numpy.arange(0.2, 5.3))
+        assert numpy.all(df(0.8, 5.3) == numpy.arange(0.8, 5.3))
+        assert numpy.all(df(-0.7, 5.3) == numpy.arange(-0.7, 5.3))
+
+    def test_default_start(self):
+        """Test that arange constructor uses the correct default start"""
+        stop = iscalar('stop')
+        out = arange(stop)
+        f = function([stop], out)
+
+        assert out.dtype == stop.type.dtype
+        assert numpy.all(f(8) == numpy.arange(8))
+        assert numpy.all(f(-2) == numpy.arange(-2))
+
+        fstop = fscalar('stop')
+        fout = arange(fstop)
+        ff = function([fstop], fout)
+
+        assert fout.dtype == fstop.type.dtype
+        assert numpy.all(ff(0.2) == numpy.arange(0.2))
+        assert numpy.all(ff(-0.7) == numpy.arange(-0.7))
+        assert numpy.all(ff(8.5) == numpy.arange(8.5))
+
+    def test_upcast(self):
+        """Test that arange compute output type adequately"""
+        assert arange(iscalar()).dtype == iscalar().dtype
+        assert arange(fscalar()).dtype == fscalar().dtype
+        assert arange(dscalar()).dtype == dscalar().dtype
+
+        # int32 + float32 -> float64
+        assert arange(iscalar(), fscalar()).dtype == dscalar().dtype
+        assert arange(iscalar(), dscalar()).dtype == dscalar().dtype
+        assert arange(fscalar(), dscalar()).dtype == dscalar().dtype
+
+        assert arange(iscalar(), fscalar(), dscalar()).dtype == dscalar().dtype
+
+    def test_dtype_cache(self):
+        """Checks that the same Op is returned on repeated calls to arange
+        using the same dtype, but not for different dtypes."""
+
+        start, stop, step = iscalars('start', 'stop', 'step')
+        out1 = arange(start, stop, step)
+        out2 = arange(start, stop, step, dtype=start.type.dtype)
+        out3 = arange(start, stop, 2., dtype=start.type.dtype)
+        out4 = arange(start, stop, 2.)
+
+        assert out1.owner.op is out2.owner.op
+        assert out2.owner.op is out3.owner.op
+        assert out3.owner.op is not out4.owner.op
+
+
 class TestInversePermutation(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()

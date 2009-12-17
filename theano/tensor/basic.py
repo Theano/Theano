@@ -1590,7 +1590,6 @@ def one():
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
 
-
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
@@ -2713,6 +2712,59 @@ def tile(x, reps, ndim=None):
     if ndim not in tile.op:
         tile.op[ndim] = Tile(ndim)
     return tile.op[ndim](x, reps)
+
+
+class ARange(Op):
+    """Create an array containing evenly spaced values within a given interval.
+
+    Parameters and behaviour are the same as numpy.arange().
+    """
+
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.dtype)
+
+    def make_node(self, start, stop, step):
+        start, stop, step = map(as_tensor_variable, (start, stop, step))
+        assert start.ndim == 0
+        assert stop.ndim == 0
+        assert step.ndim == 0
+
+        inputs = [start, stop, step]
+        outputs = [tensor(self.dtype, (False,))]
+        return Apply(self, inputs, outputs)
+
+    def perform(self, node, (start, stop, step), (out,)):
+        print repr(start), repr(stop), repr(step)
+        start = start.item()
+        stop = stop.item()
+        step = step.item()
+        out[0] = numpy.arange(start, stop, step, dtype=self.dtype)
+
+    def grad(self, inputs, (gz,)):
+        return [None] * len(inputs)
+
+_arange = {}
+def arange(start, stop=None, step=1, dtype=None):
+    # If only one argument is provided, it is in fact the "stop" argument,
+    # and start is 0.
+    if stop is None:
+        start, stop = 0, start
+
+    start, stop, step = map(as_tensor_variable, (start, stop, step))
+    # If dtype is not provided, infer it from the other arguments
+    if dtype is None:
+        dtype = scal.upcast(start.type.dtype, stop.type.dtype, step.type.dtype)
+
+    if dtype not in _arange:
+        _arange[dtype] = ARange(dtype)
+    return _arange[dtype](start, stop, step)
+
 
 class InversePermutation(Op):
     """Computes the inverse of permutations.
