@@ -180,7 +180,12 @@ def local_gpu_sum(node):
                     for a in node.op.axis:
                         assert reduce_mask[a] == 0
                         reduce_mask[a] = 1
-                return [host_from_gpu(GpuSum(reduce_mask)(gpu_from_host(x)))]
+                gsum=GpuSum(reduce_mask)
+                pattern=(''.join(str(i) for i in reduce_mask))
+                if hasattr(gsum, 'c_code_reduce_%s'%pattern):
+                    return [host_from_gpu(gsum(gpu_from_host(x)))]
+                else:
+                    raise Exception("GpuSum don't have implemented the pattern",pattern)
     return False
 
 @register_opt()
