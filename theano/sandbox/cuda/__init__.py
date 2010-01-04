@@ -16,6 +16,7 @@ import theano.compile.sandbox
 
 import os
 import theano.config as config
+from theano.compile import optdb
 
 import logging, copy
 _logger_name = 'theano_cuda_ndarray'
@@ -44,6 +45,9 @@ def use(device=config.THEANO_GPU):
             logging.getLogger('theano_cuda_ndarray').warning("WARNING: Won't use the GPU as the initialisation of device %i failed. %s" %(device, e))
     elif use.device_number != device:
         logging.getLogger('theano_cuda_ndarray').warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
+    optdb.add_tags('gpu',
+                   'fast_run',
+                   'inplace')
 
 use.device_number = None
 

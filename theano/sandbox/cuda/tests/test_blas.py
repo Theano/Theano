@@ -16,13 +16,17 @@ import theano.sandbox.cuda as tcn
 
 from theano.sandbox.downsample import DownsampleFactorMax
 
+import theano.compile.mode
+
+mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+
 def test_dot():
 
     a = tcn.shared_constructor(numpy.random.rand(4,4), 'a')
 
     b = tensor.fmatrix()
 
-    f = pfunc([b], [], updates=[(a, tensor.dot(a,b))])
+    f = pfunc([b], [], updates=[(a, tensor.dot(a,b))], mode=mode_with_gpu)
 
     a0 = a.value * 1.0
     print a0
@@ -41,7 +45,7 @@ def test_gemm():
     b = tensor.fmatrix('b')
     c = tensor.fmatrix('c')
 
-    f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))])
+    f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
 
     a0 = a.value * 1.0
     print a0
@@ -69,7 +73,7 @@ if 0:
                 a = tcn.blas.DownsampleFactorMax((2,2),border)
                 dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
                 b = dmatrix4()
-                f = pfunc([b], [a(b)])
+                f = pfunc([b], [a(b)], mode=mode_with_gpu)
                 
                 bval = numpy.arange(0,d0*d1).reshape(1,1,d0,d1)
                 r = f(bval)[0]
@@ -109,7 +113,7 @@ def test_downsample():
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(numpy.random.rand(*shp), 'a')
-                f = pfunc([], ds_op(tensor.as_tensor_variable(a)))
+                f = pfunc([], ds_op(tensor.as_tensor_variable(a)), mode=mode_with_gpu)
                 worked = False
                 for i, node in enumerate(f.maker.env.toposort()):
                     print i, node

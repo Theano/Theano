@@ -13,6 +13,9 @@ except ImportError:
     raise SkipTest('Optional package cuda_ndarray not available')
 
 import theano.sandbox.cuda as tcn
+import theano.compile.mode
+
+mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 def tes_use():
     tcn.use()
@@ -23,7 +26,7 @@ def test_elemwise0():
 
     b = tensor.fmatrix()
 
-    f = pfunc([b], [], updates=[(a, a+b)])
+    f = pfunc([b], [], updates=[(a, a+b)], mode=mode_with_gpu)
 
     a0 = a.value * 1.0
     print 'BEFORE ADD', a.value
@@ -43,21 +46,21 @@ def test_elemwise1():
 
     #let debugmode catch any mistakes
     print >> sys.stderr, "STARTING FUNCTION 1"
-    f = pfunc([b], [], updates=[(a, b**a)])
+    f = pfunc([b], [], updates=[(a, b**a)], mode=mode_with_gpu)
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     f(numpy.random.rand(*shape)+0.3)
 
     print >> sys.stderr, "STARTING FUNCTION 2"
     #let debugmode catch any mistakes
-    f = pfunc([b], [], updates=[(a, tensor.exp(b**a))])
+    f = pfunc([b], [], updates=[(a, tensor.exp(b**a))], mode=mode_with_gpu)
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     f(numpy.random.rand(*shape)+0.3)
 
     print >> sys.stderr, "STARTING FUNCTION 3"
     #let debugmode catch any mistakes
-    f = pfunc([b], [], updates=[(a, a+b * tensor.exp(b**a))])
+    f = pfunc([b], [], updates=[(a, a+b * tensor.exp(b**a))], mode=mode_with_gpu)
     f(numpy.random.rand(*shape)+0.3)
 
 def test_elemwise2():
@@ -68,7 +71,7 @@ def test_elemwise2():
     for pattern in [(0,1), (1,0)]:
         a = tcn.shared_constructor(rng.rand(*shape), name=None)
         b = tensor.Tensor(dtype='float32', broadcastable=[0]*len(shape))()
-        f = pfunc([b], [], updates=[(a, (a+b).dimshuffle(pattern))])
+        f = pfunc([b], [], updates=[(a, (a+b).dimshuffle(pattern))], mode=mode_with_gpu)
         has_elemwise = False
         for i, node in enumerate(f.maker.env.toposort()):
             print >> sys.stderr, i, node
@@ -82,7 +85,7 @@ def test_elemwise2():
     a = tcn.shared_constructor(rng.rand(*shape), 'a')
     b = tensor.Tensor(dtype='float32', broadcastable=[0]*len(shape))()
     f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) *
-        tensor.exp(b**a).dimshuffle([2,0,3,1]))])
+        tensor.exp(b**a).dimshuffle([2,0,3,1]))], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
@@ -103,7 +106,7 @@ def test_elemwise3():
     print (1 + b**a).type
     print tensor.exp((1 + b**a)).type
     f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) * tensor.exp(1 +
-        b**a).dimshuffle([2,0,3,1]))])
+        b**a).dimshuffle([2,0,3,1]))], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
         print >> sys.stderr, i, node
@@ -119,7 +122,7 @@ def test_elemwise4():
     a = tcn.shared_constructor(numpy.random.rand(*shape), 'a')
     b = tensor.fvector()
     c = tensor.fvector()
-    f = pfunc([b,c], [], updates=[(a, (a+b.dimshuffle('x', 0)*c.dimshuffle(0, 'x')))])
+    f = pfunc([b,c], [], updates=[(a, (a+b.dimshuffle('x', 0)*c.dimshuffle(0, 'x')))], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
         print >> sys.stderr, i, node

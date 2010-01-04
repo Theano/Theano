@@ -12,6 +12,10 @@ try:
 except ImportError:
     raise SkipTest('Optional package cuda_ndarray not available')
 
+import theano.compile.mode
+
+mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+
 import theano.sandbox.cuda as cuda
 
 
@@ -20,7 +24,7 @@ def test_no_shared_var_graph():
     """
     a=tensor.fmatrix()
     b=tensor.fmatrix()
-    f = theano.function([a,b],[a+b])
+    f = theano.function([a,b],[a+b], mode=mode_with_gpu)
     l = f.maker.env.toposort()
     assert len(l)==4
     assert any(isinstance(x.op,cuda.GpuElemwise) for x in l)
