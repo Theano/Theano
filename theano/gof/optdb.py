@@ -35,6 +35,13 @@ class DB(object):
             raise ValueError('The name of the object cannot be an existing tag or the name of another existing object.', obj, name)
         self.__db__[name] = set([obj])
         self._names.add(name)
+
+        self.add_tags(name, *tags)
+          
+    def add_tags(self, name, *tags):
+        obj = self.__db__[name]
+        assert len(obj)==1
+        obj = obj.copy().pop()
         for tag in tags:
             if tag in self._names:
                 raise ValueError('The tag of the object collides with a name.', obj, tag)
