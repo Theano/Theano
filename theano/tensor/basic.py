@@ -1133,7 +1133,7 @@ def cast(x, dtype):
     _x = as_tensor_variable(x)
     if _x.type.dtype == dtype:
         return _x
-    if x.type.dtype.startswith('complex') and not dtype.startswith('complex'):
+    if _x.type.dtype.startswith('complex') and not dtype.startswith('complex'):
         raise TypeError('Casting from complex to real is ambiguous: consider real(), imag(), angle() or abs()')
     return _cast_mapping[dtype](x)
 
@@ -2906,6 +2906,7 @@ class PermuteRowElements(Op):
                 i += 1
 
         gx = DimShuffle(gx.type.broadcastable, newdims)(gx)
+        assert gx.type.broadcastable == x.type.broadcastable
         return [gx, None, None]
 
 _permute_row_elements = PermuteRowElements()
