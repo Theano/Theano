@@ -6,7 +6,7 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 """
 #This file should move along with conv.py
 
-from theano import sparse, gof, Op, tensor, Variable, Apply
+from theano import gof, Op, tensor, Variable, Apply
 from theano.printing import Print
 import numpy
 import __builtin__

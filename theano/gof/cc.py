@@ -18,9 +18,6 @@ else:
 
 from theano.gof.python25 import any, all
 
-# weave import
-from scipy import weave
-
 # gof imports
 import cutils
 from env import Env

@@ -3,7 +3,6 @@
 import os, logging
 
 import numpy
-import scipy.sparse as sp
 from theano import gof
 import theano.config as config
 
@@ -14,6 +13,8 @@ def check_equal(x, y):
     Returns True iff x[0] and y[0] are equal (checks the dtype and
     shape if x and y are numpy.ndarray instances). Used internally.
     """
+    #I put the import here to allow using theano without scipy.
+    import scipy.sparse as sp
     x, y = x[0], y[0]
    
     # TODO: bug in current scipy, two sparse matrices are never equal, remove when moving to 0.7
