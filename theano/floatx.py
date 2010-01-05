@@ -7,7 +7,6 @@ def set_floatX(dtype = config.floatX):
   """
   print "set_floatX",dtype
   config.floatX = dtype
-  import pdb;pdb.set_trace()
   if dtype == 'float32': prefix = 'f'
   elif dtype == 'float64' : prefix = 'd'
   else: raise Exception("Bad param in set_floatX(%s). Only float32 and float64 are supported"%config.floatX)

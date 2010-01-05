@@ -45,7 +45,6 @@ THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 
 def parse_env_flags(flags, name , default_value=None):
     #The value in the env variable THEANO_FLAGS override the previous value
-    import pdb;pdb.set_trace()
     val = default_value
     for flag in flags.split(','):
         if not flag:
