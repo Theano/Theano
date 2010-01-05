@@ -7,10 +7,10 @@ Special data type floatX
 Intro
 =====
 
-Their is a special data type called floatX. It is not a real datatype. It is never present in the theano graph, but their exist constructor and function that will change the floatX to float32 or float64(default) in your graph. You can change the value of floatX when you start the execution of python by setting the environement variables THEANO_GPU=floatX=float{32,64}(case sensitive). You can have the value of floatX with:
+Their is a special data type called floatX. It is not a real datatype. It is never present in the theano graph, but their exist constructor and function that will change the floatX to float32 or float64(default) in your graph. You can change the value of floatX when you start the execution of python by setting the environement variables THEANO_GPU=floatX=float{32,64}(case sensitive). You can have the value of floatX with::
 
-import theano.config as config
-config.floatX
+      import theano.config as config
+      config.floatX
 
 This can help to have the same code run on the cpu in float64 and let it run on the gpu in float32. float32 is the only datatype that is currently supported on the gpu. This can give different result due to rounding error. This option help to compare those difference.
 
