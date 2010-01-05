@@ -10,7 +10,6 @@ default_={
 'lib.amdlibm':False,
 'op.set_flops':False,#currently used only in ConvOp. The profile mode will print the flops/s for the op.
 'nvcc.fastmath':False,
-'scalar.floatX':'float64',
 'gpuelemwise.sync':True, #when true, wait that the gpu fct finished and check it error code.
 }
 
@@ -43,6 +42,24 @@ THEANO_DEBUGMODE_CHECK_FINITE = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_FINIT
 THEANO_DEBUGMODE_CHECK_STRIDES = bool(int(os.getenv('THEANO_DEBUGMODE_CHECK_STRIDES', 1)))
 
 THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
+
+def parse_env_flags(flags, name , default_value=None):
+    #The value in the env variable THEANO_FLAGS override the previous value
+    import pdb;pdb.set_trace()
+    val = default_value
+    for flag in flags.split(','):
+        if not flag:
+            continue
+        sp=flag.split('=',1)
+        if sp[0]==name:
+            if len(sp)==1:
+                val=True
+            else:
+                val=sp[1]
+            val=str(val)
+    return val
+
+floatX=parse_env_flags(THEANO_FLAGS,'floatX','float64')
 
 class TheanoConfig(object):
     """Return the value for a key after parsing ~/.theano.cfg and 
@@ -149,5 +166,6 @@ class TheanoConfig(object):
 
 config = TheanoConfig()
 
-if config.get('scalar.floatX') not in ['float32', 'float64']:
-    raise Exception("the configuration scalar.floatX must have value float32 or float64")
+if floatX not in ['float32', 'float64']:
+    raise Exception("the configuration scalar.floatX must have value float32 or float64 not", floatX)
+

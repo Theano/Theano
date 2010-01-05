@@ -59,7 +59,8 @@ import scalar
 import sparse
 import gradient
 import gof
-
+import floatx
+floatx.set_floatX()
 
 ## import scalar_opt
 

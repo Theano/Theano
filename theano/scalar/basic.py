@@ -56,8 +56,8 @@ def constant(x):
 class Scalar(Type):
 
     def __init__(self, dtype):
-        if dtype=='floatX':
-            dtype=config.config.get('floatX')
+        if dtype == 'floatX':
+            dtype = config.floatX
         self.dtype = dtype
         self.dtype_specs() # error checking
     
@@ -261,7 +261,6 @@ uint32 = Scalar('uint32')
 uint64 = Scalar('uint64')
 float32 = Scalar('float32')
 float64 = Scalar('float64')
-floatX = Scalar(config.config.get('scalar.floatX'))
 complex64 = Scalar('complex64')
 complex128 = Scalar('complex128')
 
@@ -944,7 +943,6 @@ convert_to_uint32 = Cast(uint32, name='convert_to_uint32')
 convert_to_uint64 = Cast(uint64, name='convert_to_uint64')
 convert_to_float32 = Cast(float32, name='convert_to_float32')
 convert_to_float64 = Cast(float64, name='convert_to_float64')
-convert_to_floatX = Cast(floatX, name='convert_to_floatX')
 convert_to_complex64 = Cast(complex64, name='convert_to_complex64')
 convert_to_complex128 = Cast(complex128, name='convert_to_complex128')
 
@@ -959,12 +957,11 @@ _cast_mapping = {
            'uint64': convert_to_uint64,
            'float32': convert_to_float32,
            'float64': convert_to_float64,
-           'floatX': convert_to_floatX,
            'complex64': convert_to_complex64,
            'complex128': convert_to_complex128}
 def cast(x, dtype):
     """Symbolically cast `x` to a Scalar of given `dtype`.""" 
-    if dtype=='floatX': dtype = config.config.get('scalar.floatX')
+    if dtype == 'floatX': dtype = config.floatX
 
     _x = as_scalar(x)
     if _x.type.dtype == dtype:

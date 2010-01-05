@@ -32,3 +32,4 @@ Now we're ready for the tour:
    examples
    module
    tools
+   floatX
