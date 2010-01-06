@@ -5,7 +5,6 @@ from theano.tensor import fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftens
 def set_floatX(dtype = config.floatX):
   """ add the xmatrix, xvector, xscalar etc. aliases to theano.tensor
   """
-  print "set_floatX",dtype
   config.floatX = dtype
   if dtype == 'float32': prefix = 'f'
   elif dtype == 'float64' : prefix = 'd'
