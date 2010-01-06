@@ -24,13 +24,13 @@ import logging
 logging.getLogger('theano.sandbox.cuda.tests.test_nnet').setLevel(logging.INFO)
 
 
-def get_mode():
-    if theano.compile.default_mode == 'CLINKER_MODE':
-        return theano.compile.mode.Mode(optimizer='fast_run', linker='c')
-    if theano.compile.default_mode != "PROFILE_MODE":
-        return None
-    else:
-        return theano.compile.ProfileMode()
+def get_mode(use_gpu):
+    ret = theano.compile.get_default_mode()
+    if isinstance(ret, theano.compile.ProfileMode):
+        ret = theano.compile.ProfileMode()
+    if use_gpu:
+        ret = ret.including('gpu')
+    return ret
 
 def print_mode(mode):
     if mode != None and isinstance(mode,(theano.compile.ProfileMode,)):
@@ -65,7 +65,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_iter=100):
     params = [w, b, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = get_mode()
+    mode = get_mode(use_gpu)
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -247,8 +247,13 @@ def test_conv_nnet2():
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
-def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter,
+def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_iter,
                            downsample_ops=True, verbose=0, version=-1):
+    if use_gpu:
+        shared_fn = tcn.shared_constructor
+    else:
+        shared_fn = shared
+
     isize1=isize
     isize2=isize
     if isinstance(isize,(tuple,)):
@@ -307,7 +312,7 @@ def run_conv_nnet2_classif(shared_fn, isize, ksize, n_batch, n_iter,
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params, warn_type=True)
 
-    mode = get_mode()
+    mode = get_mode(use_gpu)
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -359,8 +364,8 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             print "float_atol",float_atol
             theano.tensor.basic.float32_atol=float_atol
         if not cpu_only:
-            rval_gpu, tg, gpu_mode = run_conv_nnet2_classif(
-                tcn.shared_constructor, isize, ksize, bsize, n_iter, verbose=verbose, version=version)
+            rval_gpu, tg, gpu_mode = run_conv_nnet2_classif(True,
+                                                            isize, ksize, bsize, n_iter, verbose=verbose, version=version)
     finally:
         predefined_modes["DEBUG_MODE"].check_isfinite = orig_check_isfinite
         theano.tensor.basic.float32_atol=orig_float32_atol
@@ -372,7 +377,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     try:
         predefined_modes["DEBUG_MODE"].check_isfinite = check_isfinite
         numpy.random.seed(seed)
-        rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(shared, isize, ksize, bsize, n_iter,
+        rval_cpu, tc, cpu_mode = run_conv_nnet2_classif(False, isize, ksize, bsize, n_iter,
                                                         verbose=verbose, version=version)
         if pickle and isinstance(cpu_mode,(theano.compile.ProfileMode,)):
             import pickle
