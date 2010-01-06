@@ -184,14 +184,24 @@ class Mode(object):
 
     optimizer = property(__get_optimizer)
 
+    def get_linker_optimizer(self, linker, optimizer):
+        if isinstance(linker, str) or linker is None:
+            linker = predefined_linkers[linker]
+        if isinstance(optimizer, str) or optimizer is None:
+            optimizer = predefined_optimizers[optimizer]
+        return (linker, optimizer)    
+                
     def including(self, *tags):
-        return Mode(self.provided_linker, self.provided_optimizer.including(*tags))
+        link, opt = self.get_linker_optimizer(self.provided_linker, self.provided_optimizer)
+        return self.__class__(linker=link, optimizer=opt.including(*tags))
 
     def excluding(self, *tags):
-        return Mode(self.provided_linker, self.provided_optimizer.excluding(*tags))
+        link, opt = self.get_linker_optimizer(self.provided_linker, self.provided_optimizer)
+        return self.__class__(linker=link, optimizer=opt.excluding(*tags))
 
     def requiring(self, *tags):
-        return Mode(self.provided_linker, self.provided_optimizer.requiring(*tags))
+        link, opt = self.get_linker_optimizer(self.provided_linker, self.provided_optimizer)
+        return self.__class__(linker=link, optimizer=opt.requiring(*tags))
 
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
