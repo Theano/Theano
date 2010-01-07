@@ -2,9 +2,9 @@ import numpy
 import unittest
 import copy
 import theano
-from theano.tensor import Tensor
+from theano.tensor import Tensor, TensorType
 
-from theano.compile.sandbox.sharedvalue import *
+from theano.compile.sharedvalue import *
 
 class Test_SharedVariable(unittest.TestCase):
 

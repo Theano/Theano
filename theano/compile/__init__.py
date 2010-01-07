@@ -19,3 +19,8 @@ from debugmode import DebugMode
 
 from profilemode import ProfileMode
 
+from theano.compile.sharedvalue import shared, shared_constructor, SharedVariable
+from theano.compile.pfunc import pfunc, Param
+
+from function import function
+

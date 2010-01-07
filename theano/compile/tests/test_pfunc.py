@@ -5,8 +5,8 @@ import theano
 from theano.tensor import Tensor, dmatrix, dvector, lscalar
 from theano import tensor
 
-from theano.compile.sandbox.sharedvalue import *
-from theano.compile.sandbox.pfunc import *
+from theano.compile.sharedvalue import *
+from theano.compile.pfunc import *
 
 class Test_pfunc(unittest.TestCase):
 

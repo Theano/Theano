@@ -4,10 +4,9 @@ __docformat__ = "restructuredtext en"
 import sys
 import numpy
 
-from ...gof import Container
-from ...tensor import raw_random
-
-from sharedvalue import SharedVariable, shared_constructor, shared
+from ..gof import Container
+from ..compile.sharedvalue import SharedVariable, shared_constructor, shared
+import raw_random
 
 class RandomStateSharedVariable(SharedVariable):
     pass

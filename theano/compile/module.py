@@ -479,7 +479,7 @@ class Method(Component):
 
         #backport
         #effective_mode = mode if self.mode is None else self.mode
-        rval = F.function(inputs, outputs, effective_mode)
+        rval = F.orig_function(inputs, outputs, effective_mode)
         memo[self] = rval
         return rval
 

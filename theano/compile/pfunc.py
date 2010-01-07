@@ -2,8 +2,8 @@
 __docformat__ = 'restructuredtext en'
 
 from theano.gof import Container, Variable, generic, graph, Constant, Value
-from theano.compile import function, In
-from theano.compile.sandbox.sharedvalue import SharedVariable, shared
+from theano.compile import orig_function, In, Out
+from theano.compile.sharedvalue import SharedVariable, shared
 import numpy # for backport to 2.4, to get any().
 
 class Param(object):
@@ -33,7 +33,7 @@ class Param(object):
         self.strict = strict
         self.implicit = implicit
 
-def pfunc(params, outputs=None, mode=None, updates=[], givens=[]):
+def pfunc(params, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -121,19 +121,33 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[]):
         raise TypeError('Cannot use a shared variable (%s) as explicit input '
                 % v)
 
-    # computed_list is a list of output variables
+    # computed_list is a list of output variables (which will be extended later)
+    computed_list = []
     if isinstance(outputs, list):
+        cloned_outputs = []
         for v in outputs:
-            if not isinstance(v, Variable):
-                raise TypeError('outputs must be theano Variable instances', v)
-        # Copy list (because it may be extended later).
-        computed_list = [v_clone(o) for o in outputs]
-        cloned_outputs = list(computed_list)
+            if isinstance(v, Variable):
+                cloned_v = v_clone(v)
+                cloned_outputs.append(cloned_v)
+            elif isinstance(v, Out):
+                cloned_v = v_clone(v.variable)
+                cloned_outputs.append(Out(cloned_v, borrow=v.borrow))
+            else:
+                raise TypeError('outputs must be theano Variable or Out instances', v)
+            computed_list.append(cloned_v)
     else:
-        if not isinstance(outputs, Variable):
-            raise TypeError('output must be a theano Variable instance', outputs)
-        cloned_outputs = v_clone(outputs)
-        computed_list = [cloned_outputs]
+        if isinstance(outputs, Variable):
+            cloned_v = v_clone(outputs)
+            cloned_outputs = cloned_v
+            computed_list.append(cloned_v)
+        elif isinstance(outputs, Out):
+            cloned_v = v_clone(outputs.variable)
+            cloned_outputs = Out(cloned_v, borrow=outputs.borrow)
+            computed_list.append(cloned_v)
+        elif outputs is None:
+            cloned_outputs = [] # TODO: return None
+        else:
+            raise TypeError('output must be a theano Variable or Out instance', outputs)
 
     # Add update values as quantities that must be computed.
     # Here, we
@@ -187,14 +201,15 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[]):
             in_sv.update = new_val
             in_sv.mutable = True 
 
-    return function(inputs, cloned_outputs, mode, accept_inplace=False)
+    return orig_function(inputs, cloned_outputs, mode, accept_inplace=accept_inplace)
 
 def _pfunc_param_to_in(param):
     if isinstance(param, Constant):
         raise TypeError('Constants not allowed in param list', param)
-    if isinstance(param, Value):
-        raise NotImplementedError()
-    if isinstance(param, Variable): #includes SharedVariable
+    #if isinstance(param, Value):
+        #return In(variable=param)
+        #raise NotImplementedError()
+    if isinstance(param, Variable): #N.B. includes Value and SharedVariable
         return In(variable=param)
     elif isinstance(param, Param):
         return In(
@@ -204,7 +219,7 @@ def _pfunc_param_to_in(param):
                 mutable=param.mutable,
                 strict=param.strict,
                 implicit = param.implicit)
-    raise NotImplementedError('Unknown parameter type: %s' % type(param))
+    raise TypeError('Unknown parameter type: %s' % type(param))
 
 
 def iter_over_pairs(pairs):

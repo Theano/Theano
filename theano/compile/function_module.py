@@ -830,10 +830,7 @@ def check_equal(x, y):
 def register_checker(checker):
     __checkers.insert(0, checker)
 
-
-
-
-def function(inputs, outputs, mode=None, accept_inplace = False):
+def orig_function(inputs, outputs, mode=None, accept_inplace = False):
     """
     Return a Function that will calculate the outputs from the inputs.
 

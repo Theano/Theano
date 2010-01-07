@@ -17,6 +17,7 @@ random = RandomStreams(seed=0xBAD5EED)
 from elemwise import \
     DimShuffle, Elemwise, CAReduce
 
+import sharedvar # adds shared-variable constructors
 
 
 
