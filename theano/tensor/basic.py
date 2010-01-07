@@ -2943,9 +2943,9 @@ class AdvancedSubtensor(Op):
         self.args = args #?
 
         #FIXME
-        if len(args) != 2:
-            print >>sys.stderr, 'WARNING: Advanced indexing with %i arguments not supported yet' % len(args)
-            print >>sys.stderr, '  arguments are:', args
+        #if len(args) != 2:
+        #    print >>sys.stderr, 'WARNING: Advanced indexing with %i arguments not supported yet' % len(args)
+        #    print >>sys.stderr, '  arguments are:', args
 
     def make_node(self, x, *inputs):
         x = as_tensor_variable(x)
@@ -2958,8 +2958,10 @@ class AdvancedSubtensor(Op):
                         (x,) + inputs,
                         [tensor(dtype = x.type.dtype,
                             broadcastable = [False])])
-        raise NotImplementedError('Advanced indexing of x (of dimension %i) with these argument dimensions (%s) not supported yet'\
-                % (x.ndim, ','.join(str(input.ndim) for input in inputs)))
+            raise NotImplementedError('Advanced indexing of x (of dimension %i) with these argument dimensions (%s) not supported yet'\
+                    % (x.ndim, ','.join(str(input.ndim) for input in inputs)))
+        raise NotImplementedError('Advanced indexing of x with arguments (%s) not supported yet'\
+                % ','.join(str(input) for input in inputs))
 
     def perform(self, node, inputs, (out,)):
         pass
@@ -2988,8 +2990,10 @@ class AdvancedIncSubtensor(Op):
                         (x, y) + inputs,
                         [tensor(dtype = x.type.dtype,
                             broadcastable = x.type.broadcastable)])
-        raise NotImplementedError('Advanced indexing increment of x (of dimension %i) by y (of dimension %i) with these argument dimensions (%s) not supported yet'\
-                % (x.ndim, y.ndim, ','.join(str(input.ndim) for input in inputs)))
+            raise NotImplementedError('Advanced indexing increment of x (of dimension %i) by y (of dimension %i) with these argument dimensions (%s) not supported yet'\
+                    % (x.ndim, y.ndim, ','.join(str(input.ndim) for input in inputs)))
+        raise NotImplementedError('Advanced indexing increment of x by y with arguments (%s) not supported yet'\
+                % ','.join(str(input) for input in inputs))
 
     def perform(self, node, inputs, (out,)):
         pass
