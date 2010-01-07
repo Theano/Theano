@@ -131,7 +131,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[]):
         cloned_outputs = list(computed_list)
     else:
         if not isinstance(outputs, Variable):
-            raise TypeError('output must be a theano Variable instance', outputs)
+            raise TypeError('outputs must be a theano Variable instance or list of.', outputs)
         cloned_outputs = v_clone(outputs)
         computed_list = [cloned_outputs]
 
@@ -163,6 +163,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[]):
     inputs += [In(variable=si, value=si.container, mutable=False) 
         for si in shared_inputs
         if si not in set_of_param_variables]
+    del shared_inputs
 
     # Iterate over the updates, which are either pairs
     # (shared_var, expressionvariable), or a similar dictionary.
