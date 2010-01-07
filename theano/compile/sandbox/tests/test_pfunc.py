@@ -141,13 +141,13 @@ class Test_pfunc(unittest.TestCase):
         # by default, shared are not mutable unless doing an explicit update
         f = pfunc([], [b_out], mode='FAST_RUN')
         assert (f() ==  numpy.arange(5) * 2).all()
-        assert all( b.value == numpy.arange(5))
+        assert numpy.all( b.value == numpy.arange(5))
 
         # using updates, b is now a mutable parameter
         f = pfunc([], [b_out], updates=[(b, b_out)], mode='FAST_RUN')
         assert (f() == numpy.arange(5)*2 ).all()
-        assert all( b.value == numpy.arange(5)*2) # because of the update
-        assert all( bval == numpy.arange(5)*2) # because of mutable=True
+        assert ( b.value == numpy.arange(5)*2).all() # because of the update
+        assert ( bval == numpy.arange(5)*2).all() # because of mutable=True
 
         # do not depend on updates being in-place though!
         bval = numpy.arange(5)
@@ -156,7 +156,7 @@ class Test_pfunc(unittest.TestCase):
         assert ( f() == numpy.arange(5)*2 ).all()
         assert (b.value == ((numpy.arange(5)*2)+3)).all() # because of the update
         # bval got modified to something...
-        assert not all(bval == numpy.arange(5))
+        assert not (bval == numpy.arange(5)).all()
         # ... but not to b.value !
         assert not (bval == b.value).all()
 

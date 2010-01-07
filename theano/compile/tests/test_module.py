@@ -695,6 +695,12 @@ def test_method_implicit_ticket_384():
         if not str(e).startswith('Tried to provide value for implicit input'):
             raise
 
+def get_mode():
+    if default_mode != 'DEBUG_MODE':
+        mode = default_mode
+    else: mode = 'FAST_RUN'
+    return mode
+
 def test_pickle():
     """Test that a module can be pickled"""
     M = Module()
@@ -704,7 +710,7 @@ def test_pickle():
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
 
-    mode = default_mode if default_mode != 'DEBUG_MODE' else 'FAST_RUN'
+    mode = get_mode()
     m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
 
     m_dup = cPickle.loads(cPickle.dumps(m))
@@ -729,7 +735,7 @@ def test_pickle_aliased_memory():
     M.f = Method([a], a + M.x + M.y)
     M.g = Method([a], a * M.x * M.y)
 
-    mode = default_mode if default_mode != 'DEBUG_MODE' else 'FAST_RUN'
+    mode = get_mode()
     m = M.make(x=numpy.zeros((4,5)), y=numpy.ones((2,3)), mode=mode)
     m.y = m.x[:]
 

@@ -36,7 +36,10 @@ class BROKEN_ON_PURPOSE_StructuredDotCSC(gof.Op):
                 copy = False)
 #       TODO: todense() is automatic in 0.7.0, just remove the following line:
         z = a * b
-        out[0] = z+0.5 if self.py_offset else z #ERROR TO ADD THIS CRAPPY OFFSET
+        #ERROR TO ADD THIS CRAPPY OFFSET
+        if self.py_offset:
+            out[0] = z+0.5
+        else: out[0] = z 
 
     def c_code(self, node, name, (a_val, a_ind, a_ptr, a_nrows, b), (z,), sub):
         return """

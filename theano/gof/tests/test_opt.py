@@ -57,7 +57,10 @@ class MyOp(Op):
 
     def __hash__(self):
         #return hash(self.x if self.x is not None else id(self)) ^ hash(self.name)
-        return hash(self.x if self.x is not None else id(self)) 
+        if self.x is not None:
+            return hash(self.x)
+        else:
+            return id(self)
 
 
 op1 = MyOp('Op1')

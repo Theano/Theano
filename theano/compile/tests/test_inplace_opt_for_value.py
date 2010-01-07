@@ -42,7 +42,10 @@ class StochasticGradientDescent(module.FancyModule):
             raise ValueError('stepsize must be a scalar', stepsize)
 
         self.params = params
-        self.gparams = T.grad(cost, self.params) if gradients is None else gradients
+        if gradients is None:
+            self.gparams = T.grad(cost, self.params)
+        else:
+            self.gparams = gradients
 
         self.updates = dict((p, p - self.stepsize * g) for p, g in zip(self.params, self.gparams))
 
