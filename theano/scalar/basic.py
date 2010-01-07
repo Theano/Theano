@@ -1013,6 +1013,24 @@ class Sgn(UnaryScalarOp):
         return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
 sgn = Sgn(same_out, name = 'sgn')
 
+class Ceil(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.ceil(x)
+    def grad(self, (x,), (gz,)):
+        return None,
+    def c_code(self, node, name, (x,), (z,), sub):
+        return "%(z)s = ceil(%(x)s);" % locals()
+ceil = Ceil(same_out, name = 'ceil')
+
+class Floor(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.floor(x)
+    def grad(self, (x,), (gz,)):
+        return None,
+    def c_code(self, node, name, (x,), (z,), sub):
+        return "%(z)s = floor(%(x)s);" % locals()
+floor = Floor(same_out, name = 'ceil')
+
 class IRound(UnaryScalarOp):
     def impl(self, x):
         return numpy.asarray(numpy.round(x), dtype = 'int64')

@@ -1384,6 +1384,14 @@ def sgn(a):
     """sign of a"""
 
 @_scal_elemwise
+def ceil(a):
+    """ceiling of a"""
+
+@_scal_elemwise
+def floor(a):
+    """floor of a"""
+
+@_scal_elemwise
 def iround(a):
     """int(round(a))"""
 
