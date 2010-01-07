@@ -698,8 +698,10 @@ class T_subtensor(unittest.TestCase):
         try:
             t = n[slice(0,slice(1,2,None),None)]
         except Exception, e:
-            if e[0] != Subtensor.e_indextype:
-                raise
+            ### Relax constraint on the type of Exception,
+            ### since this might be handled by AvancedSubtensor
+            #if e[0] != Subtensor.e_indextype:
+            #    raise
             return
         self.fail()
 
