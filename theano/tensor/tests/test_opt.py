@@ -1100,7 +1100,9 @@ class test_fusion(unittest.TestCase):
                     print 'key, old val, new val, diff'
                     for key in set(d.keys()+nd.keys()):
                         if d.has_key(key) and nd.has_key(key) and nd[key]!=d[key]:
-                            print key, d.get(key),nd.get(key), nd[key]-d[key] if d.has_key(key) and nd.has_key(key) else None
+                            print key, d.get(key),nd.get(key),
+                            if d.has_key(key) and nd.has_key(key): print nd[key]-d[key]
+                            else: print None
                     gc.collect();gc.collect();gc.collect()
                     d=nd
             
@@ -1115,8 +1117,10 @@ class test_fusion(unittest.TestCase):
                             cmp = not isinstance(x, list)
                             if not cmp and x:
                                 cmp=x[0].__class__.__name__!='array_converter'
-                                cmp=x[0]!='Option' if cmp else cmp
-                                cmp=x[0]!=270 if cmp else cmp
+                                if cmp:
+                                    cmp=x[0]!='Option'
+                                if cmp:
+                                    cmp=x[0]!=270
                                 cmp=False
                             if cmp and x in dl:
                                 nb+=1

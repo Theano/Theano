@@ -3,7 +3,6 @@
 import theano
 from theano import tensor as T
 from theano.tensor import nnet as NN
-import numpy as N
 from theano.compile import module
 from theano.compile.mode import default_mode
 from theano import tensor as T, sparse as S
@@ -88,7 +87,9 @@ class QuadraticDenoisingAA(module.Module):
             self.qfilters = [(q) for q in _qfilters]
 
         #self.w1 = theano.Member(T.matrix('w1')) if _w1 is None else theano.Member(_w1)
-        self.w1 = (T.matrix('w1')) if _w1 is None else (_w1)
+        if _w1 is None:
+            self.w1 = (T.matrix('w1'))
+        else: self.w1 = (_w1)
         if _w2 is None:
             if not tie_weights:
                 #self.w2 = theano.Member(T.matrix())
@@ -99,9 +100,13 @@ class QuadraticDenoisingAA(module.Module):
             #self.w2 = theano.Member(_w2)
             self.w2 = (_w2)
         #self.b1 = theano.Member(T.vector('b1')) if _b1 is None else theano.Member(_b1)
-        self.b1 = (T.vector('b1')) if _b1 is None else (_b1)
+        if _b1 is None:
+            self.b1 = (T.vector('b1'))
+        else: self.b1 = (_b1)
         #self.b2 = theano.Member(T.vector('b2')) if _b2 is None else theano.Member(_b2)
-        self.b2 = (T.vector('b2')) if _b2 is None else (_b2)
+        if _b2 is None:
+            self.b2 = (T.vector('b2'))
+        else: self.b2 = (_b2)
 
 #        # REGULARIZATION COST
 #        self.regularization = self.build_regularization()
@@ -273,16 +278,26 @@ class Module_Nclass(module.FancyModule):
         super(Module_Nclass, self).__init__() #boilerplate
 
         #self.x = module.Member(x) if x is not None else T.matrix('input')
-        self.x = (x) if x is not None else T.matrix('input')
+        if x is not None:
+            self.x = (x)
+        else: self.x = T.matrix('input')
         #self.targ = module.Member(targ) if targ is not None else T.lvector()
-        self.targ = (targ) if targ is not None else T.lvector()
+        if targ is not None:
+            self.targ = (targ)
+        else: self.targ = T.lvector()
 
         #self.w = module.Member(w) if w is not None else module.Member(T.dmatrix())
-        self.w = (w) if w is not None else (T.dmatrix())
+        if w is not None:
+            self.w = (w)
+        else: self.w = (T.dmatrix())
         #self.b = module.Member(b) if b is not None else module.Member(T.dvector())
-        self.b = (b) if b is not None else (T.dvector())
+        if b is not None:
+            self.b = (b)
+        else: self.b = (T.dvector())
         #self.lr = module.Member(lr) if lr is not None else module.Member(T.dscalar())
-        self.lr = (lr) if lr is not None else (T.dscalar())
+        if lr is not None:
+            self.lr = (lr)
+        else: self.lr = (T.dscalar())
 
         self.params = [p for p in [self.w, self.b] if p.owner is None]
 
@@ -445,7 +460,7 @@ class ConvolutionalMLP(module.FancyModule):
             assert (i.w2 == self.input_representations[0].w2).all()
             assert (i.b1 == self.input_representations[0].b1).all()
             assert (i.b2 == self.input_representations[0].b2).all()
-            assert all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters)) 
+            assert N.all((a==b).all() for a, b in zip(i.qfilters, self.input_representations[0].qfilters)) 
 
         self.hidden.initialize(input_size=(len(self.inputs) * self.input_representation_size),
                 hidden_size=self.hidden_representation_size, noise_level=noise_level,
@@ -507,7 +522,9 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     import time
     t = time.time()
     
-    mode = theano.Mode(linker='c|py', optimizer=optimizer) if optimizer else default_mode
+    if optimizer:
+        mode = theano.Mode(linker='c|py', optimizer=optimizer)
+    else: mode = default_mode
     if realistic:
         m = create_realistic(compile_mode=mode)
     else:

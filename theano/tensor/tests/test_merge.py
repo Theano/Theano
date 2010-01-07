@@ -44,7 +44,9 @@ class MyOp(Op):
         return self is other or isinstance(other, MyOp) and self.x is not None and self.x == other.x
 
     def __hash__(self):
-        return self.x if self.x is not None else id(self)
+        if self.x is not None:
+            return self.x
+        else: return id(self)
 op1 = MyOp('Op1')
 
 

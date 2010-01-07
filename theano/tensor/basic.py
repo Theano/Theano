@@ -2185,6 +2185,10 @@ class Split(Op):
 
     def perform(self, node, (x, axis, splits), outputs):
         """WRITEME"""
+        #in python 2.4, x.shape[numpy.asarray(1)] don't work.
+        if sys.version_info[0:2]==(2, 4) and axis.size==1:
+          axis=int(axis)
+        
         try:
             len_along_axis = x.shape[axis]
         except :
