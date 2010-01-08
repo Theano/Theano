@@ -6,149 +6,109 @@ Using RandomStreams
 
 Since Theano uses a functional design, producing pseudo-random numbers in a
 graph is not quite as straightforward as it is in numpy.  But close.  If you are using theano's
-modules, then a RandomStreams object is probably what you want.  If you are
-using the function interface directly (not Module and Method) then have a look
-at the :api:`RandomFunction` Op.
+shared variables, then a RandomStreams object is probably what you want.  If you are
+using the function interface directly, or you are using Module then this tutorial will be useful but not exactly what you want.  
+Have a look at the :api:`RandomFunction` Op.
 
-I'm going to use the term "random stream" to mean the sequence of random
-numbers that comes from a numpy RandomState object (starting from a particular
-state).   Try to think about putting random variables in your graph, rather than
-random number generators. 
+The way to think about putting randomness into theano's computations is to
+put random variables in your graph.  Theano will allocate a numpy RandomState
+object for each such variable, and draw from it as necessary.  I'll call this sort of sequence of
+random numbers a *random stream*.
 
-Here's a brief example:
------------------------
+Brief example
+-------------
+
+Here's a brief example.  The setup code is:
 
 .. code-block:: python
 
-    from theano.tensor import RandomStreams
-    m = Module()
-    m.random = RandomStreams(seed=234)
-    rv_u = m.random.uniform((2,2))
-    rv_n = m.random.normal((2,2))
-    m.fn = Method([], rv_u)
-    m.gn = Method([], rv_n)
-    m.nearly_zeros = Method([], rv_u + rv_u - 2 * rv_u)
-    made = m.make()
-    made.random.initialize()
-    fn_val0 = made.fn()
-    fn_val1 = made.fn()  #different numbers from fn_val0
-
-
-Let's walk through it.
-
->>> from theano.tensor import RandomStreams
->>> m = Module()
->>> m.random = RandomStreams(seed=234)
->>> rv_u = m.random.uniform((2,2))
->>> rv_n = m.random.normal((2,2))
+    from theano.tensor.shared_randomstreams import RandomStreams
+    srng = RandomStreams(seed=234)
+    rv_u = srng.random.uniform((2,2))
+    rv_n = srng.random.normal((2,2))
+    f = function([], rv_u, updates=[rv_u.update])
+    g = function([], rv_n)                              #omitting rv_n.update
+    nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
 
 Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
 distribution.  Likewise,  'rv_n' represenents a random stream of 2x2 matrices of
-draws from a normal distribution.
+draws from a normal distribution.  The distributions that are implemented are
+defined in :ref:`tensor.shared_randomstreams.RandomStreams`.
+
+Now let's use these things.  If we call f(), we get random uniform numbers.
+Since we are updating the internal state of the random number generator (via
+the ``updates`` argument, we get different random numbers every time.
+
+>>> f_val0 = f()
+>>> f_val1 = f()  #different numbers from f_val0
+
+When we omit the updates argument (as in ``g``) to ``function``, then the
+random number generator state is not affected by calling the returned function.  So for example, 
+calling ``g`` multiple times will return the same numbers.
+
+>>> g_val0 = g()  # different numbers from f_val0 and f_val1
+>>> g_val0 = g()  # same numbers as g_val0 !!!
+
+An important remark is that a random variable is drawn at most once during any
+single function execution.  So the ``nearly_zeros`` function is guaranteed to
+return approximately 0 (except for rounding error) even though the ``rv_u``
+random variable appears three times in the output expression.
+
+>>> nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
 
 
->>> m.fn = Method([], rv_u)
->>> m.gn = Method([], rv_n)
+Internal Attributes 
+--------------------
 
-As usual, we can define methods that operate on Module members (the RandomState
-object for each of fn and gn).  
+The random variables returned by methods like ``RandomStreams.uniform`` have
+some useful internal attributes.  
 
->>> m.nearly_zeros = Method([], rv_u + rv_u - 2 * rv_u)
+The one we used above is the ``update`` attribute.  ``rv_u.update`` is a pair
+whose first element is a shared variable whose value is a numpy RandomState,
+and whose second element is an [symbolic] expression for the next value of that
+RandomState after drawing samples.
 
-This function will always return a 2x2 matrix of small numbers, or possibly
-zeros.  It illustrates that random variables are not re-drawn every time they
-are used, they are only drawn once per method call.
+The first element of the ``update`` attribute is also accessible as
+``rv_u.rng``.  A random variable can be re-seeded by seeding or assigning to
+``rv_u.rng.value``.
 
-
->>> made = m.make()
-
-When we compile things with m.make(), the RandomStreams instance (m.random)
-emits an RandomStreamsInstance object (here called ``made.random``) containing a numpy
-RandomState instance for each stream.
-
->>> assert isinstance(made.random[rv_u.rng], numpy.random.RandomState)
-
-These RandomState objects can be accessed using normal indexing syntax.
-
->>> fn_val0 = made.fn()
->>> fn_val1 = made.fn()
-
-Finally, we can use our methods to draw random numbers.  Every call will of
-course, draw different ones!
-
+The ``RandomStreams`` object itself has an ``updates()`` method that returns a
+list of all the (state, new_state) update pairs from the random variables it
+has returned.  This can be a convenient shortcut to enumerating all
+the random variables in a large graph in the ``update`` paramter of function.
 
 Seedings Streams
 ----------------
 
-All of the streams in a RandomStreams container can be seeded at once using the
-seed method of a RandomStreamsInstance.
+Random variables can be seeded individually or collectively.
 
->>> made.random.seed(seed_value)
+You can seed just one random variable by seeding or assigning to the
+``.rng.value`` attribute.
 
-Of course, a RandomStreamsInstance can contain several RandomState instances and
-these will _not_ all be seeded to the same seed_value.  They will all be seeded
-deterministically and probably uniquely as a function of the seed_value.
+>>> rv_u.rng.value.seed(89234)  # seeds the generator for rv_u
 
-Seeding the generator in this way makes it possible to repeat random streams.
+You can also seed *all* of the random variables allocated by a ``RandomStreams``
+object by that object's ``seed`` method.  This seed will be used to seed a
+temporary random number generator, that will in turn generate seeds for each
+of the random variables.
 
->>> made.random.seed(777)
->>> f0 = made.fn()
->>> made.random.seed(999)
->>> f1 = made.fn()
-
-Here we have different values in f0 and f1 because they were created from
-generators seeded differently.
-
->>> made.random.seed(777)
->>> f2 = made.fn()
-
-If we re-seed the generator with 777 and call fn again, we'll find that we
-re-drew the f0 values.  
-
->>> assert(numpy.all(f2 == f0))
+>>> srng.seed(902340)  # seeds rv_u and rv_n with different seeds each
 
 
-Sharing Streams between Methods
--------------------------------
+Sharing Streams between Functions
+---------------------------------
 
-Streams in a Module, like other Members of a Module, are shared between Methods.
-This means that when one Method updates the state of a stream, it updates the
-state for other methods in that ModuleInstance too.
+As usual for shared variables, the random number generators used for random
+variables are common between functions.  So our ``nearly_zeros`` function will
+update the state of the generators used in function ``f`` above.
 
 For example:
 
->>> m = Module()
->>> m.random = RandomStreams(seed=234)
->>> rv_u = m.random.uniform((2,2))
->>> m.fn = Method([], rv_u)
->>> m.gn = Method([], rv_u)
->>> made = m.make()
->>> made.random.initialize()
->>> fn_val0 = made.fn()
->>> gn_val0 = made.gn()
-
-At this point, fn_val0 != gn_val0 because made.fn() updated the random state
-after it was called.
-
-
-Compiled Modules are independent
---------------------------------
-
-The RandomState objects are created only at the time of calling `make`, and
-calling make repeatedly will create multiple independent RandomStreamsInstance
-objects.  So, for example, if we were to hijack the previous example like this:
-
->>> made = m.make()
->>> made_again = m.make()
->>> made.random.initialize()
->>> made_again.random.initialize()
->>> fn_val = made.fn()
->>> gn_val = made.gn()
->>> gn_val_ = made_again.gn()
->>> fn_val_ = made_again.fn()
-
-We could call f and g in different orders in the two modules, and find that
-``numpy.all(fn_val == fn_val_)`` and ``numpy.all(gn_val == gn_val_)``.
+>>> state_after_v0 = rv_u.rng.value.get_state()
+>>> nearly_zeros()       # this affects rv_u's generator
+>>> v1 = f()             
+>>> rv_u.rng.value.set_state(state_after_v0)
+>>> v2 = f()             # v2 != v1
 
 
 

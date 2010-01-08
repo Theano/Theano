@@ -25,7 +25,7 @@ def randomstate_constructor(value, name=None, strict=False):
 class RandomStreams(object):
     """Module component with similar interface to numpy.random (numpy.random.RandomState)"""
 
-    random_state_variables = []
+    state_updates = []
     """A list of pairs of the form (input_r, output_r).  This will be over-ridden by the module
     instance to contain stream generators.
     """
@@ -39,7 +39,7 @@ class RandomStreams(object):
     """
 
     def updates(self):
-        return list(self.random_state_variables)
+        return list(self.state_updates)
 
     def __init__(self, seed=None):
         """
@@ -49,7 +49,7 @@ class RandomStreams(object):
         `RandomStreamsInstance.__init__` for more details.
         """
         super(RandomStreams, self).__init__()
-        self.random_state_variables = []
+        self.state_updates = []
         self.default_instance_seed = seed
         self.gen_seedgen = numpy.random.RandomState(seed)
 
@@ -67,7 +67,7 @@ class RandomStreams(object):
             seed = self.default_instance_seed
 
         seedgen = numpy.random.RandomState(seed)
-        for old_r, new_r in self.random_state_variables:
+        for old_r, new_r in self.state_updates:
             old_r_seed = seedgen.randint(2**30)
             old_r.value = numpy.random.RandomState(int(old_r_seed))
 
@@ -119,7 +119,8 @@ class RandomStreams(object):
         random_state_variable = shared(numpy.random.RandomState(seed))
         new_r, out = op(random_state_variable, *args, **kwargs)
         out.rng = random_state_variable
-        self.random_state_variables.append((random_state_variable, new_r))
+        out.update = (random_state_variable, new_r)
+        self.state_updates.append(out.update)
         return out
 
     def binomial(self, *args, **kwargs):
