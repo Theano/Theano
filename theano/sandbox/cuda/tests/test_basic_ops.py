@@ -1,9 +1,11 @@
 import sys, time
-from theano.compile.sandbox.sharedvalue import shared
-from theano.compile.sandbox.pfunc import pfunc
+from theano.compile.sharedvalue import shared
+from theano.compile.pfunc import pfunc
 from theano import tensor
 
 import numpy
+import theano
+import theano.tensor as T
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -19,6 +21,29 @@ mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 def tes_use():
     tcn.use()
+
+def test_sum():
+    """
+    test sum pattern 1, 11, 10, 100, 110, 001, 111, 1011, 1111
+    TODO: test with stride, broadcast
+    """
+
+    for shape, pattern in [((5,),[0]),
+                           ((5,4),[0,1]),((5,4),[0]),
+                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
+                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+        a = tensor.TensorType('float32',(False,)*len(shape))()
+        b = T.Sum(pattern)(a)
+        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+        val = numpy.ones(shape)
+        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+        val = numpy.asarray(val,dtype='float32')
+        f = theano.function([a],b, mode=mode_with_gpu)
+        f2 = theano.function([a],b)
+        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
+        assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
+        assert numpy.allclose(f2(val),f(val))
+        
 
 def test_elemwise0():
 
