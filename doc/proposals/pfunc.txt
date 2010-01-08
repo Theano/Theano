@@ -3,6 +3,11 @@
 Proposal for pfunc  Function Interface
 ======================================
 
+.. note::
+
+  This proposal was implemented some time around summer 2009, and merged into
+  the trunk around new years 2010.
+
 Following discussion on theano-dev (titled TheanoObject), the following
 changes are proposed to make function-construction calls more
 readable and intuitive, and to make it easier to share values between
