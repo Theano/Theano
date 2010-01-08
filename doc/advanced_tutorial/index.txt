@@ -24,7 +24,6 @@ grounding for fundamental Theano concepts.
 
 .. toctree::
 
-   floatX
    theano_vs_c
    graphstructures
    type

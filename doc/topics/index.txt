@@ -9,6 +9,7 @@ Topics
     :maxdepth: 2
    
     function
+    floatX
     module
     pipeline
     unittest
