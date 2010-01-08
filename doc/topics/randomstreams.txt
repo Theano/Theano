@@ -24,8 +24,8 @@ Here's a brief example.  The setup code is:
 
     from theano.tensor.shared_randomstreams import RandomStreams
     srng = RandomStreams(seed=234)
-    rv_u = srng.random.uniform((2,2))
-    rv_n = srng.random.normal((2,2))
+    rv_u = srng.uniform((2,2))
+    rv_n = srng.normal((2,2))
     f = function([], rv_u, updates=[rv_u.update])
     g = function([], rv_n)                              #omitting rv_n.update
     nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
@@ -109,7 +109,6 @@ For example:
 >>> v1 = f()             
 >>> rv_u.rng.value.set_state(state_after_v0)
 >>> v2 = f()             # v2 != v1
-
 
 
 .. _Tools: tools.html
