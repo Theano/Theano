@@ -6,7 +6,7 @@ import copy
 from theano.gof import Container, Variable, generic
 
 import logging
-_logger = logging.getLogger('theano.compile.sandbox.sharedvalue')
+_logger = logging.getLogger('theano.compile.sharedvalue')
 _logger.setLevel(logging.DEBUG)
 def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
 def info(*msg): _logger.info(' '.join(str(m) for m in msg))
