@@ -835,6 +835,38 @@ class GpuSum(Op):
         }
         """ % locals()
 
+    def c_code_reduce_1111(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail)
+        print >> sio, """
+        {
+            int verbose = 0;
+            dim3 n_threads(
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[2],
+                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+
+            //get as many y threads as we can fit
+            while (n_threads.x * n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            {
+                if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[1])
+                    break;
+                n_threads.y += 1;
+            }
+            n_threads.y -= 1;
+
+            //get as many z threads as we can fit
+            while (n_threads.x * n_threads.y * n_threads.z <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            {
+                if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0])
+                    break;
+                n_threads.z += 1;
+            }
+            n_threads.z -= 1;
+
+            dim3 n_blocks(1,1,1);
+            %(makecall)s
+        }
+        """ % locals()
+
     def c_code_reduce_1011(self, sio, node, name, x, z, fail):
         print >> sio, """
         {
@@ -1176,6 +1208,29 @@ class GpuSum(Op):
                         }
                     }
                 }
+            }
+            """ %locals()
+        if self.reduce_mask == (1,1,1,1):
+            reducebuf = self._k_reduce_buf('Z[0]')
+            decl = self._k_decl(node, nodename)
+            init = self._k_init(node, nodename)
+            print >> sio, """
+            %(decl)s
+            {
+                %(init)s
+                mysum = 0;
+              for (int i0 = 0; i0 < d0; i0++)
+                for (int i1 = threadIdx.z; i1 < d1; i1 += blockDim.z)
+                {
+                    for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)
+                    {
+                        for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
+                        {
+                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
+                        }
+                    }
+                }
+                %(reducebuf)s
             }
             """ %locals()
         if self.reduce_mask == (1,0,1,1):
