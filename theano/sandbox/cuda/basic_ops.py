@@ -583,7 +583,7 @@ class GpuSum(Op):
 
     def _k_init(self, *args):
         return """
-                const int threadCount = blockDim.x * blockDim.y * blockDim.y;
+                const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
                 float mysum = 0.0f;
