@@ -1,3 +1,10 @@
+"""
+This file implement 3 different version of the elemwise op on the gpu. Only NaiveAlgo is used and it is not very naive now. 
+
+The elemwise fct are also used with scalar operation! So it can happen that ndim is 0 as with all scalar type.
+"""
+
+
 import StringIO, sys
 import numpy
 from theano import Op, Type, Apply, Variable, Constant
