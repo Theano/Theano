@@ -951,6 +951,7 @@ class GpuSum(Op):
         if self.reduce_mask == (1,1):
             #this kernel is ok for up to a few thousand elements, but 
             # it only runs on ONE multiprocessor
+            reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
             static __global__ void kernel_reduce_sum_11_%(nodename)s(
                     const int d0,
@@ -976,31 +977,7 @@ class GpuSum(Op):
                         mysum += Ai;
                     }
                 }
-                buf[threadNum] = mysum;
-                __syncthreads();
-
-                // rest of function is handled by one warp
-                if (threadNum < warpSize)
-                {
-                    for (int i = threadNum + warpSize; i < threadCount; i += warpSize)
-                    {
-                        mysum += buf[i];
-                    }
-                    buf[threadNum] = mysum;
-                    if (threadNum < 16)
-                    {
-                        //reduce so that threadNum 0 has the sum of everything
-                        if(threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
-                        if(threadNum + 8 < threadCount) buf[threadNum] += buf[threadNum+8];
-                        if(threadNum + 4 < threadCount) buf[threadNum] += buf[threadNum+4];
-                        if(threadNum + 2 < threadCount) buf[threadNum] += buf[threadNum+2];
-                        if(threadNum + 1 < threadCount) buf[threadNum] += buf[threadNum+1];
-                        if (threadNum == 0)
-                        {
-                            Z[0] = buf[0];
-                        }
-                    }
-                }
+                %(reducebuf)s
             }
             """ %locals()
         if self.reduce_mask == (1,0):
