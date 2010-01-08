@@ -7,6 +7,19 @@ Graph optimization
 
 In this section we will define a couple optimizations on doubles.
 
+.. todo::
+
+   This tutorial goes way too far under the hood, for someone who just wants
+   to add yet another pattern to the libraries in tensor.opt for example.
+
+   We need another tutorial that covers the decorator syntax, and explains how
+   to register your optimization right away.  That's what you need to get
+   going.
+
+   Later, the rest is more useful for when that decorator syntax type thing
+   doesn't work. (There are optimizations that don't fit that model).
+
+
 
 Global and local optimizations
 ==============================
@@ -119,6 +132,11 @@ simplification described above:
 
    simplify = Simplify()
 
+.. todo::
+
+   What is add_requirements? Why would we know to do this? Are there other
+   requirements we might want to  know about?
+
 Here's how it works: first, in ``add_requirements``, we add the
 ``ReplaceValidate`` :ref:`envfeature` located in
 :api:`theano.gof.toolbox`. This feature adds the ``replace_validate``
@@ -149,6 +167,7 @@ nothing. You might want to check the documentation about :ref:`variable`
 and :ref:`apply` to get a better understanding of the
 pointer-following game you need to get ahold of the nodes of interest
 for the simplification (``x``, ``y``, ``z``, ``a``, ``b``, etc.).
+
 
 Test time:
 
@@ -238,6 +257,10 @@ The local version of the above code would be the following:
 
    local_simplify = LocalSimplify()
 
+.. todo::
+
+    Fix up previous example... it's bad and incomplete.
+
 The definition of transform is the inner loop of the global optimizer,
 where the node is given as argument. If no changes are to be made,
 ``False`` must be returned. Else, a list of what to replace the node's
@@ -310,6 +333,9 @@ Theano defines some shortcuts to make LocalOptimizers:
    means that everything we said previously about local optimizers
    apply: they need to be wrapped in a Navigator, etc.
 
+.. todo::
+
+   wtf is a navigator?
 
 When an optimization can be naturally expressed using ``OpSub``, ``OpRemove``
 or ``PatternSub``, it is highly recommended to use them.
@@ -317,6 +343,7 @@ or ``PatternSub``, it is highly recommended to use them.
 WRITEME: more about using PatternSub (syntax for the patterns, how to
 use constraints, etc. - there's some decent doc at
 :api:`theano.gof.opt.PatternSub` for those interested)
+
 
 
 .. _optdb:
