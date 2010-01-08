@@ -9,6 +9,7 @@ Topics
     :maxdepth: 2
    
     function
+    module
     pipeline
     unittest
     profilemode
