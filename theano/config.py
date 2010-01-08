@@ -22,7 +22,7 @@ THEANO_BASE_COMPILEDIR = os.getenv('THEANO_BASE_COMPILEDIR', None)
 HOME = os.getenv('HOME')
 
 #0 compare with default precission, 1 less precission, 2 event less.
-THEANO_CMP_SLOPPY = os.getenv('THEANO_CMP_SLOPPY', 0)
+THEANO_CMP_SLOPPY = int(os.getenv('THEANO_CMP_SLOPPY', 0))
 
 #flag for compiling with an optimized blas library. Used for gemm operation
 #if THEANO_BLAS_LDFLAGS exist but empty, we will use numpy.dot()
