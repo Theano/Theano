@@ -2,7 +2,7 @@ import numpy
 
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor
-from theano.compile.sandbox.sharedvalue import shared, SharedVariable, shared_constructor
+from theano.compile import shared, SharedVariable, shared_constructor
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.type_support import filter as type_support_filter

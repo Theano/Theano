@@ -1,9 +1,12 @@
 import sys, time
-from theano.compile.sandbox.sharedvalue import shared
-from theano.compile.sandbox.pfunc import pfunc
+
+from theano import shared
+from theano.compile.pfunc import pfunc
 from theano import tensor
 
 import numpy
+import theano
+import theano.tensor as T
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -13,12 +16,70 @@ except ImportError:
     raise SkipTest('Optional package cuda_ndarray not available')
 
 import theano.sandbox.cuda as tcn
+import cuda_ndarray as cuda
 import theano.compile.mode
 
 mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 def tes_use():
     tcn.use()
+
+def test_sum():
+    """
+    test sum pattern 1, 11, 10, 100, 110, 001, 111, 1011, 1111
+    TODO: test with broadcast
+    """
+
+    for shape, pattern in [((5,),[0]),
+                           ((5,4),[0,1]),((5,4),[0]),
+                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
+                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+        a = tensor.TensorType('float32',(False,)*len(shape))()
+        b = T.Sum(pattern)(a)
+        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+#        val = numpy.ones(shape)
+#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+        val = numpy.asarray(val,dtype='float32')
+        f = theano.function([a],b, mode=mode_with_gpu)
+        f2 = theano.function([a],b)
+        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
+        assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
+        assert numpy.allclose(f2(val),f(val))
+        
+
+        #test with broadcast
+    for shape, pattern in [((5,),[0]),
+                           ((5,4),[0,1]),((5,4),[0]),
+                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
+                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+        shape = numpy.asarray(shape)*2
+        a = tensor.TensorType('float32',(False,)*len(shape))()
+        a2 = tcn.CudaNdarrayType((False,)*len(shape))()
+        b = T.Sum(pattern)(a)
+        b2 = T.Sum(pattern)(a2)
+        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+#        val = numpy.ones(shape)
+#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+        val = numpy.asarray(val,dtype='float32')
+        val2 = cuda.CudaNdarray(val)
+        if len(shape)==1:
+            val = val[::2]
+            val2 = val2[::2]
+        elif len(shape)==2:
+            val = val[::2,::2]
+            val2 = val2[::2,::2]
+        elif len(shape)==3:
+            val = val[::2,::2,::2]
+            val2 = val2[::2,::2,::2]
+        elif len(shape)==4:
+            val = val[::2,::2,::2,::2]
+            val2 = val2[::2,::2,::2,::2]
+        f = theano.function([a],b)
+        f2 = theano.function([a2],b2, mode=mode_with_gpu)
+        assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.env.toposort()]
+        assert T.Sum in [x.op.__class__ for x in f.maker.env.toposort()]
+        assert numpy.allclose(f2(val2),f(val))
+        
 
 def test_elemwise0():
 

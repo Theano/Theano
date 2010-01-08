@@ -1414,10 +1414,12 @@ class DebugMode(Mode):
             check_c_code=None,
             check_py_code=None,
             check_isfinite=None,
-            require_matching_strides=None):
+            require_matching_strides=None,
+            linker=None):
         """Initialize member variables.
 
         If any of these arguments (except optimizer) is not None, it overrides the class default.
+        The linker arguments is not used. It is set their to allow Mode.requiring() and some other fct to work with DebugMode too.
         """
         super(DebugMode, self).__init__(
                 optimizer=optimizer,

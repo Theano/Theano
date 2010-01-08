@@ -12,8 +12,6 @@ from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
 import opt
 import cuda_ndarray
 
-import theano.compile.sandbox
-
 import os
 import theano.config as config
 from theano.compile import optdb
