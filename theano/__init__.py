@@ -39,14 +39,15 @@ from gof import \
      set_compiledir, get_compiledir, clear_compiledir
 
 from compile import \
-    SymbolicInput, SymbolicInputKit, In, \
+    SymbolicInput, In, \
     SymbolicOutput, Out, \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
     FunctionMaker, function, OpFromGraph, \
     Component, External, Member, Method, \
     Composite, ComponentList, ComponentDict, Module, \
-    ProfileMode
+    ProfileMode, \
+    Param, shared
 
 
 FancyModule = Module

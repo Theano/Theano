@@ -1,7 +1,7 @@
 
 from theano import gof
 from theano import gradient as G
-from function_module import function
+from function_module import orig_function
 
 
 class OpFromGraph(gof.Op):
@@ -44,7 +44,7 @@ class OpFromGraph(gof.Op):
             raise TypeError('updates are not allowed in kwargs')
         # TODO: the graph may have implicit inputs like Value and SharedVariable instances.
         #       what impact to they have on the validity of this Op?
-        self.fn = function(inputs, outputs, **kwargs)
+        self.fn = orig_function(inputs, outputs, **kwargs)
         self.inputs = inputs
         self.outputs = outputs
         self.input_types = [input.type for input in inputs]

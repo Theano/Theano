@@ -4,6 +4,7 @@ from theano import gof
 from theano import compile
 from theano.scalar import *
 from theano.compile.function_module import *
+from theano.compile import function
 
 from theano import tensor
 from theano import tensor as T

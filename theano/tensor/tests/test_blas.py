@@ -9,9 +9,9 @@ from unittest import TestCase
 from theano.tests import unittest_tools
 from copy import copy
 
-from theano import In, Out
+from theano import Param, shared
 from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
-        compile, value, constant, inplace, eval_outputs)
+        compile, constant, inplace, eval_outputs)
 
 class t_gemm(TestCase):
     """This test suite is supposed to establish that gemm works as it is supposed to."""
@@ -138,12 +138,12 @@ class t_gemm(TestCase):
 
     def test_destroy_map4(self):
         """test that dot args can be aliased"""
-        Z = value(self.rand(2,2))
-        A = value(self.rand(2,2))
-        f = inplace_func([A,Z], gemm(Z, 1.0, A, A, 1.0))
-        f(A.data, Z.data)
-        f = inplace_func([A,Z], gemm(Z, 1.0, A, A.T, 1.0))
-        f(A.data, Z.data)
+        Z = shared(self.rand(2,2))
+        A = shared(self.rand(2,2))
+        f = inplace_func([], gemm(Z, 1.0, A, A, 1.0))
+        f()
+        f = inplace_func([], gemm(Z, 1.0, A, A.T, 1.0))
+        f()
 
     def test_transposes(self):
         # three square matrices which are not contiguous
@@ -156,14 +156,27 @@ class t_gemm(TestCase):
             z_orig = z.copy()
             z_after = self._gemm(z, a, x, y, b)
 
-            tz,ta,tx,ty,tb = [value(p) for p in z,a,x,y,b]
+            tz,ta,tx,ty,tb = [shared(p) for p in z,a,x,y,b]
 
-            f = inplace_func([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
-            f(z, a, x, y, b)
+            #f = inplace_func([tz,ta,tx,ty,tb], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
+            #f(z, a, x, y, b)
+            f = inplace_func([], gemm(tz,ta,tx,ty,tb), mode = compile.Mode(optimizer = None, linker=l))
+            f()
+            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
+            f()
+            self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
+            f()
             self.failUnless(_approx_eq(z_after, z), (z_orig, z_after, z, z_after - z))
 
-            f(z.T, a, y.T, x.T, b)
-            self.failUnless(_approx_eq(z_after, z))
+            #tz.value *= 0 # clear z's value
+            y_T = ty.value.T
+            ty.value = tx.value.T
+            tx.value = y_T
+
+            f()
+            assert numpy.all(tz.value == z) # should be aliased still
+            # test that the transposed version of multiplication gives same answer
+            self.failUnless(_approx_eq(z_after, z.T))
 
         t(C,A,B)
         t(C.T, A, B)
@@ -256,7 +269,7 @@ class Warning(Exception):
 
 def just_gemm(i, o, ishapes = [(4,3), (3,5), (4,5), (), ()]):
     try:
-        f = inplace_func([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
+        f = inplace_func([Param(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
         for node in f.maker.env.nodes:
             if node.op == T.dot: raise Warning('dot not changed to gemm in graph')
             if node.op == _dot22: raise Warning('_dot22 not changed to gemm in graph')
@@ -320,7 +333,7 @@ def test_gemm_opt_double_gemm():
     i = [X,Y,Z,a,b, R, S, c]
     o = [a * T.dot(X,Y) + gemm(Z, b, S.T, R.T, 1.0)]
     try:
-        f = inplace_func([In(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
+        f = inplace_func([Param(ii, mutable=True) for ii in i],o, mode='FAST_RUN')
         for node in f.maker.env.nodes:
             if node.op == T.dot: raise Failure('dot in graph')
             if node.op == _dot22: raise Failure('_dot22 in graph')

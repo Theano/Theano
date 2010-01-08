@@ -1,7 +1,7 @@
 import numpy, theano, unittest
 
-from theano.compile.sandbox.pfunc import pfunc
-from theano.compile.sandbox.sharedvalue import shared
+from theano.compile.pfunc import pfunc
+from theano.compile.sharedvalue import shared
 from theano import tensor
 from theano.tensor.nnet import sigmoid
 

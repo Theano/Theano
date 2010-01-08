@@ -5,8 +5,8 @@ import unittest
 import numpy 
 
 from theano.tensor import raw_random
-from theano.compile.sandbox.shared_randomstreams import RandomStreams
-from theano.compile.sandbox.pfunc import pfunc
+from theano.tensor.shared_randomstreams import RandomStreams
+from theano.compile.pfunc import pfunc
 
 from theano import tensor
 from theano import compile, gof

@@ -1,15 +1,17 @@
 ## PENDING REWRITE OF tensor_opt.py
 
 
+import numpy
 
+import theano
 from theano import gof
 from theano.tensor.opt import *
 from theano import tensor
 from theano.tensor import TensorType
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
-from theano import pprint
-import numpy
+from theano import pprint, shared
+    
 #import scalar_opt
 
 from theano import function, compile
@@ -808,10 +810,6 @@ def test_const_type_in_mul_canonizer():
     assert numpy.allclose(
         f2(ival, wval, visbval, hidbval, betaval, aval),
         f1(ival, wval, visbval, hidbval, betaval, aval))
-    
-from theano.compile.sandbox.pfunc import pfunc
-from theano.compile.sandbox.sharedvalue import shared
-import theano
 
 class test_fusion(unittest.TestCase):
 
@@ -951,7 +949,7 @@ class test_fusion(unittest.TestCase):
                 nb_repeat=1
             else:
                 out=shared_fn(numpy.zeros(shp, dtype=out_dtype),'out')
-                f = pfunc(sym_inputs,[],updates=[(out,out+g)],mode=mode)
+                f = function(sym_inputs,[],updates=[(out,out+g)],mode=mode)
                 #pre-call to have the data in cache if it fit to don't penalise the first iteration
 #                if id==0:
 #                    f(*val_inputs)
@@ -1084,9 +1082,9 @@ class test_fusion(unittest.TestCase):
 #                v1=weakref.ref(v)
                 out=shared_fn(v,'out')
                 pdb.set_trace()
-#                f = pfunc(sym_inputs,[],updates=[(out,out+g)],mode=mode)
-#                f = pfunc([fx],[],updates=[(out,out+fx)],mode=mode)
-#                f = pfunc([fx],out+fx,mode=mode)
+#                f = function(sym_inputs,[],updates=[(out,out+g)],mode=mode)
+#                f = function([fx],[],updates=[(out,out+fx)],mode=mode)
+#                f = function([fx],out+fx,mode=mode)
 #                f = compile.function([fx,out],[out+fx],mode=mode)#no memory leak.
                 f = compile.function([fx,compile.In(variable=out, value=out.container, mutable=None)],
                                      [out+fx],mode=mode)#if mutable is True or False, their is a memory leak
