@@ -1830,9 +1830,9 @@ class Subtensor(Op):
         return entry.type
       elif isinstance(entry, gof.Type) and entry in scal_types:
         return entry
-      if isinstance(entry, gof.Variable) and entry.type in tensor_types:
+      if isinstance(entry, gof.Variable) and entry.type in tensor_types and numpy.all(entry.type.broadcastable):
         return scal.Scalar(entry.type.dtype)
-      elif isinstance(entry, gof.Type) and entry in tensor_types:
+      elif isinstance(entry, gof.Type) and entry in tensor_types and numpy.all(entry.broadcastable):
         return scal.Scalar(entry.dtype)
       elif slice_ok and isinstance(entry, slice):
         a = entry.start
@@ -1868,14 +1868,20 @@ class Subtensor(Op):
     def __init__(self, idx_list):
         self.idx_list = map(self.convert, idx_list)
 
+    @staticmethod
+    def my_as_scalar(a):
+        # Since scal.as_scalar does not know about tensor types (it would
+        # create a circular import) , this method converts either a
+        # TensorVariable or a ScalarVariable to a scalar.
+        if isinstance(a, gof.Variable) and isinstance(a.type, TensorType):
+            return scalar_from_tensor(a)
+        else:
+            return scal.as_scalar(a)
+
+
     def make_node(self, x, *inputs):
         x = as_tensor_variable(x)
-        def my_as_scalar(a):
-            if isinstance(a, gof.Variable) and isinstance(a.type, TensorType):
-                return scalar_from_tensor(a)
-            else:
-                return scal.as_scalar(a)
-        inputs = tuple(my_as_scalar(a) for a in inputs)
+        inputs = tuple(self.my_as_scalar(a) for a in inputs)
         
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
@@ -2008,7 +2014,8 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), S
 
 def incsubtensor(x, y, idx_list, inplace=False, set_instead_of_inc=False):
     the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc)
-    return the_op(x, y)
+  
+    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
 
 class IncSubtensor(Op):
     """Increment a subtensor.
@@ -2073,7 +2080,7 @@ class IncSubtensor(Op):
 
     def make_node(self, x, y, *inputs):
         x, y = map(as_tensor_variable, [x, y])
-        inputs = tuple(map(scal.as_scalar, inputs))
+        inputs = tuple(map(Subtensor.my_as_scalar, inputs))
         
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
@@ -2084,8 +2091,8 @@ class IncSubtensor(Op):
         padded = idx_list + [slice(0,sys.maxint,1)] * (x.type.ndim - len(idx_list))
         broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable) if isinstance(p, slice)]
 
-        if y.type.broadcastable != tuple(broadcastable):
-            raise TypeError("Invalid broadcastable pattern for y in IncSubtensor.make_node")
+        #if y.type.broadcastable != tuple(broadcastable):
+        #    raise TypeError("Invalid broadcastable pattern for y in IncSubtensor.make_node")
 
         input_types = Subtensor.collapse(idx_list, lambda entry: isinstance(entry, gof.Type))
         if len(inputs) != len(input_types):
