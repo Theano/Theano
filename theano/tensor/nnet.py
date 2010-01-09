@@ -848,13 +848,15 @@ def crossentropy_to_crossentropy_with_softmax(env):
                     x, = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x,
                             tensor.zeros_like(x[0]), one_of_n)
-                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)], reason="Merge")
+                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                            reason="crossentropy_to_crossentropy_with_softmax")
                     return True
                 if sm.owner and sm.owner.op == softmax_with_bias:
                     x, b = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
                             one_of_n)
-                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)], reason="Merge")
+                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                            reason="crossentropy_to_crossentropy_with_softmax")
                     return True
 
         return False
