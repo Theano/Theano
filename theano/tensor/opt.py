@@ -108,10 +108,12 @@ compile.optdb.register('inplace_opt', insert_inplace_optimizer, 75, 'fast_run', 
 def register_canonicalize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
 
 def register_specialize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
 
 ######################
 # DimShuffle lifters #
