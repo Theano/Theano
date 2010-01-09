@@ -919,6 +919,16 @@ def local_mul_to_neg(node):
         return False
 register_specialize(local_mul_to_neg)
 
+@register_specialize
+@gof.local_optimizer([T.neg])
+def local_neg_neg(node):
+    # other specializations shouldn't put this in, 
+    # but sometimes they do
+    if node.op == T.neg:
+        if node.inputs[0].owner and node.inputs[0].owner.op == T.neg:
+            return [node.inputs[0].owner.inputs[0]]
+
+
 @gof.local_optimizer([T.mul])
 def local_mul_zero(node):
     """As part of canonicalization, we replace multiplication by zero with zero.
