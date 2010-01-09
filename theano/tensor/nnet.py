@@ -395,6 +395,8 @@ softmax = Softmax()
 @opt.register_specialize
 @gof.local_optimizer([softmax])
 def local_softmax_with_bias(node):
+    """Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias)
+    """
     if node.op == softmax:
         x, = node.inputs
         if x.owner and x.owner.op == tensor.add:
