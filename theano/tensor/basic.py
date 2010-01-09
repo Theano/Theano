@@ -1748,36 +1748,44 @@ def div_proxy(x, y):
         return true_div(x, y)
 
 @_scal_elemwise
-def add(a, b):
+def add(a, *other_terms):
     """elementwise addition"""
+    # see decorator for function body
 
 @_scal_elemwise
 def sub(a, b):
     """elementwise subtraction"""
+    # see decorator for function body
 
 @_scal_elemwise
-def mul(a, b):
+def mul(a, *other_terms):
     """elementwise multiplication"""
+    # see decorator for function body
 
 @_scal_elemwise
 def true_div(a, b):
     """elementwise [true] division (inverse of multiplication)"""
+    # see decorator for function body
 
 @_scal_elemwise
 def int_div(a, b):
     """elementwise integer-division"""
+    # see decorator for function body
 
 @_scal_elemwise
 def mod(a, b):
     """elementwise modulo"""
+    # see decorator for function body
 
 @_scal_elemwise
 def pow(a, b):
     """elementwise power"""
+    # see decorator for function body
 
 @_scal_elemwise
 def clip(x, min, max):
     """clip x to be between min and max"""
+    # see decorator for function body
 
 pprint.assign(add, printing.OperatorPrinter('+', -2, 'either'))
 pprint.assign(mul, printing.OperatorPrinter('*', -1, 'either'))
