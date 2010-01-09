@@ -14,7 +14,8 @@ from elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T
 import inplace as I
-import numpy as N
+import numpy
+import numpy as N #guys... please don't do this in the library :(
 import operator
 import itertools
 import sys, os
@@ -61,7 +62,6 @@ def get_constant_value(v):
     if v.owner and isinstance(v.owner.op, T.DimShuffle):
         return get_constant_value(v.owner.inputs[0])
     raise TypeError(v)
-
 
 @gof.optimizer
 def insert_inplace_optimizer(env):
