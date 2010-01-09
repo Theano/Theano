@@ -424,15 +424,12 @@ def local_softmax_with_bias(node):
                   vector_sum = tensor.add(*vectors)
                 else:
                   vector_sum = vectors[0]
-                #backport
-                #vector_sum = tensor.add(*vectors) if len(vectors)>1 else vectors[0]
 
                 if len(non_vectors)>1:
                   non_vector_sum = tensor.add(*non_vectors)
                 else:
                   non_vector_sum = non_vectors[0]
 
-                #non_vector_sum = tensor.add(*non_vectors) if len(non_vectors)>1 else non_vectors[0]
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
                 except:
