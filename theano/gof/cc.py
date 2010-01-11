@@ -1013,7 +1013,6 @@ class CLinker(link.Linker):
         print >> code, '     return NULL;'
         print >> code, '  }'
         print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' %locals()
-        print >> code, '  ', ''.join('Py_INCREF(PyTuple_GET_ITEM(argtuple, %i));'%n for n in xrange(n_args))
         print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)'%n for n in xrange(n_args)), ');'
         print >> code, '  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' %locals()
         print >> code, "  return thunk; }"
