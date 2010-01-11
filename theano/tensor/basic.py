@@ -3046,8 +3046,10 @@ class AdvancedIncSubtensor(Op):
         raise NotImplementedError('Advanced indexing increment of x by y with arguments (%s) not supported yet'\
                 % ','.join(str(input) for input in inputs))
 
-    #def perform(self, node, inputs, (out,)):
-        #raise NotImplementedError()
+    def perform(self, node, inputs, (out,)):
+        # TODO: same thing as in AdvancedSubtensor's perform TODO
+        out[0] = inputs[0].copy()
+        out[0][inputs[2:]] += inputs[1]
 
     #def grad?
         # grad on x is grad  on output
