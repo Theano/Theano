@@ -940,7 +940,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
                 pass
 
     if sm is not None and sm.owner and sm.owner.op in (softmax, softmax_with_bias):
-        sm_w_bias = local_softmax_with_bias.transform(sm)
+        sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
             assert sm_w_bias[0].owner.op == softmax_with_bias
             x_var, b_var = sm_w_bias[0].owner.inputs
