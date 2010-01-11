@@ -696,7 +696,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         }
         if (%(dnll)s->dimensions[0] != %(sm)s->dimensions[0])
         {
-            PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != sm.shape[0]");
+            PyErr_Format(PyExc_ValueError, "dnll.shape[0] (%%d) != sm.shape[0] (%%d)",
+                        %(dnll)s->dimensions[0], %(sm)s->dimensions[0]);
+            //PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != sm.shape[0]");
             %(fail)s;
         }
         if (%(dnll)s->dimensions[0] != %(y_idx)s->dimensions[0])
