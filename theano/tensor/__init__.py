@@ -3,6 +3,10 @@ __docformat__ = "restructuredtext en"
 
 from basic import *
 
+if config.floatX == 'float32':
+    # change the default casting behaviour for python floats to always cast to float32
+    autocast_float.dtypes = ('float32',)
+
 import opt
 import blas
 import xlogx

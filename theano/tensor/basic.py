@@ -92,7 +92,7 @@ def as_tensor_variable(x, name = None, ndim=None):
 
     """
     if hasattr(x, '_as_TensorVariable'):
-        return x._as_TensorVariable()
+        return x._as_TensorVariable() #TODO: pass name and ndim arguments
 
     if isinstance(x, gof.Apply):
         #TODO: use Apply's default output mechanism
@@ -138,6 +138,44 @@ _as_tensor_variable = as_tensor_variable
 
 as_tensor = as_tensor_variable
 
+class NumpyAutocaster(object):
+    """ This class is used to cast python ints and floats to numpy arrays.
+    
+    Python ints are always 64bit and floats are always double precision.
+    This class uses the algorithm in __call__ to use a narrower dtype when no precision would
+    be lost, and to even lose precision when this is demanded (e.g. to automatically cast all
+    floats to single-precision).
+    """
+    def __init__(self, dtypes):
+        self.dtypes = tuple(dtypes)
+    def __call__(self, x):
+        for dtype in self.dtypes:
+            x_ = numpy.asarray(x, dtype=dtype)
+            if numpy.all(x == x_):
+                break
+        # returns either an exact x_==x, or the last casted x_
+        return x_
+autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
+autocast_float = NumpyAutocaster(('float32', 'float64'))
+# autocast_float dtypes might be manipulated in tensor.__init__
+class autocast_float_as(object):
+    """This class makes it possible to temporarily and locally adjust autocasting behaviour.
+
+    For example:
+    >>> with autocast_float_as('float32') as _dummy:
+    >>>    assert (fvector() + 1.1).dtype == 'float32'  # temporary downcasting
+    >>> assert (fvector() + 1.1).dtype == 'float64'     # back to default behaviour
+
+    This class might be convenient in some code, but it definitely helps to test the
+    autocasting mechanism.
+    """
+    def __init__(self, *dtypes):
+        self.dtypes = dtypes
+    def __enter__(self):
+        self.old_dtypes = autocast_float.dtypes
+        autocast_float.dtypes = self.dtypes
+    def __exit__(self, *args):
+        autocast_float.dtypes = self.old_dtypes
 
 def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
     """Return a symbolic `Constant` with value `x`
@@ -148,21 +186,16 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
 
     """
     if dtype is not None:
+        # in this case, the semantics are that the caller is forcing the dtype
         x_ = numpy.asarray(x, dtype=dtype)
     else:
+        # in this case, this function should infer the dtype according to the autocasting
+        # rules.  See autocasting above.
         x_ = None
         if rtype is TensorConstant and isinstance(x, int):
-            for dtype in ['int8', 'int16', 'int32', 'int64']:
-                x_ = numpy.asarray(x, dtype=dtype)
-                if numpy.all(x == x_):
-                    break
-                x_ = None
+            x_ = autocast_int(x)
         elif rtype is TensorConstant and isinstance(x, float):
-            for dtype in ['float32', 'float64']:
-                x_ = numpy.asarray(x, dtype=dtype)
-                if numpy.all(x == x_):
-                    break
-                x_ = None
+            x_ = autocast_float(x)
         elif isinstance(x, numpy.ndarray):
             x_ = x
         else:
