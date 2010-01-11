@@ -842,7 +842,7 @@ class CAReduce(Op):
         if axis is None:
             axis = range(len(input.type.broadcastable))
 
-        if axis == ():
+        if len(axis) == 0:
             op = Elemwise(scalar.identity)
             return op._c_all(op.make_node(input), name, inames, onames, sub)
 
@@ -901,7 +901,7 @@ class CAReduce(Op):
         return code
 
     def c_code_cache_version_apply(self, node):
-        version = [2] # the version corresponding to the c code in this Op
+        version = [3] # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
