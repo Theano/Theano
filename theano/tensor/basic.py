@@ -145,6 +145,7 @@ class NumpyAutocaster(object):
     This class uses the algorithm in __call__ to use a narrower dtype when no precision would
     be lost, and to even lose precision when this is demanded (e.g. to automatically cast all
     floats to single-precision).
+
     """
     def __init__(self, dtypes):
         self.dtypes = tuple(dtypes)
@@ -158,6 +159,15 @@ class NumpyAutocaster(object):
 autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
 autocast_float = NumpyAutocaster(('float32', 'float64'))
 # autocast_float dtypes might be manipulated in tensor.__init__
+#
+# Note: it's a bit weird for a compiler to automatically downcast literals like this, and it might
+# have implications for efficiency when mixing types.  For example when you add 1.0 +
+# dmatrix(), the 1.0 could be converted to float32, and require upcasting for the + operation
+# at every position in the dmatrix.  using numpy.asarray(1.0, dtype='float64') will circumvent
+# this autocasting, and in future, our ops might be smarter about factoring out upcasts.   The
+# advantage of this mechanism is to combine it with floatX so that 1.0 + xmatrix() will always
+# have the same type as the xmatrix().
+# 
 class autocast_float_as(object):
     """This class makes it possible to temporarily and locally adjust autocasting behaviour.
 
