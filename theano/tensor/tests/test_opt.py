@@ -1065,6 +1065,7 @@ class test_fusion(unittest.TestCase):
         """
         #TODO: disable the canonizer?
         fx = fmatrices('x')
+        fy = fmatrices('y')
         fxv = numpy.zeros(shp, dtype='float32')+ 2
         cases = [
             (fx,(fx),(fxv),'float32'),#1
@@ -1074,20 +1075,19 @@ class test_fusion(unittest.TestCase):
         dl=[]
         v1=None
         mode=compile.mode.Mode('c', 'merge')
+        #TODO: if mode is Mode('py','merge') then their is no memory leak!
+        from theano.compile.function_module import orig_function
         for id, [g, sym_inputs, val_inputs, out_dtype] in enumerate(cases):
             for zzzz in range(nb_repeat):
                 v=numpy.zeros(shp, dtype=out_dtype)
                 gc.collect();gc.collect();gc.collect()
 #                print 'v1',v1
-#                v1=weakref.ref(v)
-                out=shared_fn(v,'out')
+                v1=weakref.ref(v)
                 pdb.set_trace()
-#                f = function(sym_inputs,[],updates=[(out,out+g)],mode=mode)
-#                f = function([fx],[],updates=[(out,out+fx)],mode=mode)
-#                f = function([fx],out+fx,mode=mode)
-#                f = compile.function([fx,out],[out+fx],mode=mode)#no memory leak.
-                f = compile.function([fx,compile.In(variable=out, value=out.container, mutable=None)],
-                                     [out+fx],mode=mode)#if mutable is True or False, their is a memory leak
+                #f = orig_function([compile.In(fx),compile.In(variable=fy, value=None)],
+                #            [fy+fx],mode=mode)#no memory leak
+                f = orig_function([compile.In(fx),compile.In(variable=fy, value=v)],
+                            [fy+fx],mode=mode)#memory leak
                 del v
                 gc.collect();gc.collect();gc.collect()
                 pdb.set_trace()
