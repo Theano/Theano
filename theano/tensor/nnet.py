@@ -395,6 +395,8 @@ softmax = Softmax()
 @opt.register_specialize
 @gof.local_optimizer([softmax])
 def local_softmax_with_bias(node):
+    """Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias)
+    """
     if node.op == softmax:
         x, = node.inputs
         if x.owner and x.owner.op == tensor.add:
@@ -422,15 +424,12 @@ def local_softmax_with_bias(node):
                   vector_sum = tensor.add(*vectors)
                 else:
                   vector_sum = vectors[0]
-                #backport
-                #vector_sum = tensor.add(*vectors) if len(vectors)>1 else vectors[0]
 
                 if len(non_vectors)>1:
                   non_vector_sum = tensor.add(*non_vectors)
                 else:
                   non_vector_sum = non_vectors[0]
 
-                #non_vector_sum = tensor.add(*non_vectors) if len(non_vectors)>1 else non_vectors[0]
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
                 except:
@@ -697,7 +696,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         }
         if (%(dnll)s->dimensions[0] != %(sm)s->dimensions[0])
         {
-            PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != sm.shape[0]");
+            PyErr_Format(PyExc_ValueError, "dnll.shape[0] (%%d) != sm.shape[0] (%%d)",
+                        %(dnll)s->dimensions[0], %(sm)s->dimensions[0]);
+            //PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != sm.shape[0]");
             %(fail)s;
         }
         if (%(dnll)s->dimensions[0] != %(y_idx)s->dimensions[0])
@@ -849,13 +850,15 @@ def crossentropy_to_crossentropy_with_softmax(env):
                     x, = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x,
                             tensor.zeros_like(x[0]), one_of_n)
-                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)], reason="Merge")
+                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                            reason="crossentropy_to_crossentropy_with_softmax")
                     return True
                 if sm.owner and sm.owner.op == softmax_with_bias:
                     x, b = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
                             one_of_n)
-                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)], reason="Merge")
+                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                            reason="crossentropy_to_crossentropy_with_softmax")
                     return True
 
         return False
@@ -891,6 +894,239 @@ def local_argmax_pushdown(node):
             pre_x, pre_bias = x.owner.inputs
             return tensor._max_and_argmax(pre_x+tensor.DimShuffle(pre_bias.broadcastable,
                 ('x',0))(pre_bias), axis)
+
+# Utility function used by the two next optimizations
+def _check_rows_is_arange_len_labels(rows, labels):
+    '''Check that 'rows' is the same node as T.arange(labels.shape[0])'''
+
+    if rows.owner and isinstance(rows.owner.op, tensor.ARange):
+        start, stop, step = rows.owner.inputs
+        #print "SSS", start, stop, step
+        if getattr(start, 'data', None) != 0: #constants will have data
+            return False
+        if getattr(step, 'data', None) != 1: # constant step will have data
+            return False
+
+        if stop.owner and isinstance(stop.owner.op, tensor.Subtensor):
+            #print "GOT SUBTENSOR"
+            shape_subtensor = stop.owner
+            if shape_subtensor.op.idx_list == [0]:
+                shape_var, = shape_subtensor.inputs
+                #print "GOT SHAPE VAR", shape_var
+                if shape_var.owner and shape_var.owner.op == tensor._shape:
+                    return shape_var.owner.inputs[0] is labels
+
+@opt.register_specialize
+@gof.local_optimizer([])
+def local_advanced_indexing_crossentropy_onehot(node):
+    log = None
+    sm = None
+    # First case: log(softmax(x))[rows, labels]
+    if isinstance(node.op, tensor.AdvancedSubtensor):
+        try:
+            log, rows, labels = node.inputs
+        except:
+            pass
+        if log and log.owner and log.owner.op == tensor.log:
+            sm = log.owner.inputs[0]
+
+    # Second case: log(softmax(x)[rows, labels])
+    if node.op == tensor.log:
+        pre_log = node.inputs[0].owner
+        if pre_log and isinstance(pre_log.op, tensor.AdvancedSubtensor):
+            try:
+                sm, rows, labels = pre_log.inputs
+            except:
+                pass
+
+    if sm is not None and sm.owner and sm.owner.op in (softmax, softmax_with_bias):
+        sm_w_bias = local_softmax_with_bias.transform(sm.owner)
+        if sm_w_bias:
+            assert sm_w_bias[0].owner.op == softmax_with_bias
+            x_var, b_var = sm_w_bias[0].owner.inputs
+        else:
+            x_var = sm.owner.inputs[0]
+            b_var = tensor.zeros_like(x_var[0])
+
+        # Check that rows == arange(labels.shape[0])
+        if _check_rows_is_arange_len_labels(rows, labels):
+            if labels.ndim == 1 and x_var.ndim == 2:
+                return [-crossentropy_softmax_argmax_1hot_with_bias(x_var, b_var, labels)[0]]
+
+@opt.register_specialize
+@gof.local_optimizer([softmax_grad])
+def local_advanced_indexing_crossentropy_onehot_grad(node):
+    if not (node.op == softmax_grad):
+        return
+
+    sm = None
+    try:
+        out_grad, sm = node.inputs
+    except:
+        return
+
+    if sm is not None and sm.owner and sm.owner.op == softmax:
+        x_var = sm.owner.inputs[0]
+    else:
+        return
+
+    # Two cases are supported:
+    # 1. AdvancedIncSubtensor(
+    #           zeros_like(softmax(x)),
+    #           -1. / AdvancedSubtensor(softmax(x), arange(y.shape[0]), y),
+    #           arange(y.shape[0]),
+    #           y)
+    #   which arises from the gradient of log(softmax(x)[arange(y.shape[0]), y])
+    #
+    # 2. AdvancedIncSubtensor(
+    #           zeros_like(log(softmax(x))),
+    #           -1. like (AdvancedSubtensor(log(softmax(x)), arange(y.shape[0]), y)),
+    #           arange(y.shape[0]),
+    #           y)
+    #           / softmax(x)
+    #   which arises from the gradient of log(softmax(x))[arange(y.shape[0]), y]
+    #
+    # In some cases, in case 2., insted of "-1. like (AdvancedSubtensor...)",
+    # we can have "-1. like ([-1] * AdvancedSubtensor...)". This case will be
+    # recognized too, but other variants, even with the same shape, might not
+    # (yet).
+
+    # First case.
+    # After the check for AdvancedIncSubtensor, if anything does not fit with
+    # the formula above, there's no way to fit it with the the second case,
+    # so we return immediately.
+    if out_grad.owner and isinstance(out_grad.owner.op, tensor.AdvancedIncSubtensor):
+        try:
+            z, incr, rows, labels = out_grad.owner.inputs
+        except:
+            return
+
+        # Check that z == zeros_like(softmax(x))
+        if z.owner and z.owner.op == tensor.fill:
+            model, value = z.owner.inputs
+
+            if not (model is sm and numpy.all(value.data == 0)):
+                return
+            #else: OK
+        else:
+            return
+
+        # Check that incr has the form -1./sm[arange(len(y)), y]
+        if incr.owner and incr.owner.op == tensor.true_div:
+            num, denom = incr.owner.inputs
+
+            if not numpy.all(num.data == -1):
+                return
+            #else: OK
+
+            if denom.owner and isinstance(denom.owner.op, tensor.AdvancedSubtensor):
+                try:
+                    maybe_sm, maybe_rows, maybe_labels = denom.owner.inputs
+                except:
+                    return
+
+                if not (maybe_sm is sm and maybe_rows is rows and maybe_labels is labels):
+                    return
+                #else: OK
+            else:
+                return
+        else:
+            return
+
+        # Check that rows is arange(labels.shape[0])
+        if not _check_rows_is_arange_len_labels(rows, labels):
+            return
+
+        # else, arguments of AdvancedIncSubtensor are OK,
+        # it was really case 1.
+
+    # Second case
+    elif out_grad.owner and out_grad.owner.op == tensor.true_div:
+        try:
+            num, denom = out_grad.owner.inputs
+        except:
+            return
+
+        # Check the numerator (AdvancedIncSubtensor)
+        if num.owner and isinstance(num.owner.op, tensor.AdvancedIncSubtensor):
+            try:
+                z, incr, rows, labels = num.owner.inputs
+            except:
+                return
+
+            # Check z is zeros_like(log(sm))
+            if z.owner and z.owner.op == tensor.fill:
+                model, value = z.owner.inputs
+
+                if model.owner and model.owner.op == tensor.log:
+                    if sm is model.owner.inputs[0]:
+                        log_sm = model
+                    else:
+                        return
+
+                    if not numpy.all(value.data == 0):
+                        return
+                    #else: OK
+                else:
+                    return
+            else:
+                return
+
+            # Check incr is (-1.) like log(softmax(x))[arange(len(y)), y]
+            if incr.owner and incr.owner.op == tensor.fill:
+                model, value = incr.owner.inputs
+                adv_subtensor = None
+                if model.owner and isinstance(model.owner.op, tensor.AdvancedSubtensor):
+                    adv_subtensor = model
+                else:
+                    if model.owner and isinstance(model.owner.op, tensor.Elemwise):
+                        for input in model.owner.inputs:
+                            if input.owner and isinstance(input.owner.op, tensor.AdvancedSubtensor):
+                                adv_subtensor = input
+                                break
+                                #TODO: try them all, not just the first one
+                    else:
+                        return
+
+                if adv_subtensor is not None:
+                    try:
+                        maybe_log_sm, maybe_rows, maybe_labels = adv_subtensor.owner.inputs
+                    except:
+                        return
+
+                    if not (maybe_log_sm is log_sm and maybe_rows is rows and maybe_labels is labels):
+                        return
+                    #else: OK
+
+                if not numpy.all(value.data == -1):
+                    return
+
+            else:
+                return
+
+            # Check that rows is arange(labels.shape[0])
+            if not check_rows_is_arange_len_labels(rows, labels):
+                return
+
+            # else, arguments of AdvancedIncSubtensor are OK
+
+        # Check the denominator (sm)
+        if not denom is sm:
+            return
+
+        # else, numerator and denominator are OK,
+        # it was really case 2.
+
+    else:
+        return
+
+
+    # Dimension check before substitution
+    if labels.ndim == 1 and x_var.ndim == 2:
+        print 'YAY!'
+        return [crossentropy_softmax_1hot_with_bias_dx(tensor.ones_like(sm[:,0]), sm, labels)]
+    else:
+        return
 
 
 

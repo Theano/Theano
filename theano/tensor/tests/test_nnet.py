@@ -317,6 +317,44 @@ def test_asymptotic_32():
         assert gxval[0,1] == 0.25
 
 
+def test_get_rid_of_advanced_indexing_version_of_xent():
+
+    rng = numpy.random.RandomState(utt.fetch_seed())
+
+    x_val = rng.randn(3,5)
+    y_val = numpy.asarray([2,4,1])
+
+    x = T.dmatrix('x')
+    y = T.lvector('y')
+
+    expressions_to_test = [
+            T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+            -T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+            -T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+            T.sum(-T.log(softmax(x))[T.arange(y.shape[0]), y])]
+
+    def assert_optimizer_worked(expr):
+        f = theano.function([x,y], expr)
+        for i, node in enumerate(f.maker.env.toposort()):
+            print i, node
+        f(x_val, y_val)
+        assert len(f.maker.env.toposort()) == 4
+    for expr in expressions_to_test:
+        assert_optimizer_worked(expr)
+
+    ## Gradient wrt x
+    for expr in expressions_to_test:
+        grad_x = T.grad(expr, x)
+        g = theano.function([x, y], grad_x)
+        for i, node in enumerate(g.maker.env.toposort()):
+            print i, node
+        g(x_val, y_val)
+        assert len(g.maker.env.toposort()) == 4
+
+
+    #TODO: Case with bias
+    #   hint - call local_softmax_with_bias from within the other optimization
+    #   hint - call the argmax push-down optimization first too
 
 if __name__ == '__main__':
     unittest.main()

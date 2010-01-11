@@ -14,7 +14,8 @@ from elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T
 import inplace as I
-import numpy as N
+import numpy
+import numpy as N #guys... please don't do this in the library :(
 import operator
 import itertools
 import sys, os
@@ -62,7 +63,6 @@ def get_constant_value(v):
         return get_constant_value(v.owner.inputs[0])
     raise TypeError(v)
 
-
 @gof.optimizer
 def insert_inplace_optimizer(env):
     """
@@ -108,10 +108,12 @@ compile.optdb.register('inplace_opt', insert_inplace_optimizer, 75, 'fast_run', 
 def register_canonicalize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
 
 def register_specialize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
 
 ######################
 # DimShuffle lifters #
@@ -876,9 +878,38 @@ register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 def local_neg_to_mul(node):
     if node.op == T.neg:
         return [T.mul(-1, node.inputs[0])]
-    else:
-        return False
 register_canonicalize(local_neg_to_mul)
+
+@register_specialize
+@gof.local_optimizer([])
+def local_sum_mul_by_scalar(node):
+    """sum(scalar * smth) -> scalar * sum(smth)
+    """
+    # TODO: if the the thing inside the Sum is a division, 
+    # we should get at the numerator....
+    if isinstance(node.op, T.Sum):
+        thing_summed, = node.inputs
+        if thing_summed.owner and thing_summed.owner.op == T.mul:
+            terms = thing_summed.owner.inputs
+            scalars = [t.dimshuffle() for t in terms if numpy.all(t.type.broadcastable)]
+            non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
+            if scalars:
+                if len(scalars) > 1:
+                    if len(non_scalars) > 1:
+                        return [T.mul(T.mul(*scalars), node.op(T.mul(*non_scalars)))]
+                    elif len(non_scalars) == 1:
+                        return [T.mul(T.mul(*scalars), node.op(non_scalars[0]))]
+                    else:
+                        return [T.mul(*scalars)]
+                else:
+                    if len(non_scalars) > 1:
+                        return [T.mul(scalars[0], node.op(T.mul(*non_scalars)))]
+                    elif len(non_scalars) == 1:
+                        return [T.mul(scalars[0], node.op(non_scalars[0]))]
+                    else:
+                        return [scalars[0]]
+        if thing_summed.owner and thing_summed.owner.op == T.neg:
+            return [T.neg(node.op(thing_summed.owner.inputs[0]))]
 
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
@@ -887,6 +918,16 @@ def local_mul_to_neg(node):
     else:
         return False
 register_specialize(local_mul_to_neg)
+
+@register_specialize
+@gof.local_optimizer([T.neg])
+def local_neg_neg(node):
+    # other specializations shouldn't put this in, 
+    # but sometimes they do
+    if node.op == T.neg:
+        if node.inputs[0].owner and node.inputs[0].owner.op == T.neg:
+            return [node.inputs[0].owner.inputs[0]]
+
 
 @gof.local_optimizer([T.mul])
 def local_mul_zero(node):
