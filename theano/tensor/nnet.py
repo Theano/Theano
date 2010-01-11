@@ -991,6 +991,11 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     # recognized too, but other variants, even with the same shape, might not
     # (yet).
 
+    #
+    # N.B. Regarding clients -- This substitution is important for numerical stability, so we
+    # perform the substitution even when intermediate values have multiple clients.
+    #
+
     # First case.
     # After the check for AdvancedIncSubtensor, if anything does not fit with
     # the formula above, there's no way to fit it with the the second case,
@@ -1105,7 +1110,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                 return
 
             # Check that rows is arange(labels.shape[0])
-            if not check_rows_is_arange_len_labels(rows, labels):
+            if not _check_rows_is_arange_len_labels(rows, labels):
                 return
 
             # else, arguments of AdvancedIncSubtensor are OK
