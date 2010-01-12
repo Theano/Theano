@@ -55,7 +55,8 @@ def handle_shared_float32(tf):
     This function is intended to be called from use(gpu_index), not directly.
     """
     if tf:
-        theano.compile.sandbox.shared_constructor(shared_constructor)
+        import theano.compile
+        theano.compile.shared_constructor(shared_constructor)
 
     else:
         raise NotImplementedError('removing our handler')
