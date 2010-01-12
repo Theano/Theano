@@ -363,10 +363,10 @@ def test_get_rid_of_advanced_indexing_version_of_xent():
             -T.sum(T.log(softmax(x+b))[T.arange(y.shape[0]), y]),
             T.sum(-T.log(softmax(b+x))[T.arange(y.shape[0]), y])]:
         f = theano.function([x,b,y], expr, mode='FAST_RUN')
-        if 0:
+        if 1:
             for i, node in enumerate(f.maker.env.toposort()):
                 print i, node
-        assert len(g.maker.env.toposort()) == 2 # [big_op, sum]
+        assert len(f.maker.env.toposort()) == 2 # [big_op, sum]
         f(x_val, b_val, y_val)
 
     #   hint - call the argmax push-down optimization first too
