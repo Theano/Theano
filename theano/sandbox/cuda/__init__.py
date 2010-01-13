@@ -54,7 +54,7 @@ except ImportError:
             include_dirs.append(path2)
             lib_dirs.append(path2)
         else:
-            path = os.path.split()[:-1]
+            path = os.path.split(path)[0]
             path2 = os.path.join(path,'cuda_ndarray')
             include_dirs.append(path2)
             lib_dirs.append(path2)
