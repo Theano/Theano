@@ -5,7 +5,7 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar, config
 
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.type_support import filter as type_support_filter
+from theano.sandbox.cuda import filter as type_support_filter
 
 from theano.sandbox.cuda.elemwise import NaiveAlgo
 

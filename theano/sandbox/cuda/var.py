@@ -5,7 +5,7 @@ from theano import tensor
 from theano.compile import shared, SharedVariable, shared_constructor
 
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.type_support import filter as type_support_filter
+from theano.sandbox.cuda import filter as type_support_filter
 
 from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost
 
