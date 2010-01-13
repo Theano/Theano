@@ -7,6 +7,8 @@ from theano.gof.cc import OpWiseCLinker
 from theano import gof
 import theano.config as config
 
+import_time = time.time()
+
 class ProfileMode(Mode):
     def __init__(self, linker=default_linker, optimizer=default_optimizer):
         local_time = [0.0]
@@ -179,7 +181,7 @@ class ProfileMode(Mode):
         print '---------------------------'
         print ''
         
-        print 'local_time %fs (Time spent running thunks)'% local_time
+        print 'local_time %.3fs (Time spent running thunks)'% local_time
 
         if print_apply:
             print 'Apply-wise summary: <% of local_time spent at this position> <cumulative seconds> <apply time> <time per call> <nb_call> <Apply position> <Apply Op name>'
@@ -247,8 +249,15 @@ class ProfileMode(Mode):
                 %(max(0, len(sotimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call in sotimes[n_ops_to_print:])*100,
                   sum(t for f, t, a, ci, nb_call in sotimes[n_ops_to_print:]))
+
         print '(*) Op is running a c implementation'
-        print 'compile time: %.3fs'%compile_time
+        print
+        total_time = time.time() - import_time
+        other_time = total_time - local_time - compile_time
+        print 'Time since import %.3fs'%(total_time)
+        print 'Local time %.3fs %.1f%%(Time spent running thunks)'% (local_time,local_time/total_time*100)
+        print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
+        print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
         
         if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
             cpu=[]

@@ -30,7 +30,7 @@ __docformat__ = 'restructedtext en'
 import traceback
 import numpy 
 import theano
-import theano.compile.sandbox
+import theano.compile
 from theano.tensor import opt
 from theano import gof
 from theano.compile import optdb

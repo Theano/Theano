@@ -1,6 +1,6 @@
 import sys, time
-from theano.compile.sandbox.sharedvalue import shared
-from theano.compile.sandbox.pfunc import pfunc
+from theano.compile.sharedvalue import shared
+from theano.compile.pfunc import pfunc
 from theano import tensor
 import theano
 import numpy

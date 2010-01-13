@@ -1,5 +1,71 @@
-from theano.sandbox.cuda.type import CudaNdarrayType
+import os, sys
+from theano.gof.compiledir import get_compiledir
+from theano.compile import optdb
 
+import logging, copy
+_logger_name = 'theano_cuda_ndarray'
+_logger = logging.getLogger(_logger_name)
+_logger.setLevel(logging.INFO)
+_logger.addHandler(logging.StreamHandler())
+def warning(*msg):
+    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
+def info(*msg):
+    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
+def debug(*msg):
+    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
+
+
+#compile type_support.cu
+#this need that nvcc(part of cuda) is installed
+
+old_file = os.path.join(os.path.split(__file__)[0],'type_support.so')
+if os.path.exists(old_file):
+    os.remove(old_file)
+
+try:
+    sys.path.append(get_compiledir())
+    from type_support.type_support import *
+
+except ImportError:
+
+    import nvcc_compiler
+
+    print __file__
+
+    cuda_path=os.path.split(old_file)[0]
+    code = open(os.path.join(cuda_path, "type_support.cu")).read()
+
+    loc = os.path.join(get_compiledir(),'type_support')
+    if not os.path.exists(loc):
+        os.makedirs(loc)
+ 
+    CUDA_NDARRAY=os.getenv('CUDA_NDARRAY')
+    include_dirs=[]
+    lib_dirs=[]
+    
+    if CUDA_NDARRAY:
+        include_dirs.append(CUDA_NDARRAY)
+        lib_dirs.append(CUDA_NDARRAY)
+    else:
+        import theano.sandbox
+        path = os.path.split(os.path.split(os.path.split(theano.sandbox.__file__)[0])[0])[0]
+        path2 = os.path.join(path,'cuda_ndarray')
+        if os.path.isdir(path2):
+            include_dirs.append(path2)
+            lib_dirs.append(path2)
+        else:
+            path = os.path.split(path)[0]
+            path2 = os.path.join(path,'cuda_ndarray')
+            include_dirs.append(path2)
+            lib_dirs.append(path2)
+
+    nvcc_compiler.nvcc_module_compile_str('type_support', code, location = loc, include_dirs=include_dirs, lib_dirs=lib_dirs, libs=['cuda_ndarray'])
+
+    from type_support.type_support import *
+
+
+
+from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.var import (CudaNdarrayVariable,
     CudaNdarrayConstant,
     CudaNdarraySharedVariable,
@@ -12,22 +78,7 @@ from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
 import opt
 import cuda_ndarray
 
-import os
 import theano.config as config
-from theano.compile import optdb
-
-import logging, copy
-_logger_name = 'theano_cuda_ndarray'
-_logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.WARN)
-_logger.addHandler(logging.StreamHandler())
-def warning(*msg):
-    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
-def info(*msg):
-    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
-def debug(*msg):
-    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
-
 
 def use(device=config.THEANO_GPU):
     if use.device_number is None:
