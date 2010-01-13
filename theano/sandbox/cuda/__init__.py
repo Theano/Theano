@@ -32,10 +32,7 @@ except ImportError:
 
     print __file__
 
-#    if os.path.exists(os.path.join(get_compiledir(),))
-
-    #cuda_path = os.path.split(globals()["__file__"])[:-1]
-    cuda_path='/u/bastienf/repos/theano/sandbox/cuda'
+    cuda_path=os.path.split(old_file)[0]
     code = open(os.path.join(cuda_path, "type_support.cu")).read()
 
     loc = os.path.join(get_compiledir(),'type_support')
