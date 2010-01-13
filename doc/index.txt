@@ -1,78 +1,70 @@
 
-===========
-Quick Start
-===========
+Welcome
+=======
 
 Theano is a Python library that allows you to define, optimize, and
 efficiently evaluate mathematical expressions involving multi-dimensional
-arrays.
+arrays. Theano features:
 
-The latest release is version `0.1
-<http://pylearn.org/theano/downloads/Theano-0.1.tar.gz>`_.
-You can download the latest `PDF documentation
-<http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
+ * **tight integration with numpy**
+ * **near-transparent use of a GPU** to accelerate for intense calculations [COMING].
+ * **symbolic differentiation**
+ * **stability stability optimizations**: write ``log(1+exp(x))`` and get the right answer.
+ * **dynamic C code generation** for faster evaluation, including:
+     * **elementwise loop fusion**
+     * **dead code elimination**
+     * **constant folding**
+ * **Theano knows what GEMM does** - Theano rearranges linear algebra expressions to take advantage of level3 BLAS. 
+   There are extensions for lapack [COMING] and FFTW [COMING].
+
+
+Download
+========
+
+In April 2009 we made declared the creation of a `0.1 release <http://pylearn.org/theano/downloads/Theano-0.1.tar.gz>`_.
+Development has continued non-stop since then.
+The current version is available via::
+
+    hg clone http://hg.assembla.com/theano Theano
+
+The theano subfolder should be on your PYTHONPATH.  For more information about
+installation and configuration, see :ref:`installing Theano <install>`.
+
+Documentation
+=============
+
+You can download the latest `PDF documentation <http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
 You can go to the :ref:`Table of Contents <contents>`.
 
-News
-----
+Shortcuts:
 
-* 2009-04-01: Theano 0.1 released. See the :ref:`release notes <NEWS>`.
+* If you have no idea what Theano is read the :ref:`introduction <introduction>`.
+* :ref:`learn the basics <basictutorial>`
 
-Choose your own adventure...
-----------------------------
+* :ref:`learn how to extend Theano <advtutorial>`
 
-* You have no idea what Theano is and you read the :ref:`introduction
-  <introduction>`.
+* :ref:`pipeline <pipeline>`
+* :ref:`op`, :ref:`type`, :ref:`function`,
+* :ref:`module`, :ref:`compilation`, :ref:`optimization`, :ref:`env`
+* :ref:`envfeaturelist`.  check the :ref:`glossary` 
+* `Theano's API <api/>`__
 
-* Convinced by the Theano staff's rhetoric that it is worthy of your
-  time (you can hear them into the distance congratulating themselves
-  on the success of their dishonest ploy - a lone puppy's
-  heart-wrenching cry echoes behind you but is cut short by an
-  outworldly screech and what might be the dripping sound of a bloody
-  blade - you don't care, though, because Theano is wicked cool), you
-  :ref:`install Theano <install>` and :ref:`learn the basics
-  <basictutorial>`.
+Community
+=========
 
-* Blinded by your newfound knowledge, you want to play God and
-  :ref:`learn how to extend Theano <advtutorial>`. The Gods are
-  pleased that they get to devour your soul for this heresy, but you
-  ascertain that it is worth it.
+* Register and post to `theano-users`_ if you want to talk to all Theano users.
 
-* Decidedly, your thirst for Theano-related information is
-  unquenchable! So there you are, reading about Theano's compilation
-  :ref:`pipeline <pipeline>`. Little do you know that article could
-  not have been made without the tears of a thousand innocent kittens.
+* Register and post to `theano-dev`_ if you want to talk to the developers.
 
-* You descend into madness as you read detailed (or as-of-yet not
-  written, but our plans for world domination as well as the hourly
-  sacrifices that our God requires leave us little time for writing)
-  articles about :ref:`op`, :ref:`type`, :ref:`function`,
-  :ref:`module`, :ref:`compilation`, :ref:`optimization`, :ref:`env`
-  and as you consult the list of :ref:`envfeaturelist`. Sometimes you
-  check the :ref:`glossary` just in case you missed an important
-  concept.
+* We try to stay organized with `Theano's Trac <trac/>`__ 
 
-* Requiring help in your dark endeavors, you register and post to the
-  `theano-users`_ mailing list and curious to know who is behind this
-  witchery and how their wicked plans come into fruition, you read the
-  `theano-dev`_ mailing list.
+* Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
 
-* Mistaking your feverish sweat for genuine excitation, you
-  investigate `Theano's Trac <trac/>`__ for tickets_ that your feeble
-  mind might comprehend and your consumed brain is yearning to solve.
-
-* Bored a Friday evening, you browse `Theano's API <api/>`__. May
-  the Great Ones help you with that one.
-
-
-.. note::
-
-   May you be assured that this page was made solely under the
-   unsobering influence of boredom and that all of the unspeakable
-   things mentioned therein are merely artifacts of the author's
-   maddened delusions.
 
 .. _theano-dev: http://groups.google.com/group/theano-dev
 .. _theano-users: http://groups.google.com/group/theano-users
 .. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
+
+.. _LISA: http://www.iro.umontreal.ca/~lisa
+.. _University of Montreal: http://www.umontreal.ca
 
