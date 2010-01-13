@@ -157,6 +157,9 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[], accept_inplace
     for (store_into, update_val) in iter_over_pairs(updates):
         if not isinstance(store_into, SharedVariable):
             raise TypeError('update target must be a SharedVariable', store_into)
+        if store_into in new_updates:
+            raise ValueError('this shared variable already has an update expression',
+                    (store_into, new_updates[store_into]))
         update_val = v_clone(store_into.filter_update(update_val))
         if update_val.type != store_into.type:
             raise TypeError('an update must have the same type as the original shared variable', 

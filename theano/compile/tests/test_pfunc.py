@@ -2,7 +2,7 @@ import numpy
 import unittest
 import copy
 import theano
-from theano.tensor import Tensor, dmatrix, dvector, lscalar
+from theano.tensor import Tensor, dmatrix, dvector, lscalar, dmatrices
 from theano import tensor
 
 from theano.compile.sharedvalue import *
@@ -192,6 +192,11 @@ class Test_pfunc(unittest.TestCase):
         inc_by_y = pfunc([], [], updates = {x: x + y})
         inc_by_y()
         self.failUnless(x.value == 1)
+
+    def test_duplicate_updates(self):
+        x, y = dmatrices('x', 'y')
+        z = shared(numpy.ones((2,3)))
+        self.failUnlessRaises(ValueError, theano.function, [x,y], [z], updates=[(z, z+x+y), (z, z-x)])
 
     def test_givens(self):
         x = shared(0)
