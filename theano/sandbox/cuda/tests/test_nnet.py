@@ -1,8 +1,8 @@
 import sys, time
 import theano
 
-from theano.compile.sandbox.sharedvalue import shared
-from theano.compile.sandbox.pfunc import pfunc
+from theano.compile.sharedvalue import shared
+from theano.compile.pfunc import pfunc
 from theano import tensor
 import theano.tensor.nnet
 
@@ -108,7 +108,11 @@ def test_run_nnet_small():
     numpy.random.seed(23456)
     rval_cpu = run_nnet(False, 10, 10, 4, 4, n_iter=100000)
 
-def run_conv_nnet1(shared_fn):
+def run_conv_nnet1(use_gpu):
+    if use_gpu:
+        shared_fn = tcn.shared_constructor
+    else:
+        shared_fn = shared
     n_batch = 16
     n_kern = 20
     shape_img = (n_batch, 1, 32, 32)
@@ -139,7 +143,7 @@ def run_conv_nnet1(shared_fn):
     params = [w, b, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = get_mode()
+    mode = get_mode(use_gpu)
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -159,12 +163,16 @@ def run_conv_nnet1(shared_fn):
 
 def test_conv_nnet1():
     numpy.random.seed(23456)
-    rval_cpu = run_conv_nnet1(shared)
+    rval_cpu = run_conv_nnet1(False)
     numpy.random.seed(23456)
-    rval_gpu = run_conv_nnet1(tcn.shared_constructor)
+    rval_gpu = run_conv_nnet1(True)
     assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-6)
 
-def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
+def run_conv_nnet2(use_gpu): # pretend we are training LeNet for MNIST
+    if use_gpu:
+        shared_fn = tcn.shared_constructor
+    else:
+        shared_fn = shared
 
     #cumulativ rounding error affect this comparaison of result. So we lower the tolerance.
     #TODO: why the last two example see the error lower? We are converging?
@@ -221,7 +229,7 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
     params = [w0, b0, w1, b1, v, c]
     gparams = tensor.grad(loss, params)
 
-    mode = get_mode()
+    mode = get_mode(use_gpu)
 
     print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
@@ -240,10 +248,10 @@ def run_conv_nnet2(shared_fn): # pretend we are training LeNet for MNIST
 
 def test_conv_nnet2():
     numpy.random.seed(23456)
-    rval_gpu = run_conv_nnet2(tcn.shared_constructor)
+    rval_gpu = run_conv_nnet2(True)
     if True:
         numpy.random.seed(23456)
-        rval_cpu = run_conv_nnet2(shared)
+        rval_cpu = run_conv_nnet2(False)
         print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
         assert numpy.allclose(rval_cpu, rval_gpu,rtol=1e-4,atol=1e-4)
 
