@@ -1128,7 +1128,6 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     # Dimension check before substitution
     if labels.ndim == 1 and x_var.ndim == 2:
-        print 'YAY!'
         return [crossentropy_softmax_1hot_with_bias_dx(tensor.ones_like(sm[:,0]), sm, labels)]
     else:
         return
