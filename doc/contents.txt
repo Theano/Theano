@@ -11,15 +11,14 @@ Contents
    introduction
    LICENSE
    install
-   basic_tutorial/index
-   advanced_tutorial/index
-   topics/index
+   tutorial/index
+   library/index
+   extending/index
    indexes/index
    glossary
    links
    internal/index
    NEWS
+   examples/index
+   sandbox/index
 
-
-..   examples/index
-..   advanced/index

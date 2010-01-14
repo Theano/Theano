@@ -68,53 +68,51 @@ Failure
 
 Besides cleanup code, all code has access to the %(fail)s template. For three code blocks, the generated C code will pretty much look like this:
 
-{{{
-int failure = 0;
-{
-  <code1>
-  {
-    <code2>
+.. code-block::
+    int failure = 0;
     {
-      <code3>
-    label3:
-      <cleanup3>
+      <code1>
+      {
+        <code2>
+        {
+          <code3>
+        label3:
+          <cleanup3>
+        }
+      label2:
+        <cleanup2>
+      }
+    label1:
+      <cleanup1>
     }
-  label2:
-    <cleanup2>
-  }
-label1:
-  <cleanup1>
-}
-return failure;
-}}}
+    return failure;
 
 And %(fail)s in the nth code block will take the value "{failure = n; goto label<n>;}". This means only the blocks executed up to the failure point are cleaned up and the return value indicates which block failed, which is handy for debugging.
 
 When compiling an Op, we want to sync the outputs so we can get the results from Python. In case of failure, we will not necessarily want to sync. Because of that, typical code will look like this:
 
-{{{
-int failure = 0;
-<declare input>
-<declare output>
-{
-  <extract input>
-  {
-    <extract output>
+.. code-block::
+    int failure = 0;
+    <declare input>
+    <declare output>
     {
-      <perform>
-    label3:
-      <clean up perform>
+      <extract input>
+      {
+        <extract output>
+        {
+          <perform>
+        label3:
+          <clean up perform>
+        }
+      label2:
+        if (!failure)
+          <sync output>
+        <clean up output>
+      }
+    label1:
+      <clean up input>
     }
-  label2:
-    if (!failure)
-      <sync output>
-    <clean up output>
-  }
-label1:
-  <clean up input>
-}
-return failure;
-}}}
+    return failure;
 
 Furthermore, is not necessary to extract the output because we mean to overwrite it anyway. In that case, <extract output> will be a no-op, but of course we may still need to clean up or sync what <perform> will put in the declared outputs.
 
@@ -124,20 +122,19 @@ Example ResultBase
 
 The following ResultBase represents a double (we only care about the C part).
 
-{{{
-class Double(ResultBase):
-  <snip>
-  def c_declare(self):
-    return "double %(name)s;"
-  def c_init(self):
-    return "%(name)s = 0.0;"
-  def c_extract(self):
-    return "%(name)s = PyFloat_AsDouble(py_%(name)s);"
-  def c_cleanup(self):
-    return "" # nothing to do
-  def c_sync(self):
-    return "Py_XDECREF(py_%(name)s); py_%(name)s = PyFloat_FromDouble(%(name)s);"
-}}}
+.. code-block::
+    class Double(ResultBase):
+      <snip>
+      def c_declare(self):
+        return "double %(name)s;"
+      def c_init(self):
+        return "%(name)s = 0.0;"
+      def c_extract(self):
+        return "%(name)s = PyFloat_AsDouble(py_%(name)s);"
+      def c_cleanup(self):
+        return "" # nothing to do
+      def c_sync(self):
+        return "Py_XDECREF(py_%(name)s); py_%(name)s = PyFloat_FromDouble(%(name)s);"
 
 
 Example Op
@@ -145,71 +142,69 @@ Example Op
 
 The following ResultBase represents addition of two nonnegative doubles (we only care about the C part).
 
-{{{
-class Add(Op):
-  <snip>
-  def c_var_names(self):
-    return "[['x', 'y'], ['z']]"
-  def c_validate_update(self):
-    return "if (%(x)s < 0 || %(y)s < 0) %(fail)s" # fail if x or y is negative
-  def c_validate_update_cleanup(self):
-    return "" # nothing to do
-  def c_code(self):
-    return "%(z)s = %(x)s + %(y)s;"
-  def c_code_cleanup(self):
-    return "" # nothing to do
-}}}
+.. code-block::
+    class Add(Op):
+      <snip>
+      def c_var_names(self):
+        return "[['x', 'y'], ['z']]"
+      def c_validate_update(self):
+        return "if (%(x)s < 0 || %(y)s < 0) %(fail)s" # fail if x or y is negative
+      def c_validate_update_cleanup(self):
+        return "" # nothing to do
+      def c_code(self):
+        return "%(z)s = %(x)s + %(y)s;"
+      def c_code_cleanup(self):
+        return "" # nothing to do
 
 Generating a C function
 =======================
 
 For the example Op, the generated C function will typically look like this:
 
-{{{
-void add(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
-  PyObject* py_x = PyList_GET_ITEM(storage_x, 0); Py_XINCREF(py_x); // automatic
-  PyObject* py_y = PyList_GET_ITEM(storage_y, 0); Py_XINCREF(py_y); // automatic
-  PyObject* py_z = Py_None; // we don't care what's currently in storage_z
+.. code-block::
+    void add(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
+      PyObject* py_x = PyList_GET_ITEM(storage_x, 0); Py_XINCREF(py_x); // automatic
+      PyObject* py_y = PyList_GET_ITEM(storage_y, 0); Py_XINCREF(py_y); // automatic
+      PyObject* py_z = Py_None; // we don't care what's currently in storage_z
 
-  failure = 0
-  double x; // x.c_declare
-  double y; // y.c_declare
-  double z; // z.c_declare
-  {
-    x = PyFloat_AsDouble(py_x); // x.c_extract
-    {
-      y = PyFloat_AsDouble(py_y); // y.c_extract
+      failure = 0
+      double x; // x.c_declare
+      double y; // y.c_declare
+      double z; // z.c_declare
       {
-        # we don't need to use z.c_extract
+        x = PyFloat_AsDouble(py_x); // x.c_extract
         {
-          if (x < 0 || y < 0) { // add.validate_update
-            // This is automatically inserted in place of %(fail)s
-            failure = 4;
-            goto label_add_validate_update_cleanup;
-          }
+          y = PyFloat_AsDouble(py_y); // y.c_extract
           {
-            z = x + y; // add.c_code
-          label_add_code_cleanup:
+            # we don't need to use z.c_extract
+            {
+              if (x < 0 || y < 0) { // add.validate_update
+                // This is automatically inserted in place of %(fail)s
+                failure = 4;
+                goto label_add_validate_update_cleanup;
+              }
+              {
+                z = x + y; // add.c_code
+              label_add_code_cleanup:
+              }
+            label_add_validate_update_cleanup:
+            }
+          label_z_sync_or_cleanup:
+            if (!failure) {
+              Py_XDECREF(py_z); // z.c_sync
+              py_z = PyFloat_FromDouble(z); // z.c_sync, the result is now available from Python!
+              PyList_SET_ITEM(storage_z, 0, py_z); // always done after _.c_sync
+            }
+            Py_XDECREF(py_z); // always done after _.c_cleanup
           }
-        label_add_validate_update_cleanup:
+        label_y_cleanup:
+          Py_XDECREF(py_y); // always done after _.c_cleanup
         }
-      label_z_sync_or_cleanup:
-        if (!failure) {
-          Py_XDECREF(py_z); // z.c_sync
-          py_z = PyFloat_FromDouble(z); // z.c_sync, the result is now available from Python!
-          PyList_SET_ITEM(storage_z, 0, py_z); // always done after _.c_sync
-        }
-        Py_XDECREF(py_z); // always done after _.c_cleanup
+      label_x_cleanup:
+        Py_XDECREF(py_x); // always done after _.c_cleanup
       }
-    label_y_cleanup:
-      Py_XDECREF(py_y); // always done after _.c_cleanup
+      return failure;
     }
-  label_x_cleanup:
-    Py_XDECREF(py_x); // always done after _.c_cleanup
-  }
-  return failure;
-}
-}}}
 
 Generating a C struct
 =====================
@@ -218,30 +213,29 @@ To accelerate processing a tad, a struct can be generated instead of a function.
 
 Here is a sketch of the struct equivalent of the previous function:
 
-{{{
-struct add {
-  PyObject* storage_x;
-  PyObject* storage_y;
-  PyObject* storage_z;
-  double z; // z.c_declare
+.. code-block::
+    struct add {
+      PyObject* storage_x;
+      PyObject* storage_y;
+      PyObject* storage_z;
+      double z; // z.c_declare
 
-  void init(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
-    <set the struct members of the same names>
-    <init the struct members corresponding to z>
-  }
+      void init(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
+        <set the struct members of the same names>
+        <init the struct members corresponding to z>
+      }
 
-  void cleanup(void) {
-    <cleanup z>
-  }
+      void cleanup(void) {
+        <cleanup z>
+      }
 
-  void run(void) {
-    <same code as before minus z's cleanup>
-  }
+      void run(void) {
+        <same code as before minus z's cleanup>
+      }
 
-  add() { this->init(); }
-  ~add() { this->cleanup(); }
-};
-}}}
+      add() { this->init(); }
+      ~add() { this->cleanup(); }
+    };
 
 Advantages of using a struct:
   * Can be run several times even if we provide the storage only once.

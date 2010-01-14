@@ -33,27 +33,26 @@ Question: does it make sense to apply the order to the loop, or is this broadcas
 
 Here is the loop for {{{order == c}}}. Check for errors!
 
-{{{
-<initialize iterators>
+.. code-block::
+    <initialize iterators>
 
-i1 = -1
-while (++i1 < dim1) {
-  i2 = -1
-  rank_N-1_accumulator = init
-  while (++i2 < dim2) {
-    ...
-    iN = -1
-    while (++iN < dimN) {
-      <accumulate rank N input>
-      <SET rank N output using broadcasted inputs>
-      <NEXT rank N iterator>
+    i1 = -1
+    while (++i1 < dim1) {
+      i2 = -1
+      rank_N-1_accumulator = init
+      while (++i2 < dim2) {
+        ...
+        iN = -1
+        while (++iN < dimN) {
+          <accumulate rank N input>
+          <SET rank N output using broadcasted inputs>
+          <NEXT rank N iterator>
+        }
+        ...
+      }
+      <SET rank 1 output using accumulated inputs>
+      <NEXT rank 1 iterator>
     }
-    ...
-  }
-  <SET rank 1 output using accumulated inputs>
-  <NEXT rank 1 iterator>
-}
-}}}
 
 When {{{order == f}}}, the iterators ''ideally'' (but not necessarily) iterate in FORTRAN order, i.e. the while loops are on {{{dimN..dim1}}} instead of {{{dim1..dimN}}}.
 

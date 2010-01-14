@@ -1,16 +1,9 @@
 
 .. _basictutorial:
 
-==============
-Basic Tutorial
-==============
-
-Before doing anything in this tutorial, make sure that Theano is
-installed on your system (see :ref:`install`).
-
-
-Done? Alright!
-
+========
+Tutorial
+========
 
 Let's start an interactive session and import the package you just
 installed:
@@ -23,11 +16,18 @@ of theano. Let's import that subpackage under a handy name. I like
 
 >>> import theano.tensor as T
 
-Now we're ready for the tour:
+If that didn't work, Theano is not installed correctly (see :ref:`install`).
 
+Now we're ready for the tour:
 
 .. toctree::
 
-   adding
-   examples
-   tools
+    adding
+    debug_faq
+    debugmode
+    examples
+    numpy
+    profilemode
+    randomstreams
+    tools
+

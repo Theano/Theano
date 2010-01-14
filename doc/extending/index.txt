@@ -1,40 +1,38 @@
 
-.. _advtutorial:
+.. _extending:
 
-=================
-Advanced Tutorial
-=================
+================
+Extending Theano
+================
+
+
+This documentation is for users who want to extend Theano with new Types, new
+Operations (Ops), and new graph optimizations.
+
+Along the way, it also introduces many aspects of how Theano works, so it is
+also good for you if you are interested in getting more under the hood with
+Theano itself.
 
 Before tackling this tutorial, it is highly recommended to read the
 :ref:`basictutorial`.
 
-
-The advanced tutorial is meant to give the reader a greater
-understanding of the building blocks of Theano. Through this tutorial
-we are going to define one :ref:`type`, ``double``, and basic
-arithmetic :ref:`operations <op>` on that Type. We will first define
-them using a Python implementation and then we will add a C
-implementation.
-
-This tutorial should be of most use to users who want to extend Theano
-with custom types and operations related to these types.
-It is a good idea to read this tutorial as well since it provides
-grounding for fundamental Theano concepts.
-
+The first few pages will walk you through the definition of a new :ref:`type`,
+``double``, and a basic arithmetic :ref:`operations <op>` on that Type. We
+will start by defining them using a Python implementation and then we will add
+a C implementation.
 
 .. toctree::
 
-   theano_vs_c
-   graphstructures
-   type
-   op
-   inplace
-   ctype
-   cop
-   optimization
-   tips
-
-
-
+    pipeline
+    theano_vs_c
+    graphstructures
+    type
+    op
+    inplace
+    ctype
+    cop
+    optimization
+    tips
+    unittest
 
 
