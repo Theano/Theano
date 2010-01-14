@@ -64,9 +64,6 @@ TensorType(float64, scalar)
 >>> x.type == T.dscalar
 True
 
-You can learn more about the structures in Theano in
-the :ref:`advtutorial` and in :ref:`graphstructures`.
-
 By calling ``T.dscalar`` with a string argument, you create a
 :term:`Variable` representing a floating-point scalar quantity with the
 given name. If you provide no argument, the symbol will be unnamed. Names

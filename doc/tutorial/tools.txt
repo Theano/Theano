@@ -170,8 +170,3 @@ bytes, we would do:
    my_cmatrix = theano.tensor.TensorType('complex64', [False, False])
 
 
-Ops
-===
-
-There are a lot of operations available in the :api:`theano.tensor` package.
-See :ref:`oplist`.

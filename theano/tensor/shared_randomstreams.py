@@ -126,12 +126,16 @@ class RandomStreams(object):
     def binomial(self, *args, **kwargs):
         """Return a symbolic binomial sample
 
+        *args and **kwargs will be passed to numpy.random.RandomState.binomial
+
         This is a shortcut for a call to `self.gen`
         """
         return self.gen(raw_random.binomial, *args, **kwargs)
 
     def uniform(self, *args, **kwargs):
         """Return a symbolic uniform sample
+
+        *args and **kwargs will be passed to numpy.random.RandomState.uniform
 
         This is a shortcut for a call to `self.gen`
         """
@@ -140,12 +144,16 @@ class RandomStreams(object):
     def normal(self, *args, **kwargs):
         """Return a symbolic normal sample
 
+        *args and **kwargs will be passed to numpy.random.RandomState.normal
+
         This is a shortcut for a call to `self.gen`
         """
         return self.gen(raw_random.normal, *args, **kwargs)
 
     def random_integers(self, *args, **kwargs):
         """Return a symbolic random integer sample
+
+        *args and **kwargs will be passed to numpy.random.RandomState.random_integers
 
         This is a shortcut for a call to `self.gen`
         """

@@ -10,7 +10,7 @@ arrays efficiently. Theano features:
 * **near-transparent use of a GPU** to accelerate for intense calculations [COMING].
 * **symbolic differentiation**
 * **speed and stability optimizations**: write ``log(1+exp(x))`` and get the right answer.
-* **dynamic C code generation** for faster evaluation
+* **dynamic C code generation** for faster expression evaluation
 
 Download
 ========
@@ -21,28 +21,24 @@ The current version is available via::
 
     hg clone http://hg.assembla.com/theano Theano
 
-The theano subfolder should be on your PYTHONPATH.  For more information about
+The theano subfolder should be on your ``$PYTHONPATH``.  For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
 
 Documentation
 =============
 
 You can download the latest `PDF documentation <http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
-You can go to the :ref:`Table of Contents <contents>`.
-
-Shortcuts:
 
 * If you have no idea what Theano is read the :ref:`introduction <introduction>`.
 * :ref:`learn the basics <tutorial>`
 * :ref:`library reference <libdoc>`
-
-.. _contents:
-
-Full Documentation Table of Contents
-=====================================
+* :ref:`extending Theano <extending>` with new Types, and Ops
+* :ref:`internal docs <internal>`
+* :ref:`internal docs <internal>`
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
    NEWS
    introduction
@@ -69,6 +65,7 @@ Community
 * We try to stay organized with `Theano's Trac <trac/>`__ 
 
 * Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
+
 
 
 .. _theano-dev: http://groups.google.com/group/theano-dev
