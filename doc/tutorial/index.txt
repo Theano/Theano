@@ -5,29 +5,27 @@
 Tutorial
 ========
 
-Let's start an interactive session and import the package you just
-installed:
+Let's start an interactive session and import Theano.
 
 >>> from theano import *
 
 Many of symbols you will need to use are in the ``tensor`` subpackage
 of theano. Let's import that subpackage under a handy name. I like
-``T``.
+``T`` (and many tutorials use this convention).
 
 >>> import theano.tensor as T
 
-If that didn't work, Theano is not installed correctly (see :ref:`install`).
-
-Now we're ready for the tour:
+If that worked you're ready for the tutorial, otherwise check your
+installation (see :ref:`install`).
 
 .. toctree::
 
-    adding
-    debug_faq
-    debugmode
-    examples
     numpy
-    profilemode
+    adding
+    examples
     randomstreams
+    debugmode
+    profilemode
+    debug_faq
     tools
 
