@@ -423,6 +423,8 @@ class Function(object):
         return cpy
 
     def __call__(self, *args, **kwargs):
+        t0 = time.time()
+
         # Reinitialize each container's 'provided' counter
         for c in self.input_storage:
             c.provided = 0
@@ -478,6 +480,11 @@ class Function(object):
                 if isinstance(value, gof.Container):
                     value = value.storage[0]
                 self[i] = value
+        
+        dt_call=time.time()-t0
+        if hasattr(self.maker.mode,'fct_call_time'):
+          self.maker.mode.fct_call_time += dt_call
+          self.maker.mode.fct_call += 1
 
         if self.return_none:
             return None
