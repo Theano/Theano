@@ -1,6 +1,10 @@
-
+=================
 Automatic updates
 =================
+
+.. note:
+   Proposed 2010 01 13
+
 
 The Module version of RandomStreams could arrange for the automatic update of
 certain inputs (such as the random number generators) at the time of make(), so
