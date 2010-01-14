@@ -1,0 +1,22 @@
+
+.. _libdoc:
+
+=====================
+Library Documentation
+=====================
+
+This documentation covers Theano module-wise.
+
+.. toctree::
+   :maxdepth: 2
+
+   tensor/index
+   gradient
+   config
+   floatX
+   printing
+   compile/index
+   sparse/index
+   scalar/index
+   gof/index
+

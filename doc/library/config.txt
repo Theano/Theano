@@ -1,0 +1,11 @@
+.. _libdoc_config:
+
+========================================================
+:mod:`config` -- library configuration [doc TODO]
+========================================================
+
+
+use of THEANO_FLAGS
+
+
+what attributes are in here? 

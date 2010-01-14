@@ -1,0 +1,110 @@
+
+.. _libdoc_tensor:
+
+============================================================
+:mod:`tensor` -- types and ops for symbolic numpy [doc TODO]
+============================================================
+
+.. module:: theano.tensor
+   :platform: Unix, Windows
+   :synopsis: symbolic types and operations for n-dimensional arrays.
+.. moduleauthor:: LISA
+
+TODO: What does (or compatible) mean?  Talk about casting rules, refer .
+
+TensorType
+==========
+
+.. class:: TensorType
+
+   .. method:: quux()
+
+
+Creation
+========
+
+Autocasting
+-----------
+
+.. function:: as_tensor_variable(x, ...)
+
+    TODO: Link to 'autocasting'
+
+
+.. function:: lvector(name=None)
+
+TODO: make a table of all [scalar, vector, matrix, tensor3, tensor4] vs. [b,
+w, i, l, f, d, c, z]
+
+
+Shaping and Shuffling
+=====================
+
+.. function:: shape(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns the symbolic shape vector of `x`
+
+.. function:: reshape(x)
+
+.. function:: dimshuffle(x)
+
+
+Reductions 
+==========
+
+
+.. function:: max(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+.. function:: min(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+.. function:: sum(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+Indexing
+========
+
+Basic indexing.
+
+Advanced indexing.
+
+Elementwise
+===========
+
+Casting
+-------
+
+Logic Functions
+---------------
+
+Mathematical
+------------
+
+Broadcasting in Theano vs. Numpy
+--------------------------------
+
+Random Sampling
+===============
+
+Linear Algebra
+==============
+
+Fourier Transforms
+==================
+
+[James has some code for this, but hasn't gotten it into the source tree yet.]
+
+
+
