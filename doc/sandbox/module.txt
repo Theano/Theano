@@ -1,269 +1,146 @@
-.. _module:
 
-######
-Module
-######
+.. _moduleinterface:
 
-
-What is a Theano Module
-=======================
-
-Theano 'Module' is a structure which implements what could be called a
-"theano class". A ``Module`` can contain ``Members``, which act like
-instance variables ("state"). It can also contain an arbitrary number
-of ``Methods``, which are functions that share the same ``Members`` in
-addition to their own inputs. Last but not least, ``Modules`` can be
-nested (explanations and examples follow). ``Module`` is meant to:
-
- #. ease the sharing of variables between several Theano functions,
- #. streamline automatic naming, and
- #. allow a hierarchy of "modules" whose states can interact.
-
-
-import
-======
-
-All examples suppose that you have done those import:
-
-.. code-block:: python
-
-    #!/usr/bin/env python
-    import theano
-    import numpy as N
-    from theano import tensor as T
-    from theano.tensor import nnet as NN
-    from theano.compile import module as M
-
-Module
-======
-
-A ``Module`` can contain ``Members``, ``Methods`` and inner ``Modules``. Each type has a special meaning.
-
-.. code-block:: python
-
-    module = M.Module()
-
-``Member``
-------------
-
-Usage:
-
-.. code-block:: python
-
-    #module.state = variable
-    module.state = T.scalar()
-
-A ``Member`` represents a state variable (i.e., whose value remains after a ``Method`` is called). It will be named automatically after that field and it will be an implicit input of all ``Methods`` of the ``Module``. Its storage (i.e. where the value is stored) will be shared by all ``Methods`` of the ``Module``.
-
-A ``Variable`` which is the variable of a previous computation (by opposition to being ``updated``) is not a ``Member``. Internally this is called an External. You should not need to care about this.
-
-For sharing state between modules, see ``Inner Module`` section.
-
-``Method``
-------------
-
-Usage:
-
-.. code-block:: python
-
-    module.method = M.Method(inputs, outputs, **updates)
-
-Each key in the updates dictionary must be the name of an existing ``Member`` of the ``Module`` and the value associated to that key is the update expression for the state. When called on a ``ModuleInstance`` produced by the ``Module``, the method will calculate the outputs from the inputs and will update all the states as specified by the update expressions. See the basic example below.
-
-Inner Module
-------------
-
-To share a ``Member`` between modules, the modules must be linked through the inner module mechanism. 
-
-Usage:
-
-.. code-block:: python
-
-    module2.submodule = module
-
-``ModuleInstance``
-====================
-
-A ``Module`` can produce a ``ModuleInstance`` with its ``make`` method. Think of this as a class and an object in C++/Java. If an attribute was a ``Member``, it will become a read/write access to actual data for the state. If it was a ``M.Method``, a function will be compiled with the proper signature and semantics.
-
-
+================
 Module Interface
 ================
 
-.. code-block:: python
+A Theano Module is like Theano's version of a file.
+When you instantiate a ``Module()``, you are creating a blank file.
+Into this file you can put both symbolic and non-symbolic objects.
+Non-symbolic objects are like constants (technically literals) in the file.
+Symbolic objects are like variables and functions.
+The functions in a Module are called Methods.
+The variables in a Module (and submodules) are global.
+Module Methods have access to all these global variables.
 
-    def make(self, mode = {'FAST_COMPILE', 'FAST_RUN', ... }, **init)
+To use a Module, you need to compile it.
+This is done by calling `Module.make()`.
+The result of compiling a Module is a ModuleInstance, this is the compiled
+version of your Theano file.
+In the ModuleInstance, your symbolic variables have become containers (containing None),
+and your Methods have become callable functions.
+You should initialize the symbolic variables by calling
+``ModuleInstance.initialize()`` (although make() will call it for you, 
+on the top-level ModuleInstance.)
 
-'''make''' compiles all ``Methods`` and allocates storage for all ``Members`` into a ``ModuleInstance`` object, which is returned. The ``init`` dictionary can be used to provide initial values for the members.
-
-.. code-block:: python
-
-    def resolve(self, symbol, filter = None)
-
-Resolves a symbol in this module. The symbol can be a string or a ``Variable``. If the string contains dots (eg ``"x.y"``), the module will resolve the symbol hierarchically in its inner modules. The filter argument is None or a class and it can be used to restrict the search to ``Member`` or ``Method`` instances for example.
-
-
-.. code-block:: python
-
-    def _instance_initialize(self, inst, **init)
-
-The inst argument is a ``ModuleInstance``. For each key, value pair in init: ``setattr(inst, key, value)`` is called. This can be easily overriden by ``Module`` subclasses to initialize an instance in different ways. If you don't know what to put their, don't put it and it will execute a default version. If you want to call the parent version call: ``M.default_initialize(inst,**init)``
-
-
-Basic example
-=============
-
-The problem here is to create two functions, ``inc`` and ``dec`` and a shared state ``c`` such that ``inc(n)`` increases ``c`` by ``n`` and ``dec(n)`` decreases ``c`` by ``n``. We also want a third function, ``plus10``, which return 10 + the current state without changing the current state. Using the function interface, the feature can be implemented as follows:
-
-.. code-block:: python
-
-    n, c = T.scalars('nc')
-    inc = theano.function([n, ((c, c + n), 0)], [])
-    dec = theano.function([n, ((c, c - n), inc.container[c])], []) # we need to pass inc's container in order to share
-    plus10 = theano.function([(c, inc.container[c])], c + 10)
-    assert inc[c] == 0
-    inc(2)
-    assert inc[c] == 2 and dec[c] == inc[c]
-    dec(3)
-    assert inc[c] == -1 and dec[c] == inc[c]
-    assert plus10() == 9
-
-Now, using ``Module``:
-
-.. code-block:: python
-
-    m = M.Module()
-    n = T.scalar('n')
-    m.c = T.scalar() # state variables
-    m.inc = M.Method(n, [], updates = {m.c: m.c + n}) # m.c <= m.c + n
-    m.dec = M.Method(n, [], updates = {m.c: m.c - n}) # k.c <= k.c - n
-    #m.dec = M.Method(n, [], updates = {c: m.c - n})#global c don't exist
-    #m.plus10 does not update the state
-    m.plus10 = M.Method([], m.c + 10) # m.c is always accessible since it is a member of this mlass
-    
-    inst = m.make(c = 0) # here, we make an "instance" of the module with c initialized to 0
-    assert inst.c == 0
-    inst.inc(2)
-    assert inst.c == 2
-    inst.dec(3)
-    assert inst.c == -1
-    assert inst.plus10() == 9
-    
-Benefits of ``Module`` over ``function`` in this example:
- * There is no need to manipulate the containers directly
- * The fact inc and dec share a state is more obvious syntactically.
- * ``Method`` does not require the states to be anywhere in the input list.
- * The interface of the instance produced by ``m.make()`` is simple and coherent, extremely similar to that of a normal python object. It is directly usable by any user.
+You can compile a Module several times, to create multiple ModuleInstances.
+Each of these will have its own copy of all program literals.
 
 
-Nesting example
-===============
 
-The problem now is to create two pairs of ``inc dec`` functions and a function ``sum`` that adds the shared states of the first and second pair.
+Module Graph
+------------
 
-Using function:
-
-.. code-block:: python
-
-    def make_incdec_function():
-           n, c = T.scalars('nc')
-           inc = theano.function([n, ((c, c + n), 0)], [])
-           dec = theano.function([n, ((c, c - n), inc.container[c])], [])#inc and dec share the same state.
-           return inc,dec
-    
-    
-    inc1, dec1 = make_incdec_function()
-    inc2, dec2 = make_incdec_function()
-    a, b = T.scalars('ab')
-    sum = theano.function([(a, inc1.container['c']), (b, inc2.container['c'])], a + b)
-    inc1(2)
-    dec1(4)
-    inc2(6)
-    assert inc1['c'] == -2 and inc2['c'] == 6
-    assert sum() == 4 # -2 + 6
-
-Using Module:
-
-.. code-block:: python
-
-    def make_incdec_module():
-        m = M.Module()
-        n = T.scalar('n')
-        m.c = T.scalar() # state variables
-        m.inc = M.Method(n, [], updates = {m.c: m.c + n}) # m.c <= m.c + n
-        m.dec = M.Method(n, [], updates = {m.c: m.c - n}) # m.c <= m.c - n
-        return m
-    
-    m = M.Module()
-    m.incdec1 = make_incdec_module()
-    m.incdec2 = make_incdec_module()
-    m.sum = M.Method([], m.incdec1.c + m.incdec2.c)
-    inst = m.make(incdec1 = dict(c=0), incdec2 = dict(c=0))
-    inst.incdec1.inc(2)
-    inst.incdec1.dec(4)
-    inst.incdec2.inc(6)
-    assert inst.incdec1.c == -2 and inst.incdec2.c == 6
-    assert inst.sum() == 4 # -2 + 6
-
-Here, we make a new ``Module`` and we give it two inner ``Modules`` like
-the one defined in the basic example. Each inner module has methods inc
-and dec as well as a state c and their state is directly accessible from
-the outer module, which means that it can define methods using them. The
-instance(inst) we make from the ``Module``(m) reflects the hierarchy
-that we created. Unlike the method using function, there is no need to
-manipulate any containers directly.
+Components can be grouped into a directed graph.
+When we call `make`, this graph is replicated with ComponentInstances instead of
+Components.  Wheras Components are represent symbolic things (ie. Variables), ComponentInstances represent non-symbolic ones (ie. sparse matrices, ndarrays, callable functions).
 
 
-Advanced example
-================
+.. index::
+   single: Component
+   single: component; Component
 
-Complex models can be implemented by subclassing ``Module`` (though that is not mandatory). Here is a complete, extensible (and working) regression model implemented using this system:
+.. _component:
+---------
+Component
+---------
 
-.. literalinclude:: ../code/regression.py
+All of the elements of what is called the "module system" or "modules" are
+components.
 
-Here is how we use the model:
-
-.. code-block:: python
-
-    data_x = N.random.randn(4, 10)
-    data_y = [ [int(x)] for x in N.random.randn(4) > 0]
-    
-    
-    model = SoftmaxXERegression(regularize = False).make(input_size = 10,
-                       target_size = 1,
-                       stepsize = 0.1)
-    
-    for i in xrange(1000):
-       xe = model.update(data_x, data_y)
-       if i % 100 == 0:
-           print i, xe
-           pass
-       #for inputs, targets in my_training_set():
-           #print "cost:", model.update(inputs, targets)
-    
-    print "final weights:", model.w
-    print "final biases:", model.b
+A component subclass is represents a symbolic theano thing, and implements the
+``build`` function. 
+The ``build`` function is responsible for converting the symbolic thing into a
+non-symbolic thing.
 
 
-Extending ``Methods``
-=======================
+Compiling with make
+-------------------
 
-``Methods`` can be extended to update more parameters. For example, if we wanted to add a variable holding the sum of all costs encountered so far to ``SoftmaxXERegression``, we could proceed like this:
+Conversion from a Component graph to a ComponentInstance graph is performed by `Component.make`.
+This method traverses the Component graph in multiple passes. 
 
-.. code-block:: python
+In the first pass (the allocate pass), it creates storage for all Variables that are contained in the graph (see
+`Component.allocate`).  These are the module variables.
 
-    model_module = SoftmaxXERegression(regularize = False)
-    model_module.sum = T.scalar() # we add a module member to hold the sum
-    model_module.update.updates.update(sum = model_module.sum + model_module.cost) # now update will also update sum!
-    
-    model = model_module.make(input_size = 4,
-                             target_size = 2,
-                             stepsize = 0.1,
-                             sum = 0) # we mustn't forget to initialize the sum
-    
-    test = model.update([[0,0,1,0]], [[0,1]]) + model.update([[0,1,0,0]], [[1,0]])
-    assert model.sum == test
+In the second pass (the build pass), it creates functions that (in general) operate on these module variables.
+This pass also serves to construct all ComponentInstance-derived instances as well, such as
+`ModuleInstance`s.  The objects that are returned from this second pass are the return value of
+`Component.make`.
 
-The inputs and outputs list of a ``Method`` can be doctored as well, but it is trickier, arguably less useful and not fully supported at the moment.
+In the third pass (the initialize pass), is optional and not necessarily recursive through the
+graph.
+The purpose of the third pass is to call the initialize method of the ComponentInstances built
+during the second pass.
+During this pass the ComponentInstance graph is complete. It is a good time to fill storage
+allocated in phase 1 with sensible values.
 
+.. index::
+   single: External
+   single: component; External
+
+.. _external:
+--------
+External
+--------
+
+WRITEME
+
+
+
+.. index::
+   single: Member
+   single: component; Member
+
+.. _member:
+------
+Member
+------
+
+WRITEME
+
+
+.. index::
+   single: Method
+   single: component; Method
+
+.. _method:
+------
+Method
+------
+
+WRITEME
+
+
+.. index::
+   single: Module
+   single: component; Module
+
+.. _module:
+------
+Module
+------
+
+A Module instance can contain objects as attributes.
+This makes it something like a class in the way that Method is
+analogous to a function.
+
+A Module is meant to contain Components.
+Attributes which are not Components themselves must at least be transform-able
+into Components by :api:`compile.module.wrap`.  If a Module contains something
+that is not convertible into a Component, then it is not possible to compile
+that Module with ``make``.
+
+
+Old Text
+--------
+
+In the Module system, the analog of the file is the `Module`, the analog of the function is the
+`Method`, and the analog of the variable is the `Member`.  Module, Member, and Method all work
+at the symbolic level.  Once a graph of Modules, Members, and Methods is ready for use, it must
+be compiled with a call to `make` which will return an isomorphic structure in which Modules
+have become `ModuleInstances`, Members have become `Container`s, and Methods have become
+`Function`s.
+This structure contains numbers and functions, and is ready for computation.
 
