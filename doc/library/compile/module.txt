@@ -1,7 +1,12 @@
 
-============
-Using Module
-============
+=======================================
+:mod:`module` -- a theano object system
+=======================================
+
+.. note::
+
+    Module addresses similar needs to `shared`.  New code is encouraged to
+    use `shared` variables.
 
 Now that we're familiar with the basics, we introduce Theano's more
 advanced interface, Module. This interface allows you to define Theano

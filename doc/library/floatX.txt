@@ -1,11 +1,9 @@
-.. _floatX:
 
-========================
-Special data type floatX
-========================
+.. _libdoc_floatX:
 
-Intro
-=====
+=======================================================================
+:mod:`floatX` -- easy switching between float32 and float64 [doc TODO]
+=======================================================================
 
 Their is a special data type called floatX. It is not a real datatype. It is never present in the theano graph, but their exist constructor and function that will change the floatX to float32 or float64(default) in your graph. You can change the value of floatX when you start the execution of python by setting the environement variables THEANO_GPU=floatX=float{32,64}(case sensitive). You can have the value of floatX with::
 

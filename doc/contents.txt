@@ -20,5 +20,5 @@ Contents
    internal/index
    NEWS
    examples/index
-   sandbox/index
+   proposals/index
 
