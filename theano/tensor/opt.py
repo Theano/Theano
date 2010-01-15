@@ -929,6 +929,19 @@ def local_neg_neg(node):
         if node.inputs[0].owner and node.inputs[0].owner.op == T.neg:
             return [node.inputs[0].owner.inputs[0]]
 
+@register_specialize
+@gof.local_optimizer([T.neg])
+def local_neg_div_neg(node):
+    if node.op == T.neg:
+        """- (-a / b) -> a / b"""
+        if node.inputs[0].owner and node.inputs[0].owner.op == T.true_div:
+            frac = node.inputs[0]
+            num, denom = frac.owner.inputs
+            if num.owner and num.owner.op == T.neg:
+                if len(frac.clients) == 1:
+                    # No other clients of the original division
+                    new_num = num.owner.inputs[0]
+                    return [T.true_div(new_num, denom)]
 
 @gof.local_optimizer([T.mul])
 def local_mul_zero(node):
