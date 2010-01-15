@@ -2,8 +2,17 @@
 .. _libdoc_floatX:
 
 =======================================================================
-:mod:`floatX` -- easy switching between float32 and float64 [doc TODO]
+:mod:`floatX` -- easy switching between float32 and float64
 =======================================================================
+
+.. module:: floatx
+   :platform: Unix, Windows
+   :synopsis: easy switching between float32 and float64
+.. moduleauthor:: LISA
+
+
+Guide
+=====
 
 Their is a special data type called floatX. It is not a real datatype. It is never present in the theano graph, but their exist constructor and function that will change the floatX to float32 or float64(default) in your graph. You can change the value of floatX when you start the execution of python by setting the environement variables THEANO_GPU=floatX=float{32,64}(case sensitive). You can have the value of floatX with::
 
@@ -33,3 +42,42 @@ HINT: linear algorythm are less affected by the different precision then non-lin
       numpy.asarray(x,dtype=config.floatX) warn copy only if needed.
 
 WARNING: theano.floatx.set_floatX() exist for our test. Don't use it for something else. If you do, it will make code hard to read and it is a sign that their is something better for you then floatX.
+
+Reference
+==========
+
+.. function:: xscalar(name=None)
+
+    Alias for either :func:`dscalar` or :func:`fscalar`
+
+.. function:: xvector(name=None)
+
+    Alias for either :func:`d...` or :func:`f---`
+
+.. function:: xmatrix(name=None)
+
+    Alias for either :func:`d...` or :func:`f---`
+
+.. function:: xrow(name=None)
+
+    Alias for either :func:`d...` or :func:`f---`
+
+.. function:: xcol(name=None)
+
+    Alias for either :func:`d...` or :func:`f---`
+
+.. function:: xtensor3(name=None)
+
+    Alias for either :func:`d...` or :func:`f---`
+
+.. function:: xtensor4(name=None)
+
+    Alias for either :func:`d...` or :func:`f---`
+
+.. function:: set_floatX(dtype=config.floatX)
+
+    Reset the :func:`xscalar`, ... :func:`xtensor4` aliases to return types
+    with given dtype.
+
+
+

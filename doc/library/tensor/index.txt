@@ -17,5 +17,6 @@ sanity, they are grouped into the following sections:
 
     basic
     shared_randomstreams
+    nnet
     signal
 

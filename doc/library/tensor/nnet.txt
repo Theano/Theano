@@ -1,0 +1,23 @@
+.. _libdoc_tensor_nnet:
+
+======================================================
+:mod:`nnet` -- Ops for neural networks
+======================================================
+
+.. module:: nnet
+   :platform: Unix, Windows
+   :synopsis: Ops for neural networks
+.. moduleauthor:: LISA
+
+
+TODO: Give examples for how to use these things! They are pretty complicated.
+
+.. function:: sigmoid(*todo)
+
+.. function:: softplus(*todo)
+
+.. function:: softmax(*todo)
+
+.. function:: binary_crossentropy(*todo)
+
+.. function:: categorical_crossentropy(*todo)
