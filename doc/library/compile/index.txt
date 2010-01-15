@@ -14,6 +14,8 @@
     :maxdepth: 1
 
     function
+    io
+    mode
     module
     debugmode
     profilemode

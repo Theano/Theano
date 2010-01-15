@@ -10,7 +10,7 @@ class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False, strict=False,
             implicit=None):
         """
-        :param variable: A node in an expression graph to set with each function call.
+        :param variable: A variable in an expression graph to use as a compiled-function parameter
 
         :param default: The default value to use at call-time (can also be a Container where
         the function will find a value at call-time.)

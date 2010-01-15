@@ -22,11 +22,17 @@ This documentation covers Theano module-wise.
 
 There are also some top-level imports that you might find more convenient:
 
-.. describe:: function
+
+.. module:: theano
+   :platform: Unix, Windows
+   :synopsis: Theano top-level import
+.. moduleauthor:: LISA
+
+.. function:: function(...)
     
     Alias for :func:`function.function`
 
-.. describe:: Param
+.. class:: Param
 
     Alias for :class:`function.Param`
 
