@@ -2,8 +2,14 @@
 .. _profilemode:
 
 ================================================
-:mod:`profilemode` -- profiling theano functions
+:mod:`profilemode` -- profiling Theano functions
 ================================================
+
+
+.. module:: profilemode
+   :platform: Unix, Windows
+   :synopsis: profiling Theano functions with ProfileMode
+.. moduleauthor:: LISA
 
 Guide
 =====
@@ -180,10 +186,10 @@ Reference
         Print three summaries to stdout that show where cpu time is spent during theano function executions (for all functions using this object instance).
 
         :param n_apply_to_print: the number of apply nodes to print. 
-           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :ref:`THEANO_FLAGS`.
+           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :envvar:`THEANO_FLAGS`.
 
         :param n_ops_to_print: the number of ops to print.
-           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :ref:`THEANO_FLAGS`.
+           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :envvar:`THEANO_FLAGS`.
 
         :returns: None
 
@@ -195,10 +201,10 @@ Reference
         :param other: the other instance of ProfileMode that we want to be compared to.
         
         :param n_apply_to_print: the number of apply nodes to print. 
-           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :ref:`THEANO_FLAGS`.
+           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :envvar:`THEANO_FLAGS`.
 
         :param n_ops_to_print: the number of ops to print.
-           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :ref:`THEANO_FLAGS`.
+           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :envvar:`THEANO_FLAGS`.
 
         :returns: None
 
