@@ -189,6 +189,7 @@ def scan(fn, sequnces, non_sequences, seed_values, inplace_map={},
 
     n_seeds   = len(seeds)
 
+
     # update sequences_taps[idx] to contain 0 if it is not defined
     for i in xrange(n_seqs):
         if not sequences_taps.has_key(i):
