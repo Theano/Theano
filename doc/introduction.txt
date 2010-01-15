@@ -130,8 +130,8 @@ Getting started
   new!
 
 :ref:`libdoc`
-  The library documentation can be found here. It is recommended to go through
-  the :ref:`tutorial` first.
+  Details of what Theano provides. It is recommended to go through
+  the :ref:`tutorial` first though.
 
 
 A PDF version of the online documentation may be found `here <theano.pdf>`_.

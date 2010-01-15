@@ -9,7 +9,7 @@ There are many kinds of bugs that might come up in a computer program.
 This page is structured as an FAQ.  It should provide recipes to tackle common
 problems, and introduce some of the tools that we use to find problems in our
 Theano code, and even (it happens) in Theano's internals, such as
-:ref:`debugmode`.
+:ref:`using_debugmode`.
 
 
 
@@ -49,7 +49,7 @@ I wrote a new Op/Type, and weird stuff is happening...
 
 First, check the :ref:`op_contract` and the :ref:`type_contract` 
 and make sure you're following the rules.
-Then try running your program in :ref:`debugmode`.  DebugMode might catch
+Then try running your program in :ref:`using_debugmode`.  DebugMode might catch
 something that you're not seeing.
 
 
@@ -65,8 +65,8 @@ I wrote a new optimization, and it changed my results even though I'm pretty sur
 ------------------------------------------------------------------------------------------------
 
 First, check the :ref:`op_contract` and make sure you're following the rules.
-Then try running your program in :ref:`debugmode`.  DebugMode might catch
-something that you're not seeing.
+Then try running your program in :ref:`using_debugmode`.  DebugMode might 
+catch something that you're not seeing.
 
 
 The function I compiled is too slow, what's up?
@@ -77,7 +77,7 @@ First, make sure you're running in FAST_RUN mode, by passing
 operations have excruciatingly slow Python implementations and that
 can negatively effect the performance of FAST_COMPILE.
 
-Second, try the theano :ref:`profilemode`.  This will tell you which
+Second, try the theano :ref:`using_profilemode`.  This will tell you which
 Apply nodes, and which Ops are eating up your CPU cycles.
 
 
