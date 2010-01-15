@@ -145,10 +145,28 @@ This advice has not been tested recently, so please inform us of your results.
 Windows
 -------
 
-As of now, the Windows platform is not supported. In fact, it has
-never even been tested, so feel free to explore this uncharted
-territory and inform us of your progress!
+Running Theano under Windows is achieved by using the `MinGW
+<http://www.mingw.org>`__ port of the GCC compiler.
 
+Unless noted otherwise, packages should be donwloaded from `the list of MinGW
+files <http://sourceforge.net/projects/mingw/files/>`__.
+
+- Download the latest version of the ``Automated MinGW Installer`` and install
+  it (keeping default options).
+
+- Download the latest ``MSYS Base System`` executable file and run it
+(note that the latest version of ``MSYS Base System`` may not contain an
+executable file, in which case the simplest solution is just to use an
+older version).
+This will install ``MSYS`` (use default install options).
+It will also run a post-install script where it will ask you about the
+location of ``MinGW`` (typically ``c:/MinGW``).
+
+- Still from the same downloDownload ``GCC 4
+
+(in this order, and using default install options).
+You may use `7-Zip <http://www.7-zip.org>`__ to unpack files with the
+``.lzma`` extension.
 
 Generating the documentation
 ----------------------------
