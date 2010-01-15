@@ -14,28 +14,31 @@ Guide
 =====
 
 
-The DebugMode evaluation mode (available via ``mode='DEBUG_MODE'``,
-see :ref:`this <function_mode>`) includes a number of self-checks and assertions that
-can help to diagnose several kinds of programmer errors that can lead
-to incorrect output.
+The DebugMode evaluation mode includes a number of self-checks and assertions
+that can help to diagnose several kinds of programmer errors that can lead to
+incorrect output.
 
-It is much slower to evaluate a function or method in DEBUG_MODE than
-it would be in FAST_RUN or even FAST_COMPILE. We recommended you use
+It is much slower to evaluate a function or method with DebugMode than
+it would be in ``'FAST_RUN'`` or even ``'FAST_COMPILE'``.  We recommended you use
 DebugMode during development, but not when you launch 1000 processes on
 a cluster.
 
-DebugMode is used as follows:
+DebugMode can be used as follows:
 
 .. code-block:: python
 
-    x = theano.dvector('x')
+    x = tensor.dvector('x')
 
-    f = theano.function(x, 10*x, mode='DEBUG_MODE')
+    f = theano.function([x], 10*x, mode='DEBUG_MODE')
 
     f(5) 
     f(0) 
     f(7) 
 
+It can also be used by setting an environment variable ``THEANO_DEFAULT_MODE=DEBUG_MODE``.
+It can also be used by passing a DebugMode instance as the mode, as in 
+
+>>> f = theano.function([x], 10*x, mode=DebugMode(check_c_code=False))
 
 If any problem is detected, DebugMode will raise an exception according to
 what went wrong, either at call time (``f(5)``) or compile time (
@@ -79,11 +82,7 @@ Reference
 
     If there are internal errors, this mode will raise an `DebugModeError` exception.
 
-    :remark: The work of debugging is implemented by the `_Maker`, `_Linker`, and
-    `_VariableEquivalenceTracker` classes.
-
-
-    .. attibute:: stability_patience = config.THEANO_DEBUGMODE_PATIENCE
+    .. attribute:: stability_patience = config.THEANO_DEBUGMODE_PATIENCE
 
         When checking for the stability of optimization, recompile the graph this many times.
         Default 10.
@@ -136,7 +135,7 @@ is quite strict, and can raise several different Exception types.
 There following are DebugMode exceptions you might encounter:
 
 
-..class:: DebugModeError
+.. class:: DebugModeError(Exception)
 
     This is a generic error.  All the other exceptions inherit from this one.
     This error is typically not raised directly.
@@ -145,7 +144,7 @@ There following are DebugMode exceptions you might encounter:
 
 
 
-.. class:: BadCLinkerOutput
+.. class:: BadCLinkerOutput(DebugModeError)
 
     This exception means that python (``perform``) and c (``c_code``) for an Op
     didn't compute the same thing like they were supposed to.
@@ -153,7 +152,7 @@ There following are DebugMode exceptions you might encounter:
 
 
 
-.. class:: BadOptimization
+.. class:: BadOptimization(DebugModeError)
 
     This exception indicates that an Optimization replaced one variable (say V1)
     with another one (say V2)  but at runtime, the values for V1 and V2 were
@@ -167,7 +166,7 @@ There following are DebugMode exceptions you might encounter:
 
 
 
-.. class:: BadDestroyMap
+.. class:: BadDestroyMap(DebugModeError)
 
     This happens when an Op's ``perform()`` or ``c_code()`` modifies an input that it wasn't
     supposed to.  If either the ``perform`` or ``c_code`` implementation of an Op
@@ -177,7 +176,7 @@ There following are DebugMode exceptions you might encounter:
     For detailed documentation on the ``destroy_map`` attribute, see :ref:`inplace`.
 
 
-.. class:: BadViewMap
+.. class:: BadViewMap(DebugModeError)
 
     This happens when an Op's perform() or c_code() creates an alias or alias-like
     dependency between an input and an output... and it didn't warn the
@@ -186,7 +185,7 @@ There following are DebugMode exceptions you might encounter:
     For detailed documentation on the ``view_map`` attribute, see :ref:`views`.
 
 
-.. class:: StochasticOrder
+.. class:: StochasticOrder(DebugModeError)
 
     This happens when an optimization does not perform the same graph operations
     in the same order when run several times in a row.  This can happen if any
@@ -195,7 +194,7 @@ There following are DebugMode exceptions you might encounter:
     whereby we debug in DEBUG_MODE and then run the full-size jobs in FAST_RUN.
 
 
-.. class:: InvalidValueError
+.. class:: InvalidValueError(DebugModeError)
 
     This happens when some Op's ``perform`` or ``c_code`` implementation computes
     an output that is invalid with respect to the type of the corresponding output
