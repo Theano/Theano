@@ -3,7 +3,7 @@
 Basic Tutorial Mini-Reference
 =============================
 
-.. miniref_mode:
+      .. miniref_mode:
 
 Mode
 ====
@@ -17,12 +17,12 @@ FAST_RUN          ``compile.mode.Mode(linker='c|py', optimizer='fast_run')``    
 DEBUG_MODE        ``compile.debugmode.DebugMode()``                               Both implementations where available, all available graph transformations.
 ================= =============================================================== ===============================================================================
 
-.. _tensortypes:
+      .. _tensortypes:
 
 Types
 =====
 
-.. _predefinedtypes:
+      .. _predefinedtypes:
 
 Predefined types
 ----------------
