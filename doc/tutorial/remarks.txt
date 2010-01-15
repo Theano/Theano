@@ -1,0 +1,31 @@
+
+.. _tutorial_general_remarks:
+
+=====================
+Some general Remarks
+=====================
+
+Theano offers quite a bit of flexibility, but has some limitations too.
+How should you write your algorithm to make the most of what Theano can do?
+
+Limitations
+-----------
+
+- Conditional control flow is possible but currently not efficient.  The current implementation will evaluate both sides of an ``if`` construct (see :func:`tensor.switch`).
+
+- While- or for-Loops within an expression graph are not supported, but soon will be.
+  A ``scan`` op is in ``theano.sandbox``, but not quite ready for mainstream yet.
+
+- Neither ``goto`` nor recursion is supported or planned within expression graphs.
+
+
+A few tips
+----------
+
+* Remember that your code builds a graph that theano compiles, and you cannot
+  literally put loops into that graph.
+
+* Remember that Variables are symbolic of computations, not
+  storage.  It does not make sense to *reassign* to a Variable.
+
+

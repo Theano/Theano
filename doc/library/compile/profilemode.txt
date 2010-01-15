@@ -1,9 +1,12 @@
 
 .. _profilemode:
 
-=========================================
-ProfileMode
-=========================================
+================================================
+:mod:`profilemode` -- profiling theano functions
+================================================
+
+Guide
+=====
 
 To profile a Theano graph, a special mode called ProfileMode, must be passed as
 an argument when compiling your graph. Using ProfileMode is a three-step
@@ -118,6 +121,34 @@ generates the following output:
     """
 
 
+
+.. note::
+
+    ***TODO***
+
+    The following text was recovered from a recent version of the source
+    file... hopefully things haven't gotten too out-of-sync!
+
+    The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
+
+    The Apply-wise summary print the timing information for the worst
+    offending Apply nodes. This corresponds to individual Op applications
+    within your graph which take the longest to execute (so if you use dot
+    twice, you will see two entries there). 
+
+    The Op-wise summary print the execution time of all Apply nodes
+    executing the same Op are grouped together and the total execution
+    time per Op is shown (so if you use dot twice, you will see only one
+    entry there corresponding to the sum of the time spent in each of
+    them). If two Op have different hash value, they will be separate.
+
+    The type-Op-wise summary group the result by type of op. So event if
+    two Op have different hash value, they will be merged.
+
+    Their is an hack with the Op-wise summary. Go see it if you want to know more.
+
+
+
 The summary has two components to it. In the first section called the
 Apply-wise summary, timing information is provided for the worst
 offending Apply nodes. This corresponds to individual Op applications
@@ -131,7 +162,43 @@ there corresponding to the sum of the time spent in each of them).
 Note that the ProfileMode also shows which Ops were running a c
 implementation.
 
-Developers wishing to optimize the performance of their graph, should
-focus on the worst offending Ops. If no C implementation exists for
-this op, consider writing a C implementation yourself or use the
-mailing list, to suggest that a C implementation be provided.
+Developers wishing to optimize the performance of their graph should
+focus on the worst offending Ops and Apply nodes -- either by optimizing an
+implementation, providing a missing C implementation, or by writing a graph
+optimization that eliminates the offending Op altogether.
+You should strongly consider emailing one of our lists about your issue before
+spending too much time on this.
+
+
+Reference
+=========
+
+.. class:: ProfileMode(Mode)
+
+    .. method:: print_summary(n_apply_to_print=None, n_ops_to_print=None)
+
+        Print three summaries to stdout that show where cpu time is spent during theano function executions (for all functions using this object instance).
+
+        :param n_apply_to_print: the number of apply nodes to print. 
+           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :ref:`THEANO_FLAGS`.
+
+        :param n_ops_to_print: the number of ops to print.
+           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :ref:`THEANO_FLAGS`.
+
+        :returns: None
+
+    .. method:: print_diff_summary(self, other, n_apply_to_print=None, n_ops_to_print=None):
+        """ As print_summary, but print the difference on two different profile mode.
+        TODO: Also we don't print the Apply-wise summary as it don't work for now.
+        TODO: make comparaison with gpu code.
+        
+        :param other: the other instance of ProfileMode that we want to be compared to.
+        
+        :param n_apply_to_print: the number of apply nodes to print. 
+           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :ref:`THEANO_FLAGS`.
+
+        :param n_ops_to_print: the number of ops to print.
+           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :ref:`THEANO_FLAGS`.
+
+        :returns: None
+

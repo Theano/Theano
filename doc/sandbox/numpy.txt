@@ -1,8 +1,0 @@
-
-.. _numpy::
-
-===============
-NumPy refresher
-===============
-
-Give summary of type(x) vs x.type vs x.dtype
