@@ -104,22 +104,22 @@ The first argument you pass is the `dtype` and the second is the
 
 Where `dtype` is one of (a complete list of supported dtypes):
 
-=========== ================ =================
-dtype       domain           bits
-=========== ================ =================
-int8        signed integer   8
-int16       signed integer   16
-int32       signed integer   32
-int64       signed integer   64
-uint8       unsigned integer 8
-uint16      unsigned integer 16
-uint32      unsigned integer 32
-uint64      unsigned integer 64
-float32     floating point   32
-float64     floating point   64
-complex64   complex          64 (two float32)
-complex128  complex          128 (two float64)
-=========== ================ =================
+================= =================== =================
+dtype             domain              bits
+================= =================== =================
+``'int8'``        signed integer      8
+``'int16'``       signed integer      16
+``'int32'``       signed integer      32
+``'int64'``       signed integer      64
+``'uint8'``       unsigned integer    8
+``'uint16'``      unsigned integer    16
+``'uint32'``      unsigned integer    32
+``'uint64'``      unsigned integer    64
+``'float32'``     floating point      32
+``'float64'``     floating point      64
+``'complex64'``   complex             64 (two float32)
+``'complex128'``  complex             128 (two float64)
+================= =================== =================
 
 
 The broadcastable pattern indicates both the number of dimensions and

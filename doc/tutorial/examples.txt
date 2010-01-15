@@ -274,9 +274,10 @@ shared variable, but you do *not* want to use its value. In this case, you can u
 for the purpose of one particular function.
 
 >>> fn_of_state = state * 2 + inc
->>> non_shared_state = state.type()
->>> skip_shared = function([inc, non_shared_state], fn_of_state,
-        givens=[(state, non_shared_state)])
+>>> foo = lscalar()    # the type (lscalar) must match the shared variable we
+>>>                    # are replacing with the ``givens`` list
+>>> skip_shared = function([inc, foo], fn_of_state,
+        givens=[(state, foo)])
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
 >>> state.value        # old state still there, but we didn't use it

@@ -15,9 +15,9 @@ is controlled by the value of the ``mode`` parameter.
 
 Theano defines the following modes by name:
 
-- ``FAST_COMPILE``: Apply just a few optimizations, but use C op implementations where possible.
-- ``FAST_RUN``: Apply all optimizations, and use C op implementations where possible.
-- ``DEBUG_MODE``: Verify the correctness of all optimizations, and compare C and python 
+- ``'FAST_COMPILE'``: Apply just a few graph optimizations, but use C implementations where possible.
+- ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
+- ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and python 
     implementations. This mode can take much longer than the other modes, 
     but can identify many kinds of problems.
 
@@ -43,24 +43,24 @@ DEBUG_MODE        ``compile.debugmode.DebugMode()``                             
 Using DebugMode
 ===============
 
-
 While normally you should use the ``FAST_RUN`` or ``FAST_COMPILE`` mode, 
-it is useful at first to run your code using the DebugMode  
+it is useful at first (especially when you are defining new kinds of
+expressions or new optimizations) to run your code using the DebugMode  
 (available via ``mode='DEBUG_MODE'``). The DebugMode is designed to 
 do several self-checks and assertations that can help to diagnose 
 possible programming errors that can lead to incorect output. Note that 
 ``DEBUG_MODE`` is much slower then ``FAST_RUN`` or ``FAST_COMPILE`` so 
-use it only during development, not when you luch 1000 process on a 
-cluster.
+use it only during development (not when you luch 1000 process on a 
+cluster!).
 
 
 DebugMode is used as follows:
 
 .. code-block:: python
 
-    x = theano.dvector('x')
+    x = T.dvector('x')
 
-    f = theano.function(x, 10*x, mode='DEBUG_MODE')
+    f = theano.function([x], 10*x, mode='DEBUG_MODE')
 
     f(5) 
     f(0) 
@@ -68,7 +68,7 @@ DebugMode is used as follows:
 
 
 If any problem is detected, DebugMode will raise an exception according to
-what went wrong, either at call time (e.g. ``f(5)``) or compile time (e.g
+what went wrong, either at call time (``f(5)``) or compile time (
 ``f = theano.function(x, 10*x, mode='DEBUG_MODE')``). These exceptions
 should *not* be ignored; talk to your local Theano guru or email the
 users list if you cannot make the exception go away.
@@ -77,13 +77,11 @@ Some kinds of errors can only be detected for certain input value combinations.
 In the example above, there is no way to guarantee that a future call to say,
 ``f(-1)`` won't cause a problem.  DebugMode is not a silver bullet.
 
-If you instantiate DebugMode using the constructor ``compile.DebugMode``
+If you instantiate DebugMode using the constructor (see :class:`DebugMode`)
 rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
 constructor arguments.  See :ref:`DebugMode <debugMode>` for details.
-
 The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
-is quite strict, and can raise several different Exception types. For a
-list of possible exeption go here.
+is quite strict.
 
 
 .. _using_profilemode:

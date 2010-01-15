@@ -23,7 +23,7 @@ Theano provides a 'Print' Op to do this.
 
     x = theano.tensor.dvector('x')
 
-    x_printed = theano.Print('this is a very important value')(x)
+    x_printed = theano.printing.Print('this is a very important value')(x)
 
     f = theano.function([x], x * 5)
     f_with_print = theano.function([x], x_printed * 5)
@@ -75,15 +75,25 @@ Check out this one:
             super(PrintEverythingMode, self).__init__(wrap_linker, optimizer='fast_run')
 
 When you use ``mode=PrintEverythingMode()`` as the mode for Function or Method,
-then you should see a lot of output.  Every Apply node will be printed out,
+then you should see [potentially a lot of] output.  Every Apply node will be printed out,
 along with its position in the graph, the arguments to the ``perform`` or
-``c_code`` and the output it computed.  Admittedly, this is a huge amount of
+``c_code`` and the output it computed.  
+
+>>> x = T.dscalar('x')
+>>> f = function([x], [5*x], mode=PrintEverythingMode())
+>>> f(3)
+>>> # print: 0 Elemwise{mul,no_inplace}(5, x) [array(5, dtype=int8), array(3.0)] [array(15.0)]
+>>> # print: [array(15.0)]
+
+Admittedly, this may be a huge amount of
 output to read through if you are using big tensors... but you can choose to
 put logic inside of the print_eval function  that would, for example, only
 print something out if a certain kind of Op was used, at a certain program
 position, or if a particular value shows up in one of the inputs or outputs.
+Use your imagination :)
 
 .. TODO: documentation for link.WrapLinkerMany
 
-This can be a really powerful debugging tool.  Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
+This can be a really powerful debugging tool.
+Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
 
