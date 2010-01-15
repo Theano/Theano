@@ -27,5 +27,4 @@ installation (see :ref:`install`).
     modes
     remarks
     debug_faq
-    tools
 

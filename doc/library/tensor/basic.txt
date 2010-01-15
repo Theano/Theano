@@ -18,6 +18,9 @@ TensorType
 Creation
 ========
 
+A tensor variable can be created 
+
+
 Autocasting
 -----------
 
@@ -26,7 +29,6 @@ TODO: What does (or compatible) mean?  Talk about casting rules, refer .
 
 .. function:: as_tensor_variable(x, ...)
 
-    TODO: Link to 'autocasting'
 
 
 .. function:: lvector(name=None)
@@ -140,14 +142,6 @@ See also:
 Linear Algebra
 ==============
 
-
-
-Fourier Transforms
-==================
-
-[James has some code for this, but hasn't gotten it into the source tree yet.]
-=
-=======
 .. function:: dot(X, Y)
 
     :param X: left term
@@ -180,6 +174,13 @@ Fourier Transforms
     :type axes: see numpy.tensordot
 
     :return: tensor product
+
+
+
+Fourier Transforms
+==================
+
+[James has some code for this, but hasn't gotten it into the source tree yet.]
 
 Gradient / Differentiation
 ==========================

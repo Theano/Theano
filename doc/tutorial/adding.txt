@@ -85,6 +85,7 @@ By calling ``T.dscalar`` with a string argument, you create a
 given name. If you provide no argument, the symbol will be unnamed. Names
 are not required, but they can help debugging.
 
+
 -------------------------------------------
 
 **Step 2**
@@ -150,14 +151,15 @@ by :ref:`broadcasting <libdoc_tensor_broadcastable>`.
 
 The following types are available:
 
-* **byte**: bscalar, bvector, bmatrix
-* **32-bit integers**: iscalar, ivector, imatrix
-* **64-bit integers**: lscalar, lvector, lmatrix
-* **float**: fscalar, fvector, fmatrix
-* **double**: dscalar, dvector, dmatrix
+* **byte**: bscalar, bvector, bmatrix, brow, bcol, btensor3, btensor4
+* **32-bit integers**: iscalar, ivector, imatrix, irow, icol, itensor3, itensor4
+* **64-bit integers**: lscalar, lvector, lmatrix, lrow, lcol, ltensor3, ltensor4
+* **float**: fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4
+* **double**: dscalar, dvector, dmatrix, drow, dcol, dtensor3, dtensor4
+* **complex**: cscalar, cvector, cmatrix, crow, ccol, ctensor3, ctensor4
 
 The previous list is not exhaustive. A guide to all types compatible
-with numpy arrays may be found :ref:`here <predefinedtypes>`.
+with numpy arrays may be found :ref:`here <libdoc_tensor_creation>`.
 
 .. note::
 
