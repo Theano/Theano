@@ -9,7 +9,17 @@ TensorType
 
 .. class:: TensorType
 
-   .. method:: quux()
+
+.. _libdoc_tensor_variable
+
+TensorVariable
+==============
+
+
+.. _libdoc_tensor_constant
+
+TensorConstant
+==============
 
 
 
@@ -155,20 +165,41 @@ bytes, we would do:
    my_cmatrix = theano.tensor.TensorType('complex64', [False, False])
 
 
+Shared Variable
+---------------
+
+Yet another way of creating a special type of Theano variable is by using
+:func:`shared` as in the example below:
+
+.. code-block:: python
+
+  x = shared(value, name)
+
+Shared takes two parameters, `value` and `name` and creates a Theano 
+variable with the name `name` and initial value `value`. The type of this
+variable is obtained from the type of the value `value`, so if value is a
+numpy float matrix the shared variable will be of type `fmatrix`. 
+
+Note that a shared variable is not like other Theano variables. For more
+details of how to use shared variables look :ref:`here <functionstateexample>` (or for more details
+:ref:`here <sharedvars>`). TODO : make the last link to a detailed
+description of shared variables.
+
+
 Autocasting
 -----------
 
-TODO: What does (or compatible) mean?  Talk about casting rules, refer .
+ Theano does autocasting of numpy ndarray or python floats/ints into 
+ Theano constants.
 
+TODO: What does (or compatible) mean?  Talk about casting rules, refer .
+TODO: link to floatX (?) 
 
 .. function:: as_tensor_variable(x, ...)
 
 
 
-.. function:: lvector(name=None)
 
-TODO: make a table of all [scalar, vector, matrix, tensor3, tensor4] vs. [b,
-w, i, l, f, d, c, z]
 
 
 Shaping and Shuffling

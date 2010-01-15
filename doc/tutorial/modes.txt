@@ -79,7 +79,7 @@ In the example above, there is no way to guarantee that a future call to say,
 
 If you instantiate DebugMode using the constructor ``compile.DebugMode``
 rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
-constructor arguments.  See :ref:`DebugMode <compile_debugMode>` for details.
+constructor arguments.  See :ref:`DebugMode <debugMode>` for details.
 
 The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
 is quite strict, and can raise several different Exception types. For a

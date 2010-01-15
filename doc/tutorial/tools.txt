@@ -48,15 +48,6 @@ d    double   floating point 64
 
 Dimensionality is one of:
 
-====== ====== ======================================================== ===========================================================
-code   shape  Rows :ref:`broadcastable <libdoc_tensor_broadcastable>`? Columns :ref:`broadcastable <libdoc_tensor_broadcastable>`?
-====== ====== ======================================================== ===========================================================
-scalar []     Yes                                                      Yes
-vector [n]    Yes                                                      N/A (vectors are used like row vectors)
-row    [1, n] Yes                                                      No
-col    [m, 1] No                                                       Yes
-matrix [m, n] No                                                       No
-====== ====== ======================================================== ============================================================
 
 So, if you want a row of 32-bit floats, it is available
 as :ref:`theano.tensor.frow <libdoc_tensor_type>`.
