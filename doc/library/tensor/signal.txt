@@ -1,0 +1,19 @@
+.. _libdoc_tensor_signal:
+
+======================================================
+:mod:`signal` -- Signal processing
+======================================================
+
+.. module:: signal
+   :platform: Unix, Windows
+   :synopsis: ops for signal processing
+.. moduleauthor:: LISA
+
+
+TODO: Give examples for how to use these things! They are pretty complicated.
+
+.. function:: conv2D(*todo)
+
+.. function:: downsample2D(*todo)
+
+.. function:: fft(*todo)
