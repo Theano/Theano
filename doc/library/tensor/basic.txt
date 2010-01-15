@@ -28,17 +28,18 @@ Where ``<dtype>`` is one of (note that this is not a complete list of
 possible ``<dtypes>``, it just covers thouse used by the predefined
 types):
 
-==== ========= ============== ================
-code type      domain         bits
-==== ========= ============== ================
-b    byte      signed integer 8
-w    word      signed integer 16
-i    integer   signed integer 32
-l    long      signed integer 64
-f    float     floating point 32
-d    double    floating point 64
-c    complex64 complex        64 (two float32) 
-==== ========= ============== ================
+==== ========== =============== =================
+code type       domain          bits
+==== ========== =============== =================
+b    byte       signed integer  8
+w    word       signed integer  16
+i    integer    signed integer  32
+l    long       signed integer  64
+f    float      floating point  32
+d    double     floating point  64
+c    complex64  complex         64 (two float32)
+z    complex128 complex         128 (two float64)
+==== ========== =============== =================
 
 ``<dimensionality>`` is one of:
 
@@ -109,11 +110,6 @@ float64     floating point   64
 complex64   complex          64 (two float32)
 complex128  complex          128 (two float64)
 =========== ================ =================
-
-.. note::
-
-  Not that some `dtypes` are less used then others (for example
-  **complex128**) and as such not are equally tested and supported.
 
 
 The broadcastable pattern indicates both the number of dimensions and
