@@ -10,7 +10,7 @@ Let's start an interactive session and import Theano.
 >>> from theano import *
 
 Many of symbols you will need to use are in the ``tensor`` subpackage
-of theano. Let's import that subpackage under a handy name. I like
+of Theano. Let's import that subpackage under a handy name. I like
 ``T`` (and many tutorials use this convention).
 
 >>> import theano.tensor as T

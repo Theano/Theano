@@ -15,11 +15,13 @@
 
     TODO
 
+
+.. _libdoc_compile_function:
+
 compile.function
 ================
 
-This page is about :api:`theano.function
-<theano.compile.function_module.function>`, the interface for compiling
+This page is about `theano.function`, the interface for compiling
 graphs into callable objects.
 
 The signature for this function is:
@@ -400,6 +402,11 @@ overridden by passing the keyword argument to ``theano.function``.
 
 For a finer level of control over which optimizations are applied, and whether
 C or python implementations are used, read :api:`compile.mode.Mode`.
+
+
+.. _compile_debugMode:
+
+DebugMode ??
 
 
 .. toctree::

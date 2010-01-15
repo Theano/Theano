@@ -110,9 +110,7 @@ put logic inside of the print_eval function  that would, for example, only
 print something out if a certain kind of Op was used, at a certain program
 position, or if a particular value shows up in one of the inputs or outputs.
 
-This can be a really powerful debugging tool.  Read about more things you can
-do with :api:`link.WrapLinkerMany`.
+.. TODO: documentation for link.WrapLinkerMany
 
-Note well the call to ``fn`` inside the call to ``print_eval``; without it,
-the graph wouldn't get computed at all!
+This can be a really powerful debugging tool.  Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
 

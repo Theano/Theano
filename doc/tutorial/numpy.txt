@@ -8,10 +8,9 @@ NumPy refresher
 
 Here are some quick guides to NumPy:
   * `Numpy quick guide for Matlab users <http://www.scipy.org/NumPy_for_Matlab_Users>`__
-  * `More detailed table showing the NumPy equivalent of Matlab commands <http://www.scribd.com/doc/26685/Matlab-Python-and-R>`__
+  * `Numpy User Guide <http://docs.scipy.org/doc/numpy/user/index.html>`__
+  * `More detailed Numpy tutorial <http://www.scipy.org/Tentative_NumPy_Tutorial>`__
 
-    ..  TODO [DefineBroadcasting Broadcasting]
-    .. Broadcastable - Implicitly assume that all previous entries are true.
     .. [TODO: More doc, e.g. see _test_tensor.py]
 
 
@@ -20,8 +19,10 @@ Matrix conventions for machine learning
 
 
 Rows are horizontal and columns are vertical.
-Every row is an example. Therefore, inputs[10,5] is a matrix of 10 examples with 5 dimensions per.
-So to make a NN out of it, multiply by a weight matrix of size (5, #hid).
+Every row is an example. Therefore, inputs[10,5] is a matrix of 10 examples 
+where each example has dimension 5. If this would be the input of a
+neural network then the weights from the input the the first hidden
+layer would represent a matrix of size (5, #hid). 
 
 If I have an array:
 
@@ -43,3 +44,22 @@ To access the entry in the 3rd row (row #2) and the 1st column (column #0):
 To remember this, keep in mind that we read left-to-right, top-to-bottom,
 so each thing that is contiguous is a row.  That is, there are 3 rows
 and 2 columns.
+
+Broadcasting
+============
+
+Numpy does *broadcasting* of arrays of different shapes during
+arithmetic operations. What this means in general is that the smaller 
+array is *broadcasted* across the larger array so that they have
+compatible shapes. The example below shows an instance of
+*broadcastaing*:
+
+>>> a = numpy.asarray([1.0, 2.0, 3.0])
+>>> b = 2.0
+>>> a * b
+array([2., 4., 6.])
+
+The smaller array ``b`` in this case is *broadcasted* to the same size
+as ``a`` during the multiplication. This trick is often useful in
+simplifying how expression are written. More details about *broadcasting*
+can be found at `numpy user guide <http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`__.
