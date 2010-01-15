@@ -34,7 +34,6 @@ You can download the latest `PDF documentation <http://pylearn.org/theano/theano
 * :ref:`library reference <libdoc>`
 * :ref:`extending Theano <extending>` with new Types, and Ops
 * :ref:`internal docs <internal>`
-* :ref:`internal docs <internal>`
 
 .. toctree::
    :maxdepth: 1
