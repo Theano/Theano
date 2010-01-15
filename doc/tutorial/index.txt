@@ -24,8 +24,6 @@ installation (see :ref:`install`).
     adding
     examples
     loading_and_saving
-    debugmode
-    profilemode
     debug_faq
     tools
 
