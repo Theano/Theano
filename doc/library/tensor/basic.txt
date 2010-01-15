@@ -4,7 +4,6 @@
 
 .. _libdoc_tensor_type:
 
-
 TensorType
 ==========
 
@@ -15,7 +14,6 @@ TensorType
 
 
 .. _libdoc_tensor_creation:
-
 
 Creation
 ========
