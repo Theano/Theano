@@ -1,6 +1,7 @@
 """Provide xscalar, xvector, xmatrix, etc. pseudo-types 
 """
 import theano.config as config
+from theano.scalar import float64, float32
 from theano.tensor import (fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4, dscalar,
         dvector, dmatrix, drow, dcol, dtensor3, dtensor4)
 
