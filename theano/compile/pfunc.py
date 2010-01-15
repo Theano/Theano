@@ -33,7 +33,7 @@ class Param(object):
         self.strict = strict
         self.implicit = implicit
 
-def pfunc(params, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False):
+def pfunc(params, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False, name=None):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -54,6 +54,8 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[], accept_inplace
 
     :param givens: specific substitutions to make in the computation graph (Var2 replaces
     Var1).  
+
+    :param name: an optional name for this fct. If used, the profile mode will print the time spent in this fct.
 
     :rtype: theano.compile.Function
     :returns: a callable object that will compute the outputs (given the inputs)
@@ -205,7 +207,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[], accept_inplace
             in_sv.update = new_val
             in_sv.mutable = True 
 
-    return orig_function(inputs, cloned_outputs, mode, accept_inplace=accept_inplace)
+    return orig_function(inputs, cloned_outputs, mode, accept_inplace=accept_inplace,name=name)
 
 def _pfunc_param_to_in(param):
     if isinstance(param, Constant):

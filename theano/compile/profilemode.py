@@ -18,8 +18,8 @@ class ProfileMode(Mode):
         op_cimpl = {}
         op_call = {}
         compile_time = 0 #time passed in theano.function()
-        fct_call_time = 0#time passed inside theano fct call including op time.
-        fct_call = 0
+        fct_call_time = {}#time passed inside theano fct call including op time.
+        fct_call = {}
 
         self.__setstate__((linker, optimizer, local_time,
                            apply_time, apply_call,
@@ -160,8 +160,8 @@ class ProfileMode(Mode):
 
         local_time = self.local_time[0]-other.local_time[0]
         compile_time = self.compile_time-other.compile_time
-        fct_call_time = self.fct_call_time-other.fct_call_time
-        fct_call = self.fct_call-other.fct_call
+        fct_call_time = diff_dict(self.fct_call_time,other.fct_call_time)
+        fct_call = diff_dict(self.fct_call,other.fct_call)
         apply_time = diff_dict(self.apply_time, other.apply_time)
         apply_call = diff_dict(self.apply_call, other.apply_call)
         op_time = diff_dict(self.op_time, other.op_time)
@@ -262,15 +262,24 @@ class ProfileMode(Mode):
                   sum(t for f, t, a, ci, nb_call in sotimes[n_ops_to_print:]))
 
         print '(*) Op is running a c implementation'
-        print
+            
+
         total_time = time.time() - import_time
+        total_fct_time = sum(fct_call_time.values())
+        total_fct_call = sum(fct_call.values())
         other_time = total_time - local_time - compile_time
+        print
+        print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
+        for key in fct_call.keys():
+            print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
+                                                  fct_call_time[key]/fct_call[key], fct_call[key],key)
+        print
         print 'Time since import %.3fs'%(total_time)
         print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
-        print 'Theano fct call %.3fs %.1f%%'%(fct_call_time,fct_call_time/total_time*100)
-        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100,local_time/fct_call_time*100)
+        print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
+        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100,local_time/total_fct_time*100)
         print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
-        print '%i Theano fct call, %.3fs per call'%(fct_call, fct_call_time/fct_call)
+        print '%i Theano fct call, %.3fs per call'%(total_fct_call, total_fct_time/total_fct_call)
         
         if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
             cpu=[]

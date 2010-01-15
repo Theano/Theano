@@ -10,7 +10,7 @@ from function_module import orig_function
 from pfunc import pfunc
 from numpy import any #for to work in python 2.4
 
-def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False):
+def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False, name = None):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -32,6 +32,8 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
 
     :param givens: specific substitutions to make in the computation graph (Var2 replaces
     Var1).  
+
+    :param name: an optional name for this fct. If used, the profile mode will print the time spent in this fct.
 
     :rtype: theano.compile.Function
     :returns: a callable object that will compute the outputs (given the inputs)
@@ -56,11 +58,11 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
             raise NotImplementedError("In() instances and tuple inputs triggers the old semantics, which disallow using updates and givens")
         return orig_function(inputs, outputs, 
                 mode=mode,
-                accept_inplace=accept_inplace)
+                accept_inplace=accept_inplace, name=name)
     else:
         return pfunc(params=inputs, 
                 outputs=outputs,
                 mode=mode, 
                 updates=updates, 
                 givens=givens,
-                accept_inplace=accept_inplace)
+                accept_inplace=accept_inplace,name=name)
