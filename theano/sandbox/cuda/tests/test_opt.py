@@ -27,6 +27,6 @@ def test_no_shared_var_graph():
     f = theano.function([a,b],[a+b], mode=mode_with_gpu)
     l = f.maker.env.toposort()
     assert len(l)==4
-    assert any(isinstance(x.op,cuda.GpuElemwise) for x in l)
-    assert any(isinstance(x.op,cuda.GpuFromHost) for x in l)
-    assert any(isinstance(x.op,cuda.HostFromGpu) for x in l)
+    assert numpy.any(isinstance(x.op,cuda.GpuElemwise) for x in l)
+    assert numpy.any(isinstance(x.op,cuda.GpuFromHost) for x in l)
+    assert numpy.any(isinstance(x.op,cuda.HostFromGpu) for x in l)
