@@ -41,13 +41,13 @@ As a developer, you should clone this repository like this:
 
 .. code-block:: bash
 
-    hg clone 'http://username:password@pylearn.org/hg/Theano'
+    hg clone 'http://username:password@hg.assembla.com/theano Theano'
 
 You can also clone the code anonymously:
 
 .. code-block:: bash
 
-    hg clone http://pylearn.org/hg/Theano
+    hg clone http://hg.assembla.com/theano Theano
 
 Setting up your environment
 ===========================

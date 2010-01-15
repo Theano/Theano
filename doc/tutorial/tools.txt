@@ -28,7 +28,7 @@ Predefined types
 ----------------
 
 Predefined types are
-located in the :api:`theano.tensor` package. The name of the types follow
+located in the :ref:`theano.tensor <libdoc_tensor>` package. The name of the types follow
 a recipe:
 
 ``<dtype><dimensionality>``
@@ -48,26 +48,26 @@ d    double   floating point 64
 
 Dimensionality is one of:
 
-====== ====== ========================================== =============================================
-code   shape  Rows :term:`broadcastable <broadcasting>`? Columns :term:`broadcastable <broadcasting>`?
-====== ====== ========================================== =============================================
-scalar []     Yes                                        Yes
-vector [n]    Yes                                        N/A (vectors are used like row vectors)
-row    [1, n] Yes                                        No
-col    [m, 1] No                                         Yes
-matrix [m, n] No                                         No
-====== ====== ========================================== =============================================
+====== ====== ======================================================== ===========================================================
+code   shape  Rows :ref:`broadcastable <libdoc_tensor_broadcastable>`? Columns :ref:`broadcastable <libdoc_tensor_broadcastable>`?
+====== ====== ======================================================== ===========================================================
+scalar []     Yes                                                      Yes
+vector [n]    Yes                                                      N/A (vectors are used like row vectors)
+row    [1, n] Yes                                                      No
+col    [m, 1] No                                                       Yes
+matrix [m, n] No                                                       No
+====== ====== ======================================================== ============================================================
 
 So, if you want a row of 32-bit floats, it is available
-as :api:`theano.tensor.frow <theano.tensor.basic.frow>`.
+as :ref:`theano.tensor.frow <libdoc_tensor_type>`.
 If you want a matrix of unsigned 32-bit integers it is available as
-:api:`theano.tensor.imatrix <theano.tensor.basic.imatrix>`.
+:ref:`theano.tensor.imatrix <libdoc_tensor_type>`.
 
 Each of the types described above can be constructed by two methods:
-a singular version (e.g., :api:`dmatrix <theano.tensor.basic.dmatrix>`)
-and a plural version (:api:`dmatrices <theano.tensor.dmatrices>`).
+a singular version (e.g., :ref:`dmatrix <libdoc_tensor_creation>`)
+and a plural version (:ref:`dmatrices <libdoc_tensor_creation>`).
 When called, the singular version takes a single
-argument which is the name of the :term:`Variable` we want to make and it
+argument which is the name of the *Variable* we want to make and it
 makes a single Variable of that type. The plural version can either take
 an integer or several strings. If an integer is provided, the method
 will return that many Variables and if strings are provided, it will
@@ -91,7 +91,7 @@ Custom tensor types
 
 If you wish to use a type of tensor which is not already available here
 (for example, a 3D tensor) you can build an appropriate type using
-:api:`theano.tensor.TensorType <theano.tensor.basic.TensorType>`.
+:ref:`theano.tensor.TensorType <libdoc_tensor_type>`.
 The first argument you pass is the `dtype` and the second is the
 `broadcastable pattern`.
 
@@ -116,10 +116,10 @@ complex128  complex          128 (two float64)
 
 .. note::
 
-   Even though :api:`theano.tensor` does not define any type
+   Even though :ref:`theano.tensor <libdoc_tensor>` does not define any type
    using ``complex`` dtypes (``complex64`` or ``complex128``),
    you can define them explicitly with
-   :api:`TensorType <theano.tensor.basic.TensorType>` (see example
+   :ref:`TensorType <libdoc_tensor_type>` (see example
    below). However, few operations are fully supported for complex
    types: as of version 0.1, only elementary operations (``+-*/``)
    have C implementations. Additionally, complex types have received
@@ -128,8 +128,7 @@ complex128  complex          128 (two float64)
 
 The broadcastable pattern indicates both the number of dimensions and
 whether a particular dimension must have length 1.
-Here is a table mapping the :term:`broadcastable
-<broadcasting>` pattern to what kind of tensor it encodes:
+Here is a table mapping the :ref:`broadcastable <libdoc_tensor_broadcastable>` pattern to what kind of tensor it encodes:
 
 ===================== =================================
 pattern               interpretation

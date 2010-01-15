@@ -7,7 +7,7 @@ Using DebugMode
 
 
 The DebugMode evaluation mode (available via ``mode='DEBUG_MODE'``,
-:api:`DebugMode`) includes a number of self-checks and assertions that
+see :ref:`this <function_mode>`) includes a number of self-checks and assertions that
 can help to diagnose several kinds of programmer errors that can lead
 to incorrect output.
 
@@ -41,7 +41,7 @@ In the example above, there is no way to guarantee that a future call to say,
 
 If you instantiate DebugMode using the constructor ``compile.DebugMode``
 rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
-constructor arguments.  See :api:`DebugMode` for details.
+constructor arguments.  See :ref:`DebugMode <compile_debugMode>` for details.
 
 The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
 is quite strict, and can raise several different Exception types.
@@ -56,7 +56,6 @@ This error is typically not raised directly.
 However, you can use ``except DebugModeError: ...`` to catch any of the more
 specific types of Exception.
 
-For detailed documentation see :api:`DebugModeError`.
 
 
 BadCLinkerOutput
@@ -66,7 +65,6 @@ This exception means that python (``perform``) and c (``c_code``) for an Op
 didn't compute the same thing like they were supposed to.
 The problem might be a bug in either ``perform`` or ``c_code`` (or both).
 
-For detailed documentation see :api:`BadCLinkerOutput`.
 
 
 BadOptimization
@@ -82,7 +80,6 @@ exception object will indicate which optimization was at fault.
 The exception object also contains information such as a snapshot of the
 before/after graph where the optimization introduced the error.
 
-For detailed documentation see :api:`BadOptimization`.
 
 
 BadDestroyMap
@@ -93,7 +90,6 @@ supposed to.  If either the ``perform`` or ``c_code`` implementation of an Op
 might modify any input, it has to advertise that fact via the ``destroy_map``
 attribute.
 
-For detailed documentation on the Exception, see :api:`BadDestroyMap`.
 
 For detailed documentation on the ``destroy_map`` attribute, see :ref:`inplace`.
 
@@ -105,7 +101,6 @@ This happens when an Op's perform() or c_code() creates an alias or alias-like
 dependency between an input and an output... and it didn't warn the
 optimization system via the ``view_map`` attribute.
 
-For detailed documentation on the Exception, see :api:`BadViewMap`.
 
 For detailed documentation on the ``view_map`` attribute, see :ref:`views`.
 
@@ -119,7 +114,6 @@ steps are ordered by ``id(object)`` somehow, such as via the default object
 hash function.  A Stochastic optimization invalidates the pattern of work
 whereby we debug in DEBUG_MODE and then run the full-size jobs in FAST_RUN.
 
-For detailed documentation see :api:`StochasticOrder`.
 
 
 
@@ -136,6 +130,5 @@ introduced into the computations.  It indicates which Op created the first
 NaN.  These floating-point values can be allowed by passing the
 ``check_isfinite=False`` argument to DebugMode. 
 
-For detailed documentation see :api:`InvalidValueError`.
 
 

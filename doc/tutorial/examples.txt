@@ -22,7 +22,7 @@ the logistic curve, which is given by:
     A plot of the logistic function, with x on the x-axis and s(x) on the
     y-axis.
 
-You want to compute the function :term:`elementwise` on matrices of
+You want to compute the function :ref:`elementwise <libdoc_tensor_elementwise>` on matrices of
 doubles, which means that you want to apply this function to each
 individual element of the matrix.
 
@@ -58,7 +58,7 @@ Computing more than one thing at the same time
 ==============================================
 
 Theano supports functions with multiple outputs. For example, we can
-compute the :term:`elementwise` difference, absolute difference, and
+compute the :ref:`elementwise <libdoc_tensor_elementwise>` difference, absolute difference, and
 squared difference between two matrices ``a`` and ``b`` at the same time:
 
 >>> a, b = T.dmatrices('a', 'b')
@@ -134,19 +134,17 @@ array([[ 0.25      ,  0.19661193],
 
 The resulting function computes the gradient of its first argument
 with respect to the second. In this way, Theano can be used for
-`automatic differentiation`_.
+`automatic differentiation <http://en.wikipedia.org/wiki/Automatic_differentiation>`_.
 
 .. note::
    
-   The second argument of ``T.grad`` can be a list, case in which it 
-   will 
-
-   The variable of ``T.grad`` has the same dimensions as the
-   second argument. This is exactly like the first derivative if the
-   first argument is a scalar or a tensor of size 1 but not if it is
-   larger. For more information on the semantics when the first
-   argument has a larger size and details about the implementation,
-   see :api:`tensor.grad`.
+   The second argument of ``T.grad`` can be a list, in which case the
+   output is also a list. The order in both list is important, element
+   *i* of the output list is the gradient of the first argument of
+   ``T.grad`` with respect to the *i*-th element of the list given as second argument.
+   The first arguement of ``T.grad`` has to be a scalar (a tensor
+   of size 1). For more information on the semantics of the arguments of 
+   ``T.grad`` and details about the implementation, see :ref:`this <libdoc_gradient>`.
 
 
 Setting a default value for an argument
@@ -294,8 +292,9 @@ the substitutions have to work in any order.
 Mode
 ====
 
-The ``mode`` parameter to :api:`theano.function` controls how the
-inputs-to-outputs graph is transformed into a callable object.
+The ``mode`` parameter to :ref:`theano.function <libdoc_compile_function>` 
+controls how the inputs-to-outputs graph is transformed into a callable 
+object.
 
 Theano defines the following modes by name:
 
@@ -307,15 +306,11 @@ Theano defines the following modes by name:
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the environment variable ``THEANO_DEFAULT_MODE``, which can in turn be
-overridden by setting :api:`theano.compile.mode.default_mode` directly,
+overridden by setting `theano.compile.mode.default_mode` directly,
 which can in turn be overridden by passing the keyword argument to
-:api:`theano.function`.
-
-For a finer level of control over which optimizations are applied, and
-whether C or python implementations are used, read
-:api:`compile.mode.Mode`.
+:ref:`theano.function <libdoc_compile_function>`.
 
 
 
-.. _automatic differentiation: http://en.wikipedia.org/wiki/Automatic_differentiation
+
 

@@ -48,7 +48,7 @@ and 2 columns.
 Broadcasting
 ============
 
-Numpy does :term:`broadcasting` of numpy arrays of different shapes during
+Numpy does *broadcasting* of arrays of different shapes during
 arithmetic operations. What this means in general is that the smaller 
 array is *broadcasted* across the larger array so that they have
 compatible shapes. The example below shows an instance of
@@ -60,6 +60,6 @@ compatible shapes. The example below shows an instance of
 array([2., 4., 6.])
 
 The smaller array ``b`` in this case is *broadcasted* to the same size
-as a during the multiplication. This trick is often useful in
+as ``a`` during the multiplication. This trick is often useful in
 simplifying how expression are written. More details about *broadcasting*
-can be found at `numpy user guide <http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`__ .
+can be found at `numpy user guide <http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`__.
