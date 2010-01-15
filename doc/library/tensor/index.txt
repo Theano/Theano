@@ -98,6 +98,8 @@ Broadcasting in Theano vs. Numpy
 Random Sampling
 ===============
 
+See :ref:`libdoc_tensor_shared_randomstreams`.
+
 Linear Algebra
 ==============
 
