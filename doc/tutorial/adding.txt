@@ -8,8 +8,8 @@ Baby steps - Adding two numbers together
 Adding two scalars
 ==================
 
-So, to get us started and get a feel of what we're working with, let's
-make a simple function: add two numbers together. Here is how you do
+So, to get us started with Theano and get a feel of what we're working with, 
+let's make a simple function: add two numbers together. Here is how you do
 it:
 
 >>> x = T.dscalar('x')
@@ -26,7 +26,7 @@ array(28.4)
 
 
 Let's break this down into several steps. The first step is to define
-two symbols, or Variables, representing the quantities that you want
+two symbols  representing the quantities that you want
 to add. Note that from now on, we will use the term :term:`Variable`
 to mean "symbol" (in other words, ``x``, ``y``, ``z`` are all Variable
 objects). The output of the function ``f`` is a ``numpy.ndarray``
@@ -36,7 +36,6 @@ If you are following along and typing into an interpreter, you may have
 noticed that there was a slight delay in executing the ``function``
 instruction. Behind the scenes, ``f`` was being compiled into C code.
 
-    .. TODO: help
 
 -------------------------------------------
 
@@ -64,8 +63,7 @@ TensorType(float64, scalar)
 >>> x.type == T.dscalar
 True
 
-You can learn more about the structures in Theano in
-the :ref:`advtutorial` and in :ref:`graphstructures`.
+You can learn more about the structures in Theano in :ref:`graphstructures`.
 
 By calling ``T.dscalar`` with a string argument, you create a
 :term:`Variable` representing a floating-point scalar quantity with the
