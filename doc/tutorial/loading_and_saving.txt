@@ -1,0 +1,32 @@
+
+.. tutorial_loadsave:
+==================
+Loading and Saving
+==================
+
+Many Theano objects can be serialized.  However, you will want to consider different mechanisms
+depending on the amount of time you anticipate between saving and reloading.  For short-term
+(such as temp files and network transfers) pickling is possible.  For longer-term (such as
+saving models from an experiment) you should not rely on pickled theano objects; we recommend
+loading and saving the underlying shared objects as you would in the course of any other python
+program.
+
+pickling -- Short-term serialization
+=====================================
+
+Pickling and unpickling of functions. Caveats... basically don't do this for long-term storage.
+
+***TODO***
+
+not-pickling -- Long-term serialization
+=======================================
+
+***TODO***
+
+Give a short example of how to add a __getstate__ and __setstate__ to a class.  Point out to
+use protocol=-1 for numpy ndarrays.
+
+Point to the python docs for further reading.
+
+
+

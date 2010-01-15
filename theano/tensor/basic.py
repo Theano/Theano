@@ -3285,6 +3285,8 @@ class TensorDot(Op):
         return "tensordot"
 tensordot = TensorDot
 
+#TODO: tensordot should be function as described in rst docs.
+
 class Outer(Op):
     """ Compute vector-vector outer product
     """

@@ -23,6 +23,7 @@ installation (see :ref:`install`).
     numpy
     adding
     examples
+    loading_and_saving
     debugmode
     profilemode
     debug_faq

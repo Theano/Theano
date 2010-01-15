@@ -7,7 +7,7 @@ evaluate mathematical expressions involving multi-dimensional
 arrays efficiently. Theano features:
 
 * **tight integration with numpy**
-* **near-transparent use of a GPU** to accelerate for intense calculations [COMING].
+* **near-transparent use of a GPU** to accelerate for intense calculations [JAN 2010].
 * **symbolic differentiation**
 * **speed and stability optimizations**: write ``log(1+exp(x))`` and get the right answer.
 * **dynamic C code generation** for faster expression evaluation

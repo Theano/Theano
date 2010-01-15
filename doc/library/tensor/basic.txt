@@ -149,3 +149,63 @@ Fourier Transforms
 
 [James has some code for this, but hasn't gotten it into the source tree yet.]
 =
+=======
+.. function:: dot(X, Y)
+
+    :param X: left term
+    :param Y: right term
+    :type X: symbolic matrix or vector
+    :type Y: symbolic matrix or vector
+    :rtype: symbolic matrix or vector
+    :return: the inner product of `X` and `Y`.
+
+.. function:: outer(X, Y)
+
+    :param X: left term
+    :param Y: right term
+    :type X: symbolic vector
+    :type Y: symbolic vector
+    :rtype: symbolic matrix 
+
+    :return: vector-vector outer product
+
+.. function:: tensordot(X, Y, axes=2)
+
+    This is a symbolic standing for ``numpy.tensordot``.
+
+    :param X: left term
+    :param Y: right term
+    :param axes: sum out these axes from X and Y.
+    :type X: symbolic tensor
+    :type Y: symbolic tensor
+    :rtype: symbolic tensor 
+    :type axes: see numpy.tensordot
+
+    :return: tensor product
+
+Gradient / Differentiation
+==========================
+
+.. function:: grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False)
+
+    Return symbolic gradients for one or more variables with respect to some
+    cost.
+    
+    :type cost: 0-d tensor variable
+    :type wrt: tensor variable or list of tensor variables
+    :type g_cost: same as `cost`
+    :type consider_constant: list of variables
+    :type warn_type: bool
+
+    :param cost: a scalar with respect to which we are differentiating
+    :param wrt: term[s] for which we want gradients
+    :param g_cost: the gradient on the cost
+    :param consider_constant: variables whose gradients will be held at 0.
+    :param warn_type: True will trigger warnings via the logging module when
+       the gradient on an expression has a different type than the original
+       expression
+
+    :rtype: variable or list of variables (matching `wrt`)
+    :returns: gradients with respect to cost for each of the `wrt` terms 
+
+
