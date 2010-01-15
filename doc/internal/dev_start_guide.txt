@@ -6,10 +6,10 @@ Developer Start Guide
 =====================
 
 
-- Learn some `non-basic python`_ to understand what's going on in some of the
+- Learn some non-basic python to understand what's going on in some of the
   tricker files (like tensor.py).
 
-- BasicNumpy_ essential things to know about numpy.
+- Roughly go through the numpy documentation.
 
 - Learn to write reStructuredText_ for epydoc_.
 
@@ -134,6 +134,7 @@ so there might be some latency in the process.
 For more detail :ref:`see <metadocumentation_nightly_build>`.
 
 
+.. TODO: fix this links
 
 .. _non-basic python: http://pylearn.org/theano/wiki/NonbasicPython
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html

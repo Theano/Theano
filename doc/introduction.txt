@@ -125,18 +125,16 @@ Getting started
 :ref:`install`
   Instructions to download and install Theano on your system.
 
-:ref:`basictutorial`
-  Getting started with Theano's basic features. Go there if you are
+:ref:`tutorial`
+  Getting started with Theano's basic features. Go here if you are
   new!
 
-:ref:`advtutorial`
-  This tutorial is for more advanced users who want to define their
-  own operations and optimizations. It is recommended to go through
-  the :ref:`basictutorial` first.
+:ref:`libdoc`
+  The library documentation can be found here. It is recommended to go through
+  the :ref:`tutorial` first.
 
-For a complete map of the documentation you may check the
-:ref:`contents`. Also, a PDF version of the online documentation may
-be found `here <theano.pdf>`_.
+
+A PDF version of the online documentation may be found `here <theano.pdf>`_.
 
 
 Contact us

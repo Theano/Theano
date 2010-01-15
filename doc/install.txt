@@ -109,7 +109,7 @@ automatic code generation, but that way is much, much slower.
 - ``THEANO_DEFAULT_MODE``:
     String value specifying the default mode to use when compiling Theano
     graphs. This can be one of the strings defined in
-    :api:`theano.compile.mode`.
+    :ref:`using_modes`.
     Possible values so far are:
 
     - ``'FAST_COMPILE'``
