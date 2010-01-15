@@ -1,0 +1,275 @@
+.. _libdoc_tensor_shared_randomstreams:
+
+======================================================
+:mod:`shared_randomstreams` -- Friendly random numbers
+======================================================
+
+.. module:: shared_randomstreams
+   :platform: Unix, Windows
+   :synopsis: symbolic random variables
+.. moduleauthor:: LISA
+
+Guide
+=====
+
+Since Theano uses a functional design, producing pseudo-random numbers in a
+graph is not quite as straightforward as it is in numpy. If you are using Theano's
+shared variables, then a `RandomStreams` object is probably what you want.  (If you are
+using Module then this tutorial will be useful but not exactly what you want.  
+Have a look at the :api:`RandomFunction` Op.)
+
+The way to think about putting randomness into theano's computations is to
+put random variables in your graph.  Theano will allocate a numpy RandomState
+object for each such variable, and draw from it as necessary.  I'll call this sort of sequence of
+random numbers a *random stream*.
+
+Brief example
+-------------
+
+Here's a brief example.  The setup code is:
+
+.. code-block:: python
+
+    from theano.tensor.shared_randomstreams import RandomStreams
+    srng = RandomStreams(seed=234)
+    rv_u = srng.uniform((2,2))
+    rv_n = srng.normal((2,2))
+    f = function([], rv_u, updates=[rv_u.update])
+    g = function([], rv_n)                              #omitting rv_n.update
+    nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
+
+Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
+distribution.  Likewise,  'rv_n' represenents a random stream of 2x2 matrices of
+draws from a normal distribution.  The distributions that are implemented are
+defined in :class:`RandomStreams`.
+
+Now let's use these things.  If we call f(), we get random uniform numbers.
+Since we are updating the internal state of the random number generator (via
+the ``updates`` argument, we get different random numbers every time.
+
+>>> f_val0 = f()
+>>> f_val1 = f()  #different numbers from f_val0
+
+When we omit the updates argument (as in ``g``) to ``function``, then the
+random number generator state is not affected by calling the returned function.  So for example, 
+calling ``g`` multiple times will return the same numbers.
+
+>>> g_val0 = g()  # different numbers from f_val0 and f_val1
+>>> g_val0 = g()  # same numbers as g_val0 !!!
+
+An important remark is that a random variable is drawn at most once during any
+single function execution.  So the ``nearly_zeros`` function is guaranteed to
+return approximately 0 (except for rounding error) even though the ``rv_u``
+random variable appears three times in the output expression.
+
+>>> nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
+
+Seedings Streams
+----------------
+
+Random variables can be seeded individually or collectively.
+
+You can seed just one random variable by seeding or assigning to the
+``.rng.value`` attribute.
+
+>>> rv_u.rng.value.seed(89234)  # seeds the generator for rv_u
+
+You can also seed *all* of the random variables allocated by a :class:`RandomStreams`
+object by that object's ``seed`` method.  This seed will be used to seed a
+temporary random number generator, that will in turn generate seeds for each
+of the random variables.
+
+>>> srng.seed(902340)  # seeds rv_u and rv_n with different seeds each
+
+Sharing Streams between Functions
+---------------------------------
+
+As usual for shared variables, the random number generators used for random
+variables are common between functions.  So our ``nearly_zeros`` function will
+update the state of the generators used in function ``f`` above.
+
+For example:
+
+>>> state_after_v0 = rv_u.rng.value.get_state()
+>>> nearly_zeros()       # this affects rv_u's generator
+>>> v1 = f()             
+>>> rv_u.rng.value.set_state(state_after_v0)
+>>> v2 = f()             # v2 != v1
+
+
+
+Reference
+=========
+
+.. class:: RandomStreams(object)
+
+    This is a symbolic stand-in for ``numpy.random.RandomState``. It has
+    methods such as `uniform` and `normal` that return symbolic random variables.
+
+    .. method:: updates()
+
+        :returns: a list of all the (state, new_state) update pairs from the
+        random variables it has returned.  This can be a convenient shortcut
+        to enumerating all the random variables in a large graph in the
+        ``update`` paramter of function.
+
+    .. method:: seed(meta_seed)
+
+        `meta_seed` will be used to seed a temporary random number generator,
+        that will in turn generate seeds for each of the random variables that
+        has been created by this object.
+
+        :returns: None
+
+    .. method:: binomial(self, size, n=1, p=0.5)
+
+        Symbolic stand-in for numpy.random.RandomState.binomial
+
+        :returns: :class:`RandomVariable` of float64 that will have `shape==size` at run-time.
+
+    .. method:: uniform(self, size, low=0.0, high=1.0)
+
+        Symbolic stand-in for numpy.random.RandomState.uniform
+
+        :returns: :class:`RandomVariable` of float64 that will have `shape==size` at run-time.
+
+    .. method:: normal(self, size, loc=0.0, std=1.0)
+
+        Symbolic stand-in for numpy.random.RandomState.normal
+
+        :returns: :class:`RandomVariable` of float64 that will have `shape==size` at run-time.
+
+    .. method:: random_integers(self, size, low=0, high=1)
+
+        Symbolic stand-in for numpy.random.RandomState.random_integers
+
+        :returns: :class:`RandomVariable` of int64 that will have `shape==size` at run-time.
+
+
+.. class:: RandomVariable(object)
+
+    .. attribute:: rng
+
+        The shared variable whose ``.value`` is the numpy RandomState
+        generator feeding this random variable.
+
+    .. attribute:: update
+        
+        A pair
+        whose first element is a shared variable whose value is a numpy RandomState,
+        and whose second element is an [symbolic] expression for the next value of that
+        RandomState after drawing samples.
+        Including this pair in the``updates`` list to function will cause the
+        function to update the random number generator feeding this variable.
+
+.. _libdoc_tensor_raw_random:
+
+=============================================
+:mod:`raw_random` -- Low-level random numbers
+=============================================
+
+.. module:: raw_random
+   :platform: Unix, Windows
+   :synopsis: symbolic random variables
+.. moduleauthor:: LISA
+
+
+Raw random provides the random-number drawing functionality, that underlies
+the :class:`RandomStreams` interface.
+
+Reference
+=========
+
+.. class:: RandomStateType(gof.Type)
+
+    A `Type` for variables that will take ``numpy.random.RandomState`` values.
+
+.. class:: RandomFunction(gof.Op)
+
+    Op that draws random numbers from a numpy.RandomState object.  This Op is
+    parametrized to draw numbers from many distributions.
+
+
+.. function:: random_function(fn, dtype, *rfargs, **rfkwargs)
+
+    Returns a wrapper around RandomFunction which automatically infers the number
+    of dimensions of the output from the given shape. If the shape cannot be inferred,
+    the user can give an integer as first argument, which will be interpreted as the
+    number of dimensions.
+
+    If the distribution is not scalar (e.g., a multinomial), the output will have
+    more dimensions than what the shape argument suggests. The "ndim_added" keyword
+    arguments allows to specify how many dimensions to add (for a multinomial, 1).
+
+    The number of dimensions for the following shape arguments can be inferred:
+
+    * shape(x)
+    * make_lvector(x, y, z, ...)
+    * ndarrays,  constants
+
+.. function:: uniform(random_state, size, low=0.0, high=1.0)
+
+    Sample from a uniform distribution between low and high.
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: binomial(random_state, size, n=1, p=0.5)
+
+    Sample n times with probability of success prob for each trial,
+    return the number of successes.
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: normal(random_state, size, avg=0.0, std=1.0)
+
+    Sample from a normal distribution centered on avg with
+    the specified standard deviation (std)
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: random_integers(random_state, size, low=0, high=1)
+
+    Sample a random integer between low and high, both inclusive.
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: permutation(random_state, size, n=1)
+
+    Returns permutations of the integers between 0 and n-1, as many times
+    as required by size. For instance, if size=(p,q), p*q permutations
+    will be generated, and the output shape will be (p,q,n), because each
+    permutation is of size n.
+
+    If the size argument is ambiguous on the number of dimensions, the first
+    argument may be a plain integer i, which should correspond to len(size).
+    Note that the output will then be of dimension i+1.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: multinomial(random_state, size, p_vals=[0.5, 0.5])
+
+    Sample from a multinomial distribution defined by probabilities pvals,
+    as many times as required by size. For instance, if size=(p,q), p*q
+    samples will be drawn, and the output shape will be (p,q,len(pvals)).
+
+    If the size argument is ambiguous on the number of dimensions, the first
+    argument may be a plain integer i, which should correspond to len(size).
+    Note that the output will then be of dimension i+1.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+

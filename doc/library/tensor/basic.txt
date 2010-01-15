@@ -1,0 +1,92 @@
+
+.. currentmodule:: tensor
+
+TensorType
+==========
+
+.. class:: TensorType
+
+   .. method:: quux()
+
+
+Creation
+========
+
+Autocasting
+-----------
+
+TODO: What does (or compatible) mean?  Talk about casting rules, refer .
+
+
+.. function:: as_tensor_variable(x, ...)
+
+    TODO: Link to 'autocasting'
+
+
+.. function:: lvector(name=None)
+
+TODO: make a table of all [scalar, vector, matrix, tensor3, tensor4] vs. [b,
+w, i, l, f, d, c, z]
+
+
+Shaping and Shuffling
+=====================
+
+.. function:: shape(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns the symbolic shape vector of `x`
+
+.. function:: reshape(x)
+
+.. function:: dimshuffle(x)
+
+
+Reductions 
+==========
+
+
+.. function:: max(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+.. function:: min(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+.. function:: sum(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+Indexing
+========
+
+Basic indexing.
+
+Advanced indexing.
+
+Elementwise
+===========
+
+Casting
+-------
+
+Logic Functions
+---------------
+
+Mathematical
+------------
+
+Broadcasting in Theano vs. Numpy
+--------------------------------
+
+Linear Algebra
+==============
+
