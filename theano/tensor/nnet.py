@@ -1044,7 +1044,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
         if z.owner and z.owner.op == tensor.fill:
             model, value = z.owner.inputs
 
-            if not (model is sm and numpy.all(value.data == 0)):
+            if not (model is sm and hasattr(value, 'data') and numpy.all(value.data == 0)):
                 return
             #else: OK
         else:
@@ -1054,7 +1054,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
         if incr.owner and incr.owner.op == tensor.true_div:
             num, denom = incr.owner.inputs
 
-            if not numpy.all(num.data == -1):
+            if not (hasattr(num, 'data') and numpy.all(num.data == -1)):
                 return
             #else: OK
 
@@ -1103,7 +1103,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                     else:
                         return
 
-                    if not numpy.all(value.data == 0):
+                    if not (hasattr(value, 'data') and numpy.all(value.data == 0)):
                         return
                     #else: OK
                 else:
@@ -1111,7 +1111,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             else:
                 return
 
-            # Check incr is (-1.) like log(softmax(x))[arange(len(y)), y]
+            # Check incr is ((-1.) like log(softmax(x))[arange(len(y)), y])
             if incr.owner and incr.owner.op == tensor.fill:
                 model, value = incr.owner.inputs
                 adv_subtensor = None
@@ -1158,7 +1158,6 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     else:
         return
-
 
     # Dimension check before substitution
     if labels.ndim == 1 and x_var.ndim == 2:
