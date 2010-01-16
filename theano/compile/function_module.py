@@ -423,6 +423,8 @@ class Function(object):
         return cpy
 
     def __call__(self, *args, **kwargs):
+        t0 = time.time()
+
         # Reinitialize each container's 'provided' counter
         for c in self.input_storage:
             c.provided = 0
@@ -478,6 +480,11 @@ class Function(object):
                 if isinstance(value, gof.Container):
                     value = value.storage[0]
                 self[i] = value
+        
+        dt_call=time.time()-t0
+        if hasattr(self.maker.mode,'fct_call_time'):
+          self.maker.mode.fct_call_time[self.name] += dt_call
+          self.maker.mode.fct_call[self.name] += 1
 
         if self.return_none:
             return None
@@ -830,7 +837,7 @@ def check_equal(x, y):
 def register_checker(checker):
     __checkers.insert(0, checker)
 
-def orig_function(inputs, outputs, mode=None, accept_inplace = False):
+def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -843,6 +850,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False):
     :param mode: a descriptive string or a Mode instance. (Default of None means to use
     `mode.default_mode` (See below for descriptive string list).
     
+    :param name: an optional name for this fct. If used, the profile mode will print the time spent in this fct.
+
     Currently, the library provides the following mode strings:
 
      - FAST_RUN (default) (optimize without too much time)
@@ -910,6 +919,13 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False):
     if hasattr(mode, 'compile_time'):
         mode.compile_time+=t2-t1
 
+    fn.name = name
+    
+    if hasattr(mode,'fct_call_time'):
+      mode.fct_call_time.setdefault(name,0)
+    if hasattr(mode,'fct_call'):
+      mode.fct_call.setdefault(name,0)
+      
     return fn
 
 

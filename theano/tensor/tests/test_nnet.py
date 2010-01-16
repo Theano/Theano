@@ -108,21 +108,6 @@ class T_prepend(unittest.TestCase):
         self.failUnless(my.shape == (3, 6))
         self.failUnless(numpy.all(my[:,0] == 5.0))
 
-class T_solve(unittest.TestCase):
-    def setUp(self):
-        self.rng = numpy.random.RandomState(utt.fetch_seed(666))
-
-    def test0(self):
-        A=self.rng.randn(5,5)
-        b=numpy.array(range(5),dtype=float)
-        x=numpy.linalg.solve(A,b)
-        Ax = numpy.dot(A,x)
-        are = T.numeric_grad.abs_rel_err(Ax, b)
-        self.failUnless(numpy.all(are < 1.0e-5), (are, Ax, b))
-        #print A,b
-        #print numpy.dot(A,x)
-
-
 class T_CrossentropyCategorical1Hot(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()

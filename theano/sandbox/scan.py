@@ -1,425 +1,585 @@
 """Provide Scan and related functions
 
 
-Scanning a function over sequential input(s) producing sequential output(s).
+ Scanning a function over sequential input(s) producing sequential output(s).
 
-Scanning is a general form of recurrence, which can be used for looping.
+ Scanning is a general form of recurrence, which can be used for looping.
 
-The idea is that you 'scan' a function along some input sequence, producing an output at each
-time-step that can be seen (but not modified) by the function at the next time-step.
-(Technically, the function can see the previous K time-steps.)
+ The idea is that you 'scan' a function along some input sequence, producing 
+ an output at each time-step that can be seen (but not modified) by the 
+ function at the next time-step. (Technically, the function can see the 
+ previous K  time-steps.)
 
-So for example, ``sum()`` could be computed by scanning the ``z+x_i`` function over a list,
-given an initial state of ``z=0``. 
+ So for example, ``sum()`` could be computed by scanning the ``z+x_i`` 
+ function over a list, given an initial state of ``z=0``. 
 
-Special cases:
+ Special cases:
 
-    - A ``reduce()`` operation can be performed by returning only the last output of a scan.
+    - A ``reduce()`` operation can be performed by returning only the last 
+      output of a scan.
     
-    - A ``map()`` operation can be performed by applying a function that ignores each previous
-      output.
+    - A ``map()`` operation can be performed by applying a function that 
+      ignores each previous output.
 
-Often a for loop can be expressed as a scan() operation, and scan is the closest that theano
-comes to looping.
+ Often a for loop can be expressed as a scan() operation, and scan is the 
+ closest that theano comes to looping.
 
-This module provides scanning functionality with the `Scan` Op.
+ This module provides scanning functionality with the `Scan` Op.
 
 """
 __docformat__ = 'restructedtext en'
 
-import traceback
 import numpy 
 import theano
-import theano.compile
 from theano.tensor import opt
 from theano import gof
 from theano.compile import optdb
 
-'''
- TODO : move out of sandbox !
-'''
+# Logging function for sending warning or info
+import logging
+_logger = logging.getLogger('theano.scan')
+def warning(*msg):
+    _logger.warning('WARNING theano.scan: '+' '.join(msg))
+def info(*msg):
+    _logger.info('INFO theano.scan: '+' '.join(msg))
 
-class Scan(theano.Op):
-    """Scan a function `fn` over several inputs producing several outputs 
 
-    This Op implements a generalization of scan in which `fn` may consult several previous
-    outputs from the past, from positions (taps) relative to the current time.   The number of
-    taps (T_j) to use for each output (y_j) must be provided when creating a Scan Op.
+# Hashing a list; list used by scan are list of numbers, therefore a list 
+# can be hashed by hashing all elements in the list
+def hash_list(list):
+    hash_value = 0
+    for v in list:
+        hash_value ^= v
+    return hash_value
 
-    Apply Inputs:
 
-        X sequence inputs x_1, x_2, ... x_X
+# Hashing a dictionary; the dictionary used by scan has as keys numbers and 
+# as values either numbers or list of numbers
+def hash_dict(dictionary):
+    hash_value = 0
+    for k,v in dictionary,iteritems():
+        # hash key
+        hash_value ^= k
+        if type(v) in (list,tuple):
+            hash_value ^= hash_list(v)
+        else:
+            hash_value ^= v
+    return hash_value
 
-        Y initial states (u_1, u_2, ... u_Y) for our outputs. Each must have appropriate length
-        (T_1, T_2, ..., T_Y).
 
-        W other inputs w_1, w_2, ... w_W
+def scan(fn, sequnces, non_sequences, seed_values, inplace_map={}, 
+         sequences_taps={}, outputs_taps = {},
+         len = theano.tensor.zero(), force_gradient = False, 
+         truncate_gradient = -1, go_backwards = False, mode = 'FAST_RUN'):
+    '''The function creates a more intuitive interface to the scan op.
 
-    Apply Outputs:
+    This function first creates a scan op object, and afterwards applies it 
+    to the input data. The scan operation iterates over X sequences producing
+    Y outputs. The function that is applied recursively may consult several 
+    previous outputs from the past as well as past values and future values 
+    of the input. You can see it as havin the inputs :
 
-        Y sequence outputs y_1, y_2, ... y_Y
+        X sequences inptus x_1, x_2, .. x_X
 
-    Each output y_j is computed one time-step at a time according to the formula:
+        Y seeds/initial values ( u_1, u_2, .. u_Y) for the outputs
+
+        W non sequences inputs w_1, w_2, .. w_W
+
+    Outputs :
+        
+        Y sequence outputs y_1, y_2, .. y_Y
+
+    Each otuput y_j computed one time step at a time according to the 
+    formula:
 
     .. code-block:: python
 
-        (y_1[t], y_2[t],.., y_Y[t]) = fn(
-            x_1[t], x_2[t], ... x_X[t],          # X current input values
-            y_1(t-1), y_1(t-2), .., y_1(t-T_1),  # T_1 previous outputs for y_1
-            y_2(t-1), y_2(t-2), ..., y_2(t-T_2), # T_2 previous outputs for y_2
-            ...,                                 # ...
-            y_Y(t-1), y_Y(t-2), ..., y_Y(t-T_Y), # T_Y previous outputs for y_Y
-            w_1, w_2,..., w_W)                   # W 'timeless' inputs
+      (y_1[t], y_2[t], .. y_Y[t]) = f( 
+        x_1[t-K_1],.. x_1[t],x_1[t+1],.. x_1[t+L_1], # x_1 past and future 
+                                                     #values
+        x_2[t-K-2],.. x_2[t],x_2[t+1],.. x_2[t+L_2], # x_2 past and future 
+                                                     # values
+        ...                                          # ...
+        y_1[t-1], y_1[t-2], .. y[t - T_1],           # past values of y_1
+        y_2[t-1], y_2[t-2], .. y[t - T_2],,          # past values of y_2 
+        ...
+        w_1, w_2, .., w_W)                           # 'timeless' inputs 
 
-    So `fn` must accept X + T_1 + T_2 + ... + T_Y + W arguments.
-
-    There are two high-level methods (`symbolic`, `compiled`) for creating a Scan Op besides
-    the low-level `__init__` constructor.  ***Why would you call them?***
-
-    When applying a Scan Op to theano Variables, the order of arguments is very important! When
-    using the full flexibility of Scan there can be a lot of arguments, but it is essential to
-    put them in the following order: 
-
-     1. "Ignored inputs" (x_i with i < n_inplace_ignore) that will be overwritten by an inplace scan.
-
-     2. Inputs that will be overwritten by an inplace scan (x_i with i < n_inplace)
-
-     3. Remaining Inputs (x_i with i >= n_inplace)
-
-     3. Output states (u_j) corresponding to the outputs that are computed inplace (j <
-     n_inplace)
-
-     4. Remaining output states not given in 3 (u_j with j >= n_inplace)
-
-     5. Other inputs (w_1, w_2, ... w_W)
-
-
-    Inplace Operation
-    =================
-
-    The Scan Op supports computing some (`n_inplace`) of the outputs y_j using the memory from
-    corresponding inputs x_j.
-    It is not possible to indicate precisely which outputs overwrite which inputs, but without
-    loss of generality we assume that each of the first `n_inplace` outputs (y_j) overwrites
-    the corresponding input (x_j).
-
-    Note that using inplace computations destroys information, and may make it
-    impossible to compute the gradient.
-    As long as the function 'fn' does not update any of the other
-    parameters (w_1,..) a gradient of this operation is supported.
-    ***Who will care about this?  Someone just using the Op? Someone writing an inplace
-    optimization?*** 
-
-    Ignored Inputs
-    ==============
-
-    **** Behaviour?  Rationale?  Use case?
-
-    """
-    @classmethod
-    def symbolic(cls,(in_args,out_args), n_ins, n_outs,\
-                n_inplace=0, n_inplace_ignore=0, taps={},
-                mode = 'FAST_RUN'):
-        
-        # if in_args is not a list assume it is just a variable and 
-        # convert it to a list (if this is neither the case the code will 
-        # raise an error somewhere else !)
-        if not( type(in_args) in (list,tuple)):
-            in_args = [in_args]
-        # if out_args is not a list assume it is just a variable and 
-        # convert it to a list 
-        if not (type(out_args) in (list,tuple)):
-            out_args = [out_args]
- 
-        # Create fn 
-        my_fn   = theano.compile.sandbox.pfunc(in_args, out_args, mode = mode)
-
-        # Create gradient function 
-        gy_next  = [out_args[0].type()]
-        g_inputs = theano.tensor.grad(out_args[0],in_args,g_cost=gy_next[-1])
-        for y_next in out_args[1:] :
-            gy_next +=[y_next.type()]
-            g_ls = theano.tensor.grad(y_next,in_args,g_cost=gy_next[-1])
-            for i in xrange(len(in_args)):
-                g_inputs[i] += g_ls[i]
-        g_fn=theano.compile.sandbox.pfunc(gy_next+in_args,g_inputs,
-                             mode=mode)
 
     
-        return cls(my_fn, g_fn, n_ins, n_outs,\
-                   n_inplace,n_inplace_ignore, taps)
+    :param fn: fn is a lambda expression or a function that given a list of 
+    symbolic inputs returns the update list and symbolic outputs list of the 
+    function that shall be applied recursively. 
 
-    @classmethod
-    def compiled(cls,fn,n_ins, n_outs,\
-            n_inplace=0, n_inplace_ignore=0, taps={}):
-        """Return a Scan instance that will scan the callable `fn` over `n_ins` inputs and
-        `n_outs` outputs.
+    :param sequences:list of sequences over which the scan op should iterate;
+    sequnces length should also cover past and future taps; for example if 
+    you also use for a sequence the past tap -3 and future tap +4, to total 
+    length should be n+7, where first 3 values of sequence are those 
+    corresponding to -3 -2 -1 and the last 4 values correspond to n+1 n+2 
+    n+3 and n+4
 
+    :param non_sequences: list of inputs over which it shouldn't iterate 
 
-        """
-        return cls(fn, None, n_ins, n_outs, \
-                   n_inplace, n_inplace_ignore, taps= taps)
+    :param seed_values: seeds (initial values) of the outputs; if past taps 
+    are this seeds should contain enough values to cover this past values; 
+    note that index 0 of a seed belongs to the largest past tap 
+    
+    :param inplace_map: a dictionary telling which output should be 
+    computed in place of which input sequence ; input sequence has to be 
+    of the same shape as the output
 
+    :param sequence_taps: a dictionary telling for each sequence what past 
+    and future taps it should use; past values should be negative, future
+    taps positives; by default 0 is added in this dictionary (current value)
+    if nothing is provided
 
+    :param outputs_taps: a dictionary telling for each output what past 
+    taps it should use (negative values); by default -1 is added to this 
+    dictionary if nothing is provided
 
-    def __init__(self,fn,grad_fn,n_ins,n_outs,
-                 n_inplace=0, n_inplace_ignore=0,                 
-                 taps={}, inplace=False):
-        """Create an instance of the scan class
+    :param len: a value (or theano scalar) describing for how many steps 
+    the scan should iterate; 0 means that it should iterate over the entire
+    length of the input sequence(s)
 
-        To use Scan, first you need to create it specifying the number of inputs, outputs,
-        inplace outputs (see notes below), and inputs to be ignored, a dictionary describing
-        the time taps used, the function that will be applied recursively and optionally, the
-        gradient function (or a symbolic definition of the function and the op will compute the
-        gradient on its own). Secondly you just call the op with a list of parameters.
+    :param force_gradient: a flag telling scan op that the gradient can be 
+    computed even though inplace or updates are used - use this on your own
+    risk
 
-        :param fn: compiled function that takes you from time step t-1 to t
+    :param truncate_gradient: tells for how many steps should scan go 
+    back in time on the backward pass of backpropagation through time 
 
-        :param grad_fn: gradient of the function applied recursevly
- 
-        :param n_ins: number of inputs; in the list of arguments
-        they start from 0 to 'n_ins'
+    :param go_backwards: a flag indicating if scan should iterate back from 
+    the end of the sequence to the begining (if it is true) or from 0 to 
+    the end
 
-        :param n_outs: number of outputs; in the list of arguments you 
-        need to give the initial state of each outputs, this will be from 
-        'n_ins' to 'n_outs'; each initial state should be a matrix where 
-        the first dimension is time and should be sufficiently large to 
-        cover the time taps. The matrix for an initial state should be 
-        ordered such that if you use k delays, index 0 of matrix stands for 
-        the value at time -k, index 1 for value at time 1-k, index 2 for 
-        value at time 2-k and index k-1 for value at time -1
+    :param mode: indicates the mode that should be used to compile the
+    function that will be applied recursively
 
-        :param n_inplace: indicates the number of outputs that should be 
-        computed inplace; in the list of arguments there will be the first
-        'n_inplace' outputs in place of the first 'n_inplace' inputs
-
-        :param n_inplace_ignore: indicates the number of inputs that are 
-        given just to be replaced by the inplace computation and which
-        should not be given as arguments to the function applied 
-        recursevly
+    '''
 
 
-        :param taps: a dictionary which for each output index gives
-        a list of what taps it uses; a tap is given as an int, 
-        where x stands for output(t - x); note that a past trace of 1 makes
-        no sense, since you get that by default
+    # check if inputs are just single variables instead of lists     
+    if not (type(sequences) in (list, tuple)):
+        seqs = [sequences]
+    elif seqs = sequences
+        
+    if not type(seed_values) in (list,tuple)):
+        seeds = [seed_values]
+    elif 
+        seeds = seed_values
+        
+    if not (type(non_sequences) in (list,tuple)):
+        non_seqs = [non_sequences]
+    elif 
+        non_seqs = non_sequences
 
-        :param inplace: is used by the optimizer that allows the inplace 
-        computation
-        """
-        if n_ins < 1:
-            raise ValueError('Scan should iterate over at least on one input')
 
-        if n_outs <1:
-            raise ValueError('Scan should have at least one output')
-        if (n_inplace > n_ins):
-            raise ValueError('Number of inplace outputs should be smaller than '
-                     'the number of inputs.')
-        if (n_inplace < 0):
-            raise ValueError('Number of inplace outputs should be larger '
-                             'or equal to 0')
-        if (n_inplace_ignore > n_inplace):
-            raise ValueError('Number of inputs to ignore should not be '\
-                             'larger than number of inplace outputs')
-        if (n_inplace_ignore < 0):
-            raise ValueError('n_inplace_ignore should be non-negative')
+
+    # compute number of sequences and number of seeds    
+    n_seqs     = len(seqs)
+
+    # see if there are outputs that do not feed anything back to the function
+    # applied recursively
+    outs_tapkeys = outputs_taps.keys()
+    for k in outs_tapkeys.sort():
+        if outputs_taps[k] == []
+            # add empty lists where you have outputs that do not have past 
+            # values
+            seeds = seeds[:k] + [[]] + seeds[k:]
+
+    n_seeds   = len(seeds)
+
+
+    # update sequences_taps[idx] to contain 0 if it is not defined
+    for i in xrange(n_seqs):
+        if not sequences_taps.has_key(i):
+            sequences_taps.update({i:[0]})
+        # if input sequence is not actually used by the recursive function
+        elif sequences_taps[i] == []:
+            sequences_taps.__delitem__(i)
+        elif not (sequences_taps[i] in (list,tuple)):
+            sequences_taps[i] = [sequences_taps[i]]
+
+    # update outputs_taps[idx] to contain -1 if it is not defined
+    for i in xrange(n_seeds):
+        if not outputs_taps.has_key(i):
+            outputs_taps.update({i:-1})
+        # if output sequence is not actually used as input to the recursive 
+        # function
+        elif outputs_taps[i] == []:
+            outputs_taps.__delitem__(i)
+        elif not(outputs_taps[i] in (list,tuple)):
+            outputs_taps[i] = [outputs_taps[i]]
+
+
+    # create theano inputs for the recursive function  
+    args = []
+    for (i,seq) in enumerate(seqs):
+      if sequences_taps.has_key(i):
+        for k in len(sequences_taps[i]):
+            args += [seq[0].type() ]
+    for (i,seed) in enumerate(seeds):
+      if outputs_taps.has_key(i):
+        for k in len(outputs_taps[i]):
+            args += [seed[0].type() ]
+
+    args += non_seqs
+    next_outs, updates = fn(*args)
+
+    # Create the Scan op object
+    local_op = Scan( (args,next_outs, updates), n_seqs,n_seeds,inplace_map,
+            sequences_taps, outputs_taps, force_gradient, truncate_gradient,
+            go_backwards, mode)
+
+    # Call the object on the input sequences, seeds, and non sequences
+    return local_op( *(    [thenao.tensor.as_tensor(len)]  \
+                         + seqs \
+                         + seeds \
+                         + non_seqs))
+
+
+
+
+''' The class implementing the scan op 
+
+The actual class. I would not recommend using it directly unless you really 
+know what you are doing' 
+'''
+class Scan(theano.Op):
+    def __init__(self,(inputs, outputs, updates),n_seqs, n_seeds,
+                 inplace_map={}, seqs_taps={}, outs_taps={},
+                 force_gradient = False, truncate_gradient = -1,
+                 go_backwards = False, inplace=False):
+        '''
+        :param inputs: list of symbolic inputs of the function that will 
+        be applied recursively 
+
+        :param outputs: list of symbolic outputs for the function applied 
+        recursively
+
+        :param updates: list of updates for the function applied recursively
+
+        :param n_seqs: number of sequences in the input over which it needs
+        to iterate
+
+        :param n_seeds: number of outputs (same as the number of seeds) 
+
+        :param inplace_map: dictionary discribing which output should be 
+        computed inplace of which input 
+
+        :param seqs_taps: dictionary discribing which past and future taps
+        of the input sequences are used by the recursive function
+
+        :param outs_taps: dictionary discribing which past taps of the 
+        outputs the recursive function is using 
+
+        :param force_gradient: a flag indicating if the gradient is still 
+        computable even though inplace operation or updates are used
+
+        :param truncate_gradient: if different from -1 it tells after how 
+        many steps in the backward pass of BPTT 
+        '''
+        
+
+        # check inplace map
+        for _out,_in in inplace_map.iteritems():
+            if _out > n_seeds:
+                raise ValueError(('Inplace map reffers to an unexisting'\
+                          'output %d')% _out)
+            if _in > n_seqs:
+                raise ValueError(('Inplace map reffers to an unexisting'\
+                          'input sequence %d')%_in)
+            if (_in >= 0) and (min(seqs_taps[_in]) < 0):
+                raise ValueError(('Input sequence %d uses past values that '\
+                         'will be overwritten by inplace operation')%_in)
+
+
+        #check sequences past taps
+        for k,v in seqs_taps.map_iteritems():
+          if k > n_seqs:
+            raise ValueError(('Sequences past taps dictionary reffers to '
+                    'an unexisting sequence %d')%k)
+
+        #check outputs past taps
+        for k,v in outs_taps.map_iteritems():
+          if k > n_seeds:
+            raise ValueError(('Sequences past taps dictionary reffers to '
+                    'an unexisting sequence %d')%k)
+          if max(v) > -1:
+            raise ValueError(('Can not require future value %d of output'
+                    '%d')%(k,max(v)))
+
+
 
         self.destroy_map = {}
         if inplace:
-            for i in xrange(n_inplace):
-                self.destroy_map.update( {i:[i]} )
+            self.destroy_map = inplace_map
 
-        for (k,v) in taps.iteritems():
-            if k < 0 or k > n_outs:
-                raise ValueError('Taps dictionary contains wrong key!')
-            for vi in v:
-                # why is it illegal to specify  vi < 2?  
-                # what is special about vi == 1?
-                #
-                # Would it be simpler to just leave v alone if it is non-empty (checking that
-                # all vi are >=1) and set v = [1] for all missing output keys?
-              if vi < 2:
-                raise ValueError('Taps dictionary contains wrong values!')
+        self.seqs_taps      = seqs_taps
+        self.outs_taps      = outs_taps
+        self.n_seqs         = n_seqs
+        self.n_seeds        = n_seeds
+        self.n_args         = n_seqs+n_seeds+1
+        self.inplace_map    = inplace_map
+        self.inplace        = inplace
+        self.inputs         = inputs
+        self.outputs        = outputs
+        self.updates        = updates
+        self.force_gradient = force_gradient
+        self.truncate_gradient = truncate_gradient
+        self.go_backwards   = go_backwards
+    
 
-        self.taps   = taps
-        self.n_ins  = n_ins
-        self.n_outs = n_outs
-        self.n_inplace = n_inplace
-        self.inplace = inplace
-        self.n_inplace_ignore = n_inplace_ignore
-        self.fn = fn
-        self.grad_fn = grad_fn
+        self.fn = theano.function(inputs,outputs, \
+                                   updates = updates, mode = mode)
 
-    def make_node(self, *inputs):
-        """Create an node for the Scan operation
-
-        :param inputs: list of inputs for the operations; they should be 
-        at least 'self.n_ins'+'self.n_outs' arguments; first 'self.n_inplace'
-        are inputs that are replaced inplace, followed by oter inputs up 
-        to 'self.n_ins'; next 'self.n_outs' are ouputs followed by other 
-        arguments that will be given to the function applied recursevly
-        """
-
-        n_args = len(inputs)
-        min_n_args = self.n_ins+self.n_outs
-        if n_args < min_n_args:
-            err = 'There should be at least '+str(min_n_args)+ 'arguments'
-            raise ValueError(err)
-
-        # Create list of output datatypes
-        out_types = []
-        for i in xrange(self.n_ins,self.n_ins+self.n_outs):
-            out_types += [theano.tensor.Tensor(dtype=inputs[i].dtype,\
-                    broadcastable=(False,)+inputs[i].broadcastable[1:])()]
-        return theano.Apply(self,inputs, out_types)
+        g_y = [outputs[0].type()]
+        g_args = theano.tensor.grad(outputs[0],inputs, g_cost = g_y[-1])
+        # for all outputs compute gradients and then sum them up
+        for y in outputs[1:]:
+            g_y += [y.type()]
+            g_args_y = theano.tensor.grad(y,inputs, g_cost=g_y[-1])
+            for i in xrange(len(g_args)):
+                g_args[i] += g_args_y[i]
 
 
+        self.g_ins = g_y+inputs   
+        self.g_outs = g_args
+
+
+    def make_node(self,*inputs):
+      n_args = len(inputs)
+      if n_args < self.n_args :
+         err = 'There should be at least '+str(self.n_args)+ 'arguments'
+         raise ValueError(err)
+
+      # Create list of output datatypes
+      out_types = []
+      for i in xrange(self.n_seqs+1, self.n_seqs+self.n_seeds+1):
+         out_types += [theano.tensor.Tensor(dtype=inputs[i].dtype,\
+                 broadcastable=(False,)+inputs[i].broadcastable[1:])()]
+      return theano.Apply(self,inputs, out_types)
 
 
     def __eq__(self,other):
-        rval = type(self) == type(other)
-        if rval:
-            rval = (self.fn is other.fn) and \
-                   (self.grad_fn is other.grad_fn) and \
-                   (self.n_ins == other.n_ins) and \
-                   (self.n_outs == other.n_outs) and \
-                   (self.n_inplace == other.n_inplace) and \
-                   (self.n_inplace_ignore == other.n_inplace_ignore) and\
-                   (self.inplace == other.inplace) and\
-                   (self.taps == other.taps) 
-        return rval
+      rval = type(self) == type(other)
+      if rval:
+        rval = (self.inputs == other.inputs) and \
+               (self.outputs ==  other.outputs) and \
+               (self.updates == other.updates) and \
+               (self.g_ins == other.g_ins) and \
+               (self.g_outs == other.g_outs) and \
+               (self.seqs_taps == other.seqs_taps) and \
+               (self.outs_taps == other.outs_taps) and \
+               (self.inplace_map == other.inplace_map) and \
+               (self.n_seqs == other.n_seqs) and\
+               (self.inplace == other.inplace) and\
+               (self.go_backwards == other.go_backwards) and\
+               (self.truncate_gradient == other.truncate_gradient) and\
+               (self.force_gradient = other.force_gradient) and\
+               (self.n_seeds == other.n_seeds) and\
+               (self.n_args == other.n_args)
+      return rval
 
     def __hash__(self):
-        # hash the taps dictionary
-        taps_hash = 0
-        for k,v in self.taps.iteritems():
-            taps_hash ^= k
-            for vi in v : 
-                taps_hash ^= vi
-            
-        return hash(type(self)) ^ \
-               hash(self.fn) ^ \
-               hash(self.grad_fn) ^ \
-               hash(self.n_ins) ^ \
-               hash(self.n_outs) ^ \
-               hash(self.n_inplace) ^ \
-               hash(self.n_inplace_ignore) ^\
-               hash(self.inplace) ^\
-               taps_hash 
+      return hash(type(self)) ^ \
+             hash(self.n_seqs) ^ \
+             hash(self.n_seeds) ^ \
+             hash(self.force_gradient) ^\
+             hash(self.inplace) ^\
+             hash(self.go_backwards) ^\
+             hash(self.truncate_gradient) ^\
+             hash(self.n_args) ^ \
+             hash_list(self.outputs) ^ \
+             hash_list(self.inputs) ^ \
+             hash_list(g_ins) ^ \
+             hash_list(h_outs) ^ \
+             hash_dict(self.seqs_taps) ^\
+             hash_dict(self.outs_taps) ^\
+             hash_dict(self.inplace_map) ^\
+             hash_dict(self.updates)
 
 
-
-
-    def grad(self, inputs, g_outs):
-        
-        if self.grad_fn == None:
-            print 'Warning! no gradient for the recursive function was given'
-            return [None for i in inputs]
-        else:
-            y = self(*inputs)
-            if not( type(y) in (list,tuple)):
-                y = [y]
- 
-            for i in xrange(len(y)):
-                if g_outs[i] == None:
-                    g_outs[i] = theano.tensor.zeros_like(y[i])
-
-            # Construct my gradient class: 
-            gradScan = ScanGrad(self.grad_fn, 
-                            self.n_ins- self.n_inplace_ignore, self.n_outs,
-                            self.taps)
-
-             
-            args = g_outs + y + \
-                   inputs[self.n_inplace_ignore:]
-            
-            grads = gradScan(*args)
-            rval = [None for i in inputs[:self.n_inplace_ignore]]+grads
-            return rval
 
 
     def perform(self,node,args, outs):
 
-        # find number of timesteps, note that a precondition is to have 
-        # atleast one input to iterate over
-        n_steps = len(args[0])
+        n_steps = 0 
+        if (self.n_seqs ==0 ) and (args[0] == 0)
+            raise ValueError('Scan does not know over how many steps it '
+                'should iterate! No input sequence or number of steps to '
+                'iterate given !')
 
-        # check if we deal with a inplace operation 
-        n_inplace = self.n_inplace
-        n_inplace_ignore = self.n_inplace_ignore
+        if (args[0] != 0):
+            n_steps = args[0]
+        
+        for i in xrange(self.n_seqs):
+          if self.seqs_taps.has_key(i):
+              # compute actual length of the sequence ( we need to see what
+              # past taps this sequence has, and leave room for them 
+              seq_len = args[i+1].shape[0] + min(self.seqs_taps[i+1])
+              if self.seqs_taps[i+1][2] > 0: 
+                  # using future values, so need to end the sequence earlier
+                  seq_len -= self.seqs_taps[i+1][2]
+              if n_steps == 0 :
+                  # length of the sequences, leaving room for the largest
+                  n_steps = seq_len
+              if seq_len != n_steps : 
+                  warning(('Input sequence %d has a shorter length then the '
+                          'expected number of steps %d')%(i,n_steps))
+                  n_steps = min(seq_len,n_steps)
+
+
+
+        # check if we deal with an inplace operation 
+        inplace_map  = self.inplace_map
         if not self.inplace: #if it was not optimized to work inplace
-            n_inplace = 0
+            inplace_map = {}
 
  
-        # check lengths of inputs
-        for i in xrange(self.n_ins):
-            if args[i].shape[0] != n_steps:
-                raise ValueError('All inputs should have n_steps length!')
-
-        # check lengths of initial states
-        for i in xrange(self.n_ins, self.n_ins+self.n_outs):
-            req_size = 1
-            if self.taps.has_key(i- self.n_ins):
-                req_size = max(self.taps[i-self.n_ins])
-            if len(args[i].shape) == 0:
-              raise ValueError('Wrong initial state! ')
+        # check lengths of seeds
+        for i in xrange(self.n_seqs+1, \
+                        self.n_seqs+self.n_seeds+1):
+          if self.outs_taps.has_key(i-self.n_seqs-1):
+            req_size = abs(min(self.outs_taps[i-self.n_seqs-1]))-1
             if args[i].shape[0] < req_size:
-              raise ValueError('Wrong initial state! ')
-
-        # allocate space for the outputs 
-        y = []
-        # inplace outputs
-        for i in xrange(n_inplace):
-            y += [args[i]]
-        # add outputs 
-        for i in xrange(self.n_ins+n_inplace,self.n_ins+self.n_outs):
-            y_shape = (n_steps,)+args[i].shape[1:]
-            y += [numpy.empty(y_shape, dtype = args[i].dtype)]
-
-        # iterate
-        for i in xrange(n_steps):
-            fn_args = []
-            # get a time slice of inputs
-            for j in xrange(n_inplace_ignore, self.n_ins):
-                fn_args += [args[j][i]]
+              warning(('Initial state for output %d has fewer values then '
+                 'required by the maximal past value %d. Scan will use 0s'
+                 ' for missing values')%(i-self.n_iterable-1,req_size))
             
-            # get past values of outputs (t-1 + taps)
-            for j in xrange(self.n_outs):
-                # get list of taps
-                ls_taps = [1]
-                if self.taps.has_key(j):
-                    ls_taps += self.taps[j]
-                maxVal = max(ls_taps)
-                for tap_value in ls_taps:
-                    if i - tap_value < 0:
-                        fn_args += [args[j+self.n_ins][maxVal-tap_value+i]]
-                    else:
-                        fn_args += [y[j][i-tap_value]]
+        self.n_steps = n_steps
+        y = self.scan(self.fn, args[1:],self.n_seqs, self.n_seeds, 
+                 self.seqs_taps, self.outs_taps, n_steps, self.go_backwards, 
+                 inplace_map)
 
-            # get the none iterable parameters
-            fn_args += list(args[(self.n_ins+self.n_outs):])
-            # compute output
-            something = self.fn(*fn_args)
-            # update y and inplace outputs
-            for j in xrange(self.n_outs):
-                y[j][i] = something[j]
 
         # write to storage
-        for i in xrange(self.n_outs):
+        for i in xrange(self.n_seeds):
             outs[i][0]=y[i]
+
+
+
+    def scan(fn, args, n_seqs, n_seeds, seqs_taps, outs_taps,  n_steps, 
+             go_backwards, inplace_map):
+      y = []
+      for i in xrange(self.n_seeds):
+        if inplace_map.has_key(i) and (inplace_map[i] >= 0):
+          y += [args[inplace_map[i]]]
+        else:
+          y_shape = (n_steps,)+args[i+self.n_seqs].shape[1:]
+          y += [numpy.empty(y_shape,
+                            dtype=args[i+self.n_seqs].dtype)]
+      #iterate
+      if go_backwards:
+        the_range = xrange(n_steps-1,-1,-1)
+      else:
+        the_range = xrange(n_steps)
+
+      seqs_mins = {}
+      for j in xrange(self.n_seqs):
+        if seqs_taps.has_key(j):
+          seqs_mins.update({j:  min(seqs_taps[j])})
+
+      outs_mins = {}
+      seed_size = {}
+      for j in xrange(self.n_seeds):
+        if outs_taps.has_key(j):
+          outs_mins.update({j: min(outs_taps[j])})
+          seed_size.update({j: args[n_seqs+j].shape[0]})
+
+
+      for i in the_range:
+        fn_args = []
+
+        # sequences over which scan iterates
+        for j in xrange(self.n_seqs):
+          if seqs_taps.has_key(j):
+            ls_taps = seqs_taps[j]
+            min_tap = seqs_mins[j]
+            for tap_value in ls_taps:
+                k = i - min_tap + tap_value
+                fn_args += [args[j][k]]
+
+        # seeds or past values of outputs
+        for j in xrange(self.n_seeds):
+          if outs_taps.has_key(j):
+            ls_taps = outs_taps[j]
+            min_tap = outs_mins[j]
+            seed_sz = seed_size[j]
+            for tap_value in ls_taps:
+              if i + tap_value < 0:
+                k = i + seed_sz + tap_value
+                if k < 0
+                  # past value not provided.. issue a warning and use 0s
+                  fn_args += [numpy.zeros(args[j][0].shape)]
+                  warning('Past value %d for output %d not given in seeds' %
+                           (j,tap_value))
+                else:
+                  fn_args += [args[j][k]]
+              else:
+                fn_args += [y[j][i + tap_value]]
+
+        # get the non-iterable sequences
+        fn_args += list(args[(self.n_seqs+self.n_seedss):]
+        # compute output
+        something = fn(*fn_args)
+        #update outputs 
+        for j in xrange(self.n_seeds):
+          y[j][i] = something[j]
+      return y
+
+
+    def grad(self, args, g_outs):
+        if (not self.force_gradient) and \
+           ((self.updates.keys() != []) or (self.inplace_map.keys() != [])):
+            warning('Can not compute gradients if inplace or updates ' \
+                    'are used. Use force_gradient if you know for sure '\
+                    'that the gradient can be computed automatically.')
+            return [None for i in inputs]
+        else:
+            # forward pass 
+            y = self(*args)
+            if not( type(y) in (list,tuple)):
+                y = [y]
+ 
+
+            # backwards pass
+            for i in xrange(len(y)):
+               if g_outs[i] == None:
+                  g_outs[i] = theano.tensor.zeros_like(y[i])
+
+            g_args = [self.n_steps]+g_outs + y 
+            # check if go_backwards is true
+            if self.go_backwards:
+               for seq in args[1:self.n_seqs]:
+                 g_args += [seq[::-1]]
+            else:
+               g_args += args[1:self.n_seqs] 
+
+            g_args += args[1+self.n_seqs: ]
+
+
+            g_scan = ScanGrad((self.g_ins,self.g_outs), self.n_seqs, \
+                              self.n_seeds,self.seqs_taps, self.outs_taps,
+                              self.truncate_gradient)
+
+            return g_scan(g_args)
 
 
 
 @gof.local_optimizer([None])
 def scan_make_inplace(node):
     op = node.op
-    if isinstance(op, Scan) and (not op.inplace) and (op.n_inplace>0):
-        return Scan(op.fn, op.grad_fn, op.n_ins,\
-                    op.n_outs, op.n_inplace, op.n_inplace_ignore,\
-                    op.taps,inplace=True\
-                                       ).make_node(*node.inputs).outputs
+    if isinstance(op, Scan) and (not op.inplace) \
+                            and (op.inplace_map.keys() != []):
+        return Scan((op.inputs, op.outputs, op.updates), op.n_seqs,  \
+                    op.n_seeds, op.inplace_map, op.seqs_taps, op.outs_taps, \
+                    op.force_gradient, op.truncate_gradient, \
+                    op.go_backwards, inplace=True \
+                      ).make_node(*node.inputs).outputs
     return False
-
+        
+        
 optdb.register('scan_make_inplace', opt.in2out(scan_make_inplace,\
                ignore_newtrees=True), 75, 'fast_run', 'inplace')
 
@@ -428,144 +588,160 @@ optdb.register('scan_make_inplace', opt.in2out(scan_make_inplace,\
 
 class ScanGrad(theano.Op):
     """Gradient Op for Scan"""
-
-    def __init__(self, grad_fn, n_ins, n_outs, 
-                 taps = {},inplace=False):
-        self.grad_fn = grad_fn
-        self.n_ins = n_ins # number of inputs of Scan op not of Grad Scan !!
-        self.n_outs = n_outs # number of outs of Scan op not of Grad Scan !!
-        self.inplace = inplace
-        self.taps = taps
+    def __init__(self,(g_ins, g_outs) , n_seqs, n_outs, 
+                 seqs_taps = {}, outs_taps= {}, truncate_gradient = -1):
+        self.grad_fn = theano.function(g_ins, g_outs)
+        self.inputs = g_ins
+        self.outputs = g_outs
+        self.n_seqs = n_seqs
+        self.truncate_gradient = truncate_gradient
+        self.n_outs = n_outs
+        self.seqs_taps = seqs_taps
+        self.outs_taps = outs_taps
         self.destroy_map = {}
-        if self.inplace:
-          for i in xrange(self.n_outs):
-            # claiming that output "-i" is destroying inputs is the way to
-            # declare that no real output is aliased to any inputs.  We just
-            # trash the inputs by using them as workspace.
-            self.destroy_map.update( {-i:[i]})
 
 
     def __eq__(self,other): 
         rval = type(self) == type(other)
         if rval:
-           rval = (self.grad_fn is other.grad_fn) and \
-                  (self.n_ins == other.n_ins) and \
+           rval = (self.inputs == other.inputs) and \
+                  (self.outputs == other.outputs) and \
+                  (self.n_seqs == other.n_seqs) and \
                   (self.n_outs == other.n_outs) and \
-                  (self.inplace == other.inplace) and \
-                  (self.taps == other.taps)
+                  (self.truncate_gradient == other.truncate_gradient) and\
+                  (self.seqs_taps == other.seqs_taps) and \
+                  (self.outs_taps == other.outs_taps) 
         return rval
 
     def __hash__(self):
-        taps_hash = 0 
-        for k,v in self.taps.iteritems():
-            taps_hash ^= k
-            for vi in v :
-                taps_hash ^= vi
-
         return hash(type(self)) ^ \
-               hash(self.grad_fn) ^ \
-               hash(self.n_ins) ^ \
+               hash(self.n_seqs) ^ \
                hash(self.n_outs) ^ \
-               hash(self.inplace) ^ taps_hash
+               hash(self.truncate_gradient) ^\
+               hash_list(self.inputs) ^ \
+               hash_list(self.outputs) ^ \
+               hash_dict(self.seqs_taps) ^ \
+               hash_dict(self.outs_taps)
 
     def make_node(self, *args):
         # input of the gradient op : 
-        # | g_outs | y      | ins   | outs   | other_args |
-        # | n_outs | n_outs | n_ins | n_outs | unknown    |
+        # | g_outs | y      | seqs   | outs    | non_seqs   |
+        # | n_outs | n_outs | n_seqs | n_outs  | unknown    |
         # return 
-        # | grad of ins | grad of outs | grad of other_args|
-        # |   n_ins     |  n_outs      |  unknown          |
+        # | grad of seqs | grad of outs | grad of non_seqs  |
+        # |   n_seqs     |  n_outs      |  unknown          |
         return theano.Apply(self, list(args),
-                    [i.type() for i in args[self.n_outs+self.n_outs:] ])
+                    [i.type() for i in args[1+2*self.n_outs:] ])
 
     def perform(self, node, args, storage):
             # get scan inputs
-            inputs = args[self.n_outs+self.n_outs:]
-            ins = inputs[:self.n_ins]
-            initSt = inputs[self.n_ins:self.n_ins+self.n_outs]
-            otherArgs = inputs[self.n_outs+self.n_ins:]
+            n_steps = args[0]
+            inputs = args[2*self.n_outs+1:]
+            seqs = inputs[:self.n_seqs]
+            seeds = inputs[self.n_seqs:self.n_seqs+self.n_outs]
+            non_seqs = inputs[self.n_outs+self.n_seqs:]
             
             # generate space for gradient 
-            # not do if inplace !?
-            g_ins   = [numpy.zeros_like(k) for k in ins]
-            g_initSt = [numpy.zeros_like(k) for k in initSt]
-            g_otherArgs = [numpy.zeros_like(k) for k in otherArgs]
+            g_seqs     = [numpy.zeros_like(k) for k in seqs]
+            g_seeds    = [numpy.zeros_like(k) for k in seeds]
+            g_non_seqs = [numpy.zeros_like(k) for k in non_seqs]
             # get gradient from above
             g_outs = args[:self.n_outs]
-            # we modify g_outs inplace ..
-            if not self.inplace:
-                g_outs = [gout.copy() for gout in g_outs]
 
             # get the output of the scan operation
             outs = args[self.n_outs:2*self.n_outs]
 
-            # check for Nones (non - differentiable )
-            #for i,g_o in enumerate(g_outs):
-            #    if numpy.all(g_o == 0.):
-            #        g_outs[i] = numpy.zeros_like(outs[i])
 
-            # go back through time to 0 (use a time window !?)
-            for i in xrange(len(ins[0])-1,-1,-1):
+            # go back through time to 0 or n_steps - truncate_gradient
+            lower_limit = n_steps - self.truncate_gradient
+            if lower_limit > n_steps-1:
+                the_range = xrange(n_steps-1,-1,-1)
+            elif lower_limit < -1:
+                the_range = xrange(n_steps-1,-1,-1)
+            else:
+                the_range = xrange(n_steps-1, lower_limit,-1)
+
+
+
+            seqs_mins = {}
+            for j in xrange(self.n_seqs):
+              if self.seqs_taps.has_key(j):
+                seqs_mins.update({j: min(self.seqs_taps[j])})
+
+            outs_mins = {}
+            seed_size = {}
+            for j in xrange(self.n_outs):
+              if self.outs_taps.has_key(j):
+                outs_mins.update({j: min(self.outs_taps[j])})
+                seed_size.update({j: g_seeds[j]..shape[0]})
+
+            for i in the_range:
               # time slice of inputs
-              _ins = [arg[i] for arg in ins]
+              _ins = []
+              for j in xrange(self.n_seqs)
+                if self.seqs_taps.has_key(j):
+                  ls_taps = self.seqs_taps[j] 
+                  min_tap =      seqs_mins[j]
+                  for tap_value in ls_taps:
+                    k = i - min_tap + tap_value
+                    _ins += [ins[j][k]]
               # time slice of outputs + taps
               _outs = []
               for j in xrange(self.n_outs):
-                ls_taps = [1]
-                if self.taps.has_key(j):
-                    ls_taps += self.taps[j]
-                maxVal = max(ls_taps)
-                for tap_value in ls_taps:
-                    if i - tap_value < 0:
-                        _outs += [initSt[j][maxVal-tap_value+i]]
+                if self.outs_taps.has_key(j):
+                  ls_taps = self.outs_taps[j]
+                  min_tap =      outs_mins[j]
+                  seed_sz =      seed_size[j]
+                  for tap_value in ls_taps:
+                    if i + tap_value < 0:
+                      k = i + seed_sz  + tap_value
+                      if k < 0 :
+                        #past value not provided .. issue a warning and use 0
+                        _outs += [numpy.zeros(seeds[j][0].shape)]
+                        warning('Past value %d for output $d not given' \
+                              %(j,tap_value))
+                      else:
+                        _outs += [seeds[j][[k]]
                     else:
-                        _outs += [outs[j][i- tap_value]]
+                      _outs += [outs[j][i + tap_value]]
 
               g_out = [arg[i] for arg in g_outs]
-              grad_args = g_out + _ins + _outs + otherArgs
+              grad_args = g_out + _ins + _outs + non_seqs
               grads=self.grad_fn(*grad_args)
  
               # get gradient for inputs 
-              for j in xrange(self.n_ins):
-                g_ins[j][i] = grads[j]
-              
+              pos = 0
+              for j in xrange(self.n_seqs):
+                if self.seqs_taps.has_key(j):
+                  ls_taps = self.seqs_taps[j]
+                  min_tap =      seqs_mins[j]
+                  for tap_value in ls_taps :
+                    k = i - min_tap + tap_value
+                    g_ins[j][k] += grads[pos]
+                    pos += 1
+
+
               # get gradient for outputs
-              pos = self.n_ins
               for j in xrange(self.n_outs):
-                ls_taps = [1]
-                if self.taps.has_key(j):
-                    ls_taps += self.taps[j]
-                maxVal = max(ls_taps)
-                for tap_value in ls_taps:
-                    if i - tap_value < 0:
-                        g_initSt[j][maxVal-tap_value+i] += grads[pos]
-                        pos +=1
-                    else:
-                       g_outs[j][i-tap_value]+= grads[pos]
-                       pos += 1
-              for j in xrange(len(g_otherArgs)):
-                g_otherArgs[j] += grads[j+pos]
-            # return the gradient 
-            for i in xrange(len(g_ins)):
-                storage[i][0] = g_ins[i] 
-
-            for i in xrange(len(g_initSt)):
-                storage[i+self.n_ins][0] = g_initSt[i]
-
-            for i in xrange(len(g_otherArgs)):
-                storage[i+self.n_ins+self.n_outs][0] = g_otherArgs[i]
+                if self.outs_taps.has_key(j):
+                  ls_taps = self.outs_taps[j]
+                  min_tap =      outs_mins[j]
+                  seed_sz =      seed_size[j]
+                  for tap_value in ls_taps:
+                    if i+tap_value < 0 :
+                     k = i + seed_sz + tap_value
+                     if  k > 0 :
+                        g_seeds[j][k] += grads[pos]
+                        pos += 1
+              for j in xrange(len(g_non_seqs)):
+                g_non_seqs[j] += grads[j+pos]
 
 
-@gof.local_optimizer([None])
-def grad_scan_make_inplace(node):
-    op = node.op
-    if isinstance(op, ScanGrad) and (not op.inplace):
-        return ScanGrad(op.grad_fn, op.n_ins, op.n_outs, op.taps, 
-                   inplace=True).make_node(*node.inputs).outputs
-    return False
+            # return the gradient
 
-optdb.register('grad_scan_make_inplace', opt.in2out(grad_scan_make_inplace,\
-               ignore_newtrees=True), 75, 'fast_run', 'inplace')
+            for i,v in enumerate(g_ins + g_seeds+ g_non_seqs):
+                storage[i][0] = v
+
 
 
 

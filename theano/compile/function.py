@@ -3,14 +3,14 @@
 __docformat__ = "restructuredtext en"
 
 import sys, traceback, logging
-_logger = logging.getLogger('theano.compile.function_module')
+_logger = logging.getLogger('theano.compile.function')
 
-import theano
+from io import In
 from function_module import orig_function
 from pfunc import pfunc
 from numpy import any #for to work in python 2.4
 
-def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False):
+def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False, name=None):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -21,7 +21,7 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
     :type outputs: list of Variables or Out instances
     :param outputs: expressions to compute
 
-    :type mode: string or `theano.compile.Mode` instance.
+    :type mode: string or `Mode` instance.
     :param mode: compilation mode
 
     :type updates: iterable over pairs (shared_variable, new_expression). List, tuple or dict.
@@ -33,7 +33,9 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
     :param givens: specific substitutions to make in the computation graph (Var2 replaces
     Var1).  
 
-    :rtype: theano.compile.Function
+    :param name: an optional name for this function. The profile mode will print the time spent in this function.
+
+    :rtype: Function instance
     :returns: a callable object that will compute the outputs (given the inputs)
     and update the implicit function arguments according to the `updates`.
 
@@ -45,7 +47,7 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
     """
 
     # compute some features of the arguments:
-    uses_In = any([isinstance(i, theano.In) for i in inputs]) #N.B. the square brackets are ncessary
+    uses_In = any([isinstance(i, In) for i in inputs]) #N.B. the square brackets are ncessary
     uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])#N.B. the square brackets are ncessary
     uses_updates = (updates != [])
     uses_givens = (givens != [])
@@ -56,11 +58,11 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
             raise NotImplementedError("In() instances and tuple inputs triggers the old semantics, which disallow using updates and givens")
         return orig_function(inputs, outputs, 
                 mode=mode,
-                accept_inplace=accept_inplace)
+                accept_inplace=accept_inplace, name=name)
     else:
         return pfunc(params=inputs, 
                 outputs=outputs,
                 mode=mode, 
                 updates=updates, 
                 givens=givens,
-                accept_inplace=accept_inplace)
+                accept_inplace=accept_inplace,name=name)

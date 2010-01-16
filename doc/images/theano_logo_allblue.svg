@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="345.86591"
+   height="115.13724"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.46"
+   sodipodi:docbase="/home/olivier/hg/theano"
+   sodipodi:docname="theano_logo_allblue.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   version="1.0"
+   inkscape:export-filename="theano_logo_allblue_200x46.png"
+   inkscape:export-xdpi="53.889999"
+   inkscape:export-ydpi="53.889999">
+  <defs
+     id="defs4">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 57.568619 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="345.86591 : 57.568619 : 1"
+       inkscape:persp3d-origin="172.93295 : 38.379079 : 1"
+       id="perspective10" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="187.28443"
+     inkscape:cy="-18.63669"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     inkscape:window-width="1280"
+     inkscape:window-height="999"
+     inkscape:window-x="0"
+     inkscape:window-y="6"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     showgrid="false" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-219.06115,-88.23416)">
+    <path
+       id="path5572"
+       d="M 361.71053,188.16928 C 354.76773,186.82023 350.70665,184.96687 346.79586,179.36429 C 343.95656,175.29673 343.50062,171.96473 343.44682,166.23478 C 343.42111,163.49783 343.49849,162.90428 344.0571,161.55334 L 344.69681,160.00626 L 345.45913,161.65784 C 346.336,163.55761 347.19403,164.90066 347.75802,165.25619 C 348.09328,165.46756 348.18083,165.02619 348.36169,162.21236 C 348.47801,160.40227 348.65102,158.40413 348.74614,157.77203 C 348.91863,156.62587 348.92314,156.62125 350.43384,156.04681 C 353.31299,154.95199 358.66778,154.81233 368.31255,155.58049 C 372.73402,155.93264 382.24935,156.1272 383.25884,155.25172 C 384.30569,154.34386 384.43282,153.93027 384.10183,151.44246 C 383.71094,148.50433 384.12609,147.83778 382.88247,145.3862 C 379.65727,139.02834 374.30749,136.3197 367.23085,136.30203 C 360.85744,136.28611 355.74516,138.6184 352.65434,143.81025 C 349.93524,148.37768 348.72275,153.27364 348.00646,162.57805 L 347.80539,165.18998 L 347.19983,164.32026 C 344.3014,160.1573 342.50418,152.88816 343.75077,147.35745 C 344.71627,143.07377 346.68707,139.35299 349.88566,135.77517 C 352.64732,132.68608 357.19089,130.91181 362.63982,129.87232 C 366.14917,129.20284 368.55034,129.20284 372.05972,129.87232 C 377.50862,130.91181 381.45763,132.89753 384.21929,135.98663 C 387.38405,139.52666 389.38596,143.28142 390.31905,147.42734 C 390.9488,150.22555 391.05131,154.47027 390.52149,155.81012 C 390.05713,156.98445 386.63479,160.80479 386.51965,160.27735 C 386.47234,160.06056 386.57091,159.6883 386.73869,159.45016 C 387.21007,158.78114 386.7839,158.506 386.0678,159.01703 C 385.51175,159.41383 385.41465,159.42491 385.09066,159.12836 C 384.40717,158.50279 384.15557,159.15234 384.78277,159.92321 C 385.50823,160.81483 385.52111,161.11534 384.8339,161.11534 C 384.54022,161.11534 384.23228,161.1985 384.14958,161.30014 C 383.49524,162.1044 373.34534,162.29368 365.28662,161.65193 C 359.32839,161.17745 354.58998,161.2787 353.48216,161.90416 C 352.57,162.41919 351.36222,164.23874 350.95433,165.71238 C 350.56679,167.11253 350.79145,171.3621 351.34313,173.06677 C 351.89991,174.78722 353.87377,177.29276 355.93375,178.89384 C 361.69246,183.36976 371.19795,183.42111 376.98801,179.00757 C 379.89915,176.78852 382.24934,173.22363 381.55941,172.07343 C 381.38459,171.78199 381.24154,171.2151 381.24154,170.81367 C 381.24154,170.08392 382.07691,168.57788 382.62419,168.32095 C 383.39593,167.95867 384.26748,166.51466 384.26748,165.59831 C 384.26748,164.53724 384.64213,163.83178 385.20558,163.83178 C 386.08301,163.83178 385.97918,161.1084 385.05727,159.94142 C 384.34884,159.04465 384.41288,158.86039 385.23029,159.44369 C 385.75764,159.82002 385.91798,159.85884 385.91798,159.61018 C 385.91798,159.43183 386.12685,159.15685 386.38212,158.99912 C 386.79684,158.74289 386.81881,158.75684 386.58845,159.13026 C 386.44664,159.3601 386.36682,160.4781 386.41105,161.61465 C 386.48402,163.48937 386.5507,163.71649 387.12987,164.06252 C 387.65138,164.37413 387.79471,164.70362 387.91265,165.86178 C 388.01423,166.85943 388.3207,167.70135 388.94694,168.70291 C 389.67118,169.86121 389.81092,170.30137 389.69736,171.06666 C 389.61881,171.59609 389.31517,172.20689 389.00266,172.46425 C 388.31336,173.03183 385.52096,176.70451 385.23933,177.41397 C 384.72888,178.69974 383.01411,181.39832 381.89492,182.67712 C 380.16478,184.65398 378.29724,185.84229 375.07078,187.01932 C 370.25045,188.77779 366.50239,189.10039 361.71053,188.16928 z"
+       style="fill:#11557c;fill-opacity:1;stroke:#ffffff;stroke-width:0.73518676000000005;stroke-opacity:1"
+       sodipodi:nodetypes="csscccsssssssssscccsssssssssssssssssssssssssssssssssssssssc" />
+    <text
+       xml:space="preserve"
+       style="font-size:96px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#11557c;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:DejaVu Sans Mono;-inkscape-font-specification:DejaVu Sans Mono"
+       x="221.28195"
+       y="185.3815"
+       id="text2382"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2386"
+         x="221.28195"
+         y="185.3815">th ano</tspan></text>
+  </g>
+</svg>

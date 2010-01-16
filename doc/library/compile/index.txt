@@ -1,0 +1,24 @@
+
+.. _libdoc_compile:
+
+==============================================================
+:mod:`compile` -- transforming expression graphs to functions
+==============================================================
+
+.. module:: compile
+   :platform: Unix, Windows
+   :synopsis: transforming expression graphs to functions
+.. moduleauthor:: LISA
+
+.. toctree::
+    :maxdepth: 1
+
+    function
+    io
+    mode
+    module
+    debugmode
+    profilemode
+
+
+

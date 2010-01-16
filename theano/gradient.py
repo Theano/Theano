@@ -21,26 +21,6 @@ _msg_badlen = 'op.grad(...) returned wrong number of gradients'
 
 def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """
-    A gradient source is a pair (``r``, ``g_r``), in which ``r`` is a `Variable`, and ``g_r`` is a
-    `Variable` that is a gradient wrt ``r``.
-
-    This function traverses the graph backward from the ``r`` sources,
-    calling ``op.grad(...)`` for all ops with some non-None gradient on an output.
-
-    The ``op.grad(...)`` functions are called like this:
-
-    .. code-block:: python
-        op.grad(op.inputs[:], [total_gradient(v for v in op.outputs)])
-
-    This call to ``op.grad`` should return a list or tuple: one symbolic gradient per input.
-    If ``op`` has a single input, then ``op.grad``  should return a list or tuple of length 1.
-
-    For each input wrt to which ``op`` is not differentiable, it should return ``None`` instead
-    of a `Variable` instance.
-
-    If a source ``r`` receives a gradient from another source ``r2``, then the effective
-    gradient on ``r`` is the sum of both gradients.
-
     :type sources: list of pairs of Variable: (v, gradient-on-v)
     :param sources: gradients to back-propagate using chain rule
     :type graph_inputs: list of Variable

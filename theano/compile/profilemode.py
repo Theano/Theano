@@ -17,21 +17,25 @@ class ProfileMode(Mode):
         op_time = {}
         op_cimpl = {}
         op_call = {}
-        compile_time = 0 #time passed in function()
+        compile_time = 0 #time passed in theano.function()
+        fct_call_time = {}#time passed inside theano fct call including op time.
+        fct_call = {}
 
         self.__setstate__((linker, optimizer, local_time,
                            apply_time, apply_call,
-                           op_time, op_cimpl, op_call, compile_time))
+                           op_time, op_cimpl, op_call, 
+                           compile_time, fct_call_time, fct_call))
 
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker, self.provided_optimizer, self.local_time,
-                           self.apply_time, self.apply_call,
-                           self.op_time, self.op_cimpl, self.op_call, self.compile_time)
+                self.apply_time, self.apply_call,
+                self.op_time, self.op_cimpl, self.op_call, self.compile_time, self.fct_call_time, self.fct_call)
 
     def __setstate__(self, (linker, optimizer, local_time,
-                           apply_time, apply_call,
-                           op_time, op_cimpl, op_call, compile_time)):
+                            apply_time, apply_call,
+                            op_time, op_cimpl, op_call, 
+                            compile_time, fct_call_time, fct_call)):
         
         self.local_time = local_time
         self.apply_time = apply_time
@@ -40,6 +44,8 @@ class ProfileMode(Mode):
         self.op_cimpl = op_cimpl
         self.op_call = op_call
         self.compile_time = compile_time
+        self.fct_call_time = fct_call_time
+        self.fct_call = fct_call
 
         def blah(i, node, th):
             if hasattr(th, 'cthunk'):
@@ -93,6 +99,8 @@ class ProfileMode(Mode):
 
         local_time = self.local_time[0]
         compile_time = self.compile_time
+        fct_call_time = self.fct_call_time
+        fct_call = self.fct_call
         apply_time = self.apply_time
         apply_call = self.apply_call
         op_time = self.op_time
@@ -104,7 +112,7 @@ class ProfileMode(Mode):
             if hasattr(a,'flops'):
                 op_flops[a]=a.flops*op_call[a]/t/1e6
 
-        self.print_summary_("print_summary",local_time, compile_time,
+        self.print_summary_("print_summary",local_time, compile_time, fct_call_time, fct_call,
                             apply_time, apply_call, op_time, op_call, op_cimpl,
                             op_flops, n_apply_to_print, n_ops_to_print)
 
@@ -152,6 +160,8 @@ class ProfileMode(Mode):
 
         local_time = self.local_time[0]-other.local_time[0]
         compile_time = self.compile_time-other.compile_time
+        fct_call_time = diff_dict(self.fct_call_time,other.fct_call_time)
+        fct_call = diff_dict(self.fct_call,other.fct_call)
         apply_time = diff_dict(self.apply_time, other.apply_time)
         apply_call = diff_dict(self.apply_call, other.apply_call)
         op_time = diff_dict(self.op_time, other.op_time)
@@ -160,13 +170,14 @@ class ProfileMode(Mode):
 
         op_flops = diff_dict_flops(self.op_time, other.op_time, self.op_call, other.op_call)
         
-        self.print_summary_("print_diff_summary",local_time, compile_time,
+        self.print_summary_("print_diff_summary",local_time, compile_time, fct_call_time, fct_call,
                             apply_time, apply_call, op_time, op_call, op_cimpl,
                             op_flops, n_apply_to_print=n_apply_to_print,
                             n_ops_to_print=n_ops_to_print, print_apply=False)
 
     @staticmethod
-    def print_summary_(fct_name, local_time, compile_time, apply_time, apply_call, op_time, op_call, op_cimpl,
+    def print_summary_(fct_name, local_time, compile_time, fct_call_time, fct_call,
+                       apply_time, apply_call, op_time, op_call, op_cimpl,
                        op_flops=None, n_apply_to_print=15, n_ops_to_print=20, print_apply=True):
         """
         do the actual printing of print_summary and print_diff_summary.
@@ -251,13 +262,24 @@ class ProfileMode(Mode):
                   sum(t for f, t, a, ci, nb_call in sotimes[n_ops_to_print:]))
 
         print '(*) Op is running a c implementation'
-        print
+            
+
         total_time = time.time() - import_time
+        total_fct_time = sum(fct_call_time.values())
+        total_fct_call = sum(fct_call.values())
         other_time = total_time - local_time - compile_time
+        print
+        print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
+        for key in fct_call.keys():
+            print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
+                                                  fct_call_time[key]/fct_call[key], fct_call[key],key)
+        print
         print 'Time since import %.3fs'%(total_time)
-        print 'Local time %.3fs %.1f%%(Time spent running thunks)'% (local_time,local_time/total_time*100)
         print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
+        print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
+        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100,local_time/total_fct_time*100)
         print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
+        print '%i Theano fct call, %.3fs per call'%(total_fct_call, total_fct_time/total_fct_call)
         
         if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
             cpu=[]

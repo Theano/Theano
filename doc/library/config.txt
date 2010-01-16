@@ -1,0 +1,21 @@
+.. _libdoc_config:
+
+=======================================
+:mod:`config` -- library configuration 
+=======================================
+
+.. module:: config
+   :platform: Unix, Windows
+   :synopsis: library configuration
+.. moduleauthor:: LISA
+
+
+.. envvar:: THEANO_FLAGS
+
+    ***TODO***
+
+.. attribute:: floatx
+
+
+
+***TODO*** what attributes are in here? 

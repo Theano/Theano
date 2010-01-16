@@ -1353,32 +1353,6 @@ prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
 prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
 
-class solve(gof.Op):
-    """
-    Find the solution to the linear equation Ax=b,
-    where A is a 2d matrix and b is a 1d or 2d matrix.
-    It use numpy.solve to find the solution.
-    """
-
-    def make_node(self, A, b):
-        if not isinstance(A, gof.Variable) or not A.type==tensor.matrix().type:
-            raise TypeError("We expected that A had a matrix type")
-        if not isinstance(B, gof.Variable) or not B.type==tensor.matrix().type:
-            raise TypeError("We expected that B had a matrix type")
-
-        node = gof.Apply(op=self, inputs=[A, B], outputs=[tensor.matrix()])
-        return node
-
-    def perform(self, node, (A, B), (output, )):
-        ret=numpy.solve(A,B)
-        output[0]=ret
-
-    def grad(self, (theta, A, B), (gtheta,)):
-        raise NotImplementedError()
-
-
-
-
 logsigm_to_softplus = gof.PatternSub(
     (tensor.log, (sigmoid, 'x')),
     (tensor.neg, (softplus, (tensor.neg, 'x'))),

@@ -333,7 +333,7 @@ Note that the output will then be of dimension i+1.
 
 multinomial = random_function('multinomial', 'float64', 1, [0.5, 0.5], ndim_added=1)
 multinomial.__doc__ = """
-Usage: multinomial(random_state, size, n, pvals)
+Usage: multinomial(random_state, size, pvals)
 
 Sample from a multinomial distribution defined by probabilities pvals,
 as many times as required by size. For instance, if size=(p,q), p*q

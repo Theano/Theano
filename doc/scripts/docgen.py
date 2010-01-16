@@ -75,15 +75,17 @@ if __name__ == '__main__':
 
     options['--all'] = not (bool(options['--epydoc']) ^ bool(options['--rst']))
 
-    import gen_oplist
-    print 'Generating oplist...'
-    gen_oplist.print_file(open('%s/doc/indexes/oplist.txt' % throot, 'w'))
-    print 'oplist done!'
+    if 0:
+        import gen_oplist
+        print 'Generating oplist...'
+        gen_oplist.print_file(open('%s/doc/indexes/oplist.txt' % throot, 'w'))
+        print 'oplist done!'
 
-    import gen_typelist
-    print 'Generating typelist...'
-    gen_typelist.print_file(open('%s/doc/indexes/typelist.txt' % throot, 'w'))
-    print 'typelist done!'
+    if 0:
+        import gen_typelist
+        print 'Generating typelist...'
+        gen_typelist.print_file(open('%s/doc/indexes/typelist.txt' % throot, 'w'))
+        print 'typelist done!'
 
     def mkdir(path):
         try:

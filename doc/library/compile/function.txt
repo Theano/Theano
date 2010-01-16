@@ -1,0 +1,145 @@
+
+.. _usingfunction:
+
+===========================================
+:mod:`function` - defines theano.function
+===========================================
+
+.. module:: function
+   :platform: Unix, Windows
+   :synopsis: defines theano.function and related classes
+.. moduleauthor:: LISA
+
+Guide
+=====
+
+This module provides :func:`function`, commonly accessed as `theano.function`,
+the interface for compiling graphs into callable objects.
+
+You've already seen example usage in the basic tutorial... something like this:
+
+>>> x = theano.tensor.dscalar()
+>>> f = theano.function([x], 2*x)
+>>> print f(4)                    # prints 8.0
+
+The idea here is that we've compiled the symbolic graph (``2*x``) into a function that can be called on a number and will do some computations.
+
+The behaviour of function can be controlled in several ways, such as
+:class:`Param`, ``mode``, ``updates``, and ``givens``.  These are covered
+in the :ref:`tutorial examples <basictutexamples>` and :ref:`tutorial on modes <using_modes>`.
+
+Reference
+=========
+
+.. class:: Out
+
+    A class for attaching information to function outputs
+
+    .. attribute:: variable
+
+        A variable in an expression graph to use as a compiled-function
+        output
+
+    .. attribute:: borrow
+
+        ``True`` indicates that a reference to internal storage may be returned, and that the caller is aware that subsequent function evaluations might overwrite this memory.
+
+    .. method:: __init__(variable, borrow=False)
+
+        Initialize attributes from arguments. 
+
+.. class:: Param
+
+    A class for attaching information to function inputs.
+
+    .. attribute:: variable
+
+        A variable in an expression graph to use as a compiled-function parameter
+
+    .. attribute:: default
+    
+        The default value to use at call-time (can also be a Container where
+        the function will find a value at call-time.)
+
+    .. attribute:: name 
+    
+        A string to identify an argument for this parameter in keyword arguments.
+
+    .. attribute:: mutable
+    
+        ``True`` means the compiled-function is allowed to modify this
+        argument. ``False`` means it is not allowed.
+
+    .. attribute:: strict
+    
+      If ``False``, a function argument may be copied or cast to match the type
+      required by the parameter `variable`.  If ``True``, a function argument
+      must exactly match the type required by `variable`.
+
+    .. method:: __init__(self, variable, default=None, name=None, mutable=False, strict=False)
+
+        Initialize object attributes.
+
+
+.. function:: function(inputs, outputs, mode=None, updates=[], givens=[], accept_inplace=False, name=None)
+
+    Return a callable object that will calculate `outputs` from `inputs`.
+
+    :type params: list of either Variable or Param instances, but not shared
+        variables.
+
+    :param params: the returned :class:`Function` instance will have
+      parameters for these variables.
+
+    :type outputs: list of Variables or Out instances
+
+    :param outputs: expressions to compute.
+    
+    :type mode: None, string or :class:`Mode` instance.
+
+    :param mode: compilation mode
+
+    :type updates: iterable over pairs (shared_variable, new_expression).
+       List, tuple or dict.
+
+    :param updates: expressions for new SharedVariable values
+    
+
+    :type givens: iterable over pairs (Var1, Var2) of Variables. 
+       List, tuple or dict.  The Var1
+       and Var2 in each pair must have the same Type.
+
+    :param givens: specific substitutions to make in the 
+      computation graph (Var2 replaces Var1).  
+
+    :param name: an optional name for this function. 
+      The profile mode will print the time spent in this function.
+
+    :rtype: Function instance
+
+    :returns: a callable object that will compute the outputs (given the inputs)
+      and update the implicit function arguments according to the `updates`.
+
+
+    Inputs can be given as variables or Param instances. 
+    :class:`Param` instances also have a variable, but they attach some extra
+    information about how call-time arguments corresponding to that variable
+    should be used.  Similarly, :class:`Out` instances can attach information
+    about how output variables should be returned.
+
+    The default is typically 'FAST_RUN' but this can be changed in
+    :doc:`theano.config <../config>` or via :envvar:`THEANO_DEFAULT_MODE`.  The mode
+    argument controls the sort of optimizations that will be applied to the
+    graph, and the way the optimized graph will be evaluated.
+
+    After each function evaluation, the `updates` mechanism can replace the
+    value of any SharedVariable [implicit] inputs with new values computed
+    from the expressions in the `updates` list.  An exception will be raised
+    if you give two update expressions for the same SharedVariable input (that
+    doesn't make sense).
+
+    Regarding givens: Be careful to make sure that these substitutions are
+    independent--behaviour when Var1 of one pair appears in the graph leading
+    to Var2 in another expression is undefined.  Replacements specified with
+    givens are different from optimizations in that Var2 is not expected to be
+    equivalent to Var1.

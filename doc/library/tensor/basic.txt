@@ -1,0 +1,456 @@
+
+.. currentmodule:: tensor
+
+
+.. _libdoc_tensor_type:
+
+TensorType
+==========
+
+.. class:: TensorType
+
+
+.. _libdoc_tensor_variable
+
+TensorVariable
+==============
+
+
+.. _libdoc_tensor_constant
+
+TensorConstant
+==============
+
+
+
+.. _libdoc_tensor_creation:
+
+Creation
+========
+
+Theano provides a list of predefined tensor types that can be used
+to create a tensor variables. The names of the predefined types follow
+a simple recipe : 
+
+``<dtype><dimensionality>``
+
+Where ``<dtype>`` is one of (note that this is not a complete list of
+possible ``<dtypes>``, it just covers thouse used by the predefined
+types):
+
+==== ========== =============== =================
+code type       domain          bits
+==== ========== =============== =================
+b    byte       signed integer  8
+w    word       signed integer  16
+i    integer    signed integer  32
+l    long       signed integer  64
+f    float      floating point  32
+d    double     floating point  64
+c    complex64  complex         64 (two float32)
+z    complex128 complex         128 (two float64)
+==== ========== =============== =================
+
+``<dimensionality>`` is one of:
+
+======== ============= ================================================================= 
+ code     shape         :ref:`broadcastable <libdoc_tensor_broadcastable>` pattern   
+======== ============= ================================================================= 
+ scalar   []            [True,  True,  True,  True ]
+ vector   [n]           [True,  True,  True,  False] (vectors are used like row vectors)
+ row      [1, n]        [True,  True,  True,  False] 
+ col      [m, 1]        [True,  True,  False, True ]                            
+ matrix   [m, n]        [True,  True,  False, False]
+ tensor3  [m, n, k]     [True,  False, False, False]
+ tensor4  [m, n, k, l]  [False, False, False, False]
+======== ============= ================================================================= 
+
+So, if you want the type of a row of 32-bit floats, it is available
+as :ref:`theano.tensor.frow <libdoc_tensor_type>`.
+If you want a matrix of unsigned 32-bit integers it is available as
+:ref:`theano.tensor.imatrix <libdoc_tensor_type>`.
+
+Each of the types described above can be constructed by two methods:
+a singular version (e.g., :ref:`dmatrix <libdoc_tensor_creation>`)
+and a plural version (:ref:`dmatrices <libdoc_tensor_creation>`).
+When called, the singular version takes a single
+argument which is the name of the *Variable* we want to make and it
+makes a single Variable of that type. The plural version can either take
+an integer or several strings. If an integer is provided, the method
+will return that many Variables and if strings are provided, it will
+create one Variable for each string, using the string as the Variable's
+name. For example:
+
+.. code-block:: python
+
+   from theano.tensor import *
+
+   x = dmatrix() # creates one Variable with no name
+   x = dmatrix('x') # creates one Variable with name 'x'
+   xyz = dmatrix('xyz') # creates one Variable with name 'xyz'
+
+   x, y, z = dmatrices(3) # creates three Variables with no names
+   x, y, z = dmatrices('x', 'y', 'z') # creates three Variables named 'x', 'y' and 'z'
+
+
+Custom tensor types
+-------------------
+
+If you wish to use a type of tensor which is not already available 
+(for example, a 5D tensor) you can build an appropriate type using
+:ref:`theano.tensor.TensorType <libdoc_tensor_type>`.
+The first argument you pass is the `dtype` and the second is the
+`broadcastable pattern`.
+
+Where `dtype` is one of (a complete list of supported dtypes):
+
+================= =================== =================
+dtype             domain              bits
+================= =================== =================
+``'int8'``        signed integer      8
+``'int16'``       signed integer      16
+``'int32'``       signed integer      32
+``'int64'``       signed integer      64
+``'uint8'``       unsigned integer    8
+``'uint16'``      unsigned integer    16
+``'uint32'``      unsigned integer    32
+``'uint64'``      unsigned integer    64
+``'float32'``     floating point      32
+``'float64'``     floating point      64
+``'complex64'``   complex             64 (two float32)
+``'complex128'``  complex             128 (two float64)
+================= =================== =================
+
+
+The broadcastable pattern indicates both the number of dimensions and
+whether a particular dimension must have length 1.
+Here is a table mapping the :ref:`broadcastable <libdoc_tensor_broadcastable>` pattern to what kind of tensor it encodes:
+
+===================== =================================
+pattern               interpretation
+===================== =================================
+[]                    scalar
+[True]                1D scalar (vector of length 1)
+[True, True]          2D scalar (1x1 matrix)
+[False]               vector
+[False, False]        matrix
+[False] * n           nD tensor
+[True, False]         row (1xN matrix)
+[False, True]         column (Mx1 matrix)
+[False, True, False]  A Mx1xP tensor (a)
+[True, False, False]  A 1xNxP tensor (b)
+[False, False, False] A MxNxP tensor (pattern of a + b)
+===================== =================================
+
+For dimensions in which broadcasting is False, the length of this
+dimension can be 1 or more.  For dimensions in which broadcasting is True,
+the length of this dimension must be 1.
+
+When two tensors have a different number of dimensions, the broadcastable
+pattern is *expanded to the left*, by padding with ``True``. For example,
+a vector's pattern, ``[False]``, could be expanded to ``[True, False]``, and
+would behave like a row (1xN matrix). In the same way, a matrix (``[False,
+False]``) would behave like a 1xNxP tensor (``[True, False, False]``).
+
+If we wanted to create a type representing a 3D array of unsigned
+bytes, we would do:
+
+.. code-block:: python
+
+   # 3D tensor of signed bytes
+   mytype = theano.tensor.TensorType('uint8', [False]*3)
+
+   # complex types (based on complex64)
+   my_cscalar = theano.tensor.TensorType('complex64', [])
+   my_cmatrix = theano.tensor.TensorType('complex64', [False, False])
+
+
+Shared Variable
+---------------
+
+Yet another way of creating a special type of Theano variable is by using
+:func:`shared` as in the example below:
+
+.. code-block:: python
+
+  x = shared(value, name)
+
+Shared takes two parameters, `value` and `name` and creates a Theano 
+variable with the name `name` and initial value `value`. The type of this
+variable is obtained from the type of the value `value`, so if value is a
+numpy float matrix the shared variable will be of type `fmatrix`. 
+
+Note that a shared variable is not like other Theano variables. For more
+details of how to use shared variables look :ref:`here <functionstateexample>` (or for more details
+:ref:`here <sharedvars>`). TODO : make the last link to a detailed
+description of shared variables.
+
+
+Autocasting
+-----------
+
+ Theano does autocasting of numpy ndarray or python floats/ints into 
+ Theano constants.
+
+TODO: What does (or compatible) mean?  Talk about casting rules, refer .
+TODO: link to floatX (?) 
+
+.. function:: as_tensor_variable(x, ...)
+
+
+
+
+
+
+Shaping and Shuffling
+=====================
+
+.. function:: shape(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns the symbolic shape vector of `x`
+
+.. function:: reshape(x)
+
+.. function:: dimshuffle(x)
+
+
+Reductions 
+==========
+
+
+.. function:: max(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+.. function:: min(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+.. function:: sum(x)
+
+    :param x:  symbolic Tensor (or compatible)
+
+    Returns TODO
+
+Indexing
+========
+
+Basic indexing.
+
+Advanced indexing.
+
+.. _libdoc_tensor_elementwise:
+
+
+Elementwise
+===========
+
+Casting
+-------
+
+Logic Functions
+---------------
+
+.. function:: lt(a, b)
+    Returns a variable representing the result of logical less than (a<b).
+      :Parameter:  *a* - symbolic Tensor (or compatible)
+      :Parameter:  *b* - symbolic Tensor (or compatible)
+      :Return type: symbolic Tensor
+      :Returns: a symbolic tensor representing the application of logical 
+      elementwise less than.
+
+.. code-block:: python 
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.lt(x,y)
+
+.. function:: gt(a, b)
+    Returns a variable representing the result of logical greater than (a>b).
+      :Parameter:  *a* - symbolic Tensor (or compatible)
+      :Parameter:  *b* - symbolic Tensor (or compatible)
+      :Return type: symbolic Tensor
+      :Returns: a symbolic tensor representing the application of logical 
+      elementwise greater than.
+
+.. code-block:: python 
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.gt(x,y)
+
+.. function:: le(a, b)
+    Returns a variable representing the result of logical less than or
+    equal (a<=b).
+      :Parameter:  *a* - symbolic Tensor (or compatible)
+      :Parameter:  *b* - symbolic Tensor (or compatible)
+      :Return type: symbolic Tensor
+      :Returns: a symbolic tensor representing the application of logical 
+      elementwise less than or equal.
+
+.. code-block:: python 
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.le(x,y)
+
+.. function:: ge(a, b)
+    Returns a variable representing the result of logical greater or equal
+     than (a>=b).
+      :Parameter:  *a* - symbolic Tensor (or compatible)
+      :Parameter:  *b* - symbolic Tensor (or compatible)
+      :Return type: symbolic Tensor
+      :Returns: a symbolic tensor representing the application of logical 
+      elementwise greater than or equal.
+
+.. code-block:: python 
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.ge(x,y)
+
+.. function:: eq(a, b)
+    Returns a variable representing the result of logical equality (a==b).
+      :Parameter:  *a* - symbolic Tensor (or compatible)
+      :Parameter:  *b* - symbolic Tensor (or compatible)
+      :Return type: symbolic Tensor
+      :Returns: a symbolic tensor representing the application of logical 
+      elementwise equality.
+
+.. code-block:: python 
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.eq(x,y)
+
+.. function:: neq(a, b)
+    Returns a variable representing the result of logical inequality
+    (a!=b).
+      :Parameter:  *a* - symbolic Tensor (or compatible)
+      :Parameter:  *b* - symbolic Tensor (or compatible)
+      :Return type: symbolic Tensor
+      :Returns: a symbolic tensor representing the application of logical 
+      elementwise inequality.
+
+.. code-block:: python 
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.neq(x,y)
+
+Mathematical
+------------
+
+.. _libdoc_tensor_broadcastable:
+
+Broadcasting in Theano vs. Numpy
+--------------------------------
+
+Broadcasting is a mechanism which allows tensors with
+different numbers of dimensions to be added or multiplied
+together by (virtually) replicating the smaller tensor along
+the dimensions that it is lacking.
+
+In a nutshell, broadcasting is the mechanism by which a scalar
+may be added to a matrix, a vector to a matrix or a scalar to
+a vector.
+
+.. figure:: bcast.png
+
+Broadcasting a row matrix. T and F respectively stand for
+True and False and indicate along which dimensions we allow
+broadcasting.
+
+If the second argument were a vector, its shape would be
+``(2,)`` and its broadcastable pattern ``(F,)``. They would
+be automatically expanded to the **left** to match the
+dimensions of the matrix (adding ``1`` to the shape and ``T``
+to the pattern), resulting in ``(1, 2)`` and ``(T, F)``.
+It would then behave just like the example above.
+
+
+Unlike numpy which does broadcasting dynamically, Theano needs
+to know, for any operation which supports broadcasting, which
+dimensions will need to be broadcasted. When applicable, this
+information is given in the :ref:`type` of a *Variable*.
+
+See also:
+
+* :ref:`How broadcasting is used in Theano's tensor types <tensortypes>`
+
+* `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
+
+* `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
+
+
+
+
+Linear Algebra
+==============
+
+.. function:: dot(X, Y)
+
+    :param X: left term
+    :param Y: right term
+    :type X: symbolic matrix or vector
+    :type Y: symbolic matrix or vector
+    :rtype: symbolic matrix or vector
+    :return: the inner product of `X` and `Y`.
+
+.. function:: outer(X, Y)
+
+    :param X: left term
+    :param Y: right term
+    :type X: symbolic vector
+    :type Y: symbolic vector
+    :rtype: symbolic matrix 
+
+    :return: vector-vector outer product
+
+.. function:: tensordot(X, Y, axes=2)
+
+    This is a symbolic standing for ``numpy.tensordot``.
+
+    :param X: left term
+    :param Y: right term
+    :param axes: sum out these axes from X and Y.
+    :type X: symbolic tensor
+    :type Y: symbolic tensor
+    :rtype: symbolic tensor 
+    :type axes: see numpy.tensordot
+
+    :return: tensor product
+
+
+
+Fourier Transforms
+==================
+
+[James has some code for this, but hasn't gotten it into the source tree yet.]
+
+Gradient / Differentiation
+==========================
+
+.. function:: grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False)
+
+    Return symbolic gradients for one or more variables with respect to some
+    cost.
+    
+    :type cost: 0-d tensor variable
+    :type wrt: tensor variable or list of tensor variables
+    :type g_cost: same as `cost`
+    :type consider_constant: list of variables
+    :type warn_type: bool
+
+    :param cost: a scalar with respect to which we are differentiating
+    :param wrt: term[s] for which we want gradients
+    :param g_cost: the gradient on the cost
+    :param consider_constant: variables whose gradients will be held at 0.
+    :param warn_type: True will trigger warnings via the logging module when
+       the gradient on an expression has a different type than the original
+       expression
+
+    :rtype: variable or list of variables (matching `wrt`)
+    :returns: gradients with respect to cost for each of the `wrt` terms 
+
+

@@ -39,7 +39,7 @@ templates_path = ['.templates']
 source_suffix = '.txt'
 
 # The master toctree document.
-master_doc = 'contents'
+master_doc = 'index'
 
 # General substitutions.
 project = 'Theano'
@@ -64,7 +64,7 @@ today_fmt = '%B %d, %Y'
 
 # List of directories, relative to source directories, that shouldn't be searched
 # for source files.
-exclude_dirs = ['images', 'scripts', 'trac']
+exclude_dirs = ['images', 'scripts', 'sandbox']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -90,7 +90,8 @@ pygments_style = 'sphinx'
 # The style sheet to use for HTML and HTML Help pages. A file of that name
 # must exist either in Sphinx' static/ path, or in one of the custom paths
 # given in html_static_path.
-html_style = 'default.css'
+#html_style = 'default.css'
+html_theme = 'sphinxdoc'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -101,7 +102,8 @@ html_style = 'default.css'
 
 # The name of an image file (within the static path) to place at the top of
 # the sidebar.
-html_logo = 'images/theano_logo-200x67.png'
+#html_logo = 'images/theano_logo-200x67.png'
+html_logo = 'images/theano_logo_allblue_200x46.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32

@@ -1,0 +1,23 @@
+.. _libdoc_tensor:
+==================================================
+:mod:`tensor`  -- types and ops for symbolic numpy
+==================================================
+
+.. module:: tensor
+   :platform: Unix, Windows
+   :synopsis: symbolic types and operations for n-dimensional arrays.
+.. moduleauthor:: LISA
+
+Theano's strength is in expressing symbolic calculations involving tensors.  
+There are many types of symbolic expressions for tensors.  For everyone's
+sanity, they are grouped into the following sections:
+
+
+.. toctree::
+    :maxdepth: 1
+
+    basic
+    shared_randomstreams
+    nnet
+    signal
+

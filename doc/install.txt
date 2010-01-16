@@ -16,7 +16,7 @@ Requirements
 In order to use Theano, the following libraries and software will need
 to be installed:
 
-    Linux or OS-X operating system
+    Linux, OS-X or Windows operating system
         We develop mainly on 64-bit Linux machines. 32-bit architectures are
         not well-tested.
 
@@ -66,6 +66,7 @@ want. Unpack the release, and type:
     python setup.py test
     python setup.py install
 
+.. _install_bleeding_edge:
 
 Bleeding Edge
 --------------
@@ -73,7 +74,6 @@ Bleeding Edge
 Feeling lucky and want to run bleeding-edge code?
 Then check out the :ref:`dev_start_guide` guide.
 
-I bet you also run with scissors.
 
 Configuring the environment
 ---------------------------
@@ -109,7 +109,7 @@ automatic code generation, but that way is much, much slower.
 - ``THEANO_DEFAULT_MODE``:
     String value specifying the default mode to use when compiling Theano
     graphs. This can be one of the strings defined in
-    :api:`theano.compile.mode`.
+    :ref:`using_modes`.
     Possible values so far are:
 
     - ``'FAST_COMPILE'``
@@ -145,10 +145,102 @@ This advice has not been tested recently, so please inform us of your results.
 Windows
 -------
 
-As of now, the Windows platform is not supported. In fact, it has
-never even been tested, so feel free to explore this uncharted
-territory and inform us of your progress!
+Running Theano under Windows is currently achieved by using the `MinGW
+<http://www.mingw.org>`__ port of the GCC compiler.
+It could probably also run with `Cygwin <http://www.cygwin.com/>`__,
+but this has not been tested yet.
 
+- From `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
+  download the latest version of the ``Automated MinGW Installer`` and install
+  it (keeping default options).
+
+- From `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
+  download the latest ``MSYS Base System`` executable file and run it
+  (note that the latest version of MSYS Base System may not contain an
+  executable file, in which case it is easier to just use an
+  older version, e.g. MSYS-1.0.11.exe).
+  This will install MSYS (you can keep the default install options).
+  It will also run a post-install script where it will ask you about the
+  location of MinGW (typically ``c:/MinGW``).
+
+- From `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
+  download the current version of ``GCC Version 4`` (full package with
+  binaries, e.g.
+  gcc-full-4.4.0-mingw32-bin-2.tar.lzma). Unpack it (you may use
+  `7-Zip <http://www.7-zip.org>`__ to unpack files with the
+  .lzma extension), copying the content into the root directory
+  of your MinGW installation (if you obtain a .tar file, make
+  sure you expand it as well, either with `7-Zip <http://www.7-zip.org>`__
+  or through the ``tar`` command on the MSYS command line).
+
+- If you are familiar with vi, you may find useful to download and install
+  ``MSYS vim`` (this is done in a similar way to GCC 4).
+  This is strictly optional and mostly helpful to edit configuration files
+  from within MSYS.
+
+- Run MSYS (Start/Programs/MinGW/MSYS/MSYS) and check the installation
+  by verifying that the proper version of GCC is found:
+
+    .. code-block:: bash
+
+        gcc --version
+
+  You may also decide to change the location of your home directory by
+  adding a line at the beginning of msys.bat, that would look like
+  ``set HOME=C:\My\Home\For\MinGW`` (you can also set a global ``HOME``
+  environment variable within Windows, but this could affect more programs).
+
+- If you do not have them already, install the latest versions of
+  `Python 2.x <http://www.python.org/download/windows>`__ and
+  corresponding `Numpy <http://sourceforge.net/projects/numpy/files/>`__
+  then `SciPy <http://sourceforge.net/projects/scipy/files/>`__
+  packages (simply use the executable installers).
+
+- Ensure that the Python installation directory and its ``Scripts`` sub-directory
+  are in your system path. This may be done by
+  modifying the global ``PATH`` Windows environment variables, or by creating a ``.profile`` file in
+  your MinGW home, containing the line
+  ``export PATH=$PATH:/c/Python26:/c/Python26/Scripts``
+  (for Python 2.6).
+
+- Install a ``BLAS`` library. Note that although the following instructions
+  will give you a generic way to build your own library, there may exist
+  better (more optimized) versions of BLAS available for your system, but
+  these have not been tested for Windows at this time.
+  To build BLAS, download the latest version of `LAPACK <http://www.netlib.org/lapack/>`__
+  (typically lapack.tgz), then issue the following commands in MSYS
+  (for LAPACK 3.2.1):
+  
+    .. code-block:: bash
+
+        tar zxvf lapack.tgz
+        cd lapack-3.2.1
+        gfortran -shared -O3 -o libblas.dll BLAS/SRC/*.f
+        mv libblas.dll /mingw/lib
+
+- Install `Mercurial <http://mercurial.selenic.com/downloads/>`__
+  (you can use the regular Windows release, you do not need TortoiseHg).
+
+- In order to run Theano's test-suite, you will need `nose
+  <http://somethingaboutorange.com/mrl/projects/nose>`__.
+  After unpacking its source code, you can build and install it from within
+  the code directory by:
+
+    .. code-block:: bash
+
+        python setup.py install
+
+- Install Theano using the above :ref:`install_bleeding_edge` installation instructions
+  (using ``easy_install`` will require additional packages and has not been
+  tested yet, while the latest official Theano release is also untested at this
+  time).
+  In particular, do not forget to make the Theano package accessible from
+  Python, e.g. by adding to your ``.profile`` a line like
+  ``export PYTHONPATH=PYTHONPATH:$HOME/Theano``.
+
+- Please note that at this time, some tests (launched using ``nosetests``) are
+  still failing under Windows.
+  We are working on fixing them.
 
 Generating the documentation
 ----------------------------

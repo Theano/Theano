@@ -1,0 +1,210 @@
+
+.. _profilemode:
+
+================================================
+:mod:`profilemode` -- profiling Theano functions
+================================================
+
+
+.. module:: profilemode
+   :platform: Unix, Windows
+   :synopsis: profiling Theano functions with ProfileMode
+.. moduleauthor:: LISA
+
+Guide
+=====
+
+To profile a Theano graph, a special mode called ProfileMode, must be passed as
+an argument when compiling your graph. Using ProfileMode is a three-step
+process.
+
+Creating a ProfileMode Instance
+-------------------------------
+
+First create a ProfileMode instance. 
+
+>>> from theano import ProfileMode
+>>> profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
+
+The ProfileMode constructor takes as input an optimizer and a
+linker. Which optimizer and linker to use will depend on the
+application. For example, a user wanting to profile the Python
+implementation only, should use the gof.PerformLinker (or "py" for
+short). On the other hand, a user wanting to profile his graph using C
+implementations wherever possible should use the ``gof.OpWiseCLinker``
+(or "c|py").
+
+In the same manner, modifying which optimizer is passed to ProfileMode
+will decide which optimizations are applied to the graph, prior to
+profiling. Changing the optimizer should be especially useful when
+developing new graph optimizations, in order to evaluate their impact
+on performance. Also keep in mind that optimizations might change the
+computation graph a lot, meaning that you might not recognize some of
+the operations that are profiled (you did not use them explicitly but
+an optimizer decided to use it to improve performance or numerical
+stability). If you cannot easily relate the output of ProfileMode with
+the computations you defined, you might want to try setting optimizer
+to None (but keep in mind the computations will be slower than if they
+were optimized).
+
+Note that most users will want to use ProfileMode to optimize their
+graph and find where most of the computation time is being spent. In
+this context, 'fast_run' optimizer and ``gof.OpWiseCLinker`` are the
+most appropriate choices.
+
+Compiling your Graph with ProfileMode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Once the ProfileMode instance is created, simply compile your graph as you
+would normally, by specifying the mode parameter.
+
+>>> # with functions
+>>> f = theano.function([input1,input2],[output1], mode=profmode)
+>>> # with modules
+>>> m = theano.Module()
+>>> minst = m.make(mode=profmode)
+
+Retrieving Timing Information
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Once your graph is compiled, simply run the program or operation you wish to
+profile, then call ``profmode.print_summary()``. This will provide you with
+the desired timing information, indicating where your graph is spending most
+of its time.
+
+This is best shown through an example.
+Lets use the example of logistic
+regression.  (Code for this example is in the file
+``benchmark/regression/regression.py``.) 
+
+Compiling the module with ProfileMode and calling ``profmode.print_summary()``
+generates the following output:
+
+.. code-block:: python
+    
+    """
+    ProfileMode.print_summary()
+    ---------------------------
+
+    local_time 0.0749197006226 (Time spent running thunks)
+    Apply-wise summary: <fraction of local_time spent at this position> (<Apply position>, <Apply Op name>)
+            0.069   15      _dot22
+            0.064   1       _dot22
+            0.053   0       InplaceDimShuffle{x,0}
+            0.049   2       InplaceDimShuffle{1,0}
+            0.049   10      mul
+            0.049   6       Elemwise{ScalarSigmoid{output_types_preference=<theano.scalar.basic.transfer_type object at 0x171e650>}}[(0, 0)]
+            0.049   3       InplaceDimShuffle{x}
+            0.049   4       InplaceDimShuffle{x,x}
+            0.048   14      Sum{0}
+            0.047   7       sub
+            0.046   17      mul
+            0.045   9       sqr
+            0.045   8       Elemwise{sub}
+            0.045   16      Sum
+            0.044   18      mul
+       ... (remaining 6 Apply instances account for 0.25 of the runtime)
+    Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>
+            0.139   * mul
+            0.134   * _dot22
+            0.092   * sub
+            0.085   * Elemwise{Sub{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1779f10>}}[(0, 0)]
+            0.053   * InplaceDimShuffle{x,0}
+            0.049   * InplaceDimShuffle{1,0}
+            0.049   * Elemwise{ScalarSigmoid{output_types_preference=<theano.scalar.basic.transfer_type object at 0x171e650>}}[(0, 0)]
+            0.049   * InplaceDimShuffle{x}
+            0.049   * InplaceDimShuffle{x,x}
+            0.048   * Sum{0}
+            0.045   * sqr
+            0.045   * Sum
+            0.043   * Sum{1}
+            0.042   * Elemwise{Mul{output_types_preference=<theano.scalar.basic.transfer_type object at 0x17a0f50>}}[(0, 1)]
+            0.041   * Elemwise{Add{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1736a50>}}[(0, 0)]
+            0.039   * Elemwise{Second{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1736d90>}}[(0, 1)]
+       ... (remaining 0 Ops account for 0.00 of the runtime)
+    (*) Op is running a c implementation
+
+    """
+
+
+
+.. note::
+
+    ***TODO***
+
+    The following text was recovered from a recent version of the source
+    file... hopefully things haven't gotten too out-of-sync!
+
+    The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
+
+    The Apply-wise summary print the timing information for the worst
+    offending Apply nodes. This corresponds to individual Op applications
+    within your graph which take the longest to execute (so if you use dot
+    twice, you will see two entries there). 
+
+    The Op-wise summary print the execution time of all Apply nodes
+    executing the same Op are grouped together and the total execution
+    time per Op is shown (so if you use dot twice, you will see only one
+    entry there corresponding to the sum of the time spent in each of
+    them). If two Op have different hash value, they will be separate.
+
+    The type-Op-wise summary group the result by type of op. So event if
+    two Op have different hash value, they will be merged.
+
+    Their is an hack with the Op-wise summary. Go see it if you want to know more.
+
+
+
+The summary has two components to it. In the first section called the
+Apply-wise summary, timing information is provided for the worst
+offending Apply nodes. This corresponds to individual Op applications
+within your graph which take the longest to execute (so if you use
+``dot`` twice, you will see two entries there). In the second portion,
+the Op-wise summary, the execution time of all Apply nodes executing
+the same Op are grouped together and the total execution time per Op
+is shown (so if you use ``dot`` twice, you will see only one entry
+there corresponding to the sum of the time spent in each of them).
+
+Note that the ProfileMode also shows which Ops were running a c
+implementation.
+
+Developers wishing to optimize the performance of their graph should
+focus on the worst offending Ops and Apply nodes -- either by optimizing an
+implementation, providing a missing C implementation, or by writing a graph
+optimization that eliminates the offending Op altogether.
+You should strongly consider emailing one of our lists about your issue before
+spending too much time on this.
+
+
+Reference
+=========
+
+.. class:: ProfileMode(Mode)
+
+    .. method:: print_summary(n_apply_to_print=None, n_ops_to_print=None)
+
+        Print three summaries to stdout that show where cpu time is spent during theano function executions (for all functions using this object instance).
+
+        :param n_apply_to_print: the number of apply nodes to print. 
+           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :envvar:`THEANO_FLAGS`.
+
+        :param n_ops_to_print: the number of ops to print.
+           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :envvar:`THEANO_FLAGS`.
+
+        :returns: None
+
+    .. method:: print_diff_summary(self, other, n_apply_to_print=None, n_ops_to_print=None):
+        """ As print_summary, but print the difference on two different profile mode.
+        TODO: Also we don't print the Apply-wise summary as it don't work for now.
+        TODO: make comparaison with gpu code.
+        
+        :param other: the other instance of ProfileMode that we want to be compared to.
+        
+        :param n_apply_to_print: the number of apply nodes to print. 
+           The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :envvar:`THEANO_FLAGS`.
+
+        :param n_ops_to_print: the number of ops to print.
+           Default 20, or but can be configured via ``ProfileMode.n_apply_to_print`` in :envvar:`THEANO_FLAGS`.
+
+        :returns: None
+

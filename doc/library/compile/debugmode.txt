@@ -1,0 +1,210 @@
+
+.. _debugmode:
+
+=================
+:mod:`debugmode`
+=================
+
+.. module:: debugmode
+   :platform: Unix, Windows
+   :synopsis: defines DebugMode
+.. moduleauthor:: LISA
+
+Guide
+=====
+
+
+The DebugMode evaluation mode includes a number of self-checks and assertions
+that can help to diagnose several kinds of programmer errors that can lead to
+incorrect output.
+
+It is much slower to evaluate a function or method with DebugMode than
+it would be in ``'FAST_RUN'`` or even ``'FAST_COMPILE'``.  We recommended you use
+DebugMode during development, but not when you launch 1000 processes on
+a cluster.
+
+DebugMode can be used as follows:
+
+.. code-block:: python
+
+    x = tensor.dvector('x')
+
+    f = theano.function([x], 10*x, mode='DEBUG_MODE')
+
+    f(5) 
+    f(0) 
+    f(7) 
+
+It can also be used by setting an environment variable ``THEANO_DEFAULT_MODE=DEBUG_MODE``.
+It can also be used by passing a DebugMode instance as the mode, as in 
+
+>>> f = theano.function([x], 10*x, mode=DebugMode(check_c_code=False))
+
+If any problem is detected, DebugMode will raise an exception according to
+what went wrong, either at call time (``f(5)``) or compile time (
+``f = theano.function(x, 10*x, mode='DEBUG_MODE')``). These exceptions
+should *not* be ignored; talk to your local Theano guru or email the
+users list if you cannot make the exception go away.
+
+Some kinds of errors can only be detected for certain input value combinations.
+In the example above, there is no way to guarantee that a future call to say,
+``f(-1)`` won't cause a problem.  DebugMode is not a silver bullet.
+
+If you instantiate DebugMode using the constructor ``compile.DebugMode``
+rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
+constructor arguments. 
+
+Reference
+==========
+
+.. class:: DebugMode(Mode)
+
+    Evaluation Mode that detects internal theano errors.
+
+    This mode catches several kinds of internal error:
+
+    - inconsistent c_code and perform implementations (see `BadCLinkerOutput`)
+
+    - a variable replacing another when their runtime values don't match.  This is a symptom of
+      an incorrect optimization step, or faulty Op implementation (raises `BadOptimization`)
+
+    - stochastic optimization ordering (raises `StochasticOrder`)
+
+    - incomplete `destroy_map` specification (raises `BadDestroyMap`)
+
+    - an op that returns an illegal value not matching the output Variable Type (raises
+      InvalidValueError)
+
+    Each of these exceptions inherits from the more generic `DebugModeError`.
+
+    If there are no internal errors, this mode behaves like FAST_RUN or FAST_COMPILE, but takes
+    a little longer and uses more memory.  
+
+    If there are internal errors, this mode will raise an `DebugModeError` exception.
+
+    .. attribute:: stability_patience = config.THEANO_DEBUGMODE_PATIENCE
+
+        When checking for the stability of optimization, recompile the graph this many times.
+        Default 10.
+
+    .. attribute:: check_c_code = config.THEANO_DEBUGMODE_CHECK_C
+
+        Should we evaluate (and check) the `c_code` implementations?
+
+        ``True`` -> yes, ``False`` -> no.
+        
+        Default yes.
+
+    .. attribute:: check_py_code = config.THEANO_DEBUGMODE_CHECK_PY
+
+    Should we evaluate (and check) the `perform` implementations?
+
+        ``True`` -> yes, ``False`` -> no.
+        
+        Default yes.
+
+    .. attribute:: check_isfinite = config.THEANO_DEBUGMODE_CHECK_FINITE
+
+        Should we check for (and complain about) ``NaN``/``Inf`` ndarray elements?
+
+        ``True`` -> yes, ``False`` -> no.
+        
+        Default yes.
+
+    .. attribute:: require_matching_strides = config.THEANO_DEBUGMODE_CHECK_STRIDES
+
+        Check for (and complain about) Ops whose python and C
+        outputs are ndarrays with different strides. (This can catch bugs, but
+        is generally overly strict.) 
+        
+        0 -> no check, 1 -> warn, 2 -> err.
+        
+        Default warn.
+
+    .. method:: __init__(self, optimizer='fast_run', stability_patience=None, check_c_code=None, check_py_code=None, check_isfinite=None, require_matching_strides=None, linker=None)
+
+        Initialize member variables.
+
+        If any of these arguments (except optimizer) is not None, it overrides the class default.
+        The linker arguments is not used. It is set their to allow Mode.requiring() and some other fct to work with DebugMode too.
+
+    
+
+The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
+is quite strict, and can raise several different Exception types.
+There following are DebugMode exceptions you might encounter:
+
+
+.. class:: DebugModeError(Exception)
+
+    This is a generic error.  All the other exceptions inherit from this one.
+    This error is typically not raised directly.
+    However, you can use ``except DebugModeError: ...`` to catch any of the more
+    specific types of Exception.
+
+
+
+.. class:: BadCLinkerOutput(DebugModeError)
+
+    This exception means that python (``perform``) and c (``c_code``) for an Op
+    didn't compute the same thing like they were supposed to.
+    The problem might be a bug in either ``perform`` or ``c_code`` (or both).
+
+
+
+.. class:: BadOptimization(DebugModeError)
+
+    This exception indicates that an Optimization replaced one variable (say V1)
+    with another one (say V2)  but at runtime, the values for V1 and V2 were
+    different.  This is something that optimizations are not supposed to do.
+
+    It can be tricky to identify the one-true-cause of an optimization error, but
+    this exception provides a lot of guidance.  Most of the time, the
+    exception object will indicate which optimization was at fault.
+    The exception object also contains information such as a snapshot of the
+    before/after graph where the optimization introduced the error.
+
+
+
+.. class:: BadDestroyMap(DebugModeError)
+
+    This happens when an Op's ``perform()`` or ``c_code()`` modifies an input that it wasn't
+    supposed to.  If either the ``perform`` or ``c_code`` implementation of an Op
+    might modify any input, it has to advertise that fact via the ``destroy_map``
+    attribute.
+
+    For detailed documentation on the ``destroy_map`` attribute, see :ref:`inplace`.
+
+
+.. class:: BadViewMap(DebugModeError)
+
+    This happens when an Op's perform() or c_code() creates an alias or alias-like
+    dependency between an input and an output... and it didn't warn the
+    optimization system via the ``view_map`` attribute.
+
+    For detailed documentation on the ``view_map`` attribute, see :ref:`views`.
+
+
+.. class:: StochasticOrder(DebugModeError)
+
+    This happens when an optimization does not perform the same graph operations
+    in the same order when run several times in a row.  This can happen if any
+    steps are ordered by ``id(object)`` somehow, such as via the default object
+    hash function.  A Stochastic optimization invalidates the pattern of work
+    whereby we debug in DEBUG_MODE and then run the full-size jobs in FAST_RUN.
+
+
+.. class:: InvalidValueError(DebugModeError)
+
+    This happens when some Op's ``perform`` or ``c_code`` implementation computes
+    an output that is invalid with respect to the type of the corresponding output
+    variable.  Like if it returned a complex-valued ndarray for a ``dscalar``
+    Type.
+
+    This can also be triggered when floating-point values such as NaN and Inf are
+    introduced into the computations.  It indicates which Op created the first
+    NaN.  These floating-point values can be allowed by passing the
+    ``check_isfinite=False`` argument to DebugMode. 
+
+
+

@@ -1,0 +1,99 @@
+
+.. _debug_faq:
+
+=========================================
+Debugging Theano: FAQ and Troubleshooting
+=========================================
+
+There are many kinds of bugs that might come up in a computer program.
+This page is structured as an FAQ.  It should provide recipes to tackle common
+problems, and introduce some of the tools that we use to find problems in our
+Theano code, and even (it happens) in Theano's internals, such as
+:ref:`using_debugmode`.
+
+
+
+
+How do I print an intermediate value in a Function/Method?
+----------------------------------------------------------
+
+Theano provides a 'Print' Op to do this.
+
+.. code-block:: python
+
+    x = theano.tensor.dvector('x')
+
+    x_printed = theano.printing.Print('this is a very important value')(x)
+
+    f = theano.function([x], x * 5)
+    f_with_print = theano.function([x], x_printed * 5)
+
+    #this runs the graph without any printing
+    assert numpy.all( f([1,2,3]) == [5, 10, 15])
+
+    #this runs the graph with the message, and value printed
+    assert numpy.all( f_with_print([1,2,3]) == [5, 10, 15])
+
+
+Since Theano runs your program in a topological order, you won't have precise
+control over the order in which multiple Print() Ops are evaluted.  For a more
+precise inspection of what's being computed where, when, and how, see the
+:ref:`faq_wraplinker`.
+
+
+
+The function I compiled is too slow, what's up?
+-----------------------------------------------
+
+First, make sure you're running in FAST_RUN mode, by passing
+``mode='FAST_RUN'`` to ``theano.function`` or ``theano.make``. Some
+operations have excruciatingly slow Python implementations and that
+can negatively effect the performance of FAST_COMPILE.
+
+Second, try the theano :ref:`using_profilemode`.  This will tell you which
+Apply nodes, and which Ops are eating up your CPU cycles.
+
+
+.. _faq_wraplinker:
+
+How do I step through a compiled function with the WrapLinker?
+--------------------------------------------------------------
+
+This is not exactly an FAQ, but the doc is here for now...
+It's pretty easy to roll-your-own evaluation mode.
+Check out this one:
+
+.. code-block:: python
+
+    class PrintEverythingMode(Mode):
+        def __init__(self):
+            def print_eval(i, node, fn):
+                print i, node, [input[0] for input in fn.inputs],
+                fn()
+                print [output[0] for output in fn.outputs]
+            wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()], [print_eval])
+            super(PrintEverythingMode, self).__init__(wrap_linker, optimizer='fast_run')
+
+When you use ``mode=PrintEverythingMode()`` as the mode for Function or Method,
+then you should see [potentially a lot of] output.  Every Apply node will be printed out,
+along with its position in the graph, the arguments to the ``perform`` or
+``c_code`` and the output it computed.  
+
+>>> x = T.dscalar('x')
+>>> f = function([x], [5*x], mode=PrintEverythingMode())
+>>> f(3)
+>>> # print: 0 Elemwise{mul,no_inplace}(5, x) [array(5, dtype=int8), array(3.0)] [array(15.0)]
+>>> # print: [array(15.0)]
+
+Admittedly, this may be a huge amount of
+output to read through if you are using big tensors... but you can choose to
+put logic inside of the print_eval function  that would, for example, only
+print something out if a certain kind of Op was used, at a certain program
+position, or if a particular value shows up in one of the inputs or outputs.
+Use your imagination :)
+
+.. TODO: documentation for link.WrapLinkerMany
+
+This can be a really powerful debugging tool.
+Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
+

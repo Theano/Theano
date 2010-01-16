@@ -1,0 +1,246 @@
+'''C code is actually generated this way. Could be refreshed as developer documentation.  Olivier to review.  20080904.'''
+
+Here is a proposal on the interface to generate C code:
+
+What will be passed to C
+========================
+
+For each ResultBase, the C code gets a variable called storage_<name> which contains a PyObject* pointing to a 1-element list (a sort of cell). That is the "channel" via which C and Python can communicate data. Of course, the C code will not manipulate that directly. At every execution of the C function, the PyObject* inside the storage is extracted and given the name py_<name> (its reference count is handled automatically).
+
+
+Extracting the data for use with C
+==================================
+
+In ResultBase, we have several methods to generate C code for particular purposes. They should return templated strings of C code (see below) but should not actually fill the template. The caller will fill it.
+
+List of template variables you can use:
+  * '''%(name)s:''' Will be filled in by a mangled name representing this ResultBase.
+  * '''%(fail)s:''' This can be inserted in the code to make the current function fail. It will proceed to cleanup everything that needs to be cleaned up. This cannot be used in any cleanup routine (and hence it is forbidden for a cleanup routine to fail!) If a code block uses %(fail)s, its corresponding cleanup block will be called first, so make sure that the cleanup can be done properly at any point where you use %(fail)s, even if you didn't allocate or INCREF everything yet.
+
+List of methods in ResultBase:
+
+'''c_declare:''' This method returns code that declares one or more variables ''without'' initializing them. These are the variables that all C code using this ResultBase will use to manipulate the data. The code should ''only'' declare variables and typedefs (no #defines, but a future extension might address this). Example: if we have a ResultBase representing a double, c_declare may simply return "double %(name)s;". ''All'' variables declared should contain the %(name)s template, but they may prefix or suffix it.
+
+'''c_init:''' This method returns code that initializes (zeros/sets to NULL, typically) the variables declared in c_declare.
+
+'''c_extract:''' This method should manipulate py_<name> to set the values of the variables declared by c_declare. For example, if we have a ResultBase representing a double, c_extract might return "%(name)s = PyFloat_AsDouble(py_%(name)s);" (plus error checking!). If something is wrong with the data provided from Python, c_extract should set an informative error message and insert %(fail)s.
+
+'''c_sync:''' This method should adjust the py_<name> variable using the values of the variables declared by c_declare. For example, if we have a ResultBase representing a double, c_sync might return "Py_XDECREF(py_%(name)s); py_%(name)s = PyFloat_FromDouble(%(name)s);". The result will then be made accessible from Python. c_sync is not allowed to fail, though it is not really cleanup code.
+
+'''c_cleanup:''' This method should clean up all the variables declared by c_declare.
+
+
+Important notes:
+  * ''Either'' c_init or c_extract will be called. The former for temporary variables and outputs, the latter for inputs. If the former is used, py_<name> will be set to Py_None regardless of what is in storage_<name>.
+  * c_sync will only be called on the outputs, not on inputs or temporaries.
+  * c_cleanup will ''always'' be called. If c_sync decides to relay some data to Python (thus ousting it from the op's scope), it should NULL any pointers that c_cleanup is not allowed to free.
+
+
+Manipulating the data from C
+============================
+
+The Op class has in turn several methods that generate C code. As for ResultBase, they should return templated strings of C code (see below) but should not actually fill the template. The caller will fill it.
+
+List of template variables you can use:
+  * '''%(<variable_name>)s:''' See c_var_names. These will be substituted for mangled names.
+  * '''%(fail)s:''' This can be inserted in the code to make the current function fail. It will proceed to cleanup everything that needs to be cleaned up. This cannot be used in any cleanup routine (and hence it is forbidden for a cleanup routine to fail!). If a code block uses %(fail)s, its corresponding cleanup block will be called first, so make sure that the cleanup can be done properly at any point where you use %(fail)s, even if you didn't allocate or INCREF everything yet.
+
+'''c_var_names''': This method should return two lists, one list of strings representing the input names and one list of strings representing the output names. The actual names might be mangled by the compiler. In the template strings returned by the next few methods, you can use the names defined here. For example, if op.c_var_names() returns [['x', 'y'], ['z']], then "%(x)s" in op's templates will be the same as "%(name)s" in op.inputs[0]'s templates. This means that all the variables declared by the inputs and outputs can easily be used in the op's templates.
+
+'''c_validate_update''': This method should return code that ensures that the inputs are valid for processing by this Op (checking shapes, bounds, etc.). If anything is invalid, it should set an informative error message and use %(fail)s. Then, it should prepare the outputs: for example, if the output is a tensor, allocate a tensor, resize it appropriately and place it in the appropriate variable (see c_var_names).
+
+'''c_validate_update_cleanup''': This method should clean up any temporary storage used by c_validate_update. It is not forbidden to do it in c_validate_update itself, but this can come in handy.
+
+'''c_code''': This is the meat of the Op that actually calculates the function. If an error occurs in the process, it may use %(fail)s. It should work in place on the variables declared by its inputs and outputs and rely on their c_sync routines to relay the results to Python.
+
+'''c_code_cleanup''': This cleans up any temporary structures allocated by c_code.
+
+'''c_is_simple (field)''': Class field. Defaults to False. It is basically a compiler hint that this class represents a builtin C type or a small struct, so we can optimize its access.
+
+
+Important notes:
+  * There might be provisions in the future to skip the validate_update step if the Op can guarantee that the inputs are valid and the outputs are set up properly.
+  * It is not forbidden to just put the validate_update code in c_code. Some situations might require it, but it helps organization to segregate them.
+
+
+Failure
+=======
+
+Besides cleanup code, all code has access to the %(fail)s template. For three code blocks, the generated C code will pretty much look like this:
+
+.. code-block::
+    int failure = 0;
+    {
+      <code1>
+      {
+        <code2>
+        {
+          <code3>
+        label3:
+          <cleanup3>
+        }
+      label2:
+        <cleanup2>
+      }
+    label1:
+      <cleanup1>
+    }
+    return failure;
+
+And %(fail)s in the nth code block will take the value "{failure = n; goto label<n>;}". This means only the blocks executed up to the failure point are cleaned up and the return value indicates which block failed, which is handy for debugging.
+
+When compiling an Op, we want to sync the outputs so we can get the results from Python. In case of failure, we will not necessarily want to sync. Because of that, typical code will look like this:
+
+.. code-block::
+    int failure = 0;
+    <declare input>
+    <declare output>
+    {
+      <extract input>
+      {
+        <extract output>
+        {
+          <perform>
+        label3:
+          <clean up perform>
+        }
+      label2:
+        if (!failure)
+          <sync output>
+        <clean up output>
+      }
+    label1:
+      <clean up input>
+    }
+    return failure;
+
+Furthermore, is not necessary to extract the output because we mean to overwrite it anyway. In that case, <extract output> will be a no-op, but of course we may still need to clean up or sync what <perform> will put in the declared outputs.
+
+
+Example ResultBase
+==================
+
+The following ResultBase represents a double (we only care about the C part).
+
+.. code-block::
+    class Double(ResultBase):
+      <snip>
+      def c_declare(self):
+        return "double %(name)s;"
+      def c_init(self):
+        return "%(name)s = 0.0;"
+      def c_extract(self):
+        return "%(name)s = PyFloat_AsDouble(py_%(name)s);"
+      def c_cleanup(self):
+        return "" # nothing to do
+      def c_sync(self):
+        return "Py_XDECREF(py_%(name)s); py_%(name)s = PyFloat_FromDouble(%(name)s);"
+
+
+Example Op
+==========
+
+The following ResultBase represents addition of two nonnegative doubles (we only care about the C part).
+
+.. code-block::
+    class Add(Op):
+      <snip>
+      def c_var_names(self):
+        return "[['x', 'y'], ['z']]"
+      def c_validate_update(self):
+        return "if (%(x)s < 0 || %(y)s < 0) %(fail)s" # fail if x or y is negative
+      def c_validate_update_cleanup(self):
+        return "" # nothing to do
+      def c_code(self):
+        return "%(z)s = %(x)s + %(y)s;"
+      def c_code_cleanup(self):
+        return "" # nothing to do
+
+Generating a C function
+=======================
+
+For the example Op, the generated C function will typically look like this:
+
+.. code-block::
+    void add(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
+      PyObject* py_x = PyList_GET_ITEM(storage_x, 0); Py_XINCREF(py_x); // automatic
+      PyObject* py_y = PyList_GET_ITEM(storage_y, 0); Py_XINCREF(py_y); // automatic
+      PyObject* py_z = Py_None; // we don't care what's currently in storage_z
+
+      failure = 0
+      double x; // x.c_declare
+      double y; // y.c_declare
+      double z; // z.c_declare
+      {
+        x = PyFloat_AsDouble(py_x); // x.c_extract
+        {
+          y = PyFloat_AsDouble(py_y); // y.c_extract
+          {
+            # we don't need to use z.c_extract
+            {
+              if (x < 0 || y < 0) { // add.validate_update
+                // This is automatically inserted in place of %(fail)s
+                failure = 4;
+                goto label_add_validate_update_cleanup;
+              }
+              {
+                z = x + y; // add.c_code
+              label_add_code_cleanup:
+              }
+            label_add_validate_update_cleanup:
+            }
+          label_z_sync_or_cleanup:
+            if (!failure) {
+              Py_XDECREF(py_z); // z.c_sync
+              py_z = PyFloat_FromDouble(z); // z.c_sync, the result is now available from Python!
+              PyList_SET_ITEM(storage_z, 0, py_z); // always done after _.c_sync
+            }
+            Py_XDECREF(py_z); // always done after _.c_cleanup
+          }
+        label_y_cleanup:
+          Py_XDECREF(py_y); // always done after _.c_cleanup
+        }
+      label_x_cleanup:
+        Py_XDECREF(py_x); // always done after _.c_cleanup
+      }
+      return failure;
+    }
+
+Generating a C struct
+=====================
+
+To accelerate processing a tad, a struct can be generated instead of a function. The struct will keep pointers to the storage where to fetch inputs and store outputs, but it will also store fields declared by outputs and temporaries' c_declare methods.
+
+Here is a sketch of the struct equivalent of the previous function:
+
+.. code-block::
+    struct add {
+      PyObject* storage_x;
+      PyObject* storage_y;
+      PyObject* storage_z;
+      double z; // z.c_declare
+
+      void init(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
+        <set the struct members of the same names>
+        <init the struct members corresponding to z>
+      }
+
+      void cleanup(void) {
+        <cleanup z>
+      }
+
+      void run(void) {
+        <same code as before minus z's cleanup>
+      }
+
+      add() { this->init(); }
+      ~add() { this->cleanup(); }
+    };
+
+Advantages of using a struct:
+  * Can be run several times even if we provide the storage only once.
+  * Output variables or temporary variables can reuse what they allocated the last time. This is not particularly useful with doubles (in fact it might be detrimental), but if z was a large tensor it might be interesting to recycle the memory over thousands of runs of the Op.
+
+No struct members will be made if a result's c_is_simple field is True. They will be allocated on the stack instead.
+
+
