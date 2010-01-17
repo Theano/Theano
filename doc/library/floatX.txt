@@ -5,7 +5,7 @@
 :mod:`floatX` -- easy switching between float32 and float64
 =======================================================================
 
-.. module:: floatx
+.. module:: floatX
    :platform: Unix, Windows
    :synopsis: easy switching between float32 and float64
 .. moduleauthor:: LISA
@@ -14,34 +14,35 @@
 Guide
 =====
 
-Their is a special data type called floatX. It is not a real datatype. It is never present in the theano graph, but their exist constructor and function that will change the floatX to float32 or float64(default) in your graph. You can change the value of floatX when you start the execution of python by setting the environement variables THEANO_GPU=floatX=float{32,64}(case sensitive). You can have the value of floatX with::
+On the CPU, 'float32' computations are often twice as fast as 'float64'
+and are half the size.
+On GPUs the speed difference between 'float32'``  and 'float64' is much greater.
+Often we develop our code using double-precision expressions, and then wonder if
+we might get the same answer much more quickly with single-precision arithmetic.
+If we have used ``tensor.dmatrix`` and ``tensor.dvector`` and so on throughout
+our code, it could be tedious to switch to single-precision Variables.  To make
+switching precisions easier, Theano provides the ``floatX`` module.
 
-      import theano.config as config
-      config.floatX
+>>> from theano.floatX import xmatrix, xvector, xtensor4
+>>> import numpy
+>>> a = xvector('a')
+>>> b = xmatrix()
+>>> c = xtensor4()
 
-This can help to have the same code run on the cpu in float64 and let it run on the gpu in float32. float32 is the only datatype that is currently supported on the gpu. This can give different result due to rounding error. This option help to compare those difference.
+These calls are identical to ``dvector``, ``dmatrix``, and ``dtensor4`` by default, but a
+single environment variable can switch them to ``fvector``, ``fmatrix`` and ``ftensor4``.
 
-Also, on the cpu, float32 are twice as fast as float64.
+You can set the floatX precision via ``floatX`` in the :envvar:`THEANO_FLAGS`.
+It defaults to ``'float64'``. To set it to ``'float32'`` in *bash* for example, type ``export THEANO_FLAGS=floatX=float64``.
+To set it from within your program call :func:`set_floatX`
 
-Their exist helper function in theano.floatx that simplify using this 
-Here is the list of fonction that create/accept tensor of floatX. They are all variant of function that already exist for other datatype.
-theano.scalar.Scalar.__init__(dtype)
-theano.scalar.floatX
-theano.floatx.xscalar
-theano.floatx.xvector
-theano.floatx.xmatrix
-theano.floatx.xrow
-theano.floatx.xcol
-theano.floatx.xtensor3
-theano.floatx.xtensor4
-theano.tensor.cast(TensorVariable, dtype)
-TensorType.__init__(dtype, broadcastable, name = None, shape=None)
+The current floatX precision is stored in ``theano.config.floatX`` as a string.
+Its value is either 'float32' or 'float64'. 
+So it is easy to allocate a numpy vector of the floatX dtype.
 
-HINT: linear algorythm are less affected by the different precision then non-linear one.
-      use numpy.asarray(x,dtype=config.floatX) to cast numpy array to floatX
-      numpy.asarray(x,dtype=config.floatX) warn copy only if needed.
-
-WARNING: theano.floatx.set_floatX() exist for our test. Don't use it for something else. If you do, it will make code hard to read and it is a sign that their is something better for you then floatX.
+>>> import theano.config as config
+>>> print config.floatX   # either 'float32' or 'float64'
+>>> x = numpy.asarray([1,2,3], dtype=config.floatX)
 
 Reference
 ==========
@@ -52,32 +53,32 @@ Reference
 
 .. function:: xvector(name=None)
 
-    Alias for either :func:`d...` or :func:`f---`
+    Alias for either :func:`dvector` or :func:`fvector`
 
 .. function:: xmatrix(name=None)
 
-    Alias for either :func:`d...` or :func:`f---`
+    Alias for either :func:`dmatrix` or :func:`fmatrix`
 
 .. function:: xrow(name=None)
 
-    Alias for either :func:`d...` or :func:`f---`
+    Alias for either :func:`drow` or :func:`frow`
 
 .. function:: xcol(name=None)
 
-    Alias for either :func:`d...` or :func:`f---`
+    Alias for either :func:`dcol` or :func:`fcol`
 
 .. function:: xtensor3(name=None)
 
-    Alias for either :func:`d...` or :func:`f---`
+    Alias for either :func:`dtensor3` or :func:`ftensor3`
 
 .. function:: xtensor4(name=None)
 
-    Alias for either :func:`d...` or :func:`f---`
+    Alias for either :func:`dtensor4` or :func:`ftensor4`
 
 .. function:: set_floatX(dtype=config.floatX)
 
-    Reset the :func:`xscalar`, ... :func:`xtensor4` aliases to return types
-    with given dtype.
+    Reset the :func:`xscalar`, ... :func:`xtensor4` aliases to return Variables with given dtype.
+    This is called at import-time when setting floatX in :envvar:`THEANO_FLAGS`.
 
 
 
