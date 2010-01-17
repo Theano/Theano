@@ -31,11 +31,11 @@ Documentation
 
 Roughly in order of what you'll want to check out:
 
-* :ref:`introduction` -- what is Theano?
-* :ref:`tutorial` -- learn the basics 
-* :ref:`libdoc` -- Theano's functionality, module by module
-* :ref:`extending` -- how to add a Type, Op, or graph optimization
-* :ref:`internal` -- maintaining Theano, LISA-specific tips, and more
+* :ref:`introduction` -- What is Theano?
+* :ref:`tutorial` -- Learn the basics.
+* :ref:`libdoc` -- All Theano's functionality, module by module.
+* :ref:`extending` -- Learn to add a Type, Op, or graph optimization.
+* :ref:`internal` -- How to maintaining Theano, LISA-specific tips, and more...
 
 You can download the latest `PDF documentation <http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
 
