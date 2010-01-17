@@ -247,6 +247,34 @@ Advanced indexing.
 
 .. _libdoc_tensor_elementwise:
 
+.. note::
+
+    Index-assignment is *not* supported.  
+
+    If you want to do something like ``a[5] = b`` or ``a[5]+=b``, see :func:`setsubtensor`.
+
+
+Operator Support
+================
+
+Python arithmetic operators are supported:
+
+>>> a = T.itensor3()
+>>> a + 3      # T.add(a, 3) -> itensor3
+>>> 3 - a      # T.sub(3, a)
+>>> a * 3.5    # T.mul(a, 3.5) -> ftensor3 or dtensor3 (depending on autocasting)
+>>> 2.2 / a    # T.truediv(2.2, a)
+>>> 2.2 // a   # T.intdiv(2.2, a)
+>>> 2.2**a     # T.pow(2.2, a)
+
+
+.. note::
+
+    In-place operators are *not* supported.  Theano's graph-optimizations
+    will determine which intermediate values to use for in-place
+    computations.  If you would like to update the value of a
+    :term:`shared variable`, consider using the ``updates`` argument to
+    :func:`theano.function`.
 
 Elementwise
 ===========
@@ -254,36 +282,28 @@ Elementwise
 Casting
 -------
 
-Logic Functions
----------------
+Comparisons
+------------
+
+.. note::
+
+    Theano has no boolean dtype.  Instead, all boolean tensors are represented
+    in ``'int8'``.
 
 .. function:: lt(a, b)
-    Returns a variable representing the result of logical less than (a<b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise less than.
 
-.. code-block:: python 
-    import theano.tensor as T
-    x,y = T.dmatrices('x','y')
-    z = T.lt(x,y)
+    Returns a symbolic ``'int8'`` tensor representing the result of logical less-than (a<b).
+
+    Also available using syntax ``a < b``
 
 .. function:: gt(a, b)
-    Returns a variable representing the result of logical greater than (a>b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise greater than.
 
-.. code-block:: python 
-    import theano.tensor as T
-    x,y = T.dmatrices('x','y')
-    z = T.gt(x,y)
+    Returns a symbolic ``'int8'`` tensor representing the result of logical greater-than (a>b).
+
+    Also available using syntax ``a > b``
 
 .. function:: le(a, b)
+
     Returns a variable representing the result of logical less than or
     equal (a<=b).
       :Parameter:  *a* - symbolic Tensor (or compatible)
@@ -292,26 +312,29 @@ Logic Functions
       :Returns: a symbolic tensor representing the application of logical 
       elementwise less than or equal.
 
-.. code-block:: python 
-    import theano.tensor as T
-    x,y = T.dmatrices('x','y')
-    z = T.le(x,y)
+    .. code-block:: python 
+
+        import theano.tensor as T
+        x,y = T.dmatrices('x','y')
+        z = T.le(x,y)
 
 .. function:: ge(a, b)
-    Returns a variable representing the result of logical greater or equal
-     than (a>=b).
+
+    Returns a variable representing the result of logical greater or equal than (a>=b).
       :Parameter:  *a* - symbolic Tensor (or compatible)
       :Parameter:  *b* - symbolic Tensor (or compatible)
       :Return type: symbolic Tensor
       :Returns: a symbolic tensor representing the application of logical 
       elementwise greater than or equal.
 
-.. code-block:: python 
-    import theano.tensor as T
-    x,y = T.dmatrices('x','y')
-    z = T.ge(x,y)
+    .. code-block:: python 
+
+        import theano.tensor as T
+        x,y = T.dmatrices('x','y')
+        z = T.ge(x,y)
 
 .. function:: eq(a, b)
+
     Returns a variable representing the result of logical equality (a==b).
       :Parameter:  *a* - symbolic Tensor (or compatible)
       :Parameter:  *b* - symbolic Tensor (or compatible)
@@ -319,12 +342,14 @@ Logic Functions
       :Returns: a symbolic tensor representing the application of logical 
       elementwise equality.
 
-.. code-block:: python 
-    import theano.tensor as T
-    x,y = T.dmatrices('x','y')
-    z = T.eq(x,y)
+    .. code-block:: python 
+
+        import theano.tensor as T
+        x,y = T.dmatrices('x','y')
+        z = T.eq(x,y)
 
 .. function:: neq(a, b)
+
     Returns a variable representing the result of logical inequality
     (a!=b).
       :Parameter:  *a* - symbolic Tensor (or compatible)
@@ -333,10 +358,11 @@ Logic Functions
       :Returns: a symbolic tensor representing the application of logical 
       elementwise inequality.
 
-.. code-block:: python 
-    import theano.tensor as T
-    x,y = T.dmatrices('x','y')
-    z = T.neq(x,y)
+    .. code-block:: python 
+
+        import theano.tensor as T
+        x,y = T.dmatrices('x','y')
+        z = T.neq(x,y)
 
 Mathematical
 ------------
