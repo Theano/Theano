@@ -1,12 +1,12 @@
 .. _libdoc_printing:
 
 ===============================================================
-:mod:`printing` -- graph printing and symbolic print statement
+:mod:`printing` -- Graph Printing and Symbolic Print Statement
 ===============================================================
 
 .. module:: printing
    :platform: Unix, Windows
-   :synopsis: provides the Print Op
+   :synopsis: Provides the Print Op and graph-printing routines.
 .. moduleauthor:: LISA
 
 Guide

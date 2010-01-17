@@ -2,5 +2,5 @@
 .. _libdoc_gof:
 
 ================================================
-:mod:`gof` -- theano internals [doc TODO]
+:mod:`gof` -- Theano Internals [doc TODO]
 ================================================

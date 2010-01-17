@@ -1,12 +1,12 @@
 .. _libdoc_config:
 
 =======================================
-:mod:`config` -- library configuration 
+:mod:`config` -- Theano Configuration 
 =======================================
 
 .. module:: config
    :platform: Unix, Windows
-   :synopsis: library configuration
+   :synopsis: Library configuration attributes.
 .. moduleauthor:: LISA
 
 
