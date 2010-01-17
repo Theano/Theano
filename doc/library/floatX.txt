@@ -2,7 +2,7 @@
 .. _libdoc_floatX:
 
 =======================================================================
-:mod:`floatX` -- easy switching between float32 and float64
+:mod:`floatX` -- Switching Between 'float32' and 'float64'
 =======================================================================
 
 .. module:: floatX
