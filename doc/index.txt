@@ -6,18 +6,20 @@ Theano is a Python library that allows you to define, optimize, and
 evaluate mathematical expressions involving multi-dimensional
 arrays efficiently. Theano features:
 
-* **tight integration with numpy**
-* **near-transparent use of a GPU** to accelerate for intense calculations [JAN 2010].
-* **symbolic differentiation**
-* **speed and stability optimizations**: write ``log(1+exp(x))`` and get the right answer.
-* **dynamic C code generation** for faster expression evaluation
+* **tight integration with numpy** -- Use `numpy.ndarray` in Theano-compiled functions.
+* **near-transparent use of a GPU** -- Accelerate data-intensive calculations [JAN 2010].
+* **symbolic differentiation** -- Let Theano do your derivatives.
+* **speed and stability optimizations** -- Write ``log(1+exp(x))`` and get the right answer.
+* **dynamic C code generation** -- Evaluate expressions faster.
+
+Theano has been powering large-scale computationally intensive scientific investigations
+since 2007.  But it is also approachable enough to be used in the classroom
+(IFT6266 at the University of Montreal).
 
 Download
 ========
 
-In April 2009 we made declared the creation of a `0.1 release <http://pylearn.org/theano/downloads/Theano-0.1.tar.gz>`_.
-Development has continued non-stop since then.
-The current version is available via::
+We recommend the latest development version, available via::
 
     hg clone http://hg.assembla.com/theano Theano
 
@@ -27,13 +29,26 @@ installation and configuration, see :ref:`installing Theano <install>`.
 Documentation
 =============
 
+Roughly in order of what you'll want to check out:
+
+* :ref:`introduction` -- what is Theano?
+* :ref:`tutorial` -- learn the basics 
+* :ref:`libdoc` -- Theano's functionality, module by module
+* :ref:`extending` -- how to add a Type, Op, or graph optimization
+* :ref:`internal` -- maintaining Theano, LISA-specific tips, and more
+
 You can download the latest `PDF documentation <http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
 
-* If you have no idea what Theano is read the :ref:`introduction <introduction>`.
-* :ref:`learn the basics <tutorial>`
-* :ref:`library reference <libdoc>`
-* :ref:`extending Theano <extending>` with new Types, and Ops
-* :ref:`internal docs <internal>`
+Community
+=========
+
+* Register and post to `theano-users`_ if you want to talk to all Theano users.
+
+* Register and post to `theano-dev`_ if you want to talk to the developers.
+
+* We try to stay organized with `Theano's Trac <trac/>`__ 
+
+* Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
 
 .. toctree::
    :maxdepth: 1
@@ -53,17 +68,6 @@ You can download the latest `PDF documentation <http://pylearn.org/theano/theano
    proposals/index
    LICENSE
 
-
-Community
-=========
-
-* Register and post to `theano-users`_ if you want to talk to all Theano users.
-
-* Register and post to `theano-dev`_ if you want to talk to the developers.
-
-* We try to stay organized with `Theano's Trac <trac/>`__ 
-
-* Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
 
 
 
