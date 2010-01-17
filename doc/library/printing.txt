@@ -1,6 +1,63 @@
 .. _libdoc_printing:
 
-================================================================================
-:mod:`printing` -- graph printing and symbolic print statement [doc TODO]
-================================================================================
+===============================================================
+:mod:`printing` -- graph printing and symbolic print statement
+===============================================================
+
+.. module:: printing
+   :platform: Unix, Windows
+   :synopsis: provides the Print Op
+.. moduleauthor:: LISA
+
+Guide
+======
+
+Intermediate values in a computation cannot be printed in
+the normal python way with the print statement, because Theano has no *statements*.
+Instead there is the `Print` Op.
+
+>>> x = T.dvector()
+>>> hello_world_op = Print('hello world')
+>>> printed_x = hello_world_op(x)
+>>> f = function([x], printed_x)
+>>> f([1,2,3])
+>>> # output: "hello world __str__ = [ 1.  2.  3.]"
+
+If you print more than one thing in a function like `f`, they will not
+necessarily be printed in the order that you think.  The order might even depend
+on which graph optimizations are applied. Strictly speaking, the order of
+printing is not completely defined by the interface -- 
+the only hard rule is that if the input of some print output `a` is 
+ultimately used as an input to some other print input `b` (so that `b` depends on `a`),
+then `a` will print before `b`.
+
+
+Reference
+==========
+
+
+.. class:: Print(Op)
+
+    This identity-like Op has the side effect of printing a message followed by its inputs
+    when it runs. Default behaviour is to print the __str__ representation. Optionally, one 
+    can pass a list of the input member functions to execute, or attributes to print.
+    
+
+    .. method:: __init__(message="", attrs=("__str__",)
+
+        :type message: string
+        :param message: prepend this to the output
+        :type attrs: list of strings
+        :param attrs: list of input node attributes or member functions to print.
+            Functions are
+            identified through callable(), executed and their return value printed.
+
+    .. method:: __call__(x)
+
+        :type x: a :class:`Variable`
+        :param x: any symbolic variable
+        :returns: symbolic identity(x)
+
+        When you use the return-value from this function in a theano function,
+        running the function will print the value that `x` takes in the graph.
 
