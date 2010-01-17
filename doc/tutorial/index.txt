@@ -5,7 +5,7 @@
 Tutorial
 ========
 
-Let's start an interactive session and import Theano.
+Let's start an interactive session (e.g. ``python`` or ``ipython``) and import Theano.
 
 >>> from theano import *
 

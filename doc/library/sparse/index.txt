@@ -2,6 +2,6 @@
 .. _libdoc_sparse:
 
 ===========================================================
-:mod:`sparse` -- symbolic sparse matrices [doc TODO]
+:mod:`sparse` -- Symbolic Sparse Matrices [doc TODO]
 ===========================================================
 

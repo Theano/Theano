@@ -2,7 +2,7 @@
 .. _libdoc_compile:
 
 ==============================================================
-:mod:`compile` -- transforming expression graphs to functions
+:mod:`compile` -- Transforming Expression Graphs to Functions
 ==============================================================
 
 .. module:: compile

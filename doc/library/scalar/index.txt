@@ -2,5 +2,5 @@
 .. _libdoc_scalar:
 
 ==============================================================
-:mod:`scalar` -- symbolic scalar types, ops [doc TODO]
+:mod:`scalar` -- Symbolic Scalar Types, Ops [doc TODO]
 ==============================================================

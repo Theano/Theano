@@ -1,7 +1,7 @@
 .. _libdoc_gradient:
 
 ===========================================
-:mod:`gradient` -- symbolic differentiation
+:mod:`gradient` -- Symbolic Differentiation
 ===========================================
 
 .. module:: gradient

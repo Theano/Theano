@@ -2,7 +2,7 @@
 .. _internal:
 
 ======================
-Internal documentation
+Internal Documentation
 ======================
 
 If you're feeling ambitious, go fix some `pylint

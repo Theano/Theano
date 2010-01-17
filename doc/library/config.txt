@@ -1,21 +1,61 @@
 .. _libdoc_config:
 
 =======================================
-:mod:`config` -- library configuration 
+:mod:`config` -- Theano Configuration 
 =======================================
 
 .. module:: config
    :platform: Unix, Windows
-   :synopsis: library configuration
+   :synopsis: Library configuration attributes.
 .. moduleauthor:: LISA
+
+
+Guide
+=====
+
+The config module contains many attributes that modify Theano's behavior.  Many of these
+attributes are consulted during the import of the ``theano`` module and many are assumed to be
+read-only.
+
+*As a rule, the attributes in this module should not be modified by user code.*
+
+Reference
+=========
 
 
 .. envvar:: THEANO_FLAGS
 
-    ***TODO***
+    This is a list of comma-delimited key=value pairs that control Theano's behavior.
+    
+    For example, in bash, you can type:
 
-.. attribute:: floatx
+    .. code-block:: bash
+
+        THEANO_FLAGS=floatX=float32  python <myscript>.py
+
+        ***TODO***
+
+    Which will cause
 
 
+.. attribute:: floatX
 
-***TODO*** what attributes are in here? 
+    String value: either 'float32' or 'float64'.
+
+    Default: 'float64'
+
+    Set with the 'floatX' key in :envvar:`THEANO_FLAGS`
+
+.. attribute:: THEANO_DEFAULT_MODE
+
+    String value: any valid mode string (see :func:`theano.function`).
+
+    Default: 'FAST_RUN'
+
+    Set with the 'THEANO_DEFAULT_MODE' environment variable.
+
+
+***TODO*** Consider moving many config elements to THEANO_FLAGS right away before taking the
+time to document the current madness.
+
+
