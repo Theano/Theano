@@ -6,9 +6,12 @@ Glossary of terminology
 .. glossary::
 
     Apply
-        WRITEME
+        Instances of :class:`Apply` represent the application of an :term:`Op`
+        to some input :term:`Variable`s to produce some output
+        :term:`Variable`s.  They are like the application of a [symbolic]
+        mathematical function to some [symbolic] inputs.
 
-    broadcasting
+    Broadcasting
         Broadcasting is a mechanism which allows tensors with
         different numbers of dimensions to be added or multiplied
         together by (virtually) replicating the smaller tensor along
@@ -44,13 +47,17 @@ Glossary of terminology
         * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
         * `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
 
-    constant
-        WRITEME
+    Constant
+        A variable with an immutable value.
+        For example, when you type
+        >>> x = tensor.ivector()
+        >>> y = x + 3
+        Then a `constant` is created to represent the ``3`` in the graph.
 
-    dynamic
-        WRITEME
+        See also: :class:`gof.Constant`
 
-    elementwise
+
+    Elementwise
         An elementwise operation ``f`` on two matrices ``M`` and ``N``
         is one such that:
 
@@ -72,45 +79,103 @@ Glossary of terminology
         others. These operations are all instances of :api:`Elemwise
         <theano.tensor.elemwise.Elemwise>`.
 
-    graph
-        WRITEME
+    Expression Graph
+        A directed, acyclic set of connected :term:`Variable` and
+        :term:`Apply` nodes that express symbolic functional relationship
+        between variables.  You use Theano by defining expression graphs, and
+        then compiling them with :term:`theano.function`.
 
-    inplace
-        WRITEME
+        See also :term:`Variable`, :term:`Op`, :term:`Apply`, and
+        :term:`Type`, or read more about :ref:`tutorial_graphstructures`.
 
-    merge
-        WRITEME
+    Destructive
 
-    op
-        WRITEME
+        An :term:`Op` is destructive (of particular input[s]) if its
+        computation requires that one or more inputs be overwritten or
+        otherwise invalidated.  For example, :term:`inplace` Ops are
+        destructive.  Destructive Ops can sometimes be faster than
+        non-destructive alternatives.  Theano encourages users not to put
+        destructive Ops into graphs that are given to :term:`theano.function`,
+        but instead to trust the optimizations to insert destructive ops
+        judiciously.
 
-    pure
-        WRITEME
+        Destructive Ops are indicated via a ``destroy_map`` Op attribute. (See
+        :class:`gof.Op`.
 
-    static
-        WRITEME
 
-    type
-        See :ref:`tensortypes` or :ref:`type`.
+    Graph 
+        see :term:`expression graph`
+
+    Inplace
+        Inplace computations are computations that destroy their inputs as a
+        side-effect.  For example, if you iterate over a matrix and double
+        every element, this is an inplace operation because when you are done,
+        the original input has been overwritten.
+
+    Merge
+        A simple optimization in which redundant :term:`Apply` nodes are
+        combined.  For example, in ``function([x,y], [(x+y)*2, (x+y)*3])`` the merge
+        optimization will ensure that ``x`` and ``y`` are only added once.
+
+    Op
+        The ``.op`` of an :term:`Apply`, together with its symbolic inputs
+        fully determines what kind of computation will be carried out for that
+        ``Apply`` at run-time.  Mathematical functions such as addition
+        (``T.add``) and indexing  ``x[i]`` are Ops in Theano.  Much of the
+        library documentation is devoted to describing the various Ops that
+        are provided with Theano, but you can add more.
+
+        See also :term:`Variable`, :term:`Type`, and :term:`Apply`, 
+        or read more about :ref:`tutorial_graphstructures`.
+
+    Expression
+        See :term:`Apply`
+
+    Storage
+        The memory that is used to store the value of a Variable.  In most
+        cases storage is internal to a compiled function, but in some cases
+        (such as :term:`constant` and :term:`<shared variable>` the storage is not internal.
+
+    Shared Variable
+        A :term:`Variable` whose value may be shared between multiple functions.  See :func:`shared` and :func:`theano.function <function.function>`.
+
+    theano.function
+        The interface for Theano's compilation from symbolic expression graphs
+        to callable objects.  See :func:`function.function'.
+
+    Type
+        The ``.type`` of a
+        :term:`Variable` indicates what kinds of values might be computed for it in a
+        compiled graph.
+        An instance that inherits from :class:`Type`, and is used as the
+        ``.type`` attribute of a :term:`Variable`.  
+
+        See also :term:`Variable`, :term:`Op`, and :term:`Apply`, 
+        or read more about :ref:`tutorial_graphstructures`.
 
     Variable
-        A :ref:`Variable` is the main data structure you work with when
-        using Theano. The symbolic inputs that you operate on are
-        Variables and what you get from applying various operations to
-        these inputs are also Variables. For example, when I type
+        The the main data structure you work with when using Theano.
+        For example,
 
         >>> x = theano.tensor.ivector()
-        >>> y = -x
+        >>> y = -x**2
 
-        ``x`` and ``y`` are both Variables, i.e. instances of the
-        :api:`Variable <theano.gof.graph.Variable>` class. The
-        :term:`Type` of both ``x`` and ``y`` is
-        ``theano.tensor.ivector``.
+        ``x`` and ``y`` are both `Variables`, i.e. instances of the :class:`Variable` class.
 
-        For more information, see: :ref:`variable`.
+        See also :term:`Type`, :term:`Op`, and :term:`Apply`, 
+        or read more about :ref:`tutorial_graphstructures`.
 
-    view
-        WRITEME
+    View
+        Some Tensor Ops (such as Subtensor and Transpose) can be computed in
+        constant time by simply re-indexing their inputs.   The outputs from
+        [the Apply instances from] such Ops are called `Views` because their
+        storage might be aliased to the storage of other variables (the inputs
+        of the Apply).  It is important for Theano to know which Variables are
+        views of which other ones in order to introduce :term:`Destructive`
+        Ops correctly.
+
+        View Ops are indicated via a ``view_map`` Op attribute. (See
+        :class:`gof.Op`.
 
 
 

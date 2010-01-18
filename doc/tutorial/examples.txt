@@ -214,7 +214,7 @@ internal state, and returns the old state value.
 >>> accumulator = function([inc], state, updates=[(state, state+inc)])
 
 This code introduces a few new concepts.  The ``shared`` function constructs
-so-called *shared variables*.  These are hybrid symbolic and non-symbolic
+so-called :term:shared variables:.  These are hybrid symbolic and non-symbolic
 variables.  Shared variables can be used in symbolic expressions just like
 the objects returned by ``dmatrices(...)`` but they also have a ``.value``
 property that defines the value taken by this symbolic variable in *all* the
