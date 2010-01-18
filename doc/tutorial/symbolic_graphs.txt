@@ -76,7 +76,7 @@ x
 InplaceDimShuffle{x,x}.0
 
 Note that the second input is not 2 as we would have expected. This is 
-because 2 was first :ref:`broadcasted <broadcasting>` to a matrix of 
+because 2 was first :term:`broadcasted <broadcasting>` to a matrix of 
 same shape as x. This is done by using the op ``DimShuffle`` :
 
 >>> type(y.owner.inputs[1])

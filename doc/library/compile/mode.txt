@@ -26,8 +26,10 @@ environment variable 'THEANO_DEFAULT_MODE', which can in turn be overridden by
 setting ``theano.compile.mode.default_mode`` directly, which can in turn be
 overridden by passing the keyword argument to ``theano.function``.
 
-For a finer level of control over which optimizations are applied, and whether
-C or python implementations are used, read :api:`compile.mode.Mode`.
+.. TODO::
+
+    For a finer level of control over which optimizations are applied, and whether
+    C or Python implementations are used, read.... what exactly?
 
 
 Reference

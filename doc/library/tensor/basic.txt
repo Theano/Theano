@@ -7,20 +7,24 @@
 TensorType
 ==========
 
-.. class:: TensorType
+.. class:: TensorType(Type)
 
+    .. attribute:: broadcastable
 
-.. _libdoc_tensor_variable
+    .. attribute:: ndim
+
+    .. attribute:: dtype
+
+.. _libdoc_tensor_variable:
 
 TensorVariable
 ==============
 
+.. class:: TensorVariable(_tensory_py_operators)
 
-.. _libdoc_tensor_constant
+.. class:: TensorConstant(_tensory_py_operators)
 
-TensorConstant
-==============
-
+.. class:: TensorSharedVariable(_tensory_py_operators)
 
 
 .. _libdoc_tensor_creation:
@@ -292,7 +296,7 @@ Comparisons
       :Parameter:  *b* - symbolic Tensor (or compatible)
       :Return type: symbolic Tensor
       :Returns: a symbolic tensor representing the application of the logical 
-      elementwise operator.
+          elementwise operator.
 
     Here is an example with the less-than operator.
 
@@ -362,9 +366,12 @@ Bit-wise
 The bitwise operators possess this interface: 
     :Parameter:  *a* - symbolic Tensor of integer type.
     :Parameter:  *b* - symbolic Tensor of integer type.
-    .. note:: The bit-wise not (invert) does not have this second parameter.
 
-    :Return type: symbolic Tensor
+    .. note:: 
+    
+        The bit-wise not (invert) takes only one parameter.
+
+    :Return type: symbolic Tensor with ``int8`` dtype.
 
 .. function:: and_(a, b)
 
@@ -382,13 +389,13 @@ The bitwise operators possess this interface:
 
     Returns a variable representing the result of the bitwise not.
 
-Here is an example using the bit-wise and_:
+Here is an example using the bit-wise ``and_`` via the ``&`` operator:
 
 .. code-block:: python 
 
     import theano.tensor as T
     x,y = T.imatrices('x','y')
-    z = T.and_(x,y)
+    z = x & y
 
 
 Mathematical

@@ -109,9 +109,10 @@ Reference
     .. method:: updates()
 
         :returns: a list of all the (state, new_state) update pairs from the
-        random variables it has returned.  This can be a convenient shortcut
-        to enumerating all the random variables in a large graph in the
-        ``update`` paramter of function.
+          random variables it has returned.  
+          
+        This can be a convenient shortcut to enumerating all the random
+        variables in a large graph in the ``update`` parameter of function.
 
     .. method:: seed(meta_seed)
 

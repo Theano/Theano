@@ -251,7 +251,7 @@ attempt to clear up the confusion:
   there is actually only one Type in that set, therefore the subclass
   doesn't represent anything that one of its instances doesn't. In this
   case it is a singleton, a set with one element. However, the
-  :api:`TensorType`
+  :class:`TensorType`
   class in Theano (which is a subclass of Type)
   represents a set of types of tensors
   parametrized by their data type or number of dimensions. We could say

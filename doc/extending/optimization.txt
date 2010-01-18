@@ -26,9 +26,9 @@ Global and local optimizations
 
 First, let's lay out the way optimizations work in Theano. There are
 two types of optimizations: *global* optimizations and *local*
-optimizations. A global optimization takes an :ref:`env` object (an
+optimizations. A global optimization takes an ``Env`` object (an
 Env is a wrapper around a whole computation graph, you can see its
-:ref:`documentation <env>` for more details) and navigates through it
+:class:`documentation <Env>` for more details) and navigates through it
 in a suitable way, replacing some Variables by others in the process. A
 local optimization, on the other hand, is defined as a function on a
 *single* :ref:`apply` node and must return either ``False`` (to mean that
@@ -52,26 +52,28 @@ Global optimization
 A global optimization (or optimizer) is an object which defines the following
 methods:
 
-.. function:: apply(env)
+.. class:: Optimizer
 
-  This method takes an Env object which contains the computation graph
-  and does modifications in line with what the optimization is meant
-  to do. This is of the main method of the optimizer.
+    .. method:: apply(env)
 
-.. function:: add_requirements(env)
+      This method takes an Env object which contains the computation graph
+      and does modifications in line with what the optimization is meant
+      to do. This is of the main method of the optimizer.
 
-  This method takes an Env object and adds :ref:`features
-  <envfeature>` to it. These features are "plugins" that are needed
-  for the ``apply`` method to do its job properly.
+    .. method:: add_requirements(env)
 
-.. function:: optimize(env)
+      This method takes an Env object and adds :ref:`features
+      <libdoc_gof_envfeature>` to it. These features are "plugins" that are needed
+      for the ``apply`` method to do its job properly.
 
-  This is the interface function called by Theano.
+    .. method:: optimize(env)
 
-  *Default:* this is defined by Optimizer as ``add_requirement(env);
-  apply(env)``.
+      This is the interface function called by Theano.
 
-See the section about :ref:`env` to understand how to define these
+      *Default:* this is defined by Optimizer as ``add_requirement(env);
+      apply(env)``.
+
+See the section about :class:`Env` to understand how to define these
 methods.
 
 
@@ -80,14 +82,16 @@ Local optimization
 
 A local optimization is an object which defines the following methods:
 
-.. function:: transform(node)
+.. class:: LocalOptimizer
 
-  This method takes an :ref:`apply` node and returns either ``False`` to
-  signify that no changes are to be done or a list of Variables which
-  matches the length of the node's ``outputs`` list. When the
-  LocalOptimizer is applied by a Navigator, the outputs of the node
-  passed as argument to the LocalOptimizer will be replaced by the
-  list returned.
+    .. method:: transform(node)
+
+      This method takes an :ref:`apply` node and returns either ``False`` to
+      signify that no changes are to be done or a list of Variables which
+      matches the length of the node's ``outputs`` list. When the
+      LocalOptimizer is applied by a Navigator, the outputs of the node
+      passed as argument to the LocalOptimizer will be replaced by the
+      list returned.
 
 
 
@@ -138,7 +142,7 @@ simplification described above:
    requirements we might want to  know about?
 
 Here's how it works: first, in ``add_requirements``, we add the
-``ReplaceValidate`` :ref:`envfeature` located in
+``ReplaceValidate`` :ref:`libdoc_gof_envfeature` located in
 :ref:`libdoc_gof_toolbox`. This feature adds the ``replace_validate``
 method to ``env``, which is an enhanced version of ``replace`` that
 does additional checks to ensure that we are not messing up the
@@ -147,9 +151,9 @@ another optimizer, ``extend`` will do nothing). In a nutshell,
 ``toolbox.ReplaceValidate`` grants access to ``env.replace_validate``,
 and ``env.replace_validate`` allows us to replace a Variable with
 another while respecting certain validation constraints. You can
-browse the list of :ref:`features <envfeaturelist>` and see if some of
+browse the list of :ref:`libdoc_gof_envfeaturelist` and see if some of
 them might be useful to write optimizations with. For example, as an
-exercise, try to rewrite Simplify using :ref:`nodefinder`. (Hint: you
+exercise, try to rewrite Simplify using :class:`NodeFinder`. (Hint: you
 want to use the method it publishes instead of the call to toposort!)
 
 Then, in ``apply`` we do the actual job of simplification. We start by
@@ -222,12 +226,12 @@ arithmetics that your Ops implement. Theano might provide facilities
 for this somewhere in the future.
 
 .. note::
-   :ref:`env` is a Theano structure intended for the optimization
+   :class:`Env` is a Theano structure intended for the optimization
    phase. It is used internally by function and Module and is rarely
    exposed to the end user. You can use it to test out optimizations,
    etc. if you are comfortable with it, but it is recommended to use
    the function/Module frontends and to interface optimizations with
-   :ref:`optdb <optdb>` (we'll see how to do that soon).
+   :class:`optdb` (we'll see how to do that soon).
 
 
 Local optimization
@@ -399,7 +403,7 @@ well and the LocalOptimizers they return will be put in their places
 (note that as of yet no DB can produce LocalOptimizer objects, so this
 is a moot point).
 
-Theano contains one principal DB object, :ref:`libdoc.gof.optdb`, which
+Theano contains one principal DB object, :class:`optdb`, which
 contains all of Theano's optimizers with proper tags. It is
 recommended to insert new Optimizers in it. As mentioned previously,
 optdb is a SequenceDB, so, at the top level, Theano applies a sequence

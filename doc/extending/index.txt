@@ -14,7 +14,7 @@ also good for you if you are interested in getting more under the hood with
 Theano itself.
 
 Before tackling this tutorial, it is highly recommended to read the
-:ref:`basictutorial`.
+:ref:`tutorial`.
 
 The first few pages will walk you through the definition of a new :ref:`type`,
 ``double``, and a basic arithmetic :ref:`operations <op>` on that Type. We

@@ -60,7 +60,6 @@ Community
    tutorial/index
    library/index
    extending/index
-   indexes/index
    glossary
    links
    internal/index

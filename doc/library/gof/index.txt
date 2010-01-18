@@ -4,3 +4,17 @@
 ================================================
 :mod:`gof` -- Theano Internals [doc TODO]
 ================================================
+
+.. module:: gof
+   :platform: Unix, Windows
+   :synopsis: Theano Internals
+.. moduleauthor:: LISA
+
+.. toctree::
+    :maxdepth: 1
+
+    env
+    toolbox
+
+
+

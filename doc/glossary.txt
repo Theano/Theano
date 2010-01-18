@@ -7,8 +7,8 @@ Glossary of terminology
 
     Apply
         Instances of :class:`Apply` represent the application of an :term:`Op`
-        to some input :term:`Variable`s to produce some output
-        :term:`Variable`s.  They are like the application of a [symbolic]
+        to some input :term:`Variable` (or variables) to produce some output
+        :term:`Variable` (or variables).  They are like the application of a [symbolic]
         mathematical function to some [symbolic] inputs.
 
     Broadcasting
@@ -33,26 +33,18 @@ Glossary of terminology
 
 
     Elementwise
-        An elementwise operation ``f`` on two matrices ``M`` and ``N``
+        An elementwise operation ``f`` on two tensor variables ``M`` and ``N``
         is one such that:
 
-        ``f(M, N)[i, j] = f(M[i, j], N[i, j])``
+        ``f(M, N)[i, j] == f(M[i, j], N[i, j])``
 
         In other words, each element of an input matrix is combined
         with the corresponding element of the other(s). There are no
         dependencies between elements whose ``[i, j]`` coordinates do
         not correspond, so an elementwise operation is like a scalar
-        operation generalized along several dimensions.
-
-        There exist unary, binary, ternary, etc. elementwise
-        operations and they can work on scalars, vectors, matrices,
-        etc. as long as all the inputs have the same dimensions or can
-        be :term:`broadcasted <broadcasting>` to the same dimensions.
-
-        Examples of elementwise operations in Theano: ``add, sub, mul,
-        div, neg, inv, log, exp, sin, cos, tan`` and many
-        others. These operations are all instances of :api:`Elemwise
-        <theano.tensor.elemwise.Elemwise>`.
+        operation generalized along several dimensions.  Elementwise
+        operations are defined for tensors of different numbers of dimensions by
+        :term:`broadcasting` the smaller ones.
 
     Expression
         See :term:`Apply`
@@ -102,7 +94,7 @@ Glossary of terminology
 
     Mode 
         An object providing an :term:`optimizer` and a :term:`linker` that is
-        passed to :term:`theano.funcion`.  It parametrizes how an expression
+        passed to :term:`theano.function`.  It parametrizes how an expression
         graph is converted to a callable object.
 
     Op
@@ -118,11 +110,14 @@ Glossary of terminology
 
     Optimizer
         An instance of :class:`Optimizer`, which has the capacity to provide
-        :term:`optimization`s.
+        an :term:`optimization` (or optimizations).
 
     Optimization
         A :term:`graph` transformation applied by an :term:`optimizer` during
         the compilation of a :term:`graph` by :term:`theano.function`.
+
+    Pure
+        An :term:`Op` is *pure* if it has no :term:`destructive` side-effects.
 
     Storage
         The memory that is used to store the value of a Variable.  In most
@@ -134,7 +129,7 @@ Glossary of terminology
 
     theano.function
         The interface for Theano's compilation from symbolic expression graphs
-        to callable objects.  See :func:`function.function'.
+        to callable objects.  See :func:`function.function`.
 
     Type
         The ``.type`` of a

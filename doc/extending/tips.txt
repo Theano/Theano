@@ -40,8 +40,7 @@ Theano provides some generic Op classes which allow you to generate a
 lot of Ops at a lesser effort. For instance, Elemwise can be used to
 make :term:`elementwise` operations easily whereas DimShuffle can be
 used to make transpose-like transformations. These higher order Ops
-are mostly Tensor-related, as this is Theano's specialty. An exposé of
-them can therefore be found in :ref:`tensoroptools`.
+are mostly Tensor-related, as this is Theano's specialty. 
 
 
 .. _opchecklist:
