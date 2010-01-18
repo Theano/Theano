@@ -8,7 +8,7 @@ Using different compiling modes
 Mode
 ====
 
-Everytime :ref:`theano.function <libdoc_compile_function>` is called
+Everytime :func:`theano.function <function.function>` is called
 the symbolic relationships between the input and output Theano *variables* 
 are optimized and compiled. The way this compilation occurs 
 is controlled by the value of the ``mode`` parameter.
@@ -25,7 +25,7 @@ The default mode is typically ``FAST_RUN``, but it can be controlled via
 the environment variable ``THEANO_DEFAULT_MODE``, which can in turn be
 overridden by setting `theano.compile.mode.default_mode` directly,
 which can in turn be overridden by passing the keyword argument to
-:ref:`theano.function <libdoc_compile_function>`.
+:func:`theano.function <function.function>`.
 
 ================= =============================================================== ===============================================================================
 short name        Full constructor                                                What does it do?
@@ -91,7 +91,7 @@ ProfileMode
 
 Beside checking for errors, another important task is to profile your 
 code. For this Theano uses a special mode called ProfileMode which has 
-to be passed as an argument to :ref:`theano.function <libdoc_compile_function>`. Using the ProfileMode is a three-step process.
+to be passed as an argument to :func:`theano.function <function.function>`. Using the ProfileMode is a three-step process.
 
 
 Creating a ProfileMode Instance
