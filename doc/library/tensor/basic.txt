@@ -271,23 +271,60 @@ Reductions
 ==========
 
 
-.. function:: max(x)
+.. function:: max(x,axis=None)
 
-    :param x:  symbolic Tensor (or compatible)
+    :Parameter: *x* - symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis along which to compute the maximum
+    :Returns: the maximum value along a given axis
 
-    Returns TODO
+.. note::
 
-.. function:: min(x)
+    If axis=None, then axis is assumed to be ndim(x)-1
 
-    :param x:  symbolic Tensor (or compatible)
+.. function:: min(x,axis=None)
 
-    Returns TODO
+    :Parameter: *x* - symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis along which to compute the minimum
+    :Returns: the minimum value along a given axis
 
-.. function:: sum(x)
+.. note::
 
-    :param x:  symbolic Tensor (or compatible)
+    if axis=None, then axis is assumed to be ndim(x)-1
 
-    Returns TODO
+.. function:: sum(x,axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Returns: sum of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the sum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+
+.. function:: mean(x,axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the mean
+    :Returns: mean value of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the mean is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: var(x,axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the variance
+    :Returns: variance of *x* along *axis*
+
+    axis can be:
+     * *None* - variance computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
 
 Indexing
 ========
