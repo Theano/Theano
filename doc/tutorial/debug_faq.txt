@@ -130,19 +130,14 @@ This is actually so simple the debugging could be done easily, but it's for
 illustrative purposes. As the matrices can't be element-wise multiplied
 (unsuitable shapes), we get the following exception:
 
-::
+.. code-block:: text
+
     File "ex.py", line 14, in <module>
       f(mat1, mat2)
-    File "/u/username/Theano/theano/compile/function_module.py", line 451, in
- __call__
-    File "/u/username/Theano/theano/gof/link.py", line 271, in
- streamline_default_f
-    File "/u/username/Theano/theano/gof/link.py", line 267, in
- streamline_default_f
-    File "/u/username/Theano/theano/gof/cc.py", line 1049, in execute
-  ValueError: ('Input dimension mis-match. (input[0].shape[0] = 3,
- input[1].shape[0] = 5)',
-       Elemwise{mul,no_inplace}(a, b), Elemwise{mul,no_inplace}(a, b))
+    File "/u/username/Theano/theano/compile/function_module.py", line 451, in __call__
+    File "/u/username/Theano/theano/gof/link.py", line 271, in streamline_default_f
+    File "/u/username/Theano/theano/gof/link.py", line 267, in streamline_default_f
+    File "/u/username/Theano/theano/gof/cc.py", line 1049, in execute ValueError: ('Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 5)', Elemwise{mul,no_inplace}(a, b), Elemwise{mul,no_inplace}(a, b))
 
 The call stack contains a few useful informations to trace back the source
 of the error. There's the script where the compiled function was called --
@@ -160,21 +155,20 @@ dimensions of the matrices involved, but for the sake of example say we'd
 need the other dimensions to pinpoint the error. First, we re-launch with
 the debugger module and run the program with "c":
 
-::
-        python -m pdb ex.py
-        > /u/username/experiments/doctmp1/ex.py(1)<module>()
-        -> import theano
-        (Pdb) c
+.. code-block:: text
+
+    python -m pdb ex.py
+    > /u/username/experiments/doctmp1/ex.py(1)<module>()
+    -> import theano
+    (Pdb) c
 
 Then we get back the above error printout, but the interpreter breaks in
 that state. Useful commands here are
 
-* "up" and "down" (to move up and down the call stack),</li>
-* "l" (to print code around the line in the current stack position),</li>
-* "p variable_name" (to print the string representation of
-'variable_name'),</li>
-* "p dir(object_name)", using the Python dir() function to print the list of
-an object's members
+* "up" and "down" (to move up and down the call stack),
+* "l" (to print code around the line in the current stack position),
+* "p variable_name" (to print the string representation of 'variable_name'),
+* "p dir(object_name)", using the Python dir() function to print the list of an object's members
 
 Here, for example, I do "up", and a simple "l" shows me there's a local
 variable "node". This is the "node" from the computation graph, so by

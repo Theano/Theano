@@ -1,5 +1,5 @@
 
-.. _symbolic_graph:
+.. _tutorial_graphstructures:
 
 ================
 Graph Structures
@@ -77,7 +77,7 @@ Optimizations
 =============
 
 When compiling a Theano function, what you give to the
-:ref:`theano.function <libdoc_compile_function>` is actually a graph
+:func:`theano.function <function.function>` is actually a graph
 (starting from the outputs variables you can traverse the graph up to
 the input variables). While this graph structure shows how to compute
 the output from the input, it also offers the posibility to improve the  

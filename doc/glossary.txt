@@ -13,37 +13,12 @@ Glossary of terminology
 
     Broadcasting
         Broadcasting is a mechanism which allows tensors with
-        different numbers of dimensions to be added or multiplied
-        together by (virtually) replicating the smaller tensor along
-        the dimensions that it is lacking.
-
-        In a nutshell, broadcasting is the mechanism by which a scalar
-        may be added to a matrix, a vector to a matrix or a scalar to
-        a vector.
-
-        .. figure:: bcast.png
-
-           Broadcasting a row matrix. T and F respectively stand for
-           True and False and indicate along which dimensions we allow
-           broadcasting.
-
-           If the second argument were a vector, its shape would be
-           ``(2,)`` and its broadcastable pattern ``(F,)``. They would
-           be automatically expanded to the **left** to match the
-           dimensions of the matrix (adding ``1`` to the shape and ``T``
-           to the pattern), resulting in ``(1, 2)`` and ``(T, F)``.
-           It would then behave just like the example above.
-
-
-        Unlike numpy which does broadcasting dynamically, Theano needs
-        to know, for any operation which supports broadcasting, which
-        dimensions will need to be broadcasted. When applicable, this
-        information is given in the :term:`Type` of a :term:`Variable`.
-
-        See also:
-
-        * :ref:`How broadcasting is used in Theano's tensor types <tensortypes>`
-
+        different numbers of dimensions to be used in element-by-element
+        (elementwise) computations.  It works by
+        (virtually) replicating the smaller tensor along
+        the dimensions that it is lacking.  
+        
+        For more detail, see :ref:`libdoc_tensor_broadcastable`, and also
         * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
         * `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
 
@@ -79,6 +54,9 @@ Glossary of terminology
         others. These operations are all instances of :api:`Elemwise
         <theano.tensor.elemwise.Elemwise>`.
 
+    Expression
+        See :term:`Apply`
+
     Expression Graph
         A directed, acyclic set of connected :term:`Variable` and
         :term:`Apply` nodes that express symbolic functional relationship
@@ -89,7 +67,6 @@ Glossary of terminology
         :term:`Type`, or read more about :ref:`tutorial_graphstructures`.
 
     Destructive
-
         An :term:`Op` is destructive (of particular input[s]) if its
         computation requires that one or more inputs be overwritten or
         otherwise invalidated.  For example, :term:`inplace` Ops are
@@ -110,12 +87,23 @@ Glossary of terminology
         Inplace computations are computations that destroy their inputs as a
         side-effect.  For example, if you iterate over a matrix and double
         every element, this is an inplace operation because when you are done,
-        the original input has been overwritten.
+        the original input has been overwritten.  Ops representing inplace
+        computations are :term:`destructive`, and by default these can only be
+        inserted by optimizations, not user code.
 
+    Linker
+        Part of a function :term:`Mode` -- an object responsible for 'running'
+        the compiled function.  Among other things, the linker determines whether computations are carried out with C or Python code.
+        
     Merge
         A simple optimization in which redundant :term:`Apply` nodes are
         combined.  For example, in ``function([x,y], [(x+y)*2, (x+y)*3])`` the merge
         optimization will ensure that ``x`` and ``y`` are only added once.
+
+    Mode 
+        An object providing an :term:`optimizer` and a :term:`linker` that is
+        passed to :term:`theano.funcion`.  It parametrizes how an expression
+        graph is converted to a callable object.
 
     Op
         The ``.op`` of an :term:`Apply`, together with its symbolic inputs
@@ -128,13 +116,18 @@ Glossary of terminology
         See also :term:`Variable`, :term:`Type`, and :term:`Apply`, 
         or read more about :ref:`tutorial_graphstructures`.
 
-    Expression
-        See :term:`Apply`
+    Optimizer
+        An instance of :class:`Optimizer`, which has the capacity to provide
+        :term:`optimization`s.
+
+    Optimization
+        A :term:`graph` transformation applied by an :term:`optimizer` during
+        the compilation of a :term:`graph` by :term:`theano.function`.
 
     Storage
         The memory that is used to store the value of a Variable.  In most
         cases storage is internal to a compiled function, but in some cases
-        (such as :term:`constant` and :term:`<shared variable>` the storage is not internal.
+        (such as :term:`constant` and :term:`shared variable <shared variable>` the storage is not internal.
 
     Shared Variable
         A :term:`Variable` whose value may be shared between multiple functions.  See :func:`shared` and :func:`theano.function <function.function>`.

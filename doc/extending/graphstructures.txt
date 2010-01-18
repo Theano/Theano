@@ -146,7 +146,7 @@ Automatic wrapping
 
 All nodes in the graph must be instances of ``Apply`` or ``Result``, but
 ``<Op subclass>.make_node()`` typically wraps constants to satisfy those
-constraints. For example, the :api:`tensor.add <theano.tensor.basic.add>`
+constraints. For example, the :func:`tensor.add`
 Op instance is written so that:
 
 .. code-block:: python
@@ -189,8 +189,8 @@ An *Apply node* is a type of internal node used to represent a
 manipulated directly by the end user. They may be accessed via
 a Variable's ``owner`` field.
 
-An Apply node is typically an instance of the :api:`Apply
-<theano.gof.graph.Apply>` class. It represents the application
+An Apply node is typically an instance of the :class:`Apply`
+class. It represents the application
 of an :ref:`op` on one or more inputs, where each input is a
 :ref:`variable`. By convention, each Op is responsible for
 knowing how to build an Apply node from a list of
@@ -215,8 +215,7 @@ An Apply instance has three important fields:
   A list of :ref:`Variables <variable>` that represent the return values
   of the function.
 
-An Apply instance can be created by calling ``gof.Apply(op, inputs,
-outputs)``.
+An Apply instance can be created by calling ``gof.Apply(op, inputs, outputs)``.
 
 
 
@@ -260,7 +259,7 @@ Type
 A :ref:`type` in Theano represents a set of constraints on potential
 data objects. These constraints allow Theano to tailor C code to handle
 them and to statically optimize the computation graph. For instance,
-the :ref:`irow <predefinedtypes>` type in the ``theano.tensor`` package
+the :ref:`irow <libdoc_tensor_creation>` type in the ``theano.tensor`` package
 gives the following constraints on the data the Variables of type ``irow``
 may contain:
 
@@ -273,8 +272,8 @@ that declares the right data types and that contains the right number
 of loops over the dimensions.
 
 Note that a Theano :ref:`type` is not equivalent to a Python type or
-class. Indeed, in Theano, :ref:`irow <predefinedtypes>` and :ref:`dmatrix
-<predefinedtypes>` both use ``numpy.ndarray`` as the underlying type
+class. Indeed, in Theano, :ref:`irow <libdoc_tensor_creation>` and :ref:`dmatrix
+<libdoc_tensor_creation>` both use ``numpy.ndarray`` as the underlying type
 for doing computations and storing data, yet they are different Theano
 Types. Indeed, the constraints set by ``dmatrix`` are:
 
@@ -311,8 +310,7 @@ Variables. For example, when I type
 >>> x = theano.tensor.ivector()
 >>> y = -x
 
-``x`` and ``y`` are both Variables, i.e. instances of the :api:`Variable
-<theano.gof.graph.Variable>` class. The :ref:`type` of both ``x`` and
+``x`` and ``y`` are both Variables, i.e. instances of the :class:`Variable` class. The :ref:`type` of both ``x`` and
 ``y`` is ``theano.tensor.ivector``.
 
 Unlike ``x``, ``y`` is a Variable produced by a computation (in this
@@ -324,7 +322,7 @@ through ``y.owner``.
 
 More specifically, a Variable is a basic structure in Theano that
 represents a datum at a certain point in computation. It is typically
-an instance of the class :api:`Variable <theano.gof.graph.Variable>` or
+an instance of the class :class:`Variable` or
 one of its subclasses.
 
 A Variable ``r`` contains four important fields:
@@ -365,6 +363,7 @@ any circumstances modify the input. This means that a constant is
 eligible to participate in numerous optimizations: constant inlining
 in C code, constant folding, etc.
 
-A constant does not need to be specified in a :ref:`function`'s list
+A constant does not need to be specified in a :func:`function
+<function.function>`'s list
 of inputs.  In fact, doing so will raise an exception.
 

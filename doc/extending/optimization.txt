@@ -139,7 +139,7 @@ simplification described above:
 
 Here's how it works: first, in ``add_requirements``, we add the
 ``ReplaceValidate`` :ref:`envfeature` located in
-:api:`theano.gof.toolbox`. This feature adds the ``replace_validate``
+:ref:`libdoc_gof_toolbox`. This feature adds the ``replace_validate``
 method to ``env``, which is an enhanced version of ``replace`` that
 does additional checks to ensure that we are not messing up the
 computation graph (note: if ``ReplaceValidate`` was already added by
@@ -305,7 +305,7 @@ Theano defines some shortcuts to make LocalOptimizers:
 .. function:: PatternSub(pattern1, pattern2)
 
   Replaces all occurrences of the first pattern by the second pattern.
-  See :api:`theano.gof.opt.PatternSub`.
+  See :class:`PatternSub`.
 
 
 .. code-block:: python
@@ -342,7 +342,7 @@ or ``PatternSub``, it is highly recommended to use them.
 
 WRITEME: more about using PatternSub (syntax for the patterns, how to
 use constraints, etc. - there's some decent doc at
-:api:`theano.gof.opt.PatternSub` for those interested)
+:class:`PatternSub` for those interested)
 
 
 
@@ -376,8 +376,8 @@ Definition of optdb
 -------------------
 
 optdb is an object which is an instance of
-:api:`theano.gof.SequenceDB <theano.gof.optdb.SequenceDB>`,
-itself a subclass of :api:`theano.gof.DB <theano.gof.optdb.DB>`.
+:class:`SequenceDB <optdb.SequenceDB>`,
+itself a subclass of :class:`DB <optdb.DB>`.
 There exist (for now) two types of DB, SequenceDB and EquilibriumDB.
 When given an appropriate Query, DB objects build an Optimizer matching
 the query.
@@ -399,7 +399,7 @@ well and the LocalOptimizers they return will be put in their places
 (note that as of yet no DB can produce LocalOptimizer objects, so this
 is a moot point).
 
-Theano contains one principal DB object, :api:`theano.gof.optdb`, which
+Theano contains one principal DB object, :ref:`libdoc.gof.optdb`, which
 contains all of Theano's optimizers with proper tags. It is
 recommended to insert new Optimizers in it. As mentioned previously,
 optdb is a SequenceDB, so, at the top level, Theano applies a sequence
@@ -411,33 +411,35 @@ Query
 
 A Query is built by the following call:
 
-::
+.. code-block:: python
 
    theano.gof.Query(include, require = None, exclude = None, subquery = None)
 
-.. attribute:: include
+.. class:: Query
 
-   A set of tags (a tag being a string) such that every
-   optimization obtained through this Query must have **one** of the tags
-   listed. This field is required and basically acts as a starting point
-   for the search.
+    .. attribute:: include
 
-.. attribute:: require
+       A set of tags (a tag being a string) such that every
+       optimization obtained through this Query must have **one** of the tags
+       listed. This field is required and basically acts as a starting point
+       for the search.
 
-   A set of tags such that every optimization obtained
-   through this Query must have **all** of these tags.
+    .. attribute:: require
 
-.. attribute:: exclude
+       A set of tags such that every optimization obtained
+       through this Query must have **all** of these tags.
 
-   A set of tags such that every optimization obtained
-   through this Query must have **none** of these tags.
+    .. attribute:: exclude
 
-.. attribute:: subquery
+       A set of tags such that every optimization obtained
+       through this Query must have **none** of these tags.
 
-   optdb can contain sub-databases; subquery is a
-   dictionary mapping the name of a sub-database to a special Query.
-   If no subquery is given for a sub-database, the original Query will be
-   used again.
+    .. attribute:: subquery
+
+       optdb can contain sub-databases; subquery is a
+       dictionary mapping the name of a sub-database to a special Query.
+       If no subquery is given for a sub-database, the original Query will be
+       used again.
 
 Furthermore, a Query object includes three methods, ``including``,
 ``requiring`` and ``excluding`` which each produce a new Query object

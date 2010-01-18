@@ -168,32 +168,27 @@ bytes, we would do:
 Shared Variable
 ---------------
 
-Yet another way of creating a special type of Theano variable is by using
-:func:`shared` as in the example below:
+Another way of creating a TensorVariable (a TensorSharedVariable to be
+precise) is by calling :func:`shared()`
 
 .. code-block:: python
 
-  x = shared(value, name)
+  x = shared(numpy.random.randn(3,4))
 
-Shared takes two parameters, `value` and `name` and creates a Theano 
-variable with the name `name` and initial value `value`. The type of this
-variable is obtained from the type of the value `value`, so if value is a
-numpy float matrix the shared variable will be of type `fmatrix`. 
+This will return a :term:`shared variable <shared variable>` whose ``.value`` is
+a numpy ndarray.  The number of dimensions and dtype of the Variable are
+inferred from the ndarray argument.
 
-Note that a shared variable is not like other Theano variables. For more
-details of how to use shared variables look :ref:`here <functionstateexample>` (or for more details
-:ref:`here <sharedvars>`). TODO : make the last link to a detailed
-description of shared variables.
+For additional information, see the :func:`shared` documentation.
 
 
 Autocasting
 -----------
 
- Theano does autocasting of numpy ndarray or python floats/ints into 
- Theano constants.
+Theano does autocasting of python floats/ints into Theano constants.
 
-TODO: What does (or compatible) mean?  Talk about casting rules, refer .
-TODO: link to floatX (?) 
+.. TODO: What does (or compatible) mean?  Talk about casting rules, refer .
+.. TODO: link to floatX (?) 
 
 .. function:: as_tensor_variable(x, ...)
 
@@ -437,8 +432,6 @@ dimensions will need to be broadcasted. When applicable, this
 information is given in the :ref:`type` of a *Variable*.
 
 See also:
-
-* :ref:`How broadcasting is used in Theano's tensor types <tensortypes>`
 
 * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
 
