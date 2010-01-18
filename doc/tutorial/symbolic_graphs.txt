@@ -1,0 +1,92 @@
+
+.. _symbolic_graph:
+
+================
+Graph Structures
+================
+
+In order to be able to take advantage of Theano, you need to understand
+how Theano works. Theano represents mathematical computations as graphs
+( for a detailed rendering see :ref:`graphstructures` - parts of this
+are directly taken from there). Graphs are composed of itnerconnected 
+:ref:`apply` and :ref:`variable` nodes. They are associated to *function
+application* and *data*, respectively. An operation is represented by
+an :ref:`op` and data types are represented by :ref:`type` instances. 
+Here is a piece of code and a diagram showing the structure built by
+that piece of code. This should help you understand how these pieces fit
+together:
+
+-----------------------
+
+**Code**
+
+.. code-block:: python
+
+    x = dmatrix('x')
+    y = dmatrix('y')
+    z = x + y
+
+**Diagram**
+
+.. image:: apply.png 
+
+-----------------------
+
+Arrows represent references to the Python objects pointed at. The blue
+box is an :ref:`apply` node. Red boxes are :ref:`variable` nodes. Green
+circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
+
+When we create :ref:`Variables <variable>` and then :ref:`apply`
+:ref:`Ops <op>` to them to make more Variables, we build a
+bi-partite, directed, acyclic graph. Variables point to the Apply nodes
+representing the function application producing them via their
+``owner`` field. These Apply nodes point in turn to their input and
+output Variables via their ``inputs`` and ``outputs`` fields.
+(Apply instances also contain a list of references to their ``outputs``, but
+those pointers don't count in this graph.)
+
+The ``owner`` field of both ``x`` and ``y`` point to ``None`` because
+they are not the result of another computation. If one of them was the
+result of another computation, it's ``owner`` field would point to another
+blue box like ``z`` does, and so on.
+
+Note that the ``Apply`` instance's outputs points to
+``z``, and ``z.owner`` points back to the ``Apply`` instance.
+
+
+The graph structure is needed for *Optimizations* and *Automatic
+Differentiation*.
+
+Automatic Differentiation
+=========================
+
+Having the graph structure, computing automatic differentiation is
+simple. The only thing :func:`tensor.grad` has to do is to traverse the
+graph from the outputs back towards the inputs through all :ref:`apply`
+nodes ( :ref:`apply` nodes are those who define what computations the
+graph does). For each such :ref:`apply` node, its  :ref:`op` defines 
+how to compute the gradient of the node's outputs with respect to its
+inputs. Note that if an :ref:`op` does not define how to compute the
+gradient, then any expression containing this :ref:`op` is not
+differentiable. Using the `chain rule <http://en.wikipedia.org/wiki/Chain_rile>`_ 
+these gradients can be composed in order to obtain the expression of the 
+gradient of the graph's output with respect to the graph's inputs .
+
+
+Optimizations
+=============
+
+When compiling a Theano function, what you give to the
+:ref:`theano.function <libdoc_compile_function>` is actually a graph
+(starting from the outputs variables you can traverse the graph up to
+the input variables). While this graph structure shows how to compute
+the output from the input, it also offers the posibility to improve the  
+the way this computation is carried out. The way optimizations work in 
+Theano is by indentifying and replacing certain patterns in the graph 
+with other specialized patterns that produce the same results but are either 
+faster or more stable. Optimizations can also detect 
+identical subgraphs and ensure that the same values are not computed
+twice or reformulate parts of the graph to a GPU specific version.
+
+For example, one (simple) optimization that Theano uses is to replace 
+the pattern :math:`\frac{xy}{y}` by :math:`x`.
