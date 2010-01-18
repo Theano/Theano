@@ -290,6 +290,23 @@ Comparisons
     Theano has no boolean dtype.  Instead, all boolean tensors are represented
     in ``'int8'``.
 
+.. note::
+
+    The six usual equality and inequality operators share the same interface.
+      :Parameter:  *a* - symbolic Tensor (or compatible)
+      :Parameter:  *b* - symbolic Tensor (or compatible)
+      :Return type: symbolic Tensor
+      :Returns: a symbolic tensor representing the application of the logical 
+      elementwise operator.
+
+    Here is an example with the less-than operator.
+
+    .. code-block:: python 
+
+        import theano.tensor as T
+        x,y = T.dmatrices('x','y')
+        z = T.le(x,y)
+
 .. function:: lt(a, b)
 
     Returns a symbolic ``'int8'`` tensor representing the result of logical less-than (a<b).
@@ -304,65 +321,38 @@ Comparisons
 
 .. function:: le(a, b)
 
-    Returns a variable representing the result of logical less than or
-    equal (a<=b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise less than or equal.
+    Returns a variable representing the result of logical less than or equal (a<=b).
 
-    .. code-block:: python 
-
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.le(x,y)
+    Also available using syntax ``a <= b``
 
 .. function:: ge(a, b)
 
     Returns a variable representing the result of logical greater or equal than (a>=b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise greater than or equal.
 
-    .. code-block:: python 
-
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.ge(x,y)
+    Also available using syntax ``a >= b``
 
 .. function:: eq(a, b)
 
     Returns a variable representing the result of logical equality (a==b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise equality.
-
-    .. code-block:: python 
-
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.eq(x,y)
 
 .. function:: neq(a, b)
 
-    Returns a variable representing the result of logical inequality
-    (a!=b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
+    Returns a variable representing the result of logical inequality (a!=b).
+
+.. function:: switch(cond, ift, iff)
+    Returns a variable representing a switch between ift (iftrue) and iff (iffalse)
+     based on the condition cond.
+      :Parameter:  *cond* - symbolic Tensor (or compatible)
+      :Parameter:  *ift* - symbolic Tensor (or compatible)
+      :Parameter:  *iff* - symbolic Tensor (or compatible)
       :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise inequality.
 
     .. code-block:: python 
+      import theano.tensor as T
+      a,b = T.dmatrices('a','b')
+      x,y = T.dmatrices('x','y')
+      z = T.switch(T.lt(a,b), x, y)
 
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.neq(x,y)
 
 Mathematical
 ------------
