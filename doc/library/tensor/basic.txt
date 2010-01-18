@@ -20,11 +20,61 @@ TensorType
 TensorVariable
 ==============
 
-.. class:: TensorVariable(_tensory_py_operators)
+.. class:: _tensor_py_operators(object)
 
-.. class:: TensorConstant(_tensory_py_operators)
+    This mix-in class adds convenient attributes, methods, and support for Python operators.
 
-.. class:: TensorSharedVariable(_tensory_py_operators)
+    .. method:: reshape(shape, ndim=None)
+
+        Returns a view of this tensor that has been reshaped as in
+        numpy.reshape.  If the shape is a Variable argument, then you might
+        need to use the optional `ndim` parameter to declare how many elements
+        the shape has, and therefore how many dimensions the reshaped Variable
+        will have.
+
+        See :func:`reshape`.
+
+    .. method:: dimshuffle(*pattern)
+
+        Returns a view of this tensor with permuted dimensions.  Typically the
+        pattern will include the integers 0, 1, ... ndim-1, and any number of
+        'x' characters in dimensions where this tensor should be broadcasted.
+
+        See :func:`dimshuffle`.
+
+    .. method:: flatten(ndim=1)
+
+        Returns a view of this tensor with `ndim` dimensions, whose shape for the first
+        `ndim-1` dimensions will be the same as `self`, and shape in the
+        remaining dimension will be expanded to fit in all the data from self.
+
+        See :func:`flatten`.
+
+    .. attribute:: T
+
+        Transpose of this tensor.
+
+        >>> x = T.zmatrix()
+        >>> y = 3+.2j * x.T 
+
+        .. note::
+            
+            In numpy and in Theano, the transpose of a vector is exactly the
+            same vector!  Use `reshape` or `dimshuffle` to turn your vector
+            into a row or column matrix.
+
+.. class:: TensorVariable(Variable, _tensory_py_operators)
+
+    The result of symbolic operations typically have this type.
+
+.. class:: TensorConstant(Variable, _tensory_py_operators)
+
+    Python and numpy numbers used in Theano graphs are wrapped in this type.
+
+.. class:: TensorSharedVariable(Variable, _tensory_py_operators)
+
+    This type is returned by :func:`shared` when the initial value is a numpy
+    ndarray.
 
 
 .. _libdoc_tensor_creation:
@@ -210,9 +260,11 @@ Shaping and Shuffling
 
     Returns the symbolic shape vector of `x`
 
-.. function:: reshape(x)
+.. function:: reshape()
 
-.. function:: dimshuffle(x)
+.. function:: dimshuffle()
+
+.. function:: flatten()
 
 
 Reductions 
@@ -258,13 +310,20 @@ Operator Support
 
 Python arithmetic operators are supported:
 
->>> a = T.itensor3()
+>>> a, b = T.itensor3(), T.itensor3() # example inputs
+>>> 
 >>> a + 3      # T.add(a, 3) -> itensor3
 >>> 3 - a      # T.sub(3, a)
 >>> a * 3.5    # T.mul(a, 3.5) -> ftensor3 or dtensor3 (depending on autocasting)
 >>> 2.2 / a    # T.truediv(2.2, a)
 >>> 2.2 // a   # T.intdiv(2.2, a)
 >>> 2.2**a     # T.pow(2.2, a)
+>>> b % a      # T.mod(b, a)
+>>> 
+>>> a & b      # T.and_(a,b)    bitwise and
+>>> a ^ 1      # T.xor(a,1)     bitwise xor
+>>> a | b      # T.or_(a,b)     bitwise or
+>>> ~a         # T.invert(a)    bitwise invert
 
 
 .. note::
