@@ -293,7 +293,8 @@ the substitutions have to work in any order.
 Using Random Numbers
 ====================
 
-Because everything has to be expressed symbolically firstly in Theano,
+Because in Theano you first express everything symbolically and
+afterwards compile this expression to get functions, 
 using pseudo-random numbers is not as straightforward as it is in 
 numpy, though also not to complicated. 
 
