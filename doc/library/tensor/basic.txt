@@ -308,10 +308,13 @@ Advanced indexing.
 Operator Support
 ================
 
-Python arithmetic operators are supported:
+Many Python operators are supported.
 
 >>> a, b = T.itensor3(), T.itensor3() # example inputs
->>> 
+
+Arithmetic
+--------------
+
 >>> a + 3      # T.add(a, 3) -> itensor3
 >>> 3 - a      # T.sub(3, a)
 >>> a * 3.5    # T.mul(a, 3.5) -> ftensor3 or dtensor3 (depending on autocasting)
@@ -319,20 +322,23 @@ Python arithmetic operators are supported:
 >>> 2.2 // a   # T.intdiv(2.2, a)
 >>> 2.2**a     # T.pow(2.2, a)
 >>> b % a      # T.mod(b, a)
->>> 
+
+Bitwise
+-------------
+
 >>> a & b      # T.and_(a,b)    bitwise and
 >>> a ^ 1      # T.xor(a,1)     bitwise xor
 >>> a | b      # T.or_(a,b)     bitwise or
 >>> ~a         # T.invert(a)    bitwise invert
 
+Inplace
+-------------
 
-.. note::
-
-    In-place operators are *not* supported.  Theano's graph-optimizations
-    will determine which intermediate values to use for in-place
-    computations.  If you would like to update the value of a
-    :term:`shared variable`, consider using the ``updates`` argument to
-    :func:`theano.function`.
+In-place operators are *not* supported.  Theano's graph-optimizations
+will determine which intermediate values to use for in-place
+computations.  If you would like to update the value of a
+:term:`shared variable`, consider using the ``updates`` argument to
+:func:`theano.function`.
 
 Elementwise
 ===========
