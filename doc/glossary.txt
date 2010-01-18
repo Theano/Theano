@@ -134,7 +134,10 @@ Glossary of terminology
     Storage
         The memory that is used to store the value of a Variable.  In most
         cases storage is internal to a compiled function, but in some cases
-        (such as :term:`constant` and :term:`shared variable` the storage is not internal.
+        (such as :term:`constant` and :term:`<shared variable>` the storage is not internal.
+
+    Shared Variable
+        A :term:`Variable` whose value may be shared between multiple functions.  See :func:`shared` and :func:`theano.function <function.function>`.
 
     theano.function
         The interface for Theano's compilation from symbolic expression graphs

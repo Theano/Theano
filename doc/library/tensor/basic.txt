@@ -449,11 +449,6 @@ Linear Algebra
 
 
 
-Fourier Transforms
-==================
-
-[James has some code for this, but hasn't gotten it into the source tree yet.]
-
 Gradient / Differentiation
 ==========================
 
