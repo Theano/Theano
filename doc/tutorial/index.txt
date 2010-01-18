@@ -24,6 +24,7 @@ installation (see :ref:`install`).
     adding
     examples
     loading_and_saving
+    symbolic_graphs
     modes
     remarks
     debug_faq
