@@ -1,0 +1,80 @@
+
+.. _libdoc_compile_shared:
+
+===========================================
+:mod:`shared` - defines theano.shared
+===========================================
+
+.. module:: shared
+   :platform: Unix, Windows
+   :synopsis: defines theano.shared and related classes
+.. moduleauthor:: LISA
+
+
+.. class:: SharedVariable
+
+    Variable with Storage that is shared between functions that it appears in.
+    These variables are meant to be created by registered *shared constructors*
+    (see :func:`shared_constructor`).
+
+    The user-friendly constructor is :func:`shared`
+
+    .. attribute:: value
+
+        Read/write access to the [non-symbolic] value/data associated with this SharedVariable.
+        
+        Changes to this value will be visible to all functions using this SharedVariable.  
+
+    .. method:: __init__(self, name, type, value, strict, container=None)
+
+        :param name: The name for this variable.
+        :type name: None or str
+
+        :param type: The :term:`Type` for this Variable.
+
+        :param value: A value to associate with this variable (a new container will be created).
+
+        :param strict: True -> assignments to ``self.value`` will not be casted
+          or copied, so they must have the correct type or an exception will be
+          raised.
+
+        :param container: The container to use for this variable.   This should
+           instead of the `value` parameter.  Using both is an error.
+
+    .. attribute:: container
+
+        A container to use for this SharedVariable when it is an implicit function parameter.
+
+        :type: class:`Container`
+
+.. function:: shared(value, name=None, strict=False, **kwargs)
+
+    Return a :class:`SharedVariable` Variable, initialized with a copy or reference of `value`.
+
+    This function iterates over constructor functions (see `shared_constructor`) to find a
+    suitable SharedVariable subclass.  The suitable one is the first constructor
+    that doesn't raise an exception.
+
+    This function is meant as a convenient default.  If you want to use a
+    specific shared variable constructor, consider calling it directly.
+
+    .. note::
+
+        By passing `kwargs`, you effectively limit the set of potential constructors to those that
+        can accept those kwargs.
+
+    Each registered constructor ``ctor`` will be called like this:
+
+    .. code-block:: python
+
+        ctor(value, name=name, strict=strict, **kwargs)
+
+    .. attribute:: constructors
+
+        A list of shared variable constructors that will be tried in reverse
+        order.
+
+.. function:: shared_constructor(ctor)
+
+    Append `ctor` to the list of shared constructors (see :func:`shared`).
+

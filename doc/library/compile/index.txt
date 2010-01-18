@@ -13,6 +13,7 @@
 .. toctree::
     :maxdepth: 1
 
+    shared
     function
     io
     mode

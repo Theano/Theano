@@ -125,7 +125,7 @@ Glossary of terminology
         (such as :term:`constant` and :term:`shared variable <shared variable>` the storage is not internal.
 
     Shared Variable
-        A :term:`Variable` whose value may be shared between multiple functions.  See :func:`shared` and :func:`theano.function <function.function>`.
+        A :term:`Variable` whose value may be shared between multiple functions.  See :func:`shared <shared.shared>` and :func:`theano.function <function.function>`.
 
     theano.function
         The interface for Theano's compilation from symbolic expression graphs
