@@ -34,5 +34,6 @@ a C implementation.
     optimization
     tips
     unittest
+    extending_faq
 
 
