@@ -12,7 +12,7 @@ for more details see :ref:`extending`.
 
 The first step in writing Theano code is to write down all mathematical 
 relations using symbolic placeholders (**variables**). When writing down 
-this expressions you use operations like ``+``, ``-``, ``**``,
+these expressions you use operations like ``+``, ``-``, ``**``,
 ``sum()``, ``tanh()``. All these are represented internally as **ops**. 
 An **op** represents a certain computation on some type of inputs
 producing some type of output. You can see it as a function definition
@@ -24,7 +24,7 @@ Theano builds internally a graph structure composed of interconnected
 **variables**. It is important to make the difference between the
 definition of a computation represented by an **op** and its application
 to some actual data which is represented by the **apply** node. For more
-details about this building blocks see :ref:`variable`, :ref:`op`, 
+details about these building blocks see :ref:`variable`, :ref:`op`, 
 :ref:`apply`. A graph example is the following:
 
 
@@ -51,6 +51,7 @@ computation) down to its leaves using the owner field.
 Take for example the following code:
 
 .. code-block:: python
+
     x = T.dmatrix('x')
     y = x*2.
 
@@ -103,8 +104,8 @@ nodes ( :ref:`apply` nodes are those who define what computations the
 graph does). For each such :ref:`apply` node, its  :ref:`op` defines 
 how to compute the gradient of the node's outputs with respect to its
 inputs. Note that if an :ref:`op` does not provide this information, 
-it is assumed that the gradient does not exist, and all results that 
-depend on this gradient will be 0s. Using the 
+it is assumed that the gradient does not defined.
+Using the 
 `chain rule <http://en.wikipedia.org/wiki/Chain_rile>`_ 
 these gradients can be composed in order to obtain the expression of the 
 gradient of the graph's output with respect to the graph's inputs .
