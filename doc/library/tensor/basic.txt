@@ -339,6 +339,10 @@ Comparisons
 
     Returns a variable representing the result of logical inequality (a!=b).
 
+
+Condition
+---------
+
 .. function:: switch(cond, ift, iff)
     Returns a variable representing a switch between ift (iftrue) and iff (iffalse)
      based on the condition cond.
@@ -353,9 +357,49 @@ Comparisons
       x,y = T.dmatrices('x','y')
       z = T.switch(T.lt(a,b), x, y)
 
+Bit-wise
+--------
+
+.. note:: The bitwise operators must have an integer type as input.
+
+The bitwise operators possess this interface: 
+    :Parameter:  *a* - symbolic Tensor of integer type.
+    :Parameter:  *b* - symbolic Tensor of integer type.
+    .. note:: The bit-wise not (invert) does not have this second parameter.
+
+    :Return type: symbolic Tensor
+
+.. function:: and_(a, b)
+
+    Returns a variable representing the result of the bitwise and.
+
+.. function:: or_(a, b)
+
+    Returns a variable representing the result of the bitwise or.
+
+.. function:: xor(a, b)
+
+    Returns a variable representing the result of the bitwise xor.
+
+.. function:: invert(a)
+
+    Returns a variable representing the result of the bitwise not.
+
+Here is an example using the bit-wise and_:
+
+.. code-block:: python 
+
+    import theano.tensor as T
+    x,y = T.imatrices('x','y')
+    z = T.and_(x,y)
+
 
 Mathematical
 ------------
+
+
+
+
 
 .. _libdoc_tensor_broadcastable:
 
