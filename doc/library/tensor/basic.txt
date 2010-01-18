@@ -344,6 +344,7 @@ Condition
 ---------
 
 .. function:: switch(cond, ift, iff)
+
     Returns a variable representing a switch between ift (iftrue) and iff (iffalse)
      based on the condition cond.
       :Parameter:  *cond* - symbolic Tensor (or compatible)
@@ -352,6 +353,7 @@ Condition
       :Return type: symbolic Tensor
 
     .. code-block:: python 
+
       import theano.tensor as T
       a,b = T.dmatrices('a','b')
       x,y = T.dmatrices('x','y')
