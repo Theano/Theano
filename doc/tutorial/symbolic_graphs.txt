@@ -46,8 +46,8 @@ details about these building blocks see :ref:`variable`, :ref:`op`,
     circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
 
 
-The graph can be traversed starting from a root (the result of some
-computation) down to its leaves using the owner field.
+The graph can be traversed starting from outputs (the result of some
+computation) down to its inputs using the owner field.
 Take for example the following code:
 
 .. code-block:: python
@@ -55,10 +55,8 @@ Take for example the following code:
     x = T.dmatrix('x')
     y = x*2.
 
-``y`` is such root, though there can be others for example if you also 
-had ``z = x+2``, then ``z`` would be a root as well. If you print 
-``type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, which 
-is the apply node that connects the op and the inputs to get this
+If you print `type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, 
+which is the apply node that connects the op and the inputs to get this
 output. You can now print the name of the op that is applied to get 
 ``y``:
 
