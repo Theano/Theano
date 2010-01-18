@@ -130,7 +130,8 @@ This is actually so simple the debugging could be done easily, but it's for
 illustrative purposes. As the matrices can't be element-wise multiplied
 (unsuitable shapes), we get the following exception:
 
-::
+.. code-block:: bash
+
     File "ex.py", line 14, in <module>
       f(mat1, mat2)
     File "/u/username/Theano/theano/compile/function_module.py", line 451, in
@@ -160,7 +161,9 @@ dimensions of the matrices involved, but for the sake of example say we'd
 need the other dimensions to pinpoint the error. First, we re-launch with
 the debugger module and run the program with "c":
 
-::
+.. code-block:: bash
+
+
         python -m pdb ex.py
         > /u/username/experiments/doctmp1/ex.py(1)<module>()
         -> import theano
