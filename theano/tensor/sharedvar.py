@@ -35,7 +35,7 @@ class ScalarSharedVariable(SharedVariable, _tensor_py_operators):
 
 @shared_constructor
 def scalar_constructor(value, name=None, strict=False, dtype=None):
-    """SharedVariable constructor for scalar values. Defaults to int64 or float64. 
+    """SharedVariable constructor for scalar values. Default: int64 or float64. 
 
     :note: We implement this using 0-d tensors for now.
     
@@ -50,12 +50,14 @@ def scalar_constructor(value, name=None, strict=False, dtype=None):
         else:
             dtype = type(value).__name__
 
-    type = TensorType(dtype=dtype, broadcastable=[])
+    tensor_type = TensorType(dtype=dtype, broadcastable=[])
 
     try:
-        # don't pass the dtype to asarray because we want this to fail if strict is True and the
-        # types do not match
-        rval = ScalarSharedVariable(type=type, value=numpy.asarray(value), name=name, strict=strict)
+        # Do not pass the dtype to asarray because we want this to fail if
+        # strict is True and the types do not match.
+        rval = ScalarSharedVariable(type=tensor_type,
+                value=numpy.asarray(value),
+                name=name, strict=strict)
         return rval
     except:
         traceback.print_exc()
