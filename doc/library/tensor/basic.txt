@@ -331,6 +331,8 @@ Indexing
 
 Basic indexing.
 
+    Mirrors numpy's `basic indexing  <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_. Read that page first.
+
 Advanced indexing.
 
 .. _libdoc_tensor_elementwise:
