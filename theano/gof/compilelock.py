@@ -150,6 +150,10 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
             while os.path.isdir(tmp_dir):
                 try:
                     read_owner = open(lock_file).readlines()[0].strip()
+                    # The following line does nothing but raise an exception
+                    # if somehow something is wrong in the owner format, to
+                    # avoid crashing later on.
+                    read_owner.split('_')[0]
                 except:
                     read_owner = 'failure'
                 if last_owner == read_owner:
@@ -163,8 +167,12 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                     time_start = time.time()
                     no_display = (verbosity == 0)
                 if not no_display:
-                    info("Waiting for existing lock by process '%s' (I am "
-                         "process '%s')" % (read_owner, my_pid))
+                    if read_owner == 'failure':
+                        msg = 'unknown process'
+                    else:
+                        msg = "process '%s'" % read_owner.split('_')[0]
+                    info("Waiting for existing lock by %s (I am "
+                         "process '%s')" % (msg, my_pid))
                     info("To manually release the lock, delete", tmp_dir)
                     if verbosity <= 1:
                         no_display = True
