@@ -263,6 +263,10 @@ def test_asymptotic_32():
     """
     This test makes sure that our functions behave sensibly when huge values are present
     """
+
+    #TODO: consider adding the optimization of crossentropy into the current mode for the
+    # purpose of running this test
+
     for dtype in 'float32', 'float64':
         if dtype == 'float32':
             x = tensor.fmatrix()
@@ -273,7 +277,7 @@ def test_asymptotic_32():
         y = tensor.lvector()
 
         c = categorical_crossentropy(softmax(x+x2), y)
-        f = theano.function([x,y,x2], [c.sum(), tensor.grad(c, x)])
+        f = theano.function([x,y,x2], [c.sum(), tensor.grad(c.sum(), x)], mode='FAST_RUN')
         if 0:
             for i, n in enumerate( f.maker.env.toposort()):
                 print i, n
