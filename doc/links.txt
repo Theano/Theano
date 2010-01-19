@@ -40,10 +40,10 @@ This is a sort of memo for developers and would-be developers.
 .. _mercurial: http://www.selenic.com/mercurial/wiki/
 .. _nosetests: http://somethingaboutorange.com/mrl/projects/nose/
 .. _numpy: http://numpy.scipy.org/
-.. _python: http://www.python.or
+.. _python: http://www.python.org
 .. _scipy: http://scipy.org/
 
-.. _autodiff: http://autodiff.org
+.. _autodiff: http://www.autodiff.org
 .. _boost.python: http://www.boost.org/doc/libs/1_38_0/libs/python/doc/index.html
 .. _cython: http://www.cython.org/
 .. _liboil: http://liboil.freedesktop.org/wiki/
