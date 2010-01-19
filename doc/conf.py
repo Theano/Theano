@@ -168,7 +168,7 @@ latex_font_size = '11pt'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, document class [howto/manual]).
 latex_documents = [
-  ('contents', 'theano.tex', 'theano Documentation',
+  ('index', 'theano.tex', 'theano Documentation',
    'LISA lab, University of Montreal', 'manual'),
 ]
 
