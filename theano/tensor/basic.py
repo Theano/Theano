@@ -1423,7 +1423,7 @@ def neg(a):
 
 @_scal_elemwise
 def inv(a):
-    """1.0/a (inplace on a)"""
+    """1.0/a"""
 
 @_scal_elemwise
 def log(a):
