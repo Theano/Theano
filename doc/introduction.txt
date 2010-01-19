@@ -129,7 +129,8 @@ Getting started
   the :ref:`tutorial` first though.
 
 
-A PDF version of the online documentation may be found `here <theano.pdf>`_.
+A PDF version of the online documentation may be found `here
+<http://deeplearning.net/theanodoc/theano.pdf>`_.
 
 
 Contact us

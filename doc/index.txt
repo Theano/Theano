@@ -37,7 +37,7 @@ Roughly in order of what you'll want to check out:
 * :ref:`extending` -- Learn to add a Type, Op, or graph optimization.
 * :ref:`internal` -- How to maintaining Theano, LISA-specific tips, and more...
 
-You can download the latest `PDF documentation <http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
+You can download the latest `PDF documentation <http://deeplearning.net/theanodoc/theano.pdf>`_, rather than reading it online.
 
 Community
 =========
