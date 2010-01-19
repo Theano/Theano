@@ -386,27 +386,24 @@ Casting
 Comparisons
 ------------
 
-.. note::
+The six usual equality and inequality operators share the same interface.
+  :Parameter:  *a* - symbolic Tensor (or compatible)
+  :Parameter:  *b* - symbolic Tensor (or compatible)
+  :Return type: symbolic Tensor
+  :Returns: a symbolic tensor representing the application of the logical elementwise operator.
+
+  .. note::
 
     Theano has no boolean dtype.  Instead, all boolean tensors are represented
     in ``'int8'``.
 
-.. note::
+  Here is an example with the less-than operator.
 
-    The six usual equality and inequality operators share the same interface.
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of the logical 
-          elementwise operator.
+  .. code-block:: python 
 
-    Here is an example with the less-than operator.
-
-    .. code-block:: python 
-
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.le(x,y)
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.le(x,y)
 
 .. function:: lt(a, b)
 
@@ -463,17 +460,18 @@ Condition
 Bit-wise
 --------
 
-.. note:: The bitwise operators must have an integer type as input.
 
 The bitwise operators possess this interface: 
     :Parameter:  *a* - symbolic Tensor of integer type.
     :Parameter:  *b* - symbolic Tensor of integer type.
 
     .. note:: 
+
+        The bitwise operators must have an integer type as input.
     
         The bit-wise not (invert) takes only one parameter.
 
-    :Return type: symbolic Tensor with ``int8`` dtype.
+    :Return type: symbolic Tensor with corresponding dtype.
 
 .. function:: and_(a, b)
 
