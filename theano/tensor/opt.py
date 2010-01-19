@@ -346,7 +346,7 @@ def local_IncSubtensor_serialize(node):
 
     #
     #  add(x, incsubtensor(b, c), incsubtensor(b, d))
-    #  -> incsubtensor(incsubtensor(add(x,b), c), d)
+    #  -> incsubtensor(incsubtensor(add(x,b,b), c), d)
     
     """
     def movable(i):
@@ -354,7 +354,8 @@ def local_IncSubtensor_serialize(node):
         return i.owner \
                 and isinstance(i.owner.op, T.IncSubtensor) \
                 and i.type == o_type \
-                and len(i.clients) == 1
+                and len(i.clients) == 1 \
+                and not i.owner.op.set_instead_of_inc
 
     if node.op == T.add:
         o_type = node.outputs[0].type
@@ -383,7 +384,8 @@ def local_IncSubtensor_serialize(node):
 @gof.local_optimizer([None])
 def local_inplace_setsubtensor(node):
     if isinstance(node.op, T.IncSubtensor) and not node.op.inplace:
-        new_op = T.IncSubtensor(node.op.idx_list, inplace=True)
+        new_op = T.IncSubtensor(node.op.idx_list, inplace=True, \
+                        set_instead_of_inc=node.op.set_instead_of_inc)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
@@ -932,8 +934,11 @@ def local_neg_neg(node):
 @register_specialize
 @gof.local_optimizer([T.neg])
 def local_neg_div_neg(node):
+    """- (-a / b) -> a / b
+
+    Also performs - (c / b) -> ((-c) / b) when c is a scalar constant.
+    """
     if node.op == T.neg:
-        """- (-a / b) -> a / b"""
         if node.inputs[0].owner and node.inputs[0].owner.op == T.true_div:
             frac = node.inputs[0]
             num, denom = frac.owner.inputs
@@ -942,6 +947,11 @@ def local_neg_div_neg(node):
                     # No other clients of the original division
                     new_num = num.owner.inputs[0]
                     return [T.true_div(new_num, denom)]
+            elif numpy.all(num.broadcastable) and isinstance(num, gof.Constant):
+                if len(frac.clients) == 1:
+                    new_num = -num.data
+                    return [T.true_div(new_num, denom)]
+
 
 @gof.local_optimizer([T.mul])
 def local_mul_zero(node):

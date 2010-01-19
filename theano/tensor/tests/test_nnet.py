@@ -223,6 +223,204 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         assert not has_softmax
         assert not has_softmaxdx
 
+    def test_get_rid_of_advanced_indexing_version_of_xent(self):
+        verbose = 0
+        # TODO: add the optimization in FAST_COMPILE?
+        # In the mean time, run it as 'FAST_RUN' instead
+        mode = theano.compile.mode.get_default_mode()
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        x_val = rng.randn(3,5)
+        b_val = rng.randn(5)
+        y_val = numpy.asarray([2,4,1])
+
+        x = T.dmatrix('x')
+        b = T.dvector('b')
+        y = T.lvector('y')
+
+        def print_graph(func):
+            for i, node in enumerate(func.maker.env.toposort()):
+                print i, node
+            # Last node should be the output
+            print i, pprint(node.outputs[0])
+            print
+
+        ## Basic case
+        expressions = [
+                T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(x))[T.arange(y.shape[0]), y])
+                ]
+
+        for expr in expressions:
+            # Verify the optimizer worked on the expressions
+            f = theano.function([x,y], expr, mode=mode)
+            if verbose: print_graph(f)
+            assert len(f.maker.env.toposort()) == 4
+            f(x_val, y_val)
+
+            # Also verify the gradient wrt x
+            g = theano.function([x,y], T.grad(expr, x), mode=mode)
+            if verbose: print_graph(g)
+            assert len(g.maker.env.toposort()) == 4
+            g(x_val, y_val)
+
+
+        ## Test that a biased softmax is optimized correctly
+        bias_expressions = [
+                T.sum(-T.log(softmax(x+b)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(b+x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x+b))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(b+x))[T.arange(y.shape[0]), y])]
+
+        for expr in bias_expressions:
+            f = theano.function([x,b,y], expr, mode=mode)
+            if verbose: print_graph(f)
+            assert len(f.maker.env.toposort()) == 2 # [big_op, sum]
+            f(x_val, b_val, y_val)
+
+            g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
+            if verbose: print_graph(g)
+            assert len(g.maker.env.toposort()) == 4
+            g(x_val, b_val, y_val)
+
+        ## Test that using "mean" instead of sum works, too
+        mean_expressions = [
+                T.mean(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                T.mean(-T.log(softmax(x))[T.arange(y.shape[0]), y])]
+
+        for expr in mean_expressions:
+            f = theano.function([x,y], expr, mode=mode)
+            if verbose: print_graph(f)
+            assert len(f.maker.env.toposort()) == 7
+            f(x_val, y_val)
+
+            g = theano.function([x,y], T.grad(expr, x), mode=mode)
+            if verbose: print_graph(g)
+            assert len(g.maker.env.toposort()) == 8
+            g(x_val, y_val)
+
+        mean_bias_expressions = [
+                T.mean(-T.log(softmax(x+b)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(b+x)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(x+b))[T.arange(y.shape[0]), y]),
+                T.mean(-T.log(softmax(b+x))[T.arange(y.shape[0]), y])]
+
+        for expr in mean_bias_expressions:
+            f = theano.function([x,b,y], expr, mode=mode)
+            if verbose: print_graph(f)
+            assert len(f.maker.env.toposort()) == 5
+
+            g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
+            if verbose: print_graph(g)
+            assert len(g.maker.env.toposort()) == 8
+            g(x_val, b_val, y_val)
+
+
+    def test_scale_cost(self):
+        # TODO: add the optimization in FAST_COMPILE?
+        # In the mean time, run it as 'FAST_RUN' instead
+        mode = theano.compile.mode.get_default_mode()
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        x_val = rng.randn(3,5)
+        b_val = rng.randn(5)
+        y_val = numpy.asarray([2,4,1])
+
+        x = T.dmatrix('x')
+        b = T.dvector('b')
+        y = T.lvector('y')
+        a = T.dscalar('a')
+
+        def print_graph(func):
+            for i, node in enumerate(func.maker.env.toposort()):
+                print i, node
+            # Last node should be the output
+            print i, pprint(node.outputs[0])
+
+        def validate_fn_graph(func):
+            # The graph of the function should not have softmax anymore
+            has_cx1hot = False
+            has_softmax = False
+            for node in func.maker.env.toposort():
+                if node.op == crossentropy_softmax_argmax_1hot_with_bias:
+                    has_cx1hot = True
+                if node.op == softmax:
+                    has_softmax = True
+
+            assert has_cx1hot
+            assert not has_softmax
+
+        def validate_grad_graph(func):
+            # The graph of the gradient should not have softmaxgrad anymore
+            has_cx1hotdx = False
+            has_softmax = False
+            has_softmaxdx = False
+            for node in func.maker.env.toposort():
+                if node.op == crossentropy_softmax_1hot_with_bias_dx:
+                    has_cx1hotdx = True
+                if node.op == softmax:
+                    has_softmax = True
+                if node.op == softmax_grad:
+                    has_softmaxdx = True
+
+            assert has_cx1hotdx
+            assert has_softmax
+            assert not has_softmaxdx
+
+
+        ## Cases to test
+        expressions = [
+                a * T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -a * T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                a * (-T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y]))),
+                a * T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+
+                a * T.sum(-T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                -a * T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                a * (-T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y])),
+                a * T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+
+                a * T.mean(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -a * T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                a * (-T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y]))),
+                a * T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+
+                a * T.mean(-T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                -a * T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                a * (-T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y])),
+                a * T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                ]
+
+        for expr in expressions:
+            # Verify the optimizer worked on the expressions
+            f = theano.function([x,y,a], expr, mode=mode)
+            assert 5 <= len(f.maker.env.toposort()) <= 10
+            validate_fn_graph(f)
+            f(x_val, y_val, 0.1)
+
+            # Verify the gradient wrt x
+            g = theano.function([x,y,a], T.grad(expr, x), mode=mode)
+            assert 5 <= len(g.maker.env.toposort()) <= 12
+            validate_grad_graph(g)
+            g(x_val, y_val, 0.1)
+
+            # Verify the gradient when providing output gradient
+            h = theano.function([x,y,a], T.grad(expr, x, g_cost=a*x.sum()), mode=mode)
+            assert 8 <= len(h.maker.env.toposort()) <= 17
+            validate_grad_graph(h)
+            h(x_val, y_val, 0.1)
+
+
 def test_argmax_pushdown():
     x = tensor.dmatrix()
 
@@ -304,101 +502,6 @@ def test_asymptotic_32():
         assert cval > 61750000
         assert gxval[0,0] == -1.0
         assert gxval[0,1] == 0.25
-
-
-def test_get_rid_of_advanced_indexing_version_of_xent():
-    verbose = 0
-    if 0: mode = 'DEBUG_MODE'
-    else: mode = 'FAST_RUN'
-
-    rng = numpy.random.RandomState(utt.fetch_seed())
-
-    x_val = rng.randn(3,5)
-    b_val = rng.randn(5)
-    y_val = numpy.asarray([2,4,1])
-
-    x = T.dmatrix('x')
-    b = T.dvector('b')
-    y = T.lvector('y')
-
-    def print_graph(func):
-        for i, node in enumerate(func.maker.env.toposort()):
-            print i, node
-        # Last node should be the output
-        print i, pprint(node.outputs[0])
-
-    ## Basic case
-    expressions = [
-            T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
-            -T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
-            -T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
-            T.sum(-T.log(softmax(x))[T.arange(y.shape[0]), y])]
-
-    for expr in expressions:
-        # Verify the optimizer worked on the expressions
-        f = theano.function([x,y], expr, mode=mode)
-        if verbose: print_graph(f)
-        assert len(f.maker.env.toposort()) == 4
-        f(x_val, y_val)
-
-        # Also verify the gradient wrt x
-        g = theano.function([x,y], T.grad(expr, x), mode=mode)
-        if verbose: print_graph(g)
-        assert len(g.maker.env.toposort()) == 4
-        g(x_val, y_val)
-
-
-    ## Test that a biased softmax is optimized correctly
-    bias_expressions = [
-            T.sum(-T.log(softmax(x+b)[T.arange(y.shape[0]), y])),
-            -T.sum(T.log(softmax(b+x)[T.arange(y.shape[0]), y])),
-            -T.sum(T.log(softmax(x+b))[T.arange(y.shape[0]), y]),
-            T.sum(-T.log(softmax(b+x))[T.arange(y.shape[0]), y])]
-
-    for expr in bias_expressions:
-        f = theano.function([x,b,y], expr, mode=mode)
-        if verbose: print_graph(f)
-        assert len(f.maker.env.toposort()) == 2 # [big_op, sum]
-        f(x_val, b_val, y_val)
-
-        g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
-        if verbose: print_graph(g)
-        assert len(g.maker.env.toposort()) == 4
-        g(x_val, b_val, y_val)
-
-    ## Test that using "mean" instead of sum works, too
-    mean_expressions = [
-            T.mean(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
-            -T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y])),
-            -T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y]),
-            T.mean(-T.log(softmax(x))[T.arange(y.shape[0]), y])]
-
-    for expr in mean_expressions:
-        f = theano.function([x,y], expr, mode=mode)
-        if verbose: print_graph(f)
-        assert len(f.maker.env.toposort()) == 7
-        f(x_val, y_val)
-
-        g = theano.function([x,y], T.grad(expr, x), mode=mode)
-        if verbose: print_graph(g)
-        assert len(g.maker.env.toposort()) == 8
-        g(x_val, y_val)
-
-    mean_bias_expressions = [
-            T.mean(-T.log(softmax(x+b)[T.arange(y.shape[0]), y])),
-            -T.mean(T.log(softmax(b+x)[T.arange(y.shape[0]), y])),
-            -T.mean(T.log(softmax(x+b))[T.arange(y.shape[0]), y]),
-            T.mean(-T.log(softmax(b+x))[T.arange(y.shape[0]), y])]
-
-    for expr in mean_bias_expressions:
-        f = theano.function([x,b,y], expr, mode=mode)
-        if verbose: print_graph(f)
-        assert len(f.maker.env.toposort()) == 5
-
-        g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
-        if verbose: print_graph(g)
-        assert len(g.maker.env.toposort()) == 8
-        g(x_val, b_val, y_val)
 
 
 

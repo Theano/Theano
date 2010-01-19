@@ -5,43 +5,40 @@
 Theano at a Glance
 ==================
 
-Theano is a Python library that allows you to define, optimize, and evaluate
-mathematical expressions involving multi-dimensional arrays. Using Theano it is
+Theano is a Python library that lets you to define, optimize, and evaluate
+mathematical expressions, especially ones with multi-dimensional arrays
+(numpy.ndarray).  Using Theano it is
 possible to attain speeds rivaling hand-crafted C implementations for problems
 involving large amounts of data.  It can also surpass C on a CPU by many orders
 of magnitude by taking advantage of recent GPUs.
 
-Theano melds some aspects of a computer algebra system (CAS) with
-aspects of an optimizing compiler. It can even transform some or all
-of the mathematical expression into C code and compile it into native
-machine instructions. This combination of CAS with optimizing
-compilation is particularly useful for tasks in which complicated
-mathematical expressions are evaluated repeatedly and evaluation speed
-is critical.
-
-Theano supports a range of numerical types in multiple dimensions and
-a number of well-tested operations. It also allows you to compute the
-gradient of an expression with respect to another. Symbolic
-expressions may be compiled into functions, which work on the same
-data structures as numpy_, allowing for easy interoperability.
+Theano combines aspects of a computer algebra system (CAS) with aspects of an
+optimizing compiler. It can also generate customized C code for many
+mathematical operations.  This combination of CAS with optimizing compilation
+is particularly useful for tasks in which complicated mathematical expressions
+are evaluated repeatedly and evaluation speed is critical.  For situations
+where many different expressions are each evaluated once Theano can minimize
+the amount of compilation/analysis overhead, but still provide symbolic
+features such as automatic differentiation.
 
 Theano's compiler applies many optimizations of varying complexity to
 these symbolic expressions. These optimizations include, but are not
 limited to:
 
+* use of GPU for computations
 * constant folding
-* merging of similar subgraphs, to avoid calculating the same values
-  more than once
-* arithmetic simplification (``x*y/x -> y``)
-* inserting efficient BLAS_ operations
-* using inplace operations wherever it is safe to do so.
+* merging of similar subgraphs, to avoid redundant calculation
+* arithmetic simplification (e.g. ``x*y/x -> y``, ``--x -> x``)
+* inserting efficient BLAS_ operations (e.g. ``GEMM``) in a variety of
+  contexts
+* using memory aliasing to avoid calculation
+* using inplace operations wherever it does not interfere with aliasing
+* loop fusion for elementwise sub-expressions
+* improvements to numerical stability (e.g.  :math:`\log(1+\exp(x))` and :math:`\log(\sum_i \exp(x[i]))`)
+* for a complete list, see :ref:`_optimizations`
 
-Theano defines several optimizations which improve the numerical
-stability of computations.
-
-Theano was written at the LISA_ lab to support the development of
-efficient machine learning algorithms while minimizing human time. We
-use it especially in gradient-based learning techniques.  Theano is
+Theano was written at the LISA_ lab to support rapid development of
+efficient machine learning algorithms. Theano is
 named after the `Greek mathematician`_, who may have been Pythagoras'
 wife.  Theano is released under a BSD license (:ref:`link <license>`).
 
@@ -92,30 +89,28 @@ machine instructions.
 What does it do that they don't?
 ================================
 
-Theano is a python library and optimizing compiler for manipulating
+Theano is a Python library and optimizing compiler for manipulating
 and evaluating expressions, especially matrix-valued
 ones. Manipulation of matrices is typically done using the numpy
 package, so what does Theano do that Python and numpy do not?
 
-- *execution speed optimizations*: Theano can use `g++` to compile
-  parts your expression graph into native machine code, which runs
-  much faster than python.
+- *execution speed optimizations*: Theano can use `g++` or `nvcc` to compile
+  parts your expression graph into CPU or GPU instructions, which run
+  much faster than pure Python.
 
 - *symbolic differentiation*: Theano can automatic build symbolic graphs
   for computing gradients.
 
-- *stability optimizations*: Theano can recognize numerically unstable
+- *stability optimizations*: Theano can recognize [some] numerically unstable
   expressions and compute them with more stable algorithms.
 
-There exist another symbolic package in Python, namely sympy_. Theano
-is different from sympy in the sense that while Theano allows symbolic
-manipulation it puts more emphasis on the evaluation of these expressions
-and being able to repeatedly evaluate them on many different inputs. Theano
-is also better suited to handling large tensors which have no
-assumed structures.
+The closest Python package to Theano is sympy_.
+Theano focuses more on tensor expressions than Sympy, and has more machinery
+for compilation.  Sympy has more sophisticated algebra rules and can
+handle a wider variety of mathematical operations (such as series, limits, and integrals).
 
 If numpy_ is to be compared to MATLAB_ and sympy_ to Mathematica_,
-Theano is a sort of hybrid of the two which tries to make the best of
+Theano is a sort of hybrid of the two which tries to combine the best of
 both worlds.
 
 
@@ -134,7 +129,8 @@ Getting started
   the :ref:`tutorial` first though.
 
 
-A PDF version of the online documentation may be found `here <theano.pdf>`_.
+A PDF version of the online documentation may be found `here
+<http://deeplearning.net/theanodoc/theano.pdf>`_.
 
 
 Contact us
