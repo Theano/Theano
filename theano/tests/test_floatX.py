@@ -2,7 +2,7 @@ from theano.tensor import *
 import theano.config as config
 from theano import function
 #from theano.floatx import set_floatX, xscalar, xmatrix, xrow, xcol, xvector, xtensor3, xtensor4
-import theano.floatx as FX
+import theano.floatX as FX
 
 def test_floatX():
     def test():
