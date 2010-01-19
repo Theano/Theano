@@ -159,3 +159,28 @@ class RandomStreams(object):
         """
         return self.gen(raw_random.random_integers, *args, **kwargs)
 
+    def permutation(self, *args, **kwargs):
+        """Return a symbolic permutation of integers
+
+        *args and **kwargs will be passed to numpy.random.RandomState.permutation
+
+        This is a shortcut for a call to `self.gen`
+        """
+        return self.gen(raw_random.permutation, *args, **kwargs)
+
+    def multinomial(self, *args, **kwargs):
+        """Return a symbolic multinomial sample
+
+        This is a shortcut for a call to `self.gen`
+
+        *args and **kwargs will be passed to numpy.random.RandomState.multinomial
+        """
+        return self.gen(raw_random.multinomial, *args, **kwargs)
+
+    def shuffle_row_elements(self, input):
+        """Return a variable with every row (rightmost index) shuffled"""
+        perm = self.permutation(input.ndim-1, input.shape[:-1], input.shape[-1])
+        shuffled = permute_row_elements(input, perm)
+        return shuffled
+
+
