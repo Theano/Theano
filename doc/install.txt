@@ -153,13 +153,10 @@ to your ``Theano`` folder and execute the following command:
 
     hg pull -u
 
+You should update frequently, bugs are fixed on a very regular basis.
+
 Mac
 ---
-
-These installation instructions have not tested recently, please infom us of your results! 
-We would be especially interested in dependencies that we missed listing, as well as tests
-that fail on your platform (use the ``theano-users@googlegroups.com`` mailing list).
-
 
 - Install `MacPorts <http://www.macports.org/>`__.
 
@@ -177,6 +174,10 @@ that fail on your platform (use the ``theano-users@googlegroups.com`` mailing li
 
 - Set ``THEANO_BLAS_LDFLAGS`` to something which will link against said BLAS
   library.  E.g., ``THEANO_BLAS_LDFLAGS='-lcblas -latlas -lgfortran'``.
+
+These installation instructions have not tested recently, please infom us of your results! 
+We would be especially interested in dependencies that we missed listing, as well as tests
+that fail on your platform (use the ``theano-users@googlegroups.com`` mailing list).
 
 
 Windows
