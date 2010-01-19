@@ -1,6 +1,7 @@
 import os, sys
 from theano.gof.compiledir import get_compiledir
 from theano.compile import optdb
+import theano.config as config
 
 import logging, copy
 _logger_name = 'theano_cuda_ndarray'
@@ -15,8 +16,34 @@ def debug(*msg):
     _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
 
 
-#compile type_support.cu
-#this need that nvcc(part of cuda) is installed
+# Compile type_support.cu
+# This need that nvcc (part of cuda) is installed. If it is not, a warning is
+# printed and this module will not be working properly (we set `enable_cuda`
+# to False).
+
+# This variable is True by default, and set to False if something goes wrong
+# when trying to initialize cuda.
+enable_cuda = True
+
+# Global variable to avoid displaying the same warning multiple times.
+cuda_warning_is_displayed = False
+
+# Code factorized within a function so that it may be called from multiple
+# places (which is not currently the case, but may be useful in the future).
+def set_cuda_disabled():
+    """Function used to disable cuda.
+
+    A warning is displayed, so that the user is aware that cuda-based code is
+    not going to work.
+    Note that there is no point calling this function from outside of
+    `cuda.__init__`, since it has no effect once the module is loaded.
+    """
+    global enable_cuda, cuda_warning_is_displayed
+    enable_cuda = False
+    if not cuda_warning_is_displayed:
+        cuda_warning_is_displayed = True
+        warning('Cuda is disabled, cuda-based code will thus not be '
+                'working properly')
 
 old_file = os.path.join(os.path.split(__file__)[0],'type_support.so')
 if os.path.exists(old_file):
@@ -30,55 +57,58 @@ except ImportError:
 
     import nvcc_compiler
 
-    print __file__
+    if not nvcc_compiler.is_nvcc_available():
+        set_cuda_disabled()
 
-    cuda_path=os.path.split(old_file)[0]
-    code = open(os.path.join(cuda_path, "type_support.cu")).read()
+    if enable_cuda:
+        print __file__
 
-    loc = os.path.join(get_compiledir(),'type_support')
-    if not os.path.exists(loc):
-        os.makedirs(loc)
+        cuda_path=os.path.split(old_file)[0]
+        code = open(os.path.join(cuda_path, "type_support.cu")).read()
+
+        loc = os.path.join(get_compiledir(),'type_support')
+        if not os.path.exists(loc):
+            os.makedirs(loc)
  
-    CUDA_NDARRAY=os.getenv('CUDA_NDARRAY')
-    include_dirs=[]
-    lib_dirs=[]
+        CUDA_NDARRAY=os.getenv('CUDA_NDARRAY')
+        include_dirs=[]
+        lib_dirs=[]
     
-    if CUDA_NDARRAY:
-        include_dirs.append(CUDA_NDARRAY)
-        lib_dirs.append(CUDA_NDARRAY)
-    else:
-        import theano.sandbox
-        path = os.path.split(os.path.split(os.path.split(theano.sandbox.__file__)[0])[0])[0]
-        path2 = os.path.join(path,'cuda_ndarray')
-        if os.path.isdir(path2):
-            include_dirs.append(path2)
-            lib_dirs.append(path2)
+        if CUDA_NDARRAY:
+            include_dirs.append(CUDA_NDARRAY)
+            lib_dirs.append(CUDA_NDARRAY)
         else:
-            path = os.path.split(path)[0]
+            import theano.sandbox
+            path = os.path.split(os.path.split(os.path.split(theano.sandbox.__file__)[0])[0])[0]
             path2 = os.path.join(path,'cuda_ndarray')
-            include_dirs.append(path2)
-            lib_dirs.append(path2)
+            if os.path.isdir(path2):
+                include_dirs.append(path2)
+                lib_dirs.append(path2)
+            else:
+                path = os.path.split(path)[0]
+                path2 = os.path.join(path,'cuda_ndarray')
+                include_dirs.append(path2)
+                lib_dirs.append(path2)
 
-    nvcc_compiler.nvcc_module_compile_str('type_support', code, location = loc, include_dirs=include_dirs, lib_dirs=lib_dirs, libs=['cuda_ndarray'])
+        nvcc_compiler.nvcc_module_compile_str('type_support', code, location = loc, include_dirs=include_dirs, lib_dirs=lib_dirs, libs=['cuda_ndarray'])
 
-    from type_support.type_support import *
+        from type_support.type_support import *
 
 
+if enable_cuda:
+    from theano.sandbox.cuda.type import CudaNdarrayType
+    from theano.sandbox.cuda.var import (CudaNdarrayVariable,
+            CudaNdarrayConstant,
+            CudaNdarraySharedVariable,
+            shared_constructor)
 
-from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.var import (CudaNdarrayVariable,
-    CudaNdarrayConstant,
-    CudaNdarraySharedVariable,
-    shared_constructor)
+    import basic_ops
+    from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
+            GpuDimShuffle, GpuSum, GpuReshape, 
+            GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape)
+    import opt
+    import cuda_ndarray
 
-import basic_ops
-from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
-                       GpuDimShuffle, GpuSum, GpuReshape, 
-                       GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape)
-import opt
-import cuda_ndarray
-
-import theano.config as config
 
 def use(device=config.THEANO_GPU):
     if use.device_number is None:
