@@ -216,7 +216,8 @@ but this has not been tested yet.
         tar zxvf lapack.tgz
         cd lapack-3.2.1
         gfortran -shared -O3 -o libblas.dll BLAS/SRC/*.f
-        mv libblas.dll /mingw/lib
+        cp libblas.dll /mingw/lib
+        mv libblas.dll /mingw/bin
 
 - Install `Mercurial <http://mercurial.selenic.com/downloads/>`__
   (you can use the regular Windows release, you do not need TortoiseHg).
