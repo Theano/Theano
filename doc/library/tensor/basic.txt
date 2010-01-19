@@ -501,8 +501,59 @@ Here is an example using the bit-wise ``and_`` via the ``&`` operator:
 Mathematical
 ------------
 
+.. function:: abs_(a)
 
+    Returns a variable representingthe absolute of a, ie ``|a|``.
 
+    .. note:: Can also be accessed with ``abs(a)``.
+
+.. function:: exp(a)
+
+    Returns a variable representing the exponential of a, ie e^a.
+
+.. function:: neg(a)
+
+    Returns a variable representing the opposite of a, ie -a.
+
+.. function:: inv(a)
+
+    Returns a variable representing the inverse of a, ie 1.0/a.
+
+.. function:: log(a), log2(a), log10(a)
+
+    Returns a variable representing the base e, 2 or 10 logarithm of a.
+
+.. function:: sgn(a)
+
+    Returns a variable representing the sign of a.
+
+.. function:: ceil(a)
+
+    Returns a variable representing the ceiling of a (for example ceil(2.1) is 3).
+
+.. function:: floor(a)
+
+    Returns a variable representing the floor of a (for example floor(2.9) is 2).
+
+.. function:: iround(a)
+
+    Returns a variable representing the of rounding of a, ie int(a).
+
+.. function:: sqr(a)
+
+    Returns a variable representing the square of a, ie a^2.
+
+.. function:: sqrt(a)
+
+    Returns a variable representing the of a, ie a^0.5.
+
+.. function:: cos(a), sin(a), tan(a)
+
+    Returns a variable representing the trigonometric functions of a (cosine, sine and tangent).
+
+.. function:: cosh(a), sinh(a), tanh(a)
+
+    Returns a variable representing the hyperbolic trigonometric functions of a (hyperbolic cosine, sine and tangent).
 
 
 .. _libdoc_tensor_broadcastable:
