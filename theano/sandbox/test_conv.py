@@ -280,8 +280,10 @@ class TestConvOp(unittest.TestCase):
                     assert (N.abs(out2_-out3_)<1e-5).all()
 
                     # REFERENCE IMPLEMENTATION: compute output with convolve2d
-                    fulloutshp = N.array(imshp[1:]) - N.array(kshp) + 1 if conv_mode=='valid'\
-                             else N.array(imshp[1:]) + N.array(kshp) - 1
+		    if conv_mode=='valid':
+			fulloutshp = N.array(imshp[1:]) - N.array(kshp) + 1
+		    else:
+			fulloutshp = N.array(imshp[1:]) + N.array(kshp) - 1
                     ntime1 = time.time()
                     refout = N.zeros((bsize,)+tuple(fulloutshp)+(nkern,))
                     for b in range(bsize):
@@ -448,7 +450,10 @@ class TestConvOp(unittest.TestCase):
             kerns = T.TensorType(typ, (False, False, False, False),'kerns')
             for mode in modes:
                 for imshp in imshps:
-                    visdim = 1 if len(imshp)!=3 else imshp[0]
+		    if len(imshp)!=3:
+			visdim = 1
+		    else:
+		        visdim = imshp[0]
                     imgvals = N.array(N.random.random(N.hstack((bsize,imshp))),dtype=imgs.dtype)
                     for kshp in kshps:
                         t=numpy.array([imshp[1]-kshp[0],imshp[2]-kshp[1]])
@@ -480,13 +485,16 @@ class TestConvOp(unittest.TestCase):
                                         return convop(imgvals, kerns)
 
                                     #TODO the tolerance needed to pass is very high for float32(0.17). Is this acceptable? Expected?
+				    tol = None
+				    if typ=="float32":
+					tol = 0.17
                                     utt.verify_grad(test_i, [imgvals],
                                                     cast_to_output_type=True,
-                                                    tol=None if typ!="float32" else 0.17)
+                                                    tol=tol)
 
                                     utt.verify_grad(test_k, [kernvals],
                                                     cast_to_output_type=True,
-                                                    tol=None if typ!="float32" else 0.17)
+                                                    tol=tol)
 
 
 if __name__ == '__main__':
