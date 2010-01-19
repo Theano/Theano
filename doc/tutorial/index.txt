@@ -18,12 +18,16 @@ of Theano. Let's import that subpackage under a handy name. I like
 If that worked you're ready for the tutorial, otherwise check your
 installation (see :ref:`install`).
 
+Throughout the tutorial, bear in mind that there is a :ref:`glossary` to help
+you out.
+
 .. toctree::
 
     numpy
     adding
     examples
     loading_and_saving
+    symbolic_graphs
     modes
     remarks
     debug_faq

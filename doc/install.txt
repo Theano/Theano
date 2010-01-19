@@ -20,7 +20,7 @@ to be installed:
         We develop mainly on 64-bit Linux machines. 32-bit architectures are
         not well-tested.
 
-    python >= 2.5
+    python >= 2.5 (2.4 should be supported as well)
 
     `numpy <http://numpy.scipy.org/>`_ >= 1.2
         Earlier versions have memory leaks.
@@ -29,6 +29,8 @@ to be installed:
         >=0.7 if you are using sparse matrices, because scipy.sparse
         is buggy in 0.6. (scipy.csc_matrix dot has a bug with singleton
         dimensions. There may be more bugs.)
+
+    A BLAS installation (with Level 3 functionality)
 
 The following libraries and software are optional:
 
@@ -42,41 +44,49 @@ The following libraries and software are optional:
     `mercurial <http://www.selenic.com/mercurial/>`_
         To download bleeding-edge version of Theano.
 
-
-Easy install
-------------
-
-The following command will install the latest release of Theano
-on your system:
-
-.. code-block:: bash
-
-    easy_install Theano
-
-Manual install
---------------
-
-To install the latest release of Theano from source, visit the `downloads
-<http://pylearn.org/theano/downloads/>`_ page and download the release you
-want. Unpack the release, and type:
-
-.. code-block:: bash
-
-    python setup.py build
-    python setup.py test
-    python setup.py install
-
 .. _install_bleeding_edge:
 
-Bleeding Edge
---------------
+Getting the code
+-----------------
 
-Feeling lucky and want to run bleeding-edge code?
-Then check out the :ref:`dev_start_guide` guide.
+If you are a developer of Theano, then check out the :ref:`dev_start_guide` guide. 
 
+The following are general instructions that will set you up with the bleeding-edge 
+version of Theano. First, get the code using `mercurial <http://www.selenic.com/mercurial/wiki/>`__:
 
-Configuring the environment
+.. code-block:: bash
+
+    hg clone http://hg.assembla.com/theano Theano
+
+Configuring PYTHONPATH
 ---------------------------
+
+The subdirectory Theano/theano has to be located in a path
+mentioned in your PYTHONPATH. In order to do that, you can either
+create a symbolic link to Theano/theano in a directory already
+mentioned in your PYTHONPATH environment variable, or modify the
+PYTHONPATH so that it mentions Theano.
+
+To create a symbolic link:
+
+.. code-block:: bash
+
+    ln -s Theano/theano <someplace on your PYTHONPATH>/theano
+
+To modify the environment variable PYTHONPATH in bash, you may do this:
+
+.. code-block:: bash
+
+    export PYTHONPATH=<path to Theano's parent dir>/Theano:$PYTHONPATH
+
+In csh:
+
+.. code-block:: csh
+
+    setenv PYTHONPATH <path to Theano's parent dir>/Theano:$PYTHONPATH
+
+Configuring Theano's environmental variables
+---------------------------------------------
 
 Two environment variables are used to control automatic code
 generation. It is possible to use Theano in a way which avoids all
@@ -118,6 +128,33 @@ automatic code generation, but that way is much, much slower.
 
     Omitting this variable defaults the mode to ``'FAST_RUN'``.
 
+Testing your installation
+---------------------------
+
+Once you have completed these steps, you should run the theano test suite like this:
+
+.. code-block:: bash
+
+    cd Theano
+    nosetests #execute all the tests
+
+All tests should pass. If some test fails on your machine, you are
+encouraged to tell us what went wrong on the ``theano-users@googlegroups.com``
+mailing list.
+
+Updating
+-------------
+
+
+To update your library to the latest revision, change directory (``cd``)
+to your ``Theano`` folder and execute the following command:
+
+.. code-block:: bash
+
+    hg pull -u
+
+You should update frequently, bugs are fixed on a very regular basis.
+
 Mac
 ---
 
@@ -126,20 +163,21 @@ Mac
 -
     .. code-block:: bash
 
-        $ sudo port install gcc42 py25-zlib py25-numpy py25-scipy mercurial
+        $ sudo port install gcc44 py25-zlib py25-numpy py25-scipy mercurial
 
-    Note that compiling gcc42 takes a significant time (hours) so it is probably
+    Note that compiling gcc takes a significant time (hours) so it is probably
     not the best solution if you are in a rush! It may happen that SciPy
     fails to compile the first time and still compiles just fine on a second
     try. Same thing with py25-zlib.
 
-- Install some kind of BLAS library (TODO: how?)
+- scipy depends on ATLAS (a BLAS library), which will be installed by MacPorts.
 
 - Set ``THEANO_BLAS_LDFLAGS`` to something which will link against said BLAS
   library.  E.g., ``THEANO_BLAS_LDFLAGS='-lcblas -latlas -lgfortran'``.
 
-This advice has not been tested recently, so please inform us of your results.
-
+These installation instructions have not tested recently, please infom us of your results! 
+We would be especially interested in dependencies that we missed listing, as well as tests
+that fail on your platform (use the ``theano-users@googlegroups.com`` mailing list).
 
 
 Windows
@@ -216,7 +254,8 @@ but this has not been tested yet.
         tar zxvf lapack.tgz
         cd lapack-3.2.1
         gfortran -shared -O3 -o libblas.dll BLAS/SRC/*.f
-        mv libblas.dll /mingw/lib
+        cp libblas.dll /mingw/lib
+        mv libblas.dll /mingw/bin
 
 - Install `Mercurial <http://mercurial.selenic.com/downloads/>`__
   (you can use the regular Windows release, you do not need TortoiseHg).
@@ -246,9 +285,9 @@ Generating the documentation
 ----------------------------
 
 You can read the latest HTML documentation `here
-<http://pylearn.org/theano/contents.html>`__.
+<http://deeplearning.net/theanodoc>`__.
 You can download the latest PDF documentation `here
-<http://pylearn.org/theano/theano.pdf>`__.
+<http://deeplearning.net/theanodoc/theano.pdf>`__.
 
 We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.

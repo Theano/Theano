@@ -102,7 +102,7 @@ Reference
     :type updates: iterable over pairs (shared_variable, new_expression).
        List, tuple or dict.
 
-    :param updates: expressions for new SharedVariable values
+    :param updates: expressions for new :class:`SharedVariable` values
     
 
     :type givens: iterable over pairs (Var1, Var2) of Variables. 

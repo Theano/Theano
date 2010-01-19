@@ -46,43 +46,45 @@ be found in the documentation for :api:`gof.type.Type`. Here, we'll focus on
 the most important ones:
 
 
-.. function:: c_declare(name, sub)
+.. class:: CLinkerType
 
-  This must return C code which declares variables. These variables
-  will be available to operations defined in C. You may also write
-  typedefs.
+    .. method:: c_declare(name, sub)
 
-.. function:: c_init(name, sub)
+        This must return C code which declares variables. These variables
+        will be available to operations defined in C. You may also write
+        typedefs.
 
-  This must return C code which initializes the variables declared in
-  ``c_declare``. Either this or ``c_extract`` will be called.
+    .. method:: c_init(name, sub)
 
-.. function:: c_extract(name, sub)
+        This must return C code which initializes the variables declared in
+        ``c_declare``. Either this or ``c_extract`` will be called.
 
-  This must return C code which takes a reference to a Python object
-  and initializes the variables declared in ``c_declare`` to match the
-  Python object's data. Either this or ``c_init`` will be called.
+    .. method:: c_extract(name, sub)
 
-.. function:: c_sync(name, sub)
+        This must return C code which takes a reference to a Python object
+        and initializes the variables declared in ``c_declare`` to match the
+        Python object's data. Either this or ``c_init`` will be called.
 
-  When the computations are done, transfer the variables from the C
-  structure we put them in to the destination Python object. This will
-  only be called for the outputs.
+    .. method:: c_sync(name, sub)
 
-.. function:: c_cleanup(name, sub)
+        When the computations are done, transfer the variables from the C
+        structure we put them in to the destination Python object. This will
+        only be called for the outputs.
 
-  When we are done using the data, clean up whatever we allocated and
-  decrease the appropriate reference counts.
+    .. method:: c_cleanup(name, sub)
 
-.. function:: c_compile_args()
-              c_no_compile_args()
-              c_headers()
-              c_libraries()
-              c_support_code()
+        When we are done using the data, clean up whatever we allocated and
+        decrease the appropriate reference counts.
 
-  Allows you to specify headers, libraries, 
-  special g++ arguments to add/exclude or
-  helper functions/structs that the type needs. See :ref:`type`.
+    .. method:: c_compile_args()
+                  c_no_compile_args()
+                  c_headers()
+                  c_libraries()
+                  c_support_code()
+
+        Allows you to specify headers, libraries, 
+        special g++ arguments to add/exclude or
+        helper functions/structs that the type needs. See :ref:`type`.
 
 
 Each of these functions take two arguments, ``name`` and ``sub`` which
@@ -391,7 +393,7 @@ done. Note which variables get extracted (the three inputs ``x``, ``y`` and
 output ``b``) and which one is synced (the final output ``b``).
 
 The C code above is a single C block for the whole graph. Depending on
-which :ref:`linker` is used to process the computation graph, it is
+which :term:`linker` is used to process the computation graph, it is
 possible that one such block is generated for each operation and that
 we transit through Python after each operation. In that situation,
 ``a`` would be synced by the addition block and extracted by the

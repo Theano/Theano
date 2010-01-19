@@ -12,7 +12,7 @@ computations. We'll start by defining multiplication.
 Op's contract
 =============
 
-An Op (:api:`gof.op.Op`) is any object which defines the
+An Op (:class:`gof.Op`) is any object which defines the
 following methods:
 
 
@@ -134,9 +134,7 @@ following methods:
   includes this Op.
 
 
-For each method, the *default* is what :api:`theano.gof.op.Op` defines
-for you.  At a bare minimum, a new Op must define ``make_node`` and
-``perform``, which have no defaults.
+At a bare minimum, a new Op must define ``make_node`` and ``perform``, which have no defaults.
 
 For more details, including the interface for providing a C
 implementation of ``perform()``, refer to the documentation for :ref:`op`.

@@ -97,3 +97,88 @@ Use your imagination :)
 This can be a really powerful debugging tool.
 Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
 
+How to use pdb ?
+----------------
+
+In the majority of cases, you won't be executing from the interactive shell
+but from a set of Python scripts. In such cases, the use of the Python
+debugger can come in handy, especially as your models become more complex.
+Intermediate results don't necessarily have a clear name and you can get
+exceptions which are hard to decipher, due to the "compiled" nature of
+functions.
+
+Consider this example script ("ex.py"):
+
+.. code-block:: python
+
+        import theano
+        import numpy
+        import theano.tensor as T
+
+        a = T.dmatrix('a')
+        b = T.dmatrix('b')
+
+        f = theano.function([a,b], [a*b])
+
+        # matrices chosen so dimensions are unsuitable for multiplication
+        mat1 = numpy.arange(12).reshape((3,4))
+        mat2 = numpy.arange(25).reshape((5,5))
+
+        f(mat1, mat2)
+
+This is actually so simple the debugging could be done easily, but it's for
+illustrative purposes. As the matrices can't be element-wise multiplied
+(unsuitable shapes), we get the following exception:
+
+.. code-block:: text
+
+    File "ex.py", line 14, in <module>
+      f(mat1, mat2)
+    File "/u/username/Theano/theano/compile/function_module.py", line 451, in __call__
+    File "/u/username/Theano/theano/gof/link.py", line 271, in streamline_default_f
+    File "/u/username/Theano/theano/gof/link.py", line 267, in streamline_default_f
+    File "/u/username/Theano/theano/gof/cc.py", line 1049, in execute ValueError: ('Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 5)', Elemwise{mul,no_inplace}(a, b), Elemwise{mul,no_inplace}(a, b))
+
+The call stack contains a few useful informations to trace back the source
+of the error. There's the script where the compiled function was called --
+but if you're using (improperly parameterized) prebuilt modules, the error
+might originate from ops in these modules, not this script. The last line
+tells us about the Op that caused the exception. In thise case it's a "mul"
+involving Variables name "a" and "b". But suppose we instead had an
+intermediate result to which we hadn't given a name.
+
+After learning a few things about the graph structure in Theano, we can use
+the Python debugger to explore the graph, and then we can get runtime
+information about the error. Matrix dimensions, especially, are useful to
+pinpoint the source of the error. In the printout, there are also 2 of the 4
+dimensions of the matrices involved, but for the sake of example say we'd
+need the other dimensions to pinpoint the error. First, we re-launch with
+the debugger module and run the program with "c":
+
+.. code-block:: text
+
+    python -m pdb ex.py
+    > /u/username/experiments/doctmp1/ex.py(1)<module>()
+    -> import theano
+    (Pdb) c
+
+Then we get back the above error printout, but the interpreter breaks in
+that state. Useful commands here are
+
+* "up" and "down" (to move up and down the call stack),
+* "l" (to print code around the line in the current stack position),
+* "p variable_name" (to print the string representation of 'variable_name'),
+* "p dir(object_name)", using the Python dir() function to print the list of an object's members
+
+Here, for example, I do "up", and a simple "l" shows me there's a local
+variable "node". This is the "node" from the computation graph, so by
+following the "node.inputs", "node.owner" and "node.outputs" links I can
+explore around the graph.
+
+That graph is purely symbolic (no data, just symbols to manipulate it
+abstractly). To get information about the actual parameters, you explore the
+"thunks" objects, which bind the storage for the inputs (and outputs) with
+the function itself (a "thunk" is a concept related to closures). Here, to
+get the current node's first input's shape, you'd therefore do "p
+thunk.inputs[0][0].shape", which prints out "(3, 4)".
+

@@ -29,9 +29,10 @@ class ConvOp(Op):
 
     #TODO: make the stacksize its own parameter, and make imshp a pair
 
-    def __init__(self, imshp, kshp, nkern, bsize, dx, dy, output_mode='valid',
-            unroll_batch=4,
-            unroll_kern=4,
+    def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None, dx=None, dy=None, output_mode='valid',
+            unroll_batch=0,
+            unroll_kern=0,
+            unroll_patch=False,
             imshp_logical=None,
             kshp_logical=None,
             kshp_logical_top_aligned=True,
@@ -47,6 +48,7 @@ class ConvOp(Op):
         dx - patch stride rows
         dy - patch stride cols
         out_mode - 'valid', 'full'
+        unroll_patch - c code generation option
         unroll_batch - c code generation option
         unroll_kern - c code generation option
         verbose - passed to GpuConv
@@ -60,6 +62,7 @@ class ConvOp(Op):
         gradient on the filters.
 
 
+        unroll_patch. If True will use a version that is faster then without not unroll by unroll the patch loop.
         unroll_batch. If >0 will use a version that will unroll the batch loop by the value of the option. By default don't use this version of the code.
         unroll_nkern. idem as unroll_batch but unroll the kernel loop.
 
@@ -95,6 +98,7 @@ class ConvOp(Op):
 
         self.unroll_batch=unroll_batch
         self.unroll_kern=unroll_kern
+        self.unroll_patch=unroll_patch
 
         if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
             if self.bsize<=self.unroll_batch:
@@ -407,6 +411,7 @@ using namespace std;
         d["self_imshp0"]=self.imshp[0]
         d["self_imshp1"]=self.imshp[1]
         d["self_imshp2"]=self.imshp[2]
+        d["mode"]=self.out_mode.upper()
         d["self_kshp0"]=self.kshp[0]
         d["self_kshp1"]=self.kshp[1]
         d["self_kshp_logical_r"] = self.kshp_logical[0]
@@ -439,8 +444,12 @@ using namespace std;
         #print self.out_mode, d["self_imshp_logical_stride_r"]
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
+#            print "return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version"
             return _conv_op_code_a % d
 
+        if self.unroll_patch:
+#            print "return unroll patch version",self.dx,self.dy
+            return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
             if self.unroll_batch<=0: self.unroll_batch=1
             if self.unroll_kern<=0: self.unroll_kern=1
@@ -1212,3 +1221,295 @@ Py_XDECREF(img2d);
 Py_XDECREF(filtersflipped);
 """
     return ret
+
+_conv_op_code_unroll_patch = """
+const int mode=%(mode)s;
+int typenum=0, typenum_f=0;
+PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
+const %(type)s fill_value = 0;
+
+int type_im=PyArray_TYPE(%(img2d)s);
+int type_ker=PyArray_TYPE(%(filtersflipped)s);
+
+npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
+npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
+npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+
+PyArray_Dims img2d_shape;
+npy_intp img2d_dim[4]={1,1,0,0};
+img2d_shape.ptr=img2d_dim;
+img2d_shape.len=4;
+
+PyArray_Dims kerns_shape;
+npy_intp kerns_dim[4]={1,1,0,0};
+kerns_shape.ptr=kerns_dim;
+kerns_shape.len=4;
+PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
+
+if(%(img2d)s->nd==2){
+  img2d_dim[3]=%(img2d)s->dimensions[1];
+  img2d_dim[2]=%(img2d)s->dimensions[0];
+}else if(%(img2d)s->nd==3){
+  img2d_dim[3]=%(img2d)s->dimensions[2];
+  img2d_dim[2]=%(img2d)s->dimensions[1];
+  img2d_dim[0]=%(img2d)s->dimensions[0];
+}else if(%(img2d)s->nd==4){
+  img2d_dim[3]=%(img2d)s->dimensions[3];
+  img2d_dim[2]=%(img2d)s->dimensions[2];
+  img2d_dim[1]=%(img2d)s->dimensions[1];
+  img2d_dim[0]=%(img2d)s->dimensions[0];
+}else {
+    PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
+    %(fail)s;
+}
+
+if(%(filtersflipped)s->nd==3){
+  kerns_dim[3]=%(filtersflipped)s->dimensions[2];
+  kerns_dim[2]=%(filtersflipped)s->dimensions[1];
+  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+}else if(%(filtersflipped)s->nd==4){
+  kerns_dim[3]=%(filtersflipped)s->dimensions[3];
+  kerns_dim[2]=%(filtersflipped)s->dimensions[2];
+  kerns_dim[1]=%(filtersflipped)s->dimensions[1];
+  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+}else{
+    std:stringstream temp;
+    temp << "nddim="<<%(filtersflipped)s->nd;
+    std::string param = temp.str();
+    PyErr_SetString(PyExc_ValueError,
+      ("kernel don't have a good shape. " + param).c_str());
+    %(fail)s;
+}
+
+img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
+img2d_arr = (PyArrayObject*)img2d;
+if ((img2d_arr->strides[3] != sizeof(%(type)s)) 
+     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
+    contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
+    Py_DECREF(img2d);
+    img2d = contig;
+    if (!PyArray_ISCONTIGUOUS(img2d)){
+        PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
+        %(fail)s;
+    }
+}
+img2d_arr = (PyArrayObject*)img2d;
+
+filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
+filtersflipped_arr = (PyArrayObject*)filtersflipped;
+if ((filtersflipped_arr->strides[3] != sizeof(%(type)s)) 
+     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*sizeof(%(type)s))){
+    contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
+    Py_DECREF(filtersflipped);
+    filtersflipped = contig;
+    if (!PyArray_ISCONTIGUOUS(filtersflipped)){
+        PyErr_SetString(PyExc_ValueError, "filtersflipped isn't contiguous");
+        %(fail)s;
+    }
+}
+filtersflipped_arr = (PyArrayObject*)filtersflipped;
+
+if(mode != VALID && mode != FULL){
+  PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;
+}
+typenum = PyArray_ObjectType((PyObject*)%(img2d)s, 0);
+typenum_f = PyArray_ObjectType((PyObject*)%(filtersflipped)s, 0);
+if (typenum < 0) {PyErr_SetString(PyExc_ValueError, "Invalid type"); %(fail)s;}
+if (typenum != typenum_f) {PyErr_SetString(PyExc_ValueError, "Input types must match"); %(fail)s;}
+
+if (!img2d) %(fail)s;
+if (!filtersflipped) %(fail)s;
+if ((!%(z)s)
+  || *PyArray_DIMS(%(z)s)!=4
+  ||(%(z)s->dimensions[0] != %(self_bsize)s)
+  ||(%(z)s->dimensions[1] != %(self_nkern)s)
+  ||(%(z)s->dimensions[2] != dim_zz[0])
+  || (%(z)s->dimensions[3] != dim_zz[1])
+  )
+{
+  if (%(z)s) Py_DECREF(%(z)s);
+  npy_intp dims[4] = {0,0,0,0};
+  if(!dims) %(fail)s;
+  dims[0]=%(self_bsize)s;
+  dims[1]=%(self_nkern)s;
+  dims[2]=dim_zz[0];
+  dims[3]=dim_zz[1];
+  %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0);
+}else{
+  //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
+}
+
+int Os[2];
+Os[0]=%(self_outshp0)s;
+Os[1]=%(self_outshp1)s;
+//I keep the formula to calculte Os in case we need it in the futur.
+//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
+//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
+
+for(int b=0;b< %(self_bsize)s;b++){
+  for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
+
+    //assertions
+    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+    if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
+
+    %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(%(z)s,b,n_kern));
+    for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out[i] = 0;
+
+    for(int stack_size=0;stack_size<%(self_imshp0)s;stack_size++){
+
+      const %(type)s * __restrict__ in=(%(type)s *)(PyArray_GETPTR2(img2d,b,stack_size));
+      const %(type)s * __restrict__ hvals=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern,stack_size));
+
+      int new_m;
+
+      for (int iter_m=0; iter_m < Os[0]; iter_m++) {
+        // Reposition index into input image based on requested output size
+        int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
+        if (mode == FULL) new_m = pos_m ;
+        else new_m = (pos_m+dim_ker[0]-1);
+
+        for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns
+          int pos_n=iter_n*%(self_dy)s;
+          %(type)s sum=0;
+          %(type)s sum2=0;
+          %(type)s sum3=0;
+          %(type)s sum4=0;
+          int nb_sum=0;
+          // Sum over kernel, if index into image is out of bounds
+          // fill with the value
+          for (int j=0; j < dim_ker[0]; j++) {
+            int ind0 = (new_m-j);
+
+            if(mode==FULL){
+              const %(type)s * idx_hvals=&hvals[j*dim_ker[1]];
+              if(ind0 < 0 || ind0 >= dim_im[0]){
+                if(fill_value!=0)
+                  for (int k=0; k < dim_ker[1]; k++) {
+                    sum+= idx_hvals[k] * fill_value;
+                  }
+              }else{
+                //do the part where kernel is to the right of the img
+//TODO: implement unroll patch for fill_value!=0
+                int k=0,max_k=max((int)(pos_n-dim_im[1])+1,0);
+                if(fill_value!=0){ 
+                
+                  for(k=0;k<max_k;k++){
+                    sum+= idx_hvals[k]*fill_value;
+                  }
+                }else {k=max_k;}
+                
+                //do the part where the kernel is on the img
+                max_k=min(pos_n+1,(int)dim_ker[1]);
+                const %(type)s * idx_in=&in[ind0*dim_im[1]];
+
+                if(iter_n + 4*%(self_dy)s < Os[1]
+                         && iter_n>dim_ker[1]-1+3 
+                         && iter_n<dim_im[1]-dim_ker[1]+1-3){
+                  nb_sum=4;
+//cout<<4<<endl;
+                  for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
+                    sum+=idx_hvals[k]*idx_in[ind1];
+                    sum2+=idx_hvals[k]*idx_in[ind1+%(self_dy)s];
+                    sum3+=idx_hvals[k]*idx_in[ind1+2*%(self_dy)s];
+                    sum4+=idx_hvals[k]*idx_in[ind1+3*%(self_dy)s];
+                  }
+                }else if(iter_n + 2*%(self_dy)s < Os[1] 
+                         && iter_n>dim_ker[1]-1
+                         && iter_n<dim_im[1]-dim_ker[1]+1){
+//cout<<2<<endl;
+                  nb_sum=2;
+//                  if(iter_n==dim_ker[1]-1){//k-1<min(pos_n+%(self_dy)s,(int)dim_ker[1])){
+//                    sum2+=idx_hvals[k-1]*idx_in[pos_n-k-%(self_dy)s];
+//                  }
+                  for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
+                    sum+=idx_hvals[k]*idx_in[ind1];
+                    sum2+=idx_hvals[k]*idx_in[ind1+%(self_dy)s];
+                  }
+//                  sum2+=idx_hvals[k]*idx_in[pos_n-k+%(self_dy)s];
+//                  sum+=idx_hvals[k]*idx_in[pos_n-k];
+//                  k++;
+                }else{
+//cout<<1<<endl;
+                  nb_sum=1;
+                  /*
+                  %(type)s sum_=0;
+                  if((k-max_k) & 0x1 != 0){
+                    sum+= idx_hvals[k] * idx_in[pos_n-k];
+                  }
+                  for (int ind1=pos_n-k; k<max_k; k+=2,ind1-=2) {
+                    sum+= idx_hvals[k] * idx_in[ind1];
+                    sum_+= idx_hvals[k+1] * idx_in[ind1-1];
+                  }
+                  sum+=sum_;
+                  */
+                  for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
+                    sum+=idx_hvals[k]*idx_in[ind1];
+                  }
+                }
+                //do the part to the left of the img
+                if(fill_value!=0)
+                  for(;k<dim_ker[1];k++) sum+= idx_hvals[k]*fill_value;
+              }
+            }else{//valid mode
+              const %(type)s* idx_in=&in[ind0*dim_im[1]];
+              const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
+              if(iter_n + 4*%(self_dy)s < Os[1]){
+                nb_sum=4;
+                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                  sum+=idx_hvals[k]*idx_in[im_idx];
+                  sum2+=idx_hvals[k]*idx_in[im_idx+%(self_dy)s];
+                  sum3+=idx_hvals[k]*idx_in[im_idx+2*%(self_dy)s];
+                  sum4+=idx_hvals[k]*idx_in[im_idx+3*%(self_dy)s];
+                }
+              }else if(iter_n + 2*%(self_dy)s < Os[1]){
+                nb_sum=2;
+                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                  sum+=idx_hvals[k]*idx_in[im_idx];
+                  sum2+=idx_hvals[k]*idx_in[im_idx+%(self_dy)s];
+                }
+              }else{
+                nb_sum=1;
+                for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
+                  sum+=idx_hvals[k]*idx_in[im_idx];
+                }
+              }
+            }//else valid mode
+          }//for j
+          switch(nb_sum){
+          case 4: out[iter_m*dim_zz[1]+iter_n+3] %(affectation)s sum4;
+          case 3: out[iter_m*dim_zz[1]+iter_n+2] %(affectation)s sum3;
+          case 2: out[iter_m*dim_zz[1]+iter_n+1] %(affectation)s sum2;
+          case 1: out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum;
+          }
+          iter_n+=nb_sum-1;
+/*
+          out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum;
+          if(nb_sum>=2){
+            iter_n++;
+            out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum2;
+          }
+          if(nb_sum>=3){
+            iter_n++;
+            out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum3;
+          }
+          if(nb_sum>=4){
+            iter_n++;
+            out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum4;
+          }
+*/
+        }//for iter_n
+      }//for iter_m
+    }//for stack_size
+    if (0 && (mode==FULL)){
+      for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) 
+        std::cout << " " << out[i];
+      std::cout << "\\n";
+    }
+  }//for n_kern
+}//for b
+Py_XDECREF(img2d);
+Py_XDECREF(filtersflipped);
+"""

@@ -110,7 +110,7 @@ and giving ``z`` as output:
 
 >>> f = function([x, y], z)
 
-The first argument to :ref:`function <libdoc_compile_function>` is a list of Variables
+The first argument to :func:`function <function.function>` is a list of Variables
 that will be provided as inputs to the function. The second argument
 is a single Variable *or* a list of Variables. For either case, the second
 argument is what we want to see as output when we apply the function.

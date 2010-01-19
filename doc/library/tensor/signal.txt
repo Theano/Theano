@@ -17,3 +17,6 @@ TODO: Give examples for how to use these things! They are pretty complicated.
 .. function:: downsample2D(*todo)
 
 .. function:: fft(*todo)
+
+    [James has some code for this, but hasn't gotten it into the source tree yet.]
+

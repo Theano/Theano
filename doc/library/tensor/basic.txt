@@ -7,20 +7,74 @@
 TensorType
 ==========
 
-.. class:: TensorType
+.. class:: TensorType(Type)
 
+    .. attribute:: broadcastable
 
-.. _libdoc_tensor_variable
+    .. attribute:: ndim
+
+    .. attribute:: dtype
+
+.. _libdoc_tensor_variable:
 
 TensorVariable
 ==============
 
+.. class:: _tensor_py_operators(object)
 
-.. _libdoc_tensor_constant
+    This mix-in class adds convenient attributes, methods, and support for Python operators.
 
-TensorConstant
-==============
+    .. method:: reshape(shape, ndim=None)
 
+        Returns a view of this tensor that has been reshaped as in
+        numpy.reshape.  If the shape is a Variable argument, then you might
+        need to use the optional `ndim` parameter to declare how many elements
+        the shape has, and therefore how many dimensions the reshaped Variable
+        will have.
+
+        See :func:`reshape`.
+
+    .. method:: dimshuffle(*pattern)
+
+        Returns a view of this tensor with permuted dimensions.  Typically the
+        pattern will include the integers 0, 1, ... ndim-1, and any number of
+        'x' characters in dimensions where this tensor should be broadcasted.
+
+        See :func:`dimshuffle`.
+
+    .. method:: flatten(ndim=1)
+
+        Returns a view of this tensor with `ndim` dimensions, whose shape for the first
+        `ndim-1` dimensions will be the same as `self`, and shape in the
+        remaining dimension will be expanded to fit in all the data from self.
+
+        See :func:`flatten`.
+
+    .. attribute:: T
+
+        Transpose of this tensor.
+
+        >>> x = T.zmatrix()
+        >>> y = 3+.2j * x.T 
+
+        .. note::
+            
+            In numpy and in Theano, the transpose of a vector is exactly the
+            same vector!  Use `reshape` or `dimshuffle` to turn your vector
+            into a row or column matrix.
+
+.. class:: TensorVariable(Variable, _tensory_py_operators)
+
+    The result of symbolic operations typically have this type.
+
+.. class:: TensorConstant(Variable, _tensory_py_operators)
+
+    Python and numpy numbers used in Theano graphs are wrapped in this type.
+
+.. class:: TensorSharedVariable(Variable, _tensory_py_operators)
+
+    This type is returned by :func:`shared` when the initial value is a numpy
+    ndarray.
 
 
 .. _libdoc_tensor_creation:
@@ -168,32 +222,27 @@ bytes, we would do:
 Shared Variable
 ---------------
 
-Yet another way of creating a special type of Theano variable is by using
-:func:`shared` as in the example below:
+Another way of creating a TensorVariable (a TensorSharedVariable to be
+precise) is by calling :func:`shared()`
 
 .. code-block:: python
 
-  x = shared(value, name)
+  x = shared(numpy.random.randn(3,4))
 
-Shared takes two parameters, `value` and `name` and creates a Theano 
-variable with the name `name` and initial value `value`. The type of this
-variable is obtained from the type of the value `value`, so if value is a
-numpy float matrix the shared variable will be of type `fmatrix`. 
+This will return a :term:`shared variable <shared variable>` whose ``.value`` is
+a numpy ndarray.  The number of dimensions and dtype of the Variable are
+inferred from the ndarray argument.
 
-Note that a shared variable is not like other Theano variables. For more
-details of how to use shared variables look :ref:`here <functionstateexample>` (or for more details
-:ref:`here <sharedvars>`). TODO : make the last link to a detailed
-description of shared variables.
+For additional information, see the :func:`shared` documentation.
 
 
 Autocasting
 -----------
 
- Theano does autocasting of numpy ndarray or python floats/ints into 
- Theano constants.
+Theano does autocasting of python floats/ints into Theano constants.
 
-TODO: What does (or compatible) mean?  Talk about casting rules, refer .
-TODO: link to floatX (?) 
+.. TODO: What does (or compatible) mean?  Talk about casting rules, refer .
+.. TODO: link to floatX (?) 
 
 .. function:: as_tensor_variable(x, ...)
 
@@ -211,32 +260,71 @@ Shaping and Shuffling
 
     Returns the symbolic shape vector of `x`
 
-.. function:: reshape(x)
+.. function:: reshape()
 
-.. function:: dimshuffle(x)
+.. function:: dimshuffle()
+
+.. function:: flatten()
 
 
 Reductions 
 ==========
 
 
-.. function:: max(x)
+.. function:: max(x,axis=None)
 
-    :param x:  symbolic Tensor (or compatible)
+    :Parameter: *x* - symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis along which to compute the maximum
+    :Returns: the maximum value along a given axis
 
-    Returns TODO
+.. note::
 
-.. function:: min(x)
+    If axis=None, then axis is assumed to be ndim(x)-1
 
-    :param x:  symbolic Tensor (or compatible)
+.. function:: min(x,axis=None)
 
-    Returns TODO
+    :Parameter: *x* - symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis along which to compute the minimum
+    :Returns: the minimum value along a given axis
 
-.. function:: sum(x)
+.. note::
 
-    :param x:  symbolic Tensor (or compatible)
+    if axis=None, then axis is assumed to be ndim(x)-1
 
-    Returns TODO
+.. function:: sum(x,axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Returns: sum of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the sum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+
+.. function:: mean(x,axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the mean
+    :Returns: mean value of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the mean is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: var(x,axis=None)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the variance
+    :Returns: variance of *x* along *axis*
+
+    axis can be:
+     * *None* - variance computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
 
 Indexing
 ========
@@ -257,24 +345,37 @@ Advanced indexing.
 Operator Support
 ================
 
-Python arithmetic operators are supported:
+Many Python operators are supported.
 
->>> a = T.itensor3()
+>>> a, b = T.itensor3(), T.itensor3() # example inputs
+
+Arithmetic
+--------------
+
 >>> a + 3      # T.add(a, 3) -> itensor3
 >>> 3 - a      # T.sub(3, a)
 >>> a * 3.5    # T.mul(a, 3.5) -> ftensor3 or dtensor3 (depending on autocasting)
 >>> 2.2 / a    # T.truediv(2.2, a)
 >>> 2.2 // a   # T.intdiv(2.2, a)
 >>> 2.2**a     # T.pow(2.2, a)
+>>> b % a      # T.mod(b, a)
 
+Bitwise
+-------------
 
-.. note::
+>>> a & b      # T.and_(a,b)    bitwise and
+>>> a ^ 1      # T.xor(a,1)     bitwise xor
+>>> a | b      # T.or_(a,b)     bitwise or
+>>> ~a         # T.invert(a)    bitwise invert
 
-    In-place operators are *not* supported.  Theano's graph-optimizations
-    will determine which intermediate values to use for in-place
-    computations.  If you would like to update the value of a
-    :term:`shared variable`, consider using the ``updates`` argument to
-    :func:`theano.function`.
+Inplace
+-------------
+
+In-place operators are *not* supported.  Theano's graph-optimizations
+will determine which intermediate values to use for in-place
+computations.  If you would like to update the value of a
+:term:`shared variable`, consider using the ``updates`` argument to
+:func:`theano.function`.
 
 Elementwise
 ===========
@@ -285,10 +386,24 @@ Casting
 Comparisons
 ------------
 
-.. note::
+The six usual equality and inequality operators share the same interface.
+  :Parameter:  *a* - symbolic Tensor (or compatible)
+  :Parameter:  *b* - symbolic Tensor (or compatible)
+  :Return type: symbolic Tensor
+  :Returns: a symbolic tensor representing the application of the logical elementwise operator.
+
+  .. note::
 
     Theano has no boolean dtype.  Instead, all boolean tensors are represented
     in ``'int8'``.
+
+  Here is an example with the less-than operator.
+
+  .. code-block:: python 
+
+    import theano.tensor as T
+    x,y = T.dmatrices('x','y')
+    z = T.le(x,y)
 
 .. function:: lt(a, b)
 
@@ -304,68 +419,142 @@ Comparisons
 
 .. function:: le(a, b)
 
-    Returns a variable representing the result of logical less than or
-    equal (a<=b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise less than or equal.
+    Returns a variable representing the result of logical less than or equal (a<=b).
 
-    .. code-block:: python 
-
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.le(x,y)
+    Also available using syntax ``a <= b``
 
 .. function:: ge(a, b)
 
     Returns a variable representing the result of logical greater or equal than (a>=b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise greater than or equal.
 
-    .. code-block:: python 
-
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.ge(x,y)
+    Also available using syntax ``a >= b``
 
 .. function:: eq(a, b)
 
     Returns a variable representing the result of logical equality (a==b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
-      :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise equality.
-
-    .. code-block:: python 
-
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.eq(x,y)
 
 .. function:: neq(a, b)
 
-    Returns a variable representing the result of logical inequality
-    (a!=b).
-      :Parameter:  *a* - symbolic Tensor (or compatible)
-      :Parameter:  *b* - symbolic Tensor (or compatible)
+    Returns a variable representing the result of logical inequality (a!=b).
+
+
+Condition
+---------
+
+.. function:: switch(cond, ift, iff)
+
+    Returns a variable representing a switch between ift (iftrue) and iff (iffalse)
+     based on the condition cond.
+      :Parameter:  *cond* - symbolic Tensor (or compatible)
+      :Parameter:  *ift* - symbolic Tensor (or compatible)
+      :Parameter:  *iff* - symbolic Tensor (or compatible)
       :Return type: symbolic Tensor
-      :Returns: a symbolic tensor representing the application of logical 
-      elementwise inequality.
 
     .. code-block:: python 
 
-        import theano.tensor as T
-        x,y = T.dmatrices('x','y')
-        z = T.neq(x,y)
+      import theano.tensor as T
+      a,b = T.dmatrices('a','b')
+      x,y = T.dmatrices('x','y')
+      z = T.switch(T.lt(a,b), x, y)
+
+Bit-wise
+--------
+
+
+The bitwise operators possess this interface: 
+    :Parameter:  *a* - symbolic Tensor of integer type.
+    :Parameter:  *b* - symbolic Tensor of integer type.
+
+    .. note:: 
+
+        The bitwise operators must have an integer type as input.
+    
+        The bit-wise not (invert) takes only one parameter.
+
+    :Return type: symbolic Tensor with corresponding dtype.
+
+.. function:: and_(a, b)
+
+    Returns a variable representing the result of the bitwise and.
+
+.. function:: or_(a, b)
+
+    Returns a variable representing the result of the bitwise or.
+
+.. function:: xor(a, b)
+
+    Returns a variable representing the result of the bitwise xor.
+
+.. function:: invert(a)
+
+    Returns a variable representing the result of the bitwise not.
+
+Here is an example using the bit-wise ``and_`` via the ``&`` operator:
+
+.. code-block:: python 
+
+    import theano.tensor as T
+    x,y = T.imatrices('x','y')
+    z = x & y
+
 
 Mathematical
 ------------
+
+.. function:: abs_(a)
+
+    Returns a variable representingthe absolute of a, ie ``|a|``.
+
+    .. note:: Can also be accessed with ``abs(a)``.
+
+.. function:: exp(a)
+
+    Returns a variable representing the exponential of a, ie e^a.
+
+.. function:: neg(a)
+
+    Returns a variable representing the opposite of a, ie -a.
+
+.. function:: inv(a)
+
+    Returns a variable representing the inverse of a, ie 1.0/a.
+
+.. function:: log(a), log2(a), log10(a)
+
+    Returns a variable representing the base e, 2 or 10 logarithm of a.
+
+.. function:: sgn(a)
+
+    Returns a variable representing the sign of a.
+
+.. function:: ceil(a)
+
+    Returns a variable representing the ceiling of a (for example ceil(2.1) is 3).
+
+.. function:: floor(a)
+
+    Returns a variable representing the floor of a (for example floor(2.9) is 2).
+
+.. function:: iround(a)
+
+    Returns a variable representing the of rounding of a, ie int(a).
+
+.. function:: sqr(a)
+
+    Returns a variable representing the square of a, ie a^2.
+
+.. function:: sqrt(a)
+
+    Returns a variable representing the of a, ie a^0.5.
+
+.. function:: cos(a), sin(a), tan(a)
+
+    Returns a variable representing the trigonometric functions of a (cosine, sine and tangent).
+
+.. function:: cosh(a), sinh(a), tanh(a)
+
+    Returns a variable representing the hyperbolic trigonometric functions of a (hyperbolic cosine, sine and tangent).
+
 
 .. _libdoc_tensor_broadcastable:
 
@@ -401,8 +590,6 @@ dimensions will need to be broadcasted. When applicable, this
 information is given in the :ref:`type` of a *Variable*.
 
 See also:
-
-* :ref:`How broadcasting is used in Theano's tensor types <tensortypes>`
 
 * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
 
@@ -448,11 +635,6 @@ Linear Algebra
     :return: tensor product
 
 
-
-Fourier Transforms
-==================
-
-[James has some code for this, but hasn't gotten it into the source tree yet.]
 
 Gradient / Differentiation
 ==========================

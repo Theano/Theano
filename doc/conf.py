@@ -23,7 +23,9 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'ext']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'ext']
+
+todo_include_todos = True
 
 try:
     from sphinx.ext import pngmath
@@ -166,7 +168,7 @@ latex_font_size = '11pt'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, document class [howto/manual]).
 latex_documents = [
-  ('contents', 'theano.tex', 'theano Documentation',
+  ('index', 'theano.tex', 'theano Documentation',
    'LISA lab, University of Montreal', 'manual'),
 ]
 

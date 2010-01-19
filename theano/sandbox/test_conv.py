@@ -41,7 +41,7 @@ def flip(kern, kshp):
 global_rng = N.random.RandomState(3423489)
 
 dmatrix4=T.TensorType('float64', (False, False, False, False))
-def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True, conv_op_py=False, do_convolve2=False, do_print=True, repeat=1):
+def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True, conv_op_py=False, do_convolve2=False, do_print=True, repeat=1, unroll_patch=0):
 
         # build actual input images
         imgval = global_rng.rand(bsize, imshp[0], imshp[1], imshp[2])
@@ -121,7 +121,7 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll
                 hidval1=outval.copy()
 
             # ConvOp
-            conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode, unroll_batch=unroll_batch, unroll_kern=unroll_kern)(inputs4, kerns4)
+            conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode, unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)(inputs4, kerns4)
             l1shp=N.hstack((nkern,
                             getFilterOutShp(imshp, kshp, ss, conv_mode)))
             propup2 = function([inputs4, kerns4], conv_op)
@@ -280,8 +280,10 @@ class TestConvOp(unittest.TestCase):
                     assert (N.abs(out2_-out3_)<1e-5).all()
 
                     # REFERENCE IMPLEMENTATION: compute output with convolve2d
-                    fulloutshp = N.array(imshp[1:]) - N.array(kshp) + 1 if conv_mode=='valid'\
-                             else N.array(imshp[1:]) + N.array(kshp) - 1
+		    if conv_mode=='valid':
+			fulloutshp = N.array(imshp[1:]) - N.array(kshp) + 1
+		    else:
+			fulloutshp = N.array(imshp[1:]) + N.array(kshp) - 1
                     ntime1 = time.time()
                     refout = N.zeros((bsize,)+tuple(fulloutshp)+(nkern,))
                     for b in range(bsize):
@@ -326,7 +328,7 @@ class TestConvOp(unittest.TestCase):
         ssizess = [[(1,1),(1,2)],[(1,1),(2,2)]]
         convmodes = ['valid','full']
         do_convolve2=True
-        unroll = [(0,0),(1,1),(2,2),(3,2)]#(batch,kern)
+        unroll = [(0,0,False),(0,0,True),(1,1,False),(2,2,False),(3,2,False)]#(batch,kern,patch)
         do_speed_test = False
 
         # TODO: this version show a bug that was fixed
@@ -335,6 +337,11 @@ class TestConvOp(unittest.TestCase):
 #        kshps = ([2,2],[2,2])#,[7,4])
 #        nkerns = [2,2] # per output pixel
 #        ssizes = [(1,1),(2,2)]#2,2)]
+
+#        bsizes = [1,1] # batch size
+#        imshp_starts = [(1,10,10),(1,5,6)]
+#        kshpss = ([[2,3],[3,2]],[[2,2],[2,2]])
+#        nkernss = [[1,1],[1,1]] # per output pixel
 
         N.set_printoptions(threshold=N.nan)
 
@@ -354,8 +361,8 @@ class TestConvOp(unittest.TestCase):
 
             unroll_batch = [1,2,4,5,10,20]
             unroll_kern = [1,2,4,5,10,20]
-            unroll_batch = [1,2,5]
-            unroll_kern = [1,2,5]
+            unroll_batch = [1,4,5]
+            unroll_kern = [1,4,5]
             
             bsize = 20 # batch size
             imshp_start = (1,48,48)#un square shape to test more corner case.
@@ -372,46 +379,86 @@ class TestConvOp(unittest.TestCase):
             timing = N.zeros((len(unroll_batch),len(unroll_kern),3))
             t_b_k=[]
             #calculate the timing with unrolling
+
+            t_=[[ 7.60572791,  3.95069814,  3.74271464], [ 4.05631089,  2.90384555,  2.93613672], [ 3.90551591,  2.92595196,  3.00102282]]
+            best=[]
+            worst=[]
+            best=[0.52690219879150391, 2.4266397953033447]
+            worst=[0.92042708396911621, 6.8822150230407715]
+            t_=[]
             for unroll_b, n_b in zip(unroll_batch,range(len(unroll_batch))):
                 for unroll_k, n_k in zip(unroll_kern,range(len(unroll_kern))):
                     t_b_k.append(str(unroll_b)+"/"+str(unroll_k))
-                    tctot, tpytot, ntot=[],[],[]
-                    for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
-                        for ss, n_ss in zip(ssizes,range(len(ssizes))):
-                            tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=unroll_b, unroll_kern=unroll_k, validate=validate)
-                            tctot+=[tctot_]
-                            tpytot+=[tpytot_]
-                            ntot+=[ntot_]
-                    timing[n_b,n_k]=[sum(tctot), sum(tpytot), sum(ntot)]
-
+                    if not t_:
+                        tctot, tpytot, ntot=[],[],[]
+                        for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                            for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                                tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=unroll_b, unroll_kern=unroll_k, validate=validate)
+                                tctot+=[tctot_]
+                                tpytot+=[tpytot_]
+                                ntot+=[ntot_]
+                        if unroll_b==4 and unroll_k==4:
+                            print "unroll 4/4",tctot
+                            best=tctot
+                        if unroll_b==1 and unroll_k==1:
+                            print "unroll 1/1",tctot
+                            worst=tctot
+                        timing[n_b,n_k]=[sum(tctot), sum(tpytot), sum(ntot)]
+            if not t_:
+                t=timing[:,:,0]#We select only the c timing.
+            else:
+                t=t_
+            t=N.asarray(t)
             #calculate the old timing
-            tctot,tpytot,ntot=0,0,0
-            for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
-                for ss, n_ss in zip(ssizes,range(len(ssizes))):
-                    tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate)
-                    tctot+=tctot_
-                    tpytot+=tpytot_
-                    ntot+=ntot_
-            print "old code timing %.3fs"%tctot
-
-#            print timing
-            t=timing[:,:,0]#We select only the c timing.
+            tctot_=[0.52555489540100098, 6.6634182929992676]
+#            tctot_=[]
+            tctot,tpytot,ntot=[],[],[]
+            if not tctot_:
+                for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                    for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                        tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate)
+                        tctot+=[tctot_]
+                        tpytot+=[tpytot_]
+                        ntot+=[ntot_]
+            else: tctot=N.asarray(tctot_)
+            print "old code timing %.3fs"%sum(tctot),tctot
+            best=N.asarray(best)
+            worst=N.asarray(worst)
             print "timing for unrolled version"
             print t_b_k
             print t
             print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]
             print "min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()]
-            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t.min(),tctot/t.min())
+            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t.min(),sum(tctot)/t.min())
+            print worst/best,tctot/best
+
+            tctot_patch = []
+            for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                     tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate,unroll_patch=2)
+                     tctot_patch += [tctot_]
+
+            t_patch=sum(tctot_patch)
+            print "unroll_patch time", tctot_patch
+            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t_patch,sum(tctot)/t_patch)
+            print best/tctot_patch, worst/tctot_patch
+            
+            print best
+            print worst
+            print tctot
+            print tctot_patch
             return
+
         
         for i in range(len(kshpss)):
             for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
                 for ss, n_ss in zip(ssizess[i],range(len(ssizess[i]))):
-                    for un_b, un_k in unroll:
+                    for un_b, un_k, un_p in unroll:
                         tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(
                             conv_mode, ss, bsizes[i], imshp_starts[i], 
                             kshpss[i], nkernss[i],
                             img=img, unroll_batch=un_b, unroll_kern=un_k,
+                            unroll_patch=un_p,
                             validate=True)
                         tctot+=[tctot_]
                         tpytot+=[tpytot_]
@@ -426,6 +473,11 @@ class TestConvOp(unittest.TestCase):
         d=N.asarray(ntot)/tpytot
         print 'speed up py theano(ConvOp) vs convolve2d: %.3fx'%d.mean(),d
 
+
+    def init_data(self,shape):
+        return N.ones(shape)
+        return N.random.random(shape)
+        
     def test_ConvOpGrad(self):
         """
         test the gradient in float and double
@@ -440,24 +492,27 @@ class TestConvOp(unittest.TestCase):
         kshps = [(2,3)]
         imshps = [(2,3,4)]
         modes = ['valid', 'full']
-        unroll = [(0,0),(1,1),(2,3)]
+        unroll = [(0,0,True),(1,1,False),(2,3,False),(1,1,False),(0,0,False)]#(batch,kern,patch)
         ssizes = [(1,1),(2,2)]
-        
+
         for typ in types:
             imgs  = T.TensorType(typ, (False, False, False, False),'imgs')
             kerns = T.TensorType(typ, (False, False, False, False),'kerns')
             for mode in modes:
                 for imshp in imshps:
-                    visdim = 1 if len(imshp)!=3 else imshp[0]
+		    if len(imshp)!=3:
+			visdim = 1
+		    else:
+		        visdim = imshp[0]
                     imgvals = N.array(N.random.random(N.hstack((bsize,imshp))),dtype=imgs.dtype)
                     for kshp in kshps:
                         t=numpy.array([imshp[1]-kshp[0],imshp[2]-kshp[1]])
-                        kernvals = N.array(N.random.rand(nkern,visdim,kshp[0],
-                                                         kshp[1]),dtype=kerns.dtype)
+                        kernvals = N.array(self.init_data((nkern,visdim,kshp[0],
+                                                          kshp[1])),dtype=kerns.dtype)
                         # 'full' mode should support kernels bigger than the input
                         if mode == 'valid' and (t<0).any():
                             continue
-                        for un_b,un_k in unroll:
+                        for un_b,un_k, un_p in unroll:
                                 for ss in ssizes:
                                     print 'test_ConvOpGrad'
                                     print 'mode type:', mode, typ
@@ -471,22 +526,25 @@ class TestConvOp(unittest.TestCase):
 
                                     def test_i(imgs):
                                         convop = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1],
-                                                        output_mode=mode, unroll_batch=un_b, unroll_kern=un_k)
+                                                        output_mode=mode, unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p)
                                         return convop(imgs, kernvals)
 
                                     def test_k(kerns):
                                         convop = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1],
-                                                        output_mode=mode, unroll_batch=un_b, unroll_kern=un_k)
+                                                        output_mode=mode, unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p)
                                         return convop(imgvals, kerns)
-
+                                    print mode, imshp, kshp, un_b, un_k, ss
                                     #TODO the tolerance needed to pass is very high for float32(0.17). Is this acceptable? Expected?
+				    tol = None
+				    if typ=="float32":
+					tol = 0.17
                                     utt.verify_grad(test_i, [imgvals],
                                                     cast_to_output_type=True,
-                                                    tol=None if typ!="float32" else 0.17)
+                                                    tol=tol)
 
                                     utt.verify_grad(test_k, [kernvals],
                                                     cast_to_output_type=True,
-                                                    tol=None if typ!="float32" else 0.17)
+                                                    tol=tol)
 
 
 if __name__ == '__main__':
