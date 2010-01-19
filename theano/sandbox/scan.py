@@ -62,17 +62,6 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={},
 
     # compute number of sequences and number of seqs   
     n_seqs     = len(seqs)
-
-    # see if there are outputs that do not feed anything back to the function
-    # applied recursively
-    #outs_tapkeys = outputs_taps.keys()
-    #outs_tapkeys.sort()
-    #for k in outs_tapkeys:
-    #    if outputs_taps[k] == []:
-    #        # add empty lists where you have outputs that do not have past 
-    #        # values
-    #        init_outs = init_outs[:k] + [[]] + init_outs[k:]
-
     n_outs   = len(init_outs)
 
 
