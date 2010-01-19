@@ -163,9 +163,9 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                     time_start = time.time()
                     no_display = (verbosity == 0)
                 if not no_display:
-                    info('Waiting for existing lock by %s (I am %s)' % (
-                            read_owner, my_pid))
-                    info("To manually release the lock, delete", lock_file)
+                    info("Waiting for existing lock by process '%s' (I am "
+                         "process '%s')" % (read_owner, my_pid))
+                    info("To manually release the lock, delete", tmp_dir)
                     if verbosity <= 1:
                         no_display = True
                 time.sleep(random.uniform(min_wait, max_wait))
