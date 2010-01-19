@@ -278,8 +278,11 @@ but this has not been tested yet.
   ``export PYTHONPATH=PYTHONPATH:$HOME/Theano``.
 
 - Please note that at this time, some tests (launched using ``nosetests``) are
-  still failing under Windows.
-  We are working on fixing them.
+  still failing under Windows: we are working on fixing them.
+  It may also happen that many tests may fail while running the test-suite,
+  due to insufficient memory resources: one workaround is to run nosetests
+  multiple times under individual subdirectories.
+  
 
 Generating the documentation
 ----------------------------
