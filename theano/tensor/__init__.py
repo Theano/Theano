@@ -12,6 +12,7 @@ import blas
 import xlogx
 
 import raw_random, randomstreams
+import shared_randomstreams
 from randomstreams import \
     RandomStreams
 

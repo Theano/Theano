@@ -272,9 +272,6 @@ class T_Scan(unittest.TestCase):
         assert (compareArrays( out, f8(v_u, v_x0) ) )
         
     '''
-    NOTE : BROKEN .. inplace doesn't work due to a stochasticOpimization 
-    TODO : talk james
-
     # simple rnn ; compute inplace
     def test_9(self):
         
@@ -299,7 +296,8 @@ class T_Scan(unittest.TestCase):
         assert (compareArrays(out, v_out))
         print v_u
         assert (compareArrays(v_u, out))
-     '''
+
+    '''
     # test gradient simple network 
     def test_10(self):
         pass
