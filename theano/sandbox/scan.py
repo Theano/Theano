@@ -174,7 +174,8 @@ class Scan(theano.Op):
 
         self.destroy_map = {}
         if inplace:
-            self.destroy_map = inplace_map
+            for i in inplace_map.keys():
+                self.destroy_map.update({i: [inplace_map[i]] } )
 
         self.seqs_taps      = seqs_taps
         self.outs_taps      = outs_taps
@@ -192,13 +193,25 @@ class Scan(theano.Op):
    
         self.fn = theano.function(inputs,outputs, \
                                    updates = updates, mode = mode)
-
+        
         g_y = [outputs[0].type()]
-        g_args = theano.tensor.grad(outputs[0],inputs, g_cost = g_y[-1])
+
+        def compute_gradient(y, g_y):
+            gmap = theano.gradient.grad_sources_inputs( \
+                        [(y,g_y)], theano.gof.graph.inputs([y]), False)
+            def zero(p):
+              return theano.tensor.TensorConstant(theano.tensor.TensorType(\
+                      dtype=p.type.dtype, broadcastable=[]),
+                      numpy.asarray(0,dtype = p.type.dtype))
+
+            return [gmap.get(p, zero(p)) for p in inputs]
+
+
+        g_args = compute_gradient( outputs[0], g_y[-1]) 
         # for all outputs compute gradients and then sum them up
         for y in outputs[1:]:
             g_y += [y.type()]
-            g_args_y = theano.tensor.grad(y,inputs, g_cost=g_y[-1])
+            g_args_y = compute_gradient( y,g_y[-1])
             for i in xrange(len(g_args)):
                 g_args[i] += g_args_y[i]
 
@@ -244,6 +257,7 @@ class Scan(theano.Op):
                (self.n_outs == other.n_outs) and\
                (self.n_args == other.n_args)
       return rval
+      
 
     def __hash__(self):
       return hash(type(self)) ^ \
