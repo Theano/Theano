@@ -121,7 +121,12 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll
                 hidval1=outval.copy()
 
             # ConvOp
-            conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode, unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)(inputs4, kerns4)
+            if unroll_patch:
+                conv_op = ConvOp(dx=ss[0],dy=ss[1], output_mode=conv_mode,
+                                 unroll_patch=unroll_patch)(inputs4, kerns4)
+            else:
+                conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode,
+                                 unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)(inputs4, kerns4)
             l1shp=N.hstack((nkern,
                             getFilterOutShp(imshp, kshp, ss, conv_mode)))
             propup2 = function([inputs4, kerns4], conv_op)
@@ -328,7 +333,7 @@ class TestConvOp(unittest.TestCase):
         ssizess = [[(1,1),(1,2)],[(1,1),(2,2)]]
         convmodes = ['valid','full']
         do_convolve2=True
-        unroll = [(0,0,False),(0,0,True),(1,1,False),(2,2,False),(3,2,False)]#(batch,kern,patch)
+        unroll = [(0,0,True),(0,0,False),(1,1,False),(2,2,False),(3,2,False)]#(batch,kern,patch)
         do_speed_test = False
 
         # TODO: this version show a bug that was fixed
@@ -515,23 +520,32 @@ class TestConvOp(unittest.TestCase):
                         for un_b,un_k, un_p in unroll:
                                 for ss in ssizes:
                                     print 'test_ConvOpGrad'
-                                    print 'mode type:', mode, typ
-                                    print 'imshp:', imshp
-                                    print 'kshp:', kshp
-                                    print 'un_b:', un_b
-                                    print 'un_k:', un_k
-                                    print 'ss:', ss
-                                    print 'bsize:', bsize
-                                    print 'nkern:', 4
+#                                    print 'mode:',mode,'type:', typ
+#                                    print 'imshp:', imshp,
+#                                    print 'kshp:', kshp
+#                                    print 'un_b:', un_b,
+#                                    print 'un_k:', un_k,
+#                                    print 'un_p:', un_p
+#                                    print 'ss:', ss,
+#                                    print 'bsize:', bsize,
+#                                    print 'nkern:', nkern
 
                                     def test_i(imgs):
-                                        convop = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1],
-                                                        output_mode=mode, unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p)
+                                        if un_p and ss[0]==1 and ss[1]==1:
+                                            convop = ConvOp(dx=ss[0], dy=ss[1],
+                                                            output_mode=mode, unroll_patch=un_p)
+                                        else:
+                                            convop = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1],
+                                                            output_mode=mode, unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p)
                                         return convop(imgs, kernvals)
 
                                     def test_k(kerns):
-                                        convop = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1],
-                                                        output_mode=mode, unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p)
+                                        if un_p and ss[0]==1 and ss[1]==1:
+                                            convop = ConvOp(dx=ss[0], dy=ss[1],
+                                                            output_mode=mode, unroll_patch=un_p)
+                                        else:
+                                            convop = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1],
+                                                            output_mode=mode, unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p)
                                         return convop(imgvals, kerns)
                                     print mode, imshp, kshp, un_b, un_k, ss
                                     #TODO the tolerance needed to pass is very high for float32(0.17). Is this acceptable? Expected?

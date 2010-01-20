@@ -22,9 +22,8 @@ class ConvOp(Op):
 
     
     __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode', 
-            'unroll_batch', 'unroll_kern',
+            'unroll_batch', 'unroll_kern', 'unroll_patch',
             'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
-    #FRED: I added both unroll as we don't want ops to be merged if they have different value. Otherwise, the tests for the unroll don't work correctly.
     """These attributes uniquely identify the behaviour of this op for given inputs"""
 
     #TODO: make the stacksize its own parameter, and make imshp a pair
@@ -48,11 +47,13 @@ class ConvOp(Op):
         dx - patch stride rows
         dy - patch stride cols
         out_mode - 'valid', 'full'
-        unroll_patch - c code generation option
+        unroll_patch - c code generation option(used when no shape gived)
         unroll_batch - c code generation option
         unroll_kern - c code generation option
         verbose - passed to GpuConv
         version - passed to GpuConv
+
+        If the imshp, kshp, nkern and bsize are provided, we can generate more optimal code. This make a significant difference for the full mode with unroll_patch version.
 
         The reason that this op does the summation over convolutions within the 'stack' is that
         it allows us to be memory-efficient about how gradients are calculated.  If, for
@@ -70,16 +71,24 @@ class ConvOp(Op):
         Anatomy of High-Performance Matrix Multiplication by Kazushige Goto and Robert A. Van De Geijn, ACM Transactions on Mathematical Software, vol 34, No. 3, article 12, May 2008.
         In figure 12, it give the value mr x nr, those value are the optimum to use for unroll_batch and unroll_kern. For x86_64 bits computer it is 4x4. Other architecture can have different value.(2x4 for x86, 8x8 for itanium,...)
         """
-        imshp = tuple(imshp)
-        if len(imshp)==2:
-            self.imshp = (1,)+imshp
-        elif len(imshp)==3:
-            self.imshp = imshp
-        else:
-            raise Exception("bad len for imshp")
-        del imshp
+        all_shape = imshp is not None and kshp is not None and nkern is not None and bsize is not None
+        if (unroll_batch>0 or unroll_kern>0) and not all_shape:
+            raise Exception("In ConvOp, when using unroll_batch and unroll_nkern, all shape are needed")
+        if not all_shape:
+            unroll_patch = True
 
-        self.kshp = tuple(kshp)
+        if imshp is not None:
+            imshp = tuple(imshp)
+            if len(imshp)==2:
+                imshp = (1,)+imshp
+            elif len(imshp)==3:
+                imshp = imshp
+            else:
+                raise Exception("bad len for imshp")
+        self.imshp = imshp
+        if kshp is not None:
+            kshp = tuple(kshp)
+        self.kshp = kshp
         self.nkern = nkern
         self.bsize=bsize
         self.dx=dx
@@ -89,7 +98,7 @@ class ConvOp(Op):
         # a triple
         self.imshp_logical = self.imshp
         if imshp_logical is not None: self.imshp_logical = tuple(imshp_logical)
-        assert len(self.imshp) == len(self.imshp_logical)
+        assert (self.imshp is None and self.imshp_logical is None) or (len(self.imshp) == len(self.imshp_logical))
 
         # a pair
         self.kshp_logical = self.kshp
@@ -123,13 +132,17 @@ class ConvOp(Op):
                     new-=1
                 print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern),new)
                 self.unroll_kern=new
-        self.outshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
-        self.fulloutshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
+        if all_shape:
+            self.outshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
+            self.fulloutshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
+        else:
+            self.outshp = None
+            self.fulloutshp = None
         self.out_mode = output_mode
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented"%self.out_mode)
        
-        if not (self.outshp > 0).all():
+        if all_shape and not (self.outshp > 0).all():
             raise Exception(("Bad size for the output shape. Verify that [post-supersampling] input shape (%s)"
                 "and kern shape(%s) are ok. (hint: kerns must fit inside image in"
                 "'valid' mode)")%(self.imshp_logical,self.kshp_logical))
@@ -222,45 +235,69 @@ class ConvOp(Op):
         from scipy.signal.sigtools import _convolve2d
         #print 'img2d (%s)'%str(self.imshp_logical), img2d
         #print 'filtersflipped (%s)'%str(self.kshp_logical), filtersflipped
+        imshp = self.imshp
+        if imshp is None:
+            imshp = tuple(img2d.shape[1:])
+        kshp = self.kshp
+        if kshp is None:
+            kshp = tuple(filtersflipped.shape[2:])
+        bsize = self.bsize
+        if bsize is None:
+            bsize = img2d.shape[0]
+        nkern = self.nkern
+        if nkern is None:
+            nkern = filtersflipped.shape[0]
+        
+        imshp_logical = self.imshp_logical
+        if imshp_logical is None:
+            imshp_logical = imshp
+        kshp_logical = self.kshp_logical
+        if kshp_logical is None:
+            kshp_logical = kshp
+            
+        if self.fulloutshp is not None:
+            fulloutshp = tuple(self.fulloutshp)
+        else:
+            fulloutshp = tuple(getFilterOutShp(imshp_logical, kshp_logical, (1,1), self.out_mode))
+
         if z[0] is None:
-            z[0] = N.zeros((self.bsize,)+(self.nkern,)+tuple(self.fulloutshp),
+            z[0] = N.zeros((bsize,)+(nkern,)+fulloutshp,
                            dtype=img2d.dtype)
         zz=z[0]
         val = _valfrommode(self.out_mode)
         bval = _bvalfromboundary('fill')
 
-        batchsize = self.bsize
-        stacklen = self.imshp[0]
+        stacklen = imshp[0]
 
-        img2d = img2d.reshape((batchsize,)+ self.imshp)
-        filtersflipped = filtersflipped.reshape((self.nkern,stacklen)+self.kshp)
+        img2d = img2d.reshape((bsize,)+ imshp)
+        filtersflipped = filtersflipped.reshape((nkern,stacklen)+kshp)
 
         if self.imshp != self.imshp_logical:
             # assuming that to get from imshp to imshp logical we insert zeros in missing spots
-            rstride = int(N.ceil(self.imshp_logical[1] / float(self.imshp[1])))
-            cstride = int(N.ceil(self.imshp_logical[2] / float(self.imshp[2])))
-            buf = N.zeros((batchsize,)+ self.imshp_logical, dtype=img2d.dtype)
+            rstride = int(N.ceil(imshp_logical[1] / float(imshp[1])))
+            cstride = int(N.ceil(imshp_logical[2] / float(imshp[2])))
+            buf = N.zeros((bsize,)+ imshp_logical, dtype=img2d.dtype)
             buf[:,:,::rstride, ::cstride] = img2d
             img2d = buf
             del buf, rstride, cstride
 
-        if self.kshp != self.kshp_logical:
-            rstride = int(N.ceil(self.kshp_logical[0] / float(self.kshp[0])))
-            cstride = int(N.ceil(self.kshp_logical[1] / float(self.kshp[1])))
-            buf = N.zeros((self.nkern,stacklen)+ self.kshp_logical, dtype=filtersflipped.dtype)
-            if self.kshp_logical_top_aligned:
+        if kshp != kshp_logical:
+            rstride = int(N.ceil(kshp_logical[0] / float(kshp[0])))
+            cstride = int(N.ceil(kshp_logical[1] / float(kshp[1])))
+            buf = N.zeros((nkern,stacklen)+ self.kshp_logical, dtype=filtersflipped.dtype)
+            if kshp_logical_top_aligned:
                 roffset=coffset=0
             else:
-                roffset=(self.kshp_logical[0] - (self.kshp[0]*rstride) - 1+rstride) % rstride
-                coffset=(self.kshp_logical[1] - (self.kshp[1]*cstride) - 1+cstride) % cstride
+                roffset=(kshp_logical[0] - (kshp[0]*rstride) - 1+rstride) % rstride
+                coffset=(kshp_logical[1] - (kshp[1]*cstride) - 1+cstride) % cstride
                 assert roffset >= 0
                 assert coffset >= 0
             buf[:,:,roffset::rstride, coffset::cstride] = filtersflipped
             filtersflipped = buf
             del buf, rstride, cstride
 
-        for b in range(batchsize):
-            for n in range(self.nkern):
+        for b in range(bsize):
+            for n in range(nkern):
                 zz[b,n,...].fill(0)
                 for im0 in range(stacklen):
                     zz[b,n,...] +=  _convolve2d(\
@@ -286,6 +323,11 @@ class ConvOp(Op):
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             raise NotImplementedError('todo')
 
+        all_shape = self.imshp is not None and self.kshp is not None and self.nkern is not None and self.bsize is not None
+
+        if not all_shape and (self.dx!=1 or self.dy!=1):
+            raise Exception("ConvOp.grad when dx!=1 or dy!=1 we must have all the optional shape information")
+        
         grad_hack_necessary = False
         if grad_hack_necessary:
             if self.dx!=1 or self.dy!=1:
@@ -301,25 +343,31 @@ class ConvOp(Op):
         newin = inputs.dimshuffle((1,0,2,3))
         newgz = gz.dimshuffle((1,0,2,3))
     
+        (bsize, nkern) = None, None
+        imshp = None
+        kshp = None
+        un_p = self.unroll_patch
+        imshp_logical = None
         if self.out_mode == 'valid':
             (img, filters) = (newin, newgz)
-            imshp_logical = None
             kshp_logical = self.fulloutshp
             kshp_logical_top_aligned=False
-            (bsize, nkern) = (self.imshp[0], self.nkern)
-            imshp = (self.bsize, self.imshp[1], self.imshp[2])
+            if all_shape:
+                (bsize, nkern) = (self.imshp[0], self.nkern)
+                imshp = (self.bsize, self.imshp[1], self.imshp[2])
             kshp  = self.outshp
             un_b = self.unroll_batch
             un_k = self.unroll_kern
             #print 'dw_valid', imshp, kshp, nkern, bsize
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
-            imshp_logical = (self.bsize, self.fulloutshp[0], self.fulloutshp[1])
             kshp_logical = None
             kshp_logical_top_aligned=True
-            (bsize, nkern) = (self.nkern, self.imshp[0])
-            imshp = (self.bsize, self.outshp[0], self.outshp[1])
-            kshp  = self.imshp[1:]
+            if all_shape:
+                imshp_logical = (self.bsize, self.fulloutshp[0], self.fulloutshp[1])
+                (bsize, nkern) = (self.nkern, self.imshp[0])
+                imshp = (self.bsize, self.outshp[0], self.outshp[1])
+                kshp  = self.imshp[1:]
             un_b = self.unroll_kern
             un_k = self.unroll_batch
             #print 'dw_full', imshp, kshp, nkern, bsize
@@ -329,7 +377,7 @@ class ConvOp(Op):
         filters = filters[:,:,::-1,::-1] #flip them
         
         #find good value for the unroll
-        if un_b!=0 and bsize%un_b!=0:
+        if all_shape and un_b!=0 and bsize%un_b!=0:
             if bsize<un_b:
                 un_b = bsize
             else:
@@ -343,7 +391,7 @@ class ConvOp(Op):
                 print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the kernel. Maybe you can optimize this!"
 
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
-                    unroll_batch=un_b, unroll_kern=un_k,
+                    unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p,
                     imshp_logical=imshp_logical,
                     kshp_logical=kshp_logical,
                     kshp_logical_top_aligned=kshp_logical_top_aligned,
@@ -352,7 +400,8 @@ class ConvOp(Op):
         if hasattr(self,'flops'):
             dw.set_flops()
         dw = dw(img,filters)
-        assert (dw.owner.op.outshp==self.kshp).all()
+        if all_shape:
+            assert (dw.owner.op.outshp==self.kshp).all()
         if self.out_mode == 'valid':
             # before DimShuffle, dw is of shape visdim x nkern x kshp[0] x kshp[1]
             dw = dw.dimshuffle((1,0,2,3))
@@ -363,26 +412,35 @@ class ConvOp(Op):
         if not self.out_mode == 'full': mode = 'full'
         filters = kerns.dimshuffle((1,0,2,3))
         filters = filters[:,:,::-1,::-1]
-        nkern = self.imshp[0]
-        imshp = (self.nkern, self.outshp[0], self.outshp[1])
+        nkern = None
+        imshp = None
+        imshp_logical = None
+        kshp = None
+        if all_shape:
+            nkern = self.imshp[0]
+            imshp = (self.nkern, self.outshp[0], self.outshp[1])
+            imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1])
         #print 'din', imshp, self.kshp, nkern
         din = ConvOp(imshp, self.kshp, nkern, self.bsize, 
                      1,1, output_mode=mode,
-                     unroll_batch=un_b, unroll_kern=un_k,
-                     imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1]),
+                     unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p,
+                     imshp_logical=imshp_logical,
                      kshp_logical=None,
                      version=-1,#we we change the mode, we don't forward the version.
                      verbose=self.verbose)
         if hasattr(self,'flops'):
             din.set_flops()
         din = din(gz,filters)
-        assert (din.owner.op.outshp==self.imshp[1:]).all()
+        assert (din.owner.op.outshp is None and self.imshp is None) or (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
 #def c():
     def c_headers(self):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
+    def c_code_cache_version(self):
+        return (1)
+    
     def c_support_code(self):
         return """
 #define STRIDES(arr) ((arr)->strides)
@@ -400,24 +458,50 @@ using namespace std;
         assert node.inputs[0].type.dtype == node.inputs[1].type.dtype
         d=locals()
         d.update(sub)
+
+        all_shape = self.imshp is not None and self.kshp is not None and self.nkern is not None and self.bsize is not None
+
         d["self_out_mode"]=self.out_mode
-        d["self_bsize"]=self.bsize
-        d["self_nkern"]=self.nkern
         d["self_dx"]=self.dx
         d["self_dy"]=self.dy
         d["mode"]=self.out_mode.upper()
-        d["self_outshp0"]=self.outshp[0]
-        d["self_outshp1"]=self.outshp[1]
-        d["self_imshp0"]=self.imshp[0]
-        d["self_imshp1"]=self.imshp[1]
-        d["self_imshp2"]=self.imshp[2]
         d["mode"]=self.out_mode.upper()
-        d["self_kshp0"]=self.kshp[0]
-        d["self_kshp1"]=self.kshp[1]
-        d["self_kshp_logical_r"] = self.kshp_logical[0]
-        d["self_kshp_logical_c"] = self.kshp_logical[1]
-        d["self_kshp_logical_stride_r"] = int(N.ceil(self.kshp_logical[0] / float(self.kshp[0])))
-        d["self_kshp_logical_stride_c"] = int(N.ceil(self.kshp_logical[1] / float(self.kshp[1])))
+        d["affectation"]="="
+        if all_shape:
+            d["self_bsize"]=self.bsize
+            d["self_nkern"]=self.nkern
+            d["self_outshp0"]=self.outshp[0]
+            d["self_outshp1"]=self.outshp[1]
+            d["self_imshp0"]=self.imshp[0]
+            d["self_imshp1"]=self.imshp[1]
+            d["self_imshp2"]=self.imshp[2]
+            d["self_kshp0"]=self.kshp[0]
+            d["self_kshp1"]=self.kshp[1]
+            d["self_kshp_logical_r"] = self.kshp_logical[0]
+            d["self_kshp_logical_c"] = self.kshp_logical[1]
+            d["self_kshp_logical_stride_r"] = int(N.ceil(self.kshp_logical[0] / float(self.kshp[0])))
+            d["self_kshp_logical_stride_c"] = int(N.ceil(self.kshp_logical[1] / float(self.kshp[1])))
+            d["self_imshp_logical_r"] = self.imshp_logical[1] #N.B. 1  not 0
+            d["self_imshp_logical_c"] = self.imshp_logical[2]#N.B. 2  not 1
+            d["self_imshp_logical_stride_r"] = int(N.ceil(self.imshp_logical[1] / float(self.imshp[1])))
+            d["self_imshp_logical_stride_c"] = int(N.ceil(self.imshp_logical[2] / float(self.imshp[2])))
+            if not self.imshp[0]==1: d["affectation"]="+="
+            d["all_shape"]=1
+            d["dim_zz_const"]="const"
+        else:
+            d["self_bsize"]="%(img2d)s->dimensions[0]"%d
+            d["self_nkern"]="%(filtersflipped)s->dimensions[0]"%d
+            d["self_outshp0"]="-1"
+            d["self_outshp1"]="-1"
+            d["self_imshp0"]="%(img2d)s->dimensions[1]"%d
+            d["self_imshp1"]="%(img2d)s->dimensions[2]"%d
+            d["self_imshp2"]="%(img2d)s->dimensions[3]"%d
+            d["self_kshp0"]="%(filtersflipped)s->dimensions[2]"%d
+            d["self_kshp1"]="%(filtersflipped)s->dimensions[3]"%d
+            d["affectation"]="+="
+            d["all_shape"]=0
+            d["dim_zz_const"]=""
+
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
             d["self_kshp_logical_offset_c"] = 0
@@ -427,21 +511,12 @@ using namespace std;
             d["self_kshp_logical_offset_r"] = (self.kshp_logical[0] - (self.kshp[0]*rstride) - 1+rstride) % rstride
             d["self_kshp_logical_offset_c"] = (self.kshp_logical[1] - (self.kshp[1]*cstride) - 1+cstride) % cstride
             del rstride, cstride
-        d["self_imshp_logical_r"] = self.imshp_logical[1] #N.B. 1  not 0
-        d["self_imshp_logical_c"] = self.imshp_logical[2]#N.B. 2  not 1
-        d["self_imshp_logical_stride_r"] = int(N.ceil(self.imshp_logical[1] / float(self.imshp[1])))
-        d["self_imshp_logical_stride_c"] = int(N.ceil(self.imshp_logical[2] / float(self.imshp[2])))
-        d["affectation"]="="
-        if not self.imshp[0]==1: d["affectation"]="+="
+        
         if node.inputs[0].type.dtype=="float32": d["type"]="float"
         elif node.inputs[0].type.dtype=="float64": d["type"]="double"
         else: raise Exception("Type %s not implemented"%node.inputs[0].type.dtype)
         d["gemm"]='dgemm_'
         if not d["type"]=="double":d["gemm"]='sgemm_'
-
-        #print 'LOGICAL OFFSET', self.kshp_logical_top_aligned, d["self_kshp_logical_r"],
-        #print d["self_kshp0"], d["self_kshp_logical_offset_r"], d["self_kshp_logical_stride_r"],
-        #print self.out_mode, d["self_imshp_logical_stride_r"]
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
 #            print "return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version"
@@ -1231,10 +1306,18 @@ const %(type)s fill_value = 0;
 int type_im=PyArray_TYPE(%(img2d)s);
 int type_ker=PyArray_TYPE(%(filtersflipped)s);
 
-npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
-npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
-npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
-
+const npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
+const npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
+%(dim_zz_const)s npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
+#if !%(all_shape)s
+  if (mode == FULL) {
+    dim_zz[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s));
+    dim_zz[1] = (int)ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));
+  } else {
+    dim_zz[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s));
+    dim_zz[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));
+  }
+#endif
 PyArray_Dims img2d_shape;
 npy_intp img2d_dim[4]={1,1,0,0};
 img2d_shape.ptr=img2d_dim;
@@ -1259,7 +1342,8 @@ if(%(img2d)s->nd==2){
   img2d_dim[1]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
 }else {
-    PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
+    PyErr_Format(PyExc_ValueError,
+      "image don't have a good number of dimensions %%d. ", %(filtersflipped)s->nd);
     %(fail)s;
 }
 
@@ -1273,11 +1357,8 @@ if(%(filtersflipped)s->nd==3){
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
-    std:stringstream temp;
-    temp << "nddim="<<%(filtersflipped)s->nd;
-    std::string param = temp.str();
-    PyErr_SetString(PyExc_ValueError,
-      ("kernel don't have a good shape. " + param).c_str());
+    PyErr_Format(PyExc_ValueError,
+      "kernel don't have a good number of dimensions %%d. ", %(filtersflipped)s->nd);
     %(fail)s;
 }
 
@@ -1312,6 +1393,13 @@ filtersflipped_arr = (PyArrayObject*)filtersflipped;
 if(mode != VALID && mode != FULL){
   PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;
 }
+
+if(dim_zz[0]<=0 || dim_zz[1]<=0){
+PyErr_Format(PyExc_ValueError,
+      "Output dimensions are not valid %%dx%%d",dim_zz[0],dim_zz[1]);
+      %(fail)s;
+}
+
 typenum = PyArray_ObjectType((PyObject*)%(img2d)s, 0);
 typenum_f = PyArray_ObjectType((PyObject*)%(filtersflipped)s, 0);
 if (typenum < 0) {PyErr_SetString(PyExc_ValueError, "Invalid type"); %(fail)s;}
@@ -1339,13 +1427,6 @@ if ((!%(z)s)
   //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
 }
 
-int Os[2];
-Os[0]=%(self_outshp0)s;
-Os[1]=%(self_outshp1)s;
-//I keep the formula to calculte Os in case we need it in the futur.
-//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
-//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
-
 for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
 
@@ -1365,13 +1446,13 @@ for(int b=0;b< %(self_bsize)s;b++){
 
       int new_m;
 
-      for (int iter_m=0; iter_m < Os[0]; iter_m++) {
+      for (int iter_m=0; iter_m < dim_zz[0]; iter_m++) {
         // Reposition index into input image based on requested output size
         int pos_m = iter_m*%(self_dx)s;//The position of the patch in the image
         if (mode == FULL) new_m = pos_m ;
         else new_m = (pos_m+dim_ker[0]-1);
 
-        for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns
+        for (int iter_n=0; iter_n < dim_zz[1]; iter_n++) {  // loop over columns
           int pos_n=iter_n*%(self_dy)s;
           %(type)s sum=0;
           %(type)s sum2=0;
@@ -1405,7 +1486,7 @@ for(int b=0;b< %(self_bsize)s;b++){
                 max_k=min(pos_n+1,(int)dim_ker[1]);
                 const %(type)s * idx_in=&in[ind0*dim_im[1]];
 
-                if(iter_n + 4*%(self_dy)s < Os[1]
+                if(iter_n + 4*%(self_dy)s < dim_zz[1]
                          && iter_n>dim_ker[1]-1+3 
                          && iter_n<dim_im[1]-dim_ker[1]+1-3){
                   nb_sum=4;
@@ -1416,7 +1497,7 @@ for(int b=0;b< %(self_bsize)s;b++){
                     sum3+=idx_hvals[k]*idx_in[ind1+2*%(self_dy)s];
                     sum4+=idx_hvals[k]*idx_in[ind1+3*%(self_dy)s];
                   }
-                }else if(iter_n + 2*%(self_dy)s < Os[1] 
+                }else if(iter_n + 2*%(self_dy)s < dim_zz[1] 
                          && iter_n>dim_ker[1]-1
                          && iter_n<dim_im[1]-dim_ker[1]+1){
 //cout<<2<<endl;
@@ -1456,7 +1537,7 @@ for(int b=0;b< %(self_bsize)s;b++){
             }else{//valid mode
               const %(type)s* idx_in=&in[ind0*dim_im[1]];
               const %(type)s* idx_hvals=&hvals[j*dim_ker[1]];
-              if(iter_n + 4*%(self_dy)s < Os[1]){
+              if(iter_n + 4*%(self_dy)s < dim_zz[1]){
                 nb_sum=4;
                 for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
@@ -1464,7 +1545,7 @@ for(int b=0;b< %(self_bsize)s;b++){
                   sum3+=idx_hvals[k]*idx_in[im_idx+2*%(self_dy)s];
                   sum4+=idx_hvals[k]*idx_in[im_idx+3*%(self_dy)s];
                 }
-              }else if(iter_n + 2*%(self_dy)s < Os[1]){
+              }else if(iter_n + 2*%(self_dy)s < dim_zz[1]){
                 nb_sum=2;
                 for (int k=dim_ker[1]-1,im_idx=pos_n; k >=0; k--,im_idx++) {
                   sum+=idx_hvals[k]*idx_in[im_idx];
