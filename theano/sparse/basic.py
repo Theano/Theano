@@ -343,12 +343,22 @@ class CSM(gof.Op):
 
         """
         data = tensor.as_tensor_variable(data)
+        # Note that we use `view(numpy.int32)` instead of providing the 'int32'
+        # dtype to `numpy.asarray`. This is because on some computers (e.g. a
+        # Windows 32 bits machine), we can have the following assert fail:
+        #   x = numpy.array([0], dtype=numpy.intc)
+        #   y = numpy.asarray(x, dtype=numpy.int32)
+        #   assert y.dtype.num == numpy.dtype(numpy.int32).num
+        # while the assert does *not* fail when replacing the second line by:
+        #   y = numpy.asarray(x).view(numpy.int32)
+        # This is a known defect in Numpy. For more information see ticket
+        # http://projects.scipy.org/numpy/ticket/870
         if not isinstance(indices, tensor.TensorVariable):
-            indices = numpy.asarray(indices, dtype='int32')
+            indices = numpy.asarray(indices).view(numpy.int32)
         if not isinstance(indptr, tensor.TensorVariable):
-            indptr = numpy.asarray(indptr, dtype='int32')
+            indptr = numpy.asarray(indptr).view(numpy.int32)
         if not isinstance(shape, tensor.TensorVariable):
-            shape = numpy.asarray(shape, dtype='int32')
+            shape = numpy.asarray(shape).view(numpy.int32)
         indices = tensor.as_tensor_variable(indices)
         indptr = tensor.as_tensor_variable(indptr)
         shape = tensor.as_tensor_variable(shape)
