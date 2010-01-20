@@ -19,6 +19,15 @@ def debug(*args):
     #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
 
+def is_nvcc_available():
+    """Return True iff the nvcc compiler is found."""
+    try:
+        subprocess.call(['nvcc', '--version'], stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+        return True
+    except:
+        return False
+
 def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[]):
     """

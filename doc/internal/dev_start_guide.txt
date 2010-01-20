@@ -21,11 +21,10 @@ Developer Start Guide
 Accounts
 ========
 
-To obtain developer access: send an email to an admin with an username and
-temporary password. Pending approval, this will give you access to both the
-repository and Trac. You should then change your password in the
-`<http://pylearn.org/theano/prefs preferences>` tab - do *NOT* use a good 
-password! We are using plain text http which is not secure.
+To obtain developer access: register with `Assembla
+<http://www.assembla.com/>`_ and add yourself as a watcher on the `Theano space 
+<http://www.assembla.com/spaces/theano>`_. Then send an email to an admin asking 
+to be promoted to a member of the project.
 
 
 Theano code
@@ -34,10 +33,9 @@ Theano code
 *To get the source via mercurial,* you must have `mercurial
 <http://www.selenic.com/mercurial/wiki/>`__ installed.
 
-The code that makes up Theano is in a single repository available in
-`<http://pylearn.org/hg/Theano>`__.
-
-As a developer, you should clone this repository like this:
+The code that makes up Theano is in a `single repository
+<http://www.assembla.com/spaces/theano/trac_mercurial_tool>`__. As a developer, 
+you should clone this repository like this:
 
 .. code-block:: bash
 
@@ -120,9 +118,6 @@ to your ``Theano`` folder and execute the following command:
 .. code-block:: bash
 
     hg pull -u
-
-You may also download the latest source directly as a gzip'd tar file:
-`<http://pylearn.org/hg/Theano/archive/tip.tar.gz>`__.
 
 Nightly test
 ============

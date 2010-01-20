@@ -283,12 +283,12 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val1 == numpy_val1)
 
     def test_shuffle_row_elements(self):
-        """Test that RandomStreams.shuffle_row_elements generates the right results"""
+        """Ensure RandomStreams.shuffle_row_elements generates right results"""
         # Check over two calls to see if the random state is correctly updated.
-
-        # On matrices, for each row, the elements of that row should be shuffled.
-        # Note that this differs from numpy.random.shuffle, where all the elements
-        # of the matrix are shuffled.
+        # On matrices, for each row, the elements of that row should be
+        # shuffled.
+        # Note that this differs from numpy.random.shuffle, where all the
+        # elements of the matrix are shuffled.
         mm = Module()
         mm.random = RandomStreams(234)
         m_input = tensor.dmatrix()

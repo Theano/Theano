@@ -37,8 +37,9 @@ Roughly in order of what you'll want to check out:
 * :ref:`optimizations` -- Guide to Theano's graph optimizations.
 * :ref:`extending` -- Learn to add a Type, Op, or graph optimization.
 * :ref:`internal` -- How to maintaining Theano, LISA-specific tips, and more...
+* `API <api/>`_ -- The automatically-generated API
 
-You can download the latest `PDF documentation <http://pylearn.org/theano/theano.pdf>`_, rather than reading it online.
+You can download the latest `PDF documentation <http://deeplearning.net/theanodoc/theano.pdf>`_, rather than reading it online.
 
 Community
 =========
@@ -47,7 +48,7 @@ Community
 
 * Register and post to `theano-dev`_ if you want to talk to the developers.
 
-* We try to stay organized with `Theano's Trac <trac/>`__ 
+* We try to stay organized with `Theano's Trac <http://trac-hg.assembla.com/theano/report/1>`__ 
 
 * Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
 
@@ -68,8 +69,6 @@ Community
    examples/index
    proposals/index
    LICENSE
-
-
 
 
 .. _theano-dev: http://groups.google.com/group/theano-dev
