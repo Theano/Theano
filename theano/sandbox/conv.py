@@ -31,29 +31,14 @@ class ConvOp(Op):
     def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None, dx=None, dy=None, output_mode='valid',
             unroll_batch=0,
             unroll_kern=0,
-            unroll_patch=False,
+            unroll_patch=True,
             imshp_logical=None,
             kshp_logical=None,
             kshp_logical_top_aligned=True,
             verbose=0,
             version=-1):
         """
-        
-
-        imshp - image shape tuple of 2 or 3: 2 for a 2d image, 3 for a stack of 2d images.
-        kshp - kernel shape 2
-        nkern - # kernels
-        bsize - batch size
-        dx - patch stride rows
-        dy - patch stride cols
-        out_mode - 'valid', 'full'
-        unroll_patch - c code generation option(used when no shape gived)
-        unroll_batch - c code generation option
-        unroll_kern - c code generation option
-        verbose - passed to GpuConv
-        version - passed to GpuConv
-
-        If the imshp, kshp, nkern and bsize are provided, we can generate more optimal code. This make a significant difference for the full mode with unroll_patch version.
+        This Op implement the convolution of a kernel(tensor 4d,(nkern, stacksize, nb row, nb col)) on an image(tensor 4d, (batchsize, stacksize, nb row, nb col). The batch size is multiple image that we want to apply the same kernel over. The nkern is numtiple kernel that we want to apply to each image. The stack size is mostly used when their is multiple layer in the network. It is the sum of the convolution of multiple 2d image and kernel.
 
         The reason that this op does the summation over convolutions within the 'stack' is that
         it allows us to be memory-efficient about how gradients are calculated.  If, for
@@ -63,17 +48,52 @@ class ConvOp(Op):
         gradient on the filters.
 
 
-        unroll_patch. If True will use a version that is faster then without not unroll by unroll the patch loop.
-        unroll_batch. If >0 will use a version that will unroll the batch loop by the value of the option. By default don't use this version of the code.
-        unroll_nkern. idem as unroll_batch but unroll the kernel loop.
+        If the imshp, kshp, nkern and bsize are provided, we can generate more optimal code. This make a significant difference for the full mode with unroll_patch version.
+        The most frequent faster code currently available on 64_x86 computer is unroll_batch=4, unroll_kern=4, unroll_patch=False and this request that all the optional shape information are gived. Those number are empirically tested and backed up by the article: Anatomy of High-Performance Matrix Multiplication by Kazushige Goto and Robert A. Van De Geijn, ACM Transactions on Mathematical Software, vol 34, No. 3, article 12, May 2008. It is in figure 12, it give the value mr x nr, those value are the optimum to use for unroll_batch and unroll_kern. For x86_64 bits computer it is 4x4. Other architecture can have different value.(2x4 for x86, 8x8 for itanium,...)
 
-        The version is with unroll_batch=4 and unroll_nkern if possible(currenctly it don't support logical shape != physical shape) as this is what give the best performance in practice. This also tell that to have the best performance, you should have a batch size and a number of kernel multiple of 4. In the article:
-        Anatomy of High-Performance Matrix Multiplication by Kazushige Goto and Robert A. Van De Geijn, ACM Transactions on Mathematical Software, vol 34, No. 3, article 12, May 2008.
-        In figure 12, it give the value mr x nr, those value are the optimum to use for unroll_batch and unroll_kern. For x86_64 bits computer it is 4x4. Other architecture can have different value.(2x4 for x86, 8x8 for itanium,...)
+        :type out_mode: string
+        :param out_mode: 'valid'(give an output smaller then the image, 'full'(give an output bigger then the image)
+
+        optional parameter(if provided will be used to generate more optinal c code):
+        
+        :type imshp: tuple of len 2 or 3: 2 for 2d image, 3 for a stack of 2d images.
+        :param imshp: (stacksize, nb image row, nb image col)
+        :type kshp: tuple of len 2
+        :param kshp: (nb kernel row, nb kernel col)
+        :type nkern: int
+        :param nkern: the number of kernel
+        :type bsize: int
+        :param bsize: the size of the minibatch
+        :type dx: int
+        :param dx: patch stride rows
+        :type dy: int
+        :param dx: patch stride cols
+
+        param to select the version of code used:
+        :type unroll_patch: bool
+        :param unroll_patch: use a version of c_code that unroll the patch loop that don't request all shape information to work, but if all shape information are present, will use it to hardcode the value in the code for faster code.
+
+        :type unroll_batch:int
+        :param unroll_batch: use a version of c_code that unroll the batch(by unroll_batch) and the nkern(by unroll_kern) loop. The size must by a multiple of bsize or nkern respectively.
+        :type unroll_kern:int
+        :param unroll_kern: use a version of c_code that unroll the batch(by unroll_batch) and the nkern(by unroll_kern) loop. The size must by a multiple of bsize or nkern respectively.
+
+        :type verbose: int
+        :param verbose: passed to GpuConv
+        :type version: int
+        :param version: passed to GpuConv
+
+        :param imshp_logical: used internally when we generate the gradient when dx!=1 or dy!=1
+        :param kshp_logical: idem
+        :param kshp_logical_top_aligned: idem
+        
         """
         all_shape = imshp is not None and kshp is not None and nkern is not None and bsize is not None
         if (unroll_batch>0 or unroll_kern>0) and not all_shape:
             raise Exception("In ConvOp, when using unroll_batch and unroll_nkern, all shape are needed")
+        if not all_shape and (imshp is not None or kshp is not None or nkern is not None or bsize is not None):
+            print "OPTIMISATION WARNING: passing only a few shape to ConvOp for faster code is useless. We use all of them or none."
+        
         if not all_shape:
             unroll_patch = True
 
@@ -233,8 +253,6 @@ class ConvOp(Op):
         # TODO: move these back out to global scope when they no longer cause an atexit error
         from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
         from scipy.signal.sigtools import _convolve2d
-        #print 'img2d (%s)'%str(self.imshp_logical), img2d
-        #print 'filtersflipped (%s)'%str(self.kshp_logical), filtersflipped
         imshp = self.imshp
         if imshp is None:
             imshp = tuple(img2d.shape[1:])
@@ -308,7 +326,7 @@ class ConvOp(Op):
         #execute the c version which is much faster.
         if self.dx>1 or self.dy>1:
             zz = zz[:,:,0::self.dx,0::self.dy].copy()
-        #print 'zz (%s)'%str((self.dx, self.dy)), zz
+
         z[0]=zz
 
 
@@ -434,7 +452,6 @@ class ConvOp(Op):
         assert (din.owner.op.outshp is None and self.imshp is None) or (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
-#def c():
     def c_headers(self):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
@@ -519,25 +536,30 @@ using namespace std;
         if not d["type"]=="double":d["gemm"]='sgemm_'
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
-#            print "return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version"
+            if verbose:
+                print "return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version"
             return _conv_op_code_a % d
 
         if self.unroll_patch:
-#            print "return unroll patch version",self.dx,self.dy
+            if verbose:
+                print "return unroll patch version",self.dx,self.dy
             return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
             if self.unroll_batch<=0: self.unroll_batch=1
             if self.unroll_kern<=0: self.unroll_kern=1
-#            print "return unrolled batch and kern code by",self.unroll_batch, self.unroll_kern
+            if verbose:
+                print "return unrolled batch and kern code by",self.unroll_batch, self.unroll_kern
             return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
                                                    self.unroll_kern)
 
         #TODO: should we choose the unroll size automatically with the bigger divisor under 5? 
         if self.out_mode == 'valid' and self.dx==0 and self.dy==0:
-#            print "return gemm version"
+            if verbose:
+                print "return gemm version"
             return _conv_op_code_valid_gemm % d
         else:
-#            print "return no gemm version"
+            if verbose:
+                print "return no gemm version"
             return _conv_op_code_a % d
 
 def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
@@ -701,9 +723,6 @@ if ((!%(z)s)
 int Os[2];
 Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
-//I keep the formula to calculte Os in case we need it in the futur.
-//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
-//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
 
 for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
@@ -1185,9 +1204,6 @@ if ((!%(z)s)
 int Os[2];
 Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
-//I keep the formula to calculte Os in case we need it in the futur.
-//if (mode == FULL) {Os[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s)); Os[1] = ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));}
-//else {Os[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s)); Os[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));}
 
 for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
@@ -1301,7 +1317,7 @@ _conv_op_code_unroll_patch = """
 const int mode=%(mode)s;
 int typenum=0, typenum_f=0;
 PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
-const %(type)s fill_value = 0;
+const %(type)s fill_value = 0;//only value of 0 are currently tested and correctly implemented
 
 int type_im=PyArray_TYPE(%(img2d)s);
 int type_ker=PyArray_TYPE(%(filtersflipped)s);
@@ -1473,7 +1489,6 @@ for(int b=0;b< %(self_bsize)s;b++){
                   }
               }else{
                 //do the part where kernel is to the right of the img
-//TODO: implement unroll patch for fill_value!=0
                 int k=0,max_k=max((int)(pos_n-dim_im[1])+1,0);
                 if(fill_value!=0){ 
                 
@@ -1490,7 +1505,6 @@ for(int b=0;b< %(self_bsize)s;b++){
                          && iter_n>dim_ker[1]-1+3 
                          && iter_n<dim_im[1]-dim_ker[1]+1-3){
                   nb_sum=4;
-//cout<<4<<endl;
                   for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                     sum+=idx_hvals[k]*idx_in[ind1];
                     sum2+=idx_hvals[k]*idx_in[ind1+%(self_dy)s];
@@ -1500,20 +1514,12 @@ for(int b=0;b< %(self_bsize)s;b++){
                 }else if(iter_n + 2*%(self_dy)s < dim_zz[1] 
                          && iter_n>dim_ker[1]-1
                          && iter_n<dim_im[1]-dim_ker[1]+1){
-//cout<<2<<endl;
                   nb_sum=2;
-//                  if(iter_n==dim_ker[1]-1){//k-1<min(pos_n+%(self_dy)s,(int)dim_ker[1])){
-//                    sum2+=idx_hvals[k-1]*idx_in[pos_n-k-%(self_dy)s];
-//                  }
                   for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
                     sum+=idx_hvals[k]*idx_in[ind1];
                     sum2+=idx_hvals[k]*idx_in[ind1+%(self_dy)s];
                   }
-//                  sum2+=idx_hvals[k]*idx_in[pos_n-k+%(self_dy)s];
-//                  sum+=idx_hvals[k]*idx_in[pos_n-k];
-//                  k++;
                 }else{
-//cout<<1<<endl;
                   nb_sum=1;
                   /*
                   %(type)s sum_=0;
@@ -1566,29 +1572,9 @@ for(int b=0;b< %(self_bsize)s;b++){
           case 1: out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum;
           }
           iter_n+=nb_sum-1;
-/*
-          out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum;
-          if(nb_sum>=2){
-            iter_n++;
-            out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum2;
-          }
-          if(nb_sum>=3){
-            iter_n++;
-            out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum3;
-          }
-          if(nb_sum>=4){
-            iter_n++;
-            out[iter_m*dim_zz[1]+iter_n] %(affectation)s sum4;
-          }
-*/
         }//for iter_n
       }//for iter_m
     }//for stack_size
-    if (0 && (mode==FULL)){
-      for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) 
-        std::cout << " " << out[i];
-      std::cout << "\\n";
-    }
   }//for n_kern
 }//for b
 Py_XDECREF(img2d);
