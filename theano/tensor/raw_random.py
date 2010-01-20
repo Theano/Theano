@@ -309,7 +309,9 @@ def permutation_helper(random_state, n, shape):
     """
     # n should be a 0-dimension array
     assert n.shape == ()
-    n = n.item()
+    # Note that it is important to convert `n` into an integer, because if it
+    # is a long, the numpy permutation function will crash on Windows.
+    n = int(n.item())
 
     out_shape = list(shape)
     out_shape.append(n)

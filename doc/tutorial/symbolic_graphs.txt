@@ -105,7 +105,7 @@ how to compute the gradient of the node's outputs with respect to its
 inputs. Note that if an :ref:`op` does not provide this information, 
 it is assumed that the gradient does not defined.
 Using the 
-`chain rule <http://en.wikipedia.org/wiki/Chain_rile>`_ 
+`chain rule <http://en.wikipedia.org/wiki/Chain_rule>`_ 
 these gradients can be composed in order to obtain the expression of the 
 gradient of the graph's output with respect to the graph's inputs .
 

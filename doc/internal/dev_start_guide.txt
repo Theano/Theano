@@ -119,9 +119,6 @@ to your ``Theano`` folder and execute the following command:
 
     hg pull -u
 
-You may also download the latest source directly as a gzip'd tar file:
-`<http://pylearn.org/hg/Theano/archive/tip.tar.gz>`__.
-
 Nightly test
 ============
 
