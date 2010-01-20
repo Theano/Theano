@@ -228,7 +228,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
-        if mode == 'FAST_COMPILE':
+        if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
 
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -327,7 +327,7 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
-        if mode == 'FAST_COMPILE':
+        if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
 
         rng = numpy.random.RandomState(utt.fetch_seed())
