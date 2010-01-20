@@ -1,0 +1,214 @@
+.. _optimizations:
+
+==============
+Optimizations
+==============
+
+Theano applies many kinds of graph optimizations, with different objectives:
+* simplifying and standardizing the form of the expression graph 
+  (e.g.  :term:`merge`, :term:`add canonicalization<add canonicalization>`), 
+* reducing the maximum memory footprint (e.g. :term:`inplace_elemwise`),
+* increasing execution speed (e.g. :term:`constant folding`).
+
+The optimizations are listed in roughly chronological order.  The table below
+gives a quick summary of the optimizations included in the default modes. 
+The descriptions are brief and point to further reading.
+
+If you would like to add an additional optimization, refer to
+:ref:`optimization` in the guide to extending Theano.
+
+..  #COMMENT
+
+    Since the print_summary method has been added to several OpDBs and
+    optimizers, it is possible to compute an accurate and up-to-date
+    optimization list by typing
+
+    python -c 'import theano; theano.compile.FAST_RUN.optimizer.print_summary()'
+    python -c 'import theano; theano.compile.FAST_COMPILE.optimizer.print_summary()'
+
+    etc.
+
+========================================================= ========= ============
+Optimization                                              FAST_RUN  FAST_COMPILE
+========================================================= ========= ============
+:term:`merge`                                             x         x
+:term:`constant folding<constant folding>`                x
+:term:`shape promotion<shape promotion>`                  x
+:term:`fill promotion <fill promotion>`                   x
+:term:`fill cut<fill cut>`                                x
+:term:`inc_subtensor srlz.<inc_subtensor serialization>`  x
+:term:`reshape_chain`                                     x
+:term:`const. elimination<constant elimination>`          x
+:term:`add canonical. <add canonicalization>`             x
+:term:`mul canonical. <mul canonicalization>`             x
+:term:`dot22`                                             x
+:term:`sparse_dot`                                        x
+:term:`sum_scalar_mul`                                    x
+:term:`neg_neg`                                           x
+:term:`neg_div_neg`                                       x
+:term:`add specialize <add specialization>`               x
+:term:`mul specialize <mul specialization>`               x
+:term:`pow specialize <pow specialization>`               x
+:term:`inplace_setsubtensor`                              x
+:term:`gemm`                                              x
+:term:`inplace_elemwise`                                  x
+:term:`inplace_random`                                    x
+:term:`elemwise fusion`     
+:term:`GPU transfer`
+========================================================= ========= ============
+
+
+.. glossary::
+
+    merge
+        A simple optimization in which redundant :term:`Apply` nodes are
+        combined.  For example, in ``function([x,y], [(x+y)*2, (x+y)*3])`` the merge
+        optimization will ensure that ``x`` and ``y`` are only added once.
+
+        This optimization is very useful because it frees users to write
+        highly redundant mathematical code.  Theano will make sure to compute
+        just what is necessary.
+
+        See :class:`MergeOptimizer`.
+
+    constant folding
+        When all the inputs to an expression are constant, then the expression
+        can be pre-computed at compile-time.
+
+        See ***TODO***
+
+    shape promotion
+        See ***TODO***
+
+    fill promotion 
+        See ***TODO***
+
+    fill cut             
+        See ***TODO***
+
+    inc_subtensor serialization  
+        ***TODO***
+
+    reshape_chain        
+        This optimizes graphs like ``reshape(reshape(x, shape1), shape2)`` -> ``reshape(x, shape2)``
+
+        See also ***TODO***
+
+    constant elimination   
+        ***TODO***
+
+    add canonicalization
+        ***TODO***
+
+    mul canonicalization       
+        ***TODO***
+
+    dot22                
+        This simple optimization replaces dot(matrix, matrix) with a special
+        `dot22` op that only works for matrix multiplication.  This op is
+        implemented with a call to GEMM, and sometimes replaced entirely by
+        the :term:`gemm` optimization.
+
+        See also, ***TODO***.
+
+    sparse_dot           
+        ***TODO***
+
+    sum_scalar_mul       
+        This optimizes graphs like ``sum(scalar * tensor)`` -> ``scalar * sum(tensor)``
+
+        See ***TODO***
+
+    neg_neg              
+        Composition of two negatives can be cancelled out.
+
+        See ***TODO***
+
+    neg_div_neg          
+        Matching negatives in both the numerator and denominator can both be removed.
+
+        See ***TODO***
+
+    add specialization       
+        This optimization simplifies expressions involving the addition of
+        zero.
+        
+        See ***TODO***
+
+    mul specialization       
+        Several special cases of mul() exist, and this optimization tries to
+        recognize them. Some examples include:
+        * ``mul(x,x)`` -> ``x**2``
+        * ``mul(x,0)`` -> ``zeros_like(x)``
+        * ``mul(x, -1)`` -> ``neg(x)``
+        
+        See ***TODO***
+
+    pow specialization       
+        Several special cases of pow() exist, and this optimization tries to
+        recognize them. Some examples include:
+        * ``pow(x,2)`` -> ``x**2``
+        * ``pow(x,0)`` -> ``ones_like(x)``
+        * ``pow(x, -0.5)`` -> ``inv(sqrt(x))``
+        
+        See also ***TODO***
+
+    inplace_setsubtensor 
+        In order to be a pure Op, setsubtensor must copy its entire input, and
+        modify just the subtensor in question (possibly a single element).  It
+        is much more efficient to modify that element inplace.
+
+        See ***TODO***
+
+    gemm                 
+        Numerical libraries such as MKL and ATLAS implement the BLAS-level-3
+        interface, and provide a function `GEMM` that implements 
+        :math:`Z \leftarrow \alpha A \cdot B + \beta Z`, for matrices `A`, `B`
+        and `Z`, and scalars :math:`\alpha, \beta`.
+
+        This optimization tries to rearrange a variety of linear algebra
+        expressions into one or more instances of this motif, and replace them
+        each with a single `Gemm` Op.
+
+        See ***TODO***
+
+    inplace_elemwise
+        When one of the inputs to an elementwise expression has the same type
+        and shape as the output, and is no longer needed for computation after
+        the elemwise expression is evaluated, then we can reuse the storage of
+        the input to store the output.
+
+        See ***TODO***
+
+    inplace_random       
+        Typically when a graph uses random numbers, the RandomState is stored
+        in a shared variable, used once per call and, updated after each function
+        call.  In this common case, it makes sense to update the random number generator in-place.
+
+        See ***TODO***
+
+    elemwise fusion
+        See ***TODO***
+
+    GPU transfer
+        The current strategy for choosing which expressions to evaluate on the
+        CPU and which to evaluate on the GPU is a greedy one.  There are a
+        number of Ops ***TODO*** with GPU implementations and whenever we find
+        a graph copying data from GPU to CPU in order to evaluate an
+        expression that could have been evaluated on the GPU, we substitute
+        the GPU version of that Op for the CPU version.  Likewise if we are
+        copying the output of a Op with a GPU implementation to the GPU, 
+        then we substitute the GPU version for the CPU version.  In this way, if all goes well,
+        this procedure will result in a graph with the following form:
+            1. copy non-shared inputs to GPU
+            2. carry out most/all computations on the GPU
+            3. copy output back to CPU
+
+        When using a GPU, :func:`shared()` will default to GPU storage for
+        'float32' ndarray arguments, and these shared variables act as seeds
+        for the greedy algorithm.
+
+        See ***TODO***
+
+
+
