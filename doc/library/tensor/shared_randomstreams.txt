@@ -101,10 +101,11 @@ For example:
 Reference
 =========
 
-.. class:: RandomStreams(object)
+.. class:: RandomStreams(raw_random.RandomStreamsBase)
 
-    This is a symbolic stand-in for ``numpy.random.RandomState``. It has
-    methods such as `uniform` and `normal` that return symbolic random variables.
+    This is a symbolic stand-in for ``numpy.random.RandomState``. 
+    Random variables of various distributions are instantiated by calls to
+    parent class :class:`raw_random.RandomStreamsBase`.
 
     .. method:: updates()
 
@@ -118,34 +119,22 @@ Reference
 
         `meta_seed` will be used to seed a temporary random number generator,
         that will in turn generate seeds for each of the random variables that
-        has been created by this object.
+        has been created by this object (via `gen`).
 
         :returns: None
 
-    .. method:: binomial(self, size, n=1, p=0.5)
+    .. method:: gen(op, *args, **kwargs)
 
-        Symbolic stand-in for numpy.random.RandomState.binomial
+        Return the random variable from `op(*args, **kwargs)`, but
+        also install special attributes (``.rng`` and ``update``, see
+        :class:`RandomVariable` ) into it.
 
-        :returns: :class:`RandomVariable` of float64 that will have `shape==size` at run-time.
+        This function also adds the returned variable to an internal list so
+        that it can be seeded later by a call to `seed`.
 
-    .. method:: uniform(self, size, low=0.0, high=1.0)
+    .. method:: uniform, normal, binomial, multinomial, random_integers, ...
 
-        Symbolic stand-in for numpy.random.RandomState.uniform
-
-        :returns: :class:`RandomVariable` of float64 that will have `shape==size` at run-time.
-
-    .. method:: normal(self, size, loc=0.0, std=1.0)
-
-        Symbolic stand-in for numpy.random.RandomState.normal
-
-        :returns: :class:`RandomVariable` of float64 that will have `shape==size` at run-time.
-
-    .. method:: random_integers(self, size, low=0, high=1)
-
-        Symbolic stand-in for numpy.random.RandomState.random_integers
-
-        :returns: :class:`RandomVariable` of int64 that will have `shape==size` at run-time.
-
+        See :class:`raw_random.RandomStreamsBase`.
 
 .. class:: RandomVariable(object)
 

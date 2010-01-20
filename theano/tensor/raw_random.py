@@ -236,7 +236,6 @@ def normal(random_state, size=(),  avg=0.0, std=1.0, ndim=None):
             tensor.TensorType(dtype = 'float64', broadcastable = (False,)*ndim) )
     return op(random_state, size, avg, std)
 
-
 def random_integers(random_state, size=(), low=0, high=1, ndim=None):
     """
     Usage: random_integers(random_state, size, low=0, high=1)
@@ -277,7 +276,6 @@ def permutation_helper(random_state, n, shape):
 
     print 'RETURNING', out.shape
     return out
-
 
 def permutation(random_state, size=(), n=1, ndim=None):
     """
