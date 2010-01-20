@@ -13,10 +13,38 @@ def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
     return  N.int64(N.ceil((inshp[1:] + s*kshp - s*1)/\
             N.array([dx,dy], dtype='float')))
 
+
+def conv(border_mode, subsample=(1,1), imshp=None, kshp=None, **kargs):
+    """
+    This fct return an instanciated ConvOp but give better name for some param.
+    We do this instead of changing the ConvOp interface to don't change all code
+    used up to now.
+
+    :type border_mode: string
+    :param border_mode:'valid'(only apply kernel over complete patch of the image)
+                       or 'full'(padd the image with 0 and apply the kernel over all full patch and partial patch of the image
+    :type subsample: tuple of len 2
+    :param subsample: how many pixel we move in the (row,col) direction of the image when we change of patch
+    :type imshp: tuple of len 4
+    :param imshp: (batch size, stack size, nb row, nb col)
+    :type kshp: tuple of len 4
+    :param kshp: (nb kernel, stack size, nb row, nb col)
+    """
+    if imshp is not None and kshp is not None:
+        assert imshp[1]==kshp[1]
+        nkern = kshp[0]
+        bsize = imshp[0]
+        kshp = kshp[:2]
+        imshp = imshp[1:]
+    else:
+        nkern, bsize = None, None
+        
+    return ConvOp(output_mode=border_mode, dx=subsample[0], dy=subsample[1],
+                  imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize,**kargs)
+
 class ConvOp(Op):
     """
-    A convolution op that should mimic scipy.signal.convolve2d, but faster!
-    In development.
+    A convolution op that should extend scipy.signal.convolve2d, but much faster!
     """
 
 
@@ -25,8 +53,6 @@ class ConvOp(Op):
             'unroll_batch', 'unroll_kern', 'unroll_patch',
             'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
     """These attributes uniquely identify the behaviour of this op for given inputs"""
-
-    #TODO: make the stacksize its own parameter, and make imshp a pair
 
     def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None, dx=None, dy=None, output_mode='valid',
             unroll_batch=0,
@@ -541,24 +567,24 @@ using namespace std;
             return _conv_op_code_a % d
 
         if self.unroll_patch:
-            if verbose:
+            if self.verbose:
                 print "return unroll patch version",self.dx,self.dy
             return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
             if self.unroll_batch<=0: self.unroll_batch=1
             if self.unroll_kern<=0: self.unroll_kern=1
-            if verbose:
+            if self.verbose:
                 print "return unrolled batch and kern code by",self.unroll_batch, self.unroll_kern
             return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
                                                    self.unroll_kern)
 
         #TODO: should we choose the unroll size automatically with the bigger divisor under 5? 
         if self.out_mode == 'valid' and self.dx==0 and self.dy==0:
-            if verbose:
+            if self.verbose:
                 print "return gemm version"
             return _conv_op_code_valid_gemm % d
         else:
-            if verbose:
+            if self.verbose:
                 print "return no gemm version"
             return _conv_op_code_a % d
 
