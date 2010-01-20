@@ -11,8 +11,9 @@ from theano import function
 from theano import tensor
 from theano import compile, gof
 
+from theano.tests import unittest_tools
 
-class T_RandomStreams(unittest.TestCase):
+class T_SharedRandomStreams(unittest.TestCase):
 
     def test_tutorial(self):
         srng = RandomStreams(seed=234)
@@ -109,6 +110,96 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
 
+    def test_permutation(self):
+        """Test that RandomStreams.uniform generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
+        random = RandomStreams(234)
+        fn = function([], random.permutation((20,), 10), updates=random.updates())
+
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+
+        # rng.permutation outputs one vector at a time, so we iterate.
+        numpy_val0 = numpy.asarray([rng.permutation(10) for i in range(20)])
+        numpy_val1 = numpy.asarray([rng.permutation(10) for i in range(20)])
+
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
+
+    def test_multinomial(self):
+        """Test that RandomStreams.multinomial generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
+        random = RandomStreams(234)
+        fn = function([], random.multinomial((4,4), 1, [0.1]*10), updates=random.updates())
+
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        numpy_val0 = rng.multinomial(1, [0.1]*10, size=(4,4))
+        numpy_val1 = rng.multinomial(1, [0.1]*10, size=(4,4))
+
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
+
+    def test_shuffle_row_elements(self):
+        """Test that RandomStreams.shuffle_row_elements generates the right results"""
+        # Check over two calls to see if the random state is correctly updated.
+
+        # On matrices, for each row, the elements of that row should be shuffled.
+        # Note that this differs from numpy.random.shuffle, where all the elements
+        # of the matrix are shuffled.
+        random = RandomStreams(234)
+        m_input = tensor.dmatrix()
+        f = function([m_input], random.shuffle_row_elements(m_input), updates=random.updates())
+
+        val_rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        in_mval = val_rng.uniform(-2, 2, size=(20,5))
+        fn_mval0 = f(in_mval)
+        fn_mval1 = f(in_mval)
+        print in_mval[0]
+        print fn_mval0[0]
+        print fn_mval1[0]
+        assert not numpy.all(in_mval == fn_mval0)
+        assert not numpy.all(in_mval == fn_mval1)
+        assert not numpy.all(fn_mval0 == fn_mval1)
+
+        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed))
+        numpy_mval0 = in_mval.copy()
+        numpy_mval1 = in_mval.copy()
+        for row in numpy_mval0:
+            rng.shuffle(row)
+        for row in numpy_mval1:
+            rng.shuffle(row)
+
+        assert numpy.all(numpy_mval0 == fn_mval0)
+        assert numpy.all(numpy_mval1 == fn_mval1)
+
+        # On vectors, the behaviour is the same as numpy.random.shuffle,
+        # except that it does not work in place, but returns a shuffled vector.
+        random1 = RandomStreams(234)
+        v_input = tensor.dvector()
+        f1 = function([v_input], random1.shuffle_row_elements(v_input))
+
+        in_vval = val_rng.uniform(-3, 3, size=(12,))
+        fn_vval = f1(in_vval)
+        numpy_vval = in_vval.copy()
+        vrng = numpy.random.RandomState(int(rng_seed))
+        vrng.shuffle(numpy_vval)
+        print in_vval
+        print fn_vval
+        print numpy_vval
+        assert numpy.all(numpy_vval == fn_vval)
+
+        # Trying to shuffle a vector with function that should shuffle
+        # matrices, or vice versa, raises a TypeError
+        self.assertRaises(TypeError, f1, in_mval)
+        self.assertRaises(TypeError, f, in_vval)
 
 if __name__ == '__main__':
     from theano.tests import main

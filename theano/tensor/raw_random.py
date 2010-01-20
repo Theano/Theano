@@ -195,7 +195,7 @@ def _infer_ndim(ndim, shape):
     
     return ndim, v_shape
 
-def uniform(random_state, size=(), low=0.0, high=0.0, ndim=None):
+def uniform(random_state, size=(), low=0.0, high=1.0, ndim=None):
     """
     Sample from a uniform distribution between low and high.
 
@@ -311,7 +311,7 @@ def multinomial(random_state, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
     """
     ndim, size = _infer_ndim(ndim, size)
     op = RandomFunction('multinomial', 
-            tensor.TensorType(dtype = 'float64', broadcastable = (False,)*(ndim+1)),
+            tensor.TensorType(dtype = 'int64', broadcastable = (False,)*(ndim+1)),
             ndim_added=1)
     return op(random_state, size, n, pvals)
 
@@ -325,5 +325,92 @@ def random_make_inplace(node):
     return False
 
 optdb.register('random_make_inplace', opt.in2out(random_make_inplace, ignore_newtrees=True), 99, 'fast_run', 'inplace')
+
+
+
+class RandomStreamsBase(object):
+
+    def binomial(self, size=(), n=1, prob=0.5, ndim=None):
+        """
+        Sample n times with probability of success prob for each trial, return the number of
+        successes.
+
+        If the size argument is ambiguous on the number of dimensions, the first argument may be a
+        plain integer to supplement the missing information.
+        """
+        return self.gen(binomial, size, n, prob, ndim=ndim)
+
+    def uniform(self,  size=(), low=0.0, high=1.0, ndim=None):
+        """
+        Sample a tensor of given size whose element from a uniform distribution between low and high.
+
+        If the size argument is ambiguous on the number of
+        dimensions, the first argument may be a plain integer
+        to supplement the missing information.
+        """
+        return self.gen(uniform, size, low, high, ndim=ndim)
+
+    def normal(self, size=(), avg=0.0, std=1.0, ndim=None):
+        """
+        Usage: normal(random_state, size,
+        Sample from a normal distribution centered on avg with
+        the specified standard deviation (std)
+
+        If the size argument is ambiguous on the number of
+        dimensions, the first argument may be a plain integer
+        to supplement the missing information.
+        """
+        return self.gen(normal, size, avg, std, ndim=ndim)
+
+    def random_integers(self, size=(), low=0, high=1, ndim=None):
+        """
+        Usage: random_integers(random_state, size, low=0, high=1)
+        Sample a random integer between low and high, both inclusive.
+
+        If the size argument is ambiguous on the number of
+        dimensions, the first argument may be a plain integer
+        to supplement the missing information.
+        """
+        return self.gen(random_integers, size, low, high, ndim=ndim)
+
+    def permutation(self, size=(), n=1, ndim=None):
+        """
+        Returns permutations of the integers between 0 and n-1, as many times
+        as required by size. For instance, if size=(p,q), p*q permutations
+        will be generated, and the output shape will be (p,q,n), because each
+        permutation is of size n.
+
+        Theano tries to infer the number of dimensions from the length of the size argument, but you
+        may always specify it with the `ndim` parameter.
+
+        .. note:: 
+            Note that the output will then be of dimension ndim+1.
+        """
+        return self.gen(permutation, size, n, ndim=ndim)
+
+    def multinomial(self, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
+        """
+        Sample n times from a multinomial distribution defined by probabilities pvals,
+        as many times as required by size. For instance, if size=(p,q), p*q
+        samples will be drawn, and the output shape will be (p,q,len(pvals)).
+
+        Theano tries to infer the number of dimensions from the length of the size argument, but you
+        may always specify it with the `ndim` parameter.
+
+        .. note:: 
+            Note that the output will then be of dimension ndim+1.
+        """
+        return self.gen(multinomial, size, n, pvals, ndim=ndim)
+
+    def shuffle_row_elements(self, input):
+        """Return a variable with every row (rightmost index) shuffled.
+        
+        This uses permutation random variable internally, available via the ``.permutation``
+        attribute of the return value.
+        """
+        perm = self.permutation(size=input.shape[:-1], n=input.shape[-1], ndim=input.ndim-1)
+        shuffled = tensor.permute_row_elements(input, perm)
+        shuffled.permutation = perm
+        return shuffled
 
 

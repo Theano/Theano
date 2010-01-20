@@ -109,12 +109,18 @@ class T_RandomStreams(unittest.TestCase):
         out = m.random.uniform((2,2))
         m.fn = Method([], out)
         made = m.make()
-        made.random.initialize(seed=789)
 
+        #as a distraction, install various seeds
+        made.random.initialize(seed=789)
         made.random.seed(888)
 
-        rng = numpy.random.RandomState(823874)
-        made.random[out.rng] = numpy.random.RandomState(823874)
+        # then replace the rng of the stream we care about via setitem
+        realseed = 823874
+        rng = numpy.random.RandomState(realseed)
+        made.random[out.rng] = numpy.random.RandomState(realseed)
+
+        print made.fn()
+        print rng.uniform(size=(2,2))
 
         fn_val0 = made.fn()
         fn_val1 = made.fn()
@@ -153,7 +159,7 @@ class T_RandomStreams(unittest.TestCase):
         # ndim specified, consistent with shape, OK
         m2 = Module()
         m2.random = RandomStreams(234)
-        m2.fn = Method([], m2.random.uniform(2, (2,2)))
+        m2.fn = Method([], m2.random.uniform((2,2), ndim=2))
         made2 = m2.make()
         made2.random.initialize()
 
@@ -164,7 +170,7 @@ class T_RandomStreams(unittest.TestCase):
         # ndim specified, inconsistent with shape, should raise ValueError
         m3 = Module()
         m3.random = RandomStreams(234)
-        m3.fn = Method([], m3.random.uniform(1, (2,2)))
+        m3.fn = Method([], m3.random.uniform((2,2), ndim=1))
         made3 = m3.make()
         made3.random.initialize()
         self.assertRaises(ValueError, made3.fn)
