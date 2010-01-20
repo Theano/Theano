@@ -5,7 +5,8 @@
 Library Documentation
 =====================
 
-This documentation covers Theano module-wise.
+This documentation covers Theano module-wise.  This is suited to finding the
+Types and Ops that you can use to build and compile expression graphs.
 
 .. toctree::
    :maxdepth: 1
