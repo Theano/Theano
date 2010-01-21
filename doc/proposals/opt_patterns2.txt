@@ -1,0 +1,37 @@
+
+======================
+Optimization Patterns
+======================
+
+.. note:
+   Proposed 2010 01 20
+
+
+Motivation
+==========
+
+Theano optimizations are organized at high level, 
+but canonicalization and specialization (C&S) are a mess.  It is difficult to know how a graph will
+be optimized, or to know in which order optimizations will be performed.  
+C&S is also slow because of the guess-and-check nature of node optimization within equilibrium
+optimizers (VERIFY THIS BY PROFILING).
+C&S functions are also very difficult and tedious to write because of
+symmetries in the graph, and because of the lack of standard Op names 
+(e.g. ``T.add``, ``T.and_``, and ``T._shape``).  Gemm and the advanced_indexing -> xent
+optimization are particularly tricky examples.
+
+Defining a sort of regexp-like approach for describing graph substitutions would ideally be
+less error-prone, less tedious, more efficient to evaluate, easier to document, and all-round
+better.
+
+
+Proposal
+========
+
+In a nutshell: revisit the PatternSub and make it more powerful.
+
+Olivier B. (original author or PatternSub) mentioned that one of the problems was the annoyance
+of working through DimShuffle
+
+Olivier B. also suggests writing scalar-related patterns in terms of scalars, and then inferring Tensor-related patterns.
+
