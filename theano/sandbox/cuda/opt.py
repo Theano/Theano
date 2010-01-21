@@ -339,9 +339,12 @@ def local_gpu_conv(node):
     conv(host_from_gpu) -> host_from_gpu(gpu_conv)
     """
     def GpuConvOp_from_ConvOp(op):
+        logical_img_hw=None
+        if op.imshp_logical is not None:
+            logical_img_hw=op.imshp_logical[1:3]
         ret = GpuConv(border_mode=op.out_mode,
                     subsample=(op.dx, op.dy),
-                    logical_img_hw=op.imshp_logical[1:3],
+                    logical_img_hw=logical_img_hw,
                     logical_kern_hw=op.kshp_logical,
                     logical_kern_align_top=op.kshp_logical_top_aligned,
                     version=op.version,

@@ -140,13 +140,15 @@ class GpuConv(Op):
             #TODO: reconsider this... since shapes are not given in constructor,
             # maybe a multiplier + offset is a more appropriate way of passing this logical
             # grid
-        self.logical_img_hw = tuple(logical_img_hw)
+            logical_img_hw = tuple(logical_img_hw)
+        self.logical_img_hw = logical_img_hw
         if logical_kern_hw is not None:
             h,w = logical_kern_hw
             #TODO: reconsider this... since shapes are not given in constructor,
             # maybe a multiplier + offset is a more appropriate way of passing this logical
             # grid
-        self.logical_kern_hw = tuple(logical_kern_hw)
+            logical_kern_hw = tuple(logical_kern_hw)
+        self.logical_kern_hw = logical_kern_hw
         self.logical_kern_align_top = logical_kern_align_top
         self.version=version
         self.verbose=verbose
@@ -195,6 +197,8 @@ class GpuConv(Op):
                 version=self.version,
                 verbose=self.verbose)
     def c_support_code_apply(self, node, nodename):
+        if self.logical_img_hw is None or self.logical_kern_hw is None:
+            return super(GpuConv,self).c_support_code_apply(node, nodename)
         img_wid = self.logical_img_hw[1]
         img_len = self.logical_img_hw[0]
 
@@ -588,6 +592,8 @@ conv_full_patch_stack_padded( float* img, float* kern, float* out,
         subsample_cols=self.subsample[1]
         version=self.version
         verbose=self.verbose
+        if self.logical_img_hw is None or self.logical_kern_hw is None:
+            return super(GpuConv,self).c_code(node,nodename,(img, kern), (out,),sub)        
         #todo assert out is ccontiguous
         img_wid = self.logical_img_hw[1]
         img_len = self.logical_img_hw[0]
