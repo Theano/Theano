@@ -12,6 +12,7 @@ import numpy
 import __builtin__
 
 class DownsampleFactorMaxGrad(Op):
+
     def __init__(self, ds, ignore_border):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
@@ -147,10 +148,48 @@ class DownsampleFactorMaxGrad(Op):
         return ()
 
                 
+def max_pool2D(input, ds, ignore_border=False):
+    """
+    Takes as input a N-D tensor, where N >= 2. It downscales the input image by
+    the specified factor, by keeping only the maximum value of non-overlapping
+    patches of size (ds[0],ds[1])
+    :type input: N-D theano tensor of input images. 
+    :param input: input images. Max pooling will be done over the 2 last dimensions.
+    :type ds: tuple of length 2
+    :param ds: factor by which to downscale. (2,2) will halve the image in each
+               dimension.
+    :param ignore_border: boolean value. When True, (5,5) input with ds=(2,2)
+                         will generate a (2,2) output. (3,3) otherwise.
+    """
+    if input.ndim < 2:
+        raise NotImplementedError('max_pool2D requires a dimension >= 2')
+
+    # extract image dimensions
+    img_shape = input.shape[-2:]
+    
+    # count the number of "leading" dimensions, store as dmatrix
+    batch_size = tensor.prod(input.shape[:-2])
+    batch_size = tensor.shape_padright(batch_size,1)
+
+    # store as 4D tensor with shape: (batch_size,1,height,width)
+    new_shape = tensor.cast(tensor.join(0, batch_size, 
+        tensor.as_tensor([1,]), img_shape), 'int64')
+    input_4D = tensor.reshape(input, new_shape, ndim=4)
+
+    # downsample mini-batch of images
+    op = DownsampleFactorMax(ds, ignore_border)
+    output = op(input_4D)
+
+    # restore to original shape
+    outshp = tensor.join(0, input.shape[:-2], output.shape[-2:])
+    return tensor.reshape(output, outshp, ndim=input.ndim)
+
+
 class DownsampleFactorMax(Op):
     """
-    For N-dimensional tensors, consider that the last two dimensions span images.
-    This Op downsamples these images by taking the max over non-overlapping rectangular regions.
+    For N-dimensional tensors, consider that the last two dimensions span images.  
+    This Op downsamples these images by a factor ds, by taking the max over non-
+    overlapping rectangular regions.
     """
 
     @staticmethod
@@ -192,6 +231,8 @@ class DownsampleFactorMax(Op):
         :param ignore_border: if ds doesn't divide imgshape, do we include an extra row/col of
         partial downsampling (False) or ignore it (True).
         :type ignore_border: bool
+
+        TODO: why is poolsize an op parameter here?
         """
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
