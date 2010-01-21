@@ -905,36 +905,37 @@ class test_fusion(unittest.TestCase):
             #g.owner.inputs[0] is out... make owner a weakref?
             
 def test_log1p():
+    m = theano.compile.FAST_RUN
 
     # check some basic cases
     x = dvector()
-    f = function([x], T.log(1+(x)), mode='FAST_RUN')
+    f = function([x], T.log(1+(x)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
-    f = (function([x], T.log(1+(-x))), mode='FAST_RUN')
+    f = function([x], T.log(1+(-x)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.neg, inplace.log1p_inplace]
-    f = (function([x], -T.log(1+(-x))), mode='FAST_RUN')
+    f = function([x], -T.log(1+(-x)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.neg, inplace.log1p_inplace, inplace.neg_inplace]
 
 
     # check trickier cases (and use different dtype)
     y = fmatrix()
-    f = (function([x,y], T.log(fill(y,1)+(x))), mode='FAST_RUN')
+    f = function([x,y], T.log(fill(y,1)+(x)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
-    f = (function([x,y], T.log(0+(x) + fill(y,1.0) )), mode='FAST_RUN')
+    f = function([x,y], T.log(0+(x) + fill(y,1.0)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
-    f = (function([x,y], T.log(2+(x) - fill(y,1.0) )), mode='FAST_RUN')
+    f = function([x,y], T.log(2+(x) - fill(y,1.0)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
 
     f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values 
         
     # should work for complex
     z = zmatrix()
-    f = function([z], T.log(1+(z)), mode='FAST_RUN')
+    f = function([z], T.log(1+(z)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
     # should work for int
     z = imatrix()
-    f = function([z], T.log(1+(z)), mode='FAST_RUN')
+    f = function([z], T.log(1+(z)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
 if __name__ == '__main__':
