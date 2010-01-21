@@ -737,6 +737,11 @@ btensor3 = TensorType('int8', (False,)*3)
 wtensor3 = TensorType('int16', (False,)*3)
 itensor3 = TensorType('int32', (False,)*3)
 ltensor3 = TensorType('int64', (False,)*3)
+def tensor3(name=None, dtype='float64'):
+    type = TensorType(dtype, (False, False, False))
+    return type(name)
+tensor3s, ftensor3s, dtensor3s, itensor3s, ltensor3s = _multi(tensor3, ftensor3, dtensor3,
+        itensor3, ltensor3)
 
 ctensor4 = TensorType('complex64', (False,)*4)
 ztensor4 = TensorType('complex128', (False,)*4)
@@ -746,6 +751,11 @@ btensor4 = TensorType('int8', (False,)*4)
 wtensor4 = TensorType('int16', (False,)*4)
 itensor4 = TensorType('int32', (False,)*4)
 ltensor4 = TensorType('int64', (False,)*4)
+def tensor4(name=None, dtype='float64'):
+    type = TensorType(dtype, (False, False, False, False))
+    return type(name)
+tensor4s, ftensor4s, dtensor4s, itensor4s, ltensor4s = _multi(tensor4, ftensor4, dtensor4,
+        itensor4, ltensor4)
 
 class _tensor_py_operators:
     #UNARY
