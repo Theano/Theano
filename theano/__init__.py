@@ -63,6 +63,16 @@ import gof
 import floatX
 floatX.set_floatX()
 
+import config
+
+#if THEANO_GPU not defined: don't automaticcaly importe cuda
+#if THEANO_GPU defined to something else then "": automatically import cuda
+#   he will init cuda automatically if THEANO_GPU is not -1 or GPU
+#if cuda.use() and THEANO_GPU not defined or defined to "": init to device 0.
+#if THEANO_GPU defined to "-1" or "CPU", automatically import cuda, but don't init it.
+if config.THEANO_GPU not in [None,""]:
+    import theano.sandbox.cuda
+
 ## import scalar_opt
 
 import subprocess as _subprocess
