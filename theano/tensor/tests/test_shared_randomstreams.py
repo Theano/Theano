@@ -19,9 +19,9 @@ class T_SharedRandomStreams(unittest.TestCase):
         srng = RandomStreams(seed=234)
         rv_u = srng.uniform((2,2))
         rv_n = srng.normal((2,2))
-        f = function([], rv_u, updates=[rv_u.update])
-        g = function([], rv_n)                              #omitting rv_n.update
-        nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
+        f = function([], rv_u)
+        g = function([], rv_n, no_default_updates=True)    #Not updating rv_n.rng
+        nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
 
         assert numpy.all(f() != f())
         assert numpy.all(g() == g())

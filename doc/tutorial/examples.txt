@@ -317,9 +317,9 @@ Here's a brief example.  The setup code is:
     srng = RandomStreams(seed=234)
     rv_u = srng.uniform((2,2))
     rv_n = srng.normal((2,2))
-    f = function([], rv_u, updates=[rv_u.update])
-    g = function([], rv_n)                              #omitting rv_n.update
-    nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
+    f = function([], rv_u)
+    g = function([], rv_n, no_default_updates=True)    #Not updating rv_n.rng
+    nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
 
 Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
 distribution.  Likewise,  'rv_n' represenents a random stream of 2x2 matrices of
@@ -327,15 +327,16 @@ draws from a normal distribution.  The distributions that are implemented are
 defined in :class:`RandomStreams`.
 
 Now let's use these things.  If we call f(), we get random uniform numbers.
-Since we are updating the internal state of the random number generator (via
-the ``updates`` argument), we get different random numbers every time.
+The internal state of the random number generator is automatically updated,
+so we get different random numbers every time.
 
 >>> f_val0 = f()
 >>> f_val1 = f()  #different numbers from f_val0
 
-When we omit the updates argument (as in ``g``) to ``function``, then the
-random number generator state is not affected by calling the returned function.  So for example, 
-calling ``g`` multiple times will return the same numbers.
+When we add the extra argument ``no_default_updates=True`` to
+``function`` (as in ``g``), then the random number generator state is
+not affected by calling the returned function.  So for example, calling
+``g`` multiple times will return the same numbers.
 
 >>> g_val0 = g()  # different numbers from f_val0 and f_val1
 >>> g_val0 = g()  # same numbers as g_val0 !!!
@@ -345,7 +346,7 @@ single function execution.  So the ``nearly_zeros`` function is guaranteed to
 return approximately 0 (except for rounding error) even though the ``rv_u``
 random variable appears three times in the output expression.
 
->>> nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
+>>> nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
 
 Seedings Streams
 ----------------
