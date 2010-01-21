@@ -92,6 +92,10 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     if not isinstance(params,(list,tuple)):
         raise Exception("in pfunc() the first argument must be a list or a tuple")
 
+    if not isinstance(no_default_updates, bool)\
+            and not isinstance(no_default_updates, list):
+        raise TypeError("no_default_update should be either a boolean or a list")
+
     clone_d = {}
     # Updates as list and dictionary.
     # They will also store the 'default_update' expressions applicable.
