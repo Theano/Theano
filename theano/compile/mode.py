@@ -193,6 +193,8 @@ class Mode(object):
                 
     def including(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker, self.provided_optimizer)
+        #N.B. opt might be a Query instance, not sure what else it might be...
+        #     string? Optimizer? OptDB? who knows???
         return self.__class__(linker=link, optimizer=opt.including(*tags))
 
     def excluding(self, *tags):
