@@ -44,23 +44,32 @@ def _fill_chain(new_out, orig_inputs):
         new_out = T.fill(i, new_out)
     return [new_out]
 
-def get_constant_value(v):
+def get_constant_value(v, fill=False):
     """return the constant value underlying variable `v`
 
-    If v is the output of dimshuffles, this function digs through them.
+    If v is the output of dimshuffles, fills, this function digs through them.
 
     If `v` is not some view of constant data, then raise a TypeError.
+
+    if fill is True, then it returns (v, [...]) where the second term is a list of variables
+    that were used in the fill expressions
 
     :note: There may be another function similar to this one in the code, but I'm not sure where it
     is.
     """
 
-    if not isinstance(v, gof.Variable):
-        return v # why would this happen?
     if isinstance(v, gof.Constant):
+        if fill:
+            return v.data, []
         return v.data
     if v.owner and isinstance(v.owner.op, T.DimShuffle):
-        return get_constant_value(v.owner.inputs[0])
+        return get_constant_value(v.owner.inputs[0], fill=fill)
+    if fill:
+        if v.owner and v.owner.op == T.fill:
+            shape, val = v.owner.inputs
+            # fill(a,b) fills the shape of 'a' filled with 'b'
+            rval, rshapes = get_constant_value(val, fill=fill)
+            return rval, rshapes + [shape]
     raise TypeError(v)
 
 @gof.optimizer
@@ -1122,6 +1131,30 @@ register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
 
+@register_specialize
+@gof.local_optimizer([T.log])
+def local_log1p(node):
+    # log(1+exp(x)) -> log1p(x)
+    if node.op == T.log:
+        log_arg, = node.inputs
+        if log_arg.owner and log_arg.owner.op == T.add:
+            add_inputs = log_arg.owner.inputs
+            consts = [0]
+            fills = []
+            nonconsts = []
+            for add_in in add_inputs:
+                try:
+                    v, f = get_constant_value(add_in, fill=True)
+                    consts.append(v)
+                    fills.extend(f)
+                except:
+                    nonconsts.append(add_in)
+            if nonconsts:
+                if numpy.allclose(numpy.sum(consts), 1):
+                    if len(nonconsts)==1:
+                        return _fill_chain(T.log1p(nonconsts[0]), fills)
+                    else:
+                        return _fill_chain(T.log1p(T.add(*nonconsts)), fills)
 
 
 def add_calculate(num, denum, aslist = False, out_type=None):

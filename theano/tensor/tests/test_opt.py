@@ -7,7 +7,7 @@ import theano
 from theano import gof
 from theano.tensor.opt import *
 from theano import tensor
-from theano.tensor import TensorType
+from theano.tensor import TensorType, inplace
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint, shared
@@ -904,7 +904,38 @@ class test_fusion(unittest.TestCase):
 #            cases[id]=None #to remove g, that link to out that link to the ndarray!
             #g.owner.inputs[0] is out... make owner a weakref?
             
+def test_log1p():
+
+    # check some basic cases
+    x = dvector()
+    f = function([x], T.log(1+(x)), mode='FAST_RUN')
+    assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
+    f = (function([x], T.log(1+(-x))))
+    assert [node.op for node in f.maker.env.toposort()] == [T.neg, inplace.log1p_inplace]
+    f = (function([x], -T.log(1+(-x))))
+    assert [node.op for node in f.maker.env.toposort()] == [T.neg, inplace.log1p_inplace, inplace.neg_inplace]
+
+
+    # check trickier cases (and use different dtype)
+    y = fmatrix()
+    f = (function([x,y], T.log(fill(y,1)+(x))))
+    assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
+    f = (function([x,y], T.log(0+(x) + fill(y,1.0) )))
+    assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
+    f = (function([x,y], T.log(2+(x) - fill(y,1.0) )))
+    assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
+
+    f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values 
         
+    # should work for complex
+    z = zmatrix()
+    f = function([z], T.log(1+(z)))
+    assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
+
+    # should work for int
+    z = imatrix()
+    f = function([z], T.log(1+(z)))
+    assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
 if __name__ == '__main__':
 #    unittest.main()
