@@ -94,7 +94,7 @@ Reference
     :type outputs: list of Variables or Out instances
 
     :param outputs: expressions to compute.
-    
+
     :type mode: None, string or :class:`Mode` instance.
 
     :param mode: compilation mode
@@ -103,16 +103,22 @@ Reference
        List, tuple or dict.
 
     :param updates: expressions for new :class:`SharedVariable` values
-    
 
-    :type givens: iterable over pairs (Var1, Var2) of Variables. 
+    :type givens: iterable over pairs (Var1, Var2) of Variables.
        List, tuple or dict.  The Var1
        and Var2 in each pair must have the same Type.
 
-    :param givens: specific substitutions to make in the 
-      computation graph (Var2 replaces Var1).  
+    :param givens: specific substitutions to make in the
+      computation graph (Var2 replaces Var1).
 
-    :param name: an optional name for this function. 
+    :type no_default_updates: either bool or list of Variables
+    :param no_default_updates:
+        if True, do not perform any automatic update on Variables.
+        If False (default), perform them all.
+        Else, perform automatic updates on all Variables that are
+        neither in ``updates`` nor in ``no_default_updates``.
+
+    :param name: an optional name for this function.
       The profile mode will print the time spent in this function.
 
     :rtype: Function instance
@@ -121,7 +127,7 @@ Reference
       and update the implicit function arguments according to the `updates`.
 
 
-    Inputs can be given as variables or Param instances. 
+    Inputs can be given as variables or Param instances.
     :class:`Param` instances also have a variable, but they attach some extra
     information about how call-time arguments corresponding to that variable
     should be used.  Similarly, :class:`Out` instances can attach information
@@ -137,6 +143,13 @@ Reference
     from the expressions in the `updates` list.  An exception will be raised
     if you give two update expressions for the same SharedVariable input (that
     doesn't make sense).
+
+    If a SharedVariable is not given an update expression, but has a
+    ``default_update`` member containing an expression, this expression
+    will be used as the update expression for this variable.  Passing
+    ``no_default_updates=True`` to ``function`` disables this behavior
+    entirely, passing ``no_default_updates=[sharedvar1, sharedvar2]``
+    disables it for the mentionned variables.
 
     Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading
