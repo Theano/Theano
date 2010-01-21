@@ -498,7 +498,7 @@ class TestConvOp(unittest.TestCase):
         imshps = [(2,3,4)]
         modes = ['valid', 'full']
         unroll = [(0,0,True),(1,1,False),(2,3,False),(1,1,False),(0,0,False)]#(batch,kern,patch)
-        ssizes = [(1,1),(2,2)]
+        ssizes = [(1,1)]#,(2,2)]#grad for ss!=(1,1) is currently disabled!
 
         for typ in types:
             imgs  = T.TensorType(typ, (False, False, False, False),'imgs')
