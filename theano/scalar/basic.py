@@ -210,7 +210,10 @@ class Scalar(Type):
             template <typename T>
             theano_complex%(nbits)s(const T& y) { *this = y; }
 
+            template <typename TR, typename TI>
+            theano_complex%(nbits)s(const TR& r, const TI& i) { this->real=r; this->imag=i; }
          };
+
          """
         operator_eq = """
         template <> %(mytype)s & %(mytype)s::operator=<npy_int8>(const npy_int8 & y)
@@ -237,7 +240,37 @@ class Scalar(Type):
         template <> %(mytype)s & %(mytype)s::operator=<theano_complex64>(const theano_complex64 & y)
         { this->real=y.real; this->imag=y.imag; return *this; }
 
+        template <typename T>
+        const %(mytype)s 
+        operator+(const %(mytype)s &x, const T& y)
+        { return %(mytype)s(x.real+y, x.imag); }
+
+        template <typename T>
+        const %(mytype)s 
+        operator+(const T& y, const %(mytype)s &x)
+        { return %(mytype)s(x.real+y, x.imag); }
+
+        template <typename T>
+        const %(mytype)s 
+        operator-(const %(mytype)s &x, const T& y)
+        { return %(mytype)s(x.real-y, x.imag); }
+
+        template <typename T>
+        const %(mytype)s 
+        operator-(const T& x, const %(mytype)s &y)
+        { return %(mytype)s(x-y.real, -y.imag); }
+
+        template <typename T>
+        const %(mytype)s 
+        operator*(const %(mytype)s &x, const T& y)
+        { return %(mytype)s(x.real*y, x.imag*y); }
+
+        template <typename T>
+        const %(mytype)s 
+        operator*(const T& x, const %(mytype)s &y)
+        { return %(mytype)s(x*y.real, x*y.imag); }
         """
+
         # todo: use C templating
         return template % dict(nbits = 64, half_nbits = 32) \
                 + template % dict(nbits = 128, half_nbits = 64) \
@@ -245,8 +278,8 @@ class Scalar(Type):
                 + operator_eq % dict(mytype='theano_complex64')
 
     def c_code_cache_version(self):
-        #return ()
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.
+        return (6,)  # added implemeentations of operators that work with scalar arguments
         return (5,)  #added constructors to theano_complex class
         return (4,)  #explicit T given in specialization of operator= lines.  This makes it compile with open64
 
