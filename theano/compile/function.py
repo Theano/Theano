@@ -10,7 +10,8 @@ from function_module import orig_function
 from pfunc import pfunc
 from numpy import any #for to work in python 2.4
 
-def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inplace=False, name=None):
+def function(inputs, outputs=None, mode=None, updates=[], givens=[],
+        no_default_updates=False, accept_inplace=False, name=None):
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -31,7 +32,12 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
     and Var2 in each pair must have the same Type.
 
     :param givens: specific substitutions to make in the computation graph (Var2 replaces
-    Var1).  
+    Var1).
+
+    :type no_default_updates: either bool or list of Variables
+    :param no_default_updates: if True, do not perform any automatic update on Variables.
+    If False (default), perform them all. Else, perform automatic updates on all Variables
+    that are neither in "updates" nor in "no_default_updates".
 
     :param name: an optional name for this function. The profile mode will print the time spent in this function.
 
@@ -65,4 +71,5 @@ def function(inputs, outputs=None, mode=None, updates=[], givens=[], accept_inpl
                 mode=mode, 
                 updates=updates, 
                 givens=givens,
+                no_default_updates=no_default_updates,
                 accept_inplace=accept_inplace,name=name)

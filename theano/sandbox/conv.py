@@ -562,7 +562,7 @@ using namespace std;
         if not d["type"]=="double":d["gemm"]='sgemm_'
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
-            if verbose:
+            if self.verbose:
                 print "return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version"
             return _conv_op_code_a % d
 
