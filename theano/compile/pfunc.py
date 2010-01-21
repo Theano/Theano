@@ -149,9 +149,6 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
                 clone_d.setdefault(old_o, new_o)
         return clone_d[a]
 
-    #def v_clone(v):
-    #    return _v_clone(v, clone_d)
-
     # initialize the clone_d mapping with the `givens` argument
     try:
         givens = givens.items() # converts a dictionary to the sort of list that we want.
@@ -172,8 +169,6 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     input_variables = [clone_d.setdefault(i.variable, i.variable) for i in inputs]
     for i, iv in zip(inputs, input_variables):
         i.variable = iv
-
-    #set_of_param_variables = set(input_variables)
 
     # It was decided, as a first step, to prevent shared variables from being
     # used as function inputs. Although it is technically possible, it is also not clear
@@ -199,10 +194,6 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
                         update_val, update_val.type))
         update_d[store_into] = update_val
         update_expr.append((store_into, update_val))
-
-
-    # computed_list is a list of output variables (which will be extended later)
-    #computed_list = []
 
     # Elements of "outputs" are here cloned to "cloned_outputs"
     if isinstance(outputs, list):
@@ -246,7 +237,6 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
             shared_inputs.append(v)
         i += 1
 
-    #updates = update_d #?
     for sv in shared_inputs:
         if sv in update_d:
             si = In(variable=sv, value=sv.container, mutable=True,
@@ -258,64 +248,6 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     return orig_function(inputs, cloned_outputs, mode,
             accept_inplace=accept_inplace, name=name)
 
-    if 0:
-        # Add update values as quantities that must be computed.
-        # Here, we
-        #  - extend the computed_list
-        #  - replace some update expressions (but update keys remain)
-        new_updates = {}
-        for (store_into, update_val) in iter_over_pairs(updates):
-            if not isinstance(store_into, SharedVariable):
-                raise TypeError('update target must be a SharedVariable', store_into)
-            if store_into in new_updates:
-                raise ValueError('this shared variable already has an update expression',
-                        (store_into, new_updates[store_into]))
-            update_val = v_clone(store_into.filter_update(update_val))
-            if update_val.type != store_into.type:
-                raise TypeError('an update must have the same type as the original shared variable', 
-                        (store_into, store_into.type,
-                            update_val, update_val.type))
-            computed_list.append(update_val)
-            new_updates[store_into] = update_val
-        updates = new_updates
-
-        # Obtain all inputs we need to compute what we want.
-        graph_inputs = graph.inputs(computed_list,
-                blockers=set_of_param_variables)
-
-        shared_inputs = [i for i in graph_inputs if isinstance(i, SharedVariable)]
-
-        # Add shared variables (from shared_inputs) that were not already present in the list of
-        # params.
-        inputs += [In(variable=si, value=si.container, mutable=False) 
-            for si in shared_inputs
-            if si not in set_of_param_variables]
-        del shared_inputs
-
-        # Iterate over the updates, which are either pairs
-        # (shared_var, expressionvariable), or a similar dictionary.
-        # For each shared_variable, find the In instance that we created for it in the inputs list.
-        # Give that In instance (in_sv) an update expression.
-        # 
-        # I think we usually want to set these Inputs to be mutable,
-        # ... are there exceptions?
-
-        for (sv, new_val) in iter_over_pairs(updates):
-            in_sv = None
-            for in_sv_i in inputs:
-                if in_sv_i.variable is sv:
-                    assert in_sv is None
-                    in_sv = in_sv_i
-            if in_sv is None:
-                # This variable was not used anywhere and thus is not in the input
-                # list yet.
-                inputs.append(In(variable=sv, value=sv.container, mutable=True,
-                    update=new_val))
-            else:
-                in_sv.update = new_val
-                in_sv.mutable = True 
-
-        return orig_function(inputs, cloned_outputs, mode, accept_inplace=accept_inplace,name=name)
 
 def _pfunc_param_to_in(param):
     if isinstance(param, Constant):
@@ -353,23 +285,4 @@ def iter_over_pairs(pairs):
         return pairs.iteritems()
     else:
         return pairs
-
-#TODO: Make these non-recursive so they can deal with larger graphs
-def _a_clone(a, dct):
-    if a is None:
-        return None
-    if a not in dct:
-        for i in a.inputs:
-            _v_clone(i, dct)
-        dct[a] = a.clone_with_new_inputs([dct[i] for i in a.inputs])
-        for old_o, new_o in zip(a.outputs, dct[a].outputs):
-            dct.setdefault(old_o, new_o)
-    return dct[a]
-
-def _v_clone(v, dct):
-    assert v is not None
-    if v.owner:
-        _a_clone(v.owner, dct)
-    return dct.setdefault(v, v)
-
 
