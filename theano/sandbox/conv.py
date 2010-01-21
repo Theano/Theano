@@ -17,14 +17,16 @@ def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
 def conv2d(input, filters, border_mode='valid', subsample=(1,1), 
            image_shape=None, filter_shape=None, **kargs):
     """
-    This fct return an instanciated ConvOp but give better name for some param.
-    We do this instead of changing the ConvOp interface to don't change all code
-    used up to now.
+    This function returns an instanciated ConvOp through a simple interface.
+    We do this instead of changing the ConvOp interface so as not to change 
+    previous code based on the ConvOp.
 
     :type input: symbolic 4D tensor
-    :param input: tensor containing mini-batch of input feature maps
+    :param input: tensor containing mini-batch of input feature maps that are 
+    2D. Indexing is thus: (batch, feature map, image row, image col).
     :type filters: symbolic 4D tensor
-    :param filters: tensor containing filters for convolutional neural net
+    :param filters: tensor containing filters for convolutional neural net.
+    Indexing is: (filter, filter input feature map, filter row, filter col).
     :type border_mode: string
     :param border_mode:'valid'(only apply kernel over complete patch of the image)
                        or 'full'(padd the image with 0 and apply the kernel over all full patch and partial patch of the image
