@@ -905,7 +905,9 @@ class test_fusion(unittest.TestCase):
             #g.owner.inputs[0] is out... make owner a weakref?
             
 def test_log1p():
-    m = theano.compile.FAST_RUN
+    m = theano.compile.default_mode
+    if m == 'FAST_COMPILE':
+        m = 'FAST_RUN'
 
     # check some basic cases
     x = dvector()
