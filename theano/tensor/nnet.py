@@ -43,7 +43,11 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         else:
             raise NotImplementedError('only floatingpoint is implemented')
     def c_code_cache_version(self):
-        return (2,)
+        v = super(ScalarSigmoid, self).c_code_cache_version()
+        if v:
+            return (2,) + v
+        else:
+            return v
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
@@ -74,7 +78,11 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         else:
             raise NotImplementedError('only floatingpoint is implemented')
     def c_code_cache_version(self):
-        return (2,)
+        v = super(ScalarSoftplus, self).c_code_cache_version()
+        if v:
+            return (2,) + v
+        else:
+            return v
 scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
 softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
