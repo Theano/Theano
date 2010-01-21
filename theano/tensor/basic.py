@@ -3470,7 +3470,10 @@ class numeric_grad:
                 raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
                     b.shape))))
             errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
-        return numpy.max(errs), numpy.argmax(errs)
+        if numpy.all(numpy.isfinite(errs)):
+            return numpy.max(errs), numpy.argmax(errs)
+        else:
+            return float('inf'), 0
 
 
 def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast_to_output_type=False):
