@@ -329,7 +329,7 @@ class ConvOp(Op):
             rstride = int(N.ceil(kshp_logical[0] / float(kshp[0])))
             cstride = int(N.ceil(kshp_logical[1] / float(kshp[1])))
             buf = N.zeros((nkern,stacklen)+ self.kshp_logical, dtype=filtersflipped.dtype)
-            if kshp_logical_top_aligned:
+            if self.kshp_logical_top_aligned:
                 roffset=coffset=0
             else:
                 roffset=(kshp_logical[0] - (kshp[0]*rstride) - 1+rstride) % rstride
