@@ -1126,6 +1126,10 @@ class T_add(unittest.TestCase):
     def test_grad_col(self):
         utt.verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
+class T_ceil(unittest.TestCase):
+    def test_complex(self):
+        self.assertRaises(TypeError, ceil, zvector())
+
 class T_exp(unittest.TestCase):
     def test_grad_0(self):
         utt.verify_grad(exp, [
@@ -1135,6 +1139,19 @@ class T_exp(unittest.TestCase):
         utt.verify_grad(inplace.exp_inplace, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
+
+    def test_int(self):
+        x = ivector()
+        f = function([x], exp(x))
+        exp_3 = f([3])
+        assert exp_3.dtype == 'float64'
+
+    def test_complex(self):
+        x = zvector()
+        assert exp(x).dtype == 'complex128'
+        f = function([x], exp(x))
+        exp_3 = f([3+2j])
+        assert numpy.allclose(exp_3, numpy.exp(3+2j))
 
 class T_divimpl(unittest.TestCase):
     def test_impls(self):
