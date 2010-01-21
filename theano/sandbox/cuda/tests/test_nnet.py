@@ -446,13 +446,13 @@ def test_lenet_64(): # ???
                                float_atol=5e-4, check_isfinite=True, version=version)
 
 def test_lenet_108(): # NORB
-    cmp_run_conv_nnet2_classif(23485, 108, 7, 10, n_iter=5,
+    cmp_run_conv_nnet2_classif(23485, 108, 7, 5, n_iter=4,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
-                               check_isfinite=True, version=version)
+                               check_isfinite=True, version=version, float_atol=7e-2)
 
 def test_lenet_256(): # ImageNet
-    cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_iter=3,
+    cmp_run_conv_nnet2_classif(23485, 256, 9, 2, n_iter=5,
                                ignore_error=ignore_error, gpu_only=gpu_only,
                                cpu_only=cpu_only, verbose=verbose,
                                check_isfinite=True, version=version)
