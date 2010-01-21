@@ -28,6 +28,11 @@ class SharedVariable(Variable):
     :type: `Container`
     """
 
+    # default_update
+    # If this member is present, its value will be used as the "update" for
+    # this Variable, unless another update value has been passed to "function",
+    # or the "no_default_updates" list passed to "function" contains it.
+
     def __init__(self, name, type, value, strict, container=None):
         """
         :param name: The name for this variable (see `Variable`).
