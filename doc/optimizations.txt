@@ -5,8 +5,7 @@ Optimizations
 ==============
 
 Theano applies many kinds of graph optimizations, with different objectives:
-* simplifying and standardizing the form of the expression graph 
-  (e.g.  :term:`merge`, :term:`add canonicalization<add canonicalization>`), 
+* simplifying and standardizing the form of the expression graph (e.g.  :term:`merge`, :term:`add canonicalization` ), 
 * reducing the maximum memory footprint (e.g. :term:`inplace_elemwise`),
 * increasing execution speed (e.g. :term:`constant folding`).
 
@@ -34,7 +33,6 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 :term:`merge`                                             x         x
 :term:`constant folding<constant folding>`                x
 :term:`shape promotion<shape promotion>`                  x
-:term:`fill promotion <fill promotion>`                   x
 :term:`fill cut<fill cut>`                                x
 :term:`inc_subtensor srlz.<inc_subtensor serialization>`  x
 :term:`reshape_chain`                                     x
@@ -75,33 +73,65 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         When all the inputs to an expression are constant, then the expression
         can be pre-computed at compile-time.
 
-        See ***TODO***
+        See :func:`opt.constant_folding`
 
     shape promotion
-        See ***TODO***
+        Theano often knows how to infer the shape of an output from the shape
+        of its inputs.  Without this optimization, it would otherwise have to
+        compute things (e.g. ``log(x)``) just to find out the shape of it!
 
-    fill promotion 
-        See ***TODO***
+        See :func:`opt.local_shape_lift_*`
 
     fill cut             
-        See ***TODO***
+        `Fill(a,b)` means to make a tensor of the shape of `a` full of the value `b`.
+        Often when fills are used with elementwise operations (e.g. f) they are
+        un-necessary:
+        * ``f(fill(a,b), c) -> f(b, c)``
+        * ``f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))``
+
+        See :func:`opt.local_fill_cut`, :func:`opt.local_fill_sink`
 
     inc_subtensor serialization  
-        ***TODO***
+        Incrementing a small subregion of a large tensor can be done quickly
+        using an inplace operation, but if two increments are being done on
+        the same large tensor, then only one of them can be done inplace.
+        This optimization reorders such graphs so that all increments can be
+        done inplace.  
+        
+        ``inc_subensor(a,b,idx) + inc_subtensor(a,c,idx) -> inc_subtensor(inc_subtensor(a,b,idx),c,idx)``
+
+        See :func:`local_IncSubtensor_serialize`
 
     reshape_chain        
         This optimizes graphs like ``reshape(reshape(x, shape1), shape2)`` -> ``reshape(x, shape2)``
 
-        See also ***TODO***
+        See :func:`local_reshape_chain`
 
-    constant elimination   
-        ***TODO***
+    constant elimination
+        Many constants indicate special cases, such as ``pow(x,1) -> x``.
+        Theano recognizes many of these special cases.
+
+        See :func:`local_mul_specialize`, :func:`local_mul_specialize`,:func:`local_mul_specialize`
 
     add canonicalization
-        ***TODO***
+        Rearrange expressions of additions and subtractions to a canonical
+        form:
+
+        .. math::
+            
+            (a+b+c+...) - (z + x + y + ....)
+
+        See :class:`Canonizer`, :attr:`local_add_canonizer`
 
     mul canonicalization       
-        ***TODO***
+        Rearrange expressions of multiplication and division to a canonical
+        form:
+
+        .. math::
+            
+            \frac{a * b * c * ...}{z * x * y * ....}
+
+        See :class:`Canonizer`, :attr:`local_mul_canonizer`
 
     dot22                
         This simple optimization replaces dot(matrix, matrix) with a special
@@ -109,31 +139,35 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         implemented with a call to GEMM, and sometimes replaced entirely by
         the :term:`gemm` optimization.
 
-        See also, ***TODO***.
+        See :func:`local_dot_to_dot22`
 
     sparse_dot           
-        ***TODO***
+        Theano has a sparse matrix multiplication algorithm that is faster in
+        many cases than scipy's (for dense matrix output).  This optimization
+        swaps scipy's algorithm for ours.
+
+        See :func:`local_structured_dot`
 
     sum_scalar_mul       
         This optimizes graphs like ``sum(scalar * tensor)`` -> ``scalar * sum(tensor)``
 
-        See ***TODO***
+        See :func:`local_sum_mul_by_scalar`
 
     neg_neg              
         Composition of two negatives can be cancelled out.
 
-        See ***TODO***
+        See :func:`local_neg_neg`
 
     neg_div_neg          
         Matching negatives in both the numerator and denominator can both be removed.
 
-        See ***TODO***
+        See :func:`local_neg_div_neg`
 
     add specialization       
         This optimization simplifies expressions involving the addition of
         zero.
         
-        See ***TODO***
+        See :func:`local_add_specialize`
 
     mul specialization       
         Several special cases of mul() exist, and this optimization tries to
@@ -142,7 +176,7 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         * ``mul(x,0)`` -> ``zeros_like(x)``
         * ``mul(x, -1)`` -> ``neg(x)``
         
-        See ***TODO***
+        See :func:`local_mul_specialize`
 
     pow specialization       
         Several special cases of pow() exist, and this optimization tries to
@@ -151,14 +185,15 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         * ``pow(x,0)`` -> ``ones_like(x)``
         * ``pow(x, -0.5)`` -> ``inv(sqrt(x))``
         
-        See also ***TODO***
+        See :func:`local_pow_specialize`
+        
 
     inplace_setsubtensor 
         In order to be a pure Op, setsubtensor must copy its entire input, and
         modify just the subtensor in question (possibly a single element).  It
         is much more efficient to modify that element inplace.
 
-        See ***TODO***
+        See :func:`local_inplace_setsubtensor`
 
     gemm                 
         Numerical libraries such as MKL and ATLAS implement the BLAS-level-3
@@ -170,7 +205,7 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         expressions into one or more instances of this motif, and replace them
         each with a single `Gemm` Op.
 
-        See ***TODO***
+        See :class:`GemmOptimizer`
 
     inplace_elemwise
         When one of the inputs to an elementwise expression has the same type
@@ -178,17 +213,23 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         the elemwise expression is evaluated, then we can reuse the storage of
         the input to store the output.
 
-        See ***TODO***
+        See :func:`insert_inplace_optimizer`
 
     inplace_random       
         Typically when a graph uses random numbers, the RandomState is stored
         in a shared variable, used once per call and, updated after each function
         call.  In this common case, it makes sense to update the random number generator in-place.
 
-        See ***TODO***
+        See :func:`random_make_inplace`
 
-    elemwise fusion
-        See ***TODO***
+    elemwise fusion 
+        This optimization compresses subgraphs of computationally cheap
+        elementwise operations into a single Op that does the whole job in a
+        single pass over the inputs (like loop fusion).  This is a win when
+        transfer from main memory to the CPU (or from graphics memory to the
+        GPU) is a bottleneck.
+
+        See :class:`FusionOptimizer`
 
     GPU transfer
         The current strategy for choosing which expressions to evaluate on the
@@ -200,15 +241,16 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         copying the output of a Op with a GPU implementation to the GPU, 
         then we substitute the GPU version for the CPU version.  In this way, if all goes well,
         this procedure will result in a graph with the following form:
-            1. copy non-shared inputs to GPU
-            2. carry out most/all computations on the GPU
-            3. copy output back to CPU
+
+        1. copy non-shared inputs to GPU
+        2. carry out most/all computations on the GPU
+        3. copy output back to CPU
 
         When using a GPU, :func:`shared()` will default to GPU storage for
         'float32' ndarray arguments, and these shared variables act as seeds
         for the greedy algorithm.
 
-        See ***TODO***
+        See :func:`theano.sandbox.cuda.opt.*`.
 
 
 
