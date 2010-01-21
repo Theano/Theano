@@ -38,11 +38,20 @@ details about these building blocks see :ref:`variable`, :ref:`op`,
 
 **Diagram**
 
+.. _tutorial-graphfigure: 
+
 .. figure:: apply.png 
     :align: center
 
+    Interaction between instances of Apply (blue), Variable (red), Op (green),
+    and Type (purple).
 
-Arrows represent references to the Python objects pointed at. The blue
+.. # COMMENT
+    WARNING: hyper-links and ref's seem to break the PDF build when placed
+    into this figure caption.
+
+Arrows in this :ref:`figure <tutorial-graphfigure>` represent references to the 
+Python objects pointed at. The blue
 box is an :ref:`apply` node. Red boxes are :ref:`variable` nodes. Green
 circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
 
