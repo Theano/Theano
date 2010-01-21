@@ -14,33 +14,49 @@ def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
             N.array([dx,dy], dtype='float')))
 
 
-def conv(border_mode, subsample=(1,1), imshp=None, kshp=None, **kargs):
+def conv2d(input, filters, border_mode='valid', subsample=(1,1), 
+           image_shape=None, filter_shape=None, **kargs):
     """
     This fct return an instanciated ConvOp but give better name for some param.
     We do this instead of changing the ConvOp interface to don't change all code
     used up to now.
 
+    :type input: symbolic 4D tensor
+    :param input: tensor containing mini-batch of input feature maps
+    :type filters: symbolic 4D tensor
+    :param filters: tensor containing filters for convolutional neural net
     :type border_mode: string
     :param border_mode:'valid'(only apply kernel over complete patch of the image)
                        or 'full'(padd the image with 0 and apply the kernel over all full patch and partial patch of the image
     :type subsample: tuple of len 2
     :param subsample: how many pixel we move in the (row,col) direction of the image when we change of patch
-    :type imshp: tuple of len 4
-    :param imshp: (batch size, stack size, nb row, nb col)
-    :type kshp: tuple of len 4
-    :param kshp: (nb kernel, stack size, nb row, nb col)
+    :type image_shape: tuple of len 4
+    :param image_shape: (batch size, stack size, nb row, nb col)
+    :type filter_shape: tuple of len 4
+    :param filter_shape: (nb kernel, stack size, nb row, nb col)
     """
-    if imshp is not None and kshp is not None:
-        assert imshp[1]==kshp[1]
-        nkern = kshp[0]
-        bsize = imshp[0]
-        kshp = kshp[:2]
+
+    if image_shape and filter_shape:
+        assert image_shape[1]==filter_shape[1]
+
+    if filter_shape is not None:
+        nkern = filter_shape[0]
+        kshp = filter_shape[2:]
+    else:
+        nkern, kshp = None, None
+
+    if image_shape is not None:
+        bsize = image_shape[0]
         imshp = imshp[1:]
     else:
-        nkern, bsize = None, None
-        
-    return ConvOp(output_mode=border_mode, dx=subsample[0], dy=subsample[1],
-                  imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize,**kargs)
+        bsize, imshp = None, None
+
+     
+    op = ConvOp(output_mode=border_mode, dx=subsample[0], dy=subsample[1],
+                imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize,**kargs)
+
+    return op(input, filters)
+
 
 class ConvOp(Op):
     """
@@ -551,7 +567,7 @@ using namespace std;
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
             d["self_kshp_logical_offset_c"] = 0
-        else:
+        elif self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             rstride = d["self_kshp_logical_stride_r"]
             cstride = d["self_kshp_logical_stride_c"]
             d["self_kshp_logical_offset_r"] = (self.kshp_logical[0] - (self.kshp[0]*rstride) - 1+rstride) % rstride

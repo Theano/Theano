@@ -9,7 +9,7 @@ arrays efficiently. Theano features:
 * **tight integration with numpy** -- Use `numpy.ndarray` in Theano-compiled functions.
 * **near-transparent use of a GPU** -- Accelerate data-intensive calculations [JAN 2010].
 * **symbolic differentiation** -- Let Theano do your derivatives.
-* **speed and stability optimizations** -- Write ``log(1+exp(x))`` and get the right answer.
+* **speed and stability optimizations** -- Get the right answer for ``log(1+x)`` even when ``x`` is really tiny.
 * **dynamic C code generation** -- Evaluate expressions faster.
 
 Theano has been powering large-scale computationally intensive scientific investigations

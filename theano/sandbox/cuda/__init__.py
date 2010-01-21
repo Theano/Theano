@@ -61,7 +61,6 @@ except ImportError:
         set_cuda_disabled()
 
     if enable_cuda:
-        print __file__
 
         cuda_path=os.path.split(old_file)[0]
         code = open(os.path.join(cuda_path, "type_support.cu")).read()
@@ -115,6 +114,8 @@ def use(device=config.THEANO_GPU):
         # No successful call to use() has been made yet
         if device=="-1" or device=="CPU":
             return
+        if device in [None,""]:
+            device=0
         device=int(device)
         try:
             cuda_ndarray.gpu_init(device)
@@ -142,3 +143,6 @@ def handle_shared_float32(tf):
     else:
         raise NotImplementedError('removing our handler')
 
+
+if enable_cuda and config.THEANO_GPU not in [None, ""]:
+    use()

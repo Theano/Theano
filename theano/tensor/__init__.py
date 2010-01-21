@@ -24,6 +24,8 @@ from elemwise import \
 
 import sharedvar # adds shared-variable constructors
 
+import nnet # used for softmax, sigmoid, etc.
+
 
 
 

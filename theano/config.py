@@ -30,7 +30,7 @@ THEANO_BLAS_LDFLAGS = os.getenv('THEANO_BLAS_LDFLAGS','-lblas')
 
 #for gpu
 CUDA_ROOT = os.getenv('CUDA_ROOT')
-THEANO_GPU = os.getenv("THEANO_GPU",0)
+THEANO_GPU = os.getenv("THEANO_GPU")
 
 THEANO_DEFAULT_MODE = os.getenv('THEANO_DEFAULT_MODE','FAST_RUN')
 
