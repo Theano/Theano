@@ -120,5 +120,6 @@ class RandomStreams(raw_random.RandomStreamsBase):
         out.rng = random_state_variable
         out.update = (random_state_variable, new_r)
         self.state_updates.append(out.update)
+        random_state_variable.default_update = new_r
         return out
 
