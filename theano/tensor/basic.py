@@ -1438,6 +1438,10 @@ def log10(a):
     """base 10 logarithm of a"""
 
 @_scal_elemwise
+def log1p(a):
+    """log(1+a)"""
+
+@_scal_elemwise
 def sgn(a):
     """sign of a"""
 

@@ -1178,6 +1178,18 @@ class Log10(UnaryScalarOp):
         return "%(z)s = log10(%(x)s);" % locals()
 log10 = Log10(upgrade_to_float, name = 'log10')
 
+class Log1p(UnaryScalarOp):
+    """ log(1+x) """
+    def impl(self, x):
+        return numpy.log1p(x)
+    def grad(self, (x,), (gz,)):
+        return [gz / (1+x)]
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = log1p(%(x)s);" % locals()
+log1p = Log1p(upgrade_to_float, name = 'log1p')
+
 class Exp(UnaryScalarOp):
     def impl(self, x):
         return numpy.exp(x)
