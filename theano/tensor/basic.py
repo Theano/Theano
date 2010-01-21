@@ -1666,6 +1666,10 @@ def sum(input, axis = None):
 
 pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 
+@constructor
+def prod(input, axis = None):
+    """WRITEME"""
+    return elemwise.Prod(axis)(input)
 
 @constructor
 def mean(input, axis = None):
