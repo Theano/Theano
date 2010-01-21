@@ -10,4 +10,5 @@ Proposals for new/revised features
 
     pfunc
     noupdates
+    opt_patterns2
 

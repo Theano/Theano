@@ -87,11 +87,6 @@ Glossary of terminology
         Part of a function :term:`Mode` -- an object responsible for 'running'
         the compiled function.  Among other things, the linker determines whether computations are carried out with C or Python code.
         
-    Merge
-        A simple optimization in which redundant :term:`Apply` nodes are
-        combined.  For example, in ``function([x,y], [(x+y)*2, (x+y)*3])`` the merge
-        optimization will ensure that ``x`` and ``y`` are only added once.
-
     Mode 
         An object providing an :term:`optimizer` and a :term:`linker` that is
         passed to :term:`theano.function`.  It parametrizes how an expression

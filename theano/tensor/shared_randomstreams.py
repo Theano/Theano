@@ -22,7 +22,7 @@ def randomstate_constructor(value, name=None, strict=False):
             name=name,
             strict=strict)
 
-class RandomStreams(object):
+class RandomStreams(raw_random.RandomStreamsBase):
     """Module component with similar interface to numpy.random (numpy.random.RandomState)"""
 
     state_updates = []
@@ -100,7 +100,6 @@ class RandomStreams(object):
         """
         item.value = val
 
-
     def gen(self, op, *args, **kwargs):
         """Create a new random stream in this container.
 
@@ -122,65 +121,4 @@ class RandomStreams(object):
         out.update = (random_state_variable, new_r)
         self.state_updates.append(out.update)
         return out
-
-    def binomial(self, *args, **kwargs):
-        """Return a symbolic binomial sample
-
-        *args and **kwargs will be passed to numpy.random.RandomState.binomial
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.binomial, *args, **kwargs)
-
-    def uniform(self, *args, **kwargs):
-        """Return a symbolic uniform sample
-
-        *args and **kwargs will be passed to numpy.random.RandomState.uniform
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.uniform, *args, **kwargs)
-
-    def normal(self, *args, **kwargs):
-        """Return a symbolic normal sample
-
-        *args and **kwargs will be passed to numpy.random.RandomState.normal
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.normal, *args, **kwargs)
-
-    def random_integers(self, *args, **kwargs):
-        """Return a symbolic random integer sample
-
-        *args and **kwargs will be passed to numpy.random.RandomState.random_integers
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.random_integers, *args, **kwargs)
-
-    def permutation(self, *args, **kwargs):
-        """Return a symbolic permutation of integers
-
-        *args and **kwargs will be passed to numpy.random.RandomState.permutation
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.permutation, *args, **kwargs)
-
-    def multinomial(self, *args, **kwargs):
-        """Return a symbolic multinomial sample
-
-        This is a shortcut for a call to `self.gen`
-
-        *args and **kwargs will be passed to numpy.random.RandomState.multinomial
-        """
-        return self.gen(raw_random.multinomial, *args, **kwargs)
-
-    def shuffle_row_elements(self, input):
-        """Return a variable with every row (rightmost index) shuffled"""
-        perm = self.permutation(input.ndim-1, input.shape[:-1], input.shape[-1])
-        shuffled = permute_row_elements(input, perm)
-        return shuffled
-
 

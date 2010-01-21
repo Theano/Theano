@@ -329,7 +329,7 @@ class ConvOp(Op):
             rstride = int(N.ceil(kshp_logical[0] / float(kshp[0])))
             cstride = int(N.ceil(kshp_logical[1] / float(kshp[1])))
             buf = N.zeros((nkern,stacklen)+ self.kshp_logical, dtype=filtersflipped.dtype)
-            if kshp_logical_top_aligned:
+            if self.kshp_logical_top_aligned:
                 roffset=coffset=0
             else:
                 roffset=(kshp_logical[0] - (kshp[0]*rstride) - 1+rstride) % rstride
@@ -366,6 +366,9 @@ class ConvOp(Op):
         """
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             raise NotImplementedError('todo')
+
+        if self.dx!=1 or self.dy!=1:
+            raise Exception("ERROR: We disable ConvOp.grad now when dx!=1 or dy!=1 as we think their is a high probability of bug in it. We need to raise the error on the gradient to .1!")
 
         all_shape = self.imshp is not None and self.kshp is not None and self.nkern is not None and self.bsize is not None
 

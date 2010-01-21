@@ -498,7 +498,7 @@ class TestConvOp(unittest.TestCase):
         imshps = [(2,3,4)]
         modes = ['valid', 'full']
         unroll = [(0,0,True),(1,1,False),(2,3,False),(1,1,False),(0,0,False)]#(batch,kern,patch)
-        ssizes = [(1,1),(2,2)]
+        ssizes = [(1,1)]#,(2,2)]#grad for ss!=(1,1) is currently disabled!
 
         for typ in types:
             imgs  = T.TensorType(typ, (False, False, False, False),'imgs')
@@ -550,8 +550,8 @@ class TestConvOp(unittest.TestCase):
                                     print mode, imshp, kshp, un_b, un_k, ss
                                     #TODO the tolerance needed to pass is very high for float32(0.17). Is this acceptable? Expected?
 				    tol = None
-				    if typ=="float32":
-					tol = 0.17
+                                    if typ=="float32" and (ss[0]!=1 or ss[1]!=1):
+					tol = 0.1
                                     utt.verify_grad(test_i, [imgvals],
                                                     cast_to_output_type=True,
                                                     tol=tol)

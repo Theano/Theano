@@ -73,6 +73,8 @@ class Optimizer(object):
         """
         pass
 
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
 
 class FromFunctionOptimizer(Optimizer):
     """WRITEME"""
@@ -80,6 +82,11 @@ class FromFunctionOptimizer(Optimizer):
         self.apply = fn
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
+
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s id=%i" %(' '*level, 
+                str(self.apply),
+                id(self))
 
 def optimizer(f):
     """decorator for FromFunctionOptimizer"""
@@ -136,6 +143,12 @@ class SeqOptimizer(Optimizer, list):
 
     def __repr__(self):
         return list.__repr__(self)
+
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s (%i)" %(' '*level, self.__class__.__name__, id(self))
+        for opt in self:
+            opt.print_summary(stream, level=level+2)
+
 
 
 
@@ -354,6 +367,8 @@ class LocalOptimizer(object):
         This is the place to do it."""
         env.extend(toolbox.ReplaceValidate())
 
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
@@ -364,6 +379,10 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
         return self._tracks
     def __str__(self):
         return getattr(self, 'name', '<FromFunctionLocalOptimizer instance>')
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s id=%i" %(' '*level, 
+                str(self.transform),
+                id(self))
 
 def local_optimizer(*tracks):
     def decorator(f):
@@ -387,6 +406,11 @@ class LocalOptGroup(LocalOptimizer):
             repl = opt.transform(node)
             if repl:
                 return repl
+
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
+        for lopt in self.opts:
+            lopt.print_summary(stream, level=level+2)
 
 
 class _LocalOpKeyOptGroup(LocalOptGroup):
@@ -465,6 +489,12 @@ class OpRemove(LocalOptimizer):
 
     def __str__(self):
         return "%s(x) -> x" % (self.op)
+
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s(%s) id=%i" %(' '*level, 
+                self.__class__.__name__, 
+                str(self.op),
+                id(self))
 
 
 class PatternSub(LocalOptimizer):
@@ -618,6 +648,12 @@ class PatternSub(LocalOptimizer):
     def __repr__(self):
         return str(self)
 
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s(%s, %s) id=%i" %(' '*level, 
+                self.__class__.__name__, 
+                str(self.in_pattern),
+                str(self.out_pattern),
+                id(self))
 
 
 ##################
@@ -772,6 +808,11 @@ class NavigatorOptimizer(Optimizer):
         if self.local_opt:
             self.local_opt.add_requirements(env)
 
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s (%i)" %(' '*level, self.__class__.__name__, id(self))
+        self.local_opt.print_summary(stream, level=level+2)
+
+
 class TopoOptimizer(NavigatorOptimizer):
     """WRITEME"""
 
@@ -805,6 +846,7 @@ class TopoOptimizer(NavigatorOptimizer):
             self.detach_updater(env, u)
             raise
         self.detach_updater(env, u)
+
 
 
 class OpKeyOptimizer(NavigatorOptimizer):
@@ -919,6 +961,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         if max_use_abort:
             print >> sys.stderr, "WARNING: EquilibriumOptimizer max'ed out"
 
+    def print_summary(self, stream=sys.stdout, level=0):
+        print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
+        for lopt in self.local_optimizers:
+            lopt.print_summary(stream, level=level+2)
 
 
 #################
