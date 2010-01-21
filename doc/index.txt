@@ -33,7 +33,8 @@ Roughly in order of what you'll want to check out:
 
 * :ref:`introduction` -- What is Theano?
 * :ref:`tutorial` -- Learn the basics.
-* :ref:`libdoc` -- All Theano's functionality, module by module.
+* :ref:`libdoc` -- Theano's functionality, module by module.
+* :ref:`optimizations` -- Guide to Theano's graph optimizations.
 * :ref:`extending` -- Learn to add a Type, Op, or graph optimization.
 * :ref:`internal` -- How to maintaining Theano, LISA-specific tips, and more...
 * `API <api/>`_ -- The automatically-generated API
@@ -60,6 +61,7 @@ Community
    install
    tutorial/index
    library/index
+   optimizations
    extending/index
    glossary
    links

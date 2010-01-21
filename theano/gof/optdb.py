@@ -95,6 +95,11 @@ class DB(object):
         for variable in variables:
             return variable
 
+    def print_summary(self, stream=sys.stdout):
+        print >> stream, "%s (id %i)"%(self.__class__.__name__, id(self))
+        print >> stream, "  names", self._names
+        print >> stream, "  db", self.__db__
+
 
 class Query(object):
 

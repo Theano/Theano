@@ -35,7 +35,7 @@ limited to:
 * using inplace operations wherever it does not interfere with aliasing
 * loop fusion for elementwise sub-expressions
 * improvements to numerical stability (e.g.  :math:`\log(1+\exp(x))` and :math:`\log(\sum_i \exp(x[i]))`)
-* for a complete list, see :ref:`_optimizations`
+* for a complete list, see :ref:`optimizations`
 
 Theano was written at the LISA_ lab to support rapid development of
 efficient machine learning algorithms. Theano is

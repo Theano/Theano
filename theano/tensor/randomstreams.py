@@ -6,7 +6,7 @@ import numpy
 
 from theano.compile import module, In, Component
 from theano.gof import Container
-from theano.tensor import raw_random, permute_row_elements
+from theano.tensor import raw_random
 
 class RandomStreamsInstance(object):
     """RandomStreamsInstance"""
@@ -86,7 +86,7 @@ class RandomStreamsInstance(object):
                 return
         raise KeyError(item)
 
-class RandomStreams(Component):
+class RandomStreams(Component, raw_random.RandomStreamsBase):
     """Module component with similar interface to numpy.random (numpy.random.RandomState)"""
 
     random_state_variables = []
@@ -146,53 +146,4 @@ class RandomStreams(Component):
         out.rng = random_state_variable
         self.random_state_variables.append((random_state_variable, new_r))
         return out
-
-    def binomial(self, *args, **kwargs):
-        """Return a symbolic binomial sample
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.binomial, *args, **kwargs)
-
-    def uniform(self, *args, **kwargs):
-        """Return a symbolic uniform sample
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.uniform, *args, **kwargs)
-
-    def normal(self, *args, **kwargs):
-        """Return a symbolic normal sample
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.normal, *args, **kwargs)
-
-    def random_integers(self, *args, **kwargs):
-        """Return a symbolic random integer sample
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.random_integers, *args, **kwargs)
-
-    def permutation(self, *args, **kwargs):
-        """Return a symbolic permutation of integers
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.permutation, *args, **kwargs)
-
-    def multinomial(self, *args, **kwargs):
-        """Return a symbolic multinomial sample
-
-        This is a shortcut for a call to `self.gen`
-        """
-        return self.gen(raw_random.multinomial, *args, **kwargs)
-
-    def shuffle_row_elements(self, input):
-        """Return a variable with every row (rightmost index) shuffled"""
-        perm = self.permutation(input.ndim-1, input.shape[:-1], input.shape[-1])
-        shuffled = permute_row_elements(input, perm)
-        return shuffled
-
 

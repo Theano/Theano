@@ -1,0 +1,167 @@
+
+.. _libdoc_tensor_raw_random:
+
+=============================================
+:mod:`raw_random` -- Low-level random numbers
+=============================================
+
+.. module:: raw_random
+   :platform: Unix, Windows
+   :synopsis: symbolic random variables
+.. moduleauthor:: LISA
+
+
+Raw random provides the random-number drawing functionality, that underlies
+the friendlier :class:`RandomStreams` interface.
+
+Reference
+=========
+
+.. class:: RandomStateType(gof.Type)
+
+    A `Type` for variables that will take ``numpy.random.RandomState`` values.
+
+.. function:: random_state_type(name=None)
+
+    Return a new Variable whose ``.type`` is ``random_state_variable``.
+
+.. class:: RandomFunction(gof.Op)
+
+    Op that draws random numbers from a numpy.RandomState object.  This Op is
+    parametrized to draw numbers from many possible distributions.
+
+.. function:: uniform(random_state, size=(), low=0.0, high=1.0)
+
+    Sample from a uniform distribution between low and high.
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: binomial(random_state, size=(), n=1, p=0.5)
+
+    Sample n times with probability of success prob for each trial,
+    return the number of successes.
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: normal(random_state, size=(), avg=0.0, std=1.0)
+
+    Sample from a normal distribution centered on avg with
+    the specified standard deviation (std)
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: random_integers(random_state, size=(), low=0, high=1)
+
+    Sample a random integer between low and high, both inclusive.
+
+    If the size argument is ambiguous on the number of
+    dimensions, the first argument may be a plain integer
+    to supplement the missing information.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: permutation(random_state, size=(), n=1)
+
+    Returns permutations of the integers between 0 and n-1, as many times
+    as required by size. For instance, if size=(p,q), p*q permutations
+    will be generated, and the output shape will be (p,q,n), because each
+    permutation is of size n.
+
+    If the size argument is ambiguous on the number of dimensions, the first
+    argument may be a plain integer i, which should correspond to len(size).
+    Note that the output will then be of dimension i+1.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: multinomial(random_state, size=(), p_vals=[0.5, 0.5])
+
+    Sample from a multinomial distribution defined by probabilities pvals,
+    as many times as required by size. For instance, if size=(p,q), p*q
+    samples will be drawn, and the output shape will be (p,q,len(pvals)).
+
+    If the size argument is ambiguous on the number of dimensions, the first
+    argument may be a plain integer i, which should correspond to len(size).
+    Note that the output will then be of dimension i+1.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. class:: RandomStreamsBase(object)
+
+    .. method:: binomial(self, size=(), n=1, prob=0.5, ndim=None):
+
+        Sample n times with probability of success prob for each trial, return the number of
+        successes.
+
+        If the size argument is ambiguous on the number of dimensions, the first argument may be a
+        plain integer to supplement the missing information.
+
+    .. method:: uniform(self,  size=(), low=0.0, high=1.0, ndim=None):
+
+        Sample a tensor of given size whose element from a uniform distribution between low and high.
+
+        If the size argument is ambiguous on the number of
+        dimensions, the first argument may be a plain integer
+        to supplement the missing information.
+
+    .. method:: normal(self, size=(), avg=0.0, std=1.0, ndim=None):
+
+        Usage: normal(random_state, size,
+        Sample from a normal distribution centered on avg with
+        the specified standard deviation (std)
+
+        If the size argument is ambiguous on the number of
+        dimensions, the first argument may be a plain integer
+        to supplement the missing information.
+
+    .. method:: random_integers(self, size=(), low=0, high=1, ndim=None):
+
+        Usage: random_integers(random_state, size, low=0, high=1)
+        Sample a random integer between low and high, both inclusive.
+
+        If the size argument is ambiguous on the number of
+        dimensions, the first argument may be a plain integer
+        to supplement the missing information.
+
+    .. method:: permutation(self, size=(), n=1, ndim=None):
+
+        Returns permutations of the integers between 0 and n-1, as many times
+        as required by size. For instance, if size=(p,q), p*q permutations
+        will be generated, and the output shape will be (p,q,n), because each
+        permutation is of size n.
+
+        Theano tries to infer the number of dimensions from the length of the size argument, but you
+        may always specify it with the `ndim` parameter.
+
+        .. note:: 
+            Note that the output will then be of dimension ndim+1.
+
+    .. method:: multinomial(self, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
+
+        Sample n times from a multinomial distribution defined by probabilities pvals,
+        as many times as required by size. For instance, if size=(p,q), p*q
+        samples will be drawn, and the output shape will be (p,q,len(pvals)).
+
+        Theano tries to infer the number of dimensions from the length of the size argument, but you
+        may always specify it with the `ndim` parameter.
+
+        .. note:: 
+            Note that the output will then be of dimension ndim+1.
+
+    .. method:: shuffle_row_elements(self, input):
+        
+        Return a variable with every row (rightmost index) shuffled.
+        
+        This uses permutation random variable internally, available via the ``.permutation``
+        attribute of the return value.
+    

@@ -101,6 +101,10 @@ def log_inplace(a):
     """base e logarithm of a (inplace on a)"""
 
 @_scal_inplace
+def log1p_inplace(a):
+    """log(1+a)"""
+
+@_scal_inplace
 def log2_inplace(a):
     """base 2 logarithm of a (inplace on a)"""
 

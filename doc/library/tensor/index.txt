@@ -18,6 +18,7 @@ sanity, they are grouped into the following sections:
     :maxdepth: 1
 
     basic
+    raw_random
     shared_randomstreams
     nnet
     signal

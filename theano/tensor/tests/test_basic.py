@@ -444,6 +444,17 @@ Log10InplaceTester = makeBroadcastTester(op = inplace.log10_inplace,
                                           grad = _grad_broadcast_unary_positive,
                                           inplace = True)
 
+Log1pTester = makeBroadcastTester(op = log1p,
+                                  expected = numpy.log1p,
+                                  good = _good_broadcast_unary_positive,
+                                  grad = _grad_broadcast_unary_positive)
+Log1pInplaceTester = makeBroadcastTester(op = inplace.log1p_inplace,
+                                         expected = numpy.log1p,
+                                         good = _good_broadcast_unary_positive,
+                                         grad = _grad_broadcast_unary_positive,
+                                         inplace = True)
+
+
 SqrtTester = makeBroadcastTester(op = sqrt,
                                    expected = numpy.sqrt,
                                    good = _good_broadcast_unary_positive,
@@ -1088,9 +1099,7 @@ class test_bitwise(unittest.TestCase):
         self.failUnless(numpy.all(v == (~l)), (l, r, v))
 
 
-
 class T_add(unittest.TestCase):
-
     def setUp(self):
         utt.seed_rng()
 
@@ -1117,8 +1126,11 @@ class T_add(unittest.TestCase):
     def test_grad_col(self):
         utt.verify_grad(add, [numpy.random.rand(3, 5), numpy.random.rand(3, 1)])
 
-class T_exp(unittest.TestCase):
+class T_ceil(unittest.TestCase):
+    def test_complex(self):
+        self.assertRaises(TypeError, ceil, zvector())
 
+class T_exp(unittest.TestCase):
     def test_grad_0(self):
         utt.verify_grad(exp, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
@@ -1127,6 +1139,19 @@ class T_exp(unittest.TestCase):
         utt.verify_grad(inplace.exp_inplace, [
             numpy.asarray([[ 1.5089518 ,  1.48439076, -4.7820262 ],
             [ 2.04832468,  0.50791564, -1.58892269]])])
+
+    def test_int(self):
+        x = ivector()
+        f = function([x], exp(x))
+        exp_3 = f([3])
+        assert exp_3.dtype == 'float64'
+
+    def test_complex(self):
+        x = zvector()
+        assert exp(x).dtype == 'complex128'
+        f = function([x], exp(x))
+        exp_3 = f([3+2j])
+        assert numpy.allclose(exp_3, numpy.exp(3+2j))
 
 class T_divimpl(unittest.TestCase):
     def test_impls(self):
