@@ -91,7 +91,6 @@ class T_Scan(unittest.TestCase):
         utt.seed_rng()
 
 
-
     # generator network, only one output , type scalar ; no sequence or 
     # non sequence arguments
     def test_1(self):
@@ -243,9 +242,11 @@ class T_Scan(unittest.TestCase):
         Y = theano.sandbox.scan.scan(f_rnn_shared, u,x0, [], \
                  sequences_taps = {0:[-2]}, outputs_taps = {0:[-1,-2]})
 
-        f7 = theano.function([u,x0], Y)
-        
-        #print f7([1,2,3,4],[1,2])
+        f7   = theano.function([u,x0], Y)
+        v_u  = numpy.asarray([1.,2.,3.,4.])
+        v_x0 = numpy.asarray([1.,2.])
+        out  = numpy.asarray([3.1,5.3])
+        assert (compareArrays( out, f7(v_u, v_x0)))
         
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables and past 
@@ -263,16 +264,46 @@ class T_Scan(unittest.TestCase):
         Y = theano.sandbox.scan.scan(f_rnn_shared, u,x0, [], \
                  sequences_taps = {0:[-2,2]}, outputs_taps = {0:[-1,-2]})
 
-        f8 = theano.function([u,x0], Y)
-        
-        #print f8([1,2,3,4,5,6],[1,2])
-        
+        f8   = theano.function([u,x0], Y)
+        v_u  = numpy.array([1.,2.,3.,4.,5.,6.])
+        v_x0 = numpy.array([1.,2.])
+        out  = numpy.array([3.6, 6.4])
 
+        assert (compareArrays( out, f8(v_u, v_x0) ) )
+        
+    '''
+    # simple rnn ; compute inplace
+    def test_9(self):
+        
+        u    = theano.tensor.dvector()
+        mu   = theano.Param( u, mutable = True)
+        x0   = theano.tensor.dvector()
+        W_in = theano.shared(.1)
+        W    = theano.shared(1.)
 
+        def f_rnn_shared(u_t, x_tm1):
+            return (u_t*W_in + x_tm1*W, {})
+        Y = theano.sandbox.scan.scan(f_rnn_shared, u, x0,[], \
+                    inplace_map={0:0} )
+        f9   = theano.function([mu,x0], Y , #mode = 'FAST_RUN')
+                                mode = 'DEBUG_MODE')
+        v_u  = numpy.array([1.,2.,3.])
+        v_x0 = numpy.array([1.])
+
+        out = f9(v_u, v_x0)
+        v_out = numpy.array([1.1,1.3,1.6])
+
+        assert (compareArrays(out, v_out))
+        print v_u
+        assert (compareArrays(v_u, out))
+
+    '''
+    # test gradient simple network 
+    def test_10(self):
+        pass
 
     '''
      TO TEST: 
-        - test taps (for sequences and outputs )
         - test gradient (one output)
         - test gradient (multiple outputs)
         - test gradient (go_bacwards) 
@@ -280,7 +311,6 @@ class T_Scan(unittest.TestCase):
         - test gradient (truncate_gradient)
         - test gradient (force_gradient)
         - test_gradient (taps past/future)
-        - test inplace map
     '''
 
 

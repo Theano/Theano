@@ -13,28 +13,23 @@ def info(*msg):
     _logger.info('INFO theano.scan: '+' '.join(msg))
 
 
-# Hashing a list; list used by scan are list of numbers, therefore a list 
-# can be hashed by hashing all elements in the list
-def hash_list(list):
+# Hashing a dictionary or a list or a tuple or any type that is hashable with
+# the hash() function
+def hash_listsDictsTuples(x):
     hash_value = 0
-    for v in list:
-        hash_value ^= hash(v)
+    if type(x) == dict :
+        for k,v in x.iteritems():
+            hash_value ^= hash_listsDictsTuples(k)
+            hash_value ^= hash_listsDictsTuples(v)
+    elif type(x) in (list,tuple):
+        for v in x:
+            hash_value ^= hash_listsDictsTuples(v)
+    else:
+      try:
+        hash_value ^= hash(x)
+      except:
+        pass
     return hash_value
-
-
-# Hashing a dictionary; the dictionary used by scan has as keys numbers and 
-# as values either numbers or list of numbers
-def hash_dict(dictionary):
-    hash_value = 0
-    for k,v in dictionary.iteritems():
-        # hash key
-        hash_value ^= hash(k)
-        if type(v) in (list,tuple):
-            hash_value ^= hash_list(v)
-        else:
-            hash_value ^= hash(v)
-    return hash_value
-
 
 def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, 
          sequences_taps={}, outputs_taps = {},
@@ -174,7 +169,8 @@ class Scan(theano.Op):
 
         self.destroy_map = {}
         if inplace:
-            self.destroy_map = inplace_map
+            for i in inplace_map.keys():
+                self.destroy_map.update({i: [inplace_map[i]] } )
 
         self.seqs_taps      = seqs_taps
         self.outs_taps      = outs_taps
@@ -192,13 +188,25 @@ class Scan(theano.Op):
    
         self.fn = theano.function(inputs,outputs, \
                                    updates = updates, mode = mode)
-
+        
         g_y = [outputs[0].type()]
-        g_args = theano.tensor.grad(outputs[0],inputs, g_cost = g_y[-1])
+
+        def compute_gradient(y, g_y):
+            gmap = theano.gradient.grad_sources_inputs( \
+                        [(y,g_y)], theano.gof.graph.inputs([y]), False)
+            def zero(p):
+              return theano.tensor.TensorConstant(theano.tensor.TensorType(\
+                      dtype=p.type.dtype, broadcastable=[]),
+                      numpy.asarray(0,dtype = p.type.dtype))
+
+            return [gmap.get(p, zero(p)) for p in inputs]
+
+
+        g_args = compute_gradient( outputs[0], g_y[-1]) 
         # for all outputs compute gradients and then sum them up
         for y in outputs[1:]:
             g_y += [y.type()]
-            g_args_y = theano.tensor.grad(y,inputs, g_cost=g_y[-1])
+            g_args_y = compute_gradient( y,g_y[-1])
             for i in xrange(len(g_args)):
                 g_args[i] += g_args_y[i]
 
@@ -244,6 +252,7 @@ class Scan(theano.Op):
                (self.n_outs == other.n_outs) and\
                (self.n_args == other.n_args)
       return rval
+      
 
     def __hash__(self):
       return hash(type(self)) ^ \
@@ -254,13 +263,13 @@ class Scan(theano.Op):
              hash(self.go_backwards) ^\
              hash(self.truncate_gradient) ^\
              hash(self.n_args) ^ \
-             hash_list(self.outputs) ^ \
-             hash_list(self.inputs) ^ \
-             hash_list(self.g_ins) ^ \
-             hash_list(self.g_outs) ^ \
-             hash_dict(self.seqs_taps) ^\
-             hash_dict(self.outs_taps) ^\
-             hash_dict(self.updates)
+             hash_listsDictsTuples(self.outputs) ^ \
+             hash_listsDictsTuples(self.inputs) ^ \
+             hash_listsDictsTuples(self.g_ins) ^ \
+             hash_listsDictsTuples(self.g_outs) ^ \
+             hash_listsDictsTuples(self.seqs_taps) ^\
+             hash_listsDictsTuples(self.outs_taps) ^\
+             hash_listsDictsTuples(self.updates)
 
 
 

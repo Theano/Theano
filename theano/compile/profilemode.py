@@ -4,6 +4,7 @@ from theano.gof.link import WrapLinkerMany
 from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers, default_linker, default_optimizer
 from theano.gof.cc import OpWiseCLinker
+from theano.gof.python25 import any
 from theano import gof
 import theano.config as config
 
