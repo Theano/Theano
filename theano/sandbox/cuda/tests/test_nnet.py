@@ -30,6 +30,8 @@ def get_mode(use_gpu):
         ret = theano.compile.ProfileMode()
     if use_gpu:
         ret = ret.including('gpu')
+    else:
+        ret = ret.excluding('gpu')
     return ret
 
 def print_mode(mode):
