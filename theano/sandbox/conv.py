@@ -37,7 +37,6 @@ def conv2d(input, filters, border_mode='valid', subsample=(1,1),
     :type filter_shape: tuple of len 4
     :param filter_shape: (nb kernel, stack size, nb row, nb col)
     """
-
     if image_shape and filter_shape:
         assert image_shape[1]==filter_shape[1]
 
@@ -49,11 +48,15 @@ def conv2d(input, filters, border_mode='valid', subsample=(1,1),
 
     if image_shape is not None:
         bsize = image_shape[0]
-        imshp = imshp[1:]
+        imshp = image_shape[1:]
     else:
         bsize, imshp = None, None
 
-     
+    print 'imshp = ', imshp
+    print 'kshp = ', kshp
+    print 'nkern = ', nkern
+    print 'bsize = ', bsize
+
     op = ConvOp(output_mode=border_mode, dx=subsample[0], dy=subsample[1],
                 imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize,**kargs)
 
