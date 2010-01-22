@@ -2,7 +2,7 @@
 
 import sys, traceback, logging
 import numpy
-import theano.config as config
+from ..configparser import config
 from theano.gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox)
@@ -33,7 +33,7 @@ def ldflags(libs=True, flags=False):
     Default: ['blas'], but environment variable THEANO_BLAS_LDFLAGS overrides this.
     """
     rval = []
-    for t in config.THEANO_BLAS_LDFLAGS.split():
+    for t in config.blas.ldflags.split():
         try:
             t0, t1, t2 = t[0:3]
             assert t0 == '-'

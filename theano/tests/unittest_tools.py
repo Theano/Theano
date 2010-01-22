@@ -1,8 +1,12 @@
 import unittest
 import numpy
 import theano.tensor as T
-import theano.config as config
+from ..configparser import config, AddConfigVar, IntParam
 import os, sys
+
+AddConfigVar('unittests.rseed',
+        "Seed to use for randomized unit tests",
+        IntParam(666))
 
 def fetch_seed(pseed=None):
     """
@@ -17,7 +21,7 @@ def fetch_seed(pseed=None):
     >>> rng = numpy.random.RandomState(unittest_tools.fetch_seed())
     """
      
-    seed = pseed or config.THEANO_UNITTEST_SEED
+    seed = pseed or config.unittests.rseed
     if seed=='random':
       seed = None
     #backport

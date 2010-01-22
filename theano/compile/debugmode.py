@@ -11,7 +11,7 @@ from theano.gof import Env, graph, utils, link
 from theano.gof.link import WrapLinkerMany, raise_with_op
 #from theano.gof.cutils import run_cthunk
 from theano.gof.cc import OpWiseCLinker, CLinker
-import theano.config as config
+from ..configparser import config
 from theano.compile.function_module import (FunctionMaker,
         Function, 
         infer_reuse_pattern,
@@ -1375,27 +1375,27 @@ class DebugMode(Mode):
 
     """
 
-    stability_patience = config.THEANO_DEBUGMODE_PATIENCE
+    stability_patience = config.DebugMode.patience
     """
     When checking for the stability of optimization, recompile the graph this many times.
     """
 
-    check_c_code = config.THEANO_DEBUGMODE_CHECK_C
+    check_c_code = config.DebugMode.check_c
     """
     Should we evaluate (and check) the `c_code` implementations?
     """
 
-    check_py_code = config.THEANO_DEBUGMODE_CHECK_PY
+    check_py_code = config.DebugMode.check_py
     """
     Should we evaluate (and check) the `perform` implementations?
     """
 
-    check_isfinite = config.THEANO_DEBUGMODE_CHECK_FINITE
+    check_isfinite = config.DebugMode.check_finite
     """
     Should we check for (and complain about) NaN/Inf ndarray elements?
     """
 
-    require_matching_strides = config.THEANO_DEBUGMODE_CHECK_STRIDES
+    require_matching_strides = config.DebugMode.check_strides
     """
     Should we check for (and complain about) Ops whose python and C outputs are ndarrays with
     different strides? (This can catch bugs, but is generally overly strict.) 0 no check, 1 warn, 2 err.

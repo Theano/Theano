@@ -7,7 +7,7 @@ import numpy
 from theano import gof
 from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
 from theano.gof.python25 import partial, all, any
-import theano.config as config
+from ..configparser import config
 
 def upcast(dtype, *dtypes):
     z = numpy.zeros((), dtype = dtype)
@@ -77,18 +77,18 @@ class Scalar(Type):
 
     def c_headers(self):
         l=['<math.h>']
-        if config.config.getboolean('lib.amdlibm'):
+        if config.lib.amdlibm:
             l+=['<amdlibm.h>']
         return l
 
     def c_libraries(self):
         l=[]
-        if config.config.getboolean('lib.amdlibm'):
+        if config.lib.amdlibm:
             l+=['amdlibm']
         return l
 
     def c_compile_args(self):
-        if config.config.getboolean('lib.amdlibm'):
+        if config.lib.amdlibm:
             return ['-DREPLACE_WITH_AMDLIBM']
         else: return []
 

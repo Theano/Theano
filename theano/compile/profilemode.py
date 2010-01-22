@@ -6,7 +6,7 @@ from theano.compile.mode import Mode, register_mode, predefined_modes, predefine
 from theano.gof.cc import OpWiseCLinker
 from theano.gof.python25 import any
 from theano import gof
-import theano.config as config
+from ..configparser import config
 
 import_time = time.time()
 
@@ -83,8 +83,8 @@ class ProfileMode(Mode):
         self._optimizer = optimizer
 
     def print_summary(self, 
-                      n_apply_to_print=config.config.getint("ProfileMode.n_apply_to_print", None),
-                      n_ops_to_print=config.config.getint("ProfileMode.n_ops_to_print", None)):
+                      n_apply_to_print=config.ProfileMode.n_apply_to_print,
+                      n_ops_to_print=config.ProfileMode.n_ops_to_print):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
 
         The Apply-wise summary print the timing information for the worst offending Apply nodes. This corresponds to individual Op applications within your graph which take the longest to execute (so if you use dot twice, you will see two entries there). 

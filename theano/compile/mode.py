@@ -4,7 +4,7 @@ import os, logging
 
 import numpy
 from theano import gof
-import theano.config as config
+from ..configparser import config
 
 _logger = logging.getLogger('theano.compile.mode')
 
@@ -225,7 +225,7 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
 # is not set, it will default to 'FAST_RUN'
 # keep default_mode.optimizer==default_optimizer and default_mode.linker==default_linker!
 ##
-default_mode = config.THEANO_DEFAULT_MODE
+default_mode = config.mode
 
 def get_mode(string):
     if string is None: string = default_mode
