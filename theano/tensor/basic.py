@@ -4,7 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
-import theano.config as config  # for THEANO_CMP_SLOPPY
+from ..configparser import config
 import traceback #for overriding Op.__call__
 if sys.version_info >= (2,5):
   import functools
@@ -260,7 +260,7 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
-if int(config.THEANO_CMP_SLOPPY)>1:
+if int(config.tensor.cmp_sloppy)>1:
     # This environment variable is a quick-and-dirty way to get low-precision comparisons.
     # For a more precise setting of these tolerances set them explicitly in your user code by
     # assigning, for example, "theano.tensor.basic.float32_atol = ..."
@@ -270,7 +270,7 @@ if int(config.THEANO_CMP_SLOPPY)>1:
     float32_rtol = 1e-3 
     float64_rtol = 1e-4
     float64_atol = 1e-3
-elif int(config.THEANO_CMP_SLOPPY):
+elif int(config.tensor.cmp_sloppy):
     float32_atol = 1e-4
     float32_rtol = 1e-3 
     float64_rtol = 1e-4
