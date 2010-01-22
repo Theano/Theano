@@ -5,29 +5,148 @@
 Loading and Saving
 ==================
 
-Many Theano objects can be serialized.  However, you will want to consider different mechanisms
-depending on the amount of time you anticipate between saving and reloading.  For short-term
-(such as temp files and network transfers) pickling is possible.  For longer-term (such as
-saving models from an experiment) you should not rely on pickled theano objects; we recommend
-loading and saving the underlying shared objects as you would in the course of any other python
-program.
+Python's standard way of saving class instances and reloading them
+is the pickle_ mechanism. Many Theano objects can be serialized (and
+deserialized) by ``pickle``, however, a limitation of ``pickle`` is that
+it does not save the code or data of a class along with the instance of
+the class being serialized. As a result, reloading objects created by a
+previous version of a class can be really problematic.
 
-pickling -- Short-term serialization
-=====================================
-
-Pickling and unpickling of functions. Caveats... basically don't do this for long-term storage.
-
-***TODO***
-
-not-pickling -- Long-term serialization
-=======================================
-
-***TODO***
-
-Give a short example of how to add a __getstate__ and __setstate__ to a class.  Point out to
-use protocol=-1 for numpy ndarrays.
-
-Point to the python docs for further reading.
+Thus, you will want to consider different mechanisms depending on
+the amount of time you anticipate between saving and reloading.  For
+short-term (such as temp files and network transfers), pickling of
+the Theano objects or classes is possible.  For longer-term (such as
+saving models from an experiment) you should not rely on pickled Theano
+objects; we recommend loading and saving the underlying shared objects
+as you would in the course of any other Python program.
 
 
+.. _pickle: http://docs.python.org/library/pickle.html
+
+
+The basics of pickling
+======================
+
+The two modules ``pickle`` and ``cPickle`` have the same functionalities, but
+``cPickle``, coded in C, is much faster.
+
+>>> import cPickle
+
+You can serialize (or *save*, or *pickle*) objects to a file with
+``cPickle.dump``:
+
+>>> f = file('obj.save', 'wb')
+>>> cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+>>> f.close()
+
+.. note::
+
+    If you want your saved object to be stored efficiently, don't forget
+    to use ``cPickle.HIGHEST_PROTOCOL``, the resulting file can be
+    dozens of times smaller than with the default protocol.
+
+.. note::
+
+    Opening your file in binary mode (``'b'``) is required for portability
+    (especially between Unix and Windows).
+
+To de-serialize (or *load*, or *unpickle*) a pickled file, use
+``cPickle.load``:
+
+>>> f = file('obj.save', 'rb')
+>>> loaded_obj = cPickle.load(f)
+>>> f.close()
+
+
+You can pickle several objects into the same file, and load them all (in the
+same order):
+
+>>> f = file('objects.save', 'wb')
+>>> for obj in [obj1, obj2, obj3]:
+>>>     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+>>> f.close()
+
+Then:
+
+>>> f = file('objects.save', 'rb')
+>>> loaded_objects = []
+>>> for i in range(3):
+>>>     loaded_objects.append(cPickle.load(f))
+>>> f.close()
+
+For more details about pickle's usage, see
+`Python documentation <http://docs.python.org/library/pickle.html#usage>`_.
+
+
+Short-term serialization
+========================
+
+If you are confident that the class instance you are serializing will be
+deserialized by a compatible version of the code, pickling the whole model is
+an adequate solution. It would be the cas, for instance, if you are saving
+models and reloading them during the same execution of your program, or if the
+class you're saving has been really stable for a while.
+
+You can control what pickle will save from your object, by defining a
+`__getstate__
+<http://docs.python.org/library/pickle.html#object.__getstate__>`_ method,
+and similarly `__setstate__
+<http://docs.python.org/library/pickle.html#object.__getstate__>`_.
+
+This will be especially useful if, for instance, your model class contains a
+link to the data set currently in use, that you probably don't want to pickle
+along every instance of your model.
+
+For instance, you can define functions along the lines of:
+
+.. code-block:: python
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        del state['training_set']
+        return state
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self.training_set = cPickle.load(file(self.training_set_file, 'rb'))
+
+
+Long-term serialization
+=======================
+
+If the implementation of the class you want to save is quite unstable, for
+instance if functions are created or removed, class members are renamed, you
+should save and load only the immutable (and necessary) part of your class.
+
+You can do that by defining __getstate__ and __setstate__ functions as above,
+maybe defining the attributes you want to save, rather than the ones you
+don't.
+
+For instance, if the only parameters you want to save are a weight
+matrix ``W`` and a bias ``b``, you can define:
+
+.. code-block:: python
+
+    def __getstate__(self):
+        return (W, b)
+
+    def __setstate__(self, (W,b)):
+        self.W = W
+        self.b = b
+
+If, at some point in time, ``W`` is renamed to ``weights`` and ``b`` to
+``bias``, the older pickled files will still be usable, if you update these
+functions to reflect the change in name:
+
+.. code-block:: python
+
+    def __getstate__(self):
+        return (weights, bias)
+
+    def __setstate__(self, (W,b)):
+        self.weights = W
+        self.bias = b
+
+For more information on advanced use of pickle and its internals, see Python's
+pickle_ documentation.
 

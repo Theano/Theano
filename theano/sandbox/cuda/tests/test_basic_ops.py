@@ -18,6 +18,7 @@ except ImportError:
 import theano.sandbox.cuda as tcn
 import cuda_ndarray as cuda
 import theano.compile.mode
+from theano.tests import unittest_tools as utt
 
 mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
@@ -80,6 +81,41 @@ def test_sum():
         assert T.Sum in [x.op.__class__ for x in f.maker.env.toposort()]
         assert numpy.allclose(f2(val2),f(val))
         
+
+def test_reshape():
+
+    a = tcn.CudaNdarrayType((False,))()
+    b = tcn.CudaNdarrayType((False,False))()
+    c = T.reshape(a, [2,3])
+
+    #basic
+    f = theano.function([a], c)
+    fv = f(cuda_ndarray.CudaNdarray(numpy.asarray([0,1,2,3,4,5],dtype='float32')))
+    import pdb;pdb.set_trace()
+    assert numpy.all(fv == numpy.asarray([[0,1,2], [3,4,5]]))
+
+    #test that it works without inplace operations
+    a_val = cuda_ndarray.CudaNdarray(numpy.asarray([0,1,2,3,4,5],dtype='float32'))
+    a_val_copy = cuda_ndarray.CudaNdarray(numpy.asarray([0,1,2,3,4,5],dtype='float32'))
+    b_val = cuda_ndarray.CudaNdarray(numpy.asarray([[0,1,2],[3,4,5]],dtype='float32'))
+
+    f_sub = theano.function([a,b], c-b)
+    assert numpy.all(f_sub(a_val, b_val) == 0.0)
+    assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
+
+    #test that it works with inplace operations
+    a_val = numpy.asarray([0,1,2,3,4,5], dtype='float32')
+    a_val_copy = numpy.asarray([0,1,2,3,4,5], dtype='float32')
+    b_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float32')
+
+    f_sub = theano.function([a,b], c-b)
+    assert numpy.all(f_sub(a_val, b_val) == 0.0)
+    assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
+
+    # verify gradient
+    def just_vals(v):
+        return T.Reshape(2)(v, numpy.asarray([2,3], dtype='int32'))
+    utt.verify_grad(just_vals, [a_val])
 
 def test_elemwise0():
 

@@ -23,79 +23,8 @@ put random variables in your graph.  Theano will allocate a numpy RandomState
 object for each such variable, and draw from it as necessary.  I'll call this sort of sequence of
 random numbers a *random stream*.
 
-Brief example
--------------
-
-Here's a brief example.  The setup code is:
-
-.. code-block:: python
-
-    from theano.tensor.shared_randomstreams import RandomStreams
-    srng = RandomStreams(seed=234)
-    rv_u = srng.uniform((2,2))
-    rv_n = srng.normal((2,2))
-    f = function([], rv_u, updates=[rv_u.update])
-    g = function([], rv_n)                              #omitting rv_n.update
-    nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
-
-Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
-distribution.  Likewise,  'rv_n' represenents a random stream of 2x2 matrices of
-draws from a normal distribution.  The distributions that are implemented are
-defined in :class:`RandomStreams`.
-
-Now let's use these things.  If we call f(), we get random uniform numbers.
-Since we are updating the internal state of the random number generator (via
-the ``updates`` argument, we get different random numbers every time.
-
->>> f_val0 = f()
->>> f_val1 = f()  #different numbers from f_val0
-
-When we omit the updates argument (as in ``g``) to ``function``, then the
-random number generator state is not affected by calling the returned function.  So for example, 
-calling ``g`` multiple times will return the same numbers.
-
->>> g_val0 = g()  # different numbers from f_val0 and f_val1
->>> g_val0 = g()  # same numbers as g_val0 !!!
-
-An important remark is that a random variable is drawn at most once during any
-single function execution.  So the ``nearly_zeros`` function is guaranteed to
-return approximately 0 (except for rounding error) even though the ``rv_u``
-random variable appears three times in the output expression.
-
->>> nearly_zeros = function([], rv_u + rv_u - 2 * rv_u, updates=[rv_u.update])
-
-Seedings Streams
-----------------
-
-Random variables can be seeded individually or collectively.
-
-You can seed just one random variable by seeding or assigning to the
-``.rng.value`` attribute.
-
->>> rv_u.rng.value.seed(89234)  # seeds the generator for rv_u
-
-You can also seed *all* of the random variables allocated by a :class:`RandomStreams`
-object by that object's ``seed`` method.  This seed will be used to seed a
-temporary random number generator, that will in turn generate seeds for each
-of the random variables.
-
->>> srng.seed(902340)  # seeds rv_u and rv_n with different seeds each
-
-Sharing Streams between Functions
----------------------------------
-
-As usual for shared variables, the random number generators used for random
-variables are common between functions.  So our ``nearly_zeros`` function will
-update the state of the generators used in function ``f`` above.
-
-For example:
-
->>> state_after_v0 = rv_u.rng.value.get_state()
->>> nearly_zeros()       # this affects rv_u's generator
->>> v1 = f()             
->>> rv_u.rng.value.set_state(state_after_v0)
->>> v2 = f()             # v2 != v1
-
+For an example of how to use random numbers, see
+:ref:`using_random_numbers`.
 
 
 Reference

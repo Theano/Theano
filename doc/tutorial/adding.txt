@@ -65,7 +65,7 @@ is the type we assign to "0-dimensional arrays (`scalar`) of doubles
 
 ``dscalar`` is not a class. Therefore, neither ``x`` nor ``y``
 are actually instances of ``dscalar``. They are instances of
-:ref:`TensorVariable <libdoc_tensor_type>`. ``x`` and ``y``
+:class:`TensorVariable`. ``x`` and ``y``
 are, however, assigned the theano Type ``dscalar`` in their ``type``
 field, as you can see here:
 

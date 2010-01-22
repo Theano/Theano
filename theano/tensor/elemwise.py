@@ -933,6 +933,9 @@ class Sum(CAReduce):
                 int8='int32',
                 int16='int32',
                 int32='int64',
+                uint8='uint32',
+                uint16='uint32',
+                uint32='uint64',
                 ).get(idtype, idtype)
 
     def grad(self, (x, ), (gz, )):
@@ -957,5 +960,39 @@ class Sum(CAReduce):
             return "Sum"
         else:
             return "Sum{%s}" % ", ".join(map(str, self.axis))
+
+class Prod(CAReduce):
+    """
+    Multiplies all the values of a tensor along the specified axis(es).
+
+    Equivalent to CAReduce(scalar.prod, axis = axis), with the
+    difference that this defines the gradient of prod wrt its tensor
+    input.
+    """
+    def __init__(self, axis = None):
+        CAReduce.__init__(self, scalar.mul, axis)
+
+    def _output_dtype(self, idtype):
+        # we want to protect against overflow
+        return dict(
+                int8='int64',
+                int16='int64',
+                int32='int64',
+                uint8='uint64',
+                uint16='uint64',
+                uint32='uint64',
+                ).get(idtype, idtype)
+
+    def grad(self, (x, ), (gz, )):
+        if x.dtype[0:3] in ('int','uin'):
+            return [None]
+        else:
+            raise NotImplementedError('Will be implemented shortly')
+
+    def __str__(self):
+        if self.axis is None:
+            return "Prod"
+        else:
+            return "Prod{%s}" % ", ".join(map(str, self.axis))
 
 

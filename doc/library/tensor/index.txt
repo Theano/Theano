@@ -10,8 +10,8 @@
 .. moduleauthor:: LISA
 
 Theano's strength is in expressing symbolic calculations involving tensors.  
-There are many types of symbolic expressions for tensors.  For everyone's
-sanity, they are grouped into the following sections:
+There are many types of symbolic expressions for tensors. 
+They are grouped into the following sections:
 
 
 .. toctree::
