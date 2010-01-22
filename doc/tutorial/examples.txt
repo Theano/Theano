@@ -289,6 +289,7 @@ careful though, not to allow the expressions introduced by a givens
 substitution to be co-dependent, the order of substitution is not defined, so
 the substitutions have to work in any order.
 
+.. _using_random_numbers:
 
 Using Random Numbers
 ====================
@@ -376,7 +377,7 @@ For example:
 
 >>> state_after_v0 = rv_u.rng.value.get_state()
 >>> nearly_zeros()       # this affects rv_u's generator
->>> v1 = f()             
+>>> v1 = f()
 >>> rv_u.rng.value.set_state(state_after_v0)
 >>> v2 = f()             # v2 != v1
 
