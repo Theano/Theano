@@ -79,8 +79,14 @@ class GpuElemwise(Op):
         #
         sync = config.config.getboolean('gpuelemwise.sync',sync)
         self.scalar_op = scalar_op
-        self.inplace_pattern = inplace_pattern
-        self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
+        if 0:
+            #we don't put them their as this cause trouble with the local_cut_gpu_host_gpu optimizer.
+            #and the gpu don't implement any inplace pattern for now.
+            self.inplace_pattern = inplace_pattern
+            self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
+        else:
+            self.inplace_pattern = {}
+
         if scalar_op.nin > 0:
             self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin, scalar_op.nout)
         else:
