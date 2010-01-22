@@ -52,11 +52,6 @@ def conv2d(input, filters, border_mode='valid', subsample=(1,1),
     else:
         bsize, imshp = None, None
 
-    print 'imshp = ', imshp
-    print 'kshp = ', kshp
-    print 'nkern = ', nkern
-    print 'bsize = ', bsize
-
     op = ConvOp(output_mode=border_mode, dx=subsample[0], dy=subsample[1],
                 imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize,**kargs)
 
