@@ -65,8 +65,6 @@ import scalar
 import sparse
 import gradient
 import gof
-import floatX
-floatX.set_floatX()
 
 if config.device.startswith('gpu'):
     import theano.sandbox.cuda
