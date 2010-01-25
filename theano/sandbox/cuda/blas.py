@@ -2,7 +2,7 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar
 import StringIO
 
-import cuda_ndarray
+import cuda_ndarray.cuda_ndarray as cuda
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 class GpuDot22(Op):
@@ -187,7 +187,7 @@ class GpuConv(Op):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def perform(self, node, (img, kern), (out,)):
-        out[0] = cuda_ndarray.conv(img, kern, 
+        out[0] = cuda.conv(img, kern, 
                 mode=self.border_mode,
                 out=out[0],
                 subsample=self.subsample,

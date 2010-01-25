@@ -2,7 +2,6 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar
 import StringIO
 
-import cuda_ndarray
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 from theano.sandbox.cuda.kernel_codegen import nvcc_kernel, inline_reduce_max, inline_reduce_sum, inline_softmax

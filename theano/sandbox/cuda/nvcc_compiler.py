@@ -72,6 +72,8 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename]) 
     cmd.append(cppfilename)
+    if module_name != 'cuda_ndarray':
+        cmd.append(os.path.join(os.path.split(cppfilename)[0],'..','cuda_ndarray','cuda_ndarray.so'))
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
     debug('Running cmd', ' '.join(cmd))

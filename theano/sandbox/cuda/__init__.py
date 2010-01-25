@@ -16,7 +16,7 @@ def debug(*msg):
     _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
 
 
-# Compile type_support.cu
+# Compile cuda_ndarray.cu
 # This need that nvcc (part of cuda) is installed. If it is not, a warning is
 # printed and this module will not be working properly (we set `enable_cuda`
 # to False).
@@ -45,54 +45,27 @@ def set_cuda_disabled():
         warning('Cuda is disabled, cuda-based code will thus not be '
                 'working properly')
 
-old_file = os.path.join(os.path.split(__file__)[0],'type_support.so')
-if os.path.exists(old_file):
-    os.remove(old_file)
-
+#cuda_ndarray compile and import
+sys.path.append(get_compiledir())
 try:
-    sys.path.append(get_compiledir())
-    from type_support.type_support import *
-
+    from cuda_ndarray.cuda_ndarray import *
 except ImportError:
-
     import nvcc_compiler
-
     if not nvcc_compiler.is_nvcc_available():
         set_cuda_disabled()
 
     if enable_cuda:
+        cuda_path = os.path.split(__file__)[0]
+        code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
 
-        cuda_path=os.path.split(old_file)[0]
-        code = open(os.path.join(cuda_path, "type_support.cu")).read()
-
-        loc = os.path.join(get_compiledir(),'type_support')
+        loc = os.path.join(get_compiledir(),'cuda_ndarray')
         if not os.path.exists(loc):
             os.makedirs(loc)
  
-        CUDA_NDARRAY=os.getenv('CUDA_NDARRAY')
-        include_dirs=[]
-        lib_dirs=[]
-    
-        if CUDA_NDARRAY:
-            include_dirs.append(CUDA_NDARRAY)
-            lib_dirs.append(CUDA_NDARRAY)
-        else:
-            import theano.sandbox
-            path = os.path.split(os.path.split(os.path.split(theano.sandbox.__file__)[0])[0])[0]
-            path2 = os.path.join(path,'cuda_ndarray')
-            if os.path.isdir(path2):
-                include_dirs.append(path2)
-                lib_dirs.append(path2)
-            else:
-                path = os.path.split(path)[0]
-                path2 = os.path.join(path,'cuda_ndarray')
-                include_dirs.append(path2)
-                lib_dirs.append(path2)
+        nvcc_compiler.nvcc_module_compile_str('cuda_ndarray', code, location = loc, include_dirs=[cuda_path], libs=['cublas'],
+                                              preargs=['-DDONT_UNROLL', '-O3'])
 
-        nvcc_compiler.nvcc_module_compile_str('type_support', code, location = loc, include_dirs=include_dirs, lib_dirs=lib_dirs, libs=['cuda_ndarray'])
-
-        from type_support.type_support import *
-
+        from cuda_ndarray.cuda_ndarray import *
 
 if enable_cuda:
     from theano.sandbox.cuda.type import CudaNdarrayType
@@ -118,7 +91,7 @@ def use(device=config.THEANO_GPU):
             device=0
         device=int(device)
         try:
-            cuda_ndarray.gpu_init(device)
+            gpu_init(device)
             handle_shared_float32(True)
             use.device_number = device
         except RuntimeError, e:

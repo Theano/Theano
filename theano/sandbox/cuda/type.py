@@ -7,9 +7,8 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor
 import theano.config as config
 
+import cuda_ndarray.cuda_ndarray as cuda
 import cuda_ndarray
-
-from theano.sandbox.cuda import filter as type_support_filter
 
 from theano.sandbox.cuda.nvcc_compiler import nvcc_module_compile_str
 
@@ -51,7 +50,7 @@ class CudaNdarrayType(Type):
         self.dtype_specs() # error checking is done there
 
     def filter(self, data, strict=False):
-        return type_support_filter(data, self.broadcastable, strict)
+        return cuda.filter(data, self.broadcastable, strict)
 
     @staticmethod
     def values_eq(a, b):
@@ -254,7 +253,7 @@ class CudaNdarrayType(Type):
         return ret
 
     def c_libraries(self):
-        return ['cuda_ndarray', 'cudart']
+        return ['cudart']
 
     def c_support_code(cls):
         return ""
@@ -285,5 +284,5 @@ copy_reg.constructor(CudaNdarray_unpickler)
 def CudaNdarray_pickler(cnda):
     return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
 
-copy_reg.pickle(cuda_ndarray.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
+copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler, CudaNdarray_unpickler)
 
