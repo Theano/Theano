@@ -1,7 +1,5 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
-#include <iostream>
-
 #include "cuda_ndarray.cuh"
 
 static PyObject * 
@@ -30,7 +28,6 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         {
             Py_DECREF(py_data);
             Py_DECREF(broadcastable);
-            std::cerr << "strict mode requires CudaNdarray\n";
             PyErr_SetString(PyExc_TypeError, "strict mode requires CudaNdarray");
             return NULL;
         }
@@ -38,7 +35,6 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         {
             Py_DECREF(py_data);
             Py_DECREF(broadcastable);
-            std::cerr << "Wrong rank: "<< cnda->nd << " " << PyTuple_Size(broadcastable) << "\n";
             PyErr_Format(PyExc_TypeError, "Wrong rank: %i vs %li", cnda->nd, (long)PyTuple_Size(broadcastable));
             return NULL;
         }
@@ -46,7 +42,6 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         {
             if ((CudaNdarray_HOST_DIMS(cnda)[i] > 1) and PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
             {
-                std::cerr << "Non-unit size in bcastable dim:\n";
                 PyErr_Format(PyExc_TypeError, "Non-unit size in broadcastable vt dimension %i", i);
                 Py_DECREF(py_data);
                 Py_DECREF(broadcastable);
