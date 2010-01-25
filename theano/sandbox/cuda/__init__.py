@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, stat
 from theano.gof.compiledir import get_compiledir
 from theano.compile import optdb
 import theano.config as config
@@ -47,22 +47,37 @@ def set_cuda_disabled():
 
 #cuda_ndarray compile and import
 sys.path.append(get_compiledir())
-try:
-    from cuda_ndarray.cuda_ndarray import *
-except ImportError:
+cuda_path = os.path.split(__file__)[0]
+date = os.stat(os.path.join(cuda_path,'cuda_ndarray.cu'))[stat.ST_MTIME]
+date = max(date,os.stat(os.path.join(cuda_path,'cuda_ndarray.cuh'))[stat.ST_MTIME])
+date = max(date,os.stat(os.path.join(cuda_path,'conv_full_kernel.cu'))[stat.ST_MTIME])
+date = max(date,os.stat(os.path.join(cuda_path,'conv_kernel.cu'))[stat.ST_MTIME])
+
+cuda_ndarray_loc = os.path.join(get_compiledir(),'cuda_ndarray')
+cuda_ndarray_so = os.path.join(cuda_ndarray_loc,'cuda_ndarray.so')
+compile_cuda_ndarray = True
+
+if os.path.exists(cuda_ndarray_so):
+    compile_cuda_ndarray = date>=os.stat(cuda_ndarray_so)[stat.ST_MTIME]
+if not compile_cuda_ndarray:
+    try:
+        from cuda_ndarray.cuda_ndarray import *
+    except ImportError:
+        compile_cuda_ndarray = True
+
+if compile_cuda_ndarray:
     import nvcc_compiler
     if not nvcc_compiler.is_nvcc_available():
         set_cuda_disabled()
 
     if enable_cuda:
-        cuda_path = os.path.split(__file__)[0]
         code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
 
-        loc = os.path.join(get_compiledir(),'cuda_ndarray')
-        if not os.path.exists(loc):
-            os.makedirs(loc)
+        if not os.path.exists(cuda_ndarray_loc):
+            os.makedirs(cuda_ndarray_loc)
  
-        nvcc_compiler.nvcc_module_compile_str('cuda_ndarray', code, location = loc, include_dirs=[cuda_path], libs=['cublas'],
+        nvcc_compiler.nvcc_module_compile_str('cuda_ndarray', code, location = cuda_ndarray_loc,
+                                              include_dirs=[cuda_path], libs=['cublas'],
                                               preargs=['-DDONT_UNROLL', '-O3'])
 
         from cuda_ndarray.cuda_ndarray import *
