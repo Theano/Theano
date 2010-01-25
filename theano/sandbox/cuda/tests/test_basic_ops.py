@@ -91,7 +91,6 @@ def test_reshape():
     #basic
     f = theano.function([a], c)
     fv = f(cuda_ndarray.CudaNdarray(numpy.asarray([0,1,2,3,4,5],dtype='float32')))
-    import pdb;pdb.set_trace()
     assert numpy.all(fv == numpy.asarray([[0,1,2], [3,4,5]]))
 
     #test that it works without inplace operations
