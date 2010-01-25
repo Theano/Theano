@@ -30,7 +30,8 @@ to be installed:
         is buggy in 0.6. (scipy.csc_matrix dot has a bug with singleton
         dimensions. There may be more bugs.)
 
-    A BLAS installation (with Level 3 functionality)
+    A BLAS installation (with Level 3 functionality), including the development
+	headers	(-dev, -devel, depending on your Linux distribution).
 
 The following libraries and software are optional:
 
