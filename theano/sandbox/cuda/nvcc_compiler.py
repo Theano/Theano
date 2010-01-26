@@ -47,7 +47,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     preargs.append('-fPIC')
     no_opt = False
     cuda_root = config.CUDA_ROOT
-    include_dirs = std_include_dirs() + include_dirs
+    include_dirs = std_include_dirs() + include_dirs + [os.path.split(__file__)[0]]
     libs = std_libs() + ['cudart'] + libs
     lib_dirs = std_lib_dirs() + lib_dirs
     if cuda_root:
