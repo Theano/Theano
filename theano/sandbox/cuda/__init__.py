@@ -128,7 +128,7 @@ def use(device=config.device):
             handle_shared_float32(True)
             use.device_number = device
         except RuntimeError, e:
-            logging.getLogger('theano_cuda_ndarray').warning("WARNING: Won't use the GPU as the initialisation of device %i failed. %s" %(device, e))
+            logging.getLogger('theano_cuda_ndarray').warning("ERROR: Not using GPU. Initialisation of device %i failed. %s" %(device, e))
     elif use.device_number != device:
         logging.getLogger('theano_cuda_ndarray').warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
     optdb.add_tags('gpu',
