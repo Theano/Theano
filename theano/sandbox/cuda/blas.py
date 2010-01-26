@@ -132,7 +132,8 @@ class GpuConv(Op):
             logical_kern_hw=None,
             logical_kern_align_top=True,
             version=-1,
-            verbose=0):
+            verbose=0,
+            kshp=None):
         self.border_mode = border_mode
         self.subsample = subsample
         if logical_img_hw is not None:
@@ -152,6 +153,7 @@ class GpuConv(Op):
         self.logical_kern_align_top = logical_kern_align_top
         self.version=version
         self.verbose=verbose
+        self.kshp = kshp
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -187,13 +189,16 @@ class GpuConv(Op):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def c_compile_args(self):
-        return ['-DDONT_UNROLL']
-        
+        nb = 0
+        if self.kshp is not None:
+            nb = self.kshp[1]
+        return ['-DTHEANO_KERN_WID='+str(nb)]
+
     def c_headers(self):
         return ['cuda_ndarray.cuh','<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0,1)
+        return (0,2)
 
     def c_support_code_apply(self, node, nodename):
         return open(os.path.join(os.path.split(__file__)[0],'conv_kernel.cu')).read()+\

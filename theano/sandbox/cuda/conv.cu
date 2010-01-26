@@ -1,15 +1,6 @@
 enum { ConvMode_FULL, ConvMode_VALID };
 PyObject * CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern, CudaNdarray * out, const int mode, const int subsample_rows, const int subsample_cols, const int version, const int verbose);
 
-bool msgdisplayed_conv_patch__kern_width = false;
-bool msgdisplayed_conv_patch_stack__kern_width = false;
-bool msgdisplayed_conv_rows__kern_width = false;
-bool msgdisplayed_conv_rows_stack__kern_width = false;
-bool msgdisplayed_conv_rows_stack2__kern_width = false;
-bool msgdisplayed_conv_patch_stack_reduce__kern_width = false;
-
-bool msgdisplayed_conv_full_patch_stack__kern_width = false;
-
 /*
  * version: -1, autodetect, >=0 a specific version to use.
  *          If it can't be executed, we revert to the reference implementation
@@ -78,6 +69,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     const int img_size_byte = img_size*sizeof(float);
     const int kern_size_byte = kern_size*sizeof(float);
     const int out_size_byte = out_size*sizeof(float);
+    assert((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) || (THEANO_KERN_WID==0));
 
     bool subsample = subsample_rows!=1 || subsample_cols!=1;
     bool img_contiguous = CudaNdarray_is_c_contiguous(img);
@@ -150,24 +142,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             if(threads.y==out_len) f=conv_patch<true,kern_wid,false>;\
             else f=conv_patch<true,kern_wid,true>;
 
-	 switch(kern_wid){
-#ifdef UNROLL_LOOP
-	 case 1: CONV_PATCH_SPECIAL(1); break;//test_conv.py:test_valid
-	 case 2: CONV_PATCH_SPECIAL(2); break;//test_conv.py:test_valid
-	 case 3: CONV_PATCH_SPECIAL(3); break;//test_conv.py:test_valid
-	 case 4: CONV_PATCH_SPECIAL(4); break;
-	 case 5: CONV_PATCH_SPECIAL(5); break;
-	 case 6: CONV_PATCH_SPECIAL(6); break;
-	 case 7: CONV_PATCH_SPECIAL(7); break;
-	 case 10: CONV_PATCH_SPECIAL(10); break;
-#endif
-	 default:
-	   if(!msgdisplayed_conv_patch__kern_width) {
-	     printf("OPTIMISATION WARNING: conv_patch template default add kern_wid=%d in %s at line %i to have an optimized version for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-	     msgdisplayed_conv_patch__kern_width=true;
-	   }
-	   CONV_PATCH_SPECIAL(0);
-	 }
+	CONV_PATCH_SPECIAL(THEANO_KERN_WID);
+
 	 f<<< grid, threads, shared_size>>>
 	     (img->devdata, kern->devdata, out->devdata,
 	      img_len, img_wid, kern_len, kern_wid, nkern, nstack);
@@ -231,36 +207,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             if(img_contiguous_2d && !kern_contiguous_2d) f=conv_patch_stack<true,false,kern_wid,true,false,true,false>;\
             if(!img_contiguous_2d && kern_contiguous_2d) f=conv_patch_stack<true,false,kern_wid,false,true,true,false>;\
             if(!img_contiguous_2d && !kern_contiguous_2d) f=conv_patch_stack<true,false,kern_wid,false,false,true,false>;
-	switch(kern_wid){
-#ifdef UNROLL_LOOP
-         case 1: CONV_PATCH_STACK_SPECIAL(1); break;
-         case 2: CONV_PATCH_STACK_SPECIAL(2); break;
-         case 3: CONV_PATCH_STACK_SPECIAL(3); break;
-         case 4: CONV_PATCH_STACK_SPECIAL(4); break;
-         case 5: CONV_PATCH_STACK_SPECIAL(5); break;
-         case 6: CONV_PATCH_STACK_SPECIAL(6); break;
-         case 7: CONV_PATCH_STACK_SPECIAL(7); break;
-         case 8: CONV_PATCH_STACK_SPECIAL(8); break;
-         case 9: CONV_PATCH_STACK_SPECIAL(9); break;
-         case 10: CONV_PATCH_STACK_SPECIAL(10); break;
-                  //////// Special cases
-         case 12: CONV_PATCH_STACK_SPECIAL(12); break;//on cifar10
-         case 21: CONV_PATCH_STACK_SPECIAL(21); break;//on cifar10
-         case 23: CONV_PATCH_STACK_SPECIAL(23); break;//test_nnet.py:test_lenet_64
-         case 24: CONV_PATCH_STACK_SPECIAL(24); break;//on cifar10
-         case 25: CONV_PATCH_STACK_SPECIAL(25); break;//on cifar10
-         case 28: CONV_PATCH_STACK_SPECIAL(28); break;
-         case 32: CONV_PATCH_STACK_SPECIAL(32); break;// Alex speed example
-         case 45: CONV_PATCH_STACK_SPECIAL(45); break;//used by test_nnet.py:test_lenet_108
-#endif
-                  //////// default case
-        default:
-            if(!msgdisplayed_conv_patch_stack__kern_width) {
-                printf("OPTIMISATION HINT: conv_patch_stack template default add kern_wid=%d in %s at line %i to have an optimized version for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-                msgdisplayed_conv_patch_stack__kern_width = true;
-            }
-            CONV_PATCH_STACK_SPECIAL(0);
-	}
+
+	CONV_PATCH_STACK_SPECIAL(THEANO_KERN_WID);
 	f<<< grid, threads, shared_size>>>
 	     (img->devdata, kern->devdata, out->devdata,
 	      img_len, img_wid, kern_len, kern_wid, nkern, nstack,
@@ -308,30 +256,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows<kern_wid, false>;\
 	else f = conv_rows<kern_wid, true>;\
 
-	switch(kern_wid){
-#ifdef UNROLL_LOOP
-	case 1: CONV_ROWS_SPECIAL(1); break;//test_conv.py:test_valid
-	case 2: CONV_ROWS_SPECIAL(2); break;//test_conv.py:test_valid
-	case 3: CONV_ROWS_SPECIAL(3); break;//test_conv.py:test_valid
-	case 4: CONV_ROWS_SPECIAL(4); break;//test_conv.py:test_valid
-	case 5: CONV_ROWS_SPECIAL(5); break;//test_conv.py:test_valid
-	  //	case 6: CONV_ROWS_SPECIAL(6); break;
-	case 7: CONV_ROWS_SPECIAL(7); break;//used by test_nnet.py:test_lenet_108
-	  //	case 8: CONV_ROWS_SPECIAL(8); break;
-	case 9: CONV_ROWS_SPECIAL(9); break;//used by test_nnet.py:test_lenet_256
-	case 10: CONV_ROWS_SPECIAL(10); break;//test_conv.py:test_valid
-	  //////// Special cases
-	case 28: CONV_ROWS_SPECIAL(28); break;
-#endif
-	  //////// default case
-	default:
-	  if(!msgdisplayed_conv_rows__kern_width){
-	    printf("OPTIMISATION HINT: conv_rows template default add kern_wid=%d in %s at line %i to have an optimized version for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-	    msgdisplayed_conv_rows__kern_width = true;
-	  }
-	  CONV_ROWS_SPECIAL(0);
-	}
-
+	CONV_ROWS_SPECIAL(THEANO_KERN_WID);
 	f<<< grid, threads, shared_size >>>
 	  (img->devdata, kern->devdata, out->devdata,
 	   img_len, img_wid, kern_len, kern_wid, nkern, nstack,
@@ -383,34 +308,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 #define CONV_ROWS_STACK_SPECIAL(kern_wid) \
 	if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack<kern_wid, false>;\
 	else f = conv_rows_stack<kern_wid, true>;\
-
-	switch(kern_wid){
-#ifdef UNROLL_LOOP
-	case 1: CONV_ROWS_STACK_SPECIAL(1); break;//test_conv.py:test_valid
-	case 2: CONV_ROWS_STACK_SPECIAL(2); break;
-	case 3: CONV_ROWS_STACK_SPECIAL(3); break;//test_conv.py:test_valid
-	case 4: CONV_ROWS_STACK_SPECIAL(4); break;//test_conv.py:test_valid
-	case 5: CONV_ROWS_STACK_SPECIAL(5); break;//test_conv.py:test_valid
-	case 6: CONV_ROWS_STACK_SPECIAL(6); break;//test_conv.py:test_valid
-	case 7: CONV_ROWS_STACK_SPECIAL(7); break;//test_nnet.py:test_lenet_108
-	case 8: CONV_ROWS_STACK_SPECIAL(8); break;//test_conv.py:test_valid
-	case 9: CONV_ROWS_STACK_SPECIAL(9); break;//test_nnet.py:test_lenet_256
-	case 10: CONV_ROWS_STACK_SPECIAL(10); break;//test_conv.py:test_valid
-	  //////// Special cases
-	case 23: CONV_ROWS_STACK_SPECIAL(23); break;//test_conv.py:test_valid
-	case 24: CONV_ROWS_STACK_SPECIAL(24); break;//test_conv.py:test_valid
-	case 28: CONV_ROWS_STACK_SPECIAL(28); break;//test_conv.py:test_valid
-	case 45: CONV_ROWS_STACK_SPECIAL(45); break;//test_nnet.py:test_lenet_64
-	case 102: CONV_ROWS_STACK_SPECIAL(102); break;//test_nnet.py:test_lenet_108
-#endif
-	  //////// default case
-	default:
-	  if(!msgdisplayed_conv_rows_stack__kern_width){
-	    printf("OPTIMISATION HINT: conv_rows_stack template default add kern_wid=%d in %s at line %i to have an optimized version for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-	    msgdisplayed_conv_rows_stack__kern_width = true;
-	  }
-	  CONV_ROWS_STACK_SPECIAL(0);
-	}
+	CONV_ROWS_STACK_SPECIAL(THEANO_KERN_WID);
 
 	f<<< grid, threads, shared_size >>>
 	  (img->devdata,
@@ -482,40 +380,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	else if(version==9) f = conv_rows_stack2<kern_wid, true,true>;\
 	else if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack2<kern_wid, false, false>;\
 	else f = conv_rows_stack2<kern_wid, true, false>;\
-
-	switch(kern_wid){
-#ifdef UNROLL_LOOP
-	case 1: CONV_ROWS_STACK2_SPECIAL(1); break;//test_conv.py:test_valid
-	case 2: CONV_ROWS_STACK2_SPECIAL(2); break;
-	case 3: CONV_ROWS_STACK2_SPECIAL(3); break;//test_conv.py:test_valid
-	case 4: CONV_ROWS_STACK2_SPECIAL(4); break;//test_conv.py:test_valid
-	case 5: CONV_ROWS_STACK2_SPECIAL(5); break;//test_conv.py:test_valid
-	case 6: CONV_ROWS_STACK2_SPECIAL(6); break;//test_conv.py:test_valid
-	case 7: CONV_ROWS_STACK2_SPECIAL(7); break;//test_nnet.py:test_lenet_108
-	case 8: CONV_ROWS_STACK2_SPECIAL(8); break;//test_conv.py:test_valid
-	  //	case 9: CONV_ROWS_STACK2_SPECIAL(9); break;
-	case 10: CONV_ROWS_STACK2_SPECIAL(10); break;//test_conv.py:test_valid
-	  //////// Special cases
-	case 23: CONV_ROWS_STACK2_SPECIAL(23); break;//test_conv.py:test_valid
-	case 24: CONV_ROWS_STACK2_SPECIAL(24); break;//test_conv.py:test_valid
-	case 28: CONV_ROWS_STACK2_SPECIAL(28); break;//test_conv.py:test_valid
-	case 45: CONV_ROWS_STACK2_SPECIAL(45); break;//test_nnet.py:test_lenet_108
-	case 58: CONV_ROWS_STACK2_SPECIAL(58); break;//test_nnet.py:test_lenet_108
-	case 70: CONV_ROWS_STACK2_SPECIAL(70); break;//mobahi_2009.py
-	case 102: CONV_ROWS_STACK2_SPECIAL(102); break;//test_nnet.py:test_lenet_108
-	case 116: CONV_ROWS_STACK2_SPECIAL(116); break;//test_nnet.py:test_lenet_256
-	case 248: CONV_ROWS_STACK2_SPECIAL(248); break;//test_nnet.py:test_lenet_256
-#endif
-	  //////// default case
-	default:
-	  if(!msgdisplayed_conv_rows_stack2__kern_width){
-	    printf("OPTIMISATION HINT: conv_rows_stack{2,3} template default add"
-		   " kern_wid=%d in %s at line %i to have an optimized version"
-		   " for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-	    msgdisplayed_conv_rows_stack2__kern_width = true;
-	  }
-	  CONV_ROWS_STACK2_SPECIAL(0);
-	}
+	CONV_ROWS_STACK2_SPECIAL(THEANO_KERN_WID);
 
 	f<<< grid, threads, shared_size >>>
 	  (img->devdata,
@@ -615,33 +480,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             /*else if(!kern_flipped && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, false>;*/\
             else if(!kern_flipped && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, false>;\
             else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
-	switch(kern_wid){
-#ifdef UNROLL_LOOP
-         case 1: CONV_PATCH_STACK_REDUCE_SPECIAL(1); break;
-         case 2: CONV_PATCH_STACK_REDUCE_SPECIAL(2); break;
-         case 3: CONV_PATCH_STACK_REDUCE_SPECIAL(3); break;
-         case 4: CONV_PATCH_STACK_REDUCE_SPECIAL(4); break;
-         case 5: CONV_PATCH_STACK_REDUCE_SPECIAL(5); break;
-         case 6: CONV_PATCH_STACK_REDUCE_SPECIAL(6); break;
-         case 7: CONV_PATCH_STACK_REDUCE_SPECIAL(7); break;
-         case 8: CONV_PATCH_STACK_REDUCE_SPECIAL(8); break;
-         case 9: CONV_PATCH_STACK_REDUCE_SPECIAL(9); break;
-         case 10: CONV_PATCH_STACK_REDUCE_SPECIAL(10); break;
-                  //////// Special cases
-         case 20: CONV_PATCH_STACK_REDUCE_SPECIAL(20); break;
-         case 23: CONV_PATCH_STACK_REDUCE_SPECIAL(23); break;//test_nnet.py:test_lenet64
-         case 24: CONV_PATCH_STACK_REDUCE_SPECIAL(24); break;
-         case 28: CONV_PATCH_STACK_REDUCE_SPECIAL(28); break;
-         case 32: CONV_PATCH_STACK_REDUCE_SPECIAL(32); break;//Alex speed demonstration
-#endif
-                  //////// default case
-        default:
-            if(!msgdisplayed_conv_patch_stack_reduce__kern_width) {
-                printf("OPTIMISATION HINT: conv_patch_stack_reduce template default add kern_wid=%d in %s at line %i to have an optimized version for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-                msgdisplayed_conv_patch_stack_reduce__kern_width = true;
-            }
-            CONV_PATCH_STACK_REDUCE_SPECIAL(0);
-	}
+	CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
 
 	if (verbose) printf("INFO: using 'conv_patch_stack_reduce' version nb_split=%d, preload_full_kern=%d\n",
 			    nb_split,full_kern);
@@ -834,7 +673,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
     const int nkern=CudaNdarray_HOST_DIMS(kern)[0];
     const int img_wid=CudaNdarray_HOST_DIMS(img)[3];
     const int img_len=CudaNdarray_HOST_DIMS(img)[2];
-    const int kern_wid=CudaNdarray_HOST_DIMS(kern)[3];
+    const int kern_wid=CudaNdarray_HOST_DIMS(img)[3];
     const int kern_len=CudaNdarray_HOST_DIMS(kern)[2];
     const int out_wid=CudaNdarray_HOST_DIMS(out)[3];
     const int out_len=CudaNdarray_HOST_DIMS(out)[2];
@@ -861,6 +700,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
     
     //const int out_size_byte = out_size*sizeof(float); // unused 
 
+    assert((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) || (THEANO_KERN_WID==0));
     bool subsample = subsample_rows!=1 || subsample_cols!=1;
 
     bool img_contiguous = CudaNdarray_is_c_contiguous(img);
@@ -968,31 +808,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 	else if(version==5) f=conv_full_patch_stack_padded<false,kern_wid,false,false,true>;\
 	else assert(false);
 
-	switch(kern_wid){
-#ifdef UNROLL_LOOP
-         case 1: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(1); break;
-         case 2: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(2); break;
-         case 3: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(3); break;
-         case 4: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(4); break;
-         case 5: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(5); break;//test_conv.py:test_full
-         case 6: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(6); break;//test_conv.py:test_full
-         case 7: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(7); break;//test_nnet.py:test_lenet_64
-         case 8: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(8); break;//test_conv.py:test_full
-         case 9: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(9); break;//test_nnet.py:test_lenet_256
-         case 10: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(10); break;//test_conv.py:test_full
-         case 12: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(12); break;//test_conv.py:test_full
-                  //////// Special cases
-         case 28: CONV_FULL_PATCH_STACK_PADDED_SPECIAL(28); break;
-#endif
-                  //////// default case
-	 default:
-	   if(!msgdisplayed_conv_full_patch_stack__kern_width){
-	     printf("OPTIMISATION HINT: conv_full_patch_stack_padded template default add kern_wid=%d in %s at line %i to have an optimized version for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-	     msgdisplayed_conv_full_patch_stack__kern_width = true;
-	   }
-           CONV_FULL_PATCH_STACK_PADDED_SPECIAL(0);
-	}
-
+	CONV_FULL_PATCH_STACK_PADDED_SPECIAL(THEANO_KERN_WID);
 
 	f<<< grid, threads, shared_size>>>
 	     (img->devdata, kern_data_unflipped, out->devdata,
@@ -1069,17 +885,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 		  int, int, int, int, int, int,
 		  int, int, int, int, int, int, int, int) = conv_full_load_everything<0>;
 
-        switch(nstack)
-        {
-#ifdef UNROLL_LOOP
-            case 1: f = conv_full_load_everything<1>; break;
-            //case 10: f = conv_full_load_everything<10>; break;
-            //case 30: f = conv_full_load_everything<30>; break;  //This is actually slower than the general version??
-#endif
-	    default:
-	      printf("OPTIMISATION HINT: conv_full_load_everything template default add kern_wid=%d in %s at line %i to have an optimized version for your kern_wid\n", kern_wid, __FILE__, __LINE__);
-	      f = conv_full_load_everything<0>;
-        };
+	f = conv_full_load_everything<THEANO_KERN_WID>;
 
 	f<<< grid, threads, shared_size>>>
 	  (img->devdata,

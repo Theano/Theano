@@ -77,8 +77,7 @@ if compile_cuda_ndarray:
             os.makedirs(cuda_ndarray_loc)
  
         nvcc_compiler.nvcc_module_compile_str('cuda_ndarray', code, location = cuda_ndarray_loc,
-                                              include_dirs=[cuda_path], libs=['cublas'],
-                                              preargs=['-DDONT_UNROLL', '-O3'])
+                                              include_dirs=[cuda_path], libs=['cublas'])
 
         from cuda_ndarray.cuda_ndarray import *
 

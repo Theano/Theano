@@ -347,6 +347,7 @@ def local_gpu_conv(node):
                     logical_img_hw=logical_img_hw,
                     logical_kern_hw=op.kshp_logical,
                     logical_kern_align_top=op.kshp_logical_top_aligned,
+                    kshp=op.kshp,
                     version=op.version,
                     verbose=op.verbose
                     )
