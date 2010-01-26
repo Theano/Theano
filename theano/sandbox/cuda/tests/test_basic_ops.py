@@ -11,7 +11,7 @@ import theano.tensor as T
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 try:
-    import cuda_ndarray.cuda_ndarray as cuda_ndarray
+    import theano.sandbox.cuda as cuda_ndarray
 except ImportError:
     raise SkipTest('Optional package cuda_ndarray not available')
 
