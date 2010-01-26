@@ -159,9 +159,11 @@ You should update frequently, bugs are fixed on a very regular basis.
 Mac
 ---
 
-- Install `MacPorts <http://www.macports.org/>`__.
+- If the above required libraries are not already installed on your Mac, one option is first, to
+  install `MacPorts <http://www.macports.org/>`__.
 
--
+- Then, in order to install one or more of the required libraries, one way is to use "port install", e.g. as follows:
+
     .. code-block:: bash
 
         $ sudo port install gcc44 py25-zlib py25-numpy py25-scipy mercurial
