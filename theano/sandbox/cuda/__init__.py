@@ -4,7 +4,7 @@ from theano.compile import optdb
 import theano.config as config
 
 import logging, copy
-_logger_name = 'theano_cuda_ndarray'
+_logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.INFO)
 _logger.addHandler(logging.StreamHandler())
@@ -110,9 +110,9 @@ def use(device=config.THEANO_GPU):
             handle_shared_float32(True)
             use.device_number = device
         except RuntimeError, e:
-            logging.getLogger('theano_cuda_ndarray').warning("WARNING: Won't use the GPU as the initialisation of device %i failed. %s" %(device, e))
+            logging.getLogger('theano.sandbox.cuda').warning("WARNING: Won't use the GPU as the initialisation of device %i failed. %s" %(device, e))
     elif use.device_number != device:
-        logging.getLogger('theano_cuda_ndarray').warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
+        logging.getLogger('theano.sandbox.cuda').warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
     optdb.add_tags('gpu',
                    'fast_run',
                    'inplace')

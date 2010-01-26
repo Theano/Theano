@@ -3,7 +3,7 @@ from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimpo
     get_lib_extension)
 import theano.config as config
 
-_logger=logging.getLogger("theano_cuda_ndarray.nvcc_compiler")
+_logger=logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
 
 def error(*args):

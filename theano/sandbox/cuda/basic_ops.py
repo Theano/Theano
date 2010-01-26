@@ -10,7 +10,7 @@ from theano.sandbox.cuda import filter as type_support_filter
 from theano.sandbox.cuda.elemwise import NaiveAlgo
 
 import logging, copy
-_logger_name = 'theano_cuda_ndarray.basic_ops'
+_logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.INFO)
 _logger.addHandler(logging.StreamHandler()) #TO REMOVE

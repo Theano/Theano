@@ -9,7 +9,7 @@ import numpy
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.enable_cuda == False:
-    raise SkipTest('Optional package cuda_ndarray not available')
+    raise SkipTest('Optional package cuda disabled')
 
 import theano.compile.mode
 

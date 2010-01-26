@@ -271,7 +271,7 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
         from nose.plugins.skip import SkipTest
         import theano.sandbox.cuda as cuda_ndarray
         if cuda_ndarray.enable_cuda == False:
-            raise SkipTest('Optional package cuda_ndarray not available')
+            raise SkipTest('Optional package cuda disabled')
         import theano.sandbox.cuda
         theano.sandbox.cuda.use()
 

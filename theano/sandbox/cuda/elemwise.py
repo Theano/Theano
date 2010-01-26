@@ -11,7 +11,7 @@ from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar
 
 import logging, copy
-_logger_name = 'theano_cuda_ndarray.elemwise'
+_logger_name = 'theano.sandbox.cuda.elemwise'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.INFO)
 _logger.addHandler(logging.StreamHandler()) #TO REMOVE

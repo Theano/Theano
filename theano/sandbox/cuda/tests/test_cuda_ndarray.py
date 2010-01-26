@@ -3,7 +3,7 @@ import theano.sandbox.cuda as cuda_ndarray
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 if cuda_ndarray.enable_cuda == False:
-        raise SkipTest('Optional package cuda_ndarray not available')
+        raise SkipTest('Optional package cuda disabled')
 import numpy
 
 def test_host_to_device():
