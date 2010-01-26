@@ -80,14 +80,12 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
     t2 = None
     rval = True
     try:
-    if True:
         t0 = time.time()
         cpuval = py_conv_scipy(npy_img, npy_kern, mode, subsample)
         t1 = time.time()
         i = cuda_tensor4()
         k = cuda_tensor4()
         op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,subsample=subsample, version=version, verbose=verbose)(i,k)
-#                                        imshp=ishape[1:],kshp=kshape[2:],nkern=kshape[0],bsize=ishape[0])
         f=theano.function([i,k],op)
         gpuval = f(img,kern)
         t2 = time.time()
@@ -156,9 +154,9 @@ def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, on
         for id,(ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
             ret=False
             try:
-            ret = _params_allgood(ishape, kshape, mode,
-                                  subsample=subshape, img_stride=istride, kern_stride=kstride,
-                                  version=ver, verbose=verbose, random=random, id=id,print_=print_,rtol=rtol,ones=ones)
+                ret = _params_allgood(ishape, kshape, mode,
+                                      subsample=subshape, img_stride=istride, kern_stride=kstride,
+                                      version=ver, verbose=verbose, random=random, id=id,print_=print_,rtol=rtol,ones=ones)
             except:
                 pass
             if not ret:
