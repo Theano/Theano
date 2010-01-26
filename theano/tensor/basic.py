@@ -4,7 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
-import theano.config as config  # for THEANO_CMP_SLOPPY
+from ..configparser import config
 import traceback #for overriding Op.__call__
 if sys.version_info >= (2,5):
   import functools
@@ -260,7 +260,7 @@ def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
-if int(config.THEANO_CMP_SLOPPY)>1:
+if int(config.tensor.cmp_sloppy)>1:
     # This environment variable is a quick-and-dirty way to get low-precision comparisons.
     # For a more precise setting of these tolerances set them explicitly in your user code by
     # assigning, for example, "theano.tensor.basic.float32_atol = ..."
@@ -270,7 +270,7 @@ if int(config.THEANO_CMP_SLOPPY)>1:
     float32_rtol = 1e-3 
     float64_rtol = 1e-4
     float64_atol = 1e-3
-elif int(config.THEANO_CMP_SLOPPY):
+elif int(config.tensor.cmp_sloppy):
     float32_atol = 1e-4
     float32_rtol = 1e-3 
     float64_rtol = 1e-4
@@ -657,7 +657,13 @@ bscalar = TensorType('int8', ())
 wscalar = TensorType('int16', ())
 iscalar = TensorType('int32', ())
 lscalar = TensorType('int64', ())
-def scalar(name = None, dtype = 'float64'):
+def scalar(name = None, dtype = None):
+    """Return a symbolic scalar variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
     type = TensorType(dtype, ())
     return type(name)
 scalars, fscalars, dscalars, iscalars, lscalars = _multi(scalar, fscalar, dscalar, iscalar, lscalar)
@@ -677,7 +683,13 @@ bvector = TensorType('int8', (False,))
 wvector = TensorType('int16', (False,))
 ivector = TensorType('int32', (False, ))
 lvector = TensorType('int64', (False, ))
-def vector(name = None, dtype = 'float64'):
+def vector(name = None, dtype = None):
+    """Return a symbolic vector variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
     type = TensorType(dtype, (False, ))
     return type(name)
 vectors, fvectors, dvectors, ivectors, lvectors = _multi(vector, fvector, dvector, ivector, lvector)
@@ -694,7 +706,13 @@ bmatrix = TensorType('int8', (False, False))
 wmatrix = TensorType('int16', (False, False))
 imatrix = TensorType('int32', (False, False))
 lmatrix = TensorType('int64', (False, False))
-def matrix(name = None, dtype = 'float64'):
+def matrix(name = None, dtype = None):
+    """Return a symbolic matrix variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
     type = TensorType(dtype, (False, False))
     return type(name)
 matrices, fmatrices, dmatrices, imatrices, lmatrices = _multi(matrix, fmatrix, dmatrix, imatrix, lmatrix)
@@ -711,7 +729,13 @@ brow = TensorType('int8', (True, False))
 wrow = TensorType('int16', (True, False))
 irow = TensorType('int32', (True, False))
 lrow = TensorType('int64', (True, False))
-def row(name = None, dtype = 'float64'):
+def row(name = None, dtype = None):
+    """Return a symbolic row variable (ndim=2, broadcastable=[True,False]).
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
     type = TensorType(dtype, (True, False))
     return type(name)
 rows, frows, drows, irows, lrows = _multi(row, frow, drow, irow, lrow)
@@ -724,7 +748,13 @@ bcol = TensorType('int8', (False, True))
 wcol = TensorType('int16', (False, True))
 icol = TensorType('int32', (False, True))
 lcol = TensorType('int64', (False, True))
-def col(name = None, dtype = 'float64'):
+def col(name = None, dtype = None):
+    """Return a symbolic column variable (ndim=2, broadcastable=[False,True]).
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
     type = TensorType(dtype, (False, True))
     return type(name)
 cols, fcols, dcols, icols, lcols = _multi(col, fcol, dcol, icol, lcol)
@@ -737,7 +767,13 @@ btensor3 = TensorType('int8', (False,)*3)
 wtensor3 = TensorType('int16', (False,)*3)
 itensor3 = TensorType('int32', (False,)*3)
 ltensor3 = TensorType('int64', (False,)*3)
-def tensor3(name=None, dtype='float64'):
+def tensor3(name=None, dtype=None):
+    """Return a symbolic 3-D variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
     type = TensorType(dtype, (False, False, False))
     return type(name)
 tensor3s, ftensor3s, dtensor3s, itensor3s, ltensor3s = _multi(tensor3, ftensor3, dtensor3,
@@ -751,7 +787,13 @@ btensor4 = TensorType('int8', (False,)*4)
 wtensor4 = TensorType('int16', (False,)*4)
 itensor4 = TensorType('int32', (False,)*4)
 ltensor4 = TensorType('int64', (False,)*4)
-def tensor4(name=None, dtype='float64'):
+def tensor4(name=None, dtype=None):
+    """Return a symbolic 4-D variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
     type = TensorType(dtype, (False, False, False, False))
     return type(name)
 tensor4s, ftensor4s, dtensor4s, itensor4s, ltensor4s = _multi(tensor4, ftensor4, dtensor4,

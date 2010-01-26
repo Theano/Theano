@@ -1,7 +1,7 @@
 import sys, os, subprocess, logging
 from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimport,
     get_lib_extension)
-import theano.config as config
+from theano import config
 
 _logger=logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
@@ -46,7 +46,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     else: preargs = list(preargs)
     preargs.append('-fPIC')
     no_opt = False
-    cuda_root = config.CUDA_ROOT
+    cuda_root = config.cuda.root
     include_dirs = std_include_dirs() + include_dirs + [os.path.split(__file__)[0]]
     libs = std_libs() + ['cudart'] + libs
     lib_dirs = std_lib_dirs() + lib_dirs

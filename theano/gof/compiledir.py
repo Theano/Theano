@@ -4,7 +4,7 @@ import os
 import platform
 import re
 
-import theano.config as config
+from ..configparser import config
 
 def set_compiledir(path=None):
     """Set the directory into which theano will compile code objects
@@ -27,15 +27,15 @@ def set_compiledir(path=None):
 
     if path is None:
         # we need to set the default, which can come from one of two places
-        if config.THEANO_COMPILEDIR:
-            path = config.THEANO_COMPILEDIR
+        if config.compiledir:
+            path = config.compiledir
         else:
             platform_id = platform.platform() + '-' + platform.processor()
             platform_id = re.sub("[\(\)\s]+", "_", platform_id)
-            if config.THEANO_BASE_COMPILEDIR:
-                base = config.THEANO_BASE_COMPILEDIR
+            if config.base_compiledir:
+                base = config.base_compiledir
             else:
-                base = os.path.join(config.HOME,'.theano')
+                base = os.path.join(config.home,'.theano')
             path = os.path.join(base, 'compiledir_'+platform_id)
 
     if not os.access(path, os.R_OK | os.W_OK):

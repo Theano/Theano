@@ -210,7 +210,7 @@ class ConvOp(Op):
                 "'valid' mode)")%(self.imshp_logical,self.kshp_logical))
 
         self._rehash()
-        if config.config.getboolean('op.set_flops'):
+        if config.op.set_flops:
             self.set_flops()
 
     def __eq__(self, other):
