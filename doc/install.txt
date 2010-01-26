@@ -166,14 +166,35 @@ Mac
 
     .. code-block:: bash
 
-        $ sudo port install gcc44 py25-zlib py25-numpy py25-scipy mercurial
+        $ sudo port install gcc44 py25-zlib py25-numpy py25-scipy mercurial python_select
 
     Note that compiling gcc takes a significant time (hours) so it is probably
     not the best solution if you are in a rush! It may happen that SciPy
     fails to compile the first time and still compiles just fine on a second
     try. Same thing with py25-zlib.
 
-- scipy depends on ATLAS (a BLAS library), which will be installed by MacPorts.
+- Please note that in order to use the MacPorts version of python, you might
+  need to explicitly select it with ``sudo python_select python25``. The
+  reason this is necessary is because you might have an Apple-provided python
+  (via, for example, an XCode installation). After performing this step, you
+  should check that the symbolic link provided by ``which python`` points to
+  the MacPorts python. For instance, on Snow Leopard with the latest MacPorts, 
+  the output of ``which python`` is ``/opt/local/bin/python`` and the symbolic
+  link points to ``/opt/local/bin/python2.5``. When executing ``sudo
+  python_select python26-apple`` (which you should **not** do), the link
+  points to ``/usr/bin/python2.6``.
+
+- Once this is fixed, please check that the scipy module that is imported in
+  Python is the right one (and is a recent one). For instance, ``import
+  scipy`` followed by ``print scipy.version`` and ``print scipy.__path__``
+  should result in a version number of at least 0.7.0 and a path that starts
+  with ``/opt/local`` (the path where MacPorts installs its packages). If this
+  is not the case, then you might have some old installation of ``scipy`` in your
+  ``PYTHONPATH`` so you should edit ``PYTHONPATH`` accordingly.
+
+- The same advice applies to ``numpy``.
+
+- ``scipy`` depends on ATLAS (a BLAS library), which will be installed by MacPorts.
 
 - Set ``THEANO_BLAS_LDFLAGS`` to something which will link against said BLAS
   library.  E.g., ``THEANO_BLAS_LDFLAGS='-lcblas -latlas -lgfortran'``.
@@ -283,7 +304,9 @@ but this has not been tested yet.
 - Please note that at this time, some tests (launched using ``nosetests``) are
   still failing under Windows: we are working on fixing them.
   It may also happen that many tests may fail while running the test-suite,
-  due to insufficient memory resources: one workaround is to run nosetests
+  due to insufficient memory resources (in which case you will probably get an
+  error of the type ``"Not enough storage is available to
+  process this command"``): one workaround is to run nosetests
   multiple times under individual subdirectories.
   
 
