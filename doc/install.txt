@@ -194,9 +194,26 @@ Mac
 
 - The same advice applies to ``numpy``.
 
+- Put ``export PYTHONPATH=/opt/local/lib/python2.5/site-packages:$PYTHONPATH``
+  in your ``.bashrc`` in order to include your MacPorts packages in Python's
+  path.
+
+- Make sure that the gcc version that you have installed on your system is
+  up-to-date. If you have an old version of XCode lying around, chances are
+  this is the case. You can check with ``which gcc``: if it says
+  ``/usr/bin/gcc`` then you should install gcc_select from MacPorts (``sudo port install
+  gcc_select``). Use ``gcc_select -l`` to see which gcc installs you have on
+  the system. Then execute ``sudo gcc_select mp-gcc44`` to create a symlink
+  that points to the correct (MacPorts) gcc (version 4.4 in this case).
+
+- This is covered in the MacPorts installation process, but make sure that
+  your ``PATH`` environmental variable contains ``/opt/local/bin`` and
+  ``/opt/local/sbin`` before any other paths (to make sure that the python and
+  gcc binaries that you installed with MacPorts are visible first).
+
 - ``scipy`` depends on ATLAS (a BLAS library), which will be installed by MacPorts.
 
-- Set ``THEANO_BLAS_LDFLAGS`` to something which will link against said BLAS
+- Finally, set ``THEANO_BLAS_LDFLAGS`` to something which will link against said BLAS
   library.  E.g., ``THEANO_BLAS_LDFLAGS='-lcblas -latlas -lgfortran'``.
 
 These installation instructions have not tested recently, please infom us of your results! 
