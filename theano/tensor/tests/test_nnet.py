@@ -104,7 +104,6 @@ class T_prepend(unittest.TestCase):
         f=theano.function([x],y)
         m=numpy.ones((3,5),dtype="float32")
         my = f(m)
-        self.failUnless(str(my.dtype) == 'float64')
         self.failUnless(my.shape == (3, 6))
         self.failUnless(numpy.all(my[:,0] == 5.0))
 
