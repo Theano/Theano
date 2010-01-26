@@ -211,6 +211,10 @@ Mac
   ``/opt/local/sbin`` before any other paths (to make sure that the python and
   gcc binaries that you installed with MacPorts are visible first).
 
+- Likewise, you need to
+  ``export LD_LIBRARY_PATH=/opt/local/lib:$LD_LIBRARY_PATH`` if this is not
+  the case already (so that we link to the correct libraries).
+
 - ``scipy`` depends on ATLAS (a BLAS library), which will be installed by MacPorts.
 
 - Finally, set ``THEANO_BLAS_LDFLAGS`` to something which will link against said BLAS
