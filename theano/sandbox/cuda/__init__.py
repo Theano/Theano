@@ -1,7 +1,7 @@
 import os, sys
 from theano.gof.compiledir import get_compiledir
 from theano.compile import optdb
-import theano.config as config
+from theano import config
 
 import logging, copy
 _logger_name = 'theano_cuda_ndarray'
@@ -109,7 +109,13 @@ if enable_cuda:
     import cuda_ndarray
 
 
-def use(device=config.THEANO_GPU):
+def use(device=config.device):
+    if device.startswith('gpu'):
+        device = int(device[3:])
+    elif device == 'cpu':
+        device = -1
+    else:
+        raise ValueError("Invalid device identifier", device)
     if use.device_number is None:
         # No successful call to use() has been made yet
         if device=="-1" or device=="CPU":
@@ -144,5 +150,5 @@ def handle_shared_float32(tf):
         raise NotImplementedError('removing our handler')
 
 
-if enable_cuda and config.THEANO_GPU not in [None, ""]:
+if enable_cuda and config.device.startswith('gpu'):
     use()
