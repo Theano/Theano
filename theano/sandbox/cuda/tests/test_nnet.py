@@ -13,9 +13,8 @@ import numpy
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
-try:
-    import theano.sandbox.cuda as cuda_ndarray
-except ImportError:
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.enable_cuda == False:
     raise SkipTest('Optional package cuda_ndarray not available')
 
 import theano.sandbox.cuda as tcn

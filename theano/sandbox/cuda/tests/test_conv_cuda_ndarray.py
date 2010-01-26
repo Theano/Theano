@@ -1,7 +1,11 @@
 import sys, time
 import numpy
+# Skip test if cuda_ndarray is not available.
+from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
-
+if cuda_ndarray.enable_cuda == False:
+    raise SkipTest('Optional package cuda_ndarray not available')
+    
 def py_conv_valid_numpy(img, kern):
     assert img.shape[1] == kern.shape[1]
     outshp = (img.shape[0], kern.shape[0], 
