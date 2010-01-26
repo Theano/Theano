@@ -1,4 +1,3 @@
-#include"conv_kernel.cu"
 //we store the full image and the full kernel in the shared memory
 //each thread compute only one value for the output
 //thread block size=out_wid, out_len/nb_split

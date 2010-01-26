@@ -28,8 +28,6 @@ for (int iter_m=0; iter_m < Os[0]; iter_m++) {
 #ifndef CONV_KERNEL_CU
 #define CONV_KERNEL_CU
 
-#include <stdio.h>
-
 /*
 #define CHECK_BANK_CONFLICTS 0
 #if CHECK_BANK_CONFLICTS

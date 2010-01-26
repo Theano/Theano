@@ -26,6 +26,16 @@ typedef float real;
 #endif
 
 
+#ifndef SHARED_SIZE 
+#define SHARED_SIZE (16*1024)
+#endif
+
+template <typename T>
+static T ceil_intdiv(T a, T b)
+{
+    return (a/b) + ((a % b) ? 1: 0);
+}
+
 /**
  * struct CudaNdarray
  *
@@ -407,14 +417,6 @@ int CudaNdarray_reduce_min(CudaNdarray * self, CudaNdarray * A);
 int CudaNdarray_reduce_max(CudaNdarray * self, CudaNdarray * A);
 
 int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern);
-
-enum { ConvMode_FULL, ConvMode_VALID };
-PyObject * CudaNdarray_Conv(const CudaNdarray *img, const CudaNdarray * kern, CudaNdarray * out, const int mode, const int subsample_rows, const int subsample_cols, const int version, const int verbose);
-PyObject * CudaNdarray_Conv(const CudaNdarray *img, const CudaNdarray * kern, CudaNdarray * out, const int mode)
-{
-    return CudaNdarray_Conv(img, kern, out, mode, 1, 1, -1, 0);
-}
-int CudaNdarray_conv(const CudaNdarray *img, const CudaNdarray * kern, CudaNdarray * out, const int mode);
 
 void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 {
