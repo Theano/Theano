@@ -266,7 +266,7 @@ def test_valid():
             , ((1,10,64,64),(20,10,58,58), (1,1), (1,1), (1,1))#test_lenet_64 bprop 2
             ]
 
-    shapes=shapes[425:426]
+    #shapes=shapes[400:426]
     # I put -1 in case we forget to add version in the test to.
     # I put -2 to test the reference version.
     version=[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13]
