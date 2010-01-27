@@ -108,7 +108,6 @@ def AddConfigVar(name, doc, thing, cls=TheanoConfigParser):
             setattr(cls, parts[0], SubObj)
         AddConfigVar('.'.join(parts[1:]), doc, thing, cls=getattr(cls, parts[0]))
     else:
-        thing.name = name
         thing.doc = doc
         thing.__get__() # trigger a read of the value
         setattr(cls, parts[0], thing)
@@ -121,10 +120,10 @@ class ConfigParam(object):
         # there is a name attribute too, but it is set by AddConfigVar
 
     def __get__(self, *args):
-        #print "GETTING PARAM", self.name, self, args
+        #print "GETTING PARAM", self.fullname, self, args
         if not hasattr(self, 'val'):
             try:
-                val_str = fetch_val_for_key(self.name)
+                val_str = fetch_val_for_key(self.fullname)
             except KeyError:
                 val_str = self.default
             self.__set__(None, val_str)
@@ -132,7 +131,7 @@ class ConfigParam(object):
         return self.val
 
     def __set__(self, cls, val):
-        #print "SETTING PARAM", self.name,(cls), val
+        #print "SETTING PARAM", self.fullname,(cls), val
         if self.filter:
             self.val = self.filter(val)
         else:
@@ -149,7 +148,7 @@ class EnumStr(ConfigParam):
                 return val
             else:
                 raise ValueError('Invalid value (%s) for configuration variable "%s". Legal options are %s'
-                        % (val, self.name, self.all), val)
+                        % (val, self.fullname, self.all), val)
         super(EnumStr, self).__init__(default, filter)
 
     def __str__(self):
@@ -165,7 +164,7 @@ class TypedParam(ConfigParam):
                     return casted_val
                 else:
                     raise ValueError('Invalid value (%s) for configuration variable "%s".'
-                            % (val, self.name), val)
+                            % (val, self.fullname), val)
             return casted_val
         super(TypedParam, self).__init__(default, filter)
     def __str__(self):
