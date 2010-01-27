@@ -29,6 +29,7 @@ you out.
     loading_and_saving
     symbolic_graphs
     modes
+    using_gpu
     remarks
     debug_faq
 

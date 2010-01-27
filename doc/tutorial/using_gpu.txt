@@ -1,0 +1,189 @@
+
+.. _using_gpu:
+
+=============
+Using the GPU
+=============
+
+One of the Theano's design goals is to specify computations at an
+abstract level, so that the internal function compiler has a lot of flexibility
+about how to carry out those computations.  One of the ways we take advantage of
+this flexibility is in carrying out calculations on an Nvidia graphics card when
+there is a CUDA-enabled device in your computer.
+
+Setting up CUDA
+----------------
+
+The first thing you'll need for Theano to use your GPU is Nvidia's
+GPU-programming toolchain.  You should install at least the CUDA driver and the CUDA Toolkit, as 
+:ref:`described here<http://www.nvidia.com/object/cuda_get.html>`.  After
+installing these tools, there should be a folder on your computer with a 'bin' subfolder containing the 'nvcc' executable,
+a 'lib' subfolder containing libcudart among other things, and an 'include' directory.
+This folder with the 'bin', 'lib', and 'include' folders is called the *cuda
+root* directory, and Theano needs to know where it is to use GPU functionality.
+
+On Linux or OS-X, add the cuda root 'lib' (and/or 'lib64' if you have a 64-bit
+computer) directories to your LD_LIBRARY_PATH environment variable so that the
+dynamic loading of modules linked with cuda libraries can work.  (***TODO on
+windows I don't know how to do this!)
+
+
+Making Theano use CUDA
+----------------------
+
+There are three ways to tell Theano where the cuda root is.  Any one of them is
+enough (and it would be confusing to use more than one!)
+
+* Define a $CUDA_ROOT environment variable to equal the cuda root directory, as in ``CUDA_ROOT=/path/to/cuda/root``, or
+* add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
+* add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
+
+Once everything is set up correctly, the only thing left to do to tell Theano to
+use the GPU is to change the ``device`` option to name the GPU device in your
+computer.
+For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu0'``.
+You can also set the device option in the .theanorc file's [global] section.  If
+your computer has multiple gpu devices, you can address them as gpu0, gpu1,
+gpu2, or gpu3.  (If you have more than 4 devices you are very lucky but you'll have to modify theano's
+configdefaults.py file to define more gpu devices to choose from.)
+
+
+Putting it all Together
+-------------------------
+
+To see if your GPU is being used, cut and paste the following program into a
+file and run it.
+
+.. code-block:: python
+
+    from theano import function, config, shared, sandbox
+    import theano.tensor as T
+    import numpy
+    import time
+
+    vlen = 100000
+    iters = 1000
+
+    rng = numpy.random.RandomState(22)
+    x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+    f = function([], T.exp(x))
+    t0 = time.time()
+    for i in xrange(iters):
+        r = f()
+    print 'Looping 100 times took', time.time() - t0, 'seconds'
+    print 'Result is', r
+
+The program computes an outer-sum of two long vectors, and then adds up the
+result of the exp() of each element.  Note that we use the `shared` function to
+make sure that the inputs `x` and `y` are stored on the graphics device.
+
+If I run this program (in thing.py) with device=cpu, my computer takes a little over 3 seconds, whereas on the GPU it takes just over 0.2 seconds.  Note that the results are close but not identical!  The GPU will not always produce the exact same floating-point numbers as the CPU.
+
+.. code-block:: text
+
+    $ THEANO_FLAGS=mode=FAST_RUN,device=cpu python thing.py 
+    Looping 100 times took 3.12647008896 seconds
+    Result is [ 1.23178032  1.61879341  1.52278065 ...,  1.74085572  2.55530456 1.88906098]
+
+    bergstra@tikuanyin:~/tmp$ THEANO_FLAGS=mode=FAST_RUN,device=gpu0 python thing.py 
+    Using gpu device 0: GeForce GTX 285
+    Looping 100 times took 0.217401981354 seconds
+    Result is [ 1.23178029  1.61879349  1.52278066 ...,  1.74085569 2.55530477 1.88906097]
+
+Returning a handle to device-allocated data
+-------------------------------------------
+
+The speedup is not greater in the example above because the function is
+returning its result as a numpy ndarray (which has already copied from the
+device to the host).  This is what makes it so easy to swap in device=gpu0, but
+if you want to be less portable, you can see a bigger speedup by changing
+the graph to express a computation with a GPU-stored result.  The gpu_from_host
+op means "copy the input from the host to the gpu" and it is optimized away
+after the T.exp(x) is replaced by a GPU version of exp().
+
+.. code-block:: python
+
+    from theano import function, config, shared, sandbox
+    import theano.tensor as T
+    import numpy
+    import time
+
+    vlen = 100000
+    iters = 1000
+
+    rng = numpy.random.RandomState(22)
+    x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+    f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
+    t0 = time.time()
+    for i in xrange(iters):
+        r = f()
+    print 'Looping 100 times took', time.time() - t0, 'seconds'
+    print 'Result is', r
+    print 'Numpy result is', numpy.asarray(r)
+
+The output from this program is
+
+.. code-block:: text
+
+    Using gpu device 0: GeForce GTX 285
+    Looping 100 times took 0.173671007156 seconds
+    Result is <noddy.CudaNdarray object at 0x3e9e970>
+    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  1.74085569 2.55530477 1.88906097]
+
+Here we've shaved off about 20% of the run-time by simply not copying the
+resulting array back to the host.
+The object returned by each function call is now not a numpy array but an, ahem,
+"noddy.CudaNdarray" which can be converted to a numpy ndarray by the normal
+numpy casting mechanism.
+
+
+What can be accelerated on the GPU?
+------------------------------------
+
+The performance characteristics will change as we continue to optimize our
+implementations, and vary from device to device, but to give a rough idea of
+what to expect right now:
+
+* Computations 
+  with float32 data-type, float64 support is expected in upcoming hardware but
+  it is quite slow now (Jan 2010).  
+* Matrix
+  multiplication, convolution, and large element-wise operations can be
+  accelerated a lot (5-50x) when arguments are large enough to keep 30
+  processors busy.  
+* Indexing,
+  dimension-shuffling and  constant-time reshaping will be equally fast on GPU
+  as on CPU.
+* Summation 
+  over rows/columns of tensors can be a little slower on the GPU than on the CPU
+* Copying 
+  of large quantities of data to and from a device is relatively slow, and
+  roughly cancels the advantage of one or two much-accelerated functions on
+  that data.  Getting GPU performance largely hinges on making data transfer to
+  the device pay off.
+
+
+Tips for improving performance on GPU
+--------------------------------------
+
+* Consider 
+  adding ``floatX = float32`` to your .theanorc file if you plan to do a lot of
+  GPU work.
+* Prefer  
+  constructors like 'matrix' 'vector' and 'scalar' to 'dmatrix', 'dvector' and
+  'dscalar' because the former will give you float32 variables when
+  floatX=float32.
+* Ensure 
+  that your output variables have a float32 dtype and not float64.  The
+  more float32 variables are in your graph, the more work the GPU can do for
+  you.
+* Minimize 
+  tranfers to the GPU device by using shared 'float32' variables to store
+  frequently-accessed data (see :func:`shared()<shared.shared>`).  When using
+  the GPU, 'float32' tensor shared variables are stored on the GPU by default to
+  eliminate transfer time for GPU ops using those variables.
+* If you aren't happy with the performance you see, try building your functions with 
+  mode='PROFILE_MODE'. This should print some timing information at program
+  termination (atexit). Is time being used sensibly? 
+
+
