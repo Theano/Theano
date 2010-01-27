@@ -202,7 +202,9 @@ Mac
 
 These installation instructions have not tested recently, please infom us of your results! 
 We would be especially interested in dependencies that we missed listing, as well as tests
-that fail on your platform (use the ``theano-users@googlegroups.com`` mailing list).
+that fail on your platform (use the ``theano-users@googlegroups.com`` mailing list,
+but note that you must first register to it, by going to 
+`http://groups.google.com/group/theano-users`_).
 
 
 Windows
