@@ -4,7 +4,7 @@ import os, sys
 import platform
 import re
 
-from ..configparser import config, AddConfigVar, StrParam
+from theano.configparser import config, AddConfigVar, StrParam
 
 def default_compiledirname():
     platform_id = platform.platform() + '-' + platform.processor()

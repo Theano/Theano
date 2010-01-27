@@ -4,7 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
-from ..configparser import config
+from theano.configparser import config
 import traceback #for overriding Op.__call__
 if sys.version_info >= (2,5):
   import functools

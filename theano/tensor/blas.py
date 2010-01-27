@@ -3,7 +3,7 @@
 import sys, traceback, logging
 import numpy
 import numpy.distutils
-from ..configparser import config, AddConfigVar, StrParam
+from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox)

@@ -9,7 +9,7 @@ _logger = logging.getLogger('theano.tensor.opt')
 from theano import gof
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof.utils import MethodNotDefined
-from ..configparser import config
+from theano.configparser import config
 from elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T

@@ -11,7 +11,7 @@ from theano.gof import Env, graph, utils, link
 from theano.gof.link import WrapLinkerMany, raise_with_op
 #from theano.gof.cutils import run_cthunk
 from theano.gof.cc import OpWiseCLinker, CLinker
-from ..configparser import config
+from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import (FunctionMaker,
         Function, 
         infer_reuse_pattern,
@@ -20,7 +20,6 @@ from theano.compile.function_module import (FunctionMaker,
         SymbolicOutput,
         Supervisor)
 from theano.compile.mode import Mode, register_mode
-from ..configparser import config, AddConfigVar, IntParam, BoolParam
 
 AddConfigVar('DebugMode.patience',
         "Optimize graph this many times to detect inconsistency",

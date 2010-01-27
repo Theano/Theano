@@ -4,7 +4,7 @@ import os, logging
 
 import numpy
 from theano import gof
-from ..configparser import config
+from theano.configparser import config
 
 _logger = logging.getLogger('theano.compile.mode')
 

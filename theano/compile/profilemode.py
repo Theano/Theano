@@ -6,7 +6,7 @@ from theano.compile.mode import Mode, register_mode, predefined_modes, predefine
 from theano.gof.cc import OpWiseCLinker
 from theano.gof.python25 import any
 from theano import gof
-from ..configparser import config, AddConfigVar, IntParam
+from theano.configparser import config, AddConfigVar, IntParam
 
 import_time = time.time()
 
