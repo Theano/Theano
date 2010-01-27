@@ -25,10 +25,6 @@ AddConfigVar('nocleanup',
         "suppress the deletion of code files that did not compile cleanly",
         BoolParam(False))
 
-AddConfigVar('blas.ldflags',
-        "lib[s] to include for [Fortran] level-3 blas implementation",
-        StrParam("-lblas"))
-
 AddConfigVar('tensor.cmp_sloppy',
         "Relax tensor._allclose (0) not at all, (1) a bit, (2) more",
         IntParam(0, lambda i: i in (0,1,2)))

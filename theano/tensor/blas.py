@@ -2,7 +2,8 @@
 
 import sys, traceback, logging
 import numpy
-from ..configparser import config
+import numpy.distutils
+from ..configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox)
@@ -16,6 +17,18 @@ import basic as T
 from theano import compile  #to register the optimizer built by this file 
 
 from theano.tensor.blas_headers import cblas_header_text, blas_header_text
+
+def default_blas_ldflags():
+    try:
+        return ' '.join('-l%s'%l 
+                for l in numpy.distutils.__config__.blas_opt_info['libraries'])
+    except:
+        return "-lblas"
+
+AddConfigVar('blas.ldflags',
+        "lib[s] to include for [Fortran] level-3 blas implementation",
+        StrParam(default_blas_ldflags()))
+
 
 _logger = logging.getLogger('theano.tensor.blas')
 _logger.setLevel(logging.WARN)
