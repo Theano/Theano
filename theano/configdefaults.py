@@ -19,7 +19,7 @@ AddConfigVar('mode',
 
 AddConfigVar('home',
         "User home directory",
-        EnumStr(os.getenv("HOME")))
+        StrParam(os.getenv("HOME")))
 
 AddConfigVar('nocleanup',
         "suppress the deletion of code files that did not compile cleanly",
