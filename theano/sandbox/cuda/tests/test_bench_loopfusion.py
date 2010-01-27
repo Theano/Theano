@@ -23,7 +23,7 @@ _logger = logging.getLogger('driver_kouh')
 
 def _shared_uniform(rng, low, high, size, dtype, name=None):
     return shared(
-            numpy.asarray(
+            theano._asarray(
                 rng.uniform(low=low, high=high, size=size),
                 dtype=dtype), name)
 
@@ -46,7 +46,7 @@ class Kouh2008(object):
         if len(w_list) != len(x_list):
             raise ValueError('w_list must have same len as x_list')
         output = (sum(w * tensor.pow(x, p) for (w,x) in zip(w_list, x_list)))\
-                / (numpy.asarray(eps, dtype=k.type.dtype) + k + tensor.pow(sum(tensor.pow(x, q) for x in x_list), r))
+                / (theano._asarray(eps, dtype=k.type.dtype) + k + tensor.pow(sum(tensor.pow(x, q) for x in x_list), r))
 
         assert output.type.ndim == 2
         self.__dict__.update(locals())
@@ -79,8 +79,8 @@ class Kouh2008(object):
             w_l2_sqr = sum((wi**2).sum() for wi in w_list)
 
         e_range_low, e_range_high = exponent_range
-        e_range_low = numpy.asarray(e_range_low, dtype=dtype)
-        e_range_high = numpy.asarray(e_range_high, dtype=dtype)
+        e_range_low = theano._asarray(e_range_low, dtype=dtype)
+        e_range_high = theano._asarray(e_range_high, dtype=dtype)
         e_range_mag = e_range_high - e_range_low
         if e_range_mag < 0:
             raise ValueError('exponent range must have low <= high')
@@ -93,8 +93,8 @@ class Kouh2008(object):
         p = tensor.nnet.sigmoid(p_unbounded) * e_range_mag + e_range_low
         q = tensor.nnet.sigmoid(q_unbounded) * e_range_mag + e_range_low
         r = tensor.nnet.sigmoid(r_unbounded) * \
-                numpy.asarray(1.0/e_range_low - 1.0/e_range_high, dtype=dtype) \
-                + numpy.asarray(1.0/e_range_high, dtype=dtype)
+                theano._asarray(1.0/e_range_low - 1.0/e_range_high, dtype=dtype) \
+                + theano._asarray(1.0/e_range_high, dtype=dtype)
 
         k = softsign(k_unbounded)
 
@@ -157,10 +157,10 @@ class Kouh2008(object):
 
         b_list = [shared_uniform(low=0, high=.01, size=(n_out,), name='b_%i'%i)
                 for i in xrange(n_terms)]
-        #x_list = [numpy.asarray(eps, dtype=dtype)+softplus(tensor.dot(input, f_list[i])) for i in xrange(n_terms)]
-        filter_range = numpy.asarray(filter_range, dtype=dtype)
-        half_filter_range = numpy.asarray(filter_range/2, dtype=dtype)
-        x_list = [numpy.asarray(filter_range + eps, dtype=dtype)+half_filter_range *softsign(tensor.dot(input, f_list[i]) +
+        #x_list = [theano._asarray(eps, dtype=dtype)+softplus(tensor.dot(input, f_list[i])) for i in xrange(n_terms)]
+        filter_range = theano._asarray(filter_range, dtype=dtype)
+        half_filter_range = theano._asarray(filter_range/2, dtype=dtype)
+        x_list = [theano._asarray(filter_range + eps, dtype=dtype)+half_filter_range *softsign(tensor.dot(input, f_list[i]) +
             b_list[i]) for i in xrange(n_terms)]
 
         rval = cls.new_expbounds(rng, x_list, n_out, dtype=dtype, params=f_list + b_list,
@@ -304,7 +304,7 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
 
     train_nll = pfunc([x, y, s_lr], [], updates=updates)
 
-    xval = numpy.asarray(
+    xval = theano._asarray(
         rng.uniform(size=(conf.ft_batchsize, x.type.shape[1])),
         dtype=conf.dtype2,
         )

@@ -211,7 +211,7 @@ class Test_pfunc(unittest.TestCase):
 
         z = tensor.ivector()
         c = z*y
-        f = pfunc([y], c+7, givens = {z : numpy.asarray([4,4,4], dtype='int32')})
+        f = pfunc([y], c+7, givens = {z : theano._asarray([4,4,4], dtype='int32')})
         assert numpy.all(f([1,1,1]) == [11,11,11])
         assert x.value == 0
 

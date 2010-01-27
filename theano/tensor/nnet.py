@@ -35,7 +35,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         if node.inputs[0].type == scalar.float32:
             # These constants were obtained by looking at the output of python commands like:
             #  for i in xrange(750):
-            #      print i, repr( numpy.asarray(1.0, dtype=dt) / (numpy.asarray(1.0, dtype=dt) + numpy.exp(-numpy.asarray([i,-i], dtype=dt))))
+            #      print i, repr( theano._asarray(1.0, dtype=dt) / (theano._asarray(1.0, dtype=dt) + numpy.exp(-theano._asarray([i,-i], dtype=dt))))
             # the boundary checks prevent us from generating inf
             return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()
         elif node.inputs[0].type == scalar.float64:
@@ -70,7 +70,7 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         if node.inputs[0].type == scalar.float32:
             # These constants were obtained by looking at the output of python commands like:
             #  for i in xrange(750):
-            #      print i, repr( numpy.log1p(numpy.exp(numpy.asarray([i,-i], dtype=dt))))
+            #      print i, repr( numpy.log1p(numpy.exp(theano._asarray([i,-i], dtype=dt))))
             # the boundary checks prevent us from generating inf
             return """%(z)s = %(x)s < -103.0f ? 0.0 : %(x)s > 14.0f ? %(x)s : log1p(exp(%(x)s));""" % locals()
         elif node.inputs[0].type == scalar.float64:

@@ -1063,8 +1063,8 @@ class test_bitwise(unittest.TestCase):
     def test_or(self):
         x, y = bvector(), bvector()
         fn = inplace_func([x,y], x|y)
-        l = numpy.asarray([0,0,1,1], dtype = 'int8')
-        r = numpy.asarray([0,1,0,1], dtype = 'int8')
+        l = theano._asarray([0,0,1,1], dtype = 'int8')
+        r = theano._asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (operator.or_(l, r))), (l, r, v))
 
@@ -1074,8 +1074,8 @@ class test_bitwise(unittest.TestCase):
         ix = x
         ix = inplace.xor_inplace(ix, y)
         gn = inplace_func([x,y], ix)
-        l = numpy.asarray([0,0,1,1], dtype = 'int8')
-        r = numpy.asarray([0,1,0,1], dtype = 'int8')
+        l = theano._asarray([0,0,1,1], dtype = 'int8')
+        r = theano._asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (operator.xor(l, r))), (l, r, v))
         v = gn(l, r)
@@ -1085,16 +1085,16 @@ class test_bitwise(unittest.TestCase):
     def test_and(self):
         x, y = bvector(), bvector()
         fn = inplace_func([x,y], x&y)
-        l = numpy.asarray([0,0,1,1], dtype = 'int8')
-        r = numpy.asarray([0,1,0,1], dtype = 'int8')
+        l = theano._asarray([0,0,1,1], dtype = 'int8')
+        r = theano._asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (operator.and_(l, r))), (l, r, v))
 
     def test_inv(self):
         x, y = bvector(), bvector()
         fn = inplace_func([x,y], ~x)
-        l = numpy.asarray([0,0,1,1], dtype = 'int8')
-        r = numpy.asarray([0,1,0,1], dtype = 'int8')
+        l = theano._asarray([0,0,1,1], dtype = 'int8')
+        r = theano._asarray([0,1,0,1], dtype = 'int8')
         v = fn(l, r)
         self.failUnless(numpy.all(v == (~l)), (l, r, v))
 
@@ -1723,9 +1723,9 @@ def test_reshape():
     assert numpy.all(a_val == a_val_copy)
 
     #test that it works with inplace operations
-    a_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
-    a_val_copy = numpy.asarray([0,1,2,3,4,5], dtype='float64')
-    b_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+    a_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
+    a_val_copy = theano._asarray([0,1,2,3,4,5], dtype='float64')
+    b_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
 
     f_sub = inplace_func([a,b], c-b)
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
@@ -1733,7 +1733,7 @@ def test_reshape():
 
     # verify gradient
     def just_vals(v):
-        return Reshape(2)(v, numpy.asarray([2,3], dtype='int32'))
+        return Reshape(2)(v, theano._asarray([2,3], dtype='int32'))
     utt.verify_grad(just_vals, [a_val])
 
 
@@ -1744,8 +1744,8 @@ def test_flatten_outdimNone():
     a = dmatrix()
     c = flatten(a)
     f = inplace_func([a], c)
-    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
-    c_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
+    a_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
+    c_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
@@ -1756,8 +1756,8 @@ def test_flatten_scalar():
     a = dscalar()
     c = flatten(a)
     f = inplace_func([a], c)
-    a_val = numpy.asarray(3.0, dtype='float64')
-    c_val = numpy.asarray([3.0], dtype='float64')
+    a_val = theano._asarray(3.0, dtype='float64')
+    c_val = theano._asarray([3.0], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
@@ -1768,8 +1768,8 @@ def test_flatten_outdim1():
     a = dmatrix()
     c = flatten(a, 1)
     f = inplace_func([a], c)
-    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
-    c_val = numpy.asarray([0,1,2,3,4,5], dtype='float64')
+    a_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
+    c_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
@@ -1780,7 +1780,7 @@ def test_flatten_outdim2():
     a = dmatrix()
     c = flatten(a, 2)
     f = inplace_func([a], c)
-    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+    a_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
     assert numpy.all(f(a_val)==a_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==a_val)
@@ -1791,8 +1791,8 @@ def test_flatten_outdim2_of_3():
     a = TensorType('float64', (False, False, False))()
     c = flatten(a, 2)
     f = inplace_func([a], c)
-    a_val = numpy.asarray([[[0,1],[2,3]], [[4,5],[6,7]]], dtype='float64')
-    c_val = numpy.asarray([[0,1,2,3], [4,5,6,7]], dtype='float64')
+    a_val = theano._asarray([[[0,1],[2,3]], [[4,5],[6,7]]], dtype='float64')
+    c_val = theano._asarray([[0,1,2,3], [4,5,6,7]], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
@@ -2288,8 +2288,8 @@ def test_autocast():
         ac.__enter__()
         assert (dvector()+ 1.1).dtype == 'float64'
         assert (fvector()+ 1.1).dtype == 'float32'
-        assert (fvector()+ numpy.asarray(1.1,dtype='float64')).dtype == 'float64'
-        assert (fvector()+ numpy.asarray(1.1,dtype='float32')).dtype == 'float32'
+        assert (fvector()+ theano._asarray(1.1,dtype='float64')).dtype == 'float64'
+        assert (fvector()+ theano._asarray(1.1,dtype='float32')).dtype == 'float32'
 
         assert (dvector()+ 1).dtype == 'float64'
         assert (fvector()+ 1).dtype == 'float32'
@@ -2303,8 +2303,8 @@ def test_autocast():
         assert (dvector()+ 1.1).dtype == 'float64'
         assert (fvector()+ 1.1).dtype == 'float64'
         assert (fvector()+ 1.0).dtype == 'float64'
-        assert (fvector()+ numpy.asarray(1.1,dtype='float64')).dtype == 'float64'
-        assert (fvector()+ numpy.asarray(1.1,dtype='float32')).dtype == 'float32'
+        assert (fvector()+ theano._asarray(1.1,dtype='float64')).dtype == 'float64'
+        assert (fvector()+ theano._asarray(1.1,dtype='float32')).dtype == 'float32'
 
         assert (dvector()+ 1).dtype == 'float64'
         assert (fvector()+ 1).dtype == 'float32'

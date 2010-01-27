@@ -389,7 +389,7 @@ Here is an example showing how to use verify_grad:
 >>> def test_flatten_outdimNone():
 >>>    a = dmatrix()
 >>>    # ...
->>>    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
+>>>    a_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
 >>>    # ...
 >>>    tensor.verify_grad(Flatten(), [a_val])
 

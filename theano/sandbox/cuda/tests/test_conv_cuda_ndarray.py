@@ -59,14 +59,14 @@ def _params_allgood_header():
 def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), kern_stride=(1,1), version=-1, verbose=0, random=True, print_=None, id=None, rtol=1e-5, atol = 1e-8, nb_iter=0, ones=False):
     if ones:
         assert not random
-        npy_img = numpy.asarray(numpy.ones(ishape), dtype='float32')
-        npy_kern = -numpy.asarray(numpy.ones(kshape), dtype='float32')
+        npy_img = theano._asarray(numpy.ones(ishape), dtype='float32')
+        npy_kern = -theano._asarray(numpy.ones(kshape), dtype='float32')
     elif random:
-        npy_img = numpy.asarray(numpy.random.rand(*ishape), dtype='float32')
-        npy_kern = numpy.asarray(numpy.random.rand(*kshape), dtype='float32')
+        npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
+        npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
     else:
-        npy_img = numpy.asarray(numpy.arange(numpy.prod(ishape)).reshape(ishape), dtype='float32')+1
-        npy_kern = -(numpy.asarray(numpy.arange(numpy.prod(kshape)).reshape(kshape), dtype='float32')+1)
+        npy_img = theano._asarray(numpy.arange(numpy.prod(ishape)).reshape(ishape), dtype='float32')+1
+        npy_kern = -(theano._asarray(numpy.arange(numpy.prod(kshape)).reshape(kshape), dtype='float32')+1)
 
     img = cuda_ndarray.CudaNdarray(npy_img)
     kern = cuda_ndarray.CudaNdarray(npy_kern)
@@ -369,8 +369,8 @@ def _test_dummy():
     mode = 'valid'
     subsample = (1,1)
 
-    npy_img = numpy.asarray(numpy.random.rand(*ishape), dtype='float32')
-    npy_kern = numpy.asarray(numpy.random.rand(*kshape), dtype='float32')
+    npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
+    npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
 
     img = cuda_ndarray.CudaNdarray(npy_img)
     kern = cuda_ndarray.CudaNdarray(npy_kern)

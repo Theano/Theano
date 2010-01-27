@@ -53,6 +53,7 @@ from compile import \
     ProfileMode, \
     Param, shared
 
+from misc.safe_asarray import _asarray
 
 FancyModule = Module
 

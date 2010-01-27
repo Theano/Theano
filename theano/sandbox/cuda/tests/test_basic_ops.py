@@ -39,7 +39,7 @@ def test_sum():
         val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
 #        val = numpy.ones(shape)
 #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
-        val = numpy.asarray(val,dtype='float32')
+        val = theano._asarray(val,dtype='float32')
         f = theano.function([a],b, mode=mode_with_gpu)
         f2 = theano.function([a],b)
         assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
@@ -60,7 +60,7 @@ def test_sum():
         val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
 #        val = numpy.ones(shape)
 #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
-        val = numpy.asarray(val,dtype='float32')
+        val = theano._asarray(val,dtype='float32')
         val2 = cuda.CudaNdarray(val)
         if len(shape)==1:
             val = val[::2]
@@ -89,22 +89,22 @@ def test_reshape():
 
     #basic
     f = theano.function([a], c)
-    fv = f(cuda_ndarray.CudaNdarray(numpy.asarray([0,1,2,3,4,5],dtype='float32')))
+    fv = f(cuda_ndarray.CudaNdarray(theano._asarray([0,1,2,3,4,5],dtype='float32')))
     assert numpy.all(fv == numpy.asarray([[0,1,2], [3,4,5]]))
 
     #test that it works without inplace operations
-    a_val = cuda_ndarray.CudaNdarray(numpy.asarray([0,1,2,3,4,5],dtype='float32'))
-    a_val_copy = cuda_ndarray.CudaNdarray(numpy.asarray([0,1,2,3,4,5],dtype='float32'))
-    b_val = cuda_ndarray.CudaNdarray(numpy.asarray([[0,1,2],[3,4,5]],dtype='float32'))
+    a_val = cuda_ndarray.CudaNdarray(theano._asarray([0,1,2,3,4,5],dtype='float32'))
+    a_val_copy = cuda_ndarray.CudaNdarray(theano._asarray([0,1,2,3,4,5],dtype='float32'))
+    b_val = cuda_ndarray.CudaNdarray(theano._asarray([[0,1,2],[3,4,5]],dtype='float32'))
 
     f_sub = theano.function([a,b], c-b)
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
 
     #test that it works with inplace operations
-    a_val = numpy.asarray([0,1,2,3,4,5], dtype='float32')
-    a_val_copy = numpy.asarray([0,1,2,3,4,5], dtype='float32')
-    b_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float32')
+    a_val = theano._asarray([0,1,2,3,4,5], dtype='float32')
+    a_val_copy = theano._asarray([0,1,2,3,4,5], dtype='float32')
+    b_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float32')
 
     f_sub = theano.function([a,b], c-b)
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
@@ -112,7 +112,7 @@ def test_reshape():
 
     # verify gradient
     def just_vals(v):
-        return T.Reshape(2)(v, numpy.asarray([2,3], dtype='int32'))
+        return T.Reshape(2)(v, theano._asarray([2,3], dtype='int32'))
     utt.verify_grad(just_vals, [a_val])
 
 def test_elemwise0():
@@ -231,8 +231,8 @@ def speed_elemwise_collapse():
     """ used to time if the collapse of ccontiguous dims are usefull """
     
     shape = (30,40,50,600)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2[:,::2,:,:]
     b = tcn.CudaNdarrayType((False, False, False, False))()
@@ -240,7 +240,7 @@ def speed_elemwise_collapse():
     f = pfunc([b], [c])
 
 
-    v = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    v = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     v = v[:,::2,:,:]
     v=cuda_ndarray.CudaNdarray(v)
     for id,n in enumerate(f.maker.env.toposort()):
@@ -255,8 +255,8 @@ def speed_elemwise_collapse2():
     """ used to test the speed up of the generalised collapse of ccontiguous dims"""
     
     shape = (30,40,50,600)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2[:,:,:,::2]
     b = tcn.CudaNdarrayType((False, False, False, False))()
@@ -264,7 +264,7 @@ def speed_elemwise_collapse2():
     f = pfunc([b], [c])
 
 
-    v = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    v = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     v = v[:,:,:,::2]
     v=cuda_ndarray.CudaNdarray(v)
     for id,n in enumerate(f.maker.env.toposort()):
@@ -279,8 +279,8 @@ def test_elemwise_collapse():
     """ Test when all inputs have one(and the same) broadcastable dimension """
     
     shape = (4,5,60)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle(0,'x',1,2)
     b = tcn.CudaNdarrayType((False, True, False, False))()
@@ -288,7 +288,7 @@ def test_elemwise_collapse():
     f = pfunc([b], [c])
 
 
-    v = numpy.asarray(numpy.random.rand(shape[0],1,*shape[1:]),dtype='float32')
+    v = theano._asarray(numpy.random.rand(shape[0],1,*shape[1:]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
     if False:
         for id,n in enumerate(f.maker.env.toposort()):
@@ -302,8 +302,8 @@ def test_elemwise_collapse2():
     """ Test when only one inputs have one broadcastable dimension """
     
     shape = (4,5,60)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle(0,'x',1,2)
     b = tcn.CudaNdarrayType((False, False, False, False))()
@@ -311,7 +311,7 @@ def test_elemwise_collapse2():
     f = pfunc([b], [c])
 
 
-    v = numpy.asarray(numpy.random.rand(shape[0],5,*shape[1:]),dtype='float32')
+    v = theano._asarray(numpy.random.rand(shape[0],5,*shape[1:]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
     if False:
         for id,n in enumerate(f.maker.env.toposort()):
@@ -325,8 +325,8 @@ def test_elemwise_collapse3():
     """ Test when only one inputs have two broadcastable dimension at each ends """
     
     shape = (4,5)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle('x',0,1,'x')
     b = tcn.CudaNdarrayType((False, False, False, False))()
@@ -334,7 +334,7 @@ def test_elemwise_collapse3():
     f = pfunc([b], [c])
 
 
-    v = numpy.asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
+    v = theano._asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
     if False:
         for id,n in enumerate(f.maker.env.toposort()):
@@ -348,8 +348,8 @@ def test_elemwise_collapse4():
     """ Test when only one inputs have two broadcastable dimension at each ends and we add a scalar"""
     
     shape = (4,5)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle('x',0,1,'x')
     b = tcn.CudaNdarrayType((False, False, False, False))()
@@ -357,7 +357,7 @@ def test_elemwise_collapse4():
     f = pfunc([b], [c])
 
 
-    v = numpy.asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
+    v = theano._asarray(numpy.random.rand(5,shape[0],shape[1],4),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
     if False:
         for id,n in enumerate(f.maker.env.toposort()):
@@ -371,8 +371,8 @@ def test_elemwise_collapse5():
     """ Test when only one inputs have two broadcastable dimension at the beginning and we add a scalar"""
     
     shape = (4,5)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle('x','x',0,1)
     b = tcn.CudaNdarrayType((False, False, False, False))()
@@ -380,7 +380,7 @@ def test_elemwise_collapse5():
     f = pfunc([b], [c])
 
 
-    v = numpy.asarray(numpy.random.rand(5,4,shape[0],shape[1]),dtype='float32')
+    v = theano._asarray(numpy.random.rand(5,4,shape[0],shape[1]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
     if False:
         for id,n in enumerate(f.maker.env.toposort()):
@@ -394,14 +394,14 @@ def test_elemwise_collapse6():
     """ Test when all inputs have two broadcastable dimension at the beginning"""
     
     shape = (4,5)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a, 'a')
     a3 = a2.dimshuffle('x','x',0,1)
     b = tcn.CudaNdarrayType((True, True, False, False))()
     f = pfunc([b], [a3+b])
 
-    v = numpy.asarray(numpy.random.rand(1,1,shape[0],shape[1]),dtype='float32')
+    v = theano._asarray(numpy.random.rand(1,1,shape[0],shape[1]),dtype='float32')
     v=cuda_ndarray.CudaNdarray(v)
     if False:
         for id,n in enumerate(f.maker.env.toposort()):
@@ -416,8 +416,8 @@ def test_elemwise_collapse7(atol=1e-6):
     """ Test when one input have one broadcastable dimension and the other is a scalar"""
     
     shape = (5,4,1)
-    a = cuda_ndarray.CudaNdarray(numpy.asarray(numpy.random.rand(*shape),dtype='float32'))
-    a = numpy.asarray(numpy.random.rand(*shape),dtype='float32')
+    a = cuda_ndarray.CudaNdarray(theano._asarray(numpy.random.rand(*shape),dtype='float32'))
+    a = theano._asarray(numpy.random.rand(*shape),dtype='float32')
     a2 = tcn.shared_constructor(a.copy(), 'a')
     a3 = a2.dimshuffle(0, 'x', 1, 2)
     f = pfunc([], [a3+2])

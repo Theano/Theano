@@ -71,7 +71,7 @@ def shared_constructor(value, name, strict=False, broadcastable=None):
     if strict:
         _value = value
     else:
-        _value = numpy.asarray(value, dtype='float32')
+        _value = theano._asarray(value, dtype='float32')
 
     if not isinstance(_value, numpy.ndarray):
         raise TypeError('ndarray required')

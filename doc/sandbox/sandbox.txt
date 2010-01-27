@@ -173,7 +173,10 @@ More simple numpy stuff
         ``x.reshape(x.size)``
         You can also use ``resize`` but there is not reason to ''resize''
     * How do you convert the type of a numpy array?
-        ``numpy.asarray(x, dtype = 'int32')``
+        ``theano._asarray(x, dtype = 'int32')``
+        Note that using ``numpy.asarray`` is potentially dangerous, due to
+        a problem in numpy where the type may not be properly set (see
+        numpy's Track ticket #870).
 
 
 =========================================

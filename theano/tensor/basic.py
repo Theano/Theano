@@ -9,7 +9,7 @@ import traceback #for overriding Op.__call__
 if sys.version_info >= (2,5):
   import functools
 
-import numpy
+import numpy, theano
 from copy import copy
 
 from theano import gof
@@ -151,7 +151,7 @@ class NumpyAutocaster(object):
         self.dtypes = tuple(dtypes)
     def __call__(self, x):
         for dtype in self.dtypes:
-            x_ = numpy.asarray(x, dtype=dtype)
+            x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
         # returns either an exact x_==x, or the last casted x_
@@ -163,7 +163,7 @@ autocast_float = NumpyAutocaster(('float32', 'float64'))
 # Note: it's a bit weird for a compiler to automatically downcast literals like this, and it might
 # have implications for efficiency when mixing types.  For example when you add 1.0 +
 # dmatrix(), the 1.0 could be converted to float32, and require upcasting for the + operation
-# at every position in the dmatrix.  using numpy.asarray(1.0, dtype='float64') will circumvent
+# at every position in the dmatrix.  using theano._asarray(1.0, dtype='float64') will circumvent
 # this autocasting, and in future, our ops might be smarter about factoring out upcasts.   The
 # advantage of this mechanism is to combine it with floatX so that 1.0 + xmatrix() will always
 # have the same type as the xmatrix().
@@ -197,7 +197,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
     """
     if dtype is not None:
         # in this case, the semantics are that the caller is forcing the dtype
-        x_ = numpy.asarray(x, dtype=dtype)
+        x_ = theano._asarray(x, dtype=dtype)
     else:
         # in this case, this function should infer the dtype according to the autocasting
         # rules.  See autocasting above.
@@ -378,7 +378,7 @@ class TensorType(Type):
                             self, self.shape, data.shape))
             return data
         else:
-            data = numpy.asarray(data, dtype = self.dtype)
+            data = theano._asarray(data, dtype = self.dtype)
         if not self.ndim == data.ndim:
             raise TypeError("Wrong number of dimensions: expected %s, got %s with shape %s." % (self.ndim, data.ndim, data.shape), data)
         if any(b and d != 1 for d, b in zip(data.shape, self.broadcastable)):
@@ -1258,7 +1258,7 @@ class Shape(Op):
         x = as_tensor_variable(x)
         return Apply(self, [x], [lvector()])
     def perform(self, node, (x, ), (out, )):
-        out[0] = numpy.asarray(x.shape, dtype = 'int64')
+        out[0] = theano._asarray(x.shape, dtype = 'int64')
     def grad(self, (x,), (gz,)):
         return [None]
 _shape = Shape()
@@ -1300,9 +1300,7 @@ class MaxAndArgmax(Op):
         return Apply(self, inputs, outputs)
     def perform(self, node, (x, axis), (max, max_idx)):
         max[0] = numpy.asarray(numpy.max(x, axis))
-        # Note: using 'view' is important until Numpy's ticket 870 is resolved.
-        max_idx[0] = numpy.asarray(numpy.argmax(x, axis), dtype='int32').view(
-            numpy.int32)
+        max_idx[0] = theano._asarray(numpy.argmax(x, axis), dtype='int32')
     def grad(self, (x, axis), (g_max, g_max_idx)):
         # @warning: This only works if axis is 0, else the max is
         # broadcasted wrong in the call to eq.
@@ -2498,7 +2496,7 @@ class Join(Op):
 
     def perform(self, node, axis_and_tensors, (out, )):
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
-        out[0] = numpy.asarray(numpy.concatenate(tensors, axis = axis),
+        out[0] = theano._asarray(numpy.concatenate(tensors, axis = axis),
                 dtype=node.outputs[0].type.dtype)
 
     def grad(self, axis_and_tensors, (gz,)):
@@ -3422,7 +3420,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     def zero(p):
         return TensorConstant(
                 TensorType(dtype = p.type.dtype, broadcastable = []),
-                numpy.asarray(0, dtype=p.type.dtype))
+                theano._asarray(0, dtype=p.type.dtype))
 
     #try:
         #it = iter(wrt)

@@ -14,7 +14,7 @@ from elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T
 import inplace as I
-import numpy
+import numpy, theano
 import numpy as N #guys... please don't do this in the library :(
 import operator
 import itertools
@@ -874,7 +874,7 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         #first = num[0] if num else denum[0]
         one = N.asarray(first).dtype.type(1)
     else:
-        one = N.asarray(1, dtype=out_type.dtype)
+        one = theano._asarray(1, dtype=out_type.dtype)
     v = reduce(N.multiply, num, one) / reduce(N.multiply, denum, one)
     if aslist:
         if N.all(v == 1):
@@ -977,7 +977,7 @@ def local_mul_zero(node):
             #print 'MUL by value', value, node.inputs
             if N.all(value == 0):
                 #print '... returning zeros'
-                return _fill_chain(N.asarray(0, dtype=otype.dtype), node.inputs)
+                return _fill_chain(theano._asarray(0, dtype=otype.dtype), node.inputs)
 register_canonicalize(local_mul_zero)
 
 @gof.local_optimizer([T.true_div])
@@ -1162,8 +1162,8 @@ def add_calculate(num, denum, aslist = False, out_type=None):
     if out_type is None:
       zero = 0.0
     else:
-      zero = N.asarray(0, dtype=out_type.dtype)
-    #zero = 0.0 if out_type is None else N.asarray(0, dtype=out_type.dtype)
+      zero = theano._asarray(0, dtype=out_type.dtype)
+    #zero = 0.0 if out_type is None else theano._asarray(0, dtype=out_type.dtype)
     v = reduce(N.add, num, zero) - reduce(N.add, denum, zero)
     if aslist:
         if N.all(v == 0):

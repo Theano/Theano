@@ -13,7 +13,7 @@ class test_casting(unittest.TestCase):
                 x = type_fn()
                 f = function([x], op_fn(x))
 
-                xval = numpy.asarray(numpy.random.rand(10)*10, dtype=type_fn.dtype)
+                xval = theano._asarray(numpy.random.rand(10)*10, dtype=type_fn.dtype)
                 yval = f(xval)
                 assert str(yval.dtype) == op_fn.scalar_op.output_types_preference.spec[0].dtype
 

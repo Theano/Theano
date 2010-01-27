@@ -67,7 +67,7 @@ BUT, YOU GOTTA RUN THIS CODE AND MAKE SURE IT STILL WORKS NICELY, HEY?
 
     x_data = numpy.random.randn(100, 10)
     y_data = numpy.random.randn(100, 3)
-    y_data = numpy.asarray(y_data == numpy.max(y_data, axis=1), dtype='int64')
+    y_data = theano._asarray(y_data == numpy.max(y_data, axis=1), dtype='int64')
 
     print "Model Training ..."
     for iteration in xrange(1000):

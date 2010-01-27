@@ -2,7 +2,7 @@ import traceback
 import theano.tensor as T
 from theano.gof import Env
 from theano.printing import pp
-import numpy
+import numpy, theano
 from theano.tensor.blas import *
 from theano.tensor.blas import _dot22, res_is_a, _as_scalar, _is_real_matrix
 from unittest import TestCase
@@ -152,7 +152,7 @@ class t_gemm(TestCase):
         C = self.rand(4,5)[:,:4]
 
         def t(z,x,y,a=1.0, b=0.0,l='c|py',dt='float64'):
-            z,a,x,y,b = [numpy.asarray(p,dtype=dt) for p in z,a,x,y,b]
+            z,a,x,y,b = [theano._asarray(p,dtype=dt) for p in z,a,x,y,b]
             z_orig = z.copy()
             z_after = self._gemm(z, a, x, y, b)
 

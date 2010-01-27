@@ -6,7 +6,7 @@ import numpy
 
 #local imports
 import basic as tensor
-import opt
+import opt, theano
 from theano import gof
 from theano.compile import optdb
 
@@ -166,7 +166,7 @@ class RandomFunction(gof.Op):
         rval = self.fn(r, *(args + [tuple(shape)]))
         if not isinstance(rval, numpy.ndarray) \
                or str(rval.dtype) != node.outputs[1].type.dtype:
-            out[0] = numpy.asarray(rval, dtype = node.outputs[1].type.dtype)
+            out[0] = theano._asarray(rval, dtype = node.outputs[1].type.dtype)
         else:
             out[0] = rval
         if len(rval.shape) != self.outtype.ndim:
@@ -182,7 +182,7 @@ def _infer_ndim(ndim, shape):
     """
 
     if isinstance(shape, (tuple, list)):
-        v_shape = tensor.TensorConstant(type=tensor.lvector, data=numpy.asarray(shape, dtype='int64'))
+        v_shape = tensor.TensorConstant(type=tensor.lvector, data=theano._asarray(shape, dtype='int64'))
     else:
         v_shape = tensor.as_tensor_variable(shape)
 

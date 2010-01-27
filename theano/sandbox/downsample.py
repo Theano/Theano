@@ -8,7 +8,7 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 
 from theano import gof, Op, tensor, Variable, Apply
 from theano.printing import Print
-import numpy
+import numpy, theano
 import __builtin__
 
 class DownsampleFactorMaxGrad(Op):
@@ -259,7 +259,7 @@ class DownsampleFactorMax(Op):
             raise NotImplementedError('DownsampleFactorMax requires 4D input for now')
         if z[0] is None:
             z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.ignore_border)) -float('inf')
-            z[0] = numpy.asarray(z[0], dtype=x.dtype)
+            z[0] = theano._asarray(z[0], dtype=x.dtype)
         zz=z[0]
         ds0, ds1 = self.ds
         if self.ignore_border:

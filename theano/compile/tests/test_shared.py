@@ -106,7 +106,7 @@ class Test_SharedVariable(unittest.TestCase):
             pass
 
         # check that an assignment of a perfect value results in no copying
-        uval = numpy.asarray([5,6,7,8], dtype='float64')
+        uval = theano._asarray([5,6,7,8], dtype='float64')
         u.value = uval
         assert u.value is uval
 

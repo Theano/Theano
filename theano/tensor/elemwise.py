@@ -1,7 +1,7 @@
 import sys
 import elemwise_cgen as cgen
 
-import numpy
+import numpy, theano
 from theano import gof
 from theano.gof import Op, Apply
 from theano import scalar
@@ -823,7 +823,7 @@ class CAReduce(Op):
         if to_reduce:
             for dimension in to_reduce:
                 variable = self.ufunc.reduce(variable, dimension)
-            output[0] = numpy.asarray(variable, dtype = node.outputs[0].type.dtype)
+            output[0] = theano._asarray(variable, dtype = node.outputs[0].type.dtype)
         else:
             output[0] = numpy.copy(variable)
 

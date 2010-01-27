@@ -73,7 +73,7 @@ def test_add_canonizer_problem0():
 
     n_segments = 10
     label = lscalar('label')
-    segment_labels = label + numpy.asarray([0] * n_segments, dtype='int64')
+    segment_labels = label + theano._asarray([0] * n_segments, dtype='int64')
 
     r = segment_labels * 5
     f = function([label], r)
@@ -149,14 +149,14 @@ class test_canonize(unittest.TestCase):
         dx, dy, dz = dmatrices('xyz')
         fv = fvector('r').dimshuffle('x',0)
         dv = dvector('s').dimshuffle('x',0)
-        fxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
-        dxv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
+        fxv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fyv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fzv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        dxv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dyv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dzv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
         cases = [
             (fx+fy,(fx,fy),(fxv,fyv),1,'float32'),
             (fx*fy,(fx,fy),(fxv,fyv),1,'float32'),
@@ -229,14 +229,14 @@ class test_canonize(unittest.TestCase):
         dx, dy, dz = dmatrices('xyz')
         fv = fvector('r').dimshuffle('x',0)
         dv = dvector('s').dimshuffle('x',0)
-        fxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
-        dxv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
+        fxv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fyv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fzv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        dxv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dyv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dzv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
         cases = [
             (fx+fy,(fx,fy),(fxv,fyv),1,'float32'),
             (fx*fy,(fx,fy),(fxv,fyv),1,'float32'),
@@ -312,16 +312,16 @@ class test_canonize(unittest.TestCase):
         dx, dy, dz, dw = dmatrices('xyzw')
         fv = fvector('r').dimshuffle('x',0)
         dv = dvector('s').dimshuffle('x',0)
-        fxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fwv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
-        dxv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dwv = numpy.asarray(numpy.random.rand(*shp),dtype='float64')
-        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
+        fxv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fyv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fzv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fwv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        dxv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dyv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dzv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dwv = theano._asarray(numpy.random.rand(*shp),dtype='float64')
+        dvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
 
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
@@ -463,13 +463,13 @@ class test_canonize(unittest.TestCase):
         shp=(4,4)
         fx, fy, fz = fmatrices('xyz')
         dx, dy, dz = dmatrices('xyz')
-        fxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        dxv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        dyv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        dzv = numpy.asarray(numpy.random.rand(*shp),dtype='float32')
-        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        fxv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fyv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fzv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        dxv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        dyv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        dzv = theano._asarray(numpy.random.rand(*shp),dtype='float32')
+        fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode=compile.mode.predefined_modes[compile.mode.default_mode]
@@ -589,7 +589,7 @@ class test_fusion(unittest.TestCase):
         """
         #TODO: disable the canonizer?
         def my_init(shp, dtype='float64', num=0):
-            #ret = numpy.asarray(numpy.random.rand(*shp),dtype=dtype)
+            #ret = theano._asarray(numpy.random.rand(*shp),dtype=dtype)
             ret = numpy.zeros(shp, dtype=dtype)+num
             return ret
         fw, fx, fy, fz = fmatrices('wxyz')
@@ -601,15 +601,15 @@ class test_fusion(unittest.TestCase):
         fxv = my_init(shp,'float32',2)
         fyv = my_init(shp,'float32',3)
         fzv = my_init(shp,'float32',4)
-        fvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
         dwv = my_init(shp,'float64',5)
-        ixv = numpy.asarray(my_init(shp,num=60),dtype='int32')
-        iyv = numpy.asarray(my_init(shp,num=70),dtype='int32')
-        izv = numpy.asarray(my_init(shp,num=70),dtype='int32')
+        ixv = theano._asarray(my_init(shp,num=60),dtype='int32')
+        iyv = theano._asarray(my_init(shp,num=70),dtype='int32')
+        izv = theano._asarray(my_init(shp,num=70),dtype='int32')
 #        dxv = my_init(shp,'float64',6)
 #        dyv = my_init(shp,'float64',7)
 #        dzv = my_init(shp,'float64',8)
-#        dvv = numpy.asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
+#        dvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
         fwx=fw+fx
         cases = [
             (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#1

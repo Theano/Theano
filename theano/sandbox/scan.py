@@ -197,7 +197,7 @@ class Scan(theano.Op):
             def zero(p):
               return theano.tensor.TensorConstant(theano.tensor.TensorType(\
                       dtype=p.type.dtype, broadcastable=[]),
-                      numpy.asarray(0,dtype = p.type.dtype))
+                      theano._asarray(0,dtype = p.type.dtype))
 
             return [gmap.get(p, zero(p)) for p in inputs]
 

@@ -9,14 +9,14 @@ import numpy
 def test_host_to_device():
     print >>sys.stderr, 'starting test_host_to_dev'
     for shape in ((), (3,), (2,3), (3,4,5,6)):
-        a = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
+        a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
         c = numpy.asarray(b)
         assert numpy.all(a == c)
 
 def test_add():
     for shape in ((), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),(1000,10000),(10000,1000)):
-        a0 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
+        a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
         b0 = cuda_ndarray.CudaNdarray(a0)
         b1 = cuda_ndarray.CudaNdarray(a1)
@@ -54,7 +54,7 @@ def test_add():
 def test_exp():
     print >>sys.stderr, 'starting test_exp'
     for shape in ((), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),(1000,10000),(10000,1000)):
-        a0 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
+        a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
         b0 = cuda_ndarray.CudaNdarray(a0)
         b1 = cuda_ndarray.CudaNdarray(a1)
@@ -75,7 +75,7 @@ def test_exp():
 def test_copy():
     print >>sys.stderr, 'starting test_copy'
     shape = (5,)
-    a = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
+    a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
     print >>sys.stderr, '.. creating device object'
     b = cuda_ndarray.CudaNdarray(a)
@@ -92,8 +92,8 @@ def test_copy():
 
 def test_dot():
     print >>sys.stderr, 'starting test_dot'
-    a0 = numpy.asarray(numpy.random.rand(4, 7), dtype='float32')
-    a1 = numpy.asarray(numpy.random.rand(7, 6), dtype='float32')
+    a0 = theano._asarray(numpy.random.rand(4, 7), dtype='float32')
+    a1 = theano._asarray(numpy.random.rand(7, 6), dtype='float32')
 
     b0 = cuda_ndarray.CudaNdarray(a0)
     b1 = cuda_ndarray.CudaNdarray(a1)
@@ -104,7 +104,7 @@ def test_dot():
 
 def test_sum():
     shape = (2,3)
-    a0 = numpy.asarray(numpy.arange(shape[0]*shape[1]).reshape(shape), dtype='float32')
+    a0 = theano._asarray(numpy.arange(shape[0]*shape[1]).reshape(shape), dtype='float32')
 
     b0 = cuda_ndarray.CudaNdarray(a0)
 
@@ -121,17 +121,17 @@ def test_sum():
     assert numpy.allclose(a0, numpy.asarray(b0.reduce_sum([0,0])))
 
     shape = (3,4,5,6,7,8)
-    a0 = numpy.asarray(numpy.arange(3*4*5*6*7*8).reshape(shape), dtype='float32')
+    a0 = theano._asarray(numpy.arange(3*4*5*6*7*8).reshape(shape), dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
     assert numpy.allclose(a0.sum(axis=5).sum(axis=3).sum(axis=0), numpy.asarray(b0.reduce_sum([1,0,0,1,0,1])))
 
     shape = (16,2048)
-    a0 = numpy.asarray(numpy.arange(16*2048).reshape(shape), dtype='float32')
+    a0 = theano._asarray(numpy.arange(16*2048).reshape(shape), dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
     assert numpy.allclose(a0.sum(axis=0), numpy.asarray(b0.reduce_sum([1,0])))
 
     shape = (16,10)
-    a0 = numpy.asarray(numpy.arange(160).reshape(shape), dtype='float32')
+    a0 = theano._asarray(numpy.arange(160).reshape(shape), dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
     assert numpy.allclose(a0.sum(), numpy.asarray(b0.reduce_sum([1,1])))
 
@@ -147,7 +147,7 @@ def test_reshape():
 
     def subtest(shape_1, shape_2):
         #print >> sys.stderr, "INFO: shapes", shape_1, shape_2
-        a = numpy.asarray(numpy.random.rand(*shape_1), dtype='float32')
+        a = theano._asarray(numpy.random.rand(*shape_1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
 
         aa = a.reshape(shape_2)
@@ -178,7 +178,7 @@ def test_getshape():
              ]
 
     def subtest(shape):
-        a = numpy.asarray(numpy.random.rand(*shape_1), dtype='float32')
+        a = theano._asarray(numpy.random.rand(*shape_1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
         assert b.shape == a.shape
 
@@ -188,7 +188,7 @@ def test_getshape():
 
 def test_stride_manipulation():
 
-    a = numpy.asarray([[0,1,2], [3,4,5]], dtype='float32')
+    a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
     b = cuda_ndarray.CudaNdarray(a)
     v = b.view()
     v._dev_data += 0
@@ -212,7 +212,7 @@ def test_stride_manipulation():
 
 def test_copy_subtensor0():
     sizeof_float=4
-    a = numpy.asarray(numpy.random.rand(30,20,5,5), dtype='float32')
+    a = theano._asarray(numpy.random.rand(30,20,5,5), dtype='float32')
     cuda_a = cuda_ndarray.CudaNdarray(a)
     a_view = cuda_a.view()
     a_view_strides = a_view._strides
@@ -225,7 +225,7 @@ def test_copy_subtensor0():
     assert numpy.all(a[:,:,::-1,::-1] == numpy.asarray(a_view_copy))
 
 def test_mapping_getitem_ellipsis():
-    a = numpy.asarray(numpy.random.rand(5,4,3,2), dtype='float32')
+    a = theano._asarray(numpy.random.rand(5,4,3,2), dtype='float32')
     a = cuda_ndarray.CudaNdarray(a)
 
     b = a[...]
@@ -235,7 +235,7 @@ def test_mapping_getitem_ellipsis():
 
 def test_mapping_getitem_reverse_some_dims():
     dim=(5,4,3,2)
-    a = numpy.asarray(numpy.random.rand(*dim), dtype='float32')
+    a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
     _b = _a[:,:,::-1, ::-1]
@@ -252,7 +252,7 @@ def test_mapping_getitem_w_int():
         assert numpy.all(x == y)
 
     dim =(2,)
-    a = numpy.asarray(numpy.random.rand(*dim), dtype='float32')
+    a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[1]), a[1])
     _cmp(numpy.asarray(_a[::1]), a[::1])
@@ -260,14 +260,14 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[...]), a[...])
 
     dim =()
-    a = numpy.asarray(numpy.random.rand(*dim), dtype='float32')
+    a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[...]), a[...])
 
 
 
     dim =(5,4,3,2)
-    a = numpy.asarray(numpy.random.rand(*dim), dtype='float32')
+    a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
     _cmp(numpy.asarray(_a[:,:,::-1, ::-1]), a[:,:,::-1,::-1])
@@ -280,9 +280,9 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[...]), a[...])
 
 def test_gemm_vector_vector():
-    a = numpy.asarray(numpy.random.rand(5,1), dtype='float32')
+    a = theano._asarray(numpy.random.rand(5,1), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
-    b = numpy.asarray(numpy.random.rand(1,5), dtype='float32')
+    b = theano._asarray(numpy.random.rand(1,5), dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
     
     _c = cuda_ndarray.dot(_a,_b)

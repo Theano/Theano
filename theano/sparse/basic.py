@@ -7,7 +7,7 @@ To read about different sparse formats, see U{http://www-users.cs.umn.edu/~saad/
 """
 
 import sys, operator
-import numpy
+import numpy, theano
 from scipy import sparse
 import scipy.sparse
 from theano.printing import Print
@@ -279,9 +279,9 @@ class CSMProperties(gof.Op):
           out[0][0] = csm.data[self.kmap]
         #backport
         #out[0][0] = csm.data if self.kmap is None else csm.data[self.kmap]
-        out[1][0] = numpy.asarray(csm.indices, dtype='int32')
-        out[2][0] = numpy.asarray(csm.indptr, dtype='int32')
-        out[3][0] = numpy.asarray(csm.shape, dtype='int32')
+        out[1][0] = theano._asarray(csm.indices, dtype='int32')
+        out[2][0] = theano._asarray(csm.indptr, dtype='int32')
+        out[3][0] = theano._asarray(csm.shape, dtype='int32')
 
     # TODO FIX THIS
     def grad(self, (csm,), g):
@@ -344,28 +344,12 @@ class CSM(gof.Op):
         """
         data = tensor.as_tensor_variable(data)
 
-        # Note that we use `view(numpy.int32)` in addition to providing the
-        # 'int32' dtype to `numpy.asarray`. This is because on some computers
-        # (e.g. a Windows 32 bits machine), we can have the following assert
-        # fail:
-        #   x = numpy.array([0], dtype=numpy.intc)
-        #   y = numpy.asarray(x, dtype=numpy.int32)
-        #   assert y.dtype.num == numpy.dtype(numpy.int32).num
-        # while the assert does *not* fail when replacing the second line by:
-        #   y = numpy.asarray(x, dtype='int32').view(numpy.int32)
-        # This is a known defect in Numpy. For more information see ticket
-        # http://projects.scipy.org/numpy/ticket/870
-
-        # Note also that it is important to keep "dtype='int32'" when calling
-        # `numpy.asarray`. This is because `view` is only some kind of cast to
-        # the exact data type we want to use. If a conversion is required (e.g.
-        # from int64 to int32), it must be done in the call to `numpy.asarray`.
         if not isinstance(indices, tensor.TensorVariable):
-            indices = numpy.asarray(indices, dtype='int32').view(numpy.int32)
+            indices = theano._asarray(indices, dtype='int32')
         if not isinstance(indptr, tensor.TensorVariable):
-            indptr = numpy.asarray(indptr, dtype='int32').view(numpy.int32)
+            indptr = theano._asarray(indptr, dtype='int32')
         if not isinstance(shape, tensor.TensorVariable):
-            shape = numpy.asarray(shape, dtype='int32').view(numpy.int32)
+            shape = theano._asarray(shape, dtype='int32')
         indices = tensor.as_tensor_variable(indices)
         indptr = tensor.as_tensor_variable(indptr)
         shape = tensor.as_tensor_variable(shape)

@@ -2,7 +2,7 @@ import operator
 import math
 from copy import copy
 
-import numpy
+import numpy, theano
 
 from theano import gof
 from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
@@ -33,7 +33,7 @@ def as_scalar(x, name = None):
 def constant(x):
     if isinstance(x, float):
         for dtype in ['float32', 'float64']:
-            x_ = numpy.asarray(x, dtype=dtype)
+            x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
             x_ = None
@@ -41,7 +41,7 @@ def constant(x):
         return ScalarConstant(Scalar(str(x_.dtype)), x)
     if isinstance(x, int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
-            x_ = numpy.asarray(x, dtype=dtype)
+            x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
             x_ = None
@@ -1090,7 +1090,7 @@ floor = Floor(same_out_nocomplex, name = 'ceil')
 
 class IRound(UnaryScalarOp):
     def impl(self, x):
-        return numpy.asarray(numpy.round(x), dtype = 'int64')
+        return theano._asarray(numpy.round(x), dtype = 'int64')
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = round(%(x)s);" % locals()
 iround = IRound(int_out_nocomplex)
