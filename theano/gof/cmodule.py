@@ -625,8 +625,8 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
     #DSE Patch 1 for supporting OSX frameworks; add -framework Python 
     if sys.platform=='darwin' :
         preargs.extend(['-undefined','dynamic_lookup'])
-        if python_inc.count('Python.framework')>0 :
-            preargs.extend(['-framework','Python'])
+        #if python_inc.count('Python.framework')>0 :
+        #    preargs.extend(['-framework','Python'])
 
     workdir = location
 
