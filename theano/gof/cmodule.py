@@ -571,6 +571,7 @@ def std_lib_dirs_and_libs():
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
+        return [libname],[]
 
 def std_libs():
     return std_lib_dirs_and_libs()[0]
