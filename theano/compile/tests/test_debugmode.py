@@ -1,5 +1,5 @@
 import sys
-import numpy, scipy
+import numpy
 
 import scipy.sparse
 from theano import gof

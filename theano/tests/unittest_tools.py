@@ -1,7 +1,7 @@
 import unittest
 import numpy
 import theano.tensor as T
-from ..configparser import config, AddConfigVar, IntParam
+from theano.configparser import config, AddConfigVar, IntParam
 import os, sys
 
 AddConfigVar('unittests.rseed',
