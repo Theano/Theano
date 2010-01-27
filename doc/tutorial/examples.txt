@@ -98,7 +98,7 @@ Here is code to compute this gradient:
 >>> x = T.dscalar('x')
 >>> y = x**2
 >>> gy = T.grad(y, x)
->>> pp(gy)
+>>> pp(gy)  # print out the gradient prior to optimization
 '((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
 >>> f = function([x], gy)
 >>> f(4)
@@ -112,7 +112,16 @@ the correct symbolic gradient.
 ``x ** 2`` and fill it with 1.0.
 
 .. note::
-    The optimizer will simplify the symbolic gradient expression.
+    The optimizer simplifies the symbolic gradient expression.  You can see
+    this by digging inside the internal properties of the compiled function.
+
+    .. code-block:: python
+
+        pp(f.maker.env.outputs[0])
+        '(2.0 * x)'
+
+    After optimization there is only one Apply node left in the graph, which
+    doubles the input.
 
 We can also compute the gradient of complex expressions such as the
 logistic function defined above. It turns out that the derivative of the
