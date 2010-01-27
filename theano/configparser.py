@@ -70,7 +70,7 @@ def fetch_val_for_key(key):
         section, option = 'global', key
     try:
         return theano_cfg.get(section, option)
-    except ConfigParser.NoOptionError:
+    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
         raise KeyError(key)
     
 class TheanoConfigParser(object):
