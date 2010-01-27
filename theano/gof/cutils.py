@@ -6,7 +6,6 @@ import sys
 
 
 try:
-    sys.path.append(get_compiledir())
     from cutils_ext import *
 
 except ImportError:
@@ -36,7 +35,7 @@ except ImportError:
     mod.add_function(fun)
     get_lock()
     try:
-        mod.compile(location = get_compiledir())
+        mod.compile(location = config.compiledir)
     except:
         release_lock()
         raise

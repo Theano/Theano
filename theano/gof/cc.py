@@ -44,13 +44,13 @@ def error(*args):
 from theano.gof.callcache import CallCache
 
 def get_module_cache():
-    return cmodule.get_module_cache(get_compiledir())
+    return cmodule.get_module_cache(config.compiledir)
 
 _persistent_module_cache = None
 def get_persistent_module_cache():
     global _persistent_module_cache
     if _persistent_module_cache is None:
-        _persistent_module_cache = CallCache(os.path.join(get_compiledir(), 'persistent_cache'))
+        _persistent_module_cache = CallCache(os.path.join(config.compiledir, 'persistent_cache'))
     return _persistent_module_cache
  
 class CodeBlock:
@@ -903,7 +903,7 @@ class CLinker(link.Linker):
         This method is a callback for `ModuleCache.module_from_key`
         """
         if location is None:
-            location = cmodule.dlimport_workdir(get_compiledir())
+            location = cmodule.dlimport_workdir(config.compiledir)
         mod = self.build_dynamic_module()
         get_lock()
         try:

@@ -172,7 +172,7 @@ def dlimport(fullpath, suffix=None):
 
 def dlimport_workdir(basedir):
     """Return a directory where you should put your .so file for dlimport to be able to load
-    it, given a basedir which should normally be the result of get_compiledir()"""
+    it, given a basedir which should normally be config.compiledir"""
     return tempfile.mkdtemp(dir=basedir)
 
 def last_access_time(path):

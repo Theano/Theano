@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import sys
-from theano.gof.cc import get_compiledir, get_module_cache
+from theano import config
+from theano.gof.cc import get_module_cache
 
 if len(sys.argv) == 1:
-    print get_compiledir()
+    print config.compiledir
 elif sys.argv[1] in ('clear'):
     get_module_cache().clear()
 else:

@@ -20,6 +20,29 @@ from theano.compile.function_module import (FunctionMaker,
         SymbolicOutput,
         Supervisor)
 from theano.compile.mode import Mode, register_mode
+from ..configparser import config, AddConfigVar, IntParam, BoolParam
+
+AddConfigVar('DebugMode.patience',
+        "Optimize graph this many times to detect inconsistency",
+        IntParam(10, lambda i: i > 0))
+
+AddConfigVar('DebugMode.check_c',
+        "Run C implementations where possible",
+        BoolParam(True))
+
+AddConfigVar('DebugMode.check_py',
+        "Run Python implementations where possible",
+        BoolParam(True))
+
+AddConfigVar('DebugMode.check_finite',
+        "True -> complain about NaN/Inf results",
+        BoolParam(True))
+
+AddConfigVar('DebugMode.check_strides',
+        ("Check that Python- and C-produced ndarrays have same strides.  "
+            "On difference: (0) - ignore, (1) warn, or (2) raise error"),
+        IntParam(1, lambda i: i in (0,1,2)))
+
 
 import logging
 _logger=logging.getLogger("theano.compile.debugmode")

@@ -14,7 +14,6 @@ Types and Ops that you can use to build and compile expression graphs.
    tensor/index
    gradient
    config
-   floatX
    printing
    compile/index
    sparse/index

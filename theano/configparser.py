@@ -1,15 +1,22 @@
-import os, StringIO
+import os, StringIO, sys
 import ConfigParser
 import logging
 _logger = logging.getLogger('theano.config')
+
+for key in os.environ:
+    if key.startswith("THEANO"):
+        if key not in ("THEANO_FLAGS", "THEANORC"):
+            print >> sys.stderr, "ERROR: Ignoring deprecated environment variable", key
+
 
 THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 # The THEANO_FLAGS environement variable should be a list of comma-separated
 # [section.]option[=value] entries. If the section part is omited, their should be only one
 # section with that contain the gived option.
 
+theano_cfg_path = os.getenv('THEANORC', '~/.theanorc')
 theano_cfg = ConfigParser.SafeConfigParser()
-theano_cfg.read(['theano.cfg', os.path.expanduser('~/.theano.cfg')])
+theano_cfg.read([os.path.expanduser(theano_cfg_path)])
 
 def parse_env_flags(flags, name , default_value=None):
     #The value in the env variable THEANO_FLAGS override the previous value
@@ -33,12 +40,11 @@ def fetch_val_for_key(key):
     
     The priority order is:
     - THEANO_FLAGS
-    - ~./theano.cfg 
+    - ~./theanorc
     
     """
 
     # first try to find it in the FLAGS
-    matches = []
     for name_val in THEANO_FLAGS.split(','):
         if not name_val:
             continue
@@ -48,14 +54,8 @@ def fetch_val_for_key(key):
         else:
             name, val = name_val_tuple
 
-        if name.endswith(key): #we found it in FLAGS
-            matches.append((name, val))
-
-    if matches:
-        if len(matches) > 1:
-            _logging.error('ambiguous THEANO_FLAGS flag %s matches %s (ignoring it)' % (key, [name for name,val in matches]))
-        else:
-            return matches[0][1]
+        if name == key:
+            return val
 
     # next try to find it in the config file
 

@@ -6,9 +6,18 @@ from theano.compile.mode import Mode, register_mode, predefined_modes, predefine
 from theano.gof.cc import OpWiseCLinker
 from theano.gof.python25 import any
 from theano import gof
-from ..configparser import config
+from ..configparser import config, AddConfigVar, IntParam
 
 import_time = time.time()
+
+AddConfigVar('ProfileMode.n_apply_to_print',
+        "Number of apply instances to print by default",
+        IntParam(15, lambda i: i > 0))
+
+AddConfigVar('ProfileMode.n_ops_to_print',
+        "Number of ops to print by default",
+        IntParam(20, lambda i: i > 0))
+
 
 class ProfileMode(Mode):
     def __init__(self, linker=default_linker, optimizer=default_optimizer):

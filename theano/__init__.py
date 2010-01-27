@@ -40,8 +40,7 @@ from gof import \
      opt, \
      toolbox, \
      Type, Generic, generic, \
-     object2, utils, \
-     set_compiledir, get_compiledir, clear_compiledir
+     object2, utils
 
 from compile import \
     SymbolicInput, In, \

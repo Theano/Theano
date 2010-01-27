@@ -19,43 +19,122 @@ read-only.
 
 *As a rule, the attributes in this module should not be modified by user code.*
 
-Reference
-=========
+Theano's code comes with default values for these attributes, but you can
+override them from your .theanorc file, and override those values in turn by
+the :envvar:`THEANO_FLAGS` environment variable.
+
+The order of precedence is:
+
+1. an assignment to theano.config.<property>
+2. an assignment in :envvar:`THEANO_FLAGS`
+3. an assignment in the .theanorc file (or the file indicated in :envvar:`THEANORC`)
+
+You can print out the current/effective configuration at any time by printing
+theano.config.  For example, to see a list  of all active configuration
+variables, type this from the command-line:
+
+.. code-block:: bash
+    
+    python -c 'import theano; print theano.config' | less
+
+Environment Variables
+=====================
 
 
 .. envvar:: THEANO_FLAGS
 
-    This is a list of comma-delimited key=value pairs that control Theano's behavior.
+    This is a list of comma-delimited key[=value] pairs that control Theano's behavior. A key that appears without an '=value' must be for a boolean value, and it acts as setting it to True.
     
-    For example, in bash, you can type:
+    For example, in bash, you can override your :envvar:`THEANORC` defaults
+    for <myscript>.py by typing this:
 
     .. code-block:: bash
 
-        THEANO_FLAGS=floatX=float32  python <myscript>.py
+        THEANO_FLAGS='floatX=float32,device=gpu0,nvcc.fastmath'  python <myscript>.py
 
-        ***TODO***
+.. envvar:: THEANORC
 
-    Which will cause
+    This is the location of the .theanorc file which is in ConfigParser
+    format.  It defaults to ``$HOME/.theanorc``. 
+    
+    Here is the .theanorc equivalent to the THEANO_FLAGS in the example above:
 
+    .. bode-block:: text
+
+        [global]
+        floatX = float32
+        device = gpu0
+
+        [nvcc]
+        fastmath = True
+
+The rest of this page describes some of the more common and important flags
+that you might want to use.  For the complete list (including documentation),
+import theano and print the config variable, as in:
+
+.. code-block:: bash
+    
+    python -c 'import theano; print theano.config' | less
+
+
+Config Attributes
+=====================
+
+.. attribute:: device
+
+    String value: either 'cpu', 'gpu0', 'gpu1', 'gpu2', or 'gpu3'
+
+    Choose the default compute device for theano graphs.  Setting this to a
+    gpu string will make the corresponding graphics device the default storage
+    for shared tensor variables with dtype float32.
 
 .. attribute:: floatX
 
-    String value: either 'float32' or 'float64'.
+    String value: either 'float64' or 'float32'.
 
     Default: 'float64'
 
-    Set with the 'floatX' key in :envvar:`THEANO_FLAGS`
+    This sets the default dtype returned by tensor.matrix(), tensor.vector(),
+    and similar functions.  It also sets the default theano bit width for
+    arguments passed as Python floating-point numbers.
 
-.. attribute:: THEANO_DEFAULT_MODE
+.. attribute:: mode
 
-    String value: any valid mode string (see :func:`theano.function`).
+    String value: 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'
 
-    Default: 'FAST_RUN'
+    Default 'FAST_RUN'
 
-    Set with the 'THEANO_DEFAULT_MODE' environment variable.
+    This sets the default compilation mode for theano functions.
 
+.. attribute:: home
 
-***TODO*** Consider moving many config elements to THEANO_FLAGS right away before taking the
-time to document the current madness.
+    Default: env-variable $HOME
+
+    This is used to compute the compiledir and base_compiledir attributes
+
+.. attribute:: base_compiledir
+
+    Default: $HOME/.theano
+
+    This directory stores the architecture-dependent compilation directories.
+
+.. attribute:: compiledir
+
+    Default: $HOME/.theano/<arch-identifier>
+
+    This directory stores dynamically-compiled modules for a particular
+    architecture.
+
+.. attribute:: blas.ldflags
+
+    Default: '-lblas'
+
+    Link arguments to link against a (Fortran) level-3 blas implementation.
+
+.. attribute:: cuda.root
+
+    Default: $CUDA_ROOT or failing that, "/usr/local/cuda"
+
+    A directory with bin/, lib/, include/ folders containing cuda utilities.
 
 

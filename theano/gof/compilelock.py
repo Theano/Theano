@@ -1,6 +1,7 @@
 # Locking mechanism to ensure no two compilations occur simultaneously in the
 # same compilation directory (which can cause crashes).
 
+from theano import config
 import compiledir
 import os, random, time
 import logging
@@ -37,11 +38,11 @@ def get_lock():
         if not hasattr(get_lock, 'lock_is_enabled'):
             # Enable lock by default.
             get_lock.lock_is_enabled = True
-        get_lock.lock_dir = os.path.join(compiledir.get_compiledir(),
+        get_lock.lock_dir = os.path.join(config.compiledir,
                                          'lock_dir')
         get_lock.unlocker = Unlocker(get_lock.lock_dir)
     else:
-        lock_dir = os.path.join(compiledir.get_compiledir(), 'lock_dir')
+        lock_dir = os.path.join(config.compiledir, 'lock_dir')
         if lock_dir != get_lock.lock_dir:
             # Compilation directory has changed.
             # First ensure all old locks were released.
