@@ -21,7 +21,8 @@ from theano.tensor.blas_headers import cblas_header_text, blas_header_text
 def default_blas_ldflags():
     try:
         return ' '.join('-l%s'%l 
-                for l in numpy.distutils.__config__.blas_opt_info['libraries'])
+                for l in numpy.distutils.__config__.blas_opt_info['libraries']+
+                        '-L%s'%l for l in numpy.distutils.__config__.blas_opt_info['library_dirs'])
     except:
         return "-lblas"
 
