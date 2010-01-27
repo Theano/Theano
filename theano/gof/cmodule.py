@@ -561,10 +561,16 @@ def std_lib_dirs_and_libs():
         python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
         lib_dirs = [python_lib_dir]
         return [libname], [python_lib_dir]
+    #DSE Patch 2 for supporting OSX frameworks. Suppress -lpython2.x when frameworks are present
+    elif sys.platform=='darwin' :
+        if python_inc.count('Python.framework') :
+            return [],[]
+        else :
+            libname=os.path.basename(python_inc)
+            return [libname],[]
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
-        return [libname], []
 
 def std_libs():
     return std_lib_dirs_and_libs()[0]
@@ -615,18 +621,11 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         libname = os.path.basename(python_inc)
 
 
-    #we will not link against -lpython2.5. Linux doesn't mind the undefined symbols. Neither does OS X if we use -undefined dynamic_lookup. 
-    #DSE This makes it easier to avoid problems with frameworks
+    #DSE Patch 1 for supporting OSX frameworks; add -framework Python 
     if sys.platform=='darwin' :
         preargs.extend(['-undefined','dynamic_lookup'])
-        # for framework builds *only* we need to add these args
-        if 'Python.framework' in sys.prefix:
+        if python_inc.count('Python.framework')>0 :
             preargs.extend(['-framework','Python'])
-
-
-    else :
-        #DSE I don't think it's necessary to ever link against -lpython2.x but i left it in for non-osx
-        libs = [libname] + libs
 
     workdir = location
 
