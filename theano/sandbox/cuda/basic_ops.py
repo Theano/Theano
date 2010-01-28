@@ -78,7 +78,7 @@ class GpuElemwise(Op):
         #       the amount of loading and storing to global memory that we would have to do.
         #       That's why it isn't implemented yet.
         #
-        sync = config.config.getboolean('gpuelemwise.sync',sync)
+        sync = config.gpuelemwise.sync
         self.scalar_op = scalar_op
         if 0:
             #we don't put them their as this cause trouble with the local_cut_gpu_host_gpu optimizer.
