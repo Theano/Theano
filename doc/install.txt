@@ -104,12 +104,15 @@ entry like this:
     # other stuff can go here
     
     [blas]
-    ldflags = -lf77blas -latlas #put your flags here
+    ldflags = -lf77blas -latlas -lgfortran #put your flags here
 
     # other stuff can go here
 
 If you prefer to use an environment variable, type something like this: ``export THEANO_FLAGS="blas.ldflags=<gcc linker flags>"`` 
-so maybe ``export THEANO_FLAGS="blas.ldflags=-lf77blas -latlas"`` might work for you.
+so maybe ``export THEANO_FLAGS="blas.ldflags=-lf77blas -latlas -lgfortran"`` might work for you.
+
+For more information on the formatting of ~/.theanorc and the configuration options that you can put there, 
+see :ref:`libdoc_config`.
 
 
 Testing your installation
