@@ -5,7 +5,19 @@ from theano import gof, Op, tensor, config
 from theano.printing import Print
 
 def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
-    """Returns numpy ndarray of len 2
+    """Computes the shape (nb_rows, nb_col) of each output image.
+
+    :type inshp: tuple, list or 1D ndarray of length 2
+    :param inshp: shape of each (2D) input image
+
+    :type kshp: tuple, list or 1D ndarray of length 2
+    :param kshp: shape of each (2D) kernel filter
+
+    :type mode: string
+    :param mode: 'valid' or 'full' (see 'border_mode' in conv2d's doc)
+
+    :rtype: numpy 1D ndarray of len 2
+    :return: shape of each output "image" (or feature map)
     """
     if mode=='valid': s = -1
     else: s = 1
@@ -60,11 +72,11 @@ def conv2d(input, filters, border_mode='valid', subsample=(1,1),
 
 class ConvOp(Op):
     """
-    A convolution op that should extend scipy.signal.convolve2d, but much faster!
+    A convolution op that should behave like scipy.signal.convolve2d,
+    but much faster!
     """
 
 
-    
     __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode', 
             'unroll_batch', 'unroll_kern', 'unroll_patch',
             'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
@@ -587,7 +599,7 @@ using namespace std;
 
         if self.unroll_patch:
             if self.verbose:
-                print "return unroll patch version",self.dx,self.dy
+                print "return unroll patch version. all_shape=", all_shape
             return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
             if self.unroll_batch<=0: self.unroll_batch=1

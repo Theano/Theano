@@ -43,8 +43,10 @@ Environment Variables
 
 .. envvar:: THEANO_FLAGS
 
-    This is a list of comma-delimited key[=value] pairs that control Theano's behavior. A key that appears without an '=value' must be for a boolean value, and it acts as setting it to True.
-    
+    This is a list of comma-delimited key[=value] pairs that control
+    Theano's behavior. A key that appears without an '=value' must be
+    for a boolean value, and it acts as setting it to True.
+
     For example, in bash, you can override your :envvar:`THEANORC` defaults
     for <myscript>.py by typing this:
 
@@ -52,11 +54,15 @@ Environment Variables
 
         THEANO_FLAGS='floatX=float32,device=gpu0,nvcc.fastmath'  python <myscript>.py
 
+    If a value is defined several times in ``THEANO_FLAGS``,
+    the right-most definition is used. So, for instance, if
+    ``THEANO_FLAGS='device=cpu,device=gpu0'``, then gpu0 will be used.
+
 .. envvar:: THEANORC
 
     The location[s] of the .theanorc file[s] in ConfigParser format.
-    It defaults to ``$HOME/.theanorc``. 
-    
+    It defaults to ``$HOME/.theanorc``.
+
     Here is the .theanorc equivalent to the THEANO_FLAGS in the example above:
 
     .. code-block:: text
@@ -70,10 +76,10 @@ Environment Variables
 
     Multiple configuration files can be specified by separating them with ':'
     characters (as in $PATH).  Multiple configuration files will be merged,
-    with earlier (left-most) files taking priority over later files in the
+    with later (right-most) files taking priority over earlier files in the
     case that multiple files specify values for a common configuration option.
-    For example, to override system-wide settings with personal ones, 
-    set ``THEANORC=~/.theanorc:/etc/theanorc``
+    For example, to override system-wide settings with personal ones,
+    set ``THEANORC=/etc/theanorc:~/.theanorc``.
 
 The rest of this page describes some of the more common and important flags
 that you might want to use.  For the complete list (including documentation),
