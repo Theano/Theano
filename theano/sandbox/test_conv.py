@@ -41,7 +41,7 @@ def flip(kern, kshp):
 global_rng = N.random.RandomState(3423489)
 
 dmatrix4=T.TensorType('float64', (False, False, False, False))
-def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True, conv_op_py=False, do_convolve2=False, do_print=True, repeat=1, unroll_patch=0):
+def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True, conv_op_py=False, do_convolve2=False, do_print=True, repeat=1, unroll_patch=False, unroll_patch_size=False, verbose=0):
 
         # build actual input images
         imgval = global_rng.rand(bsize, imshp[0], imshp[1], imshp[2])
@@ -121,12 +121,12 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll
                 hidval1=outval.copy()
 
             # ConvOp
-            if unroll_patch:
+            if unroll_patch and not unroll_patch_size:
                 conv_op = ConvOp(dx=ss[0],dy=ss[1], output_mode=conv_mode,
-                                 unroll_patch=unroll_patch)(inputs4, kerns4)
+                                 unroll_patch=unroll_patch, verbose=verbose)(inputs4, kerns4)
             else:
                 conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode,
-                                 unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)(inputs4, kerns4)
+                                 unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch, verbose=verbose)(inputs4, kerns4)
             l1shp=N.hstack((nkern,
                             getFilterOutShp(imshp, kshp, ss, conv_mode)))
             propup2 = function([inputs4, kerns4], conv_op)
@@ -319,6 +319,112 @@ class TestConvOp(unittest.TestCase):
         d=N.asarray(tscipy)/tconvop
         print 'speed up ConvOp vs convolve2d: %.3f'%d.mean(),d
 
+    def speed_multilayer_conv(self):
+            # calculate the speed up of different combination of unroll
+            # put the paramter to the same you will try. 
+            
+            validate=False# we don't validate the result to have it much faster!
+            verbose=1
+            unroll_batch = [1,2,4,5,10,20]
+            unroll_kern = [1,2,4,5,10,20]
+            unroll_batch = [1,4,5]
+            unroll_kern = [1,4,5]
+            unroll_patch = [True, False]
+            
+            bsize = 20 # batch size
+            imshp_start = (1,48,48)#un square shape to test more corner case.
+            kshps = ([11,12],[12,11])#un square shape to test more corner case.
+            nkerns = [20,20] # per output pixel
+            ssizes = [(1,1),]#(1,1)]#(2,2) bugged
+            convmodes = ['valid','full']
+            do_convolve2=False
+            a=T.dmatrix()
+            kerns = [a for i in nkerns]
+
+            assert len(kshps)==len(nkerns)==len(kerns)
+        
+            timing = N.zeros((len(unroll_batch),len(unroll_kern),3,len(convmodes)*len(ssizes)))
+            t_b_k=[]
+            #calculate the timing with unrolling
+
+            print 'time unroll batch kern'
+            t_=[[ 7.60572791,  3.95069814,  3.74271464], [ 4.05631089,  2.90384555,  2.93613672], [ 3.90551591,  2.92595196,  3.00102282]]
+            best=[0.52690219879150391, 2.4266397953033447]
+            worst=[0.92042708396911621, 6.8822150230407715]
+            best=[]
+            worst=[]
+            t_=[]
+            for unroll_b, n_b in zip(unroll_batch,range(len(unroll_batch))):
+                for unroll_k, n_k in zip(unroll_kern,range(len(unroll_kern))):
+                    t_b_k.append(str(unroll_b)+"/"+str(unroll_k))
+                    if not t_:
+                        tctot, tpytot, ntot=[],[],[]
+                        for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                            for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                                tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=unroll_b, unroll_kern=unroll_k, validate=validate, verbose=verbose,do_print=False)
+                                tctot+=[tctot_]
+                                tpytot+=[tpytot_]
+                                ntot+=[ntot_]
+                        if unroll_b==4 and unroll_k==4:
+                            #print "unroll 4/4",tctot
+                            best=tctot
+                        if unroll_b==1 and unroll_k==1:
+                            #print "unroll 1/1",tctot
+                            worst=tctot
+                        timing[n_b,n_k]=[tctot, tpytot, ntot]#[sum(tctot), sum(tpytot), sum(ntot)]
+            if not t_:
+                t=timing[:,:,0,:]#We select only the c timing.
+            else:
+                t=t_
+            t=N.asarray(t)
+            #calculate the old timing
+            print 'time old version'
+            tctot_=[0.52555489540100098, 6.6634182929992676]
+            tctot,tpytot,ntot=[],[],[]
+            tctot_=[]
+            if not tctot_:
+                for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                    for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                        tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate, verbose=verbose,do_print=False)
+                        tctot+=[tctot_]
+                        tpytot+=[tpytot_]
+                        ntot+=[ntot_]
+            else: tctot=N.asarray(tctot_)
+            print "old code timing %.3fs"%sum(tctot),tctot
+            best=N.asarray(best)
+            worst=N.asarray(worst)
+            print "timing for unrolled version"
+            print t_b_k
+            print t
+            t_detail=t
+            t = t.sum(axis=2)
+            print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]
+            print "min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()]
+            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t.min(),sum(tctot)/t.min())
+            print worst/best,tctot/best
+
+            #calculate the timing of unroll_patch
+            print 'time unroll_patch'
+            tctot_patch = []
+            tctot_patch_size = []
+            for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
+                for ss, n_ss in zip(ssizes,range(len(ssizes))):
+                    tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate,unroll_patch=True,verbose=verbose,do_print=False)
+                    tctot_patch += [tctot_]
+                    tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate,unroll_patch=True,verbose=verbose,do_print=False,unroll_patch_size=True)
+                    tctot_patch_size += [tctot_]
+
+            t_patch=sum(tctot_patch)
+            print "unroll_patch without shape time", tctot_patch
+            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t_patch,sum(tctot)/t_patch)
+            print best/tctot_patch, worst/tctot_patch
+            t_patch_size=sum(tctot_patch_size)
+            print "unroll_patch with shape time", tctot_patch_size
+            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t_patch_size,sum(tctot)/t_patch_size)
+            print best/tctot_patch_size, worst/tctot_patch_size
+            
+            return
+
     def test_multilayer_conv(self):
         print '\n\n*************************************************'
         print '           TEST MULTILAYER CONVOLUTION' 
@@ -334,7 +440,6 @@ class TestConvOp(unittest.TestCase):
         convmodes = ['valid','full']
         do_convolve2=True
         unroll = [(0,0,True),(0,0,False),(1,1,False),(2,2,False),(3,2,False)]#(batch,kern,patch)
-        do_speed_test = False
 
         # TODO: this version show a bug that was fixed
         # the test is included in the upper test.
@@ -358,103 +463,6 @@ class TestConvOp(unittest.TestCase):
         for i in range(len(kshpss)):
             assert len(kshpss[i])==len(nkernss[i])==len(kerns)
 
-        if do_speed_test:
-            # calculate the speed up of different combination of unroll
-            # put the paramter to the same you will try. 
-            
-            validate=False# we don't validate the result to have it much faster!
-
-            unroll_batch = [1,2,4,5,10,20]
-            unroll_kern = [1,2,4,5,10,20]
-            unroll_batch = [1,4,5]
-            unroll_kern = [1,4,5]
-            
-            bsize = 20 # batch size
-            imshp_start = (1,48,48)#un square shape to test more corner case.
-            kshps = ([11,12],[12,11])#un square shape to test more corner case.
-            nkerns = [20,20] # per output pixel
-            ssizes = [(1,1),]#(1,1)]#(2,2) bugged
-            convmodes = ['valid','full']
-            do_convolve2=False
-            a=T.dmatrix()
-            kerns = [a for i in nkerns]
-
-            assert len(kshps)==len(nkerns)==len(kerns)
-        
-            timing = N.zeros((len(unroll_batch),len(unroll_kern),3))
-            t_b_k=[]
-            #calculate the timing with unrolling
-
-            t_=[[ 7.60572791,  3.95069814,  3.74271464], [ 4.05631089,  2.90384555,  2.93613672], [ 3.90551591,  2.92595196,  3.00102282]]
-            best=[]
-            worst=[]
-            best=[0.52690219879150391, 2.4266397953033447]
-            worst=[0.92042708396911621, 6.8822150230407715]
-            t_=[]
-            for unroll_b, n_b in zip(unroll_batch,range(len(unroll_batch))):
-                for unroll_k, n_k in zip(unroll_kern,range(len(unroll_kern))):
-                    t_b_k.append(str(unroll_b)+"/"+str(unroll_k))
-                    if not t_:
-                        tctot, tpytot, ntot=[],[],[]
-                        for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
-                            for ss, n_ss in zip(ssizes,range(len(ssizes))):
-                                tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=unroll_b, unroll_kern=unroll_k, validate=validate)
-                                tctot+=[tctot_]
-                                tpytot+=[tpytot_]
-                                ntot+=[ntot_]
-                        if unroll_b==4 and unroll_k==4:
-                            print "unroll 4/4",tctot
-                            best=tctot
-                        if unroll_b==1 and unroll_k==1:
-                            print "unroll 1/1",tctot
-                            worst=tctot
-                        timing[n_b,n_k]=[sum(tctot), sum(tpytot), sum(ntot)]
-            if not t_:
-                t=timing[:,:,0]#We select only the c timing.
-            else:
-                t=t_
-            t=N.asarray(t)
-            #calculate the old timing
-            tctot_=[0.52555489540100098, 6.6634182929992676]
-#            tctot_=[]
-            tctot,tpytot,ntot=[],[],[]
-            if not tctot_:
-                for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
-                    for ss, n_ss in zip(ssizes,range(len(ssizes))):
-                        tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate)
-                        tctot+=[tctot_]
-                        tpytot+=[tpytot_]
-                        ntot+=[ntot_]
-            else: tctot=N.asarray(tctot_)
-            print "old code timing %.3fs"%sum(tctot),tctot
-            best=N.asarray(best)
-            worst=N.asarray(worst)
-            print "timing for unrolled version"
-            print t_b_k
-            print t
-            print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]
-            print "min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()]
-            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t.min(),sum(tctot)/t.min())
-            print worst/best,tctot/best
-
-            tctot_patch = []
-            for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
-                for ss, n_ss in zip(ssizes,range(len(ssizes))):
-                     tctot_, tpytot_, ntot_ = exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp_start, kshps, nkerns, unroll_batch=0, unroll_kern=0, validate=validate,unroll_patch=2)
-                     tctot_patch += [tctot_]
-
-            t_patch=sum(tctot_patch)
-            print "unroll_patch time", tctot_patch
-            print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t_patch,sum(tctot)/t_patch)
-            print best/tctot_patch, worst/tctot_patch
-            
-            print best
-            print worst
-            print tctot
-            print tctot_patch
-            return
-
-        
         for i in range(len(kshpss)):
             for conv_mode, n_mode in zip(convmodes,range(len(convmodes))):
                 for ss, n_ss in zip(ssizess[i],range(len(ssizess[i]))):
