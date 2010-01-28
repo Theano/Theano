@@ -7,7 +7,7 @@ from theano.tests import unittest_tools as utt
 
 from theano import function, Mode
 import theano.tensor as T
-from conv import ConvOp, convolve2, getFilterOutShp
+from conv import ConvOp, getFilterOutShp
 
 def flip(kern, kshp):
     "flip the kernel as scipy.convolv2d do it flipped."
@@ -41,7 +41,7 @@ def flip(kern, kshp):
 global_rng = N.random.RandomState(3423489)
 
 dmatrix4=T.TensorType('float64', (False, False, False, False))
-def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True, conv_op_py=False, do_convolve2=False, do_print=True, repeat=1, unroll_patch=False, unroll_patch_size=False, verbose=0):
+def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True, conv_op_py=False, do_print=True, repeat=1, unroll_patch=False, unroll_patch_size=False, verbose=0):
 
         # build actual input images
         imgval = global_rng.rand(bsize, imshp[0], imshp[1], imshp[2])
@@ -92,34 +92,6 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll
                                 imgval[b,i,...], w_flip[n,i,...],1,val, bval, 0)[0::ss[0],0::ss[1]]
                 ntot += time.time() - time1
 
-            if do_convolve2:
-                ####### test with new sp.convolve2 function ######
-                time1 = time.time()
-                hid, outshp2 = convolve2(kern, kshp, nkern, img, imshp,  
-                                         bsize, (ss[0],ss[1]), mode=conv_mode)
-                propup = function([kern, img], hid)
-                propup1 = function([kern, img], hid,mode=Mode(linker="py"))
-
-                hidval  = propup(w_flip.reshape(nkern,-1), imgval.reshape(bsize,-1))
-                hidval  = hidval.reshape(bsize,nkern,outshp2[-2],outshp2[-1])
-#                hidval = hidval[:,:,::ss[0],::ss[1]]
-                hidval = hidval.reshape(bsize, -1)
-                for i in range(repeat):
-                    hidval1 = propup1(w_flip.reshape(nkern,-1), imgval.reshape(bsize,-1))
-                hidval1  = hidval1.reshape(bsize,nkern,outshp2[-2],outshp2[-1])
-#                hidval1  = hidval1[:,:,::ss[0],::ss[1]]
-                hidval1 = hidval1.reshape(bsize, -1)
-
-                assert (N.abs(hidval-hidval1)<1e-5).all()
-                temp = N.abs(outval.reshape(bsize,-1) - hidval)
-                if validate:
-                    assert (temp < 1e-5).all()
-
-            else:
-                hid = img #we don't need it, but it make the flow easier flow
-                hidval=outval.copy()#to keep the same memory
-                hidval1=outval.copy()
-
             # ConvOp
             if unroll_patch and not unroll_patch_size:
                 conv_op = ConvOp(dx=ss[0],dy=ss[1], output_mode=conv_mode,
@@ -155,7 +127,7 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, unroll
                 temp = N.abs(outval - hidval3)
                 assert (temp < 1e-5).all()
 
-            img, imshp = hid, tuple(outshp)
+            imshp = tuple(outshp)
             imgval = outval.reshape(bsize,outshp[0],outshp[1],outshp[2])
 
         return tctot, tpytot, ntot
@@ -246,22 +218,8 @@ class TestConvOp(unittest.TestCase):
 #                    print 'img2d', img2d
                     img1d = img2d.reshape(bsize,-1)
 
-                    # create filters (need to be flipped to use convolve2d)
+                    # create filters
                     filtersflipped = flip(filters.reshape((nkern,)+kshp), kshp)
-
-                    # compute with new convolve2 (no timing info)
-                    output4, outshp4  = convolve2(kerns, kshp, nkern, input,\
-                            imshp, bsize, (ss[0],ss[1]), bias=bias, mode=conv_mode)
-#                    print 'output4', output4
-
-                    ttime1 = time.time()
-                    f = function([kerns, bias, input], output4)
-                    out4 = f(filtersflipped.reshape(nkern,-1), biasvals, img1d)
-#                    print 'out4', out4, img1d, filtersflipped
-                    tconv2 += [time.time() - ttime1]
-                    out4 = out4.reshape(bsize, nkern, outshp4[1], outshp4[2])
-                    out4 = out4#[:,:,0::ss[0],0::ss[1]]
-                    out4 = out4.reshape(bsize, -1)
 
                     # compute with ConvOp
                     dmatrix3=T.TensorType('float64', (False, False, False))
@@ -306,9 +264,6 @@ class TestConvOp(unittest.TestCase):
 
                     # compare benchmark with ConvOp
                     temp = bench1.flatten() - out2.flatten()
-                    assert (temp < 1e-5).all()
-                    # compare benchmark with convolve2
-                    temp = bench1.flatten() - out4.flatten()
                     assert (temp < 1e-5).all()
                     
         print '**** Convolution Profiling Results ****'

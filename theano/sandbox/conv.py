@@ -583,7 +583,7 @@ class ConvOp(Op):
     
     def c_support_code(self):
         return """
-define STRIDES(arr) ((arr)->strides)
+#define STRIDES(arr) ((arr)->strides)
 #define FULL  2
 #define SAME  1
 #define VALID 0
