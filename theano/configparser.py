@@ -14,11 +14,12 @@ THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 # [section.]option[=value] entries. If the section part is omited, their should be only one
 # section with that contain the gived option.
 
-# THEANORC=~/.theanorc:~lisa/.theanorc
+# THEANORC can contain a colon-delimited list of config files, like
+# THEANORC=~lisa/.theanorc:~/.theanorc
+# In that case, definitions in files on the right (here, ~/.theanorc) have
+# precedence over those in files on the left.
 def config_files_from_theanorc():
     rval = [os.path.expanduser(s) for s in os.getenv('THEANORC', '~/.theanorc').split(':')]
-    rval.reverse()
-    print "THEANORC", rval
     return rval
 theano_cfg = ConfigParser.SafeConfigParser()
 theano_cfg.read(config_files_from_theanorc())
@@ -42,14 +43,15 @@ def fetch_val_for_key(key):
     """Return the overriding config value for a key.
     A successful search returs a string value.
     An unsuccessful search raises a KeyError
-    
-    The priority order is:
+
+    The (decreasing) priority order is:
     - THEANO_FLAGS
     - ~./theanorc
-    
+
     """
 
     # first try to find it in the FLAGS
+    rval = None
     for name_val in THEANO_FLAGS.split(','):
         if not name_val:
             continue
@@ -60,7 +62,12 @@ def fetch_val_for_key(key):
             name, val = name_val_tuple
 
         if name == key:
-            return val
+            # rval might be overriden by a later definition in THEANO_FLAGS
+            rval = val
+
+    # If an rval is found, it should be a string
+    if rval is not None:
+        return rval
 
     # next try to find it in the config file
 
@@ -77,7 +84,7 @@ def fetch_val_for_key(key):
         return theano_cfg.get(section, option)
     except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
         raise KeyError(key)
-    
+
 class TheanoConfigParser(object):
     #properties are installed by AddConfigVar
 
@@ -143,7 +150,7 @@ class ConfigParam(object):
             self.val = val
 
     deleter=None
-    
+
 class EnumStr(ConfigParam):
     def __init__(self, default, *options):
         self.default = default
