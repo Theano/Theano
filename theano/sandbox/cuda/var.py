@@ -1,5 +1,6 @@
 import numpy
 
+import theano
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor
 from theano.compile import shared, SharedVariable, shared_constructor

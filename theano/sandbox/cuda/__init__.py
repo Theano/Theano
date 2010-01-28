@@ -73,7 +73,7 @@ if compile_cuda_ndarray:
 
         if not os.path.exists(cuda_ndarray_loc):
             os.makedirs(cuda_ndarray_loc)
- 
+
         nvcc_compiler.nvcc_module_compile_str('cuda_ndarray', code, location = cuda_ndarray_loc,
                                               include_dirs=[cuda_path], libs=['cublas'])
 
