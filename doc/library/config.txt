@@ -54,8 +54,8 @@ Environment Variables
 
 .. envvar:: THEANORC
 
-    This is the location of the .theanorc file which is in ConfigParser
-    format.  It defaults to ``$HOME/.theanorc``. 
+    The location[s] of the .theanorc file[s] in ConfigParser format.
+    It defaults to ``$HOME/.theanorc``. 
     
     Here is the .theanorc equivalent to the THEANO_FLAGS in the example above:
 
@@ -67,6 +67,13 @@ Environment Variables
 
         [nvcc]
         fastmath = True
+
+    Multiple configuration files can be specified by separating them with ':'
+    characters (as in $PATH).  Multiple configuration files will be merged,
+    with earlier (left-most) files taking priority over later files in the
+    case that multiple files specify values for a common configuration option.
+    For example, to override system-wide settings with personal ones, 
+    set ``THEANORC=~/.theanorc:/etc/theanorc``
 
 The rest of this page describes some of the more common and important flags
 that you might want to use.  For the complete list (including documentation),

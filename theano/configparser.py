@@ -14,9 +14,14 @@ THEANO_FLAGS=os.getenv("THEANO_FLAGS","")
 # [section.]option[=value] entries. If the section part is omited, their should be only one
 # section with that contain the gived option.
 
-theano_cfg_path = os.getenv('THEANORC', '~/.theanorc')
+# THEANORC=~/.theanorc:~lisa/.theanorc
+def config_files_from_theanorc():
+    rval = [os.path.expanduser(s) for s in os.getenv('THEANORC', '~/.theanorc').split(':')]
+    rval.reverse()
+    print "THEANORC", rval
+    return rval
 theano_cfg = ConfigParser.SafeConfigParser()
-theano_cfg.read([os.path.expanduser(theano_cfg_path)])
+theano_cfg.read(config_files_from_theanorc())
 
 def parse_env_flags(flags, name , default_value=None):
     #The value in the env variable THEANO_FLAGS override the previous value
