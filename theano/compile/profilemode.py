@@ -74,6 +74,8 @@ class ProfileMode(Mode):
         self.compile_time = compile_time
         self.fct_call_time = fct_call_time
         self.fct_call = fct_call
+        self.call_time = 0
+        self.fn_time = 0
 
         def blah(i, node, th):
             if hasattr(th, 'cthunk'):
