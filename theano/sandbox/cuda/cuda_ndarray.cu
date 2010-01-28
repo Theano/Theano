@@ -1232,7 +1232,7 @@ static PyTypeObject CudaNdarrayType =
 {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "noddy.CudaNdarray",       /*tp_name*/
+    "CudaNdarray",             /*tp_name*/
     sizeof(CudaNdarray),       /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)CudaNdarray_dealloc, /*tp_dealloc*/
