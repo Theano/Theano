@@ -7,6 +7,7 @@ from theano.gof.cc import OpWiseCLinker
 from theano.gof.python25 import any
 from theano import gof
 from theano.configparser import config, AddConfigVar, IntParam
+from theano.compile.function_module import FunctionMaker
 
 import_time = time.time()
 
@@ -18,6 +19,17 @@ AddConfigVar('ProfileMode.n_ops_to_print',
         "Number of ops to print by default",
         IntParam(20, lambda i: i > 0))
 
+class Profile_Maker(FunctionMaker):
+    def create(self, input_storage=None, trustme=False):
+        ret = super(Profile_Maker,self).create(input_storage, trustme)
+        for i, node in enumerate(ret.maker.env.toposort()):
+            self.mode.apply_time[(i,node.op)]=0.0
+            self.mode.apply_call[(i,node.op)]=0
+            self.mode.op_time[node.op]=0.
+#            self.mode.op_cimpl[node.op] = 
+            self.mode.op_call[node.op] = 0
+
+        return ret
 
 class ProfileMode(Mode):
     def __init__(self, linker=default_linker, optimizer=default_optimizer):
@@ -35,6 +47,12 @@ class ProfileMode(Mode):
                            apply_time, apply_call,
                            op_time, op_cimpl, op_call, 
                            compile_time, fct_call_time, fct_call))
+
+    def function_maker(self, i,o,m, *args, **kwargs):
+        """Return an instance of `Profiler_Maker` which init the count"""
+
+        assert m is self
+        return Profile_Maker(i, o, self, *args, **kwargs)
 
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
@@ -72,11 +90,11 @@ class ProfileMode(Mode):
                 dt = time.time() - t0
 
             local_time[0] += dt
-            apply_time[(i,node.op)] = apply_time.get((i,node.op), 0.0) + dt
-            apply_call[(i,node.op)] = apply_call.get((i,node.op), 0) + 1
-            op_time[node.op] = op_time.get(node.op, 0.0) + dt
+            apply_time[(i,node.op)] += dt
+            apply_call[(i,node.op)] += 1
+            op_time[node.op] += dt
             op_cimpl[node.op] = hasattr(th, 'cthunk')
-            op_call[node.op] = op_call.get(node.op,0) + 1
+            op_call[node.op] += 1
 
         
         self.provided_linker = linker
