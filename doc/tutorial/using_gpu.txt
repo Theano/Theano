@@ -16,36 +16,33 @@ Setting up CUDA
 
 The first thing you'll need for Theano to use your GPU is Nvidia's
 GPU-programming toolchain.  You should install at least the CUDA driver and the CUDA Toolkit, as 
-:ref:`described here<http://www.nvidia.com/object/cuda_get.html>`.  After
-installing these tools, there should be a folder on your computer with a 'bin' subfolder containing the 'nvcc' executable,
-a 'lib' subfolder containing libcudart among other things, and an 'include' directory.
-This folder with the 'bin', 'lib', and 'include' folders is called the *cuda
-root* directory, and Theano needs to know where it is to use GPU functionality.
-
-On Linux or OS-X, add the cuda root 'lib' (and/or 'lib64' if you have a 64-bit
-computer) directories to your LD_LIBRARY_PATH environment variable so that the
-dynamic loading of modules linked with cuda libraries can work.  (***TODO on
-windows I don't know how to do this!)
+:ref:`described here <http://www.nvidia.com/object/cuda_get.html>`.  The CUDA
+Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
+*include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
+program which is the compiler for GPU code.)  This folder is called the *cuda
+root* directory.
+On Linux or OS-X >= 10.4, you must add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit
+computer) to your ``$LD_LIBRARY_PATH`` environment variable.
 
 
 Making Theano use CUDA
 ----------------------
 
-There are three ways to tell Theano where the cuda root is.  Any one of them is
-enough (and it would be confusing to use more than one!)
+You must tell Theano where the cuda root folder is, and there are three ways
+to do it.
+Any one of them is enough.
 
 * Define a $CUDA_ROOT environment variable to equal the cuda root directory, as in ``CUDA_ROOT=/path/to/cuda/root``, or
 * add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
 * add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
 
-Once everything is set up correctly, the only thing left to do to tell Theano to
-use the GPU is to change the ``device`` option to name the GPU device in your
+Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
 computer.
 For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu0'``.
-You can also set the device option in the .theanorc file's [global] section.  If
+You can also set the device option in the .theanorc file's ``[global]`` section.  If
 your computer has multiple gpu devices, you can address them as gpu0, gpu1,
 gpu2, or gpu3.  (If you have more than 4 devices you are very lucky but you'll have to modify theano's
-configdefaults.py file to define more gpu devices to choose from.)
+*configdefaults.py* file and define more gpu devices to choose from.)
 
 
 Putting it all Together
@@ -73,9 +70,9 @@ file and run it.
     print 'Looping 100 times took', time.time() - t0, 'seconds'
     print 'Result is', r
 
-The program computes an outer-sum of two long vectors, and then adds up the
-result of the exp() of each element.  Note that we use the `shared` function to
-make sure that the inputs `x` and `y` are stored on the graphics device.
+The program just computes the exp() of a bunch of random numbers.
+Note that we use the `shared` function to
+make sure that the input `x` are stored on the graphics device.
 
 If I run this program (in thing.py) with device=cpu, my computer takes a little over 3 seconds, whereas on the GPU it takes just over 0.2 seconds.  Note that the results are close but not identical!  The GPU will not always produce the exact same floating-point numbers as the CPU.
 
@@ -127,13 +124,13 @@ The output from this program is
 
     Using gpu device 0: GeForce GTX 285
     Looping 100 times took 0.173671007156 seconds
-    Result is <noddy.CudaNdarray object at 0x3e9e970>
+    Result is <CudaNdarray object at 0x3e9e970>
     Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  1.74085569 2.55530477 1.88906097]
 
 Here we've shaved off about 20% of the run-time by simply not copying the
 resulting array back to the host.
-The object returned by each function call is now not a numpy array but an, ahem,
-"noddy.CudaNdarray" which can be converted to a numpy ndarray by the normal
+The object returned by each function call is now not a numpy array but a
+"CudaNdarray" which can be converted to a numpy ndarray by the normal
 numpy casting mechanism.
 
 
@@ -144,9 +141,9 @@ The performance characteristics will change as we continue to optimize our
 implementations, and vary from device to device, but to give a rough idea of
 what to expect right now:
 
-* Computations 
-  with float32 data-type, float64 support is expected in upcoming hardware but
-  it is quite slow now (Jan 2010).  
+* Only computations 
+  with float32 data-type can be accelerated. Better support for float64 is expected in upcoming hardware but
+  float64 computations are still relatively slow (Jan 2010).  
 * Matrix
   multiplication, convolution, and large element-wise operations can be
   accelerated a lot (5-50x) when arguments are large enough to keep 30
@@ -158,7 +155,7 @@ what to expect right now:
   over rows/columns of tensors can be a little slower on the GPU than on the CPU
 * Copying 
   of large quantities of data to and from a device is relatively slow, and
-  roughly cancels the advantage of one or two much-accelerated functions on
+  often cancels most of the advantage of one or two accelerated functions on
   that data.  Getting GPU performance largely hinges on making data transfer to
   the device pay off.
 
@@ -184,6 +181,7 @@ Tips for improving performance on GPU
   eliminate transfer time for GPU ops using those variables.
 * If you aren't happy with the performance you see, try building your functions with 
   mode='PROFILE_MODE'. This should print some timing information at program
-  termination (atexit). Is time being used sensibly? 
-
+  termination (atexit). Is time being used sensibly?   If an Op or Apply is
+  taking more time than its share, then if you know something about GPU
+  programming have a look at how it's implemented in theano.sandbox.cuda.
 
