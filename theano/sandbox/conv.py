@@ -599,7 +599,7 @@ using namespace std;
 
         if self.unroll_patch:
             if self.verbose:
-                print "return unroll patch version",self.dx,self.dy
+                print "return unroll patch version. all_shape=", all_shape
             return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
             if self.unroll_batch<=0: self.unroll_batch=1
