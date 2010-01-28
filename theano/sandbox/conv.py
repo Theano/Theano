@@ -5,17 +5,15 @@ from theano import gof, Op, tensor, config
 from theano.printing import Print
 
 def getFilterOutShp(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
-    """Computes the shape (nb_rows, nb_col) of each output image.
+    """
+    Computes the shape (nb_rows, nb_col) of each output image.
 
     :type inshp: tuple, list or 1D ndarray of length 2
     :param inshp: shape of each (2D) input image
-
     :type kshp: tuple, list or 1D ndarray of length 2
     :param kshp: shape of each (2D) kernel filter
-
     :type mode: string
     :param mode: 'valid' or 'full' (see 'border_mode' in conv2d's doc)
-
     :rtype: numpy 1D ndarray of len 2
     :return: shape of each output "image" (or feature map)
     """
@@ -40,10 +38,12 @@ def conv2d(input, filters, border_mode='valid', subsample=(1,1),
     :param filters: tensor containing filters for convolutional neural net.
     Indexing is: (filter, filter input feature map, filter row, filter col).
     :type border_mode: string
-    :param border_mode:'valid'(only apply kernel over complete patch of the image)
-                       or 'full'(padd the image with 0 and apply the kernel over all full patch and partial patch of the image
+    :param border_mode:'valid'(only apply kernel over complete patch of the image) or
+    'full'(padd the image with 0 and apply the kernel over all full patch and partial patch of
+    the image
     :type subsample: tuple of len 2
-    :param subsample: how many pixel we move in the (row,col) direction of the image when we change of patch
+    :param subsample: how many pixel we move in the (row,col) direction of the image when we
+    change of patch
     :type image_shape: tuple of len 4
     :param image_shape: (batch size, stack size, nb row, nb col)
     :type filter_shape: tuple of len 4
@@ -76,14 +76,14 @@ class ConvOp(Op):
     but much faster!
     """
 
-
     __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode', 
             'unroll_batch', 'unroll_kern', 'unroll_patch',
             'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
     """These attributes uniquely identify the behaviour of this op for given inputs"""
 
-    def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None, dx=None, dy=None, output_mode='valid',
-            unroll_batch=0,
+    def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None, 
+            dx=None, dy=None,
+            output_mode='valid', unroll_batch=0,
             unroll_kern=0,
             unroll_patch=True,
             imshp_logical=None,
@@ -92,7 +92,12 @@ class ConvOp(Op):
             verbose=0,
             version=-1):
         """
-        This Op implement the convolution of a kernel(tensor 4d,(nkern, stacksize, nb row, nb col)) on an image(tensor 4d, (batchsize, stacksize, nb row, nb col). The batch size is multiple image that we want to apply the same kernel over. The nkern is numtiple kernel that we want to apply to each image. The stack size is mostly used when their is multiple layer in the network. It is the sum of the convolution of multiple 2d image and kernel.
+        This Op implement the convolution of a kernel(tensor 4d,(nkern, stacksize, nb row, nb
+        col)) on an image(tensor 4d, (batchsize, stacksize, nb row, nb col). The batch size is
+        multiple image that we want to apply the same kernel over. The nkern is numtiple kernel
+        that we want to apply to each image. The stack size is mostly used when their is
+        multiple layer in the network. It is the sum of the convolution of multiple 2d image
+        and kernel.
 
         The reason that this op does the summation over convolutions within the 'stack' is that
         it allows us to be memory-efficient about how gradients are calculated.  If, for
@@ -101,14 +106,22 @@ class ConvOp(Op):
         point) then we would have to sum over a potentially very large tensor to get the
         gradient on the filters.
 
-
-        If the imshp, kshp, nkern and bsize are provided, we can generate more optimal code. This make a significant difference for the full mode with unroll_patch version.
-        The most frequent faster code currently available on 64_x86 computer is unroll_batch=4, unroll_kern=4, unroll_patch=False and this request that all the optional shape information are gived. Those number are empirically tested and backed up by the article: Anatomy of High-Performance Matrix Multiplication by Kazushige Goto and Robert A. Van De Geijn, ACM Transactions on Mathematical Software, vol 34, No. 3, article 12, May 2008. It is in figure 12, it give the value mr x nr, those value are the optimum to use for unroll_batch and unroll_kern. For x86_64 bits computer it is 4x4. Other architecture can have different value.(2x4 for x86, 8x8 for itanium,...)
+        If the imshp, kshp, nkern and bsize are provided, we can generate more optimal code.
+        This make a significant difference for the full mode with unroll_patch version.  The
+        most frequent faster code currently available on 64_x86 computer is unroll_batch=4,
+        unroll_kern=4, unroll_patch=False and this request that all the optional shape
+        information are gived. Those number are empirically tested and backed up by the
+        article: Anatomy of High-Performance Matrix Multiplication by Kazushige Goto and Robert
+        A. Van De Geijn, ACM Transactions on Mathematical Software, vol 34, No. 3, article 12,
+        May 2008. It is in figure 12, it give the value mr x nr, those value are the optimum to
+        use for unroll_batch and unroll_kern. For x86_64 bits computer it is 4x4. Other
+        architecture can have different value.(2x4 for x86, 8x8 for itanium,...)
 
         :type out_mode: string
-        :param out_mode: 'valid'(give an output smaller then the image, 'full'(give an output bigger then the image)
+        :param out_mode: 'valid'(give an output smaller then the image, 'full'(give an output
+        bigger then the image)
 
-        optional parameter(if provided will be used to generate more optinal c code):
+        optional parameters: (will generate more optimal c code)
         
         :type imshp: tuple of len 2 or 3: 2 for 2d image, 3 for a stack of 2d images.
         :param imshp: (stacksize, nb image row, nb image col)
@@ -125,13 +138,17 @@ class ConvOp(Op):
 
         param to select the version of code used:
         :type unroll_patch: bool
-        :param unroll_patch: use a version of c_code that unroll the patch loop that don't request all shape information to work, but if all shape information are present, will use it to hardcode the value in the code for faster code.
-
+        :param unroll_patch: use a version of c_code that unroll the patch loop that don't
+        request all shape information to work, but if all shape information are present, will
+        use it to hardcode the value in the code for faster code.
         :type unroll_batch:int
-        :param unroll_batch: use a version of c_code that unroll the batch(by unroll_batch) and the nkern(by unroll_kern) loop. The size must by a multiple of bsize or nkern respectively.
+        :param unroll_batch: use a version of c_code that unroll the batch(by unroll_batch) and
+        the nkern(by unroll_kern) loop. The size must by a multiple of bsize or nkern
+        respectively.
         :type unroll_kern:int
-        :param unroll_kern: use a version of c_code that unroll the batch(by unroll_batch) and the nkern(by unroll_kern) loop. The size must by a multiple of bsize or nkern respectively.
-
+        :param unroll_kern: use a version of c_code that unroll the batch(by unroll_batch) and
+        the nkern(by unroll_kern) loop. The size must by a multiple of bsize or nkern
+        respectively.
         :type verbose: int
         :param verbose: passed to GpuConv
         :type version: int
@@ -142,26 +159,34 @@ class ConvOp(Op):
         :param kshp_logical_top_aligned: idem
         
         """
-        all_shape = imshp is not None and kshp is not None and nkern is not None and bsize is not None
+        all_shape = imshp is not None and kshp is not None and \
+                    nkern is not None and bsize is not None
+
         if (unroll_batch>0 or unroll_kern>0) and not all_shape:
             raise Exception("In ConvOp, when using unroll_batch and unroll_nkern, all shape are needed")
-        if not all_shape and (imshp is not None or kshp is not None or nkern is not None or bsize is not None):
-            print "OPTIMISATION WARNING: passing only a few shape to ConvOp for faster code is useless. We use all of them or none."
+
+        if not all_shape and (imshp is not None or kshp is not None \
+                or nkern is not None or bsize is not None):
+            print "OPTIMISATION WARNING: passing only a few shape to ConvOp "\
+                  "for faster code is useless. We use all of them or none."
         
         if not all_shape:
             unroll_patch = True
 
         if imshp is not None:
             imshp = tuple(imshp)
+
             if len(imshp)==2:
                 imshp = (1,)+imshp
             elif len(imshp)==3:
                 imshp = imshp
             else:
                 raise Exception("bad len for imshp")
+
         self.imshp = imshp
         if kshp is not None:
             kshp = tuple(kshp)
+
         self.kshp = kshp
         self.nkern = nkern
         self.bsize=bsize
@@ -169,10 +194,12 @@ class ConvOp(Op):
         self.dy=dy
         self.verbose=verbose
         self.version=version
+
         # a triple
         self.imshp_logical = self.imshp
         if imshp_logical is not None: self.imshp_logical = tuple(imshp_logical)
-        assert (self.imshp is None and self.imshp_logical is None) or (len(self.imshp) == len(self.imshp_logical))
+        assert (self.imshp is None and self.imshp_logical is None) or \
+               (len(self.imshp) == len(self.imshp_logical))
 
         # a pair
         self.kshp_logical = self.kshp
@@ -184,6 +211,7 @@ class ConvOp(Op):
         self.unroll_patch=unroll_patch
 
         if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
+
             if self.bsize<=self.unroll_batch:
                 self.unroll_batch = self.bsize
             else:
@@ -193,9 +221,15 @@ class ConvOp(Op):
                 while self.bsize % new!=0:
                     new-=1
 
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s) must be 0 or a divisor of bsize(%s). We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_batch),str(self.bsize),new)
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%s)"\
+                      "must be 0 or a divisor of bsize(%s). We revert it to %d. This"\
+                      "won't change the result, but may make it slower."%\
+                      (str(self.unroll_batch),str(self.bsize),new)
+
                 self.unroll_batch=new
+
         if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
+
             if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern
             else:
@@ -204,22 +238,29 @@ class ConvOp(Op):
                 assert(new>=1)
                 while self.nkern % new!=0:
                     new-=1
-                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s) should be 0 or a divisor of nkern(%s)We revert it to %d. This won't change the result, but may make it slower."%(str(self.unroll_kern),str(self.nkern),new)
+                print "OPTIMISATION WARNING: in ConvOp.__init__() unroll_kern(%s)"\
+                      "should be 0 or a divisor of nkern(%s)We revert it to %d."\
+                      "This won't change the result, but may make it slower."\
+                      %(str(self.unroll_kern),str(self.nkern),new)
                 self.unroll_kern=new
+
         if all_shape:
             self.outshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
             self.fulloutshp = getFilterOutShp(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
         else:
             self.outshp = None
             self.fulloutshp = None
+
         self.out_mode = output_mode
+
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented"%self.out_mode)
        
         if all_shape and not (self.outshp > 0).all():
-            raise Exception(("Bad size for the output shape. Verify that [post-supersampling] input shape (%s)"
-                "and kern shape(%s) are ok. (hint: kerns must fit inside image in"
-                "'valid' mode)")%(self.imshp_logical,self.kshp_logical))
+            raise Exception(("Bad size for the output shape. Verify that [post-"\
+                    "supersampling] input shape (%s) and kern shape(%s) are ok. "\
+                    "(Hint: kerns must fit inside image in valid mode)")%
+                    (self.imshp_logical,self.kshp_logical))
 
         self._rehash()
         if config.op.set_flops:
@@ -256,11 +297,16 @@ class ConvOp(Op):
             self.flops*=self.outshp[0]*self.outshp[1]#nb flops by output image
             self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
         else: #full mode not implemented
+
             self.flops=0
             for out_row in range(self.outshp[0]):#loop over output row
                 for out_col in range(self.outshp[0]):#loop over output col
                     for row in range(self.kshp[0]):#loop over kern row
-                        if row+out_row-self.kshp[0]+1<0 or row+out_row-self.kshp[0]+1>=self.imshp[1]: continue
+
+                        if (row+out_row-self.kshp[0]+1<0 or 
+                            row+out_row-self.kshp[0]+1>=self.imshp[1]): 
+                            continue
+
                         col=0
                         max_col=self.kshp[1]
                         img_col=out_col-self.kshp[1]+1
@@ -275,7 +321,8 @@ class ConvOp(Op):
             
             self.flops*=self.imshp[0]*self.nkern*self.bsize#for all outputs images#n_stack==self.imshp[0]
             
-            assert self.flops==self.bsize * self.nkern * self.imshp[0] * self.kshp[0] * self.kshp[1] * self.imshp[1] * self.imshp[2] * 2
+            assert self.flops == self.bsize * self.nkern * self.imshp[0] * \
+                    self.kshp[0] * self.kshp[1] * self.imshp[1] * self.imshp[2] * 2
 
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
@@ -387,21 +434,25 @@ class ConvOp(Op):
     def grad(self, (inputs, kerns), (gz,)):
         """
         In development. Works for test cases in test_sp.py
-        A few known issues:
-        * doesn't work for rectangular images or filters
-        * inputs needs to be a 4D tensor. Couldn't get 3D to work
-        * will crash if filter the same size as input image
+        WARNING: a few known issues:
+            * doesn't work for rectangular images or filters
+            * inputs needs to be a 4D tensor. Couldn't get 3D to work
+            * will crash if filter the same size as input image
         """
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             raise NotImplementedError('todo')
 
         if self.dx!=1 or self.dy!=1:
-            raise Exception("ERROR: We disable ConvOp.grad now when dx!=1 or dy!=1 as we think their is a high probability of bug in it. We need to raise the error on the gradient to .1!")
+            raise Exception("ERROR: We disable ConvOp.grad now when dx!=1 or "\
+                    "dy!=1 as we think their is a high probability of bug in it."\
+                    "We need to raise the error on the gradient to .1!")
 
-        all_shape = self.imshp is not None and self.kshp is not None and self.nkern is not None and self.bsize is not None
+        all_shape = self.imshp is not None and self.kshp is not None and \
+                    self.nkern is not None and self.bsize is not None
 
         if not all_shape and (self.dx!=1 or self.dy!=1):
-            raise Exception("ConvOp.grad when dx!=1 or dy!=1 we must have all the optional shape information")
+            raise Exception("ConvOp.grad when dx!=1 or dy!=1 we must have all "\
+                            "the optional shape information")
         
         grad_hack_necessary = False
         if grad_hack_necessary:
@@ -423,6 +474,7 @@ class ConvOp(Op):
         kshp = None
         un_p = self.unroll_patch
         imshp_logical = None
+
         if self.out_mode == 'valid':
             (img, filters) = (newin, newgz)
             kshp_logical = self.fulloutshp
@@ -457,13 +509,17 @@ class ConvOp(Op):
                 un_b = bsize
             else:
                 un_b = 1
-                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the batch. Maybe you can optimize this!", bsize, un_b, self.unroll_batch, self.unroll_kern
+                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine "\
+                      "a good unroll value for the batch. Maybe you can optimize this!",\
+                      bsize, un_b, self.unroll_batch, self.unroll_kern
+
         if un_k!=0 and nkern%un_k!=0:
             if nkern<un_k:
                 un_k = nkern
             else:
                 un_k = 1
-                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine a good unroll value for the kernel. Maybe you can optimize this!"
+                print "OPTIMISATION WARNING: in ConvOp.grad() we can't determine "\
+                      "a good unroll value for the kernel. Maybe you can optimize this!"
 
         dw = ConvOp(imshp, kshp, nkern, bsize, 1,1, output_mode='valid',
                     unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p,
@@ -472,9 +528,12 @@ class ConvOp(Op):
                     kshp_logical_top_aligned=kshp_logical_top_aligned,
                     version=self.version,
                     verbose=self.verbose)
+
         if hasattr(self,'flops'):
             dw.set_flops()
+
         dw = dw(img,filters)
+
         if all_shape:
             assert (dw.owner.op.outshp==self.kshp).all()
         if self.out_mode == 'valid':
@@ -484,18 +543,21 @@ class ConvOp(Op):
 
         ####### Determine gradient on inputs ########
         mode = 'valid'
-        if not self.out_mode == 'full': mode = 'full'
+        if not self.out_mode == 'full': 
+            mode = 'full'
+
         filters = kerns.dimshuffle((1,0,2,3))
         filters = filters[:,:,::-1,::-1]
         nkern = None
         imshp = None
         imshp_logical = None
         kshp = None
+
         if all_shape:
             nkern = self.imshp[0]
             imshp = (self.nkern, self.outshp[0], self.outshp[1])
             imshp_logical=(self.nkern, self.fulloutshp[0], self.fulloutshp[1])
-        #print 'din', imshp, self.kshp, nkern
+
         din = ConvOp(imshp, self.kshp, nkern, self.bsize, 
                      1,1, output_mode=mode,
                      unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p,
@@ -503,10 +565,14 @@ class ConvOp(Op):
                      kshp_logical=None,
                      version=-1,#we we change the mode, we don't forward the version.
                      verbose=self.verbose)
+
         if hasattr(self,'flops'):
             din.set_flops()
+
         din = din(gz,filters)
-        assert (din.owner.op.outshp is None and self.imshp is None) or (din.owner.op.outshp==self.imshp[1:]).all()
+
+        assert (din.owner.op.outshp is None and self.imshp is None) or \
+               (din.owner.op.outshp==self.imshp[1:]).all()
         return [din, dw]
 
     def c_headers(self):
@@ -517,15 +583,17 @@ class ConvOp(Op):
     
     def c_support_code(self):
         return """
-#define STRIDES(arr) ((arr)->strides)
+define STRIDES(arr) ((arr)->strides)
 #define FULL  2
 #define SAME  1
 #define VALID 0
 #define MOD %
 using namespace std;
 """ + tensor.blas.blas_header_text()
+
     def c_libraries(self):
         return tensor.blas.ldflags()
+
     def c_code(self, node, name, (img2d, filtersflipped), (z, ), sub):
         if node.inputs[0].type.dtype != node.inputs[1].type.dtype:
             raise NotImplementedError()
@@ -533,7 +601,8 @@ using namespace std;
         d=locals()
         d.update(sub)
 
-        all_shape = self.imshp is not None and self.kshp is not None and self.nkern is not None and self.bsize is not None
+        all_shape = self.imshp is not None and self.kshp is not None and \
+                    self.nkern is not None and self.bsize is not None
 
         d["self_out_mode"]=self.out_mode
         d["self_dx"]=self.dx
@@ -619,44 +688,6 @@ using namespace std;
                 print "return no gemm version"
             return _conv_op_code_a % d
 
-def convolve2(kerns, kshp, nkern, images, imshp, bsize, step=(1,1),
-              bias=None, mode='valid', **d):
-    """
-    param kerns: kernel tensor
-    param kshp:  tuple(kern row, kern wid)
-    param nkern: int the number of kernel
-    param images:image tensor
-    param imshp: tuple([stack size,] image row, image wid)
-    param bsize: batch size
-    param step:  subsampling to apply to the output tuple(row, wid)
-    param bias:  if True, will add a bias
-    param mode:  'valid' or 'full'
-    return:      tuple(theano graph with the output of ConvOp flattened to 2 dimensions, ?)
-    """
-    #TODO: remove the bias argument from this function because convolution has nothing to do with a bias
-
-    # if imshp, is a tuple, images contains one input dimension
-    if len(imshp)!=3:
-        nvis_dim = 1
-    else: nvis_dim = imshp[0]
-
-    # all these reshapes should happen in place
-    imrshp   = tensor.as_tensor([bsize] + list(imshp))
-    imtensor = tensor.reshape(images, imrshp)
-
-    kernrshp   = tensor.as_tensor([nkern, nvis_dim] + list(kshp))
-    kerntensor = tensor.reshape(kerns, kernrshp)
- 
-    convop = ConvOp(imshp, kshp, nkern, bsize, step[0], step[1],
-                    output_mode=mode, **d)
-    convout = convop(imtensor, kerntensor)
-   
-    if bias:
-        biastensor = tensor.DimShuffle((False,), ('x',0,'x','x'), inplace=True)(bias)
-        convout = convout + biastensor
-        
-    rval = tensor.flatten(convout, 2)
-    return rval, N.hstack((nkern, convop.outshp))
 
 _conv_op_code_a = """
 const int mode=%(mode)s;
