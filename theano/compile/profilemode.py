@@ -1,6 +1,6 @@
 import time, atexit, copy
 
-from theano.gof.link import WrapLinkerMany
+from theano.gof.link import WrapLinker
 from theano.gof.cutils import run_cthunk
 from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers, default_linker, default_optimizer
 from theano.gof.cc import OpWiseCLinker
@@ -84,7 +84,7 @@ class ProfileMode(Mode):
         if isinstance(linker, str) or linker is None:
             linker = predefined_linkers[linker]
 
-        linker = WrapLinkerMany([linker], [blah])
+        linker = WrapLinker([linker], blah)
             
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
