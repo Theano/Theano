@@ -140,20 +140,20 @@ def test_elemwise1():
     b = tensor.fmatrix()
 
     #let debugmode catch any mistakes
-    print >> sys.stderr, "STARTING FUNCTION 1"
+    print >> sys.stdout, "STARTING FUNCTION 1"
     f = pfunc([b], [], updates=[(a, b**a)], mode=mode_with_gpu)
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     f(numpy.random.rand(*shape)+0.3)
 
-    print >> sys.stderr, "STARTING FUNCTION 2"
+    print >> sys.stdout, "STARTING FUNCTION 2"
     #let debugmode catch any mistakes
     f = pfunc([b], [], updates=[(a, tensor.exp(b**a))], mode=mode_with_gpu)
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
     f(numpy.random.rand(*shape)+0.3)
 
-    print >> sys.stderr, "STARTING FUNCTION 3"
+    print >> sys.stdout, "STARTING FUNCTION 3"
     #let debugmode catch any mistakes
     f = pfunc([b], [], updates=[(a, a+b * tensor.exp(b**a))], mode=mode_with_gpu)
     f(numpy.random.rand(*shape)+0.3)
@@ -169,11 +169,11 @@ def test_elemwise2():
         f = pfunc([b], [], updates=[(a, (a+b).dimshuffle(pattern))], mode=mode_with_gpu)
         has_elemwise = False
         for i, node in enumerate(f.maker.env.toposort()):
-            print >> sys.stderr, i, node
+            print >> sys.stdout, i, node
             has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
         assert not has_elemwise
         #let debugmode catch errors
-        print >> sys.stderr, 'pattern', pattern
+        print >> sys.stdout, 'pattern', pattern
         f(rng.rand(*shape)*.3)
     
     shape = (3,4,5,6)
@@ -204,7 +204,7 @@ def test_elemwise3():
         b**a).dimshuffle([2,0,3,1]))], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
-        print >> sys.stderr, i, node
+        print >> sys.stdout, i, node
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
@@ -220,7 +220,7 @@ def test_elemwise4():
     f = pfunc([b,c], [], updates=[(a, (a+b.dimshuffle('x', 0)*c.dimshuffle(0, 'x')))], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
-        print >> sys.stderr, i, node
+        print >> sys.stdout, i, node
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors

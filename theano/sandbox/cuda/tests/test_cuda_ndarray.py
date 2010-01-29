@@ -8,7 +8,7 @@ if cuda_ndarray.enable_cuda == False:
 import numpy
 
 def test_host_to_device():
-    print >>sys.stderr, 'starting test_host_to_dev'
+    print >>sys.stdout, 'starting test_host_to_dev'
     for shape in ((), (3,), (2,3), (3,4,5,6)):
         a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
@@ -53,7 +53,7 @@ def test_add():
 
 
 def test_exp():
-    print >>sys.stderr, 'starting test_exp'
+    print >>sys.stdout, 'starting test_exp'
     for shape in ((), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),(1000,10000),(10000,1000)):
         a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
@@ -74,25 +74,25 @@ def test_exp():
 
 
 def test_copy():
-    print >>sys.stderr, 'starting test_copy'
+    print >>sys.stdout, 'starting test_copy'
     shape = (5,)
     a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
-    print >>sys.stderr, '.. creating device object'
+    print >>sys.stdout, '.. creating device object'
     b = cuda_ndarray.CudaNdarray(a)
 
-    print >>sys.stderr, '.. copy'
+    print >>sys.stdout, '.. copy'
     c = copy.copy(b)
-    print >>sys.stderr, '.. deepcopy'
+    print >>sys.stdout, '.. deepcopy'
     d = copy.deepcopy(b)
 
-    print >>sys.stderr, '.. comparisons'
+    print >>sys.stdout, '.. comparisons'
     assert numpy.allclose(a, numpy.asarray(b))
     assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
 
 def test_dot():
-    print >>sys.stderr, 'starting test_dot'
+    print >>sys.stdout, 'starting test_dot'
     a0 = theano._asarray(numpy.random.rand(4, 7), dtype='float32')
     a1 = theano._asarray(numpy.random.rand(7, 6), dtype='float32')
 
@@ -101,7 +101,7 @@ def test_dot():
 
     assert numpy.allclose(numpy.dot(a0, a1), cuda_ndarray.dot(b0, b1))
 
-    print >> sys.stderr, 'WARNING test_dot: not testing all 8 transpose cases of dot'
+    print >> sys.stderr, 'WARNING TODO test_dot: not testing all 8 transpose cases of dot'
 
 def test_sum():
     shape = (2,3)
@@ -147,7 +147,7 @@ def test_reshape():
              ]
 
     def subtest(shape_1, shape_2):
-        #print >> sys.stderr, "INFO: shapes", shape_1, shape_2
+        #print >> sys.stdout, "INFO: shapes", shape_1, shape_2
         a = theano._asarray(numpy.random.rand(*shape_1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
 
