@@ -13,7 +13,7 @@ if cuda_ndarray.enable_cuda == False:
 
 import theano.sandbox.cuda as tcn
 
-from tensor.signal.downsample import DownsampleFactorMax
+from theano.tensor.signal.downsample import DownsampleFactorMax
 
 import theano.compile.mode
 

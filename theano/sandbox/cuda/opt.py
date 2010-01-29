@@ -373,11 +373,11 @@ def local_gpu_conv(node):
             gpu_conv = GpuConvOp_from_ConvOp(node.op)
             return [host_from_gpu(gpu_conv(gpu_from_host(img), gpu_from_host(kern)))]
 
-import tensor.signal.downsample
+import theano.tensor.signal.downsample as downsample
 @register_opt()
 @local_optimizer([])
 def local_gpu_downsample_factor_max(node):
-    if isinstance(node.op, tensor.signal.downsample.DownsampleFactorMax):
+    if isinstance(node.op, downsample.DownsampleFactorMax):
         x, = node.inputs
         if (x.owner and x.owner.op == host_from_gpu):
             gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
@@ -386,7 +386,7 @@ def local_gpu_downsample_factor_max(node):
 @register_opt()
 @local_optimizer([])
 def local_gpu_downsample_factor_max_grad(node):
-    if isinstance(node.op, tensor.signal.downsample.DownsampleFactorMaxGrad):
+    if isinstance(node.op, downsample.DownsampleFactorMaxGrad):
         x,z,gz = node.inputs
         if (x.owner and x.owner.op == host_from_gpu):
             gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
