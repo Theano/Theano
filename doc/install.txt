@@ -339,9 +339,9 @@ Generating the documentation
 ----------------------------
 
 You can read the latest HTML documentation `here
-<http://deeplearning.net/theanodoc>`__.
+<http://deeplearning.net/software/theano>`__.
 You can download the latest PDF documentation `here
-<http://deeplearning.net/theanodoc/theano.pdf>`__.
+<http://deeplearning.net/software/theano/theano.pdf>`__.
 
 We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.
