@@ -1,129 +1,156 @@
 import unittest, sys, time
-import numpy as N
-import theano.tensor as T
+import numpy
+import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
-from theano.sandbox.downsample import DownsampleFactorMax
+from theano.sandbox.downsample import DownsampleFactorMax, max_pool2D
 from theano import function, Mode
 
-def max_pool(images=None, imshp=None, maxpoolshp=None, ignore_border=True):
-    """Implements a max pooling layer
-
-    Uses the same API as sp.max_pool but uses the Downsample op instead.
-
-    Takes as input a 2D tensor of shape batch_size x img_size and performs max pooling.
-    Max pooling downsamples by taking the max value in a given area, here defined by
-    maxpoolshp. Outputs a 2D tensor of shape batch_size x output_size.
-
-    Parameters are keyword arguments in order to use func_to_mod.
-
-    @param images: 2D tensor containing images on which to apply convolution.
-                   Assumed to be of shape batch_size x img_size
-    @param imgshp: tuple containing image dimensions
-    @param maxpoolshp: tuple containing shape of area to max pool over
-    
-    @output out1: symbolic result (2D tensor)
-    @output out2: logical shape of the output
-
-    """
-    if len(imshp) == 2:
-        imshp = (1,) + imshp
-    elif len(imshp)!=3:
-        raise NotImplementedError("!")
-    
-    # all these reshapes should happen in place
-    imrshp = T.stack(images.shape[0],
-                          *[T.as_tensor(x) for x in imshp])
-    imtensor = T.reshape(images, imrshp)
-
-    maxpop = DownsampleFactorMax(maxpoolshp, ignore_border)
-    rval = maxpop(imtensor)
-
-    return T.flatten(rval,2), maxpop.out_shape(imshp, maxpoolshp, ignore_border)
 
 class TestDownsampleFactorMax(unittest.TestCase):
-    def test_maxpool(self):
-        # generate flatted images
+    def setUp(self):
+        utt.seed_rng()
+
+    @staticmethod
+    def numpy_max_pool2D(input, ds, ignore_border=False):
+        '''Helper function, implementing max_pool2D in pure numpy'''
+        if len(input.shape) < 2:
+            raise NotImplementedError('input should have at least 2 dim, shape is %s'\
+                    % str(input.shape))
+
+        xi=0
+        yi=0
+        if not ignore_border:
+            if input.shape[-2] % ds[0]:
+                xi += 1
+            if input.shape[-1] % ds[1]:
+                yi += 1
+
+        out_shp = list(input.shape[:-2])
+        out_shp.append(input.shape[-2]/ds[0]+xi)
+        out_shp.append(input.shape[-1]/ds[1]+yi)
+
+        output_val = numpy.zeros(out_shp)
+
+        for k in numpy.ndindex(input.shape[:-2]):
+            for i in range(output_val.shape[-2]):
+                ii =  i*ds[0]
+                for j in range(output_val.shape[-1]):
+                    jj = j*ds[1]
+                    patch = input[k][ii:ii+ds[0],jj:jj+ds[1]]
+                    output_val[k][i,j] = numpy.max(patch)
+        return output_val
+
+    def test_DownsampleFactorMax(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        # generate random images
         maxpoolshps = ((1,1),(2,2),(3,3),(2,3))
-        imval = N.random.rand(4,10,64,64)
-        images = T.dmatrix()
-        dmatrix4=T.TensorType('float64', (False, False, False, False))
-        images4=dmatrix4()
-        tctot, tpytot, ntot = [],[],[]
+        imval = rng.rand(4,10,64,64)
+        images = tensor.dtensor4()
+
         for maxpoolshp in maxpoolshps:
-            for border in [True,False]:
-                print 'maxpoolshp', maxpoolshp,'border', border
-           
-                # numeric verification
-                xi=0
-                yi=0
-                if not border:
-                    if imval.shape[-2] % maxpoolshp[0]:
-                        xi += 1
-                    if imval.shape[-1] % maxpoolshp[1]:
-                        yi += 1
-                my_output_val = N.zeros((imval.shape[0], imval.shape[1],
-                                         imval.shape[2]/maxpoolshp[0]+xi,
-                                         imval.shape[3]/maxpoolshp[1]+yi))
-            
-                time1=time.time()
-                for n in range(imval.shape[0]):
-                    for k in range(imval.shape[1]):
-                        for i in range(my_output_val.shape[2]):
-                            ii =  i*maxpoolshp[0]
-                            for j in range(my_output_val.shape[3]):
-                                jj = j*maxpoolshp[1]
-                                patch = imval[n,k,ii:ii+maxpoolshp[0],jj:jj+maxpoolshp[1]]
-                                my_output_val[n,k,i,j] = N.max(patch)
-                my_output_val = my_output_val.reshape(imval.shape[0],-1)
-                ntot+=[time.time()-time1]
+            for ignore_border in [True,False]:
+                print 'maxpoolshp =', maxpoolshp
+                print 'ignore_border =', ignore_border
 
-                # symbolic stuff
-            #### wrapper to DownsampleFactorMax op ####
-                output, outshp = max_pool(images, imval.shape[1:], maxpoolshp, border)
-                assert N.prod(my_output_val.shape[1:]) == N.prod(outshp)
-                assert N.prod(my_output_val.shape[1:]) == N.prod(outshp)
+                ## Pure Numpy computation
+                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+
+                output = max_pool2D(images, maxpoolshp, ignore_border)
                 f = function([images,],[output,])
-                imval2=imval.reshape(imval.shape[0],-1)
-                output_val = f(imval2)
-                assert N.all(output_val == my_output_val)
-                
-                #DownsampleFactorMax op
-                maxpool_op = DownsampleFactorMax(maxpoolshp, ignore_border=border)(images4)
-                f = function([images4],maxpool_op,mode=Mode(linker="py"))
-                f2 = function([images4],maxpool_op,mode=Mode(linker="c"))
-                f3 = function([images4],maxpool_op)#for when we want to use the debug mode
-                time1=time.time()
                 output_val = f(imval)
-                tctot+=[time.time()-time1]
-                assert (N.abs(my_output_val.flatten()-output_val.flatten())<1e-5).all()
-                time1=time.time()
-                output_val = f2(imval)
-                tpytot+=[time.time()-time1]
-                assert (N.abs(my_output_val.flatten()-output_val.flatten())<1e-5).all()
-                output_val = f3(imval)
+                assert numpy.all(output_val == numpy_output_val)
 
-        print 'Numpy processing time: %.3fs'%sum(ntot),ntot
-        print 'c Theano(DownsampleFactorMax) processing time: %.3fs'%sum(tctot),tctot
-        print 'py Theano(DownsampleFactorMax) processing time: %.3fs'%sum(tpytot),tpytot
-        d=N.asarray(ntot)/tctot
-        print 'speed up c theano(DownsampleFactorMax) vs manual: %.3f'%d.mean(),d
-        d=N.asarray(ntot)/tpytot
-        print 'speed up py theano(DownsampleFactorMax) vs manual: %.3f'%d.mean(),d
+                #DownsampleFactorMax op
+                maxpool_op = DownsampleFactorMax(maxpoolshp, ignore_border=ignore_border)(images)
+                f = function([images], maxpool_op)
+                output_val = f(imval)
+                assert (numpy.abs(output_val - numpy_output_val) < 1e-5).all()
 
     def test_DownsampleFactorMax_grad(self):
-        # generate flatted images
+        rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1,1),(3,2),(2,3))
-        imval = N.random.rand(2,3,3,4) * 10.0 #more variance means numeric gradient will be more accurate
-        do_theano=True
+        imval = rng.rand(2,3,3,4) * 10.0 #more variance means numeric gradient will be more accurate
+
         for maxpoolshp in maxpoolshps:
-            for border in [True,False]:
-                print 'maxpoolshp', maxpoolshp, 'border', border
+            for ignore_border in [True,False]:
+                print 'maxpoolshp =', maxpoolshp
+                print 'ignore_border =', ignore_border
                 def mp(input):
-                    return DownsampleFactorMax(maxpoolshp, ignore_border=border)(input)
-                utt.verify_grad(mp, [imval])
+                    return DownsampleFactorMax(maxpoolshp, ignore_border=ignore_border)(input)
+                utt.verify_grad(mp, [imval], rng=rng)
+
+    def test_max_pool2D_2D(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        maxpoolshps = ((1,1),(3,2))
+        imval = rng.rand(4,7)
+        images = tensor.dmatrix()
+
+        for maxpoolshp in maxpoolshps:
+            for ignore_border in [True,False]:
+                print 'maxpoolshp =', maxpoolshp
+                print 'ignore_border =', ignore_border
+                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+
+                output = max_pool2D(images, maxpoolshp, ignore_border)
+                output_val = function([images], output)(imval)
+                assert numpy.all(output_val == numpy_output_val)
+
+                def mp(input):
+                    return max_pool2D(input, maxpoolshp, ignore_border)
+                utt.verify_grad(mp, [imval], rng=rng)
+
+    def test_max_pool2D_3D(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        maxpoolshps = [(1,2)]
+        imval = rng.rand(2,3,4)
+        images = tensor.dtensor3()
+
+        for maxpoolshp in maxpoolshps:
+            for ignore_border in [True,False]:
+                print 'maxpoolshp =', maxpoolshp
+                print 'ignore_border =', ignore_border
+                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+
+                output = max_pool2D(images, maxpoolshp, ignore_border)
+                output_val = function([images], output)(imval)
+                assert numpy.all(output_val == numpy_output_val)
+
+                c = tensor.sum(output)
+                c_val = function([images], c)(imval)
+
+                g = tensor.grad(c, images)
+                g_val = function([images], [g.shape, tensor.min(tensor.min(tensor.min(g))), tensor.max(tensor.max(tensor.max(g)))])(imval)
+
+                def mp(input):
+                    return max_pool2D(input, maxpoolshp, ignore_border)
+                utt.verify_grad(mp, [imval], rng=rng)
+
+
+    def test_max_pool2D_6D(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        maxpoolshps = [(3,2)]
+        imval = rng.rand(2,1,1,1,3,4)
+        images = tensor.TensorType('float64', [False]*6)()
+
+        for maxpoolshp in maxpoolshps:
+            for ignore_border in [True,False]:
+                print 'maxpoolshp =', maxpoolshp
+                print 'ignore_border =', ignore_border
+                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+
+                output = max_pool2D(images, maxpoolshp, ignore_border)
+                output_val = function([images], output)(imval)
+                assert numpy.all(output_val == numpy_output_val)
+
+                def mp(input):
+                    return max_pool2D(input, maxpoolshp, ignore_border)
+                utt.verify_grad(mp, [imval], rng=rng)
+
+
 
 if __name__ == '__main__':
-    t = TestDownsampleFactorMax("test_maxpool").run()
-    #t.test_maxpool()
-    from theano.tests import main
-#    main("test_sp")
+    unittest.main()

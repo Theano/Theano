@@ -147,7 +147,7 @@ class DownsampleFactorMaxGrad(Op):
     def c_code_cache_version(self):
         return ()
 
-                
+
 def max_pool2D(input, ds, ignore_border=False):
     """
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
@@ -166,7 +166,7 @@ def max_pool2D(input, ds, ignore_border=False):
 
     # extract image dimensions
     img_shape = input.shape[-2:]
-    
+
     # count the number of "leading" dimensions, store as dmatrix
     batch_size = tensor.prod(input.shape[:-2])
     batch_size = tensor.shape_padright(batch_size,1)
