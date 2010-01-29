@@ -360,7 +360,7 @@ def test_subsample():
 
 def test_logical_shapes():
     # implement when
-    print >> sys.stderr, "INFO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
+    print >> sys.stderr, "WARNING TODO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
 
 
 def _test_dummy():

@@ -428,9 +428,20 @@ class Function(object):
         # Reinitialize each container's 'provided' counter
         for c in self.input_storage:
             c.provided = 0
+
         # Set positional arguments
-        for i, arg in enumerate(args):
-            self[i] = arg
+        i = 0
+        for arg in args:
+            #TODO: provide a Param option for skipping the filter if we
+            #      really want speed.
+            s = self.input_storage[i]
+            if arg is None:
+                s.storage[0] = arg
+            else:
+                s.storage[0] = s.type.filter(arg, strict=s.strict)
+            s.provided += 1
+            i+=1
+
         # Set keyword arguments
         for k, arg in kwargs.iteritems():
             self[k] = arg
@@ -448,7 +459,9 @@ class Function(object):
                             self.inv_finder[c]))
 
         # Do the actual work
+        t0_fn = time.time()
         self.fn()
+        dt_fn = time.time() - t0_fn
 
         # Retrieve the values that were computed
         outputs = [x.data for x in self.output_storage]
@@ -486,6 +499,9 @@ class Function(object):
           self.maker.mode.fct_call_time[self.name] += dt_call
           self.maker.mode.fct_call[self.name] += 1
 
+        self.maker.mode.call_time += dt_call
+        self.maker.mode.fn_time += dt_fn
+        
         if self.return_none:
             return None
         elif self.unpack_single and len(outputs) == 1:

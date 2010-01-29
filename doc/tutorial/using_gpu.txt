@@ -58,7 +58,7 @@ file and run it.
     import numpy
     import time
 
-    vlen = 100000
+    vlen = 10 * 30 * 768  # 10 x #cores x # threads per core
     iters = 1000
 
     rng = numpy.random.RandomState(22)
@@ -74,28 +74,31 @@ The program just computes the exp() of a bunch of random numbers.
 Note that we use the `shared` function to
 make sure that the input `x` are stored on the graphics device.
 
-If I run this program (in thing.py) with device=cpu, my computer takes a little over 3 seconds, whereas on the GPU it takes just over 0.2 seconds.  Note that the results are close but not identical!  The GPU will not always produce the exact same floating-point numbers as the CPU.
+If I run this program (in thing.py) with device=cpu, my computer takes a little over 7 seconds,
+whereas on the GPU it takes just over 0.4 seconds.  Note that the results are close but not
+identical!  The GPU will not always produce the exact same floating-point numbers as the CPU.
+As a point of reference, a loop that calls ``numpy.exp(x.value)`` also takes about 7 seconds.
 
 .. code-block:: text
 
     $ THEANO_FLAGS=mode=FAST_RUN,device=cpu python thing.py 
-    Looping 100 times took 3.12647008896 seconds
-    Result is [ 1.23178032  1.61879341  1.52278065 ...,  1.74085572  2.55530456 1.88906098]
+    Looping 100 times took 7.17374897003 seconds
+    Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753 1.62323285]
 
     bergstra@tikuanyin:~/tmp$ THEANO_FLAGS=mode=FAST_RUN,device=gpu0 python thing.py 
     Using gpu device 0: GeForce GTX 285
-    Looping 100 times took 0.217401981354 seconds
-    Result is [ 1.23178029  1.61879349  1.52278066 ...,  1.74085569 2.55530477 1.88906097]
+    Looping 100 times took 0.418929815292 seconds
+    Result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
 
 Returning a handle to device-allocated data
 -------------------------------------------
 
 The speedup is not greater in the example above because the function is
-returning its result as a numpy ndarray (which has already copied from the
-device to the host).  This is what makes it so easy to swap in device=gpu0, but
-if you want to be less portable, you can see a bigger speedup by changing
+returning its result as a numpy ndarray which has already been copied from the
+device to the host for your convenience.  This is what makes it so easy to swap in device=gpu0, but
+if you don't mind being less portable, you might prefer to see a bigger speedup by changing
 the graph to express a computation with a GPU-stored result.  The gpu_from_host
-op means "copy the input from the host to the gpu" and it is optimized away
+Op means "copy the input from the host to the gpu" and it is optimized away
 after the T.exp(x) is replaced by a GPU version of exp().
 
 .. code-block:: python
@@ -105,7 +108,7 @@ after the T.exp(x) is replaced by a GPU version of exp().
     import numpy
     import time
 
-    vlen = 100000
+    vlen = 10 * 30 * 768  # 10 x #cores x # threads per core
     iters = 1000
 
     rng = numpy.random.RandomState(22)
@@ -123,15 +126,69 @@ The output from this program is
 .. code-block:: text
 
     Using gpu device 0: GeForce GTX 285
-    Looping 100 times took 0.173671007156 seconds
+    Looping 100 times took 0.185714006424 seconds
     Result is <CudaNdarray object at 0x3e9e970>
-    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  1.74085569 2.55530477 1.88906097]
+    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
 
-Here we've shaved off about 20% of the run-time by simply not copying the
+Here we've shaved off about 50% of the run-time by simply not copying the
 resulting array back to the host.
 The object returned by each function call is now not a numpy array but a
 "CudaNdarray" which can be converted to a numpy ndarray by the normal
 numpy casting mechanism.
+
+
+Running the GPU at Full Speed
+------------------------------
+
+To really get maximum performance in this simple example, we need to use an :class:`Out`
+instance to tell Theano not to copy the output it returns to us.  Theano allocates memory for
+internal use like a working buffer, but by default it will never return a result that is
+allocated in the working buffer.  This is normally what you want, but our example is so simple
+that it has the un-wanted side-effect of really slowing things down.
+
+.. 
+    TODO:
+    The story here about copying and working buffers is misleading and potentially not correct
+    ... why exactly does borrow=True cut 75% of the runtime ???
+
+.. code-block:: python
+
+    from theano import function, config, shared, sandbox, Out
+    import theano.tensor as T
+    import numpy
+    import time
+
+    vlen = 10 * 30 * 768  # 10 x #cores x # threads per core
+    iters = 1000
+
+    rng = numpy.random.RandomState(22)
+    x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+    f = function([], 
+            Out(sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)),
+                borrow=True))
+    t0 = time.time()
+    for i in xrange(iters):
+        r = f()
+    print 'Looping 100 times took', time.time() - t0, 'seconds'
+    print 'Result is', r
+    print 'Numpy result is', numpy.asarray(r)
+
+Running this version of the code takes just under 0.05 seconds, over 140x faster than
+the CPU implementation!
+
+.. code-block:: text
+
+    Using gpu device 0: GeForce GTX 285
+    Looping 100 times took 0.0497219562531 seconds
+    Result is <CudaNdarray object at 0x31eeaf0>
+    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
+
+This version of the code ``using borrow=True`` is slightly less safe because if we had saved
+the `r` returned from one function call, we would have to take care and remember that its value might
+be over-written by a subsequent function call.  Although borrow=True makes a dramatic difference in this example,
+be careful!  The advantage of
+borrow=True is much weaker in larger graphs, and there is a lot of potential for making a
+mistake by failing to account for the resulting memory aliasing.
 
 
 What can be accelerated on the GPU?
