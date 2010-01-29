@@ -389,7 +389,7 @@ class TensorType(Type):
                 raise TypeError("Non-unit value on shape on a broadcastable dimension.", data.shape, self.broadcastable)
             i+=1
         if self.filter_checks_isfinite and (not numpy.all(numpy.isfinite(data))):
-            raise TypeError("non-finite elements not allowed")
+            raise ValueError("non-finite elements not allowed")
         return data
 
     def dtype_specs(self):
