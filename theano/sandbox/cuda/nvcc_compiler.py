@@ -6,6 +6,13 @@ from theano import config
 _logger=logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
 
+from theano.configparser import config, AddConfigVar, StrParam
+
+AddConfigVar('nvcc.compiler_bindir',
+        "if defined, nvcc compiler driver will seek g++ and gcc in this directory",
+        StrParam(""))
+
+
 def error(*args):
     #sys.stderr.write('ERROR:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.error("ERROR: "+' '.join(str(a) for a in args))
@@ -68,6 +75,8 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     debug('Generating shared lib', lib_filename)
     # TODO: Why do these args cause failure on gtx285 that has 1.3 compute capability? '--gpu-architecture=compute_13', '--gpu-code=compute_13', 
     cmd = ['nvcc', '-shared', '-g'] + [pa for pa in preargs if pa.startswith('-O')]
+    if config.nvcc.compiler_bindir:
+        cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
     cmd.extend(['-Xcompiler', ','.join(pa for pa in preargs if not pa.startswith('-O'))])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename]) 
