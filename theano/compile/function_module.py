@@ -428,9 +428,17 @@ class Function(object):
         # Reinitialize each container's 'provided' counter
         for c in self.input_storage:
             c.provided = 0
+
         # Set positional arguments
-        for i, arg in enumerate(args):
-            self[i] = arg
+        i = 0
+        for arg in args:
+            #TODO: provide a Param option for skipping the filter if we
+            #      really want speed.
+            s = self.input_storage[i]
+            s.storage[0] = s.type.filter(arg, strict=s.strict)
+            s.provided += 1
+            i+=1
+
         # Set keyword arguments
         for k, arg in kwargs.iteritems():
             self[k] = arg
