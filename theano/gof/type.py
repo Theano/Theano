@@ -222,7 +222,7 @@ class PureType(object):
         try:
             self.filter(a, True)
             return True
-        except TypeError:
+        except (TypeError, ValueError):
             return False
     
     def make_variable(self, name = None):

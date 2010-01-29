@@ -5,14 +5,15 @@ from theano import config
 import logging, copy
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.INFO)
-_logger.addHandler(logging.StreamHandler())
+_logger.setLevel(logging.WARNING)
+def error(*msg):
+    _logger.warning('ERROR (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 def warning(*msg):
-    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
+    _logger.warning('WARNING (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 def info(*msg):
-    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
+    _logger.warning('INFO (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 def debug(*msg):
-    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
+    _logger.warning('DEBUG (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 
 
 # Compile cuda_ndarray.cu
@@ -63,23 +64,32 @@ if not compile_cuda_ndarray:
     except ImportError:
         compile_cuda_ndarray = True
 
-if compile_cuda_ndarray:
-    import nvcc_compiler
-    if not nvcc_compiler.is_nvcc_available():
-        set_cuda_disabled()
+try:
+    if compile_cuda_ndarray:
+        import nvcc_compiler
+        if not nvcc_compiler.is_nvcc_available():
+            set_cuda_disabled()
 
-    if enable_cuda:
-        code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
+        if enable_cuda:
+            code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
 
-        if not os.path.exists(cuda_ndarray_loc):
-            os.makedirs(cuda_ndarray_loc)
+            if not os.path.exists(cuda_ndarray_loc):
+                os.makedirs(cuda_ndarray_loc)
 
-        nvcc_compiler.nvcc_module_compile_str('cuda_ndarray', code, location = cuda_ndarray_loc,
-                                              include_dirs=[cuda_path], libs=['cublas'])
+            nvcc_compiler.nvcc_module_compile_str('cuda_ndarray', code, location = cuda_ndarray_loc,
+                                                  include_dirs=[cuda_path], libs=['cublas'])
 
-        from cuda_ndarray.cuda_ndarray import *
+            from cuda_ndarray.cuda_ndarray import *
+except Exception, e:
+    error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
+    set_cuda_disabled()
 
 if enable_cuda:
+    #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
+    import cuda_ndarray.cuda_ndarray
+    if os.path.join(config.compiledir,'cuda_ndarray','cuda_ndarray.so')!=cuda_ndarray.cuda_ndarray.__file__:
+        _logger.warning("WARNING: cuda_ndarray was loaded from",cuda_ndarray.cuda_ndarray.__file__,"This is not expected as theano should compile it automatically for you. Do you have a directory called cuda_ndarray in your LD_LIBRARY_PATH environment variable? If so, please remove it as it is outdated!")
+
     from theano.sandbox.cuda.type import CudaNdarrayType
     from theano.sandbox.cuda.var import (CudaNdarrayVariable,
             CudaNdarrayConstant,
@@ -103,7 +113,7 @@ def use(device=config.device):
         raise ValueError("Invalid device identifier", device)
     if use.device_number is None:
         # No successful call to use() has been made yet
-        if device=="-1" or device=="CPU":
+        if device<0:
             return
         if device in [None,""]:
             device=0
@@ -133,7 +143,6 @@ def handle_shared_float32(tf):
 
     else:
         raise NotImplementedError('removing our handler')
-
 
 if enable_cuda and config.device.startswith('gpu'):
     use()
