@@ -674,19 +674,19 @@ using namespace std;
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             if self.verbose:
-                _log("return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version")
+                _debug("return imshp!=imshp_logical or self.kshp != self.kshp_logical shape version")
             return _conv_op_code_a % d
 
         if self.unroll_patch:
             if self.verbose:
-                _log("return unroll patch version. all_shape=", all_shape)
+                _debug("return unroll patch version. all_shape=", all_shape)
             return _conv_op_code_unroll_patch%d
         if self.unroll_batch>0 or self.unroll_kern>0:
             if self.unroll_batch<=0: self.unroll_batch=1
             if self.unroll_kern<=0: self.unroll_kern=1
             if self.verbose:
-                _debug("return unrolled batch (%i) and kern code (%i)",
-                        self.unroll_batch, self.unroll_kern)
+                _debug("return unrolled batch (%s) and kern code (%s)",
+                        str(self.unroll_batch), str(self.unroll_kern))
             return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
                                                    self.unroll_kern)
 
