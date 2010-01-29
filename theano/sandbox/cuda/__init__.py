@@ -108,7 +108,7 @@ def use(device=config.device):
         raise ValueError("Invalid device identifier", device)
     if use.device_number is None:
         # No successful call to use() has been made yet
-        if device=="-1" or device=="CPU":
+        if device<0:
             return
         if device in [None,""]:
             device=0
