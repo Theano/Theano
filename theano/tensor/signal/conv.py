@@ -17,32 +17,37 @@ def _debug(*msg):
 def _warn(*msg):
     _logger.warn(' '.join(msg))
 
+
 def conv2d(input, filters, image_shape=None, filter_shape=None,
-           border_mode='valid', subsample=(1,1), **kargs):
+                border_mode='valid', subsample=(1,1), **kargs):
     """
-    This function returns an instanciated ConvOp through a simple interface.
-    We do this instead of changing the ConvOp interface so as not to change 
-    previous code based on the ConvOp.
+    This function will build the symbolic graph for convolving a stack of input
+    images with a set of filters. The implementation is modelled after
+    Convolutional Neural Networks (CNN). It is simply a wrapper to the ConvOp but
+    provides a much cleaner interface.
 
     :type input: symbolic 4D tensor
-    :param input: tensor containing mini-batch of input feature maps that are 
-    2D. Indexing is thus: (batch, feature map, image row, image col).
+    :param input: mini-batch of feature map stacks, of shape image_shape.
+
     :type filters: symbolic 4D tensor
-    :param filters: tensor containing filters for convolutional neural net.
-    Indexing is: (filter, filter input feature map, filter row, filter col).
-    :type border_mode: string
-    :param border_mode:'valid'(only apply kernel over complete patch of the image) or
-    'full'(padd the image with 0 and apply the kernel over all full patch and partial patch of
-    the image
+    :param filters: set of filters used in CNN layer of shape filter_shape
+
+    :param border_mode:
+       'valid'-- only apply filter to complete patches of the image. Generates
+                 output of shape: image_shape - filter_shape + 1 
+       'full' -- zero-pads image to multiple of filter shape to generate output of
+                 shape: image_shape + filter_shape - 1
+
     :type subsample: tuple of len 2
-    :param subsample: how many pixel we move in the (row,col) direction of the image when we
-    change of patch
+    :param subsample: factor by which to subsample the output
+                       
     :type image_shape: tuple of len 4
     :param image_shape: (batch size, stack size, nb row, nb col)
     :type filter_shape: tuple of len 4
-    :param filter_shape: (nb kernel, stack size, nb row, nb col)
+    :param filter_shape: (nb filters, stack size, nb row, nb col)
 
-    :param kwargs: see unroll_batch, unroll_kern, unroll_patch in ConvOp
+    :param kwargs: kwargs are passed onto ConvOp. Can be used to set the following:
+                   unroll_batch, unroll_kern, unroll_patch (see ConvOp doc)
     """
     if image_shape and filter_shape:
         assert image_shape[1]==filter_shape[1]
@@ -67,8 +72,24 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
 class ConvOp(Op):
     """
-    A convolution op that should behave like scipy.signal.convolve2d,
-    but much faster!
+    This Op serves a dual purpose: it can implement a vanilla 2D convolution
+    (as taught in any signal processing class) or implement the
+    convolutional layers found in Convolutional Neural Networks. 
+    
+    In this setting, a set of 3D images is convolved with a set of 3D kernels,
+    with the particularity that their leading dimensions are of equal length.
+    Vanilla 2D convolution is treated as a special case of this.
+   
+    The input parameter represents a mini-batch of multiple images. Its shape is:
+        batch size x num. input feature maps x image height x image width
+
+    The kernel parameter represents a set of 3D kernels. Its shape is:
+        number of filters x num. input images x filter height x filter width 
+
+    The output of ConvOp is a 4D tensor, generated as follows:
+        output[b,k,:,:] = \sum_i input[b,i,:,:] * filter[k,i,:,:] \forall b,k
+    where b is the mini-batch index, k the filter index and * is the convolution
+    operator.  
     """
 
     __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode', 
@@ -79,17 +100,13 @@ class ConvOp(Op):
     @staticmethod
     def getOutputShape(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
         """
-        Computes the shape of the output images after the convolution.
-        Returns a tuple of type (nb_rows, nb_col).
-
-        :type inshp: tuple, list or 1D ndarray of length 2
-        :param inshp: shape of each (2D) input image
-        :type kshp: tuple, list or 1D ndarray of length 2
-        :param kshp: shape of each (2D) kernel filter
-        :type mode: string
+        Computes the output dimensions of convolving an image of shape "inshp"
+        with kernels of shape "kshp".
+        
+        :param inshp: (rows,cols) of input image
+        :param kshp: (rows,cols) of filters
         :param mode: 'valid' or 'full' (see 'border_mode' in conv2d's doc)
-        :rtype: numpy 1D ndarray of len 2
-        :return: shape of each output "image" (or feature map)
+        :return: (rows,cols) of output image
         """
         if mode=='valid': s = -1
         else: s = 1
@@ -109,41 +126,29 @@ class ConvOp(Op):
             verbose=0,
             version=-1):
         """
-        This Op implement the convolution of a kernel(tensor 4d,(nkern, stacksize, nb row, nb
-        col)) on an image(tensor 4d, (batchsize, stacksize, nb row, nb col). The batch size is
-        multiple image that we want to apply the same kernel over. The nkern is numtiple kernel
-        that we want to apply to each image. The stack size is mostly used when their is
-        multiple layer in the network. It is the sum of the convolution of multiple 2d image
-        and kernel.
+        Initializes a ConvOp with given output_mode (full/valid). All other
+        parameters are optional and are only used to generate more optimized c
+        code.
 
-        The reason that this op does the summation over convolutions within the 'stack' is that
-        it allows us to be memory-efficient about how gradients are calculated.  If, for
-        example, we had a convolution op that took a list of images, a list of kernels, and
-        gave you back each image as filtered by each kernel (JB thought he wanted this at one
-        point) then we would have to sum over a potentially very large tensor to get the
-        gradient on the filters.
+        NOTES ON OPTIMIZATION:
+        If ALL (imshp, kshp, nkern and bsize) parameters are provided, we can
+        generate faster c-code. This make a significant difference for the
+        'full' output_mode with unroll_patch=True. The current fastest
+        implementation on x86-64 uses {unroll_batch=4, unroll_kern=4,
+        unroll_patch=False} with all other shape parameters being provided.
 
-        If the imshp, kshp, nkern and bsize are provided, we can generate more optimal code.
-        This make a significant difference for the full mode with unroll_patch version.  The
-        most frequent faster code currently available on 64_x86 computer is unroll_batch=4,
-        unroll_kern=4, unroll_patch=False and this request that all the optional shape
-        information are gived. Those number are empirically tested and backed up by the
-        article: Anatomy of High-Performance Matrix Multiplication by Kazushige Goto and Robert
-        A. Van De Geijn, ACM Transactions on Mathematical Software, vol 34, No. 3, article 12,
-        May 2008. It is in figure 12, it give the value mr x nr, those value are the optimum to
-        use for unroll_batch and unroll_kern. For x86_64 bits computer it is 4x4. Other
-        architecture can have different value.(2x4 for x86, 8x8 for itanium,...)
+        For optimizing other architectures, see:
+        Kazushige Goto and Robert A. Van De Geijn, Anatomy of High-Performance
+        Matrix Multiplication, (mr x nr). ACM Transactions on Mathematical
+        Software, May 2008.  
+        Figure 12: (mr x nr). For x86 use 2x4, itanium 8x8, etc.
 
+        :type output_mode: string
+        :param output_mode: 'valid' -- gives an output smaller then the image
+                            'full' -- gives an output bigger then the image
 
-        WARNING: passing only partial shape information will not result in faster code.
-                 All of these parameters must be present for the optimiation to take place.
+        Optional parameters: (will generate more optimal c code)
 
-        :type out_mode: string
-        :param out_mode: 'valid'(give an output smaller then the image, 'full'(give an output
-        bigger then the image)
-
-        optional parameters: (will generate more optimal c code)
-        
         :type imshp: tuple of len 2 or 3: 2 for 2d image, 3 for a stack of 2d images.
         :param imshp: (stacksize, nb image row, nb image col)
         :type kshp: tuple of len 2
@@ -157,7 +162,8 @@ class ConvOp(Op):
         :type dy: int
         :param dx: patch stride cols
 
-        param to select the version of code used:
+        Params which select the version of code used:
+
         :type unroll_patch: bool
         :param unroll_patch: use a version of c_code that unroll the patch loop that don't
         request all shape information to work, but if all shape information are present, will
@@ -170,6 +176,7 @@ class ConvOp(Op):
         :param unroll_kern: use a version of c_code that unroll the batch(by unroll_batch) and
         the nkern(by unroll_kern) loop. The size must by a multiple of bsize or nkern
         respectively.
+
         :type verbose: int
         :param verbose: passed to GpuConv
         :type version: int
@@ -178,8 +185,8 @@ class ConvOp(Op):
         :param imshp_logical: used internally when we generate the gradient when dx!=1 or dy!=1
         :param kshp_logical: idem
         :param kshp_logical_top_aligned: idem
-        
         """
+
         all_shape = imshp is not None and kshp is not None and \
                     nkern is not None and bsize is not None
 
