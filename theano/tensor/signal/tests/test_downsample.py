@@ -2,7 +2,7 @@ import unittest, sys, time
 import numpy
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
-from theano.sandbox.downsample import DownsampleFactorMax, max_pool2D
+from theano.tensor.signal.downsample import DownsampleFactorMax, max_pool2D
 from theano import function, Mode
 
 
