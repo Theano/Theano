@@ -435,7 +435,10 @@ class Function(object):
             #TODO: provide a Param option for skipping the filter if we
             #      really want speed.
             s = self.input_storage[i]
-            s.storage[0] = s.type.filter(arg, strict=s.strict)
+            if arg is None:
+                s.storage[0] = arg
+            else:
+                s.storage[0] = s.type.filter(arg, strict=s.strict)
             s.provided += 1
             i+=1
 
