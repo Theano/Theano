@@ -7,146 +7,8 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 #This file should move along with conv.py
 
 from theano import gof, Op, tensor, Variable, Apply
-from theano.printing import Print
 import numpy, theano
 import __builtin__
-
-class DownsampleFactorMaxGrad(Op):
-
-    def __init__(self, ds, ignore_border):
-        self.ds = tuple(ds)
-        self.ignore_border = ignore_border
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
-
-    def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
-
-    def make_node(self, x, maxout, gz):
-        # make_node should only be called by the grad function of DownsampleFactorMax, 
-        # so these asserts should not fail.
-        assert isinstance(x, Variable) and x.ndim==4
-        assert isinstance(maxout, Variable) and maxout.ndim==4
-        assert isinstance(gz, Variable) and gz.ndim==4
-
-        return Apply(self, [x, maxout, gz], [x.type()])
-
-    def perform(self, node, (x, maxout, gz), (gx_stg,)):
-        gx = numpy.zeros_like(x)
-
-        ds0, ds1 = self.ds
-        shape2 = (x.shape[2] / ds0 * ds0)
-        if not self.ignore_border: shape2 = x.shape[2]
-        shape3 = (x.shape[3] / ds1 * ds1)
-        if not self.ignore_border: shape3 = x.shape[3]
-        for n in xrange(x.shape[0]):
-            for k in xrange(x.shape[1]):
-                for i in xrange(shape2):
-                    zi = i / ds0
-                    for j in xrange(shape3):
-                        zj = j / ds1
-                        if (maxout[n,k,zi,zj] == x[n,k,i,j]):
-                            gx[n,k,i,j] = gz[n,k,zi,zj]
-                        else: gx[n,k,i,j] = 0
-        gx_stg[0] = gx
-
-    def c_code(self, node, name, (x, z, gz), (gx,), sub):
-        fail = sub['fail']
-        ignore_border = int(self.ignore_border)
-        ds0, ds1 = self.ds
-        return """
-        int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
-        int z_typenum = PyArray_ObjectType((PyObject*)%(z)s, 0);
-        int gz_typenum = PyArray_ObjectType((PyObject*)%(gz)s, 0);
-        int x_shp0_usable;
-        int x_shp1_usable;
-        int z_shp0, z_shp1;
-        if ((x_typenum != z_typenum) || (x_typenum != gz_typenum))
-        {
-            PyErr_SetString(PyExc_ValueError, "input types must all match");
-            %(fail)s;
-        }
-        if(%(x)s->nd!=4) 
-        {
-            PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
-            %(fail)s;
-        }
-        if(%(z)s->nd!=4) 
-        {
-            PyErr_SetString(PyExc_ValueError, "z must be a 4d ndarray");
-            %(fail)s;
-        }
-        if(%(gz)s->nd!=4) 
-        {
-            PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
-            %(fail)s;
-        }
-        z_shp0 = %(z)s->dimensions[2];
-        z_shp1 = %(z)s->dimensions[3];
-        if (%(ignore_border)s)
-        {
-            x_shp0_usable = z_shp0 * %(ds0)s;
-            x_shp1_usable = z_shp1 * %(ds1)s;
-        }
-        else
-        {
-            x_shp0_usable = %(x)s->dimensions[2];
-            x_shp1_usable = %(x)s->dimensions[3];
-        }
-        if ((!%(gx)s)
-          || *PyArray_DIMS(%(gx)s)!=4
-          ||(%(gx)s->dimensions[0] != %(x)s->dimensions[0])
-          ||(%(gx)s->dimensions[1] != %(x)s->dimensions[1])
-          ||(%(gx)s->dimensions[2] != %(x)s->dimensions[2])
-          ||(%(gx)s->dimensions[3] != %(x)s->dimensions[3])
-          )
-        {
-          Py_XDECREF(%(gx)s);
-          %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, %(x)s->dimensions, x_typenum,0);
-        }
-
-        for(int b=0;b<%(x)s->dimensions[0];b++){
-          for(int k=0;k<%(x)s->dimensions[1];k++){
-            int mini_i = 0;
-            int zi = 0;
-            for(int i=0;i< x_shp0_usable; i++){
-               int mini_j = 0;
-               int zj = 0;
-               for(int j=0; j< x_shp1_usable; j++){
-                 dtype_%(x)s * __restrict__ xp = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,i,j)));
-                 dtype_%(gx)s * __restrict__ gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                 dtype_%(z)s * __restrict__ zp = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,zi,zj)));
-                 dtype_%(gz)s * __restrict__ gzp = ((dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s,b,k,zi,zj)));
-                 gxp[0] = (zp[0] == xp[0]) ? gzp[0] : 0;
-                 mini_j = (mini_j + 1 == %(ds1)s) ? 0 : mini_j+1;
-                 zj += (mini_j == 0);
-              }//for j
-              mini_i = (mini_i + 1 == %(ds0)s) ? 0 : mini_i+1;
-              zi += (mini_i == 0);
-
-              for (int j = x_shp1_usable; j < %(x)s->dimensions[3]; ++j) {
-                dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                gxp[0] = 0;
-              }
-            }//for i
-
-            for(int i = x_shp0_usable; i < %(x)s->dimensions[2]; i++){
-                for (int j = 0; j < %(x)s->dimensions[3]; ++j) {
-                    dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                    gxp[0] = 0;
-                }
-            }
-          }//for k
-        }//for b
-        """ %locals()
-
-    def c_code_cache_version(self):
-        return ()
-
 
 def max_pool2D(input, ds, ignore_border=False):
     """
@@ -352,3 +214,139 @@ class DownsampleFactorMax(Op):
     def c_code_cache_version(self):
         return ()
 
+
+class DownsampleFactorMaxGrad(Op):
+
+    def __init__(self, ds, ignore_border):
+        self.ds = tuple(ds)
+        self.ignore_border = ignore_border
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+
+    def __str__(self):
+        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+
+    def make_node(self, x, maxout, gz):
+        # make_node should only be called by the grad function of DownsampleFactorMax,
+        # so these asserts should not fail.
+        assert isinstance(x, Variable) and x.ndim==4
+        assert isinstance(maxout, Variable) and maxout.ndim==4
+        assert isinstance(gz, Variable) and gz.ndim==4
+
+        return Apply(self, [x, maxout, gz], [x.type()])
+
+    def perform(self, node, (x, maxout, gz), (gx_stg,)):
+        gx = numpy.zeros_like(x)
+
+        ds0, ds1 = self.ds
+        shape2 = (x.shape[2] / ds0 * ds0)
+        if not self.ignore_border: shape2 = x.shape[2]
+        shape3 = (x.shape[3] / ds1 * ds1)
+        if not self.ignore_border: shape3 = x.shape[3]
+        for n in xrange(x.shape[0]):
+            for k in xrange(x.shape[1]):
+                for i in xrange(shape2):
+                    zi = i / ds0
+                    for j in xrange(shape3):
+                        zj = j / ds1
+                        if (maxout[n,k,zi,zj] == x[n,k,i,j]):
+                            gx[n,k,i,j] = gz[n,k,zi,zj]
+                        else: gx[n,k,i,j] = 0
+        gx_stg[0] = gx
+
+    def c_code(self, node, name, (x, z, gz), (gx,), sub):
+        fail = sub['fail']
+        ignore_border = int(self.ignore_border)
+        ds0, ds1 = self.ds
+        return """
+        int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
+        int z_typenum = PyArray_ObjectType((PyObject*)%(z)s, 0);
+        int gz_typenum = PyArray_ObjectType((PyObject*)%(gz)s, 0);
+        int x_shp0_usable;
+        int x_shp1_usable;
+        int z_shp0, z_shp1;
+        if ((x_typenum != z_typenum) || (x_typenum != gz_typenum))
+        {
+            PyErr_SetString(PyExc_ValueError, "input types must all match");
+            %(fail)s;
+        }
+        if(%(x)s->nd!=4) 
+        {
+            PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
+            %(fail)s;
+        }
+        if(%(z)s->nd!=4) 
+        {
+            PyErr_SetString(PyExc_ValueError, "z must be a 4d ndarray");
+            %(fail)s;
+        }
+        if(%(gz)s->nd!=4) 
+        {
+            PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
+            %(fail)s;
+        }
+        z_shp0 = %(z)s->dimensions[2];
+        z_shp1 = %(z)s->dimensions[3];
+        if (%(ignore_border)s)
+        {
+            x_shp0_usable = z_shp0 * %(ds0)s;
+            x_shp1_usable = z_shp1 * %(ds1)s;
+        }
+        else
+        {
+            x_shp0_usable = %(x)s->dimensions[2];
+            x_shp1_usable = %(x)s->dimensions[3];
+        }
+        if ((!%(gx)s)
+          || *PyArray_DIMS(%(gx)s)!=4
+          ||(%(gx)s->dimensions[0] != %(x)s->dimensions[0])
+          ||(%(gx)s->dimensions[1] != %(x)s->dimensions[1])
+          ||(%(gx)s->dimensions[2] != %(x)s->dimensions[2])
+          ||(%(gx)s->dimensions[3] != %(x)s->dimensions[3])
+          )
+        {
+          Py_XDECREF(%(gx)s);
+          %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, %(x)s->dimensions, x_typenum,0);
+        }
+
+        for(int b=0;b<%(x)s->dimensions[0];b++){
+          for(int k=0;k<%(x)s->dimensions[1];k++){
+            int mini_i = 0;
+            int zi = 0;
+            for(int i=0;i< x_shp0_usable; i++){
+               int mini_j = 0;
+               int zj = 0;
+               for(int j=0; j< x_shp1_usable; j++){
+                 dtype_%(x)s * __restrict__ xp = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,i,j)));
+                 dtype_%(gx)s * __restrict__ gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
+                 dtype_%(z)s * __restrict__ zp = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,zi,zj)));
+                 dtype_%(gz)s * __restrict__ gzp = ((dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s,b,k,zi,zj)));
+                 gxp[0] = (zp[0] == xp[0]) ? gzp[0] : 0;
+                 mini_j = (mini_j + 1 == %(ds1)s) ? 0 : mini_j+1;
+                 zj += (mini_j == 0);
+              }//for j
+              mini_i = (mini_i + 1 == %(ds0)s) ? 0 : mini_i+1;
+              zi += (mini_i == 0);
+
+              for (int j = x_shp1_usable; j < %(x)s->dimensions[3]; ++j) {
+                dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
+                gxp[0] = 0;
+              }
+            }//for i
+
+            for(int i = x_shp0_usable; i < %(x)s->dimensions[2]; i++){
+                for (int j = 0; j < %(x)s->dimensions[3]; ++j) {
+                    dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
+                    gxp[0] = 0;
+                }
+            }
+          }//for k
+        }//for b
+        """ %locals()
+
+    def c_code_cache_version(self):
+        return ()
