@@ -1833,14 +1833,16 @@ class Default(gof.Op):
     view_map = {0: [0]}
     def make_node(self, x, default):
         x, default = as_tensor_variable(x), as_tensor_variable(default)
-        assert x.type == default.type
+        if  x.type != default.type:
+            raise TypeError('Both default() arguments must have same type', x, default)
         return gof.Apply(self, [x, default], [default.type()])
     def perform(self, node, (x, default), (out, )):
-      if x is None:
-        out[0] = default.copy()
-      else:
-        out[0] = x
-      #backport out[0] = default.copy() if x is None else x
+        if x is None:
+            # why copy?  Theano can't yet understand out[0] being a view of either x or y,
+            # so we can be a view of x, but only a copy of y.
+            out[0] = default.copy() 
+        else:
+            out[0] = x
 default = Default()
 setdefault = default # legacy
 
