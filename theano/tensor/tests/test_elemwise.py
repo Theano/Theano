@@ -133,6 +133,8 @@ class test_CAReduce(unittest.TestCase):
                            ((5, 6), (1, )),
                            ((5, 6), ()),
                            ((2, 3, 4, 5), (0, 1, 3)),
+                           ((5, 0), (0, )),
+                           ((5, 0), (1, )),
                            ((), ())]:
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             e = CAReduce(add, axis = tosum)(x)
@@ -149,7 +151,7 @@ class test_CAReduce(unittest.TestCase):
 
     def test_c(self):
         self.with_linker(gof.CLinker())
-        
+
 
 if __name__ == '__main__':
     unittest.main()
