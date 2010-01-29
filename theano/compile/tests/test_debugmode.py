@@ -544,35 +544,20 @@ class Test_check_isfinite(unittest.TestCase):
         theano.tensor.TensorType.filter_checks_isfinite = self.old_val
 
     def test_check_isfinite(self):
-        x = theano.tensor.dvector()
+        x = theano.tensor.vector()
         f = theano.function([x], (x+2) * 5, mode='DEBUG_MODE')
+        g = theano.function([x], theano.tensor.log(x), mode='DEBUG_MODE')
 
         # this should work
         f(numpy.log([3, 4, 5]))
 
-        # this should raise InvalidValueError
-        try:
-            # insert a NaN
-            f(numpy.log([3, -4, 5]))
-            assert False
-        except debugmode.InvalidValueError:
-            pass
+        # passing an invalid value as an input should trigger ValueError
+        self.failUnlessRaises(ValueError, f, numpy.log([3, -4, 5]))
+        self.failUnlessRaises(ValueError, f, numpy.asarray([0, 1.0, 0])/0)
+        self.failUnlessRaises(ValueError, f, numpy.asarray([1.0, 1.0, 1.0])/0)
 
-        # this should raise InvalidValueError
-        try:
-            # insert an Nan and Inf
-            f(numpy.asarray([0, 1.0, 0])/0)
-            assert False
-        except debugmode.InvalidValueError:
-            pass
-
-        # this should raise InvalidValueError
-        try:
-            # insert several Inf
-            f(numpy.asarray([1.0, 1.0, 1.0])/0)
-            assert False
-        except debugmode.InvalidValueError:
-            pass
+        # generating an invalid value internally should trigger InvalidValueError
+        self.failUnlessRaises(debugmode.InvalidValueError, g, [3,-4,5])
 
         # this should disable the exception
         theano.tensor.TensorType.filter_checks_isfinite = False
