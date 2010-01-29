@@ -18,15 +18,18 @@ def debug(*msg):
 
 # Compile cuda_ndarray.cu
 # This need that nvcc (part of cuda) is installed. If it is not, a warning is
-# printed and this module will not be working properly (we set `enable_cuda`
+# printed and this module will not be working properly (we set `cuda_available`
 # to False).
 
 # This variable is True by default, and set to False if something goes wrong
 # when trying to initialize cuda.
-enable_cuda = True
+cuda_available = True
 
 # Global variable to avoid displaying the same warning multiple times.
 cuda_warning_is_displayed = False
+
+#This variable is set to True when we enable the cuda.(i.e. when use() is called)
+cuda_enabled = False
 
 # Code factorized within a function so that it may be called from multiple
 # places (which is not currently the case, but may be useful in the future).
@@ -38,8 +41,8 @@ def set_cuda_disabled():
     Note that there is no point calling this function from outside of
     `cuda.__init__`, since it has no effect once the module is loaded.
     """
-    global enable_cuda, cuda_warning_is_displayed
-    enable_cuda = False
+    global cuda_available, cuda_warning_is_displayed
+    cuda_available = False
     if not cuda_warning_is_displayed:
         cuda_warning_is_displayed = True
         warning('Cuda is disabled, cuda-based code will thus not be '
@@ -70,7 +73,7 @@ try:
         if not nvcc_compiler.is_nvcc_available():
             set_cuda_disabled()
 
-        if enable_cuda:
+        if cuda_available:
             code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
 
             if not os.path.exists(cuda_ndarray_loc):
@@ -84,7 +87,7 @@ except Exception, e:
     error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
     set_cuda_disabled()
 
-if enable_cuda:
+if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
     import cuda_ndarray.cuda_ndarray
     if os.path.join(config.compiledir,'cuda_ndarray','cuda_ndarray.so')!=cuda_ndarray.cuda_ndarray.__file__:
@@ -104,7 +107,8 @@ if enable_cuda:
     import cuda_ndarray
 
 
-def use(device=config.device):
+def use(device):
+    global cuda_enabled, enabled_cuda
     if device.startswith('gpu'):
         device = int(device[3:])
     elif device == 'cpu':
@@ -122,8 +126,10 @@ def use(device=config.device):
             gpu_init(device)
             handle_shared_float32(True)
             use.device_number = device
+            cuda_enabled = True
         except RuntimeError, e:
             _logger.warning("ERROR: Not using GPU. Initialisation of device %i failed. %s" %(device, e))
+            enabled_cuda = False
     elif use.device_number != device:
         logging.getLogger('theano.sandbox.cuda').warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
     optdb.add_tags('gpu',
@@ -144,5 +150,6 @@ def handle_shared_float32(tf):
     else:
         raise NotImplementedError('removing our handler')
 
-if enable_cuda and config.device.startswith('gpu'):
-    use()
+if cuda_available and config.device.startswith('gpu'):
+    use(config.device)
+
