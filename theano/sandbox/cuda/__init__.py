@@ -6,13 +6,14 @@ import logging, copy
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
-_logger.addHandler(logging.StreamHandler())
+def error(*msg):
+    _logger.warning('ERROR (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 def warning(*msg):
-    _logger.warning(_logger_name+'WARNING: '+' '.join(str(m) for m in msg))
+    _logger.warning('WARNING (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 def info(*msg):
-    _logger.info(_logger_name+'INFO: '+' '.join(str(m) for m in msg))
+    _logger.warning('INFO (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 def debug(*msg):
-    _logger.debug(_logger_name+'DEBUG: '+' '.join(str(m) for m in msg))
+    _logger.warning('DEBUG (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
 
 
 # Compile cuda_ndarray.cu
@@ -80,7 +81,7 @@ try:
 
             from cuda_ndarray.cuda_ndarray import *
 except Exception, e:
-    _logger.error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
+    error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
     set_cuda_disabled()
 
 if enable_cuda:
