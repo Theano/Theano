@@ -1125,7 +1125,7 @@ inv = Inv(upgrade_to_float, name = 'inv')
 class Log(UnaryScalarOp):
     """ log base e """
     def impl(self, x):
-        return math.log(x)
+        return numpy.log(x)
     def grad(self, (x, ), (gz, )):
       if x.type in grad_types:
         return gz / x,
