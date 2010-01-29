@@ -94,7 +94,7 @@ if enable_cuda:
     from theano.sandbox.cuda.var import (CudaNdarrayVariable,
             CudaNdarrayConstant,
             CudaNdarraySharedVariable,
-            shared_constructor)
+            float32_shared_constructor)
 
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
@@ -139,7 +139,7 @@ def handle_shared_float32(tf):
     """
     if tf:
         import theano.compile
-        theano.compile.shared_constructor(shared_constructor)
+        theano.compile.shared_constructor(float32_shared_constructor)
 
     else:
         raise NotImplementedError('removing our handler')

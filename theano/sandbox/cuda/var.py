@@ -65,7 +65,7 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
 
 CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
-def shared_constructor(value, name, strict=False, broadcastable=None):
+def cuda_shared_constructor(value, name, strict=False, broadcastable=None):
     """SharedVariable Constructor for TensorType"""
 
     #TODO: what should strict mean in this context, since we always have to make a copy?
@@ -82,17 +82,31 @@ def shared_constructor(value, name, strict=False, broadcastable=None):
     if broadcastable is None:
         broadcastable = (False,) * len(value.shape)
     type = CudaNdarrayType(broadcastable=broadcastable)
-    return CudaNdarraySharedVariable(type=type, value=_value, name=name, strict=strict)
+    print "trying to return?"
+    try:
+        rval = CudaNdarraySharedVariable(type=type, value=_value, name=name, strict=strict)
+    except Exception, e:
+        print "ERROR", e
+        raise
+    return rval
 
+def float32_shared_constructor(value, name, strict=False, broadcastable=None):
+    """SharedVariable Constructor for TensorType"""
 
+    # if value isn't a float32 ndarray, then raise
+    if not isinstance(value, numpy.ndarray):
+        raise TypeError('ndarray required')
+    if value.dtype.num != CudaNdarrayType.typenum:
+        raise TypeError('float32 ndarray required')
 
-
-def unset_shared_for_numpy():
-    raise NotImplementedError()
-
-def set_shared_for_numpy():
-    """
-    Set the gpu_tensor_constructor as the handler for ndarray
-    """
-    shared_constructor(shared_constructor)
+    if broadcastable is None:
+        broadcastable = (False,) * len(value.shape)
+    type = CudaNdarrayType(broadcastable=broadcastable)
+    deviceval = type_support_filter(value, broadcastable, False)
+    try:
+        rval = CudaNdarraySharedVariable(type=type, value=deviceval, name=name, strict=strict)
+    except Exception, e:
+        print "ERROR", e
+        raise
+    return rval
 
