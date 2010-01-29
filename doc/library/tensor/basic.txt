@@ -263,7 +263,7 @@ them perfectly, but a dscalar otherwise.
 
 .. note::
 
-    When config.floatX==float32 (see :module:`config`), then Python floats
+    When config.floatX==float32 (see :mod:`config`), then Python floats
     are stored instead as single-precision floats.
 
     For fine control of this rounding policy, see

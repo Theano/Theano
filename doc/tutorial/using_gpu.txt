@@ -16,7 +16,7 @@ Setting up CUDA
 
 The first thing you'll need for Theano to use your GPU is Nvidia's
 GPU-programming toolchain.  You should install at least the CUDA driver and the CUDA Toolkit, as 
-:ref:`described here <http://www.nvidia.com/object/cuda_get.html>`.  The CUDA
+`described here <http://www.nvidia.com/object/cuda_get.html>`_.  The CUDA
 Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
 *include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
 program which is the compiler for GPU code.)  This folder is called the *cuda
