@@ -223,11 +223,15 @@ class ProfileMode(Mode):
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
         print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <time per call> %s <nb_call> <Op name>'%(flops_msg)
 
-        otimes = [(t/local_time, t, a, op_cimpl[a], op_call[a]) for a, t in op_time.items()]
+        otimes = [(t/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0)) 
+                for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         tot=0
         for f,t,a,ci,nb_call in otimes[:n_ops_to_print]:
+            if nb_call == 0: 
+                assert t == 0
+                continue
             tot+=t
             if ci:
               msg = '*'
@@ -251,7 +255,7 @@ class ProfileMode(Mode):
             sop_time.setdefault(type(a),0)
             sop_time[type(a)]+=t
             sop_c.setdefault(type(a),True)
-            sop_c[type(a)]=sop_c[type(a)] and op_cimpl[a]
+            sop_c[type(a)]=sop_c[type(a)] and op_cimpl.get(a, False)
             sop_call[type(a)]=sop_call.get(type(a),0)+op_call[a]
         print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <time per call> <nb_call> <Op name>'
         sotimes = [(t/local_time, t, a, sop_c[a], sop_call[a]) for a, t in sop_time.items()]
@@ -259,6 +263,9 @@ class ProfileMode(Mode):
         sotimes.reverse()
         tot=0
         for f,t,a,ci, nb_call in sotimes[:n_ops_to_print]:
+            if nb_call == 0: 
+                assert t == 0
+                continue
             tot+=t
             if ci:
               msg = '*'
