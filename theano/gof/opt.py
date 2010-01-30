@@ -88,6 +88,9 @@ class FromFunctionOptimizer(Optimizer):
                 str(self.apply),
                 id(self))
 
+    def __call__(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
+
 def optimizer(f):
     """decorator for FromFunctionOptimizer"""
     return FromFunctionOptimizer(f)
