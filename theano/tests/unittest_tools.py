@@ -1,21 +1,20 @@
 import unittest
 import numpy
 import theano.tensor as T
-from theano.configparser import config, AddConfigVar, IntParam
+from theano.configparser import config, AddConfigVar, StrParam
 import os, sys
 
 AddConfigVar('unittests.rseed',
-        "Seed to use for randomized unit tests",
-        IntParam(666))
+        "Seed to use for randomized unit tests. Special value 'random' means using a seed of None.",
+        StrParam(666))
 
 def fetch_seed(pseed=None):
     """
     Returns the seed to use for running the unit tests.
-    If an explicit seed is given, it will be used for seending numpy's rng.
-    If not, it will try to get a seed from the THEANO_UNITTEST_SEED variable.
-    If THEANO_UNITTEST_SEED is set to "random", it will seed the rng. with None,
+    If an explicit seed is given, it will be used for seeding numpy's rng.
+    If not, it will use config.unittest.rseed (its default value is 666).
+    If config.unittest.rseed is set to "random", it will seed the rng with None,
     which is equivalent to seeding with a random seed.
-    If THEANO_UNITTEST_SEED is not defined, it will use a default seed of 666.
 
     Useful for seeding RandomState objects.
     >>> rng = numpy.random.RandomState(unittest_tools.fetch_seed())
@@ -35,7 +34,7 @@ def fetch_seed(pseed=None):
         #backport
         #seed = int(seed) if seed else None
     except ValueError:
-        print >> sys.stderr, 'Error: THEANO_UNITTEST_SEED contains '\
+        print >> sys.stderr, 'Error: config.unittests.rseed contains '\
                 'invalid seed, using None instead'
         seed = None
 
@@ -49,7 +48,7 @@ def seed_rng(pseed=None):
 
     seed = fetch_seed(pseed)
     if pseed and pseed!=seed:
-        print >> sys.stderr, 'Warning: using seed given by THEANO_UNITTEST_SEED=%i'\
+        print >> sys.stderr, 'Warning: using seed given by config.unittests.rseed=%i'\
                 'instead of seed %i given as parameter' % (seed, pseed)
     numpy.random.seed(seed)
     return seed

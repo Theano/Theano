@@ -14,7 +14,8 @@ To run Theano on the Mammouth cluster, follow these simple steps:
 
       Perhaps even put this in your ``.bashrc``
 
-    * ``set THEANO_BLAS_LDFLAGS='-lmkl -lguide -fopenmp'``
+    * set ``config.blas.ldflags`` to ``'-lmkl -lguide -fopenmp'``
+      (see :mod:`config` to know how)
 
       Note: the -lguide flag works, however the fix should probably be considered temporary.
       Intel has deprecated libguide.so in favor of the newer library libiomp5.so. However, 

@@ -221,12 +221,8 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'SANITY_CHECK': SANITY_CHECK}
 
 
-##
-# The default mode used by functions and modules is read from the environment
-# variable THEANO_DEFAULT_MODE. Unit tests will run using this value. If the env. var.
-# is not set, it will default to 'FAST_RUN'
+# The default mode used by functions and modules is read from the configuration.
 # keep default_mode.optimizer==default_optimizer and default_mode.linker==default_linker!
-##
 default_mode = config.mode
 
 def get_mode(string):

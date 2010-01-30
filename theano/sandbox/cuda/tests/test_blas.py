@@ -8,12 +8,12 @@ import numpy
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.enable_cuda == False:
+if cuda_ndarray.cuda_enabled == False:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.sandbox.cuda as tcn
 
-from theano.sandbox.downsample import DownsampleFactorMax
+from theano.tensor.signal.downsample import DownsampleFactorMax
 
 import theano.compile.mode
 

@@ -7,14 +7,14 @@ from theano import tensor
 import theano.tensor.nnet
 
 import theano.sandbox.conv
-import theano.sandbox.downsample
+import theano.tensor.signal.downsample as downsample
 
 import numpy
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.enable_cuda == False:
+if cuda_ndarray.cuda_enabled == False:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.sandbox.cuda as tcn
@@ -307,7 +307,7 @@ def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_iter,
     conv_op.set_flops()
     conv_op1.set_flops()
 
-    ds_op = theano.sandbox.downsample.DownsampleFactorMax((2,2), ignore_border=False)
+    ds_op = downsample.DownsampleFactorMax((2,2), ignore_border=False)
     if downsample_ops:
         hid = tensor.tanh(ds_op(conv_op(x, w0)+b0.dimshuffle((0,'x','x'))))
     else:

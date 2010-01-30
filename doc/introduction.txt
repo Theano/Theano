@@ -130,7 +130,7 @@ Getting started
 
 
 A PDF version of the online documentation may be found `here
-<http://deeplearning.net/theanodoc/theano.pdf>`_.
+<http://deeplearning.net/software/theano/theano.pdf>`_.
 
 
 Contact us

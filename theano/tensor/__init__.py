@@ -28,5 +28,3 @@ import nnet # used for softmax, sigmoid, etc.
 
 
 
-
-

@@ -8,8 +8,12 @@ LISA Labo specific instructions
 Tips for running at LISA
 ------------------------
 
-Use the fast BLAS library that Fred installed, by setting
-`THEANO_BLAS_LDFLAGS=-lgoto`.
+Shell configuration files ``/opt/lisa/os/.local.{bash,csh}rc`` should define
+:envvar:`THEANORC` to include ``/opt/lisa/os/.local.theanorc`` as a
+configuration file.
+
+``/opt/lisa/os/.local.theanorc`` should include the right default values for
+the lab, in particular, ``blas.ldflags`` should contain '-lgoto'.
 
 Tips for running on a cluster
 -----------------------------

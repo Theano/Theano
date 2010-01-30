@@ -261,11 +261,14 @@ def _wrap_tensor_into_member(x):
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor, _wrap_tensor_into_member)
 
 if int(config.tensor.cmp_sloppy)>1:
-    # This environment variable is a quick-and-dirty way to get low-precision comparisons.
-    # For a more precise setting of these tolerances set them explicitly in your user code by
-    # assigning, for example, "theano.tensor.basic.float32_atol = ..."
+    # This config variable is a quick-and-dirty way to get low-precision
+    # comparisons.  For a more precise setting of these tolerances set
+    # them explicitly in your user code by assigning, for example,
+    # "theano.tensor.basic.float32_atol = ..."
 
-    #when THEANO_CMP_SLOPPY>1 we are even more sloppy. This is usefull to test the gpu as they don't use extended precision and this cause some difference bigger then the normal sloppy.
+    # When config.tensor.cmp_sloppy>1 we are even more sloppy. This is
+    # useful to test the GPU as they don't use extended precision and
+    # this cause some difference bigger then the normal sloppy.
     float32_atol = 5e-4
     float32_rtol = 1e-3 
     float64_rtol = 1e-4
@@ -3597,8 +3600,10 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
 
         o_fn = function(tensor_pt, o_output)
         o_fn_out = o_fn(*[p.copy() for p in pt])
-        
-        random_projection = rng.rand(*o_fn_out.shape)
+
+        # random_projection should not have elements too small,
+        # otherwise too much precision is lost in numerical gradient
+        random_projection = rng.rand(*o_fn_out.shape) + 0.5
         if cast_to_output_type:
             random_projection = numpy.array(random_projection,
                                             dtype=o_output.dtype)
