@@ -291,6 +291,16 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
         x,b,y = node.inputs
         if x.owner and x.owner.op == host_from_gpu:
             gpu_x, = x.owner.inputs
+            # if y is a cast to integers, we can go to the underlying thing if we want, 
+            # since this gpu op will cast to integers internally anyway
+            int_cast_ops = (
+                    tensor.basic._convert_to_int32,
+                    tensor.basic._convert_to_int8,
+                    tensor.basic._convert_to_int16,
+                    tensor.basic._convert_to_int64,
+                    )
+            while y.owner and y.owner.op in int_cast_ops:
+                y = y.owner.inputs[0]
             gpu_nll, gpu_sm, gpu_am = GpuCrossentropySoftmaxArgmax1HotWithBias()(
                 gpu_x,
                 gpu_from_host(b),
