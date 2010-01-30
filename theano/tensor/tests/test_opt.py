@@ -6,7 +6,8 @@ import numpy
 import theano
 from theano import gof
 from theano.tensor.opt import *
-from theano import tensor
+from theano import tensor  #do not use, there is  an import * below that hides it
+from theano import tensor as TT  #ugly but works for now...
 from theano.tensor import TensorType, inplace
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
@@ -79,6 +80,7 @@ def test_add_canonizer_problem0():
     f = function([label], r)
 
 from theano.tensor import *
+# Why is there TWO 'import *' in this file???
 
 class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
@@ -939,6 +941,42 @@ def test_log1p():
     z = imatrix()
     f = function([z], T.log(1+(z)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
+
+class test_local_subtensor_unary():
+
+    def test0(self):
+        # basic test that the Op works
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        x = TT.matrix()
+        f = function([x], TT.exp(x)[0], mode=mode)
+
+        prog=f.maker.env.toposort()
+        assert isinstance(prog[0].op, TT.Subtensor) #first subtensor
+        assert prog[1].op == TT.exp
+
+        f([[0,1],[2,3]]) # let debugmode test something
+
+    def test1(self):
+        # basic test that the optimization doesn't work with broadcasting
+        # ... It *could* be extended to,
+        # ... but right now it doesn't, so it shouldn't try.
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        x = TT.matrix()
+        y = TT.vector()
+        f = function([x,y], TT.exp(x+y)[0], mode=mode)
+        prog=f.maker.env.toposort()
+        # the optimization works through exp() but not add()
+        print prog
+        assert isinstance(prog[0].op, TT.DimShuffle)
+        assert prog[1].op == TT.add
+        assert isinstance(prog[2].op, TT.Subtensor) #first subtensor
+        assert prog[3].op == inplace.exp_inplace
+
+        f([[0,1],[2,3]], [4,5]) # let debugmode test something
 
 if __name__ == '__main__':
 #    unittest.main()

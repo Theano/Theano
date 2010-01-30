@@ -293,6 +293,18 @@ register_canonicalize(local_fill_lift, 'fill_lift')
 # Subtensor opts #
 ##################
 
+@register_canonicalize
+@gof.local_optimizer([])
+def local_subtensor_unary(node):
+    """
+    unary(x)[idx] -> unary(x[idx])
+    """
+    if isinstance(node.op, T.Subtensor):
+        u = node.inputs[0]
+        if u.owner and isinstance(u.owner.op, T.Elemwise) and len(u.owner.inputs)==1:
+            idx = node.inputs[1:]
+            x_idx = node.op(u.owner.inputs[0], *idx)
+            return [u.owner.op(x_idx)]
 
 @gof.local_optimizer([None, None])
 def local_subtensor_make_vector(node):
