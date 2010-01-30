@@ -145,7 +145,7 @@ Then it executes something like
 
 .. code-block:: bash
 
-    THEANO_UNITTEST_SEED=<SEED> THEANO_DEFAULT_MODE=DEBUG_MODE /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
+    THEANO_FLAGS='unittests.rseed=<SEED>,mode=DEBUG_MODE' /usr/bin/nosetests --with-coverage --cover-package=theano --cover-package=pylearn
 
 in the updated ``theano`` directory.
 The output is emailed automatically to one of the developers.

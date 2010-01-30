@@ -101,14 +101,13 @@ case if ``borrow`` was True, the thunk would be allowed to reuse (or
     Compiled libraries are stored within a specific compilation directory,
     which by default is set to ``$HOME/.theano/compiledir_xxx``, where
     ``xxx`` identifies the platform. It may be manually set to a different
-    location either by setting the ``THEANO_COMPILEDIR`` environment variable,
-    the ``THEANO_BASE_COMPILEDIR`` environment variable
-    or by calling ``theano.gof.compiledir.set_compiledir(..)`` within your
-    Python script.
+    location either by setting :attr:`config.compiledir` or
+    :attr:`config.base_compiledir`, either within your Python script or by
+    using one of the configuration mechanisms described in :mod:`config`.
 
     The compile cache is based upon the C++ code of the graph to be compiled.
-    So, if you change compilation environment variables, such as
-    ``THEANO_BLAS_LDFLAGS``, you will need to manually remove your compile cache,
+    So, if you change compilation configuration variables, such as
+    :attr:`config.blas.ldflags`, you will need to manually remove your compile cache,
     using ``Theano/bin/theano-compiledir clear``
 
     Theano also implements a lock mechanism that prevents

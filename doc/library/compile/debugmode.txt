@@ -35,7 +35,7 @@ DebugMode can be used as follows:
     f(0) 
     f(7) 
 
-It can also be used by setting an environment variable ``THEANO_DEFAULT_MODE=DEBUG_MODE``.
+It can also be used by setting the configuration variable :attr:`config.mode`.
 It can also be used by passing a DebugMode instance as the mode, as in 
 
 >>> f = theano.function([x], 10*x, mode=DebugMode(check_c_code=False))
@@ -78,47 +78,47 @@ Reference
     Each of these exceptions inherits from the more generic `DebugModeError`.
 
     If there are no internal errors, this mode behaves like FAST_RUN or FAST_COMPILE, but takes
-    a little longer and uses more memory.  
+    a little longer and uses more memory.
 
     If there are internal errors, this mode will raise an `DebugModeError` exception.
 
-    .. attribute:: stability_patience = config.THEANO_DEBUGMODE_PATIENCE
+    .. attribute:: stability_patience = config.DebugMode.patience
 
         When checking for the stability of optimization, recompile the graph this many times.
         Default 10.
 
-    .. attribute:: check_c_code = config.THEANO_DEBUGMODE_CHECK_C
+    .. attribute:: check_c_code = config.DebugMode.check_c
 
         Should we evaluate (and check) the `c_code` implementations?
 
         ``True`` -> yes, ``False`` -> no.
-        
+
         Default yes.
 
-    .. attribute:: check_py_code = config.THEANO_DEBUGMODE_CHECK_PY
+    .. attribute:: check_py_code = config.DebugMode.check_py
 
     Should we evaluate (and check) the `perform` implementations?
 
         ``True`` -> yes, ``False`` -> no.
-        
+
         Default yes.
 
-    .. attribute:: check_isfinite = config.THEANO_DEBUGMODE_CHECK_FINITE
+    .. attribute:: check_isfinite = config.DebugMode.check_finite
 
         Should we check for (and complain about) ``NaN``/``Inf`` ndarray elements?
 
         ``True`` -> yes, ``False`` -> no.
-        
+
         Default yes.
 
-    .. attribute:: require_matching_strides = config.THEANO_DEBUGMODE_CHECK_STRIDES
+    .. attribute:: require_matching_strides = config.DebugMode.check_strides
 
         Check for (and complain about) Ops whose python and C
         outputs are ndarrays with different strides. (This can catch bugs, but
-        is generally overly strict.) 
-        
+        is generally overly strict.)
+
         0 -> no check, 1 -> warn, 2 -> err.
-        
+
         Default warn.
 
     .. method:: __init__(self, optimizer='fast_run', stability_patience=None, check_c_code=None, check_py_code=None, check_isfinite=None, require_matching_strides=None, linker=None)
@@ -128,7 +128,7 @@ Reference
         If any of these arguments (except optimizer) is not None, it overrides the class default.
         The linker arguments is not used. It is set their to allow Mode.requiring() and some other fct to work with DebugMode too.
 
-    
+
 
 The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
 is quite strict, and can raise several different Exception types.
