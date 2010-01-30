@@ -73,13 +73,11 @@ gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_foldin
 def local_gpu_elemwise_0(node):
     if isinstance(node.op, tensor.Elemwise):
         if numpy.any([hasattr(i.owner, 'op') and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
-            if numpy.any([o.type.dtype == 'float64' for o in node.outputs]):
-                print 'WARNING: THERE ARE STILL float64s in your graph local_gpu_elemwise_0', node
-            else:
-                # move the add to a GpuAdd
-                new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
-                return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
-    return False
+            if numpy.all([i.type.dtype == 'float32' for i in node.inputs]):
+                if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
+                    new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
+                    #TODO: change this when fusion makes Elemwise with multiple outputs
+                    return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
 
 @register_opt()
 @local_optimizer([])
