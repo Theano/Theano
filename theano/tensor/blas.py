@@ -44,7 +44,7 @@ def ldflags(libs=True, flags=False):
     """Return a list of libraries against which an Op's object file should be
     linked to benefit from a BLAS implementation.
     
-    Default: ['blas'], but environment variable THEANO_BLAS_LDFLAGS overrides this.
+    Default: ['blas'], but configuration variable config.blas.ldflags overrides this.
     """
     rval = []
     for t in config.blas.ldflags.split():
@@ -52,9 +52,9 @@ def ldflags(libs=True, flags=False):
             t0, t1, t2 = t[0:3]
             assert t0 == '-'
         except:
-            raise ValueError('invalid token in THEANO_BLAS_LDFLAGS', t)
+            raise ValueError('invalid token in config.blas.ldflags', t)
         if t1 == 'L':
-            raise ValueError('library dir not allowed in THEANO_BLAS_LDFLAGS', t)
+            raise ValueError('library dir not allowed in config.blas.ldflags', t)
         elif libs and t1=='l': # example -lmkl
             rval.append(t[2:])
         elif flags and t1!='l': # example -openmp

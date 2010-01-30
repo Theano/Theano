@@ -312,10 +312,10 @@ class ProfileMode(Mode):
 register_mode('PROFILE_MODE',ProfileMode())
 
 def atexit_print_default_profile_mode():
-    """Print the summary of the predefied mode PROFILE_MODE if used.
+    """Print the summary of the predefined mode PROFILE_MODE if used.
     
-    This all to have the summary printed at exit when we do
-    THEANO_DEFAULT_MODE=PROFILE_MODE
+    This all to have the summary printed at exit when
+    config.mode=PROFILE_MODE
     """
     prof_mode=predefined_modes["PROFILE_MODE"]
     if prof_mode.local_time[0]>0:

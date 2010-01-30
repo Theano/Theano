@@ -34,7 +34,7 @@ def fetch_seed(pseed=None):
         #backport
         #seed = int(seed) if seed else None
     except ValueError:
-        print >> sys.stderr, 'Error: THEANO_UNITTEST_SEED contains '\
+        print >> sys.stderr, 'Error: config.unittests.rseed contains '\
                 'invalid seed, using None instead'
         seed = None
 
@@ -48,7 +48,7 @@ def seed_rng(pseed=None):
 
     seed = fetch_seed(pseed)
     if pseed and pseed!=seed:
-        print >> sys.stderr, 'Warning: using seed given by THEANO_UNITTEST_SEED=%i'\
+        print >> sys.stderr, 'Warning: using seed given by config.unittests.rseed=%i'\
                 'instead of seed %i given as parameter' % (seed, pseed)
     numpy.random.seed(seed)
     return seed
