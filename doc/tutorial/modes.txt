@@ -22,7 +22,7 @@ Theano defines the following modes by name:
     but can identify many kinds of problems.
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
-the environment variable ``THEANO_DEFAULT_MODE``, which can in turn be
+the configuration variable :attr:`config.mode`, which can in turn be
 overridden by setting `theano.compile.mode.default_mode` directly,
 which can in turn be overridden by passing the keyword argument to
 :func:`theano.function <function.function>`.
@@ -30,7 +30,6 @@ which can in turn be overridden by passing the keyword argument to
 ================= =============================================================== ===============================================================================
 short name        Full constructor                                                What does it do?
 ================= =============================================================== ===============================================================================
-(default)         ``compile.mode.Mode(linker='py', optimizer=None)``              Python implementations with zero graph modifications.
 FAST_COMPILE      ``compile.mode.Mode(linker='c|py', optimizer='fast_compile')``  C implementations where available, quick and cheap graph transformations
 FAST_RUN          ``compile.mode.Mode(linker='c|py', optimizer='fast_run')``      C implementations where available, all available graph transformations.
 DEBUG_MODE        ``compile.debugmode.DebugMode()``                               Both implementations where available, all available graph transformations.
