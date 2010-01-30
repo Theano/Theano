@@ -153,7 +153,8 @@ class Apply(utils.object2):
         for curr, new in zip(self.inputs, inputs):
             if not curr.type == new.type:
                 if strict:
-                    raise TypeError("Cannot change the type of this input.", curr, new)
+                    raise TypeError("Cannot change the type of this input.", ((curr, curr.type),
+                            (new, new.type)))
                 else:
                     remake_node = True
         if remake_node:
