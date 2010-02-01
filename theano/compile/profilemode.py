@@ -2,7 +2,7 @@ import time, atexit, copy
 
 from theano.gof.link import WrapLinker
 from theano.gof.cutils import run_cthunk
-from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers, default_linker, default_optimizer
+from theano.compile.mode import Mode, register_mode, predefined_modes, predefined_linkers, predefined_optimizers
 from theano.gof.cc import OpWiseCLinker
 from theano.gof.python25 import any
 from theano import gof
@@ -30,7 +30,7 @@ class Profile_Maker(FunctionMaker):
         return ret
 
 class ProfileMode(Mode):
-    def __init__(self, linker=default_linker, optimizer=default_optimizer):
+    def __init__(self, linker=config.linker, optimizer=config.optimizer):
         local_time = [0.0]
         apply_time = {}
         apply_call = {}

@@ -4,7 +4,7 @@
 __docformat__ = "restructuredtext en"
 
 import cPickle, numpy, unittest
-from theano.compile.mode import default_mode
+from theano import config
 from theano.compile.module import *
 from theano.compile.function_module import AliasedMemoryError
 import theano.tensor as T
@@ -435,7 +435,7 @@ class T_module(unittest.TestCase):
         """Test that we can manipulate the mutable, strict, etc. flags (see SymbolicInput) of
         Method inputs"""
 
-        if default_mode == 'FAST_COMPILE':
+        if config.mode == 'FAST_COMPILE':
             return 
 
         M = Module()
@@ -696,8 +696,8 @@ def test_method_implicit_ticket_384():
             raise
 
 def get_mode():
-    if default_mode != 'DEBUG_MODE':
-        mode = default_mode
+    if config.mode != 'DEBUG_MODE':
+        mode = config.mode
     else: mode = 'FAST_RUN'
     return mode
 

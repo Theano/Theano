@@ -14,14 +14,14 @@ from theano.gof.python25 import any, all
 from theano import gof
 
 from theano.tensor.elemwise import DimShuffle
-from theano.compile.mode import default_mode
+from theano.compile.mode import get_default_mode
 from theano import function
 from theano.tests import unittest_tools as utt
 
 ### seed random number generator so that unittests are deterministic ###
 utt.seed_rng()
 
-def inplace_func(inputs, outputs, mode=default_mode):
+def inplace_func(inputs, outputs, mode=get_default_mode()):
     return function(inputs, outputs, mode=mode, accept_inplace=True)
 
 

@@ -40,7 +40,6 @@ class NNet(object):
 class TestNnet(unittest.TestCase):
 
     def test_nnet(self):
-        #theano.compile.default_mode = 'FAST_RUN'
         rng = numpy.random.RandomState(1827)
         data = rng.rand(10, 4)
         nnet = NNet(n_input = 3, n_hidden = 10)

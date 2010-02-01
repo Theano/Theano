@@ -87,7 +87,7 @@ class Component(object):
         be called.
         """
         if mode is None:
-            mode = get_mode.default_mode
+            mode = get_mode.get_default_mode()
         memo = {}
         self.allocate(memo)
         rval = self.build(mode, memo)
@@ -101,7 +101,7 @@ class Component(object):
         arguments and the keyword arguments. If 'mode' is in the
         keyword arguments it will be passed to build().
         """
-        mode = kwargs.pop('mode', get_mode.default_mode)
+        mode = kwargs.pop('mode', get_mode.get_default_mode())
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)
@@ -1141,7 +1141,7 @@ class Module(ComponentDict):
         """
         self.make_module_instance(args,kwargs)
 
-        mode = kwargs.pop('mode', get_mode.default_mode)
+        mode = kwargs.pop('mode', get_mode.get_default_mode())
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)

@@ -443,6 +443,6 @@ class Test_pfunc(unittest.TestCase):
         self.failUnlessRaises(TypeError, pfunc, [], x)
 
 if __name__ == '__main__':
-    theano.compile.mode.default_mode = 'FAST_COMPILE'
+    theano.config.mode = 'FAST_COMPILE'
     Test_pfunc().test_default_scalar_container()
 

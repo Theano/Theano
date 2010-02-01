@@ -698,7 +698,7 @@ class FunctionMaker(object):
                     their output value directly
 
         :param mode: a Mode instance telling FunctionMaker how to optimize and link.  None
-        means to use the `default_mode`.
+        means to use the `config.mode`.
 
         :param accept_inplace: True iff it is acceptable to have inplace operations
                     in the graph from the inputs to the outputs
@@ -864,7 +864,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
         itself or a list of one or more return values)
 
     :param mode: a descriptive string or a Mode instance. (Default of None means to use
-    `mode.default_mode` (See below for descriptive string list).
+    `config.mode` (See below for descriptive string list).
     
     :param name: an optional name for this fct. If used, the profile mode will print the time spent in this fct.
 

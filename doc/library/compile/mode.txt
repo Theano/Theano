@@ -22,8 +22,7 @@ Theano defines the following modes by name:
     but can identify many kinds of problems.
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via the
-configuration variable :attr:`config.mode`, which can in turn be overridden by
-setting ``theano.compile.mode.default_mode`` directly, which can in turn be
+configuration variable :attr:`config.mode`, which can be
 overridden by passing the keyword argument to :func:`theano.function`.
 
 .. TODO::

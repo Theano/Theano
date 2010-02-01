@@ -10,11 +10,12 @@ purpose of it is to hack it to investigate what your own particular program is d
 .. code-block:: python
 
     from theano.gof.link import WrapLinkerMany
+    from theano import config
     from theano.compile.mode import (Mode, register_mode, predefined_modes, predefined_linkers,
-            predefined_optimizers, default_linker, default_optimizer)
+            predefined_optimizers)
 
     class StepMode(Mode):
-        def __init__(self, linker=default_linker, optimizer=default_optimizer):
+        def __init__(self, linker=config.linker, optimizer=config.optimizer):
 
             def blah(i, node, th):
                 # This function will be run for each node in your compiled program.
