@@ -53,7 +53,8 @@ class TestConv2D(unittest.TestCase):
         theano_output = theano_conv(image_data, filter_data)
 
         ############# REFERENCE IMPLEMENTATION ############
-        s = 1. if border_mode is 'full' else -1.
+        s = 1.
+        if border_mode is not 'full': s = -1.
         out_shape2d = numpy.array(N_image_shape[-2:]) +\
                       s*numpy.array(N_filter_shape[-2:]) - s
         out_shape2d = numpy.ceil(out_shape2d / numpy.array(subsample))

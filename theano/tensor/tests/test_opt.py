@@ -942,7 +942,7 @@ def test_log1p():
     f = function([z], T.log(1+(z)), mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
-class test_local_subtensor_unary():
+class test_local_subtensor_unary(unittest.TestCase):
 
     def test0(self):
         # basic test that the Op works
