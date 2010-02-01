@@ -7,13 +7,13 @@ _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
 def error(*msg):
-    _logger.warning('ERROR (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.warning('ERROR (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 def warning(*msg):
-    _logger.warning('WARNING (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.warning('WARNING (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 def info(*msg):
-    _logger.warning('INFO (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.warning('INFO (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 def debug(*msg):
-    _logger.warning('DEBUG (%s): '% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.warning('DEBUG (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 
 
 # Compile cuda_ndarray.cu
