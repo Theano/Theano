@@ -45,8 +45,6 @@ predefined_linkers = {
     'c&py' : gof.DualLinker(checker = check_equal)
     }
 
-#Keep default_linker the same as the one for default_mode
-default_linker = 'c|py'
 
 def register_linker(name, linker):
     """Add a `Linker` which can be referred to by `name` in `Mode`."""
@@ -72,8 +70,6 @@ predefined_optimizers = {
     'fast_run_stable' : OPT_FAST_RUN_STABLE,
     'fast_compile' : OPT_FAST_COMPILE
     }
-#Keep default_optimizer the same as the one for default_mode
-default_optimizer = 'fast_run'
 
 def register_optimizer(name, opt):
     """Add a `Optimizer` which can be referred to by `name` in `Mode`."""
@@ -155,7 +151,7 @@ class Mode(object):
     predefined_modes.
     """
     
-    def __init__(self, linker = default_linker, optimizer = default_optimizer):
+    def __init__(self, linker = config.linker, optimizer = config.optimizer):
         self.__setstate__((linker, optimizer))
 
     def __getstate__(self):
@@ -220,20 +216,19 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN_NOGC':FAST_RUN_NOGC,
                     'SANITY_CHECK': SANITY_CHECK}
 
-
-# The default mode used by functions and modules is read from the configuration.
-# keep default_mode.optimizer==default_optimizer and default_mode.linker==default_linker!
-default_mode = config.mode
-
 def get_mode(string):
-    if string is None: string = default_mode
+    if string is None: string = config.mode
     if not isinstance(string, str): return string #it is already a mode...
     if not predefined_modes.has_key(string):
         raise Exception("No predefixed mode exist for string: %s"%string)
     return predefined_modes[string]
 
 def get_default_mode():
-    return get_mode(default_mode)
+    if config.mode in ['Mode','ProfileMode','DebugMode']:
+        return Mode(linker=config.linker, optimizer=config.optimizer)
+    return get_mode(config.mode)
+
+default_mode = config.mode
 
 def register_mode(name, mode):
     """Add a `Mode` which can be referred to by `name` in `function`."""

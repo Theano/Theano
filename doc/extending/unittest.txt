@@ -261,8 +261,8 @@ Example:
 >>> minstance = m.make(mode='DEBUG_MODE')
 
 Whenever possible, unit tests should omit this parameter. Leaving
-out the mode will ensure that unit tests use the default mode
-(defined in compile.mode.default_mode). This default_mode is set to
+out the mode will ensure that unit tests use the default mode.
+This default mode is set to
 the configuration variable :attr:`config.mode`, which defaults to
 'FAST_RUN', and can be set by various mechanisms (see :mod:`config`).
 

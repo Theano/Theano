@@ -4,7 +4,7 @@ import theano
 from theano import tensor as T
 from theano.tensor import nnet as NN
 from theano.compile import module
-from theano.compile.mode import default_mode
+from theano.compile.mode import get_default_mode
 from theano import tensor as T, sparse as S
 import numpy as N
 import sys
@@ -524,7 +524,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     
     if optimizer:
         mode = theano.Mode(linker='c|py', optimizer=optimizer)
-    else: mode = default_mode
+    else: mode = get_default_mode()
     if realistic:
         m = create_realistic(compile_mode=mode)
     else:

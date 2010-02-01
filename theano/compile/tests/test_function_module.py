@@ -1,5 +1,5 @@
 import unittest
-from theano import gof
+from theano import gof,config
 
 from theano import compile
 from theano.scalar import *
@@ -389,10 +389,14 @@ class T_picklefunction(unittest.TestCase):
         sm = T.dmatrix('s')
 
         f = function([a, x, s, xm, sm], ((a.T.T)*(tensor.dot(xm, (sm.T.T.T)) + x).T * (x/x) + s))
-        old_default_mode = compile.mode.default_mode
+        old_default_mode = config.mode
+        old_default_opt  = config.optimizer
+        old_default_link = config.linker
         try:
             str_f = cPickle.dumps(f)
-            compile.mode.default_mode = mode_module.Mode(linker='py', optimizer=None)
+            config.mode = 'Mode'
+            config.linker = 'py'
+            config.optimizer = 'None'
             g = cPickle.loads(str_f)
             #print g.maker.mode
             #print compile.mode.default_mode
@@ -400,8 +404,10 @@ class T_picklefunction(unittest.TestCase):
             if e[0].startswith('DebugMode is not pickl'):
                 g = 'ok'
         finally:
-            compile.mode.default_mode = old_default_mode
-
+            config.mode = old_default_mode
+            config.optimizer = old_default_opt
+            config.linker = old_default_link
+        
         if g == 'ok':
             return
 
@@ -545,7 +551,7 @@ if __name__ == '__main__':
         unittest.TextTestRunner(verbosity=2).run(suite)
         #</boilerplate>
     elif 0:
-        theano.compile.mode.default_mode = 'FAST_COMPILE'
+        theano.config.mode = 'FAST_COMPILE'
         t = T_picklefunction()
         def fu(b):
             assert b

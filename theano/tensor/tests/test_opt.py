@@ -202,7 +202,7 @@ class test_canonize(unittest.TestCase):
 
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
-        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode=compile.mode.get_default_mode()
         old_optimizer = mode._optimizer
         try:
             mode._optimizer=gof.Query(["canonicalize"])
@@ -282,7 +282,7 @@ class test_canonize(unittest.TestCase):
 
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
-        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode=compile.mode.get_default_mode()
         mode._optimizer=gof.Query(["canonicalize"])
         mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
         for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
@@ -327,7 +327,7 @@ class test_canonize(unittest.TestCase):
 
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
-        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode=compile.mode.get_default_mode()
         old_optimizer = mode._optimizer
         try:
             mode._optimizer=gof.Query(["canonicalize"])
@@ -474,7 +474,7 @@ class test_canonize(unittest.TestCase):
         fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
-        mode=compile.mode.predefined_modes[compile.mode.default_mode]
+        mode=compile.mode.get_default_mode()
         old_optimizer = mode._optimizer
         try:
             mode._optimizer=gof.Query(["canonicalize"])
@@ -907,7 +907,7 @@ class test_fusion(unittest.TestCase):
             #g.owner.inputs[0] is out... make owner a weakref?
             
 def test_log1p():
-    m = theano.compile.default_mode
+    m = theano.config.mode
     if m == 'FAST_COMPILE':
         m = 'FAST_RUN'
 
