@@ -1,0 +1,20 @@
+.. _libdoc_tensor_nnet_conv:
+
+==========================================================
+:mod:`conv` -- Ops for convolutional neural nets
+==========================================================
+
+.. module:: conv
+   :platform: Unix, Windows
+   :synopsis: ops for signal processing
+.. moduleauthor:: LISA
+
+
+TODO: Give examples for how to use these things! They are pretty complicated.
+
+.. autofunction:: theano.tensor.nnet.conv.conv2d
+
+.. function:: fft(*todo)
+
+    [James has some code for this, but hasn't gotten it into the source tree yet.]
+

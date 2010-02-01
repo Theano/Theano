@@ -7,7 +7,7 @@ from theano.tests import unittest_tools as utt
 
 from theano import function, Mode
 import theano.tensor as T
-from theano.tensor.signal.conv import ConvOp
+from theano.tensor.nnet.conv import ConvOp
 
 def flip(kern, kshp):
     "flip the kernel as scipy.convolv2d do it flipped."

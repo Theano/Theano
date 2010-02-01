@@ -1,20 +1,15 @@
-.. _libdoc_tensor_signal:
+.. _libdoc_tensor_signal_conv:
 
 ======================================================
-:mod:`signal` -- Signal processing
+:mod:`conv` -- Convolution
 ======================================================
 
-.. module:: signal
+.. module:: conv
    :platform: Unix, Windows
-   :synopsis: ops for signal processing
+   :synopsis: ops for performing convolutions
 .. moduleauthor:: LISA
 
-
-TODO: Give examples for how to use these things! They are pretty complicated.
-
-.. function:: conv2D(*todo)
-
-.. function:: downsample2D(*todo)
+.. autofunction:: theano.tensor.signal.conv.conv2d
 
 .. function:: fft(*todo)
 

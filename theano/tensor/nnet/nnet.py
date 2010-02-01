@@ -7,11 +7,11 @@ from theano import gof
 from theano import scalar
 from theano import printing
 from theano.printing import pprint
-import basic as tensor
-import elemwise
-import numpy
-import opt
+from theano.tensor import basic as tensor
+from theano.tensor import elemwise
+from theano.tensor import opt
 from theano.compile import optdb
+import numpy
 
 ############
 #

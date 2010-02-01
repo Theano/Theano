@@ -3,9 +3,9 @@ import unittest
 import theano
 from theano import tensor as T
 from theano import gof
-import test_basic as TT
 import numpy
 from theano.tests import unittest_tools as utt
+from theano.tensor.tests import test_basic as TT
 
 from theano.tensor.nnet import *
 

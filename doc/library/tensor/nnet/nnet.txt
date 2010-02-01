@@ -1,4 +1,4 @@
-.. _libdoc_tensor_nnet:
+.. _libdoc_tensor_nnet_nnet:
 
 ======================================================
 :mod:`nnet` -- Ops for neural networks

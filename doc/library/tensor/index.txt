@@ -18,8 +18,7 @@ They are grouped into the following sections:
     :maxdepth: 1
 
     basic
+    nnet/index
     raw_random
     shared_randomstreams
-    nnet
-    signal
-
+    signal/index

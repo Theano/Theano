@@ -15,13 +15,13 @@ def max_pool2D(input, ds, ignore_border=False):
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
     the specified factor, by keeping only the maximum value of non-overlapping
     patches of size (ds[0],ds[1])
+
     :type input: N-D theano tensor of input images. 
     :param input: input images. Max pooling will be done over the 2 last dimensions.
     :type ds: tuple of length 2
-    :param ds: factor by which to downscale. (2,2) will halve the image in each
-               dimension.
-    :param ignore_border: boolean value. When True, (5,5) input with ds=(2,2)
-                         will generate a (2,2) output. (3,3) otherwise.
+    :param ds: factor by which to downscale. (2,2) will halve the image in each dimension.
+    :param ignore_border: boolean value. When True, (5,5) input with ds=(2,2) will generate a
+      (2,2) output. (3,3) otherwise.
     """
     if input.ndim < 2:
         raise NotImplementedError('max_pool2D requires a dimension >= 2')
