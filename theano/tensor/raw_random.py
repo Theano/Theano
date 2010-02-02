@@ -175,40 +175,76 @@ class RandomFunction(gof.Op):
 
     def grad(self, inputs, outputs):
         return [None for i in inputs]
-    
-def _infer_ndim(ndim, shape):
-    """returns int, variable pair, such that the int is the length of the variable, and the
-    variable is an integer or uint vector
+
+def _infer_ndim(ndim, shape, *args):
     """
+    Infer the number of dimensions from the shape or the other arguments.
+
+    :rtype: (int, variable) pair, where the variable is an integer vector.
+    :returns: the first element returned is the inferred number of dimensions.
+    The second element's length is either the first element, or 0
+    (if the original shape was None).
+
+    In the special case where the shape argument is None, the variable
+    returned has a length of 0, meaning that the shape will be computed
+    at runtime from the shape of the other args.
+    """
+
+    # Find the minimum value of ndim required by the *args
+    if len(args) > 0:
+        args_ndim = max(arg.ndim for arg in args)
+    else:
+        args_ndim = 0
 
     if isinstance(shape, (tuple, list)):
         v_shape = tensor.TensorConstant(type=tensor.lvector, data=theano._asarray(shape, dtype='int64'))
+        shape_ndim = len(shape)
+        if ndim is None:
+            ndim = shape_ndim
+        else:
+            if shape_ndim != ndim:
+                raise ValueError('ndim should be equal to len(shape), but\n',
+                            'ndim = %s, len(shape) = %s, shape = %s'
+                            % (ndim, shape_ndim, shape))
+
+    elif shape is None:
+        # The shape will be computed at runtime, but we need to know ndim
+        v_shape = tensor.constant([], dtype='int64')
+        if ndim is None:
+            ndim = args_dim
+
     else:
         v_shape = tensor.as_tensor_variable(shape)
+        if ndim is None:
+            ndim = tensor.get_vector_length(v_shape)
 
     if not (v_shape.dtype.startswith('int') or v_shape.dtype.startswith('uint')):
         raise TypeError('shape must be an integer vector or list')
 
-    if ndim is None:
-        #infer ndim
-        ndim = tensor.get_vector_length(v_shape)
-    
+    if args_ndim > ndim:
+        raise ValueError('ndim should be at least as big as required by args value',
+                    (ndim, args_ndim), args)
+
     return ndim, v_shape
 
-def uniform(random_state, size=(), low=0.0, high=1.0, ndim=None):
+def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None):
     """
     Sample from a uniform distribution between low and high.
 
-    If the size argument is ambiguous on the number of
-    dimensions, the first argument may be a plain integer
-    to supplement the missing information.
+    If the size argument is ambiguous on the number of dimensions, ndim
+    may be a plain integer to supplement the missing information.
+
+    If size is None, the output shape will be determined by the shapes
+    of low and high.
     """
-    ndim, size = _infer_ndim(ndim, size)
-    op = RandomFunction('uniform', 
+    low = tensor.as_tensor_variable(low)
+    high = tensor.as_tensor_variable(high)
+    ndim, size = _infer_ndim(ndim, size, low, high)
+    op = RandomFunction('uniform',
             tensor.TensorType(dtype = 'float64', broadcastable = (False,)*ndim) )
     return op(random_state, size, low, high)
 
-def binomial(random_state, size=(), n=1, prob=0.5, ndim=None):
+def binomial(random_state, size=None, n=1, prob=0.5, ndim=None):
     """
     Sample n times with probability of success prob for each trial, return the number of
     successes.
@@ -216,12 +252,14 @@ def binomial(random_state, size=(), n=1, prob=0.5, ndim=None):
     If the size argument is ambiguous on the number of dimensions, the first argument may be a
     plain integer to supplement the missing information.
     """
-    ndim, size = _infer_ndim(ndim, size)
-    op = RandomFunction('binomial', 
+    n = tensor.as_tensor_variable(n)
+    prob = tensor.as_tensor_variable(prob)
+    ndim, size = _infer_ndim(ndim, size, n, prob)
+    op = RandomFunction('binomial',
             tensor.TensorType(dtype = 'int64', broadcastable = (False,)*ndim) )
     return op(random_state, size, n, prob)
 
-def normal(random_state, size=(),  avg=0.0, std=1.0, ndim=None):
+def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None):
     """
     Usage: normal(random_state, size,
     Sample from a normal distribution centered on avg with
@@ -231,12 +269,14 @@ def normal(random_state, size=(),  avg=0.0, std=1.0, ndim=None):
     dimensions, the first argument may be a plain integer
     to supplement the missing information.
     """
-    ndim, size = _infer_ndim(ndim, size)
-    op = RandomFunction('normal', 
+    avg = tensor.as_tensor_variable(avg)
+    std = tensor.as_tensor_variable(std)
+    ndim, size = _infer_ndim(ndim, size, avg, std)
+    op = RandomFunction('normal',
             tensor.TensorType(dtype = 'float64', broadcastable = (False,)*ndim) )
     return op(random_state, size, avg, std)
 
-def random_integers(random_state, size=(), low=0, high=1, ndim=None):
+def random_integers(random_state, size=None, low=0, high=1, ndim=None):
     """
     Usage: random_integers(random_state, size, low=0, high=1)
     Sample a random integer between low and high, both inclusive.
@@ -245,8 +285,10 @@ def random_integers(random_state, size=(), low=0, high=1, ndim=None):
     dimensions, the first argument may be a plain integer
     to supplement the missing information.
     """
-    ndim, size = _infer_ndim(ndim, size)
-    op = RandomFunction('random_integers', 
+    low = tensor.as_tensor_variable(low)
+    high = tensor.as_tensor_variable(high)
+    ndim, size = _infer_ndim(ndim, size, low, high)
+    op = RandomFunction('random_integers',
             tensor.TensorType(dtype = 'int64', broadcastable = (False,)*ndim) )
     return op(random_state, size, low, high)
 
@@ -277,7 +319,7 @@ def permutation_helper(random_state, n, shape):
     print 'RETURNING', out.shape
     return out
 
-def permutation(random_state, size=(), n=1, ndim=None):
+def permutation(random_state, size=None, n=1, ndim=None):
     """
     Returns permutations of the integers between 0 and n-1, as many times
     as required by size. For instance, if size=(p,q), p*q permutations
@@ -292,12 +334,12 @@ def permutation(random_state, size=(), n=1, ndim=None):
     """
     ndim, size = _infer_ndim(ndim, size)
     print "NDIM", ndim, size
-    op = RandomFunction(permutation_helper, 
+    op = RandomFunction(permutation_helper,
             tensor.TensorType(dtype='int64', broadcastable=(False,)*(ndim+1)),
             ndim_added=1)
     return op(random_state, size, n)
 
-def multinomial(random_state, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
+def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5], ndim=None):
     """
     Sample n times from a multinomial distribution defined by probabilities pvals,
     as many times as required by size. For instance, if size=(p,q), p*q
@@ -309,8 +351,10 @@ def multinomial(random_state, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
     .. note:: 
         Note that the output will then be of dimension ndim+1.
     """
-    ndim, size = _infer_ndim(ndim, size)
-    op = RandomFunction('multinomial', 
+    n = tensor.as_tensor_variable(n)
+    pvals = tensor.as_tensor_variable(pvals)
+    ndim, size = _infer_ndim(ndim, size, n, pvals[0])
+    op = RandomFunction('multinomial',
             tensor.TensorType(dtype = 'int64', broadcastable = (False,)*(ndim+1)),
             ndim_added=1)
     return op(random_state, size, n, pvals)
