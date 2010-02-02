@@ -90,7 +90,7 @@ class T_random_function(unittest.TestCase):
         assert not numpy.allclose(val0, val1)
 
     def test_random_function_ndim(self):
-        """Test that random_function helper function accepts ndim as first argument"""
+        """Test that random_function helper function accepts argument ndim"""
         rng_R = random_state_type()
 
         # ndim is an optional argument indicating the length of the 'shape'
@@ -102,15 +102,11 @@ class T_random_function(unittest.TestCase):
         post_out2_4_4,  out2_4_4=   uniform(rng_R, (4, 4), ndim=2)
 
         # ndim specified, but not compatible with shape
-        post_out2_4,    out2_4  =   uniform(rng_R, (4,), ndim=2)
+        self.assertRaises(ValueError, uniform, rng_R, (4,), ndim=2)
 
         f_ok = compile.function(
                 [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_out2_4_4, mutable=True)],
                 [out4, out1_4, out2_4_4],
-                accept_inplace=True)
-        f_no = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_out2_4, mutable=True)],
-                [out2_4],
                 accept_inplace=True)
 
         # The correct cases should execute properly
@@ -119,9 +115,6 @@ class T_random_function(unittest.TestCase):
         # Check the sanity of the answers
         self.assertTrue(numpy.allclose(o4, o1_4))
         self.assertTrue(numpy.allclose(o4, o2_4_4[0]))
-
-        # The incorrect case should raise ValueError
-        self.assertRaises(ValueError, f_no)
 
     def test_random_function_ndim_added(self):
         """Test that random_function helper function accepts ndim_added as keyword argument"""
