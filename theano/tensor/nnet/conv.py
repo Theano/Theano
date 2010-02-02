@@ -13,9 +13,9 @@ from theano import gof, Op, tensor, config
 import logging
 _logger=logging.getLogger("theano.signal.conv")
 def _debug(*msg):
-    _logger.debug(' '.join(msg))
+    _logger.debug(' '.join([ str(x) for x in msg]))
 def _warn(*msg):
-    _logger.warn(' '.join(msg))
+    _logger.warn(' '.join([ str(x) for x in msg]))
 
 
 def conv2d(input, filters, image_shape=None, filter_shape=None,
@@ -665,7 +665,7 @@ using namespace std;
     dim_zz[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s));
     dim_zz[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));
   }
-"""
+"""% d
 
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
