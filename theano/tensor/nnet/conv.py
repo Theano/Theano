@@ -641,7 +641,7 @@ using namespace std;
             d["self_imshp_logical_stride_r"] = int(numpy.ceil(self.imshp_logical[1] / float(self.imshp[1])))
             d["self_imshp_logical_stride_c"] = int(numpy.ceil(self.imshp_logical[2] / float(self.imshp[2])))
             if not self.imshp[0]==1: d["affectation"]="+="
-            d["all_shape"]=1
+            d["all_shape"]="1"
             d["dim_zz_const"]="const"
         else:
             d["self_bsize"]="%(img2d)s->dimensions[0]"%d
@@ -654,7 +654,7 @@ using namespace std;
             d["self_kshp0"]="%(filtersflipped)s->dimensions[2]"%d
             d["self_kshp1"]="%(filtersflipped)s->dimensions[3]"%d
             d["affectation"]="+="
-            d["all_shape"]=0
+            d["all_shape"]="0"
             d["dim_zz_const"]=""
 
         if self.kshp_logical_top_aligned:
