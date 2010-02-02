@@ -643,6 +643,7 @@ using namespace std;
             if not self.imshp[0]==1: d["affectation"]="+="
             d["all_shape"]="1"
             d["dim_zz_const"]="const"
+            d["dim_zz_affect"]=""
         else:
             d["self_bsize"]="%(img2d)s->dimensions[0]"%d
             d["self_nkern"]="%(filtersflipped)s->dimensions[0]"%d
@@ -656,6 +657,15 @@ using namespace std;
             d["affectation"]="+="
             d["all_shape"]="0"
             d["dim_zz_const"]=""
+            d["dim_zz_affect"]="""
+  if (mode == FULL) {
+    dim_zz[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s));
+    dim_zz[1] = (int)ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));
+  } else {
+    dim_zz[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s));
+    dim_zz[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));
+  }
+"""
 
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
@@ -1426,15 +1436,8 @@ int type_ker=PyArray_TYPE(%(filtersflipped)s);
 const npy_intp dim_im[2]={%(self_imshp1)s,%(self_imshp2)s};
 const npy_intp dim_ker[2]={%(self_kshp0)s,%(self_kshp1)s};
 %(dim_zz_const)s npy_intp dim_zz[2]={%(self_outshp0)s,%(self_outshp1)s};
-#if !%(all_shape)s
-  if (mode == FULL) {
-    dim_zz[0] = (int)ceil((dim_im[0]+dim_ker[0]-1)/float(%(self_dx)s));
-    dim_zz[1] = (int)ceil((dim_im[1]+dim_ker[1]-1)/float(%(self_dy)s));
-  } else {
-    dim_zz[0] = (int)ceil((dim_im[0]-dim_ker[0]+1)/float(%(self_dx)s));
-    dim_zz[1] = (int)ceil((dim_im[1]-dim_ker[1]+1)/float(%(self_dy)s));
-  }
-#endif
+
+%(dim_zz_affect)s
 PyArray_Dims img2d_shape;
 npy_intp img2d_dim[4]={1,1,0,0};
 img2d_shape.ptr=img2d_dim;
