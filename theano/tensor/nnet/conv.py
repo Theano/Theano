@@ -660,7 +660,7 @@ using namespace std;
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
             d["self_kshp_logical_offset_c"] = 0
-        elif self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
+        elif all_shape:
             rstride = d["self_kshp_logical_stride_r"]
             cstride = d["self_kshp_logical_stride_c"]
             d["self_kshp_logical_offset_r"] = (self.kshp_logical[0] - (self.kshp[0]*rstride) - 1+rstride) % rstride
