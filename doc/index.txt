@@ -42,6 +42,8 @@ Roughly in order of what you'll want to check out:
 
 You can download the latest `PDF documentation <http://deeplearning.net/software/theano/theano.pdf>`_, rather than reading it online.
 
+Check out how Theano can be used for Machine Learning: `Deep Learning Tutorials <http://www.deeplearning.net/tutorial>`_.
+
 Community
 =========
 
