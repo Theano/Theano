@@ -1,43 +1,56 @@
-
-from compiledir import *
 from compilelock import get_lock, release_lock
-import sys
-
-
+import sys, os
+from theano import config
 
 try:
-    from cutils_ext import *
+    if os.path.exists(os.path.join(config.compiledir,'cutils_ext.so')):
+        os.remove(os.path.join(config.compiledir,'cutils_ext.so'))
 
+    from cutils_ext.cutils_ext import *
 except ImportError:
+    #try to compile it manually
 
-    from scipy import weave
+    code = """
+#include <Python.h>
+extern "C"{
+static PyObject *
+run_cthunk(PyObject *self, PyObject *args)
+{
+  PyObject *py_cthunk = NULL;
+  if(!PyArg_ParseTuple(args,"O",&py_cthunk))
+    return NULL;
 
-    # The following function takes a PyCObject instance that contains
-    # a void*->int function in its VoidPtr field. It then calls that
-    # function on the object's Desc field and returns the int variable.
-    single_runner = """
-        if (!PyCObject_Check(py_cthunk)) {
-            PyErr_SetString(PyExc_ValueError,
-                            "Argument to run_cthunk must be a PyCObject.");
-            return NULL;
-        }
-        void * ptr_addr = PyCObject_AsVoidPtr(py_cthunk);
-        int (*fn)(void*) = reinterpret_cast<int (*)(void*)>(ptr_addr);
-        void* it = PyCObject_GetDesc(py_cthunk);
-        int failure = fn(it);
-        return_val = failure;
-        """
-    
-    cthunk = object()
-    mod = weave.ext_tools.ext_module('cutils_ext')
-    fun = weave.ext_tools.ext_function('run_cthunk', single_runner, ['cthunk'])
-    fun.customize.add_extra_compile_arg('--permissive')
-    mod.add_function(fun)
-    get_lock()
-    try:
-        mod.compile(location = config.compiledir)
-    except:
-        release_lock()
-        raise
-    release_lock()
-    from cutils_ext import *
+  if (!PyCObject_Check(py_cthunk)) {
+    PyErr_SetString(PyExc_ValueError,
+                   "Argument to run_cthunk must be a PyCObject.");
+    return NULL;
+  }
+  void * ptr_addr = PyCObject_AsVoidPtr(py_cthunk);
+  int (*fn)(void*) = reinterpret_cast<int (*)(void*)>(ptr_addr);
+  void* it = PyCObject_GetDesc(py_cthunk);
+  int failure = fn(it);
+
+  return Py_BuildValue("i", failure);
+}
+
+static PyMethodDef CutilsExtMethods[] = {
+    {"run_cthunk",  run_cthunk, METH_VARARGS|METH_KEYWORDS,
+     "Run a theano cthunk."},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+PyMODINIT_FUNC
+initcutils_ext(void)
+{
+  (void) Py_InitModule("cutils_ext", CutilsExtMethods);
+}
+}
+"""
+
+    import cmodule
+    import os
+    loc=os.path.join(config.compiledir,'cutils_ext')
+    if not os.path.exists(loc):
+            os.makedirs(loc)
+    cmodule.gcc_module_compile_str('cutils_ext', code, location = loc)
+    from cutils_ext.cutils_ext import *
