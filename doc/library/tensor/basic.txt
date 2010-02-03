@@ -38,33 +38,39 @@ for a 0-dimensional ndarray of integers with the name ``'myvar'``:
 Constructors with optional dtype
 ----------------------------------------
 
-.. function:: scalar(name=None, dtype='float64')
+These are the simplest and often-preferred methods for creating symbolic
+variables in your code.  By default, they produce floating-point variables
+(with dtype determined by config.floatX, see :attr:`floatX`) so if you use
+these constructors it is easy to switch your code between different levels of
+floating-point precision.
+
+.. function:: scalar(name=None, dtype=config.floatX)
 
     Return a Variable for a 0-dimensional ndarray
 
-.. function:: vector(name=None, dtype='float64')
+.. function:: vector(name=None, dtype=config.floatX)
 
     Return a Variable for a 1-dimensional ndarray
 
-.. function:: row(name=None, dtype='float64')
+.. function:: row(name=None, dtype=config.floatX)
 
     Return a Variable for a 2-dimensional ndarray
     in which the number of columns is guaranteed to be 1.
 
-.. function:: col(name=None, dtype='float64')
+.. function:: col(name=None, dtype=config.floatX)
 
     Return a Variable for a 2-dimensional ndarray
     in which the number of columns is guaranteed to be 1.
 
-.. function:: matrix(name=None, dtype='float64')
+.. function:: matrix(name=None, dtype=config.floatX)
 
     Return a Variable for a 2-dimensional ndarray
 
-.. function:: tensor3(name=None, dtype='float64')
+.. function:: tensor3(name=None, dtype=config.floatX)
 
     Return a Variable for a 3-dimensional ndarray
 
-.. function:: tensor4(name=None, dtype='float64')
+.. function:: tensor4(name=None, dtype=config.floatX)
 
     Return a Variable for a 4-dimensional ndarray
 
