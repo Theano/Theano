@@ -626,7 +626,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         }
         else
         {
-            PyErr_Format(PyExc_RuntimeError, "ERROR: all implementations failed! (%s)",
+            PyErr_Format(PyExc_RuntimeError, "ERROR: all implementations failed for CudaNdarray_conv_valid! (%s)",
                     cudaGetErrorString(sts));
             return -1;
         }
@@ -821,13 +821,13 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
-            if (verbose>1) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, out_len=%i, nb_split=%i, version=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y, out_len, nb_split, version);
+	  if (verbose>1) printf("threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, out_len=%i, nb_split=%i, version=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z, out_len, nb_split, version);
             if (verbose) printf("INFO: used 'conv_full_patch_stack_padded' nb_split=%d low_mem=%s\n",nb_split,(version==5?"true":"false"));
             work_complete = true;
         }
         else
         {
-            if (verbose) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, out_len=%i, nb_split=%i, version=%i\n", threads.x, threads.y, grid.x, grid.y, shared_size, threads.x * threads.y, out_len, nb_split, version);
+	  if (verbose) printf("threads.x=%i, threads.y=%i, threads.z=%i, grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i, out_len=%i, nb_split=%i, version=%i\n", threads.x, threads.y, threads.z, grid.x, grid.y, shared_size, threads.x * threads.y * threads.z, out_len, nb_split, version);
             if (verbose) printf("INFO: impl 'conv_full_patch_stack_padded' %s %s failed (%s), trying next implementation\n",
 				version==3?"no split": "split",(version==5?"low_mem":"not_low_mem"),
                                 cudaGetErrorString(sts));
@@ -1013,7 +1013,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 	  if (verbose) printf("threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i\n", n_threads, 1, n_blocks, 1, 0, n_threads);
 	  if (verbose) printf("INFO: impl 'conv_reference_full' failed (%s), trying next implementation\n",
 			      cudaGetErrorString(sts));
-	  PyErr_Format(PyExc_RuntimeError, "ERROR: all implementations failed! (%s)",
+	  PyErr_Format(PyExc_RuntimeError, "ERROR: all implementations failed for CudaNdarray_conv_full! (%s)",
 		       cudaGetErrorString(sts));
             return -1;
         }
