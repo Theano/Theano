@@ -19,7 +19,9 @@ class T_random_function(unittest.TestCase):
 
         rng_R = random_state_type()
 
-        post_r, out = rf(rng_R, (4,))
+        # If calling RandomFunction directly, all args have to be specified,
+        # because shape will have to be moved to the end
+        post_r, out = rf(rng_R, (4,), 0., 1.)
 
         assert out.type == tensor.dvector
 
@@ -67,8 +69,9 @@ class T_random_function(unittest.TestCase):
         rf2 = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector)
         rng_R = random_state_type()
 
-        # use make_node to override some of the self.args
-        post_r2, out2 = rf2(rng_R, (4,))
+        # If calling RandomFunction directly, all args have to be specified,
+        # because shape will have to be moved to the end
+        post_r2, out2 = rf2(rng_R, (4,), 0., 1.)
 
         f = compile.function(
                 [compile.In(rng_R, 
