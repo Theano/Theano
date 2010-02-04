@@ -41,6 +41,21 @@ precise inspection of what's being computed where, when, and how, see the
 :ref:`faq_wraplinker`.
 
 
+How do I print a graph before or after compilation?
+----------------------------------------------------------
+
+Theano provides a function to print a graph before and after compilation:
+
+>>> x = T.dscalar('x') 
+>>> y = x**2
+>>> gy = T.grad(y, x)
+>>> pp(gy)  # print out the gradient prior to optimization
+'((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
+>>> f = function([x], gy)
+>>> pp(f.maker.env.outputs[0])
+'(2.0 * x)'
+
+The parameter in T.dscalar('x') in the first line is the name of this variable(in the graph, not in python). This name is reused when printing the graph. Otherwise the variable x is printed as its type as: <TensorType(float64, scalar)>. That is not the most comprehensible. The string 'x' can be any string, but to make the code more comprehensible, try to pass the same name or derivative of the name in python.
 
 The function I compiled is too slow, what's up?
 -----------------------------------------------
