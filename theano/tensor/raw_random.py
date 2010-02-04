@@ -407,7 +407,7 @@ optdb.register('random_make_inplace', opt.in2out(random_make_inplace, ignore_new
 
 class RandomStreamsBase(object):
 
-    def binomial(self, size=(), n=1, prob=0.5, ndim=None):
+    def binomial(self, size=None, n=1, prob=0.5, ndim=None):
         """
         Sample n times with probability of success prob for each trial, return the number of
         successes.
@@ -417,7 +417,7 @@ class RandomStreamsBase(object):
         """
         return self.gen(binomial, size, n, prob, ndim=ndim)
 
-    def uniform(self,  size=(), low=0.0, high=1.0, ndim=None):
+    def uniform(self, size=None, low=0.0, high=1.0, ndim=None):
         """
         Sample a tensor of given size whose element from a uniform distribution between low and high.
 
@@ -427,7 +427,7 @@ class RandomStreamsBase(object):
         """
         return self.gen(uniform, size, low, high, ndim=ndim)
 
-    def normal(self, size=(), avg=0.0, std=1.0, ndim=None):
+    def normal(self, size=None, avg=0.0, std=1.0, ndim=None):
         """
         Usage: normal(random_state, size,
         Sample from a normal distribution centered on avg with
@@ -439,7 +439,7 @@ class RandomStreamsBase(object):
         """
         return self.gen(normal, size, avg, std, ndim=ndim)
 
-    def random_integers(self, size=(), low=0, high=1, ndim=None):
+    def random_integers(self, size=None, low=0, high=1, ndim=None):
         """
         Usage: random_integers(random_state, size, low=0, high=1)
         Sample a random integer between low and high, both inclusive.
@@ -450,7 +450,7 @@ class RandomStreamsBase(object):
         """
         return self.gen(random_integers, size, low, high, ndim=ndim)
 
-    def permutation(self, size=(), n=1, ndim=None):
+    def permutation(self, size=None, n=1, ndim=None):
         """
         Returns permutations of the integers between 0 and n-1, as many times
         as required by size. For instance, if size=(p,q), p*q permutations
@@ -465,7 +465,7 @@ class RandomStreamsBase(object):
         """
         return self.gen(permutation, size, n, ndim=ndim)
 
-    def multinomial(self, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
+    def multinomial(self, size=None, n=1, pvals=[0.5, 0.5], ndim=None):
         """
         Sample n times from a multinomial distribution defined by probabilities pvals,
         as many times as required by size. For instance, if size=(p,q), p*q
