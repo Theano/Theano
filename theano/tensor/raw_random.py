@@ -106,32 +106,36 @@ class RandomFunction(gof.Op):
 
     def make_node(self, r, shape, *args):
         """
-        :param r: a numpy.RandomState instance, or a Variable of Type RandomStateType that will
-        contain a RandomState instance.
+        :param r: a numpy.RandomState instance, or a Variable of Type
+        RandomStateType that will contain a RandomState instance.
 
-        :param shape: an lvector with a shape defining how many samples to draw.
-        In the case of scalar distributions, it is the shape of the tensor output by this Op.
-        In that case, at runtime, the value associated with this lvector must have a length
-        equal to the number of dimensions promised by `self.outtype`.
-        In general, the number of output dimenstions is equal to
-        len(self.outtype)+self.ndim_added.
+        :param shape: an lvector with a shape defining how many samples
+        to draw.  In the case of scalar distributions, it is the shape
+        of the tensor output by this Op.  In that case, at runtime, the
+        value associated with this lvector must have a length equal to
+        the number of dimensions promised by `self.outtype`.
+        In a more general case, the number of output dimensions,
+        len(self.outtype), is equal to len(shape)+self.ndim_added.
+        The special case where len(shape) == 0 means that the smallest
+        shape compatible with the argument's shape will be used.
 
-        :param args: the values associated with these variables will be passed to the RandomState
-        function during perform as extra "*args"-style arguments.  These should be castable to
-        variables of Type TensorType.
+        :param args: the values associated with these variables will
+        be passed to the RandomState function during perform as extra
+        "*args"-style arguments.  These should be castable to variables
+        of Type TensorType.
 
         :rtype: Apply
 
-        :return: Apply with two outputs.  The first output is a gof.generic Variable from which
-        to draw further random numbers.  The second output is the outtype() instance holding
-        the random draw.
+        :return: Apply with two outputs.  The first output is a
+        gof.generic Variable from which to draw further random numbers.
+        The second output is the outtype() instance holding the random
+        draw.
 
         """
         if shape == () or shape == []:
             shape = tensor.lvector()
         else:
             shape = tensor.as_tensor_variable(shape, ndim=1)
-        #print 'SHAPE TYPE', shape.type, tensor.lvector
         assert shape.type.ndim == 1
         assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
         if not isinstance(r.type, RandomStateType):
@@ -211,7 +215,7 @@ def _infer_ndim(ndim, shape, *args):
         # The shape will be computed at runtime, but we need to know ndim
         v_shape = tensor.constant([], dtype='int64')
         if ndim is None:
-            ndim = args_dim
+            ndim = args_ndim
 
     else:
         v_shape = tensor.as_tensor_variable(shape)
@@ -316,7 +320,7 @@ def permutation_helper(random_state, n, shape):
     for i in numpy.ndindex(*shape):
         out[i] = random_state.permutation(n)
 
-    print 'RETURNING', out.shape
+    #print 'RETURNING', out.shape
     return out
 
 def permutation(random_state, size=None, n=1, ndim=None):
@@ -333,7 +337,7 @@ def permutation(random_state, size=None, n=1, ndim=None):
         Note that the output will then be of dimension ndim+1.
     """
     ndim, size = _infer_ndim(ndim, size)
-    print "NDIM", ndim, size
+    #print "NDIM", ndim, size
     op = RandomFunction(permutation_helper,
             tensor.TensorType(dtype='int64', broadcastable=(False,)*(ndim+1)),
             ndim_added=1)
@@ -427,7 +431,7 @@ class RandomStreamsBase(object):
         Theano tries to infer the number of dimensions from the length of the size argument, but you
         may always specify it with the `ndim` parameter.
 
-        .. note:: 
+        .. note::
             Note that the output will then be of dimension ndim+1.
         """
         return self.gen(permutation, size, n, ndim=ndim)
@@ -441,14 +445,14 @@ class RandomStreamsBase(object):
         Theano tries to infer the number of dimensions from the length of the size argument, but you
         may always specify it with the `ndim` parameter.
 
-        .. note:: 
+        .. note::
             Note that the output will then be of dimension ndim+1.
         """
         return self.gen(multinomial, size, n, pvals, ndim=ndim)
 
     def shuffle_row_elements(self, input):
         """Return a variable with every row (rightmost index) shuffled.
-        
+
         This uses permutation random variable internally, available via the ``.permutation``
         attribute of the return value.
         """
