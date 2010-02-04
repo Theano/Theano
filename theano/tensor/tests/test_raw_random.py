@@ -391,6 +391,269 @@ class T_random_function(unittest.TestCase):
         self.assertRaises(ValueError, f, rng_state0, [4])
         self.assertRaises(ValueError, f, rng_state0, [4,3,4,5])
 
+    def test_default_shape(self):
+        rng_R = random_state_type()
+        post_r, out = uniform(rng_R)
+        f = compile.function([rng_R], [post_r, out], accept_inplace=True)
+
+        rng_state0 = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+        post0, val0 = f(rng_state0)
+        post1, val1 = f(post0)
+        numpy_val0 = numpy_rng.uniform()
+        numpy_val1 = numpy_rng.uniform()
+
+        assert numpy.all(val0 == numpy_val0)
+        assert numpy.all(val1 == numpy_val1)
+
+        post_r, out = multinomial(rng_R)
+        g = compile.function([rng_R], [post_r, out], accept_inplace=True)
+        post2, val2 = g(post1)
+        numpy_val2 = numpy_rng.multinomial(n=1, pvals=[.5, .5])
+
+        assert numpy.all(val2 == numpy_val2)
+
+    def test_vector_arguments(self):
+        rng_R = random_state_type()
+        low = tensor.vector()
+        post_r, out = uniform(rng_R, low=low, high=1)
+        assert out.ndim == 1
+        f = compile.function([rng_R, low], [post_r, out], accept_inplace=True)
+
+        rng_state0 = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+        post0, val0 = f(rng_state0, [-5, .5, 0, 1])
+        post1, val1 = f(post0, [.9])
+        numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=1)
+        numpy_val1 = numpy_rng.uniform(low=[.9], high=1)
+
+        assert numpy.all(val0 == numpy_val0)
+        assert numpy.all(val1 == numpy_val1)
+
+        high = tensor.vector()
+        post_rb, outb = uniform(rng_R, low=low, high=high)
+        assert outb.ndim == 1
+        fb = compile.function([rng_R, low, high], [post_rb, outb], accept_inplace=True)
+
+        post0b, val0b = fb(post1, [-4., -2], [-1, 0])
+        post1b, val1b = fb(post0b, [-4.], [-1])
+        numpy_val0b = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
+        numpy_val1b = numpy_rng.uniform(low=[-4.], high=[-1])
+        assert numpy.all(val0b == numpy_val0b)
+        assert numpy.all(val1b == numpy_val1b)
+        self.assertRaises(ValueError, fb, post1b, [-4., -2], [-1, 0, 1])
+        #TODO: do we want that?
+        #self.assertRaises(ValueError, fb, post1b, [-4., -2], [-1])
+
+        size = tensor.lvector()
+        post_rc, outc = uniform(rng_R, low=low, high=high, size=size, ndim=1)
+        fc = compile.function([rng_R, low, high, size], [post_rc, outc], accept_inplace=True)
+        post0c, val0c = fc(post1b, [-4., -2], [-1, 0], [2])
+        post1c, val1c = fc(post0c, [-4.], [-1], [1])
+        numpy_val0c = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
+        numpy_val1c = numpy_rng.uniform(low=[-4.], high=[-1])
+        assert numpy.all(val0c == numpy_val0c)
+        assert numpy.all(val1c == numpy_val1c)
+        self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [1])
+        self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [1,2])
+        self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [2,1])
+        self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1], [1])
+        #TODO: do we want that?
+        #self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1], [2])
+
+    def test_broadcast_arguments(self):
+        rng_R = random_state_type()
+        low = tensor.vector()
+        high = tensor.col()
+        post_r, out = uniform(rng_R, low=low, high=high)
+        assert out.ndim == 2
+        f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
+
+        rng_state0 = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+        post0, val0 = f(rng_state0, [-5, .5, 0, 1], [[1.]])
+        post1, val1 = f(post0, [.9], [[1.], [1.1], [1.5]])
+        post2, val2 = f(post1, [-5, .5, 0, 1], [[1.], [1.1], [1.5]])
+
+        numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[1.])
+        numpy_val1 = numpy_rng.uniform(low=[.9], high=[[1.], [1.1], [1.5]])
+        numpy_val2 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[[1.], [1.1], [1.5]])
+
+        assert numpy.all(val0 == numpy_val0)
+        assert numpy.all(val1 == numpy_val1)
+        assert numpy.all(val2 == numpy_val2)
+
+    def test_uniform_vector(self):
+        rng_R = random_state_type()
+        low = tensor.vector()
+        high = tensor.vector()
+        post_r, out = uniform(rng_R, low=low, high=high)
+        assert out.ndim == 1
+        f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
+
+        low_val = [.1, .2, .3]
+        high_val = [1.1, 2.2, 3.3]
+        rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+
+        # Arguments of size (3,)
+        rng0, val0 = f(rng, low_val, high_val)
+        numpy_val0 = numpy_rng.uniform(low=low_val, high=high_val)
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        rng1, val1 = f(rng0, low_val[:-1], high_val[:-1])
+        numpy_val1 = numpy_rng.uniform(low=low_val[:-1], high=high_val[:-1])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = compile.function([rng_R, low, high],
+                uniform(rng_R, low=low, high=high, size=(3,)),
+                accept_inplace=True)
+        rng2, val2 = g(rng1, low_val, high_val)
+        numpy_val2 = numpy_rng.uniform(low=low_val, high=high_val, size=(3,))
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, rng2, low_val[:-1], high_val[:-1])
+
+    def test_binomial_vector(self):
+        rng_R = random_state_type()
+        n = tensor.lvector()
+        prob = tensor.vector()
+        post_r, out = binomial(rng_R, n=n, prob=prob)
+        assert out.ndim == 1
+        f = compile.function([rng_R, n, prob], [post_r, out], accept_inplace=True)
+
+        n_val = [1, 2, 3]
+        prob_val = [.1, .2, .3]
+        rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+
+        # Arguments of size (3,)
+        rng0, val0 = f(rng, n_val, prob_val)
+        numpy_val0 = numpy_rng.binomial(n=n_val, p=prob_val)
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        rng1, val1 = f(rng0, n_val[:-1], prob_val[:-1])
+        numpy_val1 = numpy_rng.binomial(n=n_val[:-1], p=prob_val[:-1])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = compile.function([rng_R, n, prob],
+                binomial(rng_R, n=n, prob=prob, size=(3,)),
+                accept_inplace=True)
+        rng2, val2 = g(rng1, n_val, prob_val)
+        numpy_val2 = numpy_rng.binomial(n=n_val, p=prob_val, size=(3,))
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, rng2, n_val[:-1], prob_val[:-1])
+
+    def test_normal_vector(self):
+        rng_R = random_state_type()
+        avg = tensor.vector()
+        std = tensor.vector()
+        post_r, out = normal(rng_R, avg=avg, std=std)
+        assert out.ndim == 1
+        f = compile.function([rng_R, avg, std], [post_r, out], accept_inplace=True)
+
+        avg_val = [1, 2, 3]
+        std_val = [.1, .2, .3]
+        rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+
+        # Arguments of size (3,)
+        rng0, val0 = f(rng, avg_val, std_val)
+        numpy_val0 = numpy_rng.normal(loc=avg_val, scale=std_val)
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        rng1, val1 = f(rng0, avg_val[:-1], std_val[:-1])
+        numpy_val1 = numpy_rng.normal(loc=avg_val[:-1], scale=std_val[:-1])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = compile.function([rng_R, avg, std],
+                normal(rng_R, avg=avg, std=std, size=(3,)),
+                accept_inplace=True)
+        rng2, val2 = g(rng1, avg_val, std_val)
+        numpy_val2 = numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,))
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, rng2, avg_val[:-1], std_val[:-1])
+
+    def test_random_integers_vector(self):
+        rng_R = random_state_type()
+        low = tensor.lvector()
+        high = tensor.lvector()
+        post_r, out = random_integers(rng_R, low=low, high=high)
+        assert out.ndim == 1
+        f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
+
+        low_val = [.1, .2, .3]
+        high_val = [1.1, 2.2, 3.3]
+        rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+
+        # Arguments of size (3,)
+        rng0, val0 = f(rng, low_val, high_val)
+        numpy_val0 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+            for lv, hv in zip(low_val, high_val)])
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        rng1, val1 = f(rng0, low_val[:-1], high_val[:-1])
+        numpy_val1 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+            for lv, hv in zip(low_val[:-1], high_val[:-1])])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = compile.function([rng_R, low, high],
+                random_integers(rng_R, low=low, high=high, size=(3,)),
+                accept_inplace=True)
+        rng2, val2 = g(rng1, low_val, high_val)
+        numpy_val2 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+            for lv, hv in zip(low_val, high_val)])
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, rng2, low_val[:-1], high_val[:-1])
+
+    # Vectorized permutation don't make sense: the only parameter, n,
+    # controls one dimension of the returned tensor.
+
+    def test_multinomial_vector(self):
+        rng_R = random_state_type()
+        n = tensor.lvector()
+        pvals = tensor.matrix()
+        post_r, out = multinomial(rng_R, n=n, pvals=pvals)
+        assert out.ndim == 2
+        f = compile.function([rng_R, n, pvals], [post_r, out], accept_inplace=True)
+
+        n_val = [1, 2, 3]
+        pvals_val = [[.1, .9], [.2, .8], [.3, .7]]
+        rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(55)
+
+        # Arguments of size (3,)
+        rng0, val0 = f(rng, n_val, pvals_val)
+        numpy_val0 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+            for nv, pv in zip(n_val, pvals_val)])
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        rng1, val1 = f(rng0, n_val[:-1], pvals_val[:-1])
+        numpy_val1 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+            for nv, pv in zip(n_val[:-1], pvals_val[:-1])])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = compile.function([rng_R, n, pvals],
+                multinomial(rng_R, n=n, pvals=pvals, size=(3,)),
+                accept_inplace=True)
+        rng2, val2 = g(rng1, n_val, pvals_val)
+        numpy_val2 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+            for nv, pv in zip(n_val, pvals_val)])
+        print 'val2 =', val2
+        print 'numpy_val2 =', numpy_val2
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, rng2, n_val[:-1], pvals_val[:-1])
+
 if __name__ == '__main__':
     from theano.tests import main
     main("test_raw_random")
