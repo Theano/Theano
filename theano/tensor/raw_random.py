@@ -13,10 +13,11 @@ from theano.compile import optdb
 class RandomStateType(gof.Type):
     """A Type wrapper for numpy.RandomState
 
-    The reason this exists (and `Generic` doesn't suffice) is that RandomState objects that
-    would appear to be equal do not compare equal with the '==' operator.  This Type exists to
-    provide an equals function that is used by DebugMode.
-    
+    The reason this exists (and `Generic` doesn't suffice) is that
+    RandomState objects that would appear to be equal do not compare
+    equal with the '==' operator.  This Type exists to provide an equals
+    function that is used by DebugMode.
+
     """
     def __str__(self):
         return 'RandomStateType'
@@ -53,12 +54,14 @@ class RandomFunction(gof.Op):
     def __init__(self, fn, outtype, inplace=False, ndim_added=0 ):
         """
         :param fn: a member function of numpy.RandomState
-        Technically, any function with a signature like the ones in numpy.random.RandomState
-        will do.  This function must accept the shape (sometimes called size) of the output as
-        the last positional argument.
+        Technically, any function with a signature like the ones in
+        numpy.random.RandomState will do.  This function must accept
+        the shape (sometimes called size) of the output as the last
+        positional argument.
 
-        :type fn: string or function reference.  A string will be interpreted as the name of a
-        member function of numpy.random.RandomState.
+        :type fn: string or function reference.  A string will
+        be interpreted as the name of a member function of
+        numpy.random.RandomState.
 
         :param outtype: the theano Type of the output
 
@@ -96,8 +99,6 @@ class RandomFunction(gof.Op):
           self.fn = getattr(numpy.random.RandomState, fn)
         else:
           self.fn = fn
-        #backport
-        #self.fn = getattr(numpy.random.RandomState, fn) if isinstance(fn, str) else fn
         self.outtype = outtype
         self.inplace = inplace
         if self.inplace:
@@ -162,9 +163,10 @@ class RandomFunction(gof.Op):
         assert type(r) == numpy.random.RandomState
         r_orig = r
 
-        # If shape == [], that means numpy will compute the correct shape,
-        # numpy uses shape "None" to represent that. Else, numpy expects a tuple.
-        # TODO: compute the appropriate shape?
+        # If shape == [], that means no shape is enforced, and numpy is
+        # trusted to draw the appropriate number of samples, numpy uses
+        # shape "None" to represent that. Else, numpy expects a tuple.
+        # TODO: compute the appropriate shape, and pass it to numpy.
         if len(shape) == 0:
             shape = None
         else:
@@ -199,7 +201,6 @@ class RandomFunction(gof.Op):
             elif self.ndim_added > 0 and shape != rval.shape[:-self.ndim_added]:
                 raise ValueError('Shape mismatch: "out" should have shape starting with %s (plus %i extra dimensions), but the value produced by "perform" has shape %s'\
                         % (shape, self.ndim_added, rval.shape))
-
 
         out[0] = rval
 
@@ -238,7 +239,8 @@ def _infer_ndim(ndim, shape, *args):
                             % (ndim, shape_ndim, shape))
 
     elif shape is None:
-        # The shape will be computed at runtime, but we need to know ndim
+        # The number of drawn samples will be determined automatically,
+        # but we need to know ndim
         v_shape = tensor.constant([], dtype='int64')
         if ndim is None:
             ndim = args_ndim
@@ -276,11 +278,14 @@ def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None):
 
 def binomial(random_state, size=None, n=1, prob=0.5, ndim=None):
     """
-    Sample n times with probability of success prob for each trial, return the number of
-    successes.
+    Sample n times with probability of success prob for each trial,
+    return the number of successes.
 
-    If the size argument is ambiguous on the number of dimensions, the first argument may be a
-    plain integer to supplement the missing information.
+    If the size argument is ambiguous on the number of dimensions, ndim
+    may be a plain integer to supplement the missing information.
+
+    If size is None, the output shape will be determined by the shapes
+    of n and prob.
     """
     n = tensor.as_tensor_variable(n)
     prob = tensor.as_tensor_variable(prob)
@@ -291,13 +296,14 @@ def binomial(random_state, size=None, n=1, prob=0.5, ndim=None):
 
 def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None):
     """
-    Usage: normal(random_state, size,
     Sample from a normal distribution centered on avg with
-    the specified standard deviation (std)
+    the specified standard deviation (std).
 
-    If the size argument is ambiguous on the number of
-    dimensions, the first argument may be a plain integer
-    to supplement the missing information.
+    If the size argument is ambiguous on the number of dimensions, ndim
+    may be a plain integer to supplement the missing information.
+
+    If size is None, the output shape will be determined by the shapes
+    of avg and std.
     """
     avg = tensor.as_tensor_variable(avg)
     std = tensor.as_tensor_variable(std)
@@ -386,12 +392,13 @@ def random_integers_helper(random_state, low, high, size):
 
 def random_integers(random_state, size=None, low=0, high=1, ndim=None):
     """
-    Usage: random_integers(random_state, size, low=0, high=1)
     Sample a random integer between low and high, both inclusive.
 
-    If the size argument is ambiguous on the number of
-    dimensions, the first argument may be a plain integer
-    to supplement the missing information.
+    If the size argument is ambiguous on the number of dimensions, ndim
+    may be a plain integer to supplement the missing information.
+
+    If size is None, the output shape will be determined by the shapes
+    of low and high.
     """
     low = tensor.as_tensor_variable(low)
     high = tensor.as_tensor_variable(high)
@@ -410,7 +417,7 @@ def permutation_helper(random_state, n, shape):
     output shape will be (p,q,n), because each permutation is of size n.
 
     If you wish to perform a permutation of the elements of an existing vector,
-    see shuffle (to be implemented).
+    see shuffle_row_elements.
     """
     # n should be a 0-dimension array
     assert n.shape == ()
@@ -437,10 +444,11 @@ def permutation(random_state, size=None, n=1, ndim=None):
     will be generated, and the output shape will be (p,q,n), because each
     permutation is of size n.
 
-    Theano tries to infer the number of dimensions from the length of the size argument, but you
-    may always specify it with the `ndim` parameter.
+    Theano tries to infer the number of dimensions from the length of
+    the size argument and the shape of n, but you may always specify it
+    with the `ndim` parameter.
 
-    .. note:: 
+    .. note::
         Note that the output will then be of dimension ndim+1.
     """
     ndim, size = _infer_ndim(ndim, size)
@@ -537,14 +545,16 @@ def multinomial_helper(random_state, n, pvals, size):
 
 def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5], ndim=None):
     """
-    Sample n times from a multinomial distribution defined by probabilities pvals,
-    as many times as required by size. For instance, if size=(p,q), p*q
-    samples will be drawn, and the output shape will be (p,q,len(pvals)).
+    Sample n times from a multinomial distribution defined by
+    probabilities pvals, as many times as required by size. For
+    instance, if size=(p,q), p*q samples will be drawn, and the output
+    shape will be (p,q,len(pvals)).
 
-    Theano tries to infer the number of dimensions from the length of the size argument, but you
-    may always specify it with the `ndim` parameter.
+    Theano tries to infer the number of dimensions from the length of
+    the size argument and the shapes of n and pvals, but you may always
+    specify it with the `ndim` parameter.
 
-    .. note:: 
+    .. note::
         Note that the output will then be of dimension ndim+1.
     """
     n = tensor.as_tensor_variable(n)
@@ -572,44 +582,44 @@ class RandomStreamsBase(object):
 
     def binomial(self, size=None, n=1, prob=0.5, ndim=None):
         """
-        Sample n times with probability of success prob for each trial, return the number of
-        successes.
+        Sample n times with probability of success prob for each trial,
+        return the number of successes.
 
-        If the size argument is ambiguous on the number of dimensions, the first argument may be a
-        plain integer to supplement the missing information.
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
         """
         return self.gen(binomial, size, n, prob, ndim=ndim)
 
     def uniform(self, size=None, low=0.0, high=1.0, ndim=None):
         """
-        Sample a tensor of given size whose element from a uniform distribution between low and high.
+        Sample a tensor of given size whose element from a uniform
+        distribution between low and high.
 
-        If the size argument is ambiguous on the number of
-        dimensions, the first argument may be a plain integer
-        to supplement the missing information.
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
         """
         return self.gen(uniform, size, low, high, ndim=ndim)
 
     def normal(self, size=None, avg=0.0, std=1.0, ndim=None):
         """
-        Usage: normal(random_state, size,
         Sample from a normal distribution centered on avg with
-        the specified standard deviation (std)
+        the specified standard deviation (std).
 
-        If the size argument is ambiguous on the number of
-        dimensions, the first argument may be a plain integer
-        to supplement the missing information.
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
         """
         return self.gen(normal, size, avg, std, ndim=ndim)
 
     def random_integers(self, size=None, low=0, high=1, ndim=None):
         """
-        Usage: random_integers(random_state, size, low=0, high=1)
         Sample a random integer between low and high, both inclusive.
 
-        If the size argument is ambiguous on the number of
-        dimensions, the first argument may be a plain integer
-        to supplement the missing information.
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
         """
         return self.gen(random_integers, size, low, high, ndim=ndim)
 
@@ -620,8 +630,9 @@ class RandomStreamsBase(object):
         will be generated, and the output shape will be (p,q,n), because each
         permutation is of size n.
 
-        Theano tries to infer the number of dimensions from the length of the size argument, but you
-        may always specify it with the `ndim` parameter.
+        Theano tries to infer the number of dimensions from the length
+        of the size argument and the shape of n, but you may always
+        specify it with the `ndim` parameter.
 
         .. note::
             Note that the output will then be of dimension ndim+1.
@@ -630,12 +641,14 @@ class RandomStreamsBase(object):
 
     def multinomial(self, size=None, n=1, pvals=[0.5, 0.5], ndim=None):
         """
-        Sample n times from a multinomial distribution defined by probabilities pvals,
-        as many times as required by size. For instance, if size=(p,q), p*q
-        samples will be drawn, and the output shape will be (p,q,len(pvals)).
+        Sample n times from a multinomial distribution defined by
+        probabilities pvals, as many times as required by size. For
+        instance, if size=(p,q), p*q samples will be drawn, and the
+        output shape will be (p,q,len(pvals)).
 
-        Theano tries to infer the number of dimensions from the length of the size argument, but you
-        may always specify it with the `ndim` parameter.
+        Theano tries to infer the number of dimensions from the length
+        of the size argument and the shapes of n and pvals, but you may
+        always specify it with the `ndim` parameter.
 
         .. note::
             Note that the output will then be of dimension ndim+1.
@@ -645,8 +658,8 @@ class RandomStreamsBase(object):
     def shuffle_row_elements(self, input):
         """Return a variable with every row (rightmost index) shuffled.
 
-        This uses permutation random variable internally, available via the ``.permutation``
-        attribute of the return value.
+        This uses permutation random variable internally, available via
+        the ``.permutation`` attribute of the return value.
         """
         perm = self.permutation(size=input.shape[:-1], n=input.shape[-1], ndim=input.ndim-1)
         shuffled = tensor.permute_row_elements(input, perm)

@@ -649,8 +649,6 @@ class T_random_function(unittest.TestCase):
         rng2, val2 = g(rng1, n_val, pvals_val)
         numpy_val2 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
             for nv, pv in zip(n_val, pvals_val)])
-        print 'val2 =', val2
-        print 'numpy_val2 =', numpy_val2
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, n_val[:-1], pvals_val[:-1])
 
