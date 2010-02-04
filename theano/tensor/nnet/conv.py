@@ -1516,7 +1516,7 @@ if(mode != VALID && mode != FULL){
 
 if(dim_zz[0]<=0 || dim_zz[1]<=0){
 PyErr_Format(PyExc_ValueError,
-      "Output dimensions are not valid %%dx%%d",dim_zz[0],dim_zz[1]);
+      "Output dimensions are not valid %%ldx%%ld",(long int)dim_zz[0],(long int)dim_zz[1]);
       %(fail)s;
 }
 
