@@ -59,9 +59,9 @@ The parameter in T.dscalar('x') in the first line is the name of this variable(i
 
 The function I compiled is too slow, what's up?
 -----------------------------------------------
-
-First, make sure you're running in FAST_RUN mode, by passing
-``mode='FAST_RUN'`` to ``theano.function`` or ``theano.make``. Some
+First, make sure you're running in FAST_RUN mode, by passing ``mode='FAST_RUN'``
+to ``theano.function`` or ``theano.make`` or by setting to ``PROFILE_MODE`` 
+the flags :attr:`config.mode`. Some
 operations have excruciatingly slow Python implementations and that
 can negatively effect the performance of FAST_COMPILE.
 
