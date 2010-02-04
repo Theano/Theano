@@ -306,6 +306,84 @@ def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None):
             tensor.TensorType(dtype = 'float64', broadcastable = (False,)*ndim) )
     return op(random_state, size, avg, std)
 
+def random_integers_helper(random_state, low, high, size):
+    '''
+    Helper function to draw random integers.
+
+    This is a generalization of numpy.random.random_integers to the case where
+    low and high are tensors.
+    '''
+    # Figure out the output shape
+    if size is not None:
+        out_ndim = len(size)
+    else:
+        out_ndim = max(low.ndim, high.ndim)
+    # broadcast low and high to out_ndim dimensions
+    if low.ndim > out_ndim:
+        raise ValueError('low.ndim (%i) should not be larger than len(size) (%i)' % (low.ndim, out_ndim),
+                low, size)
+    if low.ndim < out_ndim:
+        low = low.reshape((1,)*(out_ndim-low.ndim) + low.shape)
+
+    if high.ndim > out_ndim:
+        raise ValueError('high.ndim (%i) should not be larger than len(size) (%i)' % (high.ndim, out_ndim),
+                high, size)
+    if high.ndim < out_ndim:
+        high = high.reshape((1,)*(out_ndim-high.ndim) + high.shape)
+
+    if size is not None:
+        out_size = tuple(size)
+    else:
+        out_size = ()
+        for dim in range(out_ndim):
+            dim_len = max(low.shape[dim], high.shape[dim])
+            out_size = out_size + (dim_len,)
+
+    # Build the indices over which to loop
+    # This process leads to the same result as numpy.ndindex for out_ind,
+    # but allows for indices of low and high to be repeated if these
+    # tensors are broadcasted along some dimensions.
+    # TODO: move the logic somewhere else
+    out_ind = [()]
+    low_ind = [()]
+    high_ind = [()]
+    for dim in range(out_ndim):
+        _out_ind = []
+        _low_ind = []
+        _high_ind = []
+
+        o_range = range(out_size[dim])
+        if low.shape[dim] == out_size[dim]:
+            l_range = o_range
+        elif low.shape[dim] == 1: #broadcast
+            l_range = (0,)*out_size[dim]
+        else:
+            raise ValueError('low.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
+                    % (dim, low.shape[dim], dim, out_size[dim]), low, size)
+        if high.shape[dim] == out_size[dim]:
+            h_range = o_range
+        elif high.shape[dim] == 1: #broadcast
+            h_range = (0,)*out_size[dim]
+        else:
+            raise ValueError('high.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
+                    % (dim, high.shape[dim], dim, out_size[dim]), high, size)
+
+        for (ol, ll, hl) in zip(out_ind, low_ind, high_ind):
+            for oi, li, hi in zip(o_range, l_range, h_range):
+                _out_ind.append(ol + (oi,))
+                _low_ind.append(ll + (li,))
+                _high_ind.append(hl + (hi,))
+        out_ind = _out_ind
+        low_ind = _low_ind
+        high_ind = _high_ind
+
+    # Iterate over these indices, drawing one sample at a time from numpy
+    out = numpy.ndarray(out_size)
+    for oi, li, hi in zip(out_ind, low_ind, high_ind):
+        out[oi] = random_state.random_integers(low = low[li], high = high[li])
+
+    return out
+
 def random_integers(random_state, size=None, low=0, high=1, ndim=None):
     """
     Usage: random_integers(random_state, size, low=0, high=1)
@@ -318,7 +396,7 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None):
     low = tensor.as_tensor_variable(low)
     high = tensor.as_tensor_variable(high)
     ndim, size = _infer_ndim(ndim, size, low, high)
-    op = RandomFunction('random_integers',
+    op = RandomFunction(random_integers_helper,
             tensor.TensorType(dtype = 'int64', broadcastable = (False,)*ndim) )
     return op(random_state, size, low, high)
 
@@ -372,6 +450,91 @@ def permutation(random_state, size=None, n=1, ndim=None):
             ndim_added=1)
     return op(random_state, size, n)
 
+def multinomial_helper(random_state, n, pvals, size):
+    '''
+    Helper function drawing from multinomial distributions.
+
+    This is a generalization of numpy.random.multinomial to the case where
+    n and pvals are tensors.
+    '''
+    # Figure out the shape if it's None
+    # Note: the output ndim will be ndim+1, because the multinomial
+    # adds a dimension. The length of that dimension is pvals.shape[-1].
+    if size is not None:
+        ndim = len(size)
+    else:
+        ndim = max(n.ndim, pvals.ndim-1)
+    out_ndim = ndim+1
+
+    # broadcast n to ndim dimensions and pvals to ndim+1
+    if n.ndim > ndim:
+        raise ValueError('n.ndim (%i) should not be larger than len(size) (%i)' % (n.ndim, ndim),
+                n, size)
+    if n.ndim < ndim:
+        n = n.reshape((1,)*(ndim-n.ndim) + n.shape)
+
+    if pvals.ndim-1 > ndim:
+        raise ValueError('pvals.ndim-1 (%i) should not be larger than len(size) (%i)' % (pvals.ndim-1, ndim),
+                pvals, size)
+    if pvals.ndim-1 < ndim:
+        pvals = pvals.reshape((1,)*(ndim-pvals.ndim+1) + pvals.shape)
+
+    if size is not None:
+        size = tuple(size)
+    else:
+        size = ()
+        for dim in range(ndim):
+            dim_len = max(n.shape[dim], pvals.shape[dim])
+            size = size + (dim_len,)
+    out_size = size+(pvals.shape[-1],)
+
+    # Build the indices over which to loop
+    # This process leads to the same result as numpy.ndindex for main_ind,
+    # but allows for indices of n and pvals to be repeated if these tensors
+    # are broadcasted along some dimensions.
+    # TODO: move the logic somewhere else
+    # Note that here, pvals_ind and main_ind index the rows (inner-most
+    # 1D subtensors) of pvals and out (respectively), not their
+    # individual elements
+    main_ind = [()]
+    n_ind = [()]
+    pvals_ind = [()]
+    for dim in range(ndim):
+        _main_ind = []
+        _n_ind = []
+        _pvals_ind = []
+
+        m_range = range(size[dim])
+        if n.shape[dim] == size[dim]:
+            n_range = m_range
+        elif n.shape[dim] == 1: #broadcast
+            n_range = (0,)*size[dim]
+        else:
+            raise ValueError('n.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
+                    % (dim, n.shape[dim], dim, size[dim]), n, size)
+        if pvals.shape[dim] == size[dim]:
+            p_range = m_range
+        elif pvals.shape[dim] == 1: #broadcast
+            p_range = (0,)*size[dim]
+        else:
+            raise ValueError('pvals.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
+                    % (dim, pvals.shape[dim], dim, size[dim]), pvals, size)
+
+        for (ml, nl, pl) in zip(main_ind, n_ind, pvals_ind):
+            for mi, ni, pi in zip(m_range, n_range, p_range):
+                _main_ind.append(ml + (mi,))
+                _n_ind.append(nl + (ni,))
+                _pvals_ind.append(pl + (pi,))
+        main_ind = _main_ind
+        n_ind = _n_ind
+        pvals_ind = _pvals_ind
+
+    # Iterate over these indices, drawing from one multinomial at a time from numpy
+    out = numpy.ndarray(out_size)
+    for mi, ni, pi in zip(main_ind, n_ind, pvals_ind):
+        out[mi] = random_state.multinomial(n=n[ni], pvals=pvals[pi])
+    return out
+
 def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5], ndim=None):
     """
     Sample n times from a multinomial distribution defined by probabilities pvals,
@@ -387,7 +550,7 @@ def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5], ndim=None):
     n = tensor.as_tensor_variable(n)
     pvals = tensor.as_tensor_variable(pvals)
     ndim, size = _infer_ndim(ndim, size, n, pvals[0])
-    op = RandomFunction('multinomial',
+    op = RandomFunction(multinomial_helper,
             tensor.TensorType(dtype = 'int64', broadcastable = (False,)*(ndim+1)),
             ndim_added=1)
     return op(random_state, size, n, pvals)
