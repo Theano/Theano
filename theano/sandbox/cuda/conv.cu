@@ -673,7 +673,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
     const int nkern=CudaNdarray_HOST_DIMS(kern)[0];
     const int img_wid=CudaNdarray_HOST_DIMS(img)[3];
     const int img_len=CudaNdarray_HOST_DIMS(img)[2];
-    const int kern_wid=CudaNdarray_HOST_DIMS(img)[3];
+    const int kern_wid=CudaNdarray_HOST_DIMS(kern)[3];
     const int kern_len=CudaNdarray_HOST_DIMS(kern)[2];
     const int out_wid=CudaNdarray_HOST_DIMS(out)[3];
     const int out_len=CudaNdarray_HOST_DIMS(out)[2];
