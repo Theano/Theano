@@ -3603,10 +3603,15 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
 
         o_fn = function(tensor_pt, o_output)
         o_fn_out = o_fn(*[p.copy() for p in pt])
+        if isinstance(o_fn_out, tuple) or isinstance(o_fn_out, list):
+            raise TypeError('It seems like you are trying to use verify_grad '
+                    'on an op or a function which outputs a list: there should'
+                    ' be a single (array-like) output instead')
 
         # random_projection should not have elements too small,
         # otherwise too much precision is lost in numerical gradient
         random_projection = rng.rand(*o_fn_out.shape) + 0.5
+
         if cast_to_output_type:
             random_projection = numpy.array(random_projection,
                                             dtype=o_output.dtype)
