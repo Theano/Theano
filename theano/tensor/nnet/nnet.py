@@ -495,7 +495,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return tensor.hashtype(self)
-
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, x, b, y_idx):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
@@ -673,6 +674,8 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return tensor.hashtype(self)
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, dy, sm, y_idx,**kwargs):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
