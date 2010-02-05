@@ -682,16 +682,20 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         y_idx = tensor.as_tensor_variable(y_idx)
         return gof.Apply(self, [dy, sm, y_idx],[sm.type.make_variable()])
     def perform(self, node, input_storage, output_storage):
-        dy,sm,y_idx = input_storage
+        dy, sm, y_idx = input_storage
         dx = numpy.zeros_like(sm)
         for i in xrange(sm.shape[0]):
             dx[i] = dy[i] * sm[i] #vector scale
             dx[i, y_idx[i]] -= dy[i] #scalar decrement
         output_storage[0][0] = dx
     def grad(self, (dy, sm, y_idx), (g_dx, )):
-        # Note: currently we do not care about computing the gradient of dy,
-        # since we usually should not need it.
-        return [None, dy * g_dx, None]
+        # TODO: currently we do not compute the gradient w.r.t. dy, because
+        # advanced indexing is not working yet. When it works, do it to avoid
+        # potentially misleading behavior in gradient computations! (although
+        # typically we should not need the gradient w.r.t. dy).
+        # y_idx_range = tensor.arange(y_idx.shape[0])
+        # return [g_dx * tensor.AdvancedIncSubtensor((y_idx_range, y_idx))(sm, -1, y_idx_range, y_idx), dy.dimshuffle(0, 'x') * g_dx, None]
+        return [None, dy.dimshuffle(0, 'x') * g_dx, None]
     def c_code_cache_version(self):
         return (2,)
     def c_code(self, node, name, (dnll, sm, y_idx), (dx,), sub):
