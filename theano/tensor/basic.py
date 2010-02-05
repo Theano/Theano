@@ -3578,7 +3578,8 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
 
     if rng is None:
         rng = numpy.random
-        unittest_tools.seed_rng()
+        from theano import tests as theano_tests # TODO This is an ugly import. Fix?
+        theano_tests.unittest_tools.seed_rng()
 
     def function(inputs, output):
         if mode is None:
