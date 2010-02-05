@@ -2,16 +2,19 @@ __docformat__ = "restructuredtext en"
 import sys
 import unittest
 import numpy as N
-from theano.tests import unittest_tools
+from theano.tests import unittest_tools as utt
 
 from theano.tensor.raw_random import *
-from theano.tensor import raw_random 
+from theano.tensor import raw_random
 
 from theano import tensor
 
 from theano import compile, gof
 
 class T_random_function(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
     def test_basic_usage(self):
         rf = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector)
         assert not rf.inplace
@@ -27,7 +30,7 @@ class T_random_function(unittest.TestCase):
 
         f = compile.function([rng_R], out)
 
-        rng_state0 = numpy.random.RandomState(55)
+        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
 
         f_0 = f(rng_state0)
         f_1 = f(rng_state0)
@@ -52,8 +55,11 @@ class T_random_function(unittest.TestCase):
         post_r4, out4 = rf4(rng_R, (4,), -4, 4)
 
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r4, mutable=True)], 
-                [out2, out4, out2_4, out2_4_4], 
+                [compile.In(rng_R,
+                            value=numpy.random.RandomState(utt.fetch_seed()),
+                            update=post_r4,
+                            mutable=True)],
+                [out2, out4, out2_4, out2_4_4],
                 accept_inplace=True)
 
         f2, f4, f2_4, f2_4_4 = f()
@@ -74,10 +80,10 @@ class T_random_function(unittest.TestCase):
         post_r2, out2 = rf2(rng_R, (4,), 0., 1.)
 
         f = compile.function(
-                [compile.In(rng_R, 
-                    value=numpy.random.RandomState(55),
-                    update=post_r2, 
-                    mutable=True)], 
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r2,
+                    mutable=True)],
                 out2,
                 mode='FAST_RUN') #DEBUG_MODE can't pass the id-based test below
 
@@ -108,7 +114,10 @@ class T_random_function(unittest.TestCase):
         self.assertRaises(ValueError, uniform, rng_R, (4,), ndim=2)
 
         f_ok = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_out2_4_4, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_out2_4_4,
+                    mutable=True)],
                 [out4, out1_4, out2_4_4],
                 accept_inplace=True)
 
@@ -140,9 +149,6 @@ class T_random_function(unittest.TestCase):
         uni_0 = ndim_added_deco(0)
         uni_m1 = ndim_added_deco(-1)
 
-        #uni_1 = random_function(numpy.random.RandomState.uniform, 'float64', -2.0, 2.0, ndim_added=1)
-        #uni_0 = random_function(numpy.random.RandomState.uniform, 'float64', -2.0, 2.0, ndim_added=0)
-        #uni_m1 = random_function(numpy.random.RandomState.uniform, 'float64', -2.0, 2.0, ndim_added=-1)
         rng_R = random_state_type()
 
         p_uni11, uni11 = uni_1(rng_R, size=(4,))
@@ -160,19 +166,29 @@ class T_random_function(unittest.TestCase):
         self.assertEqual(unim12.ndim, 1)
 
         f11 = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=p_uni11, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=p_uni11, mutable=True)],
                 [uni11], accept_inplace=True)
         f12 = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=p_uni12, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=p_uni12, mutable=True)],
                 [uni12], accept_inplace=True)
         fm11 = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=p_unim11, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=p_unim11, mutable=True)],
                 [unim11], accept_inplace=True)
         fm12 = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=p_unim12, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=p_unim12, mutable=True)],
                 [unim12], accept_inplace=True)
         f0 = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=p_uni02, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=p_uni02, mutable=True)],
                 [uni01, uni02], accept_inplace=True)
         self.assertRaises(ValueError, f11)
         self.assertRaises(ValueError, f12)
@@ -191,10 +207,12 @@ class T_random_function(unittest.TestCase):
         post_r, out = uniform(rng_R, (4,), -2.0, 2.0)
 
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.uniform(-2.0, 2.0, size=(4,))
@@ -215,10 +233,12 @@ class T_random_function(unittest.TestCase):
         post_r, bin = binomial(rng_R, (7,12), 5, 0.8)
 
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
                 [bin], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.binomial(5, 0.8, size=(7,12))
@@ -238,10 +258,12 @@ class T_random_function(unittest.TestCase):
         post_r, out = normal(rng_R, (2,3), 4.0, 2.0)
 
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.normal(4.0, 2.0, size=(2,3))
@@ -262,10 +284,12 @@ class T_random_function(unittest.TestCase):
         post_r, out = random_integers(rng_R, (11,8), -3, 16)
 
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.random_integers(-3, 16, size=(11,8))
@@ -290,10 +314,12 @@ class T_random_function(unittest.TestCase):
         post_r, out = rf(rng_R, (7,), 8)
 
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         # numpy_rng.permutation outputs one vector at a time,
@@ -312,7 +338,9 @@ class T_random_function(unittest.TestCase):
         rf0 = RandomFunction(permutation_helper, tensor.imatrix, 8)
         post_r0, out0 = rf0(rng_R, (7,), 8)
         f0 = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r0, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r0, mutable=True)],
                 [out0], accept_inplace=True)
         self.assertRaises(ValueError, f0)
 
@@ -320,7 +348,9 @@ class T_random_function(unittest.TestCase):
         rf2 = RandomFunction(permutation_helper, tensor.imatrix, 8, ndim_added=2)
         post_r2, out2 = rf2(rng_R, (7,), 8)
         f2 = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r2, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r2, mutable=True)],
                 [out2], accept_inplace=True)
         self.assertRaises(ValueError, f2)
 
@@ -330,10 +360,12 @@ class T_random_function(unittest.TestCase):
         post_r, out = permutation(rng_R, size=(9,), n=6)
         print 'OUT NDIM', out.ndim
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         # Check over two calls to see if the random state is correctly updated.
         # numpy_rng.permutation outputs one vector at a time,
         # so we call it iteratively to generate all the samples.
@@ -355,10 +387,12 @@ class T_random_function(unittest.TestCase):
         post_r, out = multinomial(rng_R, (7,3), 6, [0.2]*5)
 
         f = compile.function(
-                [compile.In(rng_R, value=numpy.random.RandomState(55), update=post_r, mutable=True)],
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(55)
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0, = f()
         val1, = f()
         numpy_val0 = numpy_rng.multinomial(6, [0.2]*5, (7,3))
@@ -376,14 +410,10 @@ class T_random_function(unittest.TestCase):
 
     def test_symbolic_shape(self):
         rng_R = random_state_type()
-
         shape = tensor.lvector()
-
         post_r, out = uniform(rng_R, shape, ndim=2)
-
         f = compile.function([rng_R, shape], out)
-
-        rng_state0 = numpy.random.RandomState(55)
+        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
 
         assert f(rng_state0, [2,3]).shape == (2,3)
         assert f(rng_state0, [4,8]).shape == (4,8)
@@ -396,8 +426,8 @@ class T_random_function(unittest.TestCase):
         post_r, out = uniform(rng_R)
         f = compile.function([rng_R], [post_r, out], accept_inplace=True)
 
-        rng_state0 = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0)
         post1, val1 = f(post0)
         numpy_val0 = numpy_rng.uniform()
@@ -420,8 +450,8 @@ class T_random_function(unittest.TestCase):
         assert out.ndim == 1
         f = compile.function([rng_R, low], [post_r, out], accept_inplace=True)
 
-        rng_state0 = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0, [-5, .5, 0, 1])
         post1, val1 = f(post0, [.9])
         numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=1)
@@ -469,8 +499,8 @@ class T_random_function(unittest.TestCase):
         assert out.ndim == 2
         f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
 
-        rng_state0 = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0, [-5, .5, 0, 1], [[1.]])
         post1, val1 = f(post0, [.9], [[1.], [1.1], [1.5]])
         post2, val2 = f(post1, [-5, .5, 0, 1], [[1.], [1.1], [1.5]])
@@ -493,8 +523,8 @@ class T_random_function(unittest.TestCase):
 
         low_val = [.1, .2, .3]
         high_val = [1.1, 2.2, 3.3]
-        rng = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, low_val, high_val)
@@ -525,8 +555,8 @@ class T_random_function(unittest.TestCase):
 
         n_val = [1, 2, 3]
         prob_val = [.1, .2, .3]
-        rng = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, n_val, prob_val)
@@ -557,8 +587,8 @@ class T_random_function(unittest.TestCase):
 
         avg_val = [1, 2, 3]
         std_val = [.1, .2, .3]
-        rng = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, avg_val, std_val)
@@ -589,8 +619,8 @@ class T_random_function(unittest.TestCase):
 
         low_val = [.1, .2, .3]
         high_val = [1.1, 2.2, 3.3]
-        rng = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, low_val, high_val)
@@ -627,8 +657,8 @@ class T_random_function(unittest.TestCase):
 
         n_val = [1, 2, 3]
         pvals_val = [[.1, .9], [.2, .8], [.3, .7]]
-        rng = numpy.random.RandomState(55)
-        numpy_rng = numpy.random.RandomState(55)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, n_val, pvals_val)
