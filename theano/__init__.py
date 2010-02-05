@@ -62,7 +62,7 @@ from printing import \
 
 import tensor
 import scalar
-import sparse
+#import sparse #we don't import by default as we don't want to force having scipy installed.
 import gradient
 import gof
 
