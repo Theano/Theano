@@ -17,7 +17,8 @@ def info(*msg):
     _logger.info('INFO theano.gradient: '+' '.join(msg))
 
 _msg_retType = 'op.grad(...) returned a non-list'
-_msg_badlen = 'op.grad(...) returned wrong number of gradients'
+_msg_badlen = ('op.grad(...) returned wrong number of gradients (Op, '
+        'number of gradients, number of inputs)')
 
 def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     """

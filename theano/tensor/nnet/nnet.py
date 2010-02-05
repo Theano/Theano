@@ -688,8 +688,10 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             dx[i] = dy[i] * sm[i] #vector scale
             dx[i, y_idx[i]] -= dy[i] #scalar decrement
         output_storage[0][0] = dx
-    def grad(self, *args):
-        raise NotImplementedError()
+    def grad(self, (dy, sm, y_idx), (g_dx, )):
+        # Note: currently we do not care about computing the gradient of dy,
+        # since we usually should not need it.
+        return [None, dy * g_dx, None]
     def c_code_cache_version(self):
         return (2,)
     def c_code(self, node, name, (dnll, sm, y_idx), (dx,), sub):
