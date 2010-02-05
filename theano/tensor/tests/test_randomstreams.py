@@ -170,10 +170,7 @@ class T_RandomStreams(unittest.TestCase):
         # ndim specified, inconsistent with shape, should raise ValueError
         m3 = Module()
         m3.random = RandomStreams(234)
-        m3.fn = Method([], m3.random.uniform((2,2), ndim=1))
-        made3 = m3.make()
-        made3.random.initialize()
-        self.assertRaises(ValueError, made3.fn)
+        self.assertRaises(ValueError, m3.random.uniform, (2,2), ndim=1)
 
     def test_uniform(self):
         """Test that RandomStreams.uniform generates the same results as numpy"""

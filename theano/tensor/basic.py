@@ -1168,6 +1168,8 @@ class ScalarFromTensor(Op):
         out[0] = s.flatten()[0]
     def grad(self, (s,), (dt,)):
         return [TensorFromScalar(dt)]
+    def __str__(self):
+        return self.__class__.__name__
 scalar_from_tensor = ScalarFromTensor()
 
 

@@ -71,6 +71,8 @@ class GemmRelated(Op):
         return (type(self) == type(other))
     def __hash__(self):
         return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
     def c_support_code(self):
         #return cblas_header_text()
         mod_str = """

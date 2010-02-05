@@ -5,9 +5,6 @@
 #include <iostream>
 
 #include "cuda_ndarray.cuh"
-#ifndef DONT_UNROLL
-#define UNROLL_LOOP
-#endif
 
 /////////////////////////
 // Static helper methods

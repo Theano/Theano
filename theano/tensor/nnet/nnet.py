@@ -495,7 +495,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return tensor.hashtype(self)
-
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, x, b, y_idx):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
@@ -673,6 +674,8 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return tensor.hashtype(self)
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, dy, sm, y_idx,**kwargs):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
@@ -720,14 +723,14 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         }
         if (%(dnll)s->dimensions[0] != %(sm)s->dimensions[0])
         {
-            PyErr_Format(PyExc_ValueError, "dnll.shape[0] (%%d) != sm.shape[0] (%%d)",
-                        %(dnll)s->dimensions[0], %(sm)s->dimensions[0]);
-            //PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != sm.shape[0]");
+            PyErr_Format(PyExc_ValueError, "dnll.shape[0] (%%ld) != sm.shape[0] (%%ld)",
+                        (long int)%(dnll)s->dimensions[0], (long int)%(sm)s->dimensions[0]);
             %(fail)s;
         }
         if (%(dnll)s->dimensions[0] != %(y_idx)s->dimensions[0])
         {
-            PyErr_SetString(PyExc_ValueError, "dnll.shape[0] != y_idx.shape[0]");
+            PyErr_Format(PyExc_ValueError, "dnll.shape[0] (%%ld) != y_idx.shape[0] (%%ld)",
+                        (long int)%(dnll)s->dimensions[0], (long int)%(y_idx)s->dimensions[0]);
             %(fail)s;
         }
         if ((NULL == %(dx)s)
