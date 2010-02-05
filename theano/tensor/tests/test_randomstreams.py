@@ -2,20 +2,23 @@ __docformat__ = "restructuredtext en"
 
 import sys
 import unittest
-import numpy 
+import numpy
 
 from theano.tensor.randomstreams import RandomStreams, raw_random
 from theano.compile import Module, Method, Member
-from theano.tests import unittest_tools
+from theano.tests import unittest_tools as utt
 
 from theano import tensor
 from theano import compile, gof
 
 
 class T_RandomStreams(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
     def test_basics(self):
         m = Module()
-        m.random = RandomStreams(234)
+        m.random = RandomStreams(utt.fetch_seed())
         m.fn = Method([], m.random.uniform((2,2)))
         m.gn = Method([], m.random.normal((2,2)))
         made = m.make()
@@ -26,7 +29,7 @@ class T_RandomStreams(unittest.TestCase):
 
         gn_val0 = made.gn()
 
-        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
 
         #print fn_val0
@@ -42,12 +45,12 @@ class T_RandomStreams(unittest.TestCase):
         m.random = RandomStreams(234)
         m.fn = Method([], m.random.uniform((2,2)))
         made = m.make()
-        made.random.initialize(seed=888)
+        made.random.initialize(seed=utt.fetch_seed())
 
         fn_val0 = made.fn()
         fn_val1 = made.fn()
 
-        rng_seed = numpy.random.RandomState(888).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed))  #int() is for 32bit
 
         #print fn_val0
@@ -65,12 +68,12 @@ class T_RandomStreams(unittest.TestCase):
         made = m.make()
         made.random.initialize(seed=789)
 
-        made.random.seed(888)
+        made.random.seed(utt.fetch_seed())
 
         fn_val0 = made.fn()
         fn_val1 = made.fn()
 
-        rng_seed = numpy.random.RandomState(888).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed))  #int() is for 32bit
 
         #print fn_val0
@@ -90,7 +93,7 @@ class T_RandomStreams(unittest.TestCase):
         made = m.make()
         made.random.initialize(seed=789)
 
-        made.random.seed(888)
+        made.random.seed(utt.fetch_seed())
 
         rng = numpy.random.RandomState()
         rng.set_state(made.random[out.rng].get_state())
@@ -115,7 +118,7 @@ class T_RandomStreams(unittest.TestCase):
         made.random.seed(888)
 
         # then replace the rng of the stream we care about via setitem
-        realseed = 823874
+        realseed = utt.fetch_seed()
         rng = numpy.random.RandomState(realseed)
         made.random[out.rng] = numpy.random.RandomState(realseed)
 
@@ -131,7 +134,7 @@ class T_RandomStreams(unittest.TestCase):
 
     def test_multiple(self):
         M = Module()
-        M.random = RandomStreams(234)
+        M.random = RandomStreams(utt.fetch_seed())
         out = M.random.uniform((2,2))
         M.m2 = Module()
         M.m2.random = M.random
@@ -176,7 +179,7 @@ class T_RandomStreams(unittest.TestCase):
         """Test that RandomStreams.uniform generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
         m = Module()
-        m.random = RandomStreams(234)
+        m.random = RandomStreams(utt.fetch_seed())
         m.fn = Method([], m.random.uniform((2,2), -1, 1))
 
         made = m.make()
@@ -186,7 +189,7 @@ class T_RandomStreams(unittest.TestCase):
         print fn_val0
         print fn_val1
 
-        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
 
         numpy_val0 = rng.uniform(-1, 1, size=(2,2))
@@ -201,7 +204,7 @@ class T_RandomStreams(unittest.TestCase):
         """Test that RandomStreams.normal generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
         m = Module()
-        m.random = RandomStreams(234)
+        m.random = RandomStreams(utt.fetch_seed())
         m.fn = Method([], m.random.normal((2,2), -1, 2))
 
         made = m.make()
@@ -209,7 +212,7 @@ class T_RandomStreams(unittest.TestCase):
         fn_val0 = made.fn()
         fn_val1 = made.fn()
 
-        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
         numpy_val0 = rng.normal(-1, 2, size=(2,2))
         numpy_val1 = rng.normal(-1, 2, size=(2,2))
@@ -221,7 +224,7 @@ class T_RandomStreams(unittest.TestCase):
         """Test that RandomStreams.random_integers generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
         m = Module()
-        m.random = RandomStreams(234)
+        m.random = RandomStreams(utt.fetch_seed())
         m.fn = Method([], m.random.random_integers((20,20), -5, 5))
 
         made = m.make()
@@ -229,7 +232,7 @@ class T_RandomStreams(unittest.TestCase):
         fn_val0 = made.fn()
         fn_val1 = made.fn()
 
-        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
         numpy_val0 = rng.random_integers(-5, 5, size=(20,20))
         numpy_val1 = rng.random_integers(-5, 5, size=(20,20))
@@ -238,10 +241,10 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(fn_val1 == numpy_val1)
 
     def test_permutation(self):
-        """Test that RandomStreams.uniform generates the same results as numpy"""
+        """Test that RandomStreams.permutation generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
         m = Module()
-        m.random = RandomStreams(234)
+        m.random = RandomStreams(utt.fetch_seed())
         m.fn = Method([], m.random.permutation((20,), 10))
 
         made = m.make()
@@ -249,7 +252,7 @@ class T_RandomStreams(unittest.TestCase):
         fn_val0 = made.fn()
         fn_val1 = made.fn()
 
-        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
 
         # rng.permutation outputs one vector at a time, so we iterate.
@@ -263,7 +266,7 @@ class T_RandomStreams(unittest.TestCase):
         """Test that RandomStreams.multinomial generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
         m = Module()
-        m.random = RandomStreams(234)
+        m.random = RandomStreams(utt.fetch_seed())
         m.fn = Method([], m.random.multinomial((20,20), 1, [0.1]*10))
 
         made = m.make()
@@ -271,7 +274,7 @@ class T_RandomStreams(unittest.TestCase):
         fn_val0 = made.fn()
         fn_val1 = made.fn()
 
-        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
         numpy_val0 = rng.multinomial(1, [0.1]*10, size=(20,20))
         numpy_val1 = rng.multinomial(1, [0.1]*10, size=(20,20))
@@ -287,13 +290,14 @@ class T_RandomStreams(unittest.TestCase):
         # Note that this differs from numpy.random.shuffle, where all the
         # elements of the matrix are shuffled.
         mm = Module()
-        mm.random = RandomStreams(234)
+        mm.random = RandomStreams(utt.fetch_seed())
         m_input = tensor.dmatrix()
         mm.f = Method([m_input], mm.random.shuffle_row_elements(m_input))
         mmade = mm.make()
         mmade.random.initialize()
 
-        val_rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        # Generate the elements to be shuffled
+        val_rng = numpy.random.RandomState(utt.fetch_seed()+42)
         in_mval = val_rng.uniform(-2, 2, size=(20,5))
         fn_mval0 = mmade.f(in_mval)
         fn_mval1 = mmade.f(in_mval)
@@ -304,7 +308,7 @@ class T_RandomStreams(unittest.TestCase):
         assert not numpy.all(in_mval == fn_mval1)
         assert not numpy.all(fn_mval0 == fn_mval1)
 
-        rng_seed = numpy.random.RandomState(234).randint(2**30)
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed))
         numpy_mval0 = in_mval.copy()
         numpy_mval1 = in_mval.copy()
@@ -319,7 +323,7 @@ class T_RandomStreams(unittest.TestCase):
         # On vectors, the behaviour is the same as numpy.random.shuffle,
         # except that it does not work in place, but returns a shuffled vector.
         vm = Module()
-        vm.random = RandomStreams(234)
+        vm.random = RandomStreams(utt.fetch_seed())
         v_input = tensor.dvector()
         vm.f = Method([v_input], vm.random.shuffle_row_elements(v_input))
         vmade = vm.make()
