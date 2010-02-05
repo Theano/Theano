@@ -207,6 +207,7 @@ class RandomFunction(gof.Op):
     def grad(self, inputs, outputs):
         return [None for i in inputs]
 
+
 def _infer_ndim(ndim, shape, *args):
     """
     Infer the number of dimensions from the shape or the other arguments.
@@ -258,6 +259,49 @@ def _infer_ndim(ndim, shape, *args):
                     (ndim, args_ndim), args)
 
     return ndim, v_shape
+
+def _generate_broadcasting_indices(out_shape, *shapes):
+    '''
+    Return indices over each shape that broadcast them to match out_shape.
+
+    The first returned list is equivalent to numpy.ndindex(out_shape),
+    the other returned lists are indices corresponding to the other shapes,
+    such that looping over these indices produce tensors of shape out_shape.
+    In particular, the indices over broadcasted dimensions should all be 0.
+
+    The shapes should have the same length as out_shape. If they are longer,
+    the right-most dimensions are ignored.
+    '''
+    all_shapes = (out_shape,) + shapes
+    # Will contain the return value: a list of indices for each argument
+    ret_indices = [ [()] for shape in all_shapes ]
+
+    for dim in range(len(out_shape)):
+        # Temporary list to generate the indices
+        _ret_indices = [ [] for shape in all_shapes ]
+
+        out_range = range(out_shape[dim])
+
+        # Verify the shapes are compatible along that dimension
+        # and generate the appropriate range: out_range, or [0, ..., 0]
+        ranges = [out_range]
+        for shape in shapes:
+            if shape[dim] == out_shape[dim]:
+                ranges.append(out_range)
+            elif shape[dim] == 1: #broadcast
+                ranges.append([0] * out_shape[dim])
+            else:
+                raise ValueError('shape[%i] (%i) should be equal to out_shape[%i] (%i) or to 1'\
+                         % (dim, shape[dim], dim, out_shape[dim]), shape, out_shape, shapes)
+
+        for prev_index in zip(*ret_indices):
+            for dim_index in zip(*ranges):
+                for i in range(len(all_shapes)):
+                    _ret_indices[i].append(prev_index[i] + (dim_index[i],))
+        ret_indices = _ret_indices
+
+    return ret_indices
+
 
 def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None):
     """
@@ -346,47 +390,11 @@ def random_integers_helper(random_state, low, high, size):
             out_size = out_size + (dim_len,)
 
     # Build the indices over which to loop
-    # This process leads to the same result as numpy.ndindex for out_ind,
-    # but allows for indices of low and high to be repeated if these
-    # tensors are broadcasted along some dimensions.
-    # TODO: move the logic somewhere else
-    out_ind = [()]
-    low_ind = [()]
-    high_ind = [()]
-    for dim in range(out_ndim):
-        _out_ind = []
-        _low_ind = []
-        _high_ind = []
-
-        o_range = range(out_size[dim])
-        if low.shape[dim] == out_size[dim]:
-            l_range = o_range
-        elif low.shape[dim] == 1: #broadcast
-            l_range = (0,)*out_size[dim]
-        else:
-            raise ValueError('low.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
-                    % (dim, low.shape[dim], dim, out_size[dim]), low, size)
-        if high.shape[dim] == out_size[dim]:
-            h_range = o_range
-        elif high.shape[dim] == 1: #broadcast
-            h_range = (0,)*out_size[dim]
-        else:
-            raise ValueError('high.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
-                    % (dim, high.shape[dim], dim, out_size[dim]), high, size)
-
-        for (ol, ll, hl) in zip(out_ind, low_ind, high_ind):
-            for oi, li, hi in zip(o_range, l_range, h_range):
-                _out_ind.append(ol + (oi,))
-                _low_ind.append(ll + (li,))
-                _high_ind.append(hl + (hi,))
-        out_ind = _out_ind
-        low_ind = _low_ind
-        high_ind = _high_ind
-
-    # Iterate over these indices, drawing one sample at a time from numpy
     out = numpy.ndarray(out_size)
-    for oi, li, hi in zip(out_ind, low_ind, high_ind):
-        out[oi] = random_state.random_integers(low = low[li], high = high[li])
+    broadcast_ind = _generate_broadcasting_indices(out_size, low.shape, high.shape)
+    # Iterate over these indices, drawing one sample at a time from numpy
+    for oi, li, hi in zip(*broadcast_ind):
+        out[oi] = random_state.random_integers(low = low[li], high = high[hi])
 
     return out
 
@@ -497,49 +505,12 @@ def multinomial_helper(random_state, n, pvals, size):
     out_size = size+(pvals.shape[-1],)
 
     # Build the indices over which to loop
-    # This process leads to the same result as numpy.ndindex for main_ind,
-    # but allows for indices of n and pvals to be repeated if these tensors
-    # are broadcasted along some dimensions.
-    # TODO: move the logic somewhere else
-    # Note that here, pvals_ind and main_ind index the rows (inner-most
-    # 1D subtensors) of pvals and out (respectively), not their
-    # individual elements
-    main_ind = [()]
-    n_ind = [()]
-    pvals_ind = [()]
-    for dim in range(ndim):
-        _main_ind = []
-        _n_ind = []
-        _pvals_ind = []
-
-        m_range = range(size[dim])
-        if n.shape[dim] == size[dim]:
-            n_range = m_range
-        elif n.shape[dim] == 1: #broadcast
-            n_range = (0,)*size[dim]
-        else:
-            raise ValueError('n.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
-                    % (dim, n.shape[dim], dim, size[dim]), n, size)
-        if pvals.shape[dim] == size[dim]:
-            p_range = m_range
-        elif pvals.shape[dim] == 1: #broadcast
-            p_range = (0,)*size[dim]
-        else:
-            raise ValueError('pvals.shape[%i] (%i) should be equal to size[%i] (%i) or to 1'\
-                    % (dim, pvals.shape[dim], dim, size[dim]), pvals, size)
-
-        for (ml, nl, pl) in zip(main_ind, n_ind, pvals_ind):
-            for mi, ni, pi in zip(m_range, n_range, p_range):
-                _main_ind.append(ml + (mi,))
-                _n_ind.append(nl + (ni,))
-                _pvals_ind.append(pl + (pi,))
-        main_ind = _main_ind
-        n_ind = _n_ind
-        pvals_ind = _pvals_ind
-
-    # Iterate over these indices, drawing from one multinomial at a time from numpy
+    # Note that here, the rows (inner-most 1D subtensors) of pvals and out
+    # are indexed, not their individual elements
     out = numpy.ndarray(out_size)
-    for mi, ni, pi in zip(main_ind, n_ind, pvals_ind):
+    broadcast_ind = _generate_broadcasting_indices(size, n.shape, pvals.shape[:-1])
+    # Iterate over these indices, drawing from one multinomial at a time from numpy
+    for mi, ni, pi in zip(*broadcast_ind):
         out[mi] = random_state.multinomial(n=n[ni], pvals=pvals[pi])
     return out
 
