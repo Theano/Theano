@@ -1606,7 +1606,7 @@ for(int b=0;b< %(self_bsize)s;b++){
                 const %(type)s * idx_in=&in[ind0*dim_im[1]];
 
                 if(iter_n + 4*%(self_dy)s < dim_zz[1]
-                         && iter_n>dim_ker[1]-1+3 
+                         && iter_n>dim_ker[1]-1
                          && iter_n<dim_im[1]-dim_ker[1]+1-3){
                   nb_sum=4;
                   for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
