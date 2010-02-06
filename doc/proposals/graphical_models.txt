@@ -1,0 +1,78 @@
+==================================================================
+Random Numbers, Random Variables and Compiling Graphical Models
+==================================================================
+
+.. note:
+   Proposed 2010 02 06
+
+
+Objective
+=========
+
+It might be nice to use Theano as a language and compiler for questions about
+graphical models.
+
+In this way, we could express something like Logistic Regression like this:
+
+.. code-block:: python
+
+    from theano import random_variable as RV
+
+    X, Y, s_idx = RV.empirical(my_dataset)
+
+    # model parameters
+    v = shared(numpy.zeros(()))
+    b = shared(numpy.zeros(()))
+
+    Y_hat = RV.multinomial(n=1, p=softmax(dot(X,v)+b))
+
+    cost = sum(-log(Y_hat.density(Y)))
+
+    train_fn = function([s_idx], cost, updates=[[v,b], grad(cost, [v,b]]))
+
+.. code-block:: python
+
+    RandomVariable(Variable)
+
+        def sample(self, n):
+            """[Symbolically] draw a sample of size n"""
+
+        def density(self, pt, givens={}):
+            """Conditional Density/Probability of P(self=pt)
+
+            Implicitly conditioned on knowing the values of all variables
+            on which this one depends.  Optionally override ancestor variables
+            using givens.
+            """
+
+        def mode(self):
+            """Return expression of the most likely value of this distribution"""
+
+We would really like to integrate out certain variables sometimes... 
+
+
+An RBM could be expressed like this:
+
+.. code-block:: python
+
+    w = shared(initial_weights)
+    v = shared(initial_visible_biases)
+    u = shared(initial_hidden_biases)
+    visible = RV.binomial(n=1, p=None) # p filled in by EnergyModel
+    hidden =  RV.binomial(n=1, p=None) # p filled in by EnergyModel
+
+    energy = dot(visible,v) + dot(hidden, u) + dot(dot(visible, w), hidden)
+
+    RBM = EnergyModel(energy, variables={'visible':visible, 'hidden':hidden], params=[w,v,u])
+
+    RBM.energy(v,h) # an expression for the energy at point (v,h)
+
+    RBM.visible.energy(h) # an expression for the free energy
+    RBM.hidden.energy(h) # an expression for the free energy
+    v_given_h = RBM.visible.conditional(h) # a random variable
+
+Rather than program all the training algorithms into an RBM module, 
+the idea would be to express the relationship between RBM variables so that we
+could automatically recognize how to do Gibbs sampling, gradient descent on Free
+Energy, etc.
+
