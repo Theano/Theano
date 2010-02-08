@@ -14,6 +14,8 @@ from theano import compile, gof
 from theano.tests import unittest_tools as utt
 
 class T_SharedRandomStreams(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
 
     def test_tutorial(self):
         srng = RandomStreams(seed=234)
@@ -107,6 +109,76 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
         numpy_val0 = rng.uniform(size=(2,2))
         numpy_val1 = rng.uniform(size=(2,2))
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
+
+    def test_ndim(self):
+        """Test that the behaviour of 'ndim' optional parameter"""
+        # 'ndim' is an optional integer parameter, specifying the length
+        # of the 'shape', passed as a keyword argument.
+
+        # ndim not specified, OK
+        random = RandomStreams(utt.fetch_seed())
+        fn = function([], random.uniform((2,2)))
+
+        # ndim specified, consistent with shape, OK
+        random2 = RandomStreams(utt.fetch_seed())
+        fn2 = function([], random2.uniform((2,2), ndim=2))
+
+        val1 = fn()
+        val2 = fn2()
+        assert numpy.all(val1 == val2)
+
+        # ndim specified, inconsistent with shape, should raise ValueError
+        random3 = RandomStreams(utt.fetch_seed())
+        self.assertRaises(ValueError, random3.uniform, (2,2), ndim=1)
+
+    def test_uniform(self):
+        """Test that RandomStreams.uniform generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
+        random = RandomStreams(utt.fetch_seed())
+        fn = function([], random.uniform((2,2), -1, 1))
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        numpy_val0 = rng.uniform(-1, 1, size=(2,2))
+        numpy_val1 = rng.uniform(-1, 1, size=(2,2))
+
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
+
+    def test_normal(self):
+        """Test that RandomStreams.normal generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
+
+        random = RandomStreams(utt.fetch_seed())
+        fn = function([], random.normal((2,2), -1, 2))
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        numpy_val0 = rng.normal(-1, 2, size=(2,2))
+        numpy_val1 = rng.normal(-1, 2, size=(2,2))
+
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
+
+    def test_random_integers(self):
+        """Test that RandomStreams.random_integers generates the same results as numpy"""
+        # Check over two calls to see if the random state is correctly updated.
+        random = RandomStreams(utt.fetch_seed())
+        fn = function([], random.random_integers((20, 20), -5, 5))
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        numpy_val0 = rng.random_integers(-5, 5, size=(20,20))
+        numpy_val1 = rng.random_integers(-5, 5, size=(20,20))
+
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
 
@@ -250,7 +322,270 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(fn_e_val0 == fn_a_val0)
         assert numpy.all(fn_e_val1 == fn_e_val0)
 
+    def test_symbolic_shape(self):
+        random = RandomStreams(utt.fetch_seed())
+        shape = tensor.lvector()
+        f = function([shape], random.uniform(size=shape, ndim=2))
+
+        assert f([2,3]).shape == (2,3)
+        assert f([4,8]).shape == (4,8)
+        self.assertRaises(ValueError, f, [4])
+        self.assertRaises(ValueError, f, [4,3,4,5])
+
+    def test_default_shape(self):
+        random = RandomStreams(utt.fetch_seed())
+        f = function([], random.uniform())
+        g = function([], random.multinomial())
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        numpy_rng = numpy.random.RandomState(int(rng_seed))
+
+        val0 = f()
+        val1 = f()
+        numpy_val0 = numpy_rng.uniform()
+        numpy_val1 = numpy_rng.uniform()
+        assert numpy.all(val0 == numpy_val0)
+        assert numpy.all(val1 == numpy_val1)
+
+        val2 = g()
+        numpy_val2 = numpy_rng.multinomial(n=1, pvals=[.5, .5])
+        assert numpy.all(val2 == numpy_val2)
+
+    def test_vector_arguments(self):
+        random = RandomStreams(utt.fetch_seed())
+        low = tensor.vector()
+        out = random.uniform(low=low, high=1)
+        assert out.ndim == 1
+        f = function([low], out)
+
+        seed_gen = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        val0 = f([-5, .5, 0, 1])
+        val1 = f([.9])
+        numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=1)
+        numpy_val1 = numpy_rng.uniform(low=[.9], high=1)
+        assert numpy.all(val0 == numpy_val0)
+        assert numpy.all(val1 == numpy_val1)
+
+        high = tensor.vector()
+        outb = random.uniform(low=low, high=high)
+        assert outb.ndim == 1
+        fb = function([low, high], outb)
+
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        val0b = fb([-4., -2], [-1, 0])
+        val1b = fb([-4.], [-1])
+        numpy_val0b = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
+        numpy_val1b = numpy_rng.uniform(low=[-4.], high=[-1])
+        assert numpy.all(val0b == numpy_val0b)
+        assert numpy.all(val1b == numpy_val1b)
+        self.assertRaises(ValueError, fb, [-4., -2], [-1, 0, 1])
+        #TODO: do we want that?
+        #self.assertRaises(ValueError, fb, [-4., -2], [-1])
+
+        size = tensor.lvector()
+        outc = random.uniform(low=low, high=high, size=size, ndim=1)
+        fc = function([low, high, size], outc)
+
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        val0c = fc([-4., -2], [-1, 0], [2])
+        val1c = fc([-4.], [-1], [1])
+        numpy_val0c = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
+        numpy_val1c = numpy_rng.uniform(low=[-4.], high=[-1])
+        assert numpy.all(val0c == numpy_val0c)
+        assert numpy.all(val1c == numpy_val1c)
+        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1])
+        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1,2])
+        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [2,1])
+        self.assertRaises(ValueError, fc, [-4., -2], [-1], [1])
+        #TODO: do we want that?
+        #self.assertRaises(ValueError, fc, [-4., -2], [-1], [2])
+
+    def test_broadcast_arguments(self):
+        random = RandomStreams(utt.fetch_seed())
+        low = tensor.vector()
+        high = tensor.col()
+        out = random.uniform(low=low, high=high)
+        assert out.ndim == 2
+        f = function([low, high], out)
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        numpy_rng = numpy.random.RandomState(int(rng_seed))
+        val0 = f([-5, .5, 0, 1], [[1.]])
+        val1 = f([.9], [[1.], [1.1], [1.5]])
+        val2 = f([-5, .5, 0, 1], [[1.], [1.1], [1.5]])
+
+        numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[1.])
+        numpy_val1 = numpy_rng.uniform(low=[.9], high=[[1.], [1.1], [1.5]])
+        numpy_val2 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[[1.], [1.1], [1.5]])
+
+        assert numpy.all(val0 == numpy_val0)
+        assert numpy.all(val1 == numpy_val1)
+        assert numpy.all(val2 == numpy_val2)
+
+    def test_uniform_vector(self):
+        random = RandomStreams(utt.fetch_seed())
+        low = tensor.vector()
+        high = tensor.vector()
+        out = random.uniform(low=low, high=high)
+        assert out.ndim == 1
+        f = function([low, high], out)
+
+        low_val = [.1, .2, .3]
+        high_val = [1.1, 2.2, 3.3]
+        seed_gen = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+
+        # Arguments of size (3,)
+        val0 = f(low_val, high_val)
+        numpy_val0 = numpy_rng.uniform(low=low_val, high=high_val)
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        val1 = f(low_val[:-1], high_val[:-1])
+        numpy_val1 = numpy_rng.uniform(low=low_val[:-1], high=high_val[:-1])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = function([low, high], random.uniform(low=low, high=high, size=(3,)))
+        val2 = g(low_val, high_val)
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        numpy_val2 = numpy_rng.uniform(low=low_val, high=high_val, size=(3,))
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, low_val[:-1], high_val[:-1])
+
+    def test_binomial_vector(self):
+        random = RandomStreams(utt.fetch_seed())
+        n = tensor.lvector()
+        prob = tensor.vector()
+        out = random.binomial(n=n, prob=prob)
+        assert out.ndim == 1
+        f = function([n, prob], out)
+
+        n_val = [1, 2, 3]
+        prob_val = [.1, .2, .3]
+        seed_gen = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+
+        # Arguments of size (3,)
+        val0 = f(n_val, prob_val)
+        numpy_val0 = numpy_rng.binomial(n=n_val, p=prob_val)
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        val1 = f(n_val[:-1], prob_val[:-1])
+        numpy_val1 = numpy_rng.binomial(n=n_val[:-1], p=prob_val[:-1])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = function([n, prob], random.binomial(n=n, prob=prob, size=(3,)))
+        val2 = g(n_val, prob_val)
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        numpy_val2 = numpy_rng.binomial(n=n_val, p=prob_val, size=(3,))
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, n_val[:-1], prob_val[:-1])
+
+    def test_normal_vector(self):
+        random = RandomStreams(utt.fetch_seed())
+        avg = tensor.vector()
+        std = tensor.vector()
+        out = random.normal(avg=avg, std=std)
+        assert out.ndim == 1
+        f = function([avg, std], out)
+
+        avg_val = [1, 2, 3]
+        std_val = [.1, .2, .3]
+        seed_gen = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+
+        # Arguments of size (3,)
+        val0 = f(avg_val, std_val)
+        numpy_val0 = numpy_rng.normal(loc=avg_val, scale=std_val)
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        val1 = f(avg_val[:-1], std_val[:-1])
+        numpy_val1 = numpy_rng.normal(loc=avg_val[:-1], scale=std_val[:-1])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = function([avg, std], random.normal(avg=avg, std=std, size=(3,)))
+        val2 = g(avg_val, std_val)
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        numpy_val2 = numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,))
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, avg_val[:-1], std_val[:-1])
+
+    def test_random_integers_vector(self):
+        random = RandomStreams(utt.fetch_seed())
+        low = tensor.lvector()
+        high = tensor.lvector()
+        out = random.random_integers(low=low, high=high)
+        assert out.ndim == 1
+        f = function([low, high], out)
+
+        low_val = [.1, .2, .3]
+        high_val = [1.1, 2.2, 3.3]
+        seed_gen = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+
+        # Arguments of size (3,)
+        val0 = f(low_val, high_val)
+        numpy_val0 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+            for lv, hv in zip(low_val, high_val)])
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        val1 = f(low_val[:-1], high_val[:-1])
+        numpy_val1 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+            for lv, hv in zip(low_val[:-1], high_val[:-1])])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = function([low, high], random.random_integers(low=low, high=high, size=(3,)))
+        val2 = g(low_val, high_val)
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        numpy_val2 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+            for lv, hv in zip(low_val, high_val)])
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, low_val[:-1], high_val[:-1])
+
+    # Vectorized permutation don't make sense: the only parameter, n,
+    # controls one dimension of the returned tensor.
+
+    def test_multinomial_vector(self):
+        random = RandomStreams(utt.fetch_seed())
+        n = tensor.lvector()
+        pvals = tensor.matrix()
+        out = random.multinomial(n=n, pvals=pvals)
+        assert out.ndim == 2
+        f = function([n, pvals], out)
+
+        n_val = [1, 2, 3]
+        pvals_val = [[.1, .9], [.2, .8], [.3, .7]]
+        seed_gen = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+
+        # Arguments of size (3,)
+        val0 = f(n_val, pvals_val)
+        numpy_val0 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+            for nv, pv in zip(n_val, pvals_val)])
+        assert numpy.all(val0 == numpy_val0)
+
+        # arguments of size (2,)
+        val1 = f(n_val[:-1], pvals_val[:-1])
+        numpy_val1 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+            for nv, pv in zip(n_val[:-1], pvals_val[:-1])])
+        assert numpy.all(val1 == numpy_val1)
+
+        # Specifying the size explicitly
+        g = function([n, pvals], random.multinomial(n=n, pvals=pvals, size=(3,)))
+        val2 = g(n_val, pvals_val)
+        numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
+        numpy_val2 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+            for nv, pv in zip(n_val, pvals_val)])
+        assert numpy.all(val2 == numpy_val2)
+        self.assertRaises(ValueError, g, n_val[:-1], pvals_val[:-1])
 
 if __name__ == '__main__':
     from theano.tests import main
-    main("test_randomstreams")
+    main("test_shared_randomstreams")
