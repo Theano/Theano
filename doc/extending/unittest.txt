@@ -372,8 +372,8 @@ the given tolerance.
 The parameters are as follows:
 
 * op: something that behaves like an Op instance with a single output
-  (can be for instance a python function combining multiple ops, or calling
-  an op with some of the inputs being fixed to specific values).
+  (can be for instance a python function that combines multiple ops, or that
+  calls an op with some of the inputs being fixed to specific values).
 
 * pt: the list of numpy.ndarrays to use as inputs to the op
 
@@ -392,15 +392,19 @@ Here is an example showing how to use verify_grad:
 >>>    # being used is Flatten(), which takes a single input).
 >>>    a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
 >>>    tensor.verify_grad(tensor.Flatten(), [a_val])
->>>    # Testing gradient w.r.t. to a subset of an op's inputs. This is useful
->>>    # in particular when the gradient w.r.t. some of the inputs cannot be
->>>    # computed by finite difference (e.g. for discrete inputs), which would
->>>    # cause verify_grad to crash.
+
+Here is another example, showing how to verify the gradient w.r.t. a subset of
+an Op's inputs. This is useful in particular when the gradient w.r.t. some of
+the inputs cannot be computed by finite difference (e.g. for discrete inputs),
+which would cause verify_grad to crash.
+
+>>> def test_crossentropy_softmax_grad():
 >>>    op = tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
 >>>    def op_with_fixed_y_idx(x, b):
+>>>        # Input `y_idx` of this Op takes integer values, so we fix them
+>>>        # to some constant array.
 >>>        # Although this op has multiple outputs, we can return only one.
->>>        # Here, we return the first output only, and fix the value of the
->>>        # `y_idx` input to some constant array.
+>>>        # Here, we return the first output only.
 >>>        return op(x, b, y_idx=numpy.asarray([0, 2]))[0]
 >>>    x_val = numpy.asarray([[-1, 0, 1], [3, 2, 1]], dtype='float64')
 >>>    b_val = numpy.asarray([1, 2, 3], dtype='float64')
