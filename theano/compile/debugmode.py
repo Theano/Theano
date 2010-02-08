@@ -219,17 +219,17 @@ class BadDestroyMap(DebugModeError):
         self.new_val = new_val
     
     def __str__(self):
-        npy_old_val = numpy.asarray(self.old_val)
-        npy_new_val = numpy.asarray(self.new_val)
+        sio = StringIO()
+        print >> sio, "  node:", self.node
+        print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
+        print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
+        print >> sio, "  changed input idx:", self.idx
+        print >> sio, "  changed input type:", self.node.inputs[self.idx].type
+        print >> sio, "  repr (old val):", repr(self.old_val)
+        print >> sio, "  repr (new val):", repr(self.new_val)
         try:
-            sio = StringIO()
-            print >> sio, "  node:", self.node
-            print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
-            print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
-            print >> sio, "  changed input idx:", self.idx
-            print >> sio, "  changed input type:", self.node.inputs[self.idx].type
-            print >> sio, "  repr (old val):", repr(self.old_val)
-            print >> sio, "  repr (new val):", repr(self.new_val)
+            npy_old_val = numpy.asarray(self.old_val)
+            npy_new_val = numpy.asarray(self.new_val)
             print >> sio, "  value dtype (new <space> old):", npy_new_val.dtype, npy_old_val.dtype
             print >> sio, "  value shape (new <space> old):", npy_new_val.shape, npy_old_val.shape
             print >> sio, "  value min (new <space> old):", npy_new_val.min(), npy_old_val.min()
@@ -237,10 +237,10 @@ class BadDestroyMap(DebugModeError):
             print >> sio, "  value min (new-old):", (npy_new_val-npy_old_val).min()
             print >> sio, "  value max (new-old):", (npy_new_val-npy_old_val).max()
             print >> sio, ""
-            print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation [which compared input values]"
-            return sio.getvalue()
         except Exception, e:
-            return str(e)
+            print >> sio, "(Numpy-hints failed with: %s)" %str(e)
+        print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation [which compared input values]"
+        return sio.getvalue()
 
 class BadViewMap(DebugModeError):
     """Exception: Some perform() or c_code() created a memory alias that wasn't in the view_map"""
@@ -868,6 +868,11 @@ class _Linker(gof.link.LocalLinker):
         return self
 
     def make_all(self, profiler = None, input_storage = None, output_storage = None):
+        
+        if 1:
+            #can't import at toplevel because of circular import
+            # TODO: don't do this ugly hacky way of setting the filter_checks_isfinite
+            from theano.tensor import TensorType #to set filter_check_isfinite
         env = self.env
         input_storage_ = input_storage
         output_storage_ = output_storage
@@ -932,7 +937,7 @@ class _Linker(gof.link.LocalLinker):
         # This is the function that runs when you evaluate the graph
         #####
         def f():
-            debug("starting f")
+            debug("starting a DebugMode call")
             for x in no_recycling:
                 x[0] = None
 
@@ -1027,7 +1032,10 @@ class _Linker(gof.link.LocalLinker):
                             storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
                         debug(i, "DEBUGMODE running thunk_c")
-                        thunk_c()
+                        try:
+                            thunk_c()
+                        except:
+                            raise_with_op(node)
 
                         for r in node.outputs:
                             # check output values for type-correctness
@@ -1074,9 +1082,6 @@ class _Linker(gof.link.LocalLinker):
 
                     if True: 
                         gc.collect()
-
-                #except:
-                #    raise_with_op(node)
 
                 _find_bad_optimizations(order, env.equivalence_tracker.reasons, r_vals)
 
@@ -1132,9 +1137,26 @@ class _Linker(gof.link.LocalLinker):
                 if (r.owner is None):
                     assert storage_map[r][0] is not None
 
+
             ###############
-            # Done f
+            # Done debugmode function call 'f'
             ##############
+
+        def run_with_tensortype_filter_check(f):
+            def deco():
+                # WARNING: this is a global mechanism... 
+                # so it will screw up if we are trying to use
+                # multiple modes at once.
+                old_filter_checks_isfinite = TensorType.filter_checks_isfinite
+                TensorType.filter_checks_isfinite = self.maker.mode.check_isfinite
+                try:
+                    return f()
+                finally:
+                    # put back the filter_checks_isfinite
+                    TensorType.filter_checks_isfinite = old_filter_checks_isfinite
+            return deco
+
+        f = run_with_tensortype_filter_check(f)
 
         f.allow_gc = True
         assert len(env.inputs) == len(input_storage)
@@ -1169,11 +1191,6 @@ class _Maker(FunctionMaker): #inheritance buys a few helper functions
         :note: this function sets TensorType.filter_checks_isfinite when `mode.check_isfinite` is True
 
         """
-
-        # WARNING: this is a global mechanism... so it will screw up if we are trying to use
-        # multiple modes at once.
-        from theano.tensor import TensorType #to set filter_check_isfinite
-        TensorType.filter_checks_isfinite = mode.check_isfinite
 
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         unpack_single = False

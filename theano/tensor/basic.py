@@ -237,7 +237,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
                 x_shape = None
             return rtype(
                     TensorType(dtype = x_.dtype, broadcastable = bcastable, shape=x_shape),
-                    x_, name=name)
+                    x_.copy(), name=name)
         else:
             # leave the shape out of the type
             return rtype(TensorType(dtype = x_.dtype, broadcastable = bcastable), x_, name=name)
