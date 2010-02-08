@@ -85,17 +85,6 @@ def fetch_val_for_key(key):
     except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
         raise KeyError(key)
 
-class TheanoConfigParser(object):
-    #properties are installed by AddConfigVar
-
-    def __str__(self):
-        sio = StringIO.StringIO()
-        _config_print(self.__class__, sio)
-        return sio.getvalue()
-    pass
-# N.B. all instances of TheanoConfigParser give access to the same properties.
-config = TheanoConfigParser()
-
 _config_var_list = []
 
 def _config_print(thing, buf):
@@ -105,31 +94,74 @@ def _config_print(thing, buf):
         print >> buf, "    Value: ", cv.val
         print >> buf, ""
 
+class TheanoConfigParser(object):
+    #properties are installed by AddConfigVar
+    _i_am_a_config_class = True
+    def __str__(self):
+        sio = StringIO.StringIO()
+        _config_print(self.__class__, sio)
+        return sio.getvalue()
+# N.B. all instances of TheanoConfigParser give access to the same properties.
+config = TheanoConfigParser()
 
-def AddConfigVar(name, doc, thing, cls=TheanoConfigParser):
-    if cls == TheanoConfigParser:
-        thing.fullname = name
-    if hasattr(TheanoConfigParser, name):
-        raise ValueError('This name is already taken')
-    parts = name.split('.')
-    if len(parts) > 1:
+#
+# The data structure at work here is a tree of CLASSES with CLASS ATTRIBUTES/PROPERTIES that
+# are either a) INSTANTIATED dynamically-generated CLASSES, or b) ConfigParam instances.
+# The root of this tree is the TheanoConfigParser CLASS, and the internal nodes are the SubObj
+# classes created inside of AddConfigVar().
+# Why this design ?
+# - The config object is a true singleton.  Every instance of TheanoConfigParser is an empty
+#   instance that looks up attributes/properties in the [single] TheanoConfigParser.__dict__
+# - The subtrees provide the same interface as the root
+# - ConfigParser subclasses control get/set of config properties to guard against craziness.
+
+def AddConfigVar(name, doc, configparam, root=config):
+    """Add a new variable to theano.config
+
+    :type name: string for form "[section0.[section1.[etc]]].option"
+    :param name: the full name for this configuration variable.
+    :type doc: string
+    :param doc: What does this variable specify?
+    :type configparam: ConfigParam instance
+    :param configparam: an object for getting and setting this configuration  parameter
+    :type root: object
+    :param root: used for recusive calls -- don't provide an argument for this parameter.
+
+    :returns: None
+    """
+
+    # this method also performs some of the work of initializing ConfigParam instances
+
+    if root is config:
+        #only set the name in the first call, not the recursive ones
+        configparam.fullname = name
+    sections = name.split('.')
+    if len(sections) > 1:
         # set up a subobject
-        if not hasattr(cls, parts[0]):
+        if not hasattr(root, sections[0]):
+            # every internal node in the config tree is an instance of its own unique class
             class SubObj(object):
-                pass
-            setattr(cls, parts[0], SubObj)
-        AddConfigVar('.'.join(parts[1:]), doc, thing, cls=getattr(cls, parts[0]))
+                _i_am_a_config_class = True
+            setattr(root.__class__, sections[0], SubObj())
+        newroot = getattr(root, sections[0])
+        if not getattr(newroot, '_i_am_a_config_class', False) or isinstance(newroot, type):
+            raise TypeError('Internal config nodes must be config class instances', newroot)
+        return AddConfigVar('.'.join(sections[1:]), doc, configparam, root=newroot)
     else:
-        thing.doc = doc
-        thing.__get__() # trigger a read of the value
-        setattr(cls, parts[0], thing)
-        _config_var_list.append(thing)
+        if hasattr(root, name):
+            raise AttributeError('This name is already taken', configparam.fullname)
+        configparam.doc = doc
+        configparam.__get__() # trigger a read of the value from config files and env vars
+        setattr(root.__class__, sections[0], configparam)
+        _config_var_list.append(configparam)
 
 class ConfigParam(object):
     def __init__(self, default, filter=None):
         self.default = default
         self.filter=filter
-        # there is a name attribute too, but it is set by AddConfigVar
+        # N.B. --
+        # self.fullname  # set by AddConfigVar
+        # self.doc       # set by AddConfigVar
 
     def __get__(self, *args):
         #print "GETTING PARAM", self.fullname, self, args
