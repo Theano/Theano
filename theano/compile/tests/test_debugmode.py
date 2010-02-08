@@ -537,11 +537,11 @@ class Test_ViewMap(unittest.TestCase):
 
 class Test_check_isfinite(unittest.TestCase):
     def setUp(self):
-        print 'Up'
-        self.old_val = theano.tensor.TensorType.filter_checks_isfinite
+        self.old_ts = theano.tensor.TensorType.filter_checks_isfinite
+        self.old_dm = theano.compile.mode.predefined_modes['DEBUG_MODE'].check_isfinite
     def tearDown(self):
-        print 'Down'
-        theano.tensor.TensorType.filter_checks_isfinite = self.old_val
+        theano.tensor.TensorType.filter_checks_isfinite = self.old_ts
+        theano.compile.mode.predefined_modes['DEBUG_MODE'].check_isfinite = self.old_dm
 
     def test_check_isfinite(self):
         x = theano.tensor.vector()
@@ -551,16 +551,19 @@ class Test_check_isfinite(unittest.TestCase):
         # this should work
         f(numpy.log([3, 4, 5]))
 
+        # if TensorType.filter_checks_isfinite were true, these would raise ValueError
+        # if not, DebugMode will check internally, and raise InvalidValueError
         # passing an invalid value as an input should trigger ValueError
-        self.failUnlessRaises(ValueError, f, numpy.log([3, -4, 5]))
-        self.failUnlessRaises(ValueError, f, numpy.asarray([0, 1.0, 0])/0)
-        self.failUnlessRaises(ValueError, f, numpy.asarray([1.0, 1.0, 1.0])/0)
+        self.failUnlessRaises(debugmode.InvalidValueError, f, numpy.log([3, -4, 5]))
+        self.failUnlessRaises(debugmode.InvalidValueError, f, numpy.asarray([0, 1.0, 0])/0)
+        self.failUnlessRaises(debugmode.InvalidValueError, f, numpy.asarray([1.0, 1.0, 1.0])/0)
 
         # generating an invalid value internally should trigger InvalidValueError
         self.failUnlessRaises(debugmode.InvalidValueError, g, [3,-4,5])
 
         # this should disable the exception
         theano.tensor.TensorType.filter_checks_isfinite = False
+        theano.compile.mode.predefined_modes['DEBUG_MODE'].check_isfinite = False
         # insert several Inf
         f(numpy.asarray([1.0, 1.0, 1.0])/0)
 
