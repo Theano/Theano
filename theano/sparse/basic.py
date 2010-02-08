@@ -105,7 +105,7 @@ def constant(x):
         raise TypeError("sparse.constant must be called on a scipy.sparse.spmatrix")
     try:
         return SparseConstant(SparseType(format = x.format,
-                                     dtype = x.dtype), x)
+                                     dtype = x.dtype), x.copy())
     except TypeError:
         raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
