@@ -565,13 +565,21 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         output_storage[1][0] = sm
         output_storage[2][0] = am
     def grad(self, (x, b, y_idx), (g_nll, g_sm, g_am)):
-        if g_sm is not None or g_am is not None:
+        if g_am is not None:
             raise NotImplementedError()
-        nll, sm = crossentropy_softmax_1hot_with_bias(x, b, y_idx)
-        #dx = CrossentropySoftmax1HotWithBiasDx()(g_nll, sm, y_idx)
-        dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, sm, y_idx)
-        db = tensor.sum(dx, axis = [0])
-        return dx, db, None
+        elif g_sm is not None:
+            # There is a gradient w.r.t. the softmax's output itself.
+            if g_nll is not None or g_am is not None:
+                raise NotImplementedError()
+            return softmax_with_bias.grad((x, b, ), (g_sm, )) + (None, )
+        else:
+            # There is a gradient w.r.t. the NLL.
+            assert g_nll is not None
+            nll, sm = crossentropy_softmax_1hot_with_bias(x, b, y_idx)
+            #dx = CrossentropySoftmax1HotWithBiasDx()(g_nll, sm, y_idx)
+            dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, sm, y_idx)
+            db = tensor.sum(dx, axis = [0])
+            return dx, db, None
 
     def c_headers(self):
         return ['<iostream>', '<cmath>']

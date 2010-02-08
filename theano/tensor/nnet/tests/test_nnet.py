@@ -96,6 +96,27 @@ class T_CrossentropySoftmax1HotWithBiasDx(unittest.TestCase):
         softmax_output /= softmax_output.sum(axis=1).reshape(10, 1)
         utt.verify_grad(f, [softmax_output])
 
+class T_CrossentropySoftmaxArgmax1HotWithBias(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+        self.op = theano.tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
+    def test0(self):
+        n_classes = 5
+        n_samples = 3
+        # First test gradient when getting a gradient on the NLL output.
+        def grad_on_nll(x, b):
+            return self.op(x, b, y_idx=numpy.random.randint(
+                low=0, high=n_classes, size=n_samples))[0]
+        utt.verify_grad(grad_on_nll, [numpy.random.rand(n_samples, n_classes),
+            numpy.random.rand(n_classes)])
+        # Then test gradient when getting a gradient on the softmax output.
+        def grad_on_softmax(x, b):
+            return self.op(x, b, y_idx=numpy.random.randint(
+                low=0, high=n_classes, size=n_samples))[1]
+        utt.verify_grad(grad_on_softmax,
+                [numpy.random.rand(n_samples, n_classes),
+                    numpy.random.rand(n_classes)])
+
 class T_prepend(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
