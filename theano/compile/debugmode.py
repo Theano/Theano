@@ -219,17 +219,17 @@ class BadDestroyMap(DebugModeError):
         self.new_val = new_val
     
     def __str__(self):
-        npy_old_val = numpy.asarray(self.old_val)
-        npy_new_val = numpy.asarray(self.new_val)
+        sio = StringIO()
+        print >> sio, "  node:", self.node
+        print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
+        print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
+        print >> sio, "  changed input idx:", self.idx
+        print >> sio, "  changed input type:", self.node.inputs[self.idx].type
+        print >> sio, "  repr (old val):", repr(self.old_val)
+        print >> sio, "  repr (new val):", repr(self.new_val)
         try:
-            sio = StringIO()
-            print >> sio, "  node:", self.node
-            print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
-            print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
-            print >> sio, "  changed input idx:", self.idx
-            print >> sio, "  changed input type:", self.node.inputs[self.idx].type
-            print >> sio, "  repr (old val):", repr(self.old_val)
-            print >> sio, "  repr (new val):", repr(self.new_val)
+            npy_old_val = numpy.asarray(self.old_val)
+            npy_new_val = numpy.asarray(self.new_val)
             print >> sio, "  value dtype (new <space> old):", npy_new_val.dtype, npy_old_val.dtype
             print >> sio, "  value shape (new <space> old):", npy_new_val.shape, npy_old_val.shape
             print >> sio, "  value min (new <space> old):", npy_new_val.min(), npy_old_val.min()
@@ -237,10 +237,10 @@ class BadDestroyMap(DebugModeError):
             print >> sio, "  value min (new-old):", (npy_new_val-npy_old_val).min()
             print >> sio, "  value max (new-old):", (npy_new_val-npy_old_val).max()
             print >> sio, ""
-            print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation [which compared input values]"
-            return sio.getvalue()
         except Exception, e:
-            return str(e)
+            print >> sio, "(Numpy-hints failed with: %s)" %str(e)
+        print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation [which compared input values]"
+        return sio.getvalue()
 
 class BadViewMap(DebugModeError):
     """Exception: Some perform() or c_code() created a memory alias that wasn't in the view_map"""
