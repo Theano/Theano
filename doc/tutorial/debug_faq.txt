@@ -80,7 +80,7 @@ Check out this one:
 
 .. code-block:: python
 
-    class PrintEverythingMode(Mode):
+    class PrintEverythingMode(theano.Mode):
         def __init__(self):
             def print_eval(i, node, fn):
                 print i, node, [input[0] for input in fn.inputs],
