@@ -903,10 +903,8 @@ class Clip(ScalarOp):
         if x.type in grad_types:
             return gx, None, None
         else:
-          return None, None, None
-
-        #return gx if x.type in grad_types else None, None, None
-clip = Clip(transfer_type(0), name = 'clip')
+            return None, None, None
+clip = Clip(upcast_out, name = 'clip')
 
 class First(BinaryScalarOp):
     def impl(self, x, y):
