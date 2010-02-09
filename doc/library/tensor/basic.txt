@@ -659,6 +659,34 @@ Elementwise
 Casting
 -------
 
+.. function:: cast(x, dtype)
+
+    Cast any tensor `x` to a Tensor of the same shape, but with a different
+    numerical type `dtype`.
+    
+    This is not a reinterpret cast, but a coersion cast, similar to
+    ``numpy.asarray(x, dtype=dtype)``.
+
+    .. code-block:: python
+
+        import theano.tensor as T
+        x_as_float = T.matrix()
+        x_as_int = T.cast(x, 'int32')
+
+
+    Attempting to casting a complex value to a real value is ambiguous and
+    will raise an exception.  Use `real()`, `imag()`, `abs()`, or `angle()`.
+
+.. function:: real(x)
+
+    Return the real (not imaginary) components of Tensor x. 
+    For non-complex `x` this function returns x.
+
+.. function:: imag(x)
+
+    Return the imaginary components of Tensor x. 
+    For non-complex `x` this function returns zeros_like(x).
+
 Comparisons
 ------------
 
@@ -733,6 +761,13 @@ Condition
       x,y = T.dmatrices('x','y')
       z = T.switch(T.lt(a,b), x, y)
 
+.. function:: clip(x, min, max)
+
+    Return a variable representing x, but with all elements greater than
+    `max` clipped to `max` and all elements less than `min` clipped to `min.
+
+    Normal broadcasting rules apply to each of `x`, `min`, and `max`.
+
 Bit-wise
 --------
 
@@ -782,6 +817,10 @@ Mathematical
     Returns a variable representingthe absolute of a, ie ``|a|``.
 
     .. note:: Can also be accessed with ``abs(a)``.
+
+.. function:: angle(a)
+
+    Returns a variable representing angular component of complex-valued Tensor `a`.
 
 .. function:: exp(a)
 
