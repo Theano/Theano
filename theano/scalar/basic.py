@@ -891,20 +891,17 @@ class Clip(ScalarOp):
     nin = 3
     def impl(self, x, min, max):
         if x < min:
-          return min
+            return min
         elif x > max:
-          return max
+            return max
         else:
-          return x
-
-        #backport
-        #return min if x < min else max if x > max else x
+            return x
     def c_code(self, node, name, (x, min, max), (z, ), sub):
         return "%(z)s = %(x)s < %(min)s ? %(min)s : %(x)s > %(max)s ? %(max)s : %(x)s;" % locals()
     def grad(self, (x, min, max), (gz, )):
         gx = ((x > min) & (x < max)) * gz
         if x.type in grad_types:
-          return gx, None, None
+            return gx, None, None
         else:
           return None, None, None
 
