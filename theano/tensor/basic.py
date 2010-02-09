@@ -1633,6 +1633,11 @@ def imag(x):
     else:
         return zeros_like(x)
 
+@constructor
+def angle(x):
+    """Return the angular component of complex-valued `x`"""
+    raise NotImplementedError()
+
 
 ##########################
 # Misc
