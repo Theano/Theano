@@ -2900,6 +2900,9 @@ class ARange(Op):
     def __hash__(self):
         return hash(self.dtype)
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, start, stop, step):
         start, stop, step = map(as_tensor_variable, (start, stop, step))
         assert start.ndim == 0
