@@ -314,6 +314,7 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     import pydot as pd
 
     g=pd.Dot()
+    var_id={}
     def var_name(var):
         if var.name is not None:
             varstr = var.name
@@ -321,7 +322,11 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
             varstr = str(var.data)
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
-            varstr = str(var.type)+' '+str(id(var))
+            i = var_id.get(var,None)
+            if i is None:
+                var_id[var]=len(var_id)
+                i = var_id[var]
+            varstr = str(var.type)+' '+str(i)
         return varstr
 
     for node_idx,node in enumerate(fct.maker.env.toposort()):
