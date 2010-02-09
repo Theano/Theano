@@ -9,7 +9,7 @@ import numpy
 import theano
 import theano.tensor as tensor
 from theano import gof, Op, tensor, config
-
+from theano.gof.python25 import any
 import logging
 _logger=logging.getLogger("theano.signal.conv")
 def _debug(*msg):
@@ -383,10 +383,10 @@ class ConvOp(Op):
         from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
         from scipy.signal.sigtools import _convolve2d
         imshp = self.imshp
-        if imshp is None:
+        if imshp is None or any([x is None for x in imshp]):
             imshp = tuple(img2d.shape[1:])
         kshp = self.kshp
-        if kshp is None:
+        if kshp is None or any([x is None for x in kshp]):
             kshp = tuple(filtersflipped.shape[2:])
         bsize = self.bsize
         if bsize is None:
@@ -398,16 +398,21 @@ class ConvOp(Op):
         imshp_logical = self.imshp_logical
         if imshp_logical is None:
             imshp_logical = imshp
+        if numpy.any([x is None for x in imshp_logical]):
+            imshp_logical = tuple(img2d.shape[1:])
+
         kshp_logical = self.kshp_logical
         if kshp_logical is None:
             kshp_logical = kshp
-            
+        if numpy.any([x is None for x in kshp_logical]):
+            kshp = tuple(filtersflipped.shape[2:])
+
         if self.fulloutshp is not None:
             fulloutshp = tuple(self.fulloutshp)
         else:
             fulloutshp = tuple(ConvOp.getOutputShape(imshp_logical, kshp_logical, (1,1), self.out_mode))
 
-        if z[0] is None:
+        if z[0] is None or z[0].shape!=(bsize,)+(nkern,)+fulloutshp:
             z[0] = numpy.zeros((bsize,)+(nkern,)+fulloutshp,
                            dtype=img2d.dtype)
         zz=z[0]

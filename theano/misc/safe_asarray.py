@@ -17,10 +17,10 @@ def _asarray(a, dtype=None, order=None):
     http://projects.scipy.org/numpy/ticket/870.
 
     Currently, this issue has only been causing trouble when the target
-    data type is 'int32', on some computers. As a result, this is the only
-    situation where we may do more than a simple call to ``numpy.asarray``. If
-    it turns out that a similar problem can occur for more data type, this
-    function should be updated accordingly.
+    data type is 'int32' or 'int64', on some computers. As a result, we
+    silently fix it only in this situation: if a type mismatch is detected
+    with another data type, an exception is raised (if that happens, then this
+    function may need to be modified to also handle this other data type).
 
     This function's name starts with a '_' to indicate that it is meant to be
     used internally. It is imported so as to be available directly through
@@ -28,12 +28,24 @@ def _asarray(a, dtype=None, order=None):
     """
     dtype = numpy.dtype(dtype)  # Convert into dtype object.
     rval = numpy.asarray(a, dtype=dtype, order=order)
-    numpy_int32 = numpy.dtype(numpy.int32)
-    if (dtype is numpy_int32 and rval.dtype is not numpy_int32):
-        # Enfore the numpy.int32 dtype.
-        return rval.view(dtype=numpy_int32)
+    # Note that dtype comparison must be done by comparing their `num`
+    # attribute. One cannot assume that two identical data types are pointers
+    # towards the same object (e.g. under Windows this appears not to be the
+    # case).
+    if rval.dtype.num != dtype.num:
+        # Type mismatch between the data type we asked for, and the one
+        # returned by numpy.asarray.
+        if (dtype.num == numpy.dtype(numpy.int32).num or
+                dtype.num == numpy.dtype(numpy.int64).num):
+            # Silent fix.
+            return rval.view(dtype=dtype)
+        else:
+            # Unexpected mismatch: better know what is going on!
+            raise TypeError('numpy.array did not return the data type we '
+                    'asked for (%s #%s), instead it returned type %s #%s: function '
+                    'theano._asarray may need to be extended to handle this '
+                    'data type as well.' %
+                    (dtype, dtype.num, rval.dtype, rval.dtype.num))
     else:
-        # Using ``numpy.asarray`` should work just fine.
-        # Debug assert if we want to detect other failure cases (untested):
-        # assert rval.dtype is dtype
         return rval
+

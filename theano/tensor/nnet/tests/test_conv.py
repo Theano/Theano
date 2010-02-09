@@ -94,6 +94,9 @@ class TestConv2D(unittest.TestCase):
         self.validate((3,2,8,8), (4,2,5,5), 'full')
         self.validate((3,2,7,5), (5,2,2,3), 'full')
         # test filter same size as input
+
+    def test_img_kernel_same_shape(self):
+        self.validate((3,2,3,3), (4,2,3,3), 'full')
         self.validate((3,2,3,3), (4,2,3,3), 'valid')
 
     def test_unroll_patch_false(self):

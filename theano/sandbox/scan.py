@@ -400,7 +400,7 @@ class Scan(theano.Op):
         fn_args += list(args[(n_seqs+n_outs):])
         # compute output
         something = fn(*fn_args)
-        #update outputs 
+        #update outputs
         for j in xrange(n_outs):
           y[j][i] = something[j]
       return y
@@ -412,7 +412,7 @@ class Scan(theano.Op):
             warning('Can not compute gradients if inplace or updates ' \
                     'are used. Use force_gradient if you know for sure '\
                     'that the gradient can be computed automatically.')
-            return [None for i in inputs]
+            return [None for i in args]
         else:
             # forward pass 
             y = self(*args)

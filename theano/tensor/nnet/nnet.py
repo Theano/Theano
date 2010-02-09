@@ -114,6 +114,8 @@ class SoftmaxWithBias(gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return tensor.hashtype(self)
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, x, b):
         x = tensor.as_tensor_variable(x)
@@ -284,6 +286,9 @@ class SoftmaxGrad(gof.Op):
     def __hash__(self):
         return tensor.hashtype(self)
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, dy, sm, **kwargs):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
@@ -376,6 +381,8 @@ class Softmax(gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
@@ -818,6 +825,8 @@ class CrossentropyCategorical1HotGrad(gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return tensor.hashtype(self)
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, g_y, coding_dist, true_one_of_n):
         return gof.Apply(self, [g_y, coding_dist, true_one_of_n], [coding_dist.type()])
     def perform(self, node, (g_y, coding_dist, true_one_of_n), (g_coding_strg,)):
@@ -848,6 +857,8 @@ class CrossentropyCategorical1Hot(gof.Op):
         return type(self) == type(other)
     def __hash__(self):
         return tensor.hashtype(self)
+    def __str__(self):
+        return self.__class__.__name__
     def make_node(self, coding_dist, true_one_of_n):
         """
         :type coding_dist: dense matrix
@@ -1346,6 +1357,8 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         return (type(self) == type(other)) and (self.val == other.val)
     def __hash__(self):
         return tensor.hashtype(self) ^ hash(self.val.value)
+    def __str__(self):
+        return '%s{%s}'%(self.__class__.__name__,self.val)
 
     def make_node(self, mat):
         #check type of input
@@ -1383,6 +1396,8 @@ class Prepend_scalar_to_each_row(gof.Op):
         return (type(self) == type(other))
     def __hash__(self):
         return tensor.hashtype(self)
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, val, mat):
         #check type of input
