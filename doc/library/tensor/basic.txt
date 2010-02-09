@@ -979,7 +979,4 @@ Gradient / Differentiation
 
 
 
-Full Constructor List
-======================
-
 
