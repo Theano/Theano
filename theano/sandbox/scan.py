@@ -73,12 +73,12 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={},
     for i in xrange(n_outs):
         if not outputs_taps.has_key(i):
             outputs_taps.update({i:[-1]})
-        # if output sequence is not actually used as input to the recursive 
-        # function
         elif outputs_taps[i] == []:
             outputs_taps.__delitem__(i)
         elif not(type(outputs_taps[i]) in (list,tuple)):
             outputs_taps[i] = [outputs_taps[i]]
+
+
 
     # create theano inputs for the recursive function  
     args = []
@@ -89,7 +89,10 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={},
     for (i,init_out) in enumerate(init_outs):
       if outputs_taps.has_key(i):
         for k in xrange(len(outputs_taps[i])):
-            args += [init_out[0].type() ]
+            if outputs_taps[i] == [-1]:
+                args += [init_out.type() ]
+            else:
+                args += [init_out[0].type() ]
 
     args += non_seqs
     t1,t2 = fn(*args)
@@ -313,6 +316,9 @@ class Scan(theano.Op):
         for i in xrange(self.n_seqs+1, \
                         self.n_seqs+self.n_outs+1):
           if self.outs_taps.has_key(i-self.n_seqs-1):
+            if self.outs_taps[i-self.n_seqs-1] == [-1]:
+                args[i] = numpy.array([args[i]])
+
             req_size = abs(min(self.outs_taps[i-self.n_seqs-1]))-1
             if args[i].shape[0] < req_size:
               warning(('Initial state for output %d has fewer values then '
