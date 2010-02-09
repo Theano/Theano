@@ -28,11 +28,15 @@ def _asarray(a, dtype=None, order=None):
     """
     dtype = numpy.dtype(dtype)  # Convert into dtype object.
     rval = numpy.asarray(a, dtype=dtype, order=order)
-    if rval.dtype is not dtype:
+    # Note that dtype comparison must be done by comparing their `num`
+    # attribute. One cannot assume that two identical data types are pointers
+    # towards the same object (e.g. under Windows this appears not to be the
+    # case).
+    if rval.dtype.num != dtype.num:
         # Type mismatch between the data type we asked for, and the one
         # returned by numpy.asarray.
-        if (dtype is numpy.dtype(numpy.int32) or
-                dtype is numpy.dtype(numpy.int64)):
+        if (dtype.num == numpy.dtype(numpy.int32).num or
+                dtype.num == numpy.dtype(numpy.int64).num):
             # Silent fix.
             return rval.view(dtype=dtype)
         else:
