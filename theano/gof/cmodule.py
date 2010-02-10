@@ -579,6 +579,14 @@ def std_libs():
 def std_lib_dirs():
     return std_lib_dirs_and_libs()[1]
 
+p=subprocess.Popen(['gcc','-dumpversion'],stdout=subprocess.PIPE)
+p.wait()
+gcc_version_str = p.stdout.readline().strip()
+del p
+
+def gcc_version():
+    return gcc_version_str
+
 def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[]):
     """
