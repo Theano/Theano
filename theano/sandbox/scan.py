@@ -1,3 +1,7 @@
+"""Provides Scan Op
+"""
+__docformat__ = "restructuredtext en"
+
 import numpy 
 import theano
 from theano.tensor import opt
