@@ -1633,6 +1633,11 @@ def imag(x):
     else:
         return zeros_like(x)
 
+@constructor
+def angle(x):
+    """Return the angular component of complex-valued `x`"""
+    raise NotImplementedError()
+
 
 ##########################
 # Misc
@@ -1738,8 +1743,36 @@ def prod(input, axis = None):
     """WRITEME"""
     return elemwise.Prod(axis)(input)
 
+class Mean(elemwise.CAReduce):
+    def __init__(self, axis = None):
+        elemwise.CAReduce.__init__(self, scal.add, axis)
+    def __str__(self):
+        if self.axis is not None:
+            return "Mean{%s}" % (", ".join(str(x) for x in self.axis))
+        else:
+            return "Mean"
+
+    def _output_dtype(self, idtype):
+        # we want to protect against overflow
+        return 'float64'
+
+    def perform(self, node, (input, ), (output, )):
+      ret = elemwise.CAReduce.perform(self,node,(input,),(output,))
+      output[0]=numpy.asarray(output[0]/len(input))
+
+    def c_code(self, node, name, inames, onames, sub):
+      ret = elemwise.CAReduce.c_code(self, node, name, inames, onames, sub)
+      return ret + """
+*((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
+"""%(onames[0],inames[0])
+
+#TODO: implement the grad. When done and tested, you can make this the default version.
+#    def grad(self, (x,), (gout,)):
+#      import pdb;pdb.set_trace()
+#      return grad(mean(x, self.axis, op=False),[x])
+
 @constructor
-def mean(input, axis = None):
+def mean(input, axis = None, op = False):
     """Compute the mean value along the given axis of a tensor `input`
 
     :param axis: compute the mean along this axis of the tensor.  None means all axes (like
@@ -1747,6 +1780,9 @@ def mean(input, axis = None):
     :type axis: None or int or (list of int) (see `Sum`)
     
     """
+    if op:
+      return Mean(axis)(input)
+
     if str(input.dtype).startswith('int'):
         # we need to cast eventually anyway, and this helps
         # to prevents overflow
