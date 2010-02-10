@@ -159,8 +159,8 @@ class T_Scan(unittest.TestCase):
         y0    = theano.tensor.dscalar('y0')
     
         def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, W_in1):
-            return ({}, [theano.dot(u1_t,W_in1) + u2_t* W_in2 + \
-                    theano.dot(x_tm1, W), theano.dot(x_tm1, W_out)])
+            return [theano.dot(u1_t,W_in1) + u2_t* W_in2 + \
+                    theano.dot(x_tm1, W), theano.dot(x_tm1, W_out)]
 
         Y = theano.sandbox.scan.scan(f_rnn_cmpl,[u1,u2],[x0,y0],W_in1)
     
