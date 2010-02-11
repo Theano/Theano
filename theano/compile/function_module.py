@@ -283,6 +283,11 @@ class Function(object):
         #def assign(c, v):
             #c.data = v
 
+        # Store the list of names of named inputs.
+        named_inputs = []
+        # Count the number of un-named inputs.
+        n_unnamed_inputs = 0
+
         #setters = []
         # Initialize the storage
         # this loop works by modifying the elements (as variable c) of self.input_storage inplace.
@@ -312,6 +317,10 @@ class Function(object):
                   finder[input.name] = c 
                 else:
                   finder[input.name] = DUPLICATE
+                if input.name is None:
+                    n_unnamed_inputs += 1
+                else:
+                    named_inputs.append(input.name)
                 #backport
                 #finder[input.name] = c if input.name not in finder else DUPLICATE
                 # inv_finder maps the container to the input (useful for one error message)
@@ -378,7 +387,9 @@ class Function(object):
                 try:
                     s = finder[item]
                 except KeyError:
-                    raise TypeError("Unknown input or state: %s" % item)
+                    # Print informative error message.
+                    msg = get_info_on_inputs(named_inputs, n_unnamed_inputs)
+                    raise TypeError("Unknown input or state: %s. %s" % (item, msg))
                 if s is DUPLICATE:
                     raise TypeError("Ambiguous name: %s - please check the names of the inputs of your function for duplicates." % item)
                 if isinstance(s, gof.Container):
@@ -1013,4 +1024,44 @@ def convert_function_input(input):
         return In(variable, name=name, value=value, update=update)
     else:
         raise TypeError("Unknown input type: %s, expected Variable instance" % type(input), input)
+
+
+def get_info_on_inputs(named_inputs, n_unnamed_inputs):
+    """Return a human-readable description of named and un-named inputs."""
+    n_named_inputs = len(named_inputs)
+    def get_plural(n):
+        if n > 1:
+            return 's'
+        else:
+            return ''
+    if n_named_inputs == 0:
+        if n_unnamed_inputs == 0:
+            msg = 'The function is supposed to have no input.'
+        else:
+            if n_unnamed_inputs == 1:
+                msg = ("The function has a single input variable which has no "
+                        "name, and thus cannot be assigned through a keyword"
+                        " argument (use 'name=...' in a Variable's "
+                        "constructor to give it a name).")
+            else:
+                # Use plural.
+                msg = ("The function has %s inputs, but none of them is named,"
+                        " and thus they cannot be assigned through keyword "
+                        "arguments (use 'name=...' in a Variable's "
+                        "constructor to give it a name)." % n_unnamed_inputs)
+    else:
+        if n_unnamed_inputs == 0:
+            msg = ("The function has %s named input%s (%s)." % (
+                n_named_inputs, get_plural(n_named_inputs),
+                ', '.join(named_inputs)))
+        else:
+            msg = ("The function has %s named input%s (%s), and %s unnamed "
+                    "input%s which thus cannot be accessed through keyword "
+                    "argument%s (use 'name=...' in a variable's constructor "
+                    "to give it a name)." % (
+                    n_named_inputs, get_plural(n_named_inputs),
+                    ', '.join(named_inputs), n_unnamed_inputs,
+                    get_plural(n_unnamed_inputs),
+                    get_plural(n_unnamed_inputs)))
+    return msg
 
