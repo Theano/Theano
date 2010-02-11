@@ -12,6 +12,9 @@
 Guide
 ======
 
+Symbolic printing: the Print() Op
+----------------------------------
+
 Intermediate values in a computation cannot be printed in
 the normal python way with the print statement, because Theano has no *statements*.
 Instead there is the `Print` Op.
@@ -30,6 +33,113 @@ printing is not completely defined by the interface --
 the only hard rule is that if the input of some print output `a` is 
 ultimately used as an input to some other print input `b` (so that `b` depends on `a`),
 then `a` will print before `b`.
+
+
+Printing graphs
+---------------
+
+Theano provides two functions (:func:`theano.pp` and
+:func:`theano.debugprint`) to print a graph to the terminal before or after
+compilation.  These two functions print expression graphs in different ways:
+:func:`pp` is more compact and math-like, :func:`debugprint` is more verbose.
+Theano also provides :func:`pydotprint` that creates a png image of the function.
+
+1) The first is :func:`theano.pp`. 
+
+>>> x = T.dscalar('x') 
+>>> y = x**2
+>>> gy = T.grad(y, x)
+>>> pp(gy)  # print out the gradient prior to optimization
+'((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
+>>> f = function([x], gy)
+>>> pp(f.maker.env.outputs[0])
+'(2.0 * x)'
+
+The parameter in T.dscalar('x') in the first line is the name of this variable 
+in the graph. This name is used when printing the graph to make it more readable.
+If no name is provided the variable x is printed as its type as. In this example
+<TensorType(float64, scalar)>. 
+
+The name parameter can be any string. There are no naming restrictions: 
+in particular, you can have many variables with the same name. 
+As a convention, we generally give variables a string name that is similar to the name of the variable in local scope, but 
+you might want to break this convention to include an object instance, or an
+iteration number or other kinds of information in the name.
+
+.. note::
+    
+    To make graphs legible, :func:`pp` hides some Ops that are actually in the graph.  For example,
+    automatic DimShuffles are not shown.
+
+2) The second fonction to print a graph is :func:`theano.printing.debugprint`(Variable, depth=-1)
+You can use it on graph variables and compiled functions. 
+
+
+>>> theano.printing.debugprint(f.maker.env.outputs[0])
+ Elemwise{mul,no_inplace} 46950805397392
+   2.0 46950805310800
+   x 46950804895504
+
+Each line printed represents a Variable in the graph.
+The line ``   x 46950804895504`` means the variable named 'x' at memory
+location 46950804895504.  If you accidentally have two variables called 'x' in
+your graph, their different memory locations will be your clue.
+
+The line ``   2.0 46950805310800`` means that there is a constant 2.0 at the
+given memory location.
+
+The line `` Elemwise{mul,no_inplace} 46950805397392`` is indented less than
+the other ones, because it means there is a variable computed by multiplying
+the other (more indented) ones together. 
+
+Sometimes, you'll see a Variable but not the inputs underneath.  That can
+happen when that Variable has already been printed.  Where else has it been
+printed?  Look for the memory address using the Find feature of your text
+editor.
+
+>>> theano.printing.debugprint(gy)
+ Elemwise{mul} 46950804894224
+   Elemwise{mul} 46950804735120
+     Elemwise{second,no_inplace} 46950804626128
+       Elemwise{pow,no_inplace} 46950804625040
+         x 46950658736720
+         2 46950804039760
+       1.0 46950804625488
+     2 46950804039760
+   Elemwise{pow} 46950804737616
+     x 46950658736720
+     Elemwise{sub} 46950804736720
+       2 46950804039760
+       InplaceDimShuffle{} 46950804736016
+         1 46950804735760
+>>> theano.printing.debugprint(gy, depth=2)
+ Elemwise{mul} 46950804894224
+   Elemwise{mul} 46950804735120
+   Elemwise{pow} 46950804737616
+
+If the depth parameter is provided, it limits the nuber of levels that are
+shown.
+
+
+
+3) The function :func:`theano.printing.pydotprint(fct, file=SOME_DEFAULT_VALUE)`` will print a compiled theano function to a png file.
+
+In the image, Apply nodes (the applications of ops) are shown as boxes and variables are shown as ovals.
+The number at the end of each label indicates graph position.  
+Boxes and ovals have their own set of positions, so you can have apply #1 and also a
+variable #1.
+The numbers in the boxes (Apply nodes) are actually their position in the
+run-time execution order of the graph.
+Green ovals are inputs to the graph and blue ovals are outputs.
+
+If your graph uses shared variables, those shared
+variables will appear as inputs.  Future versions of the :func:`pydotprint`
+may distinguish these inplicit inputs from explicit inputs.
+
+If you give updates arguments when creating your function, these are added as
+extra inputs and outputs to the graph.  
+Future versions of :func:`pydotprint` may distinguish these
+implicit inputs and outputs from explicit inputs and outputs.
 
 
 Reference
@@ -61,3 +171,7 @@ Reference
         When you use the return-value from this function in a theano function,
         running the function will print the value that `x` takes in the graph.
 
+
+.. autofunction:: theano.printing.pp
+
+.. autofunction:: theano.printing.debugprint
