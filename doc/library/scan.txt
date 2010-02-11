@@ -1,0 +1,18 @@
+
+.. _lib_scan:
+
+Scan: Looping in Theano 
+=======================
+
+
+Guide
+-----
+
+
+Reference
+---------
+
+.. automodule:: theano.sandbox.scan
+
+.. autofunction:: theano.sandbox.scan.scan
+
