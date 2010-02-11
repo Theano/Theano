@@ -100,6 +100,21 @@ class ConvOp(Op):
             'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
     """These attributes uniquely identify the behaviour of this op for given inputs"""
 
+    
+    def c_compile_args(self):
+        #when the ksph==(1,1) gcc 4.3.0 segfault during the compilation with -O3.
+        #This don't happen at -O2
+        if theano.gof.cmodule.gcc_version() in ['4.3.0'] and self.kshp==(1,1):
+            return ['-O2']
+        else: return []
+
+    def c_no_compile_args(self):
+        #when the ksph==(1,1) gcc 4.3.0 segfault during the compilation with -O3.
+        #This don't happen at -O2
+        if theano.gof.cmodule.gcc_version() in ['4.3.0'] and self.kshp==(1,1):
+            return ['-O3']
+        else: return []
+
     @staticmethod
     def getOutputShape(inshp, kshp, (dx,dy)=(1,1), mode='valid'):
         """

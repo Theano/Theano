@@ -29,8 +29,6 @@
 
 """
 __docformat__ = 'restructedtext en'
-
-import numpy 
 import theano
 from theano.tensor import opt
 from theano import gof

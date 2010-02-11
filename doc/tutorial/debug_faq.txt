@@ -44,7 +44,13 @@ precise inspection of what's being computed where, when, and how, see the
 How do I print a graph before or after compilation?
 ----------------------------------------------------------
 
-Theano provides a function to print a graph before and after compilation:
+Theano provides two functions to print a graph to the terminal before or after 
+compilation. It can print graph that only have one output. If you have multiple 
+output, call once for each output. Their is another one that create a png image
+of the function. It support multiple output.
+
+1) The first is ``theano.pp``. It hide some Op added by the compiler as the
+*DimShuffle Op used for the broadcast.
 
 >>> x = T.dscalar('x') 
 >>> y = x**2
@@ -55,13 +61,63 @@ Theano provides a function to print a graph before and after compilation:
 >>> pp(f.maker.env.outputs[0])
 '(2.0 * x)'
 
-The parameter in T.dscalar('x') in the first line is the name of this variable(in the graph, not in python). This name is reused when printing the graph. Otherwise the variable x is printed as its type as: <TensorType(float64, scalar)>. That is not the most comprehensible. The string 'x' can be any string, but to make the code more comprehensible, try to pass the same name or derivative of the name in python.
+The parameter in T.dscalar('x') in the first line is the name of this variable 
+in the graph. This name is used when printing the graph to make it more readable.
+If no name is provided the variable x is printed as its type as. In this example
+<TensorType(float64, scalar)>. 
+
+The name parameter can be any string. Their is absolutly no restriction. 
+This mean you can have many variable with the same name. 
+To make the code more comprehensible, try to give the name parameter the same name as what you use in the code.
+
+2)The second fonction to print a graph is `theano.printing.debugprint`(Variable, depth=-1)
+dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+You can use is on graph variable and compiled function as pp. If the depth
+parameter is provided, we limit the nuber of level that we print.
+
+>>> theano.printing.debugprint(gy)
+ Elemwise{mul} 46950804894224
+   Elemwise{mul} 46950804735120
+     Elemwise{second,no_inplace} 46950804626128
+       Elemwise{pow,no_inplace} 46950804625040
+         x 46950658736720
+         2 46950804039760
+       1.0 46950804625488
+     2 46950804039760
+   Elemwise{pow} 46950804737616
+     x 46950658736720
+     Elemwise{sub} 46950804736720
+       2 46950804039760
+       InplaceDimShuffle{} 46950804736016
+         1 46950804735760
+<open file '<stdout>', mode 'w' at 0x2ab38d49f198>
+>>> theano.printing.debugprint(gy, depth=2)
+ Elemwise{mul} 46950804894224
+   Elemwise{mul} 46950804735120
+   Elemwise{pow} 46950804737616
+<open file '<stdout>', mode 'w' at 0x2ab38d49f198>
+>>> theano.printing.debugprint(f.maker.env.outputs[0])
+ Elemwise{mul,no_inplace} 46950805397392
+   2.0 46950805310800
+   x 46950804895504
+<open file '<stdout>', mode 'w' at 0x2ab38d49f198>
+
+3) The function ``theano.printing.pydotprint(fct, file=SOME_DEFAULT_VALUE)`` will print a compiled theano function to a png file.
+
+In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
+If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
+Otherwise, if the variable is constant, we print the value and finaly we print the type + an uniq number to don't have multiple var merged.
+We print the op of the apply in the Apply box with a number that represent the toposort order of application of those Apply.
+
+green ellipse are input to the graph and blue ellipse are output of the graph.
+
+
 
 The function I compiled is too slow, what's up?
 -----------------------------------------------
 First, make sure you're running in FAST_RUN mode, by passing ``mode='FAST_RUN'``
-to ``theano.function`` or ``theano.make`` or by setting to ``FAST_RUN``
-the flag :attr:`config.mode`. Some
+to ``theano.function`` or ``theano.make`` or by setting to ``PROFILE_MODE`` 
+the flags :attr:`config.mode`. Some
 operations have excruciatingly slow Python implementations and that
 can negatively effect the performance of FAST_COMPILE.
 
@@ -80,7 +136,7 @@ Check out this one:
 
 .. code-block:: python
 
-    class PrintEverythingMode(theano.Mode):
+    class PrintEverythingMode(Mode):
         def __init__(self):
             def print_eval(i, node, fn):
                 print i, node, [input[0] for input in fn.inputs],

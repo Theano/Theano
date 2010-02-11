@@ -708,9 +708,14 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         # advanced indexing is not working yet. When it works, do it to avoid
         # potentially misleading behavior in gradient computations! (although
         # typically we should not need the gradient w.r.t. dy).
-        # y_idx_range = tensor.arange(y_idx.shape[0])
-        # return [g_dx * tensor.AdvancedIncSubtensor((y_idx_range, y_idx))(sm, -1, y_idx_range, y_idx), dy.dimshuffle(0, 'x') * g_dx, None]
-        return [None, dy.dimshuffle(0, 'x') * g_dx, None]
+        y_idx_range = tensor.arange(y_idx.shape[0])
+        g_dy = tensor.sum(
+                g_dx * tensor.AdvancedIncSubtensor((y_idx_range, y_idx))(
+                    sm, tensor.fill(dy, -1), y_idx_range, y_idx),
+                axis=1)
+        g_sm = dy.dimshuffle(0, 'x') * g_dx
+        g_y_idx = None
+        return [g_dy, g_sm, g_y_idx]
     def c_code_cache_version(self):
         return (2,)
     def c_code(self, node, name, (dnll, sm, y_idx), (dx,), sub):

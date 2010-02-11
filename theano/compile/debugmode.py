@@ -961,6 +961,7 @@ class _Linker(gof.link.LocalLinker):
 
                 # transfer the initial values from the storage_map to the r_vals
                 debug("DEBUGMODE: transfer initial values")
+                r_transfered_from_storage_map = []
                 for r in storage_map:
                     if (r.owner is None):
                         if (storage_map[r][0] is None):
@@ -969,6 +970,7 @@ class _Linker(gof.link.LocalLinker):
                             raise InvalidValueError(r, storage_map[r][0])
                         r_vals[r] = storage_map[r][0]
                         storage_map[r][0] = None
+                        r_transfered_from_storage_map.append(r)
                 #####
                 #  Precondition: the storage map is empty, transferred completely to r_vals
                 #####
@@ -1122,7 +1124,7 @@ class _Linker(gof.link.LocalLinker):
                         else:
                             storage_map[r][0] = dr_vals[r][0]
             except:
-                for r in storage_map:
+                for r in r_transfered_from_storage_map:
                     if r in original_storage_map_keys:
                         if storage_map[r][0] is None:
                             storage_map[r][0] = r_vals[r]

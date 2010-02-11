@@ -1664,12 +1664,12 @@ class test_grad(unittest.TestCase):
         self.failUnless(o.gval1 is g1)
 
     def test_1None_rval(self):
-        """grad: Test returning a single None from grad"""
+        """grad: Test returning a single zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
         g = grad(a1.outputs[0], a1.outputs[1])
-        self.failUnless(isinstance(g, TensorConstant))
-        self.failUnless(g.data == 0)
+        self.failUnless(g.owner.op == fill)
+        self.failUnless(g.owner.inputs[1].data == 0)
         try:
             grad(a1.outputs[0], 'wtf')
         except AttributeError, e:
@@ -1677,14 +1677,14 @@ class test_grad(unittest.TestCase):
         self.fail()
 
     def test_NNone_rval(self):
-        """grad: Test returning some Nones from grad"""
+        """grad: Test returning some zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
         g0,g1,g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')])
         self.failUnless(o.gval0 is g0)
         self.failUnless(o.gval1 is g1)
-        self.failUnless(isinstance(g2, TensorConstant))
-        self.failUnless(g2.data == 0)
+        self.failUnless(g2.owner.op == fill)
+        self.failUnless(g2.owner.inputs[1].data == 0)
 
 class T_op_cache(unittest.TestCase):
     def setUp(self):

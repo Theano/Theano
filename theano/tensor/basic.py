@@ -3209,8 +3209,8 @@ class AdvancedIncSubtensor(Op):
                             broadcastable = x.type.broadcastable)])
             raise NotImplementedError('Advanced indexing increment of x (of dimension %i) by y (of dimension %i) with these argument dimensions (%s) not supported yet'\
                     % (x.ndim, y.ndim, ','.join(str(input.ndim) for input in inputs)))
-        raise NotImplementedError('Advanced indexing increment of x by y with arguments (%s) not supported yet'\
-                % ','.join(str(input) for input in inputs))
+        raise NotImplementedError('Advanced indexing increment of x (of dim %i) by y (of dim %i) with arguments (%s) not supported yet'\
+                % (x.ndim, y.ndim, ','.join(str(input) for input in inputs)))
 
     def perform(self, node, inputs, (out,)):
         # TODO: same thing as in AdvancedSubtensor's perform TODO
@@ -3452,8 +3452,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     :return: symbolic expression of gradient of `cost` with respect to `wrt`.
     If `wrt` is a list, then return a list containing the gradient of `cost` wrt
     each element of the list.  If an element of `wrt` is not differentiable
-    with respect to the output, then a `TensorConstant` with an appropriate
-    kind of zero is returned.
+    with respect to the output, then a zero variable is returned.
 
     This function is a wrapper around a the more general function
     `theano.gradient.grad_sources_inputs``.
@@ -3473,21 +3472,13 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
     gmap = gradient.grad_sources_inputs([(cost, g_cost)], inputs + consider_constant,
             warn_type=warn_type)
 
-    def zero(p):
-        return TensorConstant(
-                TensorType(dtype = p.type.dtype, broadcastable = []),
-                theano._asarray(0, dtype=p.type.dtype))
-
-    #try:
-        #it = iter(wrt)
-    #except:
-        #it = None
-
-    #if it: #hasattr(wrt, '__iter__'): # isinstance(wrt, (list, tuple)):
+    # Note that it is important to use `zeros_like` when there is no gradient,
+    # instead of returning a scalar constant equal to zero. Otherwise we lose
+    # the guarantee that the gradient has same shape as `wrt`.
     if isinstance(wrt, (list, tuple)):
-        return [gmap.get(p, zero(p)) for p in wrt]
+        return [gmap.get(p, zeros_like(p)) for p in wrt]
     else:
-        return gmap.get(wrt, zero(wrt))
+        return gmap.get(wrt, zeros_like(wrt))
 
 class numeric_grad:
     """WRITEME"""
@@ -3590,7 +3581,7 @@ class numeric_grad:
 
 def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast_to_output_type=False):
     """ WRITEME
-    
+
     Raises an Exception if the difference between the analytic gradient and
     numerical gradient (computed through the Finite Difference Method) exceeds
     the given tolerance.
@@ -3607,7 +3598,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
            try to make it a SMALL graph.  Often verify grad is run in
            debug mode, which can be very slow if it has to verify a lot
            of intermediate computations.
-    
+
     """
     pt = [numpy.array(p) for p in pt]
 
@@ -3619,9 +3610,8 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
         tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
 
     if rng is None:
-        rng = numpy.random
-        from theano import tests as theano_tests # TODO This is an ugly import. Fix?
-        theano_tests.unittest_tools.seed_rng()
+        raise TypeError('rng should be a valid instance of numpy.random.RandomState.',
+                'You may want to use theano.tests.unittest_tools.verify_grad instead of theano.tensor.verify_grad.')
 
     def function(inputs, output):
         if mode is None:
@@ -3633,9 +3623,9 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
     for test_num in xrange(n_tests):
 
         tensor_pt = [value(p.copy(), name='input %i'%i) for i,p in enumerate(pt)]
-        
+
         #op can be either a function or an actual Op instance
-        o_output = op(*tensor_pt) 
+        o_output = op(*tensor_pt)
 
         if isinstance(o_output,list) > 1:
             raise NotImplementedError('cant (yet) autotest gradient of op with multiple outputs')
