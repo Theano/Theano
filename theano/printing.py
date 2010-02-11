@@ -1,4 +1,5 @@
-"""Pretty-printing graphs, and the 'Print' Op.
+"""Pretty-printing (pprint()), the 'Print' Op, debugprint() and pydotprint().
+They all allow different way to print a graph or the result of an Op in a graph(Print Op)
 """
 import gof
 from copy import copy
@@ -6,6 +7,9 @@ import sys,os
 from theano import config
 from gof import Op, Apply
 from theano.gof.python25 import any
+
+#We import the debugprint here to have all printing of graph available from this module
+from theano.compile.debugmode import debugprint
 
 class Print(Op):
     """This identity-like Op has the side effect of printing a message followed by its inputs
@@ -307,9 +311,12 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     :param fct: the theano fct returned by theano.function.
     :param outfile: the output file where to put the graph.
 
-    In the graph, box are an Apply Node(the execution of an op) and elipse are variable.
-    If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph). Otherwise, if a constant, we print the value and finaly we print the type + an uniq number to don't have multiple var merged.
+    In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
+    If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
+    Otherwise, if the variable is constant, we print the value and finaly we print the type + an uniq number to don't have multiple var merged.
     We print the op of the apply in the Apply box with a number that represent the toposort order of application of those Apply.
+
+    green ellipse are input to the graph and blue ellipse are output of the graph.
     """
     import pydot as pd
 
