@@ -321,20 +321,31 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     import pydot as pd
 
     g=pd.Dot()
-    var_id={}
+    var_str={}
     def var_name(var):
+        if var in var_str:
+            return var_str[var]
+        
         if var.name is not None:
             varstr = var.name
         elif isinstance(var,gof.Constant):
             varstr = str(var.data)
+        elif var in input_update and input_update[var].variable.name is not None:
+            varstr = input_update[var].variable.name
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
-            i = var_id.get(var,None)
-            if i is None:
-                var_id[var]=len(var_id)
-                i = var_id[var]
-            varstr = str(var.type)+' '+str(i)
+            varstr = str(var.type)
+        varstr += ' ' + str(len(var_str))
+        var_str[var]=varstr
+
         return varstr
+
+    # Update the inputs that have an update function
+    input_update={}
+    outputs = list(fct.maker.env.outputs)
+    for i in reversed(fct.maker.expanded_inputs):
+        if i.update is not None:
+            input_update[outputs.pop()] = i
 
     for node_idx,node in enumerate(fct.maker.env.toposort()):
         astr=str(node.op).replace(':','_')+'    '+str(node_idx)
