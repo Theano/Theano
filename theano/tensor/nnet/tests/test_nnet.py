@@ -95,6 +95,16 @@ class T_CrossentropySoftmax1HotWithBiasDx(unittest.TestCase):
         softmax_output = numpy.random.rand(10, 5)
         softmax_output /= softmax_output.sum(axis=1).reshape(10, 1)
         utt.verify_grad(f, [softmax_output])
+    def test1(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        softmax_output = rng.rand(10, 5)
+        softmax_output /= softmax_output.sum(axis=1).reshape(10, 1)
+        def f(dy):
+            return (theano.tensor.nnet.crossentropy_softmax_1hot_with_bias_dx(
+                dy,
+                softmax_output,
+                rng.randint(low=0, high=5, size=10)))
+        utt.verify_grad(f, [rng.rand(10)])
 
 class T_CrossentropySoftmaxArgmax1HotWithBias(unittest.TestCase):
     def setUp(self):
