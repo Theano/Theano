@@ -48,9 +48,18 @@ initcutils_ext(void)
 """
 
     import cmodule
-    import os
+    import os, time
     loc=os.path.join(config.compiledir,'cutils_ext')
     if not os.path.exists(loc):
+        try:
             os.makedirs(loc)
+        except OSError:
+            # This may happen when running multiple jobs in parallel, if they
+            # attempt to create the same directory simultaneously.
+            time.sleep(5) # May not be needed, but who knows with NFS.
+            if not os.path.exists(loc):
+                # Looks like something else is not working.
+                raise
+
     cmodule.gcc_module_compile_str('cutils_ext', code, location = loc)
     from cutils_ext.cutils_ext import *
