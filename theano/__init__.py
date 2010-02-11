@@ -60,6 +60,9 @@ FancyModule = Module
 from printing import \
     pprint, pp
 
+from scan import \
+    scan
+
 import tensor
 import scalar
 #import sparse #we don't import by default as we don't want to force having scipy installed.
