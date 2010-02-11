@@ -60,8 +60,7 @@ FancyModule = Module
 from printing import \
     pprint, pp
 
-from scan import \
-    scan
+#from scan import scan
 
 import tensor
 import scalar
