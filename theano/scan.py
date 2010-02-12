@@ -535,7 +535,7 @@ class Scan(theano.Op):
                 elif self.keep_outputs[j] == 1:
                     fn_args += [y[j] ]
                 else:
-                    raise NotImplementedError('in the near future')
+                    raise NotImplementedError('This will be implemented in the near future')
         # get the non-iterable sequences
         fn_args += list(args[(n_seqs+n_outs):])
         # compute output
@@ -547,13 +547,13 @@ class Scan(theano.Op):
           elif self.keep_outputs[j] == 1:
               y[j] = something[j]
           else:
-            raise NotImplementedError('in the near future')
+            raise NotImplementedError('This will be implemented in the near future')
       return y
 
 
     def grad(self, args, g_outs):
 
-        raise NotImplemented;
+        raise NotImplementedError('This will be implemented in the near future');
         '''
         if True: 
            #((self.updates.keys() != []) or (self.inplace_map.keys() != [])\
