@@ -221,13 +221,12 @@ class T_Scan(unittest.TestCase):
 
         assert (compareArrays( out, f8(v_u, v_x0) ) )
         
-    '''
     # simple rnn ; compute inplace
     def test_7(self):
         
         u    = theano.tensor.dvector()
         mu   = theano.Param( u, mutable = True)
-        x0   = theano.tensor.dvector()
+        x0   = theano.tensor.dscalar()
         W_in = theano.shared(.1)
         W    = theano.shared(1.)
 
@@ -238,13 +237,12 @@ class T_Scan(unittest.TestCase):
         f9   = theano.function([mu,x0], Y , #mode = 'FAST_RUN')
                                 mode = 'DEBUG_MODE')
         v_u  = numpy.array([1.,2.,3.])
-        v_x0 = numpy.array([1.])
+        v_x0 = numpy.array(1.)
 
         out = f9(v_u, v_x0)
         v_out = numpy.array([1.1,1.3,1.6])
 
         assert (compareArrays(out, v_out))
-        print v_u
         assert (compareArrays(v_u, out))
 
     '''
@@ -252,14 +250,12 @@ class T_Scan(unittest.TestCase):
     def test_10(self):
         pass
 
-    '''
      TO TEST: 
         - test gradient (one output)
         - test gradient (multiple outputs)
         - test gradient (go_bacwards) 
         - test gradient (multiple outputs / some uncomputable )
         - test gradient (truncate_gradient)
-        - test gradient (force_gradient)
         - test_gradient (taps past/future)
     '''
 

@@ -18,8 +18,9 @@ Special cases:
    - A ``map()`` operation can be performed by applying a function that 
      ignores each previous output.
 
-Often a for loop can be expressed as a ``scan()`` operation, and ``scan`` is the closest that theano comes to looping. The advantage of using ``scan`` over 
-for loops is that it allows you to express the loop symbolically. The 
+Often a for loop can be expressed as a ``scan()`` operation, and ``scan`` is
+the closest that theano comes to looping. The advantage of using ``scan`` 
+over for loops is that it allows you to express the loop symbolically. The 
 Scan Op should always be used by applying the ``scan`` function. 
 """ 
 __docformat__ = 'restructedtext en'
@@ -299,7 +300,7 @@ class Scan(theano.Op):
         self.destroy_map = {}
         if inplace:
             for i in inplace_map.keys():
-                self.destroy_map.update({i: [inplace_map[i]] } )
+                self.destroy_map.update({i: [inplace_map[i]+1] } )
 
         self.seqs_taps      = seqs_taps
         self.outs_taps      = outs_taps
@@ -373,8 +374,6 @@ class Scan(theano.Op):
         rval = (self.inputs == other.inputs) and \
                (self.outputs ==  other.outputs) and \
                (self.keep_outputs == other.keep_outputs) and \
-               (self.g_ins == other.g_ins) and \
-               (self.g_outs == other.g_outs) and \
                (self.seqs_taps == other.seqs_taps) and \
                (self.outs_taps == other.outs_taps) and \
                (self.inplace_map == other.inplace_map) and \
@@ -553,6 +552,9 @@ class Scan(theano.Op):
 
 
     def grad(self, args, g_outs):
+
+        raise NotImplemented;
+        '''
         if True: 
            #((self.updates.keys() != []) or (self.inplace_map.keys() != [])\
            # or numpy.any(self.keep_outputs)):
@@ -590,7 +592,7 @@ class Scan(theano.Op):
                               self.truncate_gradient)
 
             return g_scan(g_args)
-
+            '''
 
 
 @gof.local_optimizer([None])
@@ -598,20 +600,20 @@ def scan_make_inplace(node):
     op = node.op
     if isinstance(op, Scan) and (not op.inplace) \
                             and (op.inplace_map.keys() != []):
-        return Scan((op.inputs, op.outputs) , op.n_seqs,  \
-                    op.n_outs, op.inplace_map, op.seqs_taps, op.outs_taps, \
-                    op.force_gradient, op.truncate_gradient, \
-                    op.go_backwards, inplace=True \
+        return Scan((op.inputs, op.outputs) , op.n_seqs,  
+                    op.n_outs, op.inplace_map, op.seqs_taps, op.outs_taps, 
+                    op.truncate_gradient, op.go_backwards, op.keep_outputs,
+                    inplace=True 
                       ).make_node(*node.inputs).outputs
     return False
         
         
-optdb.register('scan_make_inplace', opt.in2out(scan_make_inplace,\
+optdb.register('scan_make_inplace', opt.in2out(scan_make_inplace,
                ignore_newtrees=True), 75, 'fast_run', 'inplace')
 
 
 
-
+'''
 class ScanGrad(theano.Op):
     """Gradient Op for Scan"""
     def __init__(self,(g_ins, g_outs) , n_seqs, n_outs, 
@@ -767,7 +769,7 @@ class ScanGrad(theano.Op):
 
             for i,v in enumerate(g_ins + g_seeds+ g_non_seqs):
                 storage[i][0] = v
-
+    '''
 
 
 
