@@ -28,6 +28,7 @@ import theano
 from theano.tensor import opt
 from theano import gof
 from theano.compile import optdb
+import numpy
 
 # Logging function for sending warning or info
 import logging
