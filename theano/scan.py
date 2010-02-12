@@ -475,12 +475,15 @@ class Scan(theano.Op):
         if inplace_map.has_key(i) and (inplace_map[i] >= 0):
           y += [args[inplace_map[i]]]
         else:
+          arg_shape = args[i+n_seqs].shape[1:]
+          if not self.outs_taps.has_key(i):
+            arg_shape = args[i+n_seqs].shape
           if self.stored_steps_output[i] < 1 :
-              y_shape = (n_steps,)+args[i+n_seqs].shape[1:]
+              y_shape = (n_steps,)+arg_shape
           elif self.stored_steps_output[i] == 1:
-              y_shape = args[i+n_seqs].shape[1:]
+              y_shape = arg_shape
           else:
-              y_shape = (self.stored_steps_output[i],)+args[i+n_seqs].shape[1:]
+              y_shape = (self.stored_steps_output[i],)+arg_shape
 
 
           y += [numpy.empty(y_shape,
