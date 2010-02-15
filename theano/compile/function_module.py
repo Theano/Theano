@@ -479,7 +479,7 @@ class Function(object):
 
         # Remove internal references to required inputs.
         # These cannot be re-used anyway.
-        for x in self.input_storage:
+        for c in self.input_storage:
             if c.required:
                 c.storage[0] = None
 
