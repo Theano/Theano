@@ -19,9 +19,12 @@ import theano.compile.mode
 
 mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
+def my_rand(*shape):
+    return theano._asarray(numpy.random.rand(*shape),dtype='float32')
+
 def test_dot():
 
-    a = tcn.shared_constructor(numpy.random.rand(4,4), 'a')
+    a = tcn.shared_constructor(my_rand(4,4), 'a')
 
     b = tensor.fmatrix()
 
@@ -31,7 +34,7 @@ def test_dot():
     print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
-    bval = numpy.random.rand(4,4)
+    bval = my_rand(4,4)
     f(bval)
     print a.value
 
@@ -39,7 +42,7 @@ def test_dot():
 
 def test_gemm():
 
-    a = tcn.shared_constructor(numpy.random.rand(4,4), 'a')
+    a = tcn.shared_constructor(my_rand(4,4), 'a')
 
     b = tensor.fmatrix('b')
     c = tensor.fmatrix('c')
@@ -50,8 +53,8 @@ def test_gemm():
     print a0
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
-    bval = numpy.random.rand(4,4)
-    cval = numpy.random.rand(4,4)
+    bval = my_rand(4,4)
+    cval = my_rand(4,4)
     f(bval,cval)
     print a.value
 
@@ -111,7 +114,7 @@ def test_downsample():
                 print 'test_downsample', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
-                a = tcn.shared_constructor(numpy.random.rand(*shp), 'a')
+                a = tcn.shared_constructor(my_rand(*shp), 'a')
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a)), mode=mode_with_gpu)
                 worked = False
                 for i, node in enumerate(f.maker.env.toposort()):
