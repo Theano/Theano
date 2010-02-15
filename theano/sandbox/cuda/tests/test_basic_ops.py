@@ -20,6 +20,7 @@ import theano.compile.mode
 from theano.tests import unittest_tools as utt
 
 mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 def tes_use():
     tcn.use()
@@ -41,7 +42,7 @@ def test_sum():
 #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
         val = theano._asarray(val,dtype='float32')
         f = theano.function([a],b, mode=mode_with_gpu)
-        f2 = theano.function([a],b)
+        f2 = theano.function([a],b, mode=mode_without_gpu)
         assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
         assert numpy.allclose(f2(val),f(val))
@@ -74,7 +75,7 @@ def test_sum():
         elif len(shape)==4:
             val = val[::2,::2,::2,::2]
             val2 = val2[::2,::2,::2,::2]
-        f = theano.function([a],b)
+        f = theano.function([a],b, mode=mode_without_gpu)
         f2 = theano.function([a2],b2, mode=mode_with_gpu)
         assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.env.toposort()]
         assert T.Sum in [x.op.__class__ for x in f.maker.env.toposort()]
@@ -88,7 +89,7 @@ def test_reshape():
     c = T.reshape(a, [2,3])
 
     #basic
-    f = theano.function([a], c)
+    f = theano.function([a], c, mode=mode_without_gpu)
     fv = f(cuda_ndarray.CudaNdarray(theano._asarray([0,1,2,3,4,5],dtype='float32')))
     assert numpy.all(fv == numpy.asarray([[0,1,2], [3,4,5]]))
 
@@ -97,7 +98,7 @@ def test_reshape():
     a_val_copy = cuda_ndarray.CudaNdarray(theano._asarray([0,1,2,3,4,5],dtype='float32'))
     b_val = cuda_ndarray.CudaNdarray(theano._asarray([[0,1,2],[3,4,5]],dtype='float32'))
 
-    f_sub = theano.function([a,b], c-b)
+    f_sub = theano.function([a,b], c-b, mode=mode_without_gpu)
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
 
@@ -106,7 +107,7 @@ def test_reshape():
     a_val_copy = theano._asarray([0,1,2,3,4,5], dtype='float32')
     b_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float32')
 
-    f_sub = theano.function([a,b], c-b)
+    f_sub = theano.function([a,b], c-b, mode=mode_without_gpu)
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
 
@@ -117,7 +118,7 @@ def test_reshape():
 
 def test_elemwise0():
 
-    a = tcn.shared_constructor(numpy.random.rand(4,4), 'a')
+    a = tcn.shared_constructor(theano._asarray(numpy.random.rand(4,4), dtype='float32'), 'a')
 
     b = tensor.fmatrix()
 
@@ -136,7 +137,7 @@ def test_elemwise1():
     """ Several kinds of elemwise expressions with no broadcasting, non power-of-two shape """
 
     shape = (3,4)
-    a = tcn.shared_constructor(numpy.random.rand(*shape)+0.5, 'a')
+    a = tcn.shared_constructor(theano._asarray(numpy.random.rand(*shape), dtype='float32')+0.5, 'a')
     b = tensor.fmatrix()
 
     #let debugmode catch any mistakes
@@ -144,19 +145,19 @@ def test_elemwise1():
     f = pfunc([b], [], updates=[(a, b**a)], mode=mode_with_gpu)
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
-    f(numpy.random.rand(*shape)+0.3)
+    f(theano._asarray(numpy.random.rand(*shape), dtype='float32')+0.3)
 
     print >> sys.stdout, "STARTING FUNCTION 2"
     #let debugmode catch any mistakes
     f = pfunc([b], [], updates=[(a, tensor.exp(b**a))], mode=mode_with_gpu)
     for i, node in enumerate(f.maker.env.toposort()):
         print i, node
-    f(numpy.random.rand(*shape)+0.3)
+    f(theano._asarray(numpy.random.rand(*shape), dtype='float32')+0.3)
 
     print >> sys.stdout, "STARTING FUNCTION 3"
     #let debugmode catch any mistakes
     f = pfunc([b], [], updates=[(a, a+b * tensor.exp(b**a))], mode=mode_with_gpu)
-    f(numpy.random.rand(*shape)+0.3)
+    f(theano._asarray(numpy.random.rand(*shape), dtype='float32')+0.3)
 
 def test_elemwise2():
     """ Several kinds of elemwise expressions with dimension permutations """
@@ -164,7 +165,7 @@ def test_elemwise2():
     print 'random?', rng.rand(3)
     shape = (3,5)
     for pattern in [(0,1), (1,0)]:
-        a = tcn.shared_constructor(rng.rand(*shape), name=None)
+        a = tcn.shared_constructor(theano._asarray(rng.rand(*shape),dtype='float32'), name=None)
         b = tensor.Tensor(dtype='float32', broadcastable=[0]*len(shape))()
         f = pfunc([b], [], updates=[(a, (a+b).dimshuffle(pattern))], mode=mode_with_gpu)
         has_elemwise = False
@@ -174,10 +175,10 @@ def test_elemwise2():
         assert not has_elemwise
         #let debugmode catch errors
         print >> sys.stdout, 'pattern', pattern
-        f(rng.rand(*shape)*.3)
+        f(theano._asarray(rng.rand(*shape),dtype='float32')*.3)
     
     shape = (3,4,5,6)
-    a = tcn.shared_constructor(rng.rand(*shape), 'a')
+    a = tcn.shared_constructor(theano._asarray(rng.rand(*shape),dtype='float32'), 'a')
     b = tensor.Tensor(dtype='float32', broadcastable=[0]*len(shape))()
     f = pfunc([b], [], updates=[(a, (a+b).dimshuffle([2,0,3,1]) *
         tensor.exp(b**a).dimshuffle([2,0,3,1]))], mode=mode_with_gpu)
@@ -187,13 +188,13 @@ def test_elemwise2():
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
-    f(rng.rand(*shape))
+    f(theano._asarray(rng.rand(*shape),dtype='float32'))
 
 def test_elemwise3():
     """ Several kinds of elemwise expressions with dimension permutations and broadcasting"""
     
     shape = (3,4,5,6)
-    a = tcn.shared_constructor(numpy.random.rand(*shape), 'a')
+    a = tcn.shared_constructor(theano._asarray(numpy.random.rand(*shape), dtype='float32'), 'a')
     b = tensor.fvector()
     print b.type
     print tensor.constant(1).type
@@ -208,13 +209,13 @@ def test_elemwise3():
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
-    f(numpy.random.rand(6))
+    f(theano._asarray(numpy.random.rand(6), dtype='float32'))
 
 def test_elemwise4():
     """ Test that two vectors can be broadcast to form an outer product (by performing rank-1 matrix update"""
     
     shape = (3,4)
-    a = tcn.shared_constructor(numpy.random.rand(*shape), 'a')
+    a = tcn.shared_constructor(theano._asarray(numpy.random.rand(*shape), dtype='float32'), 'a')
     b = tensor.fvector()
     c = tensor.fvector()
     f = pfunc([b,c], [], updates=[(a, (a+b.dimshuffle('x', 0)*c.dimshuffle(0, 'x')))], mode=mode_with_gpu)
@@ -224,7 +225,7 @@ def test_elemwise4():
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
-    f(numpy.random.rand(4), numpy.random.rand(3))
+    f(theano._asarray(numpy.random.rand(4), dtype='float32'), theano._asarray(numpy.random.rand(3), dtype='float32'))
 
 
 def speed_elemwise_collapse():
