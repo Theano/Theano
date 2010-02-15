@@ -709,27 +709,17 @@ class test_fusion(unittest.TestCase):
             if shared_fn == None:
                 assert gpu==False
                 f = compile.function(list(sym_inputs), g,mode=mode)
-                #pre-call to have the data in cache if it fit to don't penalise the first iteration
-#                if id==0:
-#                    out=f(*val_inputs)
-                t0=time.time()
                 for x in range(nb_repeat):
                     out=f(*val_inputs)
                 t1=time.time()
-                nb_repeat=1
             else:
                 out=shared_fn(numpy.zeros(shp, dtype=out_dtype),'out')
                 f = function(sym_inputs,[],updates=[(out,out+g)],mode=mode)
-                #pre-call to have the data in cache if it fit to don't penalise the first iteration
-#                if id==0:
-#                    f(*val_inputs)
                 t0=time.time()
                 for x in range(nb_repeat):
                     f(*val_inputs)
                 t1=time.time()
                 out=out.value
-#                if id==0:
-#                    nb_repeat+=1
 
             times[id]=t1-t0
             atol=1e-8
