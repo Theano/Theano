@@ -753,9 +753,10 @@ class test_fusion(unittest.TestCase):
     
     def test_elemwise_fusion(self):
         shp=(5,5)
-        #we need the optimisation enabled, debug do this.
         mode=cp(compile.mode.get_default_mode())
-        mode._optimizer=mode._optimizer.including('local_elemwise_fusion')
+        #we need the optimisation enabled and the canonicalize.
+        #the canonicalize is needed to merge multiplication/addition by constant.
+        mode._optimizer=mode._optimizer.including('local_elemwise_fusion','canonicalize')
         self.do(mode, shared, shp)
 
     def gpu_fusion(self):
@@ -788,7 +789,7 @@ class test_fusion(unittest.TestCase):
         mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
         if s is None:
             s=slice(0,49)
-            s=slice(0,10)
+            #s=slice(0,10)
             #s=slice(49,59)
         nb_repeat=10
         print "test with linker", str(mode1.linker)
