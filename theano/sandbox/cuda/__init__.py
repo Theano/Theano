@@ -98,6 +98,7 @@ if cuda_available:
             CudaNdarrayConstant,
             CudaNdarraySharedVariable,
             float32_shared_constructor)
+    shared_constructor = float32_shared_constructor
 
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
