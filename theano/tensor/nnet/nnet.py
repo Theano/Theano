@@ -4,89 +4,14 @@
 """
 
 from theano import gof
-from theano import scalar
 from theano import printing
-from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise
 from theano.tensor import opt
 from theano.compile import optdb
 import numpy
 
-############
-#
-# SCALAR OPS
-#
-
-class ScalarSigmoid(scalar.UnaryScalarOp):
-    @staticmethod
-    def st_impl(x):
-        if x < -30.0:
-            return 0.0
-        if x > 30.0:
-            return 1.0 
-        return 1.0 / (1.0 + numpy.exp(-x))
-    def impl(self, x):
-        return ScalarSigmoid.st_impl(x)
-    def grad(self, (x,), (gz,)):
-        y = scalar_sigmoid(x)
-        return [gz * y * (1.0 - y)]
-    def c_code(self, node, name, (x,), (z,), sub):
-        if node.inputs[0].type == scalar.float32:
-            # These constants were obtained by looking at the output of python commands like:
-            #  for i in xrange(750):
-            #      print i, repr( theano._asarray(1.0, dtype=dt) / (theano._asarray(1.0, dtype=dt) + numpy.exp(-theano._asarray([i,-i], dtype=dt))))
-            # the boundary checks prevent us from generating inf
-            return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()
-        elif node.inputs[0].type == scalar.float64:
-            return """%(z)s = %(x)s < -709.0 ? 0.0 : %(x)s > 19.0 ? 1.0 : 1.0 /(1.0+exp(-%(x)s));""" % locals()
-        else:
-            raise NotImplementedError('only floatingpoint is implemented')
-    def c_code_cache_version(self):
-        v = super(ScalarSigmoid, self).c_code_cache_version()
-        if v:
-            return (2,) + v
-        else:
-            return v
-scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
-sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
-
-pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
-
-
-class ScalarSoftplus(scalar.UnaryScalarOp):
-    @staticmethod
-    def static_impl(x):
-        if x < -30.0:
-            return 0.0
-        if x > 30.0:
-            return x
-        return numpy.log1p(numpy.exp(x))
-    def impl(self, x):
-        return ScalarSoftplus.static_impl(x)
-    def grad(self, (x,), (gz,)):
-        return [gz * scalar_sigmoid(x)]
-    def c_code(self, node, name, (x,), (z,), sub):
-        if node.inputs[0].type == scalar.float32:
-            # These constants were obtained by looking at the output of python commands like:
-            #  for i in xrange(750):
-            #      print i, repr( numpy.log1p(numpy.exp(theano._asarray([i,-i], dtype=dt))))
-            # the boundary checks prevent us from generating inf
-            return """%(z)s = %(x)s < -103.0f ? 0.0 : %(x)s > 14.0f ? %(x)s : log1p(exp(%(x)s));""" % locals()
-        elif node.inputs[0].type == scalar.float64:
-            return """%(z)s = %(x)s < -745.0 ? 0.0 : %(x)s > 16.0 ? %(x)s : log1p(exp(%(x)s));""" % locals()
-        else:
-            raise NotImplementedError('only floatingpoint is implemented')
-    def c_code_cache_version(self):
-        v = super(ScalarSoftplus, self).c_code_cache_version()
-        if v:
-            return (2,) + v
-        else:
-            return v
-scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
-softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
-
-pprint.assign(softplus, printing.FunctionPrinter('softplus'))
+from .sigm import sigmoid
 
 
 ############
@@ -1351,6 +1276,7 @@ def categorical_crossentropy(coding_dist, true_dist):
         raise TypeError('rank mismatch between coding and true distributions')
 
 
+from theano import scalar
 
 class Prepend_scalar_constant_to_each_row(gof.Op):
     def __init__(self, val = 0):
@@ -1440,14 +1366,3 @@ prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
 prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
 
-logsigm_to_softplus = gof.PatternSub(
-    (tensor.log, (sigmoid, 'x')),
-    (tensor.neg, (softplus, (tensor.neg, 'x'))),
-    allow_multiple_clients = True)
-log1msigm_to_softplus = gof.PatternSub(
-    (tensor.log, (tensor.sub, tensor.constant([[1.0]]), (sigmoid, 'x'))),
-    (tensor.neg, (softplus, 'x')),
-    allow_multiple_clients = True)
-
-opt.register_specialize(logsigm_to_softplus, name = 'logsigm_to_softplus')
-opt.register_specialize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')
