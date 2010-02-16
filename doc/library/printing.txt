@@ -122,7 +122,7 @@ shown.
 
 
 
-3) The function :func:`theano.printing.pydotprint(fct, file=SOME_DEFAULT_VALUE)`` will print a compiled theano function to a png file.
+3) The function :func:`theano.printing.pydotprint(fct, outfile=SOME_DEFAULT_VALUE)` will print a compiled theano function to a png file.
 
 In the image, Apply nodes (the applications of ops) are shown as boxes and variables are shown as ovals.
 The number at the end of each label indicates graph position.  
