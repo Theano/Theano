@@ -194,4 +194,7 @@ class PrintListener(object):
             print "-- changing (%s.inputs[%s]) from %s to %s" % (node, i, r, new_r)
 
 
-
+class PreserveNames:
+    def on_change_input(self, env, mode, i, r, new_r):
+        if r.name is not None and new_r.name is None:
+            new_r.name = r.name

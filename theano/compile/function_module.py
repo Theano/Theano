@@ -149,6 +149,9 @@ def std_env(input_specs, output_specs, accept_inplace = False):
 
     # We need to protect all immutable inputs from inplace operations.
     env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
+
+    # If named nodes are replaced, keep the name
+    env.extend(gof.toolbox.PreserveNames())
     return env, map(SymbolicOutput, updates)
 
 class AliasedMemoryError(Exception):
