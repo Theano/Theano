@@ -105,6 +105,9 @@ class RandomFunction(gof.Op):
             self.destroy_map = {0: [0]}
         self.ndim_added = ndim_added
 
+    def __str__(self):
+        return 'RandomFunction{%s}' % self.fn.__name__
+
     def make_node(self, r, shape, *args):
         """
         :param r: a numpy.RandomState instance, or a Variable of Type
