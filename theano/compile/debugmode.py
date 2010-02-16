@@ -354,14 +354,17 @@ def debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
         # this variable is the output of computation,
         # so just print out the apply
         a = r.owner
-        print >> file, prefix, a.op, id(a)
+        if len(a.outputs) == 1:
+            print >> file, '%s%s [@%i]' % (prefix, a.op, id(r))
+        else:
+            print >> file, '%s%s.%i [@%i]' % (prefix, a.op, a.outputs.index(r), id(r))
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
-                debugprint(i, prefix+'  ', depth=depth-1, done=done, file=file)
+                debugprint(i, prefix+' |', depth=depth-1, done=done, file=file)
     else:
         #this is a variable
-        print >> file, prefix, r, id(r)
+        print >> file, '%s%s [@%i]' % (prefix, r, id(r))
 
     return file
 
