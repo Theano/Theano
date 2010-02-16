@@ -116,7 +116,7 @@ class AddDestroyHandler(gof.Optimizer):
         for o in env.outputs:
             try:
                 env.replace_validate(o, _output_guard(o), reason='output_guard')
-                _logger.warning("Output variable %s required output_guard,"
+                _logger.info("Output variable %s required output_guard,"
                         " how was this output left unprotected against destructive operations?"
                         % o)
             except gof.InconsistencyError:
