@@ -197,6 +197,11 @@ class BadOptimization(DebugModeError):
             print >> ssio, "  Mean Abs Diff: ", numpy.mean(numpy.absolute(nv-ov))
             print >> ssio, "  Median Abs Diff: ", numpy.median(numpy.absolute(nv-ov))
             print >> ssio, "  Std Abs Diff: ", numpy.std(numpy.absolute(nv-ov))
+            reldiff = numpy.absolute(nv-ov) / (numpy.absolute(nv)+numpy.absolute(ov))
+            print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
+            print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
+            print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
+            print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()                                    
         except:
