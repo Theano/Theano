@@ -3,7 +3,7 @@ import numpy
 import theano
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor
-from theano.compile import shared, SharedVariable, shared_constructor
+from theano.compile import shared, SharedVariable
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import filter as type_support_filter
@@ -67,6 +67,11 @@ CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
 def cuda_shared_constructor(value, name, strict=False, broadcastable=None):
     """SharedVariable Constructor for TensorType"""
+
+    # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
+    # SO INT shared vars, float64 shared vars, etc. all end up on the card.
+    # THIS IS NOT THE DEFAULT BEHAVIOUR THAT WE WANT. 
+    # SEE float32_shared_constructor
 
     #TODO: what should strict mean in this context, since we always have to make a copy?
     if strict:
