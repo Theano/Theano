@@ -7,9 +7,52 @@ import sys,os
 from theano import config
 from gof import Op, Apply
 from theano.gof.python25 import any
+from theano.compile import Function, debugmode
 
-#We import the debugprint here to have all printing of graph available from this module
-from theano.compile.debugmode import debugprint
+
+def debugprint(obj, depth=-1, file=None):
+    """Print a computation graph to file
+
+    :type obj: Variable, Apply, or Function instance
+    :param obj: symbolic thing to print
+    :type depth: integer
+    :param depth: print graph to this depth (-1 for unlimited)
+    :type file: None or file-like object
+    :param file: print to this file (None means sys.stdout)
+
+    :rtype: None or file-like object
+    :returns: `file` argument
+
+    Each line printed represents a Variable in the graph.
+    The indentation of each line corresponds to its depth in the symbolic graph.
+    The first part of the text identifies whether it is an input (if a name or type is printed)
+    or the output of some Apply (in which case the Op is printed).
+    The second part of the text is the memory location of the Variable.
+
+    If a Variable is encountered multiple times in the depth-first search, it is only printed
+    recursively the first time.  Later, just the Variable and its memory location are printed.
+
+    If an Apply has multiple outputs, then a '.N' suffix will be appended to the Apply's
+    identifier, to indicate which output a line corresponds to.
+
+    """
+    if file is None:
+        _file = sys.stdout
+    else:
+        _file = file
+    done = set()
+    results_to_print = []
+    if isinstance(obj, gof.Variable):
+        results_to_print.append(obj)
+    elif isinstance(obj, gof.Apply):
+        results_to_print.extend(obj.outputs)
+    elif isinstance(obj, Function):
+        results_to_print.extend(obj.maker.env.outputs)
+    for r in results_to_print:
+        debugmode.debugprint(r, depth=depth, done=done, file=_file)
+    if file is None:
+        _file.flush()
+    return file
 
 class Print(Op):
     """This identity-like Op has the side effect of printing a message followed by its inputs
