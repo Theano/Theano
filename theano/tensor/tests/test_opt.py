@@ -969,6 +969,36 @@ class test_local_subtensor_unary(unittest.TestCase):
 
         f([[0,1],[2,3]], [4,5]) # let debugmode test something
 
+def test_local_fill_useless():
+    m = theano.config.mode
+    if m == 'FAST_COMPILE':
+        m = 'FAST_RUN'
+
+    x = dvector()
+    y = dvector()
+    z = lvector()
+
+    # basic case
+    f = function([x], T.fill(x,x)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # basic case
+    f = function([x,y], T.second(y,x)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # now with different type
+    f = function([x,z], T.fill(z,x)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # now cutting out the input ??
+    f = function([x,y], T.fill(x,y)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # now filll is serving as a cast
+    f = function([x,y], T.fill(x,y)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+
 if __name__ == '__main__':
 #    unittest.main()
     test_fusion().tes_memory_leak()
