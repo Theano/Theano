@@ -795,10 +795,14 @@ class CAReduce(Op):
         if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
         self.scalar_op = scalar_op
-        if isinstance(axis, int):
-            self.axis = [axis]
-        else:
+        if axis is None:
             self.axis = axis
+        elif isinstance(axis, int):
+            self.axis = (axis,)
+        else:
+            self.axis = list(set(axis))
+            self.axis.sort()
+            self.axis = tuple(self.axis)
         self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
         # CAReduce output views input when reducing scalars
