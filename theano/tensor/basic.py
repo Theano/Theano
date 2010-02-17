@@ -1757,11 +1757,13 @@ class Mean(elemwise.CAReduce):
         return 'float64'
 
     def perform(self, node, (input, ), (output, )):
-      ret = elemwise.CAReduce.perform(self,node,(input,),(output,))
-      output[0]=numpy.asarray(output[0]/len(input))
+      output[0]=numpy.mean(input,axis=self.axis)
 
     def c_code(self, node, name, inames, onames, sub):
+      if self.axis!=None:
+        return super(Op, self).c_code(node, name, inames, onames, sub)
       ret = elemwise.CAReduce.c_code(self, node, name, inames, onames, sub)
+      #TODO: c_code perform support only axis==None
       return ret + """
 *((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
 """%(onames[0],inames[0])
