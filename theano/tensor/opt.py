@@ -140,6 +140,11 @@ def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
     return lopt
 
+def register_stabilize(lopt, *tags, **kwargs):
+    name = (kwargs and kwargs.pop('name')) or lopt.__name__
+    compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
+
 ######################
 # DimShuffle lifters #
 ######################
