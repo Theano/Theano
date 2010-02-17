@@ -282,7 +282,7 @@ class ShapeOptimizer(Optimizer):
     input_shapes=((x0,x1), (y0,y1)) and return ((x0, y1),).
     
 
-    Infering the shape of internal nodes in the graph is important for doing size-driven
+    Inferring the shape of internal nodes in the graph is important for doing size-driven
     optimizations.  If we know how big various intermediate results will be, we can estimate
     the cost of many Ops accurately, and generate c-code that is specific [e.g. unrolled] to
     particular sizes.
