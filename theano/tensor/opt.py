@@ -183,77 +183,232 @@ register_canonicalize(local_dimshuffle_lift)
 #################
 # Shape lifters #
 #################
+class MakeVector(T.Op):
+    """Concatenate a number of scalars together into a vector
 
-@gof.local_optimizer([T._shape, None])
-def local_shape_lift_elemwise(node):
+    This is a simple version of stack() that introduces far less cruft into the graph.
+    
     """
-    shape(elemwise_op(..., x, ...)) -> shape(x)
+    def make_node(self, *inputs):
+        inputs = map(T.as_tensor_variable, inputs)
+        if not all(a.type == inputs[0].type for a in inputs):
+            raise TypeError('This MakeVector instance requires inputs of same type %s' %
+                    inputs[0].type)
+        #bcastable = (len(inputs) == 1)
+        bcastable = False
+        otype = T.TensorType(
+                broadcastable=(bcastable,),
+                dtype=inputs[0].type.dtype)
+        return T.Apply(self, inputs, [otype()])
+    def __str__(self):
+        return self.__class__.__name__
+    def perform(self, node, inputs, (out,)):
+        out[0] = T.numpy.asarray(inputs)
 
-    Where x contains the maximal shape information.
+make_vector = MakeVector()
+
+class MakeVectorPrinter:
+    def process(self, r, pstate):
+        if r.owner is None:
+            raise TypeError("Can only print make_vector.")
+        elif isinstance(r.owner.op, MakeVector):
+            return "[%s]" % ", ".join(pstate.pprinter.process(input, pstate.clone(precedence = 1000)) for input in r.owner.inputs)
+        else:
+            raise TypeError("Can only print make_vector.")
+T.pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
+
+class Shape_i(T.Op):
     """
-    if not opt.check_chain(node, T._shape, T.Elemwise):
-        return False
+    L{Op} to return the shape of a matrix.
 
-    output = node.inputs[0]
-    parent = output.owner
-
-    for input in parent.inputs:
-        if input.type.broadcastable == output.type.broadcastable:
-            return T._shape(input),
-
-    return False
-
-register_canonicalize(local_shape_lift_elemwise, 'shape_lift')
-register_specialize(local_shape_lift_elemwise, 'shape_lift')
-
-
-@gof.local_optimizer([T._shape, None])
-def local_shape_lift_sum(node):
+    @note: Non-differentiable.
     """
-    shape(sum{n}(x)) -> [shape(x)[0], ..., shape(x)[n-1], shape(x)[n+1], ...]
+    def __init__(self, i):
+        self.i = i
+    def __hash__(self):
+        return hash(type(self)) ^ self.i
+    def __eq__(self, other):
+        return type(self) == type(other) and self.i == other.i
+    def __str__(self):
+        return '%s{%i}'%(self.__class__.__name__, self.i)
+    def make_node(self, x):
+        x = T.as_tensor_variable(x)
+        if x.ndim <= self.i:
+            raise TypeError('x has too few dimensions for Shape_i', (x, self.i))
+        return T.Apply(self, [x], [T.lscalar()])
+    def perform(self, node, (x, ), (out, )):
+        out[0] = theano._asarray(x.shape, dtype = 'int64')[self.i]
+    def grad(self, (x,), (gz,)):
+        return [None]
+
+lscalar_one = T.constant(1, dtype='int64')
+assert lscalar_one.type == T.lscalar
+def shape_i(i):
+    def op_deco(r):
+        if r.type.broadcastable[i]:
+            return lscalar_one
+        else:
+            return Shape_i(i)(r)
+    return op_deco
+
+class ShapeOptimizer(Optimizer):
+    """Graph optimizer for removing all calls to shape()
+    
+    This optimizer replaces all Shapes and Subtensors of Shapes with Shape_i and MakeVector
+    Ops.
+
+    This optimizer has two goals:
+    1. to 'lift' Shapes to as close to the inputs as possible.  
+    2. to infer the shape of every node in the graph in terms of the input shapes.
+
+    Lifting shapes as close to the inputs as possible is important for canonicalization because
+    it is very bad form to have to compute something just to know how big it will be.  Firstly,
+    it is a waste of time to compute such outputs.  But it is important to get rid of these
+    outputs as early as possible in the compilation process because the
+    extra computations make it appear as if many internal graph nodes have multiple clients.
+    Many optimizations refuse to work on nodes with multiple clients.
+
+    Infering the shape of internal nodes in the graph is important for doing size-driven
+    optimizations.  If we know how big various intermediate results will be, we can estimate
+    the cost of many Ops accurately, and generate c-code that is specific [e.g. unrolled] to
+    particular sizes.
+
+    .. note::
+
+        Right now there is only the ConvOp that can really take advantage of this shape
+        inference, but it is worth it even just for the ConvOp.  All that's necessary to do
+        shape inference is 1) to mark shared inputs as having a particular shape,
+        either via a .tag or some similar hacking; and 2) to add an optional Param() argument
+        to promise that inputs will have a certain shape (or even to have certain shapes in
+        certain dimensions).
+
+
     """
-    if not opt.check_chain(node, T._shape, T.Sum):
-        return False
+    def __init__(self):
+        Optimizer.__init__(self)
 
-    input = node.inputs[0].owner.inputs[0]
-    axis = node.inputs[0].owner.op.axis
-    if axis is None:# or len(axis) != 1:
-        axis = range(input.type.ndim)
+    def add_requirements(self, env):
+        env.extend(toolbox.ReplaceValidate())
+
+    def apply(self, env):
+        shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+
+        def new_shape_from_r(r):
+            return tuple([shape_i(i)(r) for i in xrange(r.ndim)])
+
+        def unpack(s_i):
+            # unpack the s_i that the Op returned
+            assert s_i is not None
+            if type(s_i) is int:
+                # this shape is a constant
+                assert s_i >= 0
+                return T.constant(s_i, dtype='int64')
+            if type(s_i) in (tuple,list):
+                # this dimension is the same as many of the inputs
+                # which tells us that if one of the inputs is known, 
+                # the others all become known.
+                # TODO: should be implemented in Elemwise, and Dot
+                #
+                # worst case, we loop over shape_of and replace things
+                raise NotImplementedError(s_i)
+            elif s_i.type == T.lscalar:
+                return s_i
+            else:
+                raise TypeError('Unsupported shape element', s_i)
+
+        def set_shape(r, s):
+            assert r not in shape_of
+            if s is None:
+                shape_of[r] = s
+            else:
+                shape_of[r] = tuple([unpack(s_i) for s_i in s])
+
+        def default_infer_shape(node, i_shapes, lscalar_one):
+            rval = []
+            for r in node.outputs:
+                try:
+                    rval.append(new_shape_from_r(r))
+                except AttributeError:
+                    rval.append(None)
+            return rval
+
+        # Do a feed-forward shape-inference pass through the entire graph
+        # This builds the shape_of dictionary.
+        nodelist = list(env.toposort())
+        for node in nodelist:
+            for i, r in enumerate(node.inputs):
+                # make sure we have shapes for the inputs
+                if r not in shape_of:
+                    try:
+                        set_shape(r, new_shape_from_r(r))
+                    except AttributeError:
+                        set_shape(r, None ) # not a TensorType variable
+
+            try:
+                shape_infer = node.op.infer_shape
+            except AttributeError:
+                shape_infer = default_infer_shape
+
+            try:
+                o_shapes = shape_infer(node, [shape_of[r] for r in node.inputs], lscalar_one)
+            except Exception, e:
+                _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
+                    [shape_of[r] for r in node.inputs],
+                    type(e), str(e)))
+                o_shapes = default_infer_shape(node, [shape_of[r] for r in node.inputs],
+                        lscalar_one)
+
+            # this is packed information
+            # an element of o_shapes is either None or a tuple
+            #   elements of the tuple can be either strings, or ints
+
+            assert len(o_shapes) == len(node.outputs)
+
+            for r, s in zip(node.outputs, o_shapes):
+                set_shape(r, s)
+
+        # replace all shape -> make_vector
+        shapes_in_graph = True
+        while shapes_in_graph:
+            shapes_in_graph = False
+            # we do this multiple times because
+            # some of the shape_of expressions might be
+            # expressed in terms of shape
+            nodelist = list(env.toposort())
+            for node in nodelist:
+                if node.op == T._shape:
+                    shapes_in_graph = True
+                    env.replace_validate(node.outputs[0],
+                            make_vector(*shape_of[node.inputs[0]]),
+                            reason='ShapeOptimizer [phase 1]')
 
 
-    ish = T._shape(input)
-    return T.make_lvector.make_node(*(ish[i] for i in xrange(input.type.ndim) if i not in axis)).outputs
-#    return T.vertical_stack.make_node(ish[:axis], ish[axis+1:]).outputs
+        # replace all subtensor(make_vector) like:
+        # [a,b,c][0] -> a
+        # [a,b,c][0:2] -> [a,b]
+        # we can do this for constant indexes
+        nodelist = list(env.toposort())
+        for node in nodelist:
+            if isinstance(node.op, T.Subtensor):
+                x = node.inputs[0]
+                if x.owner and x.owner.op == make_vector:
+                    idxlist = node.op.idx_list
 
-register_canonicalize(local_shape_lift_sum, 'shape_lift')
+                    if len(idxlist) != 1:
+                        continue
 
+                    idx = idxlist[0]
+                    if isinstance(idx, int):
+                        env.replace_validate(node.outputs[0],
+                                x.owner.inputs[idx],
+                                reason='ShapeOptimizer [phase 2 a]')
+                    else:
+                        env.replace_validate(node.outputs[0],
+                                make_vector(*x.owner.inputs.__getslice__(idx)),
+                                reason='ShapeOptimizer [phase 2 b]')
 
-@gof.local_optimizer([T._shape, T.dot])
-def local_shape_lift_dot(node):
-    """
-    shape(dot(a, b)) -> [shape(a)[0], shape(b)[1]]
-    """
-    if not opt.check_chain(node, T._shape, T.dot):
-        return False
-    a, b = node.inputs[0].owner.inputs
-    if a.type.ndim == 2 and b.type.ndim == 2:
-        return T.make_lvector.make_node(T._shape(a)[0], T._shape(b)[1]).outputs
-    elif a.type.ndim == 1 and b.type.ndim == 2:
-        return T.make_lvector.make_node(T._shape(b)[1]).outputs
-    elif a.type.ndim == 2 and b.type.ndim == 1:
-        return T.make_lvector.make_node(T._shape(a)[0]).outputs
-    elif a.type.ndim == 1 and b.type.ndim == 1:
-        return T.make_lvector.make_node().outputs
-    else:
-        return False
-
-register_canonicalize(local_shape_lift_dot, 'shape_lift')
-
-
-# local_shape_lift = opt.LocalOptGroup(local_shape_lift_elemwise,
-#                                      local_shape_lift_sum,
-#                                      local_shape_lift_dot)
-
+# -1 should make it run right before the first merge
+theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(), -1, 'fast_run', 'fast_compile')
 
 ################
 # Fill lifters #
@@ -338,38 +493,6 @@ def local_subtensor_unary(node):
             idx = node.inputs[1:]
             x_idx = node.op(u.owner.inputs[0], *idx)
             return [u.owner.op(x_idx)]
-
-@gof.local_optimizer([None, None])
-def local_subtensor_make_vector(node):
-    """
-    [a,b,c][0] -> a
-    [a,b,c][0:2] -> [a,b]
-
-    If the index or slice is constant.
-    """
-    if not opt.check_chain(node, T.Subtensor, T.MakeVector):
-        return False
-
-    joined_r = node.inputs[0]
-
-    try: 
-        #check that join is being used to join scalars
-        veclen = T.join.vec_length(joined_r)
-    except:
-        return False
-
-    idxlist = node.op.idx_list
-    if len(idxlist) != 1:
-        return False
-    idx = idxlist[0]
-    if isinstance(idx, int):
-        return [node.inputs[0].owner.inputs[idx]]
-    try:
-        return T.make_vector(*(node.owner.inputs[0].owner.inputs.__getslice__(idx)))
-    except TypeError:
-        return False
-
-register_canonicalize(local_subtensor_make_vector)
 
 @register_canonicalize
 @gof.local_optimizer([None])
