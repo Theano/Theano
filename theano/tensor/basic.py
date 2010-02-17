@@ -3324,7 +3324,7 @@ class Dot(Op):
             rval = dot(gz, y.T), dot(x.T, gz)
         return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
 
-    def infer_shape(self, node, (xshp,yshp), one):
+    def infer_shape(self, node, (xshp,yshp)):
         x, y = node.inputs
         if x.ndim == 2 and y.ndim == 2:
             return [(xshp[0], yshp[1])]

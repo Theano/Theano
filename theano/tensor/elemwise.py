@@ -197,7 +197,7 @@ class DimShuffle(Op):
 
         storage[0] = numpy.asarray(res) #asarray puts scalars back into array
 
-    def infer_shape(self, node, (ishp,), one):
+    def infer_shape(self, node, (ishp,)):
         ishp = list(ishp)
         for drop in reversed(self.drop):
             del ishp[drop]
@@ -206,7 +206,7 @@ class DimShuffle(Op):
 
         # augment
         for augm in self.augment:
-            rval.insert(augm, one)
+            rval.insert(augm, 1)
         return [rval]
 
     def c_code(self, node, name, (input,), (res,), sub):
@@ -625,14 +625,14 @@ class Elemwise(Op):
         # the following should be used instead of the previous loop, unfortunately it tends to segfault
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
-    def infer_shape(self, node, i_shapes, one):
+    def infer_shape(self, node, i_shapes):
         rval = []
         for o in node.outputs:
             oshp = []
             for dim, b in enumerate(o.type.broadcastable):
                 b_dim = None
                 if b: # this is broadcastable
-                    b_dim = one
+                    b_dim = 1
                 else: # there must be some input that is not broadcastable
                     for ishp, i in zip(i_shapes,node.inputs):
                         if not i.type.broadcastable[dim]:
@@ -865,7 +865,7 @@ class CAReduce(Op):
         else:
             output[0] = numpy.copy(variable)
 
-    def infer_shape(self, node, (ishape,), one):
+    def infer_shape(self, node, (ishape,)):
         axis = self.axis
         if axis is None:
             return (),

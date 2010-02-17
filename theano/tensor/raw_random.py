@@ -155,7 +155,7 @@ class RandomFunction(gof.Op):
                          [r, shape] + args,
                          [r.type(), self.outtype()])
 
-    def infer_shape(self, node, i_shapes, one):
+    def infer_shape(self, node, i_shapes):
         r, shp = node.inputs[0:2]
 
         #if shp is a constant array of len 0, then it means 'automatic shape'
