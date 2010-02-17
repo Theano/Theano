@@ -511,7 +511,7 @@ class PatternSub(LocalOptimizer):
      PatternSub((subtract, (add, 'x', 'y'), 'y'), 'x')
      PatternSub((power, 'x', Constant(double, 2.0)), (square, 'x'))
      PatternSub((boggle, {'pattern': 'x',
-                                'constraint': lambda env, expr: expr.type == scrabble}),
+                                'constraint': lambda expr: expr.type == scrabble}),
                       (scrabble, 'x'))
     """
 
