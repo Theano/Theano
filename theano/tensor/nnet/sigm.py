@@ -117,8 +117,8 @@ log1msigm_to_softplus = gof.PatternSub(
     (tensor.neg, (softplus, 'x')),
     allow_multiple_clients = True)
 
-opt.register_specialize(logsigm_to_softplus, name = 'logsigm_to_softplus')
-opt.register_specialize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')
+opt.register_stabilize(logsigm_to_softplus, name = 'logsigm_to_softplus')
+opt.register_stabilize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')
 
 def is_1pexp(t):
     # if t is of form (1+exp(x)), return x
@@ -164,8 +164,7 @@ def partition_num_or_denom(r, f):
     return f_terms, rest, neg
 
 
-@opt.register_specialize
-@opt.register_canonicalize
+@opt.register_stabilize
 @gof.local_optimizer([tensor.true_div])
 def local_exp_over_1_plus_exp(node):
     """exp(x)/(1+exp(x)) -> sigm(x)
@@ -209,8 +208,7 @@ def local_exp_over_1_plus_exp(node):
         else:
             return [new_num / tensor.mul(*denom_rest)]
 
-@opt.register_specialize
-@opt.register_canonicalize
+@opt.register_stabilize
 @gof.local_optimizer([tensor.mul])
 def local_sigm_times_exp(node):
     """
@@ -275,8 +273,7 @@ def local_sigm_times_exp(node):
                 return [rval]
 
 
-@opt.register_specialize
-@opt.register_canonicalize
+@opt.register_stabilize
 @gof.local_optimizer([tensor.inv])
 def local_inv_1_plus_exp(node):
     """
@@ -297,18 +294,17 @@ def local_inv_1_plus_exp(node):
                                 sigmoid(tensor.neg(nonconsts[0].owner.inputs[0])),
                                 scalar_inputs)
 
-@opt.register_specialize
-@gof.local_optimizer([tensor.sub])
+              
+#@opt.register_canonicalize
+@gof.local_optimizer([tensor.inv])
 def local_1msigmoid(node):
     """
     1-sigm(x) -> sigm(-x)
     """
-    # this optimization is for speed alone
-    # so we do check the client count on the sigmoid
     if node.op == tensor.sub:
         sub_l, sub_r = node.inputs
         if len(sub_r.clients) > 1:
-            return # we probably need both sigm and 1-sigm
+            return # graph is using both sigm and 1-sigm
         if sub_r.owner and sub_r.owner.op == sigmoid:
             try:
                 val_l = opt.get_constant_value(sub_l)
