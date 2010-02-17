@@ -759,7 +759,10 @@ class NavigatorOptimizer(Optimizer):
                 raise
         if replacements is False or replacements is None:
             return False
-        assert len(node.outputs) == len(replacements)
+        if not isinstance(replacements, (tuple, list)):
+            raise TypeError('Optimizer %s gave wrong type of replacement' % lopt)
+        if len(node.outputs) != len(replacements):
+            raise ValueError('Optimizer %s gave wrong number of replacements' % lopt)
         repl_pairs = zip(node.outputs, replacements)
         try:
             env.replace_all_validate(repl_pairs, reason=lopt)
