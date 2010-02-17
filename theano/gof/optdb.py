@@ -26,7 +26,7 @@ class DB(object):
         # It is an instance of a DB.In the tests for example,
         # this is not always the case.
         if not isinstance(obj, (DB, opt.Optimizer, opt.LocalOptimizer)):
-            raise Exception('wtf', obj)
+            raise Exception('Triing to register an optimizer that don\'t herite from theano.gof.opt.Optimizer or theano.gof.opt.LocalOptimizer', obj)
             
         if self.name is not None:
             tags = tags + (self.name,)
