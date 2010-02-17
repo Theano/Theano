@@ -169,24 +169,30 @@ class SequenceDB(DB):
 
     def __init__(self, failure_callback = opt.SeqOptimizer.warn):
         super(SequenceDB, self).__init__()
-        self.__priority__ = {}
+        self.__position__ = {}
         self.failure_callback = failure_callback
 
-    def register(self, name, obj, priority, *tags):
+    def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
-        self.__priority__[name] = priority
+        self.__position__[name] = position
 
     def query(self, *tags, **kwtags):
+        """
+        :type position_cutoff: float or int
+        :param position_cutoff: only optimizations with position less than the cutoff are returned.
+        """
+        position_cutoff = kwtags.pop('position_cutoff', float('inf'))
         opts = super(SequenceDB, self).query(*tags, **kwtags)
-        opts = list(opts)
-        opts.sort(key = lambda obj: self.__priority__[obj.name])
+        opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
+        opts.sort(key = lambda obj: self.__position__[obj.name])
         return opt.SeqOptimizer(opts, failure_callback = self.failure_callback)
 
     def print_summary(self, stream=sys.stdout):
         print >> stream, "SequenceDB (id %i)"%id(self)
-        print >> stream, "  priority", self.__priority__
+        print >> stream, "  position", self.__position__
         print >> stream, "  names", self._names
         print >> stream, "  db", self.__db__
+
     def __str__(self):
         sio = StringIO.StringIO()
         self.print_summary(sio)
