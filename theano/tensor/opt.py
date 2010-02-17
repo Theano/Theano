@@ -1379,7 +1379,7 @@ register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
 
-@register_specialize
+@register_stabilize
 @gof.local_optimizer([T.log])
 def local_log1p(node):
     # log(1+exp(x)) -> log1p(x)
