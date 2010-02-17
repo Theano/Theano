@@ -235,41 +235,6 @@ class MergeOptimizer(Optimizer):
                     const_sig[c] = sig
                     const_sig_inv[sig] = c
 
-    def exptime_apply_node_merge(self, env):
-        # we clear the dicts because the Constants signatures are not necessarily hashable
-        # and it's more efficient to give them an integer like the other Variables
-
-        symbol_idx = {}       #variable -> int
-        symbol_idx_inv = {}   #int -> variable (inverse of symbol_idx)
-
-        #add all graph sources to the symbol_idx dictionaries (arbitrary order)
-        for i, r in enumerate(r for r in env.variables if r.owner is None):
-            symbol_idx[r] = i
-            symbol_idx_inv[i] = r
-
-        for node in _list_of_nodes(env):
-            node_cid = (node.op, tuple([symbol_idx[input] for input in node.inputs]))
-            #print 'NODE', node, node_cid
-            dup = symbol_idx_inv.get(node_cid, None)
-            success = False
-            if dup is not None:
-                success = True
-                pairs = zip(node.outputs, dup.outputs)
-                for output, new_output in pairs:
-                    if output.name and not new_output.name:
-                        new_output.name = output.name
-                try:
-                    env.replace_all_validate(pairs, reason='Merge (exptime)')
-                except InconsistencyError, e:
-                    success = False
-            if not success:
-                symbol_idx[node] = node_cid
-                symbol_idx_inv[node_cid] = node
-                for i, output in enumerate(node.outputs):
-                    ref = (i, node_cid)
-                    symbol_idx[output] = ref
-                    symbol_idx_inv[ref] = output
-    
     def apply_node_merge(self, env):
         # we clear the dicts because the Constants signatures are not necessarily hashable
         # and it's more efficient to give them an integer like the other Variables
