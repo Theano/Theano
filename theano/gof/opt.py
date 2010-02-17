@@ -197,11 +197,16 @@ class _metadict:
 
 
 class MergeOptimizer(Optimizer):
-    """WRITEME
-    Merges parts of the graph that are identical, i.e. parts that
-    take the same inputs and carry out the asme computations so we
-    can avoid doing them more than once. Also merges variables that
-    are constant.
+    """
+    Merges parts of the graph that are identical and redundant.
+    
+    The basic principle is that if two Applies have ops that compare equal, and identical
+    inputs, then they do not both need to be computed.  The clients of one are transfered to
+    the other and one of them is removed from the graph.  This procedure is carried out in
+    input->output order through the graph.
+
+    The first step of merging is constant-merging, so that all clients of an int(1) for example,
+    are transfered to a particular instance of int(1).
     """
 
     def add_requirements(self, env):
