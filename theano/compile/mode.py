@@ -154,6 +154,12 @@ class Mode(object):
     
     def __init__(self, linker = config.linker, optimizer = config.optimizer):
         self.__setstate__((linker, optimizer))
+        #self.provided_optimizer - typically the `optimizer` arg.  But if the `optimizer` arg is
+        #    keyword corresponding to a predefined Query, then this stores the query
+        #self._optimizer - typically same as provided_optimizer??
+
+        #self.__get_optimizer - returns self._optimizer (possibly querying optdb with self._optimizer)
+        #self.optimizer - property that returns __get_optimizer()
 
     def __getstate__(self):
         return (self.provided_linker, self.provided_optimizer)
@@ -219,7 +225,7 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
 
 def get_mode(string):
     if string is None: string = config.mode
-    if not isinstance(string, str): return string #it is already a mode...
+    if not isinstance(string, str): return string #it is hopefully already a mode...
     if not predefined_modes.has_key(string):
         raise Exception("No predefixed mode exist for string: %s"%string)
     return predefined_modes[string]
