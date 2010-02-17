@@ -100,8 +100,20 @@ logsigm_to_softplus = gof.PatternSub(
     (tensor.neg, (softplus, (tensor.neg, 'x'))),
     allow_multiple_clients = True)
 
+def _is_1(expr):
+    """rtype bool. True iff expr is a constant close to 1
+    """
+    try:
+        v = opt.get_constant_value(expr)
+        return numpy.allclose(v, 1)
+    except TypeError:
+        return False
+
 log1msigm_to_softplus = gof.PatternSub(
-    (tensor.log, (tensor.sub, tensor.constant([[1.0]]), (sigmoid, 'x'))),
+    (tensor.log, 
+        (tensor.sub,
+            dict(pattern='y', constraint = _is_1),
+            (sigmoid, 'x'))),
     (tensor.neg, (softplus, 'x')),
     allow_multiple_clients = True)
 
