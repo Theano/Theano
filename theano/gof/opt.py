@@ -877,7 +877,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  max_depth = None,
                  max_use_ratio = None):
         """
+        :param local_optimizers:  list or set of local optimizations to apply until
+            equilibrium.
+
         :param max_use_ratio: each optimizer can be applied at most (size of graph * this number)
+
+        :param max_depth: TODO what does this do? (EquilibriumDB sets it to 5)
 
         """
 
@@ -933,7 +938,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                             changed |= lopt_change
             finally:
                 self.detach_updater(env, u)
-            self.detach_updater(env, u)
+            self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
         if max_use_abort:
             print >> sys.stderr, "WARNING: EquilibriumOptimizer max'ed out"
 
