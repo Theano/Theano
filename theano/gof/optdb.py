@@ -132,6 +132,18 @@ class Query(object):
 
 
 class EquilibriumDB(DB):
+    """A set of potential optimizations which should be applied in an arbitrary order until
+    equilibrium is reached.
+
+    Canonicalize, Stabilize, and Specialize are all equilibrium optimizations.
+
+    .. note::
+        
+        It seems like this might be supposed to contain LocalOptimizer instances rather than
+        optimizer instances, because whatever is selected by the query is passed to
+        EquilibriumOptimizer and EquilibriumOptimizer requires LocalOptimizer instances.
+
+    """
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
@@ -142,6 +154,18 @@ class EquilibriumDB(DB):
 
 
 class SequenceDB(DB):
+    """A sequence of potential optimizations.
+
+    Retrieve a sequence of optimizations (a SeqOptimizer) by calling query().
+
+    Each potential optimization is registered with a floating-point position.
+    No matter which optimizations are selected by a query, they are carried out in order of
+    increasing position.
+
+    The optdb itself (`theano.compile.mode.optdb`), from which (among many other tags) fast_run
+    and fast_compile optimizers are drawn is a SequenceDB.
+
+    """
 
     def __init__(self, failure_callback = opt.SeqOptimizer.warn):
         super(SequenceDB, self).__init__()
