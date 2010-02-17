@@ -281,8 +281,6 @@ class ShapeOptimizer(Optimizer):
     For example the infer_shape for a matrix-matrix product would accept 
     input_shapes=((x0,x1), (y0,y1)) and return ((x0, y1),).
     
-    
-    infer_sha
 
     Infering the shape of internal nodes in the graph is important for doing size-driven
     optimizations.  If we know how big various intermediate results will be, we can estimate
