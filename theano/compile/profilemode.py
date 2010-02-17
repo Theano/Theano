@@ -206,11 +206,14 @@ class ProfileMode(Mode):
 
         op_time = {}
         op_call = {}
+        op_apply = {}
         for (i,a),t in apply_time.items():
             op_time.setdefault(a,0)
             op_call.setdefault(a,0)
+            op_apply.setdefault(a,0)
             op_time[a]+=t
             op_call[a]+=apply_call[(i,a)]
+            op_apply[a]+=1
 
         op_flops = {}
         for a,t in op_time.items():
@@ -221,14 +224,14 @@ class ProfileMode(Mode):
         if op_flops:
             flops_msg=' <MFlops/s>'
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\' always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
-        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <time per call> %s <nb_call> <Op name>'%(flops_msg)
+        print '\nOp-wise summary: <%% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <time per call> %s <nb_call> <nb apply> <Op name>'%(flops_msg)
 
-        otimes = [(t/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0)) 
+        otimes = [(t/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0)) 
                 for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         tot=0
-        for f,t,a,ci,nb_call in otimes[:n_ops_to_print]:
+        for f,t,a,ci,nb_call,nb_apply in otimes[:n_ops_to_print]:
             if nb_call == 0: 
                 assert t == 0
                 continue
@@ -238,31 +241,34 @@ class ProfileMode(Mode):
             else:
               msg = ' '
             if op_flops:
-                print '   %4.1f%%  %.3fs  %.3fs  %.2es %s %7.1f %d %s' % (f*100, tot, t, t/nb_call, msg, op_flops.get(a,-1), nb_call, a)
+                print '   %4.1f%%  %.3fs  %.3fs  %.2es %s %7.1f %d %d %s' % (f*100, tot, t, t/nb_call, msg, op_flops.get(a,-1), nb_call, nb_apply, a)
             else:
-                print '   %4.1f%%  %.3fs  %.3fs  %.2es  %s %d %s' % (f*100, tot, t, t/nb_call, msg, nb_call, a)
+                print '   %4.1f%%  %.3fs  %.3fs  %.2es  %s %d %d %s' % (f*100, tot, t, t/nb_call, msg, nb_call, nb_apply, a)
         print '   ... (remaining %i Ops account for %6.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(otimes)-n_ops_to_print),
-                  sum(f for f, t, a, ci, nb_call in otimes[n_ops_to_print:])*100,
-                  sum(t for f, t, a, ci, nb_call in otimes[n_ops_to_print:]))
+                  sum(f for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:])*100,
+                  sum(t for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
 
 
         sop_time={}
         sop_call={}
+        sop_op = {}
         sop_c={} #map each op class to Bool. True iff all applies were done in c.
         for a,t in op_time.items():
             sop_time.setdefault(type(a),0)
             sop_time[type(a)]+=t
+            sop_op.setdefault(type(a),0)
+            sop_op[type(a)]+=1
             sop_c.setdefault(type(a),True)
             sop_c[type(a)]=sop_c[type(a)] and op_cimpl.get(a, False)
             sop_call[type(a)]=sop_call.get(type(a),0)+op_call[a]
-        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <time per call> <nb_call> <Op name>'
-        sotimes = [(t/local_time, t, a, sop_c[a], sop_call[a]) for a, t in sop_time.items()]
+        print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative seconds> <self seconds> <time per call> <nb_call> <nb_op> <nb_op> <Op name>'
+        sotimes = [(t/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
         tot=0
-        for f,t,a,ci, nb_call in sotimes[:n_ops_to_print]:
+        for f,t,a,ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
             if nb_call == 0: 
                 assert t == 0
                 continue
@@ -271,11 +277,11 @@ class ProfileMode(Mode):
               msg = '*'
             else:
               msg = ' '
-            print '   %4.1f%%  %.3fs  %.3fs  %.2es %s %d %s' % (f*100, tot, t, t/nb_call, msg, nb_call, a)
+            print '   %4.1f%%  %.3fs  %.3fs  %.2es %s %d %d %s' % (f*100, tot, t, t/nb_call, msg, nb_call, nb_op, a)
         print '   ... (remaining %i Ops account for %.2f%%(%.2fs) of the runtime)'\
                 %(max(0, len(sotimes)-n_ops_to_print),
-                  sum(f for f, t, a, ci, nb_call in sotimes[n_ops_to_print:])*100,
-                  sum(t for f, t, a, ci, nb_call in sotimes[n_ops_to_print:]))
+                  sum(f for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:])*100,
+                  sum(t for f, t, a, ci, nb_call, nb_op in sotimes[n_ops_to_print:]))
 
         print '(*) Op is running a c implementation'
             
