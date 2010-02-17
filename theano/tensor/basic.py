@@ -1035,6 +1035,7 @@ class TensorConstantSignature(tuple):
         except:
             return False
         #N.B. compare shape to ensure no broadcasting in ==
+        #N.B. compare elementwise last because it is the most expensive check
         return (t0 == t1) and (d0.shape == d1.shape) \
                 and (self.sum == other.sum) and (numpy.all(d0 == d1)) 
     def __hash__(self):
@@ -1300,9 +1301,15 @@ def shape(a):
 
 pprint.assign(_shape, printing.MemberPrinter('shape'))
 
-
 class MaxAndArgmax(Op):
-    """Calculate the max and argmax over a given axis"""
+    """Calculate the max and argmax over a given axis.
+    
+    .. note::
+
+        If axis is None it means to calculate the max over the last dimension which is
+        DIFFERENT FROM NUMPY!!
+    
+    """
     nin=2 # tensor, axis
     nout=2 # max val, max idx
     E_axis = 'invalid axis'
@@ -1313,7 +1320,8 @@ class MaxAndArgmax(Op):
             axis = x.type.ndim - 1
         axis = _as_tensor_variable(axis)
         inputs = [x, axis]
-        broadcastable = [False] * (x.type.ndim - 1) #TODO: be less conservative
+        #TODO: figure things out if axis is a constant
+        broadcastable = [False] * (x.type.ndim - 1)
         outputs = [tensor(x.type.dtype, broadcastable,name='max'), 
                    tensor('int32', broadcastable,name='argmax')]
         return Apply(self, inputs, outputs)
@@ -2493,6 +2501,10 @@ class Join(Op):
         join(2, x, y, z)    # WRONG: the axis has to be an index into the shape
         join(0, x, u)       # WRONG: joined tensors must have the same rank
     """
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, *axis_and_tensors):
         """
@@ -2767,37 +2779,6 @@ if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() a
 
 else:
     pass
-
-
-class MakeVector(Op):
-    """WRITEME"""
-    def __init__(self, stype):
-        self.stype = stype
-    def make_node(self, *inputs):
-        inputs = map(as_tensor_variable, inputs)
-        assert all(a.type == self.stype for a in inputs)
-        return Apply(self, inputs, [TensorType(broadcastable = (False,),
-                                           dtype = self.stype.dtype)()])
-    def perform(self, node, inputs, (out,)):
-        out[0] = numpy.asarray(inputs)
-    def grad(self, inputs, (gout,)):
-        return [None]*len(inputs)
-
-make_lvector = MakeVector(lscalar)
-"""WRITEME"""
-
-
-class MakeVectorPrinter:
-
-    def process(self, r, pstate):
-        if r.owner is None:
-            raise TypeError("Can only print make_vector.")
-        elif isinstance(r.owner.op, MakeVector):
-            return "[%s]" % ", ".join(pstate.pprinter.process(input, pstate.clone(precedence = 1000)) for input in r.owner.inputs)
-        else:
-            raise TypeError("Can only print make_vector.")
-
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
 
 
 class Reshape(Op):
@@ -3342,6 +3323,18 @@ class Dot(Op):
         else:
             rval = dot(gz, y.T), dot(x.T, gz)
         return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
+
+    def infer_shape(self, node, (xshp,yshp), one):
+        x, y = node.inputs
+        if x.ndim == 2 and y.ndim == 2:
+            return [(xshp[0], yshp[1])]
+        if x.ndim == 1 and y.ndim == 2:
+            return [(yshp[1],)]
+        if x.ndim == 2 and y.ndim == 1:
+            return [(xshp[0],)]
+        if x.ndim == 1 and y.ndim == 1:
+            return [()]
+        raise NotImplementedError()
 
     def __str__(self):
         return "dot"

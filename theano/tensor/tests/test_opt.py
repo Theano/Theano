@@ -998,6 +998,21 @@ def test_local_fill_useless():
     f = function([x,y], T.fill(x,y)*2, mode=m)
     assert [node.op for node in f.maker.env.toposort()] == [T.mul]
 
+class test_shapeoptimizer(unittest.TestCase):
+    def test0(self):
+        v = T.vector()
+        m = T.matrix()
+        f = function([v,m], (v+m).shape)
+        for node in f.maker.env.toposort():
+            assert node.op != T.add
+
+    def test_constant(self):
+
+        v = T.vector()
+        m = T.matrix()
+        f = function([v,m], v.dimshuffle('x','x',0).shape[1])
+        print f.maker.env.toposort()
+        assert [] == f.maker.env.toposort()
 
 if __name__ == '__main__':
 #    unittest.main()
