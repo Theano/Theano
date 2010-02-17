@@ -648,6 +648,25 @@ class T_RandomStreams(unittest.TestCase):
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, made.g, n_val[:-1], pvals_val[:-1])
 
+    def test_dtype(self):
+        m = Module()
+        m.random = RandomStreams(utt.fetch_seed())
+        low = tensor.lscalar()
+        high = tensor.lscalar()
+        out = m.random.random_integers(low=low, high=high, size=(20,), dtype='int8')
+        assert out.dtype == 'int8'
+        m.f = Method([low, high], out)
+        made = m.make()
+        made.random.initialize()
+
+        val0 = made.f(0, 9)
+        assert val0.dtype == 'int8'
+
+        val1 = made.f(255, 257)
+        assert val1.dtype == 'int8'
+        assert numpy.all(abs(val1) <= 1)
+
+
 if __name__ == '__main__':
     from theano.tests import main
     main("test_randomstreams")

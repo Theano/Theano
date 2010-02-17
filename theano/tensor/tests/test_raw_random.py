@@ -682,6 +682,23 @@ class T_random_function(unittest.TestCase):
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, n_val[:-1], pvals_val[:-1])
 
+    def test_dtype(self):
+        rng_R = random_state_type()
+        low = tensor.lscalar()
+        high = tensor.lscalar()
+        post_r, out = random_integers(rng_R, low=low, high=high, size=(20,), dtype='int8')
+        assert out.dtype == 'int8'
+        f = compile.function([rng_R, low, high], [post_r, out])
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng0, val0 = f(rng, 0, 9)
+        assert val0.dtype == 'int8'
+
+        rng1, val1 = f(rng0, 255, 257)
+        assert val1.dtype == 'int8'
+        assert numpy.all(abs(val1) <= 1)
+
+
 if __name__ == '__main__':
     from theano.tests import main
     main("test_raw_random")
