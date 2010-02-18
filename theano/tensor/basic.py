@@ -1678,60 +1678,113 @@ def zeros_like(model):
     #return Zeros(model.type.ndim)(shape(model))
     return fill(model, constant(0.0, dtype=model.type.dtype))
 
-class Filler(gof.Op):
-    """WRITEME"""
-    def __init__(self, value, ndim, dtype = 'float64'):
-        self.value = value
-        self.ndim = ndim
-        self.dtype = dtype
-        self.type = TensorType(dtype = dtype,
-                           broadcastable = (False,)*ndim)
+if 0:
+    ## COMMENTED OUT FEB 17 2010
+    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
+    class Filler(gof.Op):
+        """WRITEME"""
+        def __init__(self, value, ndim, dtype = 'float64'):
+            self.value = value
+            self.ndim = ndim
+            self.dtype = dtype
+            self.type = TensorType(dtype = dtype,
+                               broadcastable = (False,)*ndim)
 
-    def make_node(self, dims):
-        dims = as_tensor_variable(dims)
-        return gof.Apply(self, [dims], [self.type()])
+        def make_node(self, dims):
+            dims = as_tensor_variable(dims)
+            return gof.Apply(self, [dims], [self.type()])
 
-    def perform(self, node, (dims,), (out,)):
-        if out[0] is not None:
-            out[0].resize(dims, refcheck = 0)
-            out[0].fill(self.value)
-        else:
-            if self.value == 0:
-                out[0] = numpy.zeros(dims, dtype = self.dtype)
-            elif self.value == 1:
-                out[0] = numpy.ones(dims, dtype = self.dtype)
+        def perform(self, node, (dims,), (out,)):
+            if out[0] is not None:
+                out[0].resize(dims, refcheck = 0)
+                out[0].fill(self.value)
             else:
-                out[0] = numpy.ones(dims, dtype = self.dtype) * self.value
+                if self.value == 0:
+                    out[0] = numpy.zeros(dims, dtype = self.dtype)
+                elif self.value == 1:
+                    out[0] = numpy.ones(dims, dtype = self.dtype)
+                else:
+                    out[0] = numpy.ones(dims, dtype = self.dtype) * self.value
 
-    def grad(self, (dims,), (gout,)):
-        return None,
+        def grad(self, (dims,), (gout,)):
+            return None,
+
+        def __eq__(self, other):
+            return type(self) == type(other) and self.ndim == other.ndim and self.dtype == other.dtype
+
+        def __hash__(self):
+            return hash(self.ndim) ^ hash(self.dtype)
+
+    Zeros = partial(Filler, 0)
+    """WRITEME"""
+
+    Ones = partial(Filler, 1)
+    """WRITEME"""
+
+    @constructor
+    def zero():
+        """
+        Return a scalar zero, e.g. for initializing sums.
+        """
+        return Zeros(0)([])
+
+    @constructor
+    def one():
+        """WRITEME"""
+        return Ones(0)([])
+
+    pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
+    pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
+
+class Alloc(gof.Op):
+    """Create a Tensor from an initial value and a desired shape
+
+    alloc(value, shape0, shape1, ..., shapeN) 
+
+    Returns an N-dimensional tensor initialized by `value` using something equivalent to
+    >>> z = numpy.zeros(shape, value.dtype)
+    >>> z += value
+
+    The result has N dimensions, has the dtype of `value` and is obtained by broadcasting value
+    over the output ndarray.
+
+    This Op is used to replace fill() during optimizations because after shapes are lifted, 
+    the first argument to fill can often be pruned from the graph.
+    """
+    def __init__(self, dtype):
+        self.dtype = dtype
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.ndim == other.ndim and self.dtype == other.dtype
+        return type(self) == type(other) and self.dtype == other.dtype
 
     def __hash__(self):
-        return hash(self.ndim) ^ hash(self.dtype)
+        return hash(type(self)) ^ hash(self.dtype)
 
-Zeros = partial(Filler, 0)
-"""WRITEME"""
+    def __str__(self):
+        return '%s{%s}' % (self.__class__.__name__, self.dtype)
 
-Ones = partial(Filler, 1)
-"""WRITEME"""
+    def make_node(self, value, *shape):
+        v = as_tensor_variable(value)
+        sh = [as_tensor_variable(s) for s in shape]
+        bcast = []
+        for s in sh:
+            if s.type.dtype[:3] not in ('int', 'uin'):
+                raise TypeError('Shape arguments must be integers', s)
+            # if s is constant 1, then we're broadcastable in that dim
+            bcast.append(isinstance(s, TensorConstant) and (s.data == 1))
+        otype = TensorType(dtype=self.dtype, broadcastable=bcast)
+        return gof.Apply(self, [v]+sh, [otype()])
 
-@constructor
-def zero():
-    """
-    Return a scalar zero, e.g. for initializing sums.
-    """
-    return Zeros(0)([])
+    def perform(self, node, inputs, (out,)):
+        v = inputs[0]
+        sh = tuple([int(i) for i in inputs[1:]])
+        if out[0] is None or out[0].shape != sh:
+            out[0] = numpy.zeros(sh, dtype=self.dtype)
+            out[0][...] += v # broadcast v to fill us up
 
-@constructor
-def one():
-    """WRITEME"""
-    return Ones(0)([])
+    def grad(self, inputs, (gout,)):
+        return [None for i in inputs]
 
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
 
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
@@ -1851,33 +1904,36 @@ def var(input, axis = None):
     #return the mean sqr
     return mean(centered_input**2, axis)
 
-class Repeat(gof.Op):
+if 0:
+    ## COMMENTED OUT FEB 17 2010
+    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
+    class Repeat(gof.Op):
 
-    def make_node(self, input, repeats, axis):
-        assert isinstance(input.type, TensorType)
-        assert repeats.type == iscalar
-        assert axis.type == iscalar
-        broadcastable = []
-        for i,x in enumerate(input.broadcastable):
-          if i==axis:
-            broadcastable += [False]
-          else:
-            broadcastable += [x]
+        def make_node(self, input, repeats, axis):
+            assert isinstance(input.type, TensorType)
+            assert repeats.type == iscalar
+            assert axis.type == iscalar
+            broadcastable = []
+            for i,x in enumerate(input.broadcastable):
+              if i==axis:
+                broadcastable += [False]
+              else:
+                broadcastable += [x]
 
-        type = TensorType(dtype = input.type.dtype, broadcastable = \
-                          broadcastable)
-        #backport
-        #type = TensorType(dtype = input.type.dtype,
-        #              broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
-        return gof.Apply(self, [inputs, repeats, axis], [type()])
+            type = TensorType(dtype = input.type.dtype, broadcastable = \
+                              broadcastable)
+            #backport
+            #type = TensorType(dtype = input.type.dtype,
+            #              broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
+            return gof.Apply(self, [inputs, repeats, axis], [type()])
 
-    def perform(self, node, (input, repeats, axis), (out, )):
-        out[0] = numpy.repeat(input, repeats, axis)
+        def perform(self, node, (input, repeats, axis), (out, )):
+            out[0] = numpy.repeat(input, repeats, axis)
 
-    def grad(self, (input, repeats, axis), (gout, )):
-        return add.grad((input, gout), (gout,))[:1]
+        def grad(self, (input, repeats, axis), (gout, )):
+            return add.grad((input, gout), (gout,))[:1]
 
-repeat = Repeat()
+    repeat = Repeat()
 
 class Default(gof.Op):
     """
