@@ -208,6 +208,8 @@ class MergeOptimizer(Optimizer):
     The first step of merging is constant-merging, so that all clients of an int(1) for example,
     are transfered to a particular instance of int(1).
     """
+    def __init__(self, skip_const_merge=False):
+        self.skip_const_merge = skip_const_merge
 
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
@@ -286,7 +288,8 @@ class MergeOptimizer(Optimizer):
 
     #TODO: Consider splitting this into a separate optimizer (SeqOptimizer)
     def apply(self, env):
-        self.apply_constant_merge(env)
+        if not self.skip_const_merge:
+            self.apply_constant_merge(env)
         self.apply_node_merge(env)
 
 merge_optimizer = MergeOptimizer()
@@ -894,6 +897,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.local_optimizers = local_optimizers
         self.max_depth = max_depth
         self.max_use_ratio = max_use_ratio
+        assert self.max_use_ratio is not None, 'max_use_ratio has to be a number'
 
     def apply(self, env, start_from = None):
         if start_from is None:
