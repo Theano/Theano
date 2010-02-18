@@ -116,7 +116,7 @@ class AddDestroyHandler(gof.Optimizer):
         for o in env.outputs:
             try:
                 env.replace_validate(o, _output_guard(o), reason='output_guard')
-                _logger.warning("Output variable %s required output_guard,"
+                _logger.info("Output variable %s required output_guard,"
                         " how was this output left unprotected against destructive operations?"
                         % o)
             except gof.InconsistencyError:
@@ -127,12 +127,22 @@ class AddDestroyHandler(gof.Optimizer):
         env.extend(gof.DestroyHandler())
 
 optdb = gof.SequenceDB()
-optdb.register('merge1', gof.MergeOptimizer(), 0, 'fast_run', 'fast_compile')
-optdb.register('canonicalize', gof.EquilibriumDB(), 1, 'fast_run')
-optdb.register('specialize', gof.EquilibriumDB(), 2, 'fast_run')
-optdb.register('merge2', gof.MergeOptimizer(), 49, 'fast_run')
-optdb.register('add_destroy_handler', AddDestroyHandler(), 49.5, 'fast_run', 'inplace')
-optdb.register('merge3', gof.MergeOptimizer(), 100, 'fast_run')
+optdb.register('merge1', gof.MergeOptimizer(), 
+        0, 'fast_run', 'fast_compile')
+optdb.register('canonicalize', gof.EquilibriumDB(),         # rearranges elemwise expressions
+        1, 'fast_run')
+optdb.register('merge1.2', gof.MergeOptimizer(skip_const_merge=True),
+        1.2, 'fast_run', 'fast_compile')
+optdb.register('stabilize', gof.EquilibriumDB(),            # replace unstable subgraphs
+        1.5, 'fast_run')          
+optdb.register('specialize', gof.EquilibriumDB(),           # misc special cases for speed
+        2, 'fast_run')
+optdb.register('merge2', gof.MergeOptimizer(),              # especially constant merge
+        49, 'fast_run')
+optdb.register('add_destroy_handler', AddDestroyHandler(), 
+        49.5, 'fast_run', 'inplace')
+optdb.register('merge3', gof.MergeOptimizer(),              # final pass just to make sure
+        100, 'fast_run')
 
 
 class Mode(object):
@@ -153,6 +163,12 @@ class Mode(object):
     
     def __init__(self, linker = config.linker, optimizer = config.optimizer):
         self.__setstate__((linker, optimizer))
+        #self.provided_optimizer - typically the `optimizer` arg.  But if the `optimizer` arg is
+        #    keyword corresponding to a predefined Query, then this stores the query
+        #self._optimizer - typically same as provided_optimizer??
+
+        #self.__get_optimizer - returns self._optimizer (possibly querying optdb with self._optimizer)
+        #self.optimizer - property that returns __get_optimizer()
 
     def __getstate__(self):
         return (self.provided_linker, self.provided_optimizer)
@@ -218,7 +234,7 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
 
 def get_mode(string):
     if string is None: string = config.mode
-    if not isinstance(string, str): return string #it is already a mode...
+    if not isinstance(string, str): return string #it is hopefully already a mode...
     if not predefined_modes.has_key(string):
         raise Exception("No predefixed mode exist for string: %s"%string)
     return predefined_modes[string]

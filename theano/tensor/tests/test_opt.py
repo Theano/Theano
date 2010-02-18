@@ -89,7 +89,6 @@ class test_greedy_distribute(unittest.TestCase):
         g = Env([a,b,c,d,x,y,z], [e])
         ##print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
-        gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor), order = 'out_to_in').optimize(g)
         ##print pprint(g.outputs[0])
     
@@ -136,7 +135,6 @@ class test_canonize(unittest.TestCase):
         g = Env([x, y, z, a, b, c, d], [e])
         print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
-        gof.TopoOptimizer(gof.LocalOptGroup(local_fill_cut, local_fill_lift), order = 'out_to_in').optimize(g)
         print pprint(g.outputs[0])
 
     def test_elemwise_multiple_inputs_optimisation(self):
@@ -296,17 +294,17 @@ class test_canonize(unittest.TestCase):
             
     def test_multiple_case(self):
         """ test those case take from the comment in Canonizer
-      x / x -> 1
-      (x * y) / x -> y
-      x / y / x -> 1 / y
-      x / y / z -> x / (y * z)
-      x / (y / z) -> (x * z) / y
-      (a / b) * (b / c) * (c / d) -> a / d
-      (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
-      2 * x / 2 -> x
-      with and without DimShuffle
-      TODO: with DimShuffle
-      """
+        x / x -> 1
+        (x * y) / x -> y
+        x / y / x -> 1 / y
+        x / y / z -> x / (y * z)
+        x / (y / z) -> (x * z) / y
+        (a / b) * (b / c) * (c / d) -> a / d
+        (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
+        2 * x / 2 -> x
+        with and without DimShuffle
+        TODO: with DimShuffle
+        """
         import theano.tensor, theano.compile
 
         shp=(3,3)
@@ -331,6 +329,7 @@ class test_canonize(unittest.TestCase):
         old_optimizer = mode._optimizer
         try:
             mode._optimizer=gof.Query(["canonicalize"])
+            mode._optimizer=mode._optimizer.including('ShapeOpt')
             mode._optimizer=mode._optimizer.excluding('local_elemwise_fusion')
 
             #test x / x -> 1
@@ -344,10 +343,15 @@ class test_canonize(unittest.TestCase):
                 out = f(*val_inputs)
                 assert (out==numpy.ones(shp, dtype=out_dtype)).all()
                 topo=f.maker.env.toposort()
-                assert len(topo)==1
-                assert isinstance(topo[0].op,(T.Elemwise,))
-                assert isinstance(topo[0].op.scalar_op,theano.scalar.basic.Second)
-                assert len(topo[0].inputs)==2
+                if sym_inputs[0].broadcastable[0]:
+                    assert len(topo)==2
+                    assert isinstance(topo[0].op, Shape_i)
+                    assert isinstance(topo[1].op, TT.Alloc)
+                else:
+                    assert len(topo)==3
+                    assert isinstance(topo[0].op, Shape_i)
+                    assert isinstance(topo[1].op, Shape_i)
+                    assert isinstance(topo[2].op, TT.Alloc)
                 assert(out_dtype==out.dtype)
 
             #test (x * y) / x -> y
@@ -365,10 +369,16 @@ class test_canonize(unittest.TestCase):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 out = f(*val_inputs)
+                assert(out_dtype==out.dtype)
                 assert numpy.allclose(out,val_inputs[1])
                 topo=f.maker.env.toposort()
-                assert len(topo)==nb_elemwise
-                assert(out_dtype==out.dtype)
+                print "ID TOPO", id, topo, sym_inputs
+                for r,t in f.maker.env.shape_feature.shape_of.items():
+                    print '  ', r, t
+                if topo:
+                    for node in topo[:-1]:
+                        assert isinstance(node.op, Shape_i)
+                    assert isinstance(topo[-1].op, TT.Alloc)
 
             #test x / y / x -> 1 / y
             for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
@@ -378,19 +388,21 @@ class test_canonize(unittest.TestCase):
                                                            ((fv/fy)/fv,[fv,fy],[fvv,fyv],1,'float32'),
                             #must broadcast as their is a dimshuffle in the computation
 
-                                                           ((dx/dv)/dx,[dx,dv],[dxv,dvv],2,'float64'),
-    #topo:            [Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Elemwise{second,no_inplace}(x, Elemwise{inv,no_inplace}.0)]
-                                                           ((fx/fv)/fx,[fx,fv],[fxv,fvv],2,'float32'),
-                #topo:[Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Elemwise{second,no_inplace}(x, Elemwise{inv,no_inplace}.0)]
+                                                           ((dx/dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
+    #topo:            [Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Alloc(...)]
+                                                           ((fx/fv)/fx,[fx,fv],[fxv,fvv],1,'float32'),
+                #topo:[Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Alloc(...)]
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 out = f(*val_inputs)
                 assert numpy.allclose(out,(1/val_inputs[1]))
                 topo=f.maker.env.toposort()
-                assert len(topo)==nb_elemwise
-                assert isinstance(topo[0].op,(T.Elemwise,))
-                assert isinstance(topo[0].op.scalar_op,(theano.scalar.basic.Inv, theano.scalar.basic.TrueDiv))
+                print topo
+                elem = [t for t in topo if isinstance(t.op, T.Elemwise)]
+                assert len(elem)==nb_elemwise
+                assert isinstance(elem[0].op,(T.Elemwise,))
+                assert isinstance(elem[0].op.scalar_op,(theano.scalar.basic.Inv, theano.scalar.basic.TrueDiv))
                 assert(out_dtype==out.dtype)
 
             #test (a / b) * (b / c) * (c / d) -> a / d
@@ -529,29 +541,6 @@ def test_mixeddiv():
     d = dscalar()
     assert 0 == function([i,d], d*(i/(i+1)))(3, 1.0)
 
-def test_local_shape_lift_dot():
-    args_to_result = {
-        (fvector, fvector): "[]",
-        (fvector, fmatrix): "[<TensorType(float32, matrix)>.shape[1]]",
-        (fmatrix, fvector): "[<TensorType(float32, matrix)>.shape[0]]",
-        (fmatrix, fmatrix): "[<TensorType(float32, matrix)>.shape[0], <TensorType(float32, matrix)>.shape[1]]",
-        }
-
-    for x in [fvector, fmatrix]:
-        for y in [fvector, fmatrix]:
-            i = x()
-            j = y()
-            print 'I SHAPE', i.type.shape
-            print 'J SHAPE', j.type.shape
-            d = shape(dot(i,j))
-            if x is fvector and y is fvector:
-                assert d == ()
-            else:
-                g = Env([i,j], [d])
-                gof.TopoOptimizer(gof.LocalOptGroup(local_shape_lift_dot), order='out_to_in').optimize(g)
-                print pprint(g.outputs[0]), args_to_result[(x,y)]
-                assert pprint(g.outputs[0]) == args_to_result[(x,y)]
-        
 def test_const_type_in_mul_canonizer():
     input = dmatrix()
     w = dmatrix()
@@ -915,11 +904,16 @@ def test_log1p():
     # check trickier cases (and use different dtype)
     y = fmatrix()
     f = function([x,y], T.log(fill(y,1)+(x)), mode=m)
-    assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
+    print f.maker.env.toposort()
+    # the first three ops are Shape_i, Shape_i, and Dimshuffle
+    assert [node.op for node in f.maker.env.toposort()][3:] \
+            == [T.log1p, Alloc('float64')]
     f = function([x,y], T.log(0+(x) + fill(y,1.0)), mode=m)
-    assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
+    assert [node.op for node in f.maker.env.toposort()][3:] \
+            == [T.log1p, Alloc('float64')]
     f = function([x,y], T.log(2+(x) - fill(y,1.0)), mode=m)
-    assert [node.op for node in f.maker.env.toposort()] == [T.DimShuffle([False], ['x', 0], True), T.log1p, T.fill]
+    assert [node.op for node in f.maker.env.toposort()][3:] \
+            == [T.log1p, Alloc('float64')]
 
     f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values 
         
@@ -968,6 +962,51 @@ class test_local_subtensor_unary(unittest.TestCase):
         assert prog[3].op == inplace.exp_inplace
 
         f([[0,1],[2,3]], [4,5]) # let debugmode test something
+
+def test_local_fill_useless():
+    m = theano.config.mode
+    if m == 'FAST_COMPILE':
+        m = 'FAST_RUN'
+
+    x = dvector()
+    y = dvector()
+    z = lvector()
+
+    # basic case
+    f = function([x], T.fill(x,x)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # basic case
+    f = function([x,y], T.second(y,x)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # now with different type
+    f = function([x,z], T.fill(z,x)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # now cutting out the input ??
+    f = function([x,y], T.fill(x,y)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+    # now filll is serving as a cast
+    f = function([x,y], T.fill(x,y)*2, mode=m)
+    assert [node.op for node in f.maker.env.toposort()] == [T.mul]
+
+class test_shapeoptimizer(unittest.TestCase):
+    def test0(self):
+        v = T.vector()
+        m = T.matrix()
+        f = function([v,m], (v+m).shape)
+        for node in f.maker.env.toposort():
+            assert node.op != T.add
+
+    def test_constant(self):
+
+        v = T.vector()
+        m = T.matrix()
+        f = function([v,m], v.dimshuffle('x','x',0).shape[1])
+        print f.maker.env.toposort()
+        assert [] == f.maker.env.toposort()
 
 if __name__ == '__main__':
 #    unittest.main()

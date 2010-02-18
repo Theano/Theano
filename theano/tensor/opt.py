@@ -44,33 +44,64 @@ def _fill_chain(new_out, orig_inputs):
         new_out = T.fill(i, new_out)
     return [new_out]
 
-def get_constant_value(v, fill=False):
-    """return the constant value underlying variable `v`
+def encompasses_broadcastable(b1, b2):
+    """
+    Returns True if the broadcastable patterns b1 and b2 are such that b2 is
+    broadcasted to b1's shape and not the opposite.
+
+    :param b1: the broadcastable attribute of a tensor type
+    :param b2: the broadcastable attribute of a tensor type
+    """
+    if len(b1) < len(b2):
+        return False
+    b1 = b1[-len(b2):]
+    return not any(v1 and not v2 for v1, v2 in zip(b1, b2))
+
+def merge_broadcastables(broadcastables):
+    return [all(bcast) for bcast in zip(*broadcastables)]
+
+def get_constant_value(v):
+    """return the constant scalar(0-D) value underlying variable `v`
 
     If v is the output of dimshuffles, fills, this function digs through them.
 
     If `v` is not some view of constant data, then raise a TypeError.
-
-    if fill is True, then it returns (v, [...]) where the second term is a list of variables
-    that were used in the fill expressions
 
     :note: There may be another function similar to this one in the code, but I'm not sure where it
     is.
     """
 
     if isinstance(v, gof.Constant):
-        if fill:
-            return v.data, []
-        return v.data
+        #TODO: consider checking for arrays of the form e.g. [1,1,1,1] where
+        # it is not a constant, but in some cases it *could* be replaced with one.
+        # Note that this would have an effect on the broadcasting of inputs and so on
+        try:
+            complex(v.data) #works for all numeric scalars
+            return v.data
+        except:
+            raise TypeError(v)
     if v.owner and isinstance(v.owner.op, T.DimShuffle):
-        return get_constant_value(v.owner.inputs[0], fill=fill)
-    if fill:
-        if v.owner and v.owner.op == T.fill:
-            shape, val = v.owner.inputs
-            # fill(a,b) fills the shape of 'a' filled with 'b'
-            rval, rshapes = get_constant_value(val, fill=fill)
-            return rval, rshapes + [shape]
+        return get_constant_value(v.owner.inputs[0])
+    if v.owner and v.owner.op == T.fill:
+        shape, val = v.owner.inputs
+        # fill(a,b) fills the shape of 'a' filled with 'b'
+        return get_constant_value(val)
     raise TypeError(v)
+
+def scalarconsts_rest(inputs):
+    """Partition a list of variables into two kinds:
+    scalar constants, and the rest."""
+    consts = []
+    origconsts = []
+    nonconsts = []
+    for i in inputs:
+        try:
+            v = get_constant_value(i)
+            consts.append(v)
+            origconsts.append(i)
+        except:
+            nonconsts.append(i)
+    return consts, origconsts, nonconsts
 
 @gof.optimizer
 def insert_inplace_optimizer(env):
@@ -124,6 +155,11 @@ def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
     return lopt
 
+def register_stabilize(lopt, *tags, **kwargs):
+    name = (kwargs and kwargs.pop('name')) or lopt.__name__
+    compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
+    return lopt
+
 ######################
 # DimShuffle lifters #
 ######################
@@ -164,130 +200,321 @@ register_canonicalize(local_dimshuffle_lift)
 
 
 
-#################
-# Shape lifters #
-#################
+#####################################
+# ShapeFeature, Shape optimizations
+#####################################
 
-@gof.local_optimizer([T._shape, None])
-def local_shape_lift_elemwise(node):
+class MakeVector(T.Op):
+    """Concatenate a number of scalars together into a vector
+
+    This is a simple version of stack() that introduces far less cruft into the graph.
+    
     """
-    shape(elemwise_op(..., x, ...)) -> shape(x)
+    def __init__(self, dtype='int64'):
+        self.dtype = dtype
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.dtype)
+    def make_node(self, *inputs):
+        inputs = map(T.as_tensor_variable, inputs)
+        if not all(a.type == inputs[0].type for a in inputs):
+            raise TypeError('This MakeVector instance requires inputs of same type %s' %
+                    inputs[0].type)
+        if inputs:
+            dtype = inputs[0].type.dtype
+        else:
+            dtype = self.dtype
+        #bcastable = (len(inputs) == 1)
+        bcastable = False
+        otype = T.TensorType(
+                broadcastable=(bcastable,),
+                dtype=dtype)
+        return T.Apply(self, inputs, [otype()])
+    def __str__(self):
+        return self.__class__.__name__
+    def perform(self, node, inputs, (out,)):
+        out[0] = T.numpy.asarray(inputs)
 
-    Where x contains the maximal shape information.
+make_vector = MakeVector()
+
+class MakeVectorPrinter:
+    def process(self, r, pstate):
+        if r.owner is None:
+            raise TypeError("Can only print make_vector.")
+        elif isinstance(r.owner.op, MakeVector):
+            return "[%s]" % ", ".join(pstate.pprinter.process(input, pstate.clone(precedence = 1000)) for input in r.owner.inputs)
+        else:
+            raise TypeError("Can only print make_vector.")
+T.pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
+
+class Shape_i(T.Op):
     """
-    if not opt.check_chain(node, T._shape, T.Elemwise):
-        return False
+    L{Op} to return the shape of a matrix.
 
-    output = node.inputs[0]
-    parent = output.owner
-
-    for input in parent.inputs:
-        if input.type.broadcastable == output.type.broadcastable:
-            return T._shape(input),
-
-    return False
-
-register_canonicalize(local_shape_lift_elemwise, 'shape_lift')
-register_specialize(local_shape_lift_elemwise, 'shape_lift')
-
-
-@gof.local_optimizer([T._shape, None])
-def local_shape_lift_sum(node):
+    @note: Non-differentiable.
     """
-    shape(sum{n}(x)) -> [shape(x)[0], ..., shape(x)[n-1], shape(x)[n+1], ...]
+    def __init__(self, i):
+        self.i = i
+    def __hash__(self):
+        return hash(type(self)) ^ self.i
+    def __eq__(self, other):
+        return type(self) == type(other) and self.i == other.i
+    def __str__(self):
+        return '%s{%i}'%(self.__class__.__name__, self.i)
+    def make_node(self, x):
+        x = T.as_tensor_variable(x)
+        if x.ndim <= self.i:
+            raise TypeError('x has too few dimensions for Shape_i', (x, self.i))
+        return T.Apply(self, [x], [T.lscalar()])
+    def perform(self, node, (x, ), (out, )):
+        out[0] = theano._asarray(x.shape[self.i], dtype = 'int64')
+    def grad(self, (x,), (gz,)):
+        return [None]
+
+class ShapeFeature(object):
+    """Graph optimizer for removing all calls to shape()
+    
+    This optimizer replaces all Shapes and Subtensors of Shapes with Shape_i and MakeVector
+    Ops.
+
+    This optimizer has several goals:
+    1. to 'lift' Shapes to as close to the inputs as possible.  
+    2. to infer the shape of every node in the graph in terms of the input shapes.
+    3. remove all fills (T.second, T.fill) from the graph
+
+    Lifting shapes as close to the inputs as possible is important for canonicalization because
+    it is very bad form to have to compute something just to know how big it will be.  Firstly,
+    it is a waste of time to compute such outputs.  But it is important to get rid of these
+    outputs as early as possible in the compilation process because the
+    extra computations make it appear as if many internal graph nodes have multiple clients.
+    Many optimizations refuse to work on nodes with multiple clients.
+
+    Lifting is done by using an `<Op>.infer_shape` function if one is present, or else using a
+    conservative default.  An Op that supports shape-lifting should define a 
+    infer_shape(self, node, input_shapes) function.  The argument input_shapes is a tuple
+    of tuples... there is an interior tuple for each input to the node.  The tuple has as many
+    elements as dimensions.  The element in position i of tuple j represents the i'th shape
+    component of the j'th input.  The function should return a tuple of tuples.  One output
+    tuple for each node.output.  Again, the i'th element of the j'th output tuple represents
+    the output[j].shape[i] of the function.  If an output is not a TensorType, then None should
+    be returned instead of a tuple for that output.
+
+    For example the infer_shape for a matrix-matrix product would accept 
+    input_shapes=((x0,x1), (y0,y1)) and return ((x0, y1),).
+    
+
+    Inferring the shape of internal nodes in the graph is important for doing size-driven
+    optimizations.  If we know how big various intermediate results will be, we can estimate
+    the cost of many Ops accurately, and generate c-code that is specific [e.g. unrolled] to
+    particular sizes.
+
+    .. note::
+
+        Right now there is only the ConvOp that can really take advantage of this shape
+        inference, but it is worth it even just for the ConvOp.  All that's necessary to do
+        shape inference is 1) to mark shared inputs as having a particular shape,
+        either via a .tag or some similar hacking; and 2) to add an optional Param() argument
+        to promise that inputs will have a certain shape (or even to have certain shapes in
+        certain dimensions).
+
+
     """
-    if not opt.check_chain(node, T._shape, T.Sum):
-        return False
+    def shape_i(self, i):
+        def op_deco(r):
+            if r.type.broadcastable[i]:
+                return self.lscalar_one
+            else:
+                return Shape_i(i)(r)
+        return op_deco
 
-    input = node.inputs[0].owner.inputs[0]
-    axis = node.inputs[0].owner.op.axis
-    if axis is None:# or len(axis) != 1:
-        axis = range(input.type.ndim)
+    def shape_tuple(self, r):
+        return tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])
 
+    def default_infer_shape(self, node, i_shapes):
+        rval = []
+        for r in node.outputs:
+            try:
+                rval.append(self.shape_tuple(r))
+            except AttributeError:
+                rval.append(None)
+        return rval
 
-    ish = T._shape(input)
-    return T.make_lvector.make_node(*(ish[i] for i in xrange(input.type.ndim) if i not in axis)).outputs
-#    return T.vertical_stack.make_node(ish[:axis], ish[axis+1:]).outputs
+    def unpack(self, s_i):
+        # unpack the s_i that the Op returned
+        assert s_i is not None
+        if s_i == 1:
+            # don't make the optimizer merge a zillion ones together
+            return self.lscalar_one
+        if type(s_i) is int:
+            # this shape is a constant
+            assert s_i >= 0
+            return T.constant(s_i, dtype='int64')
+        if type(s_i) in (tuple,list):
+            # this dimension is the same as many of the inputs
+            # which tells us that if one of the inputs is known, 
+            # the others all become known.
+            # TODO: should be implemented in Elemwise, and Dot
+            #
+            # worst case, we loop over shape_of and replace things
+            raise NotImplementedError(s_i)
+        elif s_i.type == T.lscalar:
+            return s_i
+        else:
+            raise TypeError('Unsupported shape element', s_i)
 
-register_canonicalize(local_shape_lift_sum, 'shape_lift')
+    def set_shape(self, r, s):
+        assert r not in self.shape_of
+        if s is None:
+            self.shape_of[r] = s
+        else:
+            self.shape_of[r] = tuple([self.unpack(s_i) for s_i in s])
 
+    def make_vector_shape(self, r):
+        return make_vector(*self.shape_of[r])
+    #
+    #
+    # Feature inteface
+    #
+    #
+    def on_attach(self, env):
+        assert not hasattr(env, 'shape_feature')
+        env.shape_feature = self
+        self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+        self.lscalar_one = T.constant(1, dtype='int64')
+        assert self.lscalar_one.type == T.lscalar
+        for node in env.toposort():
+            self.on_import(env, node)
 
-@gof.local_optimizer([T._shape, T.dot])
-def local_shape_lift_dot(node):
+    def on_import(self, env, node):
+        if node.outputs[0] in self.shape_of:
+            # this is a revert, not really an import
+            for r in node.outputs + node.inputs:
+                assert r in self.shape_of
+            return
+
+        for i, r in enumerate(node.inputs):
+            # make sure we have shapes for the inputs
+            if r not in self.shape_of:
+                try:
+                    self.set_shape(r, self.shape_tuple(r))
+                except AttributeError:
+                    self.set_shape(r, None ) # not a TensorType variable
+
+        try:
+            shape_infer = node.op.infer_shape
+        except AttributeError:
+            shape_infer = self.default_infer_shape
+
+        try:
+            o_shapes = shape_infer(node, [self.shape_of[r] for r in node.inputs])
+        except Exception, e:
+            _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
+                [self.shape_of[r] for r in node.inputs],
+                type(e), str(e)))
+            o_shapes = default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
+
+        # this is packed information
+        # an element of o_shapes is either None or a tuple
+        #   elements of the tuple can be either strings, or ints
+
+        assert len(o_shapes) == len(node.outputs)
+
+        for r, s in zip(node.outputs, o_shapes):
+            self.set_shape(r, s)
+
+    def on_change_input(self, env, mode, i, r, new_r):
+        # TODO:
+        # This tells us that r and new_r must have the same shape
+        # if we didn't know that the shapes are related, now we do.
+        pass
+
+class ShapeOptimizer(Optimizer):
+    """Optimizer that serves to add ShapeFeature as an env feature.
     """
-    shape(dot(a, b)) -> [shape(a)[0], shape(b)[1]]
+    def __init__(self):
+        Optimizer.__init__(self)
+
+    def add_requirements(self, env):
+        env.extend(ShapeFeature())
+
+    def apply(self, env):
+        pass
+
+# -1 should make it run right before the first merge
+theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(), -1, 'fast_run', 'fast_compile')
+
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.fill])
+def local_fill_to_alloc(node):
+    """fill(s,v) -> alloc(v, shape(s))
+
+    This is an important optimization because with the shape_to_shape_i optimization, the
+    dependency on 's' is often removed.
+    
     """
-    if not opt.check_chain(node, T._shape, T.dot):
-        return False
-    a, b = node.inputs[0].owner.inputs
-    if a.type.ndim == 2 and b.type.ndim == 2:
-        return T.make_lvector.make_node(T._shape(a)[0], T._shape(b)[1]).outputs
-    elif a.type.ndim == 1 and b.type.ndim == 2:
-        return T.make_lvector.make_node(T._shape(b)[1]).outputs
-    elif a.type.ndim == 2 and b.type.ndim == 1:
-        return T.make_lvector.make_node(T._shape(a)[0]).outputs
-    elif a.type.ndim == 1 and b.type.ndim == 1:
-        return T.make_lvector.make_node().outputs
-    else:
-        return False
+    if node.op == T.fill:
+        r, v = node.inputs
+        if v.type == node.outputs[0].type:
+            # this is a useless fill, erase it.
+            rval = [v]
+        elif v.type.broadcastable == node.outputs[0].type.broadcastable:
+            # this is a cast
+            rval = [T.cast(v, node.outputs[0].type.dtype)]
+        else:
+            # we are broadcasting v somehow
+            shape_of = node.env.shape_feature.shape_of
+            # TODO: cut out un-necessary dimshuffles of v
+            rval = [T.Alloc(node.outputs[0].dtype)(v, *shape_of[node.outputs[0]])]
+        assert rval[0].type == node.outputs[0].type
+        return rval
 
-register_canonicalize(local_shape_lift_dot, 'shape_lift')
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T._shape])
+def local_shape_to_shape_i(node):
+    if node.op == T._shape:
+        shape_feature = node.env.shape_feature
+        return [shape_feature.make_vector_shape(node.inputs[0])]
 
-
-# local_shape_lift = opt.LocalOptGroup(local_shape_lift_elemwise,
-#                                      local_shape_lift_sum,
-#                                      local_shape_lift_dot)
-
-
-################
-# Fill lifters #
-################
-
-def encompasses_broadcastable(b1, b2):
-    """
-    Returns True if the broadcastable patterns b1 and b2 are such that b2 is
-    broadcasted to b1's shape and not the opposite.
-
-    :param b1: the broadcastable attribute of a tensor type
-    :param b2: the broadcastable attribute of a tensor type
-    """
-    if len(b1) < len(b2):
-        return False
-    b1 = b1[-len(b2):]
-    return not any(v1 and not v2 for v1, v2 in zip(b1, b2))
-
-def merge_broadcastables(broadcastables):
-    return [all(bcast) for bcast in zip(*broadcastables)]
-
-@gof.local_optimizer([T.fill, None])
-def local_fill_lift(node):
-    """
-    fill(f(a), b) -> fill(a, b)
-    If a.type == f(a).type.
-
-    fill(a, b) -> b
-    If a.type == b.type.
-    """
-    if not opt.check_chain(node, T.fill):
-        return False
-
-    model, filling = node.inputs
-
-    mb, fb = model.type.broadcastable, filling.type.broadcastable
-    if model.type.dtype == filling.type.dtype and encompasses_broadcastable(fb, mb):
-        return False# [filling]
-
-    parent = model.owner
-    if parent is None or not isinstance(parent, T.Elemwise):
-        return False
-    for input in parent.inputs:
-        if input.type == model.type:
-            return [T.fill(input, filling)]
-
-    return False
-
-register_canonicalize(local_fill_lift, 'fill_lift')
-
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.Subtensor])
+def local_subtensor_make_vector(node):
+    # replace all subtensor(make_vector) like:
+    # [a,b,c][0] -> a
+    # [a,b,c][0:2] -> [a,b]
+    # we can do this for constant indexes
+    if isinstance(node.op, T.Subtensor):
+        shape_feature = node.env.shape_feature
+        x = node.inputs[0]
+        if x.owner and x.owner.op == make_vector:
+            try:
+                idx, = node.op.idx_list
+            except:
+                #'how can you have multiple indexes into a shape?'
+                raise
+            if isinstance(idx, int):
+                return [x.owner.inputs[idx]]
+            elif isinstance(idx, T.TensorVariable):
+                # if it is a constant we can do something with it
+                try:
+                    v = get_constant_value(idx)
+                    return [x.owner.inputs[v]]
+                except:
+                    pass 
+            else:
+                # it is a slice of ints and/or Variables
+                #TODO: check subtensor to see if it can contain constant variables,
+                #      and if it can, then try to unpack them.
+                try:
+                    return [make_vector(*x.owner.inputs.__getitem__(idx))]
+                except TypeError:
+                    pass
+                except:
+                    _logger.error('failed to index with "%s"' % str(idx))
+                    raise
 
 ##################
 # Subtensor opts #
@@ -305,38 +532,6 @@ def local_subtensor_unary(node):
             idx = node.inputs[1:]
             x_idx = node.op(u.owner.inputs[0], *idx)
             return [u.owner.op(x_idx)]
-
-@gof.local_optimizer([None, None])
-def local_subtensor_make_vector(node):
-    """
-    [a,b,c][0] -> a
-    [a,b,c][0:2] -> [a,b]
-
-    If the index or slice is constant.
-    """
-    if not opt.check_chain(node, T.Subtensor, T.MakeVector):
-        return False
-
-    joined_r = node.inputs[0]
-
-    try: 
-        #check that join is being used to join scalars
-        veclen = T.join.vec_length(joined_r)
-    except:
-        return False
-
-    idxlist = node.op.idx_list
-    if len(idxlist) != 1:
-        return False
-    idx = idxlist[0]
-    if isinstance(idx, int):
-        return [node.inputs[0].owner.inputs[idx]]
-    try:
-        return T.make_vector(*(node.owner.inputs[0].owner.inputs.__getslice__(idx)))
-    except TypeError:
-        return False
-
-register_canonicalize(local_subtensor_make_vector)
 
 @register_canonicalize
 @gof.local_optimizer([None])
@@ -581,13 +776,18 @@ class Canonizer(gof.LocalOptimizer):
         # the dtype of the 'input' argument. The leaf-Variables of the graph covered by the
         # recursion may be of any Variable type.
 
-        if len(input.clients) > 1:
-            # this logic is too conservative, but doing it is better than not doing it.
-            #
-            # we don't want to canonize a subgraph that we will need to compute anyway for the other clients.
-            # This check is too conservative because if the other clients are also in the subgraph we are canonizing,
-            # then we should [probably?] recurse anyway.
-            return [input], []
+        if 0:
+            # UPDATE: This logic makes it impossible to recognize some important patterns
+            # (e.g. variants on the x/x)
+            # and it is screwing up the RBM free energy gradient.
+            #TODO: review this
+            if len(input.clients) > 1:
+                # this logic is too conservative, but doing it is better than not doing it.
+                #
+                # we don't want to canonize a subgraph that we will need to compute anyway for the other clients.
+                # This check is too conservative because if the other clients are also in the subgraph we are canonizing,
+                # then we should [probably?] recurse anyway.
+                return [input], []
 
         if input.owner is None or input.owner.op not in [self.main, self.inverse, self.reciprocal]:
             if input.owner and isinstance(input.owner.op, T.DimShuffle):
@@ -835,8 +1035,8 @@ class Canonizer(gof.LocalOptimizer):
         # Here we make the canonical version of the graph around this node
         # See the documentation of get_num_denum and simplify
         orig_num, orig_denum = self.get_num_denum(node.outputs[0])
-        num, denum = list(orig_num), list(orig_denum)
-        num, denum = self.simplify(num, denum)
+        num, denum = self.simplify(list(orig_num), list(orig_denum))
+
 
         def same(x, y):
             return len(x) == len(y) and all(N.all(xe == ye) for xe, ye in zip(x, y))
@@ -934,6 +1134,60 @@ def local_sum_mul_by_scalar(node):
                         return [scalars[0]]
         if thing_summed.owner and thing_summed.owner.op == T.neg:
             return [T.neg(node.op(thing_summed.owner.inputs[0]))]
+
+@register_canonicalize
+@gof.local_optimizer([])
+def local_sum_all_to_none(node):
+    """Sum{0,1,...N} -> Sum{}"""
+    if isinstance(node.op, T.Sum):
+        # if all the axes are named, then use None as a shorthand
+        # this permits more merging
+        if node.op.axis is None:
+            return
+        if set(node.op.axis) == set(range(node.inputs[0].type.ndim)):
+            return [T.Sum(axis=None)(node.inputs[0])]
+
+@register_canonicalize
+@gof.local_optimizer([])
+def local_sum_sum(node):
+    """Sum(Sum()) -> Sum"""
+    if isinstance(node.op, T.Sum):
+        summed, = node.inputs
+        if len(summed.clients) == 1:
+            if summed.owner and isinstance(summed.owner.op, T.Sum):
+                if summed.owner.op.axis is None:
+                    # special case of local_cut_useless_reduce
+                    return [T.Sum(None)(summed.owner.inputs[0])]
+                if node.op.axis is None:
+                    # we're summing up everything anyway so lets 
+                    # do it all at once
+                    return [T.Sum(None)(summed.owner.inputs[0])]
+
+                # figure out which dimensions of the original input are preserved
+                alldims = range(summed.owner.inputs[0].type.ndim)
+                
+                # trim out the dimensions that were removed by the first sum
+                alldims = [d for i,d in enumerate(alldims) if i in summed.owner.op.axis]
+
+                # trim out the dimensions removed by second sum
+                alldims = [d for i,d in enumerate(alldims) if i in node.op.axis]
+
+                # figure out an axis argument that combines the effect of both
+                newaxis = [i for i in xrange(summed.owner.inputs[0].type.ndim)
+                        if i not in alldims]
+
+                combined_sum = T.Sum(newaxis)
+                return [combined_sum(summed.owner.inputs[0])]
+
+@register_canonicalize
+@gof.local_optimizer([])
+def local_cut_useless_reduce(node):
+    """Sum(a, axis=[]) -> a  """
+    if isinstance(node.op, T.CAReduce):
+        summed, = node.inputs
+        # if reduce were doing anything, the output ndim would be reduced
+        if summed.type == node.outputs[0].type:
+            return [summed]
 
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
@@ -1143,30 +1397,23 @@ register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
 
-@register_specialize
+@register_stabilize
 @gof.local_optimizer([T.log])
 def local_log1p(node):
     # log(1+exp(x)) -> log1p(x)
     if node.op == T.log:
         log_arg, = node.inputs
         if log_arg.owner and log_arg.owner.op == T.add:
-            add_inputs = log_arg.owner.inputs
-            consts = [0]
-            fills = []
-            nonconsts = []
-            for add_in in add_inputs:
-                try:
-                    v, f = get_constant_value(add_in, fill=True)
-                    consts.append(v)
-                    fills.extend(f)
-                except:
-                    nonconsts.append(add_in)
-            if nonconsts:
-                if numpy.allclose(numpy.sum(consts), 1):
-                    if len(nonconsts)==1:
-                        return _fill_chain(T.log1p(nonconsts[0]), fills)
-                    else:
-                        return _fill_chain(T.log1p(T.add(*nonconsts)), fills)
+            scalars, scalar_inputs, nonconsts = \
+                    scalarconsts_rest(log_arg.owner.inputs)
+            # scalar_inputs are potentially dimshuffled and fill'd scalars
+            if scalars and numpy.allclose(numpy.sum(scalars), 1):
+                if not nonconsts:
+                    pass # leave for constant-merge
+                if len(nonconsts)==1:
+                    return _fill_chain(T.log1p(nonconsts[0]), scalar_inputs)
+                else:
+                    return _fill_chain(T.log1p(T.add(*nonconsts)), scalar_inputs)
 
 
 def add_calculate(num, denum, aslist = False, out_type=None):

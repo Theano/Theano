@@ -26,7 +26,7 @@ class DB(object):
         # It is an instance of a DB.In the tests for example,
         # this is not always the case.
         if not isinstance(obj, (DB, opt.Optimizer, opt.LocalOptimizer)):
-            raise Exception('Triing to register an optimizer that don\'t herite from theano.gof.opt.Optimizer or theano.gof.opt.LocalOptimizer', obj)
+            raise TypeError('Object cannot be registered in OptDB', obj)
             
         if self.name is not None:
             tags = tags + (self.name,)
@@ -132,6 +132,18 @@ class Query(object):
 
 
 class EquilibriumDB(DB):
+    """A set of potential optimizations which should be applied in an arbitrary order until
+    equilibrium is reached.
+
+    Canonicalize, Stabilize, and Specialize are all equilibrium optimizations.
+
+    .. note::
+        
+        It seems like this might be supposed to contain LocalOptimizer instances rather than
+        optimizer instances, because whatever is selected by the query is passed to
+        EquilibriumOptimizer and EquilibriumOptimizer requires LocalOptimizer instances.
+
+    """
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
@@ -142,27 +154,45 @@ class EquilibriumDB(DB):
 
 
 class SequenceDB(DB):
+    """A sequence of potential optimizations.
+
+    Retrieve a sequence of optimizations (a SeqOptimizer) by calling query().
+
+    Each potential optimization is registered with a floating-point position.
+    No matter which optimizations are selected by a query, they are carried out in order of
+    increasing position.
+
+    The optdb itself (`theano.compile.mode.optdb`), from which (among many other tags) fast_run
+    and fast_compile optimizers are drawn is a SequenceDB.
+
+    """
 
     def __init__(self, failure_callback = opt.SeqOptimizer.warn):
         super(SequenceDB, self).__init__()
-        self.__priority__ = {}
+        self.__position__ = {}
         self.failure_callback = failure_callback
 
-    def register(self, name, obj, priority, *tags):
+    def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
-        self.__priority__[name] = priority
+        self.__position__[name] = position
 
     def query(self, *tags, **kwtags):
+        """
+        :type position_cutoff: float or int
+        :param position_cutoff: only optimizations with position less than the cutoff are returned.
+        """
+        position_cutoff = kwtags.pop('position_cutoff', float('inf'))
         opts = super(SequenceDB, self).query(*tags, **kwtags)
-        opts = list(opts)
-        opts.sort(key = lambda obj: self.__priority__[obj.name])
+        opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
+        opts.sort(key = lambda obj: self.__position__[obj.name])
         return opt.SeqOptimizer(opts, failure_callback = self.failure_callback)
 
     def print_summary(self, stream=sys.stdout):
         print >> stream, "SequenceDB (id %i)"%id(self)
-        print >> stream, "  priority", self.__priority__
+        print >> stream, "  position", self.__position__
         print >> stream, "  names", self._names
         print >> stream, "  db", self.__db__
+
     def __str__(self):
         sio = StringIO.StringIO()
         self.print_summary(sio)

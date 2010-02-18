@@ -197,6 +197,18 @@ class DimShuffle(Op):
 
         storage[0] = numpy.asarray(res) #asarray puts scalars back into array
 
+    def infer_shape(self, node, (ishp,)):
+        ishp = list(ishp)
+        for drop in reversed(self.drop):
+            del ishp[drop]
+        # transpose
+        rval = [ishp[i] for i in self.shuffle]
+
+        # augment
+        for augm in self.augment:
+            rval.insert(augm, 1)
+        return [rval]
+
     def c_code(self, node, name, (input,), (res,), sub):
         basename = input + '__view_or_copy'
 
@@ -613,6 +625,25 @@ class Elemwise(Op):
         # the following should be used instead of the previous loop, unfortunately it tends to segfault
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
+    def infer_shape(self, node, i_shapes):
+        rval = []
+        for o in node.outputs:
+            oshp = []
+            for dim, b in enumerate(o.type.broadcastable):
+                b_dim = None
+                if b: # this is broadcastable
+                    b_dim = 1
+                else: # there must be some input that is not broadcastable
+                    for ishp, i in zip(i_shapes,node.inputs):
+                        if not i.type.broadcastable[dim]:
+                            b_dim = ishp[dim]
+                            assert b_dim, 'AA'
+                            break
+                    assert b_dim, 'BB'
+                oshp.append(b_dim)
+            rval.append(oshp)
+        return rval
+
     def _c_all(self, node, name, inames, onames, sub):
         _inames = inames
         _onames = onames
@@ -764,10 +795,14 @@ class CAReduce(Op):
         if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError("CAReduce only supports binary functions with a single output.")
         self.scalar_op = scalar_op
-        if isinstance(axis, int):
-            self.axis = [axis]
-        else:
+        if axis is None:
             self.axis = axis
+        elif isinstance(axis, int):
+            self.axis = (axis,)
+        else:
+            self.axis = list(set(axis))
+            self.axis.sort()
+            self.axis = tuple(self.axis)
         self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
 
         # CAReduce output views input when reducing scalars
@@ -833,6 +868,13 @@ class CAReduce(Op):
             output[0] = theano._asarray(variable, dtype = node.outputs[0].type.dtype)
         else:
             output[0] = numpy.copy(variable)
+
+    def infer_shape(self, node, (ishape,)):
+        axis = self.axis
+        if axis is None:
+            return (),
+        return [ishape[i] for (i,b) in enumerate(node.inputs[0].type.broadcastable) if i not in axis],
+
 
     def _c_all(self, node, name, inames, onames, sub):
 

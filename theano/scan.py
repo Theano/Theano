@@ -20,8 +20,9 @@ Special cases:
 
 Often a for loop can be expressed as a ``scan()`` operation, and ``scan`` is
 the closest that theano comes to looping. The advantage of using ``scan`` 
-over for loops is that it allows you to express the loop symbolically. The 
-Scan Op should always be used by applying the ``scan`` function. 
+over for loops is that it allows the number of iterations to be a part of the symbolic graph. 
+
+The Scan Op should always be used by applying the ``scan`` function. 
 """ 
 __docformat__ = 'restructedtext en'
 
@@ -60,7 +61,8 @@ def hash_listsDictsTuples(x):
 
 def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
          sequences_taps={}, outputs_taps = {}, n_steps = 0, \
-         truncate_gradient = -1, go_backwards = False, mode = 'FAST_RUN'):
+         truncate_gradient = -1, go_backwards = False, 
+         mode = None):
     '''Function that constructs and applies a Scan op
 
     :param fn: Function that describes the operations involved in one step of scan 

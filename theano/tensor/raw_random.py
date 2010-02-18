@@ -136,10 +136,7 @@ class RandomFunction(gof.Op):
         draw.
 
         """
-        if shape == () or shape == []:
-            shape = tensor.as_tensor_variable(shape, dtype='int64')
-        else:
-            shape = tensor.as_tensor_variable(shape, ndim=1)
+        shape = tensor.as_tensor_variable(shape, ndim=1)
         assert shape.type.ndim == 1
         assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
         if not isinstance(r.type, RandomStateType):
@@ -157,6 +154,22 @@ class RandomFunction(gof.Op):
         return gof.Apply(self,
                          [r, shape] + args,
                          [r.type(), self.outtype()])
+
+    def infer_shape(self, node, i_shapes):
+        r, shp = node.inputs[0:2]
+
+        #if shp is a constant array of len 0, then it means 'automatic shape'
+        unknown_shape = len(getattr(shp, 'data', [0,1,2])) == 0
+
+        # if ndim_added == 0 and shape != () then shape
+        if self.ndim_added == 0 and not unknown_shape:
+            sample_shp = shp
+        else:
+            # if shape == () then it will depend on args
+            # if ndim_added != 0 and shape != () then it will depend on args
+            sample_shp = node.outputs[1].shape
+
+        return [None, [sample_shp[i] for i in xrange(node.outputs[1].ndim)]]
 
     def perform(self, node, inputs, (rout, out)):
         # Use self.fn to draw shape worth of random numbers.

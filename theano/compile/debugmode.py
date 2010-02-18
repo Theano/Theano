@@ -197,6 +197,11 @@ class BadOptimization(DebugModeError):
             print >> ssio, "  Mean Abs Diff: ", numpy.mean(numpy.absolute(nv-ov))
             print >> ssio, "  Median Abs Diff: ", numpy.median(numpy.absolute(nv-ov))
             print >> ssio, "  Std Abs Diff: ", numpy.std(numpy.absolute(nv-ov))
+            reldiff = numpy.absolute(nv-ov) / (numpy.absolute(nv)+numpy.absolute(ov))
+            print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
+            print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
+            print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
+            print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()                                    
         except:
@@ -349,14 +354,17 @@ def debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
         # this variable is the output of computation,
         # so just print out the apply
         a = r.owner
-        print >> file, prefix, a.op, id(a)
+        if len(a.outputs) == 1:
+            print >> file, '%s%s [@%i]' % (prefix, a.op, id(r))
+        else:
+            print >> file, '%s%s.%i [@%i]' % (prefix, a.op, a.outputs.index(r), id(r))
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
-                debugprint(i, prefix+'  ', depth=depth-1, done=done, file=file)
+                debugprint(i, prefix+' |', depth=depth-1, done=done, file=file)
     else:
         #this is a variable
-        print >> file, prefix, r, id(r)
+        print >> file, '%s%s [@%i]' % (prefix, r, id(r))
 
     return file
 

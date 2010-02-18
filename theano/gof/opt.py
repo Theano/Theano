@@ -197,12 +197,19 @@ class _metadict:
 
 
 class MergeOptimizer(Optimizer):
-    """WRITEME
-    Merges parts of the graph that are identical, i.e. parts that
-    take the same inputs and carry out the asme computations so we
-    can avoid doing them more than once. Also merges variables that
-    are constant.
     """
+    Merges parts of the graph that are identical and redundant.
+    
+    The basic principle is that if two Applies have ops that compare equal, and identical
+    inputs, then they do not both need to be computed.  The clients of one are transfered to
+    the other and one of them is removed from the graph.  This procedure is carried out in
+    input->output order through the graph.
+
+    The first step of merging is constant-merging, so that all clients of an int(1) for example,
+    are transfered to a particular instance of int(1).
+    """
+    def __init__(self, skip_const_merge=False):
+        self.skip_const_merge = skip_const_merge
 
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
@@ -230,41 +237,6 @@ class MergeOptimizer(Optimizer):
                     const_sig[c] = sig
                     const_sig_inv[sig] = c
 
-    def exptime_apply_node_merge(self, env):
-        # we clear the dicts because the Constants signatures are not necessarily hashable
-        # and it's more efficient to give them an integer like the other Variables
-
-        symbol_idx = {}       #variable -> int
-        symbol_idx_inv = {}   #int -> variable (inverse of symbol_idx)
-
-        #add all graph sources to the symbol_idx dictionaries (arbitrary order)
-        for i, r in enumerate(r for r in env.variables if r.owner is None):
-            symbol_idx[r] = i
-            symbol_idx_inv[i] = r
-
-        for node in _list_of_nodes(env):
-            node_cid = (node.op, tuple([symbol_idx[input] for input in node.inputs]))
-            #print 'NODE', node, node_cid
-            dup = symbol_idx_inv.get(node_cid, None)
-            success = False
-            if dup is not None:
-                success = True
-                pairs = zip(node.outputs, dup.outputs)
-                for output, new_output in pairs:
-                    if output.name and not new_output.name:
-                        new_output.name = output.name
-                try:
-                    env.replace_all_validate(pairs, reason='Merge (exptime)')
-                except InconsistencyError, e:
-                    success = False
-            if not success:
-                symbol_idx[node] = node_cid
-                symbol_idx_inv[node_cid] = node
-                for i, output in enumerate(node.outputs):
-                    ref = (i, node_cid)
-                    symbol_idx[output] = ref
-                    symbol_idx_inv[ref] = output
-    
     def apply_node_merge(self, env):
         # we clear the dicts because the Constants signatures are not necessarily hashable
         # and it's more efficient to give them an integer like the other Variables
@@ -316,7 +288,8 @@ class MergeOptimizer(Optimizer):
 
     #TODO: Consider splitting this into a separate optimizer (SeqOptimizer)
     def apply(self, env):
-        self.apply_constant_merge(env)
+        if not self.skip_const_merge:
+            self.apply_constant_merge(env)
         self.apply_node_merge(env)
 
 merge_optimizer = MergeOptimizer()
@@ -541,7 +514,7 @@ class PatternSub(LocalOptimizer):
      PatternSub((subtract, (add, 'x', 'y'), 'y'), 'x')
      PatternSub((power, 'x', Constant(double, 2.0)), (square, 'x'))
      PatternSub((boggle, {'pattern': 'x',
-                                'constraint': lambda env, expr: expr.type == scrabble}),
+                                'constraint': lambda expr: expr.type == scrabble}),
                       (scrabble, 'x'))
     """
 
@@ -789,7 +762,10 @@ class NavigatorOptimizer(Optimizer):
                 raise
         if replacements is False or replacements is None:
             return False
-        assert len(node.outputs) == len(replacements)
+        if not isinstance(replacements, (tuple, list)):
+            raise TypeError('Optimizer %s gave wrong type of replacement' % lopt)
+        if len(node.outputs) != len(replacements):
+            raise ValueError('Optimizer %s gave wrong number of replacements' % lopt)
         repl_pairs = zip(node.outputs, replacements)
         try:
             env.replace_all_validate(repl_pairs, reason=lopt)
@@ -904,7 +880,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  max_depth = None,
                  max_use_ratio = None):
         """
+        :param local_optimizers:  list or set of local optimizations to apply until
+            equilibrium.
+
         :param max_use_ratio: each optimizer can be applied at most (size of graph * this number)
+
+        :param max_depth: TODO what does this do? (EquilibriumDB sets it to 5)
 
         """
 
@@ -916,6 +897,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.local_optimizers = local_optimizers
         self.max_depth = max_depth
         self.max_use_ratio = max_use_ratio
+        assert self.max_use_ratio is not None, 'max_use_ratio has to be a number'
 
     def apply(self, env, start_from = None):
         if start_from is None:
@@ -960,7 +942,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                             changed |= lopt_change
             finally:
                 self.detach_updater(env, u)
-            self.detach_updater(env, u)
+            self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
         if max_use_abort:
             print >> sys.stderr, "WARNING: EquilibriumOptimizer max'ed out"
 

@@ -352,7 +352,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
     def test_vector_arguments(self):
         random = RandomStreams(utt.fetch_seed())
-        low = tensor.vector()
+        low = tensor.dvector()
         out = random.uniform(low=low, high=1)
         assert out.ndim == 1
         f = function([low], out)
@@ -402,8 +402,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
     def test_broadcast_arguments(self):
         random = RandomStreams(utt.fetch_seed())
-        low = tensor.vector()
-        high = tensor.col()
+        low = tensor.dvector()
+        high = tensor.dcol()
         out = random.uniform(low=low, high=high)
         assert out.ndim == 2
         f = function([low, high], out)
@@ -424,8 +424,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
     def test_uniform_vector(self):
         random = RandomStreams(utt.fetch_seed())
-        low = tensor.vector()
-        high = tensor.vector()
+        low = tensor.dvector()
+        high = tensor.dvector()
         out = random.uniform(low=low, high=high)
         assert out.ndim == 1
         f = function([low, high], out)
@@ -438,11 +438,15 @@ class T_SharedRandomStreams(unittest.TestCase):
         # Arguments of size (3,)
         val0 = f(low_val, high_val)
         numpy_val0 = numpy_rng.uniform(low=low_val, high=high_val)
+        print 'THEANO', val0
+        print 'NUMPY', numpy_val0
         assert numpy.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         val1 = f(low_val[:-1], high_val[:-1])
         numpy_val1 = numpy_rng.uniform(low=low_val[:-1], high=high_val[:-1])
+        print 'THEANO', val1
+        print 'NUMPY', numpy_val1
         assert numpy.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
@@ -486,8 +490,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
     def test_normal_vector(self):
         random = RandomStreams(utt.fetch_seed())
-        avg = tensor.vector()
-        std = tensor.vector()
+        avg = tensor.dvector()
+        std = tensor.dvector()
         out = random.normal(avg=avg, std=std)
         assert out.ndim == 1
         f = function([avg, std], out)

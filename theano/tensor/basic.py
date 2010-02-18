@@ -4,7 +4,7 @@ __docformat__ = "restructuredtext en"
 
 import __builtin__
 import sys # for sys.maxint
-from theano.configparser import config
+from theano.configparser import config, AddConfigVar, BoolParam
 import traceback #for overriding Op.__call__
 if sys.version_info >= (2,5):
   import functools
@@ -570,7 +570,6 @@ class TensorType(Type):
         # input received.
         return """
         %(name)s = NULL;
-        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
         if (py_%(name)s == Py_None) {
             // We can either fail here or set %(name)s to NULL and rely on Ops using
             // tensors to handle the NULL case, but if they fail to do so they'll end up
@@ -578,18 +577,17 @@ class TensorType(Type):
             PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
             %(fail)s
         }
-        else if (!PyArray_Check(py_%(name)s)) {
+        if (!PyArray_Check(py_%(name)s)) {
             PyErr_SetString(PyExc_ValueError, "expected an ndarray");
             %(fail)s
         }
-        else if (type_num_%(name)s != %(type_num)s) {
+        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num; //we expect %(type_num)s
+        if (type_num_%(name)s != %(type_num)s) {
             PyErr_SetString(PyExc_ValueError, "expected %(type_num)s");
             %(fail)s
         }
-        else {
-            %(name)s = (PyArrayObject*)(py_%(name)s);
-            Py_XINCREF(%(name)s);
-        }
+        %(name)s = (PyArrayObject*)(py_%(name)s);
+        Py_XINCREF(%(name)s);
         """ % dict(sub, name = name, type_num = self.dtype_specs()[2])
 
     def c_cleanup(self, name, sub):
@@ -631,7 +629,7 @@ class TensorType(Type):
     def c_code_cache_version(self):
         scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (1,) + scalar_version
+            return (2,) + scalar_version
         else:
             return ()
 
@@ -943,7 +941,13 @@ class _tensor_py_operators:
                 break
 
         if advanced:
-            return AdvancedSubtensor(args)(self, *args)
+            if config.experimental.advanced_indexing:
+                if len(args) == 1:
+                    return AdvancedSubtensor1()(self, *args)
+                else:
+                    return AdvancedSubtensor(args)(self, *args)
+            else:
+                return AdvancedSubtensor(args)(self, *args)
         else:
             return Subtensor(args)(self, *Subtensor.collapse(args, lambda entry: isinstance(entry, Variable)))
 
@@ -1029,6 +1033,7 @@ class TensorConstantSignature(tuple):
         except:
             return False
         #N.B. compare shape to ensure no broadcasting in ==
+        #N.B. compare elementwise last because it is the most expensive check
         return (t0 == t1) and (d0.shape == d1.shape) \
                 and (self.sum == other.sum) and (numpy.all(d0 == d1)) 
     def __hash__(self):
@@ -1294,9 +1299,15 @@ def shape(a):
 
 pprint.assign(_shape, printing.MemberPrinter('shape'))
 
-
 class MaxAndArgmax(Op):
-    """Calculate the max and argmax over a given axis"""
+    """Calculate the max and argmax over a given axis.
+    
+    .. note::
+
+        If axis is None it means to calculate the max over the last dimension which is
+        DIFFERENT FROM NUMPY!!
+    
+    """
     nin=2 # tensor, axis
     nout=2 # max val, max idx
     E_axis = 'invalid axis'
@@ -1307,7 +1318,8 @@ class MaxAndArgmax(Op):
             axis = x.type.ndim - 1
         axis = _as_tensor_variable(axis)
         inputs = [x, axis]
-        broadcastable = [False] * (x.type.ndim - 1) #TODO: be less conservative
+        #TODO: figure things out if axis is a constant
+        broadcastable = [False] * (x.type.ndim - 1)
         outputs = [tensor(x.type.dtype, broadcastable,name='max'), 
                    tensor('int32', broadcastable,name='argmax')]
         return Apply(self, inputs, outputs)
@@ -1666,60 +1678,113 @@ def zeros_like(model):
     #return Zeros(model.type.ndim)(shape(model))
     return fill(model, constant(0.0, dtype=model.type.dtype))
 
-class Filler(gof.Op):
-    """WRITEME"""
-    def __init__(self, value, ndim, dtype = 'float64'):
-        self.value = value
-        self.ndim = ndim
-        self.dtype = dtype
-        self.type = TensorType(dtype = dtype,
-                           broadcastable = (False,)*ndim)
+if 0:
+    ## COMMENTED OUT FEB 17 2010
+    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
+    class Filler(gof.Op):
+        """WRITEME"""
+        def __init__(self, value, ndim, dtype = 'float64'):
+            self.value = value
+            self.ndim = ndim
+            self.dtype = dtype
+            self.type = TensorType(dtype = dtype,
+                               broadcastable = (False,)*ndim)
 
-    def make_node(self, dims):
-        dims = as_tensor_variable(dims)
-        return gof.Apply(self, [dims], [self.type()])
+        def make_node(self, dims):
+            dims = as_tensor_variable(dims)
+            return gof.Apply(self, [dims], [self.type()])
 
-    def perform(self, node, (dims,), (out,)):
-        if out[0] is not None:
-            out[0].resize(dims, refcheck = 0)
-            out[0].fill(self.value)
-        else:
-            if self.value == 0:
-                out[0] = numpy.zeros(dims, dtype = self.dtype)
-            elif self.value == 1:
-                out[0] = numpy.ones(dims, dtype = self.dtype)
+        def perform(self, node, (dims,), (out,)):
+            if out[0] is not None:
+                out[0].resize(dims, refcheck = 0)
+                out[0].fill(self.value)
             else:
-                out[0] = numpy.ones(dims, dtype = self.dtype) * self.value
+                if self.value == 0:
+                    out[0] = numpy.zeros(dims, dtype = self.dtype)
+                elif self.value == 1:
+                    out[0] = numpy.ones(dims, dtype = self.dtype)
+                else:
+                    out[0] = numpy.ones(dims, dtype = self.dtype) * self.value
 
-    def grad(self, (dims,), (gout,)):
-        return None,
+        def grad(self, (dims,), (gout,)):
+            return None,
+
+        def __eq__(self, other):
+            return type(self) == type(other) and self.ndim == other.ndim and self.dtype == other.dtype
+
+        def __hash__(self):
+            return hash(self.ndim) ^ hash(self.dtype)
+
+    Zeros = partial(Filler, 0)
+    """WRITEME"""
+
+    Ones = partial(Filler, 1)
+    """WRITEME"""
+
+    @constructor
+    def zero():
+        """
+        Return a scalar zero, e.g. for initializing sums.
+        """
+        return Zeros(0)([])
+
+    @constructor
+    def one():
+        """WRITEME"""
+        return Ones(0)([])
+
+    pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
+    pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
+
+class Alloc(gof.Op):
+    """Create a Tensor from an initial value and a desired shape
+
+    alloc(value, shape0, shape1, ..., shapeN) 
+
+    Returns an N-dimensional tensor initialized by `value` using something equivalent to
+    >>> z = numpy.zeros(shape, value.dtype)
+    >>> z += value
+
+    The result has N dimensions, has the dtype of `value` and is obtained by broadcasting value
+    over the output ndarray.
+
+    This Op is used to replace fill() during optimizations because after shapes are lifted, 
+    the first argument to fill can often be pruned from the graph.
+    """
+    def __init__(self, dtype):
+        self.dtype = dtype
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.ndim == other.ndim and self.dtype == other.dtype
+        return type(self) == type(other) and self.dtype == other.dtype
 
     def __hash__(self):
-        return hash(self.ndim) ^ hash(self.dtype)
+        return hash(type(self)) ^ hash(self.dtype)
 
-Zeros = partial(Filler, 0)
-"""WRITEME"""
+    def __str__(self):
+        return '%s{%s}' % (self.__class__.__name__, self.dtype)
 
-Ones = partial(Filler, 1)
-"""WRITEME"""
+    def make_node(self, value, *shape):
+        v = as_tensor_variable(value)
+        sh = [as_tensor_variable(s) for s in shape]
+        bcast = []
+        for s in sh:
+            if s.type.dtype[:3] not in ('int', 'uin'):
+                raise TypeError('Shape arguments must be integers', s)
+            # if s is constant 1, then we're broadcastable in that dim
+            bcast.append(isinstance(s, TensorConstant) and (s.data == 1))
+        otype = TensorType(dtype=self.dtype, broadcastable=bcast)
+        return gof.Apply(self, [v]+sh, [otype()])
 
-@constructor
-def zero():
-    """
-    Return a scalar zero, e.g. for initializing sums.
-    """
-    return Zeros(0)([])
+    def perform(self, node, inputs, (out,)):
+        v = inputs[0]
+        sh = tuple([int(i) for i in inputs[1:]])
+        if out[0] is None or out[0].shape != sh:
+            out[0] = numpy.zeros(sh, dtype=self.dtype)
+            out[0][...] += v # broadcast v to fill us up
 
-@constructor
-def one():
-    """WRITEME"""
-    return Ones(0)([])
+    def grad(self, inputs, (gout,)):
+        return [None for i in inputs]
 
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 0, printing.FunctionPrinter('zeros'))
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Filler) and r.owner.op.value == 1, printing.FunctionPrinter('ones'))
 
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
@@ -1841,33 +1906,36 @@ def var(input, axis = None):
     #return the mean sqr
     return mean(centered_input**2, axis)
 
-class Repeat(gof.Op):
+if 0:
+    ## COMMENTED OUT FEB 17 2010
+    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
+    class Repeat(gof.Op):
 
-    def make_node(self, input, repeats, axis):
-        assert isinstance(input.type, TensorType)
-        assert repeats.type == iscalar
-        assert axis.type == iscalar
-        broadcastable = []
-        for i,x in enumerate(input.broadcastable):
-          if i==axis:
-            broadcastable += [False]
-          else:
-            broadcastable += [x]
+        def make_node(self, input, repeats, axis):
+            assert isinstance(input.type, TensorType)
+            assert repeats.type == iscalar
+            assert axis.type == iscalar
+            broadcastable = []
+            for i,x in enumerate(input.broadcastable):
+              if i==axis:
+                broadcastable += [False]
+              else:
+                broadcastable += [x]
 
-        type = TensorType(dtype = input.type.dtype, broadcastable = \
-                          broadcastable)
-        #backport
-        #type = TensorType(dtype = input.type.dtype,
-        #              broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
-        return gof.Apply(self, [inputs, repeats, axis], [type()])
+            type = TensorType(dtype = input.type.dtype, broadcastable = \
+                              broadcastable)
+            #backport
+            #type = TensorType(dtype = input.type.dtype,
+            #              broadcastable = [False if i==axis else x for i, x in enumerate(input.broadcastable)])
+            return gof.Apply(self, [inputs, repeats, axis], [type()])
 
-    def perform(self, node, (input, repeats, axis), (out, )):
-        out[0] = numpy.repeat(input, repeats, axis)
+        def perform(self, node, (input, repeats, axis), (out, )):
+            out[0] = numpy.repeat(input, repeats, axis)
 
-    def grad(self, (input, repeats, axis), (gout, )):
-        return add.grad((input, gout), (gout,))[:1]
+        def grad(self, (input, repeats, axis), (gout, )):
+            return add.grad((input, gout), (gout,))[:1]
 
-repeat = Repeat()
+    repeat = Repeat()
 
 class Default(gof.Op):
     """
@@ -2489,6 +2557,10 @@ class Join(Op):
         join(2, x, y, z)    # WRONG: the axis has to be an index into the shape
         join(0, x, u)       # WRONG: joined tensors must have the same rank
     """
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, *axis_and_tensors):
         """
@@ -2763,37 +2835,6 @@ if 0: #vertical and horizontal stacking are deprecated.  Better to use stack() a
 
 else:
     pass
-
-
-class MakeVector(Op):
-    """WRITEME"""
-    def __init__(self, stype):
-        self.stype = stype
-    def make_node(self, *inputs):
-        inputs = map(as_tensor_variable, inputs)
-        assert all(a.type == self.stype for a in inputs)
-        return Apply(self, inputs, [TensorType(broadcastable = (False,),
-                                           dtype = self.stype.dtype)()])
-    def perform(self, node, inputs, (out,)):
-        out[0] = numpy.asarray(inputs)
-    def grad(self, inputs, (gout,)):
-        return [None]*len(inputs)
-
-make_lvector = MakeVector(lscalar)
-"""WRITEME"""
-
-
-class MakeVectorPrinter:
-
-    def process(self, r, pstate):
-        if r.owner is None:
-            raise TypeError("Can only print make_vector.")
-        elif isinstance(r.owner.op, MakeVector):
-            return "[%s]" % ", ".join(pstate.pprinter.process(input, pstate.clone(precedence = 1000)) for input in r.owner.inputs)
-        else:
-            raise TypeError("Can only print make_vector.")
-
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
 
 
 class Reshape(Op):
@@ -3138,6 +3179,37 @@ def inverse_permutation(perm):
 # Should reproduce numpy's behaviour:
 # http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing
 
+AddConfigVar('experimental.advanced_indexing',
+        "enable not-well-tested advanced indexing functionality",
+        BoolParam(False))
+
+
+class AdvancedSubtensor1(Op):
+    """Implement x[ilist] where ilist is a vector of integers."""
+
+    def __hash__(self):
+        return hash(type(self))
+    def __eq__(self, other):
+        type(self) == type(other)
+
+    def make_node(self, x, ilist):
+        x_ = as_tensor_variable(x)
+        ilist_ = as_tensor_variable(ilist)
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.broadcastable != (False,):
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if x_.type.broadcastable[0]:
+            # the caller should have made a copy of x len(ilist) times
+            raise TypeError('cannot index into a broadcastable dimension')
+
+        return gof.Apply(self, [x_, ilist_], [x_.type()])
+
+    def perform(self, node, (x,i), (out,)):
+        out[0] = x[i]
+
 class AdvancedSubtensor(Op):
     """Return a subtensor copy, using advanced indexing.
     """
@@ -3307,6 +3379,18 @@ class Dot(Op):
         else:
             rval = dot(gz, y.T), dot(x.T, gz)
         return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
+
+    def infer_shape(self, node, (xshp,yshp)):
+        x, y = node.inputs
+        if x.ndim == 2 and y.ndim == 2:
+            return [(xshp[0], yshp[1])]
+        if x.ndim == 1 and y.ndim == 2:
+            return [(yshp[1],)]
+        if x.ndim == 2 and y.ndim == 1:
+            return [(xshp[0],)]
+        if x.ndim == 1 and y.ndim == 1:
+            return [()]
+        raise NotImplementedError()
 
     def __str__(self):
         return "dot"
