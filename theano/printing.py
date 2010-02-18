@@ -376,7 +376,12 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
         if var.name is not None:
             varstr = var.name
         elif isinstance(var,gof.Constant):
-            varstr = '%s [%s]'% (str(var.data) , str(var.type))
+            dstr = str(var.data)
+            if '\n' in dstr:
+                dstr = dstr[:dstr.index('\n')]
+            if len(dstr) > 30:
+                dstr = dstr[:27]+'...'
+            varstr = '%s [%s]'% (dstr, str(var.type))
         elif var in input_update and input_update[var].variable.name is not None:
             varstr = input_update[var].variable.name
         else:
