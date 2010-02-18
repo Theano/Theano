@@ -44,6 +44,22 @@ def _fill_chain(new_out, orig_inputs):
         new_out = T.fill(i, new_out)
     return [new_out]
 
+def encompasses_broadcastable(b1, b2):
+    """
+    Returns True if the broadcastable patterns b1 and b2 are such that b2 is
+    broadcasted to b1's shape and not the opposite.
+
+    :param b1: the broadcastable attribute of a tensor type
+    :param b2: the broadcastable attribute of a tensor type
+    """
+    if len(b1) < len(b2):
+        return False
+    b1 = b1[-len(b2):]
+    return not any(v1 and not v2 for v1, v2 in zip(b1, b2))
+
+def merge_broadcastables(broadcastables):
+    return [all(bcast) for bcast in zip(*broadcastables)]
+
 def get_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
 
@@ -184,25 +200,36 @@ register_canonicalize(local_dimshuffle_lift)
 
 
 
-#################
-# Shape lifters #
-#################
+#####################################
+# ShapeFeature, Shape optimizations
+#####################################
+
 class MakeVector(T.Op):
     """Concatenate a number of scalars together into a vector
 
     This is a simple version of stack() that introduces far less cruft into the graph.
     
     """
+    def __init__(self, dtype='int64'):
+        self.dtype = dtype
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.dtype)
     def make_node(self, *inputs):
         inputs = map(T.as_tensor_variable, inputs)
         if not all(a.type == inputs[0].type for a in inputs):
             raise TypeError('This MakeVector instance requires inputs of same type %s' %
                     inputs[0].type)
+        if inputs:
+            dtype = inputs[0].type.dtype
+        else:
+            dtype = self.dtype
         #bcastable = (len(inputs) == 1)
         bcastable = False
         otype = T.TensorType(
                 broadcastable=(bcastable,),
-                dtype=inputs[0].type.dtype)
+                dtype=dtype)
         return T.Apply(self, inputs, [otype()])
     def __str__(self):
         return self.__class__.__name__
@@ -241,29 +268,20 @@ class Shape_i(T.Op):
             raise TypeError('x has too few dimensions for Shape_i', (x, self.i))
         return T.Apply(self, [x], [T.lscalar()])
     def perform(self, node, (x, ), (out, )):
-        out[0] = theano._asarray(x.shape, dtype = 'int64')[self.i]
+        out[0] = theano._asarray(x.shape[self.i], dtype = 'int64')
     def grad(self, (x,), (gz,)):
         return [None]
 
-lscalar_one = T.constant(1, dtype='int64')
-assert lscalar_one.type == T.lscalar
-def shape_i(i):
-    def op_deco(r):
-        if r.type.broadcastable[i]:
-            return lscalar_one
-        else:
-            return Shape_i(i)(r)
-    return op_deco
-
-class ShapeOptimizer(Optimizer):
+class ShapeFeature(object):
     """Graph optimizer for removing all calls to shape()
     
     This optimizer replaces all Shapes and Subtensors of Shapes with Shape_i and MakeVector
     Ops.
 
-    This optimizer has two goals:
+    This optimizer has several goals:
     1. to 'lift' Shapes to as close to the inputs as possible.  
     2. to infer the shape of every node in the graph in terms of the input shapes.
+    3. remove all fills (T.second, T.fill) from the graph
 
     Lifting shapes as close to the inputs as possible is important for canonicalization because
     it is very bad form to have to compute something just to know how big it will be.  Firstly,
@@ -302,200 +320,201 @@ class ShapeOptimizer(Optimizer):
 
 
     """
+    def shape_i(self, i):
+        def op_deco(r):
+            if r.type.broadcastable[i]:
+                return self.lscalar_one
+            else:
+                return Shape_i(i)(r)
+        return op_deco
+
+    def shape_tuple(self, r):
+        return tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])
+
+    def default_infer_shape(self, node, i_shapes):
+        rval = []
+        for r in node.outputs:
+            try:
+                rval.append(self.shape_tuple(r))
+            except AttributeError:
+                rval.append(None)
+        return rval
+
+    def unpack(self, s_i):
+        # unpack the s_i that the Op returned
+        assert s_i is not None
+        if s_i == 1:
+            # don't make the optimizer merge a zillion ones together
+            return self.lscalar_one
+        if type(s_i) is int:
+            # this shape is a constant
+            assert s_i >= 0
+            return T.constant(s_i, dtype='int64')
+        if type(s_i) in (tuple,list):
+            # this dimension is the same as many of the inputs
+            # which tells us that if one of the inputs is known, 
+            # the others all become known.
+            # TODO: should be implemented in Elemwise, and Dot
+            #
+            # worst case, we loop over shape_of and replace things
+            raise NotImplementedError(s_i)
+        elif s_i.type == T.lscalar:
+            return s_i
+        else:
+            raise TypeError('Unsupported shape element', s_i)
+
+    def set_shape(self, r, s):
+        assert r not in self.shape_of
+        if s is None:
+            self.shape_of[r] = s
+        else:
+            self.shape_of[r] = tuple([self.unpack(s_i) for s_i in s])
+
+    def make_vector_shape(self, r):
+        return make_vector(*self.shape_of[r])
+    #
+    #
+    # Feature inteface
+    #
+    #
+    def on_attach(self, env):
+        assert not hasattr(env, 'shape_feature')
+        env.shape_feature = self
+        self.shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
+        self.lscalar_one = T.constant(1, dtype='int64')
+        assert self.lscalar_one.type == T.lscalar
+        for node in env.toposort():
+            self.on_import(env, node)
+
+    def on_import(self, env, node):
+        if node.outputs[0] in self.shape_of:
+            # this is a revert, not really an import
+            for r in node.outputs + node.inputs:
+                assert r in self.shape_of
+            return
+
+        for i, r in enumerate(node.inputs):
+            # make sure we have shapes for the inputs
+            if r not in self.shape_of:
+                try:
+                    self.set_shape(r, self.shape_tuple(r))
+                except AttributeError:
+                    self.set_shape(r, None ) # not a TensorType variable
+
+        try:
+            shape_infer = node.op.infer_shape
+        except AttributeError:
+            shape_infer = self.default_infer_shape
+
+        try:
+            o_shapes = shape_infer(node, [self.shape_of[r] for r in node.inputs])
+        except Exception, e:
+            _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
+                [self.shape_of[r] for r in node.inputs],
+                type(e), str(e)))
+            o_shapes = default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
+
+        # this is packed information
+        # an element of o_shapes is either None or a tuple
+        #   elements of the tuple can be either strings, or ints
+
+        assert len(o_shapes) == len(node.outputs)
+
+        for r, s in zip(node.outputs, o_shapes):
+            self.set_shape(r, s)
+
+    def on_change_input(self, env, mode, i, r, new_r):
+        # TODO:
+        # This tells us that r and new_r must have the same shape
+        # if we didn't know that the shapes are related, now we do.
+        pass
+
+class ShapeOptimizer(Optimizer):
+    """Optimizer that serves to add ShapeFeature as an env feature.
+    """
     def __init__(self):
         Optimizer.__init__(self)
 
     def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
+        env.extend(ShapeFeature())
 
     def apply(self, env):
-        shape_of = {} # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
-
-        def new_shape_from_r(r):
-            return tuple([shape_i(i)(r) for i in xrange(r.ndim)])
-
-        def unpack(s_i):
-            # unpack the s_i that the Op returned
-            assert s_i is not None
-            if s_i == 1:
-                # don't make the optimizer merge a zillion ones together
-                return lscalar_one
-            if type(s_i) is int:
-                # this shape is a constant
-                assert s_i >= 0
-                return T.constant(s_i, dtype='int64')
-            if type(s_i) in (tuple,list):
-                # this dimension is the same as many of the inputs
-                # which tells us that if one of the inputs is known, 
-                # the others all become known.
-                # TODO: should be implemented in Elemwise, and Dot
-                #
-                # worst case, we loop over shape_of and replace things
-                raise NotImplementedError(s_i)
-            elif s_i.type == T.lscalar:
-                return s_i
-            else:
-                raise TypeError('Unsupported shape element', s_i)
-
-        def set_shape(r, s):
-            assert r not in shape_of
-            if s is None:
-                shape_of[r] = s
-            else:
-                shape_of[r] = tuple([unpack(s_i) for s_i in s])
-
-        def default_infer_shape(node, i_shapes):
-            rval = []
-            for r in node.outputs:
-                try:
-                    rval.append(new_shape_from_r(r))
-                except AttributeError:
-                    rval.append(None)
-            return rval
-
-        # Do a feed-forward shape-inference pass through the entire graph
-        # This builds the shape_of dictionary.
-        nodelist = list(env.toposort())
-        for node in nodelist:
-            for i, r in enumerate(node.inputs):
-                # make sure we have shapes for the inputs
-                if r not in shape_of:
-                    try:
-                        set_shape(r, new_shape_from_r(r))
-                    except AttributeError:
-                        set_shape(r, None ) # not a TensorType variable
-
-            try:
-                shape_infer = node.op.infer_shape
-            except AttributeError:
-                shape_infer = default_infer_shape
-
-            try:
-                o_shapes = shape_infer(node, [shape_of[r] for r in node.inputs])
-            except Exception, e:
-                _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
-                    [shape_of[r] for r in node.inputs],
-                    type(e), str(e)))
-                o_shapes = default_infer_shape(node, [shape_of[r] for r in node.inputs])
-
-            # this is packed information
-            # an element of o_shapes is either None or a tuple
-            #   elements of the tuple can be either strings, or ints
-
-            assert len(o_shapes) == len(node.outputs)
-
-            for r, s in zip(node.outputs, o_shapes):
-                set_shape(r, s)
-
-        # replace all shape -> make_vector
-        shapes_in_graph = True
-        while shapes_in_graph:
-            shapes_in_graph = False
-            # we do this multiple times because
-            # some of the shape_of expressions might be
-            # expressed in terms of shape
-            nodelist = list(env.toposort())
-            for node in nodelist:
-                if node.op == T._shape:
-                    shapes_in_graph = True
-                    env.replace_validate(node.outputs[0],
-                            make_vector(*shape_of[node.inputs[0]]),
-                            reason='ShapeOptimizer [phase 1]')
-
-
-        # replace all subtensor(make_vector) like:
-        # [a,b,c][0] -> a
-        # [a,b,c][0:2] -> [a,b]
-        # we can do this for constant indexes
-        nodelist = list(env.toposort())
-        for node in nodelist:
-            if isinstance(node.op, T.Subtensor):
-                x = node.inputs[0]
-                if x.owner and x.owner.op == make_vector:
-                    idxlist = node.op.idx_list
-
-                    if len(idxlist) != 1:
-                        continue
-
-                    idx = idxlist[0]
-                    if isinstance(idx, int):
-                        env.replace_validate(node.outputs[0],
-                                x.owner.inputs[idx],
-                                reason='ShapeOptimizer [phase 2 a]')
-                    else:
-                        env.replace_validate(node.outputs[0],
-                                make_vector(*x.owner.inputs.__getslice__(idx)),
-                                reason='ShapeOptimizer [phase 2 b]')
+        pass
 
 # -1 should make it run right before the first merge
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(), -1, 'fast_run', 'fast_compile')
 
-################
-# Fill lifters #
-################
-
-def encompasses_broadcastable(b1, b2):
-    """
-    Returns True if the broadcastable patterns b1 and b2 are such that b2 is
-    broadcasted to b1's shape and not the opposite.
-
-    :param b1: the broadcastable attribute of a tensor type
-    :param b2: the broadcastable attribute of a tensor type
-    """
-    if len(b1) < len(b2):
-        return False
-    b1 = b1[-len(b2):]
-    return not any(v1 and not v2 for v1, v2 in zip(b1, b2))
-
-def merge_broadcastables(broadcastables):
-    return [all(bcast) for bcast in zip(*broadcastables)]
-
-@gof.local_optimizer([T.fill, None])
-def local_fill_lift(node):
-    """
-    fill(f(a), b) -> fill(a, b)
-    If a.type == f(a).type.
-
-    fill(a, b) -> b
-    If a.type == b.type.
-    """
-    if not opt.check_chain(node, T.fill):
-        return False
-
-    model, filling = node.inputs
-
-    mb, fb = model.type.broadcastable, filling.type.broadcastable
-    if model.type.dtype == filling.type.dtype and encompasses_broadcastable(fb, mb):
-        return False# [filling]
-
-    parent = model.owner
-    if parent is None or not isinstance(parent, T.Elemwise):
-        return False
-    for input in parent.inputs:
-        if input.type == model.type:
-            return [T.fill(input, filling)]
-
-    return False
-
-register_canonicalize(local_fill_lift, 'fill_lift')
-register_specialize(local_fill_lift, 'fill_lift')
-
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([T.fill])
-def local_fill_useless(node):
-    """fill(y,x) -> x 
+def local_fill_to_alloc(node):
+    """fill(s,v) -> alloc(v, shape(s))
+
+    This is an important optimization because with the shape_to_shape_i optimization, the
+    dependency on 's' is often removed.
     
-    This is legal when the output of fill has the same type as x,
-    because it means that y isn't contributing anything.
     """
     if node.op == T.fill:
-        shape, val = node.inputs
-        output, = node.outputs
-        if output.type == val.type:
-            # if shape is not being used to broadcast
-            # then we can ignore it.
-            return [val]
+        r, v = node.inputs
+        if v.type == node.outputs[0].type:
+            # this is a useless fill, erase it.
+            rval = [v]
+        elif v.type.broadcastable == node.outputs[0].type.broadcastable:
+            # this is a cast
+            rval = [T.cast(v, node.outputs[0].type.dtype)]
+        else:
+            # we are broadcasting v somehow
+            shape_of = node.env.shape_feature.shape_of
+            # TODO: cut out un-necessary dimshuffles of v
+            rval = [T.Alloc(node.outputs[0].dtype)(v, *shape_of[node.outputs[0]])]
+        assert rval[0].type == node.outputs[0].type
+        return rval
+
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T._shape])
+def local_shape_to_shape_i(node):
+    if node.op == T._shape:
+        shape_feature = node.env.shape_feature
+        return [shape_feature.make_vector_shape(node.inputs[0])]
+
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.Subtensor])
+def local_subtensor_make_vector(node):
+    # replace all subtensor(make_vector) like:
+    # [a,b,c][0] -> a
+    # [a,b,c][0:2] -> [a,b]
+    # we can do this for constant indexes
+    if isinstance(node.op, T.Subtensor):
+        shape_feature = node.env.shape_feature
+        x = node.inputs[0]
+        if x.owner and x.owner.op == make_vector:
+            try:
+                idx, = node.op.idx_list
+            except:
+                #'how can you have multiple indexes into a shape?'
+                raise
+            if isinstance(idx, int):
+                return [x.owner.inputs[idx]]
+            elif isinstance(idx, T.TensorVariable):
+                # if it is a constant we can do something with it
+                try:
+                    v = get_constant_value(idx)
+                    return [x.owner.inputs[v]]
+                except:
+                    pass 
+            else:
+                # it is a slice of ints and/or Variables
+                #TODO: check subtensor to see if it can contain constant variables,
+                #      and if it can, then try to unpack them.
+                try:
+                    return [make_vector(*x.owner.inputs.__getitem__(idx))]
+                except TypeError:
+                    pass
+                except:
+                    _logger.error('failed to index with "%s"' % str(idx))
+                    raise
 
 ##################
 # Subtensor opts #
