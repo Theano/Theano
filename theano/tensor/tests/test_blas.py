@@ -425,3 +425,17 @@ def test_inplace1():
     # gemm should operate in-place on (Z+Z)
     if (not gemm in [n.op for n in f.maker.env.nodes]):
         raise Failure('no gemm in graph')
+
+def test_dot22():
+    if config.mode == 'FAST_COMPILE':
+        m = 'FAST_RUN'
+    else: m = config.mode
+    a=T.matrix()
+    b=T.matrix()
+    f = theano.function([a,b],T.dot(a,b),mode=m)
+    topo = f.maker.env.toposort()
+    assert _dot22 in [x.op for x in topo]
+    av=numpy.random.rand(5,5)
+    bv=numpy.random.rand(5,5)
+    f(av,bv)
+
