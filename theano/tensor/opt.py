@@ -69,8 +69,7 @@ def get_constant_value(v):
     if v.owner and v.owner.op == T.fill:
         shape, val = v.owner.inputs
         # fill(a,b) fills the shape of 'a' filled with 'b'
-        rval, rshapes = get_constant_value(val)
-        return rval, rshapes + [shape]
+        return get_constant_value(val)
     raise TypeError(v)
 
 def scalarconsts_rest(inputs):
