@@ -73,6 +73,9 @@ class SoftmaxWithBias(gof.Op):
         db = tensor.sum(dx, axis = 0)
         return dx, db
 
+    def infer_shape(self, node, shape):
+        return [shape[0]]
+    
     def c_headers(self):
         return ['<iostream>','<cmath>']
 
@@ -231,6 +234,9 @@ class SoftmaxGrad(gof.Op):
     def grad(self, *args):
         raise NotImplementedError()
 
+    def infer_shape(self, node, shape):
+        return [shape[1]]
+
     def c_code_cache_version(self):
         return (3,)
     def c_code(self, node, name, (dy, sm), (dx,), sub):
@@ -330,6 +336,10 @@ class Softmax(gof.Op):
     def grad(self, (x,), (g_sm,)):
         sm = softmax(x)
         return [softmax_grad(g_sm, sm)]
+
+    def infer_shape(self, node, shape):
+        return shape
+
 softmax = Softmax()
 
 @opt.register_specialize
