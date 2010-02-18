@@ -650,6 +650,8 @@ class NavigatorOptimizer(Optimizer):
         print >> sys.stderr, "WARNING: Optimization failure due to: ", local_opt
         print >> sys.stderr, "TRACEBACK:"
         traceback.print_exc()
+        if isinstance(exc, AssertionError):
+            raise exc
     @staticmethod
     def warn_inplace(exc, nav, repl_pairs, local_opt):
         """failure_callback for NavigatorOptimizer: ignore InconsistencyErrors, print traceback
@@ -659,6 +661,8 @@ class NavigatorOptimizer(Optimizer):
         print >> sys.stderr, "WARNING: Optimization failure due to: ", local_opt
         print >> sys.stderr, "TRACEBACK:"
         traceback.print_exc()
+        if isinstance(exc, AssertionError):
+            raise exc
     @staticmethod
     def warn_ignore(exc, nav, repl_pairs, local_opt):
         """failure_callback for NavigatorOptimizer: ignore all errors
