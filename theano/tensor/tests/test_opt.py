@@ -754,8 +754,7 @@ class test_fusion(unittest.TestCase):
         mode=compile.mode.predefined_modes['FAST_COMPILE']
         mode=compile.mode.predefined_modes['FAST_RUN']
         mode=compile.mode.predefined_modes['DEBUG_MODE']
-        import theano_cuda_ndarray as tcn
-
+        import theano.sandbox.cuda as tcn
         self.do(mode, tcn.shared_constructor, shp, gpu=True)
 
     def speed_fusion(self, shared_fn = shared, gpu = False, s=None):
