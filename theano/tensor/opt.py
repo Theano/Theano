@@ -426,7 +426,7 @@ class ShapeFeature(object):
             _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
                 [self.shape_of[r] for r in node.inputs],
                 type(e), str(e)))
-            o_shapes = default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
+            o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
 
         # this is packed information
         # an element of o_shapes is either None or a tuple
