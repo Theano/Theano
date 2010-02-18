@@ -127,13 +127,22 @@ class AddDestroyHandler(gof.Optimizer):
         env.extend(gof.DestroyHandler())
 
 optdb = gof.SequenceDB()
-optdb.register('merge1', gof.MergeOptimizer(), 0, 'fast_run', 'fast_compile')
-optdb.register('canonicalize', gof.EquilibriumDB(), 1, 'fast_run')
-optdb.register('stabilize', gof.EquilibriumDB(), 1.5, 'fast_run')
-optdb.register('specialize', gof.EquilibriumDB(), 2, 'fast_run')
-optdb.register('merge2', gof.MergeOptimizer(), 49, 'fast_run')
-optdb.register('add_destroy_handler', AddDestroyHandler(), 49.5, 'fast_run', 'inplace')
-optdb.register('merge3', gof.MergeOptimizer(), 100, 'fast_run')
+optdb.register('merge1', gof.MergeOptimizer(), 
+        0, 'fast_run', 'fast_compile')
+optdb.register('canonicalize', gof.EquilibriumDB(),         # rearranges elemwise expressions
+        1, 'fast_run')
+optdb.register('merge1.2', gof.MergeOptimizer(skip_const_merge=True),
+        1.2, 'fast_run', 'fast_compile')
+optdb.register('stabilize', gof.EquilibriumDB(),            # replace unstable subgraphs
+        1.5, 'fast_run')          
+optdb.register('specialize', gof.EquilibriumDB(),           # misc special cases for speed
+        2, 'fast_run')
+optdb.register('merge2', gof.MergeOptimizer(),              # especially constant merge
+        49, 'fast_run')
+optdb.register('add_destroy_handler', AddDestroyHandler(), 
+        49.5, 'fast_run', 'inplace')
+optdb.register('merge3', gof.MergeOptimizer(),              # final pass just to make sure
+        100, 'fast_run')
 
 
 class Mode(object):
