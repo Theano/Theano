@@ -722,6 +722,7 @@ blas_optdb.register('local_dot_to_gemm', GemmOptimizer(), 10, 'fast_run')
 # Try to make gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of elemwise(step 71)
 optdb.register('InplaceBlasOpt', 
-        EquilibriumOptimizer([local_inplace_gemm], max_use_ratio=5), 
+        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
+            max_use_ratio=5), 
         70.0, 'fast_run', 'inplace')
 
