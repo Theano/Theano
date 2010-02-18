@@ -44,6 +44,8 @@ class HostFromGpu(Op):
     def grad(self, inputs, (gz,)):
         return gz,
         #return [GpuFromHost()(gz)]
+    def infer_shape(self, node, xshp):
+        return xshp
 host_from_gpu = HostFromGpu()
 
 class GpuFromHost(Op):
@@ -62,6 +64,8 @@ class GpuFromHost(Op):
     def grad(self, inputs, (gz,)):
         return gz,
         #return [HostFromGpu()(gz)]
+    def infer_shape(self, node, xshp):
+        return xshp
 gpu_from_host = GpuFromHost()
 
 class GpuElemwise(Op):
