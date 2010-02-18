@@ -610,9 +610,12 @@ row of a matrix x:
 >>> x[T.arange(c.shape[0]), c]
 
 
-Index-assignment is *not* supported.  
-If you want to do something like ``a[5] = b`` or ``a[5]+=b``, see :func:`setsubtensor`.
+Index-assignment is *not* supported.  If you want to do something like ``a[5]
+= b`` or ``a[5]+=b``, see :func:`setsubtensor` and :func:`incsubtensor` below.
 
+.. autofunction:: theano.tensor.basic.setsubtensor
+
+.. autofunction:: theano.tensor.basic.incsubtensor
 
 .. _tensor_operator_support:
 

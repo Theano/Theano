@@ -28,8 +28,13 @@ class Test_incsubtensor(unittest.TestCase):
         sl2 = slice(sl2_end)
 
         for do_set in [False,True]:
-            a_incremented = T.incsubtensor(a, increment, [sl1, sl2], set_instead_of_inc=do_set)
-            f = theano.function([a, increment, sl2_end], a_incremented)
+
+            if do_set:
+                resut = T.setsubtensor(a, increment, [sl1, sl2])
+            else:
+                resut = T.incsubtensor(a, increment, [sl1, sl2])
+
+            f = theano.function([a, increment, sl2_end], resut)
 
             val_a = N.ones((5,5))
             val_inc = 2.3

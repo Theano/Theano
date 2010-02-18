@@ -2260,10 +2260,31 @@ class SubtensorPrinter:
 
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), SubtensorPrinter())
 
+def setsubtensor(x, y, idx_list, inplace=False):
+    """
+    setsubtensor is meant to replicate the following numpy behaviour: x[i,j,k] = y
 
-def incsubtensor(x, y, idx_list, inplace=False, set_instead_of_inc=False):
-    the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc)
-  
+    :param x: symbolic variable for the lvalue of = operation
+    :param y: symbolic variable for the rvalue of = operation
+    :param idx_list: tuple of length x.dim, containing indices with which to index x.
+    :param inplace: boolean to declare whether the operation is in place or not (False unless
+     called from within an optimization)
+
+    :Details: idx_list can be a tuple containing a mixture of numeric constants, symbolic
+     scalar values and standard numpy slice objects. i.e: 
+     idx_list=(1,2,3), idx_list=(1,b,3) where b is an iscalar variable, 
+     idx_list=(slice(start,stop,step),b,3) equivalent to x[start:stop:step, b, 3]
+    """
+    the_op = IncSubtensor(idx_list, inplace, True)
+    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
+
+def incsubtensor(x, y, idx_list, inplace=False):
+    """
+    incsubtensor is meant to replicate the following numpy behaviour: x[i,j,k] += y
+
+    :see: theano.tensor.basic.setsubtensor
+   """
+    the_op = IncSubtensor(idx_list, inplace, False)
     return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
 
 class IncSubtensor(Op):
