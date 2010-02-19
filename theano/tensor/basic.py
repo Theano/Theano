@@ -2178,6 +2178,7 @@ class Subtensor(Op):
         outshp = []
         padded = self.idx_list + [slice(None, None, None)] * (len(xshp) - len(self.idx_list))
         i = 0
+        shape_i = node.env.shape_feature.shape_i
         for idx, xl in zip(padded, xshp):
             if isinstance(idx, slice):
                 # If it is the default (None, None, None) slice, or a variant,
@@ -2188,7 +2189,7 @@ class Subtensor(Op):
                         outshp.append(xl)
                 else:
                     #No easy way to compute the shape
-                    outshp.append(Shape_i(i)(node.outputs[0]))
+                    outshp.append(shape_i(i)(node.outputs[0]))
                 i += 1
             else:
                 # That dimension is dropped
