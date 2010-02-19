@@ -3296,6 +3296,9 @@ class AdvancedSubtensor(Op):
                     % (x.ndim, ','.join(str(input.ndim) for input in inputs)))
         raise NotImplementedError('Advanced indexing of x with arguments (%s) not supported yet'\
                 % ','.join(str(input) for input in inputs))
+    def infer_shape(self, node, ishapes):
+        xshp, ind1shp, ind2shp = ishapes
+        return [ind2shp]
 
     def perform(self, node, inputs, (out,)):
         # TODO: in general, we need to re-pack the inputs into a valid index, just like
