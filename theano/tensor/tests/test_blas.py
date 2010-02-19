@@ -4,7 +4,7 @@ from theano.gof import Env
 from theano.printing import pp
 import numpy, theano
 from theano.tensor.blas import *
-from theano.tensor.blas import _dot22, res_is_a, _as_scalar, _is_real_matrix
+from theano.tensor.blas import _dot22, _dot22scalar, res_is_a, _as_scalar, _is_real_matrix
 from unittest import TestCase
 from theano.tests import unittest_tools
 from copy import copy
@@ -440,3 +440,58 @@ def test_dot22():
     bv=numpy.random.rand(5,5)
     f(av,bv)
 
+def test_dot22scalar():
+    m = theano.compile.get_default_mode().including('local_dot_to_dot22','local_dot22_to_dot22scalar','specialize')
+    a=T.matrix()
+    b=T.matrix()
+    c=T.matrix()
+    av=numpy.random.rand(5,5)
+    bv=numpy.random.rand(5,5)
+    cv=numpy.random.rand(5,5)
+
+    if True:
+        f = theano.function([a,b],0.2*T.dot(a,b),mode=m)
+        topo = f.maker.env.toposort()
+        assert _dot22scalar in [x.op for x in topo]
+        assert len(topo)==1
+        f(av,bv)
+
+    if True:
+        f = theano.function([a,b,c],0.2*c*T.dot(a,b),mode=m)
+        topo = f.maker.env.toposort()
+        assert _dot22scalar in [x.op for x in topo]
+        assert len(topo)==2
+        f(av,bv,cv)
+
+    f = theano.function([a,b,c],c * 0.2*T.dot(a,b),mode=m)
+    topo = f.maker.env.toposort()
+    assert _dot22scalar in [x.op for x in topo]
+    assert len(topo)==2
+    f(av,bv,cv)
+
+
+    f = theano.function([a,b,c],0.1*c * 0.2*T.dot(a,b),mode=m)
+    topo = f.maker.env.toposort()
+    assert _dot22scalar in [x.op for x in topo]
+    assert len(topo)==2
+    f(av,bv,cv)
+
+    f = theano.function([a,b,c],c * 0.2*a*T.dot(a,b),mode=m)
+    topo = f.maker.env.toposort()
+    assert _dot22scalar in [x.op for x in topo]
+    assert len(topo)==2
+    f(av,bv,cv)
+
+    f = theano.function([a,b,c],0.2*c *a*T.dot(a,b),mode=m)
+    topo = f.maker.env.toposort()
+    #currently the canonizer don't always merge all Mul together...
+    #that force the optimizer to make a recursive search witch it don't do now.
+    #but it do it for 1 level of recursion.
+#    assert _dot22scalar in [x.op for x in topo]
+#    assert len(topo)==2
+    f(av,bv,cv)
+    f = theano.function([a,b,c],c * a*0.2*T.dot(a,b),mode=m)
+    topo = f.maker.env.toposort()
+    assert _dot22scalar in [x.op for x in topo]
+    assert len(topo)==2
+    f(av,bv,cv)
