@@ -11,7 +11,7 @@ from theano.tensor import opt
 from theano.compile import optdb
 import numpy
 
-from .sigm import sigmoid, softplus
+from theano.tensor.nnet.sigm import sigmoid, softplus
 
 
 ############
