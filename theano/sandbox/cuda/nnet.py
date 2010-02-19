@@ -299,6 +299,8 @@ class GpuSoftmax (Op):
         return self.__class__.__name__
     def make_node(self, x):
         return Apply(self, [x],[x.type()])
+    def infer_shape(self, node, shape):
+        return shape
     def c_code_cache_version(self):
         #return ()
         return (1,) + inline_softmax.code_version
