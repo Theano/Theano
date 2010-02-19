@@ -431,3 +431,35 @@ def test_elemwise_collapse7(atol=1e-6):
     ans=(a+2).reshape(shape[0],1,shape[1],shape[2])
     assert numpy.allclose(out,ans, atol=atol)
     print "Expected collapse to c contiguous"
+
+
+def test_hostfromgpu_shape_i():
+    """
+    Test that the shape is lifted over hostfromgpu
+    """
+    pass
+
+    m = mode_with_gpu.including('local_dot_to_dot22','local_dot22_to_dot22scalar','specialize')
+    a=T.fmatrix('a')
+    b=T.fmatrix('b')
+    c=T.fmatrix('c')
+    ca=theano.sandbox.cuda.var.CudaNdarrayVariable((False,False))
+    cb=theano.sandbox.cuda.var.CudaNdarrayVariable((False,False))
+    cc=theano.sandbox.cuda.var.CudaNdarrayVariable((False,False))
+    av=numpy.asarray(numpy.random.rand(5,5),dtype='float32')
+    bv=numpy.asarray(numpy.random.rand(5,5),dtype='float32')
+    cv=numpy.asarray(numpy.random.rand(5,5),dtype='float32')
+
+    sa = theano.shared(av, name = 'sa')
+    sb = theano.shared(bv, name = 'sb')
+    f = theano.function([a,b],[(a+b).shape],mode=m)
+    topo = f.maker.env.toposort()
+    assert isinstance(topo[0].op,T.opt.Shape_i)
+    assert isinstance(topo[1].op,T.opt.Shape_i)
+    assert isinstance(topo[2].op,T.opt.MakeVector)
+
+    f2 = theano.function([],[(sa+sb).shape],mode=m)
+    topo = f2.maker.env.toposort()
+    assert isinstance(topo[0].op,T.opt.Shape_i)
+    assert isinstance(topo[1].op,T.opt.Shape_i)
+    assert isinstance(topo[2].op,T.opt.MakeVector)
