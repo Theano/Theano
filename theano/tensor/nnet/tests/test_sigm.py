@@ -7,6 +7,7 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.tests import test_basic as TT
 
 from theano.tensor.nnet import *
+from theano.tensor.nnet.sigm import register_local_1msigmoid
 
 
 class T_sigmoid(unittest.TestCase):
@@ -20,7 +21,6 @@ class T_softplus(unittest.TestCase):
         utt.seed_rng()
     def test_elemwise(self):
         utt.verify_grad(softplus, [numpy.random.rand(3,4)])
-
 
 class T_sigmoid_opts(unittest.TestCase):
     def test_exp_over_1_plus_exp(self):
@@ -53,6 +53,9 @@ class T_sigmoid_opts(unittest.TestCase):
                 T.mul]
 
     def test_1msigmoid(self):
+        if not register_local_1msigmoid:
+            return
+
         m = theano.config.mode
         if m == 'FAST_COMPILE':
             m = 'FAST_RUN'
@@ -69,7 +72,4 @@ class T_sigmoid_opts(unittest.TestCase):
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [tensor.neg, 
                 sigmoid_inplace]
-
-
-
 

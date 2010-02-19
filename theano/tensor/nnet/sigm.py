@@ -294,9 +294,8 @@ def local_inv_1_plus_exp(node):
                                 sigmoid(tensor.neg(nonconsts[0].owner.inputs[0])),
                                 scalar_inputs)
 
-              
-#@opt.register_canonicalize
-@gof.local_optimizer([tensor.inv])
+# Registration is below, and conditional.
+@gof.local_optimizer([tensor.sub])
 def local_1msigmoid(node):
     """
     1-sigm(x) -> sigm(-x)
@@ -313,3 +312,13 @@ def local_1msigmoid(node):
             if numpy.allclose(numpy.sum(val_l), 1):
                 return [sigmoid(-sub_r.owner.inputs[0])]
 
+register_local_1msigmoid = False
+# This is False because the Stabilize pattern above 
+# is looking for 1-sigm.  Also Canonizer turns neg into *(-1) and so 
+# this optimization might set off an unwanted chain of things.
+# OTH - this transformation can be seen as pushing normal arithmetic either  below or above the
+# sigmoidal nonlinearity... so if the canonicalized form had anything to say about that then it
+# would be a consideration... anyway leaving False for now.
+              
+if register_local_1msigmoid:
+    opt.register_canonicalize(local_1msigmoid)
