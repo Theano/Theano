@@ -905,12 +905,19 @@ def _check_rows_is_arange_len_labels(rows, labels):
             return False
         if getattr(step, 'data', None) != 1: # constant step will have data
             return False
-        if stop.owner and isinstance(stop.owner.op, tensor.Subtensor):
+        if not stop.owner:
+            return False
+        # Not sure if that case happens any more after the introduction
+        # of ShapeOptimizer
+        if isinstance(stop.owner.op, tensor.Subtensor):
             shape_subtensor = stop.owner
             if shape_subtensor.op.idx_list == [0]:
                 shape_var, = shape_subtensor.inputs
                 if shape_var.owner and shape_var.owner.op == tensor._shape:
                     return shape_var.owner.inputs[0] is labels
+        else:
+            shape_of = stop.owner.env.shape_feature.shape_of
+            return shape_of[labels][0] is stop
 
 @gof.local_optimizer([tensor._shape])
 def local_shape_lift_advanced_indexing_arange(node):
