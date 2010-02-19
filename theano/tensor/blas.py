@@ -301,12 +301,7 @@ class Gemm(GemmRelated):
     E_scalar = 'gemm requires scalar argument'
     E_z_uniq = 'argument z aliased to x or y'
     def __init__(self, inplace):
-        if inplace:
-            self.destroy_map = {0: [0]} 
-            self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_inplace
-        else:
-            self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_outplace
-        self.inplace = inplace
+        self.__setstate__({'inplace':inplace})
 
     def __eq__(self, other):
         return (type(self) == type(other)\
@@ -319,6 +314,18 @@ class Gemm(GemmRelated):
         if self.inplace: inplace_str = 'inplace'
         else: inplace_str = 'no_inplace'
         return '%s{%s}' % (self.__class__.__name__, inplace_str)
+
+    def __setstate__(self, dct):
+        inplace = dct.get('inplace', True)
+        if inplace:
+            self.destroy_map = {0: [0]} 
+            self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_inplace
+        else:
+            self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_outplace
+        self.inplace = inplace
+    def __getstate__(self):
+        return dict(inplace=self.inplace)
+
 
     def make_node(self, *inputs):
         inputs = map(T.as_tensor_variable, inputs)
