@@ -269,6 +269,8 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
 
     def test_get_rid_of_advanced_indexing_version_of_xent(self):
         verbose = 0
+        if verbose:
+            from theano.printing import pprint
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
