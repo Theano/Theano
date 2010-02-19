@@ -919,22 +919,6 @@ def _check_rows_is_arange_len_labels(rows, labels):
             shape_of = stop.owner.env.shape_feature.shape_of
             return shape_of[labels][0] is stop
 
-@gof.local_optimizer([tensor._shape])
-def local_shape_lift_advanced_indexing_arange(node):
-    '''shape(a[arange(len(y)), y]) -> shape(y) (conditions apply)'''
-    if node.op == tensor._shape:
-        if node.inputs[0].owner and \
-                isinstance(node.inputs[0].owner.op, tensor.AdvancedSubtensor):
-            try:
-                a, rows, labels = node.inputs[0].owner.inputs
-            except:
-                return
-            if _check_rows_is_arange_len_labels(rows, labels):
-                if labels.ndim == 1 and a.ndim == 2:
-                    return tensor._shape(labels),
-opt.register_specialize(local_shape_lift_advanced_indexing_arange, 'shape_lift')
-
-
 @opt.register_specialize
 @gof.local_optimizer([])
 def local_advanced_indexing_crossentropy_onehot(node):
