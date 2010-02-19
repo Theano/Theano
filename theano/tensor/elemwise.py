@@ -635,6 +635,8 @@ class Elemwise(Op):
                     b_dim = 1
                 else: # there must be some input that is not broadcastable
                     for ishp, i in zip(i_shapes,node.inputs):
+                        if isinstance(i.type,theano.scalar.Scalar):
+                            continue #we skip scalar
                         if not i.type.broadcastable[dim]:
                             b_dim = ishp[dim]
                             assert b_dim, 'AA'
