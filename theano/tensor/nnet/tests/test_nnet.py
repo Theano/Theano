@@ -306,14 +306,22 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
             # Verify the optimizer worked on the expressions
             f = theano.function([x,y], expr, mode=mode)
             if verbose: print_graph(f)
-            assert len(f.maker.env.toposort()) == 4
-            f(x_val, y_val)
+            try:
+                assert len(f.maker.env.toposort()) == 4
+                f(x_val, y_val)
+            except:
+                theano.printing.debugprint(f)
+                raise
 
             # Also verify the gradient wrt x
             g = theano.function([x,y], T.grad(expr, x), mode=mode)
             if verbose: print_graph(g)
-            assert len(g.maker.env.toposort()) == 4
-            g(x_val, y_val)
+            try:
+                assert len(g.maker.env.toposort()) == 4
+                g(x_val, y_val)
+            except:
+                theano.printing.debugprint(g)
+                raise
 
 
         ## Test that a biased softmax is optimized correctly
@@ -326,13 +334,21 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         for expr in bias_expressions:
             f = theano.function([x,b,y], expr, mode=mode)
             if verbose: print_graph(f)
-            assert len(f.maker.env.toposort()) == 2 # [big_op, sum]
-            f(x_val, b_val, y_val)
+            try:
+                assert len(f.maker.env.toposort()) == 2 # [big_op, sum]
+                f(x_val, b_val, y_val)
+            except:
+                theano.printing.debugprint(f)
+                raise
 
             g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
             if verbose: print_graph(g)
-            assert len(g.maker.env.toposort()) == 4
-            g(x_val, b_val, y_val)
+            try:
+                assert len(g.maker.env.toposort()) == 4
+                g(x_val, b_val, y_val)
+            except:
+                theano.printing.debugprint(g)
+                raise
 
         ## Test that using "mean" instead of sum works, too
         mean_expressions = [
@@ -344,13 +360,22 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         for expr in mean_expressions:
             f = theano.function([x,y], expr, mode=mode)
             if verbose: print_graph(f)
-            assert len(f.maker.env.toposort()) == 7
-            f(x_val, y_val)
+            try:
+                assert len(f.maker.env.toposort()) == 6
+                f(x_val, y_val)
+            except:
+                theano.printing.debugprint(f)
+                raise
 
             g = theano.function([x,y], T.grad(expr, x), mode=mode)
             if verbose: print_graph(g)
-            assert len(g.maker.env.toposort()) == 8
-            g(x_val, y_val)
+            try:
+                assert len(g.maker.env.toposort()) in (6,7) #there's an extra dimshuffle in there
+                # but I can't think of a good rule to get rid of it
+                g(x_val, y_val)
+            except:
+                theano.printing.debugprint(g)
+                raise
 
         mean_bias_expressions = [
                 T.mean(-T.log(softmax(x+b)[T.arange(y.shape[0]), y])),
@@ -361,12 +386,20 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         for expr in mean_bias_expressions:
             f = theano.function([x,b,y], expr, mode=mode)
             if verbose: print_graph(f)
-            assert len(f.maker.env.toposort()) == 5
+            try:
+                assert len(f.maker.env.toposort()) == 4
+            except:
+                theano.printing.debugprint(f)
+                raise
 
             g = theano.function([x,b,y], T.grad(expr, x), mode=mode)
             if verbose: print_graph(g)
-            assert len(g.maker.env.toposort()) == 8
-            g(x_val, b_val, y_val)
+            try:
+                assert len(g.maker.env.toposort()) in (6,7)
+                g(x_val, b_val, y_val)
+            except:
+                theano.printing.debugprint(g)
+                raise
 
 
     def test_scale_cost(self):
@@ -450,21 +483,33 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
         for expr in expressions:
             # Verify the optimizer worked on the expressions
             f = theano.function([x,y,a], expr, mode=mode)
-            assert 5 <= len(f.maker.env.toposort()) <= 10
-            validate_fn_graph(f)
-            f(x_val, y_val, 0.1)
+            try:
+                assert 5 <= len(f.maker.env.toposort()) <= 10
+                validate_fn_graph(f)
+                f(x_val, y_val, 0.1)
+            except:
+                theano.printing.debugprint(f)
+                raise
 
             # Verify the gradient wrt x
             g = theano.function([x,y,a], T.grad(expr, x), mode=mode)
-            assert 5 <= len(g.maker.env.toposort()) <= 12
-            validate_grad_graph(g)
-            g(x_val, y_val, 0.1)
+            try:
+                assert 5 <= len(g.maker.env.toposort()) <= 12
+                validate_grad_graph(g)
+                g(x_val, y_val, 0.1)
+            except:
+                theano.printing.debugprint(g)
+                raise
 
             # Verify the gradient when providing output gradient
             h = theano.function([x,y,a], T.grad(expr, x, g_cost=a*x.sum()), mode=mode)
-            assert 8 <= len(h.maker.env.toposort()) <= 17
-            validate_grad_graph(h)
-            h(x_val, y_val, 0.1)
+            try:
+                assert 8 <= len(h.maker.env.toposort()) <= 17
+                validate_grad_graph(h)
+                h(x_val, y_val, 0.1)
+            except:
+                theano.printing.debugprint(h)
+                raise
 
 
 def test_argmax_pushdown():

@@ -80,12 +80,15 @@ def get_constant_value(v):
             return v.data
         except:
             raise TypeError(v)
-    if v.owner and isinstance(v.owner.op, T.DimShuffle):
-        return get_constant_value(v.owner.inputs[0])
-    if v.owner and v.owner.op == T.fill:
-        shape, val = v.owner.inputs
-        # fill(a,b) fills the shape of 'a' filled with 'b'
-        return get_constant_value(val)
+    if v.owner:
+        if isinstance(v.owner.op, T.Alloc):
+            return get_constant_value(v.owner.inputs[0])
+        if isinstance(v.owner.op, T.DimShuffle):
+            return get_constant_value(v.owner.inputs[0])
+        if v.owner.op == T.fill:
+            shape, val = v.owner.inputs
+            # fill(a,b) fills the shape of 'a' filled with 'b'
+            return get_constant_value(val)
     raise TypeError(v)
 
 def scalarconsts_rest(inputs):
@@ -529,6 +532,20 @@ def local_subtensor_make_vector(node):
                 except:
                     _logger.error('failed to index with "%s"' % str(idx))
                     raise
+
+@register_specialize
+@gof.local_optimizer([T.Alloc])
+def local_alloc_unary(node):
+    """unary(alloc(x, shp)) -> alloc(unary(x), shp)
+    """
+    if isinstance(node.op, T.Elemwise) and len(node.inputs)==1:
+        x = node.inputs[0]
+        if x.owner and isinstance(x.owner.op, T.Alloc):
+            return [T.Alloc(node.outputs[0].dtype)(
+                node.op(T.cast(x.owner.inputs[0], x.dtype)),
+                *x.owner.inputs[1:]
+                )]
+
 
 ##################
 # Subtensor opts #

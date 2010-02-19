@@ -6,7 +6,7 @@
 from theano import gof
 from theano import printing
 from theano.tensor import basic as tensor
-from theano.tensor import elemwise
+from theano.tensor import elemwise, dmatrix, fmatrix, dvector, fvector
 from theano.tensor import opt
 from theano.compile import optdb
 import numpy
@@ -919,6 +919,15 @@ def _check_rows_is_arange_len_labels(rows, labels):
             shape_of = stop.owner.env.shape_feature.shape_of
             return shape_of[labels][0] is stop
 
+def _is_const(z, val, approx=False):
+    try:
+        maybe = opt.get_constant_value(z)
+    except TypeError:
+        return False
+    if approx:
+        return numpy.allclose(maybe,val)
+    else:
+        return numpy.all(maybe == val)
 @opt.register_specialize
 @gof.local_optimizer([])
 def local_advanced_indexing_crossentropy_onehot(node):
@@ -969,7 +978,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     except:
         return
 
-    if sm is not None and sm.owner and sm.owner.op in (softmax, softmax_with_bias):
+    if (sm is not None) and sm.owner and (sm.owner.op in (softmax, softmax_with_bias)):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
             assert sm_w_bias[0].owner.op == softmax_with_bias
@@ -1023,13 +1032,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             return
 
         # Check that z == zeros_like(softmax(x))
-        if z.owner and z.owner.op == tensor.fill:
-            model, value = z.owner.inputs
-
-            if not (model is sm and hasattr(value, 'data') and numpy.all(value.data == 0)):
-                return
-            #else: OK
-        else:
+        if not _is_const(z, 0):
             return
 
         # In the base case (output gradient = 1), incr is -1./sm[arange(len(y)), y]
@@ -1112,9 +1115,15 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     # Second case
     elif out_grad.owner and out_grad.owner.op == tensor.true_div:
+        # we know
+        # we're looking for
+        # AdvIncSubtensor(zeros, grad_nll, arange(len(y)), y) / softmax
         try:
             num, denom = out_grad.owner.inputs
         except:
+            return
+
+        if denom != sm:
             return
 
         # Check the numerator (AdvancedIncSubtensor)
@@ -1125,74 +1134,94 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                 return
 
             # Check z is zeros_like(log(sm))
-            if z.owner and z.owner.op == tensor.fill:
-                model, value = z.owner.inputs
+            # JB - do we really care if this is zeros?
+            if not _is_const(z, 0):
+                return
+            if z.type not in (dmatrix, fmatrix):
+                return
+            # here we know that we are incrementing a matrix of zeros
 
-                if model.owner and model.owner.op == tensor.log:
-                    if sm is model.owner.inputs[0]:
-                        log_sm = model
+            if 0:
+                if z.owner and z.owner.op == tensor.fill:
+                    model, value = z.owner.inputs
+
+                    if model.owner and model.owner.op == tensor.log:
+                        if sm is model.owner.inputs[0]:
+                            log_sm = model
+                        else:
+                            return
+
+                        if not (hasattr(value, 'data') and numpy.all(value.data == 0)):
+                            return
+                        #else: OK
+                    else:
+                        return
+                else:
+                    return
+
+            if incr.type not in (dvector, fvector):
+                return
+
+            # here we know that we are incrementing some part of matrix z by a vector 
+
+            # unless the user has taken care to mark that the data and labels have the
+            # same number of rows, we cannot be sure here that
+            # len(y) == len(z)
+            # However, in the common case that these are predictions and labels it is true.
+            # We leave it to the Op to crash (and the user to complain) if this assumption is
+            # ever not true.
+
+            outgrad_factor = None
+
+            if 0:
+                # Check incr is ((-1.) like log(softmax(x))[arange(len(y)), y])
+                if incr.owner and incr.owner.op == tensor.fill:
+                    model, value = incr.owner.inputs
+                    adv_subtensor = None
+                    outgrad_factor = None
+                    if model.owner and isinstance(model.owner.op, tensor.AdvancedSubtensor):
+                        adv_subtensor = model
+                    else:
+                        if model.owner and isinstance(model.owner.op, tensor.Elemwise):
+                            for input in model.owner.inputs:
+                                if input.owner and isinstance(input.owner.op, tensor.AdvancedSubtensor):
+                                    adv_subtensor = input
+                                    break
+                                    #TODO: try them all, not just the first one
+                        else:
+                            return
+
+                    if adv_subtensor is not None:
+                        try:
+                            maybe_log_sm, maybe_rows, maybe_labels = adv_subtensor.owner.inputs
+                        except:
+                            return
+
+                        if not (maybe_log_sm is log_sm and maybe_rows is rows and maybe_labels is labels):
+                            return
+                        #else: OK
                     else:
                         return
 
-                    if not (hasattr(value, 'data') and numpy.all(value.data == 0)):
-                        return
-                    #else: OK
-                else:
-                    return
-            else:
-                return
-
-            # Check incr is ((-1.) like log(softmax(x))[arange(len(y)), y])
-            if incr.owner and incr.owner.op == tensor.fill:
-                model, value = incr.owner.inputs
-                adv_subtensor = None
-                outgrad_factor = None
-                if model.owner and isinstance(model.owner.op, tensor.AdvancedSubtensor):
-                    adv_subtensor = model
-                else:
-                    if model.owner and isinstance(model.owner.op, tensor.Elemwise):
-                        for input in model.owner.inputs:
-                            if input.owner and isinstance(input.owner.op, tensor.AdvancedSubtensor):
-                                adv_subtensor = input
-                                break
-                                #TODO: try them all, not just the first one
+                    # In the base case, value is the constant '-1'
+                    if hasattr(value, 'data') and numpy.all(value.data == -1):
+                        outgrad_factor = 1.
+                    # Otherwise, it should be a scalar, and the output gradient
+                    # would be -value
+                    elif numpy.all(value.broadcastable):
+                        outgrad_factor = -value
                     else:
                         return
 
-                if adv_subtensor is not None:
-                    try:
-                        maybe_log_sm, maybe_rows, maybe_labels = adv_subtensor.owner.inputs
-                    except:
-                        return
-
-                    if not (maybe_log_sm is log_sm and maybe_rows is rows and maybe_labels is labels):
-                        return
-                    #else: OK
                 else:
                     return
-
-                # In the base case, value is the constant '-1'
-                if hasattr(value, 'data') and numpy.all(value.data == -1):
-                    outgrad_factor = 1.
-                # Otherwise, it should be a scalar, and the output gradient
-                # would be -value
-                elif numpy.all(value.broadcastable):
-                    outgrad_factor = -value
-                else:
-                    return
-
-            else:
-                return
 
             # Check that rows is arange(labels.shape[0])
             if not _check_rows_is_arange_len_labels(rows, labels):
                 return
 
             # else, arguments of AdvancedIncSubtensor are OK
-
-        # Check the denominator (sm)
-        if not denom is sm:
-            return
+            return [crossentropy_softmax_1hot_with_bias_dx(-incr, sm, labels)]
 
         # else, numerator and denominator are OK,
         # it was really case 2.
