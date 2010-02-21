@@ -831,7 +831,7 @@ class CrossentropyCategorical1Hot(gof.Op):
         for i in xrange(len(y)):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
-    
+
     def grad(self, (coding, one_of_n), (g_y,)):
         return [crossentropy_categorical_1hot_grad(g_y, coding, one_of_n), None]
 crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
@@ -995,33 +995,23 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     else:
         return
 
-    # Two base cases are supported:
+    # Two cases are supported:
     # 1. AdvancedIncSubtensor(
     #           zeros_like(softmax(x)),
-    #           -1. / AdvancedSubtensor(softmax(x), arange(y.shape[0]), y),
+    #           -out_grad / AdvancedSubtensor(softmax(x), arange(y.shape[0]), y),
     #           arange(y.shape[0]),
     #           y)
     #   which arises from the gradient of log(softmax(x)[arange(y.shape[0]), y])
     #
     # 2. AdvancedIncSubtensor(
     #           zeros_like(log(softmax(x))),
-    #           -1. like (AdvancedSubtensor(log(softmax(x)), arange(y.shape[0]), y)),
+    #           -out_grad,
     #           arange(y.shape[0]),
     #           y)
     #           / softmax(x)
     #   which arises from the gradient of log(softmax(x))[arange(y.shape[0]), y]
     #
-    # In some cases, in case 2., insted of "-1. like (AdvancedSubtensor...)",
-    # we can have "-1. like ([-1] * AdvancedSubtensor...)". This case will be
-    # recognized too, but other variants, even with the same shape, might not
-    # (yet).
-
-    # The base cases are realized when the gradient of the
-    # cost wrt the output is equal to 1.  When this gradient
-    # has another (scalar) value, it typically appears in the
-    # second argument of AdvancedIncSubtensor. In that case, we
-    # try to extract it, and feed it as the output gradient of
-    # crossentropy_softmax_1hot_with_bias_dx.
+    # out_grad represents the gradient of the (final) cost wrt the output.
 
     #
     # N.B. Regarding clients -- This substitution is important for numerical stability, so we
@@ -1039,6 +1029,9 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             return
 
         # Check that z == zeros_like(softmax(x))
+        # We know z has the right size because z has the same size as out_grad,
+        # and out_grad and sm are both inputs of softmax_grad (so they have
+        # the same size).
         if not _is_const(z, 0):
             return
 
