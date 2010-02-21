@@ -942,9 +942,18 @@ class StructuredDotCSC(gof.Op):
                     {PyErr_SetString(PyExc_NotImplementedError, "illegal row index in a"); %(fail)s;}
 
                     // loop over final dimension (cols of dense matrix) and perform dot product
-                    for(npy_int32 n = 0; n < N; ++n)
+                    if ((Szn == 1) && (Sbn == 1)) {
+                        for(npy_int32 n = 0; n < N; ++n)
+                        {
+                            zm[n] += Amk * bk[n];
+                        }
+                    }
+                    else
                     {
-                        zm[n*Szn] += Amk * bk[n*Sbn];
+                        for(npy_int32 n = 0; n < N; ++n)
+                        {
+                            zm[n*Szn] += Amk * bk[n*Sbn];
+                        }
                     }
                 }
             }
@@ -954,7 +963,7 @@ class StructuredDotCSC(gof.Op):
         return rval
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 sd_csc = StructuredDotCSC()
 
 class StructuredDotCSR(gof.Op):
