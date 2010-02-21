@@ -1088,9 +1088,11 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                             adv_subtensor = input
                             outgrad_factor /= rest
                             break
-
             else:
                 return
+
+            # The output gradient needs to be a vector
+            out_grad = tensor.fill(x_var[:,0], outgrad_factor)
 
             if adv_subtensor is not None:
                 try:
@@ -1115,7 +1117,6 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     # Second case
     elif out_grad.owner and out_grad.owner.op == tensor.true_div:
-        # we know
         # we're looking for
         # AdvIncSubtensor(zeros, grad_nll, arange(len(y)), y) / softmax
         try:
@@ -1134,30 +1135,14 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                 return
 
             # Check z is zeros_like(log(sm))
-            # JB - do we really care if this is zeros?
             if not _is_const(z, 0):
                 return
             if z.type not in (dmatrix, fmatrix):
                 return
             # here we know that we are incrementing a matrix of zeros
-
-            if 0:
-                if z.owner and z.owner.op == tensor.fill:
-                    model, value = z.owner.inputs
-
-                    if model.owner and model.owner.op == tensor.log:
-                        if sm is model.owner.inputs[0]:
-                            log_sm = model
-                        else:
-                            return
-
-                        if not (hasattr(value, 'data') and numpy.all(value.data == 0)):
-                            return
-                        #else: OK
-                    else:
-                        return
-                else:
-                    return
+            # Since out_grad and sm are the inputs of softmax_grad,
+            # if the graph is valid, they have the same shape, so we
+            # also know that z has the right shape.
 
             if incr.type not in (dvector, fvector):
                 return
@@ -1171,57 +1156,12 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             # We leave it to the Op to crash (and the user to complain) if this assumption is
             # ever not true.
 
-            outgrad_factor = None
-
-            if 0:
-                # Check incr is ((-1.) like log(softmax(x))[arange(len(y)), y])
-                if incr.owner and incr.owner.op == tensor.fill:
-                    model, value = incr.owner.inputs
-                    adv_subtensor = None
-                    outgrad_factor = None
-                    if model.owner and isinstance(model.owner.op, tensor.AdvancedSubtensor):
-                        adv_subtensor = model
-                    else:
-                        if model.owner and isinstance(model.owner.op, tensor.Elemwise):
-                            for input in model.owner.inputs:
-                                if input.owner and isinstance(input.owner.op, tensor.AdvancedSubtensor):
-                                    adv_subtensor = input
-                                    break
-                                    #TODO: try them all, not just the first one
-                        else:
-                            return
-
-                    if adv_subtensor is not None:
-                        try:
-                            maybe_log_sm, maybe_rows, maybe_labels = adv_subtensor.owner.inputs
-                        except:
-                            return
-
-                        if not (maybe_log_sm is log_sm and maybe_rows is rows and maybe_labels is labels):
-                            return
-                        #else: OK
-                    else:
-                        return
-
-                    # In the base case, value is the constant '-1'
-                    if hasattr(value, 'data') and numpy.all(value.data == -1):
-                        outgrad_factor = 1.
-                    # Otherwise, it should be a scalar, and the output gradient
-                    # would be -value
-                    elif numpy.all(value.broadcastable):
-                        outgrad_factor = -value
-                    else:
-                        return
-
-                else:
-                    return
+            out_grad = -incr
 
             # Check that rows is arange(labels.shape[0])
             if not _check_rows_is_arange_len_labels(rows, labels):
                 return
-
             # else, arguments of AdvancedIncSubtensor are OK
-            return [crossentropy_softmax_1hot_with_bias_dx(-incr, sm, labels)]
 
         # else, numerator and denominator are OK,
         # it was really case 2.
@@ -1231,11 +1171,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     # Dimension check before substitution
     if labels.ndim == 1 and x_var.ndim == 2:
-        if outgrad_factor is not None:
-            out_grad = tensor.fill(x_var[:,0], outgrad_factor)
-            return [crossentropy_softmax_1hot_with_bias_dx(out_grad, sm, labels)]
-        else:
-            return
+        return [crossentropy_softmax_1hot_with_bias_dx(out_grad, sm, labels)]
     else:
         return
 
