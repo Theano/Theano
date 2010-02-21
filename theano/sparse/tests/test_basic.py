@@ -291,7 +291,8 @@ class test_structureddot(unittest.TestCase):
         a = SparseType('csc', dtype=sparse_dtype)()
         b = tensor.matrix(dtype=dense_dtype)
         d = theano.dot(a,b)
-        f = theano.function([a,b], d, mode='FAST_RUN')
+        #f = theano.function([a,b], theano.Out(d, borrow=True), mode='PROFILE_MODE')
+        f = theano.function([a,b], theano.Out(d, borrow=True), mode='FAST_RUN')
 
         # technically we could be using DEBUG MODE to verify internal problems.
         # in fact, if this test fails for correctness, then it would be good to use DEBUG_MODE
@@ -310,18 +311,25 @@ class test_structureddot(unittest.TestCase):
                 ]:
             spmat = sp.csc_matrix(random_lil((M,N), sparse_dtype, nnz))
             mat = numpy.asarray(numpy.random.randn(N,K), dense_dtype)
-            t0 = time.time()
-            theano_result = f(spmat, mat)
-            t1 = time.time()
-            scipy_result = spmat * mat
-            t2 = time.time()
+            theano_times = []
+            scipy_times = []
+            for i in xrange(5):
+                t0 = time.time()
+                theano_result = f(spmat, mat)
+                t1 = time.time()
+                scipy_result = spmat * mat
+                t2 = time.time()
 
-            theano_time = t1-t0
-            scipy_time = t2-t1
-            #print theano_result
-            #print scipy_result
-            print 'theano took', theano_time,
-            print 'scipy took', scipy_time
+                theano_times.append(t1-t0)
+                scipy_times.append(t2-t1)
+
+            theano_time = numpy.min(theano_times)
+            scipy_time = numpy.min(scipy_times)
+
+            speedup = scipy_time / theano_time
+            print scipy_times
+            print theano_times
+            print 'M=%(M)s N=%(N)s K=%(K)s nnz=%(nnz)s theano_time=%(theano_time)s speedup=%(speedup)s' % locals()
 
             # fail if Theano is slower than scipy by more than a certain amount
             overhead_tol = 0.003 # seconds overall
