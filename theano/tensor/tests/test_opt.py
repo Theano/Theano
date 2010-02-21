@@ -993,17 +993,23 @@ def test_local_fill_useless():
 
 class test_shapeoptimizer(unittest.TestCase):
     def test0(self):
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
         v = T.vector()
         m = T.matrix()
-        f = function([v,m], (v+m).shape)
+        f = function([v,m], (v+m).shape, mode=mode)
         for node in f.maker.env.toposort():
             assert node.op != T.add
 
     def test_constant(self):
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
 
         v = T.vector()
         m = T.matrix()
-        f = function([v,m], v.dimshuffle('x','x',0).shape[1])
+        f = function([v,m], v.dimshuffle('x','x',0).shape[1], mode=mode)
         print f.maker.env.toposort()
         assert [] == f.maker.env.toposort()
 
