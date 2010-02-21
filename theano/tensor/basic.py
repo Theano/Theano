@@ -3304,9 +3304,21 @@ class AdvancedSubtensor(Op):
                     % (x.ndim, ','.join(str(input.ndim) for input in inputs)))
         raise NotImplementedError('Advanced indexing of x with arguments (%s) not supported yet'\
                 % ','.join(str(input) for input in inputs))
+
     def infer_shape(self, node, ishapes):
-        xshp, ind1shp, ind2shp = ishapes
-        return [ind2shp]
+        # Really special case
+        if len(ishapes) == 3:
+            xshp, ind1shp, ind2shp = ishapes
+            if len(xshp) == 2 and len(ind1shp) == 1 and len(ind2shp) == 1:
+                # if the graph is correct, we can assume ind1shp[0] and
+                # ind2shp[0] will have the same value.
+                # Try to return the one closest to the graph input.
+                if node.inputs[2].owner is None:
+                    return [ind2shp]
+                else:
+                    return [ind1shp]
+        # Default case, we don't know
+        return node.env.shape_feature.default_infer_shape(node, ishapes)
 
     def perform(self, node, inputs, (out,)):
         # TODO: in general, we need to re-pack the inputs into a valid index, just like
