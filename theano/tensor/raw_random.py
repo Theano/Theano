@@ -332,6 +332,7 @@ def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=theano.
     low = tensor.as_tensor_variable(low)
     high = tensor.as_tensor_variable(high)
     ndim, size = _infer_ndim(ndim, size, low, high)
+    dtype = tensor.scal.upcast(dtype, low.dtype, high.dtype)
     op = RandomFunction('uniform',
             tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
     return op(random_state, size, low, high)
@@ -368,6 +369,7 @@ def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=theano.co
     avg = tensor.as_tensor_variable(avg)
     std = tensor.as_tensor_variable(std)
     ndim, size = _infer_ndim(ndim, size, avg, std)
+    dtype = tensor.scal.upcast(dtype, avg.dtype, std.dtype)
     op = RandomFunction('normal',
             tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
     return op(random_state, size, avg, std)

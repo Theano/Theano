@@ -430,8 +430,8 @@ class T_random_function(unittest.TestCase):
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0)
         post1, val1 = f(post0)
-        numpy_val0 = numpy_rng.uniform()
-        numpy_val1 = numpy_rng.uniform()
+        numpy_val0 = numpy.asarray(numpy_rng.uniform(), dtype=theano.config.floatX)
+        numpy_val1 = numpy.asarray(numpy_rng.uniform(), dtype=theano.config.floatX)
 
         assert numpy.all(val0 == numpy_val0)
         assert numpy.all(val1 == numpy_val1)
@@ -439,7 +439,8 @@ class T_random_function(unittest.TestCase):
         post_r, out = multinomial(rng_R)
         g = compile.function([rng_R], [post_r, out], accept_inplace=True)
         post2, val2 = g(post1)
-        numpy_val2 = numpy_rng.multinomial(n=1, pvals=[.5, .5])
+        numpy_val2 = numpy.asarray(numpy_rng.multinomial(n=1, pvals=[.5, .5]),
+                dtype=theano.config.floatX)
 
         assert numpy.all(val2 == numpy_val2)
 
@@ -450,12 +451,15 @@ class T_random_function(unittest.TestCase):
         assert out.ndim == 1
         f = compile.function([rng_R, low], [post_r, out], accept_inplace=True)
 
+        def as_floatX(thing):
+            return numpy.asarray(thing, dtype=theano.config.floatX)
+
         rng_state0 = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0, [-5, .5, 0, 1])
         post1, val1 = f(post0, [.9])
-        numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=1)
-        numpy_val1 = numpy_rng.uniform(low=[.9], high=1)
+        numpy_val0 = as_floatX(numpy_rng.uniform(low=[-5, .5, 0, 1], high=1))
+        numpy_val1 = as_floatX(numpy_rng.uniform(low=as_floatX([.9]), high=1))
 
         assert numpy.all(val0 == numpy_val0)
         assert numpy.all(val1 == numpy_val1)
@@ -467,8 +471,8 @@ class T_random_function(unittest.TestCase):
 
         post0b, val0b = fb(post1, [-4., -2], [-1, 0])
         post1b, val1b = fb(post0b, [-4.], [-1])
-        numpy_val0b = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
-        numpy_val1b = numpy_rng.uniform(low=[-4.], high=[-1])
+        numpy_val0b = as_floatX(numpy_rng.uniform(low=[-4., -2], high=[-1, 0]))
+        numpy_val1b = as_floatX(numpy_rng.uniform(low=[-4.], high=[-1]))
         assert numpy.all(val0b == numpy_val0b)
         assert numpy.all(val1b == numpy_val1b)
         self.assertRaises(ValueError, fb, post1b, [-4., -2], [-1, 0, 1])
@@ -480,8 +484,8 @@ class T_random_function(unittest.TestCase):
         fc = compile.function([rng_R, low, high, size], [post_rc, outc], accept_inplace=True)
         post0c, val0c = fc(post1b, [-4., -2], [-1, 0], [2])
         post1c, val1c = fc(post0c, [-4.], [-1], [1])
-        numpy_val0c = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
-        numpy_val1c = numpy_rng.uniform(low=[-4.], high=[-1])
+        numpy_val0c = as_floatX(numpy_rng.uniform(low=[-4., -2], high=[-1, 0]))
+        numpy_val1c = as_floatX(numpy_rng.uniform(low=[-4.], high=[-1]))
         assert numpy.all(val0c == numpy_val0c)
         assert numpy.all(val1c == numpy_val1c)
         self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [1])
@@ -493,8 +497,8 @@ class T_random_function(unittest.TestCase):
 
     def test_broadcast_arguments(self):
         rng_R = random_state_type()
-        low = tensor.vector()
-        high = tensor.col()
+        low = tensor.dvector()
+        high = tensor.dcol()
         post_r, out = uniform(rng_R, low=low, high=high)
         assert out.ndim == 2
         f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
@@ -509,7 +513,7 @@ class T_random_function(unittest.TestCase):
         numpy_val1 = numpy_rng.uniform(low=[.9], high=[[1.], [1.1], [1.5]])
         numpy_val2 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[[1.], [1.1], [1.5]])
 
-        assert numpy.all(val0 == numpy_val0)
+        assert numpy.all(val0 == numpy_val0), (val0, numpy_val0)
         assert numpy.all(val1 == numpy_val1)
         assert numpy.all(val2 == numpy_val2)
 
@@ -521,19 +525,21 @@ class T_random_function(unittest.TestCase):
         assert out.ndim == 1
         f = compile.function([rng_R, low, high], [post_r, out], accept_inplace=True)
 
-        low_val = [.1, .2, .3]
-        high_val = [1.1, 2.2, 3.3]
+        def as_floatX(thing):
+            return numpy.asarray(thing, dtype=theano.config.floatX)
+        low_val = as_floatX([.1, .2, .3])
+        high_val = as_floatX([1.1, 2.2, 3.3])
         rng = numpy.random.RandomState(utt.fetch_seed())
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, low_val, high_val)
-        numpy_val0 = numpy_rng.uniform(low=low_val, high=high_val)
+        numpy_val0 = as_floatX(numpy_rng.uniform(low=low_val, high=high_val))
         assert numpy.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, low_val[:-1], high_val[:-1])
-        numpy_val1 = numpy_rng.uniform(low=low_val[:-1], high=high_val[:-1])
+        numpy_val1 = as_floatX(numpy_rng.uniform(low=low_val[:-1], high=high_val[:-1]))
         assert numpy.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
@@ -541,7 +547,7 @@ class T_random_function(unittest.TestCase):
                 uniform(rng_R, low=low, high=high, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, low_val, high_val)
-        numpy_val2 = numpy_rng.uniform(low=low_val, high=high_val, size=(3,))
+        numpy_val2 = as_floatX(numpy_rng.uniform(low=low_val, high=high_val, size=(3,)))
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, low_val[:-1], high_val[:-1])
 
@@ -591,13 +597,17 @@ class T_random_function(unittest.TestCase):
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
+        def as_floatX(thing):
+            return numpy.asarray(thing, dtype=theano.config.floatX)
         rng0, val0 = f(rng, avg_val, std_val)
-        numpy_val0 = numpy_rng.normal(loc=avg_val, scale=std_val)
+        numpy_val0 = as_floatX(numpy_rng.normal(loc=as_floatX(avg_val),
+            scale=as_floatX(std_val)))
         assert numpy.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, avg_val[:-1], std_val[:-1])
-        numpy_val1 = numpy_rng.normal(loc=avg_val[:-1], scale=std_val[:-1])
+        numpy_val1 = numpy.asarray(numpy_rng.normal(loc=avg_val[:-1], scale=std_val[:-1]),
+                dtype=theano.config.floatX)
         assert numpy.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
@@ -605,7 +615,8 @@ class T_random_function(unittest.TestCase):
                 normal(rng_R, avg=avg, std=std, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, avg_val, std_val)
-        numpy_val2 = numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,))
+        numpy_val2 = numpy.asarray(numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,)),
+                dtype=theano.config.floatX)
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, avg_val[:-1], std_val[:-1])
 
