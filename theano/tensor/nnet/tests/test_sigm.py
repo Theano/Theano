@@ -32,12 +32,12 @@ class T_sigmoid_opts(unittest.TestCase):
 
         # tests exp_over_1_plus_exp
         f = theano.function([x], T.exp(x)/(1+T.exp(x)), mode=m)
-        #theano.printing.debugprint(f)
+        theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
 
         # tests inv_1_plus_exp
         f = theano.function([x], T.fill(x,1.0) / (1+T.exp(-x)), mode=m)
-        #theano.printing.debugprint(f)
+        theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
 
         # tests inv_1_plus_exp with neg
@@ -47,10 +47,13 @@ class T_sigmoid_opts(unittest.TestCase):
                 T.inplace.neg_inplace]
 
         # tests double inv_1_plus_exp with neg
+        # (-1)(exp(x)) / (1+exp(x))(1+exp(-x))
+        # = (-1)/(1+exp(-x)) * exp(x)/(1+exp(x))
+        # = - (sigm(x) * sigm(x))
         f = theano.function([x], (T.fill(x,-1.0)*T.exp(x)) / ((1+T.exp(x))*(1+T.exp(-x))), mode=m)
-        #theano.printing.debugprint(f)
+        theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [sigmoid, 
-                T.mul]
+                T.mul, T.inplace.neg_inplace]
 
     def test_1msigmoid(self):
         if not register_local_1msigmoid:
