@@ -1787,8 +1787,9 @@ class Alloc(gof.Op):
         v = inputs[0]
         sh = tuple([int(i) for i in inputs[1:]])
         if out[0] is None or out[0].shape != sh:
+#            out[0] = numpy.empty(sh, dtype=v.dtype)
             out[0] = numpy.zeros(sh, dtype=v.dtype)
-            out[0][...] += v # broadcast v to fill us up
+        out[0][...] = v # broadcast v to fill us up
 
     def grad(self, inputs, (gout,)):
         return [None for i in inputs]
