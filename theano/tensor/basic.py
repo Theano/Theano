@@ -1759,17 +1759,17 @@ class Alloc(gof.Op):
     This Op is used to replace fill() during optimizations because after shapes are lifted, 
     the first argument to fill can often be pruned from the graph.
     """
-    def __init__(self, dtype):
-        self.dtype = dtype
+    def __init__(self):
+        pass
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
+        return type(self) == type(other)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.dtype)
+        return hash(type(self))
 
     def __str__(self):
-        return '%s{%s}' % (self.__class__.__name__, self.dtype)
+        return self.__class__.__name__
 
     def make_node(self, value, *shape):
         v = as_tensor_variable(value)
@@ -1780,19 +1780,21 @@ class Alloc(gof.Op):
                 raise TypeError('Shape arguments must be integers', s)
             # if s is constant 1, then we're broadcastable in that dim
             bcast.append(isinstance(s, TensorConstant) and (s.data == 1))
-        otype = TensorType(dtype=self.dtype, broadcastable=bcast)
+        otype = TensorType(dtype=v.dtype, broadcastable=bcast)
         return gof.Apply(self, [v]+sh, [otype()])
 
     def perform(self, node, inputs, (out,)):
         v = inputs[0]
         sh = tuple([int(i) for i in inputs[1:]])
         if out[0] is None or out[0].shape != sh:
-            out[0] = numpy.zeros(sh, dtype=self.dtype)
+            out[0] = numpy.zeros(sh, dtype=v.dtype)
             out[0][...] += v # broadcast v to fill us up
 
     def grad(self, inputs, (gout,)):
         return [None for i in inputs]
 
+alloc = Alloc()
+pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
 @_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):

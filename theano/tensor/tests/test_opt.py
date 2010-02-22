@@ -389,9 +389,9 @@ class test_canonize(unittest.TestCase):
                             #must broadcast as their is a dimshuffle in the computation
 
                                                            ((dx/dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
-    #topo:            [Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Alloc(...)]
+    #topo:            [Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Alloc]
                                                            ((fx/fv)/fx,[fx,fv],[fxv,fvv],1,'float32'),
-                #topo:[Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Alloc(...)]
+                #topo:[Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Alloc]
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -906,13 +906,13 @@ def test_log1p():
     print f.maker.env.toposort()
     # the first three ops are Shape_i, Shape_i, and Dimshuffle
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, Alloc('float64')]
+            == [T.log1p, alloc]
     f = function([x,y], T.log(0+(x) + fill(y,1.0)), mode=m)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, Alloc('float64')]
+            == [T.log1p, alloc]
     f = function([x,y], T.log(2+(x) - fill(y,1.0)), mode=m)
     assert [node.op for node in f.maker.env.toposort()][3:] \
-            == [T.log1p, Alloc('float64')]
+            == [T.log1p, alloc]
 
     f([1e-7, 10], [[0, 0], [0, 0]]) #debugmode will verify values 
         

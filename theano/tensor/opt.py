@@ -114,7 +114,7 @@ def broadcast_like(value, template, env):
     shape_of = env.shape_feature.shape_of
     if template not in shape_of:
         raise NotImplementedError('broadcast_like currently requires the template Variable to be in the env already')
-    rval = T.Alloc(template.dtype)(value, *shape_of[template])
+    rval = T.alloc(T.cast(value, template.dtype), *shape_of[template])
     assert rval.type == template.type
     return rval
 
@@ -486,7 +486,7 @@ def local_fill_to_alloc(node):
             # we are broadcasting v somehow
             shape_of = node.env.shape_feature.shape_of
             # TODO: cut out un-necessary dimshuffles of v
-            rval = [T.Alloc(node.outputs[0].dtype)(v, *shape_of[node.outputs[0]])]
+            rval = [T.alloc(T.cast(v, node.outputs[0].dtype), *shape_of[node.outputs[0]])]
         assert rval[0].type == node.outputs[0].type
         return rval
 
@@ -542,12 +542,12 @@ def local_alloc_unary(node):
     """unary(alloc(x, shp)) -> alloc(unary(x), shp)
     """
     if isinstance(node.op, T.Elemwise) and len(node.inputs)==1:
-        x = node.inputs[0]
-        if x.owner and isinstance(x.owner.op, T.Alloc):
-            return [T.Alloc(node.outputs[0].dtype)(
-                node.op(T.cast(x.owner.inputs[0], x.dtype)),
-                *x.owner.inputs[1:]
-                )]
+        a = node.inputs[0]
+        if a.owner and isinstance(a.owner.op, T.Alloc):
+            x = a.owner.inputs[0]
+            shp = a.owner.inputs[1:]
+            v = node.op(x)
+            return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
 
 
 ##################
