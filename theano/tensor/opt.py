@@ -1345,9 +1345,9 @@ register_specialize(local_pow_specialize)
 
 @gof.local_optimizer([T.mul])
 def local_mul_specialize(node):
-    def fill_chain(v):
-        return _fill_chain(v, node.inputs)
     #here, we are past the point of canonicalization, so we don't want to put in un-necessary fills.
+    #
+    # at this point [post canonicalize], mul() may have many inputs.
     if node.op == T.mul:
         #the idea here is that we have pow(x, y)
         neg = False
@@ -1365,6 +1365,7 @@ def local_mul_specialize(node):
             elif N.all(y == -1.0):
                 neg ^= True #toggles
             elif N.all(y == 0.0):
+                # if we find any zero, we just return right away
                 return [T.alloc(numpy.asarray(0, dtype=node.outputs[0].dtype),
                         *node.env.shape_feature.shape_of[node.outputs[0]])]
             else:
@@ -1374,26 +1375,29 @@ def local_mul_specialize(node):
             if new_inputs:
                 if len(new_inputs) == 1:
                     if neg:
-                        msg = -new_inputs[0]
+                        rval = -new_inputs[0]
                     else:
-                        msg = new_inputs[0]
-                    return fill_chain(msg)
+                        rval = new_inputs[0]
                 else:
                     if neg:
-                        msg = -T.mul(*new_inputs)
+                        rval = -T.mul(*new_inputs)
                     else:
-                        msg = T.mul(*new_inputs)
+                        rval = T.mul(*new_inputs)
 
-                return [T.alloc(T.cast(msg, node.outputs[0].dtype),
+                return [T.alloc(T.cast(rval, node.outputs[0].dtype),
                         *node.env.shape_feature.shape_of[node.outputs[0]])]
             else:
+                # there are no variable inputs to mul
+                # N.B. this could have been constant-folded...
                 if neg:
                     # return output's worth of -1
-                    return [T.alloc(numpy.asarray(-1, dtype=node.outputs[0].dtype),
+                    return [T.alloc(
+                        numpy.asarray(-1, dtype=node.outputs[0].dtype),
                             *node.env.shape_feature.shape_of[node.outputs[0]])]
                 else:
                     # return output's worth of 1
-                    return [T.alloc(numpy.asarray(1, dtype=node.outputs[0].dtype),
+                    return [T.alloc(
+                        numpy.asarray(1, dtype=node.outputs[0].dtype),
                             *node.env.shape_feature.shape_of[node.outputs[0]])]
 
 register_specialize(local_mul_specialize)
