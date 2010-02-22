@@ -493,6 +493,14 @@ def local_fill_to_alloc(node):
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([T._shape])
+def local_useless_alloc(node):
+    if node.op == T.alloc:
+        if node.inputs[0].type == node.outputs[0].type:
+            return [node.inputs[0]]
+
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T._shape])
 def local_shape_to_shape_i(node):
     if node.op == T._shape:
         shape_feature = node.env.shape_feature
