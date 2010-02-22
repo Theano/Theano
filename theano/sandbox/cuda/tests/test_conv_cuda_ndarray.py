@@ -7,7 +7,13 @@ from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
-    
+
+#needed as the gpu conv don't have a perform implementation.
+if theano.config.mode=='FAST_COMPILE':
+    theano_mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+else:
+    theano_mode = theano.compile.mode.get_default_mode().including('gpu')
+
 cuda_tensor4 = cuda_ndarray.CudaNdarrayType([False]*4)
 
 def py_conv_valid_numpy(img, kern):
@@ -86,7 +92,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
         i = cuda_tensor4()
         k = cuda_tensor4()
         op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,subsample=subsample, version=version, verbose=verbose)(i,k)
-        f=theano.function([i,k],op)
+        f=theano.function([i,k],op, mode=theano_mode)
         gpuval = f(img,kern)
         t2 = time.time()
         for i in range(nb_iter):

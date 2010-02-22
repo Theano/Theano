@@ -17,7 +17,11 @@ from theano.tensor.signal.downsample import DownsampleFactorMax
 
 import theano.compile.mode
 
-mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+
+if theano.config.mode=='FAST_COMPILE':
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+else:
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape),dtype='float32')

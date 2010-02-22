@@ -13,7 +13,10 @@ if cuda_ndarray.cuda_available == False:
 
 import theano.compile.mode
 
-mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+if theano.config.mode=='FAST_COMPILE':
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+else:
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 import theano.sandbox.cuda as cuda
 

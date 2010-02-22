@@ -19,8 +19,12 @@ import theano.sandbox.cuda as cuda
 import theano.compile.mode
 from theano.tests import unittest_tools as utt
 
-mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+if theano.config.mode=='FAST_COMPILE':
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
+else:
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 def tes_use():
     tcn.use()
