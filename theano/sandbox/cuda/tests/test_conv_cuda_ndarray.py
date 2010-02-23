@@ -280,7 +280,7 @@ def test_valid():
 #    version=[1]
     
     random = True
-    print_ = True
+    print_ = False
     ones = False
     if ones:
         random = False
