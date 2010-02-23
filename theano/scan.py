@@ -82,16 +82,23 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
         * all time slices of the second otuput (as given in the ``initial_state`` list) ordered cronologically
         * ...
         * all other parameters over which scan doesn't iterate given in the same order as in ``non_sequences``
-    The outputs of these function should have the same order as in the list ``initial_states``
+    If you are using shared variables over which you do not want to iterate, you do not need to provide them as 
+    arguments to ``fn``, though you can if you wish so. The function should return the outputs after each step plus
+    the updates for any of the shared variables. You can either return only outputs or only updates. If you have
+    both outputs and updates the function should return them as a tuple : (outputs, updates) or (updates, outputs). 
+    Outputs can be just a theano expression if you have only one outputs or a list of theano expressions. Updates
+    can be given either as a list of as a dictionary. If you have a list of outputs, the order of these should 
+    match that of their ``initial_states``. 
 
-    :param sequences: list of Theano variables over which scan needs to iterate
+    :param sequences: list of Theano variables over which scan needs to iterate.
 
     :param initial_states: list of Theano variables containing the initial state used for the output. 
     Note that if the function applied recursively uses only the previous value of the output or none, this initial state 
     should have same shape as one time step of the output; otherwise, the 
     initial state should have the same number of dimension as output. This 
     can easily be understand through an example. For computing ``y[t]`` let 
-    assume that we need ``y[t-1]``, ``y[t-2]`` and ``y(t-4)``. Through an abuse of notation, when ``t = 0``, we would need values for ``y[-1]``, ``y[-2]`` and 
+    assume that we need ``y[t-1]``, ``y[t-2]`` and ``y(t-4)``. Through an abuse of notation, 
+    when ``t = 0``, we would need values for ``y[-1]``, ``y[-2]`` and 
     ``y[-4]``. These values are provided by the initial state of ``y``, which 
     should have same number  of dimension as ``y``, where the first dimension should 
     be large enough to cover all past values, which in this case is 4.
@@ -146,6 +153,14 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
     classical BPTT, where you only do ``truncate_gradient`` number of steps.
 
     :param go_backwards: Flag indicating if you should go bacwards through the sequences
+
+    :rtype: tuple 
+    :return: tuple of the form (outputs, updates)
+    ``outputs`` is either a Theano variable or a list of Theano variables 
+    representing the outputs of scan. ``updates``
+    is a dictionary specifying the updates rules for all shared
+    variables used in the scan operation; this dictionary should be pass
+    to ``theano.function``
     '''
 
     # check if inputs are just single variables instead of lists     
@@ -220,7 +235,7 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
     args += non_seqs
 
     outputs_updates  = fn(*args)
-    otuputs = []
+    outputs = []
     updates = {}
     # we try now to separate the outputs from the updates
     if not type(outputs_updates) in (list,tuple):
@@ -309,6 +324,8 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
                          + noshared
                          + shared_non_seqs))
 
+    if not type(values) in (tuple, list):
+        values = [values]
     for k in update_map.keys():
         update_map[k] = values [ update_map[k] ] 
 

@@ -88,7 +88,7 @@ def compareArrays(a,b):
 class T_Scan(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
-    
+
     # generator network, only one output , type scalar ; no sequence or 
     # non sequence arguments
     def test_1(self):
@@ -162,7 +162,7 @@ class T_Scan(unittest.TestCase):
                     theano.dot(x_tm1, W), theano.dot(x_tm1, W_out)]
 
         Y, updts = theano.scan(f_rnn_cmpl,[u1,u2],[x0,y0],W_in1)
-    
+
         f4     = theano.function([u1,u2,x0,y0,W_in1], Y, updates = updts)
         v_u1   = numpy.array([[1.,2.],[1.,2.],[1.,2.]])
         v_u2   = numpy.array([1.,2.,3.])
@@ -175,7 +175,7 @@ class T_Scan(unittest.TestCase):
          
         assert( compareArrays(x,v_x)) 
         assert( compareArrays(y,v_y))
-    
+
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables and past 
     # taps (sequences and outputs)
@@ -296,7 +296,7 @@ class T_Scan(unittest.TestCase):
           vW1 = vW1 + .1
           vW2 = vW2 + .05
 
-    def test_8(self):
+    def test_9(self):
 
         W_vals  = numpy.random.rand(20,30) -.5
         vis_val = numpy.random.binomial(1,0.5, size=(3,20))
@@ -344,6 +344,20 @@ class T_Scan(unittest.TestCase):
 
         assert (compareArrays(t_res, n_res))
 
+    def test_10(self):
+
+      s = theano.shared(1)
+
+
+      def f_pow2():
+        return {s: 2*s}
+    
+      n_steps = theano.tensor.dscalar()
+      Y, updts = theano.scan(f_pow2, [],[], [],n_steps = n_steps)
+      f1 = theano.function([n_steps], Y, updates = updts)
+      f1(3)
+      assert(compareArrays(s.value, 8))
+ 
     '''
     # test gradient simple network 
     def test_10(self):
@@ -356,6 +370,7 @@ class T_Scan(unittest.TestCase):
         - test gradient (multiple outputs / some uncomputable )
         - test gradient (truncate_gradient)
         - test_gradient (taps past/future)
+        - optimization !? 
     '''
 
 
