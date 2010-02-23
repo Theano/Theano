@@ -330,13 +330,14 @@ class ShapeFeature(object):
 
     .. note::
 
-        Right now there is only the ConvOp that can really take advantage of this shape
+        Right now there is only the ConvOp that could really take advantage of this shape
         inference, but it is worth it even just for the ConvOp.  All that's necessary to do
         shape inference is 1) to mark shared inputs as having a particular shape,
         either via a .tag or some similar hacking; and 2) to add an optional Param() argument
         to promise that inputs will have a certain shape (or even to have certain shapes in
         certain dimensions). We can't automatically infer the shape of shared variable as
         they can change of shape during the execution by default.
+        (NOT IMPLEMENTED YET)
 
 
     """
