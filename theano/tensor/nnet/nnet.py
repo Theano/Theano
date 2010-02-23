@@ -1037,31 +1037,28 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
         # In the base case (output gradient = 1), incr is -1./sm[arange(len(y)), y]
         # Here, we are looking for the AdvancedSubtensor term (sm[arange(len(y)), y]),
-        # the remaining of the expression will be used to compute outgrad_factor
-        # outgrad_factor will be constructed in 3 steps as follow:
-        # outgrad_factor = +/- 1 (initial sign)
-        # outgrad_factor *= numerator
-        # outgrad_factor /= denominator
+        # and constructing out_grad by incorporating the other terms.
+        # out_grad will be constructed in 3 steps as follow:
+        # out_grad = +/- 1. (according to sign)
+        # out_grad *= -numerator
+        # out_grad /= denominator
+        # Then, if out_grad is a scalar, it will be allocated as a vector
         adv_subtensor = None
-        outgrad_factor = 1.
+        out_grad = 1.
 
         # If there's a 'minus' sign before the whole expression, put it in
-        # outgrad_factor and iterate
+        # out_grad and iterate
         if incr.owner and incr.owner.op == tensor.neg:
-            outgrad_factor = -1.
+            out_grad = - out_grad
             incr = incr.owner.inputs[0]
 
         if incr.owner and incr.owner.op == tensor.true_div:
             num, denom = incr.owner.inputs
 
-            # set outgrad_factor according to the numerator,
-            # it may be divided later
-            if hasattr(num, 'data') and numpy.all(num.data == -1):
-                # Base case, num is -1
-                outgrad_factor *= 1.
-            elif numpy.all(num.broadcastable):
-                # Otherwise, it should be a scalar
-                outgrad_factor *= -num
+            # set out_grad according to the numerator, it may be divided later
+            # num should be a vector or a scalar
+            if numpy.ndim==1 or numpy.all(num.broadcastable):
+                out_grad *= -num
             else:
                 return
 
@@ -1071,10 +1068,10 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             if isinstance(denom.owner.op, tensor.AdvancedSubtensor):
                 # Base case
                 adv_subtensor = denom
-                outgrad_factor /= 1.
+                #out_grad /= 1.
             elif denom.owner.op == tensor.mul:
                 # Try to find the AdvancedSubtensor node mentionned above,
-                # and a scalar that is equal to the output gradient
+                # and the output gradient
                 for i, input in enumerate(denom.owner.inputs):
                     if input.owner and isinstance(input.owner.op, tensor.AdvancedSubtensor):
                         other_inputs = [in_ for (j, in_) in enumerate(denom.owner.inputs) if j!=i]
@@ -1083,16 +1080,16 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                         else:
                             rest = tensor.mul(*[other_inputs])
 
-                        # Check that rest is a scalar
-                        if numpy.all(rest.broadcastable):
+                        # Check that rest is a vector or a scalar
+                        if rest.ndim==1 or numpy.all(rest.broadcastable):
                             adv_subtensor = input
-                            outgrad_factor /= rest
+                            out_grad /= rest
                             break
             else:
                 return
 
             # The output gradient needs to be a vector
-            out_grad = tensor.fill(x_var[:,0], outgrad_factor)
+            out_grad = tensor.fill(x_var[:,0], out_grad)
 
             if adv_subtensor is not None:
                 try:
