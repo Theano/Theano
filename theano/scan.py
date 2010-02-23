@@ -12,16 +12,16 @@ function over a list, given an initial state of ``z=0``.
 
 Special cases:
 
-* A ``reduce()`` operation can be performed by returning only the last 
+* A *reduce* operation can be performed by returning only the last 
   output of a ``scan``. 
-* A ``map()`` operation can be performed by applying a function that 
+* A *map* operation can be performed by applying a function that 
   ignores each previous output.
 
-Often a for loop can be expressed as a ``scan()`` operation, and ``scan`` is
+Often a for-loop can be expressed as a ``scan()`` operation, and ``scan`` is
 the closest that theano comes to looping. The advantage of using ``scan`` 
 over for loops is that it allows the number of iterations to be a part of the symbolic graph. 
 
-The Scan Op should always be used by applying the ``scan`` function. 
+The Scan Op should typically be used by calling the ``scan()`` function. 
 """ 
 __docformat__ = 'restructedtext en'
 
