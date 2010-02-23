@@ -309,6 +309,8 @@ class ConvOp(Op):
         self.bsize=bsize
         self.dx=dx
         self.dy=dy
+        if self.dx is None: self.dx=1
+        if self.dy is None: self.dy=1
         self.verbose=verbose
         self.version=version
 
