@@ -216,16 +216,18 @@ class BadOptimization(DebugModeError):
 
 class BadDestroyMap(DebugModeError):
     """Exception: Some perform() or c_code() modified an input that wasn't in the destroy_map"""
-    def __init__(self, node, idx, old_val, new_val):
+    def __init__(self, node, idx, old_val, new_val, perform):
         super(BadDestroyMap, self).__init__()
         self.node = node
         self.idx = idx
         self.old_val = old_val
         self.new_val = new_val
+        self.perform = perform
     
     def __str__(self):
         sio = StringIO()
         print >> sio, "  node:", self.node
+        print >> sio, "  perform:", self.perform
         print >> sio, "  node.inputs:", [(str(i), id(i)) for i in self.node.inputs]
         print >> sio, "  destroy_map:", getattr(self.node.op, 'destroy_map', {})
         print >> sio, "  changed input idx:", self.idx
@@ -402,7 +404,8 @@ def _optcheck_env(input_specs, output_specs, accept_inplace = False):
     env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
     return env, map(SymbolicOutput, updates), equivalence_tracker
 
-def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_vals=True):
+def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_vals=True,
+        perform=None):
     """Raise BadDestroyMap if necessary, update dr_vals"""
     destroyed_idx_list = []
     destroy_map = getattr(node.op, 'destroy_map', {})
@@ -424,7 +427,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes, clobber_dr_v
                         dr_vals[r] = (storage_map[r][0], node) #no copy, this is the last use of this variable
                     storage_map[r][0] = None #make sure that dr_vals[r] doens't get used again
             else:
-                raise BadDestroyMap(node, r_idx, r_vals[r], storage_map[r][0])
+                raise BadDestroyMap(node, r_idx, r_vals[r], storage_map[r][0], perform)
 
 
 def _check_viewmap(node, storage_map):
@@ -1018,7 +1021,7 @@ class _Linker(gof.link.LocalLinker):
                             #if r in r_vals:
 
                         _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                                clobber_dr_vals=True)
+                                clobber_dr_vals=True, perform='py')
 
                         _check_viewmap(node, storage_map)
 
@@ -1059,7 +1062,7 @@ class _Linker(gof.link.LocalLinker):
                                     self.maker.mode.require_matching_strides, node.op)
 
                         _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
-                                clobber_dr_vals=False)
+                                clobber_dr_vals=False, perform='c')
 
                         _check_viewmap(node, storage_map)
 
