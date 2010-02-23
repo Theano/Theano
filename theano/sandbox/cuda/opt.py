@@ -337,7 +337,7 @@ def local_gpu_softmax(node):
     return False
 
 #### Convolution, maxpooling
-import theano.sandbox.conv
+from theano.tensor.nnet import conv
 @register_opt()
 @local_optimizer([])
 def local_gpu_conv(node):
@@ -367,12 +367,12 @@ def local_gpu_conv(node):
     if node.op == gpu_from_host:
         #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
         host_input = node.inputs[0]
-        if host_input.owner and isinstance(host_input.owner.op, theano.sandbox.conv.ConvOp):
+        if host_input.owner and isinstance(host_input.owner.op, conv.ConvOp):
             gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
             img, kern = host_input.owner.inputs
             return [gpu_conv(gpu_from_host(img), gpu_from_host(kern))]
 
-    if isinstance(node.op, theano.sandbox.conv.ConvOp):
+    if isinstance(node.op, conv.ConvOp):
         #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
         img, kern = node.inputs
         img_on_gpu = (img.owner and img.owner.op == host_from_gpu)

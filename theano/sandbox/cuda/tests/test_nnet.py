@@ -6,7 +6,7 @@ from theano.compile.pfunc import pfunc
 from theano import tensor
 import theano.tensor.nnet
 
-import theano.sandbox.conv
+import theano.tensor.nnet.conv as conv
 import theano.tensor.signal.downsample as downsample
 
 import numpy
@@ -132,7 +132,7 @@ def run_conv_nnet1(use_gpu):
     y = tensor.fmatrix('y')
     lr = tensor.fscalar('lr')
 
-    conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
+    conv_op = conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op.set_flops()
 
     hid = tensor.tanh(conv_op(x, w)+b.dimshuffle((0,'x','x')))
@@ -215,8 +215,8 @@ def run_conv_nnet2(use_gpu): # pretend we are training LeNet for MNIST
     y = tensor.fmatrix('y')
     lr = tensor.fscalar('lr')
 
-    conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
-    conv_op1 = theano.sandbox.conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
+    conv_op = conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
+    conv_op1 = conv.ConvOp((n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
     conv_op.set_flops()
     conv_op1.set_flops()
 
@@ -299,9 +299,9 @@ def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_iter,
     y = tensor.fmatrix('y')
     lr = tensor.fscalar('lr')
 
-    conv_op = theano.sandbox.conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern,
-                                         n_batch, 1, 1, verbose=verbose, version=version)
-    conv_op1 = theano.sandbox.conv.ConvOp(
+    conv_op = conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern,
+                          n_batch, 1, 1, verbose=verbose, version=version)
+    conv_op1 = conv.ConvOp(
         (n_kern,logical_hid_shape[0]/2, logical_hid_shape[1]/2),
         shape_kern1[2:], n_kern1, n_batch, 1, 1,verbose=verbose, version=version)
     conv_op.set_flops()
