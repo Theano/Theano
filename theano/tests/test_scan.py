@@ -73,6 +73,20 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None,
                                     (max_err, tol, max_err_pos))
 
 
+#TODO: Test this function, and if it works,
+# use it with the normal verify_grad rather than the 
+# copy-and-pasted one above.
+# Also - add a reference to this technique in the 
+# verify_grad method so that other ops with multiple outputs can be tested.
+def scan_project_sum(*args, **kwargs):
+    rng = shared_randomstreams.RandomStreams()
+    scan_outputs = scan(*args, **kwargs)
+    # we should ignore the random-state updates so that
+    # the uniform numbers are the same every evaluation and on every call
+    rng.add_default_updates = False
+    return  sum([(s * rng.uniform(size=s.shape)).sum() for s in scan_outputs])
+
+
 
 
 def compareArrays(a,b):
