@@ -3050,6 +3050,12 @@ class ARange(Op):
         outputs = [tensor(self.dtype, (False,))]
         return Apply(self, inputs, outputs)
 
+    def infer_shape(self, node, i_shapes):
+      start = as_tensor_variable(node.inputs[0])
+      stop = as_tensor_variable(node.inputs[1])
+      step = as_tensor_variable(node.inputs[2])
+      return [(cast(ceil(cast((stop-start),'float64')/step),'int64'),)]
+
     def perform(self, node, (start, stop, step), (out,)):
         start = start.item()
         stop = stop.item()
