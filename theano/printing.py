@@ -359,6 +359,7 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
     Otherwise, if the variable is constant, we print the value and finaly we print the type + an uniq number to don't have multiple var merged.
     We print the op of the apply in the Apply box with a number that represent the toposort order of application of those Apply.
+    If an Apply have more then 1 input, print add a label to the edge that in the index of the inputs.
 
     green ellipse are input to the graph and blue ellipse are output of the graph.
     """
@@ -406,16 +407,16 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
         astr=apply_name(node)
 
         g.add_node(pd.Node(astr,shape='box'))
-        for var in node.inputs:
+        for id,var in enumerate(node.inputs):
             varstr=var_name(var)
             if var.owner is None:
                 g.add_node(pd.Node(varstr,color='green'))
-                g.add_edge(pd.Edge(varstr,astr))
+                g.add_edge(pd.Edge(varstr,astr, label=label))
             elif var.name or not compact:
-                g.add_edge(pd.Edge(varstr,astr))
+                g.add_edge(pd.Edge(varstr,astr, label=label))
             else:
                 #no name, so we don't make a var ellipse
-                g.add_edge(pd.Edge(apply_name(var.owner),astr))
+                g.add_edge(pd.Edge(apply_name(var.owner),astr, label=label))
                 
                 
         for var in node.outputs:
