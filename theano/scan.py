@@ -12,11 +12,10 @@ function over a list, given an initial state of ``z=0``.
 
 Special cases:
 
-   - A ``reduce()`` operation can be performed by returning only the last 
-     output of a ``scan``.
-    
-   - A ``map()`` operation can be performed by applying a function that 
-     ignores each previous output.
+* A ``reduce()`` operation can be performed by returning only the last 
+  output of a ``scan``. 
+* A ``map()`` operation can be performed by applying a function that 
+  ignores each previous output.
 
 Often a for loop can be expressed as a ``scan()`` operation, and ``scan`` is
 the closest that theano comes to looping. The advantage of using ``scan`` 
@@ -69,98 +68,130 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
          mode = None):
     '''Function that constructs and applies a Scan op
 
-    :param fn: Function that describes the operations involved in one step of scan 
-    Given variables representing all the slices of input and 
-    past values of outputs and other non sequences parameters, ``fn`` should 
-    produce variables describing the output of one time step of scan. 
-    The order in which the argument to this function are given is very 
-    important. You should have the following order
-        * all time slices of the first sequence (as given in the ``sequences`` list) ordered cronologically
-        * all time slices of the second sequence (as given in the ``sequences`` list) ordered cronologically
-        * ...
-        * all time slices of the first output (as given in the  ``initial_state`` list) ordered cronologically 
-        * all time slices of the second otuput (as given in the ``initial_state`` list) ordered cronologically
-        * ...
-        * all other parameters over which scan doesn't iterate given in the same order as in ``non_sequences``
-    If you are using shared variables over which you do not want to iterate, you do not need to provide them as 
-    arguments to ``fn``, though you can if you wish so. The function should return the outputs after each step plus
-    the updates for any of the shared variables. You can either return only outputs or only updates. If you have
-    both outputs and updates the function should return them as a tuple : (outputs, updates) or (updates, outputs). 
-    Outputs can be just a theano expression if you have only one outputs or a list of theano expressions. Updates
-    can be given either as a list of as a dictionary. If you have a list of outputs, the order of these should 
-    match that of their ``initial_states``. 
+    :param fn: Function that describes the operations involved in one step 
+               of scan Given variables representing all the slices of input 
+               and past values of outputs and other non sequences parameters, 
+               ``fn`` should produce variables describing the output of one 
+               time step of scan. The order in which the argument to this 
+               function are given is very important. You should have the 
+               following order:
 
-    :param sequences: list of Theano variables over which scan needs to iterate.
+               * all time slices of the first sequence (as given in the 
+                 ``sequences`` list) ordered cronologically
+               * all time slices of the second sequence (as given in the 
+                 ``sequences`` list) ordered cronologically
+               * ...
+               * all time slices of the first output (as given in the  
+                 ``initial_state`` list) ordered cronologically 
+               * all time slices of the second otuput (as given in the 
+                 ``initial_state`` list) ordered cronologically
+               * ...
+               * all other parameters over which scan doesn't iterate given 
 
-    :param initial_states: list of Theano variables containing the initial state used for the output. 
-    Note that if the function applied recursively uses only the previous value of the output or none, this initial state 
-    should have same shape as one time step of the output; otherwise, the 
-    initial state should have the same number of dimension as output. This 
-    can easily be understand through an example. For computing ``y[t]`` let 
-    assume that we need ``y[t-1]``, ``y[t-2]`` and ``y(t-4)``. Through an abuse of notation, 
-    when ``t = 0``, we would need values for ``y[-1]``, ``y[-2]`` and 
-    ``y[-4]``. These values are provided by the initial state of ``y``, which 
-    should have same number  of dimension as ``y``, where the first dimension should 
-    be large enough to cover all past values, which in this case is 4.
-    If ``init_y`` is the variable containing the initial state of ``y``, then 
-    ``init_y[0]`` corresponds to ``y[-4]``, ``init_y[1]`` corresponds to ``y[-3]``, 
-    ``init_y[2]`` corresponds to ``y[-2]``, ``init_y[3]`` corresponds to ``y[-1]``. 
-    By default, scan is set to use the last time step for each output. 
+               in the same order as in ``non_sequences``
+               If you are using shared variables over which you do not want to
+               iterate, you do not need to provide them as arguments to 
+               ``fn``, though you can if you wish so. The function should 
+               return the outputs after each step plus the updates for any of
+               the shared variables. You can either return only outputs or 
+               only updates. If you have both outputs and updates the 
+               function should return them as a tuple : (outputs, updates) 
+               or (updates, outputs). 
 
+               Outputs can be just a theano expression if you have only one 
+               outputs or a list of theano expressions. Updates can be given 
+               either as a list of as a dictionary. If you have a list of 
+               outputs, the order of these should match that of their 
+               ``initial_states``. 
+    :param sequences: list of Theano variables over which scan needs to 
+                      iterate.
+    :param initial_states: list of Theano variables containing the initial 
+                           state used for the output. Note that if the 
+                           function applied recursively uses only the 
+                           previous value of the output or none, this 
+                           initial state should have same shape 
+                           as one time step of the output; otherwise, the 
+                           initial state should have the same number of 
+                           dimension as output. This can easily be understand
+                           through an example. For computing ``y[t]`` let 
+                           assume that we need ``y[t-1]``, ``y[t-2]`` and 
+                           ``y(t-4)``. Through an abuse of notation, 
+                           when ``t = 0``, we would need values for 
+                           ``y[-1]``, ``y[-2]`` and ``y[-4]``. These values 
+                           are provided by the initial state of ``y``, which 
+                           should have same number  of dimension as ``y``, 
+                           where the first dimension should be large enough 
+                           to cover all past values, which in this case is 4.
+                           If ``init_y`` is the variable containing the 
+                           initial state of ``y``, then ``init_y[0]`` 
+                           corresponds to ``y[-4]``, ``init_y[1]`` 
+                           corresponds to ``y[-3]``, ``init_y[2]`` 
+                           corresponds to ``y[-2]``, ``init_y[3]`` 
+                           corresponds to ``y[-1]``. By default, scan is set 
+                           to use the last time step for each output. 
     :param non_sequences: Parameters over which scan should not iterate.
-    These parameters are given at each time step to the function applied recursively.
-
+                          These parameters are given at each time step to 
+                          the function applied recursively.
     :param inplace_map: Dictionary describing outputs computed *inplace*.
-    ``inplace_map`` is a dictionary where keys are output indexes, 
-    and values are sequence indexes. Assigning a value ``j`` to a key ``i`` means that 
-    output number ``j`` will be computed inplace (in the same 
-    memory buffer) as the input number ``i``.
-
-    :param sequences_taps: Dictionary describing what slices of the input sequences scan should use.
-    At each step of the iteration you can use different slices of your input sequences(called here taps),
-    and this dictionary lets you define exactly that. The 
-    keys of the dictionary are sequence indexes, the values are list of 
-    numbers. Having the following entry ``i : [k_1,k_2,k_3]``, means that 
-    at step ``t``, for sequence ``x``, that has the index ``i`` in the list of 
-    sequences, you would use the values  ``x[t+k_1]``, ``x[t+k_2]`` and  ``x[t+k_3]``. 
-    ``k_1``, ``k_2``, ``k_3`` values can be positive or negative and the sequence for 
-    which you request this taps should be large enough to accomodate them. If in the 
-    cronological order, ``k`` is the first past value of sequence ``x``, 
-    then index 0 of ``x`` will correspond to step ``k`` (if ``k`` is -3, then, abusing notation
-    ``x[0]`` will be seen by scan as ``x[-3]``).
-    If you do not want to use any taps for a given sequence you need to set the corresponding entry
-    in the dictionary to the empy list. By default, for each sequence that is not represented in the
-    dictionary scan will assume that the at every step it needs to provide the current value of that
-    sequence.
-    
-    :param outputs_taps: Dictionary describing what slices of the input sequences scan should use.
-    The ``outputs_taps`` are defined in an analogouws way to ``sequences_taps``,
-    just that the taps are for the outputs generated by scan. As such they can 
-    only be negative, i.e. refer to past value of outputs. 
-    By default scan will expect to use for any outpu the last time step, if nothing 
-    else is specified.
-
-    :param n_steps: Number of steps to iterate.
-    Sometimes you want to either enforce a fixed number of steps, or 
-    you might not even have any sequences you want to iterate over, but rather
-    just to repeat some computation for a fixed number of steps. ``n_steps``
-    gives you this possibility. It can be a theano scalar or a number. 
-
+                        ``inplace_map`` is a dictionary where keys are 
+                        output indexes, and values are sequence indexes. 
+                        Assigning a value ``j`` to a key ``i`` means that 
+                        output number ``j`` will be computed inplace (in the
+                        same memory buffer) as the input number ``i``.
+    :param sequences_taps: Dictionary describing what slices of the input 
+                           sequences scan should use. At each step of the 
+                           iteration you can use different slices of your 
+                           input sequences(called here taps), and this 
+                           dictionary lets you define exactly that. The 
+                           keys of the dictionary are sequence indexes, 
+                           the values are list of numbers. Having the 
+                           following entry ``i : [k_1,k_2,k_3]``, means that 
+                           at step ``t``, for sequence ``x``, that has the 
+                           index ``i`` in the list of sequences, you would 
+                           use the values  ``x[t+k_1]``, ``x[t+k_2]`` and  
+                           ``x[t+k_3]``. ``k_1``, ``k_2``, ``k_3`` values 
+                           can be positive or negative and the sequence for 
+                           you request this taps should be large enough to 
+                           accomodate them. If in the cronological order, 
+                           ``k`` is the first past value of sequence ``x``, 
+                           then index 0 of ``x`` will correspond to step ``k``
+                           (if ``k`` is -3, then, abusing notation ``x[0]`` 
+                           will be seen by scan as ``x[-3]``). If you do not 
+                           want to use any taps for a given sequence you need
+                           to set the corresponding entry in the dictionary 
+                           to the empy list. By default, for each sequence 
+                           that is not represented in the dictionary scan 
+                           will assume that the at every step it needs to 
+                           provide the current value of that sequence.
+    :param outputs_taps: Dictionary describing what slices of the input 
+                         sequences scan should use. The ``outputs_taps`` are 
+                         defined in an analogouws way to ``sequences_taps``,
+                         just that the taps are for the outputs generated by 
+                         scan. As such they can only be negative, i.e. refer 
+                         to past value of outputs. By default scan will 
+                         expect to use for any outpu the last time step, if 
+                         nothing else is specified.
+    :param n_steps: Number of steps to iterate. Sometimes you want to either 
+                    enforce a fixed number of steps, or you might not even 
+                    have any sequences you want to iterate over, but rather
+                    just to repeat some computation for a fixed number of 
+                    steps. ``n_steps`` gives you this possibility. It can be 
+                    a theano scalar or a number. 
     :param truncate_gradient: Number of steps to use in truncated BPTT.
-    If you compute gradients through a scan op,
-    they are computed using backpropagation through time. By providing a 
-    different value then -1, you choose to use truncated BPTT instead of 
-    classical BPTT, where you only do ``truncate_gradient`` number of steps.
-
-    :param go_backwards: Flag indicating if you should go bacwards through the sequences
-
+                              If you compute gradients through a scan op,
+                              they are computed using backpropagation through
+                              time. By providing a different value then -1, 
+                              you choose to use truncated BPTT instead of 
+                              classical BPTT, where you only do 
+                              ``truncate_gradient`` number of steps.
+    :param go_backwards: Flag indicating if you should go bacwards through 
+                         the sequences
     :rtype: tuple 
-    :return: tuple of the form (outputs, updates)
-    ``outputs`` is either a Theano variable or a list of Theano variables 
-    representing the outputs of scan. ``updates``
-    is a dictionary specifying the updates rules for all shared
-    variables used in the scan operation; this dictionary should be pass
-    to ``theano.function``
+    :return: tuple of the form (outputs, updates); ``outputs`` is either a 
+             Theano variable or a list of Theano variables representing the 
+             outputs of scan. ``updates`` is a dictionary specifying the 
+             updates rules for all shared variables used in the scan 
+             operation; this dictionary should be pass to ``theano.function``
     '''
 
     # check if inputs are just single variables instead of lists     
@@ -348,30 +379,30 @@ class Scan(theano.Op):
                  go_backwards = False, stored_steps_output = {},
                  mode = 'FAST_RUN', inplace=False):
         '''
-        :param (inputs,outputs): inputs and outputs Theano variables that 
-        describe the function that is applied recursively 
-
-        :param n_seqs: number of sequences over which scan will have to iterate
-
+        :param (inputs,outputs, givens): inputs and outputs Theano variables 
+                                         that describe the function that is 
+                                         applied recursively; givens
+                                         list is used to replace shared
+                                         variables with not shared ones
+        :param n_seqs: number of sequences over which scan will have to 
+                       iterate
         :param n_outs: number of outputs of the scan op
-
         :param inplace_map: see scan function above
-
         :param seqs_taps: see scan function above
-
         :param outs_taps: see scan function above
-
-        :param truncate_gradient: number of steps after which scan should truncate
-        -1 implies no truncation 
-
+        :param truncate_gradient: number of steps after which scan should 
+                                  truncate -1 implies no truncation 
         :param go_bacwards: see scan funcion above
-
-        :param stored_steps_output: a list of booleans of same size as the number of 
-        outputs; the value at position ``i`` in the list corresponds to the 
-        ``i-th`` output, and it tells how many steps (from the end towards 
-        the begining) of the outputs you really need and should return; 
-        given this information, scan can know (if possible) to allocate only
-        the amount of memory needed to compute that many entries
+        :param stored_steps_output: a list of booleans of same size as the 
+                                    number of outputs; the value at position 
+                                    ``i`` in the list corresponds to the 
+                                    ``i-th`` output, and it tells how many 
+                                    steps (from the end towards the begining)
+                                    of the outputs you really need and should
+                                    return; given this information, scan can 
+                                    know (if possible) to allocate only
+                                    the amount of memory needed to compute 
+                                    that many entries
         '''
         
 
