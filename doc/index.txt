@@ -11,7 +11,7 @@ arrays efficiently. Theano features:
 * **symbolic differentiation** -- Let Theano do your derivatives.
 * **speed and stability optimizations** -- Get the right answer for ``log(1+x)`` even when ``x`` is really tiny.
 * **dynamic C code generation** -- Evaluate expressions faster.
-* **extensive testing and self-verification** -- unit tests and a self-verification mode detect and diagnose many kinds of mistake.
+* **extensive unit-testing and self-verification** -- Detect and diagnose many types of mistake.
 
 Theano has been powering large-scale computationally intensive scientific investigations
 since 2007.  But it is also approachable enough to be used in the classroom
