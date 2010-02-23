@@ -409,6 +409,7 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
         g.add_node(pd.Node(astr,shape='box'))
         for id,var in enumerate(node.inputs):
             varstr=var_name(var)
+            label=''
             if var.owner is None:
                 g.add_node(pd.Node(varstr,color='green'))
                 g.add_edge(pd.Edge(varstr,astr, label=label))
