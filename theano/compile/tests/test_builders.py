@@ -49,7 +49,7 @@ class T_OpFromGraph(unittest.TestCase):
         e = x + y * z
         op = OpFromGraph([x, y, z], [e], mode='FAST_RUN', grad_depth = 2)
         f = op(x, y, z)
-        f = f - T.grad(f, y)
+        f = f - T.grad(T.sum(f), y)
         fn = function([x, y, z], f)
         xv, yv, zv = N.ones((2, 2)), N.ones((2, 2))*3, N.ones((2, 2))*5
         assert numpy.all(11.0 == fn(xv, yv, zv))
