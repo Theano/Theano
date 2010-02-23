@@ -97,9 +97,6 @@ def compareArrays(a,b):
 
     return numpy.all( abs(a-b) < 1e-5)
 
-
-
- 
 class T_Scan(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -371,7 +368,7 @@ class T_Scan(unittest.TestCase):
       Y, updts = theano.scan(f_pow2, [],[], [],n_steps = n_steps)
       f1 = theano.function([n_steps], Y, updates = updts)
       f1(3)
-      assert(compareArrays(s.value, 8))
+      assert compareArrays(s.value, 8)
  
     '''
     # test gradient simple network 
