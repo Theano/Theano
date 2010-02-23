@@ -42,6 +42,13 @@ class T_Softmax(unittest.TestCase):
             return softmax(a)[:,3]
         utt.verify_grad(f, [numpy.random.rand(3,4)])
 
+    def test_vector(self):
+        x = T.vector()
+        f = theano.function([x], softmax(x))
+
+        xv = numpy.random.randn(6)
+        assert numpy.allclose(f(xv), numpy.exp(xv) / numpy.exp(xv).sum())
+
 
 class T_SoftmaxWithBias(unittest.TestCase):
     def setUp(self):

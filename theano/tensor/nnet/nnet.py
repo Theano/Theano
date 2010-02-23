@@ -317,12 +317,12 @@ class Softmax(gof.Op):
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
-        if x.type.ndim != 2 \
+        if x.type.ndim not in (1, 2) \
                 or x.type.dtype not in ['float32', 'float64']:
-            raise ValueError('x must be 2-d tensor of floats')
-
-        sm = x.type.make_variable()
-        return gof.Apply(self, [x], [sm])
+            raise ValueError('x must be 1-d or 2-d tensor of floats')
+        if x.ndim == 1:
+            x = tensor.shape_padleft(x, n_ones=1)
+        return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
         x, = input_storage
