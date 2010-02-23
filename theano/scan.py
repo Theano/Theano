@@ -30,7 +30,11 @@ import theano
 from theano.tensor import opt
 from theano import gof
 from theano.compile import optdb
+import theano.tensor.shared_randomstreams as shared_random
+
 import numpy
+
+
 
 # Logging function for sending warning or info
 import logging
@@ -166,7 +170,6 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
     n_seqs     = len(seqs)
     n_outs   = len(init_outs)
 
-
     # update sequences_taps[idx] to contain 0 if it is not defined
     for i in xrange(n_seqs):
         if not sequences_taps.has_key(i):
@@ -184,17 +187,6 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
             outputs_taps.__delitem__(i)
         elif not(type(outputs_taps[i]) in (list,tuple)):
             outputs_taps[i] = [outputs_taps[i]]
-    '''
-    # update stored_steps_output list
-    for i in xrange(n_outs):
-        if not stored_steps_output.has_key(i):
-            stored_steps_output[i] = True
-        elif not stored_steps_output[i]:
-            if outputs_taps[i] != [-1]:
-                stored_steps_output[i] = True
-                warning('You need to keep past value of outputs if you use'\
-                        'past taps of output different from -1')
-    '''
     stored_steps_output = [ 0 for i in xrange(n_outs)]
                       
 
@@ -202,47 +194,138 @@ def scan(fn, sequences, initial_states, non_sequences, inplace_map={}, \
 
     # create theano inputs for the recursive function  
     args = []
+    _ins = 0 
+    _outs = 0
     for (i,seq) in enumerate(seqs):
       if sequences_taps.has_key(i):
         for k in xrange(len(sequences_taps[i])):
             args += [seq[0].type() ]
+            _ins += 1
     for (i,init_out) in enumerate(init_outs):
       if outputs_taps.has_key(i):
         for k in xrange(len(outputs_taps[i])):
             if outputs_taps[i] == [-1]:
                 args += [init_out.type() ]
+                _outs += 1
             else:
                 args += [init_out[0].type() ]
-    for non_seq in non_seqs : 
-        if not isinstance(non_seq, theano.compile.sharedvalue.SharedVariable):
-            args += [non_seq]
+                _outs += 1
+    noshared = []
+    for non_seq in non_seqs:
+        if not isinstance(non_seq, theano.compile.SharedVariable):
+            noshared += [non_seq]
+
+
+    dummy_args = args + noshared
+    args += non_seqs
+
+    outputs_updates  = fn(*args)
+    otuputs = []
+    updates = {}
+    # we try now to separate the outputs from the updates
+    if not type(outputs_updates) in (list,tuple):
+        if type(outputs_updates) == dict :
+            # we have just an update dictionary
+            updates = outputs_updates
         else:
-            tmp_var = theano.tensor.Tensor(dtype = non_seq.dtype, 
-                     broadcastable = non_seq.broadcastable)()
-            args += [ tmp_var ]
+            outputs = [outputs_updates]
+    else:
+        elem0 = outputs_updates[0]
+        elem1 = outputs_updates[1]
+        if ( type(elem0) == dict ) or \
+           ( type(elem0) in (list,tuple) and type(elem0[0]) in (list,tuple)):
+                # elem0 is the updates dictionary / list
+                updates = elem0
+                outputs = elem1
+                if not type(outputs) in (list,tuple):
+                    outputs = [outputs]
+        elif ( type(elem1) == dict) or \
+             ( type(elem1) in (list,tuple) and type(elem1[0]) in (list,tuple)):
+                # elem1 is the updates dictionary / list
+                updates = elem1
+                outputs = elem0
+                if not type(outputs) in (list,tuple):
+                    outputs = [outputs]
+        else :
+            if type(outputs_updates) in (list,tuple) and \
+               ( type(outputs_updates[0]) in (list,tuple)):
+                 outputs = []
+                 updates = outputs_updates
+            else:
+                outputs = outputs_updates
+                updates = {}
 
-    next_outs  = fn(*args)
+
+    # Wo compile a dummy function just to see what shared variable
+    # we have and what are their update rules
+
+    dummy_f = theano.function(dummy_args, outputs, updates = updates, mode = \
+                 theano.compile.mode.Mode(linker = 'py', optimizer = None) )
     
-    if not (type(next_outs) in (list,tuple)):
-        next_outs = [next_outs]
 
+
+    ls_outputs      = [ sout.variable for sout in dummy_f.maker.outputs]
+    update_map      = {}
+    n_actual_outs   = n_outs
+    shared_outs     = []
+    shared_non_seqs = []
+    givens          = {}
+
+    ls_inputs=[inp.variable for inp in \
+                    dummy_f.maker.expanded_inputs[:_ins+_outs]]
+    fromIdx = _ins + _outs
+    # add shared variable that act as outputs
+    for inp in dummy_f.maker.expanded_inputs[fromIdx:] :
+        if isinstance(inp.variable, theano.compile.SharedVariable) and inp.update:
+            ls_inputs.append(inp.variable.type())
+            ls_outputs += [inp.update]
+            update_map[ inp.variable ] = n_outs 
+            outputs_taps[ n_outs ] = [-1]
+            n_outs += 1
+            stored_steps_output += [1] 
+            shared_outs += [inp.variable]
+            givens[inp.variable] = ls_inputs[-1]
+
+    # add the rest:
+    for inp in dummy_f.maker.expanded_inputs[fromIdx:] :
+        if isinstance(inp.variable, theano.compile.SharedVariable) and not inp.update:
+           shared_non_seqs += [inp.variable]
+           ls_inputs += [inp.variable.type() ]
+           givens[inp.variable] = ls_inputs[-1]
+        elif not isinstance(inp.variable, theano.compile.SharedVariable):
+            ls_inputs.append(inp.variable)
+    
     # Create the Scan op object
-    local_op = Scan( (args,next_outs ), n_seqs,n_outs,inplace_map,
+    local_op = Scan( (ls_inputs,ls_outputs, givens ), n_seqs, n_outs, inplace_map,
             sequences_taps, outputs_taps, truncate_gradient,
             go_backwards, stored_steps_output, mode)
 
     # Call the object on the input sequences, initial values for outs, 
     # and non sequences
-    return local_op( *(    [theano.tensor.as_tensor(n_steps)]  \
+    values =  local_op( *(    [theano.tensor.as_tensor(n_steps)]  \
                          + seqs \
                          + init_outs \
-                         + non_seqs))
+                         + shared_outs \
+                         + noshared
+                         + shared_non_seqs))
+
+    for k in update_map.keys():
+        update_map[k] = values [ update_map[k] ] 
+
+    if n_actual_outs != n_outs : 
+        if n_actual_outs == 1:
+            values = values[0]
+        else:
+            values = values[:n_actual_outs]
+
+
+    return (values, update_map)
 
 
 
 
 class Scan(theano.Op):
-    def __init__(self,(inputs, outputs),n_seqs, n_outs,
+    def __init__(self,(inputs, outputs, givens),n_seqs,  n_outs,
                  inplace_map={}, seqs_taps={}, outs_taps={},
                  truncate_gradient = -1,
                  go_backwards = False, stored_steps_output = {},
@@ -319,35 +402,14 @@ class Scan(theano.Op):
         self.stored_steps_output   = stored_steps_output
         self.inplace        = inplace
         self.inputs         = inputs
+        self.givens         = givens
         self.outputs        = outputs
         self.truncate_gradient = truncate_gradient
         self.go_backwards   = go_backwards
 
-        self.fn = theano.function(inputs,outputs, mode = mode)
-        g_y = [outputs[0].type()]
-
-        def compute_gradient(y, g_y):
-            gmap = theano.gradient.grad_sources_inputs( \
-                        [(y,g_y)], theano.gof.graph.inputs([y]), False)
-            def zero(p):
-              return theano.tensor.TensorConstant(theano.tensor.TensorType(\
-                      dtype=p.type.dtype, broadcastable=[]),
-                      theano._asarray(0,dtype = p.type.dtype))
-
-            return [gmap.get(p, zero(p)) for p in inputs]
+        self.fn = theano.function(inputs,outputs, mode = mode, givens = givens)
 
 
-        g_args = compute_gradient( outputs[0], g_y[-1]) 
-        # for all outputs compute gradients and then sum them up
-        for y in outputs[1:]:
-            g_y += [y.type()]
-            g_args_y = compute_gradient( y,g_y[-1])
-            for i in xrange(len(g_args)):
-                g_args[i] += g_args_y[i]
-
-
-        self.g_ins = g_y+inputs   
-        self.g_outs = g_args
 
 
     def make_node(self,*inputs):
@@ -356,27 +418,77 @@ class Scan(theano.Op):
          err = 'There should be at least '+str(self.n_args)+ 'arguments'
          raise ValueError(err)
 
+      # return a new variable of same type and same shape 
+      def new_same_dim(var): 
+        try:
+            nw_var = theano.tensor.as_tensor_variable(var)
+            return nw_var.type()
+        except TypeError:
+          if isinstance(var, shared_random.RandomStateSharedVariable):
+            return var.type()
+          else:
+            raise TypeError("Could not convert %s to suitable type"%var, 
+                                                                 type(var))
+
+      # return a new variable of same type but with an extra dimension
+      def new_add_one_dim(var):
+        nw_var = theano.tensor.as_tensor_variable(var)
+        return theano.tensor.Tensor( dtype = nw_var.dtype, \
+                       broadcastable = (False,)+nw_var.broadcastable)()
+
+      def new_replace_one_dim(var):
+        nw_var = theano.tensor.as_tensor_variable(var)
+        return theano.tensor.Tensor( dtype = nw_var.dtype, \
+                       broadcastable = (False,)+nw_var.broadcastable[1:])()
+
+      def new_remove_one_dim(var):
+        nw_var = theano.tensor.as_tensor_variable(var)
+        return theano.tensor.Tensor( dtype = nw_var.dtype, \
+                       broadcastable = nw_var.broadcastable[1:])()
+
+
       # Create list of output datatypes
       out_types = []
       for i in xrange(self.n_seqs+1, self.n_seqs+self.n_outs+1):
+         out_idx = i - 1 - self.n_seqs
          if not (inputs[i] == []):
-            if self.outs_taps.has_key(i-1-self.n_seqs):
-                if (self.outs_taps[i-self.n_seqs-1] == [-1]) and \
-                   (self.stored_steps_output[i-1-self.n_seqs] != 1):
-                    out_types += [ theano.tensor.Tensor(dtype=inputs[i].dtype,
-                       broadcastable = (False,)+inputs[i].broadcastable)()]
-                elif not self.stored_steps_output[i-1-self.n_seqs] ==1 : 
-                    out_types += [inputs[i].type()]
+            ## CASES :
+            #    outs_taps[i] == [-1] or == [] => inputs[i] no extra dim
+            #    outs_taps anything else  => inputs[i] remove one dim
+
+            #
+            #     stored_steps_outputs = 1 ==> outs no extra dim
+            #     anything else --> needs extra dim
+            sw_inputs  = self.outs_taps.get(out_idx, [-1]) == [-1]
+            sw_outputs = self.stored_steps_output[out_idx] == 1
+
+            if sw_inputs:
+                if sw_outputs:
+                    # You need to output something identical to the 
+                    # input.. which can even be a non tensor
+                    out_types += [ new_same_dim(inputs[i]) ] 
                 else:
-                    out_types += [theano.tensor.Tensor(dtype = inputs[i].dtype, \
-                        broadcastable = (False,)+inputs[i].broadcastable[1:])()]
+                    # You need to output a list of things identical to 
+                    # the input .. (here we force it to be a tensor )
+                    out_types += [ new_add_one_dim(inputs[i]) ]
             else:
-              if self.stored_steps_output[i-1-self.n_seqs] != 1 : 
-                  out_types += [ theano.tensor.Tensor(dtype = inputs[i].dtype,
-                      broadcastable = (False,)+inputs[i].broadcastable)()]
-              else:
-                  out_types += [ theano.tensor.Tensor(dtype = inputs[i].dtype,
-                      broadcastable = inputs[i].broadcastable)()]
+                if sw_outputs:
+                    # your input has one dimension more, so you need 
+                    # to strip it by its first dimension
+                    out_types += [new_remove_one_dim(inputs[i])]
+                else:
+                    # input and output have the same # of dimensions, 
+                    # just that you need to "refresh" the first one 
+                    # this is important only in the corner case that 
+                    # the first dimension of the input is 1, in which 
+                    # case the output broadcastable pattern does not 
+                    # match the input broadcastable pattern 
+                    #
+                    # Note that this should in practice never happen !!
+                    # I add it here just for safety 
+                    out_types += [new_replace_one_dim(inputs[i])]
+
+    
          else:
             raise ValueError(('You need to provide initial state for outputs'
                       ' such that scan can infer what dataype they are'))
@@ -388,6 +500,7 @@ class Scan(theano.Op):
       if rval:
         rval = (self.inputs == other.inputs) and \
                (self.outputs == other.outputs) and \
+               (self.givens  == other.givens) and \
                (self.stored_steps_output == other.stored_steps_output) and \
                (self.seqs_taps == other.seqs_taps) and \
                (self.outs_taps == other.outs_taps) and \
@@ -411,8 +524,7 @@ class Scan(theano.Op):
              hash(self.n_args) ^ \
              hash_listsDictsTuples(self.outputs) ^ \
              hash_listsDictsTuples(self.inputs) ^ \
-             hash_listsDictsTuples(self.g_ins) ^ \
-             hash_listsDictsTuples(self.g_outs) ^ \
+             hash_listsDictsTuples(self.givens) ^ \
              hash_listsDictsTuples(self.seqs_taps) ^\
              hash_listsDictsTuples(self.outs_taps) ^\
              hash_listsDictsTuples(self.stored_steps_output)
@@ -458,14 +570,12 @@ class Scan(theano.Op):
         for i in xrange(self.n_seqs+1, \
                         self.n_seqs+self.n_outs+1):
           if self.outs_taps.has_key(i-self.n_seqs-1):
-            if self.outs_taps[i-self.n_seqs-1] == [-1]:
-                args[i] = numpy.array([args[i]])
-
-            req_size = abs(min(self.outs_taps[i-self.n_seqs-1]))-1
-            if args[i].shape[0] < req_size:
-              warning(('Initial state for output %d has fewer values then '
-                 'required by the maximal past value %d. Scan will use 0s'
-                 ' for missing values')%(i-self.n_iterable-1,req_size))
+            if self.outs_taps[i-self.n_seqs-1] != [-1]:
+              req_size = abs(min(self.outs_taps[i-self.n_seqs-1]))-1
+              if args[i].shape[0] < req_size:
+                warning(('Initial state for output %d has fewer values then '
+                    'required by the maximal past value %d. Scan will use 0s'
+                    ' for missing values')%(i-self.n_iterable-1,req_size))
             
         self.n_steps = n_steps
         y = self.scan(self.fn, args[1:],self.n_seqs, self.n_outs, 
@@ -487,19 +597,18 @@ class Scan(theano.Op):
         if inplace_map.has_key(i) and (inplace_map[i] >= 0):
           y += [args[inplace_map[i]]]
         else:
-          arg_shape = args[i+n_seqs].shape[1:]
-          if not self.outs_taps.has_key(i):
-            arg_shape = args[i+n_seqs].shape
-          if self.stored_steps_output[i] < 1 :
-              y_shape = (n_steps,)+arg_shape
-          elif self.stored_steps_output[i] == 1:
-              y_shape = arg_shape
+          if self.stored_steps_output[i] == 1 :
+            y+= [ None ]
           else:
-              y_shape = (self.stored_steps_output[i],)+arg_shape
-
-
-          y += [numpy.empty(y_shape,
-                            dtype=args[i+n_seqs].dtype)]
+            arg_shape = args[i+n_seqs].shape[1:]
+            if (not self.outs_taps.has_key(i)) or \
+                    self.outs_taps[i] == [-1]:
+                arg_shape = args[i+n_seqs].shape
+            if self.stored_steps_output[i] < 1 :
+                y_shape = (n_steps,)+arg_shape
+            else:
+                y_shape = (self.stored_steps_output[i],)+arg_shape
+            y += [numpy.empty(y_shape, dtype=args[i+n_seqs].dtype)]
       seqs_mins = {}
       for j in xrange(n_seqs):
         if seqs_taps.has_key(j):
@@ -510,7 +619,10 @@ class Scan(theano.Op):
       for j in xrange(n_outs):
         if outs_taps.has_key(j):
           outs_mins.update({j: min(outs_taps[j])})
-          initOuts_size.update({j: args[n_seqs+j].shape[0]})
+          if self.outs_taps[j] != [-1]:
+              initOuts_size.update({j: args[n_seqs+j].shape[0]})
+          else:
+              initOuts_size.update({j: 0})
 
 
       for i in xrange(n_steps):
@@ -538,14 +650,17 @@ class Scan(theano.Op):
             sz = initOuts_size[j]
             for tap_value in ls_taps:
               if i + tap_value < 0:
-                k = i + sz + tap_value
-                if k < 0:
-                  # past value not provided.. issue a warning and use 0s
-                  fn_args += [numpy.zeros(args[j+n_seqs][0].shape)]
-                  warning(('Past value %d for output %d not given in inital '
-                           'out') % (j,tap_value))
+                if sz < 1:
+                    fn_args += [args[j+n_seqs] ]
                 else:
-                  fn_args += [args[j+n_seqs][k]]
+                  k = i + sz + tap_value
+                  if k < 0:
+                     # past value not provided.. issue a warning and use 0s
+                      fn_args += [numpy.zeros(args[j+n_seqs][0].shape)]
+                      warning(('Past value %d for output %d not given in '
+                               'inital out') % (j,tap_value))
+                  else:
+                    fn_args += [args[j+n_seqs][k]]
               else:
                 if self.stored_steps_output[j] < 1:
                     fn_args += [y[j][i + tap_value]]
@@ -587,6 +702,33 @@ class Scan(theano.Op):
             if not( type(y) in (list,tuple)):
                 y = [y]
  
+        g_y = [outputs[0].type()]
+
+        def compute_gradient(y, g_y):
+            gmap = theano.gradient.grad_sources_inputs( \
+                        [(y,g_y)], theano.gof.graph.inputs([y]), False)
+            def zero(p):
+              return theano.tensor.TensorConstant(theano.tensor.TensorType(\
+                      dtype=p.type.dtype, broadcastable=[]),
+                      theano._asarray(0,dtype = p.type.dtype))
+
+            return [gmap.get(p, zero(p)) for p in inputs]
+        
+
+        i = 0
+        while 
+        g_args = compute_gradient( outputs[0], g_y[-1]) 
+        # for all outputs compute gradients and then sum them up
+        for y in outputs[1:]:
+            g_y += [y.type()]
+            g_args_y = compute_gradient( y,g_y[-1])
+            for i in xrange(len(g_args)):
+                g_args[i] += g_args_y[i]
+
+        
+        self.g_ins = g_y+inputs   
+        self.g_outs = g_args
+
 
             # backwards pass
             for i in xrange(len(y)):
@@ -617,7 +759,7 @@ def scan_make_inplace(node):
     op = node.op
     if isinstance(op, Scan) and (not op.inplace) \
                             and (op.inplace_map.keys() != []):
-        return Scan((op.inputs, op.outputs ) , op.n_seqs,  
+        return Scan((op.inputs, op.outputs, op.givens ) , op.n_seqs,  
                     op.n_outs, op.inplace_map, op.seqs_taps, op.outs_taps, 
                     op.truncate_gradient, op.go_backwards, op.stored_steps_output,
                     inplace=True 
@@ -625,7 +767,7 @@ def scan_make_inplace(node):
     return False
         
         
-optdb.register('scan_make_inplace', opt.in2out(scan_make_inplace,
+optdb.register('scanOp_make_inplace', opt.in2out(scan_make_inplace,
                ignore_newtrees=True), 75, 'fast_run', 'inplace')
 
 
