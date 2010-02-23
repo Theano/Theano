@@ -35,7 +35,13 @@ class scratchpad:
         self.__dict__.update(other.__dict__)
         return self
     def __str__(self):
-        return "scratch" + str(self.__dict__)
+        return "scratchpad" + str(self.__dict__)
+    def __repr__(self):
+        return "scratchpad" + str(self.__dict__)
+    def info(self):
+        print "<theano.gof.utils.scratchpad instance at %i>"%id(self)
+        for k,v in self.__dict__.items():
+            print "  %s: %s" % (k,v)
 
 class D:
     def __init__(self, **d):
