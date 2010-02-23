@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 
 import unittest
 import theano
@@ -372,6 +373,20 @@ class T_Scan(unittest.TestCase):
         - test_gradient (taps past/future)
         - optimization !? 
     '''
+
+    def test_map_functionality(self):
+        raise SkipTest('Map functionality not implemented yet')
+
+        def f_rnn(u_t):
+            return u_t + 3
+    
+        u    = theano.tensor.dvector()
+
+        Y, updts = theano.scan(f_rnn, sequences=u, outputs_taps={0:[]})
+    
+        f2    = theano.function([u], Y, updates = updts)
+        v_u   = numpy.array([1.,2.,3.,4.])
+        assert compareArrays(f2(v_u), v_u+3)
 
 
 if __name__ == '__main__':
