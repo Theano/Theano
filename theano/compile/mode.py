@@ -240,9 +240,22 @@ def get_mode(string):
         raise Exception("No predefixed mode exist for string: %s"%string)
     return predefined_modes[string]
 
+instanciated_default_mode=None
 def get_default_mode():
+    global instanciated_default_mode
     if config.mode in ['Mode','ProfileMode','DebugMode']:
-        return Mode(linker=config.linker, optimizer=config.optimizer)
+        if instanciated_default_mode:
+            return instanciated_default_mode
+        #need to import later to break circular dependency.
+        from profilemode import ProfileMode,prof_mode_instance_to_print
+        from debugmode import DebugMode
+        import pdb;pdb.set_trace()
+            
+        instanciated_default_mode = eval(config.mode+'(linker=config.linker, optimizer=config.optimizer)')
+        #must tell python to print the summary at the end.
+        if config.mode == 'ProfileMode':
+            prof_mode_instance_to_print.append(instanciated_default_mode)
+        return instanciated_default_mode
     return get_mode(config.mode)
 
 default_mode = config.mode
