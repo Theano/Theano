@@ -233,7 +233,8 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'SANITY_CHECK': SANITY_CHECK}
 
 def get_mode(string):
-    if string is None: string = config.mode
+    if string is None:
+        return get_default_mode()
     if not isinstance(string, str): return string #it is hopefully already a mode...
     if not predefined_modes.has_key(string):
         raise Exception("No predefixed mode exist for string: %s"%string)

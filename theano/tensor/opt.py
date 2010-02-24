@@ -465,6 +465,33 @@ class ShapeOptimizer(Optimizer):
 # -1 should make it run right before the first merge
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(), -1, 'fast_run', 'fast_compile')
 
+#This is a bug fix as ShapeFeature should do this, but it don't in the deep teaching tutorial.
+@gof.local_optimizer([None, None])
+def local_shape_i_lift(node):
+    """
+    "Lifts" DimShuffle through Elemwise operations and merges
+    consecutive DimShuffles. Basically, applies the following
+    transformations on the whole graph:
+
+    DimShuffle(Elemwise(x, y)) => Elemwise(DimShuffle(x), DimShuffle(y))
+    DimShuffle(DimShuffle(x)) => DimShuffle(x)
+
+    After this transform, clusters of Elemwise operations are
+    void of DimShuffle operations.
+    """
+    op = node.op
+    if not isinstance(op, Shape_i):
+        return False
+
+    input = node.inputs[0]
+    inode = input.owner
+    if inode and isinstance(inode.op, Elemwise) and inode.op.scalar_op.nin==1:
+        return node.env.shape_feature.shape_of[input]
+
+
+register_canonicalize(local_shape_i_lift)
+register_specialize(local_shape_i_lift)
+
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([T.fill])
