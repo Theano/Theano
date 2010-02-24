@@ -1686,6 +1686,14 @@ class test_grad(unittest.TestCase):
         self.failUnless(g2.owner.op == fill)
         self.failUnless(g2.owner.inputs[1].data == 0)
 
+    def test_zero_gradient_shape(self):
+        """Ensure that a zero gradient has the proper shape."""
+        x = dmatrix()
+        f = theano.function([x], grad(dscalar(), x))
+        a = numpy.ones((3, 7))
+        self.failUnless((f(a) == 0).all())  # Zero gradient.
+        self.failUnless(a.shape == f(a).shape)  # With proper shape.
+
 class T_op_cache(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
