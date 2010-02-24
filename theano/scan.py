@@ -60,12 +60,18 @@ def hash_listsDictsTuples(x):
         pass
     return hash_value
 
-def _map(fn, sequences, non_sequences=[]):
-    #TODO
-    #UGLY HACK: instead of figuring out how many outputs there are, we 
-    # will assume there are less than 100 of them
-    return scan(fn, sequences=sequences, 
-            outputs_taps=dict([(i,[]) for i in xrange(100)]))
+
+
+###################################
+## Implement specific function calls : map, reduce, generate
+
+def map(fn, sequences, non_sequences = [], n_steps =0, truncate_gradient = -1, \
+        go_backwards = False, mode = 'FAST_RUN'):
+    return scan(fn, sequences= sequences, non_sequences = non_sequences, 
+                truncate_gradient = truncate_gradient, go_backwards = go_backwards, 
+                mode = mode)
+
+
 
 # CONSIDER ALTERNATE CALLING CONVENTIONS:
 # simple:
@@ -91,11 +97,13 @@ def _map(fn, sequences, non_sequences=[]):
 #   If the larger (in absolute values) the sequence_taps, the shorter the output
 #   right?  If the sequence_taps = {0: [-10, 10]}, and I pass an input with 22
 #   rows, then the scan will output something of length <=2 right?
-#
+#   
+# ANSWER:
+#   Yes, actually it will be exactly 2 ( if there are no other constraints)
 
-def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, \
-         sequences_taps={}, outputs_taps = {}, n_steps = 0, \
-         truncate_gradient = -1, go_backwards = False, 
+
+def scan(fn, sequences=[], info_outputs=[], non_sequences=[], 
+         n_steps = 0, truncate_gradient = -1, go_backwards = False, 
          mode = None):
     '''Function that constructs and applies a Scan op
 
@@ -108,14 +116,14 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
         should have the following order:
 
         * all time slices of the first sequence (as given in the 
-          ``sequences`` list) ordered cronologically
+          ``sequences`` list) ordered in the same fashion as the time taps provided
         * all time slices of the second sequence (as given in the 
-          ``sequences`` list) ordered cronologically
+          ``sequences`` list) ordered in the same fashion as the time taps provided
         * ...
         * all time slices of the first output (as given in the  
-          ``initial_state`` list) ordered cronologically 
+          ``initial_state`` list) ordered in the same fashion as the time taps provided
         * all time slices of the second otuput (as given in the 
-          ``initial_state`` list) ordered cronologically
+          ``initial_state`` list) ordered in the same fashion as the time taps provided
         * ...
         * all other parameters over which scan doesn't iterate given 
 
@@ -128,21 +136,50 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
         them as a tuple : (outputs, updates) or (updates, outputs). 
 
         Outputs can be just a theano expression if you have only one outputs or
-        a list of theano expressions. Updates can be given either as a list of
+        a list of theano expressions. Updates can be given either as a list of tuples or
         as a dictionary. If you have a list of outputs, the order of these
         should match that of their ``initial_states``. 
 
     :param sequences: 
-        list of Theano variables over which scan needs to iterate.
+        list of Theano variables or dictionaries containing Theano variables over which 
+        scan needs to iterate. The reason you might want to wrap a certain Theano 
+        variable in a dictionary is to provide auxiliary information about how to iterate
+        over that variable. For example this is how you specify that you want to use 
+        several time slices of this sequence at each iteration step. The dictionary 
+        should have the following keys : 
+        
+        * ``input`` -- Theano variable representing the sequence
+        * ``taps`` -- temporal taps to use for this sequence. They are given as a list
+          of ints, where a value ``k`` means that at iteration step ``t`` scan needs to
+          provide also the slice ``t+k`` The order in which you provide these int values
+          here is the same order in which the slices will be provided to ``fn``.
+        
+        If you do not wrap a variable around a dictionary, scan will do it for you, under
+        the assumption that you use only one slice, defined as a tap of offset 0. This 
+        means that at step ``t`` scan will provide the slice at position ``t``.
 
-    :param initial_states: 
-        list of Theano variables containing the initial state used for the
-        output. Note that if the function applied recursively uses only the
-        previous value of the output or none, this initial state should have
+    :param info_outputs: 
+        list of Theano variables or dictionaries containing Theano variables used 
+        to initialize the outputs of scan. As before (for ``sequences``) the reason 
+        you would wrap a Theano variable in a dictionary is to provide additional 
+        information about how scan should deal with that specific output. The dictionary
+        should contain the following keys:
+
+        * ``initial`` -- Theano variable containing the initial state of the output
+        * ``taps`` -- temporal taps to use for this output. The taps are given as a 
+        list of ints (only negative .. since you can not use future values of outputs),
+        with the same meaning as for ``sequences`` (see above). 
+        * ``inplace`` -- theano variable pointing to one of the input sequences; this 
+        flag tells scan that the output should be computed in the memory spaced occupied
+        by that input sequence. Note that scan will only do this if allowed by the 
+        rest of your computational graph.
+
+        If the function applied recursively uses only the
+        previous value of the output, the initial state should have
         same shape as one time step of the output; otherwise, the initial state
-        should have the same number of dimension as output. This can easily be
-        understand through an example. For computing ``y[t]`` let assume that we
-        need ``y[t-1]``, ``y[t-2]`` and ``y(t-4)``. Through an abuse of
+        should have the same number of dimension as output. This is easily 
+        understood through an example. For computing ``y[t]`` let us assume that we
+        need ``y[t-1]``, ``y[t-2]`` and ``y[t-4]``. Through an abuse of
         notation, when ``t = 0``, we would need values for ``y[-1]``, ``y[-2]``
         and ``y[-4]``. These values are provided by the initial state of ``y``,
         which should have same number  of dimension as ``y``, where the first
@@ -150,52 +187,28 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
         case is 4.  If ``init_y`` is the variable containing the initial state
         of ``y``, then ``init_y[0]`` corresponds to ``y[-4]``, ``init_y[1]``
         corresponds to ``y[-3]``, ``init_y[2]`` corresponds to ``y[-2]``,
-        ``init_y[3]`` corresponds to ``y[-1]``. By default, scan is set to use
-        the last time step for each output. 
+        ``init_y[3]`` corresponds to ``y[-1]``. The default behaviour of scan is 
+        the following : 
+
+        * if you do not wrap an output in a dictionary, scan will wrap it for you 
+        assuming that you use only the last step of the output ( i.e. it makes your tap
+        value list equal to [-1]) and that it is not computed inplace
+        * if you wrap an output in a dictionary but you do not provide any taps, but 
+        you provide an initial state it will assume that you are using only a tap value 
+        of -1
+        * if you wrap an output in a dictionary but you do not provide any initial state,
+        it assumes that you are not using any form of taps 
 
     :param non_sequences:
         Parameters over which scan should not iterate.  These parameters are
         given at each time step to the function applied recursively.
 
-    :param inplace_map: 
-        Dictionary describing outputs computed *inplace*.  ``inplace_map`` is a
-        dictionary where keys are output indexes, and values are sequence
-        indexes.  Assigning a value ``j`` to a key ``i`` means that output
-        number ``j`` will be computed inplace (in the same memory buffer) as the
-        input number ``i``.
-
-    :param sequences_taps: 
-        Dictionary describing what slices of the input sequences scan should
-        use. At each step of the iteration you can use different slices of your
-        input sequences(called here taps), and this dictionary lets you define
-        exactly that. The keys of the dictionary are sequence indexes, the
-        values are list of numbers. Having the following entry ``i :
-        [k_1,k_2,k_3]``, means that at step ``t``, for sequence ``x``, that has
-        the index ``i`` in the list of sequences, you would use the values
-        ``x[t+k_1]``, ``x[t+k_2]`` and ``x[t+k_3]``. ``k_1``, ``k_2``, ``k_3``
-        values can be positive or negative and the sequence for you request this
-        taps should be large enough to accomodate them. If in the chronological
-        order, ``k`` is the first past value of sequence ``x``, then index 0 of
-        ``x`` will correspond to step ``k`` (if ``k`` is -3, then, abusing
-        notation ``x[0]`` will be seen by scan as ``x[-3]``). If you do not want
-        to use any taps for a given sequence you need to set the corresponding
-        entry in the dictionary to the empy list. By default, for each sequence
-        that is not represented in the dictionary scan will assume that the at
-        every step it needs to provide the current value of that sequence.
-
-    :param outputs_taps: 
-        Dictionary describing what slices of the input sequences scan should
-        use. The ``outputs_taps`` are defined in an analogous way to
-        ``sequences_taps``, just that the taps are for the outputs generated by
-        scan. As such they can only be negative, i.e.  refer to past value of
-        outputs. By default scan will expect to use for any output the last time
-        step, if nothing else is specified.
 
     :param n_steps: 
-        Number of steps to iterate. Sometimes you want to either enforce a fixed
-        number of steps, or you might not even have any sequences you want to
-        iterate over, but rather just to repeat some computation for a fixed
-        number of steps. It can be a theano scalar or a number. 
+        Number of steps to iterate. If this value is provided scan will run only for 
+        this amount of steps (given that the input sequences are sufficiently long). 
+        If there is no input sequence (for example in case of a generator network) scan 
+        will iterate for this number of steps. It can be a theano scalar or a number. 
 
     :param truncate_gradient:
         Number of steps to use in truncated BPTT.  If you compute gradients
@@ -221,10 +234,10 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
     else:
         seqs = sequences
         
-    if not (type(initial_states) in (list,tuple)):
-        init_outs = [initial_states]
+    if not (type(info_outputs) in (list,tuple)):
+        info_outs = [info_outputs]
     else: 
-        init_outs = initial_states
+        info_outs = info_outputs
         
     if not (type(non_sequences) in (list,tuple)):
         non_seqs = [non_sequences]
@@ -233,49 +246,85 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
 
 
 
-    # compute number of sequences and number of seqs   
+    # compute number of sequences and number of outputs 
     n_seqs     = len(seqs)
-    n_init_outs   = len(init_outs)
+    n_outs   = len(info_outs)
 
-    # update sequences_taps[idx] to contain 0 if it is not defined
+    inplace_map = {}
+    sequences_taps = {}
+    outputs_taps  = {}
+    # wrap sequences in a dictionary if they are not already
+    # in the same pass create a sequences_taps dictionary
     for i in xrange(n_seqs):
-        if not sequences_taps.has_key(i):
-            sequences_taps.update({i:[0]})
-        # if input sequence is not actually used by the recursive function
-        elif sequences_taps[i] == []:
-            sequences_taps.__delitem__(i)
-        elif not (type(sequences_taps[i]) in (list,tuple)):
-            sequences_taps[i] = [sequences_taps[i]]
-    # update outputs_taps[idx] to contain -1 if it is not defined
-    for i in xrange(n_init_outs):
-        if not outputs_taps.has_key(i):
-            outputs_taps.update({i:[-1]})
-        elif outputs_taps[i] == []:
-            outputs_taps.__delitem__(i)
-        elif not(type(outputs_taps[i]) in (list,tuple)):
-            outputs_taps[i] = [outputs_taps[i]]
-                      
+        if not type(seqs[i]) == dict : 
+            seqs[i] = dict(input=seqs[i], taps=[0])
+        # see if taps values are provided as a list
+        elif seqs[i].get('taps',None):
+            if not type(seqs[i]['taps']) in (tuple,list):
+                    seqs[i]['taps'] = [seqs[i]['taps']]
+        else:
+            seqs[i][taps] = [0]
 
+        if seqs[i].get('taps',None):
+            sequences_taps[i] = seqs[i]['taps']
+
+
+
+    # wrap outputs info in a dictionary if they are not already
+    # in the same pass create a init_outs_taps dictionary and a inplace map
+
+
+    for i in xrange(n_outs):
+        if info_outs[i]:
+            if not type(info_outs[i]) == dict:
+                info_outs[i] = dict(initial=info_outs[i], taps = [-1])
+                # if there is no initial state but there are taps     
+            elif (not info_outs[i].get('initial',None)) and(info_outs[i].get('taps',None)):
+                raise ValueError('If you are using slices of an output you need to '\
+                        'provide a initial state for it', info_outs[i])
+            elif info_outs[i].get('initial',None) and (not info_outs[i].get('taps',None)):
+                info_outs[i]['taps'] = [-1]
+        else:
+            info_outs[i] = dict()
+    
+        if info_outs[i].get('taps', None):
+           outputs_taps[i] = info_outs[i]['taps']
+        if info_outs[i].get('inplace', None):
+            # look for that variable to get the index
+            found = None
+            for k in xrange(n_seqs):
+                if seqs[k].get('input', None) == info_outs[i].get('inplace',None):
+                    found = k
+            if found != None: 
+                inplace_map[i] = k
+            else:
+                raise ValueError('Asked to compute in place of a non-input variable',\
+                          info_outs[i].get('inplace', None))
 
 
     # create theano inputs for the recursive function  
     args = []
     _ins = 0 
     _outs = 0
-    for (i,seq) in enumerate(seqs):
-      if sequences_taps.has_key(i):
-        for k in xrange(len(sequences_taps[i])):
-            args += [seq[0].type() ]
-            _ins += 1
-    for (i,init_out) in enumerate(init_outs):
-      if outputs_taps.has_key(i):
-        for k in xrange(len(outputs_taps[i])):
-            if outputs_taps[i] == [-1]:
-                args += [init_out.type() ]
-                _outs += 1
-            else:
-                args += [init_out[0].type() ]
-                _outs += 1
+    # go through sequences picking up time slices as needed
+    for seq in seqs:
+        if seq.get('taps', None):
+            slices = [ seq['input'][0].type() for k in seq['taps'] ]
+            args += slices
+            _ins += len(seq['taps'])
+    # go through outputs picking up time slices as needed
+    for init_out in info_outs:
+        if init_out.get('taps', None) == [-1]:
+            args += [init_out['initial'].type()]
+            _outs += 1
+        elif init_out.get('taps',None):
+            if numpy.any(numpy.array(init_out.get('taps',[])) > 0):
+                raise ValueError('Can not use future taps of outputs', init_out)
+            slices = [ init_out['initial'][0].type() for k in init_out['taps'] ] 
+            args  += slices
+            _outs += len(init_out['taps'])
+
+    # remove shared variables from the non sequences list
     noshared = []
     for non_seq in non_seqs:
         if not isinstance(non_seq, theano.compile.SharedVariable):
@@ -331,26 +380,39 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
 
     ls_outputs      = [ sout.variable for sout in dummy_f.maker.outputs]
     update_map      = {}
-    n_actual_outs   = len(dummy_f.maker.outputs)
     shared_outs     = []
     shared_non_seqs = []
     givens          = {}
+
+    # if the number of outputs to the function does not match the number of 
+    # assumed outputs
+    if len(ls_outputs) != n_outs:
+        if info_outs == []:
+            # We know how to deal with this case, assume that none of the outputs
+            # are required to have any sort of time taps
+            # we just need to update the number of actual outputs
+            n_outs = len(ls_outputs)
+        else:
+            raise ValueError('There has been a terrible mistake in our input arguments'
+                    ' and scan is totally lost. Make sure that you indicate for every '
+                    ' output what taps you want to use, or None, if you do not want to '
+                    ' use any !')
 
     ls_inputs=[inp.variable for inp in \
                     dummy_f.maker.expanded_inputs[:_ins+_outs]]
     fromIdx = _ins + _outs
 
-    stored_steps_output = [ 0 for i in xrange(n_actual_outs)]
+    stored_steps_output = [ 0 for i in xrange(n_outs)]
     # add shared variable that act as outputs
     #
-    n_outs = n_actual_outs
+    n_outs_extended = n_outs
     for inp in dummy_f.maker.expanded_inputs[fromIdx:] :
         if isinstance(inp.variable, theano.compile.SharedVariable) and inp.update:
             ls_inputs.append(inp.variable.type())
             ls_outputs += [inp.update]
-            update_map[ inp.variable ] = n_outs 
-            outputs_taps[ n_outs ] = [-1]
-            n_outs += 1
+            update_map[ inp.variable ] = n_outs_extended 
+            outputs_taps[ n_outs_extended ] = [-1]
+            n_outs_extended += 1
             stored_steps_output += [1] 
             shared_outs += [inp.variable]
             givens[inp.variable] = ls_inputs[-1]
@@ -365,15 +427,17 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
             ls_inputs.append(inp.variable)
     
     # Create the Scan op object
-    local_op = Scan( (ls_inputs,ls_outputs, givens ), n_seqs, n_outs, inplace_map,
-            sequences_taps, outputs_taps, truncate_gradient,
+    local_op = Scan( (ls_inputs,ls_outputs, givens ), n_seqs, n_outs_extended, 
+            inplace_map, sequences_taps,  outputs_taps, truncate_gradient,
             go_backwards, stored_steps_output, mode)
 
     # Call the object on the input sequences, initial values for outs, 
     # and non sequences
+    unwrapped_seqs = [ seq.get('input',theano.tensor.as_tensor(0)) for seq in seqs ]
+    unwrapped_outs = [ out.get('initial',theano.tensor.as_tensor(0)) for out in info_outs ]
     values =  local_op( *(    [theano.tensor.as_tensor(n_steps)]  \
-                         + seqs \
-                         + init_outs \
+                         + unwrapped_seqs \
+                         + unwrapped_outs \
                          + shared_outs \
                          + noshared
                          + shared_non_seqs))
@@ -383,11 +447,11 @@ def scan(fn, sequences=[], initial_states=[], non_sequences=[], inplace_map={}, 
     for k in update_map.keys():
         update_map[k] = values [ update_map[k] ] 
 
-    if n_actual_outs != n_outs : 
-        if n_actual_outs == 1:
+    if n_outs != n_outs_extended : 
+        if n_outs == 1:
             values = values[0]
         else:
-            values = values[:n_actual_outs]
+            values = values[:n_outs]
 
 
     return (values, update_map)
@@ -618,7 +682,7 @@ class Scan(theano.Op):
 
 
 
-    def scan(self,fn, args, n_seqs, n_outs, seqs_taps, outs_taps,  n_steps, 
+    def scan(self, fn, args, n_seqs, n_outs, seqs_taps, outs_taps,  n_steps, 
              go_backwards, inplace_map):
 
       y = []
@@ -704,9 +768,21 @@ class Scan(theano.Op):
         #update outputs
         for j in xrange(n_outs):
           if self.stored_steps_output[j] <1:
-              y[j][i] = something[j]
+              # if you have provided no size for the missing output you might find yourself
+              # here with a incorect array .. if that happens realocate memory for the needed
+              # array
+              try : 
+                  y[j][i] = something[j]
+              except :
+                  y[j] = numpy.empty( (n_steps,)+something[j].shape , dtype =
+                                                              something[j].dtype)
+                  y[j][i] = something[j]
           elif self.stored_steps_output[j] == 1:
-              y[j] = something[j]
+              try:
+                  y[j] = something[j]
+              except:
+                  y[j] = numpy.empty( something[j].shape, dtype = something[j].dtype)
+                  y[j] = something[j]
           else:
             raise NotImplementedError('This will be implemented in the near future')
       return y

@@ -103,7 +103,7 @@ class T_Scan(unittest.TestCase):
 
     # generator network, only one output , type scalar ; no sequence or 
     # non sequence arguments
-    def test_1(self):
+    def test_generator_one_output_scalar(self):
 
 
       def f_pow2(x_tm1):
@@ -117,7 +117,7 @@ class T_Scan(unittest.TestCase):
       assert(compareArrays(f1(1,3), [2,4,8]))
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars
-    def test_2(self):
+    def test_one_sequence_one_output_weights(self):
 
 
         def f_rnn(u_t,x_tm1,W_in, W):
@@ -138,9 +138,9 @@ class T_Scan(unittest.TestCase):
 
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables
-    def test_3(self):
+    def test_one_sequence_one_output_weights_shared(self):
     
-        u    = theano.tensor.dvector()
+        u    = theano.tensor.dvector() 
         x0   = theano.tensor.dscalar()
         W_in = theano.shared(.1, name = 'w_in')
         W    = theano.shared(1., name ='w')
@@ -158,7 +158,7 @@ class T_Scan(unittest.TestCase):
 
     # some rnn with multiple outputs and multiple inputs; other dimension 
     # instead of scalars/vectors
-    def test_4(self):
+    def test_multiple_inputs_multiple_outputs(self):
     
         W_in2 = theano.shared(numpy.array([1.,2.]), name='win2')
         W     = theano.shared(numpy.array([[2.,1.],[1.,1.]]), name='w')
@@ -191,7 +191,7 @@ class T_Scan(unittest.TestCase):
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables and past 
     # taps (sequences and outputs)
-    def test_5(self):
+    def test_using_taps_input_output(self):
     
         u    = theano.tensor.dvector()
         x0   = theano.tensor.dvector()
@@ -201,8 +201,8 @@ class T_Scan(unittest.TestCase):
         def f_rnn_shared(u_tm2, x_tm1, x_tm2):
             return u_tm2*W_in+x_tm1*W+x_tm2
     
-        Y, updates = theano.scan(f_rnn_shared, u,x0, [], \
-                 sequences_taps = {0:[-2]}, outputs_taps = {0:[-1,-2]})
+        Y, updates = theano.scan(f_rnn_shared, dict(input=u, taps=-2), 
+                 dict(initial = x0, taps = [-1,-2]), [])
 
         f7   = theano.function([u,x0], Y, updates = updates)
         v_u  = numpy.asarray([1.,2.,3.,4.])
@@ -213,7 +213,7 @@ class T_Scan(unittest.TestCase):
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables and past 
     # taps (sequences and outputs) and future taps for sequences
-    def test_6(self):
+    def test_past_future_taps_shared(self):
     
         u    = theano.tensor.dvector()
         x0   = theano.tensor.dvector()
@@ -223,8 +223,8 @@ class T_Scan(unittest.TestCase):
         def f_rnn_shared(u_tm2,u_tp2, x_tm1, x_tm2):
             return (u_tm2+u_tp2)*W_in+x_tm1*W+x_tm2
     
-        Y,updts = theano.scan(f_rnn_shared, u,x0, [], \
-                 sequences_taps = {0:[-2,2]}, outputs_taps = {0:[-1,-2]})
+        Y,updts = theano.scan(f_rnn_shared, dict( input = u, taps=[-2,2]),\
+                 dict(initial = x0, taps = [-1,-2]), [])
 
         f8   = theano.function([u,x0], Y, updates = updts)
         v_u  = numpy.array([1.,2.,3.,4.,5.,6.])
@@ -234,7 +234,7 @@ class T_Scan(unittest.TestCase):
         assert (compareArrays( out, f8(v_u, v_x0) ) )
     
     # simple rnn ; compute inplace
-    def test_7(self):
+    def test_inplace(self):
         
         u    = theano.tensor.dvector()
         mu   = theano.Param( u, mutable = True)
@@ -244,8 +244,7 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn_shared(u_t, x_tm1):
             return u_t*W_in + x_tm1*W
-        Y, updts = theano.scan(f_rnn_shared, u, x0,[], \
-                    inplace_map={0:0} )
+        Y, updts = theano.scan(f_rnn_shared, u, dict( initial = x0, inplace = u),[] )
         f9   = theano.function([mu,x0], Y , updates = updts)
         v_u  = numpy.array([1.,2.,3.])
         v_x0 = numpy.array(1.)
@@ -257,7 +256,7 @@ class T_Scan(unittest.TestCase):
         assert (compareArrays(v_u, out))
     
     # Shared variable with updates
-    def test_8(self):
+    def test_shared_arguments_with_updates(self):
        W1_vals = numpy.random.rand(20,30)
        W2_vals = numpy.random.rand(30,20)
        u1_vals = numpy.random.rand(3,20)
@@ -266,11 +265,11 @@ class T_Scan(unittest.TestCase):
        y1_vals = numpy.random.rand(20)
        y2_vals = numpy.random.rand(30)
     
-       W1 = theano.shared(W1_vals)
-       W2 = theano.shared(W2_vals)
+       W1 = theano.shared(W1_vals,'W1')
+       W2 = theano.shared(W2_vals,'W2')
 
-       u1 = theano.shared(u1_vals)
-       y1 = theano.shared(y1_vals)
+       u1 = theano.shared(u1_vals,'u1')
+       y1 = theano.shared(y1_vals,'y1')
 
        def f(u1_t, u2_t, y0_tm3, y0_tm2, y0_tm1, y1_tm1):
             y0_t = theano.dot(theano.dot(u1_t,W1),W2) + 0.1*y0_tm1 + \
@@ -279,18 +278,17 @@ class T_Scan(unittest.TestCase):
             y2_t = theano.dot(u1_t, W1)
             nwW1 = W1 + .1
             nwW2 = W2 + .05
-            return ([y0_t, y1_t, y2_t], [(W1,nwW1), (W2, nwW2)])
+            return ([y0_t, y1_t, y2_t], [( W1,nwW1), (W2, nwW2)])
 
-       u2 = theano.tensor.matrix()
-       y0 = theano.tensor.matrix()
-       y2 = theano.tensor.vector()
+       u2 = theano.tensor.matrix('u2')
+       y0 = theano.tensor.matrix('y0')
 
-       Y,upds = theano.scan(f, [u1,u2], [y0,y1,y2],[], outputs_taps = {0:[-3,-2,-1], 2:[]})
+       Y,upds = theano.scan(f, [u1,u2], [ dict(initial = y0, taps = [-3,-2,-1]),y1, None])
 
-       f = theano.function([u2,y0,y2], Y, updates = upds)
+       f = theano.function([u2,y0], Y, updates = upds)
 
 
-       vls = f(u2_vals, y0_vals, y2_vals)
+       vls = f(u2_vals, y0_vals)
 
        # do things in numpy
        v_y0 = numpy.zeros((6,20))
@@ -308,7 +306,7 @@ class T_Scan(unittest.TestCase):
           vW1 = vW1 + .1
           vW2 = vW2 + .05
 
-    def test_9(self):
+    def test_gibbs_chain(self):
 
         W_vals  = numpy.random.rand(20,30) -.5
         vis_val = numpy.random.binomial(1,0.5, size=(3,20))
@@ -331,8 +329,7 @@ class T_Scan(unittest.TestCase):
             return trng.binomial(vsample.shape,1,vsample)
 
         
-        v_vals, updts = theano.scan(f, [], [vis],[], n_steps = 10,
-                     sequences_taps = {}, outputs_taps = {})
+        v_vals, updts = theano.scan(f, [], [vis],[], n_steps = 10)
 
         my_f = theano.function([vis], v_vals[-1], updates = updts)
 
@@ -356,19 +353,16 @@ class T_Scan(unittest.TestCase):
 
         assert (compareArrays(t_res, n_res))
 
-    def test_10(self):
+    def test_only_shared_no_input_no_output(self):
 
-      s = theano.shared(1)
-
-
-      def f_pow2():
-        return {s: 2*s}
-    
-      n_steps = theano.tensor.dscalar()
-      Y, updts = theano.scan(f_pow2, [],[], [],n_steps = n_steps)
-      f1 = theano.function([n_steps], Y, updates = updts)
-      f1(3)
-      assert compareArrays(s.value, 8)
+        s = theano.shared(1)
+        def f_pow2():
+            return {s: 2*s}
+        n_steps = theano.tensor.dscalar()
+        Y, updts = theano.scan(f_pow2, [],[], [],n_steps = n_steps)
+        f1 = theano.function([n_steps], Y, updates = updts)
+        f1(3)
+        assert compareArrays(s.value, 8)
  
     '''
     # test gradient simple network 
@@ -386,14 +380,12 @@ class T_Scan(unittest.TestCase):
     '''
 
     def test_map_functionality(self):
-        raise SkipTest('Map functionality not implemented yet')
-
         def f_rnn(u_t):
             return u_t + 3
     
         u    = theano.tensor.dvector()
 
-        Y, updts = theano.scan(f_rnn, sequences=u, outputs_taps={0:[]})
+        Y, updts = theano.scan(f_rnn, u, [None])
     
         f2    = theano.function([u], Y, updates = updts)
         v_u   = numpy.array([1.,2.,3.,4.])
