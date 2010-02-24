@@ -830,25 +830,8 @@ class Dot22Scalar(GemmRelated):
     def __str__(self):
         return "_dot22scalar"
 
-    setup_z_Nz_Sz = """
-        if ((NULL == %(_z)s)
-            || (%(_z)s->dimensions[0] != %(_x)s->dimensions[0])
-            || (%(_z)s->dimensions[1] != %(_y)s->dimensions[1]))
-        {
-            if (NULL != %(_z)s) Py_XDECREF(%(_z)s);
-            npy_intp dims[2];
-            dims[0] = %(_x)s->dimensions[0];
-            dims[1] = %(_y)s->dimensions[1];
-            %(_z)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_x)s);
-            if(!%(_z)s) {
-                PyErr_SetString(PyExc_MemoryError, "failed to alloc dot22scalar output");
-                %(fail)s
-            }
-        }
-        Nz = %(_z)s->dimensions;
-        Sz = %(_z)s->strides;
+    setup_z_Nz_Sz = Dot22.setup_z_Nz_Sz
 
-        """
     check_ab_double_or_float = """
         if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
             && (%(_a)s->descr->type_num != PyArray_FLOAT))
@@ -871,13 +854,13 @@ class Dot22Scalar(GemmRelated):
         #undef REAL
         double b = 0.0;
         """
-    def c_code(self, node, name, (_x, _y, _a), (_z, ), sub): #DEBUG
+    def c_code(self, node, name, (_x, _y, _a), (_zout, ), sub): #DEBUG
         if len(self.c_libraries())<=0:
-            return super(Dot22Scalar, self).c_code(node, name, (_x, _y), (_z, ), sub)
+            return super(Dot22Scalar, self).c_code(node, name, (_x, _y), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
     def c_code_cache_version(self):
-        return (1,) + self.build_gemm_version()
+        return (2,) + self.build_gemm_version()
 
 _dot22scalar = Dot22Scalar()
 
