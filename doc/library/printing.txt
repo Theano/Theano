@@ -71,9 +71,7 @@ iteration number or other kinds of information in the name.
     To make graphs legible, :func:`pp` hides some Ops that are actually in the graph.  For example,
     automatic DimShuffles are not shown.
 
-2) The second fonction to print a graph is :func:`theano.printing.debugprint`(Variable, depth=-1)
-You can use it on graph variables and compiled functions. 
-
+2) The second function to print a graph is :func:`theano.printing.debugprint(variable_or_function, depth=-1)`
 
 >>> theano.printing.debugprint(f.maker.env.outputs[0])
  Elemwise{mul,no_inplace} 46950805397392
@@ -172,6 +170,10 @@ Reference
         running the function will print the value that `x` takes in the graph.
 
 
-.. autofunction:: theano.printing.pp
+.. function:: theano.printing.pp(*args)
+
+    TODO
+    
 
 .. autofunction:: theano.printing.debugprint
+

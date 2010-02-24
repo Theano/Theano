@@ -1,4 +1,4 @@
-.. _libdoc_tensor:
+.. _libdoc_tensor_signal:
 
 =====================================================
 :mod:`signal` -- Signal Processing
@@ -10,7 +10,7 @@ Signal Processing
 .. module:: signal
    :platform: Unix, Windows
    :synopsis: various ops for performing basic signal processing
-   (convolutions, subsampling, fft, etc.)
+       (convolutions, subsampling, fft, etc.)
 .. moduleauthor:: LISA
 
 The signal subpackage contains ops which are useful for performing various

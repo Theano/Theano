@@ -14,7 +14,3 @@ TODO: Give examples for how to use these things! They are pretty complicated.
 
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 
-.. function:: fft(*todo)
-
-    [James has some code for this, but hasn't gotten it into the source tree yet.]
-

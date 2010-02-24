@@ -767,7 +767,7 @@ Condition
 .. function:: clip(x, min, max)
 
     Return a variable representing x, but with all elements greater than
-    `max` clipped to `max` and all elements less than `min` clipped to `min.
+    `max` clipped to `max` and all elements less than `min` clipped to `min`.
 
     Normal broadcasting rules apply to each of `x`, `min`, and `max`.
 
