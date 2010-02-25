@@ -367,7 +367,14 @@ def local_softmax_with_bias(node):
                 else:
                     non_vectors.append(x_in)
 
+            # If all the inputs were vectors or broadcasted vectors,
+            # we broadcast one of them to be used as a matrix
+            if len(non_vectors) == 0:
+                assert len(vectors) > 0 # we should have at least 1 input...
+                promoted_vector = vectors.pop()
+                non_vectors.append(tensor.shape_padleft(promoted_vector))
             assert non_vectors #not empty
+
             if vectors:
                 #we're in business...
                 if len(vectors)>1:
