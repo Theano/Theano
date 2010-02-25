@@ -1324,6 +1324,15 @@ class MaxAndArgmax(Op):
         x = _as_tensor_variable(x)
         if axis is None:
             axis = x.type.ndim - 1
+        if isinstance(axis,int):
+            axis = [axis]
+        #we make the axis all positive to make the infer_shape work with negative axis
+        if x.type.ndim>0:
+            for id,a in enumerate(axis):
+                if a<0:
+                    if -a>x.type.ndim:
+                      raise ValueError('axis out of range')
+                    axis[id]=x.type.ndim+a
         axis = _as_tensor_variable(axis)
         inputs = [x, axis]
         #TODO: figure things out if axis is a constant
@@ -1334,6 +1343,14 @@ class MaxAndArgmax(Op):
     def perform(self, node, (x, axis), (max, max_idx)):
         max[0] = numpy.asarray(numpy.max(x, axis))
         max_idx[0] = theano._asarray(numpy.argmax(x, axis), dtype='int32')
+
+    def infer_shape(self, node, (ishape,axis_shape)):
+        axis=node.inputs[1]
+        if axis is None:
+            return [(),()]
+        rval = tuple([ishape[i] for (i,b) in enumerate(node.inputs[0].type.broadcastable) if i !=axis.data])
+        return [rval,rval]
+
     def grad(self, (x, axis), (g_max, g_max_idx)):
         # @warning: This only works if axis is 0, else the max is
         # broadcasted wrong in the call to eq.

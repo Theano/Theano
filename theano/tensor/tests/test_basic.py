@@ -615,12 +615,16 @@ class T_max_and_argmax(unittest.TestCase):
         v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(v == 5.0)
         self.failUnless(i == 0)
+        v = eval_outputs(max_and_argmax(n)[0].shape)
+        assert len(v)==0
 
     def test1(self):
         n = as_tensor_variable([1,2,3,2,-6])
         v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(v == 3)
         self.failUnless(i == 2)
+        v = eval_outputs(max_and_argmax(n)[0].shape)
+        assert len(v)==0
 
     def test2(self):
         data = numpy.random.rand(2,3)
@@ -628,12 +632,22 @@ class T_max_and_argmax(unittest.TestCase):
         v,i = eval_outputs(max_and_argmax(n))
         self.failUnless(numpy.all(v == numpy.max(data,-1)))
         self.failUnless(numpy.all(i == numpy.argmax(data,-1)))
+        v = eval_outputs(max_and_argmax(n)[0].shape)
+        assert v==(2)
+
     def test2b(self):
         data = numpy.random.rand(2,3)
         n = as_tensor_variable(data)
         v,i = eval_outputs(max_and_argmax(n,0))
         self.failUnless(numpy.all(v == numpy.max(data,0)))
         self.failUnless(numpy.all(i == numpy.argmax(data,0)))
+        v = eval_outputs(max_and_argmax(n,0)[0].shape)
+        assert v==(3)
+        v = eval_outputs(max_and_argmax(n,1)[0].shape)
+        assert v==(2)
+#        v = eval_outputs(max_and_argmax(n,[0,1])[0].shape)
+#        assert v==()
+
     def test2_invalid(self):
         n = as_tensor_variable(numpy.random.rand(2,3))
         old_stderr = sys.stderr
@@ -662,6 +676,11 @@ class T_max_and_argmax(unittest.TestCase):
         self.failUnless(v.shape == (2,))
         v,i = eval_outputs(max_and_argmax(n,-2))
         self.failUnless(v.shape == (3,))
+        v = eval_outputs(max_and_argmax(n,-1)[0].shape)
+        assert v==(2)
+        v = eval_outputs(max_and_argmax(n,-2)[0].shape)
+        assert v==(3)
+
     def test3(self):
         n = as_tensor_variable(numpy.random.rand(2,3,4))
         v,i = eval_outputs(max_and_argmax(n,0))
@@ -673,6 +692,12 @@ class T_max_and_argmax(unittest.TestCase):
         v,i = eval_outputs(max_and_argmax(n,2))
         self.failUnless(v.shape == (2,3))
         self.failUnless(i.shape == (2,3))
+        v = eval_outputs(max_and_argmax(n,0)[0].shape)
+        assert tuple(v)==(3,4)
+        v = eval_outputs(max_and_argmax(n,1)[0].shape)
+        assert tuple(v)==(2,4)
+        v = eval_outputs(max_and_argmax(n,2)[0].shape)
+        assert tuple(v)==(2,3)
 
 
 class T_subtensor(unittest.TestCase):
