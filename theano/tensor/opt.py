@@ -444,7 +444,7 @@ class ShapeFeature(object):
         for r, s in zip(node.outputs, o_shapes):
             self.set_shape(r, s)
 
-    def on_change_input(self, env, mode, i, r, new_r):
+    def on_change_input(self, env, node, i, r, new_r):
         # TODO:
         # This tells us that r and new_r must have the same shape
         # if we didn't know that the shapes are related, now we do.
