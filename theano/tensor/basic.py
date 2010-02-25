@@ -3051,10 +3051,29 @@ class ARange(Op):
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, node, i_shapes):
-      start = as_tensor_variable(node.inputs[0])
-      stop = as_tensor_variable(node.inputs[1])
-      step = as_tensor_variable(node.inputs[2])
-      return [(cast(ceil(cast((stop-start),'float64')/step),'int64'),)]
+        start, stop, step = node.inputs
+        def is_constant_value(var, value):
+            if numpy.all(var == value):
+                return True
+            if isinstance(var, gof.Constant):
+              return numpy.all(var.data == value)
+            if var.owner:
+                if var.owner.op == T.alloc:
+                    return is_constant_value(var.owner.inputs[0], value)
+                if isinstance(var.owner.op, DimShuffle):
+                    return is_constant_value(var.owner.inputs[0], value)
+                if var.owner.op == T.fill:
+                    shape, in_var = var.owner.inputs
+                    return is_constant_value(in_var, value)
+            return False
+
+        if is_constant_value(step, 1):
+            if is_constant_value(start, 0):
+                return [(stop,)]
+            else:
+                return [((stop-start),)]
+        else:
+            return [(cast(ceil(cast((stop-start),'float64')/step),'int64'),)]
 
     def perform(self, node, (start, stop, step), (out,)):
         start = start.item()
