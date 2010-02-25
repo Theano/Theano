@@ -249,7 +249,6 @@ def get_default_mode():
         #need to import later to break circular dependency.
         from profilemode import ProfileMode,prof_mode_instance_to_print
         from debugmode import DebugMode
-        import pdb;pdb.set_trace()
             
         instanciated_default_mode = eval(config.mode+'(linker=config.linker, optimizer=config.optimizer)')
         #must tell python to print the summary at the end.
