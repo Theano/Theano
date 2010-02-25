@@ -1501,6 +1501,29 @@ class T_tensorfromscalar(unittest.TestCase):
         self.failUnless(isinstance(v, numpy.ndarray))
         self.failUnless(v.shape == (), v.shape)
 
+        g = grad(t, s)
+        self.failUnless(eval_outputs([g])==1)
+
+class T_scalarfromtensor(unittest.TestCase):
+    def test0(self):
+        tt = constant(56)#scal.constant(56)
+        ss = scalar_from_tensor(tt)
+        self.failUnless(ss.owner.op is scalar_from_tensor)
+        self.failUnless(ss.type.dtype == tt.type.dtype)
+
+        v = eval_outputs([ss])
+
+        self.failUnless(v == 56, v)
+        self.failUnless(isinstance(v, numpy.int8))
+        self.failUnless(v.shape == (), v.shape)
+        tt = lscalar()
+        ss = scalar_from_tensor(tt)
+        g = ss.owner.op.grad([tt],[ss])
+        fff=function([tt],ss)
+        v = fff(numpy.asarray(5))
+        self.failUnless(v == 5, v)
+        self.failUnless(isinstance(v, numpy.int64))
+        self.failUnless(v.shape == (),v.shape)
 
 # def _tensor(data, broadcastable=None, name=None):
 #     """Return a TensorType containing given data"""
