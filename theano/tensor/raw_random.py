@@ -351,6 +351,13 @@ def binomial(random_state, size=None, n=1, prob=0.5, ndim=None, dtype='int64'):
     n = tensor.as_tensor_variable(n)
     prob = tensor.as_tensor_variable(prob)
     ndim, size = _infer_ndim(ndim, size, n, prob)
+    if n.dtype=='int64':
+        ### THIS WORKS AROUND A NUMPY BUG on 32bit machine
+        ###  Erase when the following works on a 32bit machine:
+        ###  numpy.random.binomial(
+        #          n=numpy.asarray([2,3,4], dtype='int64'),
+        #          p=numpy.asarray([.1, .2, .3], dtype='float64'))
+        n = tensor.cast(n, 'int32')
     op = RandomFunction('binomial',
             tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
     return op(random_state, size, n, prob)
