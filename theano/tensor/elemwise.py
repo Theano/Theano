@@ -643,7 +643,7 @@ class Elemwise(Op):
                             break
                     assert b_dim, 'BB'
                 oshp.append(b_dim)
-            rval.append(oshp)
+            rval.append(tuple(oshp))
         return rval
 
     def _c_all(self, node, name, inames, onames, sub):
