@@ -563,7 +563,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         }
         if (%(x)s->dimensions[0] != %(y_idx)s->dimensions[0])
         {
-            PyErr_Format(PyExc_ValueError, "number of rows in x (%%zi) does not match length of y (%%zi)",
+            PyErr_Format(PyExc_ValueError, "number of rows in x (%%ld) does not match length of y (%%ld)",
             %(x)s->dimensions[0], %(y_idx)s->dimensions[0]);
             %(fail)s;
         }
