@@ -1329,7 +1329,7 @@ class MaxAndArgmax(Op):
         #we make the axis all positive to make the infer_shape work with negative axis
         if x.type.ndim>0:
             for id,a in enumerate(axis):
-                if a<0:
+                if not isinstance(a, TensorVariable) and a<0:
                     if -a>x.type.ndim:
                       raise ValueError('axis out of range')
                     axis[id]=x.type.ndim+a
