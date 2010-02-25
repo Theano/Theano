@@ -988,7 +988,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     sm = None
     try:
-        out_grad, sm = node.inputs
+        d_sm, sm = node.inputs
     except:
         return
 
@@ -1029,15 +1029,14 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     # After the check for AdvancedIncSubtensor, if anything does not fit with
     # the formula above, there's no way to fit it with the the second case,
     # so we return immediately.
-    if out_grad.owner and isinstance(out_grad.owner.op, tensor.AdvancedIncSubtensor):
+    if d_sm.owner and isinstance(d_sm.owner.op, tensor.AdvancedIncSubtensor):
         try:
-            z, incr, rows, labels = out_grad.owner.inputs
+            z, incr, rows, labels = d_sm.owner.inputs
         except:
             return
-
         # Check that z == zeros_like(softmax(x))
-        # We know z has the right size because z has the same size as out_grad,
-        # and out_grad and sm are both inputs of softmax_grad (so they have
+        # We know z has the right size because z has the same size as d_sm,
+        # and d_sm and sm are both inputs of softmax_grad (so they have
         # the same size).
         if not _is_const(z, 0):
             return
@@ -1115,16 +1114,15 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
         # Check that rows is arange(labels.shape[0])
         if not _check_rows_is_arange_len_labels(rows, labels):
             return
-
         # else, arguments of AdvancedIncSubtensor are OK,
         # it was really case 1.
 
     # Second case
-    elif out_grad.owner and out_grad.owner.op == tensor.true_div:
+    elif d_sm.owner and d_sm.owner.op == tensor.true_div:
         # we're looking for
         # AdvIncSubtensor(zeros, grad_nll, arange(len(y)), y) / softmax
         try:
-            num, denom = out_grad.owner.inputs
+            num, denom = d_sm.owner.inputs
         except:
             return
 
