@@ -115,7 +115,7 @@ class SoftmaxWithBias(gof.Op):
         }
         if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
         {
-            PyErr_Format(PyExc_ValueError, "number of columns in x (%%zi) does not match length of b (%%zi)",
+            PyErr_Format(PyExc_ValueError, "number of columns in x (%%ld) does not match length of b (%%ld)",
             %(x)s->dimensions[1], %(b)s->dimensions[0]);
             %(fail)s;
         }
@@ -194,7 +194,7 @@ class SoftmaxWithBias(gof.Op):
 
     @staticmethod
     def c_code_cache_version():
-        return (5,)
+        return (6,)
 
 softmax_with_bias = SoftmaxWithBias()
 
