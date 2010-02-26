@@ -1164,8 +1164,10 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             if not _check_rows_is_arange_len_labels(rows, labels):
                 return
             # else, arguments of AdvancedIncSubtensor are OK
+        else:
+            return
 
-        # else, numerator and denominator are OK,
+        # numerator and denominator are OK,
         # it was really case 2.
 
     else:
