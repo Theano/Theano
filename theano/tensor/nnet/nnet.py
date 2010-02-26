@@ -116,7 +116,7 @@ class SoftmaxWithBias(gof.Op):
         if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
         {
             PyErr_Format(PyExc_ValueError, "number of columns in x (%%ld) does not match length of b (%%ld)",
-            %(x)s->dimensions[1], %(b)s->dimensions[0]);
+                (long int)%(x)s->dimensions[1], (long int)%(b)s->dimensions[0]);
             %(fail)s;
         }
 
@@ -554,7 +554,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         if (%(x)s->dimensions[0] != %(y_idx)s->dimensions[0])
         {
             PyErr_Format(PyExc_ValueError, "number of rows in x (%%ld) does not match length of y (%%ld)",
-            %(x)s->dimensions[0], %(y_idx)s->dimensions[0]);
+                (long int)%(x)s->dimensions[0], (long int)%(y_idx)s->dimensions[0]);
             %(fail)s;
         }
 
