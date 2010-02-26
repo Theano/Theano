@@ -392,5 +392,13 @@ class T_Scan(unittest.TestCase):
         assert compareArrays(f2(v_u), v_u+3)
 
 
+    def test_map(self):
+        from theano.scan import map as T_map
+        v = theano.tensor.vector()
+        abs_expr,abs_updates = T_map(lambda x: abs(x), [v])
+        abser = theano.function([v],abs_expr,updates = abs_updates)
+
+        assert compareArrays( abser(numpy.array([1.,-1])), [1.,1.])
+
 if __name__ == '__main__':
     unittest.main()

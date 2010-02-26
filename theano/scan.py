@@ -392,6 +392,10 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
             # are required to have any sort of time taps
             # we just need to update the number of actual outputs
             n_outs = len(ls_outputs)
+            # other updates : 
+            for i in xrange(n_outs):
+               info_outs += [ dict() ]  
+
         else:
             raise ValueError('There has been a terrible mistake in our input arguments'
                     ' and scan is totally lost. Make sure that you indicate for every '
