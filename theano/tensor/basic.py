@@ -501,7 +501,7 @@ class TensorType(Type):
 
     This read-only property is the preferred way to get the number of dimensions
     of a `TensorType`.
-    
+
     """
 
     def make_variable(self, name = None):
@@ -530,7 +530,7 @@ class TensorType(Type):
                 bcast = named_broadcastable[b]
             else:
                 if any(b):
-			bcast = str(b)
+                    bcast = str(b)
                 else:
                         bcast = '%iD' % len(b)
             return "TensorType(%s, %s)" % (str(self.dtype), bcast)
@@ -3069,9 +3069,9 @@ class ARange(Op):
 
         if is_constant_value(step, 1):
             if is_constant_value(start, 0):
-                return [(stop,)]
+                return [(cast(stop, 'int64'),)]
             else:
-                return [((stop-start),)]
+                return [(cast(stop-start, 'int64'),)]
         else:
             return [(cast(ceil(cast((stop-start),'float64')/step),'int64'),)]
 
