@@ -31,6 +31,11 @@ class test_DimShuffle(unittest.TestCase):
             e = DimShuffle(ib, shuffle)(x)
             f = copy(linker).accept(Env([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
+            #test that DimShuffle.infer_shape work correctly
+            x = TensorType('float64', ib)('x')
+            e = DimShuffle(ib, shuffle)(x)
+            f = copy(linker).accept(Env([x], [e.shape])).make_function()
+            assert all(f(numpy.ones(xsh))) == all(zsh)
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker())
@@ -60,6 +65,15 @@ class test_Broadcast(unittest.TestCase):
 
             self.failUnless((f(xv, yv) == zv).all())
 
+            #test CAReduce.infer_shape
+            #the Shape op don't implement c_code!
+            if isinstance(linker,gof.PerformLinker):
+                x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
+                y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
+                e = Elemwise(add)(x, y)
+                f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
+                assert tuple(f(xv, yv))==tuple(zv.shape)
+
     def with_linker_inplace(self, linker):
         for xsh, ysh in [((5, 5), (5, 5)),
                          ((5, 5), (1, 5)),
@@ -80,6 +94,20 @@ class test_Broadcast(unittest.TestCase):
             f(xv, yv)
 
             self.failUnless((xv == zv).all())
+            #test CAReduce.infer_shape
+            #the Shape op don't implement c_code!
+            if isinstance(linker,gof.PerformLinker):
+                x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
+                y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
+                e = Elemwise(Add(transfer_type(0)), {0:0})(x, y)
+                f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
+                xv = numpy.asarray(numpy.random.rand(*xsh))
+                yv = numpy.asarray(numpy.random.rand(*ysh))
+                zv = xv + yv
+                
+                f(xv, yv)
+                
+                assert xv.shape==zv.shape
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker())
@@ -145,6 +173,15 @@ class test_CAReduce(unittest.TestCase):
             for axis in reversed(sorted(tosum)):
                 zv = numpy.add.reduce(zv, axis)
             self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
+
+            #test CAReduce.infer_shape
+            #the Shape op don't implement c_code!
+            if isinstance(linker,gof.PerformLinker):
+                x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
+                e = CAReduce(add, axis = tosum)(x)
+                if tosum is None: tosum = range(len(xsh))
+                f = copy(linker).accept(Env([x], [e.shape])).make_function()
+                assert all(f(xv)== zv.shape)
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker())
