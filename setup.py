@@ -5,6 +5,11 @@
 #   * Add back in installation requirements
 #   * Add download_url
 
+import sys
+print >> sys.stderr, "setuptools is not currently supported. See installation instructions here:"
+print >> sys.stderr, "http://deeplearning.net/software/theano/install.html"
+sys.exit(-1)
+
 from ez_setup import use_setuptools
 use_setuptools()
 
