@@ -379,10 +379,13 @@ class ShapeFeature(object):
             #
             # worst case, we loop over shape_of and replace things
             raise NotImplementedError(s_i)
-        elif s_i.type == T.lscalar:
+        elif s_i.type.dtype[:3] in ('int', 'uint'):
+            if getattr(s_i.type, 'ndim', 0):
+                raise TypeError('Shape element must be scalar', s_i)
             return s_i
         else:
-            raise TypeError('Unsupported shape element', s_i)
+            raise TypeError('Unsupported shape element', 
+                    s_i, type(s_i), getattr(s_i, 'type', None))
 
     def set_shape(self, r, s):
         assert r not in self.shape_of
