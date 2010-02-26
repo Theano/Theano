@@ -459,14 +459,12 @@ class ShapeFeature(object):
         for (shpnode, idx) in r.clients:
             if isinstance(getattr(shpnode,'op', None), Shape_i):
                 self.scheduled[shpnode] = new_r
-                print >> sys.stderr, 'SCHEDULING SOMETHING', self.scheduled
         # In case 2, if new_r is a variable that we've scheduled for shape update, then we
         # should cancel it.
         # TODO: store some kind of reverse index?
         for k,v in self.scheduled.items():
             if v == r:
                 del self.scheduled[k]
-                print>> sys.stderr,  'UNSCHEDULING SOMETHING', self.scheduled
 
 class ShapeOptimizer(Optimizer):
     """Optimizer that serves to add ShapeFeature as an env feature.
@@ -563,9 +561,9 @@ def local_track_shape_i(node):
     if node in node.env.shape_feature.scheduled:
         assert isinstance(node.op, Shape_i)
         replacement = node.env.shape_feature.scheduled[node]
-        if len(node.env.shape_feature.shape_of[replacement])!=1:
-            import pdb;pdb.set_trace()
-        print >> sys.stderr, "REPLACING SOMETHING", replacement, node.env.shape_feature.shape_of[replacement]
+        #if len(node.env.shape_feature.shape_of[replacement])!=1:
+            #import pdb;pdb.set_trace()
+        #print >> sys.stderr, "REPLACING SOMETHING", replacement, node.env.shape_feature.shape_of[replacement]
         return [node.env.shape_feature.shape_of[replacement][0]]
 
 @register_specialize
