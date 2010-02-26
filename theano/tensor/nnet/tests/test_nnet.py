@@ -167,7 +167,7 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(unittest.TestCase):
         var = self.op(numpy.random.rand(3,5),numpy.random.rand(5), y_idx=numpy.random.randint(
                 low=0, high=5, size=3))
         assert theano.function([],var[0].shape)() == [3]
-        assert any(theano.function([],var[1].shape)() == [3,5])
+        assert all(theano.function([],var[1].shape)() == [3,5])
         assert theano.function([],var[2].shape)() == [3]
 
 class T_prepend(unittest.TestCase):
