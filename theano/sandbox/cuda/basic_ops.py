@@ -72,7 +72,7 @@ class GpuElemwise(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, inplace_pattern, sync=None):
+    def __init__(self, scalar_op, inplace_pattern = {}, sync=None):
         ##
         # TODO: implement inplace operations.  
         #       It's ok that we set the DestroyMap to something but then don't actually destroy
