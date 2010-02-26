@@ -279,10 +279,11 @@ class Shape_i(T.Op):
     def __str__(self):
         return '%s{%i}'%(self.__class__.__name__, self.i)
     def make_node(self, x):
-        #we use as_cuda_or_tensor_variable as we want this op to work for
-        # TensorVariable AND CudaNdarrayVariable. Otherwise, we force the transfert
-        # of the variable to the cpu.
-        x = T.as_cuda_or_tensor_variable(x)
+        # x could be one of a number of types
+        # the only thing we require is that the variable have a .ndim,
+        # and that the value have a .shape
+        if not isinstance(x, T.Variable):
+            raise TypeError('x must be Variable with ndim attribute', x)
         if x.ndim <= self.i:
             raise TypeError('x has too few dimensions for Shape_i', (x, self.i))
         return T.Apply(self, [x], [T.lscalar()])
