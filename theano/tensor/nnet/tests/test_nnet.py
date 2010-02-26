@@ -43,6 +43,10 @@ class T_Softmax(unittest.TestCase):
             return softmax(a)[:,3]
         utt.verify_grad(f, [numpy.random.rand(3,4)])
 
+    def test_infer_shape(self):
+        f=theano.function([],softmax(numpy.random.rand(3,4)).shape)
+        assert all(f()==[3,4])
+
     def test_vector(self):
         x = T.vector()
         f = theano.function([x], softmax(x))
@@ -78,6 +82,16 @@ class T_SoftmaxWithBias(unittest.TestCase):
             return softmax_with_bias(a, b)[:,3]
         utt.verify_grad(f, [numpy.random.rand(3,4),
             numpy.random.rand(4)])
+    def test_infer_shape(self):
+        fff=theano.function([],outputs=softmax_with_bias(numpy.random.rand(3,4),numpy.random.rand(4)).shape)
+        assert all(fff()==[3,4])
+
+class T_SoftmaxGrad(unittest.TestCase):
+    def test_infer_shape(self):
+        a=T.constant(numpy.random.rand(3,4))
+        b=T.constant(numpy.random.rand(4))
+        f=theano.function([],softmax_grad(a,b).shape)
+        assert f()==[4]
 
 class T_CrossentropySoftmax1Hot(unittest.TestCase):
     def setUp(self):
@@ -148,6 +162,13 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(unittest.TestCase):
         utt.verify_grad(grad_on_softmax,
                 [numpy.random.rand(n_samples, n_classes),
                     numpy.random.rand(n_classes)])
+
+    def test_infer_shape(self):
+        var = self.op(numpy.random.rand(3,5),numpy.random.rand(5), y_idx=numpy.random.randint(
+                low=0, high=5, size=3))
+        assert theano.function([],var[0].shape)() == [3]
+        assert any(theano.function([],var[1].shape)() == [3,5])
+        assert theano.function([],var[2].shape)() == [3]
 
 class T_prepend(unittest.TestCase):
     def setUp(self):
