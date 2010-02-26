@@ -1287,9 +1287,8 @@ class Shape(Op):
         out[0] = theano._asarray(x.shape, dtype = 'int64')
     def grad(self, (x,), (gz,)):
         return [None]
-_shape = Shape()
 @constructor
-def shape(a):
+def old_shape(a):
     """Return the shape tuple of a TensorType Variable, it may be either symbolic or nonsymbolic.
 
     If the shape of the expression is not known at graph-construction time, then a symbolic
@@ -1305,6 +1304,8 @@ def shape(a):
         # a tuple directly.  This tuple is like the numpy.ndarray.shape tuple.
         return va.type.shape
 
+shape = Shape()
+_shape = shape #was used in the past, now use shape directly.
 pprint.assign(_shape, printing.MemberPrinter('shape'))
 
 class MaxAndArgmax(Op):
