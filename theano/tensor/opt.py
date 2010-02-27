@@ -562,13 +562,13 @@ def local_track_shape_i(node):
         shape_feature = node.env.shape_feature
     except:
         return
-    if node in node.env.shape_feature.scheduled:
+    if node in shape_feature.scheduled:
         assert isinstance(node.op, Shape_i)
-        replacement = node.env.shape_feature.scheduled[node]
-        #if len(node.env.shape_feature.shape_of[replacement])!=1:
+        replacement = shape_feature.scheduled[node]
+        #if len(shape_feature.shape_of[replacement])!=1:
             #import pdb;pdb.set_trace()
-        #print >> sys.stderr, "REPLACING SOMETHING", replacement, node.env.shape_feature.shape_of[replacement]
-        return [node.env.shape_feature.shape_of[replacement][0]]
+        print >> sys.stderr, "REPLACING SOMETHING", replacement, shape_feature.shape_of[replacement]
+        return [shape_feature.shape_of[replacement][node.op.i]]
 
 @register_specialize
 @register_canonicalize
