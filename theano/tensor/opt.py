@@ -509,9 +509,11 @@ def local_shape_i_lift(node):
     if inode and isinstance(inode.op, Elemwise) and inode.op.scalar_op.nin==1:
         return node.env.shape_feature.shape_of[input]
 
-
-register_canonicalize(local_shape_i_lift)
-register_specialize(local_shape_i_lift)
+## Disabled registration, because local_track_shape_i does the same (but better)
+## TODO: remove local_shape_i_lift altogether
+## -- Pascal L., 20100227.
+#register_canonicalize(local_shape_i_lift)
+#register_specialize(local_shape_i_lift)
 
 @register_specialize
 @register_canonicalize
