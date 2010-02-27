@@ -460,10 +460,11 @@ class ShapeFeature(object):
 
         # In case 1, if r has a shape_i client, we will want to replace the shape_i of r with
         # the shape of new_r.  Say that r is *scheduled*.
-        for (shpnode, idx) in r.clients:
+        # At that point, node is no longer a client of r, but of new_r
+        for (shpnode, idx) in (r.clients + [(node, i)]):
             if isinstance(getattr(shpnode,'op', None), Shape_i):
                 self.scheduled[shpnode] = new_r
-        # In case 2, if new_r is a variable that we've scheduled for shape update, then we
+        # In case 2, if r is a variable that we've scheduled for shape update, then we
         # should cancel it.
         # TODO: store some kind of reverse index?
         for k,v in self.scheduled.items():
