@@ -12,7 +12,7 @@ from theano.tensor import TensorType, inplace
 from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint, shared
-    
+from theano.tests import unittest_tools as utt
 #import scalar_opt
 
 from theano import function, compile
@@ -992,6 +992,9 @@ def test_local_fill_useless():
     assert [node.op for node in f.maker.env.toposort()] == [T.mul]
 
 class test_shapeoptimizer(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
     def test0(self):
         mode = theano.config.mode
         if mode == 'FAST_COMPILE':
@@ -1012,6 +1015,61 @@ class test_shapeoptimizer(unittest.TestCase):
         f = function([v,m], v.dimshuffle('x','x',0).shape[1], mode=mode)
         print f.maker.env.toposort()
         assert [] == f.maker.env.toposort()
+
+    def test_local_track_shape_i(self):
+        class IdentityNoShape(Op):
+            '''Op that does not infer the output shape from the input one'''
+            def make_node(self, x):
+                x = as_tensor_variable(x)
+                return Apply(self, [x], [x.type()])
+            def perform(self, node, (x,), (out,)):
+                out[0] = x.copy()
+            def infer_shape(self, node, (xshp,)):
+                return node.env.shape_feature.default_infer_shape(node, (xshp,))
+        identity_noshape = IdentityNoShape()
+
+        class IdentityShape(Op):
+            '''Op that does infer the output shape from the input one'''
+            def make_node(self, x):
+                x = as_tensor_variable(x)
+                return Apply(self, [x], [x.type()])
+            def perform(self, node, (x,), (out,)):
+                out[0] = x.copy()
+            def infer_shape(self, node, (xshp,)):
+                return (xshp,)
+        identity_shape = IdentityShape()
+
+        @gof.local_optimizer([IdentityNoShape])
+        def local_identity_noshape_to_identity_shape(node):
+            '''Optimization transforming the first Op into the second'''
+            if isinstance(node.op, IdentityNoShape):
+                return [identity_shape(node.inputs[0])]
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x = T.tensor3('x')
+        ins_x = identity_noshape(x)
+
+        # Without the optimization
+        f = theano.function([x], ins_x.shape)
+        assert numpy.all(f(rng.randn(3,4,7)) == [3,4,7])
+        f_ops = [node.op for node in f.maker.env.toposort()]
+        assert len(f_ops) == 5
+        assert identity_noshape in f_ops
+        assert identity_shape not in f_ops
+
+        # Register the optimization
+        register_specialize(local_identity_noshape_to_identity_shape)
+
+        # With the optimization
+        # The identity_shape op is should not be needed anymore to compute
+        # the shape
+        g = theano.function([x], ins_x.shape)
+        assert numpy.all(g(rng.randn(6,1,2)) == [6,1,2])
+        g_ops = [node.op for node in g.maker.env.toposort()]
+        assert len(g_ops) == 4
+        assert identity_noshape not in g_ops
+        assert identity_shape not in g_ops
+
 
 def test_local_mul_specialize():
 
