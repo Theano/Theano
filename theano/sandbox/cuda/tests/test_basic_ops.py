@@ -450,9 +450,9 @@ def test_hostfromgpu_shape_i():
     av=numpy.asarray(numpy.random.rand(5,4),dtype='float32')
     cv=cuda.CudaNdarray(numpy.asarray(numpy.random.rand(5,4),dtype='float32'))
 
-    f = theano.function([a],cuda.basic_ops.gpu_from_host(a))
+    f = theano.function([a],cuda.basic_ops.gpu_from_host(a), mode=m)
     assert cuda.basic_ops.gpu_from_host in [x.op for x in f.maker.env.toposort()]
-    f = theano.function([a],cuda.basic_ops.gpu_from_host(a).shape)
+    f = theano.function([a],cuda.basic_ops.gpu_from_host(a).shape, mode=m)
     topo = f.maker.env.toposort()
     assert isinstance(topo[0].op,T.opt.Shape_i)
     assert isinstance(topo[1].op,T.opt.Shape_i)
@@ -461,9 +461,9 @@ def test_hostfromgpu_shape_i():
 
 
 
-    f = theano.function([ca],cuda.basic_ops.host_from_gpu(ca))
+    f = theano.function([ca],cuda.basic_ops.host_from_gpu(ca), mode=m)
     assert cuda.basic_ops.host_from_gpu in [x.op for x in f.maker.env.toposort()]
-    f = theano.function([ca],cuda.basic_ops.host_from_gpu(ca).shape)
+    f = theano.function([ca],cuda.basic_ops.host_from_gpu(ca).shape, mode=m)
     topo = f.maker.env.toposort()
     assert isinstance(topo[0].op,T.opt.Shape_i)
     assert isinstance(topo[1].op,T.opt.Shape_i)
