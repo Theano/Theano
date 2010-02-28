@@ -89,9 +89,9 @@ class T_SoftmaxWithBias(unittest.TestCase):
 class T_SoftmaxGrad(unittest.TestCase):
     def test_infer_shape(self):
         a=T.constant(numpy.random.rand(3,4))
-        b=T.constant(numpy.random.rand(4))
+        b=T.constant(numpy.random.rand(3,4))
         f=theano.function([],softmax_grad(a,b).shape)
-        assert f()==[4]
+        assert numpy.all(f()==[3,4])
 
 class T_CrossentropySoftmax1Hot(unittest.TestCase):
     def setUp(self):
