@@ -250,7 +250,7 @@ class MakeVector(T.Op):
     def __str__(self):
         return self.__class__.__name__
     def perform(self, node, inputs, (out,)):
-        out[0] = T.numpy.asarray(inputs)
+        out[0] = theano._asarray(inputs, dtype=node.outputs[0].dtype)
 
 make_vector = MakeVector()
 
