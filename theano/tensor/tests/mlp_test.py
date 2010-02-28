@@ -287,23 +287,26 @@ def test_mlp():
         gparam  = T.grad(cost, param)
         gparams.append(gparam)
 
-
+    # Some optimizations needed are tagged with 'fast_run'
+    # TODO: refine that and include only those
+    mode = theano.compile.get_default_mode().including('fast_run')
 
     updates2 = {}
-    
+
     updates2[classifier.hiddenLayer.params[0]]=T.grad(cost,classifier.hiddenLayer.params[0])
     train_model =theano.function( inputs = [index],
             updates = updates2,
             givens={
                 x:train_set_x[index*batch_size:(index+1)*batch_size],
-                y:train_set_y[index*batch_size:(index+1)*batch_size]})
+                y:train_set_y[index*batch_size:(index+1)*batch_size]},
+            mode=mode)
     for i in train_model.maker.env.toposort(): print i
     theano.printing.pydotprint(train_model)
 
     assert any( [isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
     train_model =theano.function( inputs = [index],
             updates = updates2,
-            mode=theano.compile.get_default_mode().excluding('local_track_shape_i'),
+            mode=mode.excluding('local_track_shape_i'),
             givens={
                 x:train_set_x[index*batch_size:(index+1)*batch_size],
                 y:train_set_y[index*batch_size:(index+1)*batch_size]})
