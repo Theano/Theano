@@ -1474,7 +1474,7 @@ class t_dot(unittest.TestCase):
         except ValueError, e:
             self.failUnless(
                     e[0].split()[1:4] == ['are', 'not', 'aligned'] or # reported by numpy
-                    e[0].split()[2:5] == ['do', 'not', 'agree'], e) # reported by blas return self.fail()
+                    e[0].split()[0:2] == ['Shape', 'mismatch:'], e) # reported by blas return self.fail()
         finally:
             sys.stderr = old_stderr
 
