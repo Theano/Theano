@@ -1045,12 +1045,13 @@ class test_shapeoptimizer(unittest.TestCase):
             if isinstance(node.op, IdentityNoShape):
                 return [identity_shape(node.inputs[0])]
 
+        mode = theano.compile.get_default_mode().including('ShapeOpt', 'specialize')
         rng = numpy.random.RandomState(utt.fetch_seed())
         x = T.tensor3('x')
         ins_x = identity_noshape(x)
 
         # Without the optimization
-        f = theano.function([x], ins_x.shape)
+        f = theano.function([x], ins_x.shape, mode=mode)
         assert numpy.all(f(rng.randn(3,4,7)) == [3,4,7])
         f_ops = [node.op for node in f.maker.env.toposort()]
         assert len(f_ops) == 5
@@ -1063,7 +1064,7 @@ class test_shapeoptimizer(unittest.TestCase):
         # With the optimization
         # The identity_shape op is should not be needed anymore to compute
         # the shape
-        g = theano.function([x], ins_x.shape)
+        g = theano.function([x], ins_x.shape, mode=mode)
         assert numpy.all(g(rng.randn(6,1,2)) == [6,1,2])
         g_ops = [node.op for node in g.maker.env.toposort()]
         assert len(g_ops) == 4
