@@ -1072,6 +1072,15 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_shape not in g_ops
 
 
+        ###test multiple level of op without infer_shape
+        ins_x3 = identity_noshape(identity_noshape(identity_noshape(x)))
+        h = theano.function([x], ins_x3.shape, mode=mode)
+        assert numpy.all(h(rng.randn(6,1,2)) == [6,1,2])
+        h_ops = [node.op for node in h.maker.env.toposort()]
+        assert len(h_ops) == 4
+        assert identity_noshape not in h_ops
+        assert identity_shape not in h_ops
+
 def test_local_mul_specialize():
 
     # test a few cases to make sure that the basics are covered
