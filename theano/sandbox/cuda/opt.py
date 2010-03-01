@@ -29,6 +29,9 @@ def register_opt(*tags, **kwargs):
         return local_opt
     return f
 
+#register local_track_shape_i at this level too to make multi-level lift of shape work.
+register_opt()(theano.tensor.opt.local_track_shape_i)
+
 class InputToGpuOptimizer(Optimizer):
     """Transfert the input of a graph to the gpu if needed
     It should make this part of the optimizer faster we will will need only 1 pass on the env.
