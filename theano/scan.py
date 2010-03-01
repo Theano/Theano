@@ -680,9 +680,12 @@ class Scan(theano.Op):
                  inplace_map)
 
 
-        # write to storage
+        # write to storage, converting if needed
         for i in xrange(self.n_outs):
-            outs[i][0]=y[i]
+            if hasattr(node.outputs[i], 'dtype'):
+                outs[i][0] = theano._asarray(y[i], dtype=node.outputs[i].dtype)
+            else:
+                outs[i][0] = y[i]
 
 
 
