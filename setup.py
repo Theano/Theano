@@ -22,6 +22,7 @@ setup(name="Theano",
       author="LISA laboratory, University of Montreal",
       author_email="theano-dev@googlegroups.com",
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+      package_data={'':['*.cu','*.cuh']},
       url="http://pylearn.org/theano",
       keywords="machine learning ai gradient compiler math science",
 
