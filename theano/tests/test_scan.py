@@ -104,22 +104,20 @@ class T_Scan(unittest.TestCase):
     # generator network, only one output , type scalar ; no sequence or 
     # non sequence arguments
     def test_generator_one_output_scalar(self):
-
-
-      def f_pow2(x_tm1):
-        return 2*x_tm1
+        def f_pow2(x_tm1):
+            return 2*x_tm1
     
-      s = theano.tensor.dscalar()
-      n_steps = theano.tensor.dscalar()
-      Y, updts = theano.scan(f_pow2, [],s, [],n_steps = n_steps)
-      f1 = theano.function([s,n_steps], Y, updates = updts)
+        s = theano.tensor.dscalar()
+        n_steps = theano.tensor.dscalar()
+        Y, updts = theano.scan(f_pow2, [],s, [],n_steps = n_steps)
+        f1 = theano.function([s,n_steps], Y, updates = updts)
      
-      assert(compareArrays(f1(1,3), [2,4,8]))
+        assert compareArrays(f1(1,3), [2,4,8])
+
+
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars
     def test_one_sequence_one_output_weights(self):
-
-
         def f_rnn(u_t,x_tm1,W_in, W):
             return u_t*W_in+x_tm1*W
     
@@ -134,12 +132,12 @@ class T_Scan(unittest.TestCase):
         v_u   = numpy.array([1.,2.,3.,4.])
         v_x0  = numpy.array(1)
         v_out = numpy.array([1.1,1.3,1.6,2.])
-        assert(compareArrays( f2(v_u,v_x0,.1,1), v_out   ) )
+        assert  compareArrays( f2(v_u,v_x0,.1,1), v_out   ) 
+
 
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables
     def test_one_sequence_one_output_weights_shared(self):
-    
         u    = theano.tensor.dvector() 
         x0   = theano.tensor.dscalar()
         W_in = theano.shared(.1, name = 'w_in')
@@ -154,12 +152,13 @@ class T_Scan(unittest.TestCase):
         v_u   = numpy.array([1.,2.,3.,4.])
         v_x0  = numpy.array(1.)
         v_out = numpy.array([1.1,1.3,1.6,2.])
-        assert(compareArrays(f3(v_u,v_x0),v_out))
+        assert  compareArrays(f3(v_u,v_x0),v_out)
+
+
 
     # some rnn with multiple outputs and multiple inputs; other dimension 
     # instead of scalars/vectors
     def test_multiple_inputs_multiple_outputs(self):
-    
         W_in2 = theano.shared(numpy.array([1.,2.]), name='win2')
         W     = theano.shared(numpy.array([[2.,1.],[1.,1.]]), name='w')
         W_out = theano.shared(numpy.array([.5,1.]), name = 'wout')
@@ -185,14 +184,15 @@ class T_Scan(unittest.TestCase):
         v_y    = numpy.array([0.,7.,25.])
         (x,y) =  f4( v_u1, v_u2, v_x0, v_y0, v_Win1)
          
-        assert( compareArrays(x,v_x)) 
-        assert( compareArrays(y,v_y))
+        assert  compareArrays(x,v_x) 
+        assert  compareArrays(y,v_y)
+
+
 
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables and past 
     # taps (sequences and outputs)
     def test_using_taps_input_output(self):
-    
         u    = theano.tensor.dvector()
         x0   = theano.tensor.dvector()
         W_in = theano.shared(.1, name = 'w_in')
@@ -208,13 +208,14 @@ class T_Scan(unittest.TestCase):
         v_u  = numpy.asarray([1.,2.,3.,4.])
         v_x0 = numpy.asarray([1.,2.])
         out  = numpy.asarray([3.1,5.3])
-        assert (compareArrays( out, f7(v_u, v_x0)))
-      
+        assert   compareArrays( out, f7(v_u, v_x0))
+
+
+
     # simple rnn, one input, one state, weights for each; input/state are 
     # vectors, weights are scalars; using shared variables and past 
     # taps (sequences and outputs) and future taps for sequences
     def test_past_future_taps_shared(self):
-    
         u    = theano.tensor.dvector()
         x0   = theano.tensor.dvector()
         W_in = theano.shared(.1, name = 'w_in')
@@ -231,11 +232,12 @@ class T_Scan(unittest.TestCase):
         v_x0 = numpy.array([1.,2.])
         out  = numpy.array([3.6, 6.4])
 
-        assert (compareArrays( out, f8(v_u, v_x0) ) )
-    
+        assert compareArrays( out, f8(v_u, v_x0) ) 
+
+
+
     # simple rnn ; compute inplace
     def test_inplace(self):
-        
         u    = theano.tensor.dvector()
         mu   = theano.Param( u, mutable = True)
         x0   = theano.tensor.dscalar()
@@ -244,7 +246,9 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn_shared(u_t, x_tm1):
             return u_t*W_in + x_tm1*W
-        Y, updts = theano.scan(f_rnn_shared, u, dict( initial = x0, inplace = u),[] )
+        Y, updts = theano.scan(f_rnn_shared, u, \
+                           dict( initial = x0, inplace =u),mode='FAST_RUN' )
+
         f9   = theano.function([mu,x0], Y , updates = updts)
         v_u  = numpy.array([1.,2.,3.])
         v_x0 = numpy.array(1.)
@@ -254,24 +258,25 @@ class T_Scan(unittest.TestCase):
 
         assert (compareArrays(out, v_out))
         assert (compareArrays(v_u, out))
-    
+
+
+
     # Shared variable with updates
     def test_shared_arguments_with_updates(self):
-       W1_vals = numpy.random.rand(20,30)
-       W2_vals = numpy.random.rand(30,20)
-       u1_vals = numpy.random.rand(3,20)
-       u2_vals = numpy.random.rand(3,30)
-       y0_vals = numpy.random.rand(3,20)
-       y1_vals = numpy.random.rand(20)
-       y2_vals = numpy.random.rand(30)
-    
-       W1 = theano.shared(W1_vals,'W1')
-       W2 = theano.shared(W2_vals,'W2')
-
-       u1 = theano.shared(u1_vals,'u1')
-       y1 = theano.shared(y1_vals,'y1')
-
-       def f(u1_t, u2_t, y0_tm3, y0_tm2, y0_tm1, y1_tm1):
+        W1_vals = numpy.random.rand(20,30)
+        W2_vals = numpy.random.rand(30,20)
+        u1_vals = numpy.random.rand(3,20)
+        u2_vals = numpy.random.rand(3,30)
+        y0_vals = numpy.random.rand(3,20)
+        y1_vals = numpy.random.rand(20) 
+        y2_vals = numpy.random.rand(30)    
+        W1 = theano.shared(W1_vals,'W1')
+        W2 = theano.shared(W2_vals,'W2')
+        
+        u1 = theano.shared(u1_vals,'u1')
+        y1 = theano.shared(y1_vals,'y1')
+        
+        def f(u1_t, u2_t, y0_tm3, y0_tm2, y0_tm1, y1_tm1):
             y0_t = theano.dot(theano.dot(u1_t,W1),W2) + 0.1*y0_tm1 + \
                                              0.33*y0_tm2 + 0.17*y0_tm3
             y1_t = theano.dot(u2_t, W2) + y1_tm1
@@ -279,63 +284,62 @@ class T_Scan(unittest.TestCase):
             nwW1 = W1 + .1
             nwW2 = W2 + .05
             return ([y0_t, y1_t, y2_t], [( W1,nwW1), (W2, nwW2)])
+        
+        u2 = theano.tensor.matrix('u2')
+        y0 = theano.tensor.matrix('y0')
+        
+        Y,upds = theano.scan(f, [u1,u2], [ dict(initial = y0, taps = [-3,-2,-1]),y1, None])
+        
+        f = theano.function([u2,y0], Y, updates = upds)
+        vls = f(u2_vals, y0_vals)
+        
+        # do things in numpy
+        v_y0 = numpy.zeros((6,20))
+        v_y1 = numpy.zeros((4,20))
+        v_y2 = numpy.zeros((3,30))
+        v_y0[:3] = y0_vals
+        v_y1[0]  = y1_vals
+        vW1      = W1_vals.copy()
+        vW2      = W2_vals.copy()
+        for idx in xrange(3):
+            v_y0[idx+3] = numpy.dot( numpy.dot(u1_vals[idx,:], vW1), vW2) + \
+                          0.1*v_y0[idx+2] + 0.33*v_y0[idx+1] + 0.17*v_y0[idx]
+            v_y1[idx+1] = numpy.dot( u2_vals[idx,:], vW2) + v_y1[idx]
+            v_y2[idx]   = numpy.dot( u1_vals[idx,:], vW1)
+            vW1 = vW1 + .1
+            vW2 = vW2 + .05
 
-       u2 = theano.tensor.matrix('u2')
-       y0 = theano.tensor.matrix('y0')
+        assert compareArrays(vls[0], v_y0[3:])
+        assert compareArrays(vls[1], v_y1[1:])
+        assert compareArrays(vls[2], v_y2)
+        assert compareArrays(vW1, W1.value)
+        assert compareArrays(vW2, W2.value)
 
-       Y,upds = theano.scan(f, [u1,u2], [ dict(initial = y0, taps = [-3,-2,-1]),y1, None])
-
-       f = theano.function([u2,y0], Y, updates = upds)
 
 
-       vls = f(u2_vals, y0_vals)
-
-       # do things in numpy
-       v_y0 = numpy.zeros((6,20))
-       v_y1 = numpy.zeros((4,20))
-       v_y2 = numpy.zeros((3,30))
-       v_y0[:3] = y0_vals
-       v_y1[0]  = y1_vals
-       vW1      = W1_vals.copy()
-       vW2      = W2_vals.copy()
-       for idx in xrange(3):
-          v_y0[idx+3] = numpy.dot( numpy.dot(u1_vals[idx,:], vW1), vW2) + \
-                        0.1*v_y0[idx+2] + 0.33*v_y0[idx+1] + 0.17*v_y0[idx]
-          v_y1[idx+1] = numpy.dot( u2_vals[idx,:], vW2) + v_y1[idx]
-          v_y2[idx]   = numpy.dot( u1_vals[idx,:], vW1)
-          vW1 = vW1 + .1
-          vW2 = vW2 + .05
 
     def test_gibbs_chain(self):
-
         W_vals  = numpy.random.rand(20,30) -.5
         vis_val = numpy.random.binomial(1,0.5, size=(3,20))
         bvis = numpy.random.rand(20) -.5
         bhid = numpy.random.rand(30) -.5
-
         tW  = theano.shared(W_vals)
         tbh = theano.shared(bhid)
         tbv = theano.shared(bvis)
-
         vis = theano.tensor.matrix()
-
         trng = theano.tensor.shared_randomstreams.RandomStreams(123)
-
-
+        
         def f(vsample):
             hmean = theano.tensor.nnet.sigmoid(theano.dot(vsample,tW)+ tbh)
             hsample = trng.binomial(hmean.shape,1,hmean)
             vmean = theano.tensor.nnet.sigmoid(theano.dot(hsample,tW.T)+ tbv)
             return trng.binomial(vsample.shape,1,vsample)
-
         
         v_vals, updts = theano.scan(f, [], [vis],[], n_steps = 10)
-
         my_f = theano.function([vis], v_vals[-1], updates = updts)
-
-
+        
+        
         def numpy_implementation(vsample):
-
             rng = numpy.random.RandomState(123)
             b1  = numpy.random.RandomState(rng.randint(2**30))
             b2  = numpy.random.RandomState(rng.randint(2**30))
@@ -347,14 +351,14 @@ class T_Scan(unittest.TestCase):
                 vsample = b2.binomial(1,vsample, size = vsample.shape)
 
             return vsample
-
+        
         t_res = my_f(vis_val)
         n_res = numpy_implementation(vis_val)
-
+        
         assert (compareArrays(t_res, n_res))
 
-    def test_only_shared_no_input_no_output(self):
 
+    def test_only_shared_no_input_no_output(self):
         s = theano.shared(1)
         def f_pow2():
             return {s: 2*s}
@@ -368,7 +372,6 @@ class T_Scan(unittest.TestCase):
     # test gradient simple network 
     def test_10(self):
         pass
-
      TO TEST: 
         - test gradient (one output)
         - test gradient (multiple outputs)

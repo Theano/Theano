@@ -437,6 +437,9 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
 
     # Call the object on the input sequences, initial values for outs, 
     # and non sequences
+    for seq in seqs : 
+        if not seq.get('input', None):
+            raiseValue('All input sequences should provide')
     unwrapped_seqs = [ seq.get('input',theano.tensor.as_tensor(0)) for seq in seqs ]
     unwrapped_outs = [ out.get('initial',theano.tensor.as_tensor(0)) for out in info_outs ]
     values =  local_op( *(    [theano.tensor.as_tensor(n_steps)]  \
@@ -782,7 +785,7 @@ class Scan(theano.Op):
                   y[j][i] = something[j]
               except :
                   y[j] = numpy.empty( (n_steps,)+something[j].shape , dtype =
-                                                              something[j].dtype)
+                                                   something[j].dtype)
                   y[j][i] = something[j]
           elif self.stored_steps_output[j] == 1:
               try:
