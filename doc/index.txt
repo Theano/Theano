@@ -32,6 +32,7 @@ Documentation
 
 Roughly in order of what you'll want to check out:
 
+* :ref:`install` -- How to install Theano.
 * :ref:`introduction` -- What is Theano?
 * :ref:`tutorial` -- Learn the basics.
 * :ref:`libdoc` -- Theano's functionality, module by module.
