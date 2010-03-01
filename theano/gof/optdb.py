@@ -6,7 +6,12 @@ else:
   from python25 import defaultdict
 
 import opt
-
+from theano.configparser import TheanoConfigParser, AddConfigVar, FloatParam
+from theano import config
+AddConfigVar('optdb.position_cutoff',
+        'Where to stop eariler during optimization. It represent the position of the optimizer where to stop.',
+        FloatParam(float('inf'))
+        )
 
 class DB(object):
     def __hash__(self):
@@ -181,7 +186,7 @@ class SequenceDB(DB):
         :type position_cutoff: float or int
         :param position_cutoff: only optimizations with position less than the cutoff are returned.
         """
-        position_cutoff = kwtags.pop('position_cutoff', float('inf'))
+        position_cutoff = kwtags.pop('position_cutoff', config.optdb.position_cutoff)
         opts = super(SequenceDB, self).query(*tags, **kwtags)
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
         opts.sort(key = lambda obj: self.__position__[obj.name])
