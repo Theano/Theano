@@ -98,6 +98,43 @@ class T_random_function(unittest.TestCase):
 
         assert not numpy.allclose(val0, val1)
 
+    def test_no_inplace(self):
+        """Test that when not running inplace, the RandomState is not updated"""
+        rf = RandomFunction('uniform', tensor.dvector)
+        rng_R = random_state_type()
+
+        post_r, out = rf(rng_R, (3,), 0., 1.)
+        f = compile.function([rng_R], [post_r, out])
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        rng0, val0 = f(rng)
+        rng_ = numpy.random.RandomState(utt.fetch_seed())
+        # rng should still be in a fresh state
+        self.assertTrue(rng_R.type.values_eq(rng, rng_))
+        # rng0 should be in an updated state
+        self.assertFalse(rng_R.type.values_eq(rng, rng0))
+
+        f2 = compile.function(
+                [compile.In(rng_R,
+                    value = rng,
+                    update = post_r,
+                    mutable = False)],
+                [post_r, out])
+        rng2, val2 = f2()
+        # rng should be in a fresh state
+        self.assertTrue(rng_R.type.values_eq(rng, rng_))
+        # rng2 should be in an updated state
+        self.assertFalse(rng_R.type.values_eq(rng, rng2))
+        # The updated state should be the same for both functions
+        self.assertTrue(rng_R.type.values_eq(rng2, rng0))
+
+        rng3, val3 = f2()
+        # rng2 should not have changed
+        self.assertTrue(rng_R.type.values_eq(rng2, rng0))
+        # rng3 should be an updated again version of rng2
+        self.assertFalse(rng_R.type.values_eq(rng3, rng2))
+        self.assertFalse(rng_R.type.values_eq(rng3, rng))
+
     def test_random_function_ndim(self):
         """Test that random_function helper function accepts argument ndim"""
         rng_R = random_state_type()
