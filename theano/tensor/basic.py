@@ -1302,7 +1302,8 @@ class MaxAndArgmax(Op):
 
         If axis is None it means to calculate the max over the last dimension which is
         DIFFERENT FROM NUMPY!!
-    
+        To have the behavior of numpy do a flatten of the input before passing the data to this op.
+        If the input to flatten is not ccontiguous, this will make a copy to a contiguous version.
     """
     nin=2 # tensor, axis
     nout=2 # max val, max idx
