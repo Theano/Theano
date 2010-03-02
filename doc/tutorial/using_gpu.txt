@@ -67,8 +67,9 @@ file and run it.
     t0 = time.time()
     for i in xrange(iters):
         r = f()
-    print 'Looping 100 times took', time.time() - t0, 'seconds'
+    print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
     print 'Result is', r
+    print 'Used the','cpu' if any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]) else 'gpu'
 
 The program just computes the exp() of a bunch of random numbers.
 Note that we use the `shared` function to
@@ -117,9 +118,10 @@ after the T.exp(x) is replaced by a GPU version of exp().
     t0 = time.time()
     for i in xrange(iters):
         r = f()
-    print 'Looping 100 times took', time.time() - t0, 'seconds'
+    print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
     print 'Result is', r
     print 'Numpy result is', numpy.asarray(r)
+    print 'Used the','cpu' if any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]) else 'gpu'
 
 The output from this program is
 
@@ -169,9 +171,10 @@ that it has the un-wanted side-effect of really slowing things down.
     t0 = time.time()
     for i in xrange(iters):
         r = f()
-    print 'Looping 100 times took', time.time() - t0, 'seconds'
+    print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
     print 'Result is', r
     print 'Numpy result is', numpy.asarray(r)
+    print 'Used the','cpu' if any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]) else 'gpu'
 
 Running this version of the code takes just under 0.05 seconds, over 140x faster than
 the CPU implementation!
