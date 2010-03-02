@@ -296,8 +296,11 @@ class ProfileMode(Mode):
         print
         print 'Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
-            print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
-                                                  fct_call_time[key]/fct_call[key], fct_call[key],key)
+            if fct_call[key]>0:
+                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
+                                                      fct_call_time[key]/fct_call[key], fct_call[key], key.name)
+            else:
+                print '   NOT CALLED',key.name
         print
         print 'Time since import %.3fs'%(total_time)
         print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)

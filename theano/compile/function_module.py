@@ -510,8 +510,8 @@ class Function(object):
         
         dt_call=time.time()-t0
         if hasattr(self.maker.mode,'fct_call_time'):
-          self.maker.mode.fct_call_time[self.name] += dt_call
-          self.maker.mode.fct_call[self.name] += 1
+          self.maker.mode.fct_call_time[self] += dt_call
+          self.maker.mode.fct_call[self] += 1
 
         self.maker.mode.call_time += dt_call
         self.maker.mode.fn_time += dt_fn
@@ -952,9 +952,9 @@ def orig_function(inputs, outputs, mode=None, accept_inplace = False, name=None)
     fn.name = name
     
     if hasattr(mode,'fct_call_time'):
-      mode.fct_call_time.setdefault(name,0)
+      mode.fct_call_time.setdefault(fn,0)
     if hasattr(mode,'fct_call'):
-      mode.fct_call.setdefault(name,0)
+      mode.fct_call.setdefault(fn,0)
       
     return fn
 
