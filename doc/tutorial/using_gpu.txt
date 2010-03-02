@@ -244,4 +244,7 @@ Tips for improving performance on GPU
   termination (atexit). Is time being used sensibly?   If an Op or Apply is
   taking more time than its share, then if you know something about GPU
   programming have a look at how it's implemented in theano.sandbox.cuda.
+  Check the line like 'Spent Xs(X%) in cpu Op, Xs(X%) in gpu Op and Xs(X%) transfert Op'
+  that can tell you if not enought of your graph is on the gpu or if their
+  is too much memory transfert.
 
