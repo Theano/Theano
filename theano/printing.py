@@ -369,7 +369,8 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
         import pydot as pd
     except:
         print "failed to import pydot. Yous must install pydot for this function to work."
-        
+        return
+    
     g=pd.Dot()
     var_str={}
     def var_name(var):
