@@ -175,111 +175,118 @@ class Scalar(Type):
         return ""
 
     def c_support_code(self):
-        template = """
-        struct theano_complex%(nbits)s : public npy_complex%(nbits)s
-        {
-            typedef theano_complex%(nbits)s complex_type;
-            typedef npy_float%(half_nbits)s scalar_type;
 
-            complex_type operator +(complex_type y) {
-                complex_type ret;
-                ret.real = this->real + y.real;
-                ret.imag = this->imag + y.imag;
-                return ret;
-            }
-            complex_type operator -(complex_type y) {
-                complex_type ret;
-                ret.real = this->real - y.real;
-                ret.imag = this->imag - y.imag;
-                return ret;
-            }
-            complex_type operator *(complex_type y) {
-                complex_type ret;
-                ret.real = this->real * y.real - this->imag * y.imag;
-                ret.imag = this->real * y.imag + this->imag * y.real;
-                return ret;
-            }
-            complex_type operator /(complex_type y) {
-                complex_type ret;
-                scalar_type y_norm_square = y.real * y.real + y.imag * y.imag;
-                ret.real = (this->real * y.real + this->imag * y.imag) / y_norm_square;
-                ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
-                return ret;
-            }
+        if self.dtype.startswith('complex'):
+
+            template = """
+            struct theano_complex%(nbits)s : public npy_complex%(nbits)s
+            {
+                typedef theano_complex%(nbits)s complex_type;
+                typedef npy_float%(half_nbits)s scalar_type;
+
+                complex_type operator +(complex_type y) {
+                    complex_type ret;
+                    ret.real = this->real + y.real;
+                    ret.imag = this->imag + y.imag;
+                    return ret;
+                }
+                complex_type operator -(complex_type y) {
+                    complex_type ret;
+                    ret.real = this->real - y.real;
+                    ret.imag = this->imag - y.imag;
+                    return ret;
+                }
+                complex_type operator *(complex_type y) {
+                    complex_type ret;
+                    ret.real = this->real * y.real - this->imag * y.imag;
+                    ret.imag = this->real * y.imag + this->imag * y.real;
+                    return ret;
+                }
+                complex_type operator /(complex_type y) {
+                    complex_type ret;
+                    scalar_type y_norm_square = y.real * y.real + y.imag * y.imag;
+                    ret.real = (this->real * y.real + this->imag * y.imag) / y_norm_square;
+                    ret.imag = (this->imag * y.real - this->real * y.imag) / y_norm_square;
+                    return ret;
+                }
+                template <typename T>
+                complex_type& operator =(const T& y);
+
+                theano_complex%(nbits)s() {}
+
+                template <typename T>
+                theano_complex%(nbits)s(const T& y) { *this = y; }
+
+                template <typename TR, typename TI>
+                theano_complex%(nbits)s(const TR& r, const TI& i) { this->real=r; this->imag=i; }
+             };
+
+             """
+            operator_eq = """
+            template <> %(mytype)s & %(mytype)s::operator=<npy_int8>(const npy_int8 & y)
+            { this->real=y; this->imag=0; return *this; }
+
+            template <> %(mytype)s & %(mytype)s::operator=<npy_int16>(const npy_int16 & y)
+            { this->real=y; this->imag=0; return *this; }
+
+            template <> %(mytype)s & %(mytype)s::operator=<npy_int32>(const npy_int32 & y)
+            { this->real=y; this->imag=0; return *this; }
+
+            template <> %(mytype)s & %(mytype)s::operator=<npy_int64>(const npy_int64 & y)
+            { this->real=y; this->imag=0; return *this; }
+
+            template <> %(mytype)s & %(mytype)s::operator=<npy_float32>(const npy_float32 & y)
+            { this->real=y; this->imag=0; return *this; }
+
+            template <> %(mytype)s & %(mytype)s::operator=<npy_float64>(const npy_float64 & y)
+            { this->real=y; this->imag=0; return *this; }
+
+            template <> %(mytype)s & %(mytype)s::operator=<theano_complex128>(const theano_complex128 & y)
+            { this->real=y.real; this->imag=y.imag; return *this; }
+
+            template <> %(mytype)s & %(mytype)s::operator=<theano_complex64>(const theano_complex64 & y)
+            { this->real=y.real; this->imag=y.imag; return *this; }
+
             template <typename T>
-            complex_type& operator =(const T& y);
-
-            theano_complex%(nbits)s() {}
+            const %(mytype)s 
+            operator+(const %(mytype)s &x, const T& y)
+            { return %(mytype)s(x.real+y, x.imag); }
 
             template <typename T>
-            theano_complex%(nbits)s(const T& y) { *this = y; }
+            const %(mytype)s 
+            operator+(const T& y, const %(mytype)s &x)
+            { return %(mytype)s(x.real+y, x.imag); }
 
-            template <typename TR, typename TI>
-            theano_complex%(nbits)s(const TR& r, const TI& i) { this->real=r; this->imag=i; }
-         };
+            template <typename T>
+            const %(mytype)s 
+            operator-(const %(mytype)s &x, const T& y)
+            { return %(mytype)s(x.real-y, x.imag); }
 
-         """
-        operator_eq = """
-        template <> %(mytype)s & %(mytype)s::operator=<npy_int8>(const npy_int8 & y)
-        { this->real=y; this->imag=0; return *this; }
+            template <typename T>
+            const %(mytype)s 
+            operator-(const T& x, const %(mytype)s &y)
+            { return %(mytype)s(x-y.real, -y.imag); }
 
-        template <> %(mytype)s & %(mytype)s::operator=<npy_int16>(const npy_int16 & y)
-        { this->real=y; this->imag=0; return *this; }
+            template <typename T>
+            const %(mytype)s 
+            operator*(const %(mytype)s &x, const T& y)
+            { return %(mytype)s(x.real*y, x.imag*y); }
 
-        template <> %(mytype)s & %(mytype)s::operator=<npy_int32>(const npy_int32 & y)
-        { this->real=y; this->imag=0; return *this; }
+            template <typename T>
+            const %(mytype)s 
+            operator*(const T& x, const %(mytype)s &y)
+            { return %(mytype)s(x*y.real, x*y.imag); }
+            """
 
-        template <> %(mytype)s & %(mytype)s::operator=<npy_int64>(const npy_int64 & y)
-        { this->real=y; this->imag=0; return *this; }
+            # todo: use C templating
+            return template % dict(nbits = 64, half_nbits = 32) \
+                    + template % dict(nbits = 128, half_nbits = 64) \
+                    + operator_eq % dict(mytype='theano_complex128') \
+                    + operator_eq % dict(mytype='theano_complex64')
 
-        template <> %(mytype)s & %(mytype)s::operator=<npy_float32>(const npy_float32 & y)
-        { this->real=y; this->imag=0; return *this; }
+        else:
 
-        template <> %(mytype)s & %(mytype)s::operator=<npy_float64>(const npy_float64 & y)
-        { this->real=y; this->imag=0; return *this; }
-
-        template <> %(mytype)s & %(mytype)s::operator=<theano_complex128>(const theano_complex128 & y)
-        { this->real=y.real; this->imag=y.imag; return *this; }
-
-        template <> %(mytype)s & %(mytype)s::operator=<theano_complex64>(const theano_complex64 & y)
-        { this->real=y.real; this->imag=y.imag; return *this; }
-
-        template <typename T>
-        const %(mytype)s 
-        operator+(const %(mytype)s &x, const T& y)
-        { return %(mytype)s(x.real+y, x.imag); }
-
-        template <typename T>
-        const %(mytype)s 
-        operator+(const T& y, const %(mytype)s &x)
-        { return %(mytype)s(x.real+y, x.imag); }
-
-        template <typename T>
-        const %(mytype)s 
-        operator-(const %(mytype)s &x, const T& y)
-        { return %(mytype)s(x.real-y, x.imag); }
-
-        template <typename T>
-        const %(mytype)s 
-        operator-(const T& x, const %(mytype)s &y)
-        { return %(mytype)s(x-y.real, -y.imag); }
-
-        template <typename T>
-        const %(mytype)s 
-        operator*(const %(mytype)s &x, const T& y)
-        { return %(mytype)s(x.real*y, x.imag*y); }
-
-        template <typename T>
-        const %(mytype)s 
-        operator*(const T& x, const %(mytype)s &y)
-        { return %(mytype)s(x*y.real, x*y.imag); }
-        """
-
-        # todo: use C templating
-        return template % dict(nbits = 64, half_nbits = 32) \
-                + template % dict(nbits = 128, half_nbits = 64) \
-                + operator_eq % dict(mytype='theano_complex128') \
-                + operator_eq % dict(mytype='theano_complex64')
+            return ""
 
     def c_code_cache_version(self):
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.
