@@ -7,7 +7,7 @@ import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
 from theano import gof
-from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
+from theano.gof import opt, InconsistencyError, TopoOptimizer, graph, Variable
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
 from elemwise import Elemwise, DimShuffle
@@ -977,10 +977,13 @@ class Canonizer(gof.LocalOptimizer):
         Returns a numeric constant if v is a gof.Constant or, well, a
         numeric constant. If v is a plain Variable, returns None.
         """
-        try:
-            return get_constant_value(v)
-        except TypeError:
-            return None
+        if isinstance(v, Variable):
+            try:
+                return get_constant_value(v)
+            except TypeError:
+                return None
+        else:
+            return v
 
     def simplify(self, num, denum):
         """
