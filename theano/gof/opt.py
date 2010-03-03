@@ -768,7 +768,12 @@ class NavigatorOptimizer(Optimizer):
             raise TypeError('Optimizer %s gave wrong type of replacement' % lopt)
         if len(node.outputs) != len(replacements):
             raise ValueError('Optimizer %s gave wrong number of replacements' % lopt)
-        repl_pairs = zip(node.outputs, replacements)
+        # If an output would be replaced by itself, no need to perform
+        # the replacement
+        repl_pairs = [(r, rnew) for r, rnew in zip(node.outputs, replacements)
+                if rnew is not r]
+        if len(repl_pairs) == 0:
+            return False
         try:
             env.replace_all_validate(repl_pairs, reason=lopt)
             return True
