@@ -253,7 +253,7 @@ class Method(Component):
 
     If this method should update the shared storage value for a Module member, then the
     update expression must be given in this dictionary.
-    
+
 
     Keys in this dictionary must be members of the module graph--variables for which this Method
     will use the shared storage.
@@ -261,7 +261,7 @@ class Method(Component):
     The value associated with each key should be a Variable (or a string that can be resolved to
     a Variable) representing the computation of a new value for this shared storage after
     each function call.
-    
+
     """
 
     mode=None
@@ -320,10 +320,10 @@ class Method(Component):
             if isinstance(self.outputs, (io.Out, gof.Variable, str, type(None))):
                 output = self.outputs
                 self.outputs = resolve_variable(output,
-                    passthrough=(gof.Variable, io.Out, type(None))) 
+                    passthrough=(gof.Variable, io.Out, type(None)))
             else:
                 outputs = list(self.outputs)
-                self.outputs = [resolve_variable(output, 
+                self.outputs = [resolve_variable(output,
                     passthrough=(gof.Variable, io.Out)) for output in outputs]
 
         def resolve_updates():
@@ -370,10 +370,10 @@ class Method(Component):
                                           ' Verify that it is indeed a Member of the'
                                           ' enclosing module or of one of its submodules.' % (r, self.name, self))
                 else:
-                    return io.In(variable=r, 
+                    return io.In(variable=r,
                             value=gof.Container(r,
-                                storage=[getattr(r, 'data', None)],  
-                                readonly=(isinstance(r, gof.Constant))), 
+                                storage=[getattr(r, 'data', None)],
+                                readonly=(isinstance(r, gof.Constant))),
                             mutable=False)
         inputs = self.inputs
 
@@ -432,9 +432,9 @@ class Method(Component):
           else:
             outputs_list = [outputs]
 
-        #backport          
+        #backport
         #outputs_list = [] if outputs is None else (list(outputs) if isinstance(outputs, (list, tuple)) else [outputs])
-  
+
         outputs_variable_list = []
         for o in outputs_list:
           if isinstance(o, io.Out):
@@ -459,7 +459,7 @@ class Method(Component):
                     #the user is allowed to change this value between function calls if it isn't a constant
                     assert container.readonly == (isinstance(input, gof.Constant))
                     #the function is not allowed to change this value
-                    assert storage.mutable == False 
+                    assert storage.mutable == False
                 else:
                     storage = get_storage(input, not allocate_all)
 
@@ -490,13 +490,13 @@ class Method(Component):
         else:
             rval = ''
         if isinstance(self.outputs, (list, tuple)):
-          inputs, outputs, updates = self.inputs, self.outputs 
+          inputs, outputs, updates = self.inputs, self.outputs
         else:
           inputs, outputs, updates =  [self.outputs], self.updates
 
         #backport
         #inputs, outputs, updates = self.inputs, self.outputs if isinstance(self.outputs, (list, tuple)) else [self.outputs], self.updates
-        
+
         # If mode is in kwargs, prints the optimized version of the method
         mode = kwargs.pop('mode', None)
         if mode:
@@ -599,7 +599,7 @@ class Composite(Component):
         hierarchy of composites and components, where path is a
         sequence of keys such that
           component is self[path[0]][path[1]]...
-        
+
         If include_self is True, the list will include the Composite
         instances, else it will only yield the list of leaves.
         """
@@ -625,7 +625,7 @@ class Composite(Component):
         Get the Component associated to the key.
         """
         raise NotImplementedError
-        
+
     def set(self, item, value):
         """
         Set the Component associated to the key.
@@ -639,7 +639,7 @@ class Composite(Component):
         if isinstance(x, (External, Member)):
             return x.r
         return x
-        
+
     def __setitem__(self, item, value):
         # Uses set() internally
         self.set(item, value)
@@ -648,11 +648,11 @@ class Composite(Component):
         retval = []
         for c in self.components():
             if isinstance(c, (External, Member)):
-          	   retval += [c.r]
+                retval += [c.r]
             else:
-               retval += [c]
+                retval += [c]
 
-	return retval
+        return retval
         #backport
         #return (c.r if isinstance(c, (External, Member)) else c for c in self.components())
 
@@ -774,7 +774,7 @@ class ComponentDictInstanceNoInit(CompositeInstance):
             self.__items__[item] = value
         else:
             super(ComponentDictInstanceNoInit, self).__setitem__(item, value)
-    
+
     def __str__(self):
         strings = []
         for k, v in sorted(self.__items__.iteritems()):
@@ -832,7 +832,7 @@ class ComponentDict(Composite):
     def set(self, item, value):
         if not isinstance(value, Component):
             msg = """
-            ComponentDict may only contain Components. 
+            ComponentDict may only contain Components.
             (Hint: maybe value here needs to be wrapped, see theano.compile.module.register_wrapper.)"""
             raise TypeError(msg, value, type(value))
         #value = value.bind(self, item)
@@ -944,7 +944,7 @@ class Curry:
     def __setstate__(self, state):
         self.obj, self.name, self.arg = state
         self.meth = getattr(self.obj, self.name)
-    
+
 
 class ModuleInstance(ComponentDictInstanceNoInit):
     """
@@ -973,19 +973,19 @@ class ModuleInstance(ComponentDictInstanceNoInit):
 
 class Module(ComponentDict):
     """WRITEME
-    
+
     You should inherit from Module with the members will be other Modules or Components.  To
     make more specialized elements of a Module graph, consider inheriting from Component
     directly.
     """
     InstanceType = ModuleInstance # By default, we use build ModuleInstance
-   
+
     def __init__(self, *args, **kw):
         super(Module, self).__init__(*args, **kw)
         self.__dict__["local_attr"]={}
         self.__dict__["_components"]={}
 
-        
+
     def __wrapper__(self, x):
         """
         This function is called whenever x is set as an attribute of
@@ -1090,7 +1090,7 @@ class Module(ComponentDict):
         """
         Module's __setattr__ method hides all members under local_attr. This
         method iterates over those elements and wraps them so they can be used
-        in a computation graph. The "wrapped" members are then set as object 
+        in a computation graph. The "wrapped" members are then set as object
         attributes accessible through the dotted notation syntax (<module_name>
         <dot> <member_name>). Submodules are handled recursively.
         """
@@ -1111,7 +1111,7 @@ class Module(ComponentDict):
                     sv = sv.make_module_instance(args,kwargs)
                 v[sk] = sv
             return v
-             
+
         for k,v in self.local_attr.iteritems():
             if isinstance(v,Module):
                 v = v.make_module_instance(args,kwargs)
