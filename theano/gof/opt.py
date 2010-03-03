@@ -941,11 +941,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         else:
                             lopt_change = self.process_node(env, node, lopt)
                             if lopt_change:
-                              process_count[lopt] += 1
+                                process_count[lopt] += 1
                             else:
-                              process_count[lopt] += 0
-                            #backport
-                            #process_count[lopt] += 1 if lopt_change else 0
+                                process_count[lopt] += 0
                             changed |= lopt_change
             finally:
                 self.detach_updater(env, u)
