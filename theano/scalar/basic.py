@@ -290,6 +290,7 @@ class Scalar(Type):
 
     def c_code_cache_version(self):
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.
+        return (7,)  # make complex c code optional
         return (6,)  # added implemeentations of operators that work with scalar arguments
         return (5,)  #added constructors to theano_complex class
         return (4,)  #explicit T given in specialization of operator= lines.  This makes it compile with open64
