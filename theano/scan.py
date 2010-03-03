@@ -272,7 +272,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
 
     # wrap outputs info in a dictionary if they are not already
     # in the same pass create a init_outs_taps dictionary and a inplace map
-    
     print n_outs
     print outs_info
     for i in xrange(n_outs):
@@ -287,7 +286,7 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
                 outs_info[i]['taps'] = [-1]
         else:
             outs_info[i] = dict()
-    
+
         if outs_info[i].get('taps', None):
             outputs_taps[i] = outs_info[i]['taps']
         if outs_info[i].get('inplace', None):
@@ -304,7 +303,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
                 raise ValueError('Asked to compute in place of a non-input variable',\
                           outs_info[i].get('inplace', None))
 
-    
     # create theano inputs for the recursive function  
     # note : this is a first batch of possible inputs that will 
     #        be compiled in a dummy function; we used this dummy
