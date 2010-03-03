@@ -401,27 +401,17 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
 
     # if the number of outputs to the function does not match the number of 
     # assumed outputs
-    # find the number of update rules from shared variables 
-    n_update_rules = 0 
-    for v in dummy_f.maker.expanded_inputs :
-        if isinstance(v.variable, theano.compile.SharedVariable) and v.update:
-            n_update_rules += 1
 
     if len(inner_fn_out_states) != n_outs:
         if outs_info == []:
             # We know how to deal with this case, assume that none of the outputs
             # are required to have any sort of time taps
             # we just need to update the number of actual outputs
-            print len(inner_fn_out_states), n_outs, n_update_rules
-            print inner_fn_out_states
             n_outs = len(inner_fn_out_states)
             # other updates : 
             for i in xrange(n_outs):
                 outs_info += [ dict() ]  
         else:
-            print outs_info
-            print inner_fn_out_states
-            print n_outs
             raise ValueError('There has been a terrible mistake in our input arguments'
                     ' and scan is totally lost. Make sure that you indicate for every '
                     ' output what taps you want to use, or None, if you do not want to '
