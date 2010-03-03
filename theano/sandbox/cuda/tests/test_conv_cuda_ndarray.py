@@ -18,7 +18,7 @@ cuda_tensor4 = cuda_ndarray.CudaNdarrayType([False]*4)
 
 def py_conv_valid_numpy(img, kern):
     assert img.shape[1] == kern.shape[1]
-    outshp = (img.shape[0], kern.shape[0], 
+    outshp = (img.shape[0], kern.shape[0],
             img.shape[2] - kern.shape[2] + 1,
             img.shape[3] - kern.shape[3] + 1)
     out = numpy.zeros(outshp, dtype='float32')
@@ -43,11 +43,11 @@ def py_conv_scipy(img, kern, mode, subsample):
     from scipy.signal import convolve2d
     assert img.shape[1] == kern.shape[1]
     if mode == 'valid':
-        outshp = (img.shape[0], kern.shape[0], 
+        outshp = (img.shape[0], kern.shape[0],
                 img.shape[2] - kern.shape[2] + 1,
                 img.shape[3] - kern.shape[3] + 1)
     else:
-        outshp = (img.shape[0], kern.shape[0], 
+        outshp = (img.shape[0], kern.shape[0],
                 img.shape[2] + kern.shape[2] - 1,
                 img.shape[3] + kern.shape[3] - 1)
     out = numpy.zeros(outshp, dtype='float32')
@@ -119,8 +119,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
         gpu_mflops = approx_fp / (t2-t1)
         if verbose>0:
             print >> sys.stdout, '%15s'% str(ishape), '%15s'% str(kshape),
-            print >> sys.stdout, '%12.5f  %7.2f %7.2f %7.1f' % (approx_fp, 
-		cpu_mflops, gpu_mflops,(t1-t0)/(t2-t1))
+            print >> sys.stdout, '%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
+                    cpu_mflops, gpu_mflops,(t1-t0)/(t2-t1))
     if not rval:
         print >> sys.stdout, 'test_'+mode+' id='+str(id)+' FAILED for ishape, kshape, mode, subsample, img_stride, kern_stride, version', ishape, kshape, mode, subsample, img_stride, kern_stride, version
         diff=cpuval-gpuval
@@ -131,7 +131,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
         print "median abs diff:", numpy.median(diffabs), "nb close:",nb_close, "/", diff.size
         print "max relatif diff:",pr_diff.max(), "avg rel diff:", numpy.average(pr_diff)
 
-	print rval
+        print rval
     if not rval and print_!=False:
         if npy_img.shape[0]>5:
             print "img",npy_img[0]
@@ -145,7 +145,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
             print "gpu",gpuval
             print "cpu",cpuval
             print "diff",diff
-                
+
     return rval
 
 def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, ones=False):
@@ -178,8 +178,8 @@ def exec_conv(version, shapes, verbose, random, mode, print_=None, rtol=1e-5, on
 
 def get_basic_shapes():
     return [
-	#basic test of image and kernel shape
-	      ((1, 1, 1, 1), (1, 1, 1, 1), (1,1), (1,1), (1,1))
+        #basic test of image and kernel shape
+              ((1, 1, 1, 1), (1, 1, 1, 1), (1,1), (1,1), (1,1))
             , ((1, 1, 2, 2), (1, 1, 2, 2), (1,1), (1,1), (1,1))
             , ((1, 1, 3, 3), (1, 1, 2, 2), (1,1), (1,1), (1,1))
         #basic test for unsquare kernel and image
@@ -204,7 +204,7 @@ def get_shapes2(scales_img=(1,1), scales_kern=(1,1), subsample=(1,1), img_stride
     #basic test of stack, batch and nkern paramter
     shapes =get_shapes((1*scales_img[0],1*scales_img[1]),
                        (1*scales_kern[0],1*scales_kern[1]),subsample, img_stride, kern_stride)
-    #basic test of stack, batch and nkern paramter with image and kernel shape 
+    #basic test of stack, batch and nkern paramter with image and kernel shape
     shapes +=get_shapes((2*scales_img[0],2*scales_img[1]),
                         (2*scales_kern[0],2*scales_kern[1]),subsample, img_stride, kern_stride)
     #basic test of stack, batch and nkern paramter with image and kernel shape
@@ -278,13 +278,13 @@ def test_valid():
     version=[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13]
     verbose=0
 #    version=[1]
-    
+
     random = True
     print_ = False
     ones = False
     if ones:
         random = False
-    
+
     exec_conv(version, shapes, verbose, random, 'valid', print_=print_, ones=ones, rtol=1.1e-5)
 
 def test_full():
@@ -347,7 +347,7 @@ def test_full():
 
 def test_subsample():
     # implement when
-    shapes = [ 
+    shapes = [
             ((1, 1, 1, 1), (1, 1, 1, 1), (1,1))
             , ((1, 1, 1, 1), (1, 1, 1, 1), (2,2))
             , ((4, 2, 10, 10), (3, 2, 2, 2), (1, 3))
@@ -396,7 +396,7 @@ def _test_dummy():
 
 
 def benchmark():
-    
+
     shapes_valid = [
         #test_lenet_28 shape
         ((20, 60,12,12), (30,60,8,8), (1,1), (1,1), (1,1))#valid
@@ -419,7 +419,7 @@ def benchmark():
         ,((10, 1,108,108), (20,1,7,7), (1,1), (1,1), (1,1))#valid
         ,((1, 10,108,108), (20,10,102,102), (1,1), (1,1), (1,1))#valid
         #test_lenet_256 shape
-        ,((2, 20,124,124), (30,20,9,9), (1,1), (1,1), (1,1))#valid 
+        ,((2, 20,124,124), (30,20,9,9), (1,1), (1,1), (1,1))#valid
         ,((20, 2,124,124), (30,2,116,116), (1,1), (1,1), (1,1))#valid
         ,((2, 1,256,256), (20,1,9,9), (1,1), (1,1), (1,1))#valid
         ,((1, 2,256,256), (20,2,248,248), (1,1), (1,1), (1,1))#valid
