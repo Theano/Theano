@@ -71,6 +71,8 @@ try:
     if compile_cuda_ndarray:
         import nvcc_compiler
         if not nvcc_compiler.is_nvcc_available():
+            error('nvcc compiler not found on $PATH.'
+                    '  Check your nvcc installation and try again')
             set_cuda_disabled()
 
         if cuda_available:
