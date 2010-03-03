@@ -1481,15 +1481,6 @@ def local_log1p(node):
                 else:
                     return _fill_chain(T.log1p(T.add(*nonconsts)), scalar_inputs)
 
-#@register_stabilize
-#@gof.local_optimizer([T.log])
-#def local_xlogy(node):
-#    # x log(x) -> xlogx(x)
-#    # x log(y) -> xlogy(x,y)
-#    if node.op == T.log:
-#        log_arg, = node.inputs
-#        if log_arg.owner and log_arg.owner.op == T.mul:
-#            scalars,s
 
 def add_calculate(num, denum, aslist = False, out_type=None):
     #TODO: make sure that this function and mul_calculate are similar
