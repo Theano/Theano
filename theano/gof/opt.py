@@ -4,7 +4,7 @@ amount of useful generic optimization tools.
 """
 
 
-import sys
+import sys, logging
 import graph
 from env import InconsistencyError
 import utils
@@ -16,6 +16,8 @@ from theano.gof.python25 import any, all
 
 #if sys.version_info[:2] >= (2,5):
 #  from collections import defaultdict
+
+_logger = logging.getLogger('theano.gof.opt')
 
 from theano.gof import deque
 import destroyhandler as dh
@@ -107,9 +109,9 @@ class SeqOptimizer(Optimizer, list):
     def warn(exc, self, optimizer):
         """Default failure_callback for SeqOptimizer
         """
-        print >> sys.stderr, "WARNING: SeqOptimizer apply", optimizer
-        print >> sys.stderr, "Traceback:"
-        traceback.print_exc()
+        _logger.error("ERROR: SeqOptimizer apply %s"% str(optimizer))
+        _logger.error("Traceback:")
+        _logger.error(traceback.format_exc())
 
     def __init__(self, *opts, **kw):
         """WRITEME"""
@@ -647,9 +649,9 @@ class NavigatorOptimizer(Optimizer):
     def warn(exc, nav, repl_pairs, local_opt):
         """failure_callback for NavigatorOptimizer: print traceback
         """
-        print >> sys.stderr, "WARNING: Optimization failure due to: ", local_opt
-        print >> sys.stderr, "TRACEBACK:"
-        traceback.print_exc()
+        _logger.error("ERROR: Optimization failure due to: %s" % str(local_opt))
+        _logger.error("TRACEBACK:")
+        _logger.error(traceback.format_exc())
         if isinstance(exc, AssertionError):
             raise exc
     @staticmethod
@@ -658,11 +660,7 @@ class NavigatorOptimizer(Optimizer):
         """
         if isinstance(exc, InconsistencyError):
             return
-        print >> sys.stderr, "WARNING: Optimization failure due to: ", local_opt
-        print >> sys.stderr, "TRACEBACK:"
-        traceback.print_exc()
-        if isinstance(exc, AssertionError):
-            raise exc
+        return NavigatorOptimizer.warn(exc, nav, repl_pairs, local_opt)
     @staticmethod
     def warn_ignore(exc, nav, repl_pairs, local_opt):
         """failure_callback for NavigatorOptimizer: ignore all errors
@@ -948,7 +946,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.detach_updater(env, u)
             self.detach_updater(env, u) #TODO: erase this line, it's redundant at best
         if max_use_abort:
-            print >> sys.stderr, "WARNING: EquilibriumOptimizer max'ed out"
+            _logger.error("ERROR: EquilibriumOptimizer max'ed out")
 
     def print_summary(self, stream=sys.stdout, level=0):
         print >> stream, "%s%s id=%i" %(' '*level, self.__class__.__name__, id(self))
