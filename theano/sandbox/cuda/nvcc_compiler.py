@@ -26,6 +26,7 @@ def debug(*args):
     #sys.stderr.write('DEBUG:'+ ' '.join(str(a) for a in args)+'\n')
     _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
 
+nvcc_path = 'nvcc'
 def is_nvcc_available():
     """Return True iff the nvcc compiler is found."""
     try:
@@ -33,7 +34,14 @@ def is_nvcc_available():
                 stderr=subprocess.PIPE)
         return True
     except:
-        return False
+        #try to find nvcc into cuda.root
+        p = os.path.join(config.cuda.root,'bin','nvcc')
+        if os.path.exists(p):
+            global nvcc_path
+            nvcc_path = p
+            return True
+        else: return False
+is_nvcc_available()#to set nvcc_path correctly.
 
 def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[]):
@@ -74,10 +82,12 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
 
     debug('Generating shared lib', lib_filename)
     # TODO: Why do these args cause failure on gtx285 that has 1.3 compute capability? '--gpu-architecture=compute_13', '--gpu-code=compute_13', 
-    cmd = ['nvcc', '-shared', '-g'] + [pa for pa in preargs if pa.startswith('-O')]
+    cmd = [nvcc_path, '-shared', '-g'] + [pa for pa in preargs if pa.startswith('-O')]
     if config.nvcc.compiler_bindir:
         cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
     cmd.extend(['-Xcompiler', ','.join(pa for pa in preargs if not pa.startswith('-O'))])
+    if nvcc_path!='nvcc':
+        cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib')])])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename]) 
     cmd.append(cppfilename)
@@ -111,6 +121,6 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
         raise Exception('nvcc return status', p.returncode, 'for cmd', ' '.join(cmd))
 
     #touch the __init__ file
-    file(os.path.join(location, "__init__.py"),'w').close()      
+    file(os.path.join(location, "__init__.py"),'w').close()
     return dlimport(lib_filename)
 
