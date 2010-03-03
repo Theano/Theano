@@ -30,6 +30,7 @@ from theano.tensor import opt, TensorType
 from theano import gof, Apply
 from theano.compile import optdb
 import theano.tensor.shared_randomstreams as shared_random
+import copy 
 
 import numpy
 
@@ -54,22 +55,23 @@ def hash_listsDictsTuples(x):
         for v in x:
             hash_value ^= hash_listsDictsTuples(v)
     else:
-      try:
-        hash_value ^= hash(x)
-      except:
-        pass
+        try:
+            hash_value ^= hash(x)
+        except:
+            pass
     return hash_value
 
 
-
+## TODO
 ###################################
 ## Implement specific function calls : map, reduce, generate
 
-def map(fn, sequences, non_sequences = [], n_steps =0, truncate_gradient = -1, \
-        go_backwards = False, mode = 'FAST_RUN'):
-    return scan(fn, sequences= sequences, non_sequences = non_sequences, 
-                truncate_gradient = truncate_gradient, go_backwards = go_backwards, 
-                mode = mode)
+def map(fn, sequences, non_sequences = [], n_steps =0, 
+        truncate_gradient = -1, go_backwards = False, 
+        mode = 'FAST_RUN'):
+    return scan(fn, sequences= sequences, outputs_info = [],non_sequences= non_sequences,
+                truncate_gradient= truncate_gradient, 
+                go_backwards= go_backwards, mode = mode)
 
 
 
@@ -102,7 +104,7 @@ def map(fn, sequences, non_sequences = [], n_steps =0, truncate_gradient = -1, \
 #   Yes, actually it will be exactly 2 ( if there are no other constraints)
 
 
-def scan(fn, sequences=[], info_outputs=[], non_sequences=[], 
+def scan(fn, sequences=[], outputs_info=[], non_sequences=[], 
          n_steps = 0, truncate_gradient = -1, go_backwards = False, 
          mode = None):
     '''Function that constructs and applies a Scan op
@@ -158,7 +160,7 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
         the assumption that you use only one slice, defined as a tap of offset 0. This 
         means that at step ``t`` scan will provide the slice at position ``t``.
 
-    :param info_outputs: 
+    :param outputs_info: 
         list of Theano variables or dictionaries containing Theano variables used 
         to initialize the outputs of scan. As before (for ``sequences``) the reason 
         you would wrap a Theano variable in a dictionary is to provide additional 
@@ -234,10 +236,11 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
     else:
         seqs = sequences
         
-    if not (type(info_outputs) in (list,tuple)):
-        info_outs = [info_outputs]
+    print outputs_info
+    if not (type(outputs_info) in (list,tuple)):
+        outs_info = [outputs_info]
     else: 
-        info_outs = info_outputs
+        outs_info = outputs_info
         
     if not (type(non_sequences) in (list,tuple)):
         non_seqs = [non_sequences]
@@ -245,14 +248,13 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
         non_seqs = non_sequences
 
 
-
     # compute number of sequences and number of outputs 
-    n_seqs     = len(seqs)
-    n_outs   = len(info_outs)
+    n_seqs = len(seqs)
+    n_outs = len(outs_info)
 
-    inplace_map = {}
+    inplace_map    = {}
     sequences_taps = {}
-    outputs_taps  = {}
+    outputs_taps   = {}
     # wrap sequences in a dictionary if they are not already
     # in the same pass create a sequences_taps dictionary
     for i in xrange(n_seqs):
@@ -261,83 +263,97 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
         # see if taps values are provided as a list
         elif seqs[i].get('taps',None):
             if not type(seqs[i]['taps']) in (tuple,list):
-                    seqs[i]['taps'] = [seqs[i]['taps']]
+                seqs[i]['taps'] = [seqs[i]['taps']]
         else:
             seqs[i][taps] = [0]
 
         if seqs[i].get('taps',None):
             sequences_taps[i] = seqs[i]['taps']
 
-
-
     # wrap outputs info in a dictionary if they are not already
     # in the same pass create a init_outs_taps dictionary and a inplace map
-
-
-    for i in xrange(n_outs):
-        if info_outs[i]:
-            if not type(info_outs[i]) == dict:
-                info_outs[i] = dict(initial=info_outs[i], taps = [-1])
-                # if there is no initial state but there are taps     
-            elif (not info_outs[i].get('initial',None)) and(info_outs[i].get('taps',None)):
-                raise ValueError('If you are using slices of an output you need to '\
-                        'provide a initial state for it', info_outs[i])
-            elif info_outs[i].get('initial',None) and (not info_outs[i].get('taps',None)):
-                info_outs[i]['taps'] = [-1]
-        else:
-            info_outs[i] = dict()
     
-        if info_outs[i].get('taps', None):
-           outputs_taps[i] = info_outs[i]['taps']
-        if info_outs[i].get('inplace', None):
+    print n_outs
+    print outs_info
+    for i in xrange(n_outs):
+        if outs_info[i]:
+            if not type(outs_info[i]) == dict:
+                outs_info[i] = dict(initial=outs_info[i], taps = [-1])
+                # if there is no initial state but there are taps     
+            elif (not outs_info[i].get('initial',None)) and(outs_info[i].get('taps',None)):
+                raise ValueError('If you are using slices of an output you need to '\
+                        'provide a initial state for it', outs_info[i])
+            elif outs_info[i].get('initial',None) and (not outs_info[i].get('taps',None)):
+                outs_info[i]['taps'] = [-1]
+        else:
+            outs_info[i] = dict()
+    
+        if outs_info[i].get('taps', None):
+            outputs_taps[i] = outs_info[i]['taps']
+        if outs_info[i].get('inplace', None):
             # look for that variable to get the index
             found = None
             for k in xrange(n_seqs):
-                if seqs[k].get('input', None) == info_outs[i].get('inplace',None):
+                if seqs[k].get('input', None) == outs_info[i].get('inplace',None):
                     found = k
-            if found != None: 
-                inplace_map[i] = k
+            if found != None:
+                # NOTE : inplace_map is identical to destroy_map, i.e. it tells what output
+                #     is computed inplace of what input !!
+                inplace_map[i] = found
             else:
                 raise ValueError('Asked to compute in place of a non-input variable',\
-                          info_outs[i].get('inplace', None))
+                          outs_info[i].get('inplace', None))
 
-
+    
     # create theano inputs for the recursive function  
+    # note : this is a first batch of possible inputs that will 
+    #        be compiled in a dummy function; we used this dummy
+    #        function to detect shared variables and their updates
+    #        and to construct a new list of possible inputs
     args = []
-    _ins = 0 
-    _outs = 0
+    dummy_notshared_ins = 0 
+    dummy_notshared_init_outs = 0
+    slice_to_seqs = []
     # go through sequences picking up time slices as needed
-    for seq in seqs:
+    for i,seq in enumerate(seqs):
         if seq.get('taps', None):
             slices = [ seq['input'][0].type() for k in seq['taps'] ]
+            slice_to_seqs += [ i for k in seq['taps']]
             args += slices
-            _ins += len(seq['taps'])
+            dummy_notshared_ins += len(seq['taps'])
     # go through outputs picking up time slices as needed
-    for init_out in info_outs:
+    for i,init_out in enumerate(outs_info):
         if init_out.get('taps', None) == [-1]:
             args += [init_out['initial'].type()]
-            _outs += 1
+            val = slice_to_seqs[-1] if slice_to_seqs else -1
+            slice_to_seqs += [ val+1 ]
+            dummy_notshared_init_outs += 1
         elif init_out.get('taps',None):
             if numpy.any(numpy.array(init_out.get('taps',[])) > 0):
                 raise ValueError('Can not use future taps of outputs', init_out)
-            slices = [ init_out['initial'][0].type() for k in init_out['taps'] ] 
+            slices = [ init_out['initial'][0].type() for k in init_out['taps'] ]
+            val = slice_to_seqs[-1] if slice_to_seqs else -1
+            slice_to_seqs += [ val+1 for k in init_out['taps'] ]
             args  += slices
-            _outs += len(init_out['taps'])
+            dummy_notshared_init_outs += len(init_out['taps'])
 
     # remove shared variables from the non sequences list
-    noshared = []
+    notshared_other_args = []
     for non_seq in non_seqs:
         if not isinstance(non_seq, theano.compile.SharedVariable):
-            noshared += [non_seq]
+            notshared_other_args += [non_seq]
 
-
-    dummy_args = args + noshared
+    # add only the not shared variables to the arguments of the dummy
+    # function [ a function should not get shared variables as input ]
+    dummy_args = args + notshared_other_args
+    # arguments for the lambda expression that gives us the output 
+    # of the inner function
     args += non_seqs
 
     outputs_updates  = fn(*args)
     outputs = []
     updates = {}
-    # we try now to separate the outputs from the updates
+    # we will try now to separate the outputs from the updates
     if not type(outputs_updates) in (list,tuple):
         if type(outputs_updates) == dict :
             # we have just an update dictionary
@@ -347,25 +363,26 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
     else:
         elem0 = outputs_updates[0]
         elem1 = outputs_updates[1]
-        if ( type(elem0) == dict ) or \
-           ( type(elem0) in (list,tuple) and type(elem0[0]) in (list,tuple)):
-                # elem0 is the updates dictionary / list
-                updates = elem0
-                outputs = elem1
-                if not type(outputs) in (list,tuple):
-                    outputs = [outputs]
+        t_el0 = type(elem0)
+        t_el1 = type(elem1)
+        if t_el0 == dict or ( t_el0 in (list,tuple) and type(elem0[0]) in (list,tuple)):
+            # elem0 is the updates dictionary / list
+            updates = elem0
+            outputs = elem1
+            if not type(outputs) in (list,tuple):
+                outputs = [outputs]
         elif ( type(elem1) == dict) or \
              ( type(elem1) in (list,tuple) and type(elem1[0]) in (list,tuple)):
-                # elem1 is the updates dictionary / list
-                updates = elem1
-                outputs = elem0
-                if not type(outputs) in (list,tuple):
-                    outputs = [outputs]
+            # elem1 is the updates dictionary / list
+            updates = elem1
+            outputs = elem0
+            if not type(outputs) in (list,tuple):
+                outputs = [outputs]
         else :
             if type(outputs_updates) in (list,tuple) and \
-               ( type(outputs_updates[0]) in (list,tuple)):
-                 outputs = []
-                 updates = outputs_updates
+                    (type(outputs_updates[0]) in (list,tuple)):
+                outputs = []
+                updates = outputs_updates
             else:
                 outputs = outputs_updates
                 updates = {}
@@ -373,93 +390,103 @@ def scan(fn, sequences=[], info_outputs=[], non_sequences=[],
 
     # Wo compile a dummy function just to see what shared variable
     # we have and what are their update rules
-
     dummy_f = theano.function(dummy_args, outputs, updates = updates, mode = \
                  theano.compile.mode.Mode(linker = 'py', optimizer = None) )
-    
 
-    ls_outputs      = [ sout.variable for sout in dummy_f.maker.outputs]
-    update_map      = {}
-    shared_outs     = []
-    shared_non_seqs = []
-    givens          = {}
+    inner_fn_out_states = [ out.variable for out in dummy_f.maker.outputs]
+    update_map       = {}
+    shared_outs      = []
+    shared_non_seqs  = []
+    givens           = {}
 
     # if the number of outputs to the function does not match the number of 
     # assumed outputs
-    if len(ls_outputs) != n_outs:
-        if info_outs == []:
+    # find the number of update rules from shared variables 
+    n_update_rules = 0 
+    for v in dummy_f.maker.expanded_inputs :
+        if isinstance(v.variable, theano.compile.SharedVariable) and v.update:
+            n_update_rules += 1
+
+    if len(inner_fn_out_states) != n_outs:
+        if outs_info == []:
             # We know how to deal with this case, assume that none of the outputs
             # are required to have any sort of time taps
             # we just need to update the number of actual outputs
-            n_outs = len(ls_outputs)
+            print len(inner_fn_out_states), n_outs, n_update_rules
+            print inner_fn_out_states
+            n_outs = len(inner_fn_out_states)
             # other updates : 
             for i in xrange(n_outs):
-               info_outs += [ dict() ]  
-
+                outs_info += [ dict() ]  
         else:
+            print outs_info
+            print inner_fn_out_states
+            print n_outs
             raise ValueError('There has been a terrible mistake in our input arguments'
                     ' and scan is totally lost. Make sure that you indicate for every '
                     ' output what taps you want to use, or None, if you do not want to '
                     ' use any !')
+    inner_fn_inputs=[input.variable for input in \
+        dummy_f.maker.expanded_inputs[:dummy_notshared_ins+dummy_notshared_init_outs]]
+    fromIdx = dummy_notshared_ins + dummy_notshared_init_outs
 
-    ls_inputs=[inp.variable for inp in \
-                    dummy_f.maker.expanded_inputs[:_ins+_outs]]
-    fromIdx = _ins + _outs
-
-    stored_steps_output = [ 0 for i in xrange(n_outs)]
+    store_steps = [ 0 for i in xrange(n_outs)]
     # add shared variable that act as outputs
     #
-    n_outs_extended = n_outs
-    for inp in dummy_f.maker.expanded_inputs[fromIdx:] :
-        if isinstance(inp.variable, theano.compile.SharedVariable) and inp.update:
-            ls_inputs.append(inp.variable.type())
-            ls_outputs += [inp.update]
-            update_map[ inp.variable ] = n_outs_extended 
-            outputs_taps[ n_outs_extended ] = [-1]
-            n_outs_extended += 1
-            stored_steps_output += [1] 
-            shared_outs += [inp.variable]
-            givens[inp.variable] = ls_inputs[-1]
+    n_extended_outs = n_outs
+    for input in dummy_f.maker.expanded_inputs[fromIdx:] :
+        if isinstance(input.variable, theano.compile.SharedVariable) and input.update:
+            new_var = input.variable.type()
+            inner_fn_inputs.append(new_var)
+            val = slice_to_seqs[-1] if slice_to_seqs else -1 
+            slice_to_seqs += [ val+1 ]
+            inner_fn_out_states += [input.update]
+            update_map[ input.variable ] = n_extended_outs
+            outputs_taps[ n_extended_outs ] = [-1]
+            n_extended_outs += 1
+            store_steps += [1] 
+            shared_outs += [input.variable]
+            givens[input.variable] = inner_fn_inputs[-1]
 
     # add the rest:
-    for inp in dummy_f.maker.expanded_inputs[fromIdx:] :
-        if isinstance(inp.variable, theano.compile.SharedVariable) and not inp.update:
-           shared_non_seqs += [inp.variable]
-           ls_inputs += [inp.variable.type() ]
-           givens[inp.variable] = ls_inputs[-1]
-        elif not isinstance(inp.variable, theano.compile.SharedVariable):
-            ls_inputs.append(inp.variable)
+    for input in dummy_f.maker.expanded_inputs[fromIdx:] :
+        if isinstance(input.variable, theano.compile.SharedVariable) and not input.update:
+           shared_non_seqs += [input.variable]
+           inner_fn_inputs += [input.variable.type() ]
+           val = slice_to_seqs[-1] if slice_to_seqs else -1
+           slice_to_seqs += [val +1]
+           givens[input.variable] = inner_fn_inputs[-1]
+        elif not isinstance(input.variable, theano.compile.SharedVariable):
+            inner_fn_inputs.append(input.variable)
     
     # Create the Scan op object
-    local_op = Scan( (ls_inputs,ls_outputs, givens ), n_seqs, n_outs_extended, 
-            inplace_map, sequences_taps,  outputs_taps, truncate_gradient,
-            go_backwards, stored_steps_output, mode)
+    local_op = Scan( (inner_fn_inputs,inner_fn_out_states, givens, slice_to_seqs ), n_seqs, 
+            n_extended_outs, inplace_map, sequences_taps,  outputs_taps, truncate_gradient,
+            go_backwards, store_steps, mode)
 
     # Call the object on the input sequences, initial values for outs, 
     # and non sequences
     for seq in seqs : 
         if not seq.get('input', None):
             raiseValue('All input sequences should provide')
-    unwrapped_seqs = [ seq.get('input',theano.tensor.as_tensor(0)) for seq in seqs ]
-    unwrapped_outs = [ out.get('initial',theano.tensor.as_tensor(0)) for out in info_outs ]
-    values =  local_op( *(    [theano.tensor.as_tensor(n_steps)]  \
-                         + unwrapped_seqs \
-                         + unwrapped_outs \
-                         + shared_outs \
-                         + noshared
+    unwrapped_seqs = [ seq.get('input',theano.tensor.as_tensor(0.)) for seq in seqs ]
+    unwrapped_outs = [ out.get('initial',theano.tensor.as_tensor(0.)) for out in outs_info ]
+    values =  local_op( *(    [theano.tensor.as_tensor(n_steps)]  
+                         + unwrapped_seqs 
+                         + unwrapped_outs 
+                         + shared_outs 
+                         + notshared_other_args
                          + shared_non_seqs))
 
     if not type(values) in (tuple, list):
         values = [values]
-    for k in update_map.keys():
-        update_map[k] = values [ update_map[k] ] 
-
-    if n_outs != n_outs_extended : 
-        if n_outs == 1:
-            values = values[0]
-        else:
-            values = values[:n_outs]
-
+    for val in update_map.keys():
+        update_map[val] = values [ update_map[val] ] 
+    
+    if n_outs == 1:
+        values = values[0]
+    else:    
+        values = values[:n_outs]
 
     return (values, update_map)
 
@@ -471,17 +498,17 @@ class Scan(theano.Op):
     # OLD DOCUMENTATION CAN BE FOUND NEAR REVISION 2581
     #
 
-    def __init__(self,(inputs, outputs, givens),n_seqs,  n_outs,
+    def __init__(self,(inputs, outputs, givens, slice_to_seqs),n_seqs,  n_outs,
                  inplace_map={}, seqs_taps={}, outs_taps={},
                  truncate_gradient = -1,
-                 go_backwards = False, stored_steps_output = {},
+                 go_backwards = False, store_steps = {},
                  mode = 'FAST_RUN', inplace=False):
         '''
-        :param (inputs,outputs, givens): inputs and outputs Theano variables 
-                                         that describe the function that is 
-                                         applied recursively; givens
-                                         list is used to replace shared
-                                         variables with not shared ones
+        :param (inputs,outputs, givens,slice_to_seqs):
+            inputs and outputs Theano variables that describe the function that is 
+            applied recursively; givens list is used to replace shared
+            variables with not shared ones; slice_to_seqs is a convinience list that
+            tells which of the inputs is slice to which of the sequences 
         :param n_seqs: number of sequences over which scan will have to 
                        iterate
         :param n_outs: number of outputs of the scan op
@@ -491,32 +518,13 @@ class Scan(theano.Op):
         :param truncate_gradient: number of steps after which scan should 
                                   truncate -1 implies no truncation 
         :param go_bacwards: see scan funcion above
-        :param stored_steps_output: a list of booleans of same size as the 
-                                    number of outputs; the value at position 
-                                    ``i`` in the list corresponds to the 
-                                    ``i-th`` output, and it tells how many 
-                                    steps (from the end towards the begining)
-                                    of the outputs you really need and should
-                                    return; given this information, scan can 
-                                    know (if possible) to allocate only
-                                    the amount of memory needed to compute 
-                                    that many entries
+        :param store_steps: 
+            a list of booleans of same size as the number of outputs; the value at position 
+            ``i`` in the list corresponds to the ``i-th`` output, and it tells how many 
+            steps (from the end towards the begining) of the outputs you really need and should
+            return; given this information, scan can know (if possible) to allocate only
+            the amount of memory needed to compute that many entries
         '''
-        
-
-        # check inplace map
-        for _out,_in in inplace_map.iteritems():
-            if _out > n_outs:
-                raise ValueError(('Inplace map reffers to an unexisting'\
-                          'output %d')% _out)
-            if _in > n_seqs:
-                raise ValueError(('Inplace map reffers to an unexisting'\
-                          'input sequence %d')%_in)
-            if (_in >= 0) and (min(seqs_taps[_in]) < 0):
-                raise ValueError(('Input sequence %d uses past values that '\
-                         'will be overwritten by inplace operation')%_in)
-
-
         #check sequences past taps
         for k,v in seqs_taps.iteritems():
           if k > n_seqs:
@@ -535,7 +543,7 @@ class Scan(theano.Op):
         # build a list of output types for any Apply node using this op.
         self.apply_output_types = []
         for i, o in enumerate(outputs):
-            if 1 == stored_steps_output[i]:
+            if 1 == store_steps[i]:
                 self.apply_output_types.append(o.type)
             else:
                 expanded_otype = TensorType(
@@ -548,6 +556,15 @@ class Scan(theano.Op):
         if inplace:
             for i in inplace_map.keys():
                 self.destroy_map.update({i: [inplace_map[i]+1] } )
+            # make all inplace inputs mutable for the inner function for extra efficency
+            for idx in xrange(len(inputs)):
+                # get seq number
+                n_seq = slice_to_seqs[idx]
+                if n_seq in inplace_map.keys():
+                    if type(inputs[n_seq]) is theano.Param:
+                        inputs[n_seq].mutable = True
+                    else:
+                        inputs[n_seq] = theano.Param( inputs[n_seq], mutable = True)
 
         self.seqs_taps      = seqs_taps
         self.outs_taps      = outs_taps
@@ -555,15 +572,19 @@ class Scan(theano.Op):
         self.n_outs         = n_outs
         self.n_args         = n_seqs+n_outs+1
         self.inplace_map    = inplace_map
-        self.stored_steps_output   = stored_steps_output
+        self.store_steps    = store_steps
         self.inplace        = inplace
         self.inputs         = inputs
         self.givens         = givens
         self.outputs        = outputs
         self.truncate_gradient = truncate_gradient
         self.go_backwards   = go_backwards
+        self.slice_to_seqs  = slice_to_seqs
 
         self.fn = theano.function(inputs,outputs, mode = mode, givens = givens)
+        assert not numpy.any( [isinstance(x.variable,theano.compile.SharedVariable) for x in \
+            self.fn.maker.inputs])
+
 
 
     def make_node(self,*inputs):
@@ -572,44 +593,42 @@ class Scan(theano.Op):
 
 
     def __eq__(self,other):
-      # the self.apply_output_types are a function of all these things
-      # no need to compare it as well
-      rval = type(self) == type(other)
-      if rval:
-        rval = (self.inputs == other.inputs) and \
-               (self.outputs == other.outputs) and \
-               (self.givens  == other.givens) and \
-               (self.stored_steps_output == other.stored_steps_output) and \
-               (self.seqs_taps == other.seqs_taps) and \
-               (self.outs_taps == other.outs_taps) and \
-               (self.inplace_map == other.inplace_map) and \
-               (self.n_seqs == other.n_seqs) and\
-               (self.inplace == other.inplace) and\
-               (self.go_backwards == other.go_backwards) and\
-               (self.truncate_gradient == other.truncate_gradient) and\
-               (self.n_outs == other.n_outs) and\
-               (self.n_args == other.n_args)
-      return rval
+        # the self.apply_output_types are a function of all these things
+        # no need to compare it as well
+        rval = type(self) == type(other)
+        if rval:
+            rval = (self.inputs == other.inputs) and \
+            (self.outputs == other.outputs) and \
+            (self.givens  == other.givens) and \
+            (self.store_steps == other.store_steps) and \
+            (self.seqs_taps == other.seqs_taps) and \
+            (self.outs_taps == other.outs_taps) and \
+            (self.inplace_map == other.inplace_map) and \
+            (self.n_seqs == other.n_seqs) and\
+            (self.inplace == other.inplace) and\
+            (self.go_backwards == other.go_backwards) and\
+            (self.truncate_gradient == other.truncate_gradient) and\
+            (self.n_outs == other.n_outs) and\
+            (self.n_args == other.n_args)
+        return rval
       
 
     def __hash__(self):
-      # the self.apply_output_types are a function of all these things
-      # no need to compare it as well
-      return hash(type(self)) ^ \
-             hash(self.n_seqs) ^ \
-             hash(self.n_outs) ^ \
-             hash(self.inplace) ^\
-             hash(self.go_backwards) ^\
-             hash(self.truncate_gradient) ^\
-             hash(self.n_args) ^ \
-             hash_listsDictsTuples(self.outputs) ^ \
-             hash_listsDictsTuples(self.inputs) ^ \
-             hash_listsDictsTuples(self.givens) ^ \
-             hash_listsDictsTuples(self.seqs_taps) ^\
-             hash_listsDictsTuples(self.outs_taps) ^\
-             hash_listsDictsTuples(self.stored_steps_output)
-
-
+        # the self.apply_output_types are a function of all these things
+        # no need to compare it as well
+        return hash(type(self)) ^ \
+            hash(self.n_seqs) ^ \
+            hash(self.n_outs) ^ \
+            hash(self.inplace) ^\
+            hash(self.go_backwards) ^\
+            hash(self.truncate_gradient) ^\
+            hash(self.n_args) ^ \
+            hash_listsDictsTuples(self.outputs) ^ \
+            hash_listsDictsTuples(self.inputs) ^ \
+            hash_listsDictsTuples(self.givens) ^ \
+            hash_listsDictsTuples(self.seqs_taps) ^\
+            hash_listsDictsTuples(self.outs_taps) ^\
+            hash_listsDictsTuples(self.store_steps)
 
 
     def perform(self,node,args, outs):
@@ -643,20 +662,20 @@ class Scan(theano.Op):
             n_steps = args[0]
         
         for i in xrange(self.n_seqs):
-          if self.seqs_taps.has_key(i):
-              # compute actual length of the sequence ( we need to see what
-              # past taps this sequence has, and leave room for them 
-              seq_len = args[i+1].shape[0] + min(self.seqs_taps[i])
-              if  max( self.seqs_taps[i]) > 0: 
-                  # using future values, so need to end the sequence earlier
-                  seq_len -= max(self.seqs_taps[i])
-              if n_steps == 0 :
-                  # length of the sequences, leaving room for the largest
-                  n_steps = seq_len
-              if seq_len != n_steps : 
-                  warning(('Input sequence %d has a shorter length then the '
-                          'expected number of steps %d')%(i,n_steps))
-                  n_steps = min(seq_len,n_steps)
+            if self.seqs_taps.has_key(i):
+                # compute actual length of the sequence ( we need to see what
+                # past taps this sequence has, and leave room for them 
+                seq_len = args[i+1].shape[0] + min(self.seqs_taps[i])
+                if  max( self.seqs_taps[i]) > 0: 
+                    # using future values, so need to end the sequence earlier
+                    seq_len -= max(self.seqs_taps[i])
+                if n_steps == 0 :
+                    # length of the sequences, leaving room for the largest
+                    n_steps = seq_len
+                if seq_len != n_steps : 
+                    warning(('Input sequence %d has a shorter length then the '
+                        'expected number of steps %d')%(i,n_steps))
+                    n_steps = min(seq_len,n_steps)
 
 
 
@@ -667,144 +686,202 @@ class Scan(theano.Op):
 
  
         # check lengths of init_outs
-        for i in xrange(self.n_seqs+1, \
-                        self.n_seqs+self.n_outs+1):
-          if self.outs_taps.has_key(i-self.n_seqs-1):
-            if self.outs_taps[i-self.n_seqs-1] != [-1]:
-              req_size = abs(min(self.outs_taps[i-self.n_seqs-1]))-1
-              if args[i].shape[0] < req_size:
-                warning(('Initial state for output %d has fewer values then '
-                    'required by the maximal past value %d. Scan will use 0s'
-                    ' for missing values')%(i-self.n_iterable-1,req_size))
+        for i in xrange(self.n_seqs+1, self.n_seqs+self.n_outs+1):
+            if self.outs_taps.has_key(i-self.n_seqs-1):
+                if self.outs_taps[i-self.n_seqs-1] != [-1]:
+                    req_size = abs(min(self.outs_taps[i-self.n_seqs-1]))-1
+                    if args[i].shape[0] < req_size:
+                        warning(('Initial state for output %d has fewer values then '
+                            'required by the maximal past value %d. Scan will use 0s'
+                            ' for missing values')%(i-self.n_iterable-1,req_size))
             
         self.n_steps = n_steps
         y = self.scan(self.fn, args[1:],self.n_seqs, self.n_outs, 
                  self.seqs_taps, self.outs_taps, n_steps, self.go_backwards, 
                  inplace_map)
 
-
-        # write to storage, converting if needed
+        '''
+        # write to storage, converting if needed ( why do we have the wrong dtype !???)
+        # -- solved --
         for i in xrange(self.n_outs):
             if hasattr(node.outputs[i], 'dtype'):
                 outs[i][0] = theano._asarray(y[i], dtype=node.outputs[i].dtype)
             else:
                 outs[i][0] = y[i]
-
-
-
-    def scan(self, fn, args, n_seqs, n_outs, seqs_taps, outs_taps,  n_steps, 
-             go_backwards, inplace_map):
-
-      y = []
-      for i in xrange(n_outs):
-        if inplace_map.has_key(i) and (inplace_map[i] >= 0):
-          y += [args[inplace_map[i]]]
-        else:
-          if self.stored_steps_output[i] == 1 :
-            y+= [ None ]
-          else:
-            arg_shape = args[i+n_seqs].shape[1:]
-            if (not self.outs_taps.has_key(i)) or \
-                    self.outs_taps[i] == [-1]:
-                arg_shape = args[i+n_seqs].shape
-            if self.stored_steps_output[i] < 1 :
-                y_shape = (n_steps,)+arg_shape
+        '''
+        for i in xrange(self.n_outs):
+            if self.store_steps[i] > 1 : 
+                # we need to reorder the steps .. to have them in the correct order
+                # we use numpy advanced indexing for this
+                # index order : 
+                index_order = range(self.idx_store_steps[i],self.store_steps[i]) + \
+                              range(self.idx_store_steps[i])
+                outs[i][0] = y[i][index_order]
             else:
-                y_shape = (self.stored_steps_output[i],)+arg_shape
-            y += [numpy.empty(y_shape, dtype=args[i+n_seqs].dtype)]
-      seqs_mins = {}
-      for j in xrange(n_seqs):
-        if seqs_taps.has_key(j):
-          seqs_mins.update({j:  min(seqs_taps[j])})
+                outs[i][0] = y[i]
 
-      outs_mins = {}
-      initOuts_size = {}
-      for j in xrange(n_outs):
-        if outs_taps.has_key(j):
-          outs_mins.update({j: min(outs_taps[j])})
-          if self.outs_taps[j] != [-1]:
-              initOuts_size.update({j: args[n_seqs+j].shape[0]})
-          else:
-              initOuts_size.update({j: 0})
+            
 
-
-      for i in xrange(n_steps):
-        fn_args = []
-
-        # sequences over which scan iterates
-        # check to see if we are scaning them backwards or no
-        _i = i
-        if go_backwards:
-            _i = n_steps-1-i
+    def scan(self, fn, args, n_seqs, n_outs, seqs_taps, outs_taps,  n_steps, go_backwards, inplace_map):
+        ''' Actual loop of the scap op perform function '''
+        # Note that we removed the n_steps from the args for this function, so the 
+        # order of arguments is slightly different compared to perform 
+        y = []
+        # When you have taps, you need to leave borders in your sequences, initial outputs
+        # for those taps; here we compute what are those borders for sequences
+        seqs_mins = {}
         for j in xrange(n_seqs):
-          if seqs_taps.has_key(j):
-            ls_taps = seqs_taps[j]
-            min_tap = seqs_mins[j]
-            for tap_value in ls_taps:
-                k = _i - min_tap + tap_value
-                fn_args += [args[j][k]]
+            if seqs_taps.has_key(j):
+                seqs_mins.update({j:  min(seqs_taps[j])})
+
+        # create storage space for the outputs ( using corresponding inputs if we are
+        # dealing with inplace operations
+        # `idx_store_steps` is a dictionary telling us the current position in y of an 
+        # output where we want to store only the last k steps
 
 
-        # past values of outputs
-        for j in xrange(n_outs):
-          if outs_taps.has_key(j):
-            ls_taps = outs_taps[j]
-            min_tap = outs_mins[j]
-            sz = initOuts_size[j]
-            for tap_value in ls_taps:
-              if i + tap_value < 0:
-                if sz < 1:
-                    fn_args += [args[j+n_seqs] ]
+        self.idx_store_steps = {}
+        for i in xrange(n_outs):
+
+            if inplace_map.has_key(i) and seqs_taps.has_key(inplace_map[i]) and\
+                    seqs_taps[inplace_map[i]] >=0:
+                y += [args[inplace_map[i]][:n_steps]]
+            else:
+                # check if you are using past value .. through in a warning and do not 
+                # work inplace
+                if inplace_map.has_key(i) and seqs_taps.has_key(inplace_map[i]) and seqs_taps[inplace_map[i]] < 0:
+                    warning('Can not work inplace because of past values')
+                if self.store_steps[i] == 1 :
+                    y+= [ None ]
                 else:
-                  k = i + sz + tap_value
-                  if k < 0:
-                     # past value not provided.. issue a warning and use 0s
-                      fn_args += [numpy.zeros(args[j+n_seqs][0].shape)]
-                      warning(('Past value %d for output %d not given in '
-                               'inital out') % (j,tap_value))
-                  else:
-                    fn_args += [args[j+n_seqs][k]]
-              else:
-                if self.stored_steps_output[j] < 1:
-                    fn_args += [y[j][i + tap_value]]
-                elif self.stored_steps_output[j] == 1:
-                    fn_args += [y[j] ]
-                else:
-                    raise NotImplementedError('This will be implemented in the near future')
-        # get the non-iterable sequences
-        fn_args += list(args[(n_seqs+n_outs):])
-        # compute output
-        something = fn(*fn_args)
-        #update outputs
-        for j in xrange(n_outs):
-          if self.stored_steps_output[j] <1:
-              # if you have provided no size for the missing output you might find yourself
-              # here with a incorect array .. if that happens realocate memory for the needed
-              # array
-              try : 
-                  y[j][i] = something[j]
-              except :
-                  y[j] = numpy.empty( (n_steps,)+something[j].shape , dtype =
-                                                   something[j].dtype)
-                  y[j][i] = something[j]
-          elif self.stored_steps_output[j] == 1:
-              try:
-                  y[j] = something[j]
-              except:
-                  y[j] = numpy.empty( something[j].shape, dtype = something[j].dtype)
-                  y[j] = something[j]
-          else:
-            raise NotImplementedError('This will be implemented in the near future')
-      return y
+                    arg_shape = args[i+n_seqs].shape[1:]
+                    if (not self.outs_taps.has_key(i)) or self.outs_taps[i] == [-1]:
+                        arg_shape = args[i+n_seqs].shape
+                    if self.store_steps[i] < 1 :
+                        y_shape = (n_steps,)+arg_shape
+                    else:
+                        # we need to store only a fixed number of steps of our output
+                        self.idx_store_steps[i] = 0
+                        y_shape = (self.store_steps[i],)+arg_shape
+                    y += [numpy.empty(y_shape, dtype=args[i+n_seqs].dtype)]
 
+        # and here we compute the borders for initial states of outputs
+        outs_mins = {}
+        initOuts_size = {}
+        for j in xrange(n_outs):
+            if outs_taps.has_key(j):
+                outs_mins.update({j: min(outs_taps[j])})
+                if self.outs_taps[j] != [-1]:
+                    initOuts_size.update({j: args[n_seqs+j].shape[0]})
+                else:
+                    initOuts_size.update({j: 0})
+
+        ############## THE MAIN LOOP ############################
+        for i in xrange(n_steps):
+            fn_args = []
+            # sequences over which scan iterates
+            # check to see if we are scaning them backwards or no
+            # and get a new index ``_i`` accordingly
+            _i = i
+            if go_backwards:
+                _i = n_steps-1-i
+            # collect data from sequences 
+            for j in xrange(n_seqs):
+                # get borders
+                if seqs_taps.has_key(j):
+                    ls_taps = seqs_taps[j]
+                    min_tap = seqs_mins[j]
+                    for tap_value in ls_taps:
+                        # use the borders to figure out what value you actually need
+                        k = _i - min_tap + tap_value
+                        fn_args += [args[j][k]]
+
+            # past values of outputs
+            for j in xrange(n_outs):
+                if outs_taps.has_key(j):
+                    ls_taps = outs_taps[j]
+                    min_tap = outs_mins[j]
+                    sz = initOuts_size[j]
+                    for tap_value in ls_taps:
+                        if i + tap_value < 0:
+                            if sz < 1:
+                                # this is a special case, when our initial state has no 
+                                # temporal dimension 
+                                fn_args += [args[j+n_seqs] ]
+                            else:
+                                k = i + sz + tap_value
+                                if k < 0:
+                                    # past value not provided.. issue a warning and use 0s of the 
+                                    # correct dtype
+                                    fn_args += [numpy.zeros(args[j+n_seqs][0].shape, dtype =
+                                        args[j+n_sqs][0].dtype)]
+                                    warning(('Past value %d for output %d not given in '
+                                        'inital out') % (j,tap_value))
+                                else:
+                                    fn_args += [args[j+n_seqs][k]]
+                        else:
+                            if self.store_steps[j] < 1:
+                                # no limit on how many steps to store from our output
+                                fn_args += [y[j][i + tap_value]]
+                            elif self.store_steps[j] == 1:
+                                # just the last one
+                                fn_args += [y[j] ]
+                            else:
+                                # storing only the last k 
+                                # get what idx we want 
+                                req_idx = (self.idx_store_steps[j] + tap_value + self.store_steps[j])
+                                # we need this modula self.store_steps[j]
+                                req_idx = req_idx % self.store_steps[j]
+                                fn_args += [y[j][req_idx] ]
+
+            # get the non-iterable sequences
+            fn_args += list(args[(n_seqs+n_outs):])
+            # compute output
+            something = fn(*fn_args)
+            #update outputs
+            for j in xrange(n_outs):
+                if self.store_steps[j] <1:
+                    # if you have provided no size for the missing output you might find yourself
+                    # here with a incorect array .. if that happens realocate memory for the
+                    # needed array
+                    try : 
+                        if hasattr(something[j],'dtype') and (y[j].dtype != something[j].dtype) :
+                            raise ValueError('wrong dtype')
+
+                        y[j][i] = something[j]
+                    except :
+
+                        y[j]= numpy.empty((n_steps,)+something[j].shape, dtype= something[j].dtype)
+                        y[j][i] = something[j]
+
+                elif self.store_steps[j] == 1:
+                    try:
+                        if hasattr(something[j],'dtype') and y[j].dtype != something[j].dtpye:
+                            raise ValueError('wrong dtype')
+                        y[j] = something[j]
+                    except:
+                        y[j] = numpy.empty( something[j].shape, dtype = something[j].dtype)
+                        y[j] = something[j]
+                else:
+                    try:
+                        if hasattr(something[j],'dtype') and y[j].dtype != something[j].dtype:
+                            raise ValueError('worng dtype')
+                        y[j][self.idx_store_steps[j]] = something[j]
+                        self.idx_store_steps[j] = (self.idx_store_steps[j] + 1) % self.store_steps[j]
+                    except:
+                        y[j] = numpy.empty( (self.store_steps[j],)+something[j].shape, \
+                                dtype = something[j].dtype)
+                        y[j][idx_sotre_steps[j]] = something[j]
+                        self.idx_store_steps[j] = (self.idx_store_steps[j] + 1) % self.store_steps[j]
+        return y
 
     def grad(self, args, g_outs):
-
+        
         raise NotImplementedError('This will be implemented in the near future');
         '''
         if True: 
            #((self.updates.keys() != []) or (self.inplace_map.keys() != [])\
-           # or numpy.any(self.stored_steps_output)):
+           # or numpy.any(self.store_steps)):
            # warning('Can not compute gradients if inplace or updates ' \
            #         'are used or if you do not keep past value of outputs.'\
            #         'Use force_gradient if you know for sure '\
@@ -872,18 +949,16 @@ class Scan(theano.Op):
 @gof.local_optimizer([None])
 def scan_make_inplace(node):
     op = node.op
-    if isinstance(op, Scan) and (not op.inplace) \
-                            and (op.inplace_map.keys() != []):
-        return Scan((op.inputs, op.outputs, op.givens ) , op.n_seqs,  
-                    op.n_outs, op.inplace_map, op.seqs_taps, op.outs_taps, 
-                    op.truncate_gradient, op.go_backwards, op.stored_steps_output,
-                    inplace=True 
-                      ).make_node(*node.inputs).outputs
+    if isinstance(op, Scan) and (not op.inplace) and (op.inplace_map.keys() != []):
+        return Scan((op.inputs, op.outputs, op.givens, op.slice_to_seqs ) , op.n_seqs,  
+            op.n_outs, op.inplace_map, op.seqs_taps, op.outs_taps, 
+            op.truncate_gradient, op.go_backwards, op.store_steps,
+            inplace=True ).make_node(*node.inputs).outputs
     return False
         
         
 optdb.register('scanOp_make_inplace', opt.in2out(scan_make_inplace,
-               ignore_newtrees=True), 75, 'fast_run', 'inplace')
+    ignore_newtrees=True), 75, 'fast_run', 'inplace')
 
 
 

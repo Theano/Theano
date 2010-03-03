@@ -9,9 +9,9 @@ import numpy.random
 from theano.tests  import unittest_tools as utt
 
 def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None, 
-                mode = None, cast_to_output_type = False):
-    pt = [numpy.array(p) for p in pt]
+        mode = None, cast_to_output_type = False):
 
+    pt = [numpy.array(p) for p in pt]
     _type_tol = dict( float32=1e-2, float64=1e-4)
 
     if tol is None:
@@ -20,7 +20,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None,
     if rng is None:
         rng = numpy.random
         utt.seed_rng()
-    
+
     def function(inputs, outputs):
         if mode is None:
             f = theano.function(inputs, outputs, accept_inplace=True)
@@ -30,8 +30,8 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None,
 
     for test_num in xrange(n_tests):
         tensor_pt=[theano.tensor.value(p.copy(),name='input %i'%i) 
-                                       for i,p in enumerate(pt)]
-    # op outputs
+                for i,p in enumerate(pt)]
+        # op outputs
     o_outputs = op(*tensor_pt)
     if not (type(o_outputs) in (list,tuple)):
         o_outputs = [ o_outputs ]
@@ -44,15 +44,15 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None,
     random_projection = rng.rand(*o_fn_outs[0].shape)
     if cast_to_output_type:
         random_projection = numpy.array(random_projection, 
-                             dtype = o_fn_outs[0].dtype)
-    t_r = theano.tensor.as_tensor_variable(random_projection)
+                dtype = o_fn_outs[0].dtype)
+        t_r = theano.tensor.as_tensor_variable(random_projection)
     cost = theano.tensor.sum( t_r * o_outputs[0])
     for i, o in enumerate(o_fn_outs[1:] ):
         random_projection = rng.rand(*o.shape)
         if cast_to_output_type:
             random_projection = numpy.array(random_projection,
-                                            dtype=o_outputs[i].dtype)
-        t_r  = theano.tensor.as_tensor_variable(random_projection)
+                    dtype=o_outputs[i].dtype)
+            t_r  = theano.tensor.as_tensor_variable(random_projection)
         cost += theano.tensor.sum( t_r * o_outputs[i])
     cost_fn = function(tensor_pt, cost)
     num_grad = theano.tensor.numeric_grad(cost_fn,[p.copy() for p in pt],eps)
@@ -60,7 +60,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None,
     if cast_to_output_type:
         g_cost = cast(g_cost, o_output.dtype)
     symbolic_grad = theano.tensor.grad(cost, tensor_pt, g_cost)
-    
+
 
     grad_fn = function(tensor_pt,symbolic_grad)
     analytic_grad = grad_fn(*[p.copy() for p in pt])
@@ -70,7 +70,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None,
     max_err, max_err_pos = num_grad.max_err(analytic_grad)
     if max_err > tol:
         raise Exception(theano.tensor.verify_grad.E_grad, 
-                                    (max_err, tol, max_err_pos))
+                (max_err, tol, max_err_pos))
 
 
 #TODO: Test this function, and if it works,
@@ -87,17 +87,8 @@ def scan_project_sum(*args, **kwargs):
     return  sum([(s * rng.uniform(size=s.shape)).sum() for s in scan_outputs])
 
 
-
-
-def compareArrays(a,b):
-    if type(a) in (list,tuple):
-        a = numpy.array(a)
-    if type(b) in (list, tuple):
-        b = numpy.array(b)
-
-    return numpy.all( abs(a-b) < 1e-5)
-
 class T_Scan(unittest.TestCase):
+
     def setUp(self):
         utt.seed_rng()
 
@@ -106,86 +97,129 @@ class T_Scan(unittest.TestCase):
     def test_generator_one_output_scalar(self):
         def f_pow2(x_tm1):
             return 2*x_tm1
-    
-        s = theano.tensor.dscalar()
+
+        state = theano.tensor.dscalar()
         n_steps = theano.tensor.dscalar()
-        Y, updts = theano.scan(f_pow2, [],s, [],n_steps = n_steps)
-        f1 = theano.function([s,n_steps], Y, updates = updts)
-     
-        assert compareArrays(f1(1,3), [2,4,8])
+        output, updates = theano.scan(f_pow2, [],state, [],n_steps = n_steps, truncate_gradient
+                = -1, go_backwards = False)
+        my_f = theano.function([state,n_steps], output, updates = updates)
+        
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        state = rng.uniform()
+        steps = 5
+
+        numpy_values = numpy.array([ state*(2**(k+1)) for k in xrange(steps) ])
+        theano_values = my_f(state,steps)
+        cmp = numpy_values == theano_values
+        assert numpy.all(cmp)
 
 
-    # simple rnn, one input, one state, weights for each; input/state are 
-    # vectors, weights are scalars
+    # simple rnn, one input, one state, weights for each; input/state
+    # are vectors, weights are scalars
     def test_one_sequence_one_output_weights(self):
         def f_rnn(u_t,x_tm1,W_in, W):
             return u_t*W_in+x_tm1*W
-    
+
         u    = theano.tensor.dvector()
         x0   = theano.tensor.dscalar()
         W_in = theano.tensor.dscalar()
         W    = theano.tensor.dscalar()
 
-        Y, updts = theano.scan(f_rnn, u,x0,[W_in,W])
-    
-        f2    = theano.function([u,x0,W_in,W], Y, updates = updts)
-        v_u   = numpy.array([1.,2.,3.,4.])
-        v_x0  = numpy.array(1)
-        v_out = numpy.array([1.1,1.3,1.6,2.])
-        assert  compareArrays( f2(v_u,v_x0,.1,1), v_out   ) 
+        output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = 0, truncate_gradient =
+                -1, go_backwards = False)
+
+        f2   = theano.function([u,x0,W_in,W], output, updates = updates)
+        # get random initial values
+        rng  = numpy.random.RandomState(utt.fetch_seed())
+        v_u  = rng.uniform( size = (4,), low = -5., high = 5.)
+        v_x0 = rng.uniform()
+        W    = rng.uniform()
+        W_in = rng.uniform()
+
+        # compute the output in numpy
+        v_out = numpy.zeros((4,))
+        v_out[0] = v_u[0]*W_in + v_x0 * W
+        for step in xrange(1,4):
+            v_out[step] = v_u[step]*W_in + v_out[step-1] * W
+        
+        theano_values = f2(v_u,v_x0, W_in, W)
+        assert numpy.all(abs(theano_values - v_out) < 1e-5)
 
 
-    # simple rnn, one input, one state, weights for each; input/state are 
-    # vectors, weights are scalars; using shared variables
+
+    # simple rnn, one input, one state, weights for each; input/state
+    # are vectors, weights are scalars; using shared variables
     def test_one_sequence_one_output_weights_shared(self):
+        rng   = numpy.random.RandomState(utt.fetch_seed())
         u    = theano.tensor.dvector() 
         x0   = theano.tensor.dscalar()
-        W_in = theano.shared(.1, name = 'w_in')
-        W    = theano.shared(1., name ='w')
-    
-        def f_rnn_shared(u_t,x_tm1, l_W_in, l_W):
-            return u_t*l_W_in+x_tm1*l_W
-    
-        Y, updts = theano.scan(f_rnn_shared, u,x0,[W_in, W] )
+        W_in = theano.shared(rng.uniform(), name = 'w_in')
+        W    = theano.shared(rng.uniform(), name ='w')
 
-        f3    = theano.function([u,x0], Y, updates = updts)
-        v_u   = numpy.array([1.,2.,3.,4.])
-        v_x0  = numpy.array(1.)
-        v_out = numpy.array([1.1,1.3,1.6,2.])
-        assert  compareArrays(f3(v_u,v_x0),v_out)
+        def f_rnn_shared(u_t,x_tm1, tmp_W_in, tmp_W):
+            return u_t*tmp_W_in+x_tm1*tmp_W
+
+        output, updates = theano.scan(f_rnn_shared, u,x0,[W_in, W], n_steps =0,
+                truncate_gradient= -1, go_backwards = False)
+        f3    = theano.function([u,x0], output, updates = updates)
+        # get random initial values
+
+        v_u   = rng.uniform( size = (4,), low = -5., high = 5.)
+        v_x0  = rng.uniform()
+        # compute the output i numpy
+        v_out = numpy.zeros((4,))
+        v_out[0] = v_u[0]*W_in.value + v_x0*W.value
+        for step in xrange(1,4):
+            v_out[step] = v_u[step]*W_in.value + v_out[step-1]*W.value
+        
+        theano_values = f3(v_u, v_x0)
+        assert  numpy.all(abs(theano_values - v_out) < 1e-5)
 
 
 
-    # some rnn with multiple outputs and multiple inputs; other dimension 
-    # instead of scalars/vectors
+    # some rnn with multiple outputs and multiple inputs; other
+    # dimension instead of scalars/vectors
     def test_multiple_inputs_multiple_outputs(self):
-        W_in2 = theano.shared(numpy.array([1.,2.]), name='win2')
-        W     = theano.shared(numpy.array([[2.,1.],[1.,1.]]), name='w')
-        W_out = theano.shared(numpy.array([.5,1.]), name = 'wout')
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in2 = rng.uniform(size = (2,), low = -5.,high = 5.)
+        vW     = rng.uniform(size = (2,2), low = -5.,high = 5.)
+        vWout  = rng.uniform(size = (2,), low = -5.,high = 5.)
+        vW_in1 = rng.uniform(size = (2,2), low = -5.,high = 5.)
+        v_u1   = rng.uniform(size = (3,2), low = -5., high = 5.)
+        v_u2   = rng.uniform(size = (3,), low = -5.,high = 5.)
+        v_x0   = rng.uniform(size = (2,), low = -5.,high = 5.)
+        v_y0   = rng.uniform()
+
+        W_in2 = theano.shared(vW_in2, name='win2')
+        W     = theano.shared(vW, name='w')
+        W_out = theano.shared(vWout, name = 'wout')
         W_in1 = theano.tensor.dmatrix('win')
         u1    = theano.tensor.dmatrix('u1')
         u2    = theano.tensor.dvector('u2')
         x0    = theano.tensor.dvector('x0')
         y0    = theano.tensor.dscalar('y0')
-    
+
         def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, W_in1):
             return [theano.dot(u1_t,W_in1) + u2_t* W_in2 + \
                     theano.dot(x_tm1, W), theano.dot(x_tm1, W_out)]
 
-        Y, updts = theano.scan(f_rnn_cmpl,[u1,u2],[x0,y0],W_in1)
+        outputs, updates = theano.scan(f_rnn_cmpl,[u1,u2],[x0,y0],W_in1, n_steps = 0,
+                truncate_gradient = -1, go_backwards = False)
 
-        f4     = theano.function([u1,u2,x0,y0,W_in1], Y, updates = updts)
-        v_u1   = numpy.array([[1.,2.],[1.,2.],[1.,2.]])
-        v_u2   = numpy.array([1.,2.,3.])
-        v_x0   = numpy.array([0.,0.])
-        v_y0   = numpy.array(1)
-        v_Win1 = numpy.array([[1.,1.],[1.,1.]])
-        v_x    = numpy.array([[4.,5.],[18.,16.],[58.,43.]])
-        v_y    = numpy.array([0.,7.,25.])
-        (x,y) =  f4( v_u1, v_u2, v_x0, v_y0, v_Win1)
-         
-        assert  compareArrays(x,v_x) 
-        assert  compareArrays(y,v_y)
+        f4     = theano.function([u1,u2,x0,y0,W_in1], outputs, updates = updates)
+        # compute the values in numpy
+        v_x = numpy.zeros((3,2))
+        v_y = numpy.zeros((3,))
+        v_x[0] = numpy.dot(v_u1[0],vW_in1) + v_u2[0]*vW_in2 + numpy.dot(v_x0,vW)
+        v_y[0] = numpy.dot(v_x0,vWout)
+        for i in xrange(1,3):
+            v_x[i] = numpy.dot(v_u1[i],vW_in1) + v_u2[i]*vW_in2 + numpy.dot(v_x[i-1],vW)
+            v_y[i] = numpy.dot(v_x[i-1], vWout)
+
+        (theano_x,theano_y) =  f4( v_u1, v_u2, v_x0, v_y0, vW_in1)
+        
+        assert numpy.all(abs(theano_x - v_x) < 1e-5)
+        assert numpy.all(abs(theano_y - v_y) < 1e-5)
 
 
 
@@ -193,22 +227,39 @@ class T_Scan(unittest.TestCase):
     # vectors, weights are scalars; using shared variables and past 
     # taps (sequences and outputs)
     def test_using_taps_input_output(self):
+        rng   = numpy.random.RandomState(utt.fetch_seed())
+        vW    = rng.uniform()
+        vW_in = rng.uniform()
+        vu    = rng.uniform(size=(4,), low = -5., high = 5.)
+        vx0   = rng.uniform(size=(2,), low = -5., high = 5.)
+
         u    = theano.tensor.dvector()
         x0   = theano.tensor.dvector()
-        W_in = theano.shared(.1, name = 'w_in')
-        W    = theano.shared(1., name ='w')
-    
+        W_in = theano.shared(vW_in, name = 'w_in')
+        W    = theano.shared(vW, name ='w')
+
         def f_rnn_shared(u_tm2, x_tm1, x_tm2):
             return u_tm2*W_in+x_tm1*W+x_tm2
-    
-        Y, updates = theano.scan(f_rnn_shared, dict(input=u, taps=-2), 
-                 dict(initial = x0, taps = [-1,-2]), [])
 
-        f7   = theano.function([u,x0], Y, updates = updates)
-        v_u  = numpy.asarray([1.,2.,3.,4.])
-        v_x0 = numpy.asarray([1.,2.])
-        out  = numpy.asarray([3.1,5.3])
-        assert   compareArrays( out, f7(v_u, v_x0))
+        outputs, updates = theano.scan(f_rnn_shared, dict(input=u, taps=-2), 
+                dict(initial = x0, taps = [-1,-2]), [], n_steps = 0, truncate_gradient = -1, 
+                go_backwards = False)
+
+        f7   = theano.function([u,x0], outputs, updates = updates)
+        theano_out = f7(vu,vx0)
+
+        # compute output in numpy
+        # a bit of explaining:
+        # due to the definition of sequences taps in scan, v_0[0] is actually v_0[-2], 
+        # and v_0[1] is v_0[-1]. The values v_0[2] and v_0[3] do not get uesd ( because you 
+        # do not use v_0[t] in scan) which might seem strange, but then again why not use 
+        # v_0[t] instead of v_0[t-2] in a real application ??
+        # also vx0[0] corresponds to vx0[-2], vx0[1] to vx0[-1]
+        numpy_out = numpy.zeros((2,))
+        numpy_out[0] = vu[0]*vW_in + vx0[1]*vW + vx0[0]
+        numpy_out[1] = vu[1]*vW_in + numpy_out[0]*vW + vx0[1]
+
+        assert numpy.all(abs(numpy_out - theano_out) < 1e-5)
 
 
 
@@ -216,162 +267,342 @@ class T_Scan(unittest.TestCase):
     # vectors, weights are scalars; using shared variables and past 
     # taps (sequences and outputs) and future taps for sequences
     def test_past_future_taps_shared(self):
+        rng   = numpy.random.RandomState(utt.fetch_seed())
+        vW    = rng.uniform()
+        vW_in = rng.uniform()
+        vu    = rng.uniform(size=(6,), low = -5., high = 5.)
+        vx0   = rng.uniform(size=(2,), low = -5., high = 5.)
+
         u    = theano.tensor.dvector()
         x0   = theano.tensor.dvector()
-        W_in = theano.shared(.1, name = 'w_in')
-        W    = theano.shared(1., name ='w')
-    
+        W_in = theano.shared(vW_in, name = 'w_in')
+        W    = theano.shared(vW, name ='w')
+
         def f_rnn_shared(u_tm2,u_tp2, x_tm1, x_tm2):
             return (u_tm2+u_tp2)*W_in+x_tm1*W+x_tm2
-    
-        Y,updts = theano.scan(f_rnn_shared, dict( input = u, taps=[-2,2]),\
-                 dict(initial = x0, taps = [-1,-2]), [])
 
-        f8   = theano.function([u,x0], Y, updates = updts)
-        v_u  = numpy.array([1.,2.,3.,4.,5.,6.])
-        v_x0 = numpy.array([1.,2.])
-        out  = numpy.array([3.6, 6.4])
+        output,updates = theano.scan(f_rnn_shared, dict( input = u, taps=[-2,2]),\
+                dict(initial = x0, taps = [-1,-2]), [], n_steps =0, truncate_gradient =-1,
+                go_backwards = False)
 
-        assert compareArrays( out, f8(v_u, v_x0) ) 
+        f8   = theano.function([u,x0], output, updates = updates)
+        theano_out = f8(vu,vx0)
+        # compute output in numpy 
+        numpy_out = numpy.zeros(2)
+        # think of vu[0] as vu[-2], vu[4] as vu[2]
+        # and vx0[0] as vx0[-2], vx0[1] as vx0[-1]
+        numpy_out[0] = (vu[0]+vu[4])*vW_in + vx0[1]*vW + vx0[0]
+        numpy_out[1] = (vu[1]+vu[5])*vW_in + numpy_out[0]*vW + vx0[1]
+
+        assert numpy.all(abs(numpy_out - theano_out) < 1e-5)
 
 
 
-    # simple rnn ; compute inplace
-    def test_inplace(self):
-        u    = theano.tensor.dvector()
-        mu   = theano.Param( u, mutable = True)
-        x0   = theano.tensor.dscalar()
-        W_in = theano.shared(.1)
-        W    = theano.shared(1.)
+    # simple rnn ; compute inplace version 1
+    def test_inplace1(self):
+        rng   = numpy.random.RandomState(utt.fetch_seed())
+        vW    = numpy.random.uniform()
+        vW_in = numpy.random.uniform()
+        vu0   = rng.uniform(size=(3,), low = -5., high = 5.)
+        vu1   = rng.uniform(size=(3,), low = -5., high = 5.)
+        vu2   = rng.uniform(size=(3,), low = -5., high = 5.)
+        vx0   = rng.uniform()
+        vx1   = rng.uniform()
 
-        def f_rnn_shared(u_t, x_tm1):
-            return u_t*W_in + x_tm1*W
-        Y, updts = theano.scan(f_rnn_shared, u, \
-                           dict( initial = x0, inplace =u),mode='FAST_RUN' )
+        u0   = theano.tensor.dvector('u0')
+        u1   = theano.tensor.dvector('u1')
+        u2   = theano.tensor.dvector('u2')
+        mu0  = theano.Param( u0, mutable = False)
+        mu1  = theano.Param( u1, mutable = True)
+        mu2  = theano.Param( u2, mutable = True)
+        x0   = theano.tensor.dscalar('x0')
+        x1   = theano.tensor.dscalar('y0')
+        W_in = theano.shared(vW_in,'Win')
+        W    = theano.shared(vW,'W')
+        mode = theano.compile.mode.get_mode(None).including('inplace')
+        def f_rnn_shared(u0_t,u1_t, u2_t, x0_tm1,x1_tm1):
+            return [u0_t*W_in + x0_tm1*W + u1_t*u2_t, u0_t*W_in + x1_tm1*W+ u1_t+u2_t ] 
 
-        f9   = theano.function([mu,x0], Y , updates = updts)
-        v_u  = numpy.array([1.,2.,3.])
-        v_x0 = numpy.array(1.)
+        outputs, updates = theano.scan(f_rnn_shared, [u0,u1,u2], 
+                [dict( initial = x0, inplace =u2), dict(initial = x1, inplace = u1)],
+                [], n_steps = 0, truncate_gradient = -1, go_backwards = False, mode=mode )
+        f9   = theano.function([mu0,mu1,mu2,x0,x1], outputs , updates = updates, mode = mode)
 
-        out = f9(v_u, v_x0)
-        v_out = numpy.array([1.1,1.3,1.6])
+       # compute output in numpy
+        numpy_x0 = numpy.zeros((3,))
+        numpy_x1 = numpy.zeros((3,))
+        numpy_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0]*vu2[0]
+        numpy_x1[0] = vu0[0] * vW_in + vx1 * vW + vu1[0]+vu2[0]
+        for i in xrange(1,3):
+            numpy_x0[i] = vu0[i]* vW_in + numpy_x0[i-1]*vW + vu1[i]*vu2[i]
+            numpy_x1[i] = vu0[i]* vW_in + numpy_x1[i-1]*vW + vu1[i]+vu2[i]
 
-        assert (compareArrays(out, v_out))
-        assert (compareArrays(v_u, out))
+        # note theano computes inplace, so call function after numpy equivalent is done
+        (theano_x0, theano_x1) = f9(vu0,vu1,vu2,vx0,vx1)
+        # assert that theano does what it should
+        assert numpy.all( abs(theano_x0 - numpy_x0) < 1e-5)
+        assert numpy.all( abs(theano_x1 - numpy_x1) < 1e-5)
+        # assert that it was done in place
+        assert numpy.all( theano_x0 == vu2)
+        assert numpy.all( theano_x1 == vu1)
+
+    # simple rnn ; compute inplace version 2
+    def test_inplace2(self):
+        rng   = numpy.random.RandomState(utt.fetch_seed())
+        vW    = numpy.random.uniform()
+        vW_in = numpy.random.uniform()
+        vu0   = rng.uniform(size=(3,), low = -5., high = 5.)
+        vu1   = rng.uniform(size=(4,), low = -5., high = 5.)
+        vu2   = rng.uniform(size=(5,), low = -5., high = 5.)
+        vx0   = rng.uniform()
+        vx1   = rng.uniform()
+
+        u0   = theano.tensor.dvector('u0')
+        u1   = theano.tensor.dvector('u1')
+        u2   = theano.tensor.dvector('u2')
+        mu0  = theano.Param( u0, mutable = True)
+        mu1  = theano.Param( u1, mutable = True)
+        mu2  = theano.Param( u2, mutable = True)
+        x0   = theano.tensor.dscalar('x0')
+        x1   = theano.tensor.dscalar('y0')
+        W_in = theano.shared(vW_in,'Win')
+        W    = theano.shared(vW,'W')
+        mode = theano.compile.mode.get_mode(None).including('inplace')
+        def f_rnn_shared(u0_t,u1_t,u1_tp1, u2_tm1,u2_t,u2_tp1, x0_tm1,x1_tm1):
+            return [u0_t*W_in + x0_tm1*W + u1_t*u1_tp1, \
+                    u0_t*W_in + x1_tm1*W+ u2_tm1+u2_t+u2_tp1 ] 
+
+        outputs, updates = theano.scan(f_rnn_shared, 
+                [u0,dict(input = u1, taps = [0,1]),dict( input = u2, taps= [-1,0,+1])], 
+                [dict( initial = x0, inplace =u2), dict(initial = x1, inplace = u1)],
+                [], n_steps = 0, truncate_gradient = 01, go_backwards = False, mode=mode )
+        f9   = theano.function([mu0,mu1,mu2,x0,x1], outputs , updates = updates, mode = mode)
+
+       # compute output in numpy
+        numpy_x0 = numpy.zeros((3,))
+        numpy_x1 = numpy.zeros((3,))
+        numpy_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0]*vu1[1]
+        numpy_x1[0] = vu0[0] * vW_in + vx1 * vW + vu2[0]+vu2[1]+vu2[2]
+        for i in xrange(1,3):
+            numpy_x0[i] = vu0[i]* vW_in + numpy_x0[i-1]*vW + vu1[i]*vu1[i+1]
+            numpy_x1[i] = vu0[i]* vW_in + numpy_x1[i-1]*vW + vu2[i]+vu2[i+1]+vu2[i+2]
+
+        # note theano computes inplace, so call function after numpy equivalent is done
+        (theano_x0, theano_x1) = f9(vu0,vu1,vu2,vx0,vx1)
+        # assert that theano does what it should
+        assert numpy.all( abs(theano_x0 - numpy_x0) < 1e-5)
+        assert numpy.all( abs(theano_x1 - numpy_x1) < 1e-5)
+        # assert that it was done in place
+        # not that x0 should not be inplace of vu2 because you are using past values of u2, 
+        # and therefore you are not allowed to work inplace !!
+        assert not numpy.all( theano_x0 == vu2[1:4])
+        assert numpy.all( theano_x1 == vu1[0:3])
 
 
 
     # Shared variable with updates
     def test_shared_arguments_with_updates(self):
-        W1_vals = numpy.random.rand(20,30)
-        W2_vals = numpy.random.rand(30,20)
-        u1_vals = numpy.random.rand(3,20)
-        u2_vals = numpy.random.rand(3,30)
-        y0_vals = numpy.random.rand(3,20)
-        y1_vals = numpy.random.rand(20) 
-        y2_vals = numpy.random.rand(30)    
-        W1 = theano.shared(W1_vals,'W1')
-        W2 = theano.shared(W2_vals,'W2')
-        
-        u1 = theano.shared(u1_vals,'u1')
-        y1 = theano.shared(y1_vals,'y1')
-        
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        vW1 = rng.rand(20,30)
+        vW2 = rng.rand(30,20)
+        vu1 = rng.rand(3,20)
+        vu2 = rng.rand(3,30)
+        vy0 = rng.rand(3,20)
+        vy1 = rng.rand(20) 
+        vy2 = rng.rand(30)    
+        W1 = theano.shared(vW1,'W1')
+        W2 = theano.shared(vW2,'W2')
+        u1 = theano.shared(vu1,'u1')
+        y1 = theano.shared(vy1,'y1')
+
         def f(u1_t, u2_t, y0_tm3, y0_tm2, y0_tm1, y1_tm1):
             y0_t = theano.dot(theano.dot(u1_t,W1),W2) + 0.1*y0_tm1 + \
-                                             0.33*y0_tm2 + 0.17*y0_tm3
+                    0.33*y0_tm2 + 0.17*y0_tm3
             y1_t = theano.dot(u2_t, W2) + y1_tm1
             y2_t = theano.dot(u1_t, W1)
             nwW1 = W1 + .1
             nwW2 = W2 + .05
+            # return outputs followed by a list of updates
             return ([y0_t, y1_t, y2_t], [( W1,nwW1), (W2, nwW2)])
-        
+
         u2 = theano.tensor.matrix('u2')
         y0 = theano.tensor.matrix('y0')
-        
-        Y,upds = theano.scan(f, [u1,u2], [ dict(initial = y0, taps = [-3,-2,-1]),y1, None])
-        
-        f = theano.function([u2,y0], Y, updates = upds)
-        vls = f(u2_vals, y0_vals)
-        
+
+        outputs,updates = theano.scan(f, [u1,u2], [ dict(initial = y0, taps = [-3,-2,-1]),y1,
+            None], [], n_steps = 0, go_backwards = False, truncate_gradient = -1)
+        f10 = theano.function([u2,y0], outputs, updates = updates)
+        theano_y0,theano_y1,theano_y2 = f10(vu2, vy0)
+
         # do things in numpy
-        v_y0 = numpy.zeros((6,20))
-        v_y1 = numpy.zeros((4,20))
-        v_y2 = numpy.zeros((3,30))
-        v_y0[:3] = y0_vals
-        v_y1[0]  = y1_vals
-        vW1      = W1_vals.copy()
-        vW2      = W2_vals.copy()
+        numpy_y0 = numpy.zeros((6,20))
+        numpy_y1 = numpy.zeros((4,20))
+        numpy_y2 = numpy.zeros((3,30))
+        numpy_y0[:3] = vy0
+        numpy_y1[0]  = vy1
+        numpy_W1     = vW1.copy()
+        numpy_W2    = vW2.copy()
         for idx in xrange(3):
-            v_y0[idx+3] = numpy.dot( numpy.dot(u1_vals[idx,:], vW1), vW2) + \
-                          0.1*v_y0[idx+2] + 0.33*v_y0[idx+1] + 0.17*v_y0[idx]
-            v_y1[idx+1] = numpy.dot( u2_vals[idx,:], vW2) + v_y1[idx]
-            v_y2[idx]   = numpy.dot( u1_vals[idx,:], vW1)
-            vW1 = vW1 + .1
-            vW2 = vW2 + .05
+            numpy_y0[idx+3] = numpy.dot( numpy.dot(vu1[idx,:], numpy_W1), numpy_W2) + \
+                    0.1*numpy_y0[idx+2] + 0.33*numpy_y0[idx+1] + 0.17*numpy_y0[idx]
+            numpy_y1[idx+1] = numpy.dot( vu2[idx,:], numpy_W2) + numpy_y1[idx]
+            numpy_y2[idx]   = numpy.dot( vu1[idx,:], numpy_W1)
+            numpy_W1 = numpy_W1 + .1
+            numpy_W2 = numpy_W2 + .05
 
-        assert compareArrays(vls[0], v_y0[3:])
-        assert compareArrays(vls[1], v_y1[1:])
-        assert compareArrays(vls[2], v_y2)
-        assert compareArrays(vW1, W1.value)
-        assert compareArrays(vW2, W2.value)
+        assert numpy.all( abs(theano_y0 - numpy_y0[3:]) < 1e-5)
+        assert numpy.all( abs(theano_y1 - numpy_y1[1:]) < 1e-5)
+        assert numpy.all( abs(theano_y2 - numpy_y2    ) < 1e-5)
+        assert numpy.all( abs(W1.value  - numpy_W1    ) < 1e-5)
+        assert numpy.all( abs(W2.value  - numpy_W2    ) < 1e-5)
 
+
+
+    def test_simple_shared_random(self):
+
+        theano_rng = theano.tensor.shared_randomstreams.RandomStreams(utt.fetch_seed())
+
+        values, updates = theano.scan(lambda : theano_rng.uniform((2,),-1,1), [],[],[],n_steps
+                = 5, truncate_gradient = -1, go_backwards = False)
+        my_f = theano.function([], values, updates = updates )
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+
+        numpy_v = numpy.zeros((10,2))
+        for i in xrange(10):
+            numpy_v[i] = rng.uniform(-1,1,size = (2,))
+
+        theano_v = my_f()
+        assert numpy.all( abs(theano_v - numpy_v [:5,:]) < 1e-5)
+        theano_v = my_f()
+        assert numpy.all(abs(theano_v - numpy_v[5:,:]) < 1e-5)
 
 
 
     def test_gibbs_chain(self):
-        W_vals  = numpy.random.rand(20,30) -.5
-        vis_val = numpy.random.binomial(1,0.5, size=(3,20))
-        bvis = numpy.random.rand(20) -.5
-        bhid = numpy.random.rand(30) -.5
-        tW  = theano.shared(W_vals)
-        tbh = theano.shared(bhid)
-        tbv = theano.shared(bvis)
-        vis = theano.tensor.matrix()
-        trng = theano.tensor.shared_randomstreams.RandomStreams(123)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_W       = numpy.array(rng.rand(20,30) -.5, dtype = 'float32')
+        v_vsample = numpy.array(rng.binomial(1,0.5, size=(3,20), ), dtype = 'float32')
+        v_bvis    = numpy.array(rng.rand(20) -.5, dtype='float32')
+        v_bhid    = numpy.array(rng.rand(30) -.5, dtype='float32')
         
-        def f(vsample):
-            hmean = theano.tensor.nnet.sigmoid(theano.dot(vsample,tW)+ tbh)
-            hsample = trng.binomial(hmean.shape,1,hmean)
-            vmean = theano.tensor.nnet.sigmoid(theano.dot(hsample,tW.T)+ tbv)
-            return trng.binomial(vsample.shape,1,vsample)
-        
-        v_vals, updts = theano.scan(f, [], [vis],[], n_steps = 10)
-        my_f = theano.function([vis], v_vals[-1], updates = updts)
-        
-        
-        def numpy_implementation(vsample):
-            rng = numpy.random.RandomState(123)
-            b1  = numpy.random.RandomState(rng.randint(2**30))
-            b2  = numpy.random.RandomState(rng.randint(2**30))
+        W       = theano.shared(v_W)
+        bhid    = theano.shared(v_bhid)
+        bvis    = theano.shared(v_bvis)
+        vsample = theano.tensor.matrix(dtype='float32')
 
+        trng = theano.tensor.shared_randomstreams.RandomStreams(utt.fetch_seed())
+
+        def f(vsample_tm1):
+            hmean_t   = theano.tensor.nnet.sigmoid(theano.dot(vsample_tm1,W)+ bhid)
+            hsample_t = theano.tensor.cast(trng.binomial(hmean_t.shape,1,hmean_t),dtype='float32')
+            vmean_t   = theano.tensor.nnet.sigmoid(theano.dot(hsample_t,W.T)+ bvis)
+            return theano.tensor.cast(trng.binomial(vmean_t.shape,1,vmean_t), dtype='float32')
+
+        theano_vsamples, updates = theano.scan(f, [], vsample,[], n_steps = 10,
+                truncate_gradient=-1, go_backwards = False)
+        my_f = theano.function([vsample], theano_vsamples[-1], updates = updates)
+
+        _rng = numpy.random.RandomState(utt.fetch_seed())
+        rng_seed = _rng.randint(2**30)
+        nrng1 = numpy.random.RandomState(int(rng_seed)) # int() is for 32bit
+
+        rng_seed = _rng.randint(2**30)
+        nrng2 = numpy.random.RandomState(int(rng_seed)) # int() is for 32bit
+        def numpy_implementation(vsample):
             for idx in range(10):
-                hmean = 1./(1. + numpy.exp(-(numpy.dot(vsample,W_vals) + bhid)))
-                hsample = b1.binomial(1,hmean, size = hmean.shape)
-                vmean  = 1./(1. + numpy.exp(-(numpy.dot(hsample,W_vals.T) + bvis)))
-                vsample = b2.binomial(1,vsample, size = vsample.shape)
+                hmean = 1./(1. + numpy.exp(-(numpy.dot(vsample,v_W) + v_bhid)))
+                hsample = numpy.array(nrng1.binomial(1,hmean, size = hmean.shape), dtype='float32')
+                vmean  = 1./(1. + numpy.exp(-(numpy.dot(hsample,v_W.T) + v_bvis)))
+                vsample = numpy.array(nrng2.binomial(1,vmean, size = vmean.shape),dtype='float32')
 
             return vsample
-        
-        t_res = my_f(vis_val)
-        n_res = numpy_implementation(vis_val)
-        
-        assert (compareArrays(t_res, n_res))
+
+        t_result = my_f(v_vsample)
+        n_result = numpy_implementation(v_vsample)
+
+        assert numpy.all( abs(t_result - n_result) < 1e-5)
 
 
     def test_only_shared_no_input_no_output(self):
-        s = theano.shared(1)
-        def f_pow2():
-            return {s: 2*s}
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_state = rng.uniform()
+        state = theano.shared(v_state)
+        def f_2():
+            return {state: 2*state}
         n_steps = theano.tensor.dscalar()
-        Y, updts = theano.scan(f_pow2, [],[], [],n_steps = n_steps)
-        f1 = theano.function([n_steps], Y, updates = updts)
-        f1(3)
-        assert compareArrays(s.value, 8)
- 
+        output, updates = theano.scan(f_2,[],[],[],n_steps = n_steps, truncate_gradient = -1,
+                go_backwards = False)
+        this_f = theano.function([n_steps], output, updates = updates)
+        n_steps = 3
+        this_f(n_steps)
+        numpy_state = v_state* (2**(n_steps))
+        assert state.value == numpy_state
+
+    def test_map_functionality(self):
+        def f_rnn(u_t):
+            return u_t + 3
+
+        u    = theano.tensor.dvector()
+
+        outputs, updates = theano.scan(f_rnn, u,[],[], n_steps =0 , truncate_gradient = -1,
+                go_backwards = False)
+
+        f2    = theano.function([u], outputs, updates = updates)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        v_u   = rng.uniform(size=(5,), low = -5., high = 5.)
+        numpy_result = v_u + 3
+        theano_result = f2(v_u)
+        assert numpy.all(theano_result == numpy_result)
+
+
+    def test_map(self):
+        v = theano.tensor.vector()
+        abs_expr,abs_updates = theano.map(lambda x: abs(x), v,[],n_steps =0,
+                truncate_gradient = -1, go_backwards = False)
+        f = theano.function([v],abs_expr,updates = abs_updates)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vals = rng.uniform(size=(10,), low = -5., high = 5.)
+        abs_vals = abs(vals)
+        theano_vals = f(vals)
+        assert numpy.all(abs_vals == theano_vals)
+
+    def test_backwards(self):
+        def f_rnn(u_t,x_tm1,W_in, W):
+            return u_t*W_in+x_tm1*W
+
+        u    = theano.tensor.dvector()
+        x0   = theano.tensor.dscalar()
+        W_in = theano.tensor.dscalar()
+        W    = theano.tensor.dscalar()
+
+        output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = 0, truncate_gradient =
+                -1, go_backwards = True)
+
+        f2   = theano.function([u,x0,W_in,W], output, updates = updates)
+        # get random initial values
+        rng  = numpy.random.RandomState(utt.fetch_seed())
+        v_u  = rng.uniform( size = (4,), low = -5., high = 5.)
+        v_x0 = rng.uniform()
+        W    = rng.uniform()
+        W_in = rng.uniform()
+
+        # compute the output in numpy
+        v_out = numpy.zeros((4,))
+        v_out[0] = v_u[3]*W_in + v_x0 * W
+        for step in xrange(1,4):
+            v_out[step] = v_u[3-step]*W_in + v_out[step-1] * W
+        
+        theano_values = f2(v_u,v_x0, W_in, W)
+        assert numpy.all(abs(theano_values - v_out) < 1e-5)
+
+
+
+
     '''
-    # test gradient simple network 
-    def test_10(self):
-        pass
      TO TEST: 
         - test gradient (one output)
         - test gradient (multiple outputs)
@@ -382,26 +613,6 @@ class T_Scan(unittest.TestCase):
         - optimization !? 
     '''
 
-    def test_map_functionality(self):
-        def f_rnn(u_t):
-            return u_t + 3
-    
-        u    = theano.tensor.dvector()
-
-        Y, updts = theano.scan(f_rnn, u, [None])
-    
-        f2    = theano.function([u], Y, updates = updts)
-        v_u   = numpy.array([1.,2.,3.,4.])
-        assert compareArrays(f2(v_u), v_u+3)
-
-
-    def test_map(self):
-        from theano.scan import map as T_map
-        v = theano.tensor.vector()
-        abs_expr,abs_updates = T_map(lambda x: abs(x), [v])
-        abser = theano.function([v],abs_expr,updates = abs_updates)
-
-        assert compareArrays( abser(numpy.array([1.,-1])), [1.,1.])
 
 if __name__ == '__main__':
     unittest.main()

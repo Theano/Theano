@@ -5,6 +5,8 @@ from theano.gof import Container, Variable, generic, graph, Constant, Value
 from theano.compile import orig_function, In, Out
 from theano.compile.sharedvalue import SharedVariable, shared
 import numpy # for backport to 2.4, to get any().
+import theano
+
 
 class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False, strict=False,
@@ -118,7 +120,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         if v.owner:
             clone_a(v.owner)
         elif isinstance(v, SharedVariable):
-            if v not in shared_inputs:
+            if v not in shared_inputs and v not in clone_d:
                 shared_inputs.append(v)
 
             if hasattr(v, 'default_update'):
@@ -127,14 +129,13 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
                         (isinstance(no_default_updates, list) and\
                         v not in no_default_updates):
                     # Do not use default_update if a "real" update was provided
-                    if v not in update_d:
+                    if v not in update_d and v not in clone_d:
                         v_update = v.filter_update(v.default_update)
                         if v_update.type != v.type:
                             raise TypeError('an update must have the same type as the original shared variable',
                                     (v, v.type, v_update, v_update.type))
                         update_d[v] = v_update
                         update_expr.append((v, v_update))
-
         return clone_d.setdefault(v, v)
 
     def clone_a(a):
@@ -155,6 +156,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     except:
         pass
     for v_orig, v_repl in givens:
+    
         if not isinstance(v_orig, Variable):
             raise TypeError('given keys must be Variable', v_orig)
         if not isinstance(v_repl, Variable):
@@ -195,6 +197,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         update_d[store_into] = update_val
         update_expr.append((store_into, update_val))
 
+
     # Elements of "outputs" are here cloned to "cloned_outputs"
     if isinstance(outputs, list):
         cloned_outputs = []
@@ -228,6 +231,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
     # If the variable to be updated is a shared variable not already
     # in shared_inputs, add it.
     # Note: we extend update_expr while iterating over it.
+
     i = 0
     while i<len(update_expr):
         v, v_update = update_expr[i]

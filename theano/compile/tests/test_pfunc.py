@@ -442,6 +442,25 @@ class Test_pfunc(unittest.TestCase):
         # a is needed as input if y.default_update is used
         self.failUnlessRaises(TypeError, pfunc, [], x)
 
+    def test_givens_replaces_shared_variable(self):
+        a = shared(1.,'a')
+        a.default_update = a+3.
+        b = tensor.scalar('b')
+        c = a + 10
+        f = pfunc([b],c, givens = {a:b})
+
+        assert len(f.maker.env.inputs) == 1
+        assert len(f.maker.env.outputs) == 1
+
+    def test_givens_replaces_shared_variable2(self):
+        a = shared(1.,'a')
+        a.default_update = a+3
+        c = a+ 10
+        f = pfunc([],c, givens = { a: a+10} )
+        
+        assert f() == 21
+        assert f() == 34
+
 if __name__ == '__main__':
     theano.config.mode = 'FAST_COMPILE'
     Test_pfunc().test_default_scalar_container()
