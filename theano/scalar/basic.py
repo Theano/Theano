@@ -148,7 +148,11 @@ class Scalar(Type):
         specs = self.dtype_specs()
         return """
         if (!%(check)s(py_%(name)s))
+        {
+            PyErr_Format(PyExc_ValueError,
+                "Scalar check failed");
             %(fail)s
+        }
         %(name)s = (%(dtype)s)%(conv)s(py_%(name)s);
         """ % dict(sub,
                    name = name,
