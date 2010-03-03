@@ -7,13 +7,13 @@ _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
 def error(*msg):
-    _logger.warning('ERROR (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.error('ERROR (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 def warning(*msg):
     _logger.warning('WARNING (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 def info(*msg):
-    _logger.warning('INFO (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.info('INFO (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 def debug(*msg):
-    _logger.warning('DEBUG (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
+    _logger.debug('DEBUG (%s): %s'% ( _logger_name, ' '.join(str(m) for m in msg)))
 
 
 # Compile cuda_ndarray.cu
@@ -129,10 +129,10 @@ def use(device):
             use.device_number = device
             cuda_enabled = True
         except RuntimeError, e:
-            _logger.warning("ERROR: Not using GPU. Initialisation of device %i failed. %s" %(device, e))
+            _logger.error("ERROR: Not using GPU. Initialisation of device %i failed. %s" %(device, e))
             enabled_cuda = False
     elif use.device_number != device:
-        logging.getLogger('theano.sandbox.cuda').warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
+        _logger.warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
     optdb.add_tags('gpu',
                    'fast_run',
                    'inplace')
