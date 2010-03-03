@@ -143,7 +143,7 @@ class T_Scan(unittest.TestCase):
             v_out[step] = v_u[step]*W_in + v_out[step-1] * W
         
         theano_values = f2(v_u,v_x0, W_in, W)
-        assert numpy.all(abs(theano_values - v_out) < 1e-5)
+        assert numpy.allclose(theano_values, v_out)
 
 
 
@@ -173,7 +173,7 @@ class T_Scan(unittest.TestCase):
             v_out[step] = v_u[step]*W_in.value + v_out[step-1]*W.value
         
         theano_values = f3(v_u, v_x0)
-        assert  numpy.all(abs(theano_values - v_out) < 1e-5)
+        assert  numpy.allclose(theano_values, v_out)
 
 
 
@@ -218,8 +218,8 @@ class T_Scan(unittest.TestCase):
 
         (theano_x,theano_y) =  f4( v_u1, v_u2, v_x0, v_y0, vW_in1)
         
-        assert numpy.all(abs(theano_x - v_x) < 1e-5)
-        assert numpy.all(abs(theano_y - v_y) < 1e-5)
+        assert numpy.allclose(theano_x , v_x)
+        assert numpy.allclose(theano_y , v_y)
 
 
 
@@ -259,7 +259,7 @@ class T_Scan(unittest.TestCase):
         numpy_out[0] = vu[0]*vW_in + vx0[1]*vW + vx0[0]
         numpy_out[1] = vu[1]*vW_in + numpy_out[0]*vW + vx0[1]
 
-        assert numpy.all(abs(numpy_out - theano_out) < 1e-5)
+        assert numpy.allclose(numpy_out , theano_out)
 
 
 
@@ -294,8 +294,7 @@ class T_Scan(unittest.TestCase):
         numpy_out[0] = (vu[0]+vu[4])*vW_in + vx0[1]*vW + vx0[0]
         numpy_out[1] = (vu[1]+vu[5])*vW_in + numpy_out[0]*vW + vx0[1]
 
-        assert numpy.all(abs(numpy_out - theano_out) < 1e-5)
-
+        assert numpy.allclose(numpy_out , theano_out)
 
 
     # simple rnn ; compute inplace version 1
@@ -340,11 +339,11 @@ class T_Scan(unittest.TestCase):
         # note theano computes inplace, so call function after numpy equivalent is done
         (theano_x0, theano_x1) = f9(vu0,vu1,vu2,vx0,vx1)
         # assert that theano does what it should
-        assert numpy.all( abs(theano_x0 - numpy_x0) < 1e-5)
-        assert numpy.all( abs(theano_x1 - numpy_x1) < 1e-5)
+        assert numpy.allclose( theano_x0 , numpy_x0) 
+        assert numpy.allclose( theano_x1 , numpy_x1) 
         # assert that it was done in place
-        assert numpy.all( theano_x0 == vu2)
-        assert numpy.all( theano_x1 == vu1)
+        assert numpy.allclose( theano_x0 , vu2)
+        assert numpy.allclose( theano_x1 , vu1)
 
     # simple rnn ; compute inplace version 2
     def test_inplace2(self):
@@ -390,13 +389,13 @@ class T_Scan(unittest.TestCase):
         # note theano computes inplace, so call function after numpy equivalent is done
         (theano_x0, theano_x1) = f9(vu0,vu1,vu2,vx0,vx1)
         # assert that theano does what it should
-        assert numpy.all( abs(theano_x0 - numpy_x0) < 1e-5)
-        assert numpy.all( abs(theano_x1 - numpy_x1) < 1e-5)
+        assert numpy.allclose( theano_x0 , numpy_x0) 
+        assert numpy.allclose( theano_x1 , numpy_x1) 
         # assert that it was done in place
         # not that x0 should not be inplace of vu2 because you are using past values of u2, 
         # and therefore you are not allowed to work inplace !!
-        assert not numpy.all( theano_x0 == vu2[1:4])
-        assert numpy.all( theano_x1 == vu1[0:3])
+        assert not numpy.allclose( theano_x0 , vu2[1:4])
+        assert numpy.allclose( theano_x1 , vu1[0:3])
 
 
 
@@ -450,11 +449,11 @@ class T_Scan(unittest.TestCase):
             numpy_W1 = numpy_W1 + .1
             numpy_W2 = numpy_W2 + .05
 
-        assert numpy.all( abs(theano_y0 - numpy_y0[3:]) < 1e-5)
-        assert numpy.all( abs(theano_y1 - numpy_y1[1:]) < 1e-5)
-        assert numpy.all( abs(theano_y2 - numpy_y2    ) < 1e-5)
-        assert numpy.all( abs(W1.value  - numpy_W1    ) < 1e-5)
-        assert numpy.all( abs(W2.value  - numpy_W2    ) < 1e-5)
+        assert numpy.allclose( theano_y0 , numpy_y0[3:]) 
+        assert numpy.allclose( theano_y1 , numpy_y1[1:]) 
+        assert numpy.allclose( theano_y2 , numpy_y2    ) 
+        assert numpy.allclose( W1.value  , numpy_W1    ) 
+        assert numpy.allclose( W2.value  , numpy_W2    ) 
 
 
 
@@ -474,9 +473,9 @@ class T_Scan(unittest.TestCase):
             numpy_v[i] = rng.uniform(-1,1,size = (2,))
 
         theano_v = my_f()
-        assert numpy.all( abs(theano_v - numpy_v [:5,:]) < 1e-5)
+        assert numpy.allclose( theano_v , numpy_v [:5,:]) 
         theano_v = my_f()
-        assert numpy.all(abs(theano_v - numpy_v[5:,:]) < 1e-5)
+        assert numpy.allclose( theano_v , numpy_v[5:,:]) 
 
 
 
@@ -522,7 +521,7 @@ class T_Scan(unittest.TestCase):
         t_result = my_f(v_vsample)
         n_result = numpy_implementation(v_vsample)
 
-        assert numpy.all( abs(t_result - n_result) < 1e-5)
+        assert numpy.allclose( t_result , n_result)
 
 
     def test_only_shared_no_input_no_output(self):
@@ -555,7 +554,7 @@ class T_Scan(unittest.TestCase):
         v_u   = rng.uniform(size=(5,), low = -5., high = 5.)
         numpy_result = v_u + 3
         theano_result = f2(v_u)
-        assert numpy.all(theano_result == numpy_result)
+        assert numpy.allclose(theano_result , numpy_result)
 
 
     def test_map(self):
@@ -568,7 +567,7 @@ class T_Scan(unittest.TestCase):
         vals = rng.uniform(size=(10,), low = -5., high = 5.)
         abs_vals = abs(vals)
         theano_vals = f(vals)
-        assert numpy.all(abs_vals == theano_vals)
+        assert numpy.allclose(abs_vals , theano_vals)
 
     def test_backwards(self):
         def f_rnn(u_t,x_tm1,W_in, W):
@@ -597,7 +596,7 @@ class T_Scan(unittest.TestCase):
             v_out[step] = v_u[3-step]*W_in + v_out[step-1] * W
         
         theano_values = f2(v_u,v_x0, W_in, W)
-        assert numpy.all(abs(theano_values - v_out) < 1e-5)
+        assert numpy.allclose( theano_values , v_out) 
 
 
 
