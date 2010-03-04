@@ -650,8 +650,12 @@ class T_max_and_argmax(unittest.TestCase):
 
     def test2_invalid(self):
         n = as_tensor_variable(numpy.random.rand(2,3))
+        # Silence expected error messages
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
+        _logger = logging.getLogger('theano.gof.opt')
+        oldlevel = _logger.getEffectiveLevel()
+        _logger.setLevel(logging.CRITICAL)
         try:
             eval_outputs(max_and_argmax(n,3))
             assert False
@@ -659,6 +663,7 @@ class T_max_and_argmax(unittest.TestCase):
             pass
         finally:
             sys.stderr = old_stderr
+            _logger.setLevel(oldlevel)
     def test2_invalid_neg(self):
         n = as_tensor_variable(numpy.random.rand(2,3))
         old_stderr = sys.stderr
@@ -719,8 +724,12 @@ class T_subtensor(unittest.TestCase):
         n = as_tensor_variable(numpy.ones(3))
         t = n[7]
         self.failUnless(isinstance(t.owner.op, Subtensor))
+        # Silence expected error messages
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
+        _logger = logging.getLogger('theano.gof.opt')
+        oldlevel = _logger.getEffectiveLevel()
+        _logger.setLevel(logging.CRITICAL)
         try:
             tval = eval_outputs([t])
             assert 0
@@ -729,6 +738,7 @@ class T_subtensor(unittest.TestCase):
                 raise
         finally:
             sys.stderr = old_stderr
+            _logger.setLevel(oldlevel)
     def test1_err_subslice(self):
         n = as_tensor_variable(numpy.ones(3))
         try:
@@ -796,6 +806,9 @@ class T_subtensor(unittest.TestCase):
         self.failUnless(isinstance(t.owner.op, Subtensor))
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
+        _logger = logging.getLogger('theano.gof.opt')
+        oldlevel = _logger.getEffectiveLevel()
+        _logger.setLevel(logging.CRITICAL)
         try:
             tval = eval_outputs([t])
             assert 0
@@ -803,6 +816,7 @@ class T_subtensor(unittest.TestCase):
             pass
         finally:
             sys.stderr = old_stderr
+            _logger.setLevel(oldlevel)
     def test2_err_bounds1(self):
         n = as_tensor_variable(numpy.ones((2,3))*5)
         t = n[4:5,2]
@@ -1464,10 +1478,13 @@ class t_dot(unittest.TestCase):
 
     def not_aligned(self, x, y):
         z = dot(x,y)
-        # constant folding will complain to stderr that things are not aligned
+        # constant folding will complain to _logger that things are not aligned
         # this is normal, testers are not interested in seeing that output.
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
+        _logger = logging.getLogger('theano.gof.opt')
+        oldlevel = _logger.getEffectiveLevel()
+        _logger.setLevel(logging.CRITICAL)
         try:
             tz = eval_outputs([z])
             assert False # should have raised exception
@@ -1477,6 +1494,7 @@ class t_dot(unittest.TestCase):
                     e[0].split()[0:2] == ['Shape', 'mismatch:'], e) # reported by blas return self.fail()
         finally:
             sys.stderr = old_stderr
+            _logger.setLevel(oldlevel)
 
     def test_align_1_1(self): self.not_aligned(self.rand(5), self.rand(6))
     def test_align_1_2(self): self.not_aligned(self.rand(5), self.rand(6,4))
