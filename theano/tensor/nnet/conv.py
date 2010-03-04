@@ -94,6 +94,10 @@ def conv2d_offset(input, filters, image_shape=None, filter_shape=None,
     if not (subsample[0] > 1 or subsample[1] > 1):
         raise ValueError('conv2d_offset requires subsampling.')
 
+    # Haven't thought about this case.
+    if numpy.any(numpy.array(subsample) > filter_shape[2:]):
+        raise ValueError('conv2d_offset subsample greater than filter shape. Not supported?')
+
     # No offsets specified is interpreted as all offsets.
     if len(offsets) == 0:
         offsets = []
@@ -122,6 +126,7 @@ def conv2d_offset(input, filters, image_shape=None, filter_shape=None,
 
     # Determine number of filters per offset position.
     if (filter_shape[0] % len(offsets)) != 0:
+        print 'nfilts ', filter_shape[0], ' noffsets ', len(offsets)
         raise ValueError('conv2d_offset: invalid number of filters wrt offsets.')
     n_filters = filter_shape[0] / len(offsets) 
     sub_filter_shape = list(filter_shape)
@@ -144,7 +149,11 @@ def conv2d_offset(input, filters, image_shape=None, filter_shape=None,
         outputs.append(out)
 
     # Join the outputs on the leading axis.
-    return tensor.join(1, *outputs)
+    output = tensor.join(1, *outputs)
+
+    outshp = ConvOp.getOutputShape(sub_image_shape[2:], filter_shape[2:], subsample, border_mode)
+
+    return [output, outshp]
 
 
 
