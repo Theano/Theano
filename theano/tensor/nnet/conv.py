@@ -213,7 +213,7 @@ class ConvOp(Op):
         if mode=='valid': s = -1
         else: s = 1
         inshp, kshp = numpy.array(inshp), numpy.array(kshp)
-        return  numpy.int64(numpy.ceil((inshp[1:] + s*kshp - s*1)/\
+        return  numpy.int64(numpy.ceil((inshp + s*kshp - s*1)/\
                 numpy.array([dx,dy], dtype='float')))
 
 
@@ -372,8 +372,8 @@ class ConvOp(Op):
                 self.unroll_kern=new
 
         if all_shape:
-            self.outshp = ConvOp.getOutputShape(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
-            self.fulloutshp = ConvOp.getOutputShape(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
+            self.outshp = ConvOp.getOutputShape(self.imshp_logical[1:], self.kshp_logical, (dx,dy), output_mode)
+            self.fulloutshp = ConvOp.getOutputShape(self.imshp_logical[1:], self.kshp_logical, (1,1), output_mode)
         else:
             self.outshp = None
             self.fulloutshp = None
@@ -509,7 +509,7 @@ class ConvOp(Op):
         if self.fulloutshp is not None:
             fulloutshp = tuple(self.fulloutshp)
         else:
-            fulloutshp = tuple(ConvOp.getOutputShape(imshp_logical, kshp_logical, (1,1), self.out_mode))
+            fulloutshp = tuple(ConvOp.getOutputShape(imshp_logical[1:], kshp_logical, (1,1), self.out_mode))
 
         if z[0] is None or z[0].shape!=(bsize,)+(nkern,)+fulloutshp:
             z[0] = numpy.zeros((bsize,)+(nkern,)+fulloutshp,
