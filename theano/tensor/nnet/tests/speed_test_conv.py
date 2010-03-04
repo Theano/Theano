@@ -79,7 +79,7 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
                 padimg[:, :, kshp[0]-1:-kshp[0]+1, 
                              kshp[1]-1:-kshp[1]+1] = imgval
 
-            outshp = N.hstack((nkern, ConvOp.getOutputShape(imshp, kshp, ss, conv_mode)))
+            outshp = N.hstack((nkern, ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
 
             time1 = time.time()
             outval = N.zeros(N.r_[bsize,outshp])
@@ -104,7 +104,7 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
                 conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0],ss[1], conv_mode,
                                  unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch, verbose=verbose)(inputs4, kerns4)
             l1shp=N.hstack((nkern,
-                            ConvOp.getOutputShape(imshp, kshp, ss, conv_mode)))
+                            ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
             propup2 = function([inputs4, kerns4], conv_op)
             propup3 = function([inputs4, kerns4], conv_op, mode=Mode(linker="py"))
 

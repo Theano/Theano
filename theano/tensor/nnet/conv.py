@@ -94,6 +94,10 @@ def conv2d_offset(input, filters, image_shape=None, filter_shape=None,
     if not (subsample[0] > 1 or subsample[1] > 1):
         raise ValueError('conv2d_offset requires subsampling.')
 
+    # Haven't thought about this case.
+    if numpy.any(numpy.array(subsample) > filter_shape[2:]):
+        raise ValueError('conv2d_offset subsample greater than filter shape. Not supported?')
+
     # No offsets specified is interpreted as all offsets.
     if len(offsets) == 0:
         offsets = []
@@ -122,6 +126,7 @@ def conv2d_offset(input, filters, image_shape=None, filter_shape=None,
 
     # Determine number of filters per offset position.
     if (filter_shape[0] % len(offsets)) != 0:
+        print 'nfilts ', filter_shape[0], ' noffsets ', len(offsets)
         raise ValueError('conv2d_offset: invalid number of filters wrt offsets.')
     n_filters = filter_shape[0] / len(offsets) 
     sub_filter_shape = list(filter_shape)
@@ -144,7 +149,11 @@ def conv2d_offset(input, filters, image_shape=None, filter_shape=None,
         outputs.append(out)
 
     # Join the outputs on the leading axis.
-    return tensor.join(1, *outputs)
+    output = tensor.join(1, *outputs)
+
+    outshp = ConvOp.getOutputShape(sub_image_shape[2:], filter_shape[2:], subsample, border_mode)
+
+    return [output, outshp]
 
 
 
@@ -204,7 +213,7 @@ class ConvOp(Op):
         if mode=='valid': s = -1
         else: s = 1
         inshp, kshp = numpy.array(inshp), numpy.array(kshp)
-        return  numpy.int64(numpy.ceil((inshp[1:] + s*kshp - s*1)/\
+        return  numpy.int64(numpy.ceil((inshp + s*kshp - s*1)/\
                 numpy.array([dx,dy], dtype='float')))
 
 
@@ -365,8 +374,8 @@ class ConvOp(Op):
                 self.unroll_kern=new
 
         if all_shape:
-            self.outshp = ConvOp.getOutputShape(self.imshp_logical, self.kshp_logical, (dx,dy), output_mode)
-            self.fulloutshp = ConvOp.getOutputShape(self.imshp_logical, self.kshp_logical, (1,1), output_mode)
+            self.outshp = ConvOp.getOutputShape(self.imshp_logical[1:], self.kshp_logical, (dx,dy), output_mode)
+            self.fulloutshp = ConvOp.getOutputShape(self.imshp_logical[1:], self.kshp_logical, (1,1), output_mode)
         else:
             self.outshp = None
             self.fulloutshp = None
@@ -502,7 +511,7 @@ class ConvOp(Op):
         if self.fulloutshp is not None:
             fulloutshp = tuple(self.fulloutshp)
         else:
-            fulloutshp = tuple(ConvOp.getOutputShape(imshp_logical, kshp_logical, (1,1), self.out_mode))
+            fulloutshp = tuple(ConvOp.getOutputShape(imshp_logical[1:], kshp_logical, (1,1), self.out_mode))
 
         if z[0] is None or z[0].shape!=(bsize,)+(nkern,)+fulloutshp:
             z[0] = numpy.zeros((bsize,)+(nkern,)+fulloutshp,
