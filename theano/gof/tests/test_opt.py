@@ -385,8 +385,13 @@ class TestEquilibrium(object):
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
         print 'before', g
+        # display pesky warnings along with stdout
         oldstderr = sys.stderr
-        sys.stderr = sys.stdout # display pesky warnings along with stdout
+        sys.stderr = sys.stdout
+        # also silence logger for 'theano.gof.opt'
+        _logger = logging.getLogger('theano.gof.opt')
+        oldlevel = _logger.getEffectiveLevel()
+        _logger.setLevel(logging.CRITICAL)
         try:
             opt = EquilibriumOptimizer(
                 [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
@@ -397,6 +402,7 @@ class TestEquilibrium(object):
             opt.optimize(g)
         finally:
             sys.stderr = oldstderr
+            _logger.setLevel(oldlevel)
         print 'after', g
         assert str(g) == '[Op4(x, y)]'
 
