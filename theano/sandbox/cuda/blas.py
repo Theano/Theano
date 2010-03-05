@@ -161,7 +161,8 @@ class GpuConv(Op):
             and self.subsample == other.subsample \
             and self.logical_img_hw == other.logical_img_hw \
             and self.logical_kern_hw == other.logical_kern_hw \
-            and self.logical_kern_align_top == other.logical_kern_align_top
+            and self.logical_kern_align_top == other.logical_kern_align_top \
+            and self.version
 
     def __hash__(self):
         return hash(type(self)) \
@@ -169,8 +170,9 @@ class GpuConv(Op):
             ^ hash(self.subsample) \
             ^ hash(self.logical_img_hw) \
             ^ hash(self.logical_kern_hw) \
-            ^ hash(self.logical_kern_align_top)
-
+            ^ hash(self.logical_kern_align_top) \
+            ^ hash(self.version)
+    
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s}' %(self.__class__.__name__,
                 self.border_mode,
@@ -198,7 +200,7 @@ class GpuConv(Op):
         return ['cuda_ndarray.cuh','<stdio.h>']
 
     def c_code_cache_version(self):
-        return (0,3)
+        return (0,4)
 
     def c_support_code_apply(self, node, nodename):
         return open(os.path.join(os.path.split(__file__)[0],'conv_kernel.cu')).read()+\
