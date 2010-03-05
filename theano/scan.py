@@ -236,7 +236,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     else:
         seqs = sequences
 
-    print outputs_info
     if not (type(outputs_info) in (list,tuple)):
         outs_info = [outputs_info]
     else:
@@ -272,8 +271,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
 
     # wrap outputs info in a dictionary if they are not already
     # in the same pass create a init_outs_taps dictionary and a inplace map
-    print n_outs
-    print outs_info
     for i in xrange(n_outs):
         if outs_info[i]:
             if not type(outs_info[i]) == dict:
