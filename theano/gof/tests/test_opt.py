@@ -386,8 +386,6 @@ class TestEquilibrium(object):
         g = Env([x, y, z], [e])
         print 'before', g
         # display pesky warnings along with stdout
-        oldstderr = sys.stderr
-        sys.stderr = sys.stdout
         # also silence logger for 'theano.gof.opt'
         _logger = logging.getLogger('theano.gof.opt')
         oldlevel = _logger.getEffectiveLevel()
@@ -401,7 +399,6 @@ class TestEquilibrium(object):
                 max_use_ratio = 1. / len(g.nodes)) # each opt can only be applied once
             opt.optimize(g)
         finally:
-            sys.stderr = oldstderr
             _logger.setLevel(oldlevel)
         print 'after', g
         assert str(g) == '[Op4(x, y)]'
