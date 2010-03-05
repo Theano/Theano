@@ -2574,6 +2574,11 @@ class Rebroadcast(Op):
     view_map = {0: [0]}
     def __init__(self, *axis):
         self.axis = dict(axis)
+    def __str__(self):
+        broadcast_pattern = ['?' for i in range(1+numpy.max(self.axis.keys()))]
+        for k,v in self.axis.iteritems():
+            broadcast_pattern[k] = str(int(v))
+        return '%s{%s}' % (self.__class__.__name__, ','.join(broadcast_pattern))
     def make_node(self, x):
         t = x.type.__class__(dtype = x.type.dtype,
                        broadcastable = [self.axis.get(i, b)

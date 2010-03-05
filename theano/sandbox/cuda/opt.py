@@ -280,6 +280,15 @@ def local_gpu_shape(node):
             return [gpu_shape(gpu_x)]
     return False
 
+@register_opt()
+@local_optimizer([])
+def local_gpu_rebroadcast(node):
+    '''rebroadcast(host_from_gpu(x)) -> host_from_gpu(rebroadcast(x))'''
+    if isinstance(node.op, tensor.Rebroadcast):
+        x, = node.inputs
+        if (x.owner and x.owner.op == host_from_gpu):
+            gpu_x = x.owner.inputs[0]
+            return [host_from_gpu(node.op(gpu_x))]
 
 def cast(x, dtype):
     stype = theano.scalar.Scalar(dtype)
