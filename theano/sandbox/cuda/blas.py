@@ -171,7 +171,7 @@ class GpuConv(Op):
             ^ hash(self.logical_img_hw) \
             ^ hash(self.logical_kern_hw) \
             ^ hash(self.logical_kern_align_top) \
-            ^ hash(self.version)
+            ^ self.version# don't use hash as hash(-1)==-2 and hash(-2)==-2 in python!
     
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s}' %(self.__class__.__name__,
