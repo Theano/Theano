@@ -565,6 +565,8 @@ __global__ void kAdd_contiguous(float* a, float* b, float* dest, unsigned int nu
         dest[i] = a[i] + b[i];
     }
 }
+
+// Will be called by __add__ in Python
 static PyObject *
 CudaNdarray_add(PyObject* py_self, PyObject * py_other)
 {
@@ -659,6 +661,7 @@ __global__ void k_iAdd_4(const int d0, const int d1, const int d2, const int d3,
 /*
  * We need this inplace Add to support IncSubTensor
  */
+// Will be called by __iadd__ in Python
 static PyObject *
 CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
 {
@@ -827,52 +830,52 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
 
 static PyNumberMethods CudaNdarrayNumberMethods =
 {
-     (binaryfunc)CudaNdarray_add,  //binaryfunc nb_add;
-     0,  //binaryfunc nb_subtract;
-     0,  //binaryfunc nb_multiply;
-     0,  //binaryfunc nb_divide;
-     0,  //binaryfunc nb_remainder;
-     0,  //binaryfunc nb_divmod;
-     0,  //ternaryfunc nb_power;
-     0,  //unaryfunc nb_negative;
-     0,  //unaryfunc nb_positive;
-     0,  //unaryfunc nb_absolute;
-     0,  //inquiry nb_nonzero;       /* Used by PyObject_IsTrue */
-     0,  //unaryfunc nb_invert;
-     0,  //binaryfunc nb_lshift;
-     0,  //binaryfunc nb_rshift;
-     0,  //binaryfunc nb_and;
-     0,  //binaryfunc nb_xor;
-     0,  //binaryfunc nb_or;
-     0,  //coercion nb_coerce;       /* Used by the coerce() function */
-     0,  //unaryfunc nb_int;
-     0,  //unaryfunc nb_long;
-     0,  //unaryfunc nb_float;
-     0,  //unaryfunc nb_oct;
-     0,  //unaryfunc nb_hex;
+     (binaryfunc)CudaNdarray_add,  //binaryfunc nb_add;  __add__
+     0,  //binaryfunc nb_subtract;      __sub__
+     0,  //binaryfunc nb_multiply;      __mul__
+     0,  //binaryfunc nb_divide;        __div__
+     0,  //binaryfunc nb_remainder;     __mod__
+     0,  //binaryfunc nb_divmod;        __divmod__
+     0,  //ternaryfunc nb_power;        __pow__
+     0,  //unaryfunc nb_negative;       __neg__
+     0,  //unaryfunc nb_positive;       __pos__
+     0,  //unaryfunc nb_absolute;       __abs__
+     0,  //inquiry nb_nonzero;          __nonzero__     /* Used by PyObject_IsTrue */
+     0,  //unaryfunc nb_invert;         __invert__
+     0,  //binaryfunc nb_lshift;        __lshift__
+     0,  //binaryfunc nb_rshift;        __rshift__
+     0,  //binaryfunc nb_and;           __and__
+     0,  //binaryfunc nb_xor;           __xor__
+     0,  //binaryfunc nb_or;            __or__
+     0,  //coercion nb_coerce;          __coerce__     /* Used by the coerce() function */
+     0,  //unaryfunc nb_int;            __int__
+     0,  //unaryfunc nb_long;           __long__
+     0,  //unaryfunc nb_float;          __float__
+     0,  //unaryfunc nb_oct;            __oct__
+     0,  //unaryfunc nb_hex;            __hex__
 
      /* Added in release 2.0 */
-     (binaryfunc)CudaNdarray_inplace_add,  //binaryfunc nb_inplace_add;
-     0,  //binaryfunc nb_inplace_subtract;
-     0,  //binaryfunc nb_inplace_multiply;
-     0,  //binaryfunc nb_inplace_divide;
-     0,  //binaryfunc nb_inplace_remainder;
-     0,  //ternaryfunc nb_inplace_power;
-     0,  //binaryfunc nb_inplace_lshift;
-     0,  //binaryfunc nb_inplace_rshift;
-     0,  //binaryfunc nb_inplace_and;
-     0,  //binaryfunc nb_inplace_xor;
-     0,  //binaryfunc nb_inplace_or;
+     (binaryfunc)CudaNdarray_inplace_add,  //binaryfunc nb_inplace_add;  __iadd__
+     0,  //binaryfunc nb_inplace_subtract;      __isub__
+     0,  //binaryfunc nb_inplace_multiply;      __imul__
+     0,  //binaryfunc nb_inplace_divide;        __idiv__
+     0,  //binaryfunc nb_inplace_remainder;     __imod__
+     0,  //ternaryfunc nb_inplace_power;        __ipow__
+     0,  //binaryfunc nb_inplace_lshift;        __ilshift__
+     0,  //binaryfunc nb_inplace_rshift;        __irshift__
+     0,  //binaryfunc nb_inplace_and;           __iand__
+     0,  //binaryfunc nb_inplace_xor;           __ixor__
+     0,  //binaryfunc nb_inplace_or;            __ior__
 
      /* Added in release 2.2 */
-     0,  //binaryfunc nb_floor_divide;
-     0,  //binaryfunc nb_true_divide;
-     0,  //binaryfunc nb_inplace_floor_divide;
-     0,  //binaryfunc nb_inplace_true_divide;
+     0,  //binaryfunc nb_floor_divide;          __floordiv__
+     0,  //binaryfunc nb_true_divide;           __truediv__
+     0,  //binaryfunc nb_inplace_floor_divide;  __ifloordiv__
+     0,  //binaryfunc nb_inplace_true_divide;   __itruediv__
 
 #if PY_MINOR_VERSION > 4
      /* Added in release 2.5 */
-     0  //unaryfunc nb_index;
+     0  //unaryfunc nb_index;  __index__
 #endif
 };
 
@@ -881,6 +884,7 @@ static PyNumberMethods CudaNdarrayNumberMethods =
 // Mapping protocol
 /////////////////////
 
+// Will by called by __len__ in Python
 static Py_ssize_t 
 CudaNdarray_len(PyObject * py_self)
 {
@@ -895,6 +899,7 @@ CudaNdarray_len(PyObject * py_self)
     }
 }
 
+// Will by called by __getitem__ in Python
 static PyObject *
 CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
 {
@@ -1119,9 +1124,9 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
 }
 
 PyMappingMethods CudaNdarrayMappingMethods = {
-    CudaNdarray_len, //lenfunc mp_length;
-    CudaNdarray_Subscript, //binaryfunc mp_subscript;
-    0, //objobjargproc mp_ass_subscript;
+    CudaNdarray_len, //lenfunc mp_length;               __len__
+    CudaNdarray_Subscript, //binaryfunc mp_subscript;   __getitem__
+    0, //objobjargproc mp_ass_subscript;                __setitem__
 };
 
 ////////////////////
