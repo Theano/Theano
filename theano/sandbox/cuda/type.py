@@ -43,7 +43,9 @@ class CudaNdarrayType(Type):
     A cyclic dependency is avoided by not hardcoding this class. 
     """
 
-    def __init__(self, broadcastable, name=None):
+    def __init__(self, broadcastable, name=None, dtype=None):
+        if dtype != None or dtype != 'float32':
+            raise TypeError(self.__class__.__name__+' only support dtype float32 for now.')
         self.broadcastable = tuple(broadcastable)
         self.name = name
         self.dtype_specs() # error checking is done there

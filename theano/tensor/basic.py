@@ -2568,12 +2568,14 @@ class Rebroadcast(Op):
           would make x broadcastable in axis 0
           and not broadcastable in axis 1
     See also the unbroadcast function.
+
+    ..note: work inplace and work for CudaNdarrayType
     """
     view_map = {0: [0]}
     def __init__(self, *axis):
         self.axis = dict(axis)
     def make_node(self, x):
-        t = TensorType(dtype = x.type.dtype,
+        t = x.type.__class__(dtype = x.type.dtype,
                        broadcastable = [self.axis.get(i, b)
                                         for i, b in enumerate(x.type.broadcastable)])
         return Apply(self, [x], [t()])
