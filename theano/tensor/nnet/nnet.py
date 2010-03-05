@@ -353,6 +353,9 @@ def local_softmax_with_bias(node):
             vectors = []
             non_vectors = []
             for x_in in x.owner.inputs:
+                print 'x_in =', x_in
+                print 'x_in.type =', x_in.type
+                print 'x_in.broadcastable =', x_in.broadcastable
                 if list(x_in.type.broadcastable) == [True, False]:
                     # print isinstance(x_in.owner.op, tensor.DimShuffle)
                     #since specialization comes relatively late in optimization, 
@@ -1239,7 +1242,7 @@ def categorical_crossentropy(coding_dist, true_dist):
 
     """
     if true_dist.ndim == coding_dist.ndim:
-        return -theano.sum(true_dist * log(coding_dist), axis=coding_dist.ndim-1)
+        return -tensor.sum(true_dist * tensor.log(coding_dist), axis=coding_dist.ndim-1)
     elif true_dist.ndim == coding_dist.ndim - 1:
         return crossentropy_categorical_1hot(coding_dist, true_dist)
     else:
