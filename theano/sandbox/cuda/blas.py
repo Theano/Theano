@@ -162,7 +162,7 @@ class GpuConv(Op):
             and self.logical_img_hw == other.logical_img_hw \
             and self.logical_kern_hw == other.logical_kern_hw \
             and self.logical_kern_align_top == other.logical_kern_align_top \
-            and self.version
+            and self.version == other.version
 
     def __hash__(self):
         return hash(type(self)) \
