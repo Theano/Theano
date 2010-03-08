@@ -353,9 +353,6 @@ def local_softmax_with_bias(node):
             vectors = []
             non_vectors = []
             for x_in in x.owner.inputs:
-                print 'x_in =', x_in
-                print 'x_in.type =', x_in.type
-                print 'x_in.broadcastable =', x_in.broadcastable
                 if list(x_in.type.broadcastable) == [True, False]:
                     # print isinstance(x_in.owner.op, tensor.DimShuffle)
                     #since specialization comes relatively late in optimization, 
