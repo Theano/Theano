@@ -64,6 +64,9 @@ to ``FAST_RUN``.
 Second, try the theano :ref:`using_profilemode`.  This will tell you which
 Apply nodes, and which Ops are eating up your CPU cycles.
 
+Tips:
+* use the flags floatX=float32 to use float32 instead of float64 for the theano type matrix(),vector(),...(if you used dmatrix, dvector() they stay at float64).
+* Check that in the profile mode that their is no dot operation if you dot of matrix of the same type. dot should be optimizer to dot22 when the inputs are matrix and of the same type. This can happen when using floatX=float32 and something in the graph make one of the input float64.
 
 .. _faq_wraplinker:
 
