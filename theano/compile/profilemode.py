@@ -301,13 +301,21 @@ class ProfileMode(Mode):
                                                       fct_call_time[key]/fct_call[key], fct_call[key], key.name)
             else:
                 print '   NOT CALLED',key.name
+
+        if total_fct_time>0:
+            time_pr_in_fct=local_time/total_fct_time*100
+            time_per_call=total_fct_time/total_fct_call
+        else:
+            time_pr_in_fct=0
+            time_per_call=0
+
         print
         print 'Time since import %.3fs'%(total_time)
         print 'Compile time: %.3fs %.1f%%'%(compile_time, compile_time/total_time*100)
         print 'Theano fct call %.3fs %.1f%%'%(total_fct_time,total_fct_time/total_time*100)
-        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100,local_time/total_fct_time*100)
+        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)'% (local_time,local_time/total_time*100, time_pr_in_fct)
         print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
-        print '%i Theano fct call, %.3fs per call'%(total_fct_call, total_fct_time/total_fct_call)
+        print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
         
         if any([x[2].__name__.startswith("Gpu") for x in sotimes]):
             cpu=[]
