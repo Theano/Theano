@@ -525,6 +525,9 @@ def _is_real_matrix(res):
             and res.type.broadcastable[1] == False #cope with tuple vs. list
 
 def _as_isolated_scalar_times_matrix(res):
+    """Returns (scalar_var, matrix_var) on success else None
+    """
+    # isolated means that there is only one client of the result 'res'
     if res_is_a(res, T.mul, 1):
         if len(res.owner.inputs) == 2:
             L, R = res.owner.inputs
@@ -546,14 +549,21 @@ def _as_isolated_scalar_times_matrix(res):
                 else:
                     return None
             if len(matrices) == 1:
-                rval = (T.mul(*scalars), matrices[0])
+                if len(scalars) == 0:
+                    rval = (1.0, matrices[0])
+                elif len(scalars) == 1:
+                    rval = (scalars[0], matrices[0])
+                else:
+                    rval = (T.mul(*scalars), matrices[0])
                 return rval
 
 def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
     #print 'BETA L + ALPHA M', beta, L, alpha, M, recurse_flip
     #EXPRESSION: (beta * L) + (alpha * M)
 
-    if res_is_a(M, _dot22, 1):
+    # we've already checked the client counts, now just make the type check.
+    ####if res_is_a(M, _dot22, 1):
+    if M.owner and M.owner.op == _dot22:
         Ml, Mr = M.owner.inputs
         rval = [gemm_no_inplace(L, alpha, Ml, Mr, beta)]
         #print 'GEMM 0', rval, beta, L, alpha, M
@@ -574,17 +584,14 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
             #EXPRESSION: (beta * L) + (alpha * ((b*dot(x,y) + (a * dot(u, v)))))
             #EXPRESSION: (beta * L) + (alpha*b*dot(x,y)) + (alpha * a * dot(u, v))
             rval = [gemm_no_inplace(gemm_no_inplace(L, alpha * b, x, y, beta), alpha * a, u, v, 1.0)]
-            print 'GEMM 1', rval
             return rval
         if (G is L):
             #EXPRESSION: (beta * L) + (alpha*b*L) + (alpha * a * dot(u, v))
             rval = [gemm_no_inplace(L, alpha*a, u, v, alpha * b + beta)]
-            print 'GEMM 2', rval
             return rval
         if (1.0 != alpha):
             #at the very least, move the alpha inside the gemm_no_inplace
             rval = [beta * L + gemm_no_inplace(G, alpha * a, u, v, alpha * b)]
-            print 'GEMM 3', rval
             return rval
 
     if recurse_flip:
@@ -592,43 +599,174 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
     else:
         return False
 
-def _gemm_from_node(node):
+
+def _gemm_canonicalize(r, scale, rval, maxclients):
+    # Tries to interpret node as a sum of scalars * matrices
+    def scaled(thing):
+        if scale == 1:
+            return thing
+        if scale == -1:
+            return -thing
+        else:
+            return scale*thing
+
+    if (tuple(r.type.broadcastable) != (False, False) or
+            r.type.dtype not in ('float32', 'float64', 'complex64', 'complex128')):
+        rval.append(scaled(r))
+        return rval
+
+    if maxclients and len(getattr(r,'clients',[])) > maxclients:
+        rval.append((scale, r))
+        return rval
+
+    if r.owner and r.owner.op == T.sub:
+        _gemm_canonicalize(r.owner.inputs[0], scale, rval, 1)
+        _gemm_canonicalize(r.owner.inputs[1], -scale, rval, 1)
+
+    elif r.owner and r.owner.op == T.add:
+        for i in r.owner.inputs:
+            _gemm_canonicalize(i, scale, rval, 1)
+
+    elif r.owner and r.owner.op == T.neg:
+        _gemm_canonicalize(r.owner.inputs[0], -scale, rval, 1)
+
+    elif r.owner and r.owner.op == T.mul:
+        scalars = []
+        matrices = []
+        for i in r.owner.inputs:
+            if numpy.all(i.type.broadcastable):
+                while i.owner and isinstance(i.owner.op, T.DimShuffle):
+                    i = i.owner.inputs[0]
+                if i.type.broadcastable:
+                    scalars.append(i.dimshuffle())
+                else:
+                    scalars.append(i)
+            elif _is_real_matrix(i):
+                matrices.append(i)
+            else:
+                # just put the original arguments as in the base case
+                rval.append((scale,r))
+                return rval
+        if len(matrices)==1:
+            m = matrices[0]
+            if len(scalars) == 0:
+                _gemm_canonicalize(m, scale, rval, 1)
+            elif len(scalars) == 1:
+                _gemm_canonicalize(m, scaled(scalars[0]), rval, 1)
+            else:
+                _gemm_canonicalize(m, T.mul(scaled(scalars[0]), *scalars[1:]), rval, 1)
+        else: #there are many matrices... lets not open this up
+            rval.append((scale,r))
+    else:
+        rval.append((scale,r))
+    return rval
+
+def _factor_canonicalized(lst):
+    # remove duplicates from canonicalized list
+
+    # we only delete out of the right end of the list,
+    # once i has touched a list element, it is permantent
+    lst = list(lst)
+    #print 'FACTOR', lst
+    #for (a,b) in lst:
+        #theano.printing.debugprint(a)
+        #theano.printing.debugprint(b)
+    i = 0
+    while i < len(lst)-1:
+        try:
+            s_i,M_i = lst[i]
+        except:
+            i += 1
+            continue
+
+        j = i+1
+        while j < len(lst):
+            try:
+                s_j,M_j = lst[j]
+            except:
+                j += 1
+                continue
+
+            if M_i is M_j:
+                s_i = s_i + s_j
+                lst[i] = (s_i, M_i)
+                del lst[j]
+            else:
+                j += 1
+        i+=1
+    return lst
+
+def _gemm_from_factored_list(lst):
+    """Returns None, or a list to replace node.outputs
+    """
+    # Try every pair in the sM_list, trying to turn it into a gemm operation
+    for i in xrange(len(lst) - 1):
+        try:
+            s_i,M_i = lst[i]
+        except:
+            continue
+
+        for j in xrange(i+1, len(lst)):
+
+            try:
+                s_j, M_j = lst[j]
+            except:
+                continue
+            
+            #print 'TRYING', (s_i, M_i, s_j, M_j)
+
+            gemm_of_sM_list = _beta_L_plus_alpha_M(s_i, M_i, s_j, M_j)
+            if gemm_of_sM_list:
+                #print 'GOT IT', gemm_of_sM_list
+                def item_to_var(t):
+                    try: s,M = t
+                    except: return t
+                    if s == 1: return M
+                    if s == -1: return -M
+                    return s*M
+
+                assert len(gemm_of_sM_list) == 1
+                add_inputs = [item_to_var(input) 
+                        for k, input in enumerate(lst) if k not in (i,j)]
+                add_inputs.extend(gemm_of_sM_list)
+                if len(add_inputs) > 1:
+                    return [T.add(*add_inputs)]
+                else:
+                    return add_inputs
+
+def _gemm_from_node2(node):
     """
     :todo: In many expressions, there are many ways to turn it into a gemm.  For example
     dot(a,b) + c + d.  This function should return all of them, so that if one version of gemm
     causes a cycle in the graph, then another application of gemm can be tried.
 
     """
-    if node.op == T.sub:
-        L, R = node.inputs
-        if not _is_real_matrix(L):
-            return False
-        if not _is_real_matrix(R):
-            return False
-
-        tmp = _as_isolated_scalar_times_matrix(L)
-        try:
-            sL, mL = tmp
-        except:
-            sL, mL = 1.0, L
-
-        tmp = _as_isolated_scalar_times_matrix(R)
-        try:
-            sR, mR = tmp
-        except:
-            sR, mR = 1.0, R
-        rval = _beta_L_plus_alpha_M(sL, mL, -sR, mR)
+    lst = []
+    _gemm_canonicalize(node.outputs[0], 1.0, lst, 0)
+    if len(lst) > 1:
+        lst = _factor_canonicalized(lst)
+        rval = _gemm_from_factored_list(lst)
         return rval
-    if node.op == T.add:
-        # arguments of the form scalar * matrix
-        sM_list = []
 
-        # arguments that can be interpreted as scalar * matrix
-        sM_orig = []
 
-        # arguments not of the form scalar * matrix (i.e., vectors, scalars)
-        other_inputs = []
+def inputs_as_scalar_times_matrix(node):
 
+    # try to interpret an expression as a sum of scalar * matrix terms plus an 'other' term.
+    # This function *could* recurse and flatten sub and add hierarchies, but it doesn't.
+    # Reason being - if we didn't need intermediate results, the canonizer should already done
+    # that.
+
+    # returns three lists: sM_list, sM_orig, other
+    # - sM_list is a list of pairs: the interpretation of some terms as scalar,matrix products
+    # - sM_orig is a list of variables: the originals before interpretation into sM_list
+    # - other is a list of terms that are not float matrices
+    op = None
+    sM_list = []
+    sM_orig = []
+    other = []
+
+    if node.op == T.add or node.op == T.sub:
+        op = node.op
         for input in node.inputs:
             tmp = _as_isolated_scalar_times_matrix(input)
             if tmp:
@@ -638,49 +776,90 @@ def _gemm_from_node(node):
                 sM_list.append((1.0, input))
                 sM_orig.append(input)
             else:
-                other_inputs.append(input)
+                other.append(input)
 
         assert len(sM_list) == len(sM_orig)
-        assert len(sM_list) + len(other_inputs) == len(node.inputs)
-        if len(sM_list) == 2:
-            (sL, mL), (sR, mR) = sM_list
-            gemm_of_sM_list = _beta_L_plus_alpha_M(sL, mL, sR, mR)
-            if gemm_of_sM_list: 
-                #we turned the two candidates into a gemm
-                # now we have to add the other_inputs and return the replacement graph
-                if other_inputs:
-                    return [T.add(*(other_inputs + gemm_of_sM_list))]
-                else:
-                    return gemm_of_sM_list
-        else:
-            # Try every pair in the sM_list, trying to turn it into a gemm operation
-            for i in xrange(len(sM_list) - 1):
-                for j in xrange(i+1, len(sM_list)):
-                    assert i != j
-                    sL, mL = sM_list[i]
-                    sR, mR = sM_list[j]
-                    gemm_of_sM_list = _beta_L_plus_alpha_M(sL, mL, sR, mR)
-                    if gemm_of_sM_list:
-                        assert len(gemm_of_sM_list) == 1
-                        inputs_without_ij = [input for k, input in enumerate(sM_orig) if k not in (i,j)]
+        assert len(sM_list) + len(other) == len(node.inputs)
+    return op, sM_list, sM_orig, other
 
-                        new_add_inputs = (inputs_without_ij + gemm_of_sM_list + other_inputs)
 
-                        if False: #SUPER DEBUG MODE :(
-                            if len(new_add_inputs) + 1 != len(node.inputs):
-                                print 'inputs', node.inputs
-                                print 'sM, other', sM_list, other_inputs
-                                print 'i,j', i, j
-                                print 'gemm', gemm_of_sM_list
-                                print 'without ij', inputs_without_ij
-                                print 'new inputs', new_add_inputs
-                                sys.exit(1)
+def _gemm_from_sM_list(node, sM_list, sM_orig, other_inputs):
+    """Returns None, or a list to replace node.outputs
+    """
+    if len(sM_list) == 2:
+        (sL, mL), (sR, mR) = sM_list
+        gemm_of_sM_list = _beta_L_plus_alpha_M(sL, mL, sR, mR)
+        if gemm_of_sM_list: 
+            #we turned the two candidates into a gemm
+            # now we have to add the other_inputs and return the replacement graph
+            if other_inputs:
+                return [T.add(*(other_inputs + gemm_of_sM_list))]
+            else:
+                return gemm_of_sM_list
+    else:
+        # Try every pair in the sM_list, trying to turn it into a gemm operation
+        for i in xrange(len(sM_list) - 1):
+            for j in xrange(i+1, len(sM_list)):
+                assert i != j
+                sL, mL = sM_list[i]
+                sR, mR = sM_list[j]
+                gemm_of_sM_list = _beta_L_plus_alpha_M(sL, mL, sR, mR)
+                if gemm_of_sM_list:
+                    assert len(gemm_of_sM_list) == 1
+                    inputs_without_ij = [input for k, input in enumerate(sM_orig) if k not in (i,j)]
 
-                        # this should be True because we've combined a pair of arguments
-                        # into a single GEMM
-                        assert len(new_add_inputs) + 1 == len(node.inputs)
-                        return [T.add(*new_add_inputs)]
-    return False
+                    new_add_inputs = (inputs_without_ij + gemm_of_sM_list + other_inputs)
+
+                    # this should be True because we've combined a pair of arguments
+                    # into a single GEMM
+                    assert len(new_add_inputs) + 1 == len(node.inputs)
+                    return [T.add(*new_add_inputs)]
+
+def _gemm_from_node(node):
+    """
+    :todo: In many expressions, there are many ways to turn it into a gemm.  For example
+    dot(a,b) + c + d.  This function should return all of them, so that if one version of gemm
+    causes a cycle in the graph, then another application of gemm can be tried.
+
+    """
+    op, sM_list, sM_orig, other_inputs = inputs_as_scalar_times_matrix(node)
+
+    if op == T.sub and len(sM_list)==2:
+        (sL, mL), (sR,mR) = sM_list
+        rval = _gemm_from_sM_list([(sL, mL), (-sR,mR)], None, None)
+        if rval:
+            return rval
+
+        #theano.printing.debugprint(node.outputs[0], depth=6)
+        if len(sM_orig[1].clients)==1:
+            # Canonicalize this subgraph
+            # There is a form of Gemm that escapes the approach above
+            # g*W - (a * (e*dot(b,c) + d * W + X))
+            #
+            # -> gemm(W, -a*e, b, c, g-a*d) - a*X
+            #
+            # In this case g=sL W=mL, and a=sR.  We must see if mR is a add() or a sub, in which
+            # one of the arguments is a scaled version of W a.k.a mL
+            Rop, RsM_list, RsM_orig, Rother_inputs = inputs_as_scalar_times_matrix(mR.owner)
+
+            RsM_list_that_is_mL = [s for (s,m) in RsM_list if m is mL]
+
+            if RsM_list_that_is_mL and Rop == T.add:
+                pass
+                #g= sL - T.mul(sR,*RsM_list_that_is_mL)
+                #rval = _gemm_from_sM_list(
+                        #[(g,mL)] + []]
+                            #]
+                        #)
+                #if Rop == T.add:
+                    #rval = _beta_L_plus_alpha_M(
+                        #L=mL,
+                        #alpha=sR,
+                        #R=T.)
+        return rval
+
+    if op == T.add:
+        return _gemm_from_sM_list(sM_list, sM_orig, other_inputs)
 
 class GemmOptimizer(Optimizer):
     """Graph optimizer for inserting Gemm operations"""
@@ -698,7 +877,8 @@ class GemmOptimizer(Optimizer):
             did_something = False
             nodelist.reverse()
             for node in nodelist:
-                new_outputs = _gemm_from_node(node)
+                #new_outputs = _gemm_from_node(node)
+                new_outputs = _gemm_from_node2(node)
                 if new_outputs:
                     assert len(new_outputs) == len(node.outputs)
                     try:
