@@ -629,7 +629,6 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         python_inc = distutils.sysconfig.get_python_inc()
         libname = os.path.basename(python_inc)
 
-
     #DSE Patch 1 for supporting OSX frameworks; add -framework Python 
     if sys.platform=='darwin' :
         preargs.extend(['-undefined','dynamic_lookup'])
@@ -639,8 +638,15 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         if python_inc.count('Python.framework')>0 and config.cmodule.mac_framework_link:
             preargs.extend(['-framework','Python'])
 
-    workdir = location
+    # sometimes, the linker cannot find -lpython so we need to tell it 
+    # explicitly where it is located
+    # this returns somepath/lib/python2.5/site-packages
+    python_lib = distutils.sysconfig.get_python_lib()
+    python_lib = os.path.dirname(os.path.dirname(python_lib))
+    if python_lib not in lib_dirs:
+	lib_dirs.append(python_lib)
 
+    workdir = location
 
     cppfilename = os.path.join(location, 'mod.cpp')
     cppfile = file(cppfilename, 'w')

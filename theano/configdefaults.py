@@ -8,9 +8,11 @@ AddConfigVar('floatX',
         EnumStr('float64', 'float32'), 
         )
 
+#gpu mean let the driver select the gpu. Needed in case of gpu in exclusive mode.
+#gpuX mean use the gpu number X.
 AddConfigVar('device',
         "Default device for computations",
-        EnumStr('cpu', *['gpu%i'%i for i in range(4)])
+        EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)])
         )
 
 # keep the default mode.optimizer==config.optimizer and mode.linker==config.linker!

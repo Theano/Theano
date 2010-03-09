@@ -441,12 +441,8 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
                 g.add_node(pd.Node(varstr,color='grey'))
             elif var.name or not compact:
                 g.add_edge(pd.Edge(astr,varstr))
-            else:
-                #no name, so we don't make a var ellipse
-                for client in var.clients:
-                    edge = pd.Edge(astr,apply_name(client[0]))
-                    g.add_edge(edge)
-    g.set_simplify(True)
+#            else:
+            #don't add egde here as it is already added from the inputs.
     g.write_png(outfile, prog='dot')
 
     print 'The output file is available at',outfile
