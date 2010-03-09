@@ -945,8 +945,6 @@ def local_dot22_to_dot22scalar(node):
     #we take the first _dot22 found. TODO check others!
     dot22_idx = i_dot22.index(True)
     d = node.inputs[dot22_idx]
-
-
     i_scalar = [_as_scalar(x) for x in node.inputs]
     if not any(i_scalar) and not any([x.owner and x.owner.op ==T.mul for x in node.inputs]):
         #no scalar in input and no multiplication
@@ -983,15 +981,11 @@ def local_dot22_to_dot22scalar(node):
     if scalar_idx<0:
         info('Not optimizing dot22 with inputs', node.inputs, [x.type for x in node.inputs], 'as the type of the scalar can\'t be upcasted to the matrix type')
         return False
-        
     assert scalar_idx<len(node.inputs)
-        
     s = node.inputs[scalar_idx]
     o = copy.copy(node.inputs)
     o.remove(d)
     o.remove(s)
-
-    
     if len(o)==0:
         return [_dot22scalar(d.owner.inputs[0], d.owner.inputs[1], s)]
     else:

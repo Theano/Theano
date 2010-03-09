@@ -2,6 +2,7 @@ import sys, os, subprocess, logging
 from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimport,
     get_lib_extension)
 from theano import config
+import distutils
 
 _logger=logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
@@ -67,6 +68,15 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     lib_dirs = std_lib_dirs() + lib_dirs
     if cuda_root:
         lib_dirs.append(os.path.join(cuda_root, 'lib'))
+
+    # sometimes, the linker cannot find -lpython so we need to tell it 
+    # explicitly where it is located
+    # this returns somepath/lib/python2.x
+    python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
+                    standard_lib=1)
+    python_lib = os.path.dirname(python_lib)
+    if python_lib not in lib_dirs:
+        lib_dirs.append(python_lib)
 
     cppfilename = os.path.join(location, 'mod.cu')
     cppfile = file(cppfilename, 'w')
