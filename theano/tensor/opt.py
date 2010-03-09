@@ -24,6 +24,8 @@ from theano import compile  #to register the optimizer built by this file
 from theano.gof.python25 import any, all
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler
+
+
 # Utilities
 
 def out2in(*local_opts):
@@ -395,6 +397,13 @@ class ShapeFeature(object):
         else:
             self.shape_of[r] = tuple([self.unpack(s_i) for s_i in s])
 
+    def init_r(self,r):
+        if r not in self.shape_of:
+            try:
+                self.set_shape(r, self.shape_tuple(r))
+            except AttributeError:
+                self.set_shape(r,None)
+
     def make_vector_shape(self, r):
         return make_vector(*self.shape_of[r])
     #
@@ -421,11 +430,7 @@ class ShapeFeature(object):
 
         for i, r in enumerate(node.inputs):
             # make sure we have shapes for the inputs
-            if r not in self.shape_of:
-                try:
-                    self.set_shape(r, self.shape_tuple(r))
-                except AttributeError:
-                    self.set_shape(r, None ) # not a TensorType variable
+            self.init_r(r)
 
         try:
             shape_infer = node.op.infer_shape
@@ -453,7 +458,7 @@ class ShapeFeature(object):
         # TODO:
         # This tells us that r and new_r must have the same shape
         # if we didn't know that the shapes are related, now we do.
-
+        self.init_r(new_r)
         # change_input happens in two cases:
         # 1) we are trying to get rid of r, or
         # 2) we are putting things back after a failed transaction.
