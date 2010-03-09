@@ -212,7 +212,7 @@ class DownsampleFactorMax(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return ()
+        return (0,1)
 
 
 class DownsampleFactorMaxGrad(Op):
@@ -349,4 +349,4 @@ class DownsampleFactorMaxGrad(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return ()
+        return (0,1)
