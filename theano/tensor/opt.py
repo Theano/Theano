@@ -1160,7 +1160,8 @@ register_canonicalize(local_mul_canonizer, name = 'local_mul_canonizer')
 @gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):
     if node.op == T.neg:
-        return [T.mul(-1, node.inputs[0])]
+        return [T.mul(numpy.array(-1, dtype = node.inputs[0].dtype), 
+            node.inputs[0])]
 register_canonicalize(local_neg_to_mul)
 
 @register_specialize

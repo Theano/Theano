@@ -88,7 +88,7 @@ class Print(Op):
             if callable(temp):
               pmsg = temp()
             else:
-              psmg = temp
+              pmsg = temp
             print self.message, attr,'=', pmsg
             #backport
             #print self.message, attr,'=', temp() if callable(temp) else temp
