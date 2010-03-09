@@ -225,6 +225,7 @@ def get_shapes2(scales_img=(1,1), scales_kern=(1,1), subsample=(1,1), img_stride
     return shapes
 
 def test_valid():
+    raise Exception('One of the modes here causes a segmentation fault!')
     #          img shape,     kern shape, subsample shape
 
     shapes = get_basic_shapes()
