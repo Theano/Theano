@@ -217,15 +217,17 @@ class t_as_scalar(TestCase):
         """Test that it works on scalar constants"""
         a = T.constant(2.5)
         b = T.constant(numpy.asarray([[[0.5]]]))
+        b2 = b.dimshuffle()
+        assert b2.ndim == 0
         d_a = T.DimShuffle([], [])(a)
         d_b = T.DimShuffle([True, True, True], [0,2,1])(b)
         d_a2 = T.DimShuffle([], ['x', 'x', 'x'])(a)
 
-        self.failUnless(numpy.all(_as_scalar(a) == a))
-        self.failUnless(numpy.all(_as_scalar(b) == b.data), (b, _as_scalar(b)))
-        self.failUnless(numpy.all(_as_scalar(d_a) == a))
-        self.failUnless(numpy.all(_as_scalar(d_b) == b.data))
-        self.failUnless(numpy.all(_as_scalar(d_a2) == a))
+        self.failUnless(_as_scalar(a) == a)
+        self.failUnless(_as_scalar(b) != b)
+        self.failUnless(_as_scalar(d_a) != d_a)
+        self.failUnless(_as_scalar(d_b) != d_b)
+        self.failUnless(_as_scalar(d_a2) != d_a2)
 
     def test1(self):
         """Test that it fails on nonscalar constants"""
@@ -432,6 +434,7 @@ def test_gemm_opt_wishlist():
 
     #with >2 additions of the same T.dot(X,Y term
     just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) + b * T.dot(X,Y)])
+
     just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y) + T.dot(X,Y)])
 
 def test_gemm_with_vector():
