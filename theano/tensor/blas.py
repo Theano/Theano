@@ -20,10 +20,12 @@ from theano.tensor.blas_headers import cblas_header_text, blas_header_text
 
 def default_blas_ldflags():
     try:
-        return ' '.join('-l%s'%l 
-                for l in numpy.distutils.__config__.blas_opt_info['libraries']+
-                        '-L%s'%l for l in numpy.distutils.__config__.blas_opt_info['library_dirs'])
-    except:
+        return ' '.join(
+			#TODO: the Gemm op below should separate the -L and -l arguments into the two callbacks that CLinker uses for that stuff.
+                        # for now, we just pass the whole ldflags as the -l options part.
+			#['-L%s'%l for l in numpy.distutils.__config__.blas_opt_info['library_dirs']] +
+			['-l%s'%l for l in numpy.distutils.__config__.blas_opt_info['libraries']])
+    except KeyError:
         return "-lblas"
 
 AddConfigVar('blas.ldflags',
