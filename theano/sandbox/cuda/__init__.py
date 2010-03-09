@@ -112,7 +112,9 @@ if cuda_available:
 
 def use(device):
     global cuda_enabled, enabled_cuda
-    if device.startswith('gpu'):
+    if device == 'gpu':
+        pass
+    elif device.startswith('gpu'):
         device = int(device[3:])
     elif device == 'cpu':
         device = -1
@@ -120,13 +122,17 @@ def use(device):
         raise ValueError("Invalid device identifier", device)
     if use.device_number is None:
         # No successful call to use() has been made yet
-        if device<0:
+        if device != 'gpu' and device<0:
             return
         if device in [None,""]:
             device=0
-        device=int(device)
         try:
-            gpu_init(device)
+            if device !='gpu':
+                gpu_init(device)
+            else:
+                #warning To let people see that the gpu will be used.
+                _logger.warn("We let the driver select the gpu device to use")
+                
             handle_shared_float32(True)
             use.device_number = device
             cuda_enabled = True

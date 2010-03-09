@@ -14,7 +14,7 @@ import numpy
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_enabled == False:
+if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.sandbox.cuda as tcn
@@ -22,6 +22,13 @@ import theano.sandbox.cuda as tcn
 import logging
 logging.getLogger('theano.sandbox.cuda.tests.test_nnet').setLevel(logging.INFO)
 
+
+def my_rand(*shape):
+    return theano._asarray(numpy.random.rand(*shape),dtype='float32')
+def my_randn(*shape):
+    return theano._asarray(numpy.random.randn(*shape),dtype='float32')
+def my_zeros(*shape):
+    return theano._asarray(numpy.zeros(*shape),dtype='float32')
 
 def get_mode(use_gpu):
     ret = theano.compile.get_default_mode()
@@ -44,15 +51,15 @@ def print_diff_mode(a,b):
 def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_iter=100):
 
     if use_gpu:
-        w = tcn.shared_constructor(0.01*(numpy.random.rand(n_in,n_hid)-0.5), 'w')
-        b = tcn.shared_constructor(numpy.zeros(n_hid), 'b')
-        v = tcn.shared_constructor(numpy.zeros((n_hid, n_out)), 'c')
-        c = tcn.shared_constructor(numpy.zeros(n_out), 'c')
+        w = tcn.shared_constructor(0.01*(my_rand(n_in,n_hid)-0.5), 'w')
+        b = tcn.shared_constructor(my_zeros(n_hid), 'b')
+        v = tcn.shared_constructor(my_zeros((n_hid, n_out)), 'c')
+        c = tcn.shared_constructor(my_zeros(n_out), 'c')
     else:
-        w = shared(theano._asarray(0.01*(numpy.random.rand(n_in,n_hid)-0.5), dtype='float32'), 'w')
-        b = shared(theano._asarray(numpy.zeros(n_hid), dtype='float32'), 'b')
-        v = shared(theano._asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
-        c = shared(theano._asarray(numpy.zeros(n_out), dtype='float32'), 'c')
+        w = shared(0.01*(my_rand(n_in,n_hid)-0.5), 'w')
+        b = shared(my_zeros(n_hid), 'b')
+        v = shared(my_zeros((n_hid, n_out)), 'c')
+        c = shared(my_zeros(n_out), 'c')
 
     x = tensor.fmatrix('x')
     y = tensor.fmatrix('y')
@@ -75,8 +82,8 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10, n_iter=100):
         for i, n in enumerate(train.maker.env.toposort()):
             print i, n
 
-    xval = theano._asarray(numpy.random.rand(n_batch, n_in), dtype='float32')
-    yval = theano._asarray(numpy.random.rand(n_batch, n_out), dtype='float32')
+    xval = my_rand(n_batch, n_in)
+    yval = my_rand(n_batch, n_out)
     lr = theano._asarray(0.01, dtype='float32')
 
     t0 = time.time()
@@ -123,10 +130,10 @@ def run_conv_nnet1(use_gpu):
     n_hid = n_kern * logical_hid_shape[0] * logical_hid_shape[1]
     n_out = 10
 
-    w = shared_fn(theano._asarray(0.01*(numpy.random.rand(*shape_kern)-0.5), dtype='float32'), 'w')
-    b = shared_fn(theano._asarray(numpy.zeros((n_kern,)), dtype='float32'), 'b')
-    v = shared_fn(theano._asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
-    c = shared_fn(theano._asarray(numpy.zeros(n_out), dtype='float32'), 'c')
+    w = shared_fn(0.01*(my_rand(*shape_kern)-0.5), 'w')
+    b = shared_fn(my_zeros((n_kern,)), 'b')
+    v = shared_fn(my_zeros((n_hid, n_out)), 'c')
+    c = shared_fn(my_zeros(n_out), 'c')
 
     x = tensor.Tensor(dtype='float32', broadcastable=(0,1,0,0))('x')
     y = tensor.fmatrix('y')
@@ -152,8 +159,8 @@ def run_conv_nnet1(use_gpu):
 #    for i, n in enumerate(train.maker.env.toposort()):
 #        print i, n
 
-    xval = theano._asarray(numpy.random.rand(*shape_img), dtype='float32')
-    yval = theano._asarray(numpy.random.rand(n_batch, n_out), dtype='float32')
+    xval = my_rand(*shape_img)
+    yval = my_rand(n_batch, n_out)
     lr = theano._asarray(0.01, dtype='float32')
 
     for i in xrange(10):
@@ -204,12 +211,12 @@ def run_conv_nnet2(use_gpu): # pretend we are training LeNet for MNIST
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
     n_out = 10
 
-    w0 = shared_fn(theano._asarray(0.01*(numpy.random.rand(*shape_kern)-0.5), dtype='float32'), 'w0')
-    b0 = shared_fn(theano._asarray(numpy.zeros((n_kern,)), dtype='float32'), 'b0')
-    w1 = shared_fn(theano._asarray(0.01*(numpy.random.rand(*shape_kern1)-0.5), dtype='float32'), 'w1')
-    b1 = shared_fn(theano._asarray(numpy.zeros((n_kern1,)), dtype='float32'), 'b1')
-    v = shared_fn(theano._asarray(numpy.zeros((n_hid, n_out)), dtype='float32'), 'c')
-    c = shared_fn(theano._asarray(numpy.zeros(n_out), dtype='float32'), 'c')
+    w0 = shared_fn(0.01*(my_rand(*shape_kern)-0.5), 'w0')
+    b0 = shared_fn(my_zeros((n_kern,)), 'b0')
+    w1 = shared_fn(0.01*(my_rand(*shape_kern1)-0.5), 'w1')
+    b1 = shared_fn(my_zeros((n_kern1,)), 'b1')
+    v = shared_fn(my_zeros((n_hid, n_out)), 'c')
+    c = shared_fn(my_zeros(n_out), 'c')
 
     x = tensor.Tensor(dtype='float32', broadcastable=(0,1,0,0))('x')
     y = tensor.fmatrix('y')
@@ -238,8 +245,8 @@ def run_conv_nnet2(use_gpu): # pretend we are training LeNet for MNIST
 #    for i, n in enumerate(train.maker.env.toposort()):
 #        print i, n
 
-    xval = theano._asarray(numpy.random.rand(*shape_img), dtype='float32')
-    yval = theano._asarray(numpy.random.rand(n_batch,n_out), dtype='float32')#int32 make all 0...
+    xval = my_rand(*shape_img)
+    yval = my_rand(n_batch,n_out)#int32 make all 0...
     lr = theano._asarray(0.01, dtype='float32')
     for i in xrange(n_train):
         rval = train(xval, yval, lr)
@@ -284,12 +291,12 @@ def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_iter,
     n_out = 10
 
 
-    w0 = shared_fn(theano._asarray(0.01*(numpy.random.rand(*shape_kern)-0.5), dtype='float32'), 'w0')
-    b0 = shared_fn(theano._asarray(numpy.zeros((n_kern,)), dtype='float32'), 'b0')
-    w1 = shared_fn(theano._asarray(0.01*(numpy.random.rand(*shape_kern1)-0.5), dtype='float32'), 'w1')
-    b1 = shared_fn(theano._asarray(numpy.zeros((n_kern1,)), dtype='float32'), 'b1')
-    v = shared_fn(theano._asarray(0.01*numpy.random.randn(n_hid, n_out), dtype='float32'), 'v')
-    c = shared_fn(theano._asarray(numpy.zeros(n_out), dtype='float32'), 'c')
+    w0 = shared_fn(0.01*(my_rand(*shape_kern)-0.5), 'w0')
+    b0 = shared_fn(my_zeros((n_kern,)), 'b0')
+    w1 = shared_fn(0.01*(my_rand(*shape_kern1)-0.5), 'w1')
+    b1 = shared_fn(my_zeros((n_kern1,)), 'b1')
+    v = shared_fn(0.01*my_randn(n_hid, n_out), 'v')
+    c = shared_fn(my_zeros(n_out), 'c')
 
     print 'ALLOCATING ARCH: w0 shape', w0.value.shape
     print 'ALLOCATING ARCH: w1 shape', w1.value.shape
@@ -330,11 +337,11 @@ def run_conv_nnet2_classif(use_gpu, isize, ksize, n_batch, n_iter,
         for i, n in enumerate(train.maker.env.toposort()):
             print i, n
 
-    xval = theano._asarray(numpy.random.rand(*shape_img), dtype='float32')
-    yval = theano._asarray(numpy.random.rand(n_batch,n_out), dtype='float32')
+    xval = my_rand(*shape_img)
+    yval = my_rand(n_batch,n_out)
     lr = theano._asarray(0.01, dtype='float32')
 
-    rvals=numpy.zeros(n_iter)
+    rvals=my_zeros(n_iter)
     t0 = time.time()
     for i in xrange(n_iter):
         rvals[i] = train(xval, yval, lr)[0]

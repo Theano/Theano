@@ -307,7 +307,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
 #define CONV_ROWS_STACK_SPECIAL(kern_wid) \
 	if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack<kern_wid, false>;\
-	else f = conv_rows_stack<kern_wid, true>;\
+	else f = conv_rows_stack<kern_wid, true>;
 	CONV_ROWS_STACK_SPECIAL(THEANO_KERN_WID);
 
 	f<<< grid, threads, shared_size >>>
@@ -379,7 +379,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	if((!img_contiguous_2d || !kern_contiguous_2d)&&version==9) f = conv_rows_stack2<kern_wid, false,true>;\
 	else if(version==9) f = conv_rows_stack2<kern_wid, true,true>;\
 	else if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack2<kern_wid, false, false>;\
-	else f = conv_rows_stack2<kern_wid, true, false>;\
+	else f = conv_rows_stack2<kern_wid, true, false>;
+
 	CONV_ROWS_STACK2_SPECIAL(THEANO_KERN_WID);
 
 	f<<< grid, threads, shared_size >>>

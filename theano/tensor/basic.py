@@ -1064,7 +1064,7 @@ class TensorValue(Value, _tensor_py_operators):
 Tensor = TensorType
 
 #QUESTION: why are we doing this!?
-elemwise.as_tensor_variable = as_tensor_variable    
+elemwise.as_tensor_variable = as_tensor_variable
 elemwise.TensorType = TensorType
 elemwise.TensorVariable = TensorVariable
 elemwise.TensorConstant = TensorConstant
