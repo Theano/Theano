@@ -52,6 +52,29 @@ def test_sum():
         assert numpy.allclose(f2(val),f(val))
         
 
+        #test with dimshuffle
+        #we shuffle the 2 outer dims.
+    for shape, pattern in [#((5,),[0]),
+                           ((5,4),[0,1]),((5,4),[0]),
+                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
+                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+        a = tensor.TensorType('float32',(False,)*len(shape))()
+        dim_pattern = range(len(shape))
+        dim_pattern[0]=1
+        dim_pattern[1]=0
+        a = a.dimshuffle(dim_pattern)
+        b = T.Sum(pattern)(a)
+        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+#        val = numpy.ones(shape)
+#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+        val = theano._asarray(val,dtype='float32')
+        f = theano.function([a],b, mode=mode_with_gpu)
+        f2 = theano.function([a],b, mode=mode_without_gpu)
+        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
+        assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
+        assert numpy.allclose(f2(val),f(val))
+        
+
         #test with broadcast
     for shape, pattern in [((5,),[0]),
                            ((5,4),[0,1]),((5,4),[0]),

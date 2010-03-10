@@ -473,7 +473,20 @@ class GpuSum(Op):
         #
         # Now perform the reduction
         #
-        getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
+
+        if all(i==1 for i in self.reduce_mask):
+            #check if the tensor is ccontiguous, if true, use the c_c0de_reduce_ccontig code.
+            #TODO: check if we are ccontiguous when we un-dimshuffle
+            #TODO: if only some dims are ccontiguous, call version with less dims.
+            print >> sio, 'if(CudaNdarray_is_c_contiguous(%(x)s)){'%locals()
+            
+            self.c_code_reduce_ccontig(sio, node, name, x, z, fail)
+            print >> sio, "}else{"
+            getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
+            print >> sio, "}"
+        
+        else:
+            getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
 
         return sio.getvalue()
 
@@ -639,6 +652,37 @@ class GpuSum(Op):
         }
         """ %locals()
     
+    def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
+        print >> sio, """
+        {
+            int verbose = 0;
+            dim3 n_threads(
+                    std::min(CudaNdarray_SIZE(%(x)s),
+                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+            dim3 n_blocks(1);
+            if (verbose) printf("running kernel_reduce_sum_ccontig_%(name)s\\n");
+            int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
+            kernel_reduce_sum_ccontig_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+                    CudaNdarray_SIZE(%(x)s),//need SIZE here as we use this kernel for ccontiguous tensor
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_DEV_DATA(%(z)s));
+            CNDA_THREAD_SYNC;
+            cudaError_t sts = cudaGetLastError();
+            if (cudaSuccess != sts) 
+            {
+                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                    "kernel_reduce_sum_ccontig_%(name)s",
+                    cudaGetErrorString(sts),
+                    n_blocks.x,
+                    n_blocks.y,
+                    n_threads.x,
+                    n_threads.y,
+                    n_threads.z);
+                %(fail)s;
+            }
+        }
+        """ %locals()
+
     def c_code_reduce_1(self, sio, node, name, x, z, fail):
         print >> sio, """
         {
@@ -935,11 +979,38 @@ class GpuSum(Op):
 
     def c_code_cache_version(self):
         #return ()
-        return (8,)
+        return (9,)
 
 
     def c_support_code_apply(self, node, nodename):
         sio = StringIO.StringIO()
+        if all(i==1 for i in self.reduce_mask):
+            #this kernel is ok for up to a few thousand elements, but 
+            # it only runs on ONE multiprocessor
+            reducebuf = self._k_reduce_buf('Z[0]')
+            print >> sio, """
+            static __global__ void kernel_reduce_sum_ccontig_%(nodename)s(
+                    const unsigned int d0,
+                    const float *A,
+                    float * Z)
+            {
+                const int threadCount = blockDim.x;
+                const int threadNum = threadIdx.x;
+                extern __shared__ float buf[];
+                float mysum = 0.0f;
+
+                if (warpSize != 32)
+                {
+                    return;  //TODO: set error code
+                }
+
+                for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
+                {
+                    mysum += A[i0];
+                }
+                %(reducebuf)s
+            }
+            """ %locals()
         if self.reduce_mask == (1,):
             #this kernel is ok for up to a few thousand elements, but 
             # it only runs on ONE multiprocessor
