@@ -68,6 +68,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     lib_dirs = std_lib_dirs() + lib_dirs
     if cuda_root:
         lib_dirs.append(os.path.join(cuda_root, 'lib'))
+        lib_dirs.append(os.path.join(cuda_root, 'lib64'))
 
     # sometimes, the linker cannot find -lpython so we need to tell it 
     # explicitly where it is located
@@ -96,8 +97,9 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     if config.nvcc.compiler_bindir:
         cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
     cmd.extend(['-Xcompiler', ','.join(pa for pa in preargs if not pa.startswith('-O'))])
-    if nvcc_path!='nvcc':
+    if os.path.exists(os.path.join(config.cuda.root,'lib')):
         cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib')])])
+        cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib64')])])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename]) 
     cmd.append(cppfilename)
