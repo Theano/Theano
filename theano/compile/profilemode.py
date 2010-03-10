@@ -23,8 +23,8 @@ class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
         ret = super(Profile_Maker,self).create(input_storage, trustme)
         for i, node in enumerate(ret.maker.env.toposort()):
-            self.mode.apply_time[(i,node.op)]=0.0
-            self.mode.apply_call[(i,node.op)]=0
+            self.mode.apply_time[(i,node)]=0.0
+            self.mode.apply_call[(i,node)]=0
 #            self.mode.op_cimpl[node.op] = 
 
         return ret
@@ -86,8 +86,8 @@ class ProfileMode(Mode):
                 dt = time.time() - t0
 
             local_time[0] += dt
-            apply_time[(i,node.op)] += dt
-            apply_call[(i,node.op)] += 1
+            apply_time[(i,node)] += dt
+            apply_call[(i,node)] += 1
             op_cimpl[node.op] = hasattr(th, 'cthunk')
 
         
@@ -192,7 +192,7 @@ class ProfileMode(Mode):
 
         if print_apply:
             print 'Apply-wise summary: <% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, (a[0], str(a[1])), apply_call[a]) for a, t in apply_time.items()]
+            atimes = [(t*100/local_time, t, (a[0], str(a[1].op)), apply_call[a]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
             tot=0
@@ -209,12 +209,13 @@ class ProfileMode(Mode):
         op_call = {}
         op_apply = {}
         for (i,a),t in apply_time.items():
-            op_time.setdefault(a,0)
-            op_call.setdefault(a,0)
-            op_apply.setdefault(a,0)
-            op_time[a]+=t
-            op_call[a]+=apply_call[(i,a)]
-            op_apply[a]+=1
+            op=a.op
+            op_time.setdefault(op,0)
+            op_call.setdefault(op,0)
+            op_apply.setdefault(op,0)
+            op_time[op]+=t
+            op_call[op]+=apply_call[(i,a)]
+            op_apply[op]+=1
 
         op_flops = {}
         for a,t in op_time.items():
@@ -258,13 +259,14 @@ class ProfileMode(Mode):
         sop_op = {}
         sop_c={} #map each op class to Bool. True iff all applies were done in c.
         for a,t in op_time.items():
-            sop_time.setdefault(type(a),0)
-            sop_time[type(a)]+=t
-            sop_op.setdefault(type(a),0)
-            sop_op[type(a)]+=1
-            sop_c.setdefault(type(a),True)
-            sop_c[type(a)]=sop_c[type(a)] and op_cimpl.get(a, False)
-            sop_call[type(a)]=sop_call.get(type(a),0)+op_call[a]
+            typ = type(a)
+            sop_time.setdefault(typ,0)
+            sop_time[typ]+=t
+            sop_op.setdefault(typ,0)
+            sop_op[typ]+=1
+            sop_c.setdefault(typ,True)
+            sop_c[typ]=sop_c[typ] and op_cimpl.get(a, False)
+            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
         print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_op> <Op name>'
         sotimes = [(t*100/local_time, t, a, sop_c[a], sop_call[a], sop_op[a]) for a, t in sop_time.items()]
         sotimes.sort()
