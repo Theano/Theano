@@ -408,7 +408,7 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     def apply_name(node):
         prof_str=''
         if mode:
-            time = mode.apply_time.get((topo.index(node),node.op),-1)
+            time = mode.apply_time.get((topo.index(node),node.op),0)
             #second, % total time in profiler, %fct time in profiler
             if mode.local_time[0]==0:
                 pt=0
