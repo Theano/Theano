@@ -107,7 +107,7 @@ def float32_shared_constructor(value, name, strict=False, broadcastable=None):
     if broadcastable is None:
         broadcastable = (False,) * len(value.shape)
     type = CudaNdarrayType(broadcastable=broadcastable)
-    deviceval = type_support_filter(value, broadcastable, False)
+    deviceval = type_support_filter(value, broadcastable, False, None)
     try:
         rval = CudaNdarraySharedVariable(type=type, value=deviceval, name=name, strict=strict)
     except Exception, e:

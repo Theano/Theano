@@ -51,7 +51,7 @@ class CudaNdarrayType(Type):
         self.dtype_specs() # error checking is done there
 
     def filter(self, data, strict=False):
-        return cuda.filter(data, self.broadcastable, strict)
+        return cuda.filter(data, self.broadcastable, strict, None)
 
     @staticmethod
     def values_eq(a, b):

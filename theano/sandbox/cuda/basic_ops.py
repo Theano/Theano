@@ -60,7 +60,7 @@ class GpuFromHost(Op):
             raise TypeError(x)
         return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable)()])
     def perform(self, node, (x,), (z,)):
-        z[0] = type_support_filter(theano._asarray(x, dtype='float32'), tuple([0]*x.ndim), 0)
+        z[0] = type_support_filter(theano._asarray(x, dtype='float32'), tuple([0]*x.ndim), 0, z[0])
     def grad(self, inputs, (gz,)):
         return gz,
         #return [HostFromGpu()(gz)]

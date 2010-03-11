@@ -1377,12 +1377,21 @@ CudaNdarray_Dot(PyObject* _unsed, PyObject * args)
 static PyObject * 
 filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, strict)
 {
+    /*
+     * TODO: DOC what this function should do in the various cases of
+     * What is 'strict' supposed to mean in the context of this function?
+     * What do we do with input that could be interpreted as matching the broadcastable pattern in strict vs. non-strict cases?
+     *
+     */
     PyObject *py_data=NULL;
     PyArrayObject * data = NULL;
     int strict = 0;
     PyObject * broadcastable=NULL;
+    PyObject * storage=NULL;
+    CudaNdarray * rval=NULL;
 
-    if (!PyArg_ParseTuple(args, "OOi", &py_data, &broadcastable, &strict)) return NULL;
+    //Python object references which are provided to the caller are borrowed references
+    if (!PyArg_ParseTuple(args, "OOiO", &py_data, &broadcastable, &strict, &storage)) return NULL;
 
     if (!PyTuple_Check(broadcastable)){
         PyErr_SetString(PyExc_TypeError, "broadcastable arg should be a tuple of int.");
@@ -1444,7 +1453,15 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
                 return NULL;
             }
         }
-        CudaNdarray * rval = (CudaNdarray*) CudaNdarray_new_null();
+        if (CudaNdarray_Check(storage))
+        {
+            rval = (CudaNdarray*) storage;
+            Py_INCREF(rval);
+        }
+        else
+        {
+            rval = (CudaNdarray*) CudaNdarray_new_null();
+        }
         if (CudaNdarray_CopyFromArray(rval, data))
         {
             Py_DECREF(rval);
@@ -1460,7 +1477,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
 static PyMethodDef module_methods[] = {
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Allow to select the gpu card to use."},
-    {"filter", filter, METH_VARARGS, "no doc!"},    
+    {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},    
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 
