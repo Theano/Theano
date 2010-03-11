@@ -409,9 +409,10 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
         theano.tensor.basic.float32_atol=orig_float32_atol
 
     if not cpu_only:
-        print "cpu:", rval_cpu
-        print "gpu:", rval_gpu
-        print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
+        if verbose or not numpy.allclose(rval_cpu, rval_gpu,rtol=1e-3,atol=float_atol): 
+            print "cpu:", rval_cpu
+            print "gpu:", rval_gpu
+            print "abs diff:", numpy.absolute(rval_gpu-rval_cpu)
         print "time cpu: %.3f, time gpu: %.3f, speed up %f"%(tc, tg, tc/tg)
         print "estimated time for one pass through MNIST with cpu: %f" % (tc * (60000.0 / (n_iter*bsize)))
         print "estimated time for one pass through MNIST with gpu: %f" % (tg * (60000.0 / (n_iter*bsize)))
