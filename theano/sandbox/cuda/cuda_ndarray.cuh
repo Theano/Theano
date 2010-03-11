@@ -30,6 +30,15 @@ typedef float real;
 #define SHARED_SIZE (16*1024)
 #endif
 
+/**
+ * Allocation and freeing of device memory should go through these functions so that the lib can track memory usage.
+ *
+ * device_malloc will set the Python error message before returning None.
+ * device_free will return nonzero on failure (after setting the python error message)
+ */
+void * device_malloc(size_t size);
+int device_free(void * ptr);
+
 template <typename T>
 static T ceil_intdiv(T a, T b)
 {
@@ -248,10 +257,8 @@ int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
     {
         if (self->dev_structure)
         {
-            cublasFree(self->dev_structure);
-            if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+            if (device_free(self->dev_structure))
             {
-                PyErr_SetString(PyExc_MemoryError, "error freeing device memory");
                 return -1;
             }
             self->dev_structure = NULL;
@@ -272,14 +279,17 @@ int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
             PyErr_SetString(PyExc_MemoryError, "Failed to allocate dim or str");
             return -1;
         }
-        cublasAlloc(cnda_structure_size(nd), sizeof(int), (void**)&self->dev_structure);
-        if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+        int struct_size = cnda_structure_size(nd);
+        if (struct_size)
         {
-            PyErr_SetString(PyExc_MemoryError, "error allocating device memory");
-            free(self->host_structure);
-            self->host_structure = NULL;
-            self->dev_structure = NULL;
-            return -1;
+            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
+            if (NULL == self->dev_structure)
+            {
+                free(self->host_structure);
+                self->host_structure = NULL;
+                self->dev_structure = NULL;
+                return -1;
+            }
         }
         self->nd = nd;
         self->dev_structure_fresh = 0;
@@ -317,20 +327,15 @@ int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype 
 
     if (self->data_allocated != size)
     {
-        //std::cerr << "resizing from  " << self->data_allocated << " to " << size << '\n';
-        cublasFree(self->devdata);
-        if (CUBLAS_STATUS_SUCCESS != cublasGetError())
-        {// Does this ever happen??  Do we need to set data_allocated or devdata to 0?
-            PyErr_SetString(PyExc_MemoryError, "error freeing device memory");
+        if (device_free(self->devdata))
+        {
+            // Does this ever happen??  Do we need to set data_allocated or devdata to 0?
             return -1;
         }
         assert(size>0);
-        cublasAlloc(size, sizeof(real), (void**)&(self->devdata));
-        //std::cerr << "cublasAlloc returned " << self->devdata << "\n";
-        //We must do both checks as the first one is not enough in some cases!
-        if (CUBLAS_STATUS_SUCCESS != cublasGetError() || !self->devdata)
+        self->devdata = (float*)device_malloc(size*sizeof(real));
+        if (!self->devdata)
         {
-            PyErr_Format(PyExc_MemoryError, "error allocating %i bytes device memory",size);
             CudaNdarray_set_nd(self,-1);
             self->data_allocated = 0;
             self->devdata = 0;

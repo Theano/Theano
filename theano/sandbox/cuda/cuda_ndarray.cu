@@ -7,6 +7,45 @@
 #include "cuda_ndarray.cuh"
 
 /////////////////////////
+// Alloc and Free
+/////////////////////////
+
+/**
+ *
+ * In the test program I'm using, the _outstanding_mallocs decreases with every call.
+ * This suggests there are more free() calls being made than alloc(), but I can't figure out why.
+ *
+ */
+int _outstanding_mallocs = 0;
+void * device_malloc(size_t size)
+{
+    void * rval=NULL;
+    if (cudaSuccess != cudaMalloc(&rval, size))
+    {
+        fprintf(stderr, "Error allocating %i bytes of device memory.\n", size);
+        PyErr_Format(PyExc_MemoryError, "error allocating %i bytes of device memory", size);
+        return NULL;
+    }
+    _outstanding_mallocs += (rval != NULL);
+    return rval;
+}
+int device_free(void *ptr)
+{
+    if (cudaSuccess != cudaFree(ptr))
+    {
+        PyErr_Format(PyExc_MemoryError, "error freeing device pointer %p", ptr);
+        return -1;
+    }
+    _outstanding_mallocs -= (ptr != NULL);
+    return 0;
+}
+static PyObject *
+outstanding_mallocs(PyObject* self, PyObject * args)
+{
+    return PyInt_FromLong(_outstanding_mallocs);
+}
+
+/////////////////////////
 // Static helper methods
 /////////////////////////
 
@@ -28,8 +67,7 @@ CudaNdarray_uninit(CudaNdarray*self)
     int rval = 0;
     if (self->data_allocated) {
         assert(self->devdata);
-        cublasFree(self->devdata);
-        if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+        if (device_free(self->devdata))
         {
             std::cerr << "!!!! error freeing device memory\n";
             rval = -1;
@@ -39,8 +77,7 @@ CudaNdarray_uninit(CudaNdarray*self)
     }
     if (self->dev_structure)
     {
-        cublasFree(self->dev_structure);
-        if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+        if (device_free(self->dev_structure))
         {
             std::cerr << "!!!! error freeing device memory\n";
             rval = -1;
@@ -269,6 +306,8 @@ PyObject * CudaNdarray_ReduceSum(CudaNdarray * self, PyObject * py_reduce_mask)
     {
         return NULL;
     }
+    //TODO: allocate a fixed size dimshuffle_pattern_cache on the stack,
+    //      and use it if it is big enough.
     int * dimshuffle_pattern = (int*)malloc(len * 2 * sizeof(int));
     int * sum_dims = dimshuffle_pattern + len;
     int n_remaining_dims = 0;
@@ -1453,7 +1492,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
                 return NULL;
             }
         }
-        if (CudaNdarray_Check(storage))
+        if (storage && CudaNdarray_Check(storage))
         {
             rval = (CudaNdarray*) storage;
             Py_INCREF(rval);
@@ -1462,14 +1501,17 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         {
             rval = (CudaNdarray*) CudaNdarray_new_null();
         }
-        if (CudaNdarray_CopyFromArray(rval, data))
+        if (rval)
         {
-            Py_DECREF(rval);
-            rval = NULL;
+            if (CudaNdarray_CopyFromArray(rval, data))
+            {
+                Py_DECREF(rval);
+                rval = NULL;
+            }
+            Py_DECREF(data);
+            Py_DECREF(py_data);
+            Py_DECREF(broadcastable);
         }
-        Py_DECREF(data);
-        Py_DECREF(py_data);
-        Py_DECREF(broadcastable);
         return (PyObject*)rval;
     }
 }
@@ -1478,6 +1520,7 @@ static PyMethodDef module_methods[] = {
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Allow to select the gpu card to use."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},    
+    {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 
@@ -1670,10 +1713,8 @@ int CudaNdarray_set_device_data(CudaNdarray * self, float * data, CudaNdarray * 
     if (self->data_allocated)
     {
         assert(self->devdata);
-        cublasFree(self->devdata);
-        if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+        if (device_free(self->devdata))
         {
-            PyErr_SetString(PyExc_MemoryError, "error freeing device memory");
             self->devdata = NULL;
             self->data_allocated = 0;
             return -1;
