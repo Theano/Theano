@@ -37,8 +37,8 @@ class T_RandomStreams(unittest.TestCase):
         numpy_val1 = rng.uniform(size=(2,2))
         #print numpy_val0
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_seed_in_initialize(self):
         m = Module()
@@ -58,8 +58,8 @@ class T_RandomStreams(unittest.TestCase):
         numpy_val1 = rng.uniform(size=(2,2))
         #print numpy_val0
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_seed_fn(self):
         m = Module()
@@ -81,8 +81,8 @@ class T_RandomStreams(unittest.TestCase):
         numpy_val1 = rng.uniform(size=(2,2))
         #print numpy_val0
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_getitem(self):
 
@@ -102,8 +102,8 @@ class T_RandomStreams(unittest.TestCase):
         fn_val1 = made.fn()
         numpy_val0 = rng.uniform(size=(2,2))
         numpy_val1 = rng.uniform(size=(2,2))
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_setitem(self):
 
@@ -129,8 +129,8 @@ class T_RandomStreams(unittest.TestCase):
         fn_val1 = made.fn()
         numpy_val0 = rng.uniform(size=(2,2))
         numpy_val1 = rng.uniform(size=(2,2))
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_multiple(self):
         M = Module()
@@ -197,8 +197,8 @@ class T_RandomStreams(unittest.TestCase):
         print numpy_val0
         print numpy_val1
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_normal(self):
         """Test that RandomStreams.normal generates the same results as numpy"""
@@ -217,8 +217,8 @@ class T_RandomStreams(unittest.TestCase):
         numpy_val0 = rng.normal(-1, 2, size=(2,2))
         numpy_val1 = rng.normal(-1, 2, size=(2,2))
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_random_integers(self):
         """Test that RandomStreams.random_integers generates the same results as numpy"""
@@ -373,8 +373,8 @@ class T_RandomStreams(unittest.TestCase):
         val1 = made.f()
         numpy_val0 = numpy_rng.uniform()
         numpy_val1 = numpy_rng.uniform()
-        assert numpy.all(val0 == numpy_val0)
-        assert numpy.all(val1 == numpy_val1)
+        assert numpy.allclose(val0, numpy_val0)
+        assert numpy.allclose(val1, numpy_val1)
 
         val2 = made.g()
         numpy_val2 = numpy_rng.multinomial(n=1, pvals=[.5, .5])
@@ -406,16 +406,16 @@ class T_RandomStreams(unittest.TestCase):
         val1 = made.f([.9])
         numpy_val0 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=1)
         numpy_val1 = numpy_rng.uniform(low=[.9], high=1)
-        assert numpy.all(val0 == numpy_val0)
-        assert numpy.all(val1 == numpy_val1)
+        assert numpy.allclose(val0, numpy_val0)
+        assert numpy.allclose(val1, numpy_val1)
 
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         val0b = made.fb([-4., -2], [-1, 0])
         val1b = made.fb([-4.], [-1])
         numpy_val0b = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
         numpy_val1b = numpy_rng.uniform(low=[-4.], high=[-1])
-        assert numpy.all(val0b == numpy_val0b)
-        assert numpy.all(val1b == numpy_val1b)
+        assert numpy.allclose(val0b, numpy_val0b)
+        assert numpy.allclose(val1b, numpy_val1b)
         self.assertRaises(ValueError, made.fb, [-4., -2], [-1, 0, 1])
         #TODO: do we want that?
         #self.assertRaises(ValueError, made.fb, [-4., -2], [-1])
@@ -425,8 +425,8 @@ class T_RandomStreams(unittest.TestCase):
         val1c = made.fc([-4.], [-1], [1])
         numpy_val0c = numpy_rng.uniform(low=[-4., -2], high=[-1, 0])
         numpy_val1c = numpy_rng.uniform(low=[-4.], high=[-1])
-        assert numpy.all(val0c == numpy_val0c)
-        assert numpy.all(val1c == numpy_val1c)
+        assert numpy.allclose(val0c, numpy_val0c)
+        assert numpy.allclose(val1c, numpy_val1c)
         self.assertRaises(ValueError, made.fc, [-4., -2], [-1, 0], [1])
         self.assertRaises(ValueError, made.fc, [-4., -2], [-1, 0], [1,2])
         self.assertRaises(ValueError, made.fc, [-4., -2], [-1, 0], [2,1])
@@ -455,9 +455,9 @@ class T_RandomStreams(unittest.TestCase):
         numpy_val1 = numpy_rng.uniform(low=[.9], high=[[1.], [1.1], [1.5]])
         numpy_val2 = numpy_rng.uniform(low=[-5, .5, 0, 1], high=[[1.], [1.1], [1.5]])
 
-        assert numpy.all(val0 == numpy_val0)
-        assert numpy.all(val1 == numpy_val1)
-        assert numpy.all(val2 == numpy_val2)
+        assert numpy.allclose(val0, numpy_val0)
+        assert numpy.allclose(val1, numpy_val1)
+        assert numpy.allclose(val2, numpy_val2)
 
     def test_uniform_vector(self):
         m = Module()
@@ -481,18 +481,18 @@ class T_RandomStreams(unittest.TestCase):
         # Arguments of size (3,)
         val0 = made.f(low_val, high_val)
         numpy_val0 = numpy_rng.uniform(low=low_val, high=high_val)
-        assert numpy.all(val0 == numpy_val0)
+        assert numpy.allclose(val0, numpy_val0)
 
         # arguments of size (2,)
         val1 = made.f(low_val[:-1], high_val[:-1])
         numpy_val1 = numpy_rng.uniform(low=low_val[:-1], high=high_val[:-1])
-        assert numpy.all(val1 == numpy_val1)
+        assert numpy.allclose(val1, numpy_val1)
 
         # Specifying the size explicitly
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         val2 = made.g(low_val, high_val)
         numpy_val2 = numpy_rng.uniform(low=low_val, high=high_val, size=(3,))
-        assert numpy.all(val2 == numpy_val2)
+        assert numpy.allclose(val2, numpy_val2)
         self.assertRaises(ValueError, made.g, low_val[:-1], high_val[:-1])
 
     def test_binomial_vector(self):
@@ -553,18 +553,18 @@ class T_RandomStreams(unittest.TestCase):
         # Arguments of size (3,)
         val0 = made.f(avg_val, std_val)
         numpy_val0 = numpy_rng.normal(loc=avg_val, scale=std_val)
-        assert numpy.all(val0 == numpy_val0)
+        assert numpy.allclose(val0, numpy_val0)
 
         # arguments of size (2,)
         val1 = made.f(avg_val[:-1], std_val[:-1])
         numpy_val1 = numpy_rng.normal(loc=avg_val[:-1], scale=std_val[:-1])
-        assert numpy.all(val1 == numpy_val1)
+        assert numpy.allclose(val1, numpy_val1)
 
         # Specifying the size explicitly
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         val2 = made.g(avg_val, std_val)
         numpy_val2 = numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,))
-        assert numpy.all(val2 == numpy_val2)
+        assert numpy.allclose(val2, numpy_val2)
         self.assertRaises(ValueError, made.g, avg_val[:-1], std_val[:-1])
 
     def test_random_integers_vector(self):

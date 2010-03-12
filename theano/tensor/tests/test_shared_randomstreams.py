@@ -49,12 +49,12 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val1 = rng.uniform(size=(2,2))
         #print numpy_val0
 
-        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.allclose(fn_val0, numpy_val0)
         print fn_val0
         print numpy_val0
         print fn_val1
         print numpy_val1
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_seed_fn(self):
         random = RandomStreams(234)
@@ -73,8 +73,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val1 = rng.uniform(size=(2,2))
         #print numpy_val0
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_getitem(self):
 
@@ -91,8 +91,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
         numpy_val0 = rng.uniform(size=(2,2))
         numpy_val1 = rng.uniform(size=(2,2))
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_setitem(self):
 
@@ -109,8 +109,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
         numpy_val0 = rng.uniform(size=(2,2))
         numpy_val1 = rng.uniform(size=(2,2))
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_ndim(self):
         """Test that the behaviour of 'ndim' optional parameter"""
@@ -146,8 +146,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val0 = rng.uniform(-1, 1, size=(2,2))
         numpy_val1 = rng.uniform(-1, 1, size=(2,2))
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_normal(self):
         """Test that RandomStreams.normal generates the same results as numpy"""
@@ -163,8 +163,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val0 = rng.normal(-1, 2, size=(2,2))
         numpy_val1 = rng.normal(-1, 2, size=(2,2))
 
-        assert numpy.all(fn_val0 == numpy_val0)
-        assert numpy.all(fn_val1 == numpy_val1)
+        assert numpy.allclose(fn_val0, numpy_val0)
+        assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_random_integers(self):
         """Test that RandomStreams.random_integers generates the same results as numpy"""
@@ -343,8 +343,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         val1 = f()
         numpy_val0 = numpy_rng.uniform()
         numpy_val1 = numpy_rng.uniform()
-        assert numpy.all(val0 == numpy_val0)
-        assert numpy.all(val1 == numpy_val1)
+        assert numpy.allclose(val0, numpy_val0)
+        assert numpy.allclose(val1, numpy_val1)
 
         val2 = g()
         numpy_val2 = numpy_rng.multinomial(n=1, pvals=[.5, .5])
