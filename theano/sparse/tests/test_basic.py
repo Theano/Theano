@@ -1,9 +1,9 @@
-import scipy.sparse
 from theano.sparse import *
 
 from nose.plugins.skip import SkipTest
 if enable_sparse == False:
     raise SkipTest('Optional package sparse disabled')
+import scipy.sparse
 
 import random, time
 import unittest
