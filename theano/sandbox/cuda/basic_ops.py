@@ -673,10 +673,11 @@ class GpuSum(Op):
                     std::min(CudaNdarray_SIZE(%(x)s),
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             dim3 n_blocks(1);
-            if (verbose) printf("running kernel_reduce_sum_ccontig_%(name)s\\n");
-            int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
+            if (verbose) printf("running kernel_reduce_sum_ccontig_%(name)s n_threads.x=%%d, size=%%d, ndim=%%d\\n",
+                                n_threads.x,CudaNdarray_SIZE(%(x)s),%(x)s->nd);
+            int n_shared = sizeof(float) * n_threads.x;
             kernel_reduce_sum_ccontig_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_SIZE(%(x)s),//need SIZE here as we use this kernel for ccontiguous tensor
+                    CudaNdarray_SIZE(%(x)s),
                     CudaNdarray_DEV_DATA(%(x)s),
                     CudaNdarray_DEV_DATA(%(z)s));
             CNDA_THREAD_SYNC;
