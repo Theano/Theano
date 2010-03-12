@@ -636,7 +636,20 @@ class GpuSum(Op):
             }
             buf[threadNum] = mysum;
             // no sync because only one warp is running
-            if (threadNum < 16)
+            if(threadCount >32)
+            {
+                buf[threadNum] += buf[threadNum+16];
+                buf[threadNum] += buf[threadNum+8];
+                buf[threadNum] += buf[threadNum+4];
+                buf[threadNum] += buf[threadNum+2];
+                buf[threadNum] += buf[threadNum+1];
+                if (threadNum == 0)
+                {
+                    %(z_pos)s = buf[0];
+                }
+
+            }
+            else if (threadNum < 16)
             {
                 //reduce so that threadNum 0 has the sum of everything
                 if(threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
@@ -979,7 +992,7 @@ class GpuSum(Op):
 
     def c_code_cache_version(self):
         #return ()
-        return (9,)
+        return (10,)
 
 
     def c_support_code_apply(self, node, nodename):
