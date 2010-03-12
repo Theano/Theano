@@ -23,8 +23,10 @@ class TestSignalConv2D(unittest.TestCase):
         input = T.TensorType('float64', [False]*image_dim)()
         filters = T.TensorType('float64', [False]*filter_dim)()
 
-        bsize = image_shape[0] if image_dim==3 else 1
-        nkern = filter_shape[0] if filter_dim==3 else 1
+        bsize = image_shape[0]
+        if image_dim!=3: bsize = 1
+        nkern = filter_shape[0]
+        if filter_dim!=3: nkern = 1
 
         ############# THEANO IMPLEMENTATION ############
         # we create a symbolic function so that verify_grad can work
