@@ -30,6 +30,7 @@ from theano.tensor import opt, TensorType
 from theano import gof, Apply
 from theano.compile import optdb
 import theano.tensor.shared_randomstreams as shared_random
+from theano.gof.python25 import all
 import copy
 
 import numpy
