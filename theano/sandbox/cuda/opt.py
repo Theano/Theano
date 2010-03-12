@@ -6,7 +6,7 @@ from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, to
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.blas import gpu_dot22, gpu_gemm, GpuConv
+from theano.sandbox.cuda.blas import gpu_dot22, gpu_dot22scalar, gpu_gemm, GpuConv
 from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
@@ -143,11 +143,11 @@ def local_gpu_dimshuffle_0(node):
 
 @register_opt()
 @local_optimizer([])
-def local_gpu_dot(node):
+def local_gpu_dot22(node):
     """
-    gpu_from_host(dot) -> gpudot(gpu_from_host)
+    gpu_from_host(dot22) -> gpudot(gpu_from_host)
 
-    dot(host_from_gpu) -> host_from_gpu(gpudot)
+    dot(host_from_gpu) -> host_from_gpu(gpudot22)
     """
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
@@ -158,6 +158,25 @@ def local_gpu_dot(node):
         if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
             x, y = node.inputs
             return [host_from_gpu(gpu_dot22(gpu_from_host(x), gpu_from_host(y)))]
+    return False
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_dot22scalar(node):
+    """
+    gpu_from_host(dot22scalar) -> gpudot(gpu_from_host)
+
+    dot(host_from_gpu) -> host_from_gpu(gpudot22scalar)
+    """
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and host_input.owner.op == tensor.blas._dot22scalar:
+            x, y, scalar = host_input.owner.inputs
+            return [gpu_dot22scalar(gpu_from_host(x), gpu_from_host(y), tensor.blas._as_scalar(scalar))]
+    if node.op == tensor.blas._dot22scalar:
+        if numpy.any([(i.owner and i.owner.op == host_from_gpu) for i in node.inputs]):
+            x, y, scalar = node.inputs
+            return [host_from_gpu(gpu_dot22scalar(gpu_from_host(x), gpu_from_host(y),tensor.blas._as_scalar(scalar)))]
     return False
 
 @register_opt()

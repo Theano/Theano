@@ -71,6 +71,80 @@ class GpuDot22(Op):
         """ % locals()
 gpu_dot22 = GpuDot22()
 
+class GpuDot22Scalar(Op):
+    def __str__(self):
+        return 'GpuDot22Scalar'
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y, a):
+        if x.type.ndim != 2:
+            raise TypeError(x)
+        if y.type.ndim != 2:
+            raise TypeError(y)
+        if not tensor.blas._as_scalar(a):
+            raise TypeError(a)
+        return Apply(self, [x,y,a], [x.type()])
+
+    def c_code_cache_version(self):
+        return (1,0)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, y, a = inputs
+        z, = outputs
+        fail = sub['fail']
+        return """
+        #define REAL float
+        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT)
+        ? (REAL)(((float*)%(a)s->data)[0])
+        : (REAL)(((double*)%(a)s->data)[0]);
+        #undef REAL
+        if (%(x)s->nd != 2)
+        {
+            PyErr_Format(PyExc_TypeError, "rank(x)==%%i must be 2", %(x)s->nd);
+            %(fail)s;
+        }
+        if (%(y)s->nd != 2)
+        {
+            PyErr_Format(PyExc_TypeError, "rank(y)==%%i must be 2", %(y)s->nd);
+            %(fail)s;
+        }
+
+        if ((NULL == %(z)s)
+            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(y)s)[1]))
+        {
+            //if (%(z)s) Py_DECREF(%(z)s);
+            Py_XDECREF(%(z)s);
+            npy_intp dims[2];
+            dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[1];
+            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            if ((NULL == %(z)s) || CudaNdarray_alloc_contiguous(%(z)s, 2, dims))
+            {
+                if (%(z)s)
+                {
+                    Py_DECREF(%(z)s);
+                    %(z)s = NULL;
+                }
+                %(fail)s;
+            }
+        }
+        if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, 0.0f, %(z)s))
+        {
+            if (%(z)s)
+            {
+                Py_DECREF(%(z)s);
+                %(z)s = NULL;
+            }
+            %(fail)s;
+        }
+        """ % locals()
+gpu_dot22scalar = GpuDot22Scalar()
+
 class GpuGemm(Op):
     destroy_map = {0:[0]}
     def __str__(self):

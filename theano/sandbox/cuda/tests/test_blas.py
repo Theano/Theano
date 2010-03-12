@@ -44,6 +44,33 @@ def test_dot():
 
     assert numpy.allclose(numpy.dot(a0, bval), a.value)
 
+def test_dot22scalar():
+    a = tensor.fmatrix()
+    b = tensor.fmatrix()
+    scalar = tensor.fscalar()
+    av = my_rand(4,4)
+    bv = my_rand(4,4)
+
+    f = theano.function([a,b], tensor.dot(a,b)*numpy.asarray(4, 'float32'), mode=mode_with_gpu)
+    f2 = theano.function([a,b], tensor.dot(a,b)*numpy.asarray(4, 'float32'))
+    t=f.maker.env.toposort()
+    assert len(t)==4
+    assert isinstance(t[0].op,tcn.GpuFromHost)
+    assert isinstance(t[1].op,tcn.GpuFromHost)
+    assert isinstance(t[2].op,tcn.blas.GpuDot22Scalar)
+    assert isinstance(t[3].op,tcn.HostFromGpu)
+    assert numpy.allclose(f(av,bv),f2(av,bv))
+
+    f = theano.function([a,b,scalar], tensor.dot(a,b)*scalar, mode=mode_with_gpu)
+    f2 = theano.function([a,b,scalar], tensor.dot(a,b)*scalar)
+    t=f.maker.env.toposort()
+    assert len(t)==4
+    assert isinstance(t[0].op,tcn.GpuFromHost)
+    assert isinstance(t[1].op,tcn.GpuFromHost)
+    assert isinstance(t[2].op,tcn.blas.GpuDot22Scalar)
+    assert isinstance(t[3].op,tcn.HostFromGpu)
+    assert numpy.allclose(f(av,bv,0.5),f2(av,bv,0.5))
+
 def test_gemm():
 
     a = tcn.shared_constructor(my_rand(4,4), 'a')
