@@ -26,7 +26,7 @@ else:
 def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape),dtype='float32')
 
-def test_dot():
+def test_dot22():
 
     a = tcn.shared_constructor(my_rand(4,4), 'a')
 
