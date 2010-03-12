@@ -74,13 +74,32 @@ gpu_cut_copies.register('cut_gpu_constant_transfers', tensor.opt.constant_foldin
 @register_opt()
 @local_optimizer([])
 def local_gpu_elemwise_0(node):
+    """elemwise(..., host_from_gpu, ...) 
+       -> host_from_gpu(elemwise(gpu_from_host, ..., gpu_from_host)
+    """
     if isinstance(node.op, tensor.Elemwise):
-        if numpy.any([hasattr(i.owner, 'op') and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
-            if numpy.all([i.type.dtype == 'float32' for i in node.inputs]):
-                if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
-                    new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
+        if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
+            if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
+                new_op = GpuElemwise(node.op.scalar_op, node.op.inplace_pattern)
+
+                # case 1 - all inputs are already float32
+                if numpy.all([i.type.dtype == 'float32' for i in node.inputs]):
                     #TODO: change this when fusion makes Elemwise with multiple outputs
                     return [host_from_gpu(new_op(*(gpu_from_host(i) for i in node.inputs)))]
+
+                # THIS IS PROBABLY TRUE....
+                # case 2 - it would still be ok if some inputs were upcast to float32
+                #   first establish that float32 can store all inputs
+                upcastable = set(['float32', 'int8', 'int16', 'uint8', 'uint16'])
+                if numpy.all([i.type.dtype in upcastable for i in node.inputs]):
+                    # second - establish that a new node with upcasted inputs has the same outputs
+                    # types as the original node
+                    casted = node.op.make_node(*[tensor.cast(i, 'float32') for i in node.inputs])
+                    if [o.type for o in casted.outputs] == [o.type for o in node.outputs]:
+
+                        new_inputs = [gpu_from_host(tensor.cast(i, 'float32')) for i in node.inputs]
+
+                        return [host_from_gpu(new_op(*new_inputs))]
 
 @register_opt()
 @local_optimizer([])
