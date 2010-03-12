@@ -769,6 +769,41 @@ class GpuSum(Op):
         }
         """ %locals()
 
+    def c_code_reduce_01(self, sio, node, name, x, z, fail):
+        print >> sio, """
+        {
+            int verbose = 0;
+            dim3 n_threads(
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
+                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[0]);
+            if (verbose) printf("running kernel_reduce_sum_01_%(name)s\\n");
+            int n_shared = sizeof(float) * n_threads.x;
+            kernel_reduce_sum_01_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0]
+                    );
+            CNDA_THREAD_SYNC;
+            cudaError_t sts = cudaGetLastError();
+            if (cudaSuccess != sts) 
+            {
+                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                    "kernel_reduce_sum_01_%(name)s",
+                    cudaGetErrorString(sts),
+                    n_blocks.x,
+                    n_blocks.y,
+                    n_threads.x,
+                    n_threads.y,
+                    n_threads.z);
+                %(fail)s;
+            }
+        }
+        """ %locals()
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
         print >> sio, """
@@ -1081,6 +1116,36 @@ class GpuSum(Op):
                         float Ai = A[i0 * sA0 + i1 * sA1];
                         mysum += Ai;
                     }
+                }
+                %(reducebuf)s
+            }
+            """ %locals()
+        if self.reduce_mask == (0,1):
+            # this kernel uses one block for each row.
+            # threads per block for each element per row.
+
+            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]')
+            print >> sio, """
+            static __global__ void kernel_reduce_sum_01_%(nodename)s(
+                    const int d0,
+                    const int d1,
+                    const float *A, const int sA0, const int sA1,
+                    float * Z, const int sZ0)
+            {
+                const int threadCount = blockDim.x;
+                const int threadNum = threadIdx.x;
+                extern __shared__ float buf[];
+                float mysum = 0.0f;
+
+                if (warpSize != 32)
+                {
+                    return;  //TODO: set error code
+                }
+
+                for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
+                {
+                    float Ai = A[i1 * sA1 + blockIdx.x * sA0];
+                    mysum += Ai;
                 }
                 %(reducebuf)s
             }
