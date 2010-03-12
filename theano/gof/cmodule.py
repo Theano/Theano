@@ -266,6 +266,9 @@ class ModuleCache(object):
                         warning("Entry 1:", self.entry_from_key[k1])
                         warning("hash 1:", hash(k1))
 
+    age_thresh_use = 60*60*24*24
+    """The default age threshold for `clear_old` (in seconds)
+    """
     def refresh(self):
         """Update self.entry_from_key by walking the cache directory structure.
 
@@ -278,6 +281,7 @@ class ModuleCache(object):
         compilelock.get_lock()
         try:
             # add entries that are not in the entry_from_key dictionary
+            time_now = time.time()
             for root, dirs, files in os.walk(self.dirname):
                 if os.path.join(root, 'key.pkl') in self.loaded_key_pkl:
                     continue
@@ -291,7 +295,7 @@ class ModuleCache(object):
                     except:
                         # the directory is still in use??  We just leave it for future removal.
                         pass
-                elif 'key.pkl' in files:
+                elif 'key.pkl' in files and (time_now - last_access_time(module_name_from_dir(root)))<self.age_thresh_use:
                     key_pkl = os.path.join(root, 'key.pkl')
                     debug('refresh adding', key_pkl)
                     try:
@@ -432,18 +436,18 @@ class ModuleCache(object):
         #debug('stats', self.stats, sum(self.stats))
         return rval
 
-    age_thresh = 60*60*24*31
+    age_thresh_del = 60*60*24*31
     """The default age threshold for `clear_old` (in seconds)
     """
-    def clear_old(self, age_thresh=None): #default to a 31-day age_threshold
+    def clear_old(self, age_thresh_del=None): #default to a 31-day age_thresh_delold
         """
         Delete entries from the filesystem for cache entries that are too old.
 
-        :param age_thresh: dynamic modules whose last access time is more than ``age_thresh``
+        :param age_thresh_del: dynamic modules whose last access time is more than ``age_thresh_del``
         seconds ago will be erased.
         """
-        if age_thresh is None:
-          age_thresh = self.age_thresh
+        if age_thresh_del is None:
+          age_thresh_del = self.age_thresh_del
 
         compilelock.get_lock()
         try:
@@ -455,9 +459,9 @@ class ModuleCache(object):
             items_copy = list(self.entry_from_key.iteritems())
             for key, entry in items_copy: 
                 age = time_now - last_access_time(entry)
-                if age > age_thresh:
+                if age > age_thresh_del:
                     # TODO: we are assuming that modules that haven't been accessed in over
-                    # age_thresh are not currently in use by other processes, but that could be
+                    # age_thresh_del are not currently in use by other processes, but that could be
                     # false for long-running jobs...
                     assert entry not in self.module_from_name
                     del self.entry_from_key[key]
