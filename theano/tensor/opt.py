@@ -1652,9 +1652,20 @@ def constant_folding(node):
     for input in node.inputs:
         if not isinstance(input, gof.Constant):
             return False
-    storage = [[None] for output in node.outputs]
-    node.op.perform(node, [x.data for x in node.inputs], storage)
+    try:
+        storage = [[None] for output in node.outputs]
+        node.op.perform(node, [x.data for x in node.inputs], storage)
+    except MethodNotDefined:
+        tmp_inputs = [x.type() for x in node.inputs]
+        f = compile.function(
+                inputs=tmp_inputs,
+                outputs=node.op.make_node(*tmp_inputs).outputs,
+                mode=compile.Mode(linker='c|py',optimizer=None))
+        xvals = f(*[x.data for x in node.inputs])
+        storage = [[xv] for xv in xvals]
+
     msg = []
+    assert len(storage) == len(node.outputs)
     for s, output in zip(storage, node.outputs):
         try:
             constant = output.type.Constant
