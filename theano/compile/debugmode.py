@@ -217,7 +217,8 @@ class BadOptimization(DebugModeError):
 class BadDestroyMap(DebugModeError):
     """Exception: Some perform() or c_code() modified an input that wasn't in the destroy_map"""
     def __init__(self, node, idx, old_val, new_val, perform):
-        super(BadDestroyMap, self).__init__()
+        #super(BadDestroyMap, self).__init__()
+        DebugModeError.__init__(self)#to be compatible with python2.4
         self.node = node
         self.idx = idx
         self.old_val = old_val
@@ -252,7 +253,8 @@ class BadDestroyMap(DebugModeError):
 class BadViewMap(DebugModeError):
     """Exception: Some perform() or c_code() created a memory alias that wasn't in the view_map"""
     def __init__(self, node, output_idx, out_storage, in_alias_idx=None, out_alias_idx=None):
-        super(BadViewMap, self).__init__()
+        #super(BadViewMap, self).__init__()
+        DebugModeError.__init__(self)#to be compatible with python2.4
         self.node = node
         self.output_idx = output_idx
         self.out_storage = out_storage
@@ -288,7 +290,8 @@ class StochasticOrder(DebugModeError):
 class InvalidValueError(DebugModeError):
     """Exception: some Op an output value that is inconsistent with the Type of that output"""
     def __init__(self, r, v, client_node=None, hint='none'):
-        super(InvalidValueError, self).__init__()
+        #super(InvalidValueError, self).__init__()
+        DebugModeError.__init__(self)#to be compatible with python2.4
         self.r = r
         self.v = v
         self.client_node = client_node
