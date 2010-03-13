@@ -390,6 +390,9 @@ class ModuleCache(object):
             rval = self.module_from_name[name]
         else:
             # we have never seen this key before
+            # Acquire lock before creating things in the compile cache,
+            # to avoid that other processes remove the compile dire while it
+            # is still empty
             compilelock.get_lock()
             location = dlimport_workdir(self.dirname)
             #debug("LOCATION*", location)
@@ -512,8 +515,11 @@ class ModuleCache(object):
                 except IOError:
                     has_key = False
                 if not has_key:
-                    #TODO: only if older than 1 week?
-                    # it might still be used by another process
+                    #TODO: Remove this, or at least wait one week
+                    # This cache dir is either in use by another process
+                    # (in that case, it will be removed by the code above),
+                    # or a remnant of a crashed process, in that case, it will
+                    # be removed by clear_old at some point.
                     info("clear_unversioned removing cache dir", filename)
                     _rmtree(os.path.join(self.dirname, filename))
 
@@ -656,7 +662,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
                     standard_lib=1) 
     python_lib = os.path.dirname(python_lib)
     if python_lib not in lib_dirs:
-	lib_dirs.append(python_lib)
+        lib_dirs.append(python_lib)
 
     workdir = location
 
@@ -698,7 +704,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         raise Exception('g++ return status', status)
 
     #touch the __init__ file
-    file(os.path.join(location, "__init__.py"),'w').close()      
+    file(os.path.join(location, "__init__.py"),'w').close()
     return dlimport(lib_filename)
 
 def icc_module_compile_str(*args):
