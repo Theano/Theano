@@ -2574,6 +2574,12 @@ class Rebroadcast(Op):
     view_map = {0: [0]}
     def __init__(self, *axis):
         self.axis = dict(axis)
+    def __eq__(self, other):
+        return type(self) == type(other) and self.axis == other.axis
+    def __hash__(self):
+        items = self.axis.items()
+        items.sort() #no ambiguity because each item key is unique
+        return hash(type(self)) ^ hash(tuple(items))
     def __str__(self):
         broadcast_pattern = ['?' for i in range(1+numpy.max(self.axis.keys()))]
         for k,v in self.axis.iteritems():
