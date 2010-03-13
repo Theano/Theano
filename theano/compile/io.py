@@ -200,7 +200,10 @@ class SymbolicOutput(object):
         self.borrow = borrow
 
     def __str__(self):
-        return "Out(%s)" % self.variable
+        return "Out(%s,%s)" % (self.variable, self.borrow)
+
+    def __repr__(self):
+        return "Out(%s,%s)" % (self.variable, self.borrow)
 
 Out = SymbolicOutput
 
