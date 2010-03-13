@@ -16,7 +16,7 @@
  * This suggests there are more free() calls being made than alloc(), but I can't figure out why.
  *
  */
-int _outstanding_mallocs = 0;
+int _outstanding_mallocs[] = {0,0};
 void * device_malloc(size_t size)
 {
     void * rval=NULL;
@@ -26,23 +26,24 @@ void * device_malloc(size_t size)
         PyErr_Format(PyExc_MemoryError, "error allocating %i bytes of device memory", size);
         return NULL;
     }
-    _outstanding_mallocs += (rval != NULL);
+    _outstanding_mallocs[0] += (rval != NULL);
     return rval;
 }
 int device_free(void *ptr)
 {
     if (cudaSuccess != cudaFree(ptr))
     {
+        fprintf(stderr, "Error freeing device pointer %p.\n", ptr);
         PyErr_Format(PyExc_MemoryError, "error freeing device pointer %p", ptr);
         return -1;
     }
-    _outstanding_mallocs -= (ptr != NULL);
+    _outstanding_mallocs[0] -= (ptr != NULL);
     return 0;
 }
 static PyObject *
 outstanding_mallocs(PyObject* self, PyObject * args)
 {
-    return PyInt_FromLong(_outstanding_mallocs);
+    return PyInt_FromLong(_outstanding_mallocs[0]);
 }
 
 /////////////////////////
@@ -143,6 +144,13 @@ CudaNdarray_dealloc(CudaNdarray* self)
     //std::cerr << "CudaNdarray dealloc " << self << " " << self->devdata << '\n';
     CudaNdarray_uninit(self);
     self->ob_type->tp_free((PyObject*)self);
+    --_outstanding_mallocs[1];
+    if (0)
+    {
+        fprintf(stderr, "device_malloc_counts: (device) %i (obj) %i\n",
+                _outstanding_mallocs[0],
+                _outstanding_mallocs[1]);
+    }
 }
 
 static PyObject *
@@ -154,6 +162,7 @@ CudaNdarray_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self != NULL)
     {
         CudaNdarray_null_init(self);
+        ++_outstanding_mallocs[1];
     }
     return (PyObject *)self;
 }
@@ -1605,6 +1614,7 @@ CudaNdarray_New(int nd)
             return NULL;
         }
     }
+    ++_outstanding_mallocs[1];
     return (PyObject *)self;
 }
 
