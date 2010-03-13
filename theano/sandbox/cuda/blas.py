@@ -161,7 +161,7 @@ class GpuGemm(Op):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
-        return (1,0)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         z_in, a, x, y, b = inputs
@@ -183,6 +183,7 @@ class GpuGemm(Op):
         {
             %(fail)s;
         }
+        Py_XDECREF(%(z_out)s);
         %(z_out)s = %(z_in)s;
         Py_INCREF(%(z_out)s);
         """ % locals()
