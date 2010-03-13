@@ -390,6 +390,7 @@ class ModuleCache(object):
             rval = self.module_from_name[name]
         else:
             # we have never seen this key before
+            compilelock.get_lock()
             location = dlimport_workdir(self.dirname)
             #debug("LOCATION*", location)
             try:
@@ -400,6 +401,8 @@ class ModuleCache(object):
                 #except Exception, ee:
                     #error('failed to cleanup location', location, ee)
                 raise
+            finally:
+                compilelock.release_lock()
             name = module.__file__
 
             debug("Adding module to cache", key, name)
