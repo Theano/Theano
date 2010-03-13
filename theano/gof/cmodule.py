@@ -509,6 +509,8 @@ class ModuleCache(object):
                 except IOError:
                     has_key = False
                 if not has_key:
+                    #TODO: only if older than 1 week?
+                    # it might still be used by another process
                     info("clear_unversioned removing cache dir", filename)
                     _rmtree(os.path.join(self.dirname, filename))
 
@@ -522,11 +524,13 @@ def _rmtree(parent):
         if not config.nocleanup:
             shutil.rmtree(parent)
     except Exception, e:
-        try:
-            # mark this directory for deletion by a future refresh()
-            open(os.path.join(parent,'delete.me'), 'w').close()
-        except Exception, ee:
-            warning('Failed to remove or mark cache directory %s for removal' % parent, ee)
+        # If parent still exists, mark it for deletion by a future refresh()
+        if os.path.exists(parent):
+            try:
+                info('placing "delete.me" in', parent)
+                open(os.path.join(parent,'delete.me'), 'w').close()
+            except Exception, ee:
+                warning('Failed to remove or mark cache directory %s for removal' % parent, ee)
 
 _module_cache = None
 def get_module_cache(dirname, force_fresh=None):
