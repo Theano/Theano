@@ -55,8 +55,10 @@ def ldflags(libs=True, flags=False):
         except:
             raise ValueError('invalid token in config.blas.ldflags', t)
         if t1 == 'L':
-            raise ValueError('library dir not allowed in config.blas.ldflags', t)
+            raise NotImplementedError('library dir not allowed in config.blas.ldflags', t)
         elif libs and t1=='l': # example -lmkl
+            if t.endswith('.a'):
+                _logger.warning('WARNING: Linking against a static lib might not work (%s)'%t)
             rval.append(t[2:])
         elif flags and t1!='l': # example -openmp
             rval.append(t)
