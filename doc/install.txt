@@ -114,6 +114,19 @@ so maybe ``export THEANO_FLAGS="blas.ldflags=-lf77blas -latlas -lgfortran"`` mig
 For more information on the formatting of ~/.theanorc and the configuration options that you can put there, 
 see :ref:`libdoc_config`.
 
+.. note::
+
+    Make sure your BLAS
+    libraries are available as dynamically-loadable libraries.  
+    ATLAS is often installed only as a static library.  Theano is not able to
+    use this static library.  ATLAS might need to be reinstalled or upgraded or
+    something to provide dynamically loadable libraries.  (On Linux this
+    typically means a library whose name ends with .so. On Windows this will be
+    a .dll, and on OS-X it might be either a .dylib or a .so)
+
+    This might be just a problem with the way Theano passes compilation
+    arguments to gcc, but the problem is not fixed yet.
+
 
 Testing your installation
 ---------------------------
