@@ -161,6 +161,13 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                     if (timeout is not None and
                             time.time() - time_start >= timeout):
                         # Timeout exceeded.
+                        if not no_display:
+                            if read_owner == 'failure':
+                                msg = 'unknown process'
+                            else:
+                                msg = "process '%s'" % read_owner.split('_')[0]
+                            warning("Overriding existing lock by %s (I am "
+                                    "process '%s')"% (msg, my_pid))
                         get_lock.unlocker.unlock()
                         continue
                 else:
