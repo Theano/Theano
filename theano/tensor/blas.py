@@ -57,8 +57,9 @@ def ldflags(libs=True, flags=False):
         if t1 == 'L':
             raise NotImplementedError('library dir not allowed in config.blas.ldflags', t)
         elif libs and t1=='l': # example -lmkl
-            if t.endswith('.a'):
-                _logger.warning('WARNING: Linking against a static lib might not work (%s)'%t)
+            # we would like to issue a warning if the option refers to a static lib, 
+            # but it isn't obvious at this point whether the lib is static because the lib
+            # suffix is not part of the token.
             rval.append(t[2:])
         elif flags and t1!='l': # example -openmp
             rval.append(t)
