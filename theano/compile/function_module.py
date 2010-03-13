@@ -756,6 +756,7 @@ class FunctionMaker(object):
                              "or one of %s" % mode_module.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
+        assert len(env.outputs) == len(outputs+additional_outputs)
         no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
         if no_borrow:
             self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
