@@ -20,8 +20,8 @@ from io import *
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
-def view_map_root(v):
-    """Return the variable that v is ultimately a view of"""
+def alias_root(v):
+    """Return the variable to which v is aliased by view_maps and destroy_maps"""
     if v.owner is None: return v
     vmap = getattr(v.owner.op, 'view_map', {})
     dmap = getattr(v.owner.op, 'destroy_map', {})
@@ -30,7 +30,7 @@ def view_map_root(v):
     if len(v_views) > 1:
         raise NotImplementedError()
     elif v_views:
-        return view_map_root(v.owner.inputs[v_views[0]])
+        return alias_root(v.owner.inputs[v_views[0]])
     else:
         return v
 
@@ -57,7 +57,7 @@ def infer_reuse_pattern(env, outputs_to_disown):
     """
     rval = set()
     for o in outputs_to_disown:
-        view_tree_set(view_map_root(o), rval)
+        view_tree_set(alias_root(o), rval)
     # remove from rval all of the inputs, constants, values.
     rval = set(r for r in rval if r.owner is not None)
 
