@@ -295,42 +295,42 @@ class ModuleCache(object):
                     except:
                         # the directory is still in use??  We just leave it for future removal.
                         pass
-                elif 'key.pkl' in files and (time_now - last_access_time(module_name_from_dir(root)))<self.age_thresh_use:
-                    key_pkl = os.path.join(root, 'key.pkl')
-                    debug('refresh adding', key_pkl)
+                elif 'key.pkl' in files:
                     try:
-                        key = cPickle.load(open(key_pkl, 'rb'))
-                    except:
-                        info("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
-                        if 0:
-                            info("Erasing broken cache directory", key_pkl)
-                            shutil.rmtree(root)
-                        else:
-                            ## This exception is often triggered by keys that contain
-                            # references to classes that have not yet been imported.  They are
-                            # not necessarily broken
-                            pass
-                        continue
-
-                    if not key[0]: #if the version is False
-                        warning("ModuleCache.refresh() Found unversioned key in cache, deleting it.", key_pkl)
+                        entry = module_name_from_dir(root)
+                    except ValueError: # there is a key but no dll!
+                        warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
                         info("Erasing broken cache directory", key_pkl)
                         shutil.rmtree(root)
                         continue
-
-                    if key not in self.entry_from_key:
+                    if (time_now - last_access_time(module_name_from_dir(root)))<self.age_thresh_use:
+                        key_pkl = os.path.join(root, 'key.pkl')
+                        debug('refresh adding', key_pkl)
                         try:
-                            entry = module_name_from_dir(root)
-                        except ValueError: # there is a key but no dll!
-                            warning("ModuleCache.refresh() Found key without dll in cache, deleting it.", key_pkl)
+                            key = cPickle.load(open(key_pkl, 'rb'))
+                        except:
+                            info("ModuleCache.refresh() Failed to unpickle cache key", key_pkl)
+                            if 0:
+                                info("Erasing broken cache directory", key_pkl)
+                                shutil.rmtree(root)
+                            else:
+                                ## This exception is often triggered by keys that contain
+                                # references to classes that have not yet been imported.  They are
+                                # not necessarily broken
+                                pass
+                            continue
+
+                        if not key[0]: #if the version is False
+                            warning("ModuleCache.refresh() Found unversioned key in cache, deleting it.", key_pkl)
                             info("Erasing broken cache directory", key_pkl)
                             shutil.rmtree(root)
                             continue
 
-                        self.entry_from_key[key] = entry
-                        # assert that we haven't already got this entry somehow
-                        assert entry not in self.module_from_name
-                        self.loaded_key_pkl.add(key_pkl)
+                        if key not in self.entry_from_key:
+                            self.entry_from_key[key] = entry
+                            # assert that we haven't already got this entry somehow
+                            assert entry not in self.module_from_name
+                            self.loaded_key_pkl.add(key_pkl)
 
             # remove entries that are not in the filesystem
             items_copy = list(self.entry_from_key.iteritems())
@@ -352,7 +352,7 @@ class ModuleCache(object):
 
                     info("deleting ModuleCache entry", entry)
                     del self.entry_from_key[key]
-                    if key[0]: 
+                    if key[0]:
                         # this is a versioned entry, so should have been on disk
                         # Something weird happened to cause this, so we are responding by
                         # printing a warning, removing evidence that we ever saw this mystery
