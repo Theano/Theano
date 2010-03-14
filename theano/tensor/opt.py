@@ -88,7 +88,7 @@ def get_constant_value(v):
         if isinstance(v.owner.op, T.DimShuffle):
             return get_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, T.Rebroadcast):
-            return get_constant_value(v.owner.inputs[0]))
+            return get_constant_value(v.owner.inputs[0])
         if v.owner.op == T.fill:
             shape, val = v.owner.inputs
             # fill(a,b) fills the shape of 'a' filled with 'b'
