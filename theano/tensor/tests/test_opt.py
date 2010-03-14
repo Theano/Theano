@@ -1126,6 +1126,15 @@ def test_local_mul_specialize():
     assert nodes == [T.mul]
 
 
+def test_local_useless_rebroadcast():
+    v1 = T.vector()
+    v2 = T.vector()
+    j = T.join(0, v1, v2)
+    f = theano.function([v1, v2], j)
+    f([1,2], [3,4,5])
+    e = f.maker.env.toposort()
+    assert len([n for n in e if isinstance(n.op, T.Rebroadcast)]) == 0
+
 if __name__ == '__main__':
 #    unittest.main()
     test_fusion().tes_memory_leak()

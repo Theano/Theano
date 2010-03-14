@@ -692,6 +692,25 @@ def local_inplace_setsubtensor(node):
 compile.optdb.register('inplace_setsubtensor', TopoOptimizer(local_inplace_setsubtensor,
     failure_callback=TopoOptimizer.warn_inplace), 60, 'fast_run', 'inplace') #DEBUG
 
+
+####################
+# Rebroadcast opts #
+####################
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Rebroadcast])
+def local_useless_rebroadcast(node):
+    """
+    Remove Rebroadcast if id does not actually change the broadcasting pattern
+    """
+    if isinstance(node.op, T.Rebroadcast):
+        x = node.inputs[0]
+        if numpy.all(x.broadcastable == node.outputs[0].broadcastable):
+            return [x]
+
+
+
 ##################
 # Reshape opts   #
 ##################
