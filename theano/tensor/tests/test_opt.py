@@ -1144,7 +1144,7 @@ class T_Rebroadcast(unittest.TestCase):
         f = theano.function([m], v)
         f([[76]])
         e = f.maker.env.toposort()
-        assert len([n for n in e if isinstance]) == 1
+        assert len([n for n in e if isinstance(n.op, T.Rebroadcast)]) == 1
 
 if __name__ == '__main__':
 #    unittest.main()
