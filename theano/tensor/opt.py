@@ -218,6 +218,7 @@ def local_dimshuffle_lift(node):
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
 
 register_canonicalize(local_dimshuffle_lift)
+register_specialize(local_dimshuffle_lift)
 
 
 
