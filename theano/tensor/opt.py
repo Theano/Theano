@@ -709,7 +709,20 @@ def local_useless_rebroadcast(node):
     if isinstance(node.op, T.Rebroadcast):
         x = node.inputs[0]
         if numpy.all(x.broadcastable == node.outputs[0].broadcastable):
+            # No broadcastable flag was modified
             return [x]
+        else:
+            # Keep the flags that modify something
+            new_axis = {}
+            for dim, bc in node.op.axis.items():
+                if x.broadcastable[dim] != bc:
+                    new_axis[dim] = bc
+            if new_axis == node.op.axis:
+                # All flags are useful
+                return
+            else:
+                return [T.Rebroadcast(*new_axis.items())(x)]
+
 
 @register_canonicalize
 @register_specialize
