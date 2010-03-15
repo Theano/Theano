@@ -65,7 +65,8 @@ def merge_broadcastables(broadcastables):
 def get_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
 
-    If v is the output of dimshuffles, fills, allocs, this function digs through them.
+    If v is the output of dimshuffles, fills, allocs, rebroadcasts,
+    this function digs through them.
 
     If `v` is not some view of constant data, then raise a TypeError.
 

@@ -2581,7 +2581,10 @@ class Rebroadcast(Op):
         items.sort() #no ambiguity because each item key is unique
         return hash(type(self)) ^ hash(tuple(items))
     def __str__(self):
-        broadcast_pattern = ['?' for i in range(1+numpy.max(self.axis.keys()))]
+        if len(self.axis) == 0:
+            broadcast_pattern = []
+        else:
+            broadcast_pattern = ['?' for i in range(1+numpy.max(self.axis.keys()))]
         for k,v in self.axis.iteritems():
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__, ','.join(broadcast_pattern))
