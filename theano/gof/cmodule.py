@@ -400,12 +400,13 @@ class ModuleCache(object):
                 module = fn(location=location)  # WILL FAIL FOR BAD C CODE
             except Exception, e:
                 _rmtree(location)
+                compilelock.release_lock()
                 #try:
                 #except Exception, ee:
                     #error('failed to cleanup location', location, ee)
                 raise
-            finally:
-                compilelock.release_lock()
+
+            compilelock.release_lock()
             name = module.__file__
 
             debug("Adding module to cache", key, name)
