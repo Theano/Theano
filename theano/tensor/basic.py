@@ -2796,6 +2796,13 @@ def stack(*tensors):
     """Insert the arguments as slices into a tensor of 1 rank greater.
     EXAMPLE
     """
+    # If all tensors are scalars of the same type, call make_vector.
+    # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
+    if numpy.all([isinstance(t, Variable) and\
+                  isinstance(t.type, TensorType) and\
+                  t.ndim==0 and t.type==tensors[0].type\
+                  for t in tensors]):
+        return theano.tensor.opt.make_vector(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
 
 @constructor
