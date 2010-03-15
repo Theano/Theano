@@ -1126,14 +1126,25 @@ def test_local_mul_specialize():
     assert nodes == [T.mul]
 
 
-def test_local_useless_rebroadcast():
-    v1 = T.vector()
-    v2 = T.vector()
-    j = T.join(0, v1, v2)
-    f = theano.function([v1, v2], j)
-    f([1,2], [3,4,5])
-    e = f.maker.env.toposort()
-    assert len([n for n in e if isinstance(n.op, T.Rebroadcast)]) == 0
+class T_Rebroadcast(unittest.TestCase):
+
+    def test_local_useless_rebroadcast(self):
+        v1 = T.vector()
+        v2 = T.vector()
+        j = T.join(0, v1, v2)
+        f = theano.function([v1, v2], j)
+        f([1,2], [3,4,5])
+        e = f.maker.env.toposort()
+        assert len([n for n in e if isinstance(n.op, T.Rebroadcast)]) == 0
+
+    def test_rebroadcast_rebroadcast(self):
+        m = T.matrix()
+        s = T.addbroadcast(m, 0, 1)
+        v = T.unbroadcast(s, 1)
+        f = theano.function([m], v)
+        f([[76]])
+        e = f.maker.env.toposort()
+        assert len([n for n in e if isinstance]) == 1
 
 if __name__ == '__main__':
 #    unittest.main()

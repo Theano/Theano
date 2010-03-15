@@ -711,6 +711,35 @@ def local_useless_rebroadcast(node):
         if numpy.all(x.broadcastable == node.outputs[0].broadcastable):
             return [x]
 
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Rebroadcast])
+def local_rebroadcast_lift(node):
+    """
+    "Lifts Rebroadcast through unary Elemwise operations,
+    and merges consecutive Rebroadcasts.
+
+    Rebroadcast(Elemwise(x)) => Elemwise(Rebroadcast(x))
+    Rebroadcast(Rebroadcast(x)) => Rebroadcast(x)
+    """
+    op = node.op
+    if not isinstance(op, T.Rebroadcast):
+        return False
+
+    input = node.inputs[0]
+    inode = input.owner
+    if inode and isinstance(inode.op, Elemwise) and len(inode.inputs) == 1:
+        if len(input.clients)==1:
+            rval = inode.op.make_node(T.Rebroadcast(*op.axis.items())(inode.inputs[0])).outputs
+            return rval
+    if inode and isinstance(inode.op, T.Rebroadcast):
+        # the "axis" specification in the outer Rebroadcast overrides
+        # the axis of the inner one
+        axis = inode.op.axis.copy()
+        axis.update(op.axis)
+        iinput = inode.inputs[0]
+        rval = [T.Rebroadcast(*axis.items())(iinput)]
+        return rval
 
 
 ##################
