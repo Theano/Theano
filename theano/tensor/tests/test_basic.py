@@ -952,6 +952,20 @@ class T_Join_and_Split(unittest.TestCase):
         want = numpy.array([1, 2, 3])
         self.failUnless((eval_outputs([s]) == want).all())
 
+    def test_stack_scalar_make_vector(self):
+        '''Test that calling stack() on scalars instantiates MakeVector,
+        not Join.'''
+        a = tensor.scalar('a')
+        b = tensor.scalar('b')
+        s = stack(a, b, a, b)
+        f = function([a,b], s)
+        val = f(1,2)
+        print val
+        self.failUnless(numpy.all(val == [1,2,1,2]))
+        e = f.maker.env.toposort()
+        assert len([n for n in e if n.op == opt.make_vector]) > 0
+        assert len([n for n in e if isinstance(n, Join)]) == 0
+
     def test_join_vector(self):
         a = as_tensor_variable(numpy.array([1, 2, 3]))
         b = as_tensor_variable(numpy.array([7, 8, 9]))
