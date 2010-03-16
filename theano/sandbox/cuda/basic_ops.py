@@ -42,8 +42,7 @@ class HostFromGpu(Op):
     def perform(self, node, (x,), (z,)):
         z[0] = numpy.asarray(x)
     def grad(self, inputs, (gz,)):
-        return gz,
-        #return [GpuFromHost()(gz)]
+        return [gpu_from_host(gz)]
     def infer_shape(self, node, xshp):
         return xshp
 host_from_gpu = HostFromGpu()
@@ -62,8 +61,7 @@ class GpuFromHost(Op):
     def perform(self, node, (x,), (z,)):
         z[0] = type_support_filter(theano._asarray(x, dtype='float32'), tuple([0]*x.ndim), 0, z[0])
     def grad(self, inputs, (gz,)):
-        return gz,
-        #return [HostFromGpu()(gz)]
+        return [host_from_gpu(gz)]
     def infer_shape(self, node, xshp):
         return xshp
 gpu_from_host = GpuFromHost()
