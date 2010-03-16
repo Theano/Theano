@@ -1,6 +1,6 @@
 """Ops and optimizations for using BLAS function calls to evaluate linear algebra expressions"""
 
-import sys, traceback, logging, copy
+import sys, traceback, logging, copy, os
 import numpy
 import numpy.distutils
 from theano.configparser import config, AddConfigVar, StrParam
@@ -18,6 +18,14 @@ from theano import compile  #to register the optimizer built by this file
 
 from theano.tensor.blas_headers import cblas_header_text, blas_header_text
 
+_logger = logging.getLogger('theano.tensor.blas')
+_logger.setLevel(logging.WARN)
+def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
+def info(*msg): _logger.info(' '.join(str(m) for m in msg))
+def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
+def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
+def error(*msg): _logger.error(' '.join(str(m) for m in msg))
+
 def default_blas_ldflags():
     try:
         return ' '.join(
@@ -33,14 +41,6 @@ AddConfigVar('blas.ldflags',
         "lib[s] to include for [Fortran] level-3 blas implementation",
         StrParam(default_blas_ldflags()))
 
-_logger = logging.getLogger('theano.tensor.blas')
-_logger.setLevel(logging.WARN)
-def debug(*msg): _logger.debug(' '.join(str(m) for m in msg))
-def info(*msg): _logger.info(' '.join(str(m) for m in msg))
-def warn(*msg): _logger.warn(' '.join(str(m) for m in msg))
-def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
-def error(*msg): _logger.error(' '.join(str(m) for m in msg))
-
 @utils.memoize
 def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
     """Return a list of libraries against which an Op's object file should be
@@ -49,6 +49,16 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
     Default: ['blas'], but configuration variable config.blas.ldflags overrides this.
     """
     rval = []
+    if libs_dir:
+        found_dyn=False
+        dirs = [x[2:] for x in config.blas.ldflags.split() if x.startswith('-L')]
+        for d in dirs:
+            for f in os.listdir(d):
+                if f.endswith('.so') or f.endswith('.dylib') or f.endswith('.dll'):
+                    found_dyn=True
+        if not found_dyn and dirs:
+            warning("We did not found a dynamic library into the library_dir used by the blas of numpy. If you use ATLAS, make sure to compile it with dynamics library.")
+            
     for t in config.blas.ldflags.split():
         try:
             t0, t1, t2 = t[0:3]
