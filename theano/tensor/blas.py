@@ -23,8 +23,9 @@ def default_blas_ldflags():
         return ' '.join(
 			#TODO: the Gemm op below should separate the -L and -l arguments into the two callbacks that CLinker uses for that stuff.
                         # for now, we just pass the whole ldflags as the -l options part.
-			#['-L%s'%l for l in numpy.distutils.__config__.blas_opt_info['library_dirs']] +
-			['-l%s'%l for l in numpy.distutils.__config__.blas_opt_info['libraries']])
+			['-L%s'%l for l in numpy.distutils.__config__.blas_opt_info['library_dirs']] +
+			['-l%s'%l for l in numpy.distutils.__config__.blas_opt_info['libraries']] +
+			['-I%s'%l for l in numpy.distutils.__config__.blas_opt_info['include_dirs']])
     except KeyError:
         return "-lblas"
 
@@ -41,7 +42,7 @@ def warning(*msg): _logger.warning(' '.join(str(m) for m in msg))
 def error(*msg): _logger.error(' '.join(str(m) for m in msg))
 
 @utils.memoize
-def ldflags(libs=True, flags=False):
+def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
     """Return a list of libraries against which an Op's object file should be
     linked to benefit from a BLAS implementation.
     
@@ -54,15 +55,19 @@ def ldflags(libs=True, flags=False):
             assert t0 == '-'
         except:
             raise ValueError('invalid token in config.blas.ldflags', t)
-        if t1 == 'L':
-            raise NotImplementedError('library dir not allowed in config.blas.ldflags', t)
+        if libs_dir and t1 == 'L':
+            rval.append(t[2:])
+        elif include_dir and t1 == 'I':
+            rval.append(t[2:])
         elif libs and t1=='l': # example -lmkl
             # we would like to issue a warning if the option refers to a static lib, 
             # but it isn't obvious at this point whether the lib is static because the lib
             # suffix is not part of the token.
             rval.append(t[2:])
-        elif flags and t1!='l': # example -openmp
+        elif flags and t1 not in ['L','I','l']: # example -openmp
             rval.append(t)
+        elif flags and t1 == 'L':
+            rval.append('-Xlinker,-rpath,'+t[2:])
     #print "blas linking against", rval
     return rval
 
@@ -99,6 +104,12 @@ class GemmRelated(Op):
     def c_compile_args(self):
         return ldflags(libs=False, flags=True)
 
+    def c_lib_dirs(self):
+        return ldflags(libs=False, libs_dir=True)
+    
+    def c_header_dirs(self):
+        return ldflags(libs=False, include_dir=True)
+        
     declare_NS = """
         int unit = 0;
 
