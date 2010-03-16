@@ -1814,6 +1814,14 @@ def test_reshape():
     utt.verify_grad(just_vals, [a_val])
 
 
+def test_make_column_matrix_broadcastable():
+    # The goal of the operation made by `b` is to ensure the second dimension
+    # of the column matrix is broadcastable.
+    a = dmatrix()
+    b = a.reshape((a.shape[0], )).dimshuffle(0, 'x')
+    f = function([a], b)
+    assert (f(numpy.zeros((3, 1))) + numpy.ones(2) == numpy.ones((3, 2))).all()
+
 def test_flatten_outdimNone():
     """ Flatten always returns a copy of the array. There is no danger with in-place
     operations and thus no need to test it."""
