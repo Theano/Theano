@@ -52,11 +52,11 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
     if libs_dir:
         found_dyn=False
         dirs = [x[2:] for x in config.blas.ldflags.split() if x.startswith('-L')]
-        libs = ldflags()
+        l = ldflags()
         for d in dirs:
             for f in os.listdir(d):
                 if f.endswith('.so') or f.endswith('.dylib') or f.endswith('.dll'):
-                    if any([f.find(l)>=0 for l in libs]):
+                    if any([f.find(l)>=0 for l in l]):
                         found_dyn=True
         if not found_dyn and dirs:
             warning("We did not found a dynamic library into the library_dir of the library we use for blas. If you use ATLAS, make sure to compile it with dynamics library.")
