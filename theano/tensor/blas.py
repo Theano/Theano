@@ -78,7 +78,7 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
             rval.append(t)
         elif flags and t1 == 'L':
             #to find it when we load the compiled op if the env of the used is not well configured.
-            rval.append('-Xlinker,-rpath,'+t[2:])
+            rval.append('-Wl,-rpath,'+t[2:])
     return rval
 
 class GemmRelated(Op):
