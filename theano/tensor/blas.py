@@ -32,8 +32,8 @@ def default_blas_ldflags():
 			#TODO: the Gemm op below should separate the -L and -l arguments into the two callbacks that CLinker uses for that stuff.
                         # for now, we just pass the whole ldflags as the -l options part.
 			['-L%s'%l for l in numpy.distutils.__config__.blas_opt_info['library_dirs']] +
-			['-l%s'%l for l in numpy.distutils.__config__.blas_opt_info['libraries']] +
-			['-I%s'%l for l in numpy.distutils.__config__.blas_opt_info['include_dirs']])
+			['-l%s'%l for l in numpy.distutils.__config__.blas_opt_info['libraries']])
+#			['-I%s'%l for l in numpy.distutils.__config__.blas_opt_info['include_dirs']])
     except KeyError:
         return "-lblas"
 
@@ -52,12 +52,14 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
     if libs_dir:
         found_dyn=False
         dirs = [x[2:] for x in config.blas.ldflags.split() if x.startswith('-L')]
+        libs = ldflags()
         for d in dirs:
             for f in os.listdir(d):
                 if f.endswith('.so') or f.endswith('.dylib') or f.endswith('.dll'):
-                    found_dyn=True
+                    if any([f.find(l)>=0 for l in libs]):
+                        found_dyn=True
         if not found_dyn and dirs:
-            warning("We did not found a dynamic library into the library_dir used by the blas of numpy. If you use ATLAS, make sure to compile it with dynamics library.")
+            warning("We did not found a dynamic library into the library_dir of the library we use for blas. If you use ATLAS, make sure to compile it with dynamics library.")
             
     for t in config.blas.ldflags.split():
         try:
@@ -68,6 +70,7 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
         if libs_dir and t1 == 'L':
             rval.append(t[2:])
         elif include_dir and t1 == 'I':
+            raise ValueError('Include dirs are not used for blas. We disable this as this can hide other headers and this is not wanted.', t)
             rval.append(t[2:])
         elif libs and t1=='l': # example -lmkl
             rval.append(t[2:])
