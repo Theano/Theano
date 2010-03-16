@@ -15,17 +15,16 @@ AddConfigVar('device',
         EnumStr('cpu', 'gpu',*['gpu%i'%i for i in range(4)])
         )
 
-# keep the default mode.optimizer==config.optimizer and mode.linker==config.linker!
 AddConfigVar('mode',
         "Default compilation mode",
-        EnumStr('FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE', 'Mode', 'ProfileMode', 'DebugMode'))
+        EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'))
 
-#Keep the default linker the same as the one for the mode
+#Keep the default linker the same as the one for the mode FAST_RUN
 AddConfigVar('linker',
         "Default linker. If not None, will use this linker with the Mode object(not ProfileMode or DebugMode)",
         EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py'))
 
-#Keep the default optimizer the same as the one for the mode
+#Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('optimizer',
         "Default optimizer. If not None, will use this linker with the Mode object(not ProfileMode or DebugMode)",
         EnumStr('fast_run', 'merge', 'fast_compile', 'None'))
