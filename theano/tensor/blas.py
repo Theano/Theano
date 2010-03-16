@@ -70,15 +70,12 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
         elif include_dir and t1 == 'I':
             rval.append(t[2:])
         elif libs and t1=='l': # example -lmkl
-            # we would like to issue a warning if the option refers to a static lib, 
-            # but it isn't obvious at this point whether the lib is static because the lib
-            # suffix is not part of the token.
             rval.append(t[2:])
         elif flags and t1 not in ['L','I','l']: # example -openmp
             rval.append(t)
         elif flags and t1 == 'L':
+            #to find it when we load the compiled op if the env of the used is not well configured.
             rval.append('-Xlinker,-rpath,'+t[2:])
-    #print "blas linking against", rval
     return rval
 
 class GemmRelated(Op):
