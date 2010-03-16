@@ -89,19 +89,18 @@ In csh:
 Troubleshooting: Make sure you have a BLAS library
 -----------------------------------------------------
 
-Their is many way to configure blas for theano. This is done with the 
-theano flags blas.ldflags (:ref:`libdoc_config`). The default is to use
-the blas installation information in numpy: 
-``numpy.distutils.__config__.show``. You can tell theano to use a different
-version if you want faster speed in case you didn't compile numpy with a 
-faster version of blas or if numpy was compiled with a static library of blas
-as this is not nupported in theano.
+There are many ways to configure BLAS for Theano. This is done with the 
+Theano flags blas.ldflags (:ref:`libdoc_config`). The default is to use
+the blas installation information in numpy, accessible via ``numpy.distutils.__config__.show()``.
+You can tell theano to use a different
+version of BLAS, in case you didn't compile numpy with a fast BLAS or if numpy was compiled with a 
+static library of blas (the latter is not nupported in theano).
 
 The short way to configure the theano flags blas.ldflags is by setting the
-env variable THEANO_FLAGS to blas.ldflags=XXX
-(in bash export THEANO_FLAGS=blas.ldflags=XXX)
+environmental variable ``THEANO_FLAGS`` to ``blas.ldflags=XXX``
+(in bash ``export THEANO_FLAGS=blas.ldflags=XXX``)
 
-The ${HOME}/.theanorc file is the simplest way to set a relatively permanent
+The ``${HOME}/.theanorc`` file is the simplest way to set a relatively permanent
 option like this one.  Add a ``[blas]`` section with an ``ldflags``
 entry like this:
 
@@ -114,38 +113,20 @@ entry like this:
 
     # other stuff can go here
 
-For more information on the formatting of ~/.theanorc and the configuration options that you can put there, 
+For more information on the formatting of ``~/.theanorc`` and the configuration options that you can put there, 
 see :ref:`libdoc_config`.
 
-Here are some different way to configure it:
+Here are some different way to configure BLAS:
 
-0) Do nothing and use the default config. It don't work in the case numpy was
-compiled with a static library. ATLAS is compiled by default only as a static lib.
+0) Do nothing and use the default config, which is to link against the same BLAS that numpy was built with. This doesn't work in the case numpy was compiled with a static library (e.g. ATLAS is compiled by default only as a static lib). 
 
-1) The simplest case is too disable the usage of the blas library. In that
-case, we call numpy. If numpy is linked with a fast
-implementation of blas, it will be faster in theano, but not as fast if 
-linked directly in theano in some case(for gemm operation). To use numpy,
-put the value of blas.ldflags to the empty string
-(ex: export THEANO_FLAGS=blas.ldflags=).
+1) Disable the usage of BLAS and fall back on numpy for dot products. To do this, set the value of blas.ldflags as the empty string (ex: ``export THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your theano code performs, this might slow some things down (vs. linking with BLAS directly).
 
-2) You can install the default version of blas if the numpy version don't work. 
-If you have root or sudo access in fedora you can do 'sudo yum install blas blas-devel'.
-Under Ubuntu(Debian too?) 'sudo apt-get install libblas-dev'. Then put the
-theano flags blas.ldflags=-lblas. Not that the default version of blas is not uptimized.
-Using an optimized version that be up to 10x faster in the blas function that we use.
+2) You can install the default (reference) version of BLAS if the numpy version (which theano links against) doesn't work. If you have root or sudo access in fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian ``sudo apt-get install libblas-dev``. Then put the theano flags ``blas.ldflags=-lblas``. Not that the default version of blas is not optimized. Using an optimized version can give up to 10x speedups in the BLAS functions that we use.
 
-3) Install the ATLAS library. ATLAS is an open source optimized version of BLAS.
-You can install precompiled version on most OS, but you can compile it to have
-a faster version(I have see speed up of up to 3x, especialy on more recent computer again the precompiled one).
-in Fedora 'sudo yum install blas blas-devel'. Under Ubuntu, 
-'sudo apt-get install libblas-dev. Then use the theano flags 
-"blas.ldflags=-lblas". Then put the theano flags 'blas.ldflags' to '-lf77blas -latlas -lgfortran'
-should do it for you. But the flags value can change for each os.
+3) Install the ATLAS library. ATLAS is an open source optimized version of BLAS. You can install a precompiled version on most OSes, but if you're willing to invest the time, you can compile it to have a faster version (we have seen speed-ups of up to 3x, especialy on more recent computers, against the precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu, ``sudo apt-get install libatlas-base-dev libatlas-base`` or ``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that these flags are sometimes OS dependent.
 
-
-4) Use a faster version like MKL, GOTO, ... You are on your own to install it. See the
-doc of that software and put the theano flags blas.ldflags correctly.
+4) Use a faster version like MKL, GOTO, ... You are on your own to install it. See the doc of that software and set the theano flags ``blas.ldflags`` correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or ``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc -lpthread``).
 
 .. note::
 
