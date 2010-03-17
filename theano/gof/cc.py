@@ -1117,7 +1117,14 @@ class OpWiseCLinker(link.LocalLinker):
                 debug('Compiling node %i of graph' % node_idx)
                 try:
                     e = Env(*graph.clone(node.inputs, node.outputs))
-                    cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling])
+                    if self.allow_gc:
+                        # if we allow garbage collection of intermediate nodes
+                        # we must forbid this C implementatio from cacheing its own
+                        # reference to its output
+                        node_no_recycling = e.outputs
+                    else:
+                        node_no_recycling = [r for r, r2 in zip(e.outputs, node.outputs) if r2 in no_recycling]
+                    cl = CLinker().accept(e, node_no_recycling)
 
                     debug('Trying CLinker.make_thunk')
                     thunk, node_input_filters, node_output_filters = cl.make_thunk(
