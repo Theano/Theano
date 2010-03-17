@@ -56,7 +56,7 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
         for d in dirs:
             for f in os.listdir(d):
                 if f.endswith('.so') or f.endswith('.dylib') or f.endswith('.dll'):
-                    if any([f.find(l)>=0 for l in l]):
+                    if any([f.find(ll)>=0 for ll in l]):
                         found_dyn=True
         if not found_dyn and dirs:
             warning("We did not found a dynamic library into the library_dir of the library we use for blas. If you use ATLAS, make sure to compile it with dynamics library.")
@@ -507,7 +507,7 @@ class Gemm(GemmRelated):
         """
 
     def c_code(self, node, name, (_z, _a, _x, _y, _b), (_zout, ), sub): #DEBUG
-        if len(self.c_libraries())<=0:
+        if not config.blas.ldflags:
             return super(Gemm, self).c_code(node, name, (_z, _a, _x, _y, _b), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
