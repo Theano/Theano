@@ -559,7 +559,7 @@ class T_Scan(unittest.TestCase):
 
     def test_map(self):
         v = theano.tensor.vector()
-        abs_expr,abs_updates = theano.map(lambda x: abs(x), v,[],n_steps =0,
+        abs_expr,abs_updates = theano.map(lambda x: abs(x), v,[],
                 truncate_gradient = -1, go_backwards = False)
         f = theano.function([v],abs_expr,updates = abs_updates)
 
@@ -597,6 +597,17 @@ class T_Scan(unittest.TestCase):
         
         theano_values = f2(v_u,v_x0, W_in, W)
         assert numpy.allclose( theano_values , v_out) 
+
+    def test_reduce(self):
+        v = theano.tensor.vector()
+        s = theano.tensor.scalar()
+        result, updates = theano.reduce(lambda x,y: x+y, v,s)
+        
+        f = theano.function([v,s], result, updates = updates)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_v = rng.uniform( size = (5,), low = -5., high = 5.)
+        assert ( numpy.sum(v_v) == f(v_v, 0.) ) 
+
 
 
 

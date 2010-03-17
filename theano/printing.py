@@ -428,7 +428,6 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
 
     for node_idx,node in enumerate(topo):
         astr=apply_name(node)
-
         g.add_node(pd.Node(astr,shape='box'))
         for id,var in enumerate(node.inputs):
             varstr=var_name(var)
@@ -461,4 +460,91 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     g.write_png(outfile, prog='dot')
 
     print 'The output file is available at',outfile
+
+
+
+
+def pydot_var(vars, outfile=os.path.join(config.compiledir,'theano.pydotprint.png'), depth = -1):
+    ''' Identical to pydotprint just that it starts from a variable instead
+    of a compiled function. Could be useful ? '''
+    try:
+        import pydot as pd
+    except:
+        print "failed to import pydot. Yous must install pydot for this function to work."
+        return
+    g=pd.Dot()
+    my_list = {}
+    if type(vars) not in (list,tuple):
+        vars = [vars]
+    var_str = {}
+    def var_name(var):
+        if var in var_str:
+            return var_str[var]
+
+        if var.name is not None:
+            varstr = var.name
+        elif isinstance(var,gof.Constant):
+            dstr = str(var.data)
+            if '\n' in dstr:
+                dstr = dstr[:dstr.index('\n')]
+            if len(dstr) > 30:
+                dstr = dstr[:27]+'...'
+            varstr = '%s [%s]'% (dstr, str(var.type))
+        else:
+            #a var id is needed as otherwise var with the same type will be merged in the graph.
+            varstr = str(var.type)
+        varstr += ' ' + str(len(var_str))
+        var_str[var]=varstr
+
+        return varstr
+    def apply_name(node):
+        return str(node.op).replace(':','_')
+
+    def plot_apply(app, d):
+        if d == 0:
+            return
+        if app in my_list:
+            return
+        astr = apply_name(app) + '_' + str(len(my_list.keys()))
+        my_list[app] = astr
+        g.add_node(pd.Node(astr, shape='box'))
+        for i,nd  in enumerate(app.inputs):
+            if nd not in my_list:
+                varastr = var_name(nd) + '_' + str(len(my_list.keys()))
+                my_list[nd] = varastr
+                g.add_node(pd.Node(varastr))
+            else:
+                varastr = my_list[nd]
+            label = ''
+            if len(app.inputs)>1:
+                label = str(i)
+            g.add_edge(pd.Edge(varastr, astr, label = label))
+
+        for i,nd in enumerate(app.outputs):
+            if nd not in my_list:
+                varastr = var_name(nd) + '_' + str(len(my_list.keys()))
+                my_list[nd] = varastr
+                g.add_node(pd.Node(varastr))
+            else:
+                varastr = my_list[nd]
+            label = ''
+            if len(app.outputs) > 1:
+                label = str(i)
+            g.add_edge(pd.Edge(astr, varastr,label = label))
+        for nd in app.inputs:
+            if nd.owner:
+                plot_apply(nd.owner, d-1)
+
+
+    for nd in vars:
+        if nd.owner:
+            plot_apply(nd.owner, depth)
+
+    g.write_png(outfile, prog='dot')
+
+    print 'The output file is available at',outfile
+
+
+
+
 

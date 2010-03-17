@@ -67,15 +67,115 @@ def hash_listsDictsTuples(x):
 ###################################
 ## Implement specific function calls : map, reduce, generate
 
-def map(fn, sequences, non_sequences = [], n_steps =0,
+def map(fn, sequences, non_sequences = [],
         truncate_gradient = -1, go_backwards = False,
         mode = 'FAST_RUN'):
+    ''' Similar behaviour as python map 
+    
+    :param fn: the function to be applied over the elements in 
+               sequences ( see scan `fn` for more info)
+
+    :param sequences: list of arrays over which map should 
+                      iterate (see scan for more info)
+
+    :param non_sequences: list of other arguments of `fn` over which 
+                          map shouldn't iterate (see scan for more info)
+
+    :param truncate_gradient: see scan for more info
+
+    :param go_backwards: if map should also inverse the order in the arrays
+                         see scan for more info
+
+    :param mode: see scan 
+
+    '''
     return scan(fn, sequences= sequences, outputs_info = [],non_sequences= non_sequences,
                 truncate_gradient= truncate_gradient,
                 go_backwards= go_backwards, mode = mode)
 
 
+def reduce(fn, sequences, outputs_info, non_sequences = [], go_backwards = False, mode = 'FAST_RUN'):
+    ''' Similar behaviour as python reduce 
+    
+    :param fn: the function to be applied over the elements in 
+               sequences ( see scan `fn` for more info)
 
+    :param outputs_info: information about outputs (mainly the initial state
+                        of each )
+    :param sequences: list of arrays over which reduce should 
+                      iterate (see scan for more info)
+
+    :param non_sequences: list of other arguments of `fn` over which 
+                          reduce shouldn't iterate (see scan for more info)
+
+    :param go_backwards: if reduce should also inverse the order in the arrays
+                         see scan for more info
+
+    :param mode: see scan 
+    '''
+    # Specify that you only want the last value of the output
+    if type(outputs_info) not in (list,tuple):
+        outs_info = [outputs_info]
+    else:
+        outs_info = [outputs_info]
+
+    for i,out_info in enumerate(outs_info):
+        if out_info:
+            if not type(out_info) == dict:
+                outs_info[i] = dict(initial = out_info, taps = [-1], store_steps = 1)
+            else:
+                # we force to use only the last step
+                # and store only the alst step
+                outs_info[i]['taps'] = [-1]
+                outs_info[i]['store_steps'] = 1
+                # NOTE : Maybe some errors can be detected here were we can give
+                #        more meaningfull error messages than in scan  RP
+    return scan(fn, sequences = sequences, outputs_info = outs_info, 
+            non_sequences = non_sequences, go_backwards = go_backwards,
+            truncate_gradient = 1, mode = mode)
+
+def foldl(fn, sequences, outputs_info, non_sequences = [], mode = 'FAST_RUN'):
+    ''' Similar behaviour as haskell foldl 
+
+    :param fn: the function to be applied over the elements in 
+               sequences ( see scan `fn` for more info)
+
+    :param sequences: list of arrays over which foldl should 
+                      iterate (see scan for more info)
+
+    :param outputs_info: information about outputs (mainly the initial state
+                        of each )
+
+    :param non_sequences: list of other arguments of `fn` over which 
+                          foldl shouldn't iterate (see scan for more info)
+
+    :param mode: see scan 
+    '''
+    return reduce(fn = fn, sequences = sequences, outputs_info = outputs_info,
+            non_sequences= non_sequences, go_backwards = False, mode = mode)
+ 
+def foldr(fn, sequences, outputs_info, non_sequences = [], mode = 'FAST_RUN'):
+    ''' Similar behaviour as haskell foldr 
+
+    :param fn: the function to be applied over the elements in 
+               sequences ( see scan `fn` for more info)
+
+    :param sequences: list of arrays over which foldr should 
+                      iterate (see scan for more info)
+
+    :param outputs_info: information about outputs (mainly the initial state
+                        of each )
+
+    :param non_sequences: list of other arguments of `fn` over which 
+                          foldr shouldn't iterate (see scan for more info)
+
+    :param truncate_gradient: see scan for more info
+
+    :param mode: see scan 
+    '''
+    return reduce(fn = fn,sequences = sequences, outputs_info = outputs_info, 
+            non_sequences = non_sequences, go_backwards = True, mode = mode)
+ 
 # CONSIDER ALTERNATE CALLING CONVENTIONS:
 # simple:
 #    scan(fn, [a,b], [c])
@@ -423,6 +523,12 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     fromIdx = dummy_notshared_ins + dummy_notshared_init_outs
 
     store_steps = [ 0 for i in xrange(n_outs)]
+
+    for i in xrange(n_outs):
+        if outs_info[i].get('store_steps', None):
+            print 'here'
+            store_steps[i] = outs_info[i]['store_steps']
+
     # add shared variable that act as outputs
     #
     n_extended_outs = n_outs
