@@ -117,7 +117,7 @@ def reduce(fn, sequences, outputs_info, non_sequences = [], go_backwards = False
     if type(outputs_info) not in (list,tuple):
         outs_info = [outputs_info]
     else:
-        outs_info = [outputs_info]
+        outs_info = outputs_info
 
     for i,out_info in enumerate(outs_info):
         if out_info:
