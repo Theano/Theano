@@ -146,6 +146,13 @@ class GpuDot22Scalar(Op):
 gpu_dot22scalar = GpuDot22Scalar()
 
 class GpuGemm(Op):
+    """
+    implement the gemm on the gpu.
+
+    ..note: This probably don't work correctly for no_inplace gemm.
+            Need to check al least refcount.
+    
+    """
     destroy_map = {0:[0]}
     def __str__(self):
         return 'GpuGemm'
