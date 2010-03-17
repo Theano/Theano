@@ -276,7 +276,9 @@ def test_bench_elemwise(n_iter=1000, **kwargs):
         theano.sandbox.cuda.use()
 
     debug=False
-    if theano.compile.default_mode=="DEBUG_MODE": debug=True
+    if isinstance(theano.compile.mode.get_default_mode(),
+            theano.compile.debugmode.DebugMode):
+        debug=True
 
     # get symbolic train set
     s_lr = theano.tensor.fscalar()

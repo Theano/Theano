@@ -2413,10 +2413,6 @@ def test_autocast():
         ac.__exit__()
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 2 and sys.argv[1] == 'OPT':
-        default_mode = compile.Mode(linker = 'c&py',
-                                    optimizer = 'fast_run')
-        sys.argv[1:] = sys.argv[2:]
     if 1:
         unittest.main()
     else:

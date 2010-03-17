@@ -232,32 +232,36 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN_NOGC':FAST_RUN_NOGC,
                     'SANITY_CHECK': SANITY_CHECK}
 
+instanciated_default_mode=None
 def get_mode(string):
     if string is None:
-        return get_default_mode()
-    if not isinstance(string, str): return string #it is hopefully already a mode...
-    if not predefined_modes.has_key(string):
-        raise Exception("No predefixed mode exist for string: %s"%string)
-    return predefined_modes[string]
+        string = config.mode
 
-instanciated_default_mode=None
-def get_default_mode():
+    if not isinstance(string, str): return string #it is hopefully already a mode...
+
     global instanciated_default_mode
-    if config.mode in ['Mode','ProfileMode','DebugMode']:
+    if string in ['Mode','ProfileMode','DebugMode']:
         if instanciated_default_mode:
             return instanciated_default_mode
         #need to import later to break circular dependency.
         from profilemode import ProfileMode,prof_mode_instance_to_print
         from debugmode import DebugMode
             
-        instanciated_default_mode = eval(config.mode+'(linker=config.linker, optimizer=config.optimizer)')
+        instanciated_default_mode = eval(string+'(linker=config.linker, optimizer=config.optimizer)')
         #must tell python to print the summary at the end.
-        if config.mode == 'ProfileMode':
+        if string == 'ProfileMode':
             prof_mode_instance_to_print.append(instanciated_default_mode)
         return instanciated_default_mode
-    return get_mode(config.mode)
 
-default_mode = config.mode
+    if not predefined_modes.has_key(string):
+        raise Exception("No predefined mode exist for string: %s"%string)
+    return predefined_modes[string]
+
+def get_default_mode():
+    return get_mode(None)
+
+# Removed: use config.mode instead.
+#default_mode = config.mode
 
 def register_mode(name, mode):
     """Add a `Mode` which can be referred to by `name` in `function`."""
