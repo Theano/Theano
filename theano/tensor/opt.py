@@ -375,7 +375,7 @@ class ShapeFeature(object):
         if s_i == 1:
             # don't make the optimizer merge a zillion ones together
             return self.lscalar_one
-        if type(s_i) is int:
+        if type(s_i) is int or isinstance(s_i, numpy.integer):
             # this shape is a constant
             assert s_i >= 0
             return T.constant(s_i, dtype='int64')
@@ -573,7 +573,7 @@ def local_subtensor_make_vector(node):
                 # The idx is a Scalar, ie a Type. This means the actual index 
                 # is contained in node.inputs[1]
                 old_idx, idx = idx, node.inputs[1]
-                assert isinstance(idx, old_idx)
+                assert idx.type == old_idx
 
             if isinstance(idx, (int, numpy.integer)):
                 return [x.owner.inputs[idx]]
