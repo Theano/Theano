@@ -53,7 +53,11 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
       (batch size, nb filters, output row, output col)
     """
     if image_shape and filter_shape:
+      try:
         assert image_shape[1]==filter_shape[1]
+      except:
+        print 'image ', image_shape, ' filters ', filter_shape
+        raise
 
     if filter_shape is not None:
         nkern = filter_shape[0]
@@ -149,7 +153,10 @@ def conv2d_offset(input, filters, image_shape=None, filter_shape=None,
         outputs.append(out)
 
     # Join the outputs on the leading axis.
-    output = tensor.join(1, *outputs)
+    if len(outputs) > 1:
+        output = tensor.join(1, *outputs)
+    else:
+        output = outputs[0] 
 
     outshp = ConvOp.getOutputShape(sub_image_shape[2:], filter_shape[2:], subsample, border_mode)
 
@@ -475,6 +482,23 @@ class ConvOp(Op):
                                    _kerns.broadcastable[0], False, False]); 
 
         return gof.Apply(self, [_inputs, _kerns], [output])
+
+    def infer_shape(self, node, input_shapes):
+        imshp = input_shapes[0]
+        kshp = input_shapes[1]
+
+        batch_size = imshp[0]
+        fmo = kshp[0]
+
+        if self.imshp is not None and self.kshp is not None:
+            fmshp = ConvOp.getOutputShape(self.imshp[1:], self.kshp, (self.dx,self.dy), self.out_mode)
+            outshp = (batch_size,fmo) + tuple(fmshp)
+            return [outshp] 
+        else:
+            # Haven't implemented this case. imshp and kshp may be symbollic
+            # and ConvOp.getOutputShape doesn't handle this. In this case
+            # we simply let the default function do its work.
+            return node.env.shape_feature.default_infer_shape(node, ishapes)
 
     def perform(self,node, (img2d, filtersflipped), (z,)):
         """
