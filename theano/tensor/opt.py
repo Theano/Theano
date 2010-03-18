@@ -567,15 +567,15 @@ def local_subtensor_make_vector(node):
             except:
                 #'how can you have multiple indexes into a shape?'
                 raise
-            if isinstance(idx, int):
+            if isinstance(idx, (int, numpy.integer)):
                 return [x.owner.inputs[idx]]
-            elif isinstance(idx, T.TensorVariable):
+            elif isinstance(idx, (T.TensorVariable, T.TensorConstant)):
                 # if it is a constant we can do something with it
                 try:
                     v = get_constant_value(idx)
                     return [x.owner.inputs[v]]
                 except:
-                    pass 
+                    pass
             else:
                 # it is a slice of ints and/or Variables
                 #TODO: check subtensor to see if it can contain constant variables,
