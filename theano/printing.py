@@ -11,13 +11,15 @@ from theano.gof.python25 import any
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
 
-def debugprint(obj, depth=-1, file=None):
+def debugprint(obj, depth=-1, print_type=False, file=None):
     """Print a computation graph to file
 
     :type obj: Variable, Apply, or Function instance
     :param obj: symbolic thing to print
     :type depth: integer
     :param depth: print graph to this depth (-1 for unlimited)
+    :type print_type: boolean
+    :param print_type: wether to print the type of printed objects
     :type file: None, 'str', or file-like object
     :param file: print to this file ('str' means to return a string)
 
@@ -28,6 +30,7 @@ def debugprint(obj, depth=-1, file=None):
     The first part of the text identifies whether it is an input (if a name or type is printed)
     or the output of some Apply (in which case the Op is printed).
     The second part of the text is the memory location of the Variable.
+    If print_type is True, there is a third part, containing the type of the Variable
 
     If a Variable is encountered multiple times in the depth-first search, it is only printed
     recursively the first time.  Later, just the Variable and its memory location are printed.
@@ -51,7 +54,7 @@ def debugprint(obj, depth=-1, file=None):
     elif isinstance(obj, Function):
         results_to_print.extend(obj.maker.env.outputs)
     for r in results_to_print:
-        debugmode.debugprint(r, depth=depth, done=done, file=_file)
+        debugmode.debugprint(r, depth=depth, done=done, print_type=print_type, file=_file)
     if file is _file:
         return file
     elif file=='str':

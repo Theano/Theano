@@ -339,37 +339,43 @@ class InvalidValueError(DebugModeError):
 
 
 
-def debugprint(r, prefix='', depth=-1, done=None, file=sys.stdout):
+def debugprint(r, prefix='', depth=-1, done=None, print_type=False, file=sys.stdout):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
     :param prefix: prefix to each line (typically some number of spaces)
     :param depth: maximum recursion depth (Default -1 for unlimited).
     :param done: set of Apply instances that have already been printed
+    :param print_type: wether to print the Variable type after the other infos
     :param file: file-like object to which to print
-    
+
     """
     if depth==0:
         return
-    #backport    
+
     if done is None:
-      done = set()
-    #done = set() if done is None else done
+        done = set()
+
+    if print_type:
+        type_str = ' <%s>' % r.type
+    else:
+        type_str = ''
+
     if hasattr(r.owner, 'op'):
         # this variable is the output of computation,
         # so just print out the apply
         a = r.owner
         if len(a.outputs) == 1:
-            print >> file, '%s%s [@%i]' % (prefix, a.op, id(r))
+            print >> file, '%s%s [@%i]%s' % (prefix, a.op, id(r), type_str)
         else:
-            print >> file, '%s%s.%i [@%i]' % (prefix, a.op, a.outputs.index(r), id(r))
+            print >> file, '%s%s.%i [@%i]%s' % (prefix, a.op, a.outputs.index(r), id(r), type_str)
         if id(a) not in done:
             done.add(id(a))
             for i in a.inputs:
-                debugprint(i, prefix+' |', depth=depth-1, done=done, file=file)
+                debugprint(i, prefix+' |', depth=depth-1, done=done, print_type=print_type, file=file)
     else:
         #this is a variable
-        print >> file, '%s%s [@%i]' % (prefix, r, id(r))
+        print >> file, '%s%s [@%i]%s' % (prefix, r, id(r), type_str)
 
     return file
 
