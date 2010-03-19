@@ -25,6 +25,13 @@ To learn more, check out:
 
 __docformat__ = "restructuredtext en"
 
+# Set a default logger. It is important to do this before importing some other
+# theano code, since this code may want to log some messages.
+import logging
+logging_default_handler = logging.StreamHandler()
+logging.getLogger("theano").addHandler(logging_default_handler)
+logging.getLogger("theano").setLevel(logging.WARNING)
+
 import configparser, configdefaults
 
 config = configparser.TheanoConfigParser()
@@ -157,14 +164,5 @@ def dot(l, r):
     if rval == NotImplemented:
         raise NotImplementedError("Dot failed for the following reaons:", (e0, e1))
     return rval
-
-
-### 
-#   Set a default logger
-#
-import logging
-logging_default_handler = logging.StreamHandler()
-logging.getLogger("theano").addHandler(logging_default_handler)
-logging.getLogger("theano").setLevel(logging.WARNING)
 
 
