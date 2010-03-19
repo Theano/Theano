@@ -53,7 +53,10 @@ Scan will return a tuple, containing our result (``result``) and a
 dictionary of updates ( empty in this case). Note that the result 
 is not a matrix, but a 3D tensor containing the value of ``A**k`` for 
 each step. We want the last value ( after k steps ) so we compile 
-a function to return just that. 
+a function to return just that. Note that there is an optimization, that 
+at compile time will detect that you are using just the last value of the 
+result and ensure that scan does not store all the intermediate values 
+that are used. So do not worry if A and k are large. 
 
 Multiple outputs, several taps values - Recurrent Neural Network with Scan
 --------------------------------------------------------------------------
@@ -208,5 +211,9 @@ Reference
 
 .. automodule:: theano.scan
 
+.. autofunction:: theano.map
+.. autofunction:: theano.reduce
+.. autofunction:: theano.foldl
+.. autofunction:: theano.foldr
 .. autofunction:: theano.scan
 

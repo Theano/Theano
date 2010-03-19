@@ -606,6 +606,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function([v,s], result, updates = updates)
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_v = rng.uniform( size = (5,), low = -5., high = 5.)
+        print f(v_v,0.)
         assert ( numpy.sum(v_v) == f(v_v, 0.) ) 
 
 
