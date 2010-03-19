@@ -1788,6 +1788,10 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other)
         }
         size *= (unsigned int) CudaNdarray_HOST_DIMS(self)[i];
     }
+    if (0 == size)
+    {
+        return 0; //nothing to copy, we're done.
+    }
     if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other))
     {
         cublasScopy(size, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
