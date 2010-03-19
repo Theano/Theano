@@ -1,14 +1,21 @@
+import os
 from compilelock import get_lock, release_lock
-import sys, os
 from theano import config
 
-try:
-    if os.path.exists(os.path.join(config.compiledir,'cutils_ext.so')):
-        os.remove(os.path.join(config.compiledir,'cutils_ext.so'))
+# TODO These two lines may be removed in the future, when we are 100% sure
+# noone has an old cutils_ext.so lying around anymore.
+if os.path.exists(os.path.join(config.compiledir,'cutils_ext.so')):
+    os.remove(os.path.join(config.compiledir,'cutils_ext.so'))
 
+# Ensure no-one else is currently modifying the content of the compilation
+# directory. This is important to prevent multiple processes from trying to
+# compile the cutils_ext module simultaneously.
+get_lock()
+
+try:
     from cutils_ext.cutils_ext import *
 except ImportError:
-    #try to compile it manually
+    import cmodule
 
     code = """
 #include <Python.h>
@@ -47,19 +54,13 @@ initcutils_ext(void)
 }
 """
 
-    import cmodule
-    import os, time
-    loc=os.path.join(config.compiledir,'cutils_ext')
+    loc = os.path.join(config.compiledir, 'cutils_ext')
     if not os.path.exists(loc):
-        try:
-            os.makedirs(loc)
-        except OSError:
-            # This may happen when running multiple jobs in parallel, if they
-            # attempt to create the same directory simultaneously.
-            time.sleep(5) # May not be needed, but who knows with NFS.
-            if not os.path.exists(loc):
-                # Looks like something else is not working.
-                raise
+        os.mkdir(loc)
 
-    cmodule.gcc_module_compile_str('cutils_ext', code, location = loc)
+    cmodule.gcc_module_compile_str('cutils_ext', code, location=loc)
     from cutils_ext.cutils_ext import *
+
+# Release lock on compilation directory.
+release_lock()
+
