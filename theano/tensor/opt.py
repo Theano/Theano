@@ -610,6 +610,43 @@ def local_alloc_unary(node):
             return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
 
 
+############################
+# Constant Canonicalization
+############################
+
+@register_canonicalize
+@gof.local_optimizer([])
+def local_upcast_elemwise_constant_inputs(node):
+    """This explicitly upcasts constant inputs to elemwise Ops, when those Ops do implicit upcasting anyway.
+
+    Rationale: it helps merge things like (1-x) and (1.0 - x).
+    """
+    if isinstance(node.op, T.Elemwise):
+        scalar_op = node.op.scalar_op
+        #print "aa", scalar_op.output_types_preference
+        if scalar_op.output_types_preference in (T.scal.upgrade_to_float, T.scal.upcast_out):
+            # this is the kind of op that we can screw with the input dtypes by upcasting
+            # explicitly
+            #print "HELLO??"
+            output_dtype = node.outputs[0].type.dtype
+            new_inputs = []
+            for i in node.inputs:
+                if i.type.dtype == output_dtype:
+                    new_inputs.append(i)
+                else:
+                    try:
+                        cval_i = get_constant_value(i)    # works only for scalars I think
+                        new_inputs.append(T.cast(cval_i, output_dtype))
+                    except:
+                        if isinstance(i, T.TensorConstant): #for the case of a non-scalar
+                            new_inputs.append(T.cast(i, output_dtype))
+                        else:
+                            new_inputs.append(i)
+
+            if new_inputs != node.inputs:
+                return [node.op(*new_inputs)]
+    
+
 ##################
 # Subtensor opts #
 ##################
