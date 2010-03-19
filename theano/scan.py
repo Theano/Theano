@@ -1072,7 +1072,7 @@ class ScanSpaceOptimizer(Optimizer):
                 for i,out in enumerate(node.outputs):
                     if op.store_steps[i] == 0 :
                         # if we do not have a range for this output
-                        req_steps = 0
+                        req_steps = numpy.max(numpy.abs(op.outs_taps.get(i,1)))
                         # look at all its clients
                         for cl,_dx in out.clients:
                             if type(cl) == str:
@@ -1091,14 +1091,14 @@ class ScanSpaceOptimizer(Optimizer):
                                     # if it is a tensor, and the first 
                                     # dimension is just -1 
                                     if cl.op.idx_list[0] == -1 :
-                                                req_steps = 1
+                                                req_steps = numpy.max([1, req_steps])
                                     else:
                                         # or a constant that evaluates to 
                                         # -1
                                         try:
                                             idx = opt.get_constant_value(cl.op.idx_list[0])
                                             if idx== -1:
-                                                req_steps = 1
+                                                req_steps = numpy.max([1, req_steps])
                                             else:
                                                 req_steps = 0
                                                 break
