@@ -1754,6 +1754,7 @@ def local_greedy_distributor(node):
     return [rval]
 
 register_canonicalize(local_greedy_distributor)
+register_stabilize(local_greedy_distributor)
 
 
 
@@ -1785,6 +1786,7 @@ def constant_folding(node):
     return msg
 
 register_canonicalize(constant_folding)
+register_stabilize(constant_folding) # because 
 register_specialize(constant_folding)
 
 
