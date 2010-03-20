@@ -636,16 +636,23 @@ class Elemwise(Op):
                 b_dim = None
                 if b: # this is broadcastable
                     b_dim = 1
-                else: # there must be some input that is not broadcastable
+                else: # there must be some input that is not broadcastable in dimension 'dim'
                     for ishp, i in zip(i_shapes,node.inputs):
                         if isinstance(i.type,theano.scalar.Scalar):
                             continue #we skip scalar
                         if not i.type.broadcastable[dim]:
-                            b_dim = ishp[dim]
-                            assert b_dim, 'AA'
-                            break
-                    assert b_dim, 'BB'
+                            # input i is not broadcastable in position dim
+                            # therefore if its shape is known, we can use it
+                            # as the output shape
+                            if ishp[dim]:
+                                b_dim = ishp[dim]
+                                break
+                # b_dim might still be None, if every input's shape was unknown in dimension 'dim'
                 oshp.append(b_dim)
+                # TODO: it would be interesting to return the constraining information that if
+                # one of the inputs shape[dim] is known and another input's shape[dim] is not, 
+                # that we can now assume that the other input's shape[dim] is the same as the
+                # first.
             rval.append(tuple(oshp))
         return rval
 
