@@ -1766,6 +1766,9 @@ class Alloc(gof.Op):
             out[0] = numpy.zeros(sh, dtype=v.dtype)
         out[0][...] = v # broadcast v to fill us up
 
+    def infer_shape(self, node, input_shapes):
+        return [node.inputs[1:]]
+
     def grad(self, inputs, (gout,)):
         return [None for i in inputs]
 
