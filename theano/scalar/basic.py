@@ -848,9 +848,9 @@ class Mod(BinaryScalarOp):
         """
         #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
         t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
-        if t in int_types:
+        if t in int_types or t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64']:
             x_mod_y = "%(x)s %% %(y)s"%locals()
-        elif t in float_types:
+        elif t in float_types or t in ['float32','float64']:
             x_mod_y = "fmod(%(x)s,%(y)s)"%locals()
         else:
             raise NotImplementedError('type not supported', type)

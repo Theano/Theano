@@ -492,7 +492,13 @@ class ConvOp(Op):
         fmo = kshp[0]
 
         if self.imshp is not None and self.kshp is not None:
-            fmshp = ConvOp.getOutputShape(self.imshp[1:], self.kshp, (self.dx,self.dy), self.out_mode)
+            imshp = self.imshp
+            kshp = self.kshp
+            if self.imshp_logical:
+                imshp = self.imshp_logical
+            if self.kshp_logical:
+                kshp = self.kshp_logical
+            fmshp = ConvOp.getOutputShape(imshp[1:], kshp, (self.dx,self.dy), self.out_mode)
             outshp = (batch_size,fmo) + tuple(fmshp)
             return [outshp] 
         else:

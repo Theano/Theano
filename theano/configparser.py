@@ -1,3 +1,10 @@
+#For flag of bool type, we consider the string 'False','false' and '0' as False 
+# and the string 'True', 'true', '1' as true.
+#We alsoaccept the bool type as its corresponding value!
+#Normally numpy consider only the empty string as false, but this give 
+# impression that it work when it do different people expected.
+
+
 import os, StringIO, sys
 import ConfigParser
 import logging
@@ -221,4 +228,18 @@ def IntParam(default, is_valid=None):
 def FloatParam(default, is_valid=None):
     return TypedParam(default, float, is_valid)
 def BoolParam(default, is_valid=None):
-    return TypedParam(default, bool, is_valid)
+#see comment at the beggining of this file.
+    def booltype(s):
+        if s in ['False','false','0', False]:
+            return False
+        elif s in ['True','true','1', True]:
+            return True
+
+    def is_valid_bool(s):
+        if s in ['False', 'false', '0', 'True', 'true', '1', False, True]:
+            return True
+        else: 
+            return False
+    if is_valid is None:
+        is_valid = is_valid_bool
+    return TypedParam(default, booltype, is_valid)

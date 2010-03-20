@@ -1258,7 +1258,7 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
     def __eq__(self, other):
         return (type(self) == type(other)) and (self.val == other.val)
     def __hash__(self):
-        return tensor.hashtype(self) ^ hash(self.val.value)
+        return tensor.hashtype(self) ^ hash(self.val.data)
     def __str__(self):
         return '%s{%s}'%(self.__class__.__name__,self.val)
 

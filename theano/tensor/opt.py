@@ -624,7 +624,7 @@ def local_upcast_elemwise_constant_inputs(node):
     if isinstance(node.op, T.Elemwise):
         scalar_op = node.op.scalar_op
         #print "aa", scalar_op.output_types_preference
-        if scalar_op.output_types_preference in (T.scal.upgrade_to_float, T.scal.upcast_out):
+        if getattr(scalar_op,'output_types_preference',None) in (T.scal.upgrade_to_float, T.scal.upcast_out):
             # this is the kind of op that we can screw with the input dtypes by upcasting
             # explicitly
             #print "HELLO??"
