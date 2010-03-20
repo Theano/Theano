@@ -636,8 +636,12 @@ def local_upcast_elemwise_constant_inputs(node):
                 else:
                     try:
                         cval_i = get_constant_value(i)    # works only for scalars I think
-                        new_inputs.append(T.cast(cval_i, output_dtype))
-                    except:
+                        if 0==sum((not b for b in i.broadcastable)): # I mean all() but this might work in python2.4
+                            new_inputs.append(T.cast(cval_i, output_dtype))
+                        else:
+                            new_inputs.append(T.alloc(T.cast(cval_i, output_dtype),
+                                *[Shape_i(d)(i) for d in xrange(i.ndim)]))
+                    except TypeError:
                         if isinstance(i, T.TensorConstant): #for the case of a non-scalar
                             new_inputs.append(T.cast(i, output_dtype))
                         else:
