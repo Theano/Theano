@@ -75,7 +75,7 @@ def _kmap_hash(a):
 
 # Wrapper type
 
-def as_sparse_variable(x):
+def as_sparse_variable(x, name=None):
     """
     Wrapper around SparseVariable constructor.
     @param x:  A sparse matrix. as_sparse_variable reads dtype and format properties
@@ -94,18 +94,18 @@ def as_sparse_variable(x):
             raise TypeError("Variable type field must be a SparseType.", x, x.type)
         return x
     try:
-        return constant(x)
+        return constant(x, name=name)
     except TypeError:
         raise TypeError("Cannot convert %s to SparseType" % x, type(x))
 
 as_sparse = as_sparse_variable
 
-def constant(x):
+def constant(x, name=None):
     if not isinstance(x, scipy.sparse.spmatrix):
         raise TypeError("sparse.constant must be called on a scipy.sparse.spmatrix")
     try:
         return SparseConstant(SparseType(format = x.format,
-                                     dtype = x.dtype), x.copy())
+                                     dtype = x.dtype), x.copy(),name=name)
     except TypeError:
         raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
