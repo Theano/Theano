@@ -2959,8 +2959,11 @@ def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
         ndim = get_vector_length(newshape)
     op = Reshape(ndim, name)
-    return op(x, newshape)
+    rval = op(x, newshape)
 
+    if  isinstance(newshape, (list, tuple)):
+        rval.tag.shape = newshape
+    return rval
 
 class Flatten(Op):
     """Flattens a tensor to `outdim` dimensions by preserving the leading outdim-1 shape
