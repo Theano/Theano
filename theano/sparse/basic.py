@@ -810,7 +810,7 @@ class StructuredDotCSC(gof.Op):
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
         dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, a_nrows, b], 
-                [tensor.tensor(dtype_out, (False, False))])
+                [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, a_nrows, b), (out,)):
@@ -976,7 +976,7 @@ class StructuredDotCSR(gof.Op):
     def make_node(self, a_val, a_ind, a_ptr, b):
         self.dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
         r = gof.Apply(self, [a_val, a_ind, a_ptr, b], 
-                [tensor.tensor(self.dtype_out, (False, False))])
+                [tensor.tensor(self.dtype_out, (False, b.type.broadcastable[1]))])
         return r
 
     def perform(self, node, (a_val, a_ind, a_ptr, b), (out,)):
