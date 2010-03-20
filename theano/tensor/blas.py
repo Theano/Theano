@@ -4,7 +4,7 @@ import sys, traceback, logging, copy, os
 import numpy
 import numpy.distutils
 from theano.configparser import config, AddConfigVar, StrParam
-from theano.gof import (utils, Op, Apply, view_roots, PatternSub, DestroyHandler, 
+from theano.gof import (utils, Op, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer)
 from theano.printing import pprint, FunctionPrinter
@@ -12,6 +12,8 @@ from theano.compile.mode import optdb
 from theano.gof.python25 import any
 import theano.scalar
 import basic as T
+
+from .tsor_apply import Apply
 
 #NB: this clobbers the builtin 'compile' symbol
 from theano import compile  #to register the optimizer built by this file 

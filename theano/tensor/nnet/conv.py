@@ -9,6 +9,7 @@ import numpy
 import theano
 import theano.tensor as tensor
 from theano import gof, Op, tensor, config
+from theano.tensor.tsor_apply import Apply
 from theano.gof.python25 import any
 import logging
 _logger=logging.getLogger("theano.signal.conv")
@@ -481,7 +482,7 @@ class ConvOp(Op):
                                broadcastable=[_inputs.broadcastable[0],
                                    _kerns.broadcastable[0], False, False]); 
 
-        return gof.Apply(self, [_inputs, _kerns], [output])
+        return Apply(self, [_inputs, _kerns], [output])
 
     def infer_shape(self, node, input_shapes):
         imshp = input_shapes[0]

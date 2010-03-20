@@ -3,13 +3,15 @@ import elemwise_cgen as cgen
 
 import numpy, theano
 from theano import gof
-from theano.gof import Op, Apply
+from theano.gof import Op
 from theano import scalar
 from theano.scalar import Scalar
 from theano import printing
 from theano.printing import pprint
 from theano.gof.python25 import all, any
 from copy import copy, deepcopy
+
+from .tsor_apply import Apply
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -150,6 +152,7 @@ class DimShuffle(Op):
 
         output = TensorType(dtype = input.type.dtype,
                         broadcastable = ob).make_variable()
+
         return Apply(self, [input], [output])
 
     def __eq__(self, other):

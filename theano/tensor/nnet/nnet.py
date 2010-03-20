@@ -2,6 +2,7 @@
 
 :note: TODO: factor this out into a neural-network toolbox.
 """
+import numpy
 
 from theano import gof
 from theano import printing
@@ -9,7 +10,7 @@ from theano.tensor import basic as tensor
 from theano.tensor import elemwise, dmatrix, fmatrix, dvector, fvector
 from theano.tensor import opt
 from theano.compile import optdb
-import numpy
+from theano.tensor.tsor_apply import Apply
 
 from theano.tensor.nnet.sigm import sigmoid, softplus
 
@@ -53,7 +54,7 @@ class SoftmaxWithBias(gof.Op):
             raise ValueError('b must be 1-d tensor of floats')
 
         sm = x.type.make_variable()
-        return gof.Apply(self, [x, b], [sm])
+        return Apply(self, [x, b], [sm])
 
     def perform(self, node, input_storage, output_storage):
         x, b = input_storage
@@ -220,7 +221,7 @@ class SoftmaxGrad(gof.Op):
     def make_node(self, dy, sm, **kwargs):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
-        return gof.Apply(self, [dy, sm], [sm.type.make_variable()])
+        return Apply(self, [dy, sm], [sm.type.make_variable()])
 
     def perform(self, node, input_storage, output_storage):
         dy, sm = input_storage
@@ -322,7 +323,7 @@ class Softmax(gof.Op):
             raise ValueError('x must be 1-d or 2-d tensor of floats')
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
-        return gof.Apply(self, [x], [x.type()])
+        return Apply(self, [x], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
         x, = input_storage
@@ -449,7 +450,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 #        nll = TensorType(x.dtype, y.broadcastable)
         sm = x.type.make_variable()
         am = y_idx.type.make_variable()
-        return gof.Apply(self, [x, b, y_idx], [nll, sm, am])
+        return Apply(self, [x, b, y_idx], [nll, sm, am])
     def perform(self, node, input_storage, output_storage):
         """
         The math, where x is an input vector, and t is a target index:
@@ -627,7 +628,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         y_idx = tensor.as_tensor_variable(y_idx)
-        return gof.Apply(self, [dy, sm, y_idx],[sm.type.make_variable()])
+        return Apply(self, [dy, sm, y_idx],[sm.type.make_variable()])
     def perform(self, node, input_storage, output_storage):
         dy, sm, y_idx = input_storage
         dx = numpy.zeros_like(sm)
@@ -765,7 +766,7 @@ class CrossentropyCategorical1HotGrad(gof.Op):
     def __str__(self):
         return self.__class__.__name__
     def make_node(self, g_y, coding_dist, true_one_of_n):
-        return gof.Apply(self, [g_y, coding_dist, true_one_of_n], [coding_dist.type()])
+        return Apply(self, [g_y, coding_dist, true_one_of_n], [coding_dist.type()])
     def perform(self, node, (g_y, coding_dist, true_one_of_n), (g_coding_strg,)):
         g_coding = numpy.zeros_like(coding_dist)
         for i in xrange(len(g_y)):
@@ -813,7 +814,7 @@ class CrossentropyCategorical1Hot(gof.Op):
                     '(got type: %s instead of: %s)' % (_true_one_of_n.type,
                         tensor.lvector))
 
-        return gof.Apply(self, [_coding_dist, _true_one_of_n],
+        return Apply(self, [_coding_dist, _true_one_of_n],
                 [tensor.Tensor(dtype=_coding_dist.dtype, broadcastable=[False])()])
 
     def perform(self, node, (coding, one_of_n), (y_out,)):
@@ -1270,7 +1271,7 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         if x.type.dtype != y.type.dtype:
             TypeError("the value to prepend don't have the same type as the matrix")
 
-        node = gof.Apply(op=self, inputs=[mat], outputs=[tensor.matrix()])
+        node = Apply(op=self, inputs=[mat], outputs=[tensor.matrix()])
         return node
 
     def perform(self, node, (mat, ), (output, )):
@@ -1311,7 +1312,7 @@ class Prepend_scalar_to_each_row(gof.Op):
         if x.type.dtype != y.type.dtype:
             TypeError("the value to prepend don't have the same type as the matrix")
 
-        node = gof.Apply(op=self, inputs=[val,mat], outputs=[tensor.matrix()])
+        node = Apply(op=self, inputs=[val,mat], outputs=[tensor.matrix()])
         return node
 
     def perform(self, node, (val,mat), (output, )):
