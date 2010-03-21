@@ -793,9 +793,8 @@ class Dot22(GemmRelated):
             raise TypeError(y)
         if y.type.dtype != x.type.dtype:
             raise TypeError('dtype mismatch to Dot22')
-        out_shape = (x.type.shape[0], y.type.shape[1])
         bz = [False, False]
-        outputs = [T.tensor(x.type.dtype, bz, shape=out_shape)]
+        outputs = [T.tensor(x.type.dtype, bz)]
         return Apply(self, [x,y], outputs)
 
     def perform(self, node, (x, y), (z, )):
@@ -904,9 +903,8 @@ class Dot22Scalar(GemmRelated):
             raise TypeError(scalar)
         if y.type.dtype != x.type.dtype and y.type.dtype != scalar.type.dtype:
             raise TypeError('dtype mismatch to Dot22Scalar')
-        out_shape = (x.type.shape[0], y.type.shape[1])
         bz = [False, False]
-        outputs = [T.tensor(x.type.dtype, bz, shape=out_shape)]
+        outputs = [T.tensor(x.type.dtype, bz)]
         return Apply(self, [x,y,scalar], outputs)
 
     def perform(self, node, (x, y, scalar), (z, )):
