@@ -1033,8 +1033,8 @@ class test_shapeoptimizer(unittest.TestCase):
                 return Apply(self, [x], [x.type()])
             def perform(self, node, (x,), (out,)):
                 out[0] = x.copy()
-            def infer_shape(self, node, (xshp,)):
-                return node.env.shape_feature.default_infer_shape(node, (xshp,))
+            #def infer_shape(self, node, (xshp,)):
+                #return [tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])]
         identity_noshape = IdentityNoShape()
 
         class IdentityShape(Op):
