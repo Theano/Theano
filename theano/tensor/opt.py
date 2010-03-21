@@ -411,6 +411,8 @@ class ShapeFeature(object):
 
         try:
             o_shapes = shape_infer(node, [self.shape_of[r] for r in node.inputs])
+        except NotImplementedError:
+            o_shapes = self.default_infer_shape(node, [self.shape_of[r] for r in node.inputs])
         except Exception, e:
             _logger.error('Failed to infer_shape from Op %s (i_shapes=%s): %s %s'% (node.op,
                 [self.shape_of[r] for r in node.inputs],
