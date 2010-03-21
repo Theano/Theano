@@ -269,16 +269,16 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
 
         * ``initial`` -- Theano variable containing the initial state of the output
         * ``taps`` -- temporal taps to use for this output. The taps are given as a
-        list of ints (only negative .. since you can not use future values of outputs),
-        with the same meaning as for ``sequences`` (see above).
+          list of ints (only negative .. since you can not use future values of outputs),
+          with the same meaning as for ``sequences`` (see above).
         * ``inplace`` -- theano variable pointing to one of the input sequences; this
-        flag tells scan that the output should be computed in the memory spaced occupied
-        by that input sequence. Note that scan will only do this if allowed by the
-        rest of your computational graph.
+          flag tells scan that the output should be computed in the memory spaced occupied
+          by that input sequence. Note that scan will only do this if allowed by the
+          rest of your computational graph.
         * ``return_steps`` how many steps to return from your output. If not given, or 
-        0 scan will return all steps, otherwise it will return the last ``return_steps``.
-        Note that if you set this to something else then 0, scan will always be smart 
-        about the amount of memory it allocates for a given input.
+          0 scan will return all steps, otherwise it will return the last ``return_steps``.
+          Note that if you set this to something else then 0, scan will always be smart 
+          about the amount of memory it allocates for a given input.
 
         If the function applied recursively uses only the
         previous value of the output, the initial state should have
@@ -297,13 +297,20 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
         the following :
 
         * if you do not wrap an output in a dictionary, scan will wrap it for you
-        assuming that you use only the last step of the output ( i.e. it makes your tap
-        value list equal to [-1]) and that it is not computed inplace
+          assuming that you use only the last step of the output ( i.e. it makes your tap
+          value list equal to [-1]) and that it is not computed inplace
         * if you wrap an output in a dictionary but you do not provide any taps, but
-        you provide an initial state it will assume that you are using only a tap value
-        of -1
+          you provide an initial state it will assume that you are using only a tap value
+          of -1
         * if you wrap an output in a dictionary but you do not provide any initial state,
-        it assumes that you are not using any form of taps
+          it assumes that you are not using any form of taps
+        * if you provide a ``None`` scan assumes that you will not use any taps for this 
+          output
+
+        If you did not provide any information for your outputs, scan will assume by default
+        that you are not using any taps for any of the input. If you provide information for
+        just a subset of outputs, scan will not know to which outputs these information 
+        corresponds and will raise an error.
 
     :param non_sequences:
         Parameters over which scan should not iterate.  These parameters are
