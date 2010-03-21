@@ -25,6 +25,7 @@ from theano import compile  #to register the optimizer built by this file
 from theano.gof.python25 import any, all
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler
+from basic import get_constant_value
 
 
 # Utilities
@@ -62,40 +63,6 @@ def encompasses_broadcastable(b1, b2):
 
 def merge_broadcastables(broadcastables):
     return [all(bcast) for bcast in zip(*broadcastables)]
-
-def get_constant_value(v):
-    """return the constant scalar(0-D) value underlying variable `v`
-
-    If v is the output of dimshuffles, fills, allocs, rebroadcasts,
-    this function digs through them.
-
-    If `v` is not some view of constant data, then raise a TypeError.
-
-    :note: There may be another function similar to this one in the code, but I'm not sure where it
-    is.
-    """
-
-    if isinstance(v, Constant):
-        #TODO: consider checking for arrays of the form e.g. [1,1,1,1] where
-        # it is not a constant, but in some cases it *could* be replaced with one.
-        # Note that this would have an effect on the broadcasting of inputs and so on
-        try:
-            complex(v.data) #works for all numeric scalars
-            return v.data
-        except:
-            raise TypeError(v)
-    if v.owner:
-        if isinstance(v.owner.op, T.Alloc):
-            return get_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, T.DimShuffle):
-            return get_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, T.Rebroadcast):
-            return get_constant_value(v.owner.inputs[0])
-        if v.owner.op == T.fill:
-            shape, val = v.owner.inputs
-            # fill(a,b) fills the shape of 'a' filled with 'b'
-            return get_constant_value(val)
-    raise TypeError(v)
 
 def scalarconsts_rest(inputs):
     """Partition a list of variables into two kinds:
