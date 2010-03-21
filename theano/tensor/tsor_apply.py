@@ -13,6 +13,8 @@ def ishape(v):
 class Apply(gof.Apply):
     def __init__(self, op, inputs, outputs):
         super(Apply, self).__init__(op, inputs, outputs)
+        if not inputs:
+            return
         # if any input has any shape info, then propagate it
         try:
             provided, ishapes = zip(*[ishape(i) for i in inputs])
@@ -28,7 +30,11 @@ class Apply(gof.Apply):
             # op has no infer_shape, that's fine
             return
 
-        oshapes = infer_shape(self, ishapes)
+        try:
+            oshapes = infer_shape(self, ishapes)
+        except NotImplementedError:
+            return
+
         for o, oshp in zip(outputs, oshapes):
             o.tag.shape = oshp
 
