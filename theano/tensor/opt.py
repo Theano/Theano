@@ -488,7 +488,14 @@ def local_fill_to_alloc(node):
             shape_of = node.env.shape_feature.shape_of
             # TODO: cut out un-necessary dimshuffles of v
             rval = [T.alloc(T.cast(v, node.outputs[0].dtype), *shape_of[node.outputs[0]])]
-        assert rval[0].type == node.outputs[0].type
+        
+        if rval[0].type != node.outputs[0].type:
+            print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
+
+        assert rval[0].type == node.outputs[0].type, ('rval', rval[0].type,
+                'orig', node.outputs[0].type,
+                'node', node,
+                )#theano.printing.debugprint(node.outputs[0], file='str'))
         return rval
 
 @register_specialize
