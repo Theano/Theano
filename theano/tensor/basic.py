@@ -3354,10 +3354,20 @@ class AdvancedSubtensor1(Op):
             # the caller should have made a copy of x len(ilist) times
             raise TypeError('cannot index into a broadcastable dimension')
 
-        return gof.Apply(self, [x_, ilist_], [x_.type()])
+        return Apply(self, [x_, ilist_], [x_.type()])
 
     def perform(self, node, (x,i), (out,)):
         out[0] = x[i]
+
+    def grad(self, inputs, (gz,)):
+        class NotImplementedOp(Op):
+            # This op should be pruned from the graph.
+            # This Op can be created in a graph,
+            # but it will cause problems if one of your parameters actually depends on it!
+            def make_node(self, *args):
+                return Apply(self, args, [inputs[0].type()])
+        return [NotImplementedOp()(gz)]+[None]*(len(inputs)-1)
+
 
 class AdvancedSubtensor(Op):
     """Return a subtensor copy, using advanced indexing.
