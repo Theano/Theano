@@ -23,6 +23,7 @@ from elemwise import \
     DimShuffle, Elemwise, CAReduce
 
 import sharedvar # adds shared-variable constructors
+from sharedvar import tensor_constructor as shared
 
 import nnet # used for softmax, sigmoid, etc.
 
