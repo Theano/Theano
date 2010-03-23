@@ -659,7 +659,7 @@ class test_fusion(unittest.TestCase):
             (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),#40
             (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,iy),(fxv,ixv,iyv),4,fxv-((ixv*100)//(iyv*1000)),'float64'),#int32 - float32 = float64 #No c_code for int_div
             (fx-(fy/2),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/2),'float32'),
-            (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),2,fxv-(fyv%fzv),'float32'),
+            (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
             (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
             (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
             (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),
@@ -1099,6 +1099,9 @@ def test_local_mul_specialize():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
         mode = 'FAST_RUN'
+    mode = compile.mode.get_mode(mode)
+    mode = mode.excluding('fusion')
+
     v = T.vector()
     m = T.vector()
 
