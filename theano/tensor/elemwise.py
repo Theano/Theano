@@ -11,7 +11,7 @@ from theano.printing import pprint
 from theano.gof.python25 import all, any
 from copy import copy, deepcopy
 
-from .tsor_apply import Apply
+from theano.tensor.tsor_apply import Apply
 
 
 # tensor depends on elemwise to provide definitions for several ops

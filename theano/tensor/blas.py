@@ -13,7 +13,7 @@ from theano.gof.python25 import any
 import theano.scalar
 import basic as T
 
-from .tsor_apply import Apply
+from theano.tensor.tsor_apply import Apply
 
 #NB: this clobbers the builtin 'compile' symbol
 from theano import compile  #to register the optimizer built by this file 
