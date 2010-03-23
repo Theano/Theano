@@ -303,6 +303,8 @@ class ShapeFeature(object):
     the cost of many Ops accurately, and generate c-code that is specific [e.g. unrolled] to
     particular sizes.
 
+    If you can determine the shape only in some case, return NotImplementedError when you can't
+
     .. note::
 
         Right now there is only the ConvOp that could really take advantage of this shape
