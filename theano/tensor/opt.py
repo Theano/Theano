@@ -617,7 +617,7 @@ def local_upcast_elemwise_constant_inputs(node):
                 else:
                     try:
                         cval_i = get_constant_value(i)    # works only for scalars I think
-                        if 0==sum((not b for b in i.broadcastable)): # I mean all() but this might work in python2.4
+                        if all((not b for b in i.broadcastable)):
                             new_inputs.append(T.cast(cval_i, output_dtype))
                         else:
                             if shape_i is None:
