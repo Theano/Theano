@@ -764,6 +764,8 @@ class test_fusion(unittest.TestCase):
         """
         
         shp=(3000,3000)
+        shp=(1000,1000)
+        nb_repeat=50
 #        linker=gof.CLinker
 #        linker=gof.OpWiseCLinker
         
@@ -779,7 +781,6 @@ class test_fusion(unittest.TestCase):
             s=slice(0,49)
             #s=slice(0,10)
             #s=slice(49,59)
-        nb_repeat=10
         print "test with linker", str(mode1.linker)
         times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
         times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
