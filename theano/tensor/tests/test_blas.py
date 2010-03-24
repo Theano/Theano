@@ -11,7 +11,7 @@ from unittest import TestCase
 from theano.tests import unittest_tools
 from copy import copy
 
-from theano import Param, shared
+from theano import Param, shared, config
 from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
         compile, constant, inplace, eval_outputs)
 
@@ -57,8 +57,10 @@ class t_gemm(TestCase):
                 self.failIf(numpy.all(z_orig == z))
 
         cmp_linker(copy(z), a, x, y, b, 'c|py')
-        cmp_linker(copy(z), a, x, y, b, 'c')
         cmp_linker(copy(z), a, x, y, b, 'py')
+        if config.blas.ldflags:
+            # If blas.ldflags is equal to '', the C code will not be generated
+            cmp_linker(copy(z), a, x, y, b, 'c')
 
     def test0a(self): 
         Gemm.debug = True
