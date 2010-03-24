@@ -296,6 +296,7 @@ class ModuleCache(object):
                         # the directory is still in use??  We just leave it for future removal.
                         pass
                 elif 'key.pkl' in files:
+                    key_pkl = os.path.join(root, 'key.pkl')
                     try:
                         entry = module_name_from_dir(root)
                     except ValueError: # there is a key but no dll!
@@ -304,7 +305,6 @@ class ModuleCache(object):
                         shutil.rmtree(root)
                         continue
                     if (time_now - last_access_time(module_name_from_dir(root)))<self.age_thresh_use:
-                        key_pkl = os.path.join(root, 'key.pkl')
                         debug('refresh adding', key_pkl)
                         try:
                             key = cPickle.load(open(key_pkl, 'rb'))
