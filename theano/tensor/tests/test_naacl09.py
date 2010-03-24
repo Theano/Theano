@@ -525,6 +525,11 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     if optimizer:
         mode = theano.Mode(linker='c|py', optimizer=optimizer)
     else: mode = get_default_mode()
+
+    if mode.__class__.__name__ == 'DebugMode':
+        iters_per_unsup=1
+        iters_per_sup =1
+        
     if realistic:
         m = create_realistic(compile_mode=mode)
     else:
