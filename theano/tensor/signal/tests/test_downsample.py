@@ -84,7 +84,7 @@ class TestDownsampleFactorMax(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         maxpoolshps = ((1,1),(3,2))
-        imval = rng.rand(4,7)
+        imval = rng.rand(4,5)
         images = tensor.dmatrix()
 
         for maxpoolshp in maxpoolshps:
