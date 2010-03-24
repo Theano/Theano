@@ -517,7 +517,7 @@ class ScalarOp(Op):
             return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%s" % (k, v) for k, v in self.__dict__.items() if k != "name"))
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 class UnaryScalarOp(ScalarOp):
@@ -842,10 +842,14 @@ int_div = IntDiv(upcast_out, name = 'int_div')
 class Mod(BinaryScalarOp):
     def impl(self, x, y):
         return x % y
+    def c_code_cache_version(self):
+        return (3,)
+
     def c_code(self, node, name, (x, y), (z, ), sub):
         """
         We want the result to have the same sign as python, not the other implementaiton of mod.
         """
+        raise NotImplementedError()
         #raise NotImplementedError("Unlike Python, C's modulo returns negative modulo on negative dividend (to implement)")
         t = node.inputs[0].type.upcast(*[ i.type for i in node.inputs[1:]])
         if t in int_types or t in ['uint8','int8','uint16','int16','uint32','int32','uint64','int64']:
