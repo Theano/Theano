@@ -19,7 +19,7 @@ else:
                 
         def remove(self, x):
             if self.left == self.right:
-                raise IndexError('cannot remove from empty deque')
+                raise ValueError('cannot remove from empty deque')
             for i in xrange(self.left, self.right-1):
                 elem = self.data[i]
                 if elem==x:
