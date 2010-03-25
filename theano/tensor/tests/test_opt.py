@@ -774,10 +774,6 @@ class test_fusion(unittest.TestCase):
         #Follow up. Clinker do the same... second cause?
         mode2=cp(compile.get_default_mode())
         mode2._optimizer=mode2._optimizer.excluding('local_elemwise_fusion')
-        if s is None:
-            s=slice(0,49)
-            #s=slice(0,10)
-            #s=slice(49,59)
         print "test with linker", str(mode1.linker)
         times1=self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
         times2=self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat, assert_len_topo=False,slice=s)
