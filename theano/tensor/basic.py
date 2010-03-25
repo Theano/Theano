@@ -164,6 +164,9 @@ class NumpyAutocaster(object):
     def __init__(self, dtypes):
         self.dtypes = tuple(dtypes)
     def __call__(self, x):
+        # change the default casting behaviour for python floats to always cast to float32
+        if config.floatX == 'float32' and config.floatX in self.dtypes:
+            return theano._asarray(x, dtype='float32')
         for dtype in self.dtypes:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
