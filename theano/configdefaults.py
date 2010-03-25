@@ -42,8 +42,8 @@ AddConfigVar('tensor.cmp_sloppy',
         IntParam(0, lambda i: i in (0,1,2)))
 
 AddConfigVar('tensor.local_elemwise_fusion',
-        "",
-        BoolParam(False))
+        "Enable or not in fast_run mode(fast_run optimization) the elemwise fusion optimization",
+        BoolParam(True))
 
 AddConfigVar('lib.amdlibm',
         "Use amd's amdlibm numerical library",
