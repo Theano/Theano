@@ -586,21 +586,16 @@ class test_fusion(unittest.TestCase):
         fw, fx, fy, fz = fmatrices('wxyz')
         dw, dx, dy, dz = dmatrices('wxyz')
         ix, iy, iz = imatrices('xyz')
-        fv = fvector('r').dimshuffle('x',0)
-        dv = dvector('s').dimshuffle('x',0)
+        fv = fvector('r')
         fwv = my_init(shp,'float32',1)
         fxv = my_init(shp,'float32',2)
         fyv = my_init(shp,'float32',3)
         fzv = my_init(shp,'float32',4)
-        fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32').reshape(1,shp[0])
+        fvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float32')
         dwv = my_init(shp,'float64',5)
         ixv = theano._asarray(my_init(shp,num=60),dtype='int32')
         iyv = theano._asarray(my_init(shp,num=70),dtype='int32')
         izv = theano._asarray(my_init(shp,num=70),dtype='int32')
-#        dxv = my_init(shp,'float64',6)
-#        dyv = my_init(shp,'float64',7)
-#        dzv = my_init(shp,'float64',8)
-#        dvv = theano._asarray(numpy.random.rand(shp[0]),dtype='float64').reshape(1,shp[0])
         fwx=fw+fx
         cases = [
             (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+fzv,'float32'),#1
@@ -661,17 +656,17 @@ class test_fusion(unittest.TestCase):
             (fx-(fy/2),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/2),'float32'),
             (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
             (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
-            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
+            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),#45
             (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),
             (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),#TODO: bugged on the gpu
             (fx-(fy==fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv==fzv),'float32'),#TODO: bugged
             (fx-(fy!=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv!=fzv),'float32'),
-            (fx-fy+tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),
+            (fx-fy+tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tan(fzv),'float32'),#50
             (fx-fy+tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.tanh(fzv),'float32'),
             (fx-fy+sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sin(fzv),'float32'),
             (fx-fy+sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sinh(fzv),'float32'),
             (fx-fy+theano.tensor.sqr(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(fzv*fzv),'float32'),
-            (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
+            (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),#55
             (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(1/fzv),'float32'),
             (fx-fy+theano.tensor.neg(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+(-fzv),'float32'),
 #            (fx-fy+theano.tensor.iround(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv+numpy.round(fzv),'float32'),#TODO: trouble with the output type. To my understanding, numpy and c round fct return the same type as the input. Why we don't do this?
@@ -679,7 +674,9 @@ class test_fusion(unittest.TestCase):
             #TODO: BIT OP only with ints, xor, or, and, invert, cast
 #            (fx-theano.tensor.or_(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy|fz),'float32'),
 #            (fx-theano.tensor.xor(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fy^fz),'float32'),
-
+            (theano.tensor.pow(fx*fy+fz,fx*fy),(fx,fy,fz),(fxv,fyv,fzv),2,numpy.power(fxv*fyv+fzv,fxv*fyv),'float32'),
+            (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,'float32'),#fused with a dimshuffle
+            (fv-fy+tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
             ]
         if slice:
             cases = cases[slice]
