@@ -124,7 +124,7 @@ class TestDownsampleFactorMax(unittest.TestCase):
                 g = tensor.grad(c, images)
                 g_val = function([images], [g.shape, tensor.min(tensor.min(tensor.min(g))), tensor.max(tensor.max(tensor.max(g)))])(imval)
 
-#removed as already tested in test_max_pool2D_2D and test_max_pool2D_6D
+#removed as already tested in test_max_pool2D_2D
 #This make test in debug mode too slow.
 #                def mp(input):
 #                    return max_pool2D(input, maxpoolshp, ignore_border)
@@ -148,9 +148,11 @@ class TestDownsampleFactorMax(unittest.TestCase):
                 output_val = function([images], output)(imval)
                 assert numpy.all(output_val == numpy_output_val)
 
-                def mp(input):
-                    return max_pool2D(input, maxpoolshp, ignore_border)
-                utt.verify_grad(mp, [imval], rng=rng)
+#removed as already tested in test_max_pool2D_2D
+#This make test in debug mode too slow.
+#                def mp(input):
+#                    return max_pool2D(input, maxpoolshp, ignore_border)
+#                utt.verify_grad(mp, [imval], rng=rng)
 
 
 
