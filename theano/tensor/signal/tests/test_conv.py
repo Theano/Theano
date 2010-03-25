@@ -73,10 +73,10 @@ class TestSignalConv2D(unittest.TestCase):
         just have to test whether or not signal.conv.conv2d can support inputs and filters of
         type matrix or tensor3.
         """
-        self.validate((3,7,5), (5,2,3), 'valid')
-        self.validate((7,5), (5,2,3), 'valid')
-        self.validate((3,7,5), (2,3), 'valid')
-        self.validate((7,5), (2,3), 'valid')
+        self.validate((1,4,5), (2,2,3), verify_grad=True)
+        self.validate((7,5), (5,2,3), verify_grad=False)
+        self.validate((3,7,5), (2,3), verify_grad=False)
+        self.validate((7,5), (2,3), verify_grad=False)
 
     def test_fail(self):
         """
