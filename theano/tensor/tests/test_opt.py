@@ -883,7 +883,8 @@ def test_log1p():
     m = theano.config.mode
     if m == 'FAST_COMPILE':
         m = 'FAST_RUN'
-
+    m = compile.mode.get_mode(m)
+    m = m.excluding('fusion')
     # check some basic cases
     x = dvector()
     f = function([x], T.log(1+(x)), mode=m)
