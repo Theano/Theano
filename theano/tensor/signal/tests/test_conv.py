@@ -84,6 +84,10 @@ class TestSignalConv2D(unittest.TestCase):
         """
         try:
             conv.conv2d(T.dtensor4(), T.dtensor3())
+            self.fail()
+        except:
+            pass
+        try:
             conv.conv2d(T.dtensor3(), T.dvector())
             self.fail()
         except:
