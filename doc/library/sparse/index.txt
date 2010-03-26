@@ -5,3 +5,40 @@
 :mod:`sparse` -- Symbolic Sparse Matrices [doc TODO]
 ===========================================================
 
+The sparse module has been used in:
+
+- NLP: Dense linear transformations of sparse vectors.
+
+- Audio: Filterbank in Fourier domain.
+
+The sparse module is less mature than the tensor module.
+This documentation is also not mature.
+
+The sparse module provides two kinds of sparse tensors are supported: CSC matrices and CSR matrices.
+Operations that are implemented:
+
+- conversion from sparse <-> dense
+
+- [un]packing of sparse matrices from indexlists and nonzero elements.
+
+- transpose
+
+- negation
+
+- sparse + sparse
+
+- sparse + dense
+
+- sparse * sparse (elemwise)
+
+- sparse * dense
+
+- dot(sparse, dense) with gradient defined such that sparsity pattern is
+  constant.  This function is called "structured_dot"
+
+Subtensor selection (aka. square-bracket notation, aka indexing) is not implemented, but the
+CSR and CSC datastructures support effecient implementations.
+
+There are no GPU implementations for sparse matrices implemented in Theano.
+
+
