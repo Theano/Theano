@@ -12,7 +12,7 @@ import theano.tensor.signal.downsample as downsample
 
 import numpy
 
-raise SkipTest('SKIP TO MAKE THE BUILDBOT DON\'T CRASH. THEIR IS A DIFFICULT BUG TO FIX WITH MEMORY LEAK AND/OR WHEN Cuda_Ndarray alloc fail!'
+raise SkipTest('SKIP TO MAKE THE BUILDBOT DON\'T CRASH. THEIR IS A DIFFICULT BUG TO FIX WITH MEMORY LEAK AND/OR WHEN Cuda_Ndarray alloc fail!')
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
