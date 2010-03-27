@@ -526,7 +526,11 @@ class Gemm(GemmRelated):
         return full_code
 
     def c_code_cache_version(self):
-        return (3,) + self.build_gemm_version()
+        gv = self.build_gemm_version()
+        if gv:
+            return (3,) + gv
+        else:
+            return gv
 
 gemm_inplace = Gemm(inplace=True)
 gemm_no_inplace = Gemm(inplace=False)
@@ -853,7 +857,11 @@ class Dot22(GemmRelated):
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
     def c_code_cache_version(self):
-        return (1,) + self.build_gemm_version()
+        gv = self.build_gemm_version()
+        if gv:
+            return (1,) + gv
+        else:
+            return gv
 
 _dot22 = Dot22()
 
@@ -959,7 +967,11 @@ class Dot22Scalar(GemmRelated):
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
     def c_code_cache_version(self):
-        return (2,) + self.build_gemm_version()
+        gv = self.build_gemm_version()
+        if gv:
+            return (2,) + gv
+        else:
+            return gv
 
 _dot22scalar = Dot22Scalar()
 
