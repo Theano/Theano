@@ -253,6 +253,7 @@ class GemmRelated(Op):
                 char T = 'T';
                 int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
                 //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                //double t0 = time_time();
                 switch(unit)
                 {
                     case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
@@ -265,6 +266,7 @@ class GemmRelated(Op):
                     case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
                     default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
                 };
+                //fprintf(stderr, "Calling sgemm %%i %%i %%i %%i took %%f\\n", unit, Nz1, Nz0, Nx1, time_time() - t0);
         """
 
     case_double = """
@@ -284,6 +286,7 @@ class GemmRelated(Op):
                 char T = 'T';
                 int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
                 //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                //double t0 = time_time();
                 switch(unit)
                 {
                     case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
@@ -296,6 +299,7 @@ class GemmRelated(Op):
                     case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
                     default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
                 };
+                //fprintf(stderr, "Calling dgemm %%i %%i %%i %%i took %%f\\n", unit, Nz1, Nz0, Nx1, time_time()- t0);
         """
 
     end_switch_typenum = """
