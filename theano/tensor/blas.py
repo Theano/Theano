@@ -452,6 +452,7 @@ class Gemm(GemmRelated):
             dims[0] = %(_z)s->dimensions[0];
             dims[1] = %(_z)s->dimensions[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_z)s);
+            //fprintf(stderr, "Gemm Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc gemm_no_inplace output");
                 %(fail)s
@@ -827,6 +828,7 @@ class Dot22(GemmRelated):
             dims[0] = %(_x)s->dimensions[0];
             dims[1] = %(_y)s->dimensions[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_x)s);
+            //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc dot22 output");
                 %(fail)s
