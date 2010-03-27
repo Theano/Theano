@@ -100,12 +100,18 @@ class GemmRelated(Op):
         #ifndef MOD
         #define MOD %
         #endif
+        static double time_time() // a time function like time.time()
+        {
+            struct timeval tv;
+            gettimeofday(&tv, 0);
+            return (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
+        }
         """
         return blas_header_text() + mod_str
     def c_headers(self):
         # std.cout doesn't require the '%' symbol to print stuff... 
         # so it works much better with python's string-substitution stuff.
-        return ['<iostream>'] 
+        return ['<iostream>', '<time.h>', '<sys/time.h>'] 
     
     def c_libraries(self):
         return ldflags()
