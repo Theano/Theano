@@ -116,8 +116,8 @@ class GemmRelated(Op):
     def c_libraries(self):
         return ldflags()
 
-    def c_code_cache_version(self):
-        return (0,0,1)
+    # code_cache_version is built by subclasses from 
+    #  build_gemm_version
 
     def c_compile_args(self):
         return ldflags(libs=False, flags=True)
@@ -329,7 +329,7 @@ class GemmRelated(Op):
             self.end_switch_typenum), '')
 
     def build_gemm_version(self):
-        return (2,)
+        return (3,)
 
 class Gemm(GemmRelated):
     """In-place version of matrix-matrix multiplication (with accumulation):
