@@ -1481,6 +1481,9 @@ class Composite(ScalarOp):
             
         return self._c_code % d
 
+    def c_code_cache_version(self):
+        return (1,)+tuple([x.op.c_code_cache_version() for x in self.env.toposort()])
+    
     def __eq__(self, other):
         if self is other: return True
         if not isinstance(other, self.__class__): return False
