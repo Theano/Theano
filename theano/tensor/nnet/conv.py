@@ -910,7 +910,7 @@ if(%(filtersflipped)s->nd==3){
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
-    std:stringstream temp;
+    std::stringstream temp;
     temp << "nddim="<<%(filtersflipped)s->nd;
     std::string param = temp.str();
     PyErr_SetString(PyExc_ValueError,
@@ -1145,7 +1145,7 @@ if(%(filtersflipped)s->nd==3){
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
-    std:stringstream temp;
+    std::stringstream temp;
     temp << "nddim="<<%(filtersflipped)s->nd;
     std::string param = temp.str();
     PyErr_SetString(PyExc_ValueError,
@@ -1377,7 +1377,7 @@ if(%(img2d)s->nd==2){
   img2d_dim[1]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
 }else {
-    std:stringstream temp;
+    std::stringstream temp;
     temp << "nddim="<<%(img2d)s->nd;
     std::string param = temp.str();
     PyErr_SetString(PyExc_ValueError,
