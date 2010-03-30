@@ -10,6 +10,7 @@ import numpy
 
 from theano import Op, Apply, shared, config
 from theano.tensor import raw_random, TensorType, as_tensor_variable, get_vector_length, cast, opt
+from theano.tensor import zeros_like, sqrt, log, sin, cos, join
 from theano.compile import optdb
 from theano.gof import local_optimizer
 
@@ -650,6 +651,49 @@ class MRG_RandomStreams(object):
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
+    def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=config.floatX):
+        # We need an even number of ]0,1[ samples. Then we split them
+        # in two halves. First half becomes our U1's for Box-Muller,
+        # second half our U2's. See Wikipedia page:
+        # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+
+        n_samples = self.n_streams(size)
+        evened = False
+           
+        if n_samples % 2 == 1:
+            n_samples += 1
+            evened = True
+
+        flattened = self.uniform(size=(n_samples,), dtype=dtype)
+
+        U1 = flattened[:n_samples/2]
+        U2 = flattened[n_samples/2:]
+
+        #normal_samples = zeros_like(flattened)
+        sqrt_ln_U1 = sqrt(-2.0*log(U1))
+        # TypeError: 'TensorVariable' object does not support item assignment
+        # so this doesn't work...
+        #normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
+        #normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
+
+        # so trying this instead
+        first_half = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
+        second_half = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
+        normal_samples = join(0, first_half, second_half)
+
+        final_samples = None
+        if evened:
+            final_samples = normal_samples[:-1]
+        else:
+            final_samples = normal_samples
+
+        final_samples = avg + std * final_samples
+
+        if size:
+            final_samples = final_samples.reshape(size)
+
+        return final_samples
+
 @local_optimizer([None])
 def mrg_random_make_inplace(node):
     op = node.op
@@ -733,4 +777,79 @@ def test_rng0():
     ff = theano.function([], uu)
 
     basictest(ff, 1000, prefix='numpy')
+
+
+
+
+def test_normal0():
+
+    def basictest(f, steps, target_avg, target_std, prefix=""):
+        dt = 0.0
+        avg_std = 0.0
+        for i in xrange(steps):
+            t0 = time.time()
+            ival = f()
+            dt += time.time() - t0
+            ival = numpy.asarray(ival)
+            if i == 0:
+                mean = numpy.array(ival, copy=True)
+                avg_std = numpy.std(ival)
+            else:
+                alpha = 1.0 / (1+i)
+                mean = alpha * ival + (1-alpha)*mean
+                avg_std = alpha * numpy.std(ival) + (1-alpha)*avg_std
+
+        print prefix, 'mean', numpy.mean(mean)
+        assert abs(numpy.mean(mean) - target_avg) < .01, 'bad mean?'
+        print prefix, 'std', avg_std
+        assert abs(avg_std - target_std) < .01, 'bad std?'
+        print prefix, 'time', dt
+        print prefix, 'elements', steps*sample_size[0]*sample_size[1]
+        print prefix, 'samples/sec', steps*sample_size[0]*sample_size[1] / dt
+
+    sample_size = (999,100)
+
+    print ''
+    print 'ON CPU:'
+
+    R = MRG_RandomStreams(234, use_cuda=False)
+    n = R.normal(size=sample_size, avg=-5.0, std=2.0)
+    f = theano.function([], n)
+    theano.printing.debugprint(f)
+    print 'random?[:10]\n', f()[0,0:10]
+    basictest(f, 50, -5.0, 2.0, prefix='mrg ')
+
+    sys.stdout.flush()
+
+    # now with odd number of samples
+    sample_size = (999,99)
+
+    print ''
+    print 'ON GPU:'
+    R = MRG_RandomStreams(234, use_cuda=True)
+    n = R.normal(size=sample_size, avg=-5.0, std=2.0, dtype='float32')
+    assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
+    f = theano.function([], theano.Out(
+        theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+        borrow=True))
+    theano.printing.debugprint(f)
+    print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
+    basictest(f, 50, -5.0, 2.0, prefix='gpu mrg ')
+
+    sys.stdout.flush()
+
+    print ''
+    print 'ON CPU w NUMPY:'
+    RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+
+    nn = RR.normal(size=sample_size, avg=-5.0, std=2.0)
+    ff = theano.function([], nn)
+
+    basictest(ff, 50, -5.0, 2.0, prefix='numpy ')
+
+
+#if __name__ == '__main__':
+#    # with: export THEANO_FLAGS=device=gpu0,floatX=float32
+#    test_normal0()
+
 
