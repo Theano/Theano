@@ -1414,12 +1414,16 @@ class Composite(ScalarOp):
                     name = "V%%(id)s_tmp%i" % i
                     subd[output] = name
                     _c_code += "%s %s;\n" % (output.type.dtype_specs()[1], name)
-            _c_code += node.op.c_code(node,
+
+            s =     node.op.c_code(node,
                                       "%(name)s",
                                       [subd[input] for input in node.inputs],
                                       [subd[output] for output in node.outputs],
                                       dict(fail = "%(fail)s",
                                            id = "%%(id)s_%i" % j))
+            if any([isinstance(x.op,Mod) for x in env.toposort()]):
+                s = s.replace('% ','%% ')
+            _c_code += s
             _c_code += "\n"
         _c_code += "}\n"
 
