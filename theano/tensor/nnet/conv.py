@@ -769,7 +769,6 @@ using namespace std;
         d["self_dx"]=self.dx
         d["self_dy"]=self.dy
         d["mode"]=self.out_mode.upper()
-        d["mode"]=self.out_mode.upper()
         d["affectation"]="="
         if all_shape:
             d["self_bsize"]=self.bsize
