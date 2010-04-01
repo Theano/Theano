@@ -26,5 +26,17 @@ t0=time.time()
 for i in range(iters):
     f(av,bv)
 
-print 'times=%.3fs'%(time.time()-t0)
+print 'times=%.2fs'%(time.time()-t0)
 
+print """
+Some result that you can compare again:
+
+Lib: goto
+computer: Intel(R) Xeon(R) CPU E5430  @ 2.66GHz
+
+OMP_NUM_THREADS     time
+1                   16.05s
+2                   8.22s
+4                   4.13s
+8                   2.32s
+"""
