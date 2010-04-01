@@ -197,6 +197,69 @@ class ConvOp(Op):
             'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
     """These attributes uniquely identify the behaviour of this op for given inputs"""
 
+#the value of speed_unroll_batch_kern,speed_unroll_patch_noshape,speed_unroll_patch_shape
+#have bean calculated on maggie36 when their is only 1 session logged on and only this was running.
+#It is an Intel(R) Xeon(R) CPU E5430 @ 2.66GHz. It is computer with theano/tensor/nnet/tests/speed_test_conv.py
+# and took 5 minutes to run.
+#TODO: we should compute this table for each computer/os as this can change.
+#      I saw on one computer that the speed with the shape can be slower then without!
+#      using the real shape and the same dtype could also help.
+
+#unroll_batch, unroll_kern, valid time, full time
+    speed_unroll_batch_kern=[(1, 1, 2.4661250114440918, 6.5472931861877441) ,
+(1, 2, 1.5869178771972656, 5.1499760150909424) ,
+(1, 3, 1.4270510673522949, 3.6593470573425293) ,
+(1, 4, 1.3373479843139648, 3.3451821804046631) ,
+(1, 5, 1.2818830013275146, 3.1444568634033203) ,
+(1, 6, 1.2521560192108154, 3.0256359577178955) ,
+(1, 10, 1.2134110927581787, 2.9174180030822754) ,
+(2, 1, 1.657214879989624, 4.5261678695678711) ,
+(2, 2, 1.2123160362243652, 2.9747390747070312) ,
+(2, 3, 1.0758891105651855, 2.5690360069274902) ,
+(2, 4, 1.0683329105377197, 2.4233770370483398) ,
+(2, 5, 1.0955719947814941, 2.3999948501586914) ,
+(2, 6, 1.5935721397399902, 2.6878271102905273) ,
+(2, 10, 1.8511250019073486, 3.2417428493499756) ,
+(3, 1, 1.5948119163513184, 3.631148099899292) ,
+(3, 2, 1.0761330127716064, 2.6011371612548828) ,
+(3, 3, 1.0551531314849854, 2.4200370311737061) ,
+(3, 4, 1.3930759429931641, 2.5211219787597656) ,
+(3, 5, 1.4330689907073975, 2.5704989433288574) ,
+(3, 6, 1.362138032913208, 2.5964410305023193) ,
+(3, 10, 1.6582000255584717, 2.9907989501953125) ,
+(4, 1, 1.4793620109558105, 3.3473429679870605) ,
+(4, 2, 1.0671560764312744, 2.4171769618988037) ,
+(4, 3, 1.2569692134857178, 2.2807950973510742) ,
+(4, 4, 1.3456289768218994, 2.6219108104705811) ,
+(4, 5, 1.4055080413818359, 2.4606490135192871) ,
+(4, 6, 1.372107982635498, 2.551663875579834) ,
+(4, 10, 1.599470853805542, 2.9172940254211426) ,
+(5, 1, 1.4115700721740723, 3.2077109813690186) ,
+(5, 2, 1.0635769367218018, 2.2648060321807861) ,
+(5, 3, 1.3842809200286865, 2.6135518550872803) ,
+(5, 4, 1.3470511436462402, 2.3852400779724121) ,
+(5, 5, 1.3539440631866455, 2.5245928764343262) ,
+(5, 6, 1.4037849903106689, 2.5985310077667236) ,
+(5, 10, 1.6120610237121582, 2.8127608299255371) ,
+(6, 1, 1.3623628616333008, 3.021122932434082) ,
+(6, 2, 1.1697649955749512, 2.6285450458526611) ,
+(6, 3, 1.2980999946594238, 2.4746189117431641) ,
+(6, 4, 1.3739941120147705, 2.5579929351806641) ,
+(6, 5, 1.3967819213867188, 2.5522029399871826) ,
+(6, 6, 1.4279270172119141, 2.6127138137817383) ,
+(6, 10, 1.605496883392334, 2.864037036895752) ,
+(10, 1, 1.6401121616363525, 2.970099925994873) ,
+(10, 2, 1.46710205078125, 2.7231831550598145) ,
+(10, 3, 1.4193780422210693, 2.6087639331817627) ,
+(10, 4, 1.4657118320465088, 2.6246678829193115) ,
+(10, 5, 1.5052611827850342, 2.6542458534240723) ,
+(10, 6, 1.5214400291442871, 2.7243161201477051) ,
+(10, 10, 1.6116268634796143, 2.956165075302124)]
+
+    #valid time, full time
+    speed_unroll_patch_noshape=[2.0109100341796875, 5.8175678253173828]
+    #valid time, full time
+    speed_unroll_patch_shape=[1.2967290878295898, 5.5283889770507812]
     
     def c_compile_args(self):
         #when the ksph==(1,1) gcc 4.3.0 segfault during the compilation with -O3.
@@ -232,9 +295,11 @@ class ConvOp(Op):
 
     def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None, 
             dx=None, dy=None,
-            output_mode='valid', unroll_batch=0,
-            unroll_kern=0,
-            unroll_patch=True,
+            output_mode='valid',
+
+            unroll_batch=None,
+            unroll_kern=None,
+            unroll_patch=None,
             imshp_logical=None,
             kshp_logical=None,
             kshp_logical_top_aligned=True,
@@ -246,10 +311,16 @@ class ConvOp(Op):
         code.
 
         NOTES ON OPTIMIZATION:
-        If ALL (imshp, kshp, nkern and bsize) parameters are provided, we can
-        generate faster c-code. This make a significant difference for the
-        'full' output_mode with unroll_patch=True. The current fastest
-        implementation on x86-64 uses {unroll_batch=4, unroll_kern=4,
+        Their is two type of optimization. The first is the selection of the
+        fastest algo when bsize and nkern are probided with imshp and kshp.
+        By default we try to select the fastest version. You can specify it
+        with the unroll_batch, unroll_kern, and unroll_patch parameter.
+
+        The second type of optimization is hardcoding some dimensions into the code
+        when all shape are know.
+        This make a significant difference for the 'full' output_mode.
+
+        Some times, the fastest implementation on x86-64 uses {unroll_batch=4, unroll_kern=4,
         unroll_patch=False} with all other shape parameters being provided.
 
         For optimizing other architectures, see:
@@ -351,6 +422,7 @@ class ConvOp(Op):
         self.unroll_kern=unroll_kern
         self.unroll_patch=unroll_patch
 
+        #downcast unroll_batch if not a divisor of batch size
         if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
 
             if self.bsize<=self.unroll_batch:
@@ -364,12 +436,13 @@ class ConvOp(Op):
 
                 warnstr = "OPTIMISATION WARNING: in ConvOp.__init__() unroll_batch(%i)"\
                       "must be 0 or a divisor of bsize(%i). We revert it to %i. This"\
-                      "won't change the result, but may make it slower."
+                      " won't change the result, but may make it slower."
                 _warn(warnstr % (self.unroll_batch, self.bsize, new))
 
                 self.unroll_batch=new
 
-        if self.unroll_kern>0 and self.nkern % unroll_kern!=0:
+        #downcast unroll_kern if not a divisor of nb of kernel
+        if self.unroll_kern>0 and self.nkern % self.unroll_kern!=0:
 
             if self.nkern<=self.unroll_kern:
                 self.unroll_kern = self.nkern
@@ -403,6 +476,41 @@ class ConvOp(Op):
                     "supersampling] input shape (%s) and kern shape(%s) are ok. "\
                     "(Hint: kerns must fit inside image in valid mode)")%
                     (self.imshp_logical,self.kshp_logical))
+
+        if self.unroll_kern is None and self.unroll_batch is None and self.unroll_patch is None:
+            #no version specified. Find the faster we have
+            if self.bsize is None and self.nkern is None:
+                self.unroll_patch = True
+            elif self.bsize is not None and self.nkern is not None:
+                bsize=self.bsize
+                nkern=self.nkern
+                if bsize is None:
+                    bsize=1
+                if nkern is None:
+                    nkern=1
+                mode_idx=0
+                if self.out_mode!="valid":
+                    mode_idx=1
+                if all_shape:
+                    time_unroll_patch = self.speed_unroll_patch_shape[mode_idx]
+                else:
+                    time_unroll_patch = self.speed_unroll_patch_noshape[mode_idx]
+                time_unroll_batch_kern = 9999999
+                for i in range(len(self.speed_unroll_batch_kern)):
+                    if bsize%self.speed_unroll_batch_kern[i][0]==0 and nkern%self.speed_unroll_batch_kern[i][1]==0:
+                        if self.speed_unroll_batch_kern[i][2+mode_idx]<time_unroll_batch_kern:
+                            time_unroll_batch_kern=self.speed_unroll_batch_kern[i][2+mode_idx]
+                            time_unroll_batch_kern_idx=i
+                if time_unroll_patch < time_unroll_batch_kern:
+                    self.unroll_patch = True
+                else:
+                    self.unroll_batch=self.speed_unroll_batch_kern[time_unroll_batch_kern_idx][0]
+                    self.unroll_kern=self.speed_unroll_batch_kern[time_unroll_batch_kern_idx][1]
+                    self.unroll_patch = False
+
+            print "AUTO FIND VERSION OF C_CODE OF CONV OP"
+            print self.unroll_batch, self.unroll_kern, self.unroll_patch, self.bsize, self.nkern, time_unroll_patch, time_unroll_batch_kern
+
 
         self._rehash()
         if config.op.set_flops:
@@ -673,7 +781,7 @@ class ConvOp(Op):
                 _warn("OPTIMISATION WARNING: in ConvOp.grad() we can't determine "\
                       "a good unroll value for the batch. Maybe you can optimize this!")
 
-        if un_k!=0 and nkern%un_k!=0:
+        if all_shape and un_k!=0 and nkern%un_k!=0:
             if nkern<un_k:
                 un_k = nkern
             else:
@@ -740,7 +848,7 @@ class ConvOp(Op):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
     def c_code_cache_version(self):
-        return (1)
+        return (2)
     
     def c_support_code(self):
         return """
