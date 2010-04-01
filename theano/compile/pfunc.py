@@ -188,7 +188,7 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
 
         update_val = store_into.filter_update(update_val) # typically this might be a cast()
         if update_val.type != store_into.type:
-            raise TypeError('an update must have the same type as the original shared variable', 
+            raise TypeError('an update must have the same type as the original shared variable(dest, dest.type, update_val, update_val.type', 
                     (store_into, store_into.type,
                         update_val, update_val.type))
         update_d[store_into] = update_val
