@@ -156,9 +156,14 @@ __device__ void load_padded_col_to_shared(float * dst, const float * src,
 
 template<int i> __device__ float convolutionRowNoFlip(const float *data,
 						      const float *kern){
-  return data[i-1] * kern[i-1] + convolutionRowNoFlip<i - 1>(data,kern);
+    return convolutionRowNoFlip<i/2>(data, kern)+ convolutionRowNoFlip<(i+1)/2>(data+i/2, kern+i/2) ;
+  //return data[i-1] * kern[i-1] + convolutionRowNoFlip<i - 1>(data,kern);
 }
 
+template<> __device__ float convolutionRowNoFlip<1>(const float *data,
+						    const float *kern){
+    return data[0]*kern[0];
+}
 template<> __device__ float convolutionRowNoFlip<0>(const float *data,
 						    const float *kern){
     return 0;

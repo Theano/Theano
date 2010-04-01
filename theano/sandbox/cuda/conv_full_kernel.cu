@@ -348,11 +348,16 @@ conv_full_patch_stack_padded( float* img, float* kern, float* out,
 
 template <int i> __device__ float everything_dot(const float * x, const int sx, const float * y, const int sy) 
 { 
-    return x[0] * y[0] + everything_dot<i-1>(x+sx, sx, y+sy, sy);
+    return everything_dot<i/2>(x, sx, y, sy) + everything_dot<(i+1)/2>(x+sy*(i/2), sx, y+sy*(i/2), sy) ;
+    //return x[0] * y[0] + everything_dot<i-1>(x+sx, sx, y+sy, sy);
 }
 template <> __device__ float everything_dot<0>(const float * x, const int sx, const float * y, const int sy)
 { 
     return 0;
+}
+template <> __device__ float everything_dot<1>(const float * x, const int sx, const float * y, const int sy)
+{ 
+    return x[0] * y[0];
 }
 template<int NSTACK>
 __global__ void
