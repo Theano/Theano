@@ -1019,8 +1019,8 @@ class _Linker(gof.link.LocalLinker):
                         if not r.type.is_valid_value(storage_map[r][0]):
                             raise InvalidValueError(r, storage_map[r][0], client_node=node)
 
-                    debug(i, "DEBUGMODE running thunk_py")
                     if thunk_py:
+                        debug(i, "DEBUGMODE running thunk_py")
                         try:
                             thunk_py()
                         except utils.MethodNotDefined:
