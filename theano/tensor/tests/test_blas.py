@@ -603,8 +603,12 @@ def test_dot22scalar():
     #currently the canonizer don't always merge all Mul together...
     #that force the optimizer to make a recursive search witch it don't do now.
     #but it do it for 1 level of recursion.
-#    assert _dot22scalar in [x.op for x in topo]
-#    assert len(topo)==2
+    #    assert _dot22scalar in [x.op for x in topo]
+    #    assert len(topo)==2
+    ### Fred, 
+    ### What are you talking about?
+    ### -James (March 28 2010)
+    
     f(av,bv,cv)
     f = theano.function([a,b,c],c * a*0.2*T.dot(a,b),mode=m2)
     topo = f.maker.env.toposort()

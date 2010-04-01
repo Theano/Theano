@@ -333,6 +333,13 @@ but this has not been tested yet.
         cp libblas.dll /mingw/lib
         mv libblas.dll /mingw/bin
 
+- Edit (or create) your ``$HOME/.theanorc`` and add the following section:
+
+    .. code-block:: bash
+
+        [blas]
+        ldflags = -lblas
+
 - Install `Mercurial <http://mercurial.selenic.com/downloads/>`__
   (you can use the regular Windows release, you do not need TortoiseHg).
 

@@ -224,7 +224,12 @@ class MakeVector(T.Op):
     def __str__(self):
         return self.__class__.__name__
     def perform(self, node, inputs, (out,)):
-        out[0] = theano._asarray(inputs, dtype=node.outputs[0].dtype)
+        # not calling theano._asarray as optimization
+        if out[0] is None:
+            out[0] = theano._asarray(inputs, dtype=node.outputs[0].dtype)
+        else:
+            # assume that out has correct dtype.  there is no cheap way to check
+            out[0][...] = inputs
 
 make_vector = MakeVector()
 
@@ -262,7 +267,10 @@ class Shape_i(T.Op):
             raise TypeError('x has too few dimensions for Shape_i', (x, self.i))
         return T.Apply(self, [x], [T.lscalar()])
     def perform(self, node, (x, ), (out, )):
-        out[0] = theano._asarray(x.shape[self.i], dtype = 'int64')
+        if out[0] is None:
+            out[0] = theano._asarray(x.shape[self.i], dtype='int64')
+        else:
+            out[0][...] = x.shape[self.i]
     def grad(self, (x,), (gz,)):
         return [None]
 

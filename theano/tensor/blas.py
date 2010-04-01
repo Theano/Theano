@@ -100,18 +100,24 @@ class GemmRelated(Op):
         #ifndef MOD
         #define MOD %
         #endif
+        static double time_time() // a time function like time.time()
+        {
+            struct timeval tv;
+            gettimeofday(&tv, 0);
+            return (double) tv.tv_sec + (double) tv.tv_usec / 1000000.0;
+        }
         """
         return blas_header_text() + mod_str
     def c_headers(self):
         # std.cout doesn't require the '%' symbol to print stuff... 
         # so it works much better with python's string-substitution stuff.
-        return ['<iostream>'] 
+        return ['<iostream>', '<time.h>', '<sys/time.h>'] 
     
     def c_libraries(self):
         return ldflags()
 
-    def c_code_cache_version(self):
-        return (0,0,1)
+    # code_cache_version is built by subclasses from 
+    #  build_gemm_version
 
     def c_compile_args(self):
         return ldflags(libs=False, flags=True)
@@ -247,6 +253,7 @@ class GemmRelated(Op):
                 char T = 'T';
                 int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
                 //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                //double t0 = time_time();
                 switch(unit)
                 {
                     case 0x000: sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
@@ -259,6 +266,7 @@ class GemmRelated(Op):
                     case 0x111: sgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
                     default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
                 };
+                //fprintf(stderr, "Calling sgemm %%i %%i %%i %%i took %%f\\n", unit, Nz1, Nz0, Nx1, time_time() - t0);
         """
 
     case_double = """
@@ -278,6 +286,7 @@ class GemmRelated(Op):
                 char T = 'T';
                 int Nz0 = Nz[0], Nz1 = Nz[1], Nx1 = Nx[1];
                 //std::cerr << (unit/256) MOD 16 << (unit / 16) MOD 16 << unit MOD 16<< '\\n';
+                //double t0 = time_time();
                 switch(unit)
                 {
                     case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
@@ -290,6 +299,7 @@ class GemmRelated(Op):
                     case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
                     default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
                 };
+                //fprintf(stderr, "Calling dgemm %%i %%i %%i %%i took %%f\\n", unit, Nz1, Nz0, Nx1, time_time()- t0);
         """
 
     end_switch_typenum = """
@@ -319,7 +329,7 @@ class GemmRelated(Op):
             self.end_switch_typenum), '')
 
     def build_gemm_version(self):
-        return (2,)
+        return (4,)
 
 class Gemm(GemmRelated):
     """In-place version of matrix-matrix multiplication (with accumulation):
@@ -442,6 +452,7 @@ class Gemm(GemmRelated):
             dims[0] = %(_z)s->dimensions[0];
             dims[1] = %(_z)s->dimensions[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_z)s);
+            //fprintf(stderr, "Gemm Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc gemm_no_inplace output");
                 %(fail)s
@@ -515,7 +526,11 @@ class Gemm(GemmRelated):
         return full_code
 
     def c_code_cache_version(self):
-        return (3,) + self.build_gemm_version()
+        gv = self.build_gemm_version()
+        if gv:
+            return (3,) + gv
+        else:
+            return gv
 
 gemm_inplace = Gemm(inplace=True)
 gemm_no_inplace = Gemm(inplace=False)
@@ -817,6 +832,7 @@ class Dot22(GemmRelated):
             dims[0] = %(_x)s->dimensions[0];
             dims[1] = %(_y)s->dimensions[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims, type_num_%(_x)s);
+            //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc dot22 output");
                 %(fail)s
@@ -841,7 +857,11 @@ class Dot22(GemmRelated):
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
     def c_code_cache_version(self):
-        return (1,) + self.build_gemm_version()
+        gv = self.build_gemm_version()
+        if gv:
+            return (1,) + gv
+        else:
+            return gv
 
 _dot22 = Dot22()
 
@@ -947,7 +967,11 @@ class Dot22Scalar(GemmRelated):
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
     def c_code_cache_version(self):
-        return (2,) + self.build_gemm_version()
+        gv = self.build_gemm_version()
+        if gv:
+            return (2,) + gv
+        else:
+            return gv
 
 _dot22scalar = Dot22Scalar()
 

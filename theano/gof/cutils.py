@@ -33,7 +33,7 @@ run_cthunk(PyObject *self, PyObject *args)
     return NULL;
   }
   void * ptr_addr = PyCObject_AsVoidPtr(py_cthunk);
-  int (*fn)(void*) = reinterpret_cast<int (*)(void*)>(ptr_addr);
+  int (*fn)(void*) = (int (*)(void*))(ptr_addr);
   void* it = PyCObject_GetDesc(py_cthunk);
   int failure = fn(it);
 

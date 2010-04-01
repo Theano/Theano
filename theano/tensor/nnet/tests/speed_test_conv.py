@@ -143,16 +143,18 @@ def speed_multilayer_conv():
         
         validate=False# we don't validate the result to have it much faster!
         verbose=1
-        unroll_batch = [1,2,4,5,10,20]
-        unroll_kern = [1,2,4,5,10,20]
-        unroll_batch = [1,4,5]
-        unroll_kern = [1,4,5]
+        unroll_batch = [1,2,3,4,5,10]#15, 30, 60 always much slower
+        unroll_kern = [1,2,3,4,5,10]#15, 30, 60 always much slower
+        #unroll_batch = [1,4,5]
+        #unroll_kern = [1,4,5]
+        #unroll_batch = [1,4]
+        #unroll_kern = [1,4]
         unroll_patch = [True, False]
         
-        bsize = 20 # batch size
+        bsize = 60 # batch size
         imshp_start = (1,48,48)#un square shape to test more corner case.
         kshps = ([11,12],[12,11])#un square shape to test more corner case.
-        nkerns = [20,20] # per output pixel
+        nkerns = [60,60] # per output pixel
         ssizes = [(1,1),]#(1,1)]#(2,2) bugged
         convmodes = ['valid','full']
         do_convolve2=False
@@ -212,8 +214,10 @@ def speed_multilayer_conv():
         best=N.asarray(best)
         worst=N.asarray(worst)
         print "timing for unrolled version"
-        print t_b_k
-        print t
+        print "unroll_batch/unroll_kern valid_mode full_mode"
+        for n_b in range(len(unroll_batch)):
+            for n_k in range(len(unroll_kern)):
+                print unroll_batch[n_b],"/",unroll_kern[n_k], " ",t[n_b,n_k]
         t_detail=t
         t = t.sum(axis=2)
         print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]

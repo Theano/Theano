@@ -1,13 +1,11 @@
-To install the package, use:
+To install the package, see this page:
 
-    python setup.py build
-    python setup.py test
-    python setup.py install
+   http://deeplearning.net/software/theano/install.html#install
 
 
 For the documentation, see the project website:
 
-    http://pylearn.org/theano/
+   http://deeplearning.net/software/theano/
 
 We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.

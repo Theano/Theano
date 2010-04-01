@@ -88,10 +88,10 @@ class TestConv2D(unittest.TestCase):
         Tests that basic convolutions work for odd and even dimensions of image and filter
         shapes, as well as rectangular images and filters.
         """
-        self.validate((3,2,8,8), (4,2,5,5), 'valid')
+        self.validate((3,2,8,8), (4,2,5,5), 'valid', verify_grad=False)
         self.validate((3,2,7,5), (5,2,2,3), 'valid')
-        self.validate((3,2,7,5), (5,2,3,2), 'valid')
-        self.validate((3,2,8,8), (4,2,5,5), 'full')
+        self.validate((3,2,7,5), (5,2,3,2), 'valid', verify_grad=False)
+        self.validate((3,2,8,8), (4,2,5,5), 'full', verify_grad=False)
         self.validate((3,2,7,5), (5,2,2,3), 'full')
         # test filter same size as input
 
@@ -105,7 +105,7 @@ class TestConv2D(unittest.TestCase):
         """
         self.validate((3,2,7,5), (5,2,2,3), 'valid', unroll_patch=False)
         self.validate((3,2,7,5), (5,2,2,3), 'full', unroll_patch=False)
-        self.validate((3,2,3,3), (4,2,3,3), 'valid', unroll_patch=False)
+        self.validate((3,2,3,3), (4,2,3,3), 'valid', unroll_patch=False, verify_grad=False)
 
     def test_unroll_special(self):
         """
@@ -175,7 +175,17 @@ class TestConv2D(unittest.TestCase):
         """
         try:
             self.validate((3,2,8,8), (4,2,5,5), 'valid', input = T.dmatrix())
+            # should never reach here
+            self.fail()
+        except: 
+            pass
+        try:
             self.validate((3,2,8,8), (4,2,5,5), 'valid', filters = T.dvector())
+            # should never reach here
+            self.fail()
+        except: 
+            pass
+        try:
             self.validate((3,2,8,8), (4,2,5,5), 'valid', input = T.dtensor3())
             # should never reach here
             self.fail()

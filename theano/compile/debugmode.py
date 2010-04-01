@@ -936,7 +936,7 @@ class _Linker(gof.link.LocalLinker):
             except (NotImplementedError, utils.MethodNotDefined):
                 thunks_c.append(None)
 
-            if self.maker.mode.check_py_code:
+            if self.maker.mode.check_py_code or thunks_c[-1] is None:
                 p = node.op.perform
                 thunk = (lambda p = p, i = node_input_storage, o = node_output_storage, n =
                         node: p(n, [x[0] for x in i], o))
@@ -1455,7 +1455,7 @@ class DebugMode(Mode):
 
     check_py_code = config.DebugMode.check_py
     """
-    Should we evaluate (and check) the `perform` implementations?
+    Should we evaluate (and check) the `perform` implementations? Always checked if no `c_code`.
     """
 
     check_isfinite = config.DebugMode.check_finite
