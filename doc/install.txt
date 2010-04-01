@@ -94,7 +94,7 @@ Theano flags blas.ldflags (:ref:`libdoc_config`). The default is to use
 the blas installation information in numpy, accessible via ``numpy.distutils.__config__.show()``.
 You can tell theano to use a different
 version of BLAS, in case you didn't compile numpy with a fast BLAS or if numpy was compiled with a 
-static library of blas (the latter is not nupported in theano).
+static library of blas (the latter is not supported in theano).
 
 The short way to configure the theano flags blas.ldflags is by setting the
 environmental variable ``THEANO_FLAGS`` to ``blas.ldflags=XXX``
