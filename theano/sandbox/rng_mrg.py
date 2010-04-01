@@ -645,9 +645,9 @@ class MRG_RandomStreams(object):
             raise NotImplementedError( 'Increase the size to match the broadcasting pattern of `low` and `high` arguments')
         return  r
 
-    def binomial(self, size=None, n=1, prob=0.5, ndim=None, dtype='int64'):
+    def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64'):
         if n == 1:
-            return cast(self.uniform(size=size) < prob, dtype)
+            return cast(self.uniform(size=size) < p, dtype)
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
