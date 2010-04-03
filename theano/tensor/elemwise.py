@@ -43,6 +43,10 @@ class DimShuffle(Op):
     dimension and a numerical index represents the dimension of the same
     rank in the tensor passed to perform.
 
+    Note 2.04.2010 RP Added 'f' - means that we insert a non-broadcastable
+    dimension; 'f' behaves exactly like 'x', just that the new dimension is
+    not broadcastable
+
     Examples:
       DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
@@ -120,10 +124,10 @@ class DimShuffle(Op):
         # transposition of non-broadcastable dimensions
         # This is how the dimensions will be permuted, without accounting for the extra
         # 'x' broadcastable dimensions to insert.
-        self.shuffle = [i2j[x] for x in new_order if x != 'x']
+        self.shuffle = [i2j[x] for x in new_order if x != 'x' and x != 'f']
 
         # list of dimensions of the output that are broadcastable and were not in the original input
-        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
+        self.augment = [i for i, x in enumerate(new_order) if x == 'x' or x == 'f']
 
         if self.inplace:
             self.view_map = {0: [0]}
@@ -147,6 +151,8 @@ class DimShuffle(Op):
         for value in self.new_order:
             if value == 'x':
                 ob.append(True)
+            elif value == 'f':
+                ob.append(False)
             else:
                 ob.append(ib[value])
 
@@ -235,7 +241,7 @@ class DimShuffle(Op):
 
         shape_statements = ['npy_intp dimensions[%i]'%nd_out]
         for i, o in enumerate(self.new_order):
-          if o != 'x':
+          if o != 'x' and o != 'f':
             shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')]
           else:
             shape_statements += [('dimensions['+str(i)+'] = 1')]
@@ -250,7 +256,7 @@ class DimShuffle(Op):
 
         #set the strides of the non-broadcasted dimensions
         for i, o in enumerate(self.new_order):
-          if o != 'x':
+          if o != 'x' and o != 'f':
              strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')]
           else:
              strides_statements += [('strides['+str(i)+'] = 0')]
@@ -317,7 +323,7 @@ class DimShuffle(Op):
         gz = as_tensor_variable(gz)
         grad_order = ['x'] * len(x.type.broadcastable)
         for i, v in enumerate(self.new_order):
-            if v != 'x':
+            if v != 'x' and v !='f':
                 grad_order[v] = i
         return [DimShuffle(gz.type.broadcastable, grad_order, inplace=True)(Elemwise(scalar.identity)(gz))]
 

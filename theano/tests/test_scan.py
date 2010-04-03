@@ -125,7 +125,7 @@ class T_Scan(unittest.TestCase):
         W_in = theano.tensor.dscalar()
         W    = theano.tensor.dscalar()
 
-        output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = 0, truncate_gradient =
+        output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = None, truncate_gradient =
                 -1, go_backwards = False)
 
         f2   = theano.function([u,x0,W_in,W], output, updates = updates)
@@ -146,7 +146,6 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_values, v_out)
 
 
-
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
     def test_one_sequence_one_output_weights_shared(self):
@@ -159,7 +158,7 @@ class T_Scan(unittest.TestCase):
         def f_rnn_shared(u_t,x_tm1, tmp_W_in, tmp_W):
             return u_t*tmp_W_in+x_tm1*tmp_W
 
-        output, updates = theano.scan(f_rnn_shared, u,x0,[W_in, W], n_steps =0,
+        output, updates = theano.scan(f_rnn_shared, u,x0,[W_in, W], n_steps =None,
                 truncate_gradient= -1, go_backwards = False)
         f3    = theano.function([u,x0], output, updates = updates)
         # get random initial values
@@ -174,7 +173,6 @@ class T_Scan(unittest.TestCase):
         
         theano_values = f3(v_u, v_x0)
         assert  numpy.allclose(theano_values, v_out)
-
 
 
     # some rnn with multiple outputs and multiple inputs; other
@@ -203,7 +201,7 @@ class T_Scan(unittest.TestCase):
             return [theano.dot(u1_t,W_in1) + u2_t* W_in2 + \
                     theano.dot(x_tm1, W), theano.dot(x_tm1, W_out)]
 
-        outputs, updates = theano.scan(f_rnn_cmpl,[u1,u2],[x0,y0],W_in1, n_steps = 0,
+        outputs, updates = theano.scan(f_rnn_cmpl,[u1,u2],[x0,y0],W_in1, n_steps = None,
                 truncate_gradient = -1, go_backwards = False)
 
         f4     = theano.function([u1,u2,x0,y0,W_in1], outputs, updates = updates)
@@ -220,7 +218,6 @@ class T_Scan(unittest.TestCase):
         
         assert numpy.allclose(theano_x , v_x)
         assert numpy.allclose(theano_y , v_y)
-
 
 
     # simple rnn, one input, one state, weights for each; input/state are 
@@ -242,7 +239,7 @@ class T_Scan(unittest.TestCase):
             return u_tm2*W_in+x_tm1*W+x_tm2
 
         outputs, updates = theano.scan(f_rnn_shared, dict(input=u, taps=-2), 
-                dict(initial = x0, taps = [-1,-2]), [], n_steps = 0, truncate_gradient = -1, 
+                dict(initial = x0, taps = [-1,-2]), [], n_steps = None, truncate_gradient = -1, 
                 go_backwards = False)
 
         f7   = theano.function([u,x0], outputs, updates = updates)
@@ -282,7 +279,7 @@ class T_Scan(unittest.TestCase):
             return (u_tm2+u_tp2)*W_in+x_tm1*W+x_tm2
 
         output,updates = theano.scan(f_rnn_shared, dict( input = u, taps=[-2,2]),\
-                dict(initial = x0, taps = [-1,-2]), [], n_steps =0, truncate_gradient =-1,
+                dict(initial = x0, taps = [-1,-2]), [], n_steps = None, truncate_gradient =-1,
                 go_backwards = False)
 
         f8   = theano.function([u,x0], output, updates = updates)
@@ -324,7 +321,7 @@ class T_Scan(unittest.TestCase):
 
         outputs, updates = theano.scan(f_rnn_shared, [u0,u1,u2], 
                 [dict( initial = x0, inplace =u2), dict(initial = x1, inplace = u1)],
-                [], n_steps = 0, truncate_gradient = -1, go_backwards = False, mode=mode )
+                [], n_steps = None, truncate_gradient = -1, go_backwards = False, mode=mode )
         f9   = theano.function([mu0,mu1,mu2,x0,x1], outputs , updates = updates, mode = mode)
 
        # compute output in numpy
@@ -374,7 +371,7 @@ class T_Scan(unittest.TestCase):
         outputs, updates = theano.scan(f_rnn_shared, 
                 [u0,dict(input = u1, taps = [0,1]),dict( input = u2, taps= [-1,0,+1])], 
                 [dict( initial = x0, inplace =u2), dict(initial = x1, inplace = u1)],
-                [], n_steps = 0, truncate_gradient = 01, go_backwards = False, mode=mode )
+                [], n_steps = None, truncate_gradient = 01, go_backwards = False, mode=mode )
         f9   = theano.function([mu0,mu1,mu2,x0,x1], outputs , updates = updates, mode = mode)
 
        # compute output in numpy
@@ -429,7 +426,7 @@ class T_Scan(unittest.TestCase):
         y0 = theano.tensor.matrix('y0')
 
         outputs,updates = theano.scan(f, [u1,u2], [ dict(initial = y0, taps = [-3,-2,-1]),y1,
-            None], [], n_steps = 0, go_backwards = False, truncate_gradient = -1)
+            None], [], n_steps = None, go_backwards = False, truncate_gradient = -1)
         f10 = theano.function([u2,y0], outputs, updates = updates)
         theano_y0,theano_y1,theano_y2 = f10(vu2, vy0)
 
@@ -545,7 +542,7 @@ class T_Scan(unittest.TestCase):
 
         u    = theano.tensor.dvector()
 
-        outputs, updates = theano.scan(f_rnn, u,[],[], n_steps =0 , truncate_gradient = -1,
+        outputs, updates = theano.scan(f_rnn, u,[],[], n_steps =None , truncate_gradient = -1,
                 go_backwards = False)
 
         f2    = theano.function([u], outputs, updates = updates)
@@ -578,7 +575,7 @@ class T_Scan(unittest.TestCase):
         W_in = theano.tensor.dscalar()
         W    = theano.tensor.dscalar()
 
-        output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = 0, truncate_gradient =
+        output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = None, truncate_gradient =
                 -1, go_backwards = True)
 
         f2   = theano.function([u,x0,W_in,W], output, updates = updates)
@@ -607,9 +604,7 @@ class T_Scan(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_v = rng.uniform( size = (5,), low = -5., high = 5.)
         print f(v_v,0.)
-        assert ( numpy.sum(v_v) == f(v_v, 0.) ) 
-
-
+        assert abs(numpy.sum(v_v) - f(v_v, 0.)) < 1e-3
 
 
 

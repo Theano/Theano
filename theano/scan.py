@@ -25,14 +25,18 @@ The Scan Op should typically be used by calling the ``scan()`` function.
 """
 __docformat__ = 'restructedtext en'
 
-import theano
-from theano.tensor import opt, TensorType
-from theano import gof, Apply
-from theano.gof import Optimizer, toolbox
-from theano.compile import optdb
-import theano.tensor.shared_randomstreams as shared_random
-from theano.gof.python25 import all
+import tensor
+import misc.safe_asarray as safe_asarray
+from tensor import opt, TensorType
+import gof
+from gof import Optimizer, toolbox, Op, Apply
+from compile import optdb, SharedVariable, function, Param
+import compile
+import tensor.shared_randomstreams as shared_random
+import gradient
+from gof.python25 import all
 import copy
+import tensor.elemwise as elemwise
 
 import numpy
 
@@ -205,7 +209,7 @@ def foldr(fn, sequences, outputs_info, non_sequences = [], mode = 'FAST_RUN'):
 
 
 def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
-         n_steps = 0, truncate_gradient = -1, go_backwards = False,
+         n_steps = None, truncate_gradient = -1, go_backwards = False,
          mode = None):
     '''Function that constructs and applies a Scan op
 
@@ -318,10 +322,13 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
 
 
     :param n_steps:
-        Number of steps to iterate. If this value is provided scan will run only for
-        this amount of steps (given that the input sequences are sufficiently long).
-        If there is no input sequence (for example in case of a generator network) scan
-        will iterate for this number of steps. It can be a theano scalar or a number.
+        Number of steps to iterate. If the input sequences are not long enough, scan 
+        will produce a warning and run only for the maximal amount of steps allowed by 
+        the input sequences. If the value is 0, the outputs will have 0 rows. If the 
+        value is negative, scan will run backwards (or if the flag go_backwards is 
+        already set to true it will run forward in time). If n_steps is not provided, 
+        or evaluetes not None, scan will figure out the maximal amount of steps it can 
+        take and do that. 
 
     :param truncate_gradient:
         Number of steps to use in truncated BPTT.  If you compute gradients
@@ -423,14 +430,21 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     # go through sequences picking up time slices as needed
     for i,seq in enumerate(seqs):
         if seq.get('taps', None):
-            slices = [ seq['input'][0].type() for k in seq['taps'] ]
-            slice_to_seqs += [ i for k in seq['taps']]
-            args += slices
+            for k in seq['taps']:
+                nw_slice = seq['input'][0].type()
+                # Add names to slices for debugging and pretty printing ..
+                if seq['input'].name:
+                    nw_slice.name = seq['input'].name + '[%d]'%seq['taps'][k]
+                args.append(nw_slice)
+                slice_to_seqs.append(i)
             dummy_notshared_ins += len(seq['taps'])
     # go through outputs picking up time slices as needed
     for i,init_out in enumerate(outs_info):
         if init_out.get('taps', None) == [-1]:
             args += [init_out['initial'].type()]
+            # Added name to slices for debugging and pretty printing
+            if init_out['initial'].name:
+                args[-1].name = init_out['initial'].name+'[-1]'
             if slice_to_seqs:
                 val = slice_to_seqs[-1]
             else:
@@ -440,19 +454,23 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
         elif init_out.get('taps',None):
             if numpy.any(numpy.array(init_out.get('taps',[])) > 0):
                 raise ValueError('Can not use future taps of outputs', init_out)
-            slices = [ init_out['initial'][0].type() for k in init_out['taps'] ]
             if slice_to_seqs:
                 val = slice_to_seqs[-1]
             else:
                 val = -1
-            slice_to_seqs += [ val+1 for k in init_out['taps'] ]
-            args  += slices
+            for k in init_out['taps']:
+                nw_slice = init_out['initial'][0].type()
+                if init_out['initial'].name:
+                    nw_slice.name = init_out['initial'].name + '[%d]'%init_out['taps'][k]
+                args.append(nw_slice)
+                slice_to_seqs.append(val+1)
+
             dummy_notshared_init_outs += len(init_out['taps'])
 
     # remove shared variables from the non sequences list
     notshared_other_args = []
     for non_seq in non_seqs:
-        if not isinstance(non_seq, theano.compile.SharedVariable):
+        if not isinstance(non_seq, SharedVariable):
             notshared_other_args += [non_seq]
 
     # add only the not shared variables to the arguments of the dummy
@@ -498,12 +516,16 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
             else:
                 outputs = outputs_updates
                 updates = {}
-
-
+    # in case you return a tuple .. convert it to a list (there are certain 
+    # operation that are not permited on tuples, like element assignment)
+    outputs = list(outputs)
+    for i,out in enumerate(outputs):
+        outputs[i] = tensor.as_tensor(out)
     # Wo compile a dummy function just to see what shared variable
     # we have and what are their update rules
-    dummy_f = theano.function(dummy_args, outputs, updates = updates, mode = \
-                 theano.compile.mode.Mode(linker = 'py', optimizer = None) )
+
+    dummy_f = function(dummy_args, outputs, updates = updates, mode = \
+                 compile.mode.Mode(linker = 'py', optimizer = None) )
 
     inner_fn_out_states = [ out.variable for out in dummy_f.maker.outputs]
     update_map       = {}
@@ -542,7 +564,7 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     #
     n_extended_outs = n_outs
     for input in dummy_f.maker.expanded_inputs[fromIdx:] :
-        if isinstance(input.variable, theano.compile.SharedVariable) and input.update:
+        if isinstance(input.variable, SharedVariable) and input.update:
             new_var = input.variable.type()
             inner_fn_inputs.append(new_var)
             if slice_to_seqs:
@@ -559,7 +581,7 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
 
     # add the rest:
     for input in dummy_f.maker.expanded_inputs[fromIdx:] :
-        if isinstance(input.variable, theano.compile.SharedVariable) and not input.update:
+        if isinstance(input.variable, SharedVariable) and not input.update:
            shared_non_seqs += [input.variable]
            inner_fn_inputs += [input.variable.type() ]
            if slice_to_seqs:
@@ -567,22 +589,41 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
            else: val = -1
            slice_to_seqs += [val +1]
            givens[input.variable] = inner_fn_inputs[-1]
-        elif not isinstance(input.variable, theano.compile.SharedVariable):
+        elif not isinstance(input.variable, SharedVariable):
             inner_fn_inputs.append(input.variable)
 
+    n_fixed_steps = int(n_steps) if type(n_steps) in (float,int) else None
+    # check if it is actually a Theano constant
+    try :
+        n_fixed_steps = opt.get_constant_value(n_steps)
+    except:
+        n_fixed_steps = None
+    
+    print '>>> ',n_fixed_steps
+    if (n_steps == None or n_steps == numpy.inf or n_steps == numpy.nan) and n_seqs == 0 : 
+        raise ValueError('Scan does not know for how many steps to iterate. '
+                'You need to provide the number of steps through the '
+                ' ``n_steps`` argument if you do not iterate over any sequence')
     # Create the Scan op object
     local_op = Scan( (inner_fn_inputs,inner_fn_out_states, givens, slice_to_seqs ), n_seqs,
             n_extended_outs, inplace_map, sequences_taps,  outputs_taps, truncate_gradient,
-            go_backwards, store_steps, mode)
+            go_backwards, store_steps, mode, n_fixed_steps = n_fixed_steps)
 
     # Call the object on the input sequences, initial values for outs,
     # and non sequences
     for seq in seqs :
         if not seq.get('input', None):
             raiseValue('All input sequences should provide')
-    unwrapped_seqs = [ seq.get('input',theano.tensor.as_tensor(0.)) for seq in seqs ]
-    unwrapped_outs = [ out.get('initial',theano.tensor.as_tensor(0.)) for out in outs_info ]
-    values =  local_op( *(    [theano.tensor.as_tensor(n_steps)]
+    unwrapped_seqs = [ seq.get('input',tensor.as_tensor(0.)) for seq in seqs ]
+    unwrapped_outs = [ out.get('initial',tensor.as_tensor(0.)) for out in outs_info ]
+
+    if n_steps != None:
+        n_steps = tensor.as_tensor(n_steps)
+    else:
+        #n_steps = tensor.constant(numpy.inf,'?_steps')
+        n_steps = gof.Constant(gof.generic, 'unknown', '?_steps')
+
+    values =  local_op( *(    [n_steps]
                          + unwrapped_seqs
                          + unwrapped_outs
                          + shared_outs
@@ -602,9 +643,7 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     return (values, update_map)
 
 
-
-
-class Scan(theano.Op):
+class Scan(Op):
     #
     # OLD DOCUMENTATION CAN BE FOUND NEAR REVISION 2581
     #
@@ -613,7 +652,7 @@ class Scan(theano.Op):
                  inplace_map={}, seqs_taps={}, outs_taps={},
                  truncate_gradient = -1,
                  go_backwards = False, store_steps = {},
-                 mode = 'FAST_RUN', inplace=False):
+                 mode = 'FAST_RUN', n_fixed_steps = None, inplace=False):
         '''
         :param (inputs,outputs, givens,slice_to_seqs):
             inputs and outputs Theano variables that describe the function that is
@@ -635,6 +674,10 @@ class Scan(theano.Op):
             steps (from the end towards the begining) of the outputs you really need and should
             return; given this information, scan can know (if possible) to allocate only
             the amount of memory needed to compute that many entries
+        :param n_fixed_steps: this is a number if n_steps in the scan function
+            received a number or None otherwise. The value is used to optimize
+            the graph, since a scan that has n_steps fixed to 1 or 0 is not
+            really needed in the graph. (? could we use tag hints ?)
         '''
         #check sequences past taps
         for k,v in seqs_taps.iteritems():
@@ -671,10 +714,10 @@ class Scan(theano.Op):
                 # get seq number
                 n_seq = slice_to_seqs[idx]
                 if n_seq in inplace_map.keys():
-                    if type(inputs[n_seq]) is theano.Param:
+                    if type(inputs[n_seq]) is Param:
                         inputs[n_seq].mutable = True
                     else:
-                        inputs[n_seq] = theano.Param( inputs[n_seq], mutable = True)
+                        inputs[n_seq] = Param( inputs[n_seq], mutable = True)
 
         self.seqs_taps      = seqs_taps
         self.outs_taps      = outs_taps
@@ -687,19 +730,24 @@ class Scan(theano.Op):
         self.inputs         = inputs
         self.givens         = givens
         self.outputs        = outputs
+        # This is here just for an optimization to be able to pick up if 
+        # scan is really needed in the graph; if the number of steps 
+        # scan does is a constant of 1, -1 or 0 then we can remove scan 
+        # from the graph
+        self.n_fixed_steps  = n_fixed_steps
         self.mode           = mode
         self.truncate_gradient = truncate_gradient
         self.go_backwards   = go_backwards
         self.slice_to_seqs  = slice_to_seqs
 
-        self.fn = theano.function(inputs,outputs, mode = mode, givens = givens)
-        assert not numpy.any( [isinstance(x.variable,theano.compile.SharedVariable) for x in \
+        self.fn = function(inputs,outputs, mode = mode, givens = givens)
+        assert not numpy.any([isinstance(x.variable,SharedVariable) for x in
             self.fn.maker.inputs])
 
 
 
     def make_node(self,*inputs):
-        assert all(isinstance(i, theano.Variable) for i in inputs)
+        assert all(isinstance(i, gof.Variable) for i in inputs)
         return Apply(self, inputs, [t() for t in self.apply_output_types])
 
 
@@ -721,6 +769,7 @@ class Scan(theano.Op):
             (self.go_backwards == other.go_backwards) and\
             (self.truncate_gradient == other.truncate_gradient) and\
             (self.n_outs == other.n_outs) and\
+            (self.n_fixed_steps == other.n_fixed_steps) and\
             (self.n_args == other.n_args)
         return rval
 
@@ -736,6 +785,7 @@ class Scan(theano.Op):
             hash(self.truncate_gradient) ^\
             hash(self.n_args) ^ \
             hash(self.mode) ^\
+            hash(self.n_fixed_steps) ^\
             hash_listsDictsTuples(self.outputs) ^ \
             hash_listsDictsTuples(self.inputs) ^ \
             hash_listsDictsTuples(self.givens) ^ \
@@ -765,14 +815,23 @@ class Scan(theano.Op):
             Y sequence outputs y_1, y_2, ... y_<self.n_outs>
 
         """
-        n_steps = 0
-        if (self.n_seqs ==0 ) and (args[0] == 0):
-            raise ValueError('Scan does not know over how many steps it '
-                'should iterate! No input sequence or number of steps to '
-                'iterate given !')
+        n_steps = args[0]
+        if n_steps != 'unknown':
+            n_steps = int(n_steps)
+            if n_steps < 0:
+                n_steps = abs(n_steps)
+                go_backwards = not self.go_backwards
+            else:
+                go_backwards = self.go_backwards
+        else:
+            n_steps = None
+            go_backwards = self.go_backwards
 
-        if (args[0] != 0):
-            n_steps = args[0]
+        if (self.n_seqs == 0 ) and (not numpy.isfinite(n_steps) ):
+            raise ValueError('Scan does not know how many steps it '
+                'should iterate! Either provide some input sequences from '
+                'which scan could find out the number of steps, or directly'
+                'the number of steps you want through the n_steps argument.')
 
         for i in xrange(self.n_seqs):
             if self.seqs_taps.has_key(i):
@@ -782,12 +841,17 @@ class Scan(theano.Op):
                 if  max( self.seqs_taps[i]) > 0:
                     # using future values, so need to end the sequence earlier
                     seq_len -= max(self.seqs_taps[i])
-                if n_steps == 0 :
+                if n_steps == None :
                     # length of the sequences, leaving room for the largest
                     n_steps = seq_len
                 if seq_len != n_steps :
-                    warning(('Input sequence %d has a shorter length then the '
-                        'expected number of steps %d')%(i,n_steps))
+                    if seq_len > n_steps:
+                        warning('Input sequence is longer then required. '
+                                'Extra values will be ignored')
+                    else:
+                        warning(' Input sequence is shorter then the number '
+                               'of steps scan was suppose to do. Readjusting'
+                               'the number of steps scan will iterate ... ')
                     n_steps = min(seq_len,n_steps)
 
 
@@ -810,18 +874,9 @@ class Scan(theano.Op):
 
         self.n_steps = n_steps
         y = self.scan(self.fn, args[1:],self.n_seqs, self.n_outs,
-                 self.seqs_taps, self.outs_taps, n_steps, self.go_backwards,
+                 self.seqs_taps, self.outs_taps, n_steps, go_backwards,
                  inplace_map)
 
-        '''
-        # write to storage, converting if needed ( why do we have the wrong dtype !???)
-        # -- solved --
-        for i in xrange(self.n_outs):
-            if hasattr(node.outputs[i], 'dtype'):
-                outs[i][0] = theano._asarray(y[i], dtype=node.outputs[i].dtype)
-            else:
-                outs[i][0] = y[i]
-        '''
         for i in xrange(self.n_outs):
             if self.store_steps[i] > 1 :
                 # we need to reorder the steps .. to have them in the correct order
@@ -1010,12 +1065,12 @@ class Scan(theano.Op):
         g_y = [outputs[0].type()]
 
         def compute_gradient(y, g_y):
-            gmap = theano.gradient.grad_sources_inputs( \
-                        [(y,g_y)], theano.gof.graph.inputs([y]), False)
+            gmap = gradient.grad_sources_inputs( \
+                        [(y,g_y)], gof.graph.inputs([y]), False)
             def zero(p):
-              return theano.tensor.TensorConstant(theano.tensor.TensorType(\
+              return tensor.TensorConstant(tensor.TensorType(\
                       dtype=p.type.dtype, broadcastable=[]),
-                      theano._asarray(0,dtype = p.type.dtype))
+                      safe_asarray._asarray(0,dtype = p.type.dtype))
 
             return [gmap.get(p, zero(p)) for p in inputs]
 
@@ -1038,7 +1093,7 @@ class Scan(theano.Op):
             # backwards pass
             for i in xrange(len(y)):
                if g_outs[i] == None:
-                  g_outs[i] = theano.tensor.zeros_like(y[i])
+                  g_outs[i] = tensor.zeros_like(y[i])
 
             g_args = [self.n_steps]+g_outs + y
             # check if go_backwards is true
@@ -1059,111 +1114,12 @@ class Scan(theano.Op):
             '''
 
 
-class ScanSpaceOptimizer(Optimizer):
-    """ Graph Optimizer that reduces scan memory consumption """
-    def __init__(self):
-        Optimizer.__init__(self)
-
-    def add_requirements(self,env):
-        env.extend(toolbox.ReplaceValidate())
-
-    def apply(self, env):
-        nodelist = list(env.toposort())
-        for node in nodelist:
-            op = node.op
-            # If it is a scan Op
-            if isinstance(op, Scan):
-                outputs = node.outputs
-                store_steps = [0 for x in outputs]
-                # check the otuputs
-                for i,out in enumerate(node.outputs):
-                    if op.store_steps[i] == 0 :
-                        # if we do not have a range for this output
-                        req_steps = numpy.max(numpy.abs(op.outs_taps.get(i,1)))
-                        # look at all its clients
-                        for cl,_dx in out.clients:
-                            if type(cl) == str:
-                                # if the node is actually an output, then 
-                                # we need to store the entire thing 
-                                req_steps = 0
-                                break
-                            else:
-                                if not isinstance(cl.op,
-                                        theano.tensor.basic.Subtensor):
-                                    # if any of the clients is not a subtensor
-                                    # we also need to store the enitre thing
-                                    req_steps = 0
-                                    break
-                                else:
-                                    # if it is a tensor, and the first 
-                                    # dimension is just -1 
-                                    if cl.op.idx_list[0] == -1 :
-                                                req_steps = numpy.max([1, req_steps])
-                                    else:
-                                        # or a constant that evaluates to 
-                                        # -1
-                                        try:
-                                            idx = opt.get_constant_value(cl.op.idx_list[0])
-                                            if idx== -1:
-                                                req_steps = numpy.max([1, req_steps])
-                                            else:
-                                                req_steps = 0
-                                                break
-                                        except:
-                                            req_steps = 0
-                                            break
-                        store_steps[i] = req_steps
-                    else:
-                        store_steps[i] = op.store_steps[i]
-                if numpy.any(store_steps!= op.store_steps):
-                    new_scan = Scan((op.inputs, op.outputs, op.givens, 
-                        op.slice_to_seqs),op.n_seqs, op.n_outs,
-                        op.inplace_map, op.seqs_taps, op.outs_taps, 
-                        op.truncate_gradient, op.go_backwards,
-                        store_steps, op.mode,op.inplace).make_node(*node.inputs)
-                    # we not need to replace the outputs of scan
-                    for i,out in enumerate(node.outputs):
-                        # if we are dealing with an output for which 
-                        # we changed the number of stored steps we 
-                        # also need to get rid off the subtensor
-                        if op.store_steps[i] == 0 and store_steps[i] == 1:
-                            # get the output of the subtensor variables 
-                            outSubTens = [ x[0].outputs[0] for x in out.clients ]
-                            new_old = [(x,new_scan.outputs[i]) for x in outSubTens]
-                            env.replace_all_validate(new_old,reason = 
-                            'scan_space_optimizer')
-                        else:
-                            env.replace_all_validate([(out,
-                                new_scan.outputs[i])], reason =
-                                'scan_space_optimizer')
-
-
-
-
-optdb.register('scanOp_space_optimization', ScanSpaceOptimizer(), 74, 'fast_run')
-
-@gof.local_optimizer([None])
-def scan_make_inplace(node):
-    op = node.op
-    if isinstance(op, Scan) and (not op.inplace) and (op.inplace_map.keys() != []):
-        return Scan((op.inputs, op.outputs, op.givens, op.slice_to_seqs ) , op.n_seqs,
-            op.n_outs, op.inplace_map, op.seqs_taps, op.outs_taps,
-            op.truncate_gradient, op.go_backwards, op.store_steps, op.mode,
-            inplace=True ).make_node(*node.inputs).outputs
-    return False
-
-
-optdb.register('scanOp_make_inplace', opt.in2out(scan_make_inplace,
-    ignore_newtrees=True), 75, 'fast_run', 'inplace')
-
-
-
 '''
-class ScanGrad(theano.Op):
+class ScanGrad(Op):
     """Gradient Op for Scan"""
     def __init__(self,(g_ins, g_outs) , n_seqs, n_outs,
                  seqs_taps = {}, outs_taps= {}, truncate_gradient = -1):
-        self.grad_fn = theano.function(g_ins, g_outs)
+        self.grad_fn = function(g_ins, g_outs)
         self.inputs = g_ins
         self.outputs = g_outs
         self.n_seqs = n_seqs
@@ -1203,7 +1159,7 @@ class ScanGrad(theano.Op):
         # return
         # | grad of seqs | grad of outs | grad of non_seqs  |
         # |   n_seqs     |  n_outs      |  unknown          |
-        return theano.Apply(self, list(args),
+        return Apply(self, list(args),
                     [i.type() for i in args[1+2*self.n_outs:] ])
 
     def perform(self, node, args, storage):
@@ -1318,3 +1274,237 @@ class ScanGrad(theano.Op):
 
 
 
+class ScanSpaceOptimizer(Optimizer):
+    """ Graph Optimizer that reduces scan memory consumption """
+    def __init__(self):
+        Optimizer.__init__(self)
+
+    def add_requirements(self,env):
+        env.extend(toolbox.ReplaceValidate())
+
+    def apply(self, env):
+        nodelist = list(env.toposort())
+        for node in nodelist:
+            op = node.op
+            # If it is a scan Op
+            if isinstance(op, Scan):
+                outputs = node.outputs
+                store_steps = [0 for x in outputs]
+                # check the otuputs
+                for i,out in enumerate(node.outputs):
+                    if op.store_steps[i] == 0 :
+                        # if we do not have a range for this output
+                        req_steps = numpy.max(numpy.abs(op.outs_taps.get(i,1)))
+                        # look at all its clients
+                        for cl,_dx in out.clients:
+                            if type(cl) == str:
+                                # if the node is actually an output, then 
+                                # we need to store the entire thing 
+                                req_steps = 0
+                                break
+                            else:
+                                if not isinstance(cl.op,
+                                        tensor.basic.Subtensor):
+                                    # if any of the clients is not a subtensor
+                                    # we also need to store the enitre thing
+                                    req_steps = 0
+                                    break
+                                else:
+                                    # if it is a tensor, and the first 
+                                    # dimension is just -1 
+                                    if cl.op.idx_list[0] == -1 :
+                                                req_steps = numpy.max([1, req_steps])
+                                    else:
+                                        # or a constant that evaluates to 
+                                        # -1
+                                        try:
+                                            idx = opt.get_constant_value(cl.op.idx_list[0])
+                                            if idx== -1:
+                                                req_steps = numpy.max([1, req_steps])
+                                            else:
+                                                req_steps = 0
+                                                break
+                                        except:
+                                            req_steps = 0
+                                            break
+                        store_steps[i] = req_steps
+                    else:
+                        store_steps[i] = op.store_steps[i]
+                if numpy.any(store_steps!= op.store_steps):
+                    new_scan = Scan((op.inputs, op.outputs, op.givens, 
+                        op.slice_to_seqs),op.n_seqs, op.n_outs,
+                        op.inplace_map, op.seqs_taps, op.outs_taps, 
+                        op.truncate_gradient, op.go_backwards,
+                        store_steps, op.mode,op.n_fixed_steps, 
+                        op.inplace).make_node(*node.inputs)
+                    # we not need to replace the outputs of scan
+                    for i,out in enumerate(node.outputs):
+                        # if we are dealing with an output for which 
+                        # we changed the number of stored steps we 
+                        # also need to get rid off the subtensor
+                        if op.store_steps[i] == 0 and store_steps[i] == 1:
+                            # get the output of the subtensor variables 
+                            outSubTens = [ x[0].outputs[0] for x in out.clients ]
+                            new_old = [(x,new_scan.outputs[i]) for x in outSubTens]
+                            env.replace_all_validate(new_old,reason = 
+                            'scan_space_optimizer')
+                        else:
+                            env.replace_all_validate([(out,
+                                new_scan.outputs[i])], reason =
+                                'scan_space_optimizer')
+
+
+optdb.register('scanOp_space_optimization', ScanSpaceOptimizer(), 74, 'fast_run')
+
+@gof.local_optimizer([None])
+def scan_make_inplace(node):
+    op = node.op
+    if isinstance(op, Scan) and (not op.inplace) and (op.inplace_map.keys() != []):
+        return Scan((op.inputs, op.outputs, op.givens, op.slice_to_seqs ) , op.n_seqs,
+            op.n_outs, op.inplace_map, op.seqs_taps, op.outs_taps,
+            op.truncate_gradient, op.go_backwards, op.store_steps, op.mode,
+            op.n_fixed_steps, inplace=True ).make_node(*node.inputs).outputs
+    return False
+
+
+optdb.register('scanOp_make_inplace', opt.in2out(scan_make_inplace,
+    ignore_newtrees=True), 75, 'fast_run', 'inplace')
+
+
+class ScanRemoveFromGraph(Optimizer):
+    ''' Graph Optmizer that removes scan if you just do a loop of 1 '''
+    def __init__(self):
+        Optimizer.__init__(self)
+    def add_requirements(self, env):
+        env.extend(toolbox.ReplaceValidate())
+    def apply(self,env):
+        nodelist = list(env.toposort())
+        for node in nodelist:
+            op = node.op
+            # If it is a scan Op
+            if isinstance(op, Scan) and op.n_fixed_steps != None:
+                print ':::::::::',op.n_fixed_steps 
+                print '---------', abs(op.n_fixed_steps) < 2
+                if abs(op.n_fixed_steps) < 2:
+                    # Step 1 replace the inputs of the inner function 
+                    #        with the inputs of scan
+
+                    # Start replacing
+                    # idx_curr_inp -> index that goes through the extended
+                    # inputs of the op (includes shared variables) that are 
+                    # not provided to the node as inputs !!
+                    idx_curr_inp = -1
+                    # keeps track of what slice of the current input we are
+                    # currently dealing with
+                    slice = -1
+                    # keeps track of the index that goes through the actual
+                    # inputs of the node
+                    idx_node_inp = 0
+                    # pairs of variables that we need to replace in the end
+                    replace_pairs = {}
+                    # go through the inputs of the inner function
+                    for i,inp in enumerate(op.inputs):
+                        # figure what what slice of what node input this represents
+                        if i < len(op.slice_to_seqs):
+                            # slice_to_seqs is an array of the form [1 1 2 3 3 3 ], 
+                            # meaning that the 1st input of the inner function is a 
+                            # slice of the 1st input of scan, 2nd input of the inner 
+                            # function is a slice of the 1st input of scan and so on..
+                            arg = op.slice_to_seqs[i]
+                            # check if this is a slice of the current input
+                            if arg == idx_curr_inp:
+                                # if so increase the number of the current slice
+                                slice+= 1
+                            else:
+                                # if not reset slice, make this the new current 
+                                # input
+                                slice = 0
+                                idx_curr_inp = arg
+                                # and check if it is a shared variables
+                                # scan deals with shared variables by replacing them 
+                                # with copies using the given argument of theano.function
+                                # so if we have a shared variable it should appear in 
+                                # op.givens !!
+                                if inp not in op.givens:
+                                    # if it is not a shared variable increase the index
+                                    # of the current input 
+                                    # note that we will jump to 1; this is fine since 
+                                    # node.inputs[0] is the number of steps, which we 
+                                    # should not consider here .. we care of what follows
+                                    # namely the sequences, initial states, non sequences...
+                                    idx_node_inp += 1
+                            if inp not in op.givens:
+                                # This is not a shared variable so we can replace it 
+                                # ( we should not replace the shared variables, theano.function
+                                # will take care of shared variables here ..)
+                                if idx_curr_inp >= op.n_seqs:
+                                    # we are dealing with a initial state of some output
+                                    # check if we are dealing with a 1 past tap output
+                                    one_step = False
+                                    if not op.outs_taps.has_key(idx_curr_inp-op.n_seqs):
+                                        one_step = True
+                                    else:
+                                        if op.outs_taps[idx_curr_inp - op.n_seqs] == [-1]:
+                                            one_step = True
+
+                                    if one_step:
+                                        node_input = node.inputs[idx_node_inp]
+                                    else:
+                                        tap = op.outs_taps[idx_curr_inp-op.n_seqs][slice]
+                                        min_tap = min(op.outs_taps[idx_curr_inp-op.n_seqs])
+                                        node_input = node.inputs[idx_node_inp][tap-min_tap]
+                                else:
+                                    # we are dealing with a slice of a sequence
+                                    tap = op.seqs_taps[idx_curr_inp][slice]
+                                    min_tap = min(op.seqs_taps[idx_curr_inp])
+                                    node_input = node.inputs[idx_node_inp][tap-min_tap]
+                                # add to our replace_pairs list
+                                replace_pairs[inp] = node_input
+                        else:
+                            # if we got here this means we are dealing with non_sequences, 
+                            # which do not have slices !
+                            # check to see if we are dealing with a shared variable
+                            if inp not in op.givens:
+                                idx_node_inp += 1
+                                replace_pairs[inp] = node.inputs[idx_node_inp]
+
+
+
+                    def my_replace( node, replace_pairs):
+                        # Turns out that using env replace (while safe) is 
+                        # a real pain because of many condition that have to
+                        # be met which I can not met while doing the 
+                        # replacement, so I did my little hack that does 
+                        # something like a replacement 
+                        # ASSUMPTIONS:
+                        #   we do not do anything crazy like replacing x 
+                        #   with something in terms of x ! 
+                        #
+                        #   we do not have envs or anything, just a simple
+                        #   computational graph that has not been compiled 
+                        #   yet
+                        if node:
+                            for i,inp in enumerate(node.inputs):
+                                if inp in replace_pairs:
+                                    node.inputs[i] = replace_pairs[inp]
+                                else:
+                                    inp.owner = my_replace(inp.owner, replace_pairs)
+                            return node
+                        else:
+                            return node
+                    my_outs = op.outputs
+                    for i, out in enumerate(my_outs):
+                        my_outs[i].owner = my_replace(out.owner, replace_pairs)
+
+                    for idx in xrange(len(my_outs)):
+                        t = my_outs[idx]
+                        p = ['f'] + [i for i in range(t.type.ndim)]
+                        nwout = elemwise.DimShuffle(t.broadcastable,p)(t)
+                        env.replace(node.outputs[idx],nwout)
+                    # we are done ...
+
+
+
+# is 30 soon enough !? I want to do it as early as possible .. such that 
+# the new graph gets optimized
+optdb.register('scanOp_remove_from_graph', ScanRemoveFromGraph() , 30, 'fast_run')
