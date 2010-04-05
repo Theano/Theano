@@ -98,7 +98,7 @@ package, so what does Theano do that Python and numpy do not?
   parts your expression graph into CPU or GPU instructions, which run
   much faster than pure Python.
 
-- *symbolic differentiation*: Theano can automatic build symbolic graphs
+- *symbolic differentiation*: Theano can automatically build symbolic graphs
   for computing gradients.
 
 - *stability optimizations*: Theano can recognize [some] numerically unstable

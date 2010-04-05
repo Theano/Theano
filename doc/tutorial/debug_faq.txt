@@ -45,7 +45,7 @@ How do I print a graph (before or after compilation)?
 ----------------------------------------------------------
 
 Theano provides two functions (:func:`theano.pp` and
-:func:`theano.debugprint`) to print a graph to the terminal before or after
+:func:`theano.printing.debugprint`) to print a graph to the terminal before or after
 compilation.  These two functions print expression graphs in different ways:
 :func:`pp` is more compact and math-like, :func:`debugprint` is more verbose.
 Theano also provides :func:`pydotprint` that creates a png image of the function.

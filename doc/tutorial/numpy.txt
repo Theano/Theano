@@ -21,7 +21,7 @@ Matrix conventions for machine learning
 Rows are horizontal and columns are vertical.
 Every row is an example. Therefore, inputs[10,5] is a matrix of 10 examples 
 where each example has dimension 5. If this would be the input of a
-neural network then the weights from the input the the first hidden
+neural network then the weights from the input to the first hidden
 layer would represent a matrix of size (5, #hid). 
 
 If I have an array:
