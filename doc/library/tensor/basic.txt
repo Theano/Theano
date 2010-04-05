@@ -450,13 +450,6 @@ TensorVariable
         Returns a view of this tensor with permuted dimensions.  Typically the
         pattern will include the integers 0, 1, ... ndim-1, and any number of
         'x' characters in dimensions where this tensor should be broadcasted.
-        Beside 'x' you can also use 'f' for dimension of length 1 which (from
-        the point of view of Theano) are not broadcastable. Note that for
-        Numpy, a dimension of length 1 is implicitly broadcastable, therefore 
-        the same will be true for dimension marked with 'f' of the value of
-        the symbolic variable. Nonetheless, when you try to compile/write your
-        symbolic expression that tries to broadcast the dimension marked with
-        'f', Theano will catch it and will trow on exception.
 
         See :func:`dimshuffle`.
 

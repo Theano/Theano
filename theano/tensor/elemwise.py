@@ -43,17 +43,6 @@ class DimShuffle(Op):
     dimension and a numerical index represents the dimension of the same
     rank in the tensor passed to perform.
 
-    Note (2.04.2010 RP) Added 'f' - means that we insert a non-broadcastable
-    dimension; 'f'. This is useful because Theano in some cases is strongly
-    typed, and will not allow you to replace (in an optimization for example),
-    identical tensors, where the broadcastable patterns differ. Note that numpy
-    does not offer this option (from what I have researched), a dimension of 1
-    means automatically that it is broadcastable. This will be true for the 
-    value of the Theano variable as well on the fixed dimension (the one with 'f').
-    However, when you express your computation symbolically Theano should catch 
-    the fact that you will try to broadcast an unbroadcastable dimension and will
-    not allow you (throw an exception ..).
-
     Examples:
       DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
@@ -102,9 +91,6 @@ class DimShuffle(Op):
         If new_order[i] is 'x', the output's ith dimension will
           be 1 and Broadcast operations will be allowed to do broadcasting
           over that dimension.
-        if new_order[i] is 'f' the outputs's ith dimension will 
-          be 1 and Broadcast operations will not be allowed to do broadcasting
-          over that dimension.
 
         If input.broadcastable[i] == False then i must be found in new_order.
         Broadcastable dimensions, on the other hand, can be discarded.
@@ -134,10 +120,10 @@ class DimShuffle(Op):
         # transposition of non-broadcastable dimensions
         # This is how the dimensions will be permuted, without accounting for the extra
         # 'x' broadcastable dimensions to insert.
-        self.shuffle = [i2j[x] for x in new_order if x != 'x' and x != 'f']
+        self.shuffle = [i2j[x] for x in new_order if x != 'x']
 
         # list of dimensions of the output that are broadcastable and were not in the original input
-        self.augment = [i for i, x in enumerate(new_order) if x == 'x' or x == 'f']
+        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
 
         if self.inplace:
             self.view_map = {0: [0]}
@@ -161,8 +147,6 @@ class DimShuffle(Op):
         for value in self.new_order:
             if value == 'x':
                 ob.append(True)
-            elif value == 'f':
-                ob.append(False)
             else:
                 ob.append(ib[value])
 
@@ -251,7 +235,7 @@ class DimShuffle(Op):
 
         shape_statements = ['npy_intp dimensions[%i]'%nd_out]
         for i, o in enumerate(self.new_order):
-          if o != 'x' and o != 'f':
+          if o != 'x':
             shape_statements += [('dimensions['+str(i)+'] = %(basename)s->dimensions['+str(o)+']')]
           else:
             shape_statements += [('dimensions['+str(i)+'] = 1')]
@@ -266,7 +250,7 @@ class DimShuffle(Op):
 
         #set the strides of the non-broadcasted dimensions
         for i, o in enumerate(self.new_order):
-          if o != 'x' and o != 'f':
+          if o != 'x':
              strides_statements += [('strides['+str(i)+'] = %(basename)s->strides['+str(o)+']')]
           else:
              strides_statements += [('strides['+str(i)+'] = 0')]
@@ -333,7 +317,7 @@ class DimShuffle(Op):
         gz = as_tensor_variable(gz)
         grad_order = ['x'] * len(x.type.broadcastable)
         for i, v in enumerate(self.new_order):
-            if v != 'x' and v !='f':
+            if v != 'x':
                 grad_order[v] = i
         return [DimShuffle(gz.type.broadcastable, grad_order, inplace=True)(Elemwise(scalar.identity)(gz))]
 

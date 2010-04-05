@@ -592,14 +592,15 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
         elif not isinstance(input.variable, SharedVariable):
             inner_fn_inputs.append(input.variable)
 
-    n_fixed_steps = int(n_steps) if type(n_steps) in (float,int) else None
-    # check if it is actually a Theano constant
-    try :
-        n_fixed_steps = opt.get_constant_value(n_steps)
-    except:
-        n_fixed_steps = None
+    if type(n_steps) in (float,int):
+        n_fixed_steps = int(n_steps) 
+    else:
+        # check if it is actually a Theano constant
+        try :
+            n_fixed_steps = opt.get_constant_value(n_steps)
+        except:
+            n_fixed_steps = None
     
-    print '>>> ',n_fixed_steps
     if (n_steps == None or n_steps == numpy.inf or n_steps == numpy.nan) and n_seqs == 0 : 
         raise ValueError('Scan does not know for how many steps to iterate. '
                 'You need to provide the number of steps through the '
@@ -1383,8 +1384,6 @@ class ScanRemoveFromGraph(Optimizer):
             op = node.op
             # If it is a scan Op
             if isinstance(op, Scan) and op.n_fixed_steps != None:
-                print ':::::::::',op.n_fixed_steps 
-                print '---------', abs(op.n_fixed_steps) < 2
                 if abs(op.n_fixed_steps) < 2:
                     # Step 1 replace the inputs of the inner function 
                     #        with the inputs of scan
@@ -1498,8 +1497,7 @@ class ScanRemoveFromGraph(Optimizer):
 
                     for idx in xrange(len(my_outs)):
                         t = my_outs[idx]
-                        p = ['f'] + [i for i in range(t.type.ndim)]
-                        nwout = elemwise.DimShuffle(t.broadcastable,p)(t)
+                        nwout = tensor.Rebroadcast((0,False))(tensor.shape_padleft(t))
                         env.replace(node.outputs[idx],nwout)
                     # we are done ...
 
