@@ -451,7 +451,22 @@ TensorVariable
         pattern will include the integers 0, 1, ... ndim-1, and any number of
         'x' characters in dimensions where this tensor should be broadcasted.
 
+        A few examples of patterns and their effect:
+
+            ('x') -> make a 0d (scalar) into a 1d vector
+            (0, 1) -> identity for 2d vectors
+            (1, 0) -> inverts the first and second dimensions 
+            ('x', 0) -> make a row out of a 1d vector (N to 1xN)
+            (0, 'x') -> make a column out of a 1d vector (N to Nx1)
+            (2, 0, 1) -> AxBxC to CxAxB
+            (0, 'x', 1) -> AxB to Ax1xB
+            (1, 'x', 0) -> AxB to Bx1xA
+
+
         See :func:`dimshuffle`.
+
+        
+
 
     .. method:: flatten(ndim=1)
 
@@ -506,6 +521,45 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`
         cases, but if it cannot and you do not provide the `ndim`, then this
         function will raise an Exception.
     
+
+.. function:: shape_padleft(x, n_ones=1)
+
+    Reshape `x` by left padding the shape with `n_ones` 1s. Note that all 
+    this new dimension will be broadcastable. To make them non-broadcastable 
+    see the :func:`unbroadcast`.
+
+    :param x: variable to be reshaped 
+    :type x: any TensorVariable (or compatible)
+
+    :type n_ones: int
+    :type n_ones: number of dimension to be added to `x`
+
+
+
+.. function:: shape_padright(x,n_ones = 1)
+
+    Reshape `x` by right padding the shape with `n_ones` 1s. Note that all 
+    this new dimension will be broadcastable. To make them non-broadcastable 
+    see the :func:`unbroadcast`.
+
+    :param x: variable to be reshaped 
+    :type x: any TensorVariable (or compatible)
+
+    :type n_ones: int
+    :type n_ones: number of dimension to be added to `x`
+
+.. function:: unbroadcast(x, *axes):
+
+    Make `x` impossible to broadcast in the specified axes `axes`. For
+    example, `unbroadcast(x,0)` will make the first dimension of `x`
+    unbroadcastable.
+
+
+.. function:: addbroadcast(x, *axes):
+
+    Make `x` broadcastable in the specified axes `axes`. For
+    example, `unbroadcast(x,0)` will make the first dimension of `x`
+    broadcastable.
 
 .. function:: flatten(x, outdim=1)
     
