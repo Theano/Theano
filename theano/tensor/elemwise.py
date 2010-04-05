@@ -43,9 +43,16 @@ class DimShuffle(Op):
     dimension and a numerical index represents the dimension of the same
     rank in the tensor passed to perform.
 
-    Note 2.04.2010 RP Added 'f' - means that we insert a non-broadcastable
-    dimension; 'f' behaves exactly like 'x', just that the new dimension is
-    not broadcastable
+    Note (2.04.2010 RP) Added 'f' - means that we insert a non-broadcastable
+    dimension; 'f'. This is useful because Theano in some cases is strongly
+    typed, and will not allow you to replace (in an optimization for example),
+    identical tensors, where the broadcastable patterns differ. Note that numpy
+    does not offer this option (from what I have researched), a dimension of 1
+    means automatically that it is broadcastable. This will be true for the 
+    value of the Theano variable as well on the fixed dimension (the one with 'f').
+    However, when you express your computation symbolically Theano should catch 
+    the fact that you will try to broadcast an unbroadcastable dimension and will
+    not allow you (throw an exception ..).
 
     Examples:
       DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
@@ -94,6 +101,9 @@ class DimShuffle(Op):
           will be the input's jth dimension.
         If new_order[i] is 'x', the output's ith dimension will
           be 1 and Broadcast operations will be allowed to do broadcasting
+          over that dimension.
+        if new_order[i] is 'f' the outputs's ith dimension will 
+          be 1 and Broadcast operations will not be allowed to do broadcasting
           over that dimension.
 
         If input.broadcastable[i] == False then i must be found in new_order.

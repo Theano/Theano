@@ -904,14 +904,17 @@ class _tensor_py_operators:
     def dimshuffle(self, *pattern):
         """Reorder the dimensions of this variable, optionally inserting broadcasted dimensions.
 
-        :param pattern: list/tuple of int mixed with 'x' for broadcastable dimensions
+        :param pattern: list/tuple of int mixed with 'x' for broadcastable dimensions and 'f' for 
+        non-broadcastable dimensions
 
         For example, to create a 3D view of a [2D] matrix, call ``dimshuffle([0,'x',1])``.  This
         will create a 3D view such that the middle dimension is an implicit broadcasted
         dimension.  To do the same thing on the transpose of that matrix, call ``dimshuffle([1,
-        'x', 0])``.
+        'x', 0])``. 'f' behaves exactly like 'x' (i.e. adds a 1-length dimension at that position) 
+        just that from the viewpoint of Theano this dimension is not broadcastable.
 
         This function supports the pattern passed as a tuple, or as a variable-length argument (e.g. ``a.dimshuffle(pattern)`` is equivalent to ``a.dimshuffle(*pattern)`` where ``pattern`` is a list/tuple of ints mixed with 'x' characters).
+
 
         For more information, see `DimShuffle`.
         """
