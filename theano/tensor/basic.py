@@ -3398,9 +3398,9 @@ class AdvancedSubtensor(Op):
             ind1 = as_tensor_variable(inputs[0])
             ind2 = as_tensor_variable(inputs[1])
             if not (ind1.type.dtype.startswith('int') or ind1.type.dtype.startswith('uint')):
-                raise TypeError()
+                raise TypeError('the indices into a matrix must be int or uint. It is ',ind1.type.dtype)
             if not (ind2.type.dtype.startswith('int') or ind2.type.dtype.startswith('uint')):
-                raise TypeError()
+                raise TypeError('the indices into a matrix must be int or uint. It is ',ind2.type.dtype)
 
             if ind1.ndim == 1 and ind2.ndim == 1:
                 return gof.Apply(self,
