@@ -5,6 +5,7 @@ from type import Type
 
 import sys, traceback
 from copy import copy
+from theano.gof.python25 import all
 
 __excepthook = sys.excepthook
 def thunk_hook(type, value, trace):
@@ -533,6 +534,7 @@ class WrapLinker(Linker):
                     wrapper(i, node, *thunks)
                 except:
                     raise_with_op(node)
+        f.thunk_groups = thunk_groups
 
         return f, inputs0, outputs0
 

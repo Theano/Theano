@@ -25,7 +25,8 @@ class Profile_Maker(FunctionMaker):
         for i, node in enumerate(ret.maker.env.toposort()):
             self.mode.apply_time[(i,node)]=0.0
             self.mode.apply_call[(i,node)]=0
-#            self.mode.op_cimpl[node.op] = 
+            assert len(ret.fn.thunk_groups[i])==1
+            self.mode.op_cimpl[node.op] = hasattr(ret.fn.thunk_groups[i][0],'cthunk')
 
         return ret
 
@@ -71,7 +72,7 @@ class ProfileMode(Mode):
         self.call_time = 0
         self.fn_time = 0
 
-        def blah(i, node, th):
+        def profile_thunk(i, node, th):
             if hasattr(th, 'cthunk'):
                 t0 = time.time()
                 failure = run_cthunk(th.cthunk)
@@ -88,7 +89,6 @@ class ProfileMode(Mode):
             local_time[0] += dt
             apply_time[(i,node)] += dt
             apply_call[(i,node)] += 1
-            op_cimpl[node.op] = hasattr(th, 'cthunk')
 
         
         self.provided_linker = linker
@@ -96,7 +96,7 @@ class ProfileMode(Mode):
         if isinstance(linker, str) or linker is None:
             linker = predefined_linkers[linker]
 
-        linker = WrapLinker([linker], blah)
+        linker = WrapLinker([linker], profile_thunk)
             
         self.linker = linker
         if isinstance(optimizer, str) or optimizer is None:
