@@ -509,8 +509,7 @@ class ConvOp(Op):
                     self.unroll_kern=self.speed_unroll_batch_kern[time_unroll_batch_kern_idx][1]
                     self.unroll_patch = False
 
-            print >> sys.stderr, "AUTO FIND VERSION OF C_CODE OF CONV OP"
-            print >> sys.stderr, self.unroll_batch, self.unroll_kern, self.unroll_patch, self.bsize, self.nkern, time_unroll_patch, time_unroll_batch_kern
+            _debug("AUTO FIND VERSION OF C_CODE OF CONV OP",self.unroll_batch, self.unroll_kern, self.unroll_patch, self.bsize, self.nkern, time_unroll_patch, time_unroll_batch_kern)
 
 
         self._rehash()
