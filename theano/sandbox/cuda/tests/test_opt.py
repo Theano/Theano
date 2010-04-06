@@ -16,8 +16,10 @@ from theano.sandbox.cuda.type import CudaNdarrayType
 
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 import theano.sandbox.cuda as cuda
 
@@ -49,3 +51,13 @@ def test_int_pow():
     #theano.printing.debugprint(f)
 
 
+def test_softmax_with_bias():
+    x = tensor.fmatrix()
+    b = tensor.fvector()
+
+    f = theano.function([x,b],tensor.nnet.nnet.SoftmaxWithBias()(x,b), mode=mode_with_gpu)
+    f2 = theano.function([x,b],tensor.nnet.nnet.SoftmaxWithBias()(x,b), mode=mode_without_gpu)
+    assert isinstance(f.maker.env.toposort()[2].op,cuda.nnet.GpuSoftmaxWithBias)
+    xv=numpy.random.rand(7,8)
+    bv=numpy.random.rand(8)
+    assert numpy.allclose(f(xv,bv),f2(xv,bv))

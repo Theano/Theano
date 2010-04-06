@@ -11,7 +11,7 @@ from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactor
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
-        GpuSoftmax)
+        GpuSoftmax, GpuSoftmaxWithBias)
 from theano.compile import optdb
 #optdb.print_summary()  # this shows what is currently registered (in a so-far crude way...)
 
@@ -383,6 +383,18 @@ def local_gpu_softmax(node):
         if x.owner and x.owner.op == host_from_gpu:
             gpu_x, = x.owner.inputs
             gpu_sm = GpuSoftmax()(gpu_x)
+            return [host_from_gpu(gpu_sm)]
+    return False
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_softmax_with_bias(node):
+    if isinstance(node.op, tensor.nnet.SoftmaxWithBias):
+        x, b = node.inputs
+        x_on_gpu = x.owner and x.owner.op == host_from_gpu
+        b_on_gpu = b.owner and b.owner.op == host_from_gpu
+        if x_on_gpu or b_on_gpu:
+            gpu_sm = GpuSoftmaxWithBias()(gpu_from_host(x), gpu_from_host(b))
             return [host_from_gpu(gpu_sm)]
     return False
 

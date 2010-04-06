@@ -368,3 +368,103 @@ class GpuSoftmax (Op):
                     inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
                     "sm[blockIdx.x * N + threadIdx.x] = buf[threadIdx.x]"
                     ])
+
+
+class GpuSoftmaxWithBias (Op):
+    """Writeme"""
+    nin = 2
+    nout = 1
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+    def __str__(self):
+        return self.__class__.__name__
+    def make_node(self, x, b):
+        return Apply(self, [x, b],[x.type()])
+    def infer_shape(self, node, shape):
+        return  [shape[0]]
+    def c_code_cache_version(self):
+        #return ()
+        return (1,) + inline_softmax.code_version
+
+    def c_code(self, node, nodename, (x,b), (z,), sub):
+        fail = sub['fail']
+        return """
+        if (%(x)s->nd != 2)
+        {
+            PyErr_SetString(PyExc_ValueError, "rank error input");
+            %(fail)s;
+        }
+        if (%(b)s->nd != 1)
+        {
+            PyErr_SetString(PyExc_ValueError, "rank error for the bias");
+            %(fail)s;
+        }
+        if ((CudaNdarray_HOST_DIMS(%(x)s)[1] != CudaNdarray_HOST_DIMS(%(b)s)[0]))
+        {
+            PyErr_Format(PyExc_ValueError, "number of columns in x (%%ld) does not match length of b (%%ld)",
+                (long int)CudaNdarray_HOST_DIMS(%(x)s)[1], (long int)CudaNdarray_HOST_DIMS(%(b)s)[0]);
+            %(fail)s;
+        }
+        if ((NULL == %(z)s)
+            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(x)s)[1]))
+        {
+            Py_XDECREF(%(z)s);
+            %(z)s = (CudaNdarray*)CudaNdarray_new_null();
+            if ((NULL == %(z)s)
+                || CudaNdarray_alloc_contiguous(%(z)s, 2, CudaNdarray_HOST_DIMS(%(x)s)))
+            {
+                Py_XDECREF(%(z)s);
+                %(z)s = NULL;
+                %(fail)s;
+            }
+        }
+        {
+            kSoftmaxWithBias_%(nodename)s
+                <<<
+                // todo: cap these at the card limits, implement loops in kernel
+                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float)
+                >>>(
+                        CudaNdarray_HOST_DIMS(%(x)s)[0],
+                        CudaNdarray_HOST_DIMS(%(x)s)[1], 
+
+                        CudaNdarray_DEV_DATA(%(x)s),
+                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
+
+                        CudaNdarray_DEV_DATA(%(b)s),
+                        CudaNdarray_HOST_STRIDES(%(b)s)[0],
+
+                        CudaNdarray_DEV_DATA(%(z)s)  //guarantee c contig
+                );
+            CNDA_THREAD_SYNC;
+            cudaError_t err = cudaGetLastError();
+            if( cudaSuccess != err) 
+            {
+                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kSoftmax_%(nodename)s", cudaGetErrorString(err));
+                %(fail)s;
+            }                         
+        }
+        assert(%(z)s);
+        """ % locals()
+
+    def c_support_code_apply(self, node, nodename):
+        return nvcc_kernel("kSoftmaxWithBias_%s"%nodename,
+                params=['int M', 'int N', 
+                    'const float * x', 'const int sx0', 'const int sx1',
+                    'const float * b', 'const int sb0',
+                    'float * sm'],
+                body=[
+                    "extern __shared__ float buf[]",
+                    "float * buf2 = buf + N",
+                    "buf[threadIdx.x] = x[blockIdx.x * sx0 + threadIdx.x * sx1]",
+                    "buf[threadIdx.x] += b[threadIdx.x * sb0]",
+                    "buf2[threadIdx.x] = buf[threadIdx.x]",
+                    "__syncthreads()",
+                    inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
+                    "sm[blockIdx.x * N + threadIdx.x] = buf[threadIdx.x]"
+                    ])
