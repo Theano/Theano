@@ -24,7 +24,6 @@ class Profile_Maker(FunctionMaker):
         ret = super(Profile_Maker,self).create(input_storage, trustme)
         for i, node in enumerate(ret.maker.env.toposort()):
             self.mode.apply_time[(i,node)]=0.0
-            self.mode.apply_call[(i,node)]=0
             assert len(ret.fn.thunk_groups[i])==1
             self.mode.op_cimpl[node.op] = hasattr(ret.fn.thunk_groups[i][0],'cthunk')
 
@@ -34,14 +33,13 @@ class ProfileMode(Mode):
     def __init__(self, linker=config.linker, optimizer=config.optimizer):
         local_time = [0.0]
         apply_time = {}
-        apply_call = {}
         op_cimpl = {}
         compile_time = 0 #time passed in theano.function()
         fct_call_time = {}#time passed inside theano fct call including op time.
         fct_call = {}
 
         self.__setstate__((linker, optimizer, local_time,
-                           apply_time, apply_call,
+                           apply_time,
                            op_cimpl,
                            compile_time, fct_call_time, fct_call))
 
@@ -54,17 +52,16 @@ class ProfileMode(Mode):
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker, self.provided_optimizer, self.local_time,
-                self.apply_time, self.apply_call,
+                self.apply_time,
                 self.op_cimpl, self.compile_time, self.fct_call_time, self.fct_call)
 
     def __setstate__(self, (linker, optimizer, local_time,
-                            apply_time, apply_call,
+                            apply_time,
                             op_cimpl,
                             compile_time, fct_call_time, fct_call)):
         
         self.local_time = local_time
         self.apply_time = apply_time
-        self.apply_call = apply_call
         self.op_cimpl = op_cimpl
         self.compile_time = compile_time
         self.fct_call_time = fct_call_time
@@ -88,7 +85,6 @@ class ProfileMode(Mode):
 
             local_time[0] += dt
             apply_time[(i,node)] += dt
-            apply_call[(i,node)] += 1
 
         
         self.provided_linker = linker
@@ -124,11 +120,10 @@ class ProfileMode(Mode):
         fct_call_time = self.fct_call_time
         fct_call = self.fct_call
         apply_time = self.apply_time
-        apply_call = self.apply_call
         op_cimpl = self.op_cimpl
 
         self.print_summary_("print_summary",local_time, compile_time, fct_call_time, fct_call,
-                            apply_time, apply_call, op_cimpl,
+                            apply_time, op_cimpl,
                             n_apply_to_print, n_ops_to_print)
 
 
@@ -163,17 +158,16 @@ class ProfileMode(Mode):
         fct_call_time = diff_dict(self.fct_call_time,other.fct_call_time)
         fct_call = diff_dict(self.fct_call,other.fct_call)
         apply_time = diff_dict(self.apply_time, other.apply_time)
-        apply_call = diff_dict(self.apply_call, other.apply_call)
         op_cimpl = self.op_cimpl and other.op_cimpl
 
         self.print_summary_("print_diff_summary",local_time, compile_time, fct_call_time, fct_call,
-                            apply_time, apply_call, op_cimpl,
+                            apply_time, op_cimpl,
                             n_apply_to_print=n_apply_to_print,
                             n_ops_to_print=n_ops_to_print, print_apply=False)
 
     @staticmethod
     def print_summary_(fct_name, local_time, compile_time, fct_call_time, fct_call,
-                       apply_time, apply_call, op_cimpl,
+                       apply_time, op_cimpl,
                        n_apply_to_print=15, n_ops_to_print=20, print_apply=True):
         """
         do the actual printing of print_summary and print_diff_summary.
@@ -192,14 +186,14 @@ class ProfileMode(Mode):
 
         if print_apply:
             print 'Apply-wise summary: <% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, (a[0], str(a[1].op)), apply_call[a]) for a, t in apply_time.items()]
+            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
             tot=0
             for f,t,a,nb_call in atimes[:n_apply_to_print]:
                 tot+=t
                 ftot=tot*100/local_time
-                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], a[1])
+                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %i %s' % (f, ftot, t, tot, t/nb_call,nb_call, a[0], str(a[1]))
             print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
                     %(max(0, len(atimes)-n_apply_to_print),
                       sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
@@ -214,7 +208,7 @@ class ProfileMode(Mode):
             op_call.setdefault(op,0)
             op_apply.setdefault(op,0)
             op_time[op]+=t
-            op_call[op]+=apply_call[(i,a)]
+            op_call[op]+=[v for k,v in fct_call.items() if k.maker.env is a.env][0]
             op_apply[op]+=1
 
         op_flops = {}
