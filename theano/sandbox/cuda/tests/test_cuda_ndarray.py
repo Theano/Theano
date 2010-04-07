@@ -90,6 +90,11 @@ def test_copy():
     assert numpy.allclose(a, numpy.asarray(b))
     assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
+    b+=b
+    assert numpy.allclose(a+a, numpy.asarray(b))
+    assert numpy.allclose(a+a, numpy.asarray(c))
+    assert numpy.allclose(a, numpy.asarray(d))
+    
 
 def test_dot():
     print >>sys.stdout, 'starting test_dot'
