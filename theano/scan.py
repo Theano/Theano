@@ -1498,6 +1498,7 @@ class ScanRemoveFromGraph(Optimizer):
                     for idx in xrange(len(my_outs)):
                         t = my_outs[idx]
                         nwout = tensor.Rebroadcast((0,False))(tensor.shape_padleft(t))
+                        print 'replacing', node.outputs[idx], nwout
                         env.replace(node.outputs[idx],nwout)
                     # we are done ...
 
@@ -1505,4 +1506,4 @@ class ScanRemoveFromGraph(Optimizer):
 
 # is 30 soon enough !? I want to do it as early as possible .. such that 
 # the new graph gets optimized
-optdb.register('scanOp_remove_from_graph', ScanRemoveFromGraph() , 30, 'fast_run')
+#optdb.register('scanOp_remove_from_graph', ScanRemoveFromGraph() , 30, 'fast_run')
