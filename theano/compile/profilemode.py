@@ -46,6 +46,8 @@ class ProfileMode(Mode):
         assert m is self
         return Profile_Maker(i, o, self, *args, **kwargs)
 
+    local_time = property(lambda self: [sum(self.apply_time.values())])
+    
     def __getstate__(self):
         #print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker, self.provided_optimizer, self.apply_time,
