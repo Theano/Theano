@@ -51,6 +51,16 @@ def test_int_pow():
     #theano.printing.debugprint(f)
 
 
+def test_softmax():
+    x = tensor.fmatrix()
+
+    f = theano.function([x],tensor.nnet.nnet.Softmax()(x), mode=mode_with_gpu)
+    f2 = theano.function([x],tensor.nnet.nnet.Softmax()(x), mode=mode_without_gpu)
+    assert isinstance(f.maker.env.toposort()[1].op,cuda.nnet.GpuSoftmax)
+    xv=numpy.random.rand(7,8)
+    assert numpy.allclose(f(xv),f2(xv))
+
+
 def test_softmax_with_bias():
     x = tensor.fmatrix()
     b = tensor.fvector()
