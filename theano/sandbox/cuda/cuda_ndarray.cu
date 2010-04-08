@@ -22,8 +22,8 @@ void * device_malloc(size_t size)
     void * rval=NULL;
     if (cudaSuccess != cudaMalloc(&rval, size))
     {
-        fprintf(stderr, "Error allocating %i bytes of device memory.\n", size);
-        PyErr_Format(PyExc_MemoryError, "error allocating %i bytes of device memory", size);
+        fprintf(stderr, "Error allocating %li bytes of device memory.\n", (long)size);
+        PyErr_Format(PyExc_MemoryError, "error allocating %li bytes of device memory", (long)size);
         return NULL;
     }
     _outstanding_mallocs[0] += (rval != NULL);
@@ -1974,9 +1974,10 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
                  return -1;
     };
     CNDA_THREAD_SYNC;
-    if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+    cudaError_t err = cudaGetLastError();
+    if (CUBLAS_STATUS_SUCCESS != err)
     {
-        PyErr_SetString(PyExc_RuntimeError, "cublassGemm failed");
+        PyErr_Format(PyExc_RuntimeError, "cublassGemm failed (%s)",cudaGetErrorString(err));
         return -1;
     }
     return 0;
