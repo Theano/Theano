@@ -10,6 +10,7 @@ __docformat__ = "restructuredtext en"
 
 import utils
 import traceback
+from theano import config
 
 class CLinkerObject(object):
     """Standard elements of an Op or Type used with the CLinker
@@ -319,7 +320,7 @@ class PureOp(object):
 
         """
         node = self.make_node(*inputs, **kwargs)
-        limit = theano.config.traceback.limit
+        limit = config.traceback.limit
         if limit == 0: limit = None
         node.tag.trace = traceback.extract_stack(limit=limit)[:-1]
         if self.default_output is not None:

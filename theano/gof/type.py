@@ -7,7 +7,7 @@ import utils
 from utils import MethodNotDefined, object2
 from graph import Variable
 import traceback
-
+from theano import config
 
 ########
 # Type #
@@ -245,7 +245,7 @@ class PureType(object):
 
         """
         r = self.make_variable(name)
-        limit = theano.config.traceback.limit
+        limit = config.traceback.limit
         if limit == 0: limit = None
         r.tag.trace = traceback.extract_stack(limit=limit)[:-1]
         return r
