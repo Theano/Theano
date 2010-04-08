@@ -20,6 +20,7 @@ Theano defines the following modes by name:
 - ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and python 
     implementations. This mode can take much longer than the other modes, 
     but can identify many kinds of problems.
+- ``'PROFILE_MODE'``: Same optimization then FAST_RUN, put print some profiling information
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the configuration variable :attr:`config.mode`, 
@@ -32,6 +33,7 @@ short name        Full constructor                                              
 FAST_COMPILE      ``compile.mode.Mode(linker='c|py', optimizer='fast_compile')``  C implementations where available, quick and cheap graph transformations
 FAST_RUN          ``compile.mode.Mode(linker='c|py', optimizer='fast_run')``      C implementations where available, all available graph transformations.
 DEBUG_MODE        ``compile.debugmode.DebugMode()``                               Both implementations where available, all available graph transformations.
+PROFILE_MODE      ``compile.profilemode.ProfileMode()``                           C implementations where available, all available graph transformations, print profile information.
 ================= =============================================================== ===============================================================================
 
 
@@ -91,6 +93,7 @@ Beside checking for errors, another important task is to profile your
 code. For this Theano uses a special mode called ProfileMode which has 
 to be passed as an argument to :func:`theano.function <function.function>`. Using the ProfileMode is a three-step process.
 
+To change the default to it, put the theano flags mode to PROFILE_MODE.
 
 Creating a ProfileMode Instance
 -------------------------------
