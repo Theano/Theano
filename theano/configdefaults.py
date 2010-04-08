@@ -70,5 +70,5 @@ AddConfigVar('cmodule.mac_framework_link',
         BoolParam(False))
 
 AddConfigVar('traceback.limit',
-             "The number of stack to trace. 0 mean all.",
-             IntParam(0))
+             "The number of stack to trace. -1 mean all.",
+             IntParam(-1))

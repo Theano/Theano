@@ -321,7 +321,7 @@ class PureOp(object):
         """
         node = self.make_node(*inputs, **kwargs)
         limit = config.traceback.limit
-        if limit == 0: limit = None
+        if limit == -1: limit = None
         node.tag.trace = traceback.extract_stack(limit=limit)[:-1]
         if self.default_output is not None:
             return node.outputs[self.default_output]

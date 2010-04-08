@@ -28,6 +28,7 @@ def thunk_hook(type, value, trace):
             print>>sys.stderr, "Definition in: "
             for line in traceback.format_list(trace2):
                 print>>sys.stderr, line,
+            print>>sys.stderr, "For the full definition stack trace set the Theano flags traceback.limit to -1"
     __excepthook(type, value, trace)
 sys.excepthook = thunk_hook
 

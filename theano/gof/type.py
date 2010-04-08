@@ -246,7 +246,7 @@ class PureType(object):
         """
         r = self.make_variable(name)
         limit = config.traceback.limit
-        if limit == 0: limit = None
+        if limit == -1: limit = None
         r.tag.trace = traceback.extract_stack(limit=limit)[:-1]
         return r
 
