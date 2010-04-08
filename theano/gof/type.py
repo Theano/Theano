@@ -245,9 +245,9 @@ class PureType(object):
 
         """
         r = self.make_variable(name)
+        limit = theano.config.traceback.limit
         if limit == 0: limit = None
-        node.tag.trace = traceback.extract_stack(limit=limit)[:-1]
-        r.tag.trace = traceback.extract_stack(limit)[:-1]
+        r.tag.trace = traceback.extract_stack(limit=limit)[:-1]
         return r
 
     def values_eq(self, a, b):
