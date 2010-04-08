@@ -1702,6 +1702,37 @@ def zeros_like(model):
     #return Zeros(model.type.ndim)(shape(model))
     return fill(model, constant(0.0, dtype=model.type.dtype))
 
+class Eye(gof.Op):
+    def __init__(self, dtype='float64'):
+        self.dtype = dtype
+    def make_node(self,n,m,k):
+        n = as_tensor_variable(n)
+        m = as_tensor_variable(m)
+        k = as_tensor_variable(k)
+        return gof.Apply(self, [n,m,k], [TensorType(dtype = self.dtype, broadcastable = (False,False))()])
+
+    def perform(self, node, (n,m,k), (out,)):
+        out[0] = numpy.eye(n,m,k)
+
+    def grad(self, (n,m,k),(gout,)):
+        return [None, None, None]
+
+    def __eq__(self,other):
+        return type(self) == type(other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.dtype) ^ hash(type(self))
+
+
+def eye(n, m=None, k = 0, dtype = 'float64'):
+    if m == None:
+        m = n
+    localop = Eye(dtype)
+    return localop(n,m,k)
+
+def identity_like(x):
+    return eye(x.shape[0], x.shape[1], k=0, dtype = x.dtype)
+
 if 0:
     ## COMMENTED OUT FEB 17 2010
     ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
