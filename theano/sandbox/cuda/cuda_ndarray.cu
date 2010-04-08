@@ -1186,10 +1186,53 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
     return py_rval;
 }
 
+// Will by called by __setitem__ in Python
+// See http://docs.python.org/dev/py3k/c-api/object.html#PyObject_SetItem
+// Doesn't handle broadcasting, e.g. a[:] = 5
+// Can only be assigned from a CudaNdarray on the right side
+static int
+CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
+{
+    if(!CudaNdarray_Check(o) || !CudaNdarray_Check(v))
+    {
+        PyErr_SetString(PyExc_TypeError, "both left and right of setitem must be CudaNdarrays");
+        return -1;
+    }
+
+    // Check that 'v' is compatible?
+    CudaNdarray* rval = (CudaNdarray*)CudaNdarray_Subscript(o, key);
+
+    if(rval == NULL)
+    {
+        // Actually error string was probably set if we get a NULL, so we leave it as it is
+        //PyErr_SetString(PyExc_RuntimeError, "__getitem__ returned an error");
+        return -1;
+    }
+    else if((rval != (CudaNdarray*)o && rval->data_allocated) ||
+             (rval != (CudaNdarray*)o && rval->base != o))
+    {
+        // This case shouldn't happen, based on what I see in Subscript
+        // but just in case it happens sometime in the future
+        PyErr_SetString(PyExc_RuntimeError, "__getitem__ must return a CudaNdarray that refers to the original CudaNdarray, not a copy.");
+        Py_DECREF(rval);
+        return -1;
+    }
+ 
+    if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v))
+    {
+        Py_DECREF(rval);
+        return -1;
+    }
+    
+    // If it fails, deallocate memory (DECREF?)
+    return 0;
+}
+ 
+
 PyMappingMethods CudaNdarrayMappingMethods = {
     CudaNdarray_len, //lenfunc mp_length;               __len__
     CudaNdarray_Subscript, //binaryfunc mp_subscript;   __getitem__
-    0, //objobjargproc mp_ass_subscript;                __setitem__
+    CudaNdarray_setitem //objobjargproc mp_ass_subscript;                __setitem__
 };
 
 ////////////////////

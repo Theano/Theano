@@ -298,3 +298,96 @@ def test_gemm_vector_vector():
     _c = cuda_ndarray.dot(_b,_a)
     assert _c.shape == (1,1)
     assert numpy.allclose(_c, numpy.dot(b, a))
+
+# ---------------------------------------------------------------------
+
+def test_setitem_matrixvector1():
+    a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([8,9], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    # set second column to 8,9
+    _a[:,1] = _b
+
+    assert numpy.all(numpy.asarray(_a[:,1]) == b)
+
+def test_setitem_matrix_tensor3():
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([7,8,9], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    # set middle row through cube to 7,8,9
+    _a[:,1,1] = _b
+
+    assert numpy.all(numpy.asarray(_a[:,1,1]) == b)
+
+def test_setitem_assign_to_slice():
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([7,8,9], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    # first get a slice of a
+    _c = _a[:,:,1]
+
+    # set middle row through cube to 7,8,9
+    # (this corresponds to middle row of matrix _c)
+    _c[:,1] = _b
+
+    assert numpy.all(numpy.asarray(_a[:,1,1]) == b)
+
+
+# this fails for the moment
+def test_setitem_broadcast_must_fail():
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([7,8,9], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    try:
+        # attempt to assign vector to all rows of this submatrix
+        _a[:,:,1] = _b
+        assert False
+    except TypeError:
+        assert True
+
+# this also fails for the moment
+def test_setitem_rightvalue_ndarray_fails():
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([7,8,9], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    try:
+        # attempt to assign the ndarray b with setitem
+        _a[:,:,1] = b
+        assert False
+    except TypeError, e:
+        #print e
+        assert True
+
+
+'''
+if __name__ == '__main__':
+    test_setitem_matrixvector1()
+    test_setitem_matrix_tensor3()
+    test_setitem_broadcast_must_fail()
+    test_setitem_assign_to_slice()
+    test_setitem_rightvalue_ndarray_fails()
+'''
+
