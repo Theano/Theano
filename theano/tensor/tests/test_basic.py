@@ -2028,6 +2028,45 @@ class TestARange(unittest.TestCase):
         assert out2.owner.op is out3.owner.op
         assert out3.owner.op is not out4.owner.op
 
+    def test_infer_shape(self):
+        start, stop, step = iscalars('start', 'stop', 'step')
+        out = arange(start, stop, step)
+        f = function([start, stop, step], out.shape, mode=compile.mode.get_default_mode().excluding('fusion'))
+        assert len(f.maker.env.toposort())==12
+#ungly graph...        [DimShuffle{x}(step), DimShuffle{x}(start), DimShuffle{x}(stop), Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)](DimShuffle{x}.0, DimShuffle{x}.0), Elemwise{Cast{float64}}(Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{float64}}.0, DimShuffle{x}.0), Rebroadcast{0}(Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)](Rebroadcast{0}.0), Elemwise{Cast{int64}}(Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)].0), <theano.tensor.basic.Join object at 0x1fb1d10>(0, Elemwise{Cast{int64}}.0, [0]), MaxAndArgmax(<theano.tensor.basic.Join object at 0x1fb1d10>.0, [0]), MakeVector(max)]
+        assert out.dtype == start.type.dtype
+        assert numpy.all(f(0,5,1) == len(numpy.arange(0,5,1)))
+        assert numpy.all(f(2,11,4) == len(numpy.arange(2,11,4)))
+        assert numpy.all(f(-5,1,1) == len(numpy.arange(-5,1,1)))
+        assert numpy.all(f(10,2,-2) == len(numpy.arange(10,2,-2)))
+        assert numpy.all(f(10,2,2) == len(numpy.arange(10,2,2)))
+        assert numpy.all(f(0,0,1) == len(numpy.arange(0,0,1)))
+
+        out = arange(start, stop, 1)
+        f = function([start, stop], out.shape, mode=compile.mode.get_default_mode().excluding('fusion'))
+        assert len(f.maker.env.toposort())==8
+#ungly graph...        [DimShuffle{x}(start), DimShuffle{x}(stop), Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)](DimShuffle{x}.0, DimShuffle{x}.0), Rebroadcast{0}(Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Cast{int64}}(Rebroadcast{0}.0), <theano.tensor.basic.Join object at 0x1fb1d10>(0, Elemwise{Cast{int64}}.0, [0]), MaxAndArgmax(<theano.tensor.basic.Join object at 0x1fb1d10>.0, [0]), MakeVector(max)]
+
+        assert out.dtype == start.type.dtype
+        assert numpy.all(f(0,5) == len(numpy.arange(0,5)))
+        assert numpy.all(f(2,11) == len(numpy.arange(2,11)))
+        assert numpy.all(f(-5,1) == len(numpy.arange(-5,1)))
+        assert numpy.all(f(10,2) == len(numpy.arange(10,2)))
+        assert numpy.all(f(10,2) == len(numpy.arange(10,2)))
+        assert numpy.all(f(0,0) == len(numpy.arange(0,0)))
+
+        out = arange(0, stop, 1)
+        f = function([stop], out.shape, mode=compile.mode.get_default_mode().excluding('fusion'))
+        assert len(f.maker.env.toposort())==2
+        #[Elemwise{Cast{int64}}(stop), MakeVector(Elemwise{Cast{int64}}.0)]
+        
+        assert out.dtype == start.type.dtype
+        assert numpy.all(f(5) == len(numpy.arange(0,5)))
+        assert numpy.all(f(11) == len(numpy.arange(0,11)))
+        assert numpy.all(f(1) == len(numpy.arange(0,1)))
+        assert numpy.all(f(2) == len(numpy.arange(0,2)))
+        assert numpy.all(f(2) == len(numpy.arange(0,2)))
+        assert numpy.all(f(0) == len(numpy.arange(0,0)))
 
 class TestInversePermutation(unittest.TestCase):
     def setUp(self):
