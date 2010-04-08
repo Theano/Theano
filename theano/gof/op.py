@@ -319,7 +319,9 @@ class PureOp(object):
 
         """
         node = self.make_node(*inputs, **kwargs)
-        node.tag.trace = traceback.extract_stack()[:-1]
+        limit = theano.config.traceback.limit
+        if limit == 0: limit = None
+        node.tag.trace = traceback.extract_stack(limit=limit)[:-1]
         if self.default_output is not None:
             return node.outputs[self.default_output]
         else:

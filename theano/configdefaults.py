@@ -68,3 +68,7 @@ AddConfigVar('gpuelemwise.sync',
 AddConfigVar('cmodule.mac_framework_link',
         "If set to true, breaks certain mac installations with the infamous Bus Error",
         BoolParam(False))
+
+AddConfigVar('traceback.limit',
+             "The number of stack to trace. 0 mean all.",
+             IntParam(0))
