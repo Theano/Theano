@@ -293,6 +293,7 @@ them perfectly, but a dscalar otherwise.
     :rtype: :class:`TensorVariable` or :class:`TensorConstant`
 
 
+
 TensorType and TensorVariable
 =============================
 
@@ -581,6 +582,42 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`
     have shape (2, 60).
 
 
+.. function:: zeros_like(x)
+
+    :param x: tensor that has same shape as output
+
+    Returns a tensor filled with 0s that has same shape as `x`.
+
+.. function:: ones_like(x)
+
+    :param x: tensor that has same shape as output
+
+    Returns a tensor filled with 1s that has same shape as `x`.
+
+.. function:: fill(a,b)
+
+    :param a: tensor that has same shape as output 
+    :param b: theano scalar or value with which you want to fill the output
+
+    Create a matrix by filling the shape of `a` with `b`
+
+.. function:: eye(n, m = None, k = 0, dtype='float64')
+
+    :param n: number of rows in output (value or theano scalar)
+    :param m: number of columns in output (value or theano scalar)
+    :param k: Index of the diagonal: 0 refers to the main diagonal, 
+              a positive value refers to an upper diagonal, and a 
+              negative value to a lower diagonal. It can be a theano 
+              scalar.
+    :returns: An array where all elements are equal to zero, except for the `k`-th
+              diagonal, whose values are equal to one.
+
+.. function:: identity_like(x)
+
+    :param x: tensor
+    :returns: A tensor of same shape as `x` that is filled with 0s everywhere
+              except for the main diagonal, whose values are equal to one. The output
+              will have same dtype as `x`.
 
 Reductions 
 ==========
@@ -742,6 +779,7 @@ Casting
 
     Return the imaginary components of Tensor x. 
     For non-complex `x` this function returns zeros_like(x).
+
 
 Comparisons
 ------------

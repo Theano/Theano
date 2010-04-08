@@ -1143,6 +1143,13 @@ class test_bitwise(unittest.TestCase):
         v = fn(l, r)
         self.failUnless(numpy.all(v == (~l)), (l, r, v))
 
+    def test_eye(self):
+        n = iscalar()
+        m = iscalar()
+        k = iscalar()
+        fn = theano.function([m,n,k],eye(m,n,k) )
+        self.failUnless(numpy.all(fn(5,6,1) == numpy.eye(5,6,1)))
+
 
 class T_add(unittest.TestCase):
     def setUp(self):
