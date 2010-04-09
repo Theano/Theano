@@ -628,6 +628,7 @@ Reductions
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Parameter: *axis* - axis along which to compute the maximum
     :Returns: the maximum value along a given axis
+    :note: see maximum for elemwise max
 
     If axis=None, then axis is assumed to be ndim(x)-1
 
@@ -636,6 +637,7 @@ Reductions
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Parameter: *axis* - axis along which to compute the minimum
     :Returns: the minimum value along a given axis
+    :note: see miminum for elemwise min
 
     if axis=None, then axis is assumed to be ndim(x)-1
 
@@ -919,6 +921,14 @@ Mathematical
 .. function:: exp(a)
 
     Returns a variable representing the exponential of a, ie e^a.
+
+.. function:: maximum(a,b)
+
+   Returns a variable representing the maximum element by element of a and b
+
+.. function:: minimum(a,b)
+
+   Returns a variable representing the minimum element by element of a and b
 
 .. function:: neg(a)
 
