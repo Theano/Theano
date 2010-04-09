@@ -3175,9 +3175,10 @@ class ARange(Op):
             if is_constant_value(start, 0):
                 return [(cast(stop, 'int64'),)]
             else:
-                return [(theano.tensor.max([cast(stop-start, 'int64'),0]),)]
+                return [(maximum(cast(stop-start, 'int64'),0),)]
         else:
-            return [(theano.tensor.max([cast(ceil(cast((stop-start),'float64')/step),'int64'),0]),)]
+            return [(maximum(cast(ceil(cast((stop-start),'float64')
+                                                     /step),'int64'),0),)]
 
     def perform(self, node, (start, stop, step), (out,)):
         start = start.item()
