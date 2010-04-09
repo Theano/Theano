@@ -601,7 +601,7 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`
 
     Create a matrix by filling the shape of `a` with `b`
 
-.. function:: eye(n, m = None, k = 0, dtype='float64')
+.. function:: eye(n, m = None, k = 0, dtype=theano.config.floatX)
 
     :param n: number of rows in output (value or theano scalar)
     :param m: number of columns in output (value or theano scalar)
@@ -628,6 +628,7 @@ Reductions
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Parameter: *axis* - axis along which to compute the maximum
     :Returns: the maximum value along a given axis
+    :note: see maximum for elemwise max
 
     If axis=None, then axis is assumed to be ndim(x)-1
 
@@ -636,6 +637,7 @@ Reductions
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Parameter: *axis* - axis along which to compute the minimum
     :Returns: the minimum value along a given axis
+    :note: see miminum for elemwise min
 
     if axis=None, then axis is assumed to be ndim(x)-1
 
@@ -919,6 +921,14 @@ Mathematical
 .. function:: exp(a)
 
     Returns a variable representing the exponential of a, ie e^a.
+
+.. function:: maximum(a,b)
+
+   Returns a variable representing the maximum element by element of a and b
+
+.. function:: minimum(a,b)
+
+   Returns a variable representing the minimum element by element of a and b
 
 .. function:: neg(a)
 

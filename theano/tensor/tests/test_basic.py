@@ -250,6 +250,36 @@ SubInplaceTester = makeBroadcastTester(op = inplace.sub_inplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
+MaximumTester = makeBroadcastTester(op = maximum,
+                                  expected = numpy.maximum,
+                                  good = _good_broadcast_binary_normal,
+                                  bad_build = _bad_build_broadcast_binary_normal,
+                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                  grad = _grad_broadcast_binary_normal)
+
+MaximumInplaceTester = makeBroadcastTester(op = inplace.maximum_inplace,
+                                         expected = numpy.maximum,
+                                         good = _good_broadcast_binary_normal,
+                                         bad_build = _bad_build_broadcast_binary_normal,
+                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                         grad = _grad_broadcast_binary_normal,
+                                         inplace = True)
+
+MinimumTester = makeBroadcastTester(op = minimum,
+                                  expected = numpy.minimum,
+                                  good = _good_broadcast_binary_normal,
+                                  bad_build = _bad_build_broadcast_binary_normal,
+                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                  grad = _grad_broadcast_binary_normal)
+
+MinimumInplaceTester = makeBroadcastTester(op = inplace.minimum_inplace,
+                                         expected = numpy.minimum,
+                                         good = _good_broadcast_binary_normal,
+                                         bad_build = _bad_build_broadcast_binary_normal,
+                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                         grad = _grad_broadcast_binary_normal,
+                                         inplace = True)
+
 MulTester = makeBroadcastTester(op = mul,
                                   expected = lambda *inputs: reduce(lambda x, y: x * y, inputs),
                                   good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
@@ -655,10 +685,11 @@ class T_max_and_argmax(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            eval_outputs(max_and_argmax(n,3))
-            assert False
-        except ValueError, e:
-            pass
+            try:
+                eval_outputs(max_and_argmax(n,3))
+                assert False
+            except ValueError, e:
+                pass
         finally:
             _logger.setLevel(oldlevel)
     def test2_invalid_neg(self):
@@ -666,10 +697,11 @@ class T_max_and_argmax(unittest.TestCase):
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
-            eval_outputs(max_and_argmax(n,-3))
-            assert False
-        except ValueError, e:
-            pass
+            try:
+                eval_outputs(max_and_argmax(n,-3))
+                assert False
+            except ValueError, e:
+                pass
         finally:
             sys.stderr = old_stderr
     def test2_valid_neg(self):
@@ -726,11 +758,12 @@ class T_subtensor(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            tval = eval_outputs([t])
-            assert 0
-        except Exception, e:
-            if e[0] != 'index out of bounds':
-                raise
+            try:
+                tval = eval_outputs([t])
+                assert 0
+            except Exception, e:
+                if e[0] != 'index out of bounds':
+                    raise
         finally:
             _logger.setLevel(oldlevel)
     def test1_err_subslice(self):
@@ -803,10 +836,11 @@ class T_subtensor(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            tval = eval_outputs([t])
-            assert 0
-        except IndexError, e:
-            pass
+            try:
+                tval = eval_outputs([t])
+                assert 0
+            except IndexError, e:
+                pass
         finally:
             _logger.setLevel(oldlevel)
     def test2_err_bounds1(self):
@@ -816,10 +850,11 @@ class T_subtensor(unittest.TestCase):
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
-            tval = eval_outputs([t])
-        except Exception, e:
-            if e[0] != 'index out of bounds':
-                raise
+            try:
+                tval = eval_outputs([t])
+            except Exception, e:
+                if e[0] != 'index out of bounds':
+                    raise
         finally:
             sys.stderr = old_stderr
     def test2_ok_elem(self):
@@ -1497,10 +1532,11 @@ class t_dot(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            tz = eval_outputs([z])
-            assert False # should have raised exception
-        except ValueError, e:
-            self.failUnless(
+            try:
+                tz = eval_outputs([z])
+                assert False # should have raised exception
+            except ValueError, e:
+                self.failUnless(
                     e[0].split()[1:4] == ['are', 'not', 'aligned'] or # reported by numpy
                     e[0].split()[0:2] == ['Shape', 'mismatch:'], e) # reported by blas return self.fail()
         finally:
@@ -2038,9 +2074,14 @@ class TestARange(unittest.TestCase):
     def test_infer_shape(self):
         start, stop, step = iscalars('start', 'stop', 'step')
         out = arange(start, stop, step)
-        f = function([start, stop, step], out.shape, mode=compile.mode.get_default_mode().excluding('fusion'))
-        assert len(f.maker.env.toposort())==12
-#ungly graph...        [DimShuffle{x}(step), DimShuffle{x}(start), DimShuffle{x}(stop), Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)](DimShuffle{x}.0, DimShuffle{x}.0), Elemwise{Cast{float64}}(Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{float64}}.0, DimShuffle{x}.0), Rebroadcast{0}(Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)](Rebroadcast{0}.0), Elemwise{Cast{int64}}(Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)].0), <theano.tensor.basic.Join object at 0x1fb1d10>(0, Elemwise{Cast{int64}}.0, [0]), MaxAndArgmax(<theano.tensor.basic.Join object at 0x1fb1d10>.0, [0]), MakeVector(max)]
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        mode = compile.mode.get_mode(mode).excluding('fusion')
+        f = function([start, stop, step], out.shape, mode=mode)
+        assert len(f.maker.env.toposort())==7
+#7 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{float64}}(Elemwise{sub,no_inplace}.0), Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{float64}}.0, step), Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Cast{int64}}(Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
+
         assert out.dtype == start.type.dtype
         assert numpy.all(f(0,5,1) == len(numpy.arange(0,5,1)))
         assert numpy.all(f(2,11,4) == len(numpy.arange(2,11,4)))
@@ -2050,10 +2091,9 @@ class TestARange(unittest.TestCase):
         assert numpy.all(f(0,0,1) == len(numpy.arange(0,0,1)))
 
         out = arange(start, stop, 1)
-        f = function([start, stop], out.shape, mode=compile.mode.get_default_mode().excluding('fusion'))
-        assert len(f.maker.env.toposort())==8
-#ungly graph...        [DimShuffle{x}(start), DimShuffle{x}(stop), Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)](DimShuffle{x}.0, DimShuffle{x}.0), Rebroadcast{0}(Elemwise{Sub{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Cast{int64}}(Rebroadcast{0}.0), <theano.tensor.basic.Join object at 0x1fb1d10>(0, Elemwise{Cast{int64}}.0, [0]), MaxAndArgmax(<theano.tensor.basic.Join object at 0x1fb1d10>.0, [0]), MakeVector(max)]
-
+        f = function([start, stop], out.shape, mode=mode)
+        assert len(f.maker.env.toposort())==4
+#4 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{int64}}(Elemwise{sub,no_inplace}.0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
         assert out.dtype == start.type.dtype
         assert numpy.all(f(0,5) == len(numpy.arange(0,5)))
         assert numpy.all(f(2,11) == len(numpy.arange(2,11)))
@@ -2063,7 +2103,7 @@ class TestARange(unittest.TestCase):
         assert numpy.all(f(0,0) == len(numpy.arange(0,0)))
 
         out = arange(0, stop, 1)
-        f = function([stop], out.shape, mode=compile.mode.get_default_mode().excluding('fusion'))
+        f = function([stop], out.shape, mode=mode)
         assert len(f.maker.env.toposort())==2
         #[Elemwise{Cast{int64}}(stop), MakeVector(Elemwise{Cast{int64}}.0)]
         
@@ -2447,7 +2487,7 @@ def test_autocast():
         ac = autocast_float_as('float32', 'float64')
         ac.__enter__()
         assert (dvector()+ 1.1).dtype == 'float64'
-        assert (fvector()+ 1.1).dtype == 'float64'
+        assert (fvector()+ 1.1).dtype == theano.config.floatX
         assert (fvector()+ 1.0).dtype == 'float32'
         try: #ghetto 2.4 version of with
             ac2 = autocast_float_as('float64')

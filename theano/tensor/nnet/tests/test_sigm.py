@@ -43,17 +43,24 @@ class T_sigmoid_opts(unittest.TestCase):
         # tests inv_1_plus_exp with neg
         f = theano.function([x], T.fill(x,-1.0) / (1+T.exp(-x)), mode=m)
         #theano.printing.debugprint(f)
-        assert [node.op for node in f.maker.env.toposort()] == [sigmoid, 
-                T.inplace.neg_inplace]
-
+        assert len(f.maker.env.toposort())==1
+        assert str(f.maker.env.toposort()[0].op)=='Elemwise{Composite{scalar_sigmoid,neg}}'
+        #without fusion
+        #assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
+        #        T.inplace.neg_inplace]
+        
         # tests double inv_1_plus_exp with neg
         # (-1)(exp(x)) / (1+exp(x))(1+exp(-x))
         # = (-1)/(1+exp(-x)) * exp(x)/(1+exp(x))
         # = - (sigm(x) * sigm(x))
         f = theano.function([x], (T.fill(x,-1.0)*T.exp(x)) / ((1+T.exp(x))*(1+T.exp(-x))), mode=m)
         theano.printing.debugprint(f)
-        assert [node.op for node in f.maker.env.toposort()] == [sigmoid, 
-                T.mul, T.inplace.neg_inplace]
+        assert len(f.maker.env.toposort())==2
+        assert f.maker.env.toposort()[0].op == sigmoid
+        assert str(f.maker.env.toposort()[1].op)=='Elemwise{Composite{mul,neg}}'
+        #without fusion
+        #assert [node.op for node in f.maker.env.toposort()] == [sigmoid, 
+        #        T.mul, T.inplace.neg_inplace]
 
     def test_1msigmoid(self):
         if not register_local_1msigmoid:

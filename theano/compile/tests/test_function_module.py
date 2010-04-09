@@ -393,16 +393,17 @@ class T_picklefunction(unittest.TestCase):
         old_default_opt  = config.optimizer
         old_default_link = config.linker
         try:
-            str_f = cPickle.dumps(f)
-            config.mode = 'Mode'
-            config.linker = 'py'
-            config.optimizer = 'None'
-            g = cPickle.loads(str_f)
-            #print g.maker.mode
-            #print compile.mode.default_mode
-        except NotImplementedError, e:
-            if e[0].startswith('DebugMode is not pickl'):
-                g = 'ok'
+            try:
+                str_f = cPickle.dumps(f)
+                config.mode = 'Mode'
+                config.linker = 'py'
+                config.optimizer = 'None'
+                g = cPickle.loads(str_f)
+                #print g.maker.mode
+                #print compile.mode.default_mode
+            except NotImplementedError, e:
+                if e[0].startswith('DebugMode is not pickl'):
+                    g = 'ok'
         finally:
             config.mode = old_default_mode
             config.optimizer = old_default_opt

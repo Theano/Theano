@@ -169,6 +169,14 @@ pprint.assign(fill_inplace, printing.FunctionPrinter('fill='))
 
 
 @_scal_inplace
+def maximum_inplace(a, b):
+    """elementwise addition (inplace on `a`)"""
+
+@_scal_inplace
+def minimum_inplace(a, b):
+    """elementwise addition (inplace on `a`)"""
+
+@_scal_inplace
 def add_inplace(a, b):
     """elementwise addition (inplace on `a`)"""
 

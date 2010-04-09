@@ -7,7 +7,9 @@ def run(TF):
         if TF and RUN_TESTS:
             print 'running test', f.__name__
             f()
-        return f if RUN_TESTS else None
+        if RUN_TESTS:
+            return f
+        else: return None
     return deco
 
 

@@ -726,6 +726,42 @@ invert = Invert()
 # Arithmetic
 ##############
 
+class Maximum(BinaryScalarOp):
+    commutative = True
+    associative = True
+    def impl(self, *inputs):
+        return max(inputs)
+    def c_code(self, node, name, (x,y), (z, ), sub):
+        return "%(z)s = ((%(y)s)>(%(x)s)? (%(y)s):(%(x)s));" %locals()
+        
+    def grad(self, (x, y), (gz, )):
+      gx, gy = None, None
+      if x.type in grad_types:
+        gx = eq(maximum(x,y),  x)*gz
+      if y.type in grad_types:
+        gy = eq(maximum(x,y),  y)*gz
+      return (gx,gy)
+
+maximum = Maximum(upcast_out, name = 'maximum')
+
+class Minimum(BinaryScalarOp):
+    commutative = True
+    associative = True
+    def impl(self, *inputs):
+        return min(inputs)
+    def c_code(self, node, name, (x,y), (z, ), sub):
+        return "%(z)s = ((%(y)s)<(%(x)s)? (%(y)s):(%(x)s));" %locals()
+        
+    def grad(self, (x, y), (gz, )):
+      gx, gy = None, None
+      if x.type in grad_types:
+        gx = eq(minimum(x,y),  x)*gz
+      if y.type in grad_types:
+        gy = eq(minimum(x,y),  y)*gz
+      return (gx,gy)
+
+minimum = Minimum(upcast_out, name = 'minimum')
+
 class Add(ScalarOp):
     identity = 0
     commutative = True

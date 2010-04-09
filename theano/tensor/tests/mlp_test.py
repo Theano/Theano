@@ -9,6 +9,7 @@ import numpy
 
 import theano
 import theano.tensor as T
+from theano.gof.python25 import any
 
 def gen_data():
 
@@ -301,7 +302,7 @@ def test_mlp():
                 y:train_set_y[index*batch_size:(index+1)*batch_size]},
             mode=mode)
     for i in train_model.maker.env.toposort(): print i
-    theano.printing.pydotprint(train_model)
+    #theano.printing.pydotprint(train_model)
 
     assert any( [isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.env.toposort()])
     train_model =theano.function( inputs = [index],

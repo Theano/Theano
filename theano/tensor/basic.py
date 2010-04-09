@@ -1703,7 +1703,7 @@ def zeros_like(model):
     return fill(model, constant(0.0, dtype=model.type.dtype))
 
 class Eye(gof.Op):
-    def __init__(self, dtype='float64'):
+    def __init__(self, dtype=config.floatX):
         self.dtype = dtype
     def make_node(self,n,m,k):
         n = as_tensor_variable(n)
@@ -1724,7 +1724,7 @@ class Eye(gof.Op):
         return hash(self.dtype) ^ hash(type(self))
 
 
-def eye(n, m=None, k = 0, dtype = 'float64'):
+def eye(n, m=None, k = 0, dtype = config.floatX):
     if m == None:
         m = n
     localop = Eye(dtype)
@@ -2029,6 +2029,17 @@ setdefault = default # legacy
 ##########################
 # Arithmetics
 ##########################
+@_scal_elemwise
+def maximum(x,y):
+    """elemwise maximum. See max for the maximum in one tensor
+    """
+    # see decorator for function body
+
+@_scal_elemwise
+def minimum(x,y):
+    """elemwise minimum. See min for the minimum in one tensor
+    """
+    # see decorator for function body
 
 def div_proxy(x, y):
     """Proxy for either true_div or int_div, depending on types of x, y.
@@ -3172,9 +3183,10 @@ class ARange(Op):
             if is_constant_value(start, 0):
                 return [(cast(stop, 'int64'),)]
             else:
-                return [(theano.tensor.max([cast(stop-start, 'int64'),0]),)]
+                return [(maximum(cast(stop-start, 'int64'),0),)]
         else:
-            return [(theano.tensor.max([cast(ceil(cast((stop-start),'float64')/step),'int64'),0]),)]
+            return [(maximum(cast(ceil(cast((stop-start),'float64')
+                                                     /step),'int64'),0),)]
 
     def perform(self, node, (start, stop, step), (out,)):
         start = start.item()
