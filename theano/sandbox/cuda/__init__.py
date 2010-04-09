@@ -105,7 +105,8 @@ if cuda_available:
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
             GpuDimShuffle, GpuSum, GpuReshape, 
-            GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape)
+            GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape,
+            GpuJoin)
     import opt
     import cuda_ndarray
 

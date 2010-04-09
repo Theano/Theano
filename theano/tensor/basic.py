@@ -2723,9 +2723,17 @@ class Join(Op):
         if not tensors:
             raise ValueError('Cannot join an empty list of tensors')
         as_tensor_variable_args= [as_tensor_variable(x) for x in tensors]
+
         dtypes = [x.type.dtype for x in as_tensor_variable_args]
         out_dtype = scal.upcast(*dtypes)
 
+        output_maker = lambda bcastable: tensor(dtype=out_dtype, broadcastable=bcastable)
+
+        return self._make_node_internal(axis, tensors,
+                            as_tensor_variable_args, output_maker)
+
+    def _make_node_internal(self, axis, tensors,
+                as_tensor_variable_args, output_maker):
         if not all(targs.type.ndim for targs in as_tensor_variable_args):
             raise TypeError('Join cannot handle arguments of dimension 0. For joining scalar values, see @stack');
 
@@ -2757,8 +2765,8 @@ class Join(Op):
         if inputs[0].type not in int_types: 
             raise TypeError('Axis could not be cast to an integer type', axis, inputs[0].type, int_types)
 
-        outputs = [tensor(dtype = out_dtype,
-                          broadcastable = bcastable)]
+        outputs = [output_maker(bcastable)]
+
         node = Apply(self, inputs, outputs)
         if any(not x.type.broadcastable[0] for x in orig):
           node.tag.shape_zero = None

@@ -493,3 +493,93 @@ def test_hostfromgpu_shape_i():
     assert isinstance(topo[2].op,T.opt.MakeVector)
     assert tuple(f(cv))==(5,4)
 
+# -----------------------------------------------------------------------
+
+import theano.sandbox.cuda as cuda_ndarray
+from theano.sandbox.cuda.basic_ops import gpu_join, GpuDimShuffle
+
+def test_gpujoin_twomatrices_joincolumns():
+    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
+    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
+    a = theano.shared(_a)
+    b = theano.shared(_b)
+
+    c = gpu_join(1,a,b)
+
+    f = theano.function([], c)
+
+    assert numpy.all(f() == numpy.concatenate([_a,_b], axis=1))
+
+def test_gpujoin_twomatrices_badshapes():
+    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
+    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
+    a = theano.shared(_a)
+    b = theano.shared(_b)
+
+    # try to join on dimension 0 where they don't agree (2!=3)
+    c = gpu_join(0,a,b)
+
+    f = theano.function([], c)
+
+    try:
+        f()
+        assert False
+    except ValueError:
+        assert True
+
+
+
+
+def test_gpujoin_preserves_broadcasting():
+    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
+    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
+    a = theano.shared(_a)
+    b = theano.shared(_b)
+
+    # [0,0] : the two original dims were non-broadcastable
+    # [1,x,0]: new order and broadcastability
+    gpu_dimshuffle = GpuDimShuffle([0,0], [1,'x',0])
+
+    a_shuffled = gpu_dimshuffle(a)
+    b_shuffled = gpu_dimshuffle(b)
+
+    c = gpu_join(0,a_shuffled,b_shuffled)
+
+    assert c.type.broadcastable == (False,True,False)
+
+    f = theano.function([], c)
+    
+    res = f()
+
+    a_reshaped = numpy.asarray([[[1,3]],[[2,4]]], dtype='float32')
+    b_reshaped = numpy.asarray([[[5,8]],[[6,9]],[[7,10]]], dtype='float32')
+
+    concat = numpy.concatenate([a_reshaped,b_reshaped], axis=0)
+
+    assert numpy.all(res == concat)
+
+
+def test_gpujoin_assert_cndas():
+    # this will end up being an ndarray, as it's float64
+    _a = numpy.asarray([[1,2],[3,4]],dtype='float64')
+    a = theano.shared(_a)
+
+    try:
+        c = gpu_join(1,a)
+        # can't "assert False" here, as we want the assertion 
+        # error from gpu_join
+    except AssertionError:
+        assert True
+        return
+
+    assert False
+    
+
+if __name__ == '__main__':
+    test_gpujoin_twomatrices_joincolumns()
+    test_gpujoin_assert_cndas()
+    test_gpujoin_preserves_broadcasting()
+    test_gpujoin_twomatrices_badshapes()
+
+
+

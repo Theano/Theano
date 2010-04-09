@@ -11,6 +11,9 @@ from theano.sandbox.cuda import filter as type_support_filter
 from theano.sandbox.cuda.elemwise import NaiveAlgo
 
 import logging, copy
+
+import cuda_ndarray
+
 _logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.INFO)
@@ -1417,4 +1420,76 @@ class GpuShape(tensor.Shape):
     def make_node(self, x):
         return Apply(self, [x], [tensor.lvector()])
 gpu_shape = GpuShape()
+
+class GpuJoin(tensor.Join):
+    def make_node(self, *axis_and_tensors):
+        axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
+        if not tensors:
+            raise ValueError('Cannot join an empty list of tensors')
+        are_instances = [isinstance(x.type, CudaNdarrayType) \
+                                                for x in tensors]
+        assert numpy.all(are_instances)
+
+        # no conversion needed, we just checked everything was
+        # a CNDA var
+        as_tensor_variable_args = tensors
+
+        output_maker = \
+                lambda bcast: CudaNdarrayType(broadcastable=bcast)()
+
+        return tensor.Join._make_node_internal(self, 
+                        axis, tensors, 
+                        as_tensor_variable_args, output_maker)
+       
+    def perform(self, node, axis_and_tensors, (out, )):
+        axis, cndas = axis_and_tensors[0], axis_and_tensors[1:]
+   
+        # compute size/shape
+        width_sum = 0
+        template_shape = cndas[0].shape
+        for cnda in cndas:
+            width_sum += cnda.shape[axis]
+            # and while we're at it, check that shapes match
+            tmp_shape = list(cnda.shape)
+            # dimension in "axis" can be different, so make equal for ==
+            tmp_shape[axis] = template_shape[axis]
+            if tuple(tmp_shape) != template_shape:
+                raise ValueError, "Shape of input CudaNdarrays must agree except for the 'axis' dimension"
+
+        if len(template_shape) != node.outputs[0].type.ndim:
+            raise ValueError, "Number of dimension of input tensors disagree with dimensions passed at graph creation time."
+
+        # final shape must be the same as all input tensors
+        # except for the "axis" dimension, so we can simply
+        # copy the shape of the first one
+        final_shape = list(cndas[0].shape)
+        final_shape[axis] = width_sum
+
+        # just to be explicit, set -1 for broadcastable
+        # dimensions
+        for i, val in enumerate(node.outputs[0].type.broadcastable):
+            if val:
+                final_shape[i] = -1
+
+        rval = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros_with_pattern(final_shape)
+        
+        curpos = 0
+
+        # we use a [:] (copy all) slice for all dimensions
+        # except for 'axis'
+
+        def construct_slices(curlen):
+            slices = [slice(None,None,None) for i in range(len(cndas))]
+            slices[axis] = slice(curpos,curpos+curlen,None)
+            return tuple(slices)
+
+        for i, cnda in enumerate(cndas):
+            curlen = cnda.shape[axis]
+            rval.__setitem__(construct_slices(curlen), cnda)
+            curpos += curlen
+
+        out[0] = rval
+
+gpu_join = GpuJoin()
+
 

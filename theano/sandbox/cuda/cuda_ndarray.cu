@@ -247,6 +247,135 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
     Py_DECREF(contiguous_self);
     return rval;
 }
+
+
+// declared as a static method
+// Based on _Copy and _dimshuffle
+PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
+{
+    if(!PySequence_Check(pattern))
+    {
+        PyErr_SetString(PyExc_TypeError, "pattern argument must be a sequence");
+        return NULL;
+    }
+
+    int patlen = PySequence_Length(pattern);
+
+    if (patlen == 0)
+    {
+        PyErr_SetString(PyExc_ValueError,
+            "CudaNdarray_NewWithPattern: empty pattern");
+        return NULL;
+    }
+
+    //fprintf(stdout, "Pattern length: %d\n", patlen);
+
+    int* newdims = (int *)malloc(sizeof(int) * 2 * patlen);
+
+    if (!newdims)
+    {
+        PyErr_SetString(PyExc_MemoryError,
+            "CudaNdarray_NewWithPattern: Failed to allocate temporary space");
+        return NULL;
+    }
+
+    int* newstrides = newdims + patlen;
+
+    // strides are in number of floats, not bytes
+    int cur_stride = 1;
+
+    // start from the end to compute strides
+    for (int i = patlen-1; i >= 0; --i)
+    {
+        PyObject* pat_el_obj = PySequence_GetItem(pattern, i);
+        if(pat_el_obj == NULL)
+        {
+            // shouldn't happen since we checked length before...
+            PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: Index out of bound in sequence");
+            free(newdims);
+            return NULL;
+        }
+
+        int pat_el = PyInt_AsLong(pat_el_obj);
+
+        if (pat_el == 0)
+        {
+            PyErr_SetString(PyExc_ValueError, "CudaNdarray_NewWithPattern: pattern must not contain 0 for size of a dimension");
+            free(newdims);
+            return NULL;
+        }
+        
+        // apparently, from looking at alloc_contiguous, we set
+        // stride=0 if the dim == 1
+        if (pat_el < 0 || pat_el == 1)
+        {
+            // broadcast
+            newdims[i] = 1;
+            newstrides[i] = 0;
+        }
+        else
+        {
+            newdims[i] = pat_el;
+            newstrides[i] = cur_stride;
+        }
+        
+        cur_stride *= newdims[i];
+    }
+
+    // cur_stride now contains the size of the array, in reals
+    int total_size = cur_stride * sizeof(real);
+
+    CudaNdarray* rval = (CudaNdarray*)CudaNdarray_new_null();
+    if (!rval)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: call to new_null failed");
+        free(newdims);
+        return NULL;
+    }
+
+    if (CudaNdarray_alloc_contiguous(rval, patlen, newdims))
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: allocation failed.");
+        free(newdims);
+        Py_DECREF(rval);
+        return NULL;
+    }
+
+    // Fill with zeros
+    //fprintf(stdout, "Sizeof: %d\n", total_size);
+    if (cudaSuccess != cudaMemset(rval->devdata, 0, total_size))
+    {
+        fprintf(stderr, "Error memsetting %d bytes of device memory.\n", cur_stride);
+        PyErr_Format(PyExc_MemoryError, "Error memsetting %d bytes of device memory.", cur_stride);
+        free(newdims);
+        Py_DECREF(rval);
+        return NULL;
+    }
+
+    // change the strides to account for broadcastability
+    // (not necessary as alloc_contiguous sets stride=0 for dim=1)
+    //for (int i = 0; i < patlen; ++i)
+    //{
+    //    CudaNdarray_set_stride(rval, i, newstrides[i]);
+    //}
+
+    if (cnda_copy_structure_to_device(rval))
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: syncing structure to device failed");
+        free(newdims);
+        Py_DECREF(rval);
+        return NULL;
+    }
+
+    free(newdims);
+
+    return (PyObject*)rval;
+}
+
+
+
+
+
 PyObject * CudaNdarray_Copy(CudaNdarray * self)
 {
     PyObject * rval = CudaNdarray_new_null();
@@ -578,6 +707,9 @@ static PyMethodDef CudaNdarray_methods[] =
     {"__deepcopy__", 
         (PyCFunction)CudaNdarray_DeepCopy, METH_O,
         "Create a copy of this object"},
+    {"zeros_with_pattern",
+        (PyCFunction)CudaNdarray_ZerosWithPattern, METH_STATIC,
+        "Create a new CudaNdarray with specified shape and broadcastability, filled with zeros."},
     {"copy", 
         (PyCFunction)CudaNdarray_Copy, METH_NOARGS,
         "Create a copy of this object"},
