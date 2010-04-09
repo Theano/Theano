@@ -250,6 +250,36 @@ SubInplaceTester = makeBroadcastTester(op = inplace.sub_inplace,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
 
+MaximumTester = makeBroadcastTester(op = maximum,
+                                  expected = numpy.maximum,
+                                  good = _good_broadcast_binary_normal,
+                                  bad_build = _bad_build_broadcast_binary_normal,
+                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                  grad = _grad_broadcast_binary_normal)
+
+MaximumInplaceTester = makeBroadcastTester(op = inplace.maximum_inplace,
+                                         expected = numpy.maximum,
+                                         good = _good_broadcast_binary_normal,
+                                         bad_build = _bad_build_broadcast_binary_normal,
+                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                         grad = _grad_broadcast_binary_normal,
+                                         inplace = True)
+
+MinimumTester = makeBroadcastTester(op = minimum,
+                                  expected = numpy.minimum,
+                                  good = _good_broadcast_binary_normal,
+                                  bad_build = _bad_build_broadcast_binary_normal,
+                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                  grad = _grad_broadcast_binary_normal)
+
+MinimumInplaceTester = makeBroadcastTester(op = inplace.minimum_inplace,
+                                         expected = numpy.minimum,
+                                         good = _good_broadcast_binary_normal,
+                                         bad_build = _bad_build_broadcast_binary_normal,
+                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
+                                         grad = _grad_broadcast_binary_normal,
+                                         inplace = True)
+
 MulTester = makeBroadcastTester(op = mul,
                                   expected = lambda *inputs: reduce(lambda x, y: x * y, inputs),
                                   good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),

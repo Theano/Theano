@@ -2029,6 +2029,17 @@ setdefault = default # legacy
 ##########################
 # Arithmetics
 ##########################
+@_scal_elemwise
+def maximum(x,y):
+    """elemwise maximum. See max for the maximum in one tensor
+    """
+    # see decorator for function body
+
+@_scal_elemwise
+def minimum(x,y):
+    """elemwise minimum. See min for the minimum in one tensor
+    """
+    # see decorator for function body
 
 def div_proxy(x, y):
     """Proxy for either true_div or int_div, depending on types of x, y.
