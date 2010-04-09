@@ -601,7 +601,7 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`
 
     Create a matrix by filling the shape of `a` with `b`
 
-.. function:: eye(n, m = None, k = 0, dtype='float64')
+.. function:: eye(n, m = None, k = 0, dtype=theano.config.floatX)
 
     :param n: number of rows in output (value or theano scalar)
     :param m: number of columns in output (value or theano scalar)

@@ -1703,7 +1703,7 @@ def zeros_like(model):
     return fill(model, constant(0.0, dtype=model.type.dtype))
 
 class Eye(gof.Op):
-    def __init__(self, dtype='float64'):
+    def __init__(self, dtype=config.floatX):
         self.dtype = dtype
     def make_node(self,n,m,k):
         n = as_tensor_variable(n)
@@ -1724,7 +1724,7 @@ class Eye(gof.Op):
         return hash(self.dtype) ^ hash(type(self))
 
 
-def eye(n, m=None, k = 0, dtype = 'float64'):
+def eye(n, m=None, k = 0, dtype = config.floatX):
     if m == None:
         m = n
     localop = Eye(dtype)
