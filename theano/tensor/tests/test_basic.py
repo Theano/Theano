@@ -655,10 +655,11 @@ class T_max_and_argmax(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            eval_outputs(max_and_argmax(n,3))
-            assert False
-        except ValueError, e:
-            pass
+            try:
+                eval_outputs(max_and_argmax(n,3))
+                assert False
+            except ValueError, e:
+                pass
         finally:
             _logger.setLevel(oldlevel)
     def test2_invalid_neg(self):
@@ -666,10 +667,11 @@ class T_max_and_argmax(unittest.TestCase):
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
-            eval_outputs(max_and_argmax(n,-3))
-            assert False
-        except ValueError, e:
-            pass
+            try:
+                eval_outputs(max_and_argmax(n,-3))
+                assert False
+            except ValueError, e:
+                pass
         finally:
             sys.stderr = old_stderr
     def test2_valid_neg(self):
@@ -726,11 +728,12 @@ class T_subtensor(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            tval = eval_outputs([t])
-            assert 0
-        except Exception, e:
-            if e[0] != 'index out of bounds':
-                raise
+            try:
+                tval = eval_outputs([t])
+                assert 0
+            except Exception, e:
+                if e[0] != 'index out of bounds':
+                    raise
         finally:
             _logger.setLevel(oldlevel)
     def test1_err_subslice(self):
@@ -803,10 +806,11 @@ class T_subtensor(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            tval = eval_outputs([t])
-            assert 0
-        except IndexError, e:
-            pass
+            try:
+                tval = eval_outputs([t])
+                assert 0
+            except IndexError, e:
+                pass
         finally:
             _logger.setLevel(oldlevel)
     def test2_err_bounds1(self):
@@ -816,10 +820,11 @@ class T_subtensor(unittest.TestCase):
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
-            tval = eval_outputs([t])
-        except Exception, e:
-            if e[0] != 'index out of bounds':
-                raise
+            try:
+                tval = eval_outputs([t])
+            except Exception, e:
+                if e[0] != 'index out of bounds':
+                    raise
         finally:
             sys.stderr = old_stderr
     def test2_ok_elem(self):
@@ -1497,10 +1502,11 @@ class t_dot(unittest.TestCase):
         oldlevel = _logger.getEffectiveLevel()
         _logger.setLevel(logging.CRITICAL)
         try:
-            tz = eval_outputs([z])
-            assert False # should have raised exception
-        except ValueError, e:
-            self.failUnless(
+            try:
+                tz = eval_outputs([z])
+                assert False # should have raised exception
+            except ValueError, e:
+                self.failUnless(
                     e[0].split()[1:4] == ['are', 'not', 'aligned'] or # reported by numpy
                     e[0].split()[0:2] == ['Shape', 'mismatch:'], e) # reported by blas return self.fail()
         finally:
