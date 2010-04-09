@@ -735,7 +735,12 @@ class Maximum(BinaryScalarOp):
         return "%(z)s = ((%(y)s)>(%(x)s)? (%(y)s):(%(x)s));" %locals()
         
     def grad(self, (x, y), (gz, )):
-      return (eq(maximum(x,y),  x)*gz,eq(maximum(x,y),  y)*gz)
+      gx, gy = None, None
+      if x.type in grad_types:
+        gx = eq(maximum(x,y),  x)*gz
+      if y.type in grad_types:
+        gy = eq(maximum(x,y),  y)*gz
+      return (gx,gy)
 
 maximum = Maximum(upcast_out, name = 'maximum')
 
@@ -748,7 +753,12 @@ class Minimum(BinaryScalarOp):
         return "%(z)s = ((%(y)s)<(%(x)s)? (%(y)s):(%(x)s));" %locals()
         
     def grad(self, (x, y), (gz, )):
-      return (eq(minimum(x,y),  x)*gz,eq(minimum(x,y),  y)*gz)
+      gx, gy = None, None
+      if x.type in grad_types:
+        gx = eq(minimum(x,y),  x)*gz
+      if y.type in grad_types:
+        gy = eq(minimum(x,y),  y)*gz
+      return (gx,gy)
 
 minimum = Minimum(upcast_out, name = 'minimum')
 
