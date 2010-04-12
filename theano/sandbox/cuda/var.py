@@ -65,7 +65,7 @@ class CudaNdarraySharedVariable(SharedVariable, _operators):
 
 CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
-def cuda_shared_constructor(value, name, strict=False, broadcastable=None):
+def cuda_shared_constructor(value, name=None, strict=False, broadcastable=None):
     """SharedVariable Constructor for TensorType"""
 
     # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
@@ -95,7 +95,7 @@ def cuda_shared_constructor(value, name, strict=False, broadcastable=None):
         raise
     return rval
 
-def float32_shared_constructor(value, name, strict=False, broadcastable=None):
+def float32_shared_constructor(value, name=None, strict=False, broadcastable=None):
     """SharedVariable Constructor for TensorType"""
 
     # if value isn't a float32 ndarray, then raise
