@@ -236,6 +236,8 @@ class GpuDimShuffle(Op):
         if not ib == self.input_broadcastable:
             raise TypeError("The number of dimensions and/or broadcastable pattern of the input is incorrect for this op. Expected %s, got %s." % (self.input_broadcastable, ib))
         ob = []
+        if not isinstance(input.type, CudaNdarrayType):
+            raise TypeError("The input of a GpuDimshuffle must be a CudaNdarray")
         for value in self.new_order:
             if value == 'x':
                 ob.append(True)
