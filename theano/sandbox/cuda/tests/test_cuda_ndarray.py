@@ -381,8 +381,17 @@ def test_setitem_rightvalue_ndarray_fails():
         #print e
         assert True
 
+def test_zeros_basic_3d_tensor():
+    _a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
+    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((3,4,5)))
+
+def test_zeros_basic_vector():
+    _a = cuda_ndarray.CudaNdarray.zeros((300))
+    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((300)))
+
 
 if __name__ == '__main__':
+    test_zeros_basic_3d_tensor()
     test_setitem_matrixvector1()
     test_setitem_matrix_tensor3()
     test_setitem_broadcast_must_fail()
