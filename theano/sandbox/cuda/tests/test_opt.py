@@ -74,7 +74,8 @@ def test_softmax_with_bias():
 
 
 
-def test_opt_gpujoin_onlyajoin():
+def test_opt_gpujoin_joinvectors_elemwise_than_minusone():
+    # from a bug in normal sampling
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
     a = theano.shared(_a)
@@ -94,6 +95,7 @@ def test_opt_gpujoin_onlyajoin():
     assert numpy.all(f() == numpy.concatenate([_a,_b], axis=1))
 
 
+
 if __name__ == '__main__':
     test_opt_gpujoin_onlyajoin()
-
+    test_opt_gpujoin_joinvectors_elemwise_than_minusone()

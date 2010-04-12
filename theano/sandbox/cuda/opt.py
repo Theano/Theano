@@ -499,7 +499,7 @@ def local_gpu_join(node):
     not implemented yet.
 
     """
-    if isinstance(node.op, tensor.Join):
+    if False and isinstance(node.op, tensor.Join):
         # optimizing this case:
         # join(host_from_gpu) -> host_from_gpu(gpu_join)
 
