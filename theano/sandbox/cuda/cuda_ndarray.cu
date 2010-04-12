@@ -251,7 +251,7 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
 
 // declared as a static method
 // Based on _Copy and _dimshuffle
-PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
+PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* pattern)
 {
     if(!PySequence_Check(pattern))
     {
@@ -264,7 +264,7 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
     if (patlen == 0)
     {
         PyErr_SetString(PyExc_ValueError,
-            "CudaNdarray_NewWithPattern: empty pattern");
+            "CudaNdarray_Zeros: empty pattern");
         return NULL;
     }
 
@@ -275,7 +275,7 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
     if (!newdims)
     {
         PyErr_SetString(PyExc_MemoryError,
-            "CudaNdarray_NewWithPattern: Failed to allocate temporary space");
+            "CudaNdarray_Zeros: Failed to allocate temporary space");
         return NULL;
     }
 
@@ -291,7 +291,7 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
         if(pat_el_obj == NULL)
         {
             // shouldn't happen since we checked length before...
-            PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: Index out of bound in sequence");
+            PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: Index out of bound in sequence");
             free(newdims);
             return NULL;
         }
@@ -300,7 +300,7 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
 
         if (pat_el == 0)
         {
-            PyErr_SetString(PyExc_ValueError, "CudaNdarray_NewWithPattern: pattern must not contain 0 for size of a dimension");
+            PyErr_SetString(PyExc_ValueError, "CudaNdarray_Zeros: pattern must not contain 0 for size of a dimension");
             free(newdims);
             return NULL;
         }
@@ -328,14 +328,14 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_new_null();
     if (!rval)
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: call to new_null failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: call to new_null failed");
         free(newdims);
         return NULL;
     }
 
     if (CudaNdarray_alloc_contiguous(rval, patlen, newdims))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: allocation failed.");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: allocation failed.");
         free(newdims);
         Py_DECREF(rval);
         return NULL;
@@ -361,7 +361,7 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
 
     if (cnda_copy_structure_to_device(rval))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: syncing structure to device failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: syncing structure to device failed");
         free(newdims);
         Py_DECREF(rval);
         return NULL;
@@ -708,8 +708,8 @@ static PyMethodDef CudaNdarray_methods[] =
         (PyCFunction)CudaNdarray_DeepCopy, METH_O,
         "Create a copy of this object"},
     {"zeros_with_pattern",
-        (PyCFunction)CudaNdarray_ZerosWithPattern, METH_STATIC,
-        "Create a new CudaNdarray with specified shape and broadcastability, filled with zeros."},
+        (PyCFunction)CudaNdarray_Zeros, METH_STATIC,
+        "Create a new CudaNdarray with specified shape, filled with zeros."},
     {"copy", 
         (PyCFunction)CudaNdarray_Copy, METH_NOARGS,
         "Create a copy of this object"},
@@ -1331,7 +1331,6 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         return -1;
     }
 
-    // Check that 'v' is compatible?
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_Subscript(o, key);
 
     if(rval == NULL)
@@ -1349,14 +1348,38 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         Py_DECREF(rval);
         return -1;
     }
+
+    if (cnda_copy_structure_to_device(rval))
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_setitem: syncing structure to device failed");
+        Py_DECREF(rval);
+        return NULL;
+    }
+
+    CudaNdarray *viewCopyForComparison = 
+            (CudaNdarray*)CudaNdarray_View(rval);
+    PyObject *baseSavedForComparison = rval->base;
+
+    if(!viewCopyForComparison)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "__setitem__ could not allocate a view to verify copy results.");
+        Py_DECREF((PyObject*)rval);
+        return -1;
+    }
  
     if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v))
     {
-        Py_DECREF(rval);
+        Py_DECREF(viewCopyForComparison);
+        Py_DECREF((PyObject*)rval);
         return -1;
     }
     
-    // If it fails, deallocate memory (DECREF?)
+    // Check that copy didn't modify shape or strides
+    assert (CudaNdarray_EqualAndIgnore(viewCopyForComparison, rval, 1, 1));
+    assert (rval->base == baseSavedForComparison);
+    assert (rval->dev_structure_fresh);
+    Py_DECREF((PyObject*)viewCopyForComparison);
+    
     return 0;
 }
  

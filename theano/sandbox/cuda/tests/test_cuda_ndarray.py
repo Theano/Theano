@@ -382,12 +382,10 @@ def test_setitem_rightvalue_ndarray_fails():
         assert True
 
 
-'''
 if __name__ == '__main__':
     test_setitem_matrixvector1()
     test_setitem_matrix_tensor3()
     test_setitem_broadcast_must_fail()
     test_setitem_assign_to_slice()
     test_setitem_rightvalue_ndarray_fails()
-'''
 
