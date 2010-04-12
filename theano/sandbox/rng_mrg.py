@@ -808,7 +808,6 @@ def test_normal0():
         print prefix, 'samples/sec', steps*sample_size[0]*sample_size[1] / dt
 
     sample_size = (999,100)
-    '''
     print ''
     print 'ON CPU:'
 
@@ -820,11 +819,9 @@ def test_normal0():
     basictest(f, 50, -5.0, 2.0, prefix='mrg ')
 
     sys.stdout.flush()
-    '''
 
     # now with odd number of samples
-    sample_size = (10,10)
-    #sample_size = (999,99)
+    sample_size = (999,99)
 
 
     print ''
@@ -844,7 +841,6 @@ def test_normal0():
     basictest(f, 50, -5.0, 2.0, prefix='gpu mrg ')
 
 
-    '''
     print ''
     print 'ON CPU w NUMPY:'
     RR = theano.tensor.shared_randomstreams.RandomStreams(234)
@@ -853,7 +849,6 @@ def test_normal0():
     ff = theano.function([], nn)
 
     basictest(ff, 50, -5.0, 2.0, prefix='numpy ')
-    '''
 
 
 if __name__ == '__main__':

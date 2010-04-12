@@ -72,9 +72,7 @@ def test_softmax_with_bias():
     bv=numpy.random.rand(8)
     assert numpy.allclose(f(xv,bv),f2(xv,bv))
 
-
-
-def test_opt_gpujoin_joinvectors_elemwise_than_minusone():
+def test_opt_gpujoin_onlyajoin():
     # from a bug in normal sampling
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
@@ -82,10 +80,12 @@ def test_opt_gpujoin_joinvectors_elemwise_than_minusone():
     b = theano.shared(_b)
 
     c = tensor.join(1,a,b)
-
+    
     f = theano.function([], c)
 
     #theano.printing.debugprint(f)
+
+    f()
 
     graph_nodes = f.maker.env.toposort()
 
@@ -96,6 +96,38 @@ def test_opt_gpujoin_joinvectors_elemwise_than_minusone():
 
 
 
+def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
+    # from a bug in gpu normal sampling
+    _a = numpy.asarray([1,2,3,4],dtype='float32')
+    _b = numpy.asarray([5,6,7,8],dtype='float32')
+    a = theano.shared(_a)
+    b = theano.shared(_b)
+
+    a_prime = tensor.cos(a)
+    b_prime = tensor.sin(b)
+
+    c = tensor.join(0,a_prime,b_prime)
+    
+    d = c[:-1]
+
+    f = theano.function([], d)
+
+    #theano.printing.debugprint(f)
+
+    graph_nodes = f.maker.env.toposort()
+
+    assert isinstance(graph_nodes[-1].op, cuda.HostFromGpu)
+    assert isinstance(graph_nodes[-2].op, cuda.GpuSubtensor)
+    assert isinstance(graph_nodes[-3].op, cuda.GpuJoin)
+
+    concat = numpy.concatenate([numpy.cos(_a),numpy.sin(_b)],axis=1)
+    concat = concat[:-1]
+
+    assert numpy.allclose(numpy.asarray(f()), concat)
+
+
+
 if __name__ == '__main__':
     test_opt_gpujoin_onlyajoin()
-    test_opt_gpujoin_joinvectors_elemwise_than_minusone()
+    test_opt_gpujoin_joinvectors_elemwise_then_minusone()
+

@@ -1480,7 +1480,8 @@ class GpuJoin(tensor.Join):
         # except for 'axis'
 
         def construct_slices(curlen):
-            slices = [slice(None,None,None) for i in range(len(cndas))]
+            slices = [slice(None,None,None) for i in \
+                            range(len(template_shape))]
             slices[axis] = slice(curpos,curpos+curlen,None)
             return tuple(slices)
 
