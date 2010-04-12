@@ -249,65 +249,65 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
 }
 
 
-// declared as a static method
+// declared as a static method (hence "dummy" is not used)
 // Based on _Copy and _dimshuffle
-PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
+PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
 {
-    if(!PySequence_Check(pattern))
+    if(!PySequence_Check(shape))
     {
-        PyErr_SetString(PyExc_TypeError, "pattern argument must be a sequence");
+        PyErr_SetString(PyExc_TypeError, "shape argument must be a sequence");
         return NULL;
     }
 
-    int patlen = PySequence_Length(pattern);
+    int shplen = PySequence_Length(shape);
 
-    if (patlen == 0)
+    if (shplen == 0)
     {
         PyErr_SetString(PyExc_ValueError,
-            "CudaNdarray_NewWithPattern: empty pattern");
+            "CudaNdarray_Zeros: empty shape not allowed");
         return NULL;
     }
 
-    //fprintf(stdout, "Pattern length: %d\n", patlen);
+    //fprintf(stdout, "Pattern length: %d\n", shplen);
 
-    int* newdims = (int *)malloc(sizeof(int) * 2 * patlen);
+    int* newdims = (int *)malloc(sizeof(int) * 2 * shplen);
 
     if (!newdims)
     {
         PyErr_SetString(PyExc_MemoryError,
-            "CudaNdarray_NewWithPattern: Failed to allocate temporary space");
+            "CudaNdarray_Zeros: Failed to allocate temporary space");
         return NULL;
     }
 
-    int* newstrides = newdims + patlen;
+    int* newstrides = newdims + shplen;
 
     // strides are in number of floats, not bytes
     int cur_stride = 1;
 
     // start from the end to compute strides
-    for (int i = patlen-1; i >= 0; --i)
+    for (int i = shplen-1; i >= 0; --i)
     {
-        PyObject* pat_el_obj = PySequence_GetItem(pattern, i);
-        if(pat_el_obj == NULL)
+        PyObject* shp_el_obj = PySequence_GetItem(shape, i);
+        if(shp_el_obj == NULL)
         {
             // shouldn't happen since we checked length before...
-            PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: Index out of bound in sequence");
+            PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: Index out of bound in sequence");
             free(newdims);
             return NULL;
         }
 
-        int pat_el = PyInt_AsLong(pat_el_obj);
+        int shp_el = PyInt_AsLong(shp_el_obj);
 
-        if (pat_el == 0)
+        if (shp_el <= 0)
         {
-            PyErr_SetString(PyExc_ValueError, "CudaNdarray_NewWithPattern: pattern must not contain 0 for size of a dimension");
+            PyErr_SetString(PyExc_ValueError, "CudaNdarray_Zeros: shape must not contain 0 (or negative value) for size of a dimension");
             free(newdims);
             return NULL;
         }
         
-        // apparently, from looking at alloc_contiguous, we set
+        // based on alloc_contiguous, we set
         // stride=0 if the dim == 1
-        if (pat_el < 0 || pat_el == 1)
+        if (shp_el == 1)
         {
             // broadcast
             newdims[i] = 1;
@@ -315,7 +315,7 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
         }
         else
         {
-            newdims[i] = pat_el;
+            newdims[i] = shp_el;
             newstrides[i] = cur_stride;
         }
         
@@ -328,14 +328,14 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_new_null();
     if (!rval)
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: call to new_null failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: call to new_null failed");
         free(newdims);
         return NULL;
     }
 
-    if (CudaNdarray_alloc_contiguous(rval, patlen, newdims))
+    if (CudaNdarray_alloc_contiguous(rval, shplen, newdims))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: allocation failed.");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: allocation failed.");
         free(newdims);
         Py_DECREF(rval);
         return NULL;
@@ -352,16 +352,9 @@ PyObject* CudaNdarray_ZerosWithPattern(PyObject* dummy, PyObject* pattern)
         return NULL;
     }
 
-    // change the strides to account for broadcastability
-    // (not necessary as alloc_contiguous sets stride=0 for dim=1)
-    //for (int i = 0; i < patlen; ++i)
-    //{
-    //    CudaNdarray_set_stride(rval, i, newstrides[i]);
-    //}
-
     if (cnda_copy_structure_to_device(rval))
     {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_NewWithPattern: syncing structure to device failed");
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: syncing structure to device failed");
         free(newdims);
         Py_DECREF(rval);
         return NULL;
@@ -707,9 +700,9 @@ static PyMethodDef CudaNdarray_methods[] =
     {"__deepcopy__", 
         (PyCFunction)CudaNdarray_DeepCopy, METH_O,
         "Create a copy of this object"},
-    {"zeros_with_pattern",
-        (PyCFunction)CudaNdarray_ZerosWithPattern, METH_STATIC,
-        "Create a new CudaNdarray with specified shape and broadcastability, filled with zeros."},
+    {"zeros",
+        (PyCFunction)CudaNdarray_Zeros, METH_STATIC,
+        "Create a new CudaNdarray with specified shape, filled with zeros."},
     {"copy", 
         (PyCFunction)CudaNdarray_Copy, METH_NOARGS,
         "Create a copy of this object"},
@@ -1331,7 +1324,6 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         return -1;
     }
 
-    // Check that 'v' is compatible?
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_Subscript(o, key);
 
     if(rval == NULL)
@@ -1349,14 +1341,38 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         Py_DECREF(rval);
         return -1;
     }
+
+    if (cnda_copy_structure_to_device(rval))
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_setitem: syncing structure to device failed");
+        Py_DECREF(rval);
+        return NULL;
+    }
+
+    CudaNdarray *viewCopyForComparison = 
+            (CudaNdarray*)CudaNdarray_View(rval);
+    PyObject *baseSavedForComparison = rval->base;
+
+    if(!viewCopyForComparison)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "__setitem__ could not allocate a view to verify copy results.");
+        Py_DECREF((PyObject*)rval);
+        return -1;
+    }
  
     if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v))
     {
-        Py_DECREF(rval);
+        Py_DECREF(viewCopyForComparison);
+        Py_DECREF((PyObject*)rval);
         return -1;
     }
     
-    // If it fails, deallocate memory (DECREF?)
+    // Check that copy didn't modify shape or strides
+    assert (CudaNdarray_EqualAndIgnore(viewCopyForComparison, rval, 1, 1));
+    assert (rval->base == baseSavedForComparison);
+    assert (rval->dev_structure_fresh);
+    Py_DECREF((PyObject*)viewCopyForComparison);
+    
     return 0;
 }
  

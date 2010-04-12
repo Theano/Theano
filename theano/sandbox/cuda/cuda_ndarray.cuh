@@ -125,6 +125,61 @@ cnda_mark_dev_structure_dirty(CudaNdarray * self)
 {
     self->dev_structure_fresh = 0;
 }
+
+int
+CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase)
+{
+    int verbose = 1;
+
+    if (!ignoreSync && cnda1->dev_structure_fresh != cnda2->dev_structure_fresh)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 1\n");
+        return 0;
+    }
+
+    if (cnda1->nd != cnda2->nd)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 2\n");
+        return 0;
+    }
+
+    for (int i=0; i < 2*cnda1->nd; i++)
+    {
+        if (cnda1->host_structure[i] != cnda2->host_structure[i])
+        {
+            if(verbose)
+                fprintf(stdout, "CUDANDARRAY_EQUAL : host_structure : %d, %d, %d\n", i, cnda1->host_structure[i], cnda2->host_structure[i]);
+            return 0;
+        }
+    }
+
+    if (!ignoreBase && cnda1->base != cnda2->base)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 4");
+        return 0;
+    }
+    else if (cnda1->data_allocated != cnda2->data_allocated)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 5");
+        return 0;
+    }
+    else if (cnda1->data_allocated && cnda1->devdata != cnda2->devdata)
+    {
+        if(verbose) fprintf(stdout, "CUDANDARRAY_EQUAL FAILED : 6");
+        // no need to check devdata if data is not allocated
+        return 0;
+    }
+
+    return 1;
+}
+
+// Default: do not ignore sync of dev and host structures in comparing, and do not ignore difference in base pointers
+int
+CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2)
+{
+    return CudaNdarray_EqualAndIgnore(cnda1, cnda2, 0, 0);
+}
+
 /****
  *  Set the idx'th dimension to value d.
  *

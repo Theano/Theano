@@ -1465,13 +1465,12 @@ class GpuJoin(tensor.Join):
         final_shape = list(cndas[0].shape)
         final_shape[axis] = width_sum
 
-        # just to be explicit, set -1 for broadcastable
+        # just to be explicit, check that dim=1 for broadcastable
         # dimensions
-        for i, val in enumerate(node.outputs[0].type.broadcastable):
-            if val:
-                final_shape[i] = -1
+        for i, bcastable in enumerate(node.outputs[0].type.broadcastable):
+            assert not bcastable or final_shape[i] == 1, "Broadcastable dimension but dim != 1, this is invalid"
 
-        rval = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros_with_pattern(final_shape)
+        rval = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(final_shape)
         
         curpos = 0
 
