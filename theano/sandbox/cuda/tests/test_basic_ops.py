@@ -501,8 +501,8 @@ from theano.sandbox.cuda.basic_ops import gpu_join, GpuDimShuffle
 def test_gpujoin_twomatrices_joincolumns():
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = theano.shared(_a)
-    b = theano.shared(_b)
+    a = tcn.shared_constructor(_a)
+    b = tcn.shared_constructor(_b)
 
     c = gpu_join(1,a,b)
 
@@ -513,8 +513,8 @@ def test_gpujoin_twomatrices_joincolumns():
 def test_gpujoin_twomatrices_badshapes():
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = theano.shared(_a)
-    b = theano.shared(_b)
+    a = tcn.shared_constructor(_a)
+    b = tcn.shared_constructor(_b)
 
     # try to join on dimension 0 where they don't agree (2!=3)
     c = gpu_join(0,a,b)
@@ -533,8 +533,8 @@ def test_gpujoin_twomatrices_badshapes():
 def test_gpujoin_preserves_broadcasting():
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = theano.shared(_a)
-    b = theano.shared(_b)
+    a = tcn.shared_constructor(_a)
+    b = tcn.shared_constructor(_b)
 
     # [0,0] : the two original dims were non-broadcastable
     # [1,x,0]: new order and broadcastability
@@ -547,7 +547,7 @@ def test_gpujoin_preserves_broadcasting():
 
     assert c.type.broadcastable == (False,True,False)
 
-    f = theano.function([], c)
+    f = theano.function([], c, mode=mode_with_gpu)
     
     res = f()
 
