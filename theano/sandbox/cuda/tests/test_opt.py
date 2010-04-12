@@ -71,3 +71,29 @@ def test_softmax_with_bias():
     xv=numpy.random.rand(7,8)
     bv=numpy.random.rand(8)
     assert numpy.allclose(f(xv,bv),f2(xv,bv))
+
+
+
+def test_opt_gpujoin_onlyajoin():
+    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
+    _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
+    a = theano.shared(_a)
+    b = theano.shared(_b)
+
+    c = tensor.join(1,a,b)
+
+    f = theano.function([], c)
+
+    #theano.printing.debugprint(f)
+
+    graph_nodes = f.maker.env.toposort()
+
+    assert isinstance(graph_nodes[-1].op, cuda.HostFromGpu)
+    assert isinstance(graph_nodes[-2].op, cuda.GpuJoin)
+
+    assert numpy.all(f() == numpy.concatenate([_a,_b], axis=1))
+
+
+if __name__ == '__main__':
+    test_opt_gpujoin_onlyajoin()
+

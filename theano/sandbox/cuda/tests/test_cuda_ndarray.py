@@ -386,12 +386,13 @@ def test_zeros_basic_3d_tensor():
     assert numpy.allclose(numpy.asarray(_a), numpy.zeros((3,4,5)))
 
 def test_zeros_basic_vector():
-    _a = cuda_ndarray.CudaNdarray.zeros((300))
-    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((300)))
+    _a = cuda_ndarray.CudaNdarray.zeros((300,))
+    assert numpy.allclose(numpy.asarray(_a), numpy.zeros((300,)))
 
 
 if __name__ == '__main__':
     test_zeros_basic_3d_tensor()
+    test_zeros_basic_vector()
     test_setitem_matrixvector1()
     test_setitem_matrix_tensor3()
     test_setitem_broadcast_must_fail()

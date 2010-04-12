@@ -465,3 +465,66 @@ def local_gpu_downsample_factor_max_grad(node):
             gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
             return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0], gpu_from_host(z), gpu_from_host(gz)))]
 
+
+
+from theano.sandbox.cuda.basic_ops import gpu_join
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_join(node):
+    """
+    Inspired by the opt for convop.
+
+    Very loose notation follows.
+
+    Subgraphs concerned first look like
+        [array of HostTensor] -> HostToGpu -> GpuToHost
+        -> Join -> HostToGpu -> GpuToHost
+
+    First we apply this Opt:
+
+    join(host_from_gpu) -> host_from_gpu(gpu_join)
+
+    then, as an intermediate result, there should be
+    host_from_gpu(gpu_join) -> HostToGpu -> GpuToHost
+    this unnecessary GpuToHost -> HostToGpu should be removed
+    by other opts, leaving us with
+    host_from_gpu(gpu_join)
+
+
+    For intermediate places in the graph not covered by the first opt, the following could be useful:
+
+    gpu_from_host(join) -> gpu_join(gpu_from_host)
+
+    not implemented yet.
+
+    """
+    if isinstance(node.op, tensor.Join):
+        # optimizing this case:
+        # join(host_from_gpu) -> host_from_gpu(gpu_join)
+
+        # print "OPT: we've got a Join instance"
+
+        axis_and_tensors = node.inputs
+
+        #print "OPT: axis_and_tensors=", axis_and_tensors
+
+        matches = [not t.owner is None and t.owner.op == host_from_gpu for t in axis_and_tensors[1:]]
+
+        #print "OPT: matches =", matches
+
+        # if all input tensors are host_from_gpu'ified
+        if numpy.all(matches):
+            # the extra gpu_from_host introduced here will
+            # be removed by further optimizations
+            new_tensors = [gpu_from_host(t) for t in axis_and_tensors[1:]]
+            new_a_and_t = [axis_and_tensors[0]]+new_tensors
+
+            replacement_node = host_from_gpu(gpu_join(*new_a_and_t))
+
+            # print "OPT: replacement_node", replacement_node
+
+            return [replacement_node]
+
+
+
