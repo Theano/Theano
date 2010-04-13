@@ -3,6 +3,7 @@ import numpy
 import theano.tensor.basic
 from basic import TensorType, _tensor_py_operators
 from theano.compile import shared_constructor, SharedVariable
+from theano import config
 
 class TensorSharedVariable(SharedVariable, _tensor_py_operators):
     pass
@@ -43,7 +44,13 @@ def scalar_constructor(value, name=None, strict=False, dtype=None):
     if not isinstance (value, (numpy.number, float, int)):
         raise TypeError()
     if dtype is None:
-        if isinstance(value, float):
+        if isinstance(value, numpy.float64):
+            dtype = 'float64'
+        elif isinstance(value, numpy.float32):
+            dtype = 'float32'
+        elif isinstance(value, float) and not strict:
+            dtype = config.floatX
+        elif isinstance(value, float):
             dtype = 'float64'
         elif isinstance(value, int):
             dtype = 'int64'
