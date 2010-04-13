@@ -194,7 +194,12 @@ class SequenceDB(DB):
 
     def print_summary(self, stream=sys.stdout):
         print >> stream, "SequenceDB (id %i)"%id(self)
-        print >> stream, "  position", self.__position__
+        positions = self.__position__.items()
+        def c(a,b):
+          return cmp(a[1],b[1])
+        positions.sort(c)
+
+        print >> stream, "  position", positions
         print >> stream, "  names", self._names
         print >> stream, "  db", self.__db__
 
