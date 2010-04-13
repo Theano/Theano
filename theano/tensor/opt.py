@@ -510,8 +510,13 @@ def local_fill_to_alloc(node):
 
 @register_specialize
 @register_canonicalize
-@gof.local_optimizer([T._shape])
+@gof.local_optimizer([T.alloc])
 def local_useless_alloc(node):
+    """
+    if the input type is the same as the output type(dtype and broadcast)
+    their is no change in the shape of the input. So this is just a simple copy
+    of the input. This is not needed.
+    """
     if node.op == T.alloc:
         if node.inputs[0].type == node.outputs[0].type:
             return [node.inputs[0]]
