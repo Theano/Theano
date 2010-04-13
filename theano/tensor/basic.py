@@ -2682,15 +2682,20 @@ class Rebroadcast(Op):
 def addbroadcast(x, *axes):
     """
     Make the input broadcastable in the specified axes.
+
+    We apply the opt here to don't pollute the graph especially during the gpu optimization
     """
-    return Rebroadcast(*[(axis, True) for axis in axes])(x)
+    rval = Rebroadcast(*[(axis, True) for axis in axes])(x)
+    return theano.tensor.opt.apply_rebroadcast_opt(rval)
 
 def unbroadcast(x, *axes):
     """
     Make the input impossible to broadcast in the specified axes.
+    
+    We apply the opt here to don't pollute the graph especially during the gpu optimization
     """
-    return Rebroadcast(*[(axis, False) for axis in axes])(x)
-
+    rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
+    return theano.tensor.opt.apply_rebroadcast_opt(rval)
 
 
 class Join(Op):

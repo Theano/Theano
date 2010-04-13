@@ -806,6 +806,30 @@ def local_rebroadcast_lift(node):
         rval = [T.Rebroadcast(*axis.items())(iinput)]
         return rval
 
+def apply_rebroadcast_opt(rval):
+    """
+    Apply as many times as required the optimization local_useless_rebroadcast 
+    and local_rebroadcast_lift.
+
+    :param rval: a Variable
+    :retrun: a Variable. The same if not optimisation can be applied.
+    """
+
+    changed = True
+    while changed and rval.owner:
+      changed = False
+      rval2 = theano.tensor.opt.local_useless_rebroadcast.transform(rval.owner)
+      if rval2: 
+        assert len(rval2)==1
+        rval = rval2[0]
+        changed = True
+      if rval.owner:
+        rval2 = theano.tensor.opt.local_rebroadcast_lift.transform(rval.owner)
+        if rval2:
+          assert len(rval2)==1
+          rval = rval2[0]
+          changed = True
+    return rval
 
 ##################
 # Reshape opts   #

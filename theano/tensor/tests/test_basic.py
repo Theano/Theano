@@ -2507,6 +2507,48 @@ def test_autocast():
     finally:
         ac.__exit__()
 
+def test_unbroadcast_addbroadcast():
+    """
+    test that the unbroadcast fct don't insert not needed broadcast
+    and fuse consecutive Rebroadcast op
+    """
+
+    x=matrix()
+    assert unbroadcast(x,0) is x
+    assert unbroadcast(x,1) is x
+    assert unbroadcast(x,1,0) is x
+    assert unbroadcast(x,0,1) is x
+
+    assert addbroadcast(x,0) is not x
+    assert addbroadcast(x,1) is not x
+    assert addbroadcast(x,1,0).owner.inputs[0] is x
+
+    assert unbroadcast(addbroadcast(x,0),0) is x
+    assert addbroadcast(unbroadcast(x,0),0) is not x
+    x=row()
+    assert unbroadcast(x,0) is not x
+    assert unbroadcast(x,1) is x
+    assert unbroadcast(x,1,0) is not x
+    assert unbroadcast(x,0,1) is not x
+
+    assert addbroadcast(x,0) is x
+    assert addbroadcast(x,1).owner.inputs[0] is x
+    assert addbroadcast(x,1,0).owner.inputs[0] is x
+    assert addbroadcast(x,0,1).owner.inputs[0] is x
+
+    assert unbroadcast(addbroadcast(x,1),1) is x
+    assert addbroadcast(unbroadcast(x,1),1) is not x
+
+    #the first broadcast is remove the broadcast, so the second
+    #should not make one
+    assert unbroadcast(unbroadcast(x,0),0).owner.inputs[0] is x
+
+    #test that consecutive Rebroadcast op are fused
+    x=TensorType(dtype = 'float64', broadcastable = (True,True))()
+    assert unbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
+    assert addbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
+    assert addbroadcast(unbroadcast(x,0),0) is x
+
 if __name__ == '__main__':
     if 1:
         unittest.main()
