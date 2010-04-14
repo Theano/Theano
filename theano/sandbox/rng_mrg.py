@@ -587,7 +587,10 @@ class MRG_RandomStreams(object):
             r = 1
             for s in size:
                 r *= s
-            return r
+            if r > 6:
+                return r/6 # chosen as fastest for rbm_benchmark
+            else:
+                return r
         try:
             rval =  int(size)
             assert rval > 0
