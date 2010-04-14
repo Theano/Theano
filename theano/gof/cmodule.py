@@ -656,6 +656,13 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         if python_inc.count('Python.framework')>0 and config.cmodule.mac_framework_link:
             preargs.extend(['-framework','Python'])
 
+        # patch from Benjamin Schrauwen
+        # April 14, 2009
+        if distutils.sysconfig.get_config_var('CFLAGS').rfind('x86_64') < 0: 
+            # If on mac, and not a 64-bit version of python, switch to 32 bit compilation
+            preargs.extend(['-m32'])
+
+
     # sometimes, the linker cannot find -lpython so we need to tell it 
     # explicitly where it is located
     # this returns somepath/lib/python2.x
