@@ -10,7 +10,11 @@ from theano import gof, Op, tensor, Variable, Apply
 import numpy, theano
 import __builtin__
 
-def max_pool2D(input, ds, ignore_border=False):
+def max_pool2D(*args, **kwargs):
+    print >> sys.stderr, "DEPRECATION: max_pool2D renamed to max_pool_2d"
+    return max_pool_2d(*args, **kwargs)
+
+def max_pool_2d(input, ds, ignore_border=False):
     """
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
     the specified factor, by keeping only the maximum value of non-overlapping
@@ -24,7 +28,7 @@ def max_pool2D(input, ds, ignore_border=False):
       (2,2) output. (3,3) otherwise.
     """
     if input.ndim < 2:
-        raise NotImplementedError('max_pool2D requires a dimension >= 2')
+        raise NotImplementedError('max_pool_2d requires a dimension >= 2')
 
     # extract image dimensions
     img_shape = input.shape[-2:]

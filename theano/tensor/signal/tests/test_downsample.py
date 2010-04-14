@@ -2,7 +2,7 @@ import unittest, sys, time
 import numpy
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
-from theano.tensor.signal.downsample import DownsampleFactorMax, max_pool2D
+from theano.tensor.signal.downsample import DownsampleFactorMax, max_pool_2d
 from theano import function, Mode
 
 
@@ -11,8 +11,8 @@ class TestDownsampleFactorMax(unittest.TestCase):
         utt.seed_rng()
 
     @staticmethod
-    def numpy_max_pool2D(input, ds, ignore_border=False):
-        '''Helper function, implementing max_pool2D in pure numpy'''
+    def numpy_max_pool_2d(input, ds, ignore_border=False):
+        '''Helper function, implementing max_pool_2d in pure numpy'''
         if len(input.shape) < 2:
             raise NotImplementedError('input should have at least 2 dim, shape is %s'\
                     % str(input.shape))
@@ -54,9 +54,9 @@ class TestDownsampleFactorMax(unittest.TestCase):
                 print 'ignore_border =', ignore_border
 
                 ## Pure Numpy computation
-                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+                numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
 
-                output = max_pool2D(images, maxpoolshp, ignore_border)
+                output = max_pool_2d(images, maxpoolshp, ignore_border)
                 f = function([images,],[output,])
                 output_val = f(imval)
                 assert numpy.all(output_val == numpy_output_val)
@@ -80,7 +80,7 @@ class TestDownsampleFactorMax(unittest.TestCase):
                     return DownsampleFactorMax(maxpoolshp, ignore_border=ignore_border)(input)
                 utt.verify_grad(mp, [imval], rng=rng)
 
-    def test_max_pool2D_2D(self):
+    def test_max_pool_2d_2D(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         maxpoolshps = ((1,1),(3,2))
@@ -91,17 +91,17 @@ class TestDownsampleFactorMax(unittest.TestCase):
             for ignore_border in [True,False]:
                 print 'maxpoolshp =', maxpoolshp
                 print 'ignore_border =', ignore_border
-                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+                numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
 
-                output = max_pool2D(images, maxpoolshp, ignore_border)
+                output = max_pool_2d(images, maxpoolshp, ignore_border)
                 output_val = function([images], output)(imval)
                 assert numpy.all(output_val == numpy_output_val)
 
                 def mp(input):
-                    return max_pool2D(input, maxpoolshp, ignore_border)
+                    return max_pool_2d(input, maxpoolshp, ignore_border)
                 utt.verify_grad(mp, [imval], rng=rng)
 
-    def test_max_pool2D_3D(self):
+    def test_max_pool_2d_3D(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         maxpoolshps = [(1,2)]
@@ -112,9 +112,9 @@ class TestDownsampleFactorMax(unittest.TestCase):
             for ignore_border in [True,False]:
                 print 'maxpoolshp =', maxpoolshp
                 print 'ignore_border =', ignore_border
-                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+                numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
 
-                output = max_pool2D(images, maxpoolshp, ignore_border)
+                output = max_pool_2d(images, maxpoolshp, ignore_border)
                 output_val = function([images], output)(imval)
                 assert numpy.all(output_val == numpy_output_val)
 
@@ -124,14 +124,14 @@ class TestDownsampleFactorMax(unittest.TestCase):
                 g = tensor.grad(c, images)
                 g_val = function([images], [g.shape, tensor.min(tensor.min(tensor.min(g))), tensor.max(tensor.max(tensor.max(g)))])(imval)
 
-#removed as already tested in test_max_pool2D_2D
+#removed as already tested in test_max_pool_2d_2D
 #This make test in debug mode too slow.
 #                def mp(input):
-#                    return max_pool2D(input, maxpoolshp, ignore_border)
+#                    return max_pool_2d(input, maxpoolshp, ignore_border)
 #                utt.verify_grad(mp, [imval], rng=rng)
 
 
-    def test_max_pool2D_6D(self):
+    def test_max_pool_2d_6D(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         maxpoolshps = [(3,2)]
@@ -142,16 +142,16 @@ class TestDownsampleFactorMax(unittest.TestCase):
             for ignore_border in [True,False]:
                 print 'maxpoolshp =', maxpoolshp
                 print 'ignore_border =', ignore_border
-                numpy_output_val = self.numpy_max_pool2D(imval, maxpoolshp, ignore_border)
+                numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp, ignore_border)
 
-                output = max_pool2D(images, maxpoolshp, ignore_border)
+                output = max_pool_2d(images, maxpoolshp, ignore_border)
                 output_val = function([images], output)(imval)
                 assert numpy.all(output_val == numpy_output_val)
 
-#removed as already tested in test_max_pool2D_2D
+#removed as already tested in test_max_pool_2d_2D
 #This make test in debug mode too slow.
 #                def mp(input):
-#                    return max_pool2D(input, maxpoolshp, ignore_border)
+#                    return max_pool_2d(input, maxpoolshp, ignore_border)
 #                utt.verify_grad(mp, [imval], rng=rng)
 
 

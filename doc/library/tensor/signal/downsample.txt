@@ -10,7 +10,7 @@
 .. moduleauthor:: LISA
 
 
-.. autofunction:: theano.tensor.signal.downsample.max_pool2D
+.. autofunction:: theano.tensor.signal.downsample.max_pool_2d
 
 .. function:: fft(*todo)
 
