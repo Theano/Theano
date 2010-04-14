@@ -3,6 +3,7 @@ from theano.gof.cmodule import (std_libs, std_lib_dirs, std_include_dirs, dlimpo
     get_lib_extension)
 from theano import config
 import distutils
+import commands
 
 _logger=logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
@@ -68,16 +69,26 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     lib_dirs = std_lib_dirs() + lib_dirs
     if cuda_root:
         lib_dirs.append(os.path.join(cuda_root, 'lib'))
-        lib_dirs.append(os.path.join(cuda_root, 'lib64'))
 
-    # sometimes, the linker cannot find -lpython so we need to tell it 
-    # explicitly where it is located
-    # this returns somepath/lib/python2.x
-    python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
-                    standard_lib=1)
-    python_lib = os.path.dirname(python_lib)
-    if python_lib not in lib_dirs:
-        lib_dirs.append(python_lib)
+        # from Benjamin Schrauwen April 14 2010
+        if sys.platform != 'darwin':
+            # No 64 bit CUDA libraries available on the mac, yet..
+            lib_dirs.append(os.path.join(cuda_root, 'lib64'))
+
+
+    if sys.platform == 'darwin':
+        # On the mac, nvcc is not able to link using -framework Python, so we have 
+        # manually add the correct library and paths
+        darwin_python_lib = commands.getoutput('python-config --ldflags')
+    else:
+        # sometimes, the linker cannot find -lpython so we need to tell it 
+        # explicitly where it is located
+        # this returns somepath/lib/python2.x
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
+                        standard_lib=1)
+        python_lib = os.path.dirname(python_lib)
+        if python_lib not in lib_dirs:
+            lib_dirs.append(python_lib)
 
     cppfilename = os.path.join(location, 'mod.cu')
     cppfile = file(cppfilename, 'w')
@@ -99,7 +110,9 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     cmd.extend(['-Xcompiler', ','.join(pa for pa in preargs if not pa.startswith('-O'))])
     if os.path.exists(os.path.join(config.cuda.root,'lib')):
         cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib')])])
-        cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib64')])])
+        if sys.platform != 'darwin':
+            # No 64 bit CUDA libraries available on the mac, yet..
+            cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib64')])])
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename]) 
     cmd.append(cppfilename)
@@ -107,6 +120,8 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
         cmd.append(os.path.join(os.path.split(cppfilename)[0],'..','cuda_ndarray','cuda_ndarray.so'))
     cmd.extend(['-L%s'%ldir for ldir in lib_dirs])
     cmd.extend(['-l%s'%l for l in libs])
+    if sys.platform == 'darwin':
+        cmd.extend(darwin_python_lib.split())
     debug('Running cmd', ' '.join(cmd))
 
     p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
