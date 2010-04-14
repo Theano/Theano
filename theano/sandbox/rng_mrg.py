@@ -390,27 +390,21 @@ class GPU_mrg_uniform(mrg_uniform_base):
             for (int i = idx; i < Nsamples; i += numThreads)
             {
                 y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
-                if ((y1 < 0 || y1 >= M1))     //must also check overflow
-                    y1 -= M1;
+                y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
                 y1 += x13;
-                if ((y1 < 0 or y1 >= M1))
-                    y1 -= M1;
+                y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
                 x13 = x12;
                 x12 = x11;
                 x11 = y1;
 
                 y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16));
-                if (y1 < 0 || y1 >= M2)
-                    y1 -= M2;
+                y1 -= (y1 < 0 || y1 >= M2) ? M2 : 0;
                 y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16));
-                if (y2 < 0 || y2 >= M2)
-                    y2 -= M2;
+                y2 -= (y2 < 0 || y2 >= M2) ? M2 : 0;
                 y2 += x23;
-                if (y2 < 0 || y2 >= M2)
-                    y2 -= M2;
+                y2 -= (y2 < 0 || y2 >= M2) ? M2 : 0;
                 y2 += y1;
-                if (y2 < 0 or y2 >= M2)
-                    y2 -= M2;
+                y2 -= (y2 < 0 or y2 >= M2) ? M2 : 0;
 
                 x23 = x22;
                 x22 = x21;
