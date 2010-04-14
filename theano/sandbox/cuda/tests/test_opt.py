@@ -76,12 +76,12 @@ def test_opt_gpujoin_onlyajoin():
     # from a bug in normal sampling
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = theano.shared(_a)
-    b = theano.shared(_b)
+    a = cuda_ndarray.shared_constructor(_a)
+    b = cuda_ndarray.shared_constructor(_b)
 
     c = tensor.join(1,a,b)
     
-    f = theano.function([], c)
+    f = theano.function([], c, mode=mode_with_gpu)
 
     #theano.printing.debugprint(f)
 
@@ -100,8 +100,8 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     # from a bug in gpu normal sampling
     _a = numpy.asarray([1,2,3,4],dtype='float32')
     _b = numpy.asarray([5,6,7,8],dtype='float32')
-    a = theano.shared(_a)
-    b = theano.shared(_b)
+    a = cuda_ndarray.shared_constructor(_a)
+    b = cuda_ndarray.shared_constructor(_b)
 
     a_prime = tensor.cos(a)
     b_prime = tensor.sin(b)
@@ -110,7 +110,7 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     
     d = c[:-1]
 
-    f = theano.function([], d)
+    f = theano.function([], d, mode=mode_with_gpu)
 
     #theano.printing.debugprint(f)
 
