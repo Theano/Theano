@@ -347,7 +347,7 @@ def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=theano.
             tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
     return op(random_state, size, low, high)
 
-def binomial(random_state, size=None, n=1, prob=0.5, ndim=None, dtype='int64'):
+def binomial(random_state, size=None, n=1, p=0.5, ndim=None, dtype='int64', prob=None):
     """
     Sample n times with probability of success prob for each trial,
     return the number of successes.
@@ -358,9 +358,12 @@ def binomial(random_state, size=None, n=1, prob=0.5, ndim=None, dtype='int64'):
     If size is None, the output shape will be determined by the shapes
     of n and prob.
     """
+    if prob is not None:
+        p = prob
+        print >> sys.stderr, "DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy."
     n = tensor.as_tensor_variable(n)
-    prob = tensor.as_tensor_variable(prob)
-    ndim, size = _infer_ndim(ndim, size, n, prob)
+    p = tensor.as_tensor_variable(p)
+    ndim, size = _infer_ndim(ndim, size, n, p)
     if n.dtype=='int64':
         ### THIS WORKS AROUND A NUMPY BUG on 32bit machine
         ###  Erase when the following works on a 32bit machine:
@@ -370,7 +373,7 @@ def binomial(random_state, size=None, n=1, prob=0.5, ndim=None, dtype='int64'):
         n = tensor.cast(n, 'int32')
     op = RandomFunction('binomial',
             tensor.TensorType(dtype = dtype, broadcastable = (False,)*ndim) )
-    return op(random_state, size, n, prob)
+    return op(random_state, size, n, p)
 
 def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=theano.config.floatX):
     """
@@ -586,7 +589,7 @@ optdb.register('random_make_inplace', opt.in2out(random_make_inplace, ignore_new
 
 class RandomStreamsBase(object):
 
-    def binomial(self, size=None, n=1, prob=0.5, ndim=None, dtype='int64'):
+    def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64', prob=None):
         """
         Sample n times with probability of success prob for each trial,
         return the number of successes.
@@ -595,7 +598,10 @@ class RandomStreamsBase(object):
         ndim may be a plain integer to supplement the missing
         information.
         """
-        return self.gen(binomial, size, n, prob, ndim=ndim, dtype=dtype)
+        if prob is not None:
+            p = prob
+            print >> sys.stderr, "DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy."
+        return self.gen(binomial, size, n, p, ndim=ndim, dtype=dtype)
 
     def uniform(self, size=None, low=0.0, high=1.0, ndim=None, dtype=theano.config.floatX):
         """
