@@ -147,7 +147,7 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
 
     if p.returncode: 
         # filter the output from the compiler
-        for l in stderr.split('\n'):
+        for l in nvcc_stderr.split('\n'):
             if not l:
                 continue
             # filter out the annoying declaration warnings
@@ -159,10 +159,10 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
                     continue
             except: 
                 pass
-            print l
-        print '==============================='
+            print >> sys.stderr, l
+        print >> sys.stderr, '==============================='
         for i, l in enumerate(src_code.split('\n')):
-            print i+1, l
+            print >> sys.stderr,  i+1, l
         raise Exception('nvcc return status', p.returncode, 'for cmd', ' '.join(cmd))
 
     #touch the __init__ file
