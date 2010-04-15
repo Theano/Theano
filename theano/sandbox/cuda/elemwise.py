@@ -218,8 +218,8 @@ class RecAlgo(object):
 
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
-    cache_version = ()
     cache_version = ('debug', 7, verbose)
+    cache_version = ()
 
     def __init__(self, scalar_op, sync=True):
         """ 
@@ -228,8 +228,6 @@ class NaiveAlgo(object):
         """
         self.scalar_op = scalar_op
         self.sync = sync
-        if not self.sync:
-            self.cache_version+=('nosync',)
 
     def c_src_kernel(self, node, nodename, nd):
         sio = StringIO.StringIO()

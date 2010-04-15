@@ -97,10 +97,11 @@ class GpuElemwise(Op):
             self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin, scalar_op.nout)
         else:
             self.ufunc = None
+        self.sync = sync
+
         self._rehash()
 
         self.src_generator = NaiveAlgo(self.scalar_op, sync=sync)
-        self.sync = sync
 
     def __getstate__(self):
         d = copy.copy(self.__dict__)
@@ -111,6 +112,7 @@ class GpuElemwise(Op):
     
     def __setstate__(self, d):
         self.__dict__.update(d)
+        self.sync = d.get('sync', True) #old objects defaulted to sync behaviour
         if self.scalar_op.nin > 0:
             self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
         else:
@@ -119,7 +121,8 @@ class GpuElemwise(Op):
 
     def __eq__(self, other):
         return type(self) == type(other) and (self.scalar_op == other.scalar_op) \
-                and self.inplace_pattern == other.inplace_pattern
+                and self.inplace_pattern == other.inplace_pattern \
+                and self.sync == other.sync
 
     def _rehash(self):
         items = self.inplace_pattern.items()
@@ -130,7 +133,7 @@ class GpuElemwise(Op):
                 tuple_items+=[tuple(v)]
             else: tuple_items+=[v]
         tuple_items = tuple(tuple_items)
-        h = hash(type(self)) ^ hash(self.scalar_op) ^ hash(tuple_items)
+        h = hash(type(self)) ^ hash(self.scalar_op) ^ hash(tuple_items) ^ hash(self.sync)
         # don't change a code that has already been  computed for this object
         assert h == getattr(self,'_hashval', h)
         self._hashval = h
