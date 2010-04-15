@@ -36,8 +36,8 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
         
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
-    cache_version = ('debug', 7, verbose)
     cache_version = ()
+    cache_version = ('debug', 9, verbose)
 
     def __init__(self, scalar_op, sync=True):
         """ 
@@ -703,8 +703,15 @@ nd_collapse_[i]=0;
             if self.verbose:
                 verb='std::cerr << "   Running ccontiguous version\\n";'
             print >> sio, """
-                int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                //first use at least a full warp
+                int threads_per_block = std::min(numEls,  (unsigned int)32); //WARP SIZE
+
+                //next start adding multiprocessors
+                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)30); // UP TO NUMBER OF MULTIPROCESSORS
+
+                // next start adding more warps per multiprocessor
+                if (threads_per_block * n_blocks < numEls)
+                    threads_per_block = std::min(numEls/n_blocks, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
                 kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
 
                 //std::cerr << "calling callkernel returned\\n";
@@ -715,7 +722,10 @@ nd_collapse_[i]=0;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n    n_blocks=%%i threads_per_block=%%i\\n   Call: %%s\\n",
+                         "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err), 
+                         n_blocks, threads_per_block,
+                         "kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
                     return -1;
                 
                 }
@@ -748,8 +758,16 @@ nd_collapse_[i]=0;
             kernel_call_args = ", ".join(kernel_call_args)
             
             print >> sio, """
-                int threads_per_block = std::min(numEls, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                //first use at least a full warp
+                int threads_per_block = std::min(numEls, (unsigned int)32); //WARP SIZE
+
+                //next start adding multiprocessors
+                int n_blocks = std::min(numEls/threads_per_block + (numEls %% threads_per_block?1:0), (unsigned int)30); // UP TO NUMBER OF MULTIPROCESSORS
+
+                // next start adding more warps per multiprocessor
+                if (threads_per_block * n_blocks < numEls)
+                    threads_per_block = std::min(numEls/n_blocks, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+
                 kernel_%(scalar_op)s_%(nodename)s_%(id_self)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
                 """ %locals()
             if sync:
@@ -758,7 +776,10 @@ nd_collapse_[i]=0;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err) 
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "Elemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err));
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n    n_blocks=%%i threads_per_block=%%i\\n   Call: %%s\\n",
+                         "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err), 
+                         n_blocks, threads_per_block,
+                         "kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
                     return -1;
                 
                 }                         
@@ -776,6 +797,7 @@ nd_collapse_[i]=0;
             print >> sio, "        } break;"
                                    
         print >> sio, "}"#end case
+        print >> sio, "return -2;"  # should not get to this point
         print >> sio, "}"#end fct
 
         #N.B. cudaGetLastError is called by c_code
