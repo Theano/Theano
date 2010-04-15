@@ -12,4 +12,6 @@ except ImportError:
     sys.stderr.write("WARNING: scipy can't be imported. We disable the sparse matrix code.")
 if enable_sparse:
     from basic import *
+    import sharedvar
+    from sharedvar import sparse_constructor as shared
 
