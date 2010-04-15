@@ -771,42 +771,61 @@ class GpuSum(Op):
             }
         }
         """ %locals()
-
-    def c_code_reduce_01(self, sio, node, name, x, z, fail):
+        
+    def c_code_reduce_01X(self, sio, node, name, x, z, fail, N):
+        """
+        :param N: the number of 1 in the pattern N=1 -> 01, N=2 -> 011 N=3 ->0111
+                  Work for N=1,2,3
+        """
+        assert N in [1,2,3]
+        makecall = self._makecall(node, name, x, z, fail)
+        N_pattern = ''.join(['1']*N)
+        param_dim = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]"%locals() for i in range(N+1)])
+        strides_dim = ",".join(["CudaNdarray_HOST_STRIDES(%(x)s)[%(i)s]"%locals() for i in range(N+1)])
+        threads_y = """
+            //get as many y threads as we can fit
+            while (n_threads.x * n_threads.y < NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            {
+                if (n_threads.y < CudaNdarray_HOST_DIMS(%(x)s)[%(N)s-1])
+                    n_threads.y += 1;
+                else
+                    break;
+            }
+"""%locals()
+        threads_z = """
+            //get as many z threads as we can fit
+            while (n_threads.x * n_threads.y * n_threads.z <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            {
+                if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[%(N)s-2])
+                    break;
+                n_threads.z += 1;
+            }
+            n_threads.z -= 1;
+"""%locals()
+        if len(self.reduce_mask)==2:
+            threads_y = ''
+            threads_z = ''
+        if len(self.reduce_mask)==3:
+            threads_z = ''
         print >> sio, """
         {
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[%(N)s],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
+            %(threads_y)s
+            %(threads_z)s
             dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[0]);
-            if (verbose) printf("running kernel_reduce_sum_01_%(name)s\\n");
-            int n_shared = sizeof(float) * n_threads.x;
-            kernel_reduce_sum_01_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                    CudaNdarray_DEV_DATA(%(z)s),
-                    CudaNdarray_HOST_STRIDES(%(z)s)[0]
-                    );
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_01_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
+            %(makecall)s
         }
         """ %locals()
+
+    def c_code_reduce_01(self, sio, node, name, x, z, fail):
+        self.c_code_reduce_01X(sio, node, name, x, z, fail, 1)
+    def c_code_reduce_011(self, sio, node, name, x, z, fail):
+        self.c_code_reduce_01X(sio, node, name, x, z, fail, 2)
+    def c_code_reduce_0111(self, sio, node, name, x, z, fail):
+        self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
         print >> sio, """
@@ -1036,6 +1055,7 @@ class GpuSum(Op):
 
     def c_support_code_apply(self, node, nodename):
         sio = StringIO.StringIO()
+        nd_in = len(self.reduce_mask)
         if all(i==1 for i in self.reduce_mask):
             #this kernel is ok for up to a few thousand elements, but 
             # it only runs on ONE multiprocessor
@@ -1123,32 +1143,40 @@ class GpuSum(Op):
                 %(reducebuf)s
             }
             """ %locals()
-        if self.reduce_mask == (0,1):
+        #01, 011, 0111
+        if 0 == self.reduce_mask[0] and all(self.reduce_mask[1:]) and nd_in in[2,3,4]:
             # this kernel uses one block for each row.
             # threads per block for each element per row.
+            
+            N_pattern = ''.join(['1']*(nd_in-1))
+            if nd_in==2:
+                for_i1 = "for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)"
+                for_i2="int i2=0, sA2=0;"
+                for_i3="int i3=0, sA3=0;"
+            if nd_in==3:
+                for_i1 = "for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)"
+                for_i2 = "for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x)"
+                for_i3="int i3=0, sA3=0;"
+            if nd_in==4:
+                for_i1 = "for (int i1 = threadIdx.z; i1 < d1; i1 += blockDim.z)"
+                for_i2 = "for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)"
+                for_i3 = "for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)"
 
             reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]')
+            param_dim = ",".join(["const int d%(i)s"%locals() for i in range(nd_in)])
+            param_strides = ",".join(["const int sA%(i)s"%locals() for i in range(nd_in)])
+            decl = self._k_decl(node,nodename)
+            init = self._k_init(node,nodename)
             print >> sio, """
-            static __global__ void kernel_reduce_sum_01_%(nodename)s(
-                    const int d0,
-                    const int d1,
-                    const float *A, const int sA0, const int sA1,
-                    float * Z, const int sZ0)
-            {
-                const int threadCount = blockDim.x;
-                const int threadNum = threadIdx.x;
-                extern __shared__ float buf[];
-                float mysum = 0.0f;
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
-
-                for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
-                {
-                    float Ai = A[i1 * sA1 + blockIdx.x * sA0];
-                    mysum += Ai;
+            %(decl)s{
+                %(init)s
+                %(for_i1)s{
+                  %(for_i2)s{
+                    %(for_i3)s{
+                      float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + blockIdx.x * sA0];
+                      mysum += Ai;
+                    }
+                  }
                 }
                 %(reducebuf)s
             }
