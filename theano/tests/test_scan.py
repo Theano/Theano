@@ -534,7 +534,7 @@ class T_Scan(unittest.TestCase):
         n_steps = 3
         this_f(n_steps)
         numpy_state = v_state* (2**(n_steps))
-        assert state.value == numpy_state
+        assert numpy.allclose(state.value, numpy_state)
 
     def test_map_functionality(self):
         def f_rnn(u_t):
