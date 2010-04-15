@@ -127,8 +127,23 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     # the number of registers required to inform the maximum number of threads per block.
     debug('Running cmd', ' '.join(cmd))
 
-    p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-    stderr = p.communicate()[1] 
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    nvcc_stdout, nvcc_stderr = p.communicate()[:2]
+
+    if nvcc_stdout:
+        # this doesn't happen to my knowledge
+        print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
+
+    for eline in nvcc_stderr.split('\n'):
+        if not eline:
+            continue
+        if 'skipping incompatible' in eline: #ld is skipping an incompatible library
+            continue
+        if 'declared but never referenced' in eline:
+            continue
+        if 'statement is unreachable' in eline:
+            continue
+        _logger.info("NVCC: "+eline)
 
     if p.returncode: 
         # filter the output from the compiler
