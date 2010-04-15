@@ -122,6 +122,9 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     cmd.extend(['-l%s'%l for l in libs])
     if sys.platform == 'darwin':
         cmd.extend(darwin_python_lib.split())
+    #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
+    cmd.extend(["--maxrregcount=32"])  #TODO: compile ptx file without constraint and then use
+    # the number of registers required to inform the maximum number of threads per block.
     debug('Running cmd', ' '.join(cmd))
 
     p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
