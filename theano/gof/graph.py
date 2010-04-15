@@ -149,8 +149,6 @@ class Apply(utils.object2):
         :returns: an Apply instance with the same op but different outputs.
 
         """
-        # !!
-        strict = False
         remake_node = False
         for curr, new in zip(self.inputs, inputs):
             if not curr.type == new.type:
