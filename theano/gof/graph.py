@@ -63,6 +63,11 @@ class Apply(utils.object2):
         self.inputs = []
         self.tag = utils.scratchpad()
 
+        if not isinstance(inputs,(list,tuple)):
+            raise TypeError("The inputs of an Apply must be a list or tuple")
+        if not isinstance(outputs,(list,tuple)):
+            raise TypeError("The output of an Apply must be a list or tuple")
+
         ## filter inputs to make sure each element is a Variable
         for input in inputs:
             if isinstance(input, Variable):
