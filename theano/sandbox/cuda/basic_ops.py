@@ -1526,3 +1526,82 @@ class GpuJoin(tensor.Join):
 gpu_join = GpuJoin()
 
 
+# Those are predifined CudaNdarrayType as done in tensor.basic
+# Usefull mostly for test as the gpu op are inserted automatically...
+
+fscalar = CudaNdarrayType(dtype='float32', broadcastable=())
+def scalar(name = None, dtype = None):
+    """Return a symbolic scalar variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = CudaNdarrayType(dtype=dtype, broadcastable=())
+    return type(name)
+
+fvector = CudaNdarrayType(dtype='float32', broadcastable=(False, ))
+def vector(name = None, dtype = None):
+    """Return a symbolic vector variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = CudaNdarrayType(dtype=dtype, broadcastable=(False, ))
+    return type(name)
+
+fmatrix = CudaNdarrayType(dtype='float32', broadcastable=(False, False))
+def matrix(name = None, dtype = None):
+    """Return a symbolic matrix variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = CudaNdarrayType(dtype=dtype, broadcastable=(False, False))
+    return type(name)
+
+frow = CudaNdarrayType(dtype='float32', broadcastable=(True, False))
+def row(name = None, dtype = None):
+    """Return a symbolic row variable (ndim=2, broadcastable=[True,False]).
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = CudaNdarrayType(dtype=dtype, broadcastable=(True, False))
+    return type(name)
+
+fcol = CudaNdarrayType(dtype='float32', broadcastable=(False, True))
+def col(name = None, dtype = None):
+    """Return a symbolic column variable (ndim=2, broadcastable=[False,True]).
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = CudaNdarrayType(dtype=dtype, broadcastable=(False, True))
+    return type(name)
+
+ftensor3 = CudaNdarrayType(dtype='float32', broadcastable=(False,)*3)
+def tensor3(name=None, dtype=None):
+    """Return a symbolic 3-D variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = CudaNdarrayType(dtype=dtype, broadcastable=(False, False, False))
+    return type(name)
+
+ftensor4 = CudaNdarrayType(dtype='float32', broadcastable=(False,)*4)
+def tensor4(name=None, dtype=None):
+    """Return a symbolic 4-D variable.
+    :param dtype: numeric type (None means to use theano.config.floatX)
+    :param name: a name to attach to this variable
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = CudaNdarrayType(dtype=dtype, broadcastable=(False, False, False, False))
+    return type(name)

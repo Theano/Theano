@@ -106,7 +106,8 @@ if cuda_available:
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
             GpuDimShuffle, GpuSum, GpuReshape, 
             GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape,
-            GpuJoin)
+            GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4
+                           , scalar, vector, matrix, row, col, tensor3, tensor4)
     import opt
     import cuda_ndarray
 
