@@ -574,6 +574,12 @@ def test_gpujoin_assert_cndas():
 
     assert False
     
+def test_gpujoin_no_rebroadcast():
+    _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
+    a = tcn.shared_constructor(_a)
+    f = theano.function([],T.join(1,a))
+    l = f.maker.env.toposort()
+    assert not any([isinstance(x.op,T.Rebroadcast) for x in l])
 
 if __name__ == '__main__':
     test_gpujoin_twomatrices_joincolumns()
