@@ -620,6 +620,123 @@ def local_alloc_unary(node):
             v = node.op(x)
             return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
 
+class Assert(T.Op):
+    view_map={0:[0]}
+    def make_node(self, value, *shape):
+        sh = [T.as_tensor_variable(s) for s in shape]
+        return gof.Apply(self, [value]+sh, [value.type()])
+    
+    def __str__(self):
+        return self.__class__.__name__
+    def perform(self, node, inputs, (out,)):
+        v = inputs[0]
+        if out[0] is None:
+            out[0]=v
+        assert all(inputs[1:])
+
+    def __eq__(self, other):
+        return type(self)==type(other)
+    def grad(self,input,output_gradients):
+        return output_gradients
+    def c_code_old(self, node, name, inames, onames, sub):
+        value = inames[0]
+        out = onames[0]
+        check = []
+        for idx in range(len(inames)-1):
+            i=inames[idx+1]
+            dtype=node.inputs[idx+1].dtype
+            check.append("assert((%(out)s->dimensions[%(idx)s]));//==(*((*npy_%(dtype)s)PyArray_DATA(%(i)s))));"%locals())
+        check = "\n".join(check)
+        return """
+        %(check)s
+        %(out)s = %(value)s;
+        Py_INCREF(%(value)s);
+        """%locals()
+        pass
+    def c_code_cache_version(self):
+        return ()
+    
+assert_ = Assert()
+
+@gof.local_optimizer([T.Alloc])
+def local_alloc_elemwise(node):
+    """elemwise(alloc(x, shp), y.TensorType(no broadcast flag))
+         -> elemwise(x.dimshuffle(...), y.TensorType(no broadcast flag))
+         TODO: create an AsssertOp shp==y.shp. We can pass it the x.dimshuffle and it forward it to
+         make it work in the graph.
+
+         We can change the alloc by a dimshuffle as the elemwise already have the shape info.
+         The dimshuffle will be faster to exec
+    """
+    if not isinstance(node.op, T.Elemwise):
+        return False
+    if len(node.outputs)>1:
+        #This is a supposition this code make that I'm not sure is always true.
+        assert all([list(o.type.broadcastable) == list(node.outputs[0].type.broadcastable) for o in node.outputs[1:]])
+
+    if not any([list(i.type.broadcastable)==list(node.outputs[0].type.broadcastable) for i in node.inputs]):
+        return False
+    if not any([i.owner and (isinstance(i.owner.op,T.Alloc) or \
+                             (isinstance(i.owner.op,T.DimShuffle) and i.owner.inputs[0].owner and \
+                              isinstance(i.owner.inputs[0].owner.op,T.Alloc))) for i in node.inputs]):
+        return False
+    no_broad_idx = -1
+    for idx,i in enumerate(node.inputs):
+        if not i.owner:
+            continue
+        if not any(i.type.broadcastable) and not isinstance(i.owner.op, T.Alloc):
+            no_broad_idx = idx
+            break
+        elif list(i.type.broadcastable)==list(node.outputs[0].type.broadcastable) \
+             and not isinstance(i.owner.op, T.Alloc) \
+             and not (isinstance(i.owner.op, T.DimShuffle) and i.owner.inputs[0].owner and \
+                      isinstance(i.owner.inputs[0].owner.op,T.Alloc)):
+            no_broad_idx = idx
+            break
+            
+    assert no_broad_idx>0
+    assert_op = node.inputs[no_broad_idx]
+    cmp_op = assert_op
+    new = []
+    
+    for i in node.inputs:
+        if i.owner and isinstance(i.owner.op,T.Alloc):
+            #I suppose that alloc input must have the same shape as the output.
+            assert i.type.ndim == node.inputs[no_broad_idx].type.ndim
+            new_i = i.owner.inputs[0]
+            if theano.config.experimental.local_alloc_elemwise_assert:
+                assert_op = assert_(assert_op,*[T.eq(i.owner.inputs[idx+1],T.shape(cmp_op)[idx]) for idx in range(len(i.owner.inputs)-1)])
+            new.append(new_i)
+        elif i.owner and isinstance(i.owner.op, T.DimShuffle) and i.owner.inputs[0].owner \
+             and isinstance(i.owner.inputs[0].owner.op,T.Alloc):
+            dim = i
+            alloc = i.owner.inputs[0]
+            new_i = alloc.owner.inputs[0]
+            if theano.config.experimental.local_alloc_elemwise_assert:
+                assert_op = assert_(assert_op,*[T.eq(alloc.owner.inputs[idx+1],T.shape(cmp_op)[idx]) for idx in range(len(alloc.owner.inputs)-1)])
+            new.append(new_i)
+        else: new.append(i)
+    new[no_broad_idx]=assert_op
+    return [node.op(*new)]
+
+#TODO, T.eq if both input are the same, remove!
+#TODO, op that check the condition are all true and remove the Assert. Also remove the constant condition.
+#TODO, create a test_case where the assert is needed and fail.
+#TODO, global optimizer that lift the assert to the beginning of the graph.
+#TODO, var.tag.shape to propagate the shape and lower the overhead of this op
+#TODO, Assert.c_code
+theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
+        "If True enable the experimental optimization local_alloc_elemwise",
+        theano.configparser.BoolParam(False),
+        )
+#This version if faster but not as save.
+theano.configparser.AddConfigVar('experimental.local_alloc_elemwise_assert',
+        "If False enable the experimental optimization local_alloc_elemwise but WITHOUT assert into the graph!",
+        theano.configparser.BoolParam(True),
+        )
+if theano.config.experimental.local_alloc_elemwise:
+    register_specialize(local_alloc_elemwise)
+
 
 ############################
 # Constant Canonicalization
