@@ -271,6 +271,26 @@ class Shape_i(T.Op):
             out[0] = theano._asarray(x.shape[self.i], dtype='int64')
         else:
             out[0][...] = x.shape[self.i]
+    def c_code_cache_version(self):
+        return (0,1)
+    def c_code(self, node, name, (x, ), (out, ), sub):
+        i = self.i
+        if isinstance(node.inputs[0].type,T.TensorType):
+            return """
+            if(!%(out)s)
+            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, PyArray_INT64, 0);
+            ((npy_int64*)PyArray_DATA(%(out)s))[0]=%(x)s->dimensions[%(i)s];
+            """%locals()
+        
+        elif node.inputs[0].type.__class__.__name__=="CudaNdarrayType":
+            #Don't want to import cuda stuff here.
+            return """
+            if(!%(out)s)
+            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, PyArray_INT64, 0);
+            ((npy_int64*)PyArray_DATA(%(out)s))[0]=CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];
+            """%locals()
+        else:
+            return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
     def grad(self, (x,), (gz,)):
         return [None]
 
