@@ -660,10 +660,14 @@ assert_ = Assert()
 
 @gof.local_optimizer([T.Alloc])
 def local_alloc_elemwise(node):
-    """elemwise(alloc(x, shp), y.TensorType(no broadcast flag))
-         -> elemwise(x.dimshuffle(...), y.TensorType(no broadcast flag))
-         TODO: create an AsssertOp shp==y.shp. We can pass it the x.dimshuffle and it forward it to
-         make it work in the graph.
+    """
+    elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
+      -> elemwise(x, y.TensorType(no broadcast flag))
+
+    elemwise(dimshuffle(alloc(x, shp)),... ,y.TensorType(BROADCAST CONDITION))
+      -> elemwise(x, y.TensorType(no broadcast flag))
+
+    BROADCAST CONDITION: the condition is that the one input that are not to be optimized to have the same braodcast pattern as the output
 
          We can change the alloc by a dimshuffle as the elemwise already have the shape info.
          The dimshuffle will be faster to exec
@@ -725,6 +729,8 @@ def local_alloc_elemwise(node):
 #TODO, global optimizer that lift the assert to the beginning of the graph.
 #TODO, var.tag.shape to propagate the shape and lower the overhead of this op
 #TODO, Assert.c_code
+#TODO, when all can be optimizer do all except one
+
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
         "If True enable the experimental optimization local_alloc_elemwise",
         theano.configparser.BoolParam(False),
