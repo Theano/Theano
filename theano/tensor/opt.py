@@ -608,7 +608,7 @@ def local_subtensor_make_vector(node):
                     raise
 
 @register_specialize
-@gof.local_optimizer([T.Alloc])
+@gof.local_optimizer([T.Elemwise])
 def local_alloc_unary(node):
     """unary(alloc(x, shp)) -> alloc(unary(x), shp)
     """
