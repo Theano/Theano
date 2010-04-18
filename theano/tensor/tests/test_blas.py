@@ -139,7 +139,7 @@ class t_gemm(TestCase):
         Z = as_tensor_variable(self.rand(2,2))
         try:
             gemm_inplace(Z, 1.0, Z, Z, 1.0)
-        except ValueError, e:
+        except InconsistencyError, e:
             if e[0] == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -149,7 +149,7 @@ class t_gemm(TestCase):
         A = as_tensor_variable(self.rand(2,2))
         try:
             gemm_inplace(Z, 1.0, A, inplace.transpose_inplace(Z), 1.0)
-        except ValueError, e:
+        except InconsistencyError, e:
             if e[0] == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -159,7 +159,7 @@ class t_gemm(TestCase):
         A = as_tensor_variable(self.rand(2,2))
         try:
             gemm_inplace(Z, 1.0, inplace.transpose_inplace(Z), A, 1.0)
-        except ValueError, e:
+        except InconsistencyError, e:
             if e[0] == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -169,7 +169,7 @@ class t_gemm(TestCase):
         A = as_tensor_variable(self.rand(2,2))
         try:
             gemm_inplace(Z, 1.0, Z, A, 1.0)
-        except ValueError, e:
+        except InconsistencyError, e:
             if e[0] == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -614,3 +614,19 @@ def test_dot22scalar():
     assert _dot22scalar in [x.op for x in topo]
     assert len(topo)==2
     f(av,bv,cv)
+
+
+def test_dot_w_self():
+    # This can trigger problems in the optimization because what would normally be a gemm must
+    # not be because the output is aliased to one of the inputs.
+
+    A = shared(value = numpy.ones((2,2)))
+    B = T.matrix()
+
+    p = T.dot(A,A)*B
+
+    grad = T.grad(T.mean(p),[A])
+    f = theano.function([B], p, updates = { A : A - grad[0]} )
+
+    # tests correctness in debugmode
+    f(numpy.asarray([[0,1], [2,3]]))

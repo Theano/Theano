@@ -389,9 +389,9 @@ class Gemm(GemmRelated):
         z, a, x, y, b = inputs
         zr, xr, yr = [set(view_roots(i)) for i in z,x,y]
         if zr.intersection(xr):
-            raise ValueError(Gemm.E_z_uniq, (z, x))
+            raise InconsistencyError(Gemm.E_z_uniq, (z, x))
         if zr.intersection(yr):
-            raise ValueError(Gemm.E_z_uniq, (z, y))
+            raise InconsistencyError(Gemm.E_z_uniq, (z, y))
         bz, ba, bx, by, bb = [r.type.broadcastable for r in inputs]
         if bz != (False,False): raise ValueError(Gemm.E_rank, bz)
         if bx != (False,False): raise ValueError(Gemm.E_rank, bx)
@@ -784,7 +784,10 @@ class GemmOptimizer(Optimizer):
             nodelist.reverse()
             for node in nodelist:
                 #new_outputs = _gemm_from_node(node)
-                new_outputs = _gemm_from_node2(node)
+                try:
+                    new_outputs = _gemm_from_node2(node)
+                except InconsistencyError, e:
+                    continue
                 if new_outputs:
                     assert len(new_outputs) == len(node.outputs)
                     try:
