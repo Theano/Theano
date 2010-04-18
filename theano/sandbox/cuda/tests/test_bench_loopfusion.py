@@ -261,55 +261,58 @@ class Config(object):
 
     lr = 0.001
 
-def test_bench_elemwise(n_iter=1000, **kwargs):
-    conf = Config()
-    for k in kwargs:
-        setattr(conf, k, kwargs[k])
+if 0:
+    # commenting out because this is not really a unit test
+    # and it doesn't run correctly because of a deprecated call to cuda.use()
+    def test_bench_elemwise(n_iter=1000, **kwargs):
+        conf = Config()
+        for k in kwargs:
+            setattr(conf, k, kwargs[k])
 
-    if conf.use_gpu:
-        # Skip test if cuda_ndarray is not available.
-        from nose.plugins.skip import SkipTest
-        import theano.sandbox.cuda as cuda_ndarray
-        if cuda_ndarray.cuda_enabled == False:
-            raise SkipTest('Optional package cuda disabled')
-        import theano.sandbox.cuda
-        theano.sandbox.cuda.use()
+        if conf.use_gpu:
+            # Skip test if cuda_ndarray is not available.
+            from nose.plugins.skip import SkipTest
+            import theano.sandbox.cuda as cuda_ndarray
+            if cuda_ndarray.cuda_enabled == False:
+                raise SkipTest('Optional package cuda disabled')
+            import theano.sandbox.cuda
+            theano.sandbox.cuda.use()
 
-    debug=False
-    if isinstance(theano.compile.mode.get_default_mode(),
-            theano.compile.debugmode.DebugMode):
-        debug=True
+        debug=False
+        if isinstance(theano.compile.mode.get_default_mode(),
+                theano.compile.debugmode.DebugMode):
+            debug=True
 
-    # get symbolic train set
-    s_lr = theano.tensor.fscalar()
-    if not debug:
-        sshape = (None, 784)
-    else: sshape = (None, 3)
-    x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0,0), shape=sshape)()
-    y = theano.tensor.lvector()
+        # get symbolic train set
+        s_lr = theano.tensor.fscalar()
+        if not debug:
+            sshape = (None, 784)
+        else: sshape = (None, 3)
+        x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0,0), shape=sshape)()
+        y = theano.tensor.lvector()
 
-    rng = numpy.random.RandomState(conf.rng_seed)
+        rng = numpy.random.RandomState(conf.rng_seed)
 
-    if not debug:
-        layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], conf.n_hid, conf.n_terms)
-    else:
-        layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], 3, 2)
-        n_iter=3
-    cost = layer.output.mean()
+        if not debug:
+            layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], conf.n_hid, conf.n_terms)
+        else:
+            layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], 3, 2)
+            n_iter=3
+        cost = layer.output.mean()
 
-    assert cost.type.ndim == 0
+        assert cost.type.ndim == 0
 
-    print layer.params
+        print layer.params
 
-    gparams = theano.tensor.grad(cost, layer.params)
-    updates = [(p, p - s_lr*gp) for p, gp in zip(layer.params, gparams)]
+        gparams = theano.tensor.grad(cost, layer.params)
+        updates = [(p, p - s_lr*gp) for p, gp in zip(layer.params, gparams)]
 
-    train_nll = pfunc([x, y, s_lr], [], updates=updates)
+        train_nll = pfunc([x, y, s_lr], [], updates=updates)
 
-    xval = theano._asarray(
-        rng.uniform(size=(conf.ft_batchsize, x.type.shape[1])),
-        dtype=conf.dtype2,
-        )
-    yval = numpy.arange(conf.ft_batchsize)
-    for i in xrange(n_iter):
-        train_nll(xval, yval, conf.lr)
+        xval = theano._asarray(
+            rng.uniform(size=(conf.ft_batchsize, x.type.shape[1])),
+            dtype=conf.dtype2,
+            )
+        yval = numpy.arange(conf.ft_batchsize)
+        for i in xrange(n_iter):
+            train_nll(xval, yval, conf.lr)
