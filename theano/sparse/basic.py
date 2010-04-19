@@ -1114,7 +1114,12 @@ def local_structured_dot(node):
             a_val, a_ind, a_ptr, a_shape = csm_properties(a)
             return [sd_csr(a_val, a_ind, a_ptr, b)]
     return False
-register_specialize(local_structured_dot)
+
+# Commented out because 
+# a) it is only slightly faster than scipy these days, and sometimes a little slower, and
+# b) the resulting graphs make it very difficult for an op to do size checking on the matrices
+#    involved.  dimension mismatches are hard to detect sensibly.
+#register_specialize(local_structured_dot)
 
 def structured_dot_grad(sparse_A, dense_B, ga):
     if sparse_A.type.format in ('csc','csr'):
