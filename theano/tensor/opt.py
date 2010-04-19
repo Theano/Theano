@@ -622,30 +622,32 @@ def local_alloc_unary(node):
 
 class Assert(T.Op):
     view_map={0:[0]}
-    def make_node(self, value, *shape):
-        sh = [T.as_tensor_variable(s) for s in shape]
-        return gof.Apply(self, [value]+sh, [value.type()])
+    def make_node(self, value, *conds):
+        cond = [T.as_tensor_variable(c) for c in conds]
+        assert numpy.all([c.type.ndim == 0 for c in cond])
+        return gof.Apply(self, [value]+cond, [value.type()])
     
     def __str__(self):
         return self.__class__.__name__
     def perform(self, node, inputs, (out,)):
         v = inputs[0]
-        if out[0] is None:
-            out[0]=v
-        assert all(inputs[1:])
+        out[0]=v
+        assert numpy.all(inputs[1:])
 
     def __eq__(self, other):
         return type(self)==type(other)
+    def __hash__(self):        return hash(type(self))
     def grad(self,input,output_gradients):
         return output_gradients
-    def c_code_old(self, node, name, inames, onames, sub):
+    def c_code(self, node, name, inames, onames, sub):
         value = inames[0]
         out = onames[0]
         check = []
+        fail = sub['fail']
         for idx in range(len(inames)-1):
             i=inames[idx+1]
             dtype=node.inputs[idx+1].dtype
-            check.append("assert((%(out)s->dimensions[%(idx)s]));//==(*((*npy_%(dtype)s)PyArray_DATA(%(i)s))));"%locals())
+            check.append('if(!((npy_%(dtype)s*)PyArray_DATA(%(i)s))[0]){PyErr_SetString(PyExc_AssertionError,"Theano Assert failed!");%(fail)s}'%locals())
         check = "\n".join(check)
         return """
         %(check)s
@@ -654,7 +656,7 @@ class Assert(T.Op):
         """%locals()
         pass
     def c_code_cache_version(self):
-        return ()
+        return (0,1)
     
 assert_ = Assert()
 
@@ -729,10 +731,8 @@ def local_alloc_elemwise(node):
 
 #TODO, T.eq if both input are the same, remove!
 #TODO, op that check the condition are all true and remove the Assert. Also remove the constant condition.
-#TODO, create a test_case where the assert is needed and fail.
 #TODO, global optimizer that lift the assert to the beginning of the graph.
 #TODO, var.tag.shape to propagate the shape and lower the overhead of this op
-#TODO, Assert.c_code
 #TODO, when all can be optimizer do all except one
 
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',

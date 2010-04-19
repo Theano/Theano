@@ -1085,6 +1085,14 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_noshape not in h_ops
         assert identity_shape not in h_ops
 
+class test_assert(unittest.TestCase):
+    def test0(self):
+        x=T.scalar()
+        y=T.scalar()
+        f = theano.function([x,y],theano.tensor.opt.assert_(x,T.eq(x,y)))
+        f(1,1)
+        self.failUnlessRaises(AssertionError, f, 1,0)
+
 def test_local_mul_specialize():
 
     # test a few cases to make sure that the basics are covered
