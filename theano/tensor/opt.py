@@ -660,6 +660,26 @@ class Assert(T.Op):
     
 assert_ = Assert()
 
+@register_specialize
+@gof.local_optimizer([Assert])
+def local_remove_useless_assert(node):
+    if isinstance(node.op, Assert):
+        cond=[]
+        for c in node.inputs[1:]:
+            try:
+                const = get_constant_value(c)
+                
+                if 0!=const.ndim or const==0:
+                    #Should we raise an error here? How to be sure it is not catched?
+                    cond.append(c)
+            except TypeError:
+                cond.append(c)
+        
+        if len(cond)==0:
+            return [node.inputs[0]]
+        if len(cond)!=len(node.inputs)-1:
+            return [assert_(node.inputs[0],*cond)]
+
 @gof.local_optimizer([T.Alloc])
 def local_alloc_elemwise(node):
     """
@@ -730,10 +750,9 @@ def local_alloc_elemwise(node):
     return [node.op(*new)]
 
 #TODO, T.eq if both input are the same, remove!
-#TODO, op that check the condition are all true and remove the Assert. Also remove the constant condition.
 #TODO, global optimizer that lift the assert to the beginning of the graph.
 #TODO, var.tag.shape to propagate the shape and lower the overhead of this op
-#TODO, when all can be optimizer do all except one
+#TODO, when all inputs can be optimized do all except one
 
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
         "If True enable the experimental optimization local_alloc_elemwise",

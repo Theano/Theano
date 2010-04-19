@@ -1093,6 +1093,51 @@ class test_assert(unittest.TestCase):
         f(1,1)
         self.failUnlessRaises(AssertionError, f, 1,0)
 
+    def test1(self):
+        #remove assert that are always true
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        mode = compile.mode.get_mode(mode)
+
+        x=T.scalar()
+        f = theano.function([x],theano.tensor.opt.assert_(x,1),mode=mode)
+        assert f(1)==1
+        assert f(5)==5
+        topo=f.maker.env.toposort()
+        assert len(topo)==0
+
+    def test2(self):
+        #remove assert condition that are always true
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        mode = compile.mode.get_mode(mode)
+
+        x=T.scalar()
+        y=T.scalar()
+        f = theano.function([x,y],theano.tensor.opt.assert_(x,y,1),mode=mode)
+        assert f(1,1)==1
+        assert f(5,1)==5
+        topo=f.maker.env.toposort()
+        assert len(topo)==1
+        assert len(topo[0].inputs)==2
+
+    def test3(self):
+        #don't remove assert condition that are always false
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        mode = compile.mode.get_mode(mode)
+
+        x=T.scalar()
+        y=T.scalar()
+        f = theano.function([x,y],theano.tensor.opt.assert_(x,y,0),mode=mode)
+        self.failUnlessRaises(AssertionError, f, 1,0)
+        topo=f.maker.env.toposort()
+        assert len(topo)==1
+        assert len(topo[0].inputs)==3
+
 def test_local_mul_specialize():
 
     # test a few cases to make sure that the basics are covered
