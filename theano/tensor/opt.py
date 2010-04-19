@@ -687,7 +687,11 @@ def local_alloc_elemwise(node):
     no_broad_idx = -1
     for idx,i in enumerate(node.inputs):
         if not i.owner:
-            continue
+            if list(i.type.broadcastable) == [False,]*i.type.ndim:
+                no_broad_idx = idx
+                break
+            else:
+                continue
         if not any(i.type.broadcastable) and not isinstance(i.owner.op, T.Alloc):
             no_broad_idx = idx
             break
