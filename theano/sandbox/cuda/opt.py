@@ -1,7 +1,8 @@
 import sys
 import theano
 import numpy
-from theano import tensor, scalar, compile
+from theano import scalar as scal
+from theano import tensor, compile
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, toolbox, DestroyHandler
 
 from theano.sandbox.cuda.basic_ops import *
@@ -208,7 +209,7 @@ def local_gpu_gemm(node):
 @local_optimizer([])
 def local_gpu_sum(node):
     if isinstance(node.op, tensor.elemwise.CAReduce):
-        if node.op.scalar_op == scalar.add:
+        if node.op.scalar_op == scal.add:
             x, = node.inputs
             if x.owner and x.owner.op == host_from_gpu:
                 if node.op.axis is None:
@@ -332,8 +333,8 @@ def local_gpu_rebroadcast(node):
             return [host_from_gpu(node.op(gpu_x))]
 
 def cast(x, dtype):
-    stype = theano.scalar.Scalar(dtype)
-    cast_op = theano.tensor.Elemwise(scalar.Identity(scalar.specific_out(stype)))
+    stype = scal.Scalar(dtype)
+    cast_op = theano.tensor.Elemwise(scal.Identity(scal.specific_out(stype)))
     return cast_op(x)
 
 import theano.tensor.nnet
