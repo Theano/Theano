@@ -32,7 +32,7 @@ else:
 
 def test_shape_i():
     x = cuda.ftensor3()
-    v = numpy.zeros((3,4,5),dtype='float32')
+    v = cuda.CudaNdarray(numpy.zeros((3,4,5),dtype='float32'))
     f = theano.function([x],x.shape[1])
     topo = f.maker.env.toposort()
     assert len(topo)==1
