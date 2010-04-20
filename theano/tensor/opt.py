@@ -775,7 +775,8 @@ def local_alloc_elemwise(node):
             new.append(new_i)
         else: new.append(i)
     new[no_broad_idx]=assert_op
-    assert assert_op.owner.op is assert_
+    if theano.config.experimental.local_alloc_elemwise_assert:
+        assert assert_op.owner.op is assert_
     return [node.op(*new)]
 
 #TODO, global optimizer that lift the assert to the beginning of the graph.
