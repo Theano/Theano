@@ -41,6 +41,11 @@ class T_function(unittest.TestCase):
         fn = function([], []) #ok
         self.failUnless(fn() == [])
 
+    def test_extra_inputs(self):
+        x,s = T.scalars('xs')
+        fn = function([x], [x])
+        self.failUnlessRaises(TypeError,fn,1,2)
+        
     def test_missing_inputs(self):
 
         MissingInputException = TypeError

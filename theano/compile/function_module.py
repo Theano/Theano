@@ -443,6 +443,9 @@ class Function(object):
         for c in self.input_storage:
             c.provided = 0
 
+        if len(args)+len(kwargs)>len(self.input_storage):
+            raise TypeError("Too many parameter passed to theano function")
+
         # Set positional arguments
         i = 0
         for arg in args:
