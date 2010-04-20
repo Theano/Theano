@@ -681,6 +681,9 @@ class Assert(T.Op):
         pass
     def c_code_cache_version(self):
         return (0,1)
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
     
 assert_ = Assert()
 
@@ -771,6 +774,7 @@ def local_alloc_elemwise(node):
             new.append(new_i)
         else: new.append(i)
     new[no_broad_idx]=assert_op
+    assert assert_op.owner.op is assert_
     return [node.op(*new)]
 
 #TODO, global optimizer that lift the assert to the beginning of the graph.
