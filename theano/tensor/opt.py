@@ -757,8 +757,9 @@ def local_alloc_elemwise(node):
     new = []
     
     for i in node.inputs:
-        if i.owner and isinstance(i.owner.op,T.Alloc):
-            #I suppose that alloc input must have the same shape as the output.
+        if i.owner and isinstance(i.owner.op,T.Alloc) and i.owner.inputs[0].type != i.owner.outputs[0].type:
+            #when i.owner.inputs[0].type == i.owner.outputs[0].type we will remove that alloc later
+
             assert i.type.ndim == node.inputs[no_broad_idx].type.ndim
             new_i = i.owner.inputs[0]
             if theano.config.experimental.local_alloc_elemwise_assert:

@@ -1848,6 +1848,17 @@ class Alloc(gof.Op):
     def grad(self, inputs, (gout,)):
         return [None for i in inputs]
 
+    def __call__(self, *inputs, **kwargs):
+        """
+        Don't generate alloc that do nothing.
+        If you always want an Alloc node, call make_node.
+        """
+        ret = super(Alloc,self).__call__(*inputs,**kwargs)
+        import pdb;pdb.set_trace()
+        if inputs[0].type == ret.type:
+            return inputs[0]
+        else: return ret
+        
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
