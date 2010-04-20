@@ -35,6 +35,7 @@ def test_shape_i():
     v = cuda.CudaNdarray(numpy.zeros((3,4,5),dtype='float32'))
     f = theano.function([x],x.shape[1])
     topo = f.maker.env.toposort()
-    assert len(topo)==1
-    assert isinstance(topo[0].op,T.opt.Shape_i)
     assert f(v)==4
+    if theano.config.mode!='FAST_COMPILE':
+        assert len(topo)==1
+        assert isinstance(topo[0].op,T.opt.Shape_i)
