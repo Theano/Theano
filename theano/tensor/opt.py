@@ -607,6 +607,30 @@ def local_subtensor_make_vector(node):
                     _logger.error('failed to index with "%s"' % str(idx))
                     raise
 
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Elemwise])
+def local_useless_eq(node):
+    """eq(x,x) -> 1
+    """
+    if isinstance(node.op, T.Elemwise) and node.op.scalar_op == theano.scalar.eq and len(node.inputs)==2:
+        if node.inputs[0]==node.inputs[1]:
+            #it is the same var in the graph. That will always be true
+            return [T.fill(node.inputs[0], T.constant(1.0, dtype=node.outputs[0].type.dtype))]
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Elemwise])
+def local_useless_neq(node):
+    """neq(x,x) -> 0
+    """
+    if isinstance(node.op, T.Elemwise) and node.op.scalar_op == theano.scalar.neq and len(node.inputs)==2:
+        if node.inputs[0]==node.inputs[1]:
+            #it is the same var in the graph. That will always be true
+            return [T.fill(node.inputs[0], T.constant(0.0, dtype=node.outputs[0].type.dtype))]
+
+#TODO: the other optimization for and, or, xor, le and ge see ticket #496.
+
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
 def local_alloc_unary(node):
@@ -749,7 +773,6 @@ def local_alloc_elemwise(node):
     new[no_broad_idx]=assert_op
     return [node.op(*new)]
 
-#TODO, T.eq if both input are the same, remove!
 #TODO, global optimizer that lift the assert to the beginning of the graph.
 #TODO, var.tag.shape to propagate the shape and lower the overhead of this op
 #TODO, when all inputs can be optimized do all except one
@@ -764,8 +787,12 @@ theano.configparser.AddConfigVar('experimental.local_alloc_elemwise_assert',
         theano.configparser.BoolParam(True),
         )
 if theano.config.experimental.local_alloc_elemwise:
+    #enabled by default when the lifter of assert is done.
     register_specialize(local_alloc_elemwise)
-
+else:
+    #don't register them in fast_run by default to have them disabled by default
+    #disable them by default as we are not sure it is always a good idea to replace an alloc with multiple op.
+    compile.optdb['specialize'].register("local_alloc_elemwise", local_alloc_elemwise)
 
 ############################
 # Constant Canonicalization

@@ -1210,6 +1210,46 @@ class T_Rebroadcast(unittest.TestCase):
         assert len(rebroadcast_nodes) == 1
         assert rebroadcast_nodes[0].op.axis == {0: True}
 
+def test_local_useless_eq():
+    mode = theano.compile.get_default_mode().including('local_useless_eq')
+    x=T.dmatrix()
+    y=T.dmatrix()
+    f=theano.function([x,y],T.eq(x,y), mode=mode)
+    vx=numpy.random.rand(5,4)
+    vy=numpy.random.rand(5,4)
+    f(vx,vy)
+    topo = f.maker.env.toposort()
+    assert len(topo)==1
+    assert isinstance(topo[0].op,T.Elemwise)
+    assert isinstance(topo[0].op.scalar_op,theano.scalar.EQ)
+    f2=theano.function([x],T.eq(x,x), mode=mode)
+    assert numpy.all(f2(vx)==numpy.ones((5,4)))
+    topo2 = f2.maker.env.toposort()
+    print topo2
+    #Shape_i{1}(<TensorType(float64, matrix)>), Shape_i{0}(<TensorType(float64, matrix)>), Alloc([[1]], Shape_i{0}.0, Shape_i{1}.0
+    assert len(topo2)==3
+    assert isinstance(topo2[-1].op,T.Alloc)
+
+def test_local_useless_neq():
+    mode = theano.compile.get_default_mode().including('local_useless_neq')
+    x=T.dmatrix()
+    y=T.dmatrix()
+    f=theano.function([x,y],T.neq(x,y), mode=mode)
+    vx=numpy.random.rand(5,4)
+    vy=numpy.random.rand(5,4)
+    f(vx,vy)
+    topo = f.maker.env.toposort()
+    assert len(topo)==1
+    assert isinstance(topo[0].op,T.Elemwise)
+    assert isinstance(topo[0].op.scalar_op,theano.scalar.NEQ)
+    f2=theano.function([x],T.neq(x,x), mode=mode)
+    assert numpy.all(f2(vx)==numpy.zeros((5,4)))
+    topo2 = f2.maker.env.toposort()
+    print topo2
+    assert len(topo2)==3
+    assert isinstance(topo2[-1].op,T.Alloc)
+
+
 if __name__ == '__main__':
 #    unittest.main()
     test_fusion().tes_memory_leak()
