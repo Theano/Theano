@@ -1854,7 +1854,6 @@ class Alloc(gof.Op):
         If you always want an Alloc node, call make_node.
         """
         ret = super(Alloc,self).__call__(*inputs,**kwargs)
-        import pdb;pdb.set_trace()
         if inputs[0].type == ret.type:
             return inputs[0]
         else: return ret
