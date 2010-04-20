@@ -2498,6 +2498,12 @@ def test_autocast():
         assert (dvector()+ 1.1).dtype == 'float64'
         assert (fvector()+ 1.1).dtype == theano.config.floatX
         assert (fvector()+ 1.0).dtype == 'float32'
+        assert (dvector()+ numpy.float32(1.1)).dtype == 'float64'
+        assert (dvector()+ numpy.float64(1.1)).dtype == 'float64'
+        assert (dvector()+ numpy.float(1.1)).dtype   == 'float64'
+        assert (fvector()+ numpy.float32(1.1)).dtype == 'float32'
+        assert (fvector()+ numpy.float64(1.1)).dtype == 'float64'
+        assert (fvector()+ numpy.float(1.1)).dtype   == theano.config.floatX
         try: #ghetto 2.4 version of with
             ac2 = autocast_float_as('float64')
             ac2.__enter__()
