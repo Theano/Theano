@@ -1,7 +1,7 @@
 import traceback
 import numpy
 import theano.tensor.basic
-from basic import TensorType, _tensor_py_operators
+from basic import TensorType, _tensor_py_operators, autocast_int, autocast_float
 from theano.compile import shared_constructor, SharedVariable
 from theano import config
 
@@ -35,29 +35,22 @@ class ScalarSharedVariable(SharedVariable, _tensor_py_operators):
     pass
 
 @shared_constructor
-def scalar_constructor(value, name=None, strict=False, dtype=None):
+def scalar_constructor(value, name=None, strict=False):
     """SharedVariable constructor for scalar values. Default: int64 or float64. 
 
     :note: We implement this using 0-d tensors for now.
     
     """  
-    if not isinstance (value, (numpy.number, float, int)):
+    if not isinstance (value, (numpy.number, float, int, complex)):
         raise TypeError()
-    if dtype is None:
-        if isinstance(value, numpy.float64):
-            dtype = 'float64'
-        elif isinstance(value, numpy.float32):
-            dtype = 'float32'
-        elif isinstance(value, float) and not strict:
-            dtype = config.floatX
-        elif isinstance(value, float):
-            dtype = 'float64'
-        elif isinstance(value, int):
-            dtype = 'int64'
-        else:
-            dtype = type(value).__name__
+    try:
+        dtype=value.dtype
+    except:
+        dtype=numpy.asarray(value).dtype
 
-    tensor_type = TensorType(dtype=dtype, broadcastable=[])
+    dtype=str(dtype)
+    value = theano._asarray(value, dtype=dtype)
+    tensor_type = TensorType(dtype=str(value.dtype), broadcastable=[])
 
     try:
         # Do not pass the dtype to asarray because we want this to fail if
@@ -69,4 +62,3 @@ def scalar_constructor(value, name=None, strict=False, dtype=None):
     except:
         traceback.print_exc()
         raise
-

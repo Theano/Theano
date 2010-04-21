@@ -6,7 +6,7 @@ __docformat__ = "restructuredtext en"
 
 import numpy
 
-def _asarray(a, dtype=None, order=None):
+def _asarray(a, dtype, order=None):
     """Convert the input to a Numpy array.
 
     This function is almost identical to ``numpy.asarray``, but it should be

@@ -154,11 +154,18 @@ as_tensor = as_tensor_variable
 
 class NumpyAutocaster(object):
     """ This class is used to cast python ints and floats to numpy arrays.
+
+    The behaviour for numpy scalars is a bit tricky... but tends to work in practice.
+    If the dtype of a numpy scalar is in the self.dtypes list, then this 'cast' is a no-op.
+
+    When config.floatX is float32 (at the time of calling), then this function downcasts float
+    and numpy.float arguments to numpy.float32, if float32 is in the self.dtypes list.
     
     Python ints are always 64bit and floats are always double precision.
     This class uses the algorithm in __call__ to use a narrower dtype when no precision would
-    be lost, and to even lose precision when this is demanded (e.g. to automatically cast all
-    floats to single-precision).
+    be lost, and to even lose precision when this is demanded by the list of dtypes (e.g. to
+    automatically cast all floats to single-precision if self.dtypes does not include full
+    precision floats).
 
     """
     def __init__(self, dtypes):
@@ -166,15 +173,17 @@ class NumpyAutocaster(object):
     def __call__(self, x):
         # change the default casting behaviour for python floats to always cast to float32
         dtype = None
-        if isinstance(x, numpy.float64) and 'float64' in self.dtypes:
-            dtype = 'float64'
-        elif isinstance(x, numpy.float32) and 'float32' in self.dtypes:
-            dtype = 'float32'
-        elif isinstance(x, float) and config.floatX in self.dtypes and config.floatX == 'float32':
-            dtype = config.floatX
 
-        if dtype:
-          return theano._asarray(x, dtype=dtype)
+        try: # pass through numpy scalars, since they are already typed on purpose typically.
+            if str(x.dtype) in self.dtypes:
+                return theano._asarray(x, dtype=x.dtype) #leave dtype alone
+        except AttributeError:
+            pass
+
+        # unsafe downcast of float64 variables when config.floatX == 'float32'
+        # recall: float is numpy.float
+        if isinstance(x, float) and config.floatX in self.dtypes and config.floatX == 'float32':
+            return theano._asarray(x, dtype='float32')
             
         for dtype in self.dtypes:
             x_ = theano._asarray(x, dtype=dtype)
@@ -1857,15 +1866,21 @@ class Alloc(gof.Op):
     def grad(self, inputs, (gout,)):
         return [None for i in inputs]
 
-    def __call__(self, *inputs, **kwargs):
+    def __call__(self, val, *shapes):
         """
-        Don't generate alloc that do nothing.
+        If the alloc would be useless, this function returns val.
         If you always want an Alloc node, call make_node.
         """
-        ret = super(Alloc,self).__call__(*inputs,**kwargs)
-        if inputs[0].type == ret.type:
-            return inputs[0]
-        else: return ret
+        ret = super(Alloc,self).__call__(val, *shapes)
+        try:
+            #It makes optimization difficult when useless allocs are thrown into the graph at every
+            #stage of optimization.  This little logic tries to help at least in some cases.
+            if val.type == ret.type:
+                return val
+        except AttributeError:
+            pass
+        return ret
+
         
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))

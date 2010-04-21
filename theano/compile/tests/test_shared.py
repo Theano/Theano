@@ -16,9 +16,9 @@ class Test_SharedVariable(unittest.TestCase):
             assert shared(7, dtype='float64').type == Scalar('float64')
 
         else:
-            assert shared(7).type == theano.tensor.lscalar
-            assert shared(7.0).type == theano.tensor.scalar().type
-            assert shared(7, dtype='float64').type == theano.tensor.dscalar
+            assert shared(7).type == theano.tensor.lscalar, shared(7).type
+            assert shared(7.0).type == theano.tensor.dscalar
+            assert shared(numpy.float32(7)).type == theano.tensor.fscalar
 
         # test tensor constructor
         b = shared(numpy.zeros((5,5), dtype='int32'))
@@ -169,6 +169,13 @@ class Test_SharedVariable(unittest.TestCase):
 
 
     def test_scalar_floatX(self):
+
+        #
+        # the test should assure that floatX is not used in the shared constructor for scalars
+        # Shared values can change, and since we don't know the range they might take, we
+        # should keep the same bit width / precision as the original value used to create the
+        # shared variable.
+        #
         def f(var, val): var.value = val
 
         b = shared(numpy.int64(7))
@@ -184,11 +191,11 @@ class Test_SharedVariable(unittest.TestCase):
         f(b,8)
 
         b = shared(numpy.float(7.234))
-        assert b.dtype == theano.config.floatX
+        assert b.type == theano.tensor.dscalar
         f(b,8)
 
         b = shared(7.234)
-        assert b.dtype == theano.config.floatX
+        assert b.type == theano.tensor.dscalar
         f(b,8)
 
         c = shared(numpy.zeros((5,5), dtype='float32'))

@@ -445,7 +445,7 @@ class Test_pfunc(unittest.TestCase):
     def test_givens_replaces_shared_variable(self):
         a = shared(1.,'a')
         a.default_update = a+3.
-        b = tensor.scalar('b')
+        b = tensor.dscalar('b')
         c = a + 10
         f = pfunc([b],c, givens = {a:b})
 
