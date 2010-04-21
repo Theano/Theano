@@ -751,7 +751,7 @@ def local_alloc_elemwise(node):
             no_broad_idx = idx
             break
             
-    assert no_broad_idx>0
+    assert no_broad_idx>=0
     assert_op = node.inputs[no_broad_idx]
     cmp_op = assert_op
     new = []
