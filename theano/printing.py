@@ -447,17 +447,20 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
                 g.add_edge(pd.Edge(apply_name(var.owner),astr, label=label))
                 
                 
-        for var in node.outputs:
+        for id,var in enumerate(node.outputs):
             varstr=var_name(var)
             out = any([x[0]=='output' for x in var.clients])
+            label=''
+            if len(node.outputs)>1:
+                label=str(id)
             if out:
-                g.add_edge(pd.Edge(astr,varstr))
+                g.add_edge(pd.Edge(astr, varstr, label=label))
                 g.add_node(pd.Node(varstr,color='blue'))
             elif len(var.clients)==0:
-                g.add_edge(pd.Edge(astr,varstr))
+                g.add_edge(pd.Edge(astr, varstr, label=label))
                 g.add_node(pd.Node(varstr,color='grey'))
             elif var.name or not compact:
-                g.add_edge(pd.Edge(astr,varstr))
+                g.add_edge(pd.Edge(astr, varstr, label=label))
 #            else:
             #don't add egde here as it is already added from the inputs.
     g.write_png(outfile, prog='dot')
