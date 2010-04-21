@@ -1211,7 +1211,7 @@ class T_Rebroadcast(unittest.TestCase):
         assert rebroadcast_nodes[0].op.axis == {0: True}
 
 def test_local_useless_eq():
-    mode = theano.compile.get_default_mode().including('local_useless_eq')
+    mode = theano.compile.get_default_mode().including('canonicalize')
     x=T.dmatrix()
     y=T.dmatrix()
     f=theano.function([x,y],T.eq(x,y), mode=mode)
@@ -1231,7 +1231,7 @@ def test_local_useless_eq():
     assert isinstance(topo2[-1].op,T.Alloc)
 
 def test_local_useless_neq():
-    mode = theano.compile.get_default_mode().including('local_useless_neq')
+    mode = theano.compile.get_default_mode().including('canonicalize')
     x=T.dmatrix()
     y=T.dmatrix()
     f=theano.function([x,y],T.neq(x,y), mode=mode)
