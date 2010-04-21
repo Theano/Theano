@@ -1446,6 +1446,12 @@ CudaNdarray_set_dev_data(CudaNdarray *self, PyObject *value, void *closure)
     return  CudaNdarray_set_device_data(self, (float*)newdevdata, (CudaNdarray*)self->base);
 }
 
+static PyObject *
+CudaNdarray_get_dtype(CudaNdarray *self, void *closure)
+{
+    return PyString_FromString("float32");
+}
+
 static PyGetSetDef CudaNdarray_getset[] = {
     {"shape", 
         (getter)CudaNdarray_get_shape, 
@@ -1461,6 +1467,11 @@ static PyGetSetDef CudaNdarray_getset[] = {
         (getter)CudaNdarray_get_dev_data, 
         (setter)CudaNdarray_set_dev_data,
         "device data pointer",
+        NULL},
+    {"dtype", 
+        (getter)CudaNdarray_get_dtype, 
+        NULL,
+        "The dtype of the element. Now always float32",
         NULL},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
