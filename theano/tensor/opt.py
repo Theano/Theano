@@ -760,19 +760,19 @@ def local_alloc_elemwise(node):
         if i.owner and isinstance(i.owner.op,T.Alloc) and i.owner.inputs[0].type != i.owner.outputs[0].type:
             #when i.owner.inputs[0].type == i.owner.outputs[0].type we will remove that alloc later
 
-            assert i.type.ndim == node.inputs[no_broad_idx].type.ndim
-            new_i = i.owner.inputs[0]
+            assert i.type.ndim == cmp_op.ndim
             if theano.config.experimental.local_alloc_elemwise_assert:
-                assert_op = assert_(assert_op,*[T.eq(i.owner.inputs[idx+1],T.shape(cmp_op)[idx]) for idx in range(len(i.owner.inputs)-1)])
-            new.append(new_i)
+                assert_op = assert_(assert_op,*[T.eq(i.shape[idx],cmp_op.shape[idx])\
+                                                    for idx in range(i.type.ndim) \
+                                                    if not i.type.broadcastable[idx]])
+            new.append(i.owner.inputs[0])
         elif i.owner and isinstance(i.owner.op, T.DimShuffle) and i.owner.inputs[0].owner \
              and isinstance(i.owner.inputs[0].owner.op,T.Alloc):
-            dim = i
-            alloc = i.owner.inputs[0]
-            new_i = alloc.owner.inputs[0]
+            assert i.type.ndim == cmp_op.type.ndim
             if theano.config.experimental.local_alloc_elemwise_assert:
-                assert_op = assert_(assert_op,*[T.eq(alloc.owner.inputs[idx+1],T.shape(cmp_op)[idx]) for idx in range(len(alloc.owner.inputs)-1)])
-            new.append(new_i)
+                assert_op = assert_(assert_op,*[T.eq(i.shape[idx],cmp_op.shape[idx]) for idx \
+                                                    in range(i.type.ndim) if not i.type.broadcastable[idx]])
+            new.append(i.owner.inputs[0].owner.inputs[0])
         else: new.append(i)
     new[no_broad_idx]=assert_op
     if theano.config.experimental.local_alloc_elemwise_assert:
