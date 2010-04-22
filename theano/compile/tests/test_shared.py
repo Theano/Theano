@@ -117,6 +117,18 @@ class Test_SharedVariable(unittest.TestCase):
         assert b.type == theano.tensor.lscalar
         self.failUnlessRaises(TypeError, f, b, 8.23)
 
+        b = shared(numpy.int32(7), strict=True)
+        assert b.type == theano.tensor.iscalar
+        self.failUnlessRaises(TypeError, f, b, 8.23)
+        
+        b = shared(numpy.int16(7), strict=True)
+        assert b.type == theano.tensor.wscalar
+        self.failUnlessRaises(TypeError, f, b, 8.23)
+
+        b = shared(numpy.int8(7), strict=True)
+        assert b.type == theano.tensor.bscalar
+        self.failUnlessRaises(TypeError, f, b, 8.23)
+
         b = shared(numpy.float64(7.234), strict=True)
         assert b.type == theano.tensor.dscalar
         self.failUnlessRaises(TypeError, f, b, 8)
@@ -143,6 +155,18 @@ class Test_SharedVariable(unittest.TestCase):
 
         b = shared(numpy.int64([7]), strict=True)
         assert b.type == theano.tensor.lvector
+        self.failUnlessRaises(TypeError, f, b, 8.23)
+
+        b = shared(numpy.int32([7]), strict=True)
+        assert b.type == theano.tensor.ivector
+        self.failUnlessRaises(TypeError, f, b, 8.23)
+
+        b = shared(numpy.int16([7]), strict=True)
+        assert b.type == theano.tensor.wvector
+        self.failUnlessRaises(TypeError, f, b, 8.23)
+
+        b = shared(numpy.int8([7]), strict=True)
+        assert b.type == theano.tensor.bvector
         self.failUnlessRaises(TypeError, f, b, 8.23)
 
         b = shared(numpy.float64([7.234]), strict=True)
@@ -181,22 +205,42 @@ class Test_SharedVariable(unittest.TestCase):
         b = shared(numpy.int64(7))
         assert b.type == theano.tensor.lscalar
         f(b,8.23)
+        assert b.value==8
+
+        b = shared(numpy.int32(7))
+        assert b.type == theano.tensor.iscalar
+        f(b,8.23)
+        assert b.value==8
+
+        b = shared(numpy.int16(7))
+        assert b.type == theano.tensor.wscalar
+        f(b,8.23)
+        assert b.value==8
+
+        b = shared(numpy.int8(7))
+        assert b.type == theano.tensor.bscalar
+        f(b,8.23)
+        assert b.value==8
 
         b = shared(numpy.float64(7.234))
         assert b.type == theano.tensor.dscalar
         f(b,8)
+        assert b.value==8
         
         b = shared(numpy.float32(7.234))
         assert b.type == theano.tensor.fscalar
         f(b,8)
+        assert b.value==8
 
         b = shared(numpy.float(7.234))
         assert b.type == theano.tensor.dscalar
         f(b,8)
+        assert b.value==8
 
         b = shared(7.234)
         assert b.type == theano.tensor.dscalar
         f(b,8)
+        assert b.value==8
 
         c = shared(numpy.zeros((5,5), dtype='float32'))
         self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
@@ -209,14 +253,32 @@ class Test_SharedVariable(unittest.TestCase):
         b = shared(numpy.int64([7]))
         assert b.type == theano.tensor.lvector
         f(b,[8.23])
+        assert b.value == 8
+
+        b = shared(numpy.int32([7]))
+        assert b.type == theano.tensor.ivector
+        f(b,[8.23])
+        assert b.value == 8
+
+        b = shared(numpy.int16([7]))
+        assert b.type == theano.tensor.wvector
+        f(b,[8.23])
+        assert b.value == 8
+
+        b = shared(numpy.int8([7]))
+        assert b.type == theano.tensor.bvector
+        f(b,[8.23])
+        assert b.value == 8
 
         b = shared(numpy.float64([7.234]))
         assert b.type == theano.tensor.dvector
         f(b,[8])
+        assert b.value == 8
 
         b = shared(numpy.float32([7.234]))
         assert b.type == theano.tensor.fvector
         f(b,[8])
+        assert b.value == 8
 
 #numpy.float([7.234]) don't work
 #        b = shared(numpy.float([7.234]))
@@ -231,6 +293,7 @@ class Test_SharedVariable(unittest.TestCase):
         b = shared(numpy.asarray([7.234],dtype=theano.config.floatX))
         assert b.dtype == theano.config.floatX
         f(b,[8])
+        assert b.value == 8
 
         c = shared(numpy.zeros((5,5), dtype='float32'))
         self.failUnlessRaises(TypeError, f, b, numpy.random.rand(5,5))
