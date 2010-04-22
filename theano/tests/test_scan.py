@@ -86,6 +86,8 @@ def scan_project_sum(*args, **kwargs):
     rng.add_default_updates = False
     return  sum([(s * rng.uniform(size=s.shape)).sum() for s in scan_outputs])
 
+def asarrayX(value):
+    return theano._asarray(value, dtype=theano.config.floatX)
 
 class T_Scan(unittest.TestCase):
 
@@ -98,8 +100,8 @@ class T_Scan(unittest.TestCase):
         def f_pow2(x_tm1):
             return 2*x_tm1
 
-        state = theano.tensor.dscalar()
-        n_steps = theano.tensor.dscalar()
+        state = theano.tensor.scalar()
+        n_steps = theano.tensor.scalar()
         output, updates = theano.scan(f_pow2, [],state, [],n_steps = n_steps, truncate_gradient
                 = -1, go_backwards = False)
         my_f = theano.function([state,n_steps], output, updates = updates)
@@ -120,10 +122,10 @@ class T_Scan(unittest.TestCase):
         def f_rnn(u_t,x_tm1,W_in, W):
             return u_t*W_in+x_tm1*W
 
-        u    = theano.tensor.dvector()
-        x0   = theano.tensor.dscalar()
-        W_in = theano.tensor.dscalar()
-        W    = theano.tensor.dscalar()
+        u    = theano.tensor.vector()
+        x0   = theano.tensor.scalar()
+        W_in = theano.tensor.scalar()
+        W    = theano.tensor.scalar()
 
         output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = None, truncate_gradient =
                 -1, go_backwards = False)
@@ -150,10 +152,10 @@ class T_Scan(unittest.TestCase):
     # are vectors, weights are scalars; using shared variables
     def test_one_sequence_one_output_weights_shared(self):
         rng   = numpy.random.RandomState(utt.fetch_seed())
-        u    = theano.tensor.dvector() 
-        x0   = theano.tensor.dscalar()
-        W_in = theano.shared(rng.uniform(), name = 'w_in')
-        W    = theano.shared(rng.uniform(), name ='w')
+        u    = theano.tensor.vector() 
+        x0   = theano.tensor.scalar()
+        W_in = theano.shared(asarrayX(rng.uniform()), name = 'w_in')
+        W    = theano.shared(asarrayX(rng.uniform()), name ='w')
 
         def f_rnn_shared(u_t,x_tm1, tmp_W_in, tmp_W):
             return u_t*tmp_W_in+x_tm1*tmp_W
@@ -179,23 +181,23 @@ class T_Scan(unittest.TestCase):
     # dimension instead of scalars/vectors
     def test_multiple_inputs_multiple_outputs(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
-        vW_in2 = rng.uniform(size = (2,), low = -5.,high = 5.)
-        vW     = rng.uniform(size = (2,2), low = -5.,high = 5.)
-        vWout  = rng.uniform(size = (2,), low = -5.,high = 5.)
-        vW_in1 = rng.uniform(size = (2,2), low = -5.,high = 5.)
-        v_u1   = rng.uniform(size = (3,2), low = -5., high = 5.)
-        v_u2   = rng.uniform(size = (3,), low = -5.,high = 5.)
-        v_x0   = rng.uniform(size = (2,), low = -5.,high = 5.)
-        v_y0   = rng.uniform()
+        vW_in2 = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        vW     = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
+        vWout  = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -5.,high = 5.))
+        v_u1   = asarrayX(rng.uniform(size = (3,2), low = -5., high = 5.))
+        v_u2   = asarrayX(rng.uniform(size = (3,), low = -5.,high = 5.))
+        v_x0   = asarrayX(rng.uniform(size = (2,), low = -5.,high = 5.))
+        v_y0   = asarrayX(rng.uniform())
 
         W_in2 = theano.shared(vW_in2, name='win2')
         W     = theano.shared(vW, name='w')
         W_out = theano.shared(vWout, name = 'wout')
-        W_in1 = theano.tensor.dmatrix('win')
-        u1    = theano.tensor.dmatrix('u1')
-        u2    = theano.tensor.dvector('u2')
-        x0    = theano.tensor.dvector('x0')
-        y0    = theano.tensor.dscalar('y0')
+        W_in1 = theano.tensor.matrix('win')
+        u1    = theano.tensor.matrix('u1')
+        u2    = theano.tensor.vector('u2')
+        x0    = theano.tensor.vector('x0')
+        y0    = theano.tensor.scalar('y0')
 
         def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, W_in1):
             return [theano.dot(u1_t,W_in1) + u2_t* W_in2 + \
@@ -206,8 +208,8 @@ class T_Scan(unittest.TestCase):
 
         f4     = theano.function([u1,u2,x0,y0,W_in1], outputs, updates = updates)
         # compute the values in numpy
-        v_x = numpy.zeros((3,2))
-        v_y = numpy.zeros((3,))
+        v_x = numpy.zeros((3,2),dtype=theano.config.floatX)
+        v_y = numpy.zeros((3,),dtype=theano.config.floatX)
         v_x[0] = numpy.dot(v_u1[0],vW_in1) + v_u2[0]*vW_in2 + numpy.dot(v_x0,vW)
         v_y[0] = numpy.dot(v_x0,vWout)
         for i in xrange(1,3):
@@ -225,13 +227,13 @@ class T_Scan(unittest.TestCase):
     # taps (sequences and outputs)
     def test_using_taps_input_output(self):
         rng   = numpy.random.RandomState(utt.fetch_seed())
-        vW    = rng.uniform()
-        vW_in = rng.uniform()
-        vu    = rng.uniform(size=(4,), low = -5., high = 5.)
-        vx0   = rng.uniform(size=(2,), low = -5., high = 5.)
+        vW    = asarrayX(rng.uniform())
+        vW_in = asarrayX(rng.uniform())
+        vu    = asarrayX(rng.uniform(size=(4,), low = -5., high = 5.))
+        vx0   = asarrayX(rng.uniform(size=(2,), low = -5., high = 5.))
 
-        u    = theano.tensor.dvector()
-        x0   = theano.tensor.dvector()
+        u    = theano.tensor.vector()
+        x0   = theano.tensor.vector()
         W_in = theano.shared(vW_in, name = 'w_in')
         W    = theano.shared(vW, name ='w')
 
@@ -265,13 +267,13 @@ class T_Scan(unittest.TestCase):
     # taps (sequences and outputs) and future taps for sequences
     def test_past_future_taps_shared(self):
         rng   = numpy.random.RandomState(utt.fetch_seed())
-        vW    = rng.uniform()
-        vW_in = rng.uniform()
-        vu    = rng.uniform(size=(6,), low = -5., high = 5.)
-        vx0   = rng.uniform(size=(2,), low = -5., high = 5.)
+        vW    = asarrayX(rng.uniform())
+        vW_in = asarrayX(rng.uniform())
+        vu    = asarrayX(rng.uniform(size=(6,), low = -5., high = 5.))
+        vx0   = asarrayX(rng.uniform(size=(2,), low = -5., high = 5.))
 
-        u    = theano.tensor.dvector()
-        x0   = theano.tensor.dvector()
+        u    = theano.tensor.vector()
+        x0   = theano.tensor.vector()
         W_in = theano.shared(vW_in, name = 'w_in')
         W    = theano.shared(vW, name ='w')
 
@@ -297,22 +299,22 @@ class T_Scan(unittest.TestCase):
     # simple rnn ; compute inplace version 1
     def test_inplace1(self):
         rng   = numpy.random.RandomState(utt.fetch_seed())
-        vW    = numpy.random.uniform()
-        vW_in = numpy.random.uniform()
-        vu0   = rng.uniform(size=(3,), low = -5., high = 5.)
-        vu1   = rng.uniform(size=(3,), low = -5., high = 5.)
-        vu2   = rng.uniform(size=(3,), low = -5., high = 5.)
-        vx0   = rng.uniform()
-        vx1   = rng.uniform()
+        vW    = asarrayX(numpy.random.uniform())
+        vW_in = asarrayX(numpy.random.uniform())
+        vu0   = asarrayX(rng.uniform(size=(3,), low = -5., high = 5.))
+        vu1   = asarrayX(rng.uniform(size=(3,), low = -5., high = 5.))
+        vu2   = asarrayX(rng.uniform(size=(3,), low = -5., high = 5.))
+        vx0   = asarrayX(rng.uniform())
+        vx1   = asarrayX(rng.uniform())
 
-        u0   = theano.tensor.dvector('u0')
-        u1   = theano.tensor.dvector('u1')
-        u2   = theano.tensor.dvector('u2')
+        u0   = theano.tensor.vector('u0')
+        u1   = theano.tensor.vector('u1')
+        u2   = theano.tensor.vector('u2')
         mu0  = theano.Param( u0, mutable = False)
         mu1  = theano.Param( u1, mutable = True)
         mu2  = theano.Param( u2, mutable = True)
-        x0   = theano.tensor.dscalar('x0')
-        x1   = theano.tensor.dscalar('y0')
+        x0   = theano.tensor.scalar('x0')
+        x1   = theano.tensor.scalar('y0')
         W_in = theano.shared(vW_in,'Win')
         W    = theano.shared(vW,'W')
         mode = theano.compile.mode.get_mode(None).including('inplace')
@@ -345,22 +347,22 @@ class T_Scan(unittest.TestCase):
     # simple rnn ; compute inplace version 2
     def test_inplace2(self):
         rng   = numpy.random.RandomState(utt.fetch_seed())
-        vW    = numpy.random.uniform()
-        vW_in = numpy.random.uniform()
-        vu0   = rng.uniform(size=(3,), low = -5., high = 5.)
-        vu1   = rng.uniform(size=(4,), low = -5., high = 5.)
-        vu2   = rng.uniform(size=(5,), low = -5., high = 5.)
-        vx0   = rng.uniform()
-        vx1   = rng.uniform()
+        vW    = asarrayX(numpy.random.uniform())
+        vW_in = asarrayX(numpy.random.uniform())
+        vu0   = asarrayX(rng.uniform(size=(3,), low = -5., high = 5.))
+        vu1   = asarrayX(rng.uniform(size=(4,), low = -5., high = 5.))
+        vu2   = asarrayX(rng.uniform(size=(5,), low = -5., high = 5.))
+        vx0   = asarrayX(rng.uniform())
+        vx1   = asarrayX(rng.uniform())
 
-        u0   = theano.tensor.dvector('u0')
-        u1   = theano.tensor.dvector('u1')
-        u2   = theano.tensor.dvector('u2')
+        u0   = theano.tensor.vector('u0')
+        u1   = theano.tensor.vector('u1')
+        u2   = theano.tensor.vector('u2')
         mu0  = theano.Param( u0, mutable = True)
         mu1  = theano.Param( u1, mutable = True)
         mu2  = theano.Param( u2, mutable = True)
-        x0   = theano.tensor.dscalar('x0')
-        x1   = theano.tensor.dscalar('y0')
+        x0   = theano.tensor.scalar('x0')
+        x1   = theano.tensor.scalar('y0')
         W_in = theano.shared(vW_in,'Win')
         W    = theano.shared(vW,'W')
         mode = theano.compile.mode.get_mode(None).including('inplace')
@@ -400,13 +402,21 @@ class T_Scan(unittest.TestCase):
     def test_shared_arguments_with_updates(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
+        vW1 = asarrayX(rng.rand(20,30))
+        vW2 = asarrayX(rng.rand(30,20))
+        vu1 = asarrayX(rng.rand(3,20))
+        vu2 = asarrayX(rng.rand(3,30))
+        vy0 = asarrayX(rng.rand(3,20))
+        vy1 = asarrayX(rng.rand(20))
+        vy2 = asarrayX(rng.rand(30))
+        import pdb;pdb.set_trace()#TODO
         vW1 = rng.rand(20,30)
         vW2 = rng.rand(30,20)
         vu1 = rng.rand(3,20)
         vu2 = rng.rand(3,30)
         vy0 = rng.rand(3,20)
-        vy1 = rng.rand(20) 
-        vy2 = rng.rand(30)    
+        vy1 = rng.rand(20)
+        vy2 = rng.rand(30)
         W1 = theano.shared(vW1,'W1')
         W2 = theano.shared(vW2,'W2')
         u1 = theano.shared(vu1,'u1')
@@ -523,11 +533,11 @@ class T_Scan(unittest.TestCase):
 
     def test_only_shared_no_input_no_output(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
-        v_state = rng.uniform()
+        v_state = asarrayX(rng.uniform())
         state = theano.shared(v_state)
         def f_2():
             return {state: 2*state}
-        n_steps = theano.tensor.dscalar()
+        n_steps = theano.tensor.scalar()
         output, updates = theano.scan(f_2,[],[],[],n_steps = n_steps, truncate_gradient = -1,
                 go_backwards = False)
         this_f = theano.function([n_steps], output, updates = updates)
@@ -540,7 +550,7 @@ class T_Scan(unittest.TestCase):
         def f_rnn(u_t):
             return u_t + 3
 
-        u    = theano.tensor.dvector()
+        u    = theano.tensor.vector()
 
         outputs, updates = theano.scan(f_rnn, u,[],[], n_steps =None , truncate_gradient = -1,
                 go_backwards = False)
@@ -570,10 +580,10 @@ class T_Scan(unittest.TestCase):
         def f_rnn(u_t,x_tm1,W_in, W):
             return u_t*W_in+x_tm1*W
 
-        u    = theano.tensor.dvector()
-        x0   = theano.tensor.dscalar()
-        W_in = theano.tensor.dscalar()
-        W    = theano.tensor.dscalar()
+        u    = theano.tensor.vector()
+        x0   = theano.tensor.scalar()
+        W_in = theano.tensor.scalar()
+        W    = theano.tensor.scalar()
 
         output, updates = theano.scan(f_rnn, u,x0,[W_in,W], n_steps = None, truncate_gradient =
                 -1, go_backwards = True)
