@@ -409,14 +409,37 @@ class T_Scan(unittest.TestCase):
         vy0 = asarrayX(rng.rand(3,20))
         vy1 = asarrayX(rng.rand(20))
         vy2 = asarrayX(rng.rand(30))
-        import pdb;pdb.set_trace()#TODO
-        vW1 = rng.rand(20,30)
-        vW2 = rng.rand(30,20)
+
+        # Their is a bug when floatX=float32 when we remove this line.
+        # The trace back is:
+#Traceback (most recent call last):
+#  File "/u/bastienf/repos/Theano/theano/tests/test_scan.py", line 434, in test_shared_arguments_with_updates
+#    theano_y0,theano_y1,theano_y2 = f10(vu2, vy0)
+#  File "/u/bastienf/repos/theano/compile/function_module.py", line 480, in __call__
+#    self.fn()
+#  File "/u/bastienf/repos/theano/compile/profilemode.py", line 59, in profile_f
+#    raise_with_op(node)
+#  File "/u/bastienf/repos/theano/compile/profilemode.py", line 52, in profile_f
+#    th()
+#  File "/u/bastienf/repos/theano/gof/cc.py", line 1141, in <lambda>
+#    thunk = lambda p = p, i = node_input_storage, o = node_output_storage, n = node: p(n, [x[0] for x in i], o)
+#  File "/u/bastienf/repos/theano/scan.py", line 922, in perform
+#    inplace_map)
+#  File "/u/bastienf/repos/theano/scan.py", line 1054, in scan
+#    something = fn(*fn_args)
+#  File "/u/bastienf/repos/theano/compile/function_module.py", line 458, in __call__
+#    s.storage[0] = s.type.filter(arg, strict=s.strict)
+#  File "/u/bastienf/repos/theano/tensor/basic.py", line 415, in filter
+#    data = theano._asarray(data, dtype = self.dtype) #TODO - consider to pad shape with ones
+#  File "/u/bastienf/repos/theano/misc/safe_asarray.py", line 30, in _asarray
+#    rval = numpy.asarray(a, dtype=dtype, order=order)
+#  File "/u/lisa/local/byhost/ceylon.iro.umontreal.ca//lib64/python2.5/site-packages/numpy/core/numeric.py", line 230, in asarray
+#    return array(a, dtype, copy=False, order=order)
+#TypeError: ('__array__() takes no arguments (1 given)', <theano.scan.Scan object at 0x3dbbf90>(?_steps, u1, u2, y0, y1, 0.0, W1, W2), 'Sequence id of Apply node=0')
+#
+#  This don't seam to be a theano related bug...
         vu1 = rng.rand(3,20)
-        vu2 = rng.rand(3,30)
-        vy0 = rng.rand(3,20)
-        vy1 = rng.rand(20)
-        vy2 = rng.rand(30)
+
         W1 = theano.shared(vW1,'W1')
         W2 = theano.shared(vW2,'W2')
         u1 = theano.shared(vu1,'u1')
