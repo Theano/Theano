@@ -1084,7 +1084,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
         //int d_idx = PyInt_AsLong(key);
         if (self->nd == 0)
         {
-            PyErr_SetString(PyExc_NotImplementedError, "index into 0-d array");
+            PyErr_SetString(PyExc_IndexError, "0-d arrays can't be indexed");
             return NULL;
         }
         int d_dim = CudaNdarray_HOST_DIMS(self)[0];
@@ -1133,7 +1133,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
     {
         if (self->nd == 0)
         {
-            PyErr_SetString(PyExc_NotImplementedError, "index into 0-d array");
+            PyErr_SetString(PyExc_ValueError, "cannot slice a 0-d array");
             return NULL;
         }
 

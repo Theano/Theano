@@ -265,6 +265,17 @@ def test_mapping_getitem_w_int():
 	else:
             raise Exception("Did not generate out or bound error")
 
+    def _cmpfV(x,*y):
+        try:
+            if len(y)==1:
+                x.__getitem__(*y)
+	    else:
+                x.__getitem__(y)
+	except ValueError:
+            pass
+	else:
+            raise Exception("Did not generate out or bound error")
+
     dim =(2,)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
@@ -280,6 +291,8 @@ def test_mapping_getitem_w_int():
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[...]), a[...])
+    _cmpf(_a,0)
+    _cmpfV(_a,slice(1))
     #TODO: test slice err
     #TODO: test tuple err
 
@@ -292,6 +305,7 @@ def test_mapping_getitem_w_int():
     _cmpf(_a,slice(-1),slice(-1),-10,slice(-1))
     _cmpf(_a,0,slice(0,-1,-20),-10)
     _cmpf(_a,10)
+    _cmpf(_a,(10,0,0,0))
     _cmpf(_a,-10)
 
     _cmp(numpy.asarray(_a[:,:,::-1, ::-1]), a[:,:,::-1,::-1])
