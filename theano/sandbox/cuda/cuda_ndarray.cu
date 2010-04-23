@@ -1098,12 +1098,12 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
         else if ((d_idx < 0) && (d_idx >= -d_dim))
         {
             //end-based indexing
-            offset += (d_dim - d_idx) * CudaNdarray_HOST_STRIDES(self)[0];
+            // d_idx is negative
+            offset += (d_dim + d_idx) * CudaNdarray_HOST_STRIDES(self)[0];
         }
         else
         {
             PyErr_SetString(PyExc_IndexError, "index out of bounds");
-            Py_DECREF(rval);
             return NULL;
         }
 

@@ -257,32 +257,54 @@ def test_mapping_getitem_w_int():
             print y
         assert numpy.all(x == y)
 
+    def _cmpf(x,*y):
+        try:
+            x.__getitem__(y)
+	except IndexError:
+            pass
+	else:
+            raise Exception("Did not generate out or bound error")
+
     dim =(2,)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[1]), a[1])
+    _cmp(numpy.asarray(_a[-1]), a[-1])
+    _cmp(numpy.asarray(_a[0]), a[0])
     _cmp(numpy.asarray(_a[::1]), a[::1])
     _cmp(numpy.asarray(_a[::-1]), a[::-1])
     _cmp(numpy.asarray(_a[...]), a[...])
+    _cmpf(_a,2)
 
     dim =()
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[...]), a[...])
-
+    #TODO: test slice err
+    #TODO: test tuple err
 
 
     dim =(5,4,3,2)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
+    _cmpf(_a,slice(-1),slice(-1),10,-10)
+    _cmpf(_a,slice(-1),slice(-1),-10,slice(-1))
+    _cmpf(_a,0,slice(0,-1,-20),-10)
+    _cmpf(_a,10)
+    _cmpf(_a,-10)
+
     _cmp(numpy.asarray(_a[:,:,::-1, ::-1]), a[:,:,::-1,::-1])
+    _cmp(numpy.asarray(_a[:,:,::-10, ::-10]), a[:,:,::-10,::-10])
     _cmp(numpy.asarray(_a[:,:,1,-1]), a[:,:,1,-1])
     _cmp(numpy.asarray(_a[:,:,-1,:]), a[:,:,-1,:])
     _cmp(numpy.asarray(_a[:,::-2,-1,:]), a[:,::-2,-1,:])
+    _cmp(numpy.asarray(_a[:,::-20,-1,:]), a[:,::-20,-1,:])
     _cmp(numpy.asarray(_a[:,::-2,-1]), a[:,::-2,-1])
     _cmp(numpy.asarray(_a[0,::-2,-1]), a[0,::-2,-1])
     _cmp(numpy.asarray(_a[1]), a[1])
+    _cmp(numpy.asarray(_a[-1]), a[-1])
+    _cmp(numpy.asarray(_a[-1,-1,-1,-2]), a[-1,-1,-1,-2])
     _cmp(numpy.asarray(_a[...]), a[...])
 
 def test_gemm_vector_vector():
