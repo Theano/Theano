@@ -5,7 +5,7 @@ import numpy
 
 import theano.tensor as T
 
-from theano.tensor.signal.neighbourhoods import *
+from theano.sandbox.neighbourhoods import *
 
 def test_neighFromImg_1d():
     x = T.dtensor3()
