@@ -287,6 +287,20 @@ class T_function(unittest.TestCase):
         o = N.ones((3,3))
         assert o is f(o) #borrow does not imply copy. 
 
+        f = function([a], Out(a*4, borrow=False))
+        o = N.ones((3,3))
+        four = f(o)
+        assert numpy.all(four==4)
+        f(o+.1) #should not clobber the memory used to store four
+        assert numpy.all(four==4)
+
+        f = function([a], Out(a*4, borrow=True), mode=theano.Mode('c|py_nogc', 'fast_run'))
+        o = N.ones((3,3))
+        four = f(o)
+        assert numpy.all(four==4)
+        f(o+.1) #should clobber the memory used to store four
+        assert not numpy.all(four==4)
+
 class T_picklefunction(unittest.TestCase):
 
     def test_deepcopy(self):

@@ -452,19 +452,6 @@ class T_module(unittest.TestCase):
         assert numpy.all(m.f(xval) == [1, 2.5])
         assert numpy.all(xval == [-1, -1.5])
 
-    def test_member_output_flags(self):
-        """Test that we can manipulate the output flags (just 'borrow' I think, see SymbolicOutput)
-        of Method outputs"""
-        M = Module()
-        M.x = T.dvector()
-        M.f = Method([M.x], io.Out(M.x*4, borrow=True), mode='FAST_RUN')
-        m = M.make()
-
-        v0 = m.f([5, 8])
-        v0_copy = v0 * 1
-        m.f([3, 2])
-        assert numpy.all(v0 != v0_copy)
-
     def test_member_value(self):
         """Test that module Members of Value work correctly. As Variable?"""
         M = Module()
