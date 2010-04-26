@@ -112,8 +112,7 @@ class T_Scan(unittest.TestCase):
 
         numpy_values = numpy.array([ state*(2**(k+1)) for k in xrange(steps) ])
         theano_values = my_f(state,steps)
-        cmp = numpy_values == theano_values
-        assert numpy.all(cmp)
+        assert numpy.allclose(numpy_values,theano_values)
 
 
     # simple rnn, one input, one state, weights for each; input/state
