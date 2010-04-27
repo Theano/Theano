@@ -7,6 +7,12 @@ import numpy.distutils #TODO: TensorType should handle this
 
 import compilelock # we will abuse the lockfile mechanism when reading and writing the registry
 
+from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+AddConfigVar('cmodule.mac_framework_link',
+        "If set to true, breaks certain mac installations with the infamous Bus Error",
+        BoolParam(False))
+
+
 _logger=logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARN)
 
