@@ -65,10 +65,6 @@ AddConfigVar('gpuelemwise.sync',
         "when true, wait that the gpu fct finished and check it error code.",
         BoolParam(True))
 
-AddConfigVar('cmodule.mac_framework_link',
-        "If set to true, breaks certain mac installations with the infamous Bus Error",
-        BoolParam(False))
-
 AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
              IntParam(5))
