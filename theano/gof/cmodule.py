@@ -699,8 +699,9 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         cmd.extend(p for p in preargs if not p.startswith('-O'))
     else:
         cmd.extend(preargs)
-    if config.gcc.cxxflags:
-        cmd.extend(config.gcc.cxxflags.split(' '))
+    cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+    #print >> sys.stderr, config.gcc.cxxflags.split(' ')
+    cmd.extend(cxxflags)
     cmd.extend('-I%s'%idir for idir in include_dirs)
     cmd.extend(['-o',lib_filename]) 
     cmd.append(cppfilename)
