@@ -104,10 +104,13 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
 
     debug('Generating shared lib', lib_filename)
     # TODO: Why do these args cause failure on gtx285 that has 1.3 compute capability? '--gpu-architecture=compute_13', '--gpu-code=compute_13', 
-    cmd = [nvcc_path, '-shared', '-g'] + [pa for pa in preargs if pa.startswith('-O')]
+    preargs1=[pa for pa in preargs if pa.startswith('-O') or pa.startswith('--maxrregcount=')]#nvcc argument
+    preargs2=[pa for pa in preargs if pa not in preargs1]#other arguments
+
+    cmd = [nvcc_path, '-shared', '-g'] + preargs1
     if config.nvcc.compiler_bindir:
         cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
-    cmd.extend(['-Xcompiler', ','.join(pa for pa in preargs if not pa.startswith('-O'))])
+    cmd.extend(['-Xcompiler', ','.join(preargs2)])
     if os.path.exists(os.path.join(config.cuda.root,'lib')):
         cmd.extend(['-Xlinker',','.join(['-rpath',os.path.join(config.cuda.root,'lib')])])
         if sys.platform != 'darwin':
@@ -123,8 +126,6 @@ def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[
     if sys.platform == 'darwin':
         cmd.extend(darwin_python_lib.split())
     #cmd.append("--ptxas-options=-v")  #uncomment this to see register and shared-mem requirements
-    cmd.extend(["--maxrregcount=32"])  #TODO: compile ptx file without constraint and then use
-    # the number of registers required to inform the maximum number of threads per block.
     debug('Running cmd', ' '.join(cmd))
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

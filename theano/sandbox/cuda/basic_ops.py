@@ -188,6 +188,11 @@ class GpuElemwise(Op):
     def c_code(self, *args, **kwargs):
         return self.src_generator.c_code(*args, **kwargs)
 
+    def c_compile_args(self):
+        #TODO: compile ptx file without constraint and then use the number of
+        # registers required to inform the maximum number of threads per block.
+        return ["--maxrregcount=32"]
+
     def c_code_cache_version(self):
         return self.src_generator.cache_version
 
