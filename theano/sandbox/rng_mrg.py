@@ -19,7 +19,10 @@ from theano.sandbox.cuda import cuda_enabled, CudaNdarrayType #, gpu_from_host, 
 
 def mulmod(a, b, c, m):
     r = numpy.int32((numpy.int64(a)*b + c) % m)
-    return r if r >= 0 else r+m
+    if r >= 0:
+        return r
+    else:
+        return r+m
 
 def matVecModM(A, s, m):
     # return (A * s) % m
