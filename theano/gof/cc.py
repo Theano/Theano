@@ -18,6 +18,14 @@ else:
 
 from theano.gof.python25 import any, all
 
+# Note that we need to do this before importing cutils, since when there is
+# no theano cache dir initialized yet, importing cutils may require compilation
+# of cutils_ext.
+from theano.configparser import AddConfigVar, StrParam
+AddConfigVar('gcc.cxxflags',
+        "Extra compiler flags for gcc",
+        StrParam(""))
+
 # gof imports
 import cutils
 from env import Env
@@ -30,11 +38,8 @@ from compilelock import get_lock, release_lock
 
 import cmodule
 
-from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+from theano.configparser import TheanoConfigParser, EnumStr, IntParam, FloatParam, BoolParam
 
-AddConfigVar('gcc.cxxflags',
-        "Extra compiler flags for gcc",
-        StrParam(""))
 
 
 import logging
