@@ -14,8 +14,9 @@ from theano.tensor import zeros_like, sqrt, log, sin, cos, join
 from theano.compile import optdb
 from theano.gof import local_optimizer
 
-from theano.sandbox.cuda.opt import register_opt as gpu_register_opt
-from theano.sandbox.cuda import cuda_enabled, CudaNdarrayType #, gpu_from_host, host_from_gpu, CudaNdarrayType
+from theano.sandbox.cuda import cuda_enabled
+if cuda_enabled:
+    from theano.sandbox.cuda import CudaNdarrayType
 
 def mulmod(a, b, c, m):
     r = numpy.int32((numpy.int64(a)*b + c) % m)
