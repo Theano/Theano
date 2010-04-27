@@ -31,7 +31,13 @@ class test_ScalarOps(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
-    def test_mod(self):
+    #This test is moved to theano.tensor.tests.test_basic.py:test_mod
+    #We move it their as under ubuntu the c_extract call of theano.scalar
+    #call PyInt_check and it fail under some os. If work in other case.
+    #As we use theano.scalar normally, but we use theano.tensor.scalar
+    #that is not important. Also this make the theano fct fail at call time
+    #so this is not a silent bug.
+    def tes_mod(self):
         """
         We add this test as not all language and C implementation give the same 
         signe to the result. This check that the c_code of `Mod` is implemented

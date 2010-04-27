@@ -2562,6 +2562,20 @@ def test_unbroadcast_addbroadcast():
     assert addbroadcast(unbroadcast(x,1),0).owner.inputs[0] is x
     assert addbroadcast(unbroadcast(x,0),0) is x
 
+def test_mod():
+    """
+    We add this test as not all language and C implementation give the same 
+    signe to the result. This check that the c_code of `Mod` is implemented
+    as Python. That is what we want.
+    """
+    x, y = fscalars('xy')
+    fn = gof.DualLinker().accept(gof.Env([x,y], [x%y])).make_function()
+    for a,b in ((0,1), (1,1), (0,-1), (1,-1), (-1,-1),
+                (1,2), (-1,2), (1,-2), (-1,-2),
+                (5,3), (-5,3), (5,-3), (-5,-3)
+                ):
+        assert fn(a,b) == a%b, (a,)
+
 if __name__ == '__main__':
     if 1:
         unittest.main()
