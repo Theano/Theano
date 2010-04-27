@@ -146,6 +146,13 @@ class Scalar(Type):
     
     def c_extract(self, name, sub):
         specs = self.dtype_specs()
+        #TODO: This is the wrong code, but we don't know what to change it to.
+        # For example, a numpy.uint8 is not a PyInt, so PyInt_Check 
+        # is simply the wrong function to
+        # call.
+        # Look at PyArrayScalar api for how to cast to/from PyArrayScalar objects.
+        # numpy.uint* numpy.float* are all constructors of PyArrayScalar objects.
+        #
         return """
         if (!%(check)s(py_%(name)s))
         {
