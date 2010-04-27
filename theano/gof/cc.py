@@ -30,6 +30,13 @@ from compilelock import get_lock, release_lock
 
 import cmodule
 
+from theano.configparser import TheanoConfigParser, AddConfigVar, EnumStr, StrParam, IntParam, FloatParam, BoolParam
+
+AddConfigVar('gcc.cxxflags',
+        "Extra compiler flags for gcc",
+        StrParam(""))
+
+
 import logging
 _logger=logging.getLogger("theano.gof.cc")
 def info(*args):
@@ -839,6 +846,12 @@ class CLinker(link.Linker):
         sig = ['CLinker.cmodule_key'] # will be cast to tuple on return
         if compile_args is not None: sig.append(tuple(compile_args))
         if libraries is not None: sig.append(tuple(libraries))
+
+        # technically this should only be appended for gcc-compiled Ops
+        # and the flags of other compilers should be inserted here... but it's not clear how to
+        # do this.
+        if config.gcc.cxxflags:
+            sig.append(config.gcc.cxxflags)
 
         def in_sig(i, topological_pos, i_idx):
             # assert that every input to every node is one of'
