@@ -448,6 +448,15 @@ IRoundInplaceTester = makeBroadcastTester(op = inplace.iround_inplace,
                                          good = _good_broadcast_unary_normal,
                                          inplace = True)
 
+RoundTester = makeBroadcastTester(op = round,
+                                  expected = numpy.round,
+                                  good = _good_broadcast_unary_normal_float)
+RoundInplaceTester = makeBroadcastTester(op = inplace.round_inplace,
+                                         expected = numpy.round,
+                                         good = _good_broadcast_unary_normal_float,
+                                         inplace = True)
+
+
 SqrTester = makeBroadcastTester(op = sqr,
                                   expected = numpy.square,
                                   good = _good_broadcast_unary_normal,

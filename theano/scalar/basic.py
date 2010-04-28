@@ -398,6 +398,11 @@ def upcast_out(*types):
     return Scalar(dtype = Scalar.upcast(*types)),
 def same_out(type):
     return type,
+def same_out_float_only(type):
+    if type not in float_types:
+        raise TypeError('only float type are supported')
+    return type,
+
 class transfer_type(gof.utils.object2):
     def __init__(self, *transfer):
         assert all(type(x) == int for x in transfer)
@@ -1146,6 +1151,18 @@ class IRound(UnaryScalarOp):
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = round(%(x)s);" % locals()
 iround = IRound(int_out_nocomplex)
+
+class Round(UnaryScalarOp):
+    def impl(self, x):
+        return theano._asarray(numpy.round(x), dtype = 'int64')
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.outputs[0].type.dtype == 'float32':
+            return "%(z)s = fround(%(x)s);" % locals()
+        elif node.outputs[0].type.dtype == 'float64':
+            return "%(z)s = round(%(x)s);" % locals()
+        else:
+            Exception("The output should be float32 or float64")
+round = Round(same_out_float_only)
 
 class Neg(UnaryScalarOp):
     def impl(self, x):

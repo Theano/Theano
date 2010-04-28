@@ -1579,6 +1579,10 @@ def iround(a):
     """int(round(a))"""
 
 @_scal_elemwise
+def round(a):
+    """round(a)"""
+
+@_scal_elemwise
 def sqr(a):
     """square of a"""
 
