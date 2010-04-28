@@ -1229,7 +1229,7 @@ class RoundHalfAwayFromZero(UnaryScalarOp):
     """
     def impl(self, x):
         
-        return vec(x)        
+        return round_half_away_from_zero_vec(x)        
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.outputs[0].type.dtype in ['float32', 'float64']:
             return "%(z)s = round(%(x)s);" % locals()
