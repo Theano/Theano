@@ -385,6 +385,8 @@ PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
 
 
 
+_good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),))
+
 _good_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
                                     integers = (randint_ranged(-5, 5, (2, 3)),))
 
@@ -416,6 +418,33 @@ SgnTester = makeBroadcastTester(op = sgn,
                                   good = _good_broadcast_unary_normal)
 SgnInplaceTester = makeBroadcastTester(op = inplace.sgn_inplace,
                                          expected = numpy.sign,
+                                         good = _good_broadcast_unary_normal,
+                                         inplace = True)
+CeilTester = makeBroadcastTester(op = ceil,
+                                  expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
+                                  good = _good_broadcast_unary_normal,
+                                  grad = _grad_broadcast_unary_normal)
+CeilInplaceTester = makeBroadcastTester(op = inplace.ceil_inplace,
+                                         expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
+                                         good = _good_broadcast_unary_normal,
+                                         grad = _grad_broadcast_unary_normal,
+                                         inplace = True)
+
+FloorTester = makeBroadcastTester(op = floor,
+                                  expected = lambda a: numpy.asarray(numpy.floor(a),a.dtype),
+                                  good = _good_broadcast_unary_normal,
+                                  grad = _grad_broadcast_unary_normal)
+FloorInplaceTester = makeBroadcastTester(op = inplace.floor_inplace,
+                                         expected = lambda a: numpy.asarray(numpy.floor(a),a.dtype),
+                                         good = _good_broadcast_unary_normal,
+                                         grad = _grad_broadcast_unary_normal,
+                                         inplace = True)
+
+IRoundTester = makeBroadcastTester(op = iround,
+                                  expected = lambda a: numpy.asarray(numpy.round(a),dtype='int64'),
+                                  good = _good_broadcast_unary_normal)
+IRoundInplaceTester = makeBroadcastTester(op = inplace.iround_inplace,
+                                         expected = lambda a: numpy.asarray(numpy.round(a),dtype='int64'),
                                          good = _good_broadcast_unary_normal,
                                          inplace = True)
 
