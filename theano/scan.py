@@ -1060,7 +1060,7 @@ class Scan(Op):
 
                 elif self.store_steps[j] == 1:
                     try:
-                        if hasattr(something[j],'dtype') and y[j].dtype != something[j].dtpye:
+                        if hasattr(something[j],'dtype') and y[j].dtype != something[j].dtype:
                             raise ValueError('wrong dtype')
                         y[j] = something[j]
                     except:
