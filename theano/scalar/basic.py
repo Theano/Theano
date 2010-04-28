@@ -1143,7 +1143,7 @@ class Floor(UnaryScalarOp):
         return None,
     def c_code(self, node, name, (x,), (z,), sub):
         return "%(z)s = floor(%(x)s);" % locals()
-floor = Floor(same_out_nocomplex, name = 'ceil')
+floor = Floor(same_out_nocomplex, name = 'floor')
 
 class IRound(UnaryScalarOp):
     def impl(self, x):
