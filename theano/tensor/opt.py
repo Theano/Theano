@@ -985,7 +985,7 @@ def local_useless_rebroadcast(node):
 @gof.local_optimizer([T.Rebroadcast])
 def local_rebroadcast_lift(node):
     """
-    "Lifts Rebroadcast through unary Elemwise operations,
+    Lifts Rebroadcast through unary Elemwise operations,
     and merges consecutive Rebroadcasts.
 
     Rebroadcast(Elemwise(x)) => Elemwise(Rebroadcast(x))
