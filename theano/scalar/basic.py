@@ -1152,17 +1152,90 @@ class IRound(UnaryScalarOp):
         return "%(z)s = round(%(x)s);" % locals()
 iround = IRound(int_out_nocomplex)
 
-class Round(UnaryScalarOp):
+class RoundHalfToEven(UnaryScalarOp):
+    """
+    This function implement the same rounding than numpy: Round half to even
+
+    c/c++ round fct IS DIFFERENT!
+    See http://en.wikipedia.org/wiki/Rounding for more detail
+    """
     def impl(self, x):
-        return theano._asarray(numpy.round(x), dtype = 'int64')
+        return numpy.round(x)        
+    def c_code___(self, node, name, (x, ), (z, ), sub):
+        typ = node.outputs[0].type.dtype
+        if not node.outputs[0].type.dtype in ['float32', 'float64']:
+            Exception("The output should be float32 or float64")
+
+        return """
+#ifndef ROUNDING_EPSILON
+#define ROUNDING_EPSILON 0.0000001
+#endif
+        
+    if (%(x)s < 0.0){
+      // We implement the else part like that: -else( -%(x)s);
+      %(typ)s i;
+      std::modf( -%(x)s, &i );
+
+      // If %(x)s is exactly halfway between two integers
+      if ((-%(x)s -(i +0.5)) < epsilon){
+          // If 'i' is even then return 'i'
+        if (std::fmod( i, 2.0 ) < epsilon){
+          %(z)s = - i;
+        }else{
+          // Else return the nearest even integer
+          %(z)s = - ceil( i +0.5 );
+        }
+      }else{
+        // round to closest
+        %(z)s = - round(%(x)s+5);
+      }
+    }else{
+      %(typ)s i;
+      std::modf( %(x)s, &i );
+
+      // If %(x)s is exactly halfway between two integers
+      if ((%(x)s -(i +0.5)) < epsilon){
+          // If 'i' is even then return 'i'
+        if (std::fmod( i, 2.0 ) < epsilon){
+          %(z)s = i;
+        }else{
+          // Else return the nearest even integer
+          %(z)s =  ceil( i +0.5 );
+        }
+      }else{
+        // round to closest
+        %(z)s = round(%(x)s+5);
+      }
+    }
+
+#undef ROUNDING_EPSILON
+
+        """
+round_half_to_even = RoundHalfToEven(same_out_float_only)
+
+def round_half_away_from_zero_(a):
+    if a>0:
+        return numpy.floor(a + 0.5)
+    else:
+        return numpy.ceil(a - 0.5)
+round_half_away_from_zero_vec = numpy.vectorize(round_half_away_from_zero_)
+
+class RoundHalfAwayFromZero(UnaryScalarOp):
+    """
+    Implement the same rounding algo as c round() fct.
+    numpy.round fct IS DIFFERENT!
+
+    See http://en.wikipedia.org/wiki/Rounding for more detail
+    """
+    def impl(self, x):
+        
+        return vec(x)        
     def c_code(self, node, name, (x, ), (z, ), sub):
-        if node.outputs[0].type.dtype == 'float32':
-            return "%(z)s = fround(%(x)s);" % locals()
-        elif node.outputs[0].type.dtype == 'float64':
+        if node.outputs[0].type.dtype in ['float32', 'float64']:
             return "%(z)s = round(%(x)s);" % locals()
         else:
             Exception("The output should be float32 or float64")
-round = Round(same_out_float_only)
+round_half_away_from_zero = RoundHalfAwayFromZero(same_out_float_only)
 
 class Neg(UnaryScalarOp):
     def impl(self, x):

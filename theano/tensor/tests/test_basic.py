@@ -383,14 +383,19 @@ PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
                                                      column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1)))),
                                          inplace = True)
 
-
-
-_good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),))
+#Those are corner case when rounding. Their is many rounding algo.
+#c round() fct and numpy round are not the same!
+corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0., 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5])
+_good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
+                                    corner_case = (corner_case,))
 
 _good_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
-                                    integers = (randint_ranged(-5, 5, (2, 3)),))
+                                    integers = (randint_ranged(-5, 5, (2, 3)),),
+                                    corner_case = (corner_case,))
 
-_grad_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),))
+_grad_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
+                                    corner_case = (corner_case,))
+
 
 
 AbsTester = makeBroadcastTester(op = tensor.abs_,
@@ -448,14 +453,21 @@ IRoundInplaceTester = makeBroadcastTester(op = inplace.iround_inplace,
                                          good = _good_broadcast_unary_normal,
                                          inplace = True)
 
-RoundTester = makeBroadcastTester(op = round,
+RoundHalfToEvenTester = makeBroadcastTester(op = round_half_to_even,
                                   expected = numpy.round,
                                   good = _good_broadcast_unary_normal_float)
-RoundInplaceTester = makeBroadcastTester(op = inplace.round_inplace,
+RoundHalfToEvenInplaceTester = makeBroadcastTester(op = inplace.round_half_to_even_inplace,
                                          expected = numpy.round,
                                          good = _good_broadcast_unary_normal_float,
                                          inplace = True)
 
+RoundHalfAwayFromZeroTester = makeBroadcastTester(op = round_half_away_from_zero,
+                                  expected = theano.scalar.basic.round_half_away_from_zero_vec,
+                                  good = _good_broadcast_unary_normal_float)
+RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(op = inplace.round_half_away_from_zero_inplace,
+                                         expected = theano.scalar.basic.round_half_away_from_zero_vec,
+                                         good = _good_broadcast_unary_normal_float,
+                                         inplace = True)
 
 SqrTester = makeBroadcastTester(op = sqr,
                                   expected = numpy.square,

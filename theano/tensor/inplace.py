@@ -129,8 +129,12 @@ def iround_inplace(a):
     """int(round(a)) (inplace on `a`)"""
 
 @_scal_inplace
-def round_inplace(a):
-    """round(a) (inplace on `a`)"""
+def round_half_to_even_inplace(a):
+    """round_half_to_even_inplace(a) (inplace on `a`)"""
+
+@_scal_inplace
+def round_half_away_from_zero_inplace(a):
+    """round_half_away_from_zero_inplace(a) (inplace on `a`)"""
 
 @_scal_inplace
 def sqr_inplace(a):

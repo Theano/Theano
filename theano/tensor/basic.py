@@ -1579,8 +1579,12 @@ def iround(a):
     """int(round(a))"""
 
 @_scal_elemwise
-def round(a):
-    """round(a)"""
+def round_half_to_even(a):
+    """round_half_to_even(a)"""
+
+@_scal_elemwise
+def round_half_away_from_zero(a):
+    """round_half_away_from_zero(a)"""
 
 @_scal_elemwise
 def sqr(a):
