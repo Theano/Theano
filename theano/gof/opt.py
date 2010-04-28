@@ -356,7 +356,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
     def tracks(self):
         return self._tracks
     def __str__(self):
-        return getattr(self, 'name', '<FromFunctionLocalOptimizer instance>')
+        return getattr(self, '__name__', '<FromFunctionLocalOptimizer instance>')
     def print_summary(self, stream=sys.stdout, level=0):
         print >> stream, "%s%s id=%i" %(' '*level, 
                 str(self.transform),
@@ -378,6 +378,9 @@ class LocalOptGroup(LocalOptimizer):
         self.opts = optimizers
         self.reentrant = any(getattr(opt, 'reentrant', True) for opt in optimizers)
         self.retains_inputs = all(getattr(opt, 'retains_inputs', False) for opt in optimizers)
+
+    def __str__(self):
+        return getattr(self, '__name__', '<theano.gof.opt.LocalOptGroup instance>'+str([str(o) for o in self.opts]))
 
     def transform(self, node):
         for opt in self.opts:
