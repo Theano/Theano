@@ -385,7 +385,9 @@ PowInplaceTester = makeBroadcastTester(op = inplace.pow_inplace,
 
 #Those are corner case when rounding. Their is many rounding algo.
 #c round() fct and numpy round are not the same!
-corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0., 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5])
+corner_case = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5])
+#we remove 0 here as the grad is not always computable numerically.
+corner_case_grad = numpy.asarray([-2.5, -2., -1.5, -1., -0.5, -.51, -.49, 0.49, 0.5, 0.9, 1, 1.5, 2, 2.5])
 _good_broadcast_unary_normal_float = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,))
 
@@ -394,7 +396,7 @@ _good_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
                                     corner_case = (corner_case,))
 
 _grad_broadcast_unary_normal = dict(normal = (rand_ranged(-5, 5, (2, 3)),),
-                                    corner_case = (corner_case,))
+                                    corner_case = (corner_case_grad,))
 
 
 
@@ -427,12 +429,10 @@ SgnInplaceTester = makeBroadcastTester(op = inplace.sgn_inplace,
                                          inplace = True)
 CeilTester = makeBroadcastTester(op = ceil,
                                   expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
-                                  good = _good_broadcast_unary_normal,
-                                  grad = _grad_broadcast_unary_normal)
+                                  good = _good_broadcast_unary_normal)
 CeilInplaceTester = makeBroadcastTester(op = inplace.ceil_inplace,
                                          expected = lambda a: numpy.asarray(numpy.ceil(a),a.dtype),
                                          good = _good_broadcast_unary_normal,
-                                         grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
 FloorTester = makeBroadcastTester(op = floor,
