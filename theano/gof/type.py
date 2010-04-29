@@ -381,11 +381,3 @@ class Generic(SingletonType):
 
 generic = Generic()
 
-
-## DELETEME ##
-class PropertiedType(Type):
-    """WRITEME"""
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.__dict__ == other.__dict__
-
