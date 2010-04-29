@@ -293,9 +293,6 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[...]), a[...])
     _cmpf(_a,0)
     _cmpfV(_a,slice(1))
-    #TODO: test slice err
-    #TODO: test tuple err
-
 
     dim =(5,4,3,2)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
@@ -308,6 +305,21 @@ def test_mapping_getitem_w_int():
     _cmpf(_a,(10,0,0,0))
     _cmpf(_a,-10)
 
+    #test with integer
+    _cmp(numpy.asarray(_a[1]), a[1])
+    _cmp(numpy.asarray(_a[-1]), a[-1])
+    _cmp(numpy.asarray(_a[numpy.int64(1)]), a[numpy.int64(1)])
+    _cmp(numpy.asarray(_a[numpy.int64(-1)]), a[numpy.int64(-1)])
+
+    #test with slice
+    _cmp(numpy.asarray(_a[1:]), a[1:])
+    _cmp(numpy.asarray(_a[1:2]), a[1:2])
+    _cmp(numpy.asarray(_a[-1:1]), a[-1:1])
+    
+
+    #test with tuple (mix slice, integer, numpy.int64)
+    _cmp(numpy.asarray(_a[:,:,::numpy.int64(-1), ::-1]), a[:,:,::-1,::-1])
+    _cmp(numpy.asarray(_a[:,:,numpy.int64(1),-1]), a[:,:,1,-1])
     _cmp(numpy.asarray(_a[:,:,::-1, ::-1]), a[:,:,::-1,::-1])
     _cmp(numpy.asarray(_a[:,:,::-10, ::-10]), a[:,:,::-10,::-10])
     _cmp(numpy.asarray(_a[:,:,1,-1]), a[:,:,1,-1])
@@ -316,8 +328,7 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[:,::-20,-1,:]), a[:,::-20,-1,:])
     _cmp(numpy.asarray(_a[:,::-2,-1]), a[:,::-2,-1])
     _cmp(numpy.asarray(_a[0,::-2,-1]), a[0,::-2,-1])
-    _cmp(numpy.asarray(_a[1]), a[1])
-    _cmp(numpy.asarray(_a[-1]), a[-1])
+
     _cmp(numpy.asarray(_a[-1,-1,-1,-2]), a[-1,-1,-1,-2])
     _cmp(numpy.asarray(_a[...]), a[...])
 

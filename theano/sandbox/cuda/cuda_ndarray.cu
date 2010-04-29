@@ -1192,7 +1192,9 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
         int rval_nd = self->nd;
         for (int d = 0; d < PyTuple_Size(key); ++d)
         {
-            rval_nd -= PyInt_Check(PyTuple_GetItem(key, d));
+	    //On some paltform PyInt_Check(<type 'numpy.int64'>) return true, other it return false.
+	    //So we use PyArray_IsAnyScalar that should covert everything.
+	    rval_nd -= PyArray_IsAnyScalar(PyTuple_GetItem(key, d));
         }
 
         //allocate our subtensor view
@@ -1249,6 +1251,7 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
                 }
                 else if ((intobj=PyNumber_Int(key_d)))
                 {
+                    assert(PyArray_IsAnyScalar(key_d));
                     int d_idx = PyInt_AsLong(intobj);
                     Py_DECREF(intobj);
                     intobj = NULL;
