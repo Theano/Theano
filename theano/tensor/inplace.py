@@ -125,10 +125,6 @@ def floor_inplace(a):
     """floor of `a` (inplace on `a`)"""
 
 @_scal_inplace
-def iround_inplace(a):
-    """int(round(a)) (inplace on `a`)"""
-
-@_scal_inplace
 def round_half_to_even_inplace(a):
     """round_half_to_even_inplace(a) (inplace on `a`)"""
 

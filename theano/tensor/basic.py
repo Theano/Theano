@@ -1574,9 +1574,20 @@ def ceil(a):
 def floor(a):
     """floor of a"""
 
-@_scal_elemwise
-def iround(a):
-    """int(round(a))"""
+@constructor
+def iround(a, mode="half_away_from_zero"):
+    """cast(round(a,mode),'int64')"""
+    return cast(round(a,mode),'int64')
+
+@constructor
+def round(a, mode="half_away_from_zero"):
+    """round_mode(a) with mode in [half_away_from_zero, half_to_even]"""
+    if mode == "half_away_from_zero":
+        return round_half_away_from_zero(a)
+    elif mode == "half_to_even":
+        return round_half_to_even(a)
+    else:
+        raise Exception("round mode %s is not implemented."%mode)
 
 @_scal_elemwise
 def round_half_to_even(a):

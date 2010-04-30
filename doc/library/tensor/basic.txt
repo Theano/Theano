@@ -954,9 +954,13 @@ Mathematical
 
     Returns a variable representing the floor of a (for example floor(2.9) is 2).
 
-.. function:: iround(a)
+.. function:: round(a, mode="half_away_from_zero")
 
-    Returns a variable representing the of rounding of a, ie int(a).
+    Returns a variable representing the rounding of a in the same dtype as a. Implemented rounding mode are half_away_from_zero and half_to_even.
+
+.. function:: iround(a, mode="half_away_from_zero")
+
+    Short hand for cast(round(a, mode),'int64').
 
 .. function:: sqr(a)
 

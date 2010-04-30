@@ -445,14 +445,6 @@ FloorInplaceTester = makeBroadcastTester(op = inplace.floor_inplace,
                                          grad = _grad_broadcast_unary_normal,
                                          inplace = True)
 
-IRoundTester = makeBroadcastTester(op = iround,
-                                  expected = lambda a: numpy.asarray(numpy.round(a),dtype='int64'),
-                                  good = _good_broadcast_unary_normal)
-IRoundInplaceTester = makeBroadcastTester(op = inplace.iround_inplace,
-                                         expected = lambda a: numpy.asarray(numpy.round(a),dtype='int64'),
-                                         good = _good_broadcast_unary_normal,
-                                         inplace = True)
-
 RoundHalfToEvenTester = makeBroadcastTester(op = round_half_to_even,
                                   expected = numpy.round,
                                   good = _good_broadcast_unary_normal_float)

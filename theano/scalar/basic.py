@@ -1145,13 +1145,6 @@ class Floor(UnaryScalarOp):
         return "%(z)s = floor(%(x)s);" % locals()
 floor = Floor(same_out_nocomplex, name = 'floor')
 
-class IRound(UnaryScalarOp):
-    def impl(self, x):
-        return theano._asarray(numpy.round(x), dtype = 'int64')
-    def c_code(self, node, name, (x, ), (z, ), sub):
-        return "%(z)s = round(%(x)s);" % locals()
-iround = IRound(int_out_nocomplex)
-
 class RoundHalfToEven(UnaryScalarOp):
     """
     This function implement the same rounding than numpy: Round half to even
