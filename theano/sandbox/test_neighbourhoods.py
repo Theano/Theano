@@ -7,6 +7,7 @@ import theano.tensor as T
 
 from theano.sandbox.neighbourhoods import *
 
+'''
 def test_neighFromImg_1d():
     x = T.dtensor3()
 
@@ -116,5 +117,5 @@ if __name__ == '__main__':
     test_neighFromImg_1d_stridesbigger()
     test_neighFromImg_2d()
 
-
+'''
 
