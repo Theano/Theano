@@ -1,4 +1,4 @@
-import numpy as N
+import numpy
 import unittest
 from theano.tests import unittest_tools as utt
 import theano
@@ -36,18 +36,49 @@ class Test_incsubtensor(unittest.TestCase):
 
             f = theano.function([a, increment, sl2_end], resut)
 
-            val_a = N.ones((5,5))
+            val_a = numpy.ones((5,5))
             val_inc = 2.3
             val_sl2_end = 2
 
             result = f(val_a, val_inc, val_sl2_end)
 
-            expected_result = N.copy(val_a)
+            expected_result = numpy.copy(val_a)
             if do_set:
                 expected_result[:,:val_sl2_end] = val_inc
             else:
                 expected_result[:,:val_sl2_end] += val_inc
            
-            self.failUnless(N.array_equal(result, expected_result))
+            self.failUnless(numpy.array_equal(result, expected_result))
         return
+
+    def test_grad(self):
+
+
+        a = T.dvector()
+        b = T.dvector()
+
+        def inc_slice(*s):
+            def just_numeric_args(a,b):
+                return T.incsubtensor(a, b, s)
+            return just_numeric_args
+
+        # vector
+        utt.verify_grad(
+                inc_slice(slice(2,4,None)),
+                (numpy.asarray([0,1,2,3,4,5.]), 
+                    numpy.asarray([9,9.]),))
+
+        # matrix
+        utt.verify_grad(
+                inc_slice(slice(1,2,None), slice(None, None, None)),
+                (numpy.asarray([[0,1],[2,3],[4,5.]]), 
+                    numpy.asarray([[9,9.]]),))
+
+        #single element
+        utt.verify_grad(
+                inc_slice(2, 1),
+                (numpy.asarray([[0,1],[2,3],[4,5.]]), 
+                    numpy.asarray(9.),))
+
+
 
