@@ -7,7 +7,8 @@ import numpy
 import __builtin__
 
 class NeighbourhoodsFromImages(Op):
-    def __init__(self, n_dims_before, dims_neighbourhoods, strides=None, ignore_border=False):
+    def __init__(self, n_dims_before, dims_neighbourhoods, 
+                    strides=None, ignore_border=False, inverse=False):
         """
         This extracts neighbourhoods from "images", but in a
         dimension-generic manner.
@@ -58,13 +59,18 @@ class NeighbourhoodsFromImages(Op):
             If the dimensions of the neighbourhoods don't exactly divide the
             dimensions of the "images", you can either fill the last
             neighbourhood with zeros (False) or drop it entirely (True).
+        inverse : bool
+            You shouldn't have to use this. Only used by child class
+            ImagesFromNeighbourhoods which simply reverses the assignment.
         """
         self.n_dims_before = n_dims_before
         self.dims_neighbourhoods = dims_neighbourhoods
         self.strides = strides if not strides is None else dims_neighbourhoods
         self.ignore_border = ignore_border
 
-        self.code = self.make_py_code()
+        self.inverse = inverse
+
+        self.code_string, self.code = self.make_py_code()
 
     def _compute_neigh_strides(self):
         neigh_strides = [1 for i in range(len(self.strides))]
@@ -114,23 +120,78 @@ class NeighbourhoodsFromImages(Op):
 
         return dims, num_strides
 
+    # for inverse mode
+    # "output" here actually referes to the Op's input shape (but it's inverse mode)
+    def in_shape(self, output_shape):
+        out_dims = list(output_shape[:self.n_dims_before])
+        num_strides = []
+
+        # in the inverse case we don't worry about borders:
+        # they either have been filled with zeros, or have been cropped
+        for i, ds in enumerate(self.dims_neighbourhoods):
+            # the number of strides performed by NeighFromImg is
+            # directly given by this shape
+            num_strides.append(output_shape[self.n_dims_before + i])
+            
+            # our Op's output image must be at least this wide
+            at_least_width = num_strides[i] * self.strides[i]
+
+            # ... which gives us this number of neighbourhoods
+            num_neigh = at_least_width // ds
+            if at_least_width % ds != 0:
+                num_neigh += 1
+
+            # making the final Op's output dimension this wide
+            out_dims.append(num_neigh * ds)
+
+        return out_dims, num_strides
+
     def make_node(self, x):
-        if x.type.ndim != (self.n_dims_before + \
-                len(self.dims_neighbourhoods)):
-            raise TypeError()
+        if self.inverse:
+            # +1 in the inverse case
+            if x.type.ndim != (self.n_dims_before + \
+                            len(self.dims_neighbourhoods) + 1):
+                raise TypeError()
+        else:
+            if x.type.ndim != (self.n_dims_before + \
+                    len(self.dims_neighbourhoods)):
+                raise TypeError()
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z,)):
+        if self.inverse:
+            # +1 in the inverse case
+            if len(x.shape) != (self.n_dims_before + \
+                            len(self.dims_neighbourhoods) + 1):
+                raise ValueError("Images passed as input don't match the "+\
+                 "dimensions passed when this (inversed) Apply node was created")
+            prod = 1
+            for dim in self.dims_neighbourhoods:
+                prod *= dim
+            if x.shape[-1] != prod:
+                raise ValueError(("Last dimension of neighbourhoods (%s) is not "+\
+                        "the product of the neighbourhoods dimensions (%s)") % \
+                         (str(x.shape[-1]), str(prod)))
+        else:
+            if len(x.shape) != (self.n_dims_before + \
+                            len(self.dims_neighbourhoods)):
+                raise ValueError("Images passed as input don't match the "+\
+                        "dimensions passed when this Apply node was created")
 
-        if len(x.shape) != (self.n_dims_before + len(self.dims_neighbourhoods)):
-            raise ValueError("Images passed as input don't match the dimensions passed when this Apply node was created")
+        if self.inverse:
+            input_shape, num_strides = self.in_shape(x.shape)
+            out_shape, dummy = self.out_shape(input_shape)
+        else:
+            input_shape = x.shape
+            out_shape, num_strides = self.out_shape(input_shape)
 
-        out_shape, num_strides = self.out_shape(x.shape)
         neigh_strides = self._compute_neigh_strides()
-        input_shape = x.shape
 
         if z[0] is None:
-            z[0] = numpy.zeros(out_shape)
+            if self.inverse:
+                z[0] = numpy.zeros(input_shape)
+            else:
+                z[0] = numpy.zeros(out_shape)
             z[0] = theano._asarray(z[0], dtype=x.dtype)
 
         exec(self.code)
@@ -140,7 +201,7 @@ class NeighbourhoodsFromImages(Op):
         for i in xrange(len(self.strides)):
             code += self._py_innerloop(i)
         code += self._py_assignment()
-        return __builtin__.compile(code, '<string>', 'exec')
+        return code, __builtin__.compile(code, '<string>', 'exec')
 
     def _py_outerloops(self):
         code_before = ""
@@ -185,8 +246,27 @@ class NeighbourhoodsFromImages(Op):
                 ["stride_idx_%d," % (i,) for i in \
                         range(len(self.strides))])
         out_idx += self._py_flattened_idx()
-        return '\t' * (self.n_dims_before + len(self.strides)*2) + \
-                "z[0][%s] = x[%s]\n" % (out_idx, input_idx)
 
+        #return_val = '\t' * (self.n_dims_before + len(self.strides)*2)
+        #return_val += "print "+input_idx+"'\\n',"+out_idx+"\n"
 
+        return_val = '\t' * (self.n_dims_before + len(self.strides)*2)
+
+        if self.inverse:
+            # remember z and x are inversed:
+            # z is the Op's output, but has input_shape
+            # x is the Op's input, but has out_shape
+            return_val += "z[0][%s] = x[%s]\n" % (input_idx, out_idx)
+        else:
+            return_val += "z[0][%s] = x[%s]\n" % (out_idx, input_idx)
+
+        return return_val
+
+class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
+    def __init__(self, n_dims_before, dims_neighbourhoods,
+                        strides=None, ignore_border=False):
+        NeighbourhoodsFromImages.__init__(self,n_dims_before, dims_neighbourhoods, 
+                                strides=strides, ignore_border=ignore_border, 
+                                inverse=True)
+        # and that's all there is to it
 
