@@ -871,7 +871,7 @@ class ConvOp(Op):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
     def c_code_cache_version(self):
-        return (2)
+        return (3)
     
     def c_support_code(self):
         return """
@@ -1534,6 +1534,19 @@ if(%(filtersflipped)s->nd==3){
     %(fail)s;
 }
 
+if(img2d_dim[0] %% %(self_bsize)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the batch size of the image(%%d) must be a multiple of the bsize value at ConvOp construction(%%d).",
+      img2d_dim[0],%(self_bsize)s);
+    %(fail)s;
+}
+if(kerns_dim[0] %% %(self_nkern)s!=0){
+    PyErr_Format(PyExc_ValueError,
+      "the number of kernel(%%d) must be a multiple of the nkern value at ConvOp construction(%%d).",
+      kerns_dim[0], %(self_nkern)s);
+    %(fail)s;
+}
+
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s)) 
@@ -1758,6 +1771,19 @@ if(%(filtersflipped)s->nd==3){
 }else{
     PyErr_Format(PyExc_ValueError,
       "kernel don't have a good number of dimensions %%d. ", %(filtersflipped)s->nd);
+    %(fail)s;
+}
+
+if(img2d_dim[0] != %(self_bsize)s){
+    PyErr_Format(PyExc_ValueError,
+      "the batch size of the image(%%d) must be a multiple of the bsize value at ConvOp construction(%%d).",
+      img2d_dim[0],%(self_bsize)s);
+    %(fail)s;
+}
+if(kerns_dim[0] != %(self_nkern)s){
+    PyErr_Format(PyExc_ValueError,
+      "the number of kernel(%%d) must be a multiple of the nkern value at ConvOp construction(%%d).",
+      kerns_dim[0], %(self_nkern)s);
     %(fail)s;
 }
 

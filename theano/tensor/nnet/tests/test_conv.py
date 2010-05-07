@@ -22,8 +22,8 @@ class TestConv2D(unittest.TestCase):
                  border_mode='valid', subsample=(1,1),
                  N_image_shape=None, N_filter_shape=None,
                  input=None, filters=None, 
-                 unroll_batch=0, unroll_kern=0, unroll_patch=True,
-                 verify_grad=True):
+                 unroll_batch=None, unroll_kern=None, unroll_patch=None,
+                 verify_grad=True, should_raise=False):
 
         if N_image_shape is None:
             N_image_shape = image_shape
@@ -50,7 +50,13 @@ class TestConv2D(unittest.TestCase):
         # initialize input and compute result
         image_data  = numpy.random.random(N_image_shape)
         filter_data = numpy.random.random(N_filter_shape)
-        theano_output = theano_conv(image_data, filter_data)
+        try:
+            theano_output = theano_conv(image_data, filter_data)
+        except ValueError:
+            if not should_raise: raise
+            return
+        else:
+            if should_raise: raise Exception("ConvOp should have generated an error")
 
         ############# REFERENCE IMPLEMENTATION ############
         s = 1.
@@ -99,13 +105,32 @@ class TestConv2D(unittest.TestCase):
         self.validate((3,2,3,3), (4,2,3,3), 'full')
         self.validate((3,2,3,3), (4,2,3,3), 'valid')
 
+    def test_unroll_patch_true(self):
+        """
+        Test basic convs with True.
+        """
+        self.validate((3,2,7,5), (5,2,2,3), 'valid', unroll_patch=True)
+        self.validate((3,2,7,5), (5,2,2,3), 'full', unroll_patch=True)
+        self.validate((3,2,3,3), (4,2,3,3), 'valid', unroll_patch=True, verify_grad=False)
+
     def test_unroll_patch_false(self):
         """
-        unroll_patch is True by default. Test basic convs with False.
+        Test basic convs with False.
         """
         self.validate((3,2,7,5), (5,2,2,3), 'valid', unroll_patch=False)
         self.validate((3,2,7,5), (5,2,2,3), 'full', unroll_patch=False)
         self.validate((3,2,3,3), (4,2,3,3), 'valid', unroll_patch=False, verify_grad=False)
+
+    def test_unroll_patch_true_fail(self):
+        """
+        Test basic convs with True.
+        """
+        self.validate((3,2,7,5), (5,2,2,3), 'valid', unroll_patch=True, 
+                      N_image_shape=(1,3,3,3),  N_filter_shape=(6,3,2,2), should_raise=True)
+        self.validate((3,2,7,5), (5,2,2,3), 'full', unroll_patch=True, 
+                      N_image_shape=(1,3,3,3),  N_filter_shape=(6,3,2,2), should_raise=True)
+        self.validate((3,2,3,3), (4,2,3,3), 'valid', unroll_patch=True, 
+                      N_image_shape=(1,3,3,3),  N_filter_shape=(6,3,2,2), should_raise=True)
 
     def test_unroll_special(self):
         """
@@ -128,6 +153,32 @@ class TestConv2D(unittest.TestCase):
         # 6 filters is a multiple of 2 and 3. Should work.
         self.validate((2,3,3,3), (6,3,2,2), 'valid', unroll_kern=2, verify_grad=False)
         self.validate((2,3,3,3), (6,3,2,2), 'valid', unroll_kern=3, verify_grad=False)
+
+    def test_unroll_batch_kern(self):
+        """
+        Test mini-batch unrolling with kernel unrolling for various legal values.
+        """
+        # mini-batch of size 6 is multiple of 2 and 3. Should work.
+        self.validate((6,2,3,3), (3,2,2,2), 'valid', unroll_batch=2, unroll_kern=3, verify_grad=False)
+        self.validate((6,2,3,3), (3,2,2,2), 'valid', unroll_batch=3, unroll_kern=3, verify_grad=False)
+        # 6 filters is a multiple of 2 and 3. Should work.
+        self.validate((2,3,3,3), (6,3,2,2), 'valid', unroll_batch=2, unroll_kern=2, verify_grad=False)
+        self.validate((2,3,3,3), (6,3,2,2), 'valid', unroll_batch=2, unroll_kern=3, verify_grad=False)
+
+    def test_unroll_batch_kern_fail(self):
+        """
+        Test mini-batch unrolling with kernel unrolling for various legal values, but pass bad input.
+        All those test must generate errors
+        """
+        # mini-batch of size 6 is multiple of 2 and 3. Should work.
+        self.validate((6,2,3,3), (3,2,2,2), 'valid', unroll_batch=2, unroll_kern=3,
+                          N_image_shape=(7,2,3,3), N_filter_shape=(3,2,2,2), should_raise=True)
+        self.validate((6,2,3,3), (3,2,2,2), 'valid', unroll_batch=3, unroll_kern=3,
+                      N_image_shape=(6,2,3,3), N_filter_shape=(4,2,2,2), should_raise=True)
+        self.validate((2,3,3,3), (6,3,2,2), 'valid', unroll_batch=2, unroll_kern=2,
+                      N_image_shape=(1,3,3,3),  N_filter_shape=(6,3,2,2), should_raise=True)
+        self.validate((2,3,3,3), (6,3,2,2), 'valid', unroll_batch=2, unroll_kern=3,
+                      N_image_shape=(2,3,3,3),  N_filter_shape=(5,3,2,2), should_raise=True)
 
     def test_subsample(self):
         """
