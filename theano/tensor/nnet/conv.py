@@ -423,6 +423,9 @@ class ConvOp(Op):
         self.unroll_kern=unroll_kern
         self.unroll_patch=unroll_patch
 
+        if self.unroll_batch and not self.unroll_kern: self.unroll_kern = 1
+        if self.unroll_kern and not self.unroll_batch: self.unroll_batch = 1
+
         #downcast unroll_batch if not a divisor of batch size
         if self.unroll_batch>0 and self.bsize % self.unroll_batch!=0:
 
