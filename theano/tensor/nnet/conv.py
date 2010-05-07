@@ -871,7 +871,7 @@ class ConvOp(Op):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
     def c_code_cache_version(self):
-        return (3)
+        return (4)
     
     def c_support_code(self):
         return """
@@ -1536,14 +1536,14 @@ if(%(filtersflipped)s->nd==3){
 
 if(img2d_dim[0] %% %(self_bsize)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the batch size of the image(%%d) must be a multiple of the bsize value at ConvOp construction(%%d).",
-      img2d_dim[0],%(self_bsize)s);
+      "the batch size of the image(%%ld) must be a multiple of the bsize value at ConvOp construction(%%ld).",
+      (long)img2d_dim[0],(long)%(self_bsize)s);
     %(fail)s;
 }
 if(kerns_dim[0] %% %(self_nkern)s!=0){
     PyErr_Format(PyExc_ValueError,
-      "the number of kernel(%%d) must be a multiple of the nkern value at ConvOp construction(%%d).",
-      kerns_dim[0], %(self_nkern)s);
+      "the number of kernel(%%ld) must be a multiple of the nkern value at ConvOp construction(%%ld).",
+      (long)kerns_dim[0], (long)%(self_nkern)s);
     %(fail)s;
 }
 
@@ -1776,14 +1776,14 @@ if(%(filtersflipped)s->nd==3){
 
 if(img2d_dim[0] != %(self_bsize)s){
     PyErr_Format(PyExc_ValueError,
-      "the batch size of the image(%%d) must be a multiple of the bsize value at ConvOp construction(%%d).",
-      img2d_dim[0],%(self_bsize)s);
+      "the batch size of the image(%%ld) must be a multiple of the bsize value at ConvOp construction(%%ld).",
+      (long)img2d_dim[0],(long)%(self_bsize)s);
     %(fail)s;
 }
 if(kerns_dim[0] != %(self_nkern)s){
     PyErr_Format(PyExc_ValueError,
-      "the number of kernel(%%d) must be a multiple of the nkern value at ConvOp construction(%%d).",
-      kerns_dim[0], %(self_nkern)s);
+      "the number of kernel(%%ld) must be a multiple of the nkern value at ConvOp construction(%%ld).",
+      (long)kerns_dim[0], (long)%(self_nkern)s);
     %(fail)s;
 }
 
