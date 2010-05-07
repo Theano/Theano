@@ -395,6 +395,7 @@ class ModuleCache(object):
             debug('returning compiled module from cache', name)
             rval = self.module_from_name[name]
         else:
+            hash_key = hash(key)
             # we have never seen this key before
             # Acquire lock before creating things in the compile cache,
             # to avoid that other processes remove the compile dire while it
@@ -418,6 +419,11 @@ class ModuleCache(object):
             debug("Adding module to cache", key, name)
             assert name.startswith(location)
             assert name not in self.module_from_name
+#Changing the hash of the key is not allowed during compilation
+#That is the only cause found that make the last assert fail.
+            assert hash(key)==hash_key
+            assert key not in self.entry_from_key
+
             assert key not in self.entry_from_key
             if _version: # save they key
                 key_pkl = os.path.join(location, 'key.pkl')
