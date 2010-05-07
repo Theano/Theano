@@ -646,6 +646,8 @@ class GpuSum(Op):
                 mysum += buf[i];
             }
             buf[threadNum] = mysum;
+/*Comment this optimization as it don't work on Fermi GPU. 
+  TODO: find why it don't work or put the GPU compute capability into the version
             // no sync because only one warp is running
             if(threadCount >32)
             {
@@ -660,7 +662,8 @@ class GpuSum(Op):
                 }
 
             }
-            else if (threadNum < 16)
+            else */
+            if (threadNum < 16)
             {
                 //reduce so that threadNum 0 has the sum of everything
                 if(threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
@@ -1057,8 +1060,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        #return ()
-        return (10,)
+        return (11,)
 
 
     def c_support_code_apply(self, node, nodename):
