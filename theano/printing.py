@@ -355,7 +355,7 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target') and pstate.target is n
 pp = pprint
 
 
-def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.png'), compact=True, mode=None):
+def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.png'), compact=True, mode=None, format='png'):
     """
     print to a file in png format the graph of op of a compile theano fct.
 
@@ -364,6 +364,7 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
     :param compact: if True, will remove intermediate var that don't have name.
     :param mode: if a ProfileMode, add to each Apply label (s in apply,% in apply in total op time, % in fct time)
                          Otherwise ignore it
+    :param format: the file format of the output.
 
     In the graph, box are an Apply Node(the execution of an op) and ellipse are variable.
     If variable have name they are used as the text(if multiple var have the same name, they will be merged in the graph).
@@ -463,7 +464,9 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
                 g.add_edge(pd.Edge(astr, varstr, label=label))
 #            else:
             #don't add egde here as it is already added from the inputs.
-    g.write_png(outfile, prog='dot')
+    if not outfile.endswith('.'+format):
+        outfile+='.'+format
+    g.write(outfile, prog='dot', format=format)
 
     print 'The output file is available at',outfile
 
