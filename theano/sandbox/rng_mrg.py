@@ -706,8 +706,3 @@ def mrg_random_make_inplace(node):
 optdb.register('random_make_inplace_mrg', opt.in2out(mrg_random_make_inplace, ignore_newtrees=True), 99, 'fast_run', 'inplace')
 
 
-if __name__ == '__main__':
-    # with: export THEANO_FLAGS=device=gpu0,floatX=float32
-    #test_normal0()
-
-
