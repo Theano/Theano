@@ -5,8 +5,7 @@ __docformat__ = "restructuredtext en"
 import copy
 import utils
 from utils import MethodNotDefined, object2
-from graph import Variable
-import traceback
+import graph
 from theano import config
 
 ########
@@ -202,6 +201,9 @@ class PureType(object):
 
     """
 
+    Variable = graph.Variable #the type that will be created by call to make_variable.
+    Constant = graph.Constant #the type that will be created by call to make_constant
+
     def filter(self, data, strict = False):
         """Required: Return data or an appropriately wrapped/converted data.
         
@@ -233,8 +235,11 @@ class PureType(object):
             A pretty string for printing and debugging.
 
         """
-        r = Variable(self, name = name)
-        return r
+        return self.Variable(self, name = name)
+
+    def make_constant(self, value, name=None):
+        return self.Constant(type=self, data=value, name=name)
+
     
     def __call__(self, name = None):
         """Return a new `Variable` instance of Type `self`.
@@ -244,11 +249,7 @@ class PureType(object):
             A pretty string for printing and debugging.
 
         """
-        r = self.make_variable(name)
-        limit = config.traceback.limit
-        if limit == -1: limit = None
-        r.tag.trace = traceback.extract_stack(limit=limit)[:-1]
-        return r
+        return utils.add_tag_trace(self.make_variable(name))
 
     def values_eq(self, a, b):
         """
@@ -319,9 +320,11 @@ class Type(object2, PureType, CLinkerType):
     """
 
 
-## DELETEME ##
 class SingletonType(Type):
-    """WRITEME"""
+    """Convenient Base class for a Type subclass with no attributes
+    
+    It saves having to implement __eq__ and __hash__
+    """
     __instance = None
     def __new__(cls):
         if cls.__instance is None:
@@ -377,7 +380,6 @@ class Generic(SingletonType):
         py_%(name)s = %(name)s ? %(name)s : Py_None;
         Py_INCREF(py_%(name)s);
         """ % locals()
-
 
 generic = Generic()
 
