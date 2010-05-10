@@ -1389,11 +1389,16 @@ class Scan(Op):
 
         g_args = [self.n_steps] + g_outs[:self.n_outs_not_shared] \
                 + scan_outputs + args[1:]
-
+        truncate_gradient = self.truncate_gradient
+        for x in self.store_steps[:self.n_outs_not_shared]:
+            if x>0 :
+                raise ValueError('Can not compute gradients if one does not ',
+                        'store all intermidiate results (remove store_steps'
+                        'from the dictionaries describing your outputs)')
         g_scan = ScanGrad((inner_gfn_ins, inner_gfn_outs), 
                 self.n_seqs, self.n_outs, self.n_outs_not_shared,
                 self.go_backwards, self.seqs_taps, self.outs_taps, 
-                self.truncate_gradient)
+                truncate_gradient)
         g_scan_outs = g_scan(g_args)
         # We need to add several None's fpr shared vars with updates
         gradients = [None] + g_scan_outs[:self.n_seqs+self.n_outs_not_shared]
