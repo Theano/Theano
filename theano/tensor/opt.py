@@ -1094,7 +1094,6 @@ def local_fill_cut(node):
     if new_inputs == node.inputs:
         return False
 
-    print 'NEW INPUTS', new_inputs
     rval = node.op(*new_inputs)
     if isinstance(rval, gof.Variable):
         return rval.owner.outputs
