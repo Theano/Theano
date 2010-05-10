@@ -10,7 +10,7 @@ if sys.version_info >= (2,5):
   import functools
 
 import numpy, theano
-from copy import copy
+#from copy import copy as python_copy
 
 from theano import gof
 from theano.gof import Variable, Op, utils, Type, Constant,  Value
