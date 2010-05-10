@@ -1469,7 +1469,6 @@ class ScanGrad(Op):
                     [i.type() for i in outputs_grad ])
 
     def perform(self, node, args, storage):
-        print 'perform args'
         # get scan inputs
         n_steps = args[0]
 
@@ -1488,12 +1487,6 @@ class ScanGrad(Op):
         seqs = inputs[:self.n_seqs]
         outInfo = inputs[self.n_seqs:self.n_seqs+self.n_outs]
         non_seqs = inputs[self.n_outs+self.n_seqs:]
-        print 'seqs'
-        print seqs
-        print 'outInfo'
-        print outInfo
-        print 'non_Seqs'
-        print non_seqs
         if (self.n_seqs == 0 ) and (not numpy.isfinite(n_steps) ):
             raise ValueError('Scan does not know how many steps it '
                 'should iterate! Either provide some input sequences from '
@@ -1555,12 +1548,6 @@ class ScanGrad(Op):
 
         # get the output of the scan operation
         outs = args[1+self.n_outs_not_shared:self.n_outs_not_shared+self.n_outs+1]
-        print 'g_outs'
-        print g_outs
-        print 'outs'
-        print outs
-        print 'steps'
-        print args[0]
 
 
 
@@ -1660,12 +1647,6 @@ class ScanGrad(Op):
 
 
         # return the gradient
-        print 'g_seqs'
-        print g_seqs
-        print 'g_outInfo'
-        print g_outInfo
-        print 'g_non_seqs'
-        print g_non_seqs
         for i,v in enumerate(g_seqs + g_outInfo+ g_non_seqs):
             storage[i][0] = v
 
