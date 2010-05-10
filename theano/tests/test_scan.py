@@ -894,7 +894,7 @@ class T_Scan(unittest.TestCase):
             return x_t
 
         cost, updates = scan_project_sum(f_rnn_cmpl,u,x0,W_in, n_steps = None,
-                truncate_gradient = 40, go_backwards = False)
+                truncate_gradient = 3, go_backwards = False)
         vparams = [v_u, v_x0,vW_in]
         params = [u,x0,W_in ]
         gparams = theano.tensor.grad(cost, params)
@@ -919,7 +919,7 @@ class T_Scan(unittest.TestCase):
         analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
 
 
-        assert len(analytic_grad[0]) == 40
+        assert len(analytic_grad[0]) == 3
 
 
 
