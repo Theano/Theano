@@ -7,7 +7,8 @@ from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, to
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.blas import gpu_dot22, gpu_dot22scalar, gpu_gemm, GpuConv
+from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar, gpu_gemm_inplace,
+        gpu_gemm_no_inplace, GpuConv)
 from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
@@ -191,18 +192,21 @@ def local_gpu_gemm(node):
 
     gemm(host_from_gpu) -> host_from_gpu(gpu_gemm)
     """
+    gemms = {tensor.blas.gemm_inplace: gpu_gemm_inplace,
+            tensor.blas.gemm_no_inplace: gpu_gemm_no_inplace}
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
-        if host_input.owner and host_input.owner.op == tensor.blas.gemm_inplace:
+        if host_input.owner and host_input.owner.op in gemms:
+            op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
-            return [gpu_gemm(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
-    if node.op == tensor.blas.gemm_inplace:
+            return [gemms[op](gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
+    if node.op in gemms:
         z, a, x, y, b = node.inputs
         x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
         y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
         z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
         if x_on_gpu or y_on_gpu or z_on_gpu:
-            return [host_from_gpu(gpu_gemm(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
+            return [host_from_gpu(gemms[node.op](gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
     return False
 
 @register_opt()
