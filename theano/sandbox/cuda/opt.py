@@ -62,16 +62,10 @@ gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(),
 
 @local_optimizer([])
 def local_cut_gpu_host_gpu(node):
-    copy_op=None
     if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
-        copy_op = GpuElemwise(scal.identity, {})
+        return [node.inputs[0].owner.inputs[0]]
     if tensor.opt.opt.check_chain(node, host_from_gpu, gpu_from_host):
-        copy_op =tensor.copy
-    if copy_op:
-        #copy_op = lambda x:x
-        rval = copy_op(node.inputs[0].owner.inputs[0])
-        assert isinstance(rval, gof.Variable), "rval is not a variable"
-        return [rval]
+        return [node.inputs[0].owner.inputs[0]]
     return False
 gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu, 
         'fast_run', 'inplace', 'gpu')
