@@ -3,74 +3,100 @@ from nose.plugins.skip import SkipTest
 import unittest
 import theano
 import numpy
-
 import random
 import numpy.random
 from theano.tests  import unittest_tools as utt
 
-def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None, 
-        mode = None, cast_to_output_type = False):
 
-    pt = [numpy.array(p) for p in pt]
-    _type_tol = dict( float32=1e-2, float64=1e-4)
 
-    if tol is None:
-        tol = max(_type_tol[str(p.dtype)] for p in pt)
+class multiple_outputs_numeric_grad:
+    """WRITEME"""
+    type_eps = {'float64': 1e-7,
+            'float32': 3e-3}
 
-    if rng is None:
-        rng = numpy.random
-        utt.seed_rng()
+    def __init__(self, f, pt, ndarray_mask = None, eps=None):
+        """Return the gradient of f at pt.
+        
+        This function computes the gradient by a one-sided finite differences of a
+        fixed step size (eps).
+        
+        It is assumed that f(...) will return a scalar.
+        :param eps: the stepsize for the finite differencing.  None means input
+        dtype-dependent. See `type_eps`.
+        """
 
-    def function(inputs, outputs):
-        if mode is None:
-            f = theano.function(inputs, outputs, accept_inplace=True)
+        def prod(inputs):
+            rval = 1
+            for i in inputs:
+                rval *= i
+            return rval
+        packed_pt = False
+        if not isinstance(pt, (list, tuple)):
+            pt = [pt]
+            packed_pt = True
+
+        # This mask tells us if we are dealing with an ndarray input or 
+        # something else ( a random state ? ) with which we shouldn't really
+        # mess up
+        if not ndarray_mask:
+                ndarray_mask = [True for x in pt ]
+
+        dtype_eps = multiple_outputs_numeric_grad.type_eps['float64']
+
+        for i,p in enumerate(pt):
+            if ndarray_mask[i]:
+                pt[i] = numpy.array(p)
+                _eps = multiple_outputs_numeric_grad.type_eps[str(pt[i].dtype)]
+                if _eps > dtype_eps:
+                        dtype_eps = _eps
+
+
+        # Compute clean output:
+        f_x = f(*pt)
+        gx = []
+        # now iterate over the elements of x and call f on those + delta x
+        for i in xrange(len(pt)):
+            if ndarray_mask[i]:
+                # It is a ndarray that we can tweak
+                _eps = eps if eps else dtype_eps
+                if pt[i].ndim : 
+                    _g = []
+                    # it has several dimensions:
+                    for pos in xrange(prod(pt[i].shape)):
+                        t = pt[i].copy()
+                        t = t.flatten()
+                        t[pos] += _eps
+                        t = t.reshape(pt[i].shape)
+                        f_eps = f(*(pt[:i]+[t]+pt[i+1:]))
+                        _g.append(numpy.asarray((f_eps - f_x)/_eps))
+                    gx.append(numpy.asarray(_g).reshape(pt[i].shape))
+                else:
+                    t= numpy.array(pt[i] + _eps)
+                    f_eps = f(*(pt[:i]+[t]+pt[i+1:]))
+                    gx.append(numpy.asarray((f_eps-f_x)/_eps))
+        self.gx = gx
+
+    @staticmethod
+    def abs_rel_err(a,b,eps=1.0e-10):
+        """Return a small number when a and b are close, relative to how big they are"""
+        return abs(a-b) / (abs(a)+abs(b)+eps)
+
+    def max_err(self, g_pt):
+        """Return the biggest relative error between g_pt and self.gx"""
+        if len(g_pt) != len(self.gx):
+            raise ValueError('argument has wrong number of elements', len(g_pt))
+        errs = []
+        for i, (a, b) in enumerate(zip(g_pt, self.gx)):
+            if a.shape != b.shape:
+                raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
+                    b.shape))))
+            vv = multiple_outputs_numeric_grad.abs_rel_err(a,b)
+            errs.append(numpy.max(multiple_outputs_numeric_grad.abs_rel_err(a,b)))
+        if numpy.all(numpy.isfinite(errs)):
+            return numpy.max(errs), numpy.argmax(errs)
         else:
-            f = theano.function(inputs,outputs,accept_inplace=True, mode=mode)
-        return f
+            return float('inf'), 0
 
-    for test_num in xrange(n_tests):
-        tensor_pt=[theano.tensor.value(p.copy(),name='input %i'%i) 
-                for i,p in enumerate(pt)]
-        # op outputs
-    o_outputs = op(*tensor_pt)
-    if not (type(o_outputs) in (list,tuple)):
-        o_outputs = [ o_outputs ]
-    o_fn = function(tensor_pt, o_outputs)
-    o_fn_outs = o_fn(*[p.copy() for p in pt])
-
-    if not type(o_fn_outs) in (list,tuple):
-        o_fn_outs = [o_fn_outs]
-
-    random_projection = rng.rand(*o_fn_outs[0].shape)
-    if cast_to_output_type:
-        random_projection = numpy.array(random_projection, 
-                dtype = o_fn_outs[0].dtype)
-        t_r = theano.tensor.as_tensor_variable(random_projection)
-    cost = theano.tensor.sum( t_r * o_outputs[0])
-    for i, o in enumerate(o_fn_outs[1:] ):
-        random_projection = rng.rand(*o.shape)
-        if cast_to_output_type:
-            random_projection = numpy.array(random_projection,
-                    dtype=o_outputs[i].dtype)
-            t_r  = theano.tensor.as_tensor_variable(random_projection)
-        cost += theano.tensor.sum( t_r * o_outputs[i])
-    cost_fn = function(tensor_pt, cost)
-    num_grad = theano.tensor.numeric_grad(cost_fn,[p.copy() for p in pt],eps)
-    g_cost = theano.tensor.as_tensor_variable(1.0,name='g_cost')
-    if cast_to_output_type:
-        g_cost = cast(g_cost, o_output.dtype)
-    symbolic_grad = theano.tensor.grad(cost, tensor_pt, g_cost)
-
-
-    grad_fn = function(tensor_pt,symbolic_grad)
-    analytic_grad = grad_fn(*[p.copy() for p in pt])
-    if not isinstance(analytic_grad, (list,tuple)):
-        analytic_grad = [analytic_grad]
-
-    max_err, max_err_pos = num_grad.max_err(analytic_grad)
-    if max_err > tol:
-        raise Exception(theano.tensor.verify_grad.E_grad, 
-                (max_err, tol, max_err_pos))
 
 
 #TODO: Test this function, and if it works,
@@ -79,21 +105,27 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps = None, tol = None,
 # Also - add a reference to this technique in the 
 # verify_grad method so that other ops with multiple outputs can be tested.
 def scan_project_sum(*args, **kwargs):
-    rng = shared_randomstreams.RandomStreams()
-    scan_outputs = scan(*args, **kwargs)
+    rng = theano.tensor.shared_randomstreams.RandomStreams(123)
+    scan_outputs, updates = theano.scan(*args, **kwargs)
+    if type(scan_outputs) not in [list,tuple]:
+        scan_outputs = [scan_outputs]
     # we should ignore the random-state updates so that
     # the uniform numbers are the same every evaluation and on every call
     rng.add_default_updates = False
-    return  sum([(s * rng.uniform(size=s.shape)).sum() for s in scan_outputs])
+    factors = [ rng.uniform(size=s.shape, low = 0.1, high = 0.9) for s in scan_outputs ]
+    # Random values (?)
+    return (sum([(s*f).sum() for s,f in zip(scan_outputs,factors)]),updates)
 
 def asarrayX(value):
     return theano._asarray(value, dtype=theano.config.floatX)
 
-class T_Scan(unittest.TestCase):
 
+
+class T_Scan(unittest.TestCase):
+ 
     def setUp(self):
         utt.seed_rng()
-
+    
     # generator network, only one output , type scalar ; no sequence or 
     # non sequence arguments
     def test_generator_one_output_scalar(self):
@@ -105,7 +137,7 @@ class T_Scan(unittest.TestCase):
         output, updates = theano.scan(f_pow2, [],state, [],n_steps = n_steps, truncate_gradient
                 = -1, go_backwards = False)
         my_f = theano.function([state,n_steps], output, updates = updates)
-        
+
         rng = numpy.random.RandomState(utt.fetch_seed())
         state = rng.uniform()
         steps = 5
@@ -372,7 +404,7 @@ class T_Scan(unittest.TestCase):
         outputs, updates = theano.scan(f_rnn_shared, 
                 [u0,dict(input = u1, taps = [0,1]),dict( input = u2, taps= [-1,0,+1])], 
                 [dict( initial = x0, inplace =u2), dict(initial = x1, inplace = u1)],
-                [], n_steps = None, truncate_gradient = 01, go_backwards = False, mode=mode )
+                [], n_steps = None, truncate_gradient = -1, go_backwards = False, mode=mode )
         f9   = theano.function([mu0,mu1,mu2,x0,x1], outputs , updates = updates, mode = mode)
 
        # compute output in numpy
@@ -514,12 +546,10 @@ class T_Scan(unittest.TestCase):
         v_vsample = numpy.array(rng.binomial(1,0.5, size=(3,20), ), dtype = 'float32')
         v_bvis    = numpy.array(rng.rand(20) -.5, dtype='float32')
         v_bhid    = numpy.array(rng.rand(30) -.5, dtype='float32')
-        
         W       = theano.shared(v_W)
         bhid    = theano.shared(v_bhid)
         bvis    = theano.shared(v_bvis)
         vsample = theano.tensor.matrix(dtype='float32')
-
         trng = theano.tensor.shared_randomstreams.RandomStreams(utt.fetch_seed())
 
         def f(vsample_tm1):
@@ -635,22 +665,264 @@ class T_Scan(unittest.TestCase):
         f = theano.function([v,s], result, updates = updates)
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_v = rng.uniform( size = (5,), low = -5., high = 5.)
-        print f(v_v,0.)
         assert abs(numpy.sum(v_v) - f(v_v, 0.)) < 1e-3
 
 
+    def test_grad_one_output(self):
+        def f_rnn(u_t,x_tm1,W_in, W):
+            return u_t*W_in+x_tm1*W
 
-    '''
-     TO TEST: 
-        - test gradient (one output)
-        - test gradient (multiple outputs)
-        - test gradient (go_bacwards) 
-        - test gradient (multiple outputs / some uncomputable )
-        - test gradient (truncate_gradient)
-        - test_gradient (taps past/future)
-        - optimization !? 
-    '''
+        u    = theano.tensor.vector('u')
+        x0   = theano.tensor.scalar('x0')
+        W_in = theano.tensor.scalar('W_in')
+        W    = theano.tensor.scalar('W')
+
+        cost, updates = scan_project_sum(f_rnn, u, x0, [W_in,W], n_steps = None,
+                truncate_gradient = -1, go_backwards = False)
+        gu,gx0,gW_in,gW = theano.tensor.grad(cost, [u,x0,W_in, W])
+        grad_fn = theano.function([u,x0,W_in, W], [gu,gx0,gW_in, gW], 
+                updates = updates, no_default_updates = True)
+        cost_fn = theano.function([u,x0,W_in, W], cost, updates = updates,
+                no_default_updates = True)
+
+        # get random initial values
+        rng  = numpy.random.RandomState(utt.fetch_seed())
+        v_u  = numpy.array(rng.uniform( size = (300,), low = -.5, high = .5),dtype=theano.config.floatX)
+        v_x0 = numpy.array(rng.uniform(), dtype= theano.config.floatX)
+        W    = numpy.array(rng.uniform(), dtype= theano.config.floatX)
+        W_in = numpy.array(rng.uniform(), dtype= theano.config.floatX)
+        num_grad = multiple_outputs_numeric_grad(cost_fn, [v_u, v_x0, W_in, W])
+        analytic_grad = grad_fn(v_u, v_x0, W_in, W)
+        max_err, max_err_pos = num_grad.max_err(analytic_grad)
+
+        if max_err > 1e-2:
+            raise Exception(theano.tensor.verify_grad.E_grad, 
+                    (max_err, 1e-2, max_err_pos))
+
+
+    def test_grad_multiple_outs(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in2 = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
+        vW     = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
+        vWout  = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
+        vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
+        v_u1   = asarrayX(rng.uniform(size = (13,2), low = -.1, high = .1))
+        v_u2   = asarrayX(rng.uniform(size = (13,), low = -.1,high = .1))
+        v_x0   = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
+        v_y0   = asarrayX(rng.uniform())
+
+        W_in2 = theano.shared(vW_in2, name='win2')
+        W     = theano.shared(vW, name='w')
+        W_out = theano.shared(vWout, name = 'wout')
+        W_in1 = theano.tensor.matrix('win')
+        u1    = theano.tensor.matrix('u1')
+        u2    = theano.tensor.vector('u2')
+        x0    = theano.tensor.vector('x0')
+        y0    = theano.tensor.scalar('y0')
+
+        def f_rnn_cmpl(u1_t, u2_t, x_tm1, y_tm1, W_in1):
+            return [theano.dot(u1_t,W_in1) + u2_t* W_in2 + \
+                    theano.dot(x_tm1, W), theano.dot(x_tm1, W_out)]
+
+        cost, updates = scan_project_sum(f_rnn_cmpl,[u1,u2],[x0,y0],W_in1, n_steps = None,
+                truncate_gradient = -1, go_backwards = False)
+        vparams = [v_u1, v_u2, v_x0, v_y0,vW_in1]
+        params = [u1,u2,x0,y0,W_in1 ] 
+        gparams = theano.tensor.grad(cost, params)
+        grad_fn = theano.function([u1,u2,x0,y0,W_in1], gparams, 
+                updates = updates, no_default_updates = True)
+        cost_fn = theano.function([u1,u2,x0,y0,W_in1], cost, 
+                updates = updates, no_default_updates = True)
+
+        num_grad = multiple_outputs_numeric_grad(cost_fn,[v_u1,v_u2,v_x0,v_y0,vW_in1])
+        analytic_grad = grad_fn(v_u1,v_u2, v_x0,v_y0, vW_in1)
+        max_err, max_err_pos = num_grad.max_err(analytic_grad)
+
+        if max_err > 1e-2:
+            raise Exception(theano.tensor.verify_grad.E_grad, 
+                    (max_err, 1e-2, max_err_pos))
+
+
+    def test_grad_multiple_outs_taps(self):
+        l = 60
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in2 = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
+        vW     = asarrayX(rng.uniform(size = (2,2), low = -.2,high = .2))
+        vWout  = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
+        vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -.2,high = .2))
+        v_u1   = asarrayX(rng.uniform(size = (l,2), low = -.2, high = .2))
+        v_u2   = asarrayX(rng.uniform(size = (l+2,2), low = -.2,high = .2))
+        v_x0   = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
+        v_y0   = asarrayX(rng.uniform(size = (4,)))
+
+        W_in2 = theano.shared(vW_in2, name='win2')
+        W     = theano.shared(vW, name='w')
+        W_out = theano.shared(vWout, name = 'wout')
+        W_in1 = theano.tensor.matrix('win')
+        u1    = theano.tensor.matrix('u1')
+        u2    = theano.tensor.matrix('u2')
+        x0    = theano.tensor.vector('x0')
+        y0    = theano.tensor.vector('y0')
+
+        def f_rnn_cmpl(u1_t, u2_tm1, u2_t, u2_tp1, x_tm1, y_tm1, y_tm3, W_in1):
+            return [theano.dot(u1_t,W_in1) + (u2_t+u2_tm1*u2_tp1)* W_in2 + \
+                    theano.dot(x_tm1, W), (y_tm1+y_tm3)*theano.dot(x_tm1, W_out)]
+        cost, updates = scan_project_sum(f_rnn_cmpl,[u1,
+            dict(input=u2,taps=[-1,0,1])],[x0,dict(initial=y0, 
+                taps=[-1,-3])],W_in1, n_steps = None, 
+                truncate_gradient = -1, go_backwards = False)
+        vparams = [v_u1, v_u2, v_x0, v_y0,vW_in1]
+        params = [u1,u2,x0,y0,W_in1 ] 
+        gparams = theano.tensor.grad(cost, params)
+        grad_fn = theano.function([u1,u2,x0,y0,W_in1], gparams, 
+                updates = updates, no_default_updates = True)
+        cost_fn = theano.function([u1,u2,x0,y0,W_in1], cost, 
+                updates = updates, no_default_updates = True)
+
+        num_grad = multiple_outputs_numeric_grad(cost_fn,[v_u1,v_u2,v_x0,v_y0,vW_in1])
+        analytic_grad = grad_fn(v_u1,v_u2, v_x0,v_y0, vW_in1)
+        max_err, max_err_pos = num_grad.max_err(analytic_grad)
+        if max_err > 1e-2:
+            raise Exception(theano.tensor.verify_grad.E_grad, 
+                    (max_err, 1e-2, max_err_pos))
+
+    def test_grad_multiple_outs_taps_backwards(self):
+        l = 20
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in2 = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
+        vW     = asarrayX(rng.uniform(size = (2,2), low = -.2,high = .2))
+        vWout  = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
+        vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -.2,high = .2))
+        v_u1   = asarrayX(rng.uniform(size = (l,2), low = -.2, high = .2))
+        v_u2   = asarrayX(rng.uniform(size = (l+2,2), low = -.2,high = .2))
+        v_x0   = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
+        v_y0   = asarrayX(rng.uniform(size = (4,)))
+
+        W_in2 = theano.shared(vW_in2, name='win2')
+        W     = theano.shared(vW, name='w')
+        W_out = theano.shared(vWout, name = 'wout')
+        W_in1 = theano.tensor.matrix('win')
+        u1    = theano.tensor.matrix('u1')
+        u2    = theano.tensor.matrix('u2')
+        x0    = theano.tensor.vector('x0')
+        y0    = theano.tensor.vector('y0')
+
+        def f_rnn_cmpl(u1_t, u2_tm1, u2_t, u2_tp1, x_tm1, y_tm1, y_tm3, W_in1):
+            return [theano.dot(u1_t,W_in1) + (u2_t+u2_tm1*u2_tp1)* W_in2 + \
+                    theano.dot(x_tm1, W), (y_tm1+y_tm3)*theano.dot(x_tm1, W_out)]
+        cost, updates = scan_project_sum(f_rnn_cmpl,[u1,
+            dict(input=u2,taps=[-1,0,1])],[x0,dict(initial=y0, 
+                taps=[-1,-3])],W_in1, n_steps = None, 
+                truncate_gradient = -1, go_backwards = True)
+        vparams = [v_u1, v_u2, v_x0, v_y0,vW_in1]
+        params = [u1,u2,x0,y0,W_in1 ] 
+        gparams = theano.tensor.grad(cost, params)
+        grad_fn = theano.function([u1,u2,x0,y0,W_in1], gparams, 
+                updates = updates, no_default_updates = True)
+        cost_fn = theano.function([u1,u2,x0,y0,W_in1], cost, 
+                updates = updates, no_default_updates = True)
+
+        num_grad = multiple_outputs_numeric_grad(cost_fn,[v_u1,v_u2,v_x0,v_y0,vW_in1])
+        analytic_grad = grad_fn(v_u1,v_u2, v_x0,v_y0, vW_in1)
+        max_err, max_err_pos = num_grad.max_err(analytic_grad)
+        if max_err > 1e-2:
+            raise Exception(theano.tensor.verify_grad.E_grad, 
+                    (max_err, 1e-2, max_err_pos))
+
+
+
+    def test_grad_multiple_outs_some_uncomputable(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
+        v_u   = asarrayX(rng.uniform(size = (80,2), low = -.1, high = .1))
+        v_x0  = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
+
+        W_in = theano.tensor.matrix('win')
+        u    = theano.tensor.matrix('u1')
+        x0    = theano.tensor.vector('x0')
+        # trng  = theano.tensor.shared_randomstreams.RandomStreams(utt.fetch_seed())
+
+        def f_rnn_cmpl(u_t, x_tm1,  W_in):
+            trng1 = theano.tensor.shared_randomstreams.RandomStreams(123)
+            x_t = theano.dot(u_t, W_in) + x_tm1 + trng1.uniform(low=-.1, high=.1)
+            return x_t
+
+        cost, updates = scan_project_sum(f_rnn_cmpl,u,x0,W_in, n_steps = None,
+                truncate_gradient = -1, go_backwards = False)
+        vparams = [v_u, v_x0,vW_in]
+        params = [u,x0,W_in ]
+        gparams = theano.tensor.grad(cost, params)
+        grad_fn = theano.function([u,x0,W_in], gparams,
+                updates = updates, no_default_updates = True)
+        cost_fn = theano.function([u,x0,W_in], cost,
+                updates = updates, no_default_updates = True)
+        def reset_rng_cost_fn(*args):
+            for idx,arg in enumerate(cost_fn.maker.expanded_inputs):
+                if arg.value and type(arg.value.data) == type(numpy.random.RandomState(123)):
+                    cost_fn.maker.expanded_inputs[idx].value.data = numpy.random.RandomState(123)
+            return cost_fn(*args)
+
+        def reset_rng_grad_fn(*args):
+            for idx,arg in enumerate(grad_fn.maker.expanded_inputs):
+                if arg.value and type(arg.value.data)==type(numpy.random.RandomState(123)):
+                    grad_fn.maker.expanded_inputs[idx].value.data = numpy.random.RandomState(123)
+            return grad_fn(*args)
+
+        num_grad = multiple_outputs_numeric_grad(reset_rng_cost_fn,\
+                [v_u,v_x0,vW_in] )
+        analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
+        max_err, max_err_pos = num_grad.max_err(analytic_grad)
+
+        if max_err > 1e-2:
+            raise Exception(theano.tensor.verify_grad.E_grad,
+                    (max_err, 1e-2, max_err_pos))
+
+    def test_grad_multiple_outs_some_truncate(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        vW_in = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
+        v_u   = asarrayX(rng.uniform(size = (80,2), low = -.1, high = .1))
+        v_x0  = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
+
+        W_in = theano.tensor.matrix('win')
+        u    = theano.tensor.matrix('u1')
+        x0    = theano.tensor.vector('x0')
+        # trng  = theano.tensor.shared_randomstreams.RandomStreams(utt.fetch_seed())
+
+        def f_rnn_cmpl(u_t, x_tm1,  W_in):
+            trng1 = theano.tensor.shared_randomstreams.RandomStreams(123)
+            x_t = theano.dot(u_t, W_in) + x_tm1 + trng1.uniform(low=-.1, high=.1)
+            return x_t
+
+        cost, updates = scan_project_sum(f_rnn_cmpl,u,x0,W_in, n_steps = None,
+                truncate_gradient = 40, go_backwards = False)
+        vparams = [v_u, v_x0,vW_in]
+        params = [u,x0,W_in ]
+        gparams = theano.tensor.grad(cost, params)
+        grad_fn = theano.function([u,x0,W_in], gparams,
+                updates = updates, no_default_updates = True)
+        cost_fn = theano.function([u,x0,W_in], cost,
+                updates = updates, no_default_updates = True)
+        def reset_rng_cost_fn(*args):
+            for idx,arg in enumerate(cost_fn.maker.expanded_inputs):
+                if arg.value and type(arg.value.data) == type(numpy.random.RandomState(123)):
+                    cost_fn.maker.expanded_inputs[idx].value.data = numpy.random.RandomState(123)
+            return cost_fn(*args)
+
+        def reset_rng_grad_fn(*args):
+            for idx,arg in enumerate(grad_fn.maker.expanded_inputs):
+                if arg.value and type(arg.value.data)==type(numpy.random.RandomState(123)):
+                    grad_fn.maker.expanded_inputs[idx].value.data = numpy.random.RandomState(123)
+            return grad_fn(*args)
+
+        num_grad = multiple_outputs_numeric_grad(reset_rng_cost_fn,\
+                [v_u,v_x0,vW_in] )
+        analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
+
+
+        assert len(analytic_grad[0]) == 40
+
 
 
 if __name__ == '__main__':
     unittest.main()
+
