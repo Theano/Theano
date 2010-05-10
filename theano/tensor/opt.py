@@ -1063,11 +1063,18 @@ def local_fill_cut(node):
     If c.type == a.type.
     """
 
+    # this optimization is essentially for getting broadcasting to replace fill. 
+    # This is always possible when using a Compound Elemwise operation, 
+    # but it is not always possible without one (consider filling a large matrix with a scalar,
+    # and then adding another scalar.  The only numbers that count are the two scalars, but we
+    # can't ignore the large matrix because it gives the shape of the result.
+
     if not opt.check_chain(node, T.Elemwise):
         return False
     
     output = node.outputs[0]
     try:
+        #reference is some input with the same type as the input but that is not produced by a fill
         reference = [input
                      for input in node.inputs
                      if input.type == output.type and (not input.owner or input.owner.op != T.fill)][0]
@@ -1086,7 +1093,13 @@ def local_fill_cut(node):
 
     if new_inputs == node.inputs:
         return False
-    return node.op.make_node(*new_inputs).outputs
+
+    print 'NEW INPUTS', new_inputs
+    rval = node.op(*new_inputs)
+    if isinstance(rval, gof.Variable):
+        return rval.owner.outputs
+    else:
+        return rval[0].owner.outputs
 
 register_canonicalize(local_fill_cut)
 

@@ -2,7 +2,7 @@ import sys
 import theano
 import numpy
 from theano import scalar as scal
-from theano import tensor, compile
+from theano import tensor, compile, gof
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, toolbox, DestroyHandler
 
 from theano.sandbox.cuda.basic_ops import *
@@ -62,10 +62,16 @@ gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(),
 
 @local_optimizer([])
 def local_cut_gpu_host_gpu(node):
+    copy_op=None
     if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
-        return [node.inputs[0].owner.inputs[0]]
+        copy_op = GpuElemwise(scal.identity, {})
     if tensor.opt.opt.check_chain(node, host_from_gpu, gpu_from_host):
-        return [node.inputs[0].owner.inputs[0]]
+        copy_op =tensor.copy
+    if copy_op:
+        #copy_op = lambda x:x
+        rval = copy_op(node.inputs[0].owner.inputs[0])
+        assert isinstance(rval, gof.Variable), "rval is not a variable"
+        return [rval]
     return False
 gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu, 
         'fast_run', 'inplace', 'gpu')
