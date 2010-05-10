@@ -687,7 +687,7 @@ class T_Scan(unittest.TestCase):
 
         # get random initial values
         rng  = numpy.random.RandomState(utt.fetch_seed())
-        v_u  = numpy.array(rng.uniform( size = (300,), low = -.5, high = .5),dtype=theano.config.floatX)
+        v_u  = numpy.array(rng.uniform( size = (10,), low = -.5, high = .5),dtype=theano.config.floatX)
         v_x0 = numpy.array(rng.uniform(), dtype= theano.config.floatX)
         W    = numpy.array(rng.uniform(), dtype= theano.config.floatX)
         W_in = numpy.array(rng.uniform(), dtype= theano.config.floatX)
@@ -706,8 +706,8 @@ class T_Scan(unittest.TestCase):
         vW     = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
         vWout  = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
         vW_in1 = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
-        v_u1   = asarrayX(rng.uniform(size = (13,2), low = -.1, high = .1))
-        v_u2   = asarrayX(rng.uniform(size = (13,), low = -.1,high = .1))
+        v_u1   = asarrayX(rng.uniform(size = (7,2), low = -.1, high = .1))
+        v_u2   = asarrayX(rng.uniform(size = (7,), low = -.1,high = .1))
         v_x0   = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
         v_y0   = asarrayX(rng.uniform())
 
@@ -744,7 +744,7 @@ class T_Scan(unittest.TestCase):
 
 
     def test_grad_multiple_outs_taps(self):
-        l = 60
+        l = 5
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
         vW     = asarrayX(rng.uniform(size = (2,2), low = -.2,high = .2))
@@ -787,7 +787,7 @@ class T_Scan(unittest.TestCase):
                     (max_err, 1e-2, max_err_pos))
 
     def test_grad_multiple_outs_taps_backwards(self):
-        l = 20
+        l = 5
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size = (2,), low = -.2,high = .2))
         vW     = asarrayX(rng.uniform(size = (2,2), low = -.2,high = .2))
@@ -834,7 +834,7 @@ class T_Scan(unittest.TestCase):
     def test_grad_multiple_outs_some_uncomputable(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
-        v_u   = asarrayX(rng.uniform(size = (80,2), low = -.1, high = .1))
+        v_u   = asarrayX(rng.uniform(size = (5,2), low = -.1, high = .1))
         v_x0  = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
 
         W_in = theano.tensor.matrix('win')
@@ -880,7 +880,7 @@ class T_Scan(unittest.TestCase):
     def test_grad_multiple_outs_some_truncate(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in = asarrayX(rng.uniform(size = (2,2), low = -.1,high = .1))
-        v_u   = asarrayX(rng.uniform(size = (80,2), low = -.1, high = .1))
+        v_u   = asarrayX(rng.uniform(size = (5,2), low = -.1, high = .1))
         v_x0  = asarrayX(rng.uniform(size = (2,), low = -.1,high = .1))
 
         W_in = theano.tensor.matrix('win')
