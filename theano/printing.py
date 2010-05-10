@@ -391,7 +391,7 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
             return var_str[var]
         
         if var.name is not None:
-            varstr = var.name
+            varstr = var.name+" "+str(var.type)
         elif isinstance(var,gof.Constant):
             dstr = str(var.data)
             if '\n' in dstr:
@@ -400,7 +400,7 @@ def pydotprint(fct, outfile=os.path.join(config.compiledir,'theano.pydotprint.pn
                 dstr = dstr[:27]+'...'
             varstr = '%s [%s]'% (dstr, str(var.type))
         elif var in input_update and input_update[var].variable.name is not None:
-            varstr = input_update[var].variable.name
+            varstr = input_update[var].variable.name+" "+str(var.type)
         else:
             #a var id is needed as otherwise var with the same type will be merged in the graph.
             varstr = str(var.type)
