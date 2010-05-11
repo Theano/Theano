@@ -2017,7 +2017,7 @@ def constant_folding(node):
         msg += [constant(output.type, s[0])]
     return msg
 
-register_canonicalize(constant_folding)
+register_canonicalize(constant_folding, 'fast_compile')
 register_stabilize(constant_folding) # because 
 register_specialize(constant_folding)
 
