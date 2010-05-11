@@ -10,8 +10,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 #TODO: bug fix test_normal0, in normal() fct, n_samples currently need to be numpy.prod(size) not self.n_streams(size)
 
 mode = theano.config.mode
-    #THIS IS THEIR AS THEIR IS A MEMORY LINK in perform THAT WILL MAKE THE BUILDBOT DON'T WORK
-mode='FAST_RUN'#TODO: remove this
+
 def test_rng0():
 
     def basictest(f, steps, prefix=""):
@@ -23,9 +22,13 @@ def test_rng0():
             ival = numpy.asarray(ival)
             if i == 0:
                 mean = numpy.array(ival, copy=True)
+                min_ = ival.min()
+                max_ = ival.max()
             else:
                 alpha = 1.0 / (1+i)
                 mean = alpha * ival + (1-alpha)*mean
+                min_ = min(min_,ival.min())
+                max_ = max(max_,ival.max())
             assert ival.min()>0 and ival.max()<1
 
         print prefix, 'mean', numpy.mean(mean)
@@ -33,20 +36,15 @@ def test_rng0():
         print prefix, 'time', dt
         print prefix, 'elements', steps*sample_size[0]*sample_size[1]
         print prefix, 'samples/sec', steps*sample_size[0]*sample_size[1] / dt
-        if 0:
-            mean, std, min, max = numpy.mean(l), numpy.std(l), numpy.min(l), numpy.max(l)
+        print prefix, 'min',min_,'max',max_
 
-            print prefix, 'mean', mean
-            print prefix, 'std', std
-            print prefix, 'min', repr(min)
-            print prefix, 'max', repr(max)
-
-            assert max < 1.0
-            assert min >= 0.0
-            assert abs(mean - 0.5) < .01, 'bad mean?'
-
-    sample_size = (1000,100)
-
+    if mode in ['DEBUG_MODE','FAST_COMPILE']:
+        sample_size = (10,100)
+        steps = int(1e2)
+    else:
+        sample_size = (1000,100)
+        steps = int(1e3)
+    
     print ''
     print 'ON CPU:'
 
@@ -57,17 +55,18 @@ def test_rng0():
     print 'random?[:10]\n', f()[0,0:10]
     basictest(f, steps, prefix='mrg  cpu')
 
-    print ''
-    print 'ON GPU:'
-    R = MRG_RandomStreams(234, use_cuda=True)
-    u = R.uniform(size=sample_size, dtype='float32')
-    assert u.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
-    f = theano.function([], theano.Out(
-        theano.sandbox.cuda.basic_ops.gpu_from_host(u),
-        borrow=True), mode=mode)
-    theano.printing.debugprint(f)
-    print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
-    basictest(f, steps, prefix='mrg  gpu')
+    if mode!='FAST_COMPILE':
+        print ''
+        print 'ON GPU:'
+        R = MRG_RandomStreams(234, use_cuda=True)
+        u = R.uniform(size=sample_size, dtype='float32')
+        assert u.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
+        f = theano.function([], theano.Out(
+                theano.sandbox.cuda.basic_ops.gpu_from_host(u),
+                borrow=True), mode=mode)
+        theano.printing.debugprint(f)
+        print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
+        basictest(f, steps, prefix='mrg  gpu')
 
     print ''
     print 'ON CPU w NUMPY:'
@@ -76,7 +75,7 @@ def test_rng0():
     uu = RR.uniform(size=sample_size)
     ff = theano.function([], uu, mode=mode)
 
-    basictest(ff, 1000, prefix='numpy')
+    basictest(ff, steps, prefix='numpy')
 
 
 
