@@ -31,14 +31,14 @@ def tes_use():
 
 def test_sum():
     """
-    test sum pattern 1, 11, 10, 01, 100, 110, 011, 001, 111, 0111, 1011, 1111
+    test sum pattern 1, 11, 10, 01, 100, 110, 011, 001, 111, 0011, 0111, 1011, 1111
     TODO: test with broadcast
     """
 
     for shape, pattern in [((5,),[0]),
                            ((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
                            ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
-                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3])]:
+                           ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3])]:
         a = tensor.TensorType('float32',(False,)*len(shape))()
         b = T.Sum(pattern)(a)
         val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
