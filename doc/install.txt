@@ -22,7 +22,7 @@ to be installed:
 
     python >= 2.5 (2.4 should be supported as well)
 
-    `numpy <http://numpy.scipy.org/>`_ >= 1.2
+    `numpy <http://numpy.scipy.org/>`_ >= 1.3.0
         Earlier versions have memory leaks.
     `SciPy <http://scipy.org>`_
         Specifically numpy, sparse, and weave. We recommend scipy
