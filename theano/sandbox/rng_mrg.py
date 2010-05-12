@@ -14,7 +14,7 @@ from theano.tensor import zeros_like, sqrt, log, sin, cos, join
 from theano.compile import optdb
 from theano.gof import local_optimizer
 
-from theano.sandbox.cuda import cuda_available
+from theano.sandbox.cuda import cuda_available, cuda_enabled
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType, float32_shared_constructor
 
