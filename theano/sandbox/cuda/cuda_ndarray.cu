@@ -20,10 +20,11 @@ int _outstanding_mallocs[] = {0,0};
 void * device_malloc(size_t size)
 {
     void * rval=NULL;
-    if (cudaSuccess != cudaMalloc(&rval, size))
+    cudaError_t err = cudaMalloc(&rval, size);
+    if (cudaSuccess != err)
     {
-        fprintf(stderr, "Error allocating %li bytes of device memory.\n", (long)size);
-        PyErr_Format(PyExc_MemoryError, "error allocating %li bytes of device memory", (long)size);
+        fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+        PyErr_Format(PyExc_MemoryError, "error allocating %li bytes of device memory (%s)", (long)size, cudaGetErrorString(err));
         return NULL;
     }
     _outstanding_mallocs[0] += (rval != NULL);
@@ -31,10 +32,11 @@ void * device_malloc(size_t size)
 }
 int device_free(void *ptr)
 {
-    if (cudaSuccess != cudaFree(ptr))
+    cudaError_t err =  cudaFree(ptr);
+    if (cudaSuccess != err)
     {
-        fprintf(stderr, "Error freeing device pointer %p.\n", ptr);
-        PyErr_Format(PyExc_MemoryError, "error freeing device pointer %p", ptr);
+        fprintf(stderr, "Error freeing device pointer %p (%s).\n", ptr, cudaGetErrorString(err));
+        PyErr_Format(PyExc_MemoryError, "error freeing device pointer %p (%s)", ptr, cudaGetErrorString(err));
         return -1;
     }
     _outstanding_mallocs[0] -= (ptr != NULL);
