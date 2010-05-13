@@ -191,25 +191,31 @@ class Scalar(Type):
                 typedef theano_complex%(nbits)s complex_type;
                 typedef npy_float%(half_nbits)s scalar_type;
 
-                complex_type operator +(complex_type y) {
+                complex_type operator +(const complex_type &y) const {
                     complex_type ret;
                     ret.real = this->real + y.real;
                     ret.imag = this->imag + y.imag;
                     return ret;
                 }
-                complex_type operator -(complex_type y) {
+                complex_type operator -() const {
+                    complex_type ret;
+                    ret.real = -this->real;
+                    ret.imag = -this->imag;
+                    return ret;
+                }
+                complex_type operator -(const complex_type &y) const {
                     complex_type ret;
                     ret.real = this->real - y.real;
                     ret.imag = this->imag - y.imag;
                     return ret;
                 }
-                complex_type operator *(complex_type y) {
+                complex_type operator *(const complex_type &y) const {
                     complex_type ret;
                     ret.real = this->real * y.real - this->imag * y.imag;
                     ret.imag = this->real * y.imag + this->imag * y.real;
                     return ret;
                 }
-                complex_type operator /(complex_type y) {
+                complex_type operator /(const complex_type &y) const {
                     complex_type ret;
                     scalar_type y_norm_square = y.real * y.real + y.imag * y.imag;
                     ret.real = (this->real * y.real + this->imag * y.imag) / y_norm_square;
@@ -296,6 +302,7 @@ class Scalar(Type):
             return ""
 
     def c_code_cache_version(self):
+        return (8,) # put const around operators and added unary '-' operator
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.
         return (7,)  # make complex c code optional
         return (6,)  # added implemeentations of operators that work with scalar arguments
