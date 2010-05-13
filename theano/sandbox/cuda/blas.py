@@ -149,9 +149,6 @@ class GpuGemm(Op):
     """
     implement the gemm on the gpu.
 
-    ..note: This probably don't work correctly for no_inplace gemm.
-            Need to check al least refcount.
-    
     """
     def __init__(self, inplace):
         self.inplace = inplace
@@ -215,8 +212,8 @@ class GpuGemm(Op):
                 )
             {
                 Py_XDECREF(%(z_out)s);
-                %(z_out)s = CudaNdarray_Copy(%(z_in)s);
-                if (!(z_out)s)
+                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+                if (!%(z_out)s)
                 {
                     %(fail)s;
                 }
@@ -236,7 +233,9 @@ class GpuGemm(Op):
         {
             %(fail)s;
         }
-        """ % locals()
+        """
+
+        return sio.getvalue() % locals()
 gpu_gemm_no_inplace = GpuGemm(inplace=False)
 gpu_gemm_inplace = GpuGemm(inplace=True)
 
