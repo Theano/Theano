@@ -1114,11 +1114,9 @@ class Abs(UnaryScalarOp):
         return numpy.abs(x)
     def grad(self, (x, ), (gz, )):
         if x.type in grad_types:
-          return gz * sgn(x),
+            return gz * x / abs(x), # formula works for complex and real
         else:
-          return None,
-        #backport
-        #return gz * sgn(x) if x.type in grad_types else None,
+            return None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         type = node.inputs[0].type
         if type in int_types:

@@ -64,3 +64,12 @@ class TestRealImag(unittest.TestCase):
         mval = numpy.asarray(rng.randn(2,5))
         utt.verify_grad(f, [mval])
 
+
+    def test_abs_grad(self):
+        def f(m):
+            c = complex(m[0], m[1])
+            return .5 * abs(c)
+
+        rng = numpy.random.RandomState(9333)
+        mval = numpy.asarray(rng.randn(2,5))
+        utt.verify_grad(f, [mval])
