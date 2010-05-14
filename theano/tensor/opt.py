@@ -520,8 +520,8 @@ def local_fill_to_alloc(node):
             # TODO: cut out un-necessary dimshuffles of v
             rval = [T.alloc(T.cast(v, node.outputs[0].dtype), *shape_of[node.outputs[0]])]
         
-        if rval[0].type != node.outputs[0].type:
-            print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
+        #if rval[0].type != node.outputs[0].type:
+            #print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
 
         assert rval[0].type == node.outputs[0].type, ('rval', rval[0].type,
                 'orig', node.outputs[0].type,
