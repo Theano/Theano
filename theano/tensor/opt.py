@@ -180,10 +180,11 @@ def local_dimshuffle_lift(node):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in op.new_order]
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
-        if new_order == range(len(new_order)):
+        if new_order == range(len(new_order)) and (len(new_order) == iinput.type.ndim):
             return [iinput]
         else:
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
+
 
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
