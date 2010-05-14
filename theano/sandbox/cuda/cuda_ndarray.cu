@@ -140,10 +140,13 @@ decl_k_elemwise_unary_rowmajor(k_elemwise_unary_rowmajor_exp, unary_exp<float>)
 // Satisfying reqs to be Type
 /////////////////////////////
 
+//DON'T use directly(if their is other CudaNdarray that point to it, it will cause problem)! use Py_DECREF() instead
 static void
 CudaNdarray_dealloc(CudaNdarray* self)
 {
     //std::cerr << "CudaNdarray dealloc " << self << " " << self->devdata << '\n';
+    if(self->ob_refcnt>1)
+      printf("WARNING:CudaNdarray_dealloc called when their is still active reference to it.\n");
     CudaNdarray_uninit(self);
     self->ob_type->tp_free((PyObject*)self);
     --_outstanding_mallocs[1];
