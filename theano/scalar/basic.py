@@ -1582,6 +1582,13 @@ class Complex(BinaryScalarOp):
         return [real(z), imag(z)]
 complex = Complex(name='complex')
 
+class Conj(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.conj(x)
+    def grad(self, (x, ), (gz, )):
+        return [conj(gz)]
+conj = Conj(same_out, name='conj')
+
 class ComplexFromPolar(BinaryScalarOp):
     @staticmethod
     def output_types_preference(x,y):
