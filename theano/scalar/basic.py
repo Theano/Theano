@@ -849,7 +849,14 @@ class Mul(ScalarOp):
       retval = []
       for input in inputs:
         if input.type in grad_types:
-          retval += [cast(mul(*([gz] + utils.difference(inputs, [input]))), input.type.dtype)]
+          if input.type in complex_types:
+            # does casting from real to complex work?
+            dz_dinput = cast(mul(*(utils.difference(inputs, [input]))), input.type.dtype)
+            x = real(dz_dinput)
+            y = imag(dz_dinput)
+            retval += [complex(x*real(gz)+y*imag(gz), x*imag(gz)-y*real(gz))]
+          else:
+            retval += [cast(mul(*([gz] + utils.difference(inputs, [input]))), input.type.dtype)]
         else:
           retval += [None]
       
