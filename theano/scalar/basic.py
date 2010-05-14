@@ -493,6 +493,12 @@ class unary_out_lookup(gof.utils.object2):
     def __hash__(self):
         return hash(type(self)) # ignore hash of table
 
+def real_out(type):
+    if type == complex64:
+        return float32,
+    if type == complex128:
+        return float64,
+    return type,
 
 class ScalarOp(Op):
 
@@ -1516,14 +1522,14 @@ class Real(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         return [complex(gz, 0)]
 
-real = Real(unary_out_lookup({ complex64:float32, complex128:float64}), name='real')
+real = Real(real_out, name='real')
 
 class Imag(UnaryScalarOp):
     def impl(self, x):
         return numpy.imag(x)
     def grad(self, (x, ), (gz, )):
         return [complex(0, gz)]
-imag = Imag(unary_out_lookup({ complex64:float32, complex128:float64}), name='imag')
+imag = Imag(real_out, name='imag')
 
 class Angle(UnaryScalarOp):
     def impl(self, x):
@@ -1548,7 +1554,7 @@ class Angle(UnaryScalarOp):
         gx = gr * x/r
         gy = gr * y/r
         return [complex(gx, gy)]
-angle = Angle(unary_out_lookup( { complex64:float32, complex128:float64}), name='angle')
+angle = Angle(specific_out(float64), name='angle')
 
 class Complex(BinaryScalarOp):
     @staticmethod
