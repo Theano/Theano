@@ -113,7 +113,7 @@ if cuda_available:
 
 
 def use(device):
-    global cuda_enabled, enabled_cuda
+    global cuda_enabled
     if device == 'gpu':
         pass
     elif device.startswith('gpu'):
@@ -140,7 +140,7 @@ def use(device):
             cuda_enabled = True
         except RuntimeError, e:
             _logger.error("ERROR: Not using GPU. Initialisation of device %i failed. %s" %(device, e))
-            enabled_cuda = False
+            cuda_enabled = False
     elif use.device_number != device:
         _logger.warning("WARNING: ignoring call to use(%s), GPU number %i is already in use." %(str(device), use.device_number))
     optdb.add_tags('gpu',
