@@ -480,7 +480,8 @@ int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pat
 
 void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 {
-    fprintf(fd, "CudaNdarray <%p, %p> nd=%i \n", self, self->devdata, self->nd);
+    fprintf(fd, "CudaNdarray <%p, %p> nd=%i dev_structure_fresh=%d\n",
+	    self, self->devdata, self->nd, self->dev_structure_fresh);
     fprintf(fd, "\tHOST_DIMS:      ");
     for (int i = 0; i < self->nd; ++i)
     {
@@ -490,6 +491,24 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     for (int i = 0; i < self->nd; ++i)
     {
         fprintf(fd, "%i\t", CudaNdarray_HOST_STRIDES(self)[i]);
+    }
+    
+    int data=0;
+    fprintf(fd, "\tDEV_DIMS:      ");
+    for (int i = 0; i < self->nd; ++i)
+    {
+        cublasGetVector(1, sizeof(int),
+			self->dev_structure+i, 1,
+			&data, 1);
+	fprintf(fd, "%i\t", data);
+    }
+    fprintf(fd, "\n\tDEV_STRIDES: ");
+    for (int i = 0; i < self->nd; ++i)
+    {
+        cublasGetVector(1, sizeof(int),
+			self->dev_structure + self->nd+i, 1,
+			&data, 1);
+	fprintf(fd, "%i \t", data);
     }
     fprintf(fd, "\n");
 }
