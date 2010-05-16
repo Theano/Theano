@@ -704,11 +704,17 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     # make the compilation as fast as possible by not applying any optimization
     # or conversion to C [ note this region is not important for performance
     # so we can do stuff as unoptimal as we wish ]
+    '''
+    Why did I use gof.graph.inputs to pick the inputs here ??
+    
     dummy_f = function(filter(lambda x: isinstance(x,gof.Variable) and \
             not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
             reversed(gof.graph.inputs(dummy_args))), outputs, updates = updates, mode = \
                  compile.mode.Mode(linker = 'py', optimizer = None) )
-
+    '''
+    dummy_f = function(filter(lambda x: isinstance(x, gof.Variable) and \
+            not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
+            dummy_args), outputs, updates = updates, mode = compile.mode.Mode(linker='py',optimizer=None))
     # We now look at what outputs our function returns
     inner_fn_outs = [ out.variable for out in dummy_f.maker.outputs]
     update_map       = {}
