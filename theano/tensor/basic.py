@@ -3811,8 +3811,34 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
 
 class numeric_grad:
     """WRITEME"""
+
+    # Note on step sizes and tolerances:
+    #
+    # There is a relationship between the step size and the function value and the measurement
+    # error that is incurred due to rounding.  The finite difference we measure is
+    # delta = f(x0) - f(x0+eps) 
+    # 
+    # For maximum precision, f should be close to zero.
+    # For every power of 2 that f departs from zero, we lose a bit of precision in delta.
+    #
+    # Even in this case of maximum accuracy, there is a tradeoff between stepsize and
+    # measurement error.
+    # Taking small steps allows us to measure large derivatives accuractly, but longer steps
+    # are required to measure small derivatives accurately.  However longer steps introduce
+    # bias into our measurement in general for non-linear functions.
+    #
+    # It would be interesting to have a version of numeric grad that used an adaptive stepsize.
+    # 
+    # For now, we use a heuristic that catches very bad gradients, but is not perfectly
+    # accurate.
     type_eps = {'float64': 1e-7,
-            'float32': 3e-3}
+            'float32': 3e-3,
+            numpy.dtype('float64'):1e-7,
+            numpy.dtype('float32'):3e-3}
+    type_tol = {'float64': 1e-4,
+            numpy.dtype('float64'):1e-4,
+            'float32': 1e-1,
+            numpy.dtype('float32'):1e-1}
 
     def __init__(self, f, pt, eps=None):
         """Return the gradient of f at pt.
@@ -3888,12 +3914,29 @@ class numeric_grad:
             self.gf = self.gf[0]
 
     @staticmethod
-    def abs_rel_err(a,b,eps=1.0e-10):
-        """Return a small number when a and b are close, relative to how big they are"""
-        return abs(a-b) / (abs(a)+abs(b)+eps)
+    def abs_rel_err(a,b,tol=None):
+        """Return a small number when a and b are close, relative to how big they are.
 
-    def max_err(self, g_pt):
-        """Return the biggest relative error between g_pt and self.gf"""
+        Formula used: a - b / (abs(a) + abs(b) + tol)
+
+        `tol` defaults to relatively generous value that is suitable for catching completely
+        wrong gradients. (`self.type_tol`
+
+        """
+        if tol is None:
+            tol = __builtin__.max(numeric_grad.type_tol[a.dtype], numeric_grad.type_tol[b.dtype])
+        return abs(a-b) / (abs(a)+abs(b)+tol)
+
+    def abs_rel_errors(self, g_pt):
+        """Return the abs rel error of gradient estimate `g_pt`
+        
+        `g_pt` must be a list of ndarrays of the same length as self.gf, otherwise a ValueError
+        is raised.
+
+        Corresponding ndarrays in `g_pt` and `self.gf` must have the same shape or ValueError
+        is raised.
+
+        """
         if len(g_pt) != len(self.gf):
             raise ValueError('argument has wrong number of elements', len(g_pt))
         errs = []
@@ -3901,7 +3944,12 @@ class numeric_grad:
             if a.shape != b.shape:
                 raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
                     b.shape))))
-            errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
+            errs.append(numeric_grad.abs_rel_err(a,b))
+        return errs
+
+    def max_err(self, g_pt):
+        """Return the biggest relative error between g_pt and self.gf"""
+        errs = [numpy.max(e) for e in self.abs_rel_errors(g_pt)]
         if numpy.all(numpy.isfinite(errs)):
             return numpy.max(errs), numpy.argmax(errs)
         else:
