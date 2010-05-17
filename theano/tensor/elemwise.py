@@ -873,6 +873,7 @@ class CAReduce(Op):
                 if variable.shape[dimension] == 0:
                     if hasattr(self.scalar_op, 'identity'):
                         variable = self.scalar_op.identity
+                        break
                     else:
                         raise ValueError("Input (%s) has zero-size on axis %s, but self.scalar_op (%s) has no attribute 'identity'" % (variable, dimension, self.scalar_op))
                 else:

@@ -203,6 +203,18 @@ static PyMemberDef CudaNdarray_members[] =
 PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
 {
     int verbose = 0;
+    if(self->nd>=0 && CudaNdarray_SIZE(self)==0){
+      npy_intp * npydims = (npy_intp*)malloc(self->nd * sizeof(npy_intp));
+      assert (npydims);
+      for (int i = 0; i < self->nd; ++i) npydims[i] = (npy_intp)(CudaNdarray_HOST_DIMS(self)[i]);
+      PyObject * rval = PyArray_SimpleNew(self->nd, npydims, REAL_TYPENUM);
+      free(npydims);
+      if (!rval){
+	return NULL;
+      }
+      assert (PyArray_ITEMSIZE(rval) == sizeof(real));
+      return rval;
+    }
     if ((self->nd < 0) || (self->devdata == 0))
     {
         PyErr_SetString(PyExc_ValueError, "can't copy from un-initialized CudaNdarray");
