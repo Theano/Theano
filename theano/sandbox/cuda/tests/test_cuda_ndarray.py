@@ -95,6 +95,27 @@ def test_copy():
     assert numpy.allclose(a+a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
     
+def test_nvcc_bug():
+    """
+    The fct k_elemwise_unary_rowmajor_copy(used by cuda.copy()) in cuda_ndarray.cu 
+    is not well compiled with nvcc 3.0 and 3.1 beta. We found a workaround, so it 
+    sould work correctly. Without the workaround, this test fail.
+    """
+    shape = (5,4)
+    aa = theano._asarray(numpy.random.rand(*shape), dtype='float32')
+    a = aa[::,::-1]
+
+    b = cuda_ndarray.CudaNdarray(aa)[::,::-1]
+    c = copy.copy(b)
+    d = copy.deepcopy(b)
+
+    assert numpy.allclose(a, numpy.asarray(b))
+    assert numpy.allclose(a, numpy.asarray(c))
+    assert numpy.allclose(a, numpy.asarray(d))
+    b+=b
+    assert numpy.allclose(a+a, numpy.asarray(b))
+    assert numpy.allclose(a+a, numpy.asarray(c))
+    assert numpy.allclose(a, numpy.asarray(d))
 
 def test_dot():
     print >>sys.stdout, 'starting test_dot'
