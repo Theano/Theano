@@ -46,7 +46,9 @@ def raise_with_op(op, exc_info = None):
     except AttributeError:
         trace = ()
     exc_value.__thunk_trace__ = trace
-    exc_value.args = exc_value.args + (op, ) + ('Sequence id of Apply node='+str(op.env.toposort().index(op)),)
+    exc_value.args += (op, )
+    if op in op.env.toposort():
+        exc_value.args += ('Sequence id of Apply node='+str(op.env.toposort().index(op)),)
     raise exc_type, exc_value, exc_trace
 
 
