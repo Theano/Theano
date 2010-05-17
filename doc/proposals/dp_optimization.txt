@@ -1,0 +1,18 @@
+
+========================
+DP Instruction Selection
+========================
+
+Read Ch 9 of Modern Compiler Implementation about instruction selection.
+We should probably be doing graph optimization totally differently:  
+Optimizations *only add* new ways of implementing something, they do not replace
+the old way.  Every graph node (apply) as a cost, and Dynamic Programming (DP)
+is used to select the minimum cost graph.
+
+The advantage of this approach is that optimizations do not have to run in such
+a careful order, and graph selection would be much faster.
+
+
+Think about how aliasing and destructive operations (the destroy-handler) would
+fit in this approach.
+
