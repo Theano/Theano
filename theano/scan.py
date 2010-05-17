@@ -712,7 +712,21 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
             reversed(gof.graph.inputs(dummy_args))), outputs, updates = updates, mode = \
                  compile.mode.Mode(linker = 'py', optimizer = None) )
     '''
-    dummy_f = function(filter(lambda x: isinstance(x, gof.Variable) and \
+    if n_fixed_steps in [-1,1]:
+        ''' We do have a special case here, namely is so might happen that
+        whatever we have in dummy_args is not sufficient to compile the 
+        function( i.e. missing inputs). Furthermore we might not even need 
+        to compile the function here for this special case. But due to the
+        way I wrote the code is easier to have a compiled function here 
+        that I can ignore later. Plus it is easier this way to take care 
+        of shared variables with non-default updates. Therefore only for 
+        this case I need to use gof.graph.inputs to look for the real inputs
+        so that I can compile the function. RP '''
+        dummy_f = function(filter(lambda x: isinstance(x, gof.Variable) and \
+            not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
+            gof.graph.inputs(dummy_args)), outputs, updates = updates, mode = compile.mode.Mode(linker='py',optimizer=None))
+    else:
+        dummy_f = function(filter(lambda x: isinstance(x, gof.Variable) and \
             not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
             dummy_args), outputs, updates = updates, mode = compile.mode.Mode(linker='py',optimizer=None))
     # We now look at what outputs our function returns
