@@ -37,7 +37,7 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
     cache_version = ()
-    cache_version = ('debug', 9, verbose)
+    cache_version = ('debug', 10, verbose)
 
     def __init__(self, scalar_op, sync=True):
         """ 
@@ -787,6 +787,7 @@ nd_collapse_[i]=0;
                 """ %locals()
             else:
                 print >> sio, " return 0; " %locals()
+        print >> sio, "if(numEls==0) return 0;"
         print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse)) {"%locals()
         print >> sio, "case 0: {"
         launch_Ccontiguous(nodename, id_self, scalar_op, self.sync)

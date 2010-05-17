@@ -146,6 +146,20 @@ def test_reshape():
         return T.Reshape(2)(v, theano._asarray([2,3], dtype='int32'))
     utt.verify_grad(just_vals, [a_val])
 
+def test_elemwise_empty():
+    #test with 0 element
+    a = tcn.shared_constructor(theano._asarray(numpy.random.rand(0,0), dtype='float32'), 'a')
+
+    b = tensor.fmatrix()
+
+    f = pfunc([b], [], updates=[(a, a+b)], mode=mode_with_gpu)
+    f2 = pfunc([b], [], updates=[(a, a+b)], mode=mode_without_gpu)
+
+    a0 = a.value * 1.0
+    f(numpy.ones((0,0)))
+
+    assert numpy.all(a0 + 1.0 == a.value)
+
 def test_elemwise0():
 
     a = tcn.shared_constructor(theano._asarray(numpy.random.rand(4,4), dtype='float32'), 'a')
