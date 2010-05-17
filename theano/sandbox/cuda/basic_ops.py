@@ -684,6 +684,9 @@ class GpuSum(Op):
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
         print >> sio, """
         {
+          if(CudaNdarray_SIZE(%(x)s)==0){
+            cudaMemset(CudaNdarray_DEV_DATA(%(z)s),0,sizeof(float));
+          }else{
             int verbose = 0;
             dim3 n_threads(
                     std::min(CudaNdarray_SIZE(%(x)s),
@@ -710,6 +713,7 @@ class GpuSum(Op):
                     n_threads.z);
                 %(fail)s;
             }
+         }
         }
         """ %locals()
 
@@ -1091,7 +1095,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return (12,)
+        return (13,)
 
 
     def c_support_code_apply(self, node, nodename):

@@ -34,8 +34,7 @@ def test_sum():
     test sum pattern 1, 11, 10, 01, 100, 110, 011, 001, 111, 0011, 0111, 1011, 1111
     TODO: test with broadcast
     """
-
-    for shape, pattern in [((5,),[0]),
+    for shape, pattern in [((0,),[0]),((5,),[0]),
                            ((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
                            ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
                            ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3])]:
@@ -49,7 +48,10 @@ def test_sum():
         f2 = theano.function([a],b, mode=mode_without_gpu)
         assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
-        assert numpy.allclose(f2(val),f(val))
+        if val.size==0:
+            assert f2(val)==f(val)
+        else:
+            assert numpy.allclose(f2(val),f(val))
         
 
         #test with dimshuffle
