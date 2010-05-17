@@ -16,7 +16,7 @@ def test_host_to_device():
         assert numpy.all(a == c)
 
 def test_add():
-    for shape in ((), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),(1000,10000),(10000,1000)):
+    for shape in ((), (0,), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),(1000,10000),(10000,1000)):
         a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
         b0 = cuda_ndarray.CudaNdarray(a0)
@@ -33,6 +33,13 @@ def test_add():
         cpu_dt = t1 - t0
         print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', cpu_dt / gpu_dt
         assert numpy.allclose(asum,  numpy.asarray(bsum))
+
+	if len(shape)>0:
+            #test inplace version, not implemented with 0 dims
+            b0 += b1
+            a0 += a1
+            assert numpy.allclose(a0, numpy.asarray(b0))
+            assert numpy.allclose(a0,a1*2)
 
         if len(shape)==2:
             #test not contiguous version.

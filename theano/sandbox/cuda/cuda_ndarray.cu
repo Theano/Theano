@@ -786,6 +786,10 @@ CudaNdarray_add(PyObject* py_self, PyObject * py_other)
         return NULL;
     }
 
+    if(CudaNdarray_SIZE((CudaNdarray *)py_self)==0 && CudaNdarray_SIZE((CudaNdarray *)py_other)==0){
+      return (PyObject *) rval;
+    }
+
     int threads_per_block = std::min(size, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
     int n_blocks = std::min(ceil_intdiv(size,(unsigned int)threads_per_block), (unsigned int)NUM_VECTOR_OP_BLOCKS);
     kAdd_contiguous<<<n_blocks,threads_per_block>>>(
@@ -873,7 +877,12 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
         }
         size *= (unsigned int) CudaNdarray_HOST_DIMS(self)[i];
     }
-
+    
+    if(CudaNdarray_SIZE((CudaNdarray *)py_self)==0 && CudaNdarray_SIZE((CudaNdarray *)py_other)==0){
+      Py_INCREF(py_self);
+      return py_self;
+    }
+    
     switch(self->nd)
     {
         case 1:
