@@ -53,6 +53,8 @@ def debugprint(obj, depth=-1, print_type=False, file=None):
         results_to_print.extend(obj.outputs)
     elif isinstance(obj, Function):
         results_to_print.extend(obj.maker.env.outputs)
+    else:
+        raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type, file=_file)
     if file is _file:

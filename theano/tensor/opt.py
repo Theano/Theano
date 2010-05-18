@@ -180,10 +180,11 @@ def local_dimshuffle_lift(node):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in op.new_order]
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
-        if new_order == range(len(new_order)):
+        if new_order == range(len(new_order)) and (len(new_order) == iinput.type.ndim):
             return [iinput]
         else:
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
+
 
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
@@ -519,8 +520,8 @@ def local_fill_to_alloc(node):
             # TODO: cut out un-necessary dimshuffles of v
             rval = [T.alloc(T.cast(v, node.outputs[0].dtype), *shape_of[node.outputs[0]])]
         
-        if rval[0].type != node.outputs[0].type:
-            print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
+        #if rval[0].type != node.outputs[0].type:
+            #print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
 
         assert rval[0].type == node.outputs[0].type, ('rval', rval[0].type,
                 'orig', node.outputs[0].type,
@@ -1063,11 +1064,18 @@ def local_fill_cut(node):
     If c.type == a.type.
     """
 
+    # this optimization is essentially for getting broadcasting to replace fill. 
+    # This is always possible when using a Compound Elemwise operation, 
+    # but it is not always possible without one (consider filling a large matrix with a scalar,
+    # and then adding another scalar.  The only numbers that count are the two scalars, but we
+    # can't ignore the large matrix because it gives the shape of the result.
+
     if not opt.check_chain(node, T.Elemwise):
         return False
     
     output = node.outputs[0]
     try:
+        #reference is some input with the same type as the input but that is not produced by a fill
         reference = [input
                      for input in node.inputs
                      if input.type == output.type and (not input.owner or input.owner.op != T.fill)][0]
@@ -1086,7 +1094,12 @@ def local_fill_cut(node):
 
     if new_inputs == node.inputs:
         return False
-    return node.op.make_node(*new_inputs).outputs
+
+    rval = node.op(*new_inputs)
+    if isinstance(rval, gof.Variable):
+        return rval.owner.outputs
+    else:
+        return rval[0].owner.outputs
 
 register_canonicalize(local_fill_cut)
 
