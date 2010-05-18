@@ -228,6 +228,33 @@ def local_gpu_sum(node):
                 if hasattr(gsum, 'c_code_reduce_%s'%pattern):
                     return [host_from_gpu(gsum(gpu_from_host(x)))]
                 else:
+
+                    # Try to make a simpler pattern based on reshaping
+                    # The principle is that if two adjacent dimensions have the same value in
+                    # the reduce_mask, then we can reshape to make them a single dimension, do
+                    # the sum, and then reshape to get them back.
+
+                    shape_of = node.env.shape_feature.shape_of
+
+                    x_shape = shape_of[x]
+
+                    new_in_shp = [x_shape[0]]
+                    new_mask = [reduce_mask[0]]
+                    for i in range(1, x.type.ndim):
+                        if reduce_mask[i] == reduce_mask[i-1]:
+                            new_in_shp[-1] *= x_shape[i]
+                        else:
+                            new_mask.append(reduce_mask[i])
+                            new_in_shp.append(x_shape[i])
+
+                    pattern=(''.join(str(i) for i in new_mask))
+                    new_gsum = GpuSum(new_mask)
+                    if hasattr(new_gsum, 'c_code_reduce_%s'%pattern):
+                        reshaped_x = x.reshape(tensor.stack(*new_in_shp))
+                        sum_reshaped_x = host_from_gpu(new_gsum(gpu_from_host(reshaped_x)))
+                        unreshaped_sum = sum_reshaped_x.reshape(tensor.stack(*shape_of[node.outputs[0]]))
+                        return [unreshaped_sum]
+
                     raise Exception("GpuSum don't have implemented the pattern",pattern)
     return False
 
