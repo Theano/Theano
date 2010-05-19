@@ -29,11 +29,17 @@ def debug(*args):
     _logger.debug("DEBUG: "+' '.join(str(a) for a in args))
 
 nvcc_path = 'nvcc'
+nvcc_version = None
 def is_nvcc_available():
     """Return True iff the nvcc compiler is found."""
     try:
-        subprocess.call(['nvcc', '--version'], stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+        p = subprocess.Popen(['nvcc', '--version'], stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        p.wait()
+        s = p.stdout.readlines()[-1].split(',')[1].strip().split()
+        assert s[0]=='release'
+        global nvcc_version
+        nvcc_version = s[1]
         return True
     except:
         #try to find nvcc into cuda.root
@@ -43,7 +49,7 @@ def is_nvcc_available():
             nvcc_path = p
             return True
         else: return False
-is_nvcc_available()#to set nvcc_path correctly.
+is_nvcc_available()#to set nvcc_path correctly and get the version
 
 def nvcc_module_compile_str(module_name, src_code, location=None, include_dirs=[], lib_dirs=[], libs=[],
         preargs=[]):
