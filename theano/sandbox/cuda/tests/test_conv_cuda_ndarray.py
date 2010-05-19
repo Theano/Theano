@@ -78,10 +78,12 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
     kern = cuda_ndarray.CudaNdarray(npy_kern)
 
     #we take the stride after the transfert as we make c_contiguous data on the GPU.
-    img=img[:,:,::img_stride[0],::img_stride[1]]
-    kern=kern[:,:,::kern_stride[0],::kern_stride[1]]
-    npy_img = npy_img[:,:,::img_stride[0],::img_stride[1]]
-    npy_kern = npy_kern[:,:,::kern_stride[0],::kern_stride[1]]
+    if img_stride!=(1,1):
+        img=img[:,:,::img_stride[0],::img_stride[1]]
+        npy_img = npy_img[:,:,::img_stride[0],::img_stride[1]]
+    if kern_stride!=(1,1):
+        kern=kern[:,:,::kern_stride[0],::kern_stride[1]]
+        npy_kern = npy_kern[:,:,::kern_stride[0],::kern_stride[1]]
 
     t2 = None
     rval = True
