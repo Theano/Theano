@@ -684,8 +684,8 @@ class MRG_RandomStreams(object):
         #normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
 
         # so trying this instead
-        first_half = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
-        second_half = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
+        first_half = sqrt_ln_U1 * cos(2.0*cast(numpy.pi,dtype)*U2)
+        second_half = sqrt_ln_U1 * sin(2.0*cast(numpy.pi,dtype)*U2)
         normal_samples = join(0, first_half, second_half)
 
         final_samples = None
