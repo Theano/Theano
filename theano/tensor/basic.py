@@ -2273,7 +2273,7 @@ class Subtensor(Op):
                     and (idx.step is None or idx.step == 1):
                         outshp.append(xl)
                 else:
-                    #No easy way to compute the shape
+                    # Not implemented yet
                     outshp.append(shape_i(i)(node.outputs[0]))
                 i += 1
             else:
