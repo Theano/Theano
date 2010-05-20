@@ -3103,7 +3103,10 @@ class Flatten(Op):
     def perform(self, node, (x,), (out,)):
         outdim = self.outdim
         if outdim == 1:
-            out[0] = x.reshape(x.size)
+            try:
+                out[0] = x.reshape(x.size)
+            except AttributeError:
+                out[0] = x.reshape((numpy.prod(x.shape),))
         elif outdim == len(x.shape):
             out[0] = x
         else:
