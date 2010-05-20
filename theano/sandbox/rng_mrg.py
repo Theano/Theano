@@ -664,7 +664,7 @@ class MRG_RandomStreams(object):
         # second half our U2's. See Wikipedia page:
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
 
-        n_samples = self.n_streams(size)
+        n_samples = numpy.prod(size)
         evened = False
            
         if n_samples % 2 == 1:
