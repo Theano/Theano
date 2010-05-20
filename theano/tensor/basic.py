@@ -3071,6 +3071,8 @@ class Reshape(Op):
             raise ValueError('Cannot reshape input of shape %s to shape %s' % (x.shape,shp))
     def grad(self, (x, shp), (g_out,)):
         return [reshape(g_out, shape(x), ndim=x.ndim), None]
+    def infer_shape(self, node, ishapes):
+        return [node.inputs[1]]
 
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
