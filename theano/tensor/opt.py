@@ -1049,9 +1049,41 @@ def local_reshape_chain(node):
     if not opt.check_chain(node, T.Reshape, T.Reshape):
         return False
     
+    # TODO: this can permit a failing program to run by eliminating the the lower
+    #       reshape
     return [node.op(node.inputs[0].owner.inputs[0], node.inputs[1])]
 register_canonicalize(local_reshape_chain)
 
+if 0:
+    # TODO: Test that this optimziation works.
+    @register_canonicalize
+    @gof.local_optimizer([])
+    def local_scalar_reshape(node):
+        """Eliminate reshape Ops whose inputs and outputs are scalars """
+        if isinstance(node.op, T.Reshape):
+            x, shp = node.inputs
+            if x.ndim == 0 and T.get_vector_length(shp)==0:
+                return [x]
+
+if 0:
+    # TODO: Finish writing and testing this optimization.
+    #       The idea is that if we can prove the output to this sum
+    #       has a zero-size dimension, then it can be replaced by an appropriately typed and
+    #       broadcasted zero.
+    @register_canonicalize
+    @gof.local_optimizer([])
+    def local_sum_over_empty(node):
+        if isinstance(node.op, T.Sum):
+            y, = node.outputs
+            y_shape = node.env.shape_feature.shape_of[y]
+
+            def tmp(thing):
+                try: 
+                    return T.get_constant_value(thing)
+                except (TypeError, ValueError), e:
+                    print e, thing.owner.inputs[0]
+                    return None
+            print 'LOCAL SUM EMPTY', [tmp(s) for s in y_shape]
 
 ##################
 # Middleman cuts #
