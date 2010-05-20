@@ -934,6 +934,52 @@ class GpuSum(Op):
         }
         """ %locals()
 
+    def c_code_reduce_0101(self, sio, node, name, x, z, fail):
+        print >> sio, """
+        {
+            int verbose = 0;
+            dim3 n_threads(
+                    std::min(CudaNdarray_HOST_DIMS(%(x)s)[3],
+                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+            while (n_threads.x * n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            {
+                if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[1]) break;
+                n_threads.y += 1;
+            }
+            n_threads.y -= 1;
+            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[0], CudaNdarray_HOST_DIMS(%(x)s)[2]);
+            if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
+            int n_shared = sizeof(float) * n_threads.x * n_threads.y;
+            kernel_reduce_sum_0101_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+                    CudaNdarray_HOST_DIMS(%(x)s)[0],
+                    CudaNdarray_HOST_DIMS(%(x)s)[1],
+                    CudaNdarray_HOST_DIMS(%(x)s)[2],
+                    CudaNdarray_HOST_DIMS(%(x)s)[3],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                    );
+            CNDA_THREAD_SYNC;
+            cudaError_t sts = cudaGetLastError();
+            if (cudaSuccess != sts) 
+            {
+                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                    "kernel_reduce_sum_010_%(name)s",
+                    cudaGetErrorString(sts),
+                    n_blocks.x,
+                    n_blocks.y,
+                    n_threads.x,
+                    n_threads.y,
+                    n_threads.z);
+                %(fail)s;
+            }
+        }
+        """ %locals()
 
     def c_code_reduce_100(self, sio, node, name, x, z, fail):
         makecall = self._makecall(node, name, x, z, fail)
@@ -1449,6 +1495,34 @@ class GpuSum(Op):
                     {
                         float mysum = 0.0f;
                     for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)
+                    {
+                        for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
+                        {
+                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
+                        }
+                    }
+                        %(reducebuf)s
+                    }
+                }
+            }
+            """ %locals()
+        if self.reduce_mask == (0,1,0,1):
+            # this kernel uses one block for each row, 
+            # threads per block for each element per row.
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2 * sZ1]')
+            decl = self._k_decl(node, nodename)
+            init = self._k_init(node, nodename)
+            print >> sio, """
+            %(decl)s
+            {
+                %(init)s
+
+                for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x)
+                {
+                    for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
+                    {
+                        float mysum = 0.0f;
+                    for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)
                     {
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
