@@ -1199,8 +1199,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return ()
-        return (15,)
+        return (16,)
 
 
     def c_support_code_apply(self, node, nodename):
