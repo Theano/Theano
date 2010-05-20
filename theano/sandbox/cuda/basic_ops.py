@@ -478,8 +478,15 @@ class GpuSum(Op):
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
                 %(fail)s;
             }
+
         }
         """ %locals()
+
+        # \begin bracket the reduction in a check that there is actually work to do 
+        print >> sio, """
+        if (CudaNdarray_SIZE(%(z)s))
+        {
+        """ % locals()
 
         #
         # Now perform the reduction
@@ -498,6 +505,12 @@ class GpuSum(Op):
         
         else:
             getattr(self, 'c_code_reduce_%s'%(''.join(str(i) for i in self.reduce_mask)))(sio, node, name, x, z, fail)
+
+
+        # \end bracket the reduction ...
+        print >> sio, """
+        }
+        """ % locals()
 
         return sio.getvalue()
 
@@ -1136,8 +1149,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        #return ()
-        return (14,)
+        return (15,)
 
 
     def c_support_code_apply(self, node, nodename):
