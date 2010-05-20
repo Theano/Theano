@@ -902,7 +902,11 @@ class GpuSum(Op):
             dim3 n_threads(
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[0], CudaNdarray_HOST_DIMS(%(x)s)[2]);
+            dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0], NUM_VECTOR_OP_BLOCKS));
+            n_blocks.y = std::min(
+                CudaNdarray_HOST_DIMS(%(x)s)[2],
+                NUM_VECTOR_OP_BLOCKS / n_blocks.x
+                );
             if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
             int n_shared = sizeof(float) * n_threads.x;
             kernel_reduce_sum_010_%(name)s<<<n_blocks, n_threads, n_shared>>>(
@@ -1334,7 +1338,7 @@ class GpuSum(Op):
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
-            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0 + blockIdx.y*sZ1]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]')
             print >> sio, """
             static __global__ void kernel_reduce_sum_010_%(nodename)s(
                     const int d0,
@@ -1353,11 +1357,19 @@ class GpuSum(Op):
                     return;  //TODO: set error code
                 }
 
-                for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
+
+                for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x)
                 {
-                    mysum += A[blockIdx.x * sA0 + i1 * sA1 + blockIdx.y * sA2];
+                    for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
+                    {
+                        for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
+                        {
+                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                        }
+                        %(reducebuf)s
+                    }
                 }
-                %(reducebuf)s
+
             }
             """ %locals()
         if self.reduce_mask == (1,1,0):
