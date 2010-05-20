@@ -1012,6 +1012,44 @@ CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
                 Py_INCREF(py_self);
                 return py_self;
             }
+        case 5:
+            {
+                dim3 n_blocks(
+                        std::min(CudaNdarray_HOST_DIMS(self)[1], NUM_VECTOR_OP_BLOCKS),
+                        CudaNdarray_HOST_DIMS(self)[2]
+                        );
+                while (n_blocks.x * n_blocks.y > NUM_VECTOR_OP_BLOCKS) n_blocks.y /= 2;
+                dim3 n_threads(
+                        std::min(CudaNdarray_HOST_DIMS(self)[3], NUM_VECTOR_OP_THREADS_PER_BLOCK)
+                    );
+                for (int i = 0; i < CudaNdarray_HOST_DIMS(self)[0]; ++i)
+                {
+                    k_iAdd_4<<<n_blocks, n_threads>>>(
+                            CudaNdarray_HOST_DIMS(self)[1],
+                            CudaNdarray_HOST_DIMS(self)[2],
+                            CudaNdarray_HOST_DIMS(self)[3],
+                            CudaNdarray_HOST_DIMS(self)[4],
+                            CudaNdarray_DEV_DATA(self) + i * CudaNdarray_HOST_STRIDES(self)[0],
+                            CudaNdarray_HOST_STRIDES(self)[1],
+                            CudaNdarray_HOST_STRIDES(self)[2],
+                            CudaNdarray_HOST_STRIDES(self)[3],
+                            CudaNdarray_HOST_STRIDES(self)[4],
+                            CudaNdarray_DEV_DATA(other) + i * CudaNdarray_HOST_STRIDES(other)[0],
+                            CudaNdarray_HOST_STRIDES(other)[1],
+                            CudaNdarray_HOST_STRIDES(other)[2],
+                            CudaNdarray_HOST_STRIDES(other)[3],
+                            CudaNdarray_HOST_STRIDES(other)[4]);
+                    CNDA_THREAD_SYNC;
+                    cudaError_t err = cudaGetLastError();
+                    if( cudaSuccess != err) 
+                    {
+                        PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s.\n", "k_iAdd", cudaGetErrorString(err));
+                        return NULL;
+                    }
+                }
+                Py_INCREF(py_self);
+                return py_self;
+            }
     }
 
     PyErr_Format(PyExc_NotImplementedError, "inplace_add w nd=%i\n", self->nd);
