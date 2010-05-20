@@ -1195,6 +1195,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
+        return ()
         return (15,)
 
 
@@ -1352,9 +1353,9 @@ class GpuSum(Op):
                     return;  //TODO: set error code
                 }
 
-                for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
+                for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                 {
-                    mysum += A[blockIdx.x * sA0 + i0 * sA1 + blockIdx.y * sA2];
+                    mysum += A[blockIdx.x * sA0 + i1 * sA1 + blockIdx.y * sA2];
                 }
                 %(reducebuf)s
             }
