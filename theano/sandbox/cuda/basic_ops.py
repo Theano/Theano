@@ -969,7 +969,7 @@ class GpuSum(Op):
             if (cudaSuccess != sts) 
             {
                 PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_010_%(name)s",
+                    "kernel_reduce_sum_0101_%(name)s",
                     cudaGetErrorString(sts),
                     n_blocks.x,
                     n_blocks.y,
