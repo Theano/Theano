@@ -901,11 +901,11 @@ class GpuSum(Op):
             int verbose = 0;
             dim3 n_threads(
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0], NUM_VECTOR_OP_BLOCKS));
+                            (int)NUM_VECTOR_OP_THREADS_PER_BLOCK));
+            dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0], (int)NUM_VECTOR_OP_BLOCKS));
             n_blocks.y = std::min(
                 CudaNdarray_HOST_DIMS(%(x)s)[2],
-                NUM_VECTOR_OP_BLOCKS / n_blocks.x
+                (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
                 );
             if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
             int n_shared = sizeof(float) * n_threads.x;
