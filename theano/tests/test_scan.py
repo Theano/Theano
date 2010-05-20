@@ -922,7 +922,24 @@ class T_Scan(unittest.TestCase):
         assert len(analytic_grad[0]) == 3
 
 
+    def test_draw_as_input_to_scan(self):
+        trng = theano.tensor.shared_randomstreams.RandomStreams(123)
 
+        x = theano.tensor.matrix('x')
+        y = trng.binomial(size = x.shape, p = x)
+        z,updates = theano.scan(lambda a:a, non_sequences=y, n_steps=2)
+
+        f = theano.function([x],[y,z], updates = updates)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        nx = rng.uniform( size = (10,10) )
+        ny1,nz1 = f(nx)
+        ny2,nz2 = f(nx)
+
+
+        assert numpy.allclose([ny1,ny1], nz1)
+        assert numpy.allclose([ny2,ny2], nz2)
+        assert not numpy.allclose(ny1,ny2)
 
 if __name__ == '__main__':
     unittest.main()
