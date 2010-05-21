@@ -731,6 +731,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_reduce_1(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
             int verbose = 0;
@@ -738,31 +739,12 @@ class GpuSum(Op):
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             dim3 n_blocks(1);
-            if (verbose) printf("running kernel_reduce_sum_1_%(name)s\\n");
-            int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
-            kernel_reduce_sum_1_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_DEV_DATA(%(z)s));
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_1_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
+            %(makecall)s
         }
         """ %locals()
 
     def c_code_reduce_11(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
             int verbose = 0;
@@ -775,30 +757,7 @@ class GpuSum(Op):
                 n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
 
             dim3 n_blocks(1);
-            if (verbose) fprintf(stdout, "running kernel_reduce_sum_11_%(name)s\\n");
-            if (verbose) fprint_CudaNdarray(stdout, %(x)s);
-            int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
-            kernel_reduce_sum_11_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                    CudaNdarray_DEV_DATA(%(z)s));
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_11_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
+            %(makecall)s
         }
         """ %locals()
         
@@ -896,6 +855,7 @@ class GpuSum(Op):
         }
         """ %locals()
     def c_code_reduce_010(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
             int verbose = 0;
@@ -907,38 +867,12 @@ class GpuSum(Op):
                 CudaNdarray_HOST_DIMS(%(x)s)[2],
                 (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
                 );
-            if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
-            int n_shared = sizeof(float) * n_threads.x;
-            kernel_reduce_sum_010_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_HOST_DIMS(%(x)s)[2],
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
-                    CudaNdarray_DEV_DATA(%(z)s),
-                    CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(z)s)[1]
-                    );
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_010_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
+            %(makecall)s
         }
         """ %locals()
 
     def c_code_reduce_0101(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
             int verbose = 0;
@@ -952,36 +886,7 @@ class GpuSum(Op):
             }
             n_threads.y -= 1;
             dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[0], CudaNdarray_HOST_DIMS(%(x)s)[2]);
-            if (verbose) printf("running kernel_reduce_sum_10_%(name)s\\n");
-            int n_shared = sizeof(float) * n_threads.x * n_threads.y;
-            kernel_reduce_sum_0101_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_HOST_DIMS(%(x)s)[2],
-                    CudaNdarray_HOST_DIMS(%(x)s)[3],
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
-                    CudaNdarray_DEV_DATA(%(z)s),
-                    CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(z)s)[1]
-                    );
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_0101_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
+            %(makecall)s
         }
         """ %locals()
 
@@ -1144,6 +1049,7 @@ class GpuSum(Op):
         """ % locals()
 
     def c_code_reduce_1011(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
             int verbose = 0;
@@ -1164,37 +1070,7 @@ class GpuSum(Op):
                 n_threads.z = CudaNdarray_HOST_DIMS(%(x)s)[0]; 
             
             dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
-
-            if (verbose) printf("running kernel_reduce_sum_1011_%(name)s\\n");
-            if (verbose) fprint_CudaNdarray(stdout, %(x)s);
-            if (verbose) fprint_CudaNdarray(stdout, %(z)s);
-            int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
-            kernel_reduce_sum_1011_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_HOST_DIMS(%(x)s)[2],
-                    CudaNdarray_HOST_DIMS(%(x)s)[3],
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
-                    CudaNdarray_DEV_DATA(%(z)s),
-                    CudaNdarray_HOST_STRIDES(%(z)s)[0]);
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_1011_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
+            %(makecall)s
         }
         """ %locals()
 
