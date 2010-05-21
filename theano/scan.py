@@ -366,7 +366,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
              updates rules for all shared variables used in the scan
              operation; this dictionary should be pass to ``theano.function``
     """
-
     # General observation : this code is executed only once, at creation 
     # of the computational graph, so we don't yet need to be smart about 
     # anything ( to speed things up)
@@ -404,7 +403,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     # compute number of sequences and number of outputs
     n_seqs = len(seqs)
     n_outs = len(outs_info)
-
     # initialize the inplace map, sequences map and 
     # outputs map
     ''' Details:
@@ -740,7 +738,7 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
             not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
             gof.graph.inputs(dummy_args)), outputs, updates = updates, mode = compile.mode.Mode(linker='py',optimizer=None))
     else:
-        print [printing.pp(x) for x in dummy_args]
+
         dummy_f = function(filter(lambda x: isinstance(x, gof.Variable) and \
             not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
             dummy_args), outputs, updates = updates, mode = compile.mode.Mode(linker='py',optimizer=None))
