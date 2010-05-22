@@ -1,0 +1,17 @@
+
+=====================
+Intermediate Language
+=====================
+
+
+It would be nice to be able to use Theano from other languages.
+This requires two things: a way to communicate the expression to the theano
+compiler, and a way to pass data to and from the compiled function.
+
+One way to do this would be define a textual representation of theano graphs.
+A Scheme-like language seems appropriate.  Perhaps just scheme would be
+appropriate.
+
+
+How to pass shared variables?
+

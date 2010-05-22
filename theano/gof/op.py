@@ -9,8 +9,9 @@ compatible with `gof`'s :doc:`graph` routines.
 __docformat__ = "restructuredtext en"
 
 import utils
-import traceback
 from theano import config
+
+
 
 class CLinkerObject(object):
     """Standard elements of an Op or Type used with the CLinker
@@ -320,9 +321,7 @@ class PureOp(object):
 
         """
         node = self.make_node(*inputs, **kwargs)
-        limit = config.traceback.limit
-        if limit == -1: limit = None
-        node.tag.trace = traceback.extract_stack(limit=limit)[:-1]
+        self.add_tag_trace(node)
         if self.default_output is not None:
             return node.outputs[self.default_output]
         else:
@@ -331,6 +330,9 @@ class PureOp(object):
             else:
                 return node.outputs
 
+    # Convenience so that subclass implementers don't have to import utils
+    # just to self.add_tag_trace
+    add_tag_trace = staticmethod(utils.add_tag_trace)
 
     #########################
     # Python implementation #
