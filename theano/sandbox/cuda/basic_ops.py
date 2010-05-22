@@ -888,55 +888,115 @@ class GpuSum(Op):
         pattern = ''.join(str(i) for i in self.reduce_mask)
         print >> sio, """
         {
-            int verbose = 0;
+            //int n_summations = CudaNdarray_HOST_DIMS(%(x)s)[0] * CudaNdarray_HOST_DIMS(%(x)s)[2]; 
 
-              dim3 n_threads(std::min(32,CudaNdarray_HOST_DIMS(%(x)s)[2]));
-              while(n_threads.x*(n_threads.y+1)<=512
-                    && n_threads.y<CudaNdarray_HOST_DIMS(%(x)s)[1]){
-                  n_threads.y++;
-              }
-
-              dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
-                            (int)NUM_VECTOR_OP_BLOCKS));
-              n_blocks.y = std::min(
-                  ceil_intdiv(CudaNdarray_HOST_DIMS(%(x)s)[2],(int)n_threads.x),
-                  (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
-                  );
-            if(std::min(std::min(CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                                 CudaNdarray_HOST_STRIDES(%(x)s)[1]),
-                        CudaNdarray_HOST_STRIDES(%(x)s)[2])
-               ==CudaNdarray_HOST_STRIDES(%(x)s)[2]
-              && n_blocks.y==ceil_intdiv(CudaNdarray_HOST_DIMS(%(x)s)[2],(int)n_threads.x)){
-              if(verbose>1)
-                printf("n_block.x.1=%%d, n_block.x.2=%%d, n_block.y.1=%%d, n_block.y.2=%%d,\\n",
-                       CudaNdarray_HOST_DIMS(%(x)s)[0],NUM_VECTOR_OP_BLOCKS,
-                       ceil_intdiv(CudaNdarray_HOST_DIMS(%(x)s)[2],(int)n_threads.x),
-                                   (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x));
-              assert(n_threads.x<=32);
-              %(makecall_inner)s
-            }else{
-              n_threads.x = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
-                              (int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-              n_blocks.x = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0], (int)NUM_VECTOR_OP_BLOCKS);
-              n_blocks.y = std::min(
-                  CudaNdarray_HOST_DIMS(%(x)s)[2],
-                  (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
-                  );
-              %(makecall)s
-            }
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
+            //if ((n_summations >= 15 * 32) && (CudaNdarray_HOST_DIMS(%(x)s)[2]>=16))
+            if (1) // if the alternative is less buggy, consider not using this branch
             {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_%(pattern)s_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
+                // If there are a lot of summations to do, then we can use simple parallelization -
+                // use each thread to do one sum.
+
+                // we might as well launch blocks of 32 threads because that's the warp size.
+                // we could schedule more threads if we were maxing out the gridsize below, but
+                // the gridsize is way more than the physical hardware and I think 32 threads
+                // on a huge grid is enough to fully use the hardware.
+                dim3 n_threads(32,1,1);
+
+                // We kindof reshape the input implicitly to something 4D:
+                //  the shape A,B,C    ->   A, B, D, E  
+                //  where C <= D*E < C+32
+                //  where E==32
+
+                int A = CudaNdarray_HOST_DIMS(%(x)s)[0];
+                int B = CudaNdarray_HOST_DIMS(%(x)s)[1];
+                int C = CudaNdarray_HOST_DIMS(%(x)s)[2];
+                int D = C/32;
+                if (32*D < C) D+= 1;
+                assert ((C <= 32*D) && (32*D < C+32));
+
+                // The gridsize would ideally be (A, D).  But we do the following logic to make
+                // sure we don't ask for a grid that is too big.
+                dim3 n_blocks(A,D);
+                if (n_blocks.x > NUM_VECTOR_OP_BLOCKS) n_blocks.x = NUM_VECTOR_OP_BLOCKS;
+                if (n_blocks.x*n_blocks.y > NUM_VECTOR_OP_BLOCKS) n_blocks.y = NUM_VECTOR_OP_BLOCKS/n_blocks.x;
+                int n_shared = 0;
+                kernel_reduce_sum_010_AD_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+                A,B,C,D,
+                        CudaNdarray_DEV_DATA(%(x)s),
+                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                        CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                        CudaNdarray_DEV_DATA(%(z)s),
+                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                        );
+                CNDA_THREAD_SYNC;
+                cudaError_t sts = cudaGetLastError();
+                if (cudaSuccess != sts) 
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                        "kernel_reduce_sum_010_%(name)s",
+                        cudaGetErrorString(sts),
+                        n_blocks.x,
+                        n_blocks.y,
+                        n_threads.x,
+                        n_threads.y,
+                        n_threads.z);
+                    %(fail)s;
+                }
+            }
+            else
+            {
+                int verbose = 2;
+
+                  dim3 n_threads(std::min(32,CudaNdarray_HOST_DIMS(%(x)s)[2]));
+                  while(    (n_threads.x*(n_threads.y+1)<=NUM_VECTOR_OP_THREADS_PER_BLOCK)
+                         && (n_threads.y<CudaNdarray_HOST_DIMS(%(x)s)[1])){
+                      n_threads.y++;
+                  }
+
+                  dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
+                                (int)NUM_VECTOR_OP_BLOCKS));
+                  n_blocks.y = std::min(
+                      ceil_intdiv(CudaNdarray_HOST_DIMS(%(x)s)[2],(int)n_threads.x),
+                      (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
+                      );
+                if(std::min(std::min(CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                                     CudaNdarray_HOST_STRIDES(%(x)s)[1]),
+                            CudaNdarray_HOST_STRIDES(%(x)s)[2])
+                   ==CudaNdarray_HOST_STRIDES(%(x)s)[2]
+                  && n_blocks.y==ceil_intdiv(CudaNdarray_HOST_DIMS(%(x)s)[2],(int)n_threads.x)){
+                  if(verbose>1)
+                    printf("n_block.x.1=%%d, n_block.x.2=%%d, n_block.y.1=%%d, n_block.y.2=%%d,\\n",
+                           CudaNdarray_HOST_DIMS(%(x)s)[0],NUM_VECTOR_OP_BLOCKS,
+                           ceil_intdiv(CudaNdarray_HOST_DIMS(%(x)s)[2],(int)n_threads.x),
+                                       (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x));
+                  assert(n_threads.x<=32);
+                  %(makecall_inner)s
+                }else{
+                  n_threads.x = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
+                                  (int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                  n_blocks.x = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0], (int)NUM_VECTOR_OP_BLOCKS);
+                  n_blocks.y = std::min(
+                      CudaNdarray_HOST_DIMS(%(x)s)[2],
+                      (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
+                      );
+                  %(makecall)s
+                }
+                CNDA_THREAD_SYNC;
+                cudaError_t sts = cudaGetLastError();
+                if (cudaSuccess != sts) 
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                        "kernel_reduce_sum_%(pattern)s_%(name)s",
+                        cudaGetErrorString(sts),
+                        n_blocks.x,
+                        n_blocks.y,
+                        n_threads.x,
+                        n_threads.y,
+                        n_threads.z);
+                    %(fail)s;
+                }
             }
         }
         """ %locals()
@@ -1145,7 +1205,8 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return (17,)
+        #return ()
+        return (18,)
 
 
     def c_support_code_apply(self, node, nodename):
@@ -1295,7 +1356,6 @@ class GpuSum(Op):
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
                 extern __shared__ float buf[];
-                float mysum = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -1307,6 +1367,7 @@ class GpuSum(Op):
                 {
                     for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
                     {
+                        float mysum = 0.0f;
                         for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                         {
                             mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
@@ -1318,10 +1379,51 @@ class GpuSum(Op):
             }
             """ %locals()
         if self.reduce_mask == (0,1,0):
+            print >> sio, """
+            static __global__ void kernel_reduce_sum_010_AD_%(nodename)s(
+                    const int A,
+                    const int B,
+                    const int C,
+                    const int D,
+                    //const int E, // THIS is 32
+                    const float *X, const int sX0, const int sX1, const int sX2,
+                    float * Z, const int sZ0, const int sZ1)
+            {
+                const int threadCount = blockDim.x;
+                const int threadNum = threadIdx.x;
+                float mysum = 0.0f;
+
+                if (warpSize != 32)
+                {
+                    return;  //TODO: set error code
+                }
+
+                for (int a = blockIdx.x; a < A; a += gridDim.x)
+                {
+                    for (int i2_D = blockIdx.y; i2_D < D; i2_D += gridDim.y)
+                    {
+                        int c = i2_D * 32 + threadIdx.x;
+                        if (c < C)
+                        {
+                            mysum = 0;
+                            for (int b = 0; b < B; ++b)
+                            {
+                                mysum += X[a * sX0 + b * sX1 + c * sX2];
+                            }
+                            Z[a * sZ0 + c * sZ1] = mysum;
+                        }
+                    }
+                }
+
+            }
+            """ %locals()
+        if self.reduce_mask == (0,1,0):
+            #
             # This kernel is optimized when the inner most dimensions have the smallest stride.
 
             # this kernel uses one block for multiple column(up to 32TODO),
             # threads per block for each element per column.
+
 #thread.x = dim 2 contiguous
 #thread.y = dim 1
 #block.x = dim 0
