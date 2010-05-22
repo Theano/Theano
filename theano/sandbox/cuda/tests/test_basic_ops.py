@@ -52,9 +52,9 @@ def test_sum():
         assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
         if val.size==0:
-            assert f2(val)==f(val)
+            assert f2(val)==f(val), ('shape', shape, 'pattern', pattern)
         else:
-            assert numpy.allclose(f2(val),f(val))
+            assert numpy.allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern)
         
 
         #test with dimshuffle
