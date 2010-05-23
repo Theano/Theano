@@ -943,8 +943,22 @@ def test_log_add():
 
     theano.printing.debugprint( f)
     print f([10000], [10000])  # causes overflow if handled incorrectly
-
     assert numpy.allclose(f([10000], [10000]), 10000+numpy.log1p(1))
+
+
+    # test that it also works with more than two args, (this currently fails)
+    x = dvector()
+    y = dvector()
+    f = function([x,y], T.log(T.exp(x) + T.exp(y) + T.exp(x-y) + T.exp(x+y)), mode=m)
+    theano.printing.debugprint( f)
+
+
+    print f([10000], [10000])  # causes overflow if handled incorrectly
+    assert numpy.allclose(f([10000], [10000]), 20000)
+
+    #TODO: test that the optimization works in the presence of broadcasting.
+
+    #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
 class test_local_subtensor_unary(unittest.TestCase):
 
