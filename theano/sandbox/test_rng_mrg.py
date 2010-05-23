@@ -13,7 +13,7 @@ mode = theano.config.mode
 
 def test_rng0():
 
-    def basictest(f, steps, prefix=""):
+    def basictest(f, steps, prefix="", allow_01=False):
         dt = 0.0
         for i in xrange(steps):
             t0 = time.time()
@@ -29,7 +29,9 @@ def test_rng0():
                 mean = alpha * ival + (1-alpha)*mean
                 min_ = min(min_,ival.min())
                 max_ = max(max_,ival.max())
-            assert ival.min()>0 and ival.max()<1
+            if not allow_01:
+                assert min_ > 0
+                assert max_ < 1
 
         print prefix, 'mean', numpy.mean(mean)
         assert abs(numpy.mean(mean) - 0.5) < .01, 'bad mean?'
@@ -44,7 +46,7 @@ def test_rng0():
     else:
         sample_size = (1000,100)
         steps = int(1e3)
-    
+
     print ''
     print 'ON CPU:'
 
@@ -74,8 +76,8 @@ def test_rng0():
 
     uu = RR.uniform(size=sample_size)
     ff = theano.function([], uu, mode=mode)
-
-    basictest(ff, steps, prefix='numpy')
+    # It's not our problem if numpy generates 0 or 1
+    basictest(ff, steps, prefix='numpy', allow_01=True)
 
 
 
