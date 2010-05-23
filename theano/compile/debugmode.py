@@ -104,6 +104,47 @@ class BadCLinkerOutput(DebugModeError):
         print >> sio, "  val_py  :", self.val_py
         print >> sio, "  val_c   :", self.val_c
         print >> sio, "  op      :", self.offending_op()
+        try:
+            ssio = StringIO()
+            print >> ssio, "  PyValue shape, dtype, strides, min, max:", 
+            print >> ssio, self.val_py.shape,
+            print >> ssio, self.val_py.dtype,
+            print >> ssio, self.val_py.strides
+            print >> ssio, self.val_py.min(),
+            print >> ssio, self.val_py.max(),
+            # only if all succeeds to we add anything to sio
+            print >> sio, ssio.getvalue()
+        except:
+            pass
+        try:
+            ssio = StringIO()
+            print >> ssio, "  CValue shape, dtype, strides, min, max:", 
+            print >> ssio, self.val_c.shape,
+            print >> ssio, self.val_c.dtype,
+            print >> ssio, self.val_c.strides,
+            print >> ssio, self.val_c.min(),
+            print >> ssio, self.val_c.max(),
+            # only if all succeeds to we add anything to sio
+            print >> sio, ssio.getvalue()
+        except:
+            pass
+        try:
+            ov=numpy.asarray(self.val_c)
+            nv=numpy.asarray(self.val_py)
+            ssio = StringIO()
+            print >> ssio, "  Max Abs Diff: ", numpy.max(numpy.absolute(nv-ov))
+            print >> ssio, "  Mean Abs Diff: ", numpy.mean(numpy.absolute(nv-ov))
+            print >> ssio, "  Median Abs Diff: ", numpy.median(numpy.absolute(nv-ov))
+            print >> ssio, "  Std Abs Diff: ", numpy.std(numpy.absolute(nv-ov))
+            reldiff = numpy.absolute(nv-ov) / (numpy.absolute(nv)+numpy.absolute(ov))
+            print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
+            print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
+            print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
+            print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
+            # only if all succeeds to we add anything to sio
+            print >> sio, ssio.getvalue()                                    
+        except:
+            pass
         return sio.getvalue()
 
 class BadOptimization(DebugModeError):

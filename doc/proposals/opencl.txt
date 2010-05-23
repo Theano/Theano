@@ -1,0 +1,10 @@
+=======
+OpenCL
+=======
+
+Migrate the GPU code-generators to the PyCUDA style, and eventually to OpenCL.
+This means mainly to use a different kind of code-generation strategy.  The
+kernel itself is compiled, but the calling code remains in python or cython.  We
+would no longer generate entire C files this way, and no longer use the CLinker
+for GPU code.
+

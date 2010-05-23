@@ -10,7 +10,7 @@ if sys.version_info >= (2,5):
   import functools
 
 import numpy, theano
-from copy import copy
+#from copy import copy as python_copy
 
 from theano import gof
 from theano.gof import Variable, Op, utils, Type, Constant,  Value
@@ -342,10 +342,10 @@ def get_constant_value(v):
         # it is not a constant, but in some cases it *could* be replaced with one.
         # Note that this would have an effect on the broadcasting of inputs and so on
         try:
-            complex(v.data) #works for all numeric scalars
+            numpy.complex(v.data) #works for all numeric scalars
             return v.data
         except:
-            raise TypeError(v)
+            raise TypeError('v.data is non-numeric', v)
     if v.owner:
         if isinstance(v.owner.op, Alloc):
             return get_constant_value(v.owner.inputs[0])
@@ -1629,88 +1629,25 @@ def sinh(a):
 def tanh(a):
     """hyperbolic tangent of a"""
 
-class Real(Op):
-    """Extract the real elements of a complex ndarray"""
-    view_map = {0:[0]}
-    def __eq__(self, other):
-        return type(self) == type(other)
-    def __hash__(self):
-        return hash(type(self))
-    def make_node(self, x):
-        _x = as_tensor(x)
-        y_dtype = _x.type.dtype
-        if y_dtype == 'complex64':
-            y_dtype = 'float32'
-        if y_dtype == 'complex128':
-            y_dtype = 'float64'
-        _y = Tensor(y_dtype, _x.type.broadcastable)()
-        return Apply(self, [_x], [_y])
-    def perform(self, node, (x,), (y,)):
-        if str(x.dtype).startswith('complex'):
-            y[0] = x.real
-        else:
-            y[0] = x
-    def grad(self, inputs, (g_y,)):
-        #TODO: waiting on a Complex(real=, imag=) op that can merge
-        #things back into a complex tensor
-        raise NotImplementedError()
-_real = Real()
-@constructor
-def real(x):
-    """Return the real part of real or complex-valued `x`
+@_scal_elemwise
+def real(z):
+    """Return real component of complex-valued tensor `z`"""
 
-    For real-valued `x`, `x` itself is returned.
-    """
-    _x = as_tensor_variable(x)
-    if _x.type.dtype.startswith('complex'):
-        return _real(x)
-    else:
-        return _x
+@_scal_elemwise
+def imag(z):
+    """Return imaginary component of complex-valued tensor `z`"""
 
-class Imag(Op):
-    """Extract the imaginary elements of a complex ndarray"""
-    view_map = {0:[0]}
-    def __eq__(self, other):
-        return type(self) == type(other)
-    def __hash__(self):
-        return hash(type(self))
-    def make_node(self, x):
-        _x = as_tensor_variable(x)
-        if not _x.type.dtype.startswith('complex'):
-            raise TypeError('Imag(x) requires complex x', x)
-        if _x.type.dtype == 'complex64': y_dtype = 'float32'
-        elif _x.type.dtype == 'complex128': y_dtype = 'float64'
-        else:
-            raise NotImplementedError('what is this?', y_dtype)
-        _y = Tensor(y_dtype, _x.type.broadcastable)()
-        return Apply(self, [_x], [_y])
-    def perform(self, node, (x,), (y,)):
-        if str(x.dtype).startswith('complex'):
-            y[0] = x.imag
-        else:
-            y[0] = x * 0
-    def grad(self, inputs, (g_y,)):
-        # TODO: waiting on a complex(real=, imag=) op that can merge
-        # things back into a complex tensor
-        raise NotImplementedError()
-_imag = Imag()
-@constructor
-def imag(x):
-    """Return the imaginary part of real or complex-valued `x`
+@_scal_elemwise
+def angle(z):
+    """Return polar-coordinate angle of complex-valued tensor `z`"""
 
-    For real-valued 'x' this returns `zeros_like(x)`.
-    """
-    _x = as_tensor_variable(x)
-    if _x.type.dtype.startswith('complex'):
-        return _imag(x)
-    else:
-        return zeros_like(x)
+@_scal_elemwise
+def complex(real, imag):
+    """Return complex-valued tensor with `real` and `imag` components"""
 
-@constructor
-def angle(x):
-    """Return the angular component of complex-valued `x`"""
-    raise NotImplementedError()
-
+@_scal_elemwise
+def complex_from_polar(abs, angle):
+    """Return complex-valued tensor from polar coordinate specification"""
 
 ##########################
 # Misc
@@ -2141,6 +2078,7 @@ def pow(a, b):
 def clip(x, min, max):
     """clip x to be between min and max"""
     # see decorator for function body
+    # for grep: clamp, bound
 
 pprint.assign(add, printing.OperatorPrinter('+', -2, 'either'))
 pprint.assign(mul, printing.OperatorPrinter('*', -1, 'either'))
@@ -2335,7 +2273,7 @@ class Subtensor(Op):
                     and (idx.step is None or idx.step == 1):
                         outshp.append(xl)
                 else:
-                    #No easy way to compute the shape
+                    # Not implemented yet
                     outshp.append(shape_i(i)(node.outputs[0]))
                 i += 1
             else:
@@ -2434,31 +2372,48 @@ class SubtensorPrinter:
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor), SubtensorPrinter())
 
 def setsubtensor(x, y, idx_list, inplace=False):
-    """
-    setsubtensor is meant to replicate the following numpy behaviour: x[i,j,k] = y
+    print >> sys.stderr, "tensor.setsubtensor is deprecated - please use set_subtensor"
+    the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=True)
+    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
+def incsubtensor(x, y, idx_list, inplace=False):
+    print >> sys.stderr, "tensor.setsubtensor is deprecated - please use set_subtensor"
+    the_op = IncSubtensor(idx_list, inplace, set_instead_of_inc=False)
+    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
+
+def set_subtensor(x, y):
+    """Return x with the given subtensor overwritten by y.
+
+    Example: To replicate the numpy expression "r[10:] = 5", type
+
+    >>> new_r = set_subtensor(r[10:], 5)
 
     :param x: symbolic variable for the lvalue of = operation
     :param y: symbolic variable for the rvalue of = operation
-    :param idx_list: tuple of length x.dim, containing indices with which to index x.
-    :param inplace: boolean to declare whether the operation is in place or not (False unless
-     called from within an optimization)
-
-    :Details: idx_list can be a tuple containing a mixture of numeric constants, symbolic
-     scalar values and standard numpy slice objects. i.e: 
-     idx_list=(1,2,3), idx_list=(1,b,3) where b is an iscalar variable, 
-     idx_list=(slice(start,stop,step),b,3) equivalent to x[start:stop:step, b, 3]
-    """
-    the_op = IncSubtensor(idx_list, inplace, True)
-    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
-
-def incsubtensor(x, y, idx_list, inplace=False):
-    """
-    incsubtensor is meant to replicate the following numpy behaviour: x[i,j,k] += y
 
     :see: theano.tensor.basic.setsubtensor
-   """
-    the_op = IncSubtensor(idx_list, inplace, False)
-    return the_op(x, y, *Subtensor.collapse(idx_list, lambda entry: isinstance(entry, Variable)))
+    """
+    return inc_subtensor(x, y, set_instead_of_inc=True)
+
+def inc_subtensor(x, y, set_instead_of_inc=False):
+    """Return x with the given subtensor incremented by y.
+
+    :param x: the symbolic result of a Subtensor operation.
+    :param y: the amount by which to increment ths subtensor in question
+
+    Example: To replicate the numpy expression "r[10:] += 5", type
+
+    >>> new_r = inc_subtensor(r[10:], 5)
+
+    :see: theano.tensor.basic.setsubtensor
+    """
+    # retrieve idx_list from x.owner
+    if not isinstance(x.owner.op, Subtensor):
+        raise TypeError('x must be result of a subtensor operation')
+    the_op = IncSubtensor(x.owner.op.idx_list, inplace, set_instead_of_inc)
+    real_x = x.owner.inputs[0]
+    real_idxargs = x.owner.inputs[1:]
+    return the_op(real_x, y, *real_idxargs)
+
 
 class IncSubtensor(Op):
     """Increment a subtensor.
@@ -3116,6 +3071,8 @@ class Reshape(Op):
             raise ValueError('Cannot reshape input of shape %s to shape %s' % (x.shape,shp))
     def grad(self, (x, shp), (g_out,)):
         return [reshape(g_out, shape(x), ndim=x.ndim), None]
+    def infer_shape(self, node, ishapes):
+        return [node.inputs[1]]
 
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
@@ -3146,7 +3103,10 @@ class Flatten(Op):
     def perform(self, node, (x,), (out,)):
         outdim = self.outdim
         if outdim == 1:
-            out[0] = x.reshape(x.size)
+            try:
+                out[0] = x.reshape(x.size)
+            except AttributeError:
+                out[0] = x.reshape((numpy.prod(x.shape),))
         elif outdim == len(x.shape):
             out[0] = x
         else:
@@ -3856,8 +3816,34 @@ def grad(cost, wrt, g_cost=None, consider_constant=[], warn_type=False):
 
 class numeric_grad:
     """WRITEME"""
+
+    # Note on step sizes and tolerances:
+    #
+    # There is a relationship between the step size and the function value and the measurement
+    # error that is incurred due to rounding.  The finite difference we measure is
+    # delta = f(x0) - f(x0+eps) 
+    # 
+    # For maximum precision, f should be close to zero.
+    # For every power of 2 that f departs from zero, we lose a bit of precision in delta.
+    #
+    # Even in this case of maximum accuracy, there is a tradeoff between stepsize and
+    # measurement error.
+    # Taking small steps allows us to measure large derivatives accuractly, but longer steps
+    # are required to measure small derivatives accurately.  However longer steps introduce
+    # bias into our measurement in general for non-linear functions.
+    #
+    # It would be interesting to have a version of numeric grad that used an adaptive stepsize.
+    # 
+    # For now, we use a heuristic that catches very bad gradients, but is not perfectly
+    # accurate.
     type_eps = {'float64': 1e-7,
-            'float32': 3e-3}
+            'float32': 3e-3,
+            numpy.dtype('float64'):1e-7,
+            numpy.dtype('float32'):3e-3}
+    type_tol = {'float64': 1e-4,
+            numpy.dtype('float64'):1e-4,
+            'float32': 1e-1,
+            numpy.dtype('float32'):1e-1}
 
     def __init__(self, f, pt, eps=None):
         """Return the gradient of f at pt.
@@ -3933,12 +3919,29 @@ class numeric_grad:
             self.gf = self.gf[0]
 
     @staticmethod
-    def abs_rel_err(a,b,eps=1.0e-10):
-        """Return a small number when a and b are close, relative to how big they are"""
-        return abs(a-b) / (abs(a)+abs(b)+eps)
+    def abs_rel_err(a,b,tol=None):
+        """Return a small number when a and b are close, relative to how big they are.
 
-    def max_err(self, g_pt):
-        """Return the biggest relative error between g_pt and self.gf"""
+        Formula used: a - b / (abs(a) + abs(b) + tol)
+
+        `tol` defaults to relatively generous value that is suitable for catching completely
+        wrong gradients. (`self.type_tol`
+
+        """
+        if tol is None:
+            tol = __builtin__.max(numeric_grad.type_tol[a.dtype], numeric_grad.type_tol[b.dtype])
+        return abs(a-b) / (abs(a)+abs(b)+tol)
+
+    def abs_rel_errors(self, g_pt):
+        """Return the abs rel error of gradient estimate `g_pt`
+        
+        `g_pt` must be a list of ndarrays of the same length as self.gf, otherwise a ValueError
+        is raised.
+
+        Corresponding ndarrays in `g_pt` and `self.gf` must have the same shape or ValueError
+        is raised.
+
+        """
         if len(g_pt) != len(self.gf):
             raise ValueError('argument has wrong number of elements', len(g_pt))
         errs = []
@@ -3946,7 +3949,12 @@ class numeric_grad:
             if a.shape != b.shape:
                 raise ValueError('argument element %i has wrong shape %s' %(i,str((a.shape,
                     b.shape))))
-            errs.append(numpy.max(numeric_grad.abs_rel_err(a,b)))
+            errs.append(numeric_grad.abs_rel_err(a,b))
+        return errs
+
+    def max_err(self, g_pt):
+        """Return the biggest relative error between g_pt and self.gf"""
+        errs = [numpy.max(e) for e in self.abs_rel_errors(g_pt)]
         if numpy.all(numpy.isfinite(errs)):
             return numpy.max(errs), numpy.argmax(errs)
         else:
@@ -4049,7 +4057,19 @@ def verify_grad(op, pt, n_tests=2, rng=None, eps=None, tol=None, mode=None, cast
 
         max_err, max_err_pos = num_grad.max_err(analytic_grad)
         if  max_err > tol:
-            raise Exception(verify_grad.E_grad, (max_err, tol, max_err_pos))
+            raise verify_grad.E_grad(tol, num_grad, analytic_grad)
 
-verify_grad.E_grad = 'gradient error exceeded tolerance'
-"""This error is raised when a gradient is calculated, but incorrect."""
+class GradientError(Exception):
+    """This error is raised when a gradient is calculated, but incorrect."""
+    def __init__(self, tol, num_grad, analytic_grad):
+        self.num_grad = num_grad
+        self.analytic_grad = analytic_grad
+        self.tol = tol
+    def __str__(self):
+        max_errs = [numpy.max(e) for e in self.num_grad.abs_rel_errors(self.analytic_grad)]
+        return "GradientError: numeric gradient and analytic gradient differ than %f (%s)" %(
+                self.tol, max_errs)
+    def abs_rel_errors(self):
+        return self.num_grad.abs_rel_errors(self.analytic_grad)
+
+verify_grad.E_grad = GradientError

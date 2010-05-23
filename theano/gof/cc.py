@@ -858,6 +858,7 @@ class CLinker(link.Linker):
         if config.gcc.cxxflags:
             sig.append(config.gcc.cxxflags)
 
+        error_on_play = [False]
         def in_sig(i, topological_pos, i_idx):
             # assert that every input to every node is one of'
             # - an env input
@@ -868,8 +869,15 @@ class CLinker(link.Linker):
             # yield a 'position' that reflects its role in code_gen()
             if isinstance(i, graph.Constant): #orphans
                 if id(i) not in constant_ids:
-                    constant_ids[id(i)] = (i.signature(), topological_pos, i_idx)
-                isig = constant_ids[id(i)]
+                    isig = (i.signature(), topological_pos, i_idx)
+                    try:
+                        hash(isig)
+                    except: #generic constants don't have a hashable signature
+                        error_on_play[0] = True
+                        return None
+                    constant_ids[id(i)] = isig
+                else:
+                    isig = constant_ids[id(i)]
                 #print 'SIGNATURE', i.signature()
                 #return i.signature()
             elif i in env_inputs_dict:   #inputs
@@ -902,6 +910,12 @@ class CLinker(link.Linker):
                 tuple((i.type, in_sig(i, node_pos, ipos)) 
                     for ipos,i in enumerate(node.inputs)),
                 tuple(o in no_recycling for o in node.outputs)))
+
+            if error_on_play[0]:
+                # if one of the signatures is not hashable
+                # then bypass the cache mechanism and 
+                # compile fresh every time
+                return None
 
             op_pos[node] = node_pos
             env_computed_set.update(node.outputs)
