@@ -832,7 +832,7 @@ class GpuSum(Op):
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             %(threads_y)s
             %(threads_z)s
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[0]);
+            dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],NUM_VECTOR_OP_BLOCKS));
             %(makecall)s
         }
         """ %locals()
