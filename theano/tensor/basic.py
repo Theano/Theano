@@ -1408,8 +1408,11 @@ def max(x, axis=None):
     Default axis is the last one.
 
     :note: we return an error as numpy when we reduce a dim with a shape of 0
+    :note2: see MaxAndArgmax note for a difference between numpy and theano when axis==None
     """
-    if isinstance(axis,int) or axis is None:
+    if isinstance(axis,int) or axis is None or (isinstance(axis,(list,tuple)) and all([isinstance(i,int) for i in axis])):
+      if axis is None:
+        axis = len(x.type.broadcastable)
       return CAReduce(scal.maximum,axis)(x)
     #TODO: do CAReduce need axis to be constant?
     try:
