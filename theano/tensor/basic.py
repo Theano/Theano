@@ -1412,7 +1412,7 @@ def max(x, axis=None):
     """
     if isinstance(axis,int) or axis is None or (isinstance(axis,(list,tuple)) and all([isinstance(i,int) for i in axis])):
       if axis is None:
-        axis = len(x.type.broadcastable)
+        axis = len(x.type.broadcastable)-1
       return CAReduce(scal.maximum,axis)(x)
     #TODO: do CAReduce need axis to be constant?
     try:
