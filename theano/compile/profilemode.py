@@ -340,7 +340,7 @@ class ProfileMode(Mode):
             print "<fct name> <input name> <input type> <str input>"
             for fct in fct_call.keys():
                 for i in fct.input_storage:
-                    if i.type.dtype=='float64':
+                    if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
                         print fct.name, i.name, i.type, i
 
 register_mode('PROFILE_MODE',ProfileMode())

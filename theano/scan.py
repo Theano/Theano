@@ -639,7 +639,10 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     notshared_other_args_copies = []
     for non_seq in non_seqs:
         if not isinstance(non_seq, SharedVariable):
-            non_seq_copy = non_seq.type()
+            if n_fixed_steps not in [-1,1]:
+                non_seq_copy = non_seq.type()
+            else:
+                non_seq_copy = non_seq
             notshared_other_args += [non_seq]
             notshared_other_args_copies += [non_seq_copy]
             new_non_seqs += [non_seq_copy]
