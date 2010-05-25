@@ -782,6 +782,7 @@ class CAReduce(Op):
     Examples:
      CAReduce(add) -> sum
      CAReduce(mul) -> product
+     CAReduce(maximum) -> sum
      CAReduce(_or) -> any # not lazy
      CAReduce(_and) -> all # not lazy
 
@@ -790,7 +791,7 @@ class CAReduce(Op):
     iterates over the dimensions and the elements of the
     array(s). Therefore, to ensure consistent variables, the scalar
     operation represented by the reduction must be both commutative
-    and associative (eg add, multiply, binary or/and/xor - but not
+    and associative (eg add, multiply, maximum, binary or/and/xor - but not
     subtract, divide or power).
     """
 
@@ -927,10 +928,36 @@ class CAReduce(Op):
         alloc += cgen.make_declare([range(nnested) + ['x'] * len(axis)], [odtype], dict(sub, lv0 = oname))
         alloc += cgen.make_alloc([order1], odtype, sub)
         alloc += cgen.make_checks([range(nnested) + ['x'] * len(axis)], [odtype], dict(sub, lv0 = oname))
+        
+        if hasattr(self.scalar_op,'identity'):
+            identity = self.scalar_op.identity
+        elif self.scalar_op == scalar.maximum:
+            if input.type.dtype in ["float32","float64"]:
+                identity = "-__builtin_inf()"
+            else:
+                identity = "NPY_MIN_"+str(input.type.dtype).upper()
+            fail = sub["fail"]
+            pattern=[0]*len(node.inputs[0].broadcastable)
+            axis = self.axis
+            if axis == None: axis = range(len(pattern))
+            for i in axis:
+                pattern[i]=1
+            pattern_ = str(pattern)[1:-1]
+            decl +="""int tosum[]={%(pattern_)s};"""%locals()
+            alloc += """
+for(int i=0;i<%(iname)s->nd;i++){
+  if(PyArray_DIMS(%(iname)s)[i]==0 && tosum[i]){
+    PyErr_Format(PyExc_ValueError, "Input of CAReduce{maximum} has zero-size on axis %%d",i);
+    %(fail)s;
+  }
+}
+                   """%locals()
+        else:
+            raise Exception("The CAReduce.scalar_op must have an identity field.")
 
         task0_decl = "%(dtype)s& %(name)s_i = *%(name)s_iter;\n%(name)s_i = %(identity)s;" % dict(dtype = odtype,
                                                                                                   name = onames[0],
-                                                                                                  identity = self.scalar_op.identity)
+                                                                                                  identity = identity)
 
         task1_decl = "%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % dict(dtype = idtype, name = inames[0])
 

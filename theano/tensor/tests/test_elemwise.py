@@ -154,7 +154,7 @@ class test_CAReduce(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
 
-    def with_linker(self, linker):
+    def with_linker(self, linker, scalar_op = add):
         for xsh, tosum in [((5, 6), None),
                            ((5, 6), (0, 1)),
                            ((5, 6), (0, )),
@@ -165,29 +165,70 @@ class test_CAReduce(unittest.TestCase):
                            ((5, 0), (1, )),
                            ((), ())]:
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
-            e = CAReduce(add, axis = tosum)(x)
+            e = CAReduce(scalar_op, axis = tosum)(x)
             if tosum is None: tosum = range(len(xsh))
             f = copy(linker).accept(Env([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             zv = xv
-            for axis in reversed(sorted(tosum)):
-                zv = numpy.add.reduce(zv, axis)
-            self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
+            numpy_raised = False
+            if scalar_op == add:
+                for axis in reversed(sorted(tosum)):
+                    zv = numpy.add.reduce(zv, axis)
+            elif scalar_op == mul:
+                for axis in reversed(sorted(tosum)):
+                    zv = numpy.multiply.reduce(zv, axis)
+            elif scalar_op == maximum:
+                try:
+                    for axis in reversed(sorted(tosum)):
+                        zv = numpy.maximum.reduce(zv, axis)
+                except ValueError:
+                    numpy_raised=True
+            elif scalar_op == or_:
+                for axis in reversed(sorted(tosum)):
+                    zv = numpy.any(zv, axis)
+            elif scalar_op == and_:
+                for axis in reversed(sorted(tosum)):
+                    zv = numpy.all(zv, axis)
+            else:
+                raise Exception("Test for CAReduce with scalar_op %s not implemented"%str(scalar_op))
+            if scalar_op == maximum and numpy_raised:
+                try:
+                    f(xv)
+                except ValueError:
+                    pass
+                else: 
+                    self.fail()
+            else:
+                self.failUnless((numpy.abs(f(xv) - zv) < 1e-10).all())
+                
 
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
             if isinstance(linker,gof.PerformLinker):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
-                e = CAReduce(add, axis = tosum)(x)
+                e = CAReduce(scalar_op, axis = tosum)(x)
                 if tosum is None: tosum = range(len(xsh))
                 f = copy(linker).accept(Env([x], [e.shape])).make_function()
-                assert all(f(xv)== zv.shape)
+                if not(scalar_op == maximum and ((xsh==() or numpy.prod(xsh)==0))):
+                    assert all(f(xv)== zv.shape)
 
     def test_perform(self):
-        self.with_linker(gof.PerformLinker())
+        self.with_linker(gof.PerformLinker(), add)
+        self.with_linker(gof.PerformLinker(), mul)
+        self.with_linker(gof.PerformLinker(), maximum)
+        #need other dtype then real
+        #self.with_linker(gof.PerformLinker(), or_)
+        #self.with_linker(gof.PerformLinker(), and_)
 
     def test_c(self):
-        self.with_linker(gof.CLinker())
+        self.with_linker(gof.CLinker(), add)
+        self.with_linker(gof.CLinker(), mul)
+        self.with_linker(gof.CLinker(), maximum)
+
+        #need other dtype then real        
+        #no c_code for or_, and_
+        #self.with_linker(gof.CLinker(), or_)
+        #self.with_linker(gof.CLinker(), and_)
 
 
 if __name__ == '__main__':

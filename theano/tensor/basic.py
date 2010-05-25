@@ -1406,11 +1406,17 @@ def max(x, axis=None):
     Return maximum elements obtained by iterating over given axis
 
     Default axis is the last one.
+
+    :note: we return an error as numpy when we reduce a dim with a shape of 0
     """
-    # In python (using MaxAndArgmax.perform()) this leads to an wasteful
-    # implementation that goes through the data twice instead of once
-    # but when Argmax.c_impl() is in place, it should be fine.
-    return max_and_argmax(x,axis)[0]
+    if isinstance(axis,int) or axis is None:
+      return CAReduce(scal.maximum,axis)(x)
+    #TODO: do CAReduce need axis to be constant?
+    try:
+      const = get_constant_value(axis)
+      return CAReduce(scal.maximum,list(const))(x)
+    except:
+      return max_and_argmax(x,axis)[0]
 
 @constructor
 def argmax(x, axis=None):
