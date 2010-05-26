@@ -484,12 +484,12 @@ class TensorType(Type):
                 return False
             if 'int' in str(a.dtype):
                 return numpy.all(a==b)
-            elif a.shape == (): #for comparing scalars, use broadcasting.
-                # Note: according to James B, there was a reason for the
-                # following two lines, that may seem weird at first glance.
-                # If someone can figure out what it is, please say it here!
-                ones = numpy.ones(2)
-                return _allclose(ones * a, ones*b)
+            #elif a.shape == (): #for comparing scalars, use broadcasting.
+                ## Note: according to James B, there was a reason for the
+                ## following two lines, that may seem weird at first glance.
+                ## If someone can figure out what it is, please say it here!
+                #ones = numpy.ones(2)
+                #return _allclose(ones * a, ones*b)
             else:
                 cmp = _allclose(a, b)
                 if cmp:
