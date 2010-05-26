@@ -775,7 +775,7 @@ def test_argmax_pushdown():
 
     env = gof.Env(
             [x],
-            [tensor.max(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))])
+            [tensor.argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))])
 
     theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(env)
@@ -792,7 +792,7 @@ def test_argmax_pushdown_bias():
 
     env = gof.Env(
             [x,b],
-            [tensor.max(softmax_with_bias(x, b))])
+            [tensor.argmax(softmax_with_bias(x, b))])
 
     theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(env)
