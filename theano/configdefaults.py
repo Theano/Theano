@@ -68,3 +68,12 @@ AddConfigVar('gpuelemwise.sync',
 AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
              IntParam(5))
+
+
+###
+### To disable some warning about old bug that are fixed now.
+###
+
+AddConfigVar('warn.argmax_pushdown_bug',
+             "Warn if in past version of Theano we generated a bug with the optimisation theano.tensor.nnet.nnet.local_argmax_pushdown optimization. Was fixed 27 may 2010",
+             BoolParam(True))

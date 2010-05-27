@@ -2,8 +2,10 @@
 
 :note: TODO: factor this out into a neural-network toolbox.
 """
+import logging
 import numpy
 
+import theano
 from theano import gof
 from theano import printing
 from theano.tensor import basic as tensor
@@ -872,7 +874,15 @@ opt.register_specialize(local_crossentropy_to_crossentropy_with_softmax_grad)
 @opt.register_specialize
 @gof.local_optimizer([tensor._max_and_argmax])
 def local_argmax_pushdown(node):
-    if node.op == tensor._max_and_argmax:
+    if node.op == tensor._max_and_argmax and node.inputs[0].owner and \
+            len(node.outputs[0].clients)>0 and node.inputs[0].owner.op in \
+            (softmax, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
+             softmax_with_bias):
+        if theano.config.warn.argmax_pushdown_bug:
+            logging.getLogger('theano.tensor.nnet.nnet').warn("WARNING: their was a bug in Theano fixed the 27 may 2010 in this case. I.E. when we take the max of a softplus, softmax, exp, log, tanh, sigmoid, softmax_with_bias op, we where doing the max of the parent of the input. To remove this warning set the Theano flags 'warn.argmax_pushdown_bug' to False")
+
+
+    if node.op == tensor._max_and_argmax and node.inputs[0].owner and len(node.outputs[0].clients)==0:
         x_max, x_argmax = node.outputs
         x, axis = node.inputs
         #TODO: Make a list/set of monotonic ops...

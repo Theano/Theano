@@ -773,9 +773,11 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
 def test_argmax_pushdown():
     x = tensor.dmatrix()
 
+    #test that the max_and_argmax is pushed down if the max is not used
+    out = tensor.max_and_argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))[1]
     env = gof.Env(
             [x],
-            [tensor.argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))])
+            [out])
 
     theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(env)
@@ -785,26 +787,66 @@ def test_argmax_pushdown():
         #print node.op
     assert len(env.toposort()) == 2 # an output_guard is second
     assert env.toposort()[0].op == tensor._max_and_argmax
+    assert str(env.toposort()[1].op) == 'OutputGuard'
+    x = tensor.dmatrix()
+    #test that the max_and_argmax is not pushed down if the max is used
+    out = tensor.max_and_argmax(softmax(tensor.exp(tensor.tanh(sigmoid(x)))))[0]
+    env = gof.Env(
+            [x],
+            [out])
+
+    theano.compile.mode.optdb.query(
+            theano.compile.mode.OPT_FAST_RUN).optimize(env)
+
+    #print 'AFTER'
+    #for node in env.toposort():
+        #print node.op
+    assert len(env.toposort()) == 4 # an output_guard is second
+    assert isinstance(env.toposort()[0].op, tensor.Elemwise)
+    assert isinstance(env.toposort()[1].op, Softmax)
+    assert isinstance(env.toposort()[2].op, tensor.MaxAndArgmax)
+    assert str(env.toposort()[3].op) == 'OutputGuard'
+
 
 def test_argmax_pushdown_bias():
     x = tensor.dmatrix()
     b = tensor.dvector()
 
+    out = tensor.argmax(softmax_with_bias(x, b))
     env = gof.Env(
             [x,b],
-            [tensor.argmax(softmax_with_bias(x, b))])
+            [out])
 
     theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(env)
 
-    print 'AFTER'
-    for node in env.toposort():
-        print node.op
+    #print 'AFTER'
+    #for node in env.toposort():
+    #    print node.op
     assert len(env.toposort()) == 4
     assert isinstance(env.toposort()[0].op, tensor.DimShuffle)
     assert isinstance(env.toposort()[1].op, tensor.Elemwise)
     assert isinstance(env.toposort()[2].op, tensor.MaxAndArgmax)
     assert str(env.toposort()[3].op) == 'OutputGuard'
+
+    x = tensor.dmatrix()
+    b = tensor.dvector()
+
+    out = tensor.max_and_argmax(softmax_with_bias(x, b))[0]
+    env = gof.Env(
+            [x,b],
+            [out])
+
+    theano.compile.mode.optdb.query(
+            theano.compile.mode.OPT_FAST_RUN).optimize(env)
+
+    #print 'AFTER'
+    #for node in env.toposort():
+    #    print node.op
+    assert len(env.toposort()) == 3
+    assert isinstance(env.toposort()[0].op, SoftmaxWithBias)
+    assert isinstance(env.toposort()[1].op, tensor.MaxAndArgmax)
+    assert str(env.toposort()[2].op) == 'OutputGuard'
 
 def test_asymptotic_32():
     """
