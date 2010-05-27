@@ -83,3 +83,24 @@ class T_sigmoid_opts(unittest.TestCase):
         assert [node.op for node in f.maker.env.toposort()] == [tensor.neg, 
                 sigmoid_inplace]
 
+
+class T_softplus_opts(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+#    def test_logsigm_to_softplus(self):
+#        pass
+        
+#    def test_log1msigm_to_softplus(self):
+#        pass
+    def test_log1pexp_to_softplus(self):
+        m = theano.config.mode
+        if m == 'FAST_COMPILE':
+            m = 'FAST_RUN'
+
+        x = T.vector()
+    
+        out = T.log(1+T.exp(x))
+        f = theano.function([x],out)
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op.scalar_op,theano.tensor.nnet.sigm.ScalarSoftplus)

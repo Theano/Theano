@@ -117,8 +117,15 @@ log1msigm_to_softplus = gof.PatternSub(
     (tensor.neg, (softplus, 'x')),
     allow_multiple_clients = True)
 
+log1pexp_to_softplus = gof.PatternSub(
+    (tensor.log1p, 
+     (tensor.exp, 'x')),
+    (softplus, 'x'),
+    allow_multiple_clients = True)
+
 opt.register_stabilize(logsigm_to_softplus, name = 'logsigm_to_softplus')
 opt.register_stabilize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')
+opt.register_stabilize(log1pexp_to_softplus, name = 'log1pexp_to_softplus')
 
 def is_1pexp(t):
     # if t is of form (1+exp(x)), return x
