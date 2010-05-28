@@ -99,7 +99,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
     if (verbose>1)
     {
-        printf("INFO: Running conv_valid version %d with inputs:\n",version);
+        printf("INFO: Running conv_valid version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
         printf("INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
                 CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
                 CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
@@ -735,7 +735,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern, CudaNdar
 
     if (verbose>1)
     {
-        printf("INFO: Running conv_full version %d with inputs:\n",version);
+        printf("INFO: Running conv_full version=%d, MACRO kern_width=%d with inputs:\n",version,THEANO_KERN_WID);
         printf("INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
                 CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
                 CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1],CudaNdarray_HOST_STRIDES(img)[2],CudaNdarray_HOST_STRIDES(img)[3]);
