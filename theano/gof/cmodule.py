@@ -353,7 +353,7 @@ class ModuleCache(object):
                     # If so, it should not have been deleted.  This should be considered a
                     # failure of the OTHER process, that deleted it.
                     if entry in self.module_from_name:
-                        error("The module %s that was loaded by this ModuleCache can no longer be read from file %s ... this could lead to problems." % (key,entry))
+                        warning("The module %s that was loaded by this ModuleCache can no longer be read from file %s ... this could lead to problems." % (key,entry))
                         del self.module_from_name[entry]
 
                     info("deleting ModuleCache entry", entry)
