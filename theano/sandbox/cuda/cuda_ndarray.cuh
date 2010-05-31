@@ -286,7 +286,11 @@ CudaNdarray_SIZE(const CudaNdarray *self)
     }
     return size;
 }
-
+static PyObject * 
+CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
+{
+    return PyInt_FromLong(CudaNdarray_SIZE(self));
+}
 
 
 /**

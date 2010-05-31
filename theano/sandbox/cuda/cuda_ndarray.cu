@@ -1503,6 +1503,12 @@ static PyGetSetDef CudaNdarray_getset[] = {
         NULL,
         "The dtype of the element. Now always float32",
         NULL},
+    {"size",
+        (getter)CudaNdarray_SIZE_Object,
+        NULL,
+        "Return the number of element in this objects.",
+        NULL},
+
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 
