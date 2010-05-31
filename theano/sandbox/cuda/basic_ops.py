@@ -1062,7 +1062,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return (15,)
+        return (16,)
 
 
     def c_support_code_apply(self, node, nodename):
@@ -1174,7 +1174,7 @@ class GpuSum(Op):
                 for_i2 = "for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)"
                 for_i3 = "for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)"
 
-            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0]')
             param_dim = ",".join(["const int d%(i)s"%locals() for i in range(nd_in)])
             param_strides = ",".join(["const int sA%(i)s"%locals() for i in range(nd_in)])
             decl = self._k_decl(node,nodename)
@@ -1182,15 +1182,18 @@ class GpuSum(Op):
             print >> sio, """
             %(decl)s{
                 %(init)s
-                %(for_i1)s{
-                  %(for_i2)s{
-                    %(for_i3)s{
-                      float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + blockIdx.x * sA0];
-                      mysum += Ai;
+                for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
+                  mysum = 0;
+                  %(for_i1)s{
+                    %(for_i2)s{
+                      %(for_i3)s{
+                        float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
+                        mysum += Ai;
+                      }
                     }
                   }
+                  %(reducebuf)s
                 }
-                %(reducebuf)s
             }
             """ %locals()
         if self.reduce_mask == (1,0):
