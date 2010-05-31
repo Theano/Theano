@@ -343,6 +343,74 @@ class ProfileMode(Mode):
                     if hasattr(i.type, 'dtype') and i.type.dtype=='float64':
                         print fct.name, i.name, i.type, i
 
+        print
+        print "We guess some tips to make your code faster. If you think of new one, suggest them on the mailing list. Test them before use as they are not guaranted to always give a speed up."
+        from theano import tensor as T
+        from theano.tensor.raw_random import RandomFunction
+        import theano
+        import theano.scalar as scal
+        scalar_op_amdlibm_no_speed_up = [scal.LT, scal.GT, scal.LE, scal.GE, scal.EQ, scal.NEQ, scal.InRange, scal.Switch, scal.OR, scal.XOR, scal.AND, scal.Invert, scal.Maximum, scal.Minimum, scal.Add, scal.Mul, scal.Sub, scal.TrueDiv, scal.IntDiv, scal.Clip, scal.First, scal.Second, scal.Identity, scal.Cast, scal.Sgn, scal.Neg, scal.Inv, scal.Sqr ]
+        scalar_op_amdlibm_speed_up = [scal.Mod, scal.Pow, scal.Ceil, scal.Floor, scal.RoundHalfToEven, scal.RoundHalfAwayFromZero, scal.Log, scal.Log2, scal.Log10, scal.Log1p, scal.Exp, scal.Sqrt, scal.Abs, scal.Cos,  scal.Sin,  scal.Tan,  scal.Tanh,  scal.Cosh,  scal.Sinh, T.nnet.sigm.ScalarSigmoid, T.nnet.sigm.ScalarSoftplus ]#Abs, Mod in float{32,64} only
+
+        def get_scalar_ops(s):
+            if isinstance(s, theano.scalar.Composite):
+                l = []
+                for node in s.env.toposort():
+                    l+=get_scalar_ops(node.op)
+                return l
+            else: return [s]
+        def list_scalar_op(op):
+            if isinstance(op.scalar_op, theano.scalar.Composite):
+                return get_scalar_ops(op.scalar_op)
+            else: return [op.scalar_op]
+    
+        def amdlibm_speed_up(op):
+            if not isinstance(op, T.Elemwise):
+                return False
+            else:
+                l = list_scalar_op(op)
+                for s_op in l:
+                    if s_op.__class__ in scalar_op_amdlibm_speed_up:
+                        return True
+                    elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
+                        import pdb;pdb.set_trace()
+                        print "We don't know if amdlibm will accelerate this scalar op.", s_op
+                return False
+        def exp_float32_op(op):
+            if not isinstance(op, T.Elemwise):
+                return False
+            else:
+                l = list_scalar_op(op)
+                return any([s_op.__class__ in [scal.Exp] for s_op in l])
+
+        #tip 1
+        if config.floatX=='float64':
+            print "  - Try the Theano flag floatX=float32"
+
+        #tip 2
+        if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i,a in apply_time]):
+            print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speed up only some Elemwise operation."
+
+        #tip 3
+        if not config.lib.amdlibm and any([exp_float32_op(a.op) and a.inputs[0].dtype=='float32' for i,a in apply_time]):
+            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True"
+
+        #tip 4
+        for a, t in apply_time.iteritems():
+            node = a[1]
+            if isinstance(node.op, T.Dot) and all([ len(i.type.broadcastable)==2 for i in node.inputs]):
+                print "  - You have a dot operation that was not optimized to dot22 that is faster. Make sure the inputs are float32 or 64 and are the same for both input. Currently they are:",[i.type for i in node.inputs]
+
+        #tip 5
+        for a, t in apply_time.iteritems():
+            node = a[1]
+            if isinstance(node.op, RandomFunction):
+                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams' as this is is faster. It is still experimental, but seam to work correctly."
+                if config.device.startswith("gpu"):
+                    print "     - MRG_RandomStreams is the only random number supported on the GPU."
+                break
+                
+
 register_mode('PROFILE_MODE',ProfileMode())
 
 #needed to print the profile at the end automatically
