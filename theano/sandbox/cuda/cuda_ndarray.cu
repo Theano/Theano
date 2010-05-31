@@ -516,29 +516,40 @@ __global__ void k_copy_reshape_rowmajor(unsigned int numEls,
 PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
 {
     // check shape tuple
-    if (!PyTuple_Check(shape))
-    {
-        PyErr_SetString(PyExc_TypeError, "shape must be tuple of integers");
+    unsigned int rval_nd;
+    unsigned int * rval_dims;
+    unsigned int rval_size = 1;
+
+    if (PyTuple_Check(shape)){
+      // copy shape to integer array
+      rval_nd = PyTuple_Size(shape);
+    }else if (PyInt_Check(shape)){
+      rval_nd = 1;
+    }else{
+        PyErr_SetString(PyExc_TypeError, "shape must be tuple of integers or an integer");
         return NULL;
     }
-    // copy shape to integer array
-    unsigned int rval_nd = PyTuple_Size(shape);
-    unsigned int * rval_dims = (unsigned int*)malloc(rval_nd * sizeof(int));
-    unsigned int rval_size = 1;
-    for (int i = 0; i < rval_nd; ++i)
-    {
-        rval_dims[i] = PyInt_AsLong(PyTuple_GetItem(shape, i)); //GetItem returns borrowed reference
-        if (PyErr_Occurred()) //error in AsLong
-        {
-            free(rval_dims);
+    rval_dims = (unsigned int*)malloc(rval_nd * sizeof(int));
+
+    if(PyTuple_Check(shape)){
+      for (int i = 0; i < rval_nd; ++i)
+	{
+	  rval_dims[i] = PyInt_AsLong(PyTuple_GetItem(shape, i)); //GetItem returns borrowed reference
+	  if (PyErr_Occurred()) //error in AsLong
+	    {
+	      free(rval_dims);
             return NULL;
-        }
-	if(rval_dims[i]<=0){
-	  PyErr_Format(PyExc_ValueError, "Reshape has invalid dimension %i (must be >0)",rval_dims[i]);
-	  free(rval_dims);
-	  return NULL;
+	    }
+	  if(rval_dims[i]<=0){
+	    PyErr_Format(PyExc_ValueError, "Reshape has invalid dimension %i (must be >0)",rval_dims[i]);
+	    free(rval_dims);
+	    return NULL;
+	  }
+	  rval_size = rval_size * rval_dims[i];
 	}
-        rval_size = rval_size * rval_dims[i];
+    }else{
+      rval_size = PyInt_AsLong(shape);
+      rval_dims[0] = rval_size;
     }
     // calculate new size, assert same as old size
     if (rval_size != CudaNdarray_SIZE(self))

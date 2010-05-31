@@ -176,12 +176,13 @@ def test_reshape():
             ((1,2,3), (3,2,1)),
             ((1,2,3), (6,)),
             ((1,2,3,2), (6,2)),
-            ((2,3,2), (6,2))
+            ((2,3,2), (6,2)),
+            ((2,3,2), 12)
              ]
 
     def subtest(shape_1, shape_2):
         #print >> sys.stdout, "INFO: shapes", shape_1, shape_2
-        a = theano._asarray(numpy.random.rand(*shape_1), dtype='float32')
+        a = theano._asarray(numpy.random.random(shape_1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
 
         aa = a.reshape(shape_2)

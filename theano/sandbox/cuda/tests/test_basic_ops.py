@@ -111,6 +111,10 @@ def test_sum():
         assert T.Sum in [x.op.__class__ for x in f.maker.env.toposort()]
         assert numpy.allclose(f2(val2),f(val))
         
+def test_flatten():
+    x = cuda.fmatrix('x')
+    f = theano.function([x], x.flatten())
+    assert len(f( [[0.,0.],[0.,0.]] ).shape)==1
 
 def test_reshape():
 
