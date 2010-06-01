@@ -366,7 +366,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
              updates rules for all shared variables used in the scan
              operation; this dictionary should be pass to ``theano.function``
     """
-
     # General observation : this code is executed only once, at creation 
     # of the computational graph, so we don't yet need to be smart about 
     # anything ( to speed things up)
@@ -404,7 +403,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     # compute number of sequences and number of outputs
     n_seqs = len(seqs)
     n_outs = len(outs_info)
-
     # initialize the inplace map, sequences map and 
     # outputs map
     ''' Details:
@@ -629,10 +627,27 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     # remove shared variables from the non sequences list
     # such that we can compile the function ( the user has the option to add them when writing
     # scan, because in some situations this might make the code more readable)
+    # Also duplicate the list of non sequences arguments to contain copies of the non-shared 
+    # inputs ( this fixes the case when one of this inputs has a default update attached to it 
+    # that belongs to some shared random stream ). 
+    #
+    # Note : In that case, scan assumes that you do not want to draw new numbers at every call ( you
+    #        would have made the internal function do that explicitly if you wanted to) but rather to 
+    #        use that initial draw as a matrix of values
+    new_non_seqs = []
     notshared_other_args = []
+    notshared_other_args_copies = []
     for non_seq in non_seqs:
         if not isinstance(non_seq, SharedVariable):
+            if n_fixed_steps not in [-1,1]:
+                non_seq_copy = non_seq.type()
+            else:
+                non_seq_copy = non_seq
             notshared_other_args += [non_seq]
+            notshared_other_args_copies += [non_seq_copy]
+            new_non_seqs += [non_seq_copy]
+        else:
+            new_non_seqs += [non_seq]
 
     # add only the not shared variables to the arguments of the dummy
     # function [ a function should not get shared variables as input ]
@@ -640,10 +655,10 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     for arg in args:
         if not isinstance(arg, SharedVariable):
             dummy_args += [arg]
-    dummy_args += notshared_other_args
+    dummy_args += notshared_other_args_copies
     # arguments for the lambda expression that gives us the output
     # of the inner function
-    args += non_seqs
+    args += new_non_seqs
 
     # when we apply the lambda expression we get a mixture of update rules
     # and outputs that needs to be separated
@@ -704,14 +719,6 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     # make the compilation as fast as possible by not applying any optimization
     # or conversion to C [ note this region is not important for performance
     # so we can do stuff as unoptimal as we wish ]
-    '''
-    Why did I use gof.graph.inputs to pick the inputs here ??
-    
-    dummy_f = function(filter(lambda x: isinstance(x,gof.Variable) and \
-            not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
-            reversed(gof.graph.inputs(dummy_args))), outputs, updates = updates, mode = \
-                 compile.mode.Mode(linker = 'py', optimizer = None) )
-    '''
     if n_fixed_steps in [-1,1]:
         ''' We do have a special case here, namely is so might happen that
         whatever we have in dummy_args is not sufficient to compile the 
@@ -726,6 +733,7 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
             not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
             gof.graph.inputs(dummy_args)), outputs, updates = updates, mode = compile.mode.Mode(linker='py',optimizer=None))
     else:
+
         dummy_f = function(filter(lambda x: isinstance(x, gof.Variable) and \
             not isinstance(x,SharedVariable) and not isinstance(x,gof.Constant), \
             dummy_args), outputs, updates = updates, mode = compile.mode.Mode(linker='py',optimizer=None))
@@ -859,22 +867,8 @@ def scan(fn, sequences=[], outputs_info=[], non_sequences=[],
     else:
         # If we do not actually need scan
         for pos, inner_out in enumerate(inner_fn_outs):
-            # check if we are suppose to return just the last step
-            # we treat this case differently because the tensor we return
-            # in this case is different (it has one dimension less)
-            if return_steps.has_key(pos):
-                if return_steps[pos] != 1:
-                    # if we return more then one step, we need to add 
-                    # one more dimension to our output and make it 
-                    # unbroadcastable
-                    inner_fn_outs[pos] = tensor.unbroadcast(
-                            tensor.shape_padleft(inner_out),0)
-            else:
-                # same if we do not have any information about how many
-                # steps we should return (to read return everything in this
-                # case
-                inner_fn_outs[pos] = tensor.unbroadcast( 
-                        tensor.shape_padleft(inner_out),0)
+            if isinstance(inner_out.type, tensor.TensorType):
+                inner_fn_outs[pos] = tensor.unbroadcast( tensor.shape_padleft(inner_out),0)
         values = inner_fn_outs
 
 

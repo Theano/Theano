@@ -1888,6 +1888,27 @@ def local_log1p(node):
                 else:
                     return _fill_chain(T.log1p(T.add(*nonconsts)), scalar_inputs)
 
+#TODO: in canonicalize, change log10 and log2 -> log
+@register_stabilize
+@gof.local_optimizer([T.log])
+def local_log_add(node):
+    # log(exp(x)+exp(y))
+    #
+    # Suppose x >= y
+    # log(exp(x) + exp(y))
+    # log(exp(x) * (1 + exp(y)/exp(x)))
+    # x + log(1 + exp(y)/exp(x))
+    # x + log1p(exp(y)/exp(x))
+    # x + log1p(exp(y-x))
+    if node.op == T.log:
+        z = node.inputs[0]
+        if z.owner and z.owner.op == T.add:
+            zi = z.owner.inputs
+            pre_exp = [ x.owner.inputs[0] for x in zi if x.owner and x.owner.op == T.exp]
+            if len(pre_exp) == len(zi):
+                # all arguments to add are exp(<something>)
+                max_pre = T.maximum(*pre_exp)
+                return [max_pre + T.log1p(T.exp(T.add(*[p - max_pre for p in pre_exp])))]
 
 def add_calculate(num, denum, aslist = False, out_type=None):
     #TODO: make sure that this function and mul_calculate are similar

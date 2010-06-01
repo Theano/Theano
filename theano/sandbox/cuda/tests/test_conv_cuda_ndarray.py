@@ -78,10 +78,12 @@ def _params_allgood(ishape, kshape, mode, subsample=(1,1), img_stride=(1,1), ker
     kern = cuda_ndarray.CudaNdarray(npy_kern)
 
     #we take the stride after the transfert as we make c_contiguous data on the GPU.
-    img=img[:,:,::img_stride[0],::img_stride[1]]
-    kern=kern[:,:,::kern_stride[0],::kern_stride[1]]
-    npy_img = npy_img[:,:,::img_stride[0],::img_stride[1]]
-    npy_kern = npy_kern[:,:,::kern_stride[0],::kern_stride[1]]
+    if img_stride!=(1,1):
+        img=img[:,:,::img_stride[0],::img_stride[1]]
+        npy_img = npy_img[:,:,::img_stride[0],::img_stride[1]]
+    if kern_stride!=(1,1):
+        kern=kern[:,:,::kern_stride[0],::kern_stride[1]]
+        npy_kern = npy_kern[:,:,::kern_stride[0],::kern_stride[1]]
 
     t2 = None
     rval = True
@@ -265,12 +267,12 @@ def get_valid_shapes():
             , ((60,20,12,12),(30,20,5,5), (1,1), (1,1), (1,1))#test_lenet_28 2 layers
             , ((60,30,8,8),(20,30,5,5), (1,1), (1,1), (1,1))#test_lenet_28 bprop 1 full
             , ((20,60,12,12),(30,60,8,8), (1,1), (1,1), (1,1))#test_lenet_28 bprop 2 valid
-            , ((1,60,28,28),(20,60,24,24), (1,1), (1,1), (1,1))#test_lenet_28 bprop 2 valid
+#            , ((1,60,28,28),(20,60,24,24), (1,1), (1,1), (1,1))#test_lenet_28 bprop 2 valid
             , ((10,1,64,64),(20,1,7,7), (1,1), (1,1), (1,1))#test_lenet_64 1 layers
             , ((10,20,29,29),(30,20,7,7), (1,1), (1,1), (1,1))#test_lenet_64 2 layers
             , ((10,30,23,23),(20,30,7,7), (1,1), (1,1), (1,1))#test_lenet_64 full
-            , ((20,10,29,29),(30,10,23,23), (1,1), (1,1), (1,1))#test_lenet_64 bprop 1
-            , ((1,10,64,64),(20,10,58,58), (1,1), (1,1), (1,1))#test_lenet_64 bprop 2
+#            , ((20,10,29,29),(30,10,23,23), (1,1), (1,1), (1,1))#test_lenet_64 bprop 1
+#            , ((1,10,64,64),(20,10,58,58), (1,1), (1,1), (1,1))#test_lenet_64 bprop 2
             ]
     return shapes
 

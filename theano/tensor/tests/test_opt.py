@@ -930,6 +930,36 @@ def test_log1p():
         theano.printing.debugprint(f)
         assert [node.op for node in f.maker.env.toposort()] == [T.log1p]
 
+def test_log_add():
+    m = theano.config.mode
+    if m == 'FAST_COMPILE':
+        m = 'FAST_RUN'
+    m = compile.mode.get_mode(m)
+    m = m.excluding('fusion')
+    # check some basic cases
+    x = dvector()
+    y = dvector()
+    f = function([x,y], T.log(T.exp(x) + T.exp(y)), mode=m)
+
+    theano.printing.debugprint( f)
+    print f([10000], [10000])  # causes overflow if handled incorrectly
+    assert numpy.allclose(f([10000], [10000]), 10000+numpy.log1p(1))
+
+
+    # test that it also works with more than two args, (this currently fails)
+    x = dvector()
+    y = dvector()
+    f = function([x,y], T.log(T.exp(x) + T.exp(y) + T.exp(x-y) + T.exp(x+y)), mode=m)
+    theano.printing.debugprint( f)
+
+
+    print f([10000], [10000])  # causes overflow if handled incorrectly
+    assert numpy.allclose(f([10000], [10000]), 20000)
+
+    #TODO: test that the optimization works in the presence of broadcasting.
+
+    #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
+
 class test_local_subtensor_unary(unittest.TestCase):
 
     def test0(self):

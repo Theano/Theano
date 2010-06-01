@@ -344,6 +344,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 	!work_complete) //conv_rows_stack2
 
     {
+      // version 9:we preload the full kernel
+      // version 10: load only a few row at a time.
 	int nb_row=1;
 	int max_threads=512;
 	int version_back = version;
