@@ -824,6 +824,16 @@ class GpuSum(Op):
             threads_z = ''
         if len(self.reduce_mask)==3:
             threads_z = ''
+        if config.warn.gpusum_01_011_0111_bug:
+            pattern = '0'+N_pattern
+            warn = '''
+        static bool warn_gpusum_01_011_0111_bug = true;
+        if(warn_gpusum_01_011_0111_bug && CudaNdarray_HOST_DIMS(%(x)s)[%(N)s]>4096){
+            printf("WARNING: old version of Theano had a silent bug with GpuSum pattern %(pattern)s when the first dimensions was bigger then 4096. Was fixed 31 may 2010. To disable this warning set the Theano flags warn.gpusum_01_011_0111_bug to False. Won't repeat the warning before we exit.\\n");
+            warn_gpusum_01_011_0111_bug = false;
+        }
+'''%locals()
+        else: warn = ""
         print >> sio, """
         {
             int verbose = 0;
@@ -833,6 +843,7 @@ class GpuSum(Op):
             %(threads_y)s
             %(threads_z)s
             dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],NUM_VECTOR_OP_BLOCKS));
+            %(warn)s
             %(makecall)s
         }
         """ %locals()
@@ -1062,7 +1073,7 @@ class GpuSum(Op):
         """ %locals()
 
     def c_code_cache_version(self):
-        return (16,)
+        return (17,)
 
 
     def c_support_code_apply(self, node, nodename):
