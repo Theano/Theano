@@ -1,0 +1,8 @@
+
+Conditional Evaluation
+=======================
+
+This has been discussed informally lots.  Modify the linker to look for a
+lazy_perform function in each op, that can either return the fact that
+computations are done, or it can return a list of inputs that must first be
+evaluated before it can proceed.
