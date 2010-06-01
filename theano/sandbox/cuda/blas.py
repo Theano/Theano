@@ -149,18 +149,25 @@ class GpuGemm(Op):
     """
     implement the gemm on the gpu.
 
-    ..note: This probably don't work correctly for no_inplace gemm.
-            Need to check al least refcount.
-    
     """
-    destroy_map = {0:[0]}
+    def __init__(self, inplace):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0:[0]}
+
     def __str__(self):
-        return 'GpuGemm'
+        if self.inplace:
+            return 'GpuGemm{inplace}'
+        else:
+            return 'GpuGemm{no_inplace}'
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.inplace == other.inplace
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ hash(self.inplace)
+
+    def __setstate__(self, dct):
+        self.inplace = dct.get('inplace', True)
 
     def make_node(self, z, a, x, y, b):
         # the more complicated error checking performed by tensor.gemm is assumed to already
@@ -168,13 +175,16 @@ class GpuGemm(Op):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
+        return ()
         return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         z_in, a, x, y, b = inputs
         z_out, = outputs
         fail = sub['fail']
-        return """
+        sio = StringIO.StringIO()
+
+        print >> sio, """
 
         #define REAL float
         float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT) 
@@ -186,15 +196,48 @@ class GpuGemm(Op):
         : (REAL)(((double*)%(b)s->data)[0]);
         #undef REAL
 
-        if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, %(name)s_b, %(z_in)s))
+        """
+        if self.inplace:
+            print >> sio, """
+            Py_XDECREF(%(z_out)s);
+            %(z_out)s = %(z_in)s;
+            Py_INCREF(%(z_out)s);
+            """
+        else:
+            print >> sio, """
+            if (!%(z_out)s
+                || (%(z_out)s->nd != 2)
+                || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+                || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] != CudaNdarray_HOST_DIMS(%(z_in)s)[1])
+                )
+            {
+                Py_XDECREF(%(z_out)s);
+                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+                if (!%(z_out)s)
+                {
+                    %(fail)s;
+                }
+            }
+            else
+            {
+                if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
+                {
+                    %(fail)s;
+                }
+            }
+            """
+
+
+        print >> sio, """
+        if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, %(name)s_b, %(z_out)s))
         {
             %(fail)s;
         }
-        Py_XDECREF(%(z_out)s);
-        %(z_out)s = %(z_in)s;
-        Py_INCREF(%(z_out)s);
-        """ % locals()
-gpu_gemm = GpuGemm()
+        """
+
+        return sio.getvalue() % locals()
+gpu_gemm_no_inplace = GpuGemm(inplace=False)
+gpu_gemm_inplace = GpuGemm(inplace=True)
 
 ##
 # Not really a BLAS operation, but whatever.

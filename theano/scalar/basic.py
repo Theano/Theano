@@ -191,25 +191,31 @@ class Scalar(Type):
                 typedef theano_complex%(nbits)s complex_type;
                 typedef npy_float%(half_nbits)s scalar_type;
 
-                complex_type operator +(complex_type y) {
+                complex_type operator +(const complex_type &y) const {
                     complex_type ret;
                     ret.real = this->real + y.real;
                     ret.imag = this->imag + y.imag;
                     return ret;
                 }
-                complex_type operator -(complex_type y) {
+                complex_type operator -() const {
+                    complex_type ret;
+                    ret.real = -this->real;
+                    ret.imag = -this->imag;
+                    return ret;
+                }
+                complex_type operator -(const complex_type &y) const {
                     complex_type ret;
                     ret.real = this->real - y.real;
                     ret.imag = this->imag - y.imag;
                     return ret;
                 }
-                complex_type operator *(complex_type y) {
+                complex_type operator *(const complex_type &y) const {
                     complex_type ret;
                     ret.real = this->real * y.real - this->imag * y.imag;
                     ret.imag = this->real * y.imag + this->imag * y.real;
                     return ret;
                 }
-                complex_type operator /(complex_type y) {
+                complex_type operator /(const complex_type &y) const {
                     complex_type ret;
                     scalar_type y_norm_square = y.real * y.real + y.imag * y.imag;
                     ret.real = (this->real * y.real + this->imag * y.imag) / y_norm_square;
@@ -296,6 +302,7 @@ class Scalar(Type):
             return ""
 
     def c_code_cache_version(self):
+        return (8,) # put const around operators and added unary '-' operator
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.
         return (7,)  # make complex c code optional
         return (6,)  # added implemeentations of operators that work with scalar arguments
@@ -459,7 +466,39 @@ def float_out_nocomplex(*types):
         if type in complex_types:
             raise TypeError('complex argument not supported')
     return float64,
+class unary_out_lookup(gof.utils.object2):
+    """
+    get a output_types_preference object by passing a dictionary:
 
+    unary_out_lookup({int8:int32, float32:complex128})
+
+    The result is an op that maps in8 to int32 and float32 to complex128 and other input types
+    lead to a TypeError.
+    """
+    def __init__(self, type_table):
+        self.tbl = type_table
+    def __call__(self, *types):
+        if len(types) == 1:
+            types = types[0]
+        try:
+            rval = self.tbl[types]
+        except:
+            raise TypeError(types)
+        if isinstance(types, (list, tuple)):
+            return rval
+        else:
+            return [rval]
+    def __eq__(self, other):
+        return type(self) == type(other) and self.tbl == other.tbl
+    def __hash__(self):
+        return hash(type(self)) # ignore hash of table
+
+def real_out(type):
+    if type == complex64:
+        return float32,
+    if type == complex128:
+        return float64,
+    return type,
 
 class ScalarOp(Op):
 
@@ -810,7 +849,14 @@ class Mul(ScalarOp):
       retval = []
       for input in inputs:
         if input.type in grad_types:
-          retval += [cast(mul(*([gz] + utils.difference(inputs, [input]))), input.type.dtype)]
+          if input.type in complex_types:
+            # does casting from real to complex work?
+            dz_dinput = cast(mul(*(utils.difference(inputs, [input]))), input.type.dtype)
+            x = real(dz_dinput)
+            y = imag(dz_dinput)
+            retval += [complex(x*real(gz)+y*imag(gz), x*imag(gz)-y*real(gz))]
+          else:
+            retval += [cast(mul(*([gz] + utils.difference(inputs, [input]))), input.type.dtype)]
         else:
           retval += [None]
       
@@ -1088,11 +1134,9 @@ class Abs(UnaryScalarOp):
         return numpy.abs(x)
     def grad(self, (x, ), (gz, )):
         if x.type in grad_types:
-          return gz * sgn(x),
+            return gz * x / abs(x), # formula works for complex and real
         else:
-          return None,
-        #backport
-        #return gz * sgn(x) if x.type in grad_types else None,
+            return None,
     def c_code(self, node, name, (x, ), (z, ), sub):
         type = node.inputs[0].type
         if type in int_types:
@@ -1478,6 +1522,91 @@ class Tanh(UnaryScalarOp):
         return "%(z)s = tanh(%(x)s);" % locals()
 tanh = Tanh(upgrade_to_float, name = 'tanh')
 
+class Real(UnaryScalarOp):
+    """Extract the real coordinate of a complex number.  """
+    def impl(self, x):
+        return numpy.real(x)
+    def grad(self, (x, ), (gz, )):
+        return [complex(gz, 0)]
+
+real = Real(real_out, name='real')
+
+class Imag(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.imag(x)
+    def grad(self, (x, ), (gz, )):
+        return [complex(0, gz)]
+imag = Imag(real_out, name='imag')
+
+class Angle(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.angle(x)
+    def grad(self, (c, ), (gtheta, )):
+        # y = x.imag
+        # r = sqrt(y**2 + x.real**2)
+        # g = y/r
+        # if x == 0 and y == 0:
+        #     theta = 0
+        # elif x >= 0:
+        #     theta = numpy.arcsin(g)
+        # else:
+        #     theta = -numpy.arcsin(g)+numpy.pi
+
+        x = real(c)
+        y = imag(c)
+        r = abs(c)
+
+        gr = -gtheta * y / (r**2 * sqrt(1 - (y/r)**2))
+
+        gx = gr * x/r
+        gy = gr * y/r
+        return [complex(gx, gy)]
+angle = Angle(specific_out(float64), name='angle')
+
+class Complex(BinaryScalarOp):
+    @staticmethod
+    def output_types_preference(x,y):
+        if x in complex_types:
+            raise TypeError(x)
+        if y in complex_types:
+            raise TypeError(y)
+
+        up = Scalar.upcast(x, y)
+        if up in ('float64', 'int64', 'uint64', 'int32', 'uint32'):
+            return [complex128]
+        else:
+            return [complex64]
+    def impl(self, x, y):
+        return numpy.complex(x, y)
+    def grad(self, (x,y), (z,)):
+        return [real(z), imag(z)]
+complex = Complex(name='complex')
+
+class Conj(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.conj(x)
+    def grad(self, (x, ), (gz, )):
+        return [conj(gz)]
+conj = Conj(same_out, name='conj')
+
+class ComplexFromPolar(BinaryScalarOp):
+    @staticmethod
+    def output_types_preference(x,y):
+        return Complex.output_types_preference(x,y)
+    def impl(self, r, theta):
+        if r < 0:
+            raise ValueError('polar radius must be non-negative', r)
+        x = r*numpy.cos(theta)
+        y = r*numpy.sin(theta)
+        if x.dtype == 'float32':
+            return numpy.complex64(numpy.complex(x,y))
+        else:
+            return numpy.complex128(numpy.complex(x,y))
+    def grad(self, (r,theta), (gz,)):
+        gr = cos(theta) * real(gz) + sin(theta) * imag(gz)
+        gtheta = -real(gz) * r * sin(theta) + imag(gz) * r * cos(theta)
+        return [gr, gtheta]
+complex_from_polar = ComplexFromPolar(name='complex_from_polar')
 
 
 class Composite(ScalarOp):
@@ -1641,4 +1770,5 @@ class Composite(ScalarOp):
         #we must call init to set env and _impls again.
         #otherwise self.perform won't work.
         self.__init__(self.inputs, self.outputs)
+
 

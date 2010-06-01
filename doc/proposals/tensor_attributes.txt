@@ -1,0 +1,13 @@
+
+
+========================
+Add tensor attributes
+========================
+
+
+Size, shape, psd, symmetric, triangular, contiguous.  
+Add these attributes to the TensorType with the option always that they be
+'unknown'.
+Add attributes that are useful for optimizations, or useful for code generation.
+
+

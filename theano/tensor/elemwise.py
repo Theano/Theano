@@ -618,7 +618,7 @@ class Elemwise(Op):
             errormsg = 'Failed calling ufunc for op', self.scalar_op,\
                         'for params of shape', [arg.shape for arg in ufunc_args]
             e.args = e.args + errormsg
-            raise e
+            raise
         if ufunc.nout == 1: variables = [variables]
         for variable, storage in zip(variables, output_storage):
             if storage[0].shape:
