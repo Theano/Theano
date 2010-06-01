@@ -63,3 +63,15 @@ def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
         rng = numpy.random
     T.verify_grad(op, pt, n_tests, rng, *args, **kwargs)
 
+#
+# This supports the following syntax:
+# 
+# try:
+#     verify_grad(...)
+# except verify_grad.E_grad, e:
+#     print e.num_grad.gf
+#     print e.analytic_grad
+#     ...
+#
+#
+verify_grad.E_grad = T.verify_grad.E_grad

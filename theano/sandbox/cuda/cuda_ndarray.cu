@@ -1412,7 +1412,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
     {
         PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_setitem: syncing structure to device failed");
         Py_DECREF(rval);
-        return NULL;
+        return -1;
     }
 
     CudaNdarray *viewCopyForComparison = 

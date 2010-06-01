@@ -226,7 +226,12 @@ def local_gpu_sum(node):
                 gsum=GpuSum(reduce_mask)
                 pattern=(''.join(str(i) for i in reduce_mask))
                 if hasattr(gsum, 'c_code_reduce_%s'%pattern):
-                    return [host_from_gpu(gsum(gpu_from_host(x)))]
+                    rval = host_from_gpu(gsum(gpu_from_host(x)))
+                    if rval.type == node.outputs[0].type:
+                        return [rval]
+                    else:
+                        print >> sys.stderr, "WARNING: local_gpu_sum got type wrong"
+                        return None
                 else:
 
                     # Try to make a simpler pattern based on reshaping
@@ -253,9 +258,13 @@ def local_gpu_sum(node):
                         reshaped_x = x.reshape(tensor.stack(*new_in_shp))
                         sum_reshaped_x = host_from_gpu(new_gsum(gpu_from_host(reshaped_x)))
                         unreshaped_sum = sum_reshaped_x.reshape(tensor.stack(*shape_of[node.outputs[0]]))
-                        return [unreshaped_sum]
+                        if unreshaped_sum.type == node.outputs[0].type:
+                            return [unreshaped_sum]
+                        else:
+                            print >> sys.stderr, "WARNING: local_gpu_sum got type wrong"
+                            return None
 
-                    raise Exception("GpuSum don't have implemented the pattern",pattern)
+                        raise Exception("GpuSum don't have implemented the pattern",pattern)
     return False
 
 @register_opt()
