@@ -1032,13 +1032,10 @@ class GpuSum(Op):
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
-            while (n_blocks.x * n_blocks.y <= NUM_VECTOR_OP_BLOCKS)
+            while (n_blocks.x * (n_blocks.y+1) <= NUM_VECTOR_OP_BLOCKS && n_blocks.y <= CudaNdarray_HOST_DIMS(%(x)s)[2])
             {
-                if (n_blocks.y > CudaNdarray_HOST_DIMS(%(x)s)[2])
-                    break;
                 n_blocks.y += 1;
             }
-            n_blocks.y -= 1;
             %(makecall)s
         }
         """ %locals()
