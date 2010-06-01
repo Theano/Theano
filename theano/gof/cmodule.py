@@ -353,7 +353,7 @@ class ModuleCache(object):
                     # If so, it should not have been deleted.  This should be considered a
                     # failure of the OTHER process, that deleted it.
                     if entry in self.module_from_name:
-                        error("The module %s that was loaded by this ModuleCache can no longer be read from file %s ... this could lead to problems." % (key,entry))
+                        warning("The module %s that was loaded by this ModuleCache can no longer be read from file %s ... this could lead to problems." % (key,entry))
                         del self.module_from_name[entry]
 
                     info("deleting ModuleCache entry", entry)
@@ -455,7 +455,9 @@ class ModuleCache(object):
         #debug('stats', self.stats, sum(self.stats))
         return rval
 
-    age_thresh_del = 60*60*24*31
+    age_thresh_del = 60*60*24*31#31 days
+    age_thresh_del_unversionned = 60*60*24*7#7 days
+
     """The default age threshold for `clear_old` (in seconds)
     """
     def clear_old(self, age_thresh_del=None): #default to a 31-day age_thresh_delold
@@ -519,7 +521,8 @@ class ModuleCache(object):
                 assert parent.startswith(os.path.join(self.dirname, 'tmp'))
                 info("clear_unversioned removing cache dir", parent)
                 _rmtree(parent)
-
+                
+        time_now = time.time()
         for filename in os.listdir(self.dirname):
             if filename.startswith('tmp'):
                 try:
@@ -528,13 +531,15 @@ class ModuleCache(object):
                 except IOError:
                     has_key = False
                 if not has_key:
-                    #TODO: Remove this, or at least wait one week
-                    # This cache dir is either in use by another process
-                    # (in that case, it will be removed by the code above),
-                    # or a remnant of a crashed process, in that case, it will
-                    # be removed by clear_old at some point.
-                    info("clear_unversioned removing cache dir", filename)
-                    _rmtree(os.path.join(self.dirname, filename))
+                    age = time_now - last_access_time(os.path.join(self.dirname, filename))
+                    #In normal case, the processus that created this directory will delete it
+                    #In case this processus crash, it won't be cleaned up.
+                    #As we don't know how to know if this directory is still used
+                    #we wait 1 weak and suppose that the processus crashed
+                    #and we do the clean up for it.
+                    if age > self.age_thresh_del_unversionned:
+                        info("clear_unversioned removing cache dir", filename)
+                        _rmtree(os.path.join(self.dirname, filename))
 
     def _on_atexit(self):
         self.refresh()

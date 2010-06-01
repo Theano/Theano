@@ -149,6 +149,8 @@ class mrg_uniform_base(Op):
         return Apply(self, 
                 [rstate, size], 
                 [rstate.type(), self.output_type()])
+    def c_code_cache_version(self):
+        return (1,)
 
 class mrg_uniform(mrg_uniform_base):
     #CPU VERSION

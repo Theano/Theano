@@ -941,14 +941,25 @@ class CLinker(link.Linker):
         try:
             debug("LOCATION", location)
             c_compiler = self.c_compiler()
+            libs = self.libraries()
+            preargs = self.compile_args()
+            if c_compiler.__name__=='nvcc_module_compile_str' and config.lib.amdlibm:
+                #this lib don't work correctly with nvcc in device code.
+                if '<amdlibm.h>' in mod.includes:
+                    mod.includes.remove('<amdlibm.h>')
+                if '-DREPLACE_WITH_AMDLIBM' in preargs:
+                    preargs.remove('-DREPLACE_WITH_AMDLIBM')
+                if 'amdlibm' in libs:
+                    libs.remove('amdlibm')
+
             module = c_compiler(
                     module_name=mod.name,
                     src_code = mod.code(),
                     location=location,
                     include_dirs=self.header_dirs(),
                     lib_dirs=self.lib_dirs(),
-                    libs=self.libraries(),
-                    preargs=self.compile_args())
+                    libs=libs,
+                    preargs=preargs)
         finally:
             release_lock()
 

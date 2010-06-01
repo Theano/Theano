@@ -1,4 +1,4 @@
-import sys, time
+import os, sys, time
 
 import numpy
 import theano
@@ -32,7 +32,8 @@ utt.seed_rng()
 # 12 streams
 # 7 substreams for each stream
 # 5 samples drawn from each substream
-java_samples = numpy.loadtxt('samples_MRG31k3p_12_7_5.txt')
+java_samples = numpy.loadtxt(os.path.join(os.path.split(theano.__file__)[0],
+                                          'sandbox','samples_MRG31k3p_12_7_5.txt'))
 
 
 def test_deterministic():

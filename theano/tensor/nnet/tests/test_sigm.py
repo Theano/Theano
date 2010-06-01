@@ -83,3 +83,49 @@ class T_sigmoid_opts(unittest.TestCase):
         assert [node.op for node in f.maker.env.toposort()] == [tensor.neg, 
                 sigmoid_inplace]
 
+
+class T_softplus_opts(unittest.TestCase):
+    def setUp(self):
+        if theano.config.mode == 'FAST_COMPILE':
+            m = theano.compile.mode.get_mode('FAST_RUN')
+        else:
+            m = theano.compile.mode.get_default_mode().excluding('local_elemwise_fusion')
+        self.m = m
+        utt.seed_rng()
+    def test_logsigm_to_softplus(self):
+        x = T.vector()
+    
+        out = T.log(sigmoid(x))
+        f = theano.function([x],out,mode=self.m)
+        topo = f.maker.env.toposort()
+        print topo
+        assert len(topo)==3
+        assert isinstance(topo[0].op.scalar_op, theano.scalar.Neg)
+        assert isinstance(topo[1].op.scalar_op, theano.tensor.nnet.sigm.ScalarSoftplus)
+        assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)
+        f(numpy.random.rand(54))
+
+    def test_log1msigm_to_softplus(self):
+        x = T.vector()
+    
+        out = T.log(1-sigmoid(x))
+        f = theano.function([x],out,mode=self.m)
+        topo = f.maker.env.toposort()
+        assert len(topo)==2
+        assert isinstance(topo[0].op.scalar_op, theano.tensor.nnet.sigm.ScalarSoftplus)
+        assert isinstance(topo[1].op.scalar_op, theano.scalar.Neg)
+        f(numpy.random.rand(54))
+        
+    def test_log1pexp_to_softplus(self):
+        m = theano.config.mode
+        if m == 'FAST_COMPILE':
+            m = 'FAST_RUN'
+
+        x = T.vector()
+    
+        out = T.log(1+T.exp(x))
+        f = theano.function([x],out,mode=self.m)
+        topo = f.maker.env.toposort()
+        assert len(topo)==1
+        assert isinstance(topo[0].op.scalar_op,theano.tensor.nnet.sigm.ScalarSoftplus)
+        f(numpy.random.rand(54))
