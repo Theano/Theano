@@ -1184,13 +1184,11 @@ class GpuSum(Op):
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[3],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
-            while (n_threads.y * n_threads.x < NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
-            n_threads.y -= 1;
+            while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
             if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[2]) 
                 n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[2]; 
 
-            while (n_threads.x * n_threads.y * n_threads.z < NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
-            n_threads.z -= 1;
+            while (n_threads.x * n_threads.y * (n_threads.z+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
             if (n_threads.z > 64)
                 n_threads.z = 64;
             if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
