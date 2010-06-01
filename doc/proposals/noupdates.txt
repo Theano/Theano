@@ -4,6 +4,7 @@ Automatic updates
 
 .. note:
    Proposed 2010 01 13
+   Done 2010 04 ??
 
 
 The Module version of RandomStreams could arrange for the automatic update of

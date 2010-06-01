@@ -127,6 +127,8 @@ class SeqOptimizer(Optimizer, list):
         for optimizer in self:
             try:
                 optimizer.optimize(env)
+            except AssertionError: # do not catch Assertion failures
+                raise
             except Exception, e:
                 if self.failure_callback:
                     self.failure_callback(e, self, optimizer)
