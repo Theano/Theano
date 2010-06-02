@@ -130,7 +130,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
     if not os.path.isdir(base_lock):
         try:
             os.makedirs(base_lock)
-        except:
+        except OSError:
             # Someone else was probably trying to create it at the same time.
             # We wait two seconds just to make sure the following assert does
             # not fail on some NFS systems.
@@ -148,19 +148,34 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
         try:
             last_owner = 'no_owner'
             time_start = time.time()
+            other_dead = False
             while os.path.isdir(tmp_dir):
                 try:
                     read_owner = open(lock_file).readlines()[0].strip()
-                    # The following line does nothing but raise an exception
-                    # if somehow something is wrong in the owner format, to
-                    # avoid crashing later on.
-                    read_owner.split('_')[0]
-                except:
+                    # the try is transtion code for old locks
+                    # it may be removed when poeple have upgraded
+                    try:
+                        other_host = read_owner.split('_')[2]
+                    except IndexError:
+                        other_host = () # make sure it isn't equal to any host
+                    if other_host == os.uname()[1]:
+                        try:
+                            os.kill(int(read_owner.split('_')[0]), 0)
+                        except OSError:
+                            other_dead = True
+                except Exception:
                     read_owner = 'failure'
+                if other_dead:
+                    if not no_display:
+                        msg = "process '%s'" % read_owner.split('_')[0]
+                        warning("Overriding existing lock by dead %s (I am "
+                                "process '%s')"% (msg, my_pid))
+                    get_lock.unlocker.unlock()
+                    continue
                 if last_owner == read_owner:
                     if (timeout is not None and
                             time.time() - time_start >= timeout):
-                        # Timeout exceeded.
+                        # Timeout exceeded or locking process dead.
                         if not no_display:
                             if read_owner == 'failure':
                                 msg = 'unknown process'
@@ -188,7 +203,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
     
             try:
                 os.mkdir(tmp_dir)
-            except:
+            except OSError:
                 # Error while creating the directory: someone else must have tried
                 # at the exact same time.
                 continue
@@ -217,11 +232,13 @@ def refresh_lock(lock_file):
     'Refresh' an existing lock by re-writing the file containing the owner's
     unique id, using a new (randomly generated) id, which is also returned.
     """
-    unique_id = '%s_%s' % (os.getpid(),
-            ''.join([str(random.randint(0,9)) for i in range(10)]))
+    unique_id = '%s_%s_%s' % (os.getpid(),
+            ''.join([str(random.randint(0,9)) for i in range(10)]),
+            os.uname()[1])
     lock_write = open(lock_file, 'w')
     lock_write.write(unique_id + '\n')
     lock_write.close()
+    print lock_file
     return unique_id
 
 class Unlocker(object):
