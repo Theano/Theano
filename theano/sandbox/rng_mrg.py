@@ -149,6 +149,10 @@ class mrg_uniform_base(Op):
         return Apply(self, 
                 [rstate, size], 
                 [rstate.type(), self.output_type()])
+
+    def grad(self,inputs,ograd):
+        return [None for i in inputs]
+
     def c_code_cache_version(self):
         return (1,)
 
@@ -622,7 +626,12 @@ class MRG_RandomStreams(object):
         If the size argument is ambiguous on the number of dimensions,
         ndim may be a plain integer to supplement the missing
         information.
+        
+        Currently size can't be None. Otherwise it fail later. So I added the assert
         """
+        assert isinstance(size, tuple), "size must be a tuple"
+        assert all([isinstance(i,int) for i in size])
+        
         if nstreams is None:
             nstreams = self.n_streams(size)
         if self.use_cuda and dtype=='float32':
@@ -664,6 +673,8 @@ class MRG_RandomStreams(object):
         # second half our U2's. See Wikipedia page:
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
 
+        assert isinstance(size, tuple), "size must be a tuple"
+        assert all([isinstance(i,int) for i in size])
         n_samples = numpy.prod(size)
         evened = False
            
@@ -710,5 +721,3 @@ def mrg_random_make_inplace(node):
         return new_op.make_node(*node.inputs).outputs
     return False
 optdb.register('random_make_inplace_mrg', opt.in2out(mrg_random_make_inplace, ignore_newtrees=True), 99, 'fast_run', 'inplace')
-
-

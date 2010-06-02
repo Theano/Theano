@@ -824,6 +824,16 @@ class GpuSum(Op):
             threads_z = ''
         if len(self.reduce_mask)==3:
             threads_z = ''
+        if config.warn.gpusum_01_011_0111_bug:
+            pattern = '0'+N_pattern
+            warn = '''
+        static bool warn_gpusum_01_011_0111_bug = true;
+        if(warn_gpusum_01_011_0111_bug && CudaNdarray_HOST_DIMS(%(x)s)[%(N)s]>4096){
+            printf("WARNING: old version of Theano had a silent bug with GpuSum pattern %(pattern)s when the first dimensions was bigger then 4096. Was fixed 31 may 2010. To disable this warning set the Theano flags warn.gpusum_01_011_0111_bug to False. Won't repeat the warning before we exit.\\n");
+            warn_gpusum_01_011_0111_bug = false;
+        }
+'''%locals()
+        else: warn = ""
         print >> sio, """
         {
             int verbose = 0;
@@ -833,6 +843,7 @@ class GpuSum(Op):
             %(threads_y)s
             %(threads_z)s
             dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],NUM_VECTOR_OP_BLOCKS));
+            %(warn)s
             %(makecall)s
         }
         """ %locals()
@@ -1037,6 +1048,7 @@ class GpuSum(Op):
         """ % locals()
 
     def c_code_reduce_1011(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
             int verbose = 0;
@@ -1044,13 +1056,11 @@ class GpuSum(Op):
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[3],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
-            while (n_threads.y * n_threads.x < NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
-            n_threads.y -= 1;
+            while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
             if (n_threads.y > CudaNdarray_HOST_DIMS(%(x)s)[2]) 
                 n_threads.y = CudaNdarray_HOST_DIMS(%(x)s)[2]; 
 
-            while (n_threads.x * n_threads.y * n_threads.z < NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
-            n_threads.z -= 1;
+            while (n_threads.x * n_threads.y * (n_threads.z+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
             if (n_threads.z > 64)
                 n_threads.z = 64;
             if (n_threads.z > CudaNdarray_HOST_DIMS(%(x)s)[0]) 
@@ -1058,41 +1068,12 @@ class GpuSum(Op):
             
             dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
 
-            if (verbose) printf("running kernel_reduce_sum_1011_%(name)s\\n");
-            if (verbose) fprint_CudaNdarray(stdout, %(x)s);
-            if (verbose) fprint_CudaNdarray(stdout, %(z)s);
-            int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
-            kernel_reduce_sum_1011_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_HOST_DIMS(%(x)s)[0],
-                    CudaNdarray_HOST_DIMS(%(x)s)[1],
-                    CudaNdarray_HOST_DIMS(%(x)s)[2],
-                    CudaNdarray_HOST_DIMS(%(x)s)[3],
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
-                    CudaNdarray_DEV_DATA(%(z)s),
-                    CudaNdarray_HOST_STRIDES(%(z)s)[0]);
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts) 
-            {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_1011_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
+            %(makecall)s
         }
         """ %locals()
 
     def c_code_cache_version(self):
-        return (14,)
+        return (17,)
 
 
     def c_support_code_apply(self, node, nodename):
@@ -1204,7 +1185,7 @@ class GpuSum(Op):
                 for_i2 = "for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)"
                 for_i3 = "for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)"
 
-            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0]')
             param_dim = ",".join(["const int d%(i)s"%locals() for i in range(nd_in)])
             param_strides = ",".join(["const int sA%(i)s"%locals() for i in range(nd_in)])
             decl = self._k_decl(node,nodename)
@@ -1212,15 +1193,18 @@ class GpuSum(Op):
             print >> sio, """
             %(decl)s{
                 %(init)s
-                %(for_i1)s{
-                  %(for_i2)s{
-                    %(for_i3)s{
-                      float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + blockIdx.x * sA0];
-                      mysum += Ai;
+                for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
+                  mysum = 0;
+                  %(for_i1)s{
+                    %(for_i2)s{
+                      %(for_i3)s{
+                        float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
+                        mysum += Ai;
+                      }
                     }
                   }
+                  %(reducebuf)s
                 }
-                %(reducebuf)s
             }
             """ %locals()
         if self.reduce_mask == (1,0):

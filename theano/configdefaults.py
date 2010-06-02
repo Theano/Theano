@@ -77,3 +77,7 @@ AddConfigVar('traceback.limit',
 AddConfigVar('warn.argmax_pushdown_bug',
              "Warn if in past version of Theano we generated a bug with the optimisation theano.tensor.nnet.nnet.local_argmax_pushdown optimization. Was fixed 27 may 2010",
              BoolParam(True))
+
+AddConfigVar('warn.gpusum_01_011_0111_bug',
+             "Warn if we are in a case where old version of Theano had a silent bug with GpuSum pattern 01,011 and 0111 when the first dimensions was bigger then 4096. Was fixed 31 may 2010",
+             BoolParam(True))
