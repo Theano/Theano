@@ -3,7 +3,8 @@
 
 from theano import config
 import compiledir
-import os, random, time
+import os, random, time, atexit
+import socket # only used for gethostname()
 import logging
 _logger=logging.getLogger("theano.gof.compilelock")
 _logger.setLevel(logging.INFO) # INFO will show the the messages "Refreshing lock" message
@@ -55,6 +56,7 @@ def get_lock():
         # Only really try to acquire the lock if we do not have it already.
         if get_lock.n_lock == 0:
             lock(get_lock.lock_dir, timeout = timeout_before_override)
+            atexit.register(Unlocker.unlock, get_lock.unlocker)
             # Store time at which the lock was set.
             get_lock.start_time = time.time()
         else:
@@ -158,11 +160,13 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                         other_host = read_owner.split('_')[2]
                     except IndexError:
                         other_host = () # make sure it isn't equal to any host
-                    if other_host == os.uname()[1]:
+                    if other_host == socket.gethostname():
                         try:
                             os.kill(int(read_owner.split('_')[0]), 0)
                         except OSError:
                             other_dead = True
+                        except AttributeError:
+                            pass #os.kill does not exist on windows
                 except Exception:
                     read_owner = 'failure'
                 if other_dead:
@@ -234,7 +238,7 @@ def refresh_lock(lock_file):
     """
     unique_id = '%s_%s_%s' % (os.getpid(),
             ''.join([str(random.randint(0,9)) for i in range(10)]),
-            os.uname()[1])
+            socket.gethostname())
     lock_write = open(lock_file, 'w')
     lock_write.write(unique_id + '\n')
     lock_write.close()
