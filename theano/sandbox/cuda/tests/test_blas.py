@@ -79,6 +79,7 @@ def test_gemm():
     c = tensor.fmatrix('c')
 
     f = pfunc([b,c], [], updates=[(a, tensor.dot(a,b) + tensor.exp(c))], mode=mode_with_gpu)
+    assert any([node.op == tcn.blas.gpu_gemm_inplace for node in f.maker.env.toposort()])
 
     a0 = a.value * 1.0
     print a0
@@ -90,6 +91,30 @@ def test_gemm():
     print a.value
 
     assert numpy.allclose(numpy.dot(a0, bval)+numpy.exp(cval), a.value)
+
+def test_gemm_no_inplace():
+
+    a = tcn.shared_constructor(my_rand(4,4), 'a')
+    cval = my_rand(4,4)
+    c = tcn.shared_constructor(cval.copy(), 'c')
+
+    b = tcn.fmatrix('b')
+    b2 = tcn.fmatrix('b2')
+
+    f = pfunc([b,b2], [tensor.dot(a,b2) + c], updates=[(a, tensor.dot(a,b) + c)], mode=mode_with_gpu)
+
+    a0 = a.value * 1.0
+    #print a0
+    for i, node in enumerate(f.maker.env.toposort()):
+        print i, node
+    assert any([node.op == tcn.blas.gpu_gemm_no_inplace for node in f.maker.env.toposort()])
+    bval = my_rand(4,4)
+    bval2 = my_rand(4,4)
+    rval = f(bval,bval2)
+    #print a.value
+
+    assert numpy.allclose(numpy.dot(a0, bval)+cval, a.value)
+    assert numpy.allclose(numpy.dot(a0, bval2)+cval, rval)
 
 if 0:
     # This is commented out because it doesn't make sense...
