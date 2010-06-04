@@ -278,76 +278,144 @@ def test_consistency_GPU_parallel():
     samples = numpy.array(samples).flatten()
     assert(numpy.allclose(samples, java_samples))
 
-def test_rng0():
+def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[], mean=0.5, mean_rtol=0.01):
+    dt = 0.0
+    for i in xrange(steps):
+        t0 = time.time()
+        ival = f(*inputs)
+        dt += time.time() - t0
+        ival = numpy.asarray(ival)
+        if i == 0:
+            computed_mean = numpy.array(ival, copy=True)
+            min_ = ival.min()
+            max_ = ival.max()
+        else:
+            alpha = 1.0 / (1+i)
+            computed_mean = alpha * ival + (1-alpha)*computed_mean
+            min_ = min(min_,ival.min())
+            max_ = max(max_,ival.max())
+        if not allow_01:
+            assert min_ > 0
+            assert max_ < 1
 
-    def basictest(f, steps, prefix="", allow_01=False):
-        dt = 0.0
-        for i in xrange(steps):
-            t0 = time.time()
-            ival = f()
-            dt += time.time() - t0
-            ival = numpy.asarray(ival)
-            if i == 0:
-                mean = numpy.array(ival, copy=True)
-                min_ = ival.min()
-                max_ = ival.max()
-            else:
-                alpha = 1.0 / (1+i)
-                mean = alpha * ival + (1-alpha)*mean
-                min_ = min(min_,ival.min())
-                max_ = max(max_,ival.max())
-            if not allow_01:
-                assert min_ > 0
-                assert max_ < 1
+    print prefix, 'mean', numpy.mean(computed_mean)
+    assert abs(numpy.mean(computed_mean) - mean) < mean_rtol, 'bad mean?'
+    print prefix, 'time', dt
+    print prefix, 'elements', steps*sample_size[0]*sample_size[1]
+    print prefix, 'samples/sec', steps*sample_size[0]*sample_size[1] / dt
+    print prefix, 'min',min_,'max',max_
 
-        print prefix, 'mean', numpy.mean(mean)
-        assert abs(numpy.mean(mean) - 0.5) < .01, 'bad mean?'
-        print prefix, 'time', dt
-        print prefix, 'elements', steps*sample_size[0]*sample_size[1]
-        print prefix, 'samples/sec', steps*sample_size[0]*sample_size[1] / dt
-        print prefix, 'min',min_,'max',max_
-
+def test_uniform():
+#TODO: test param low, high
+#TODO: test size=None
+#TODO: test ndim!=size.ndim
+#TODO: test bad seed
+#TODO: test size=Var, with shape that change from call to call
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (10,100)
         steps = int(1e2)
     else:
-        sample_size = (1000,100)
+        sample_size = (500,100)
         steps = int(1e3)
+    
+    x = tensor.matrix()
+    for size,var_input,input in [(sample_size,[],[]), (x.shape,[x],[numpy.zeros(sample_size)])]:
 
-    print ''
-    print 'ON CPU:'
-
-    R = MRG_RandomStreams(234, use_cuda=False)
-    u = R.uniform(size=sample_size)
-    f = theano.function([], u, mode=mode)
-    theano.printing.debugprint(f)
-    print 'random?[:10]\n', f()[0,0:10]
-    basictest(f, steps, prefix='mrg  cpu')
-
-    if mode!='FAST_COMPILE':
         print ''
-        print 'ON GPU:'
-        R = MRG_RandomStreams(234, use_cuda=True)
-        u = R.uniform(size=sample_size, dtype='float32')
-        assert u.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
-        f = theano.function([], theano.Out(
-                theano.sandbox.cuda.basic_ops.gpu_from_host(u),
-                borrow=True), mode=mode)
+        print 'ON CPU with size=(%s):'%str(size)
+        x = tensor.matrix()
+        R = MRG_RandomStreams(234, use_cuda=False)
+        u = R.uniform(size=size)
+        f = theano.function(var_input, u, mode=mode)
+        assert any([isinstance(node.op,theano.sandbox.rng_mrg.mrg_uniform) 
+                    for node in f.maker.env.toposort()])
         theano.printing.debugprint(f)
-        print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
-        basictest(f, steps, prefix='mrg  gpu')
+        out = f(*input)
+        print 'random?[:10]\n', out[0,0:10]
+        #print 'random?[-1,-10:]\n', out[-1,-10:]
+        basictest(f, steps, sample_size, prefix='mrg  cpu', inputs=input)
 
-    print ''
-    print 'ON CPU w NUMPY:'
-    RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+        if mode!='FAST_COMPILE':
+            print ''
+            print 'ON GPU with size=(%s):'%str(size)
+            R = MRG_RandomStreams(234, use_cuda=True)
+            u = R.uniform(size=size, dtype='float32')
+            assert u.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
+            f = theano.function(var_input, theano.Out(
+                    theano.sandbox.cuda.basic_ops.gpu_from_host(u),
+                    borrow=True), mode=mode)
+            assert any([isinstance(node.op,theano.sandbox.rng_mrg.GPU_mrg_uniform) 
+                        for node in f.maker.env.toposort()])
+            theano.printing.debugprint(f)
+            out = numpy.asarray(f(*input))
+            print 'random?[:10]\n', out[0,0:10]
+            #print 'random?[-1,-10:]\n', out[-1,-10:]
+            basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
 
-    uu = RR.uniform(size=sample_size)
-    ff = theano.function([], uu, mode=mode)
-    # It's not our problem if numpy generates 0 or 1
-    basictest(ff, steps, prefix='numpy', allow_01=True)
+        print ''
+        print 'ON CPU w Numpy with size=(%s):'%str(size)
+        RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
+        uu = RR.uniform(size=size)
+        ff = theano.function(var_input, uu, mode=mode)
+        # It's not our problem if numpy generates 0 or 1
+        basictest(ff, steps, sample_size, prefix='numpy', allow_01=True, inputs=input)
 
+def test_binomial():
+#TODO: test size=None, ndim=X
+#TODO: test size=X, ndim!=X.ndim
+#TODO: test random seed in legal value(!=0 and other)
+#TODO: test sample_size not a multiple of guessed #streams
+#TODO: test size=Var, with shape that change from call to call
+#we test size in a tuple of int and a tensor.shape.
+#we test the param p with int.
 
+    if mode in ['DEBUG_MODE','FAST_COMPILE']:
+        sample_size = (10,50)
+        steps = int(1e2)
+    else:
+        sample_size = (500,100)
+        steps = int(1e3)
+    
+    x = tensor.matrix()
+    v = tensor.vector()
+    for mean in [0.1, 0.5]:
+        for size,var_input,input in [(sample_size,[],[]), (x.shape,[x],[numpy.zeros(sample_size)])]:
+
+            print ''
+            print 'ON CPU with size=(%s) and mean(%d):'%(str(size),mean)
+            R = MRG_RandomStreams(234, use_cuda=False)
+            u = R.binomial(size=size, p=mean)
+            f = theano.function(var_input, u, mode=mode)
+            theano.printing.debugprint(f)
+            out = f(*input)
+            print 'random?[:10]\n', out[0,0:10]
+            print 'random?[-1,-10:]\n', out[-1,-10:]
+            basictest(f, steps, sample_size, prefix='mrg  cpu', inputs=input, allow_01=True, mean = mean)
+
+            if mode!='FAST_COMPILE':
+                print ''
+                print 'ON GPU with size=(%s) and mean(%d):'%(str(size),mean)
+                R = MRG_RandomStreams(234, use_cuda=True)
+                u = R.binomial(size=size, p=mean, dtype='float32')
+                assert u.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
+                f = theano.function(var_input, theano.Out(
+                        theano.sandbox.cuda.basic_ops.gpu_from_host(u),
+                        borrow=True), mode=mode)
+                theano.printing.debugprint(f)
+                out = numpy.asarray(f(*input))
+                print 'random?[:10]\n', out[0,0:10]
+                print 'random?[-1,-10:]\n', out[-1,-10:]
+                basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input, allow_01=True, mean = mean)
+
+            print ''
+            print 'ON CPU w NUMPY with size=(%s) and mean(%d):'%(str(size),mean)
+            RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+
+            uu = RR.binomial(size=size, p=mean)
+            ff = theano.function(var_input, uu, mode=mode)
+            # It's not our problem if numpy generates 0 or 1
+            basictest(ff, steps, sample_size, prefix='numpy', allow_01=True, inputs=input, mean = mean)
 
 def test_normal0():
 
