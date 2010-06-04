@@ -7,7 +7,7 @@ from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, to
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.blas import gpu_dot22, gpu_dot22scalar, gpu_gemm, GpuConv
+from theano.sandbox.cuda.blas import gpu_dot22, gpu_dot22scalar, gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv
 from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
@@ -187,6 +187,8 @@ def local_gpu_dot22scalar(node):
 @local_optimizer([])
 def local_gpu_gemm(node):
     """
+    work for inplace and not inplace gemm
+
     gpu_from_host(gemm) -> gpu_gemm(gpu_from_host)
 
     gemm(host_from_gpu) -> host_from_gpu(gpu_gemm)
@@ -195,14 +197,24 @@ def local_gpu_gemm(node):
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op == tensor.blas.gemm_inplace:
             z, a, x, y, b = host_input.owner.inputs
-            return [gpu_gemm(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
-    if node.op == tensor.blas.gemm_inplace:
+            return [gpu_gemm_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
+        elif host_input.owner and host_input.owner.op == tensor.blas.gemm_no_inplace:
+            z, a, x, y, b = host_input.owner.inputs
+            return [gpu_gemm_no_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
+    elif node.op == tensor.blas.gemm_inplace:
         z, a, x, y, b = node.inputs
         x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
         y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
         z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
         if x_on_gpu or y_on_gpu or z_on_gpu:
-            return [host_from_gpu(gpu_gemm(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
+            return [host_from_gpu(gpu_gemm_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
+    elif node.op == tensor.blas.gemm_no_inplace:
+        z, a, x, y, b = node.inputs
+        x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
+        y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
+        z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
+        if x_on_gpu or y_on_gpu or z_on_gpu:
+            return [host_from_gpu(gpu_gemm_no_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
     return False
 
 @register_opt()

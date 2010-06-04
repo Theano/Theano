@@ -153,14 +153,29 @@ class GpuGemm(Op):
             Need to check al least refcount.
     
     """
-    destroy_map = {0:[0]}
+    def __init__(self, inplace):
+        self.__setstate__({'inplace':inplace})
+  
     def __str__(self):
-        return 'GpuGemm'
+        if self.inplace: inplace_str = 'inplace'
+        else: inplace_str = 'no_inplace'
+        return '%s{%s}' % (self.__class__.__name__, inplace_str)
+
     def __eq__(self, other):
-        return type(self) == type(other)
+        return (type(self) == type(other)\
+                and self.inplace == other.inplace)
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ hash(self.inplace)
+
+    def __setstate__(self, dct):
+        inplace = dct.get('inplace', True)
+        if inplace:
+            self.destroy_map = {0: [0]} 
+        self.inplace = inplace
+
+    def __getstate__(self):
+        return dict(inplace=self.inplace)
 
     def make_node(self, z, a, x, y, b):
         # the more complicated error checking performed by tensor.gemm is assumed to already
@@ -171,10 +186,14 @@ class GpuGemm(Op):
         return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
+        #z_out = alpha * dot(x,y) + beta * z_in
+        #inplace version, set set z_out = z_in
+        #not inplace version, we copy z_in to z_out.
         z_in, a, x, y, b = inputs
         z_out, = outputs
         fail = sub['fail']
-        return """
+        if self.inplace:
+            return """
 
         #define REAL float
         float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT) 
@@ -194,7 +213,43 @@ class GpuGemm(Op):
         %(z_out)s = %(z_in)s;
         Py_INCREF(%(z_out)s);
         """ % locals()
-gpu_gemm = GpuGemm()
+        else:
+            return """
+        #define REAL float
+        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT) 
+        ? (REAL)(((float*)%(a)s->data)[0])
+        : (REAL)(((double*)%(a)s->data)[0]);
+
+        float %(name)s_b = (%(b)s->descr->type_num == PyArray_FLOAT) ?
+        (REAL)(((float*)%(b)s->data)[0])
+        : (REAL)(((double*)%(b)s->data)[0]);
+        #undef REAL
+
+        if ((NULL == %(z_out)s)
+            || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] != CudaNdarray_HOST_DIMS(%(z_in)s)[1]))
+        {
+            Py_XDECREF(%(z_out)s);
+            %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+
+            if(!%(z_out)s) {
+                PyErr_SetString(PyExc_MemoryError, "failed to alloc GpuGemm{no_inplace} output");
+                %(fail)s
+            }
+        }else{
+            if(CudaNdarray_CopyFromCudaNdarray(%(z_out)s,%(z_in)s)){
+                PyErr_SetString(PyExc_MemoryError, "failed to copy input in GpuGemm{no_inplace}");
+                %(fail)s
+            }
+        }
+
+        if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, %(name)s_b, %(z_out)s))
+        {
+            %(fail)s;
+        }
+        """ % locals()
+gpu_gemm_inplace = GpuGemm(True)
+gpu_gemm_no_inplace = GpuGemm(False)
 
 ##
 # Not really a BLAS operation, but whatever.
