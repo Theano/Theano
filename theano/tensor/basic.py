@@ -2838,7 +2838,7 @@ class Join(Op):
                       x.type.broadcastable[axis + 1:] for x in as_tensor_variable_args]
             if not all([bcasts[0] == bc for bc in bcasts[1:]]):
                 raise ValueError('Dimensions other than the given axis must'
-                    ' match', tensors)
+                    ' have the same broadcast behavior', tensors)
             bcastable[:] = as_tensor_variable_args[0].type.broadcastable
             try:
                 bcastable[axis] = False
