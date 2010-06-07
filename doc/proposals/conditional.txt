@@ -1,0 +1,157 @@
+
+=============================================================================
+Proposal for New Linking Strategy supporting Lazy Evaluation: Op.make_thunk
+=============================================================================
+
+.. note::
+   
+   Proposal made June 2010.
+
+
+Motivation
+===========
+
+Conditional evaluation is useful to describe many optimization algorithms where
+the update expressions depend on internal state.
+
+True conditional evaluation requires lazy graph evaluation.
+Without lazy graph evaluation, the runtime of a graph can be exponential in the
+number of conditionals instead of linear.  No one waits an exponential amount of
+time, so instead people work around this problem in various other ways, but it
+would be better if theano had an 'if-then-else' expression (call it cond).
+
+A lazily-evaluted 'cond' requires a linker to use a different method for
+interacting with Ops.  Neither the current perform() nor c_code() approaches
+support lazy evaluation.
+Why do perform (and c_code) not handle lazy evaluation?
+The syntax of the current perform() could be extended to be compatible with lazy
+evaluation. For example, the  linker could set all inputs to None, and use the
+return value from perform() to see which inputs are required.  But all the Ops
+that currently implement a perform() function would be broken because their
+perform implementations do not ask for inputs before using them.  I don't see a
+way around this.  The same restriction applies to c_code.
+
+The way around this is to introduce a new interface for the linker to talk to
+Ops.  I propose that we add an Op.make_thunk() that returns an object satisfying
+this interface.
+
+
+At the same time, it appears that as we try to integrate PyCUDA Ops another
+problem arises.  We would like to use Op.perform() to drive the GPU, but it is
+natural to move compilation of the CUDA kernel to a point after make_node() and a
+point before perform().   The point where the linker makes an thunk from the Op
+seems like a natural choice.
+
+
+A third motivation for introducing an Op.make_thunk function is to clarify the
+relationship between Ops (the classes you implement in Python) and mathematical
+operations (the more abstract things in terms of which you think when using
+Theano).
+I propose that *technically* an Op, when conditioned by particular inputs,
+generates *at most one implementation* that defines the behaviour of that Op.
+In *intuitive terms*, the abstract mathematical steps that we sometimes talk about regarding Theano
+still correspond to Ops -- it's just that these Ops have relatively generic
+implementations.
+The process of optimization is to specialize those generic implementations
+by using information from the rest of the graph.
+If we accept that an Op corresponds to at most one implementation,
+then it makes sense to ask an Op instance to expose that implementation via a
+standard interface (Op.make_thunk).
+It does not make sense to pass arguments to Op.make_thunk such as 'py' or "c|py"
+to tell the Op which implementation to use.  The Op instance represents just one
+implementation, and flags such as 'py' or 'c|py' should be passed to the Op's
+constructor.
+
+
+Proposal: Op.make_thunk
+==========================
+
+There are two interface items I propose to add.  The first is a Thunk object
+(which we have never had before), and the second is a new function (make_thunk)
+in the PureOp class (a superclass of Op) that will return a Thunk.
+
+..code-block:: python
+
+  class Thunk (object):
+    """Abstract class / interface
+
+    It describes the interface used by a Theano linker to execute the nodes in a
+    graph.  Thunk instances are in correspondance with Apply instances that
+    remain in the final form of the graph after optimization.
+
+    """
+
+    lazy = property(...,
+       """True means the thunk may trigger lazy evaluation.
+        False means the thunk always requires all inputs and computes all
+        outputs.
+        Consequently False implies that __call__ always returns None
+        """
+
+    def __call__(self):
+       """Thunk will compute some number (or zero) of outputs and in the case
+       that it cannot compute all its outputs for lack of inputs, this function
+       will return a list of input indexes that are required.  The linker will
+       typically compute those required inputs and then call this
+       __call__ function again.
+       The thunk is considered to be finished when it returns an empty list or
+       None.
+       """
+
+..code-block:: python
+
+    class PureOp(object):                       # recall:
+                                                # Op inherits from PureOp
+
+        def make_node(self, *inputs):           # leave alone 
+           ...
+
+        def perform(self, node, 
+              inputs, output_storage):          # move to `Op` class 
+           ...
+
+        def make_thunk(self, node,              # new function
+              input_computed, output_computed,
+              input_registers, output_registers,
+              ): 
+           """
+           :type node: Apply instance
+           :param node: previous rval from make_node(self, *inputs)
+
+           :type input_computed: list of len-1 lists, with values in (0,1).
+           :param input_computed: at runtime, input_computed[i][0]==1 implies
+               that the i'th input has been computed and stored at
+               input_registers[i][0], and is available for use.
+               Otherwise the content of input_registers[i][0] is undefined.
+
+           :type output_computed: list of len-1 lists, with values in (0,1).
+           :param output_computed: at runtime, output_computed[i][0]==1 implies
+               that the i'th output has already been computed and stored at
+               output_registers[i][0].
+               Otherwise, output_registers[i][0] will contain either None, or
+               a value that was previously computed by this thunk.
+
+           :type input_registers: list of len-1 lists
+           :type output_registers: list of len-1 lists
+
+           :param input_registers: the i'th input can be read from
+           input_registers[i][0] when input_computed[i][0] == 1.
+
+           :param output_registers: the i'th output must be stored to 
+           output_registers[i][0], at which point the thunk must set output_computed[i][0] == 1.
+
+           :returns: a Thunk (subclass) instance
+
+           """
+
+
+The Thunk class can have subclasses that use Op.perform and Op.c_code as we use
+them now.  The interface of Thunk is backward-compatible with the thunks built
+by the CLinker and PerformLinker.  If a graph contains zero Thunks with
+lazy==True, then the current Linkers will continue to work.
+The new Thunk interface will support a new LazyLinker that can run programs for
+which some thunks have lazy==True.
+
+The Thunk class can have subclasses that are implemented in C, which might help
+performance.
+
