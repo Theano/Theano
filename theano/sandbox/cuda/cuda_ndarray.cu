@@ -311,6 +311,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
         }
 
         int shp_el = PyInt_AsLong(shp_el_obj);
+        Py_DECREF(shp_el_obj);
 
         if (shp_el <= 0)
         {
@@ -318,9 +319,8 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
             free(newdims);
             return NULL;
         }
-        
+
         newdims[i] = shp_el;
-        
         total_elements *= newdims[i];
     }
 
@@ -1425,23 +1425,26 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         Py_DECREF((PyObject*)rval);
         return -1;
     }
- 
+
     if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v))
     {
         Py_DECREF(viewCopyForComparison);
         Py_DECREF((PyObject*)rval);
         return -1;
     }
-    
+
     // Check that copy didn't modify shape or strides
     assert (CudaNdarray_EqualAndIgnore(viewCopyForComparison, rval, 1, 1));
     assert (rval->base == baseSavedForComparison);
     assert (rval->dev_structure_fresh);
+
+    // Clean up locally-created references
     Py_DECREF((PyObject*)viewCopyForComparison);
-    
+    Py_DECREF(rval);
+
     return 0;
 }
- 
+
 
 PyMappingMethods CudaNdarrayMappingMethods = {
     CudaNdarray_len, //lenfunc mp_length;               __len__

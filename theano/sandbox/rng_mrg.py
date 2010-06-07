@@ -149,6 +149,10 @@ class mrg_uniform_base(Op):
         return Apply(self, 
                 [rstate, size], 
                 [rstate.type(), self.output_type()])
+
+    def grad(self,inputs,ograd):
+        return [None for i in inputs]
+
     def c_code_cache_version(self):
         return (1,)
 
@@ -717,5 +721,3 @@ def mrg_random_make_inplace(node):
         return new_op.make_node(*node.inputs).outputs
     return False
 optdb.register('random_make_inplace_mrg', opt.in2out(mrg_random_make_inplace, ignore_newtrees=True), 99, 'fast_run', 'inplace')
-
-
