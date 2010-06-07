@@ -8,7 +8,7 @@ http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 import sys
 import numpy
 
-from theano import Op, Apply, shared, config
+from theano import Op, Apply, shared, config, Variable
 from theano.tensor import raw_random, TensorType, as_tensor_variable, get_vector_length, cast, opt
 from theano.tensor import zeros_like, sqrt, log, sin, cos, join
 from theano.compile import optdb
@@ -627,11 +627,14 @@ class MRG_RandomStreams(object):
         ndim may be a plain integer to supplement the missing
         information.
         
-        Currently size can't be None. Otherwise it fail later. So I added the assert
+        :param: size: Can be a list of integer or a Theano variable like the shape of some tensor.
+                      The number of dimensions must be computable at compile time.
+                      TODO: can size be None?
         """
-        assert isinstance(size, tuple), "size must be a tuple"
-        assert all([isinstance(i,int) for i in size])
-        
+        if isinstance(size, tuple):
+            assert all([isinstance(i,int) for i in size]), "size must be a tuple of int or a Theano variable"
+        else: assert isinstance(size, Variable), "size must be a tuple of int or a Theano variable"
+
         if nstreams is None:
             nstreams = self.n_streams(size)
         if self.use_cuda and dtype=='float32':
