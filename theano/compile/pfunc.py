@@ -115,9 +115,11 @@ def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         '''
         # this method co-recurses with clone_a
         assert v is not None
+        if v in clone_d:
+            return clone_d[v]
         if v.owner:
             clone_a(v.owner)
-        elif isinstance(v, SharedVariable) and v not in clone_d:
+        elif isinstance(v, SharedVariable):
             if v not in shared_inputs:
                 shared_inputs.append(v)
 
