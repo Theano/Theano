@@ -45,7 +45,11 @@ CudaNdarrayType.Constant = CudaNdarrayConstant
 class CudaNdarraySharedVariable(SharedVariable, _operators):
 
     def __getvalue(self):
-        return numpy.asarray(self.container.value)
+        # Return a read-only array, since it is only a copy,
+        # to avoid users modifying it expecting self.container.value to change
+        v = numpy.asarray(self.container.value)
+        v.setflags(write=False)
+        return v
     def __setvalue(self, value):
         self.container.value = value #container does the filtering 
     value = property(__getvalue, __setvalue)
