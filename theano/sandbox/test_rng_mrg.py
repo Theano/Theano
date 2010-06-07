@@ -264,7 +264,7 @@ def test_consistency_GPU_parallel():
 
         # We need the sample back in the main memory
         cpu_sample = tensor.as_tensor_variable(sample)
-        f = theano.function([], cpu_sample)
+        f = theano.function([], cpu_sample, mode=mode)
 
         for k in range(n_samples):
             s = f()
@@ -351,6 +351,10 @@ def test_rng0():
 
 def test_normal0():
 
+    if config.mode == 'FAST_COMPILE':
+        mode = 'FAST_RUN'
+    else:
+        mode = config.mode
     def basictest(f, steps, target_avg, target_std, prefix=""):
         dt = 0.0
         avg_std = 0.0
@@ -414,7 +418,7 @@ def test_normal0():
     RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
     nn = RR.normal(size=sample_size, avg=-5.0, std=2.0)
-    ff = theano.function([], nn, mode=mode)
+    ff = theano.function([], nn)
 
     basictest(ff, 50, -5.0, 2.0, prefix='numpy ')
 

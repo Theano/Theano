@@ -622,7 +622,12 @@ class MRG_RandomStreams(object):
         If the size argument is ambiguous on the number of dimensions,
         ndim may be a plain integer to supplement the missing
         information.
+        
+        Currently size can't be None. Otherwise it fail later. So I added the assert
         """
+        assert isinstance(size, tuple), "size must be a tuple"
+        assert all([isinstance(i,int) for i in size])
+        
         if nstreams is None:
             nstreams = self.n_streams(size)
         if self.use_cuda and dtype=='float32':
@@ -664,6 +669,8 @@ class MRG_RandomStreams(object):
         # second half our U2's. See Wikipedia page:
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
 
+        assert isinstance(size, tuple), "size must be a tuple"
+        assert all([isinstance(i,int) for i in size])
         n_samples = numpy.prod(size)
         evened = False
            

@@ -1,0 +1,12 @@
+
+Proactive Merging
+=================
+
+
+Merge is done now as an optimization. 
+But if Merging was done at graph construction time, things like #476 would work.
+Additionally, memo-izing at graph construction time would make it possible to
+define recursive formula with recursive python functions (e.g. Fibonacci).
+Currently the merge optimization would make the Fibonacci series linear, but the
+size of the program used to express the program would be exponential.
+

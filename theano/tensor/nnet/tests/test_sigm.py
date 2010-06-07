@@ -87,7 +87,7 @@ class T_sigmoid_opts(unittest.TestCase):
 class T_softplus_opts(unittest.TestCase):
     def setUp(self):
         if theano.config.mode == 'FAST_COMPILE':
-            m = theano.compile.mode.get_mode('FAST_RUN')
+            m = theano.compile.mode.get_mode('FAST_RUN').excluding('local_elemwise_fusion')
         else:
             m = theano.compile.mode.get_default_mode().excluding('local_elemwise_fusion')
         self.m = m
