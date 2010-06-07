@@ -438,13 +438,13 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         y_idx = tensor.as_tensor_variable(y_idx)
         if x.type.ndim != 2 \
                 or x.type.dtype not in ['float32', 'float64']:
-            raise ValueError('x must be 2-d tensor of floats')
+            raise ValueError('x must be 2-d tensor of floats', x.type)
         if b.type.ndim != 1 \
                 or x.type.dtype not in ['float32', 'float64']:
-            raise ValueError('b must be 1-d tensor of floats')
+            raise ValueError('b must be 1-d tensor of floats', b.type)
         if y_idx.type.ndim != 1 \
                 or y_idx.type.dtype not in ['int8', 'int16', 'int32', 'int64']:
-            raise ValueError('y_idx must be 1-d tensor of ints')
+            raise ValueError('y_idx must be 1-d tensor of ints', y_idx.type)
 
 #       TODO: Is this correct? It used to be y, not y_idx
         nll = tensor.TensorType(x.type.dtype,
