@@ -442,6 +442,19 @@ class Test_pfunc(unittest.TestCase):
         # a is needed as input if y.default_update is used
         self.failUnlessRaises(TypeError, pfunc, [], x)
 
+    def test_default_updates_partial_graph(self):
+        a = shared(0)
+        a.default_update = a+1 # Increment a each time it is used
+        b = 2*a
+        # Use only the tip of the graph, a is not used
+        f = pfunc([b], b)
+        print 'a.value =', a.value
+        assert a.value == 0
+        f(21)
+        print 'a.value =', a.value
+        assert a.value == 0
+
+
     def test_givens_replaces_shared_variable(self):
         a = shared(1.,'a')
         a.default_update = a+3.
