@@ -2,12 +2,13 @@ import sys
 import theano
 import numpy
 from theano import scalar as scal
-from theano import tensor, compile
+from theano import tensor, compile, gof
 from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, toolbox, DestroyHandler
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.blas import gpu_dot22, gpu_dot22scalar, gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv
+from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar, gpu_gemm_inplace,
+        gpu_gemm_no_inplace, GpuConv)
 from theano.sandbox.cuda.blas import GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
@@ -187,34 +188,25 @@ def local_gpu_dot22scalar(node):
 @local_optimizer([])
 def local_gpu_gemm(node):
     """
-    work for inplace and not inplace gemm
-
     gpu_from_host(gemm) -> gpu_gemm(gpu_from_host)
 
     gemm(host_from_gpu) -> host_from_gpu(gpu_gemm)
     """
+    gemms = {tensor.blas.gemm_inplace: gpu_gemm_inplace,
+            tensor.blas.gemm_no_inplace: gpu_gemm_no_inplace}
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
-        if host_input.owner and host_input.owner.op == tensor.blas.gemm_inplace:
+        if host_input.owner and host_input.owner.op in gemms:
+            op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
-            return [gpu_gemm_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
-        elif host_input.owner and host_input.owner.op == tensor.blas.gemm_no_inplace:
-            z, a, x, y, b = host_input.owner.inputs
-            return [gpu_gemm_no_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
-    elif node.op == tensor.blas.gemm_inplace:
+            return [gemms[op](gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b)]
+    if node.op in gemms:
         z, a, x, y, b = node.inputs
         x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
         y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
         z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
         if x_on_gpu or y_on_gpu or z_on_gpu:
-            return [host_from_gpu(gpu_gemm_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
-    elif node.op == tensor.blas.gemm_no_inplace:
-        z, a, x, y, b = node.inputs
-        x_on_gpu = (x.owner and x.owner.op == host_from_gpu)
-        y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
-        z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
-        if x_on_gpu or y_on_gpu or z_on_gpu:
-            return [host_from_gpu(gpu_gemm_no_inplace(gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
+            return [host_from_gpu(gemms[node.op](gpu_from_host(z), a, gpu_from_host(x), gpu_from_host(y), b))]
     return False
 
 @register_opt()
@@ -234,9 +226,45 @@ def local_gpu_sum(node):
                 gsum=GpuSum(reduce_mask)
                 pattern=(''.join(str(i) for i in reduce_mask))
                 if hasattr(gsum, 'c_code_reduce_%s'%pattern):
-                    return [host_from_gpu(gsum(gpu_from_host(x)))]
+                    rval = host_from_gpu(gsum(gpu_from_host(x)))
+                    if rval.type == node.outputs[0].type:
+                        return [rval]
+                    else:
+                        print >> sys.stderr, "WARNING: local_gpu_sum got type wrong"
+                        return None
                 else:
-                    raise Exception("GpuSum don't have implemented the pattern",pattern)
+
+                    # Try to make a simpler pattern based on reshaping
+                    # The principle is that if two adjacent dimensions have the same value in
+                    # the reduce_mask, then we can reshape to make them a single dimension, do
+                    # the sum, and then reshape to get them back.
+
+                    shape_of = node.env.shape_feature.shape_of
+
+                    x_shape = shape_of[x]
+
+                    new_in_shp = [x_shape[0]]
+                    new_mask = [reduce_mask[0]]
+                    for i in range(1, x.type.ndim):
+                        if reduce_mask[i] == reduce_mask[i-1]:
+                            new_in_shp[-1] *= x_shape[i]
+                        else:
+                            new_mask.append(reduce_mask[i])
+                            new_in_shp.append(x_shape[i])
+
+                    pattern=(''.join(str(i) for i in new_mask))
+                    new_gsum = GpuSum(new_mask)
+                    if hasattr(new_gsum, 'c_code_reduce_%s'%pattern):
+                        reshaped_x = x.reshape(tensor.stack(*new_in_shp))
+                        sum_reshaped_x = host_from_gpu(new_gsum(gpu_from_host(reshaped_x)))
+                        unreshaped_sum = sum_reshaped_x.reshape(tensor.stack(*shape_of[node.outputs[0]]))
+                        if unreshaped_sum.type == node.outputs[0].type:
+                            return [unreshaped_sum]
+                        else:
+                            print >> sys.stderr, "WARNING: local_gpu_sum got type wrong"
+                            return None
+
+                        raise Exception("GpuSum don't have implemented the pattern",pattern)
     return False
 
 @register_opt()

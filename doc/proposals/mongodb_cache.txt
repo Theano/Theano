@@ -1,0 +1,11 @@
+
+=================
+MongoDB DLL Cache
+=================
+
+
+In network environments (like at DIRO on NFS3), a distributed DB like mongo or couch is faster and more
+robust to concurrency than the $HOME/.theano.  Also, a single cache could be
+shared by multiple users.  This would result in less compilation time, for
+everyone, and less stale-cache problems.
+

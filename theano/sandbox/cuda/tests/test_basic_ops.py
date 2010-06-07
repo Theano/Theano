@@ -34,20 +34,23 @@ def test_sum():
     test sum pattern 1, 11, 10, 01, 100, 110, 011, 001, 111, 0011, 0111, 1011, 1111
     TODO: test with broadcast
     """
-    for shape, pattern in [((0,),[0]),((5,),[0]),
+    for shape, pattern in [((100,3,1300),[1]),
+                           ((0,),[0]),((5,),[0]),
                            ((0,0),[0,1]),((1,0),[0,1]),((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
-                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
+                           ((5,4,3),[0]),((5,4,3),[1]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
                            ((0,0,0,0),[0,1,2,3]),
                            ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
-                           
+                           ((5,4,3,10,11),[1,2]),
+                           ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
+
                            #test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enought thread/block in each dimensions
                            ((4100,3),[0]),((3,4101),[0]),#10
-                           
+
                            ((4100,3),[1]),((3,4101),[1]),#01
                            ((4100,3),[0,1]),((3,4101),[0,1]),#11
 
                            ((4100,4,3),[0]),((5,4100,3),[0]),((5,4,4100),[0]),#100
-                           #((4100,4,3),[1]),((5,4100,3),[1]),((5,4,4100),[1]),#010 ##not implemented
+                           ((4100,4,3),[1]),((5,4100,3),[1]),((5,4,4100),[1]),#010 ##not implemented
                            ((4100,4,3),[2]),((5,4100,3),[2]),((5,4,4100),[2]),#001
                            ((4100,4,3),[0,1]),((5,4100,3),[0,1]),((5,4,4100),[0,1]),#110
                            ((4100,4,3),[1,2]),((5,4100,3),[1,2]),((5,4,4100),[1,2]),#011
@@ -70,9 +73,9 @@ def test_sum():
         assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
         if val.size==0:
-            assert f2(val)==f(val)
+            assert f2(val)==f(val), ('shape', shape, 'pattern', pattern)
         else:
-            assert numpy.allclose(f2(val),f(val))
+            assert numpy.allclose(f2(val),f(val)), ('shape', shape, 'pattern', pattern)
         
 
         #test with dimshuffle

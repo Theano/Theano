@@ -2,7 +2,18 @@
 # import op
 # import variable
 
-import re, os
+from theano import config
+import re, os, traceback
+
+def add_tag_trace(thing):
+    """Add tag.trace to an node or variable.
+    
+    The argument is returned after being affected (inplace).
+    """
+    limit = config.traceback.limit
+    if limit == -1: limit = None
+    thing.tag.trace = traceback.extract_stack(limit=limit)[:-1]
+    return thing
 
 def hashgen():
     hashgen.next += 1

@@ -149,17 +149,15 @@ class GpuGemm(Op):
     """
     implement the gemm on the gpu.
 
-    ..note: This probably don't work correctly for no_inplace gemm.
-            Need to check al least refcount.
-    
     """
     def __init__(self, inplace):
         self.__setstate__({'inplace':inplace})
-  
+
     def __str__(self):
-        if self.inplace: inplace_str = 'inplace'
-        else: inplace_str = 'no_inplace'
-        return '%s{%s}' % (self.__class__.__name__, inplace_str)
+        if self.inplace:
+            return 'GpuGemm{inplace}'
+        else:
+            return 'GpuGemm{no_inplace}'
 
     def __eq__(self, other):
         return (type(self) == type(other)\
@@ -183,7 +181,7 @@ class GpuGemm(Op):
         return Apply(self, [z, a, x, y, b], [z.type()])
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
@@ -192,64 +190,62 @@ class GpuGemm(Op):
         z_in, a, x, y, b = inputs
         z_out, = outputs
         fail = sub['fail']
+        sio = StringIO.StringIO()
+
+        print >> sio, """
+
+        #define REAL float
+        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT) 
+        ? (REAL)(((float*)%(a)s->data)[0])
+        : (REAL)(((double*)%(a)s->data)[0]);
+
+        float %(name)s_b = (%(b)s->descr->type_num == PyArray_FLOAT) ?
+        (REAL)(((float*)%(b)s->data)[0])
+        : (REAL)(((double*)%(b)s->data)[0]);
+        #undef REAL
+
+        """
         if self.inplace:
-            return """
-
-        #define REAL float
-        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT) 
-        ? (REAL)(((float*)%(a)s->data)[0])
-        : (REAL)(((double*)%(a)s->data)[0]);
-
-        float %(name)s_b = (%(b)s->descr->type_num == PyArray_FLOAT) ?
-        (REAL)(((float*)%(b)s->data)[0])
-        : (REAL)(((double*)%(b)s->data)[0]);
-        #undef REAL
-
-        if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, %(name)s_b, %(z_in)s))
-        {
-            %(fail)s;
-        }
-        Py_XDECREF(%(z_out)s);
-        %(z_out)s = %(z_in)s;
-        Py_INCREF(%(z_out)s);
-        """ % locals()
-        else:
-            return """
-        #define REAL float
-        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT) 
-        ? (REAL)(((float*)%(a)s->data)[0])
-        : (REAL)(((double*)%(a)s->data)[0]);
-
-        float %(name)s_b = (%(b)s->descr->type_num == PyArray_FLOAT) ?
-        (REAL)(((float*)%(b)s->data)[0])
-        : (REAL)(((double*)%(b)s->data)[0]);
-        #undef REAL
-
-        if ((NULL == %(z_out)s)
-            || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] != CudaNdarray_HOST_DIMS(%(z_in)s)[1]))
-        {
+            print >> sio, """
             Py_XDECREF(%(z_out)s);
-            %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
-
-            if(!%(z_out)s) {
-                PyErr_SetString(PyExc_MemoryError, "failed to alloc GpuGemm{no_inplace} output");
-                %(fail)s
+            %(z_out)s = %(z_in)s;
+            Py_INCREF(%(z_out)s);
+            """
+        else:
+            print >> sio, """
+            if (!%(z_out)s
+                || (%(z_out)s->nd != 2)
+                || (CudaNdarray_HOST_DIMS(%(z_out)s)[0] != CudaNdarray_HOST_DIMS(%(z_in)s)[0])
+                || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] != CudaNdarray_HOST_DIMS(%(z_in)s)[1])
+                )
+            {
+                Py_XDECREF(%(z_out)s);
+                %(z_out)s = (CudaNdarray*)CudaNdarray_Copy(%(z_in)s);
+                if (!%(z_out)s)
+                {
+                    %(fail)s;
+                }
             }
-        }else{
-            if(CudaNdarray_CopyFromCudaNdarray(%(z_out)s,%(z_in)s)){
-                PyErr_SetString(PyExc_MemoryError, "failed to copy input in GpuGemm{no_inplace}");
-                %(fail)s
+            else
+            {
+                if (CudaNdarray_CopyFromCudaNdarray(%(z_out)s, %(z_in)s))
+                {
+                    %(fail)s;
+                }
             }
-        }
+            """
 
+
+        print >> sio, """
         if (CudaNdarray_gemm(%(name)s_a, %(x)s, %(y)s, %(name)s_b, %(z_out)s))
         {
             %(fail)s;
         }
-        """ % locals()
-gpu_gemm_inplace = GpuGemm(True)
-gpu_gemm_no_inplace = GpuGemm(False)
+        """
+
+        return sio.getvalue() % locals()
+gpu_gemm_no_inplace = GpuGemm(inplace=False)
+gpu_gemm_inplace = GpuGemm(inplace=True)
 
 ##
 # Not really a BLAS operation, but whatever.
