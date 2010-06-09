@@ -16,16 +16,14 @@ class TestRealImag(unittest.TestCase):
         x= dvector()
         rng = numpy.random.RandomState(23)
         xval = rng.randn(10)
-        try:
-            numpy.all( 0 == theano.function([x], imag(x))(xval))
-            assert 0
-        except TypeError:
-            pass
-        try:
-            numpy.all( xval == theano.function([x], real(x))(xval))
-            assert 0
-        except TypeError:
-            pass
+        numpy.all( 0 == theano.function([x], imag(x))(xval))
+        numpy.all( xval == theano.function([x], real(x))(xval))
+
+
+        x= imatrix()
+        xval = numpy.asarray(rng.randn(3,3)*100, dtype='int')
+        numpy.all( 0 == theano.function([x], imag(x))(xval))
+        numpy.all( xval == theano.function([x], real(x))(xval))
 
     def test_cast(self):
         x= zvector()
