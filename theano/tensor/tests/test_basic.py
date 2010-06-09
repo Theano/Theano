@@ -1903,6 +1903,16 @@ def test_reshape():
         return Reshape(2)(v, theano._asarray([2,3], dtype='int32'))
     utt.verify_grad(just_vals, [a_val])
 
+    #test infer_shape
+    f_sub = function([a,b], (c-b).shape)
+    if config.mode=="FAST_COMPILE":
+        assert len(f_sub.maker.env.toposort())==3
+    else:
+        assert len(f_sub.maker.env.toposort())==0
+        #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
+        #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
+
+    assert numpy.all(f_sub(a_val,b_val)==[2,3])
 
 def test_make_column_matrix_broadcastable():
     # The goal of the operation made by `b` is to ensure the second dimension
