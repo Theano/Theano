@@ -407,6 +407,23 @@ def test_setitem_matrix_tensor3():
 
     assert numpy.all(numpy.asarray(_a[:,1,1]) == b)
 
+def test_setitem_matrix_bad_shape():
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([7,8], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+
+    try:
+        # attempt to assign the ndarray b with setitem                                                                                                                                              
+        _a[:,:,1] = _b
+        assert False
+    except TypeError, e:
+        #print e
+        assert True
+
 def test_setitem_assign_to_slice():
     a = numpy.arange(27)
     a.resize((3,3,3))
@@ -425,9 +442,7 @@ def test_setitem_assign_to_slice():
 
     assert numpy.all(numpy.asarray(_a[:,1,1]) == b)
 
-
-# this fails for the moment
-def test_setitem_broadcast_must_fail():
+def test_setitem_broadcast():
     a = numpy.arange(27)
     a.resize((3,3,3))
     a = theano._asarray(a, dtype='float32')
@@ -435,16 +450,15 @@ def test_setitem_broadcast_must_fail():
 
     b = theano._asarray([7,8,9], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
-
-    try:
-        # attempt to assign vector to all rows of this submatrix
-        _a[:,:,1] = _b
-        assert False
-    except TypeError:
-        assert True
+    _a[:,:,1] = _b.reshape((1,3))
+    a[:,:,1] = b.reshape((1,3))
+    assert numpy.allclose(numpy.asarray(_a),a)
 
 # this also fails for the moment
 def test_setitem_rightvalue_ndarray_fails():
+    """
+    Now we don't automatically add dimensions to broadcast
+    """
     a = numpy.arange(27)
     a.resize((3,3,3))
     a = theano._asarray(a, dtype='float32')

@@ -459,7 +459,7 @@ int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
  *
  * self is reallocated to have the correct dimensions if necessary.
  */
-int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other);
+int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, bool unbroadcast = false);
 
 /**
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.

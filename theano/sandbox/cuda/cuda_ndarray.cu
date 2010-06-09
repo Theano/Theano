@@ -1428,7 +1428,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         return -1;
     }
 
-    if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v))
+    if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v, true))
     {
         Py_DECREF(viewCopyForComparison);
         Py_DECREF((PyObject*)rval);
@@ -2045,7 +2045,7 @@ static __global__ void k_copy_1d(const int N, const float * x, const int sx, flo
 }
 
 //copy from other into self
-int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other)
+int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, bool unbroadcast)
 {
     int verbose = 0;
     //standard elemwise size checks
@@ -2063,7 +2063,8 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other)
     unsigned int size = 1;
     for (int i = 0; i< self->nd; ++i)
     {
-        if (CudaNdarray_HOST_DIMS(self)[i] != CudaNdarray_HOST_DIMS(other)[i])
+        if ((CudaNdarray_HOST_DIMS(self)[i] != CudaNdarray_HOST_DIMS(other)[i]) 
+	    && (1!=CudaNdarray_HOST_DIMS(other)[i] || !unbroadcast) )
         {
 	  PyErr_Format(PyExc_TypeError, "need same dimensions for dim %d, destination=%d, source=%d",
 		       i, CudaNdarray_HOST_DIMS(self)[i], CudaNdarray_HOST_DIMS(other)[i]);
@@ -2123,11 +2124,14 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other)
                 // call worker routine
                 unsigned int n_blocks = std::min(size, (unsigned int)NUM_VECTOR_OP_BLOCKS);
                 unsigned int threads_per_block = std::min(ceil_intdiv(size, n_blocks), (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+		CudaNdarray * cuda_dims = other;
+		if(unbroadcast)
+		  cuda_dims = self;
                 //copy from other into self
                 k_elemwise_unary_rowmajor_copy<<<n_blocks, threads_per_block>>>(
                         size, 
                         (unsigned int)other->nd,
-                        (const int *)CudaNdarray_DEV_DIMS(other),
+                        (const int *)CudaNdarray_DEV_DIMS(cuda_dims),
                         (const float*)CudaNdarray_DEV_DATA(other), (const int *)CudaNdarray_DEV_STRIDES(other),
                         CudaNdarray_DEV_DATA(self),  (const int *)CudaNdarray_DEV_STRIDES(self));
                 CNDA_THREAD_SYNC;
