@@ -267,6 +267,48 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
 }
 
 
+PyObject* CudaNdarray_ZEROS(int n, int * dims)
+{
+
+    int total_elements = 1;
+    for(int i=0;i<n;i++)
+      total_elements*=dims[i];
+
+    // total_elements now contains the size of the array, in reals
+    int total_size = total_elements * sizeof(real);
+
+    CudaNdarray* rval = (CudaNdarray*)CudaNdarray_new_null();
+    if (!rval)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: call to new_null failed");
+        return NULL;
+    }
+
+    if (CudaNdarray_alloc_contiguous(rval, n, dims))
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: allocation failed.");
+        Py_DECREF(rval);
+        return NULL;
+    }
+
+    // Fill with zeros
+    //fprintf(stdout, "Sizeof: %d\n", total_size);
+    if (cudaSuccess != cudaMemset(rval->devdata, 0, total_size))
+    {
+        PyErr_Format(PyExc_MemoryError, "Error memsetting %d bytes of device memory.", total_size);
+        Py_DECREF(rval);
+        return NULL;
+    }
+
+    if (cnda_copy_structure_to_device(rval))
+    {
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: syncing structure to device failed");
+        Py_DECREF(rval);
+        return NULL;
+    }
+    return (PyObject*) rval;
+}
+
 // declared as a static method (hence "dummy" is not used)
 // Based on _Copy and _dimshuffle
 PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
@@ -295,9 +337,6 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
         return NULL;
     }
 
-    // strides are in number of floats, not bytes
-    int total_elements = 1;
-
     // start from the end to compute strides
     for (int i = shplen-1; i >= 0; --i)
     {
@@ -306,7 +345,6 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
         {
             // shouldn't happen since we checked length before...
             PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: Index out of bound in sequence");
-            free(newdims);
             return NULL;
         }
 
@@ -316,50 +354,13 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
         if (shp_el <= 0)
         {
             PyErr_SetString(PyExc_ValueError, "CudaNdarray_Zeros: shape must not contain 0 (or negative value) for size of a dimension");
-            free(newdims);
             return NULL;
         }
 
         newdims[i] = shp_el;
-        total_elements *= newdims[i];
     }
 
-    // total_elements now contains the size of the array, in reals
-    int total_size = total_elements * sizeof(real);
-
-    CudaNdarray* rval = (CudaNdarray*)CudaNdarray_new_null();
-    if (!rval)
-    {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: call to new_null failed");
-        free(newdims);
-        return NULL;
-    }
-
-    if (CudaNdarray_alloc_contiguous(rval, shplen, newdims))
-    {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: allocation failed.");
-        free(newdims);
-        Py_DECREF(rval);
-        return NULL;
-    }
-
-    // Fill with zeros
-    //fprintf(stdout, "Sizeof: %d\n", total_size);
-    if (cudaSuccess != cudaMemset(rval->devdata, 0, total_size))
-    {
-        PyErr_Format(PyExc_MemoryError, "Error memsetting %d bytes of device memory.", total_size);
-        free(newdims);
-        Py_DECREF(rval);
-        return NULL;
-    }
-
-    if (cnda_copy_structure_to_device(rval))
-    {
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: syncing structure to device failed");
-        free(newdims);
-        Py_DECREF(rval);
-        return NULL;
-    }
+    PyObject* rval = CudaNdarray_ZEROS(shplen,newdims);
 
     free(newdims);
 
