@@ -304,7 +304,7 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[],
             assert max_ < 1
 
     print prefix, 'mean', numpy.mean(mean)
-    assert abs(numpy.mean(mean) - target_avg) < mean_rtol, 'bad mean? %f %f'%(mean, target_avg)
+    assert abs(numpy.mean(mean) - target_avg) < mean_rtol, 'bad mean? %f %f'%(numpy.mean(mean), target_avg)
     print prefix, 'std', avg_std
     if target_std is not None:
         assert abs(avg_std - target_std) < .01, 'bad std? %f %f'%(avg_std, target_std)
@@ -399,7 +399,7 @@ def test_binomial():
             out = f(*input)
             print 'random?[:10]\n', out[0,0:10]
             print 'random?[-1,-10:]\n', out[-1,-10:]
-            basictest(f, steps, sample_size, prefix='mrg  cpu', inputs=input, allow_01=True, mean = mean)
+            basictest(f, steps, sample_size, prefix='mrg  cpu', inputs=input, allow_01=True, target_avg = mean)
 
             if mode!='FAST_COMPILE':
                 print ''
@@ -414,7 +414,7 @@ def test_binomial():
                 out = numpy.asarray(f(*input))
                 print 'random?[:10]\n', out[0,0:10]
                 print 'random?[-1,-10:]\n', out[-1,-10:]
-                basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input, allow_01=True, mean = mean)
+                basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input, allow_01=True, target_avg = mean)
 
             print ''
             print 'ON CPU w NUMPY with size=(%s) and mean(%d):'%(str(size),mean)
@@ -423,7 +423,7 @@ def test_binomial():
             uu = RR.binomial(size=size, p=mean)
             ff = theano.function(var_input, uu, mode=mode)
             # It's not our problem if numpy generates 0 or 1
-            basictest(ff, steps, sample_size, prefix='numpy', allow_01=True, inputs=input, mean = mean)
+            basictest(ff, steps, sample_size, prefix='numpy', allow_01=True, inputs=input, target_avg = mean)
 
 def test_normal0():
 
