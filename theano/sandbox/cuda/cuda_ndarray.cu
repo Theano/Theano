@@ -862,17 +862,18 @@ static PyObject *
 CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
 {
     int verbose = 0;
-    if (verbose) fprintf(stderr, "INPLACE ADD");
     if (! CudaNdarray_Check(py_self)) {
-        PyErr_SetString(PyExc_TypeError, "need a CudaNdarray on left");
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_inplace_add need a CudaNdarray on left");
         return NULL;
     }
     if (! CudaNdarray_Check(py_other)) {
-        PyErr_SetString(PyExc_TypeError, "need a CudaNdarray on right");
+        PyErr_SetString(PyExc_TypeError, "CudaNdarray_inplace_add need a CudaNdarray on right");
         return NULL;
     }
     CudaNdarray * self = (CudaNdarray *)py_self;
     CudaNdarray * other = (CudaNdarray *)py_other;
+
+    if (verbose) fprintf(stderr, "INPLACE ADD for nd=%d\n",self->nd);
 
     //standard elemwise size checks
     if (self->nd != other->nd)
@@ -2054,7 +2055,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other)
     }
     if (self->nd != other->nd)
     {
-        PyErr_SetString(PyExc_TypeError, "need same number of dims");
+        PyErr_Format(PyExc_TypeError, "need same number of dims. destination nd=%d, source nd=%d", self->nd, other->nd);
         return -1;
     }
     //standard elemwise dim checks (also compute total size)
@@ -2063,7 +2064,8 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other)
     {
         if (CudaNdarray_HOST_DIMS(self)[i] != CudaNdarray_HOST_DIMS(other)[i])
         {
-            PyErr_SetString(PyExc_TypeError, "need same dimensions");
+	  PyErr_Format(PyExc_TypeError, "need same dimensions for dim %d, destination=%d, source=%d",
+		       i, CudaNdarray_HOST_DIMS(self)[i], CudaNdarray_HOST_DIMS(other)[i]);
             return -1;
         }
         size *= (unsigned int) CudaNdarray_HOST_DIMS(self)[i];
