@@ -1,3 +1,6 @@
+import logging
+_logger = logging.getLogger('theano.sandbox.cuda.opt')
+
 import sys
 import theano
 import numpy
@@ -567,5 +570,23 @@ def local_gpu_join(node):
 
             return [replacement_node]
 
+
+
+# After destroyhandler is in but before we try to make elemwise things inplace
+# Try to make gpu gemm inplace
+# Also, need to make the gemm optimisation(step 70) happen before the fusion of elemwise(step 71)
+#optdb.register('InplaceGpuBlasOpt',
+#        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
+#            max_use_ratio=5),
+#               70.0, 'fast_run', 'inplace')
+
+#GpuElemwise fusion
+gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(GpuElemwise)
+if config.gpu.local_elemwise_fusion:
+    _logger.debug("enabling optimization fusion of gpu elemwise in fast_run")
+    compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fast_run', 'fusion', 'local_elemwise_fusion')
+else:
+    _logger.debug("not enabling optimization fusion of gpu elemwise in fast_run")
+    compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
 
 

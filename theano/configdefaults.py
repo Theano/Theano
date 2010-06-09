@@ -45,6 +45,11 @@ AddConfigVar('tensor.local_elemwise_fusion',
         "Enable or not in fast_run mode(fast_run optimization) the elemwise fusion optimization",
         BoolParam(True))
 
+AddConfigVar('gpu.local_elemwise_fusion',
+        "Enable or not in fast_run mode(fast_run optimization) the gpu elemwise fusion optimization",
+        BoolParam(True))
+
+#http://developer.amd.com/CPU/LIBRARIES/LIBM/Pages/default.aspx
 AddConfigVar('lib.amdlibm',
         "Use amd's amdlibm numerical library",
         BoolParam(False))

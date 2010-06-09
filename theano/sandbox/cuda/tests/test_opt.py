@@ -7,8 +7,8 @@ import numpy
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+import theano.sandbox.cuda as cuda
+if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.compile.mode
@@ -76,8 +76,8 @@ def test_opt_gpujoin_onlyajoin():
     # from a bug in normal sampling
     _a = numpy.asarray([[1,2],[3,4]],dtype='float32')
     _b = numpy.asarray([[5,6,7],[8,9,10]],dtype='float32')
-    a = cuda_ndarray.shared_constructor(_a)
-    b = cuda_ndarray.shared_constructor(_b)
+    a = cuda.shared_constructor(_a)
+    b = cuda.shared_constructor(_b)
 
     c = tensor.join(1,a,b)
     
@@ -100,8 +100,8 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     # from a bug in gpu normal sampling
     _a = numpy.asarray([1,2,3,4],dtype='float32')
     _b = numpy.asarray([5,6,7,8],dtype='float32')
-    a = cuda_ndarray.shared_constructor(_a)
-    b = cuda_ndarray.shared_constructor(_b)
+    a = cuda.shared_constructor(_a)
+    b = cuda.shared_constructor(_b)
 
     a_prime = tensor.cos(a)
     b_prime = tensor.sin(b)
@@ -125,6 +125,20 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
 
     assert numpy.allclose(numpy.asarray(f()), concat)
 
+def test_elemwise_fusion():
+    """ Test the the GpuElemwise fusion work correctly"""
+    shape = (3,4)
+    a = cuda.shared_constructor(theano._asarray(numpy.random.rand(*shape), dtype='float32'), 'a')
+    b = tensor.fmatrix()
+    c = tensor.fmatrix()
+    f = pfunc([b,c], [a+b+c], mode=mode_with_gpu)
+    topo = f.maker.env.toposort()
+    for i, node in enumerate(topo):
+        print >> sys.stdout, i, node
+    assert len(topo)==4
+    assert isinstance(topo[2].op.scalar_op,theano.scalar.basic.Composite)
+    #let debugmode catch errors
+    f(theano._asarray(numpy.random.rand(*shape), dtype='float32'), theano._asarray(numpy.random.rand(*shape), dtype='float32'))
 
 
 if __name__ == '__main__':

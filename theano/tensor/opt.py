@@ -2096,118 +2096,125 @@ register_canonicalize(local_transposed_dot, name='local_transposed_dot')
 # ###############
 # # Loop fusion #
 # ###############
-
-def local_elemwise_fusion(node):
+def local_elemwise_fusion_op(OP):
     """
-    As part of specialisation, we fusion two consecutif elemwise op of the same shape.
-
-    For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
-    The number of dimension is validated at call time by theano itself.
-
+    We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
-    # META TODO:  PUT THESE THINGS IN TRAC, NOT TODO NOTES!!
-    # TODO: use broadcast flag?
+    def local_fuse(node):
+        """
+        As part of specialisation, we fusion two consecutif elemwise op of the same shape.
 
-    # TODO: don't do this optimization as a localOptimizer.  Analyze the graph in terms of
-    # elemwise subgraphs, and then replace each subgraph with a Composite version.
+        For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
+        The number of dimension is validated at call time by theano itself.
 
-    # TODO: use malloc and copy to transfer arguments that don't fit within the parameter space
-    # of 256 bytes
-    #
-    # TODO: Merge with multiple output to merge when an inputs have multiple clients. This can't be done with a local optimiser.
-    # TODO: Related: Support composites with multiple outputs
+        """
+        # META TODO:  PUT THESE THINGS IN TRAC, NOT TODO NOTES!!
+        # TODO: use broadcast flag?
 
-    # TODO: Use Composite to combine Elemwise and Reduce operations.  We have to loop over the
-    # data anyway... might as well sum it up while we're at it (this can be trickier than i'm
-    # making it seound here. The data-traversal should be done contiguously, and the summing-up
-    # might not be easy or worthwhile if the summation axis doesn't line up with a contiguous
-    # dimension)
+        # TODO: don't do this optimization as a localOptimizer.  Analyze the graph in terms of
+        # elemwise subgraphs, and then replace each subgraph with a Composite version.
 
-    if not isinstance(node.op, T.Elemwise):
-        return False
-    nb_elemwise=0
-    inputs=[]#inputs of the new Elemwise op.
-    s_inputs = []#inputs of the new scalar op.
-    s_g=[]#graph of scalar, what will by done in the inner loop.
-    for i in node.inputs:
-        do_fusion = False
-        catch = False
-        if i.owner and isinstance(i.owner.op,T.Elemwise) and len(i.clients)<=1:
-            #if the scalar_op don't have a c implementation, we skip its fusion to allow the fusion of the other ops.
-            do_fusion=True
-            try:
-                s_input = [scalar.Scalar(x.dtype).make_variable() for x in i.owner.inputs]
-                s_op=i.owner.op.scalar_op(*s_input)
-                i.owner.op.scalar_op.c_code(s_op.owner,"test_presence_of_c_code",
-                                            ["x" for x in i.owner.inputs],
-                                            "z",{})
-            except MethodNotDefined:
-                catch = True
-            except NotImplementedError:
-                catch = True
-            if catch:
-                _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(i.owner.op.scalar_op))
-                do_fusion=False
+        # TODO: use malloc and copy to transfer arguments that don't fit within the parameter space
+        # of 256 bytes
+        #
+        # TODO: Merge with multiple output to merge when an inputs have multiple clients. This can't be done with a local optimiser.
+        # TODO: Related: Support composites with multiple outputs
 
-        if do_fusion:
-            nb_elemwise+=1
-            inputs.extend(i.owner.inputs)
-            s_inputs.extend(s_input)
-            s_g.append(s_op)
-        else:
-            inputs.append(i)
-            s=scalar.Scalar(i.dtype).make_variable()
-            s_inputs.append(s)
-            s_g.append(s)
+        # TODO: Use Composite to combine Elemwise and Reduce operations.  We have to loop over the
+        # data anyway... might as well sum it up while we're at it (this can be trickier than i'm
+        # making it seound here. The data-traversal should be done contiguously, and the summing-up
+        # might not be easy or worthwhile if the summation axis doesn't line up with a contiguous
+        # dimension)
 
-    #if no inputs have are an elemwise, there is nothing to fuse.
-    if nb_elemwise==0:
-#        print "local_elemwise_fusion: no elemwise in inputs. Nothing to fuse."
-        return False
+        if not isinstance(node.op, OP):
+            return False
+        nb_elemwise=0
+        inputs=[]#inputs of the new Elemwise op.
+        s_inputs = []#inputs of the new scalar op.
+        s_g=[]#graph of scalar, what will by done in the inner loop.
+        for i in node.inputs:
+            do_fusion = False
+            catch = False
+            if i.owner and isinstance(i.owner.op, OP) and len(i.clients)<=1:
+                #if the scalar_op don't have a c implementation, we skip its fusion to allow the fusion of the other ops.
+                do_fusion=True
+                try:
+                    s_input = [scalar.Scalar(x.dtype).make_variable() for x in i.owner.inputs]
+                    s_op=i.owner.op.scalar_op(*s_input)
+                    i.owner.op.scalar_op.c_code(s_op.owner,"test_presence_of_c_code",
+                                                ["x" for x in i.owner.inputs],
+                                                "z",{})
+                except MethodNotDefined:
+                    catch = True
+                except NotImplementedError:
+                    catch = True
+                if catch:
+                    _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(i.owner.op.scalar_op))
+                    do_fusion=False
 
-    otype = node.outputs[0].type
-    s_new_out=node.op.scalar_op(*s_g)
-    try:
-        s_new_out.owner.op.c_code(s_new_out.owner, "test_presence_of_c_code",
-                         ["x" for x in s_g],
-                         "z",{}) 
-    except MethodNotDefined:
-        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(s_new_out.owner.op))
-        return False
-    except NotImplementedError:
-        _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(s_new_out.owner.op))
-        return False
+            if do_fusion:
+                nb_elemwise+=1
+                inputs.extend(i.owner.inputs)
+                s_inputs.extend(s_input)
+                s_g.append(s_op)
+            else:
+                inputs.append(i)
+                s=scalar.Scalar(i.dtype).make_variable()
+                s_inputs.append(s)
+                s_g.append(s)
 
-    #create the composite op.
-    C = scalar.Composite(s_inputs,[s_new_out])
-
-    #create the new node.
-    n=T.Elemwise(C).make_node(*inputs)
-    assert len(n.outputs)==1
-    assert node.outputs[0].dtype==n.outputs[0].dtype
-
-    # There is a hard limit of 256 bytes for the formal argument list to a GPU kernel function.
-    # Here, we estimate how many bytes the new Op will need, and abort if it needs too much.
-    if True:
-        argument_limit = 240  # 16 bytes are used for block and thread coords etc.
-        #TODO: read in from architecture to make this 4 or 8
-        int_size = 8
-        ptr_size = 8
-        argument_size = int_size #for numels
-        argument_size += int_size *  inputs[0].type.ndim # for the shape
-        argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.inputs)
-        argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.outputs)
-        if argument_size >= argument_limit:
-            _logger.info('loop fusion failed because Op would exceed kernel argument limit.')
+        #if no inputs have are an elemwise, there is nothing to fuse.
+        if nb_elemwise==0:
+    #        print "local_elemwise_fusion: no elemwise in inputs. Nothing to fuse."
             return False
 
-#    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
-    return n.outputs
+        otype = node.outputs[0].type
+        s_new_out=node.op.scalar_op(*s_g)
+        try:
+            s_new_out.owner.op.c_code(s_new_out.owner, "test_presence_of_c_code",
+                             ["x" for x in s_g],
+                             "z",{}) 
+        except MethodNotDefined:
+            _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(s_new_out.owner.op))
+            return False
+        except NotImplementedError:
+            _logger.info("%s does not implement the c_code function. As well as being potentially slow, this disables loop fusion of this op." % str(s_new_out.owner.op))
+            return False
+
+        #create the composite op.
+        C = scalar.Composite(s_inputs,[s_new_out])
+
+        #create the new node.
+        n=OP(C).make_node(*inputs)
+        assert len(n.outputs)==1
+        assert node.outputs[0].dtype==n.outputs[0].dtype
+
+        # There is a hard limit of 256 bytes for the formal argument list to a GPU kernel function.
+        # Here, we estimate how many bytes the new Op will need, and abort if it needs too much.
+        if True:
+            argument_limit = 240  # 16 bytes are used for block and thread coords etc.
+            #TODO: read in from architecture to make this 4 or 8
+            int_size = 8
+            ptr_size = 8
+            argument_size = int_size #for numels
+            argument_size += int_size *  inputs[0].type.ndim # for the shape
+            argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.inputs)
+            argument_size += sum((ptr_size + int_size * i.type.ndim) for i in n.outputs)
+            if argument_size >= argument_limit:
+                _logger.info('loop fusion failed because Op would exceed kernel argument limit.')
+                return False
+
+    #    print "local_elemwise_fusion: FUSED",nb_elemwise+1,"elemwise!"
+        return n.outputs
+    return local_fuse
+
+local_elemwise_fusion = local_elemwise_fusion_op(T.Elemwise)
 
 class FusionOptimizer(Optimizer):
     """Graph optimizer for Fusion of elemwise operations"""
-    def __init__(self):
+    def __init__(self, local_optimizer):
         Optimizer.__init__(self)
+        self.optimizer = local_optimizer
 
     def add_requirements(self, env):
         env.extend(toolbox.ReplaceValidate())
@@ -2219,7 +2226,7 @@ class FusionOptimizer(Optimizer):
             nodelist = list(env.toposort())
             did_something = False
             for node in nodelist:
-                new_outputs = local_elemwise_fusion(node)
+                new_outputs = self.optimizer(node)
                 if new_outputs:
                     assert len(new_outputs) == len(node.outputs)
                     try:
@@ -2235,9 +2242,9 @@ class FusionOptimizer(Optimizer):
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
-    compile.optdb.register('elemwise_fusion', FusionOptimizer(), 71.00, 'fast_run', 'fusion', 'local_elemwise_fusion')
+    compile.optdb.register('elemwise_fusion', FusionOptimizer(local_elemwise_fusion), 71.00, 'fast_run', 'fusion', 'local_elemwise_fusion')
 else:
     _logger.debug("not enabling optimization fusion elemwise in fast_run")
-    compile.optdb.register('elemwise_fusion', FusionOptimizer(), 71.00, 'fusion', 'local_elemwise_fusion')
+    compile.optdb.register('elemwise_fusion', FusionOptimizer(local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
 
 
