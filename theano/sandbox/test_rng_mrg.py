@@ -449,22 +449,22 @@ def test_normal0():
     # now with odd number of samples
     sample_size = (sample_size[0],sample_size[1]-1)
 
+    if mode!='FAST_COMPILE':
+        print ''
+        print 'ON GPU:'
+        R = MRG_RandomStreams(234, use_cuda=True)
+        n = R.normal(size=sample_size, avg=-5.0, std=2.0, dtype='float32')
+        assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
+        f = theano.function([], theano.Out(
+            theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+            borrow=True), mode=mode_with_gpu)
 
-    print ''
-    print 'ON GPU:'
-    R = MRG_RandomStreams(234, use_cuda=True)
-    n = R.normal(size=sample_size, avg=-5.0, std=2.0, dtype='float32')
-    assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
-    f = theano.function([], theano.Out(
-        theano.sandbox.cuda.basic_ops.gpu_from_host(n),
-        borrow=True), mode=mode)
-    
-    theano.printing.debugprint(f)
-    sys.stdout.flush()
-    print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
-    print '----'
-    sys.stdout.flush()
-    basictest(f, 50, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
+        theano.printing.debugprint(f)
+        sys.stdout.flush()
+        print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
+        print '----'
+        sys.stdout.flush()
+        basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
 
 
     print ''
