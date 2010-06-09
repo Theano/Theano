@@ -2048,6 +2048,8 @@ static __global__ void k_copy_1d(const int N, const float * x, const int sx, flo
 int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, bool unbroadcast)
 {
     int verbose = 0;
+    if (verbose>1) fprintf(stderr, "CudaNdarray_CopyFromCudaNdarray\n");
+
     //standard elemwise size checks
     if (self->nd == -1)
     {
@@ -2076,7 +2078,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
     {
         return 0; //nothing to copy, we're done.
     }
-    if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other))
+    if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other) && !unbroadcast)
     {
         cublasScopy(size, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
         if (CUBLAS_STATUS_SUCCESS != cublasGetError())
@@ -2121,6 +2123,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
         default:
             {
                 assert (cudaSuccess == cudaGetLastError());
+                if (verbose) fprintf(stderr, "Copying with default version unbroadcast=%d\n", unbroadcast);
                 // call worker routine
                 unsigned int n_blocks = std::min(size, (unsigned int)NUM_VECTOR_OP_BLOCKS);
                 unsigned int threads_per_block = std::min(ceil_intdiv(size, n_blocks), (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
