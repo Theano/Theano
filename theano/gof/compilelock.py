@@ -242,7 +242,6 @@ def refresh_lock(lock_file):
     lock_write = open(lock_file, 'w')
     lock_write.write(unique_id + '\n')
     lock_write.close()
-    print lock_file
     return unique_id
 
 class Unlocker(object):
