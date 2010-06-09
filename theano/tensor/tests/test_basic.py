@@ -1291,21 +1291,21 @@ class T_divimpl(unittest.TestCase):
         f = fscalar()
         c = cscalar()
 
-        assert numpy.allclose(function([i, ii, d, f, c], i/d)(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], i/d)(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (5.0/7.0))
-        assert numpy.allclose(function([i, ii, d, f, c], d/i)(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], d/i)(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (7.0/5.0))
-        assert numpy.allclose(function([i, ii, d, f, c], i/f)(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], i/f)(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (5.0/11.0))
-        assert numpy.allclose(function([i, ii, d, f, c], f/i)(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], f/i)(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (11.0/5.0))
-        assert numpy.allclose(function([i, ii, d, f, c], i/ii)(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], i/ii)(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (5/3))
-        assert numpy.allclose(function([i, ii, d, f, c], ii/i)(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], ii/i)(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (3/5))
-        assert numpy.allclose(function([i, ii, d, f, c], true_div(i,ii))(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], true_div(i,ii))(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (5./3.))
-        assert numpy.allclose(function([i, ii, d, f, c], true_div(ii,i))(5, 3, 7.0, 11.0, complex(5,3)),
+        assert numpy.allclose(function([i, ii, d, f, c], true_div(ii,i))(5, 3, 7.0, 11.0, numpy.complex(5,3)),
                 (3./5.))
 
 # class T_abs(unittest.TestCase):
