@@ -180,10 +180,11 @@ def local_dimshuffle_lift(node):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in op.new_order]
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
-        if new_order == range(len(new_order)):
+        if new_order == range(len(new_order)) and (len(new_order) == iinput.type.ndim):
             return [iinput]
         else:
             return DimShuffle(iinput.type.broadcastable, new_order, inplace).make_node(iinput).outputs
+
 
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
@@ -519,8 +520,8 @@ def local_fill_to_alloc(node):
             # TODO: cut out un-necessary dimshuffles of v
             rval = [T.alloc(T.cast(v, node.outputs[0].dtype), *shape_of[node.outputs[0]])]
         
-        if rval[0].type != node.outputs[0].type:
-            print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
+        #if rval[0].type != node.outputs[0].type:
+            #print >> sys.stderr, theano.printing.debugprint(node.outputs[0], file='str')
 
         assert rval[0].type == node.outputs[0].type, ('rval', rval[0].type,
                 'orig', node.outputs[0].type,
@@ -1048,9 +1049,41 @@ def local_reshape_chain(node):
     if not opt.check_chain(node, T.Reshape, T.Reshape):
         return False
     
+    # TODO: this can permit a failing program to run by eliminating the the lower
+    #       reshape
     return [node.op(node.inputs[0].owner.inputs[0], node.inputs[1])]
 register_canonicalize(local_reshape_chain)
 
+if 0:
+    # TODO: Test that this optimziation works.
+    @register_canonicalize
+    @gof.local_optimizer([])
+    def local_scalar_reshape(node):
+        """Eliminate reshape Ops whose inputs and outputs are scalars """
+        if isinstance(node.op, T.Reshape):
+            x, shp = node.inputs
+            if x.ndim == 0 and T.get_vector_length(shp)==0:
+                return [x]
+
+if 0:
+    # TODO: Finish writing and testing this optimization.
+    #       The idea is that if we can prove the output to this sum
+    #       has a zero-size dimension, then it can be replaced by an appropriately typed and
+    #       broadcasted zero.
+    @register_canonicalize
+    @gof.local_optimizer([])
+    def local_sum_over_empty(node):
+        if isinstance(node.op, T.Sum):
+            y, = node.outputs
+            y_shape = node.env.shape_feature.shape_of[y]
+
+            def tmp(thing):
+                try: 
+                    return T.get_constant_value(thing)
+                except (TypeError, ValueError), e:
+                    print e, thing.owner.inputs[0]
+                    return None
+            print 'LOCAL SUM EMPTY', [tmp(s) for s in y_shape]
 
 ##################
 # Middleman cuts #
@@ -1063,11 +1096,18 @@ def local_fill_cut(node):
     If c.type == a.type.
     """
 
+    # this optimization is essentially for getting broadcasting to replace fill. 
+    # This is always possible when using a Compound Elemwise operation, 
+    # but it is not always possible without one (consider filling a large matrix with a scalar,
+    # and then adding another scalar.  The only numbers that count are the two scalars, but we
+    # can't ignore the large matrix because it gives the shape of the result.
+
     if not opt.check_chain(node, T.Elemwise):
         return False
     
     output = node.outputs[0]
     try:
+        #reference is some input with the same type as the input but that is not produced by a fill
         reference = [input
                      for input in node.inputs
                      if input.type == output.type and (not input.owner or input.owner.op != T.fill)][0]
@@ -1086,7 +1126,12 @@ def local_fill_cut(node):
 
     if new_inputs == node.inputs:
         return False
-    return node.op.make_node(*new_inputs).outputs
+
+    rval = node.op(*new_inputs)
+    if isinstance(rval, gof.Variable):
+        return rval.owner.outputs
+    else:
+        return rval[0].owner.outputs
 
 register_canonicalize(local_fill_cut)
 
