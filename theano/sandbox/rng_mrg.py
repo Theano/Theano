@@ -666,7 +666,10 @@ class MRG_RandomStreams(object):
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64'):
         if n == 1:
-            return cast(self.uniform(size=size) < p, dtype)
+            if dtype=='float32' and self.use_cuda:
+                return cast(self.uniform(size=size, dtype=dtype) < p, dtype)
+            else:
+                return cast(self.uniform(size=size) < p, dtype)
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
