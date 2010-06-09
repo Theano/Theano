@@ -6,7 +6,7 @@ import theano
 import numpy
 from theano import scalar as scal
 from theano import tensor, compile, gof
-from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, toolbox, DestroyHandler
+from theano.gof import local_optimizer, EquilibriumDB, SequenceDB, Optimizer, toolbox, DestroyHandler, EquilibriumOptimizer
 
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -571,14 +571,18 @@ def local_gpu_join(node):
             return [replacement_node]
 
 
+@local_optimizer([gpu_gemm_no_inplace])
+def local_inplace_gemm(node):
+    if node.op == gpu_gemm_no_inplace:
+        return [gpu_gemm_inplace(*node.inputs)]
 
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of elemwise(step 71)
-#optdb.register('InplaceGpuBlasOpt',
-#        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
-#            max_use_ratio=5),
-#               70.0, 'fast_run', 'inplace')
+optdb.register('InplaceGpuBlasOpt',
+        EquilibriumOptimizer([local_inplace_gemm], failure_callback=EquilibriumOptimizer.warn_inplace,
+            max_use_ratio=5),
+               70.0, 'fast_run', 'inplace')
 
 #GpuElemwise fusion
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(GpuElemwise)
