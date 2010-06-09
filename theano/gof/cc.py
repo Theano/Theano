@@ -518,6 +518,7 @@ class CLinker(link.Linker):
             try: behavior = op.c_code(node, name, isyms, osyms, sub)
             except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
+            assert isinstance(behavior,str), str(node.op)+" didn't returned a string for c_code"
 
             try: cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
             except utils.MethodNotDefined:
