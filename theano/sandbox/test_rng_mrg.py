@@ -322,7 +322,7 @@ def test_uniform():
 #TODO: test size=Var, with shape that change from call to call
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (10,100)
-        steps = int(1e2)
+        steps = 50
     else:
         sample_size = (500,100)
         steps = int(1e3)
@@ -381,7 +381,7 @@ def test_binomial():
 
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (10,50)
-        steps = int(1e2)
+        steps = 70
     else:
         sample_size = (500,100)
         steps = int(1e3)
@@ -428,12 +428,12 @@ def test_binomial():
 
 def test_normal0():
 
-    if config.mode == 'FAST_COMPILE':
-        mode = 'FAST_RUN'
+    steps = 50
+    if mode in ['DEBUG_MODE','FAST_COMPILE']:
+        sample_size = (99,100)
     else:
-        mode = config.mode
+        sample_size = (999,100)
 
-    sample_size = (999,100)
     print ''
     print 'ON CPU:'
 
@@ -442,12 +442,12 @@ def test_normal0():
     f = theano.function([], n, mode=mode)
     theano.printing.debugprint(f)
     print 'random?[:10]\n', f()[0,0:10]
-    basictest(f, 50, sample_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True)
+    basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True)
 
     sys.stdout.flush()
 
     # now with odd number of samples
-    sample_size = (999,99)
+    sample_size = (sample_size[0],sample_size[1]-1)
 
 
     print ''
@@ -474,4 +474,4 @@ def test_normal0():
     nn = RR.normal(size=sample_size, avg=-5.0, std=2.0)
     ff = theano.function([], nn)
 
-    basictest(ff, 50, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True)
+    basictest(ff, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True)
