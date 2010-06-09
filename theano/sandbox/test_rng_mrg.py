@@ -278,28 +278,36 @@ def test_consistency_GPU_parallel():
     samples = numpy.array(samples).flatten()
     assert(numpy.allclose(samples, java_samples))
 
-def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[], mean=0.5, mean_rtol=0.01):
+def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[], 
+              target_avg=0.5, target_std=None, mean_rtol=0.01):
     dt = 0.0
+    avg_std = 0.0
+
     for i in xrange(steps):
         t0 = time.time()
         ival = f(*inputs)
         dt += time.time() - t0
         ival = numpy.asarray(ival)
         if i == 0:
-            computed_mean = numpy.array(ival, copy=True)
+            mean = numpy.array(ival, copy=True)
+            avg_std = numpy.std(ival)
             min_ = ival.min()
             max_ = ival.max()
         else:
             alpha = 1.0 / (1+i)
-            computed_mean = alpha * ival + (1-alpha)*computed_mean
+            mean = alpha * ival + (1-alpha)*mean
+            avg_std = alpha * numpy.std(ival) + (1-alpha)*avg_std
             min_ = min(min_,ival.min())
             max_ = max(max_,ival.max())
         if not allow_01:
             assert min_ > 0
             assert max_ < 1
 
-    print prefix, 'mean', numpy.mean(computed_mean)
-    assert abs(numpy.mean(computed_mean) - mean) < mean_rtol, 'bad mean?'
+    print prefix, 'mean', numpy.mean(mean)
+    assert abs(numpy.mean(mean) - target_avg) < mean_rtol, 'bad mean? %f %f'%(mean, target_avg)
+    print prefix, 'std', avg_std
+    if target_std is not None:
+        assert abs(avg_std - target_std) < .01, 'bad std? %f %f'%(avg_std, target_std)
     print prefix, 'time', dt
     print prefix, 'elements', steps*sample_size[0]*sample_size[1]
     print prefix, 'samples/sec', steps*sample_size[0]*sample_size[1] / dt
@@ -423,29 +431,6 @@ def test_normal0():
         mode = 'FAST_RUN'
     else:
         mode = config.mode
-    def basictest(f, steps, target_avg, target_std, prefix=""):
-        dt = 0.0
-        avg_std = 0.0
-        for i in xrange(steps):
-            t0 = time.time()
-            ival = f()
-            dt += time.time() - t0
-            ival = numpy.asarray(ival)
-            if i == 0:
-                mean = numpy.array(ival, copy=True)
-                avg_std = numpy.std(ival)
-            else:
-                alpha = 1.0 / (1+i)
-                mean = alpha * ival + (1-alpha)*mean
-                avg_std = alpha * numpy.std(ival) + (1-alpha)*avg_std
-
-        print prefix, 'mean', numpy.mean(mean)
-        assert abs(numpy.mean(mean) - target_avg) < .01, 'bad mean?'
-        print prefix, 'std', avg_std
-        assert abs(avg_std - target_std) < .01, 'bad std?'
-        print prefix, 'time', dt
-        print prefix, 'elements', steps*sample_size[0]*sample_size[1]
-        print prefix, 'samples/sec', steps*sample_size[0]*sample_size[1] / dt
 
     sample_size = (999,100)
     print ''
@@ -456,7 +441,7 @@ def test_normal0():
     f = theano.function([], n, mode=mode)
     theano.printing.debugprint(f)
     print 'random?[:10]\n', f()[0,0:10]
-    basictest(f, 50, -5.0, 2.0, prefix='mrg ')
+    basictest(f, 50, sample_size, target_avg=-5.0, target_std=2.0, prefix='mrg ', allow_01=True)
 
     sys.stdout.flush()
 
@@ -478,7 +463,7 @@ def test_normal0():
     print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
     print '----'
     sys.stdout.flush()
-    basictest(f, 50, -5.0, 2.0, prefix='gpu mrg ')
+    basictest(f, 50, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
 
 
     print ''
@@ -488,7 +473,4 @@ def test_normal0():
     nn = RR.normal(size=sample_size, avg=-5.0, std=2.0)
     ff = theano.function([], nn)
 
-    basictest(ff, 50, -5.0, 2.0, prefix='numpy ')
-
-
-   
+    basictest(ff, 50, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True)
