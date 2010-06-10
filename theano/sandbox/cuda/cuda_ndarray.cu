@@ -1435,8 +1435,6 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         return -1;
     }
 
-    // Check that copy didn't modify shape or strides
-    assert (CudaNdarray_EqualAndIgnore(viewCopyForComparison, rval, 1, 1));
     assert (rval->base == baseSavedForComparison);
     assert (rval->dev_structure_fresh);
 
