@@ -443,13 +443,38 @@ def test_setitem_assign_to_slice():
     assert numpy.all(numpy.asarray(_a[:,1,1]) == b)
 
 def test_setitem_broadcast():
-    a = numpy.arange(27)
-    a.resize((3,3,3))
+    #test scalar to vector without stride
+    a = numpy.arange(3)
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray(9, dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)
+    _a[:] = _b.reshape((1,))
+    a[:] = b.reshape((1,))
+    assert numpy.allclose(numpy.asarray(_a),a)
+
+    #test vector to matrice without stride
+    a = numpy.arange(9)
+    a.resize((3,3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
     b = theano._asarray([7,8,9], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
+    _a[:,:] = _b.reshape((1,3))
+    a[:,:] = b.reshape((1,3))
+    assert numpy.allclose(numpy.asarray(_a),a)
+
+    #test vector to matrice with stride
+    a = numpy.arange(27)
+    a.resize((3,3,3))
+    a = theano._asarray(a, dtype='float32')
+    _a = cuda_ndarray.CudaNdarray(a)
+
+    b = theano._asarray([[7,8,9],[10,11,12]], dtype='float32')
+    _b = cuda_ndarray.CudaNdarray(b)[0]
+    b = b[0]
     _a[:,:,1] = _b.reshape((1,3))
     a[:,:,1] = b.reshape((1,3))
     assert numpy.allclose(numpy.asarray(_a),a)
