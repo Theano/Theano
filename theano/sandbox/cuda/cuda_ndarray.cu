@@ -2063,6 +2063,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
     }
     //standard elemwise dim checks (also compute total size)
     unsigned int size = 1;
+    unsigned int size_source = 1;
     for (int i = 0; i< self->nd; ++i)
     {
         if ((CudaNdarray_HOST_DIMS(self)[i] != CudaNdarray_HOST_DIMS(other)[i]) 
@@ -2073,12 +2074,13 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, CudaNdarray * other, boo
             return -1;
         }
         size *= (unsigned int) CudaNdarray_HOST_DIMS(self)[i];
+	size_source *= (unsigned int) CudaNdarray_HOST_DIMS(other)[i];
     }
     if (0 == size)
     {
         return 0; //nothing to copy, we're done.
     }
-    if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other) && !unbroadcast)
+    if (CudaNdarray_is_c_contiguous(self) && CudaNdarray_is_c_contiguous(other) && size == size_source)
     {
         cublasScopy(size, CudaNdarray_DEV_DATA(other), 1, CudaNdarray_DEV_DATA(self), 1);
         if (CUBLAS_STATUS_SUCCESS != cublasGetError())
