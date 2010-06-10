@@ -2749,6 +2749,8 @@ class Join(Op):
         return type(self) == type(other)
     def __hash__(self):
         return hash(type(self))
+    def __str__(self):
+        return '%s' %(self.__class__.__name__)
 
     def make_node(self, *axis_and_tensors):
         """
