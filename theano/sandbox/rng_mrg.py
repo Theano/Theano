@@ -14,6 +14,8 @@ from theano.tensor import zeros_like, sqrt, log, sin, cos, join
 from theano.compile import optdb
 from theano.gof import local_optimizer
 
+from multinomial import multinomial
+
 from theano.sandbox.cuda import cuda_available, cuda_enabled
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType, float32_shared_constructor
@@ -672,6 +674,27 @@ class MRG_RandomStreams(object):
                 return cast(self.uniform(size=size) < p, dtype)
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
+            
+    def multinomial(self, size=None, n=1, pvals=[[.5,.5]], ndim=None, dtype='int64'):
+        """
+        Sample `n` (currently `n` needs to be 1) times from a multinomial distribution defined by
+        probabilities pvals.
+        
+        Example : pvals = [[.98,.01, .01], [.01, .98 .01]] will probably result in [[1,0,0],[0,1,0]].
+
+        .. note::
+            `size` and `ndim` are only there keep the same signature as other uniform, binomial, normal, etc.
+            todo : adapt multinomial to take that into account
+        """
+        pvals = as_tensor_variable(pvals)
+        if n == 1 and pvals.ndim == 2:
+            pvals = as_tensor_variable(pvals)
+            unis = self.uniform(size=pvals.shape[0:1], ndim=1)
+            
+            return cast(multinomial(pvals.T, unis).T, dtype)
+
+        else:
+            raise NotImplementedError("MRG_RandomStreams.multinomial only implemented with n == 1 and pvals.ndim = 2")
 
     def normal(self, size=None, avg=0.0, std=1.0, ndim=None, dtype=config.floatX):
         # We need an even number of ]0,1[ samples. Then we split them

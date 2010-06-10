@@ -475,3 +475,59 @@ def test_normal0():
     ff = theano.function([], nn)
 
     basictest(ff, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True)
+
+def basic_multinomialtest(f, steps, target_pvals, prefix="", mean_rtol=0.04):
+
+    dt = 0.0
+    avg_pvals = numpy.zeros(target_pvals.shape, dtype=config.floatX)
+    
+    for i in xrange(steps):
+        t0 = time.time()
+        ival = f()
+        dt += time.time() - t0
+        #ival = numpy.asarray(ival)
+        avg_pvals += ival
+    avg_pvals/= steps
+    
+    print 'random?[:10]\n', f()[:10]
+    print prefix, 'mean', avg_pvals
+    print numpy.mean(abs(avg_pvals - target_pvals))# < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
+    print prefix, 'time', dt
+    print prefix, 'elements', steps*numpy.prod(target_pvals.shape)
+    print prefix, 'samples/sec', steps*numpy.prod(target_pvals.shape) / dt
+
+def test_multinomial():
+
+    steps = 100
+    if mode in ['DEBUG_MODE','FAST_COMPILE']:
+        sample_size = (49,5)
+    else:
+        sample_size = (450,6)
+
+    print ''
+    print 'ON CPU:'
+
+    pvals = numpy.asarray(numpy.random.uniform(size=sample_size))
+    pvals = numpy.apply_along_axis(lambda row : row/numpy.sum(row), 1, pvals)
+    R = MRG_RandomStreams(234, use_cuda=False)
+    m = R.multinomial(pvals=pvals, dtype=config.floatX)
+    f = theano.function([], m, mode=mode)
+    theano.printing.debugprint(f)
+    
+    basic_multinomialtest(f, steps, pvals, prefix='mrg ')
+
+    sys.stdout.flush()
+
+    if mode!='FAST_COMPILE' and cuda_enabled:
+        print ''
+        print 'ON GPU:'
+        R = MRG_RandomStreams(234, use_cuda=True)
+        n = R.multinomial(pvals=pvals, dtype='float32')
+        assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
+        f = theano.function([], theano.Out(
+            theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+            borrow=True), mode=mode_with_gpu)
+
+        theano.printing.debugprint(f)
+        sys.stdout.flush()
+        basic_multinomialtest(f, steps, pvals, prefix='gpu mrg ')
