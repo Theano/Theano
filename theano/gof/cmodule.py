@@ -584,7 +584,7 @@ def get_gcc_shared_library_arg():
         return '-shared'
 
 def std_include_dirs():
-    return [distutils.sysconfig.get_python_inc()] + numpy.distutils.misc_util.get_numpy_include_dirs()
+    return numpy.distutils.misc_util.get_numpy_include_dirs() + [distutils.sysconfig.get_python_inc()]
 
 def std_lib_dirs_and_libs():
     python_inc = distutils.sysconfig.get_python_inc()
@@ -648,7 +648,7 @@ def gcc_module_compile_str(module_name, src_code, location=None, include_dirs=[]
         preargs.append('-fPIC')
     no_opt = False
 
-    include_dirs = std_include_dirs() + include_dirs
+    include_dirs = include_dirs + std_include_dirs() 
     libs = std_libs() + libs
     lib_dirs = std_lib_dirs() + lib_dirs
     if sys.platform == 'win32':
