@@ -594,3 +594,19 @@ else:
     compile.optdb.register('gpu_elemwise_fusion', tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00, 'fusion', 'local_elemwise_fusion')
 
 
+@register_opt()
+@local_optimizer([tensor.Alloc])
+def local_gpualloc(node):
+    if node.op == tensor.alloc:
+#I commented the 2 first case as I don't see how this can happen.
+#If you see it happening, add a test for it or contact the mailing list.
+#        if node.inputs[0].owner and node.inputs[0].owner.op==host_from_gpu:#if the input was on the gpu
+#            new_node = host_from_gpu(gpu_alloc(*node.inputs))
+#            return [new_node]
+#        elif all([c!='output' and c.op == gpu_from_host for c,idx in node.outputs[0].clients]):#if all clients are on gpu
+#            new_node = host_from_gpu(gpu_alloc(*node.inputs))
+#            return [new_node]
+        if all([c.op == tensor.join and all([i.owner and i.owner.op in [host_from_gpu,tensor.alloc] for i in c.inputs[1:]]) for c,idx in node.outputs[0].clients]):#if the client is a subtensor with input on gpu or alloc
+            new_node = host_from_gpu(gpu_alloc(*node.inputs))
+            return [new_node]
+            

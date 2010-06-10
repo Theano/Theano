@@ -16,6 +16,7 @@ if cuda_ndarray.cuda_available == False:
 
 import theano.sandbox.cuda as tcn
 import theano.sandbox.cuda as cuda
+import theano.sandbox.cuda.basic_ops as B
 import theano.compile.mode
 from theano.tests import unittest_tools as utt
 
@@ -625,6 +626,32 @@ def test_gpujoin_no_rebroadcast():
     f = theano.function([],T.join(1,a))
     l = f.maker.env.toposort()
     assert not any([isinstance(x.op,T.Rebroadcast) for x in l])
+
+
+def test_gpujoin_gpualloc():
+    a = T.fmatrix('a')
+    a_val = numpy.asarray(numpy.random.rand(4,5),dtype='float32')
+    b = T.fmatrix('b')
+    b_val = numpy.asarray(numpy.random.rand(3,5),dtype='float32')
+
+    f = theano.function([a,b], T.join(0,T.zeros_like(a),T.ones_like(b))+4, mode=mode_without_gpu)
+    f_gpu = theano.function([a,b], T.join(0,T.zeros_like(a),T.ones_like(b)), mode=mode_with_gpu)
+    f_gpu2 = theano.function([a,b], T.join(0,T.zeros_like(a),T.ones_like(b))+4, mode=mode_with_gpu)
+    
+    assert sum([node.op == T.alloc for node in f.maker.env.toposort()])==2
+    assert sum([node.op == T.join for node in f.maker.env.toposort()])==1
+    assert sum([node.op == B.gpu_alloc for node in f_gpu.maker.env.toposort()])==2
+    assert sum([node.op == B.gpu_join for node in f_gpu.maker.env.toposort()])==1
+    assert sum([node.op == B.gpu_alloc for node in f_gpu2.maker.env.toposort()])==2
+    assert sum([node.op == B.gpu_join for node in f_gpu2.maker.env.toposort()])==1
+    assert numpy.allclose(f(a_val,b_val),f_gpu2(a_val,b_val))
+
+    #print f.maker.env.toposort()
+    #print f_gpu.maker.env.toposort()
+    #print f_gpu2.maker.env.toposort()
+    #print f(a_val,b_val)
+    #print f_gpu(a_val,b_val)
+    #print f_gpu2(a_val,b_val)
 
 if __name__ == '__main__':
     test_gpujoin_twomatrices_joincolumns()

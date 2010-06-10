@@ -105,7 +105,7 @@ if cuda_available:
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise, 
             GpuDimShuffle, GpuSum, GpuReshape, 
-            GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape,
+            GpuSubtensor, GpuIncSubtensor, GpuFlatten, GpuShape, GpuAlloc,
             GpuJoin,fscalar, fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4
                            , scalar, vector, matrix, row, col, tensor3, tensor4)
     import opt
