@@ -628,6 +628,20 @@ def test_gpujoin_no_rebroadcast():
     assert not any([isinstance(x.op,T.Rebroadcast) for x in l])
 
 
+def test_gpualloc_input_on_gpu():
+    a_val = numpy.asarray(numpy.random.rand(4,5),dtype='float32')
+    a = tcn.shared_constructor(a_val)
+
+    b = T.fscalar()
+    f = theano.function([b], T.ones_like(a)+b, mode=mode_without_gpu)
+    f_gpu = theano.function([b], T.ones_like(a)+b, mode=mode_with_gpu)
+
+    assert sum([node.op == T.alloc for node in f.maker.env.toposort()])==1
+    assert sum([node.op == B.gpu_alloc for node in f_gpu.maker.env.toposort()])==1
+
+    assert numpy.allclose(numpy.ones(a.value.shape)+9,f_gpu(9))
+    assert numpy.allclose(f(5),f_gpu(5))
+
 def test_gpujoin_gpualloc():
     a = T.fmatrix('a')
     a_val = numpy.asarray(numpy.random.rand(4,5),dtype='float32')
@@ -646,12 +660,24 @@ def test_gpujoin_gpualloc():
     assert sum([node.op == B.gpu_join for node in f_gpu2.maker.env.toposort()])==1
     assert numpy.allclose(f(a_val,b_val),f_gpu2(a_val,b_val))
 
-    #print f.maker.env.toposort()
-    #print f_gpu.maker.env.toposort()
-    #print f_gpu2.maker.env.toposort()
-    #print f(a_val,b_val)
-    #print f_gpu(a_val,b_val)
-    #print f_gpu2(a_val,b_val)
+def test_gpualloc_output_to_gpu():
+    a_val = numpy.asarray(numpy.random.rand(4,5),dtype='float32')
+    a = tcn.shared_constructor(a_val)
+
+    b = T.fscalar()
+    f = theano.function([b], T.ones_like(a)+b, mode=mode_without_gpu)
+    f_gpu = theano.function([b], B.gpu_from_host(T.ones_like(a))+b, mode=mode_with_gpu)
+
+    print f.maker.env.toposort()
+    print f_gpu.maker.env.toposort()
+    print f(2)
+    print f_gpu(2)
+
+    assert sum([node.op == T.alloc for node in f.maker.env.toposort()])==1
+    assert sum([node.op == B.gpu_alloc for node in f_gpu.maker.env.toposort()])==1
+
+    assert numpy.allclose(numpy.ones(a.value.shape)+9,f_gpu(9))
+    assert numpy.allclose(f(5),f_gpu(5))
 
 if __name__ == '__main__':
     test_gpujoin_twomatrices_joincolumns()
