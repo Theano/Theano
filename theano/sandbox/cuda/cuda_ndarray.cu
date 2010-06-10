@@ -345,6 +345,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
         {
             // shouldn't happen since we checked length before...
             PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_Zeros: Index out of bound in sequence");
+            free(newdims);
             return NULL;
         }
 
@@ -354,6 +355,7 @@ PyObject* CudaNdarray_Zeros(PyObject* dummy, PyObject* shape)
         if (shp_el <= 0)
         {
             PyErr_SetString(PyExc_ValueError, "CudaNdarray_Zeros: shape must not contain 0 (or negative value) for size of a dimension");
+            free(newdims);
             return NULL;
         }
 
