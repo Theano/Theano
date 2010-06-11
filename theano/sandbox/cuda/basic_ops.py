@@ -1835,7 +1835,6 @@ class GpuAlloc(Op):
         #the optimizer will remove them.
         v = gpu_from_host(tensor.as_tensor_variable(value))
         sh = [tensor.as_tensor_variable(s) for s in shape]
-        assert all(v.broadcastable)
 
         bcast = []
         for s in sh:
