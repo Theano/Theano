@@ -942,8 +942,11 @@ def local_IncSubtensor_serialize(node):
 
 @gof.local_optimizer([None])
 def local_inplace_setsubtensor(node):
+    """
+    Also work for GpuIncSubtensor
+    """
     if isinstance(node.op, T.IncSubtensor) and not node.op.inplace:
-        new_op = T.IncSubtensor(node.op.idx_list, inplace=True, \
+        new_op = node.op.__class__(node.op.idx_list, inplace=True, \
                         set_instead_of_inc=node.op.set_instead_of_inc)
         new_node = new_op(*node.inputs)
         return [new_node]
