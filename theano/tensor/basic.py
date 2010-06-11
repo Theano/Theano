@@ -3083,7 +3083,9 @@ class Reshape(Op):
     def grad(self, (x, shp), (g_out,)):
         return [reshape(g_out, shape(x), ndim=x.ndim), None]
     def infer_shape(self, node, ishapes):
-        return [node.inputs[1]]
+        #we can't just put node.inputs[1] as not all op support interation
+        #and this is needed in the ShapeOptimizer
+        return [tuple([node.inputs[1][i] for i in range(self.ndim)])]
 
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
