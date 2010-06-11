@@ -474,6 +474,53 @@ class Test_pfunc(unittest.TestCase):
         assert f() == 21
         assert f() == 34
 
+    def aliasing_test(self):
+
+        A = shared(numpy.zeros((2,2)))
+        B = shared(numpy.zeros((2,2)))
+        C = numpy.zeros((2,2))
+        D = tensor.dmatrix()
+        DD = D + 5
+
+        f = pfunc([D], [], updates=[ (A,D), (B,D) ])
+        f(C)
+
+        assert not numpy.may_share_memory(A.value,B.value)
+        f = pfunc([D], [], updates=[ (A,D[:]), (B,D) ])
+        f(C)
+        assert not numpy.may_share_memory(A.value,B.value)
+        f = pfunc([D], [], updates=[ (A,D+5), (B,D[:]) ])
+        f(C)
+        assert not numpy.may_share_memory(A.value,B.value)
+
+        f = pfunc([D], [], updates=[ (A,D+5), (B,D) ])
+        f(C)
+        assert not numpy.may_share_memory(A.value,B.value)
+
+        f = pfunc([D], DD, updates=[ (A,DD[:1]), (B,DD) ])
+        R=f(C)
+        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(R,B.value)
+        assert not numpy.may_share_memory(R,A.value)
+
+        f = pfunc([D], DD, updates=[ (A,DD[:1]), (B,DD[:1]*2) ])
+        R=f(C)
+        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(R,B.value)
+        assert not numpy.may_share_memory(R,A.value)
+
+        f = pfunc([D], DD*4, updates=[ (A,DD[:1]*3), (B,DD[:1]*2) ])
+        R=f(C)
+        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(R,B.value)
+        assert not numpy.may_share_memory(R,A.value)
+
+        f = pfunc([D], DD*4, updates=[ (A,DD[:1]*3), (B,DD[:1]*3) ])
+        R=f(C)
+        assert not numpy.may_share_memory(A.value,B.value)
+        assert not numpy.may_share_memory(R,B.value)
+        assert not numpy.may_share_memory(R,A.value)
+
 if __name__ == '__main__':
     theano.config.mode = 'FAST_COMPILE'
     Test_pfunc().test_default_scalar_container()
