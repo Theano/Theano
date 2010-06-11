@@ -17,6 +17,7 @@ import theano.gof
 import mode as mode_module
 from io import *
 
+
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
@@ -162,6 +163,18 @@ class AliasedMemoryError(Exception):
 ###
 ### Function
 ###
+
+class DeepCopyOp(theano.gof.Op):
+    def __init__(self):
+        pass
+
+    def make_node(self, x):
+        return theano.gof.Apply(self, [x], [x.type()])
+
+    def perform( self, node, args, outs):
+        outs[0][0] = copy.deepcopy(args[0])
+
+deep_copy_op = DeepCopyOp()
 
 DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries
 class Function(object):
@@ -752,6 +765,20 @@ class FunctionMaker(object):
         t0 = time.time()
         optimizer(env)
         _logger.debug('Optimizing took %f seconds' % (time.time() - t0))
+        
+        # This loop was inserted to remove aliasing between outputs when they all
+        # evaluete to the same value. Originally it was OK for outputs to be aliased, 
+        # but some of the outputs can be shared variables, and is not good for shared
+        # variables to be aliased. It might be possible to optimize this by making sure
+        # there is no aliasing only between shared variables.
+        for i in xrange(len(env.outputs)):
+            views = set()
+            view_tree_set(alias_root(env.outputs[i]), views)
+            for j in xrange(i+1, len(env.outputs)):
+                if env.outputs[j] in views:
+                    env.change_input('output', j, deep_copy_op(env.outputs[j]))
+
+
 
         # initialize the linker
         if not hasattr(linker, 'accept'):
