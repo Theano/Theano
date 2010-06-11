@@ -1419,20 +1419,10 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
         return -1;
     }
 
-    CudaNdarray *viewCopyForComparison = 
-            (CudaNdarray*)CudaNdarray_View(rval);
     PyObject *baseSavedForComparison = rval->base;
-
-    if(!viewCopyForComparison)
-    {
-        PyErr_SetString(PyExc_RuntimeError, "__setitem__ could not allocate a view to verify copy results.");
-        Py_DECREF((PyObject*)rval);
-        return -1;
-    }
 
     if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)v, true))
     {
-        Py_DECREF(viewCopyForComparison);
         Py_DECREF((PyObject*)rval);
         return -1;
     }
@@ -1441,7 +1431,6 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *v)
     assert (rval->dev_structure_fresh);
 
     // Clean up locally-created references
-    Py_DECREF((PyObject*)viewCopyForComparison);
     Py_DECREF(rval);
 
     return 0;
