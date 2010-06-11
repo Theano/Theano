@@ -539,6 +539,7 @@ class CLinker(link.Linker):
 
         struct_code = struct_gen(args, init_blocks, blocks, dict(failure_var = failure_var, name = "<<<<NAME>>>>"))
 
+        # TODO: still needed? We do not use weave anymore.
         # The hash calculated on the code identifies it so weave can cache properly.
         # (the hash has to be used outside of the support code because weave does not consider changes in the support code)
         hash = hash_from_code(struct_code)
@@ -973,7 +974,6 @@ class CLinker(link.Linker):
         self.code_gen()
         module_name = self.hash
 
-        cthunk = object() # dummy so weave can get the type ##TODO: REMOVE ME
         mod = cmodule.DynamicModule(module_name)
 
         # The code of instantiate
