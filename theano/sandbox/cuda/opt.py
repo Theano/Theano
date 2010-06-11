@@ -25,7 +25,7 @@ gpu_cut_copies = EquilibriumDB()
 gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1, 'fast_run', 'inplace')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2, 'fast_run', 'inplace')
-optdb.register('gpu', gpu_seqopt, optdb.__position__.get('inplace_opt', 75) + 5)
+optdb.register('gpu', gpu_seqopt, optdb.__position__.get('add_destroy_handler', 49.5) - 1)
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
