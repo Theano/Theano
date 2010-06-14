@@ -17,6 +17,4 @@ def neibs_test():
     g = function([], neibs2images(neibs, neib_shape, images.shape))
     
     print g()
-
-#neibs_test()
-
+    assert allclose(images.value,g())
