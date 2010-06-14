@@ -18,3 +18,5 @@ def neibs_test():
     
     print g()
     assert allclose(images.value,g())
+
+neibs_test()
