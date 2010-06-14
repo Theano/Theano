@@ -25,8 +25,7 @@ class Multinomial(Op):
         return [None, None]
 
     def c_code_cache_version(self):
-        return ()
-        #return (2,)
+        return (3,)
                 
     def c_code(self, node, name, (pvals, unis), (z,), sub):
 
@@ -115,7 +114,7 @@ class GpuMultinomial(Multinomial):
 
     def c_code_cache_version(self):
         #return ()
-        return (1,)
+        return (super(GpuMultinomial,self).c_code_cache_version(),1)
 
     def c_support_code_apply(self, node, nodename):
         return """

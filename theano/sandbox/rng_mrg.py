@@ -195,9 +195,6 @@ class mrg_uniform(mrg_uniform_base):
         o_rstate[0] = node.outputs[0].type.filter(rstate) # send to GPU if necessary
         o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))# send to GPU if necessary
 
-    def c_code_cache_version(self):
-        return ()
-
     def c_code(self, node, name, (rstate, size), (o_rstate, o_sample), sub):
         if self.inplace:
             o_rstate_requirement = 'NPY_C_CONTIGUOUS|NPY_ALIGNED'
@@ -446,9 +443,6 @@ class GPU_mrg_uniform(mrg_uniform_base):
         }  
 
         """ %locals()
-
-    def c_code_cache_version(self):
-        return ()
 
     def c_code(self, node, nodename, (rstate, size), (o_rstate, o_sample), sub):
         inplace = int(self.inplace)
