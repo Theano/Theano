@@ -93,10 +93,6 @@ class GpuElemwise(Op):
         else:
             self.inplace_pattern = {}
 
-        if scalar_op.nin > 0:
-            self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin, scalar_op.nout)
-        else:
-            self.ufunc = None
         self.sync = sync
 
         self._rehash()
@@ -105,7 +101,6 @@ class GpuElemwise(Op):
 
     def __getstate__(self):
         d = copy.copy(self.__dict__)
-        d.pop('ufunc')
         d.pop('__epydoc_asRoutine', None)
         d.pop('_hashval')
         return d
@@ -113,10 +108,6 @@ class GpuElemwise(Op):
     def __setstate__(self, d):
         self.__dict__.update(d)
         self.sync = d.get('sync', True) #old objects defaulted to sync behaviour
-        if self.scalar_op.nin > 0:
-            self.ufunc = numpy.frompyfunc(self.scalar_op.impl, self.scalar_op.nin, self.scalar_op.nout)
-        else:
-            self.ufunc = None
         self._rehash()
 
     def __eq__(self, other):
