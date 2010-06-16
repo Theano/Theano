@@ -161,7 +161,7 @@ class GpuImages2Neibs(Images2Neibs):
             raise TypeError('pvals must be cudandarray', ten4)
         #if not isinstance(neib_shape.type, CudaNdarrayType):
         #    raise TypeError('unis must be cudandarray', neib_shape)
-        print 'neib_shape type and dtype', type(neib_shape), neib_shape.dtype
+        #print 'neib_shape type and dtype', type(neib_shape), neib_shape.dtype
 
         return Apply(self, [ten4, neib_shape], [CudaNdarrayType(broadcastable=(False,)*2)()])
 
@@ -180,6 +180,7 @@ class GpuImages2Neibs(Images2Neibs):
             const int d,
             const int grid_c,
             const int grid_d,
+            const int stride0, const int stride1, const int stride2, const int stride3,
             float * global_ten4,
             float * global_out
         )
@@ -198,7 +199,9 @@ class GpuImages2Neibs(Images2Neibs):
                                 for (int j = 0; j < d; j++)  // loop over d
                                 {
                                     int ten4_3 = j + b * d;
-                                    int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
+                                    //int ten4_idx = ten4_3 + width*(ten4_2 + height*(s +nb_stack*n));
+                                    //int ten4_idx = stride3*ten4_3 + stride2*(ten4_2 + stride1*(s + stride0*n)); 
+                                    int ten4_idx = stride3*ten4_3 + stride2*ten4_2 + stride1*s + stride0*n; 
 
                                     int z_col = j + d * i;
                                     int z_idx = z_col + c*d*z_row;
@@ -238,11 +241,11 @@ class GpuImages2Neibs(Images2Neibs):
                 PyErr_Format(PyExc_NotImplementedError, "require unis to be contiguous");
                 %(fail)s;
             }*/
-            if (!CudaNdarray_is_c_contiguous(%(ten4)s))
+            /*if (!CudaNdarray_is_c_contiguous(%(ten4)s))
             {
                 PyErr_Format(PyExc_NotImplementedError, "require ten4 to be contiguous");
                 %(fail)s;
-            }
+            }*/
 
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
             const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
@@ -293,7 +296,12 @@ class GpuImages2Neibs(Images2Neibs):
             const int nb_stack = CudaNdarray_HOST_DIMS(%(ten4)s)[1];
             const int height = CudaNdarray_HOST_DIMS(%(ten4)s)[2];
             const int width = CudaNdarray_HOST_DIMS(%(ten4)s)[3];
-            
+
+            /*for (int i=0; i<4; i++)
+            {
+                 printf("\\ndim%%i %%i",i, CudaNdarray_HOST_DIMS(%(ten4)s)[i]);
+                 printf("\\nstride%%i %%i",i, CudaNdarray_HOST_STRIDES(%(ten4)s)[i]);
+            }*/
             // (c,d) = neib_shape
             //const float * cd = CudaNdarray_DEV_DATA(%(neib_shape)s);
             //const int c = (int) cd[0];
@@ -321,6 +329,10 @@ class GpuImages2Neibs(Images2Neibs):
                 height, width,
                 c, d,
                 grid_c, grid_d,
+                CudaNdarray_HOST_STRIDES(%(ten4)s)[0],
+                CudaNdarray_HOST_STRIDES(%(ten4)s)[1],
+                CudaNdarray_HOST_STRIDES(%(ten4)s)[2],
+                CudaNdarray_HOST_STRIDES(%(ten4)s)[3],
                 CudaNdarray_DEV_DATA(%(ten4)s),
                 CudaNdarray_DEV_DATA(%(z)s)
             );
