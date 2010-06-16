@@ -1219,6 +1219,11 @@ class Canonizer(gof.LocalOptimizer):
         self.calculate = calculate
         self.use_reciprocal = use_reciprocal
 
+        self.external_simplifiers = []
+
+    def add_simplifier(self, simplifier, reason):
+        self.external_simplifiers.append((reason, simplifier))
+
     def tracks(self):
         return [[self.main, None], [self.inverse, None], [self.reciprocal, None]]
 
@@ -1386,7 +1391,12 @@ class Canonizer(gof.LocalOptimizer):
         """
         Shorthand for: self.simplify_constants(*self.simplify_factors(num, denum))
         """
-        return self.simplify_constants(*self.simplify_factors(num, denum))
+        rval = self.simplify_constants(*self.simplify_factors(num, denum))
+        for reason, simplifier in self.external_simplifiers:
+            # TODO: document that 'reason' is associated with this simplification
+            #       to help auditing when things go wrong
+            rval = simplifier(*rval)
+        return rval
 
     def simplify_factors(self, num, denum):
         """
