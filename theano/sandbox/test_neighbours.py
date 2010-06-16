@@ -7,7 +7,7 @@ from neighbours import images2neibs, neibs2images
 def neibs_test():
 
     images = shared(arange(2*2*4*4, dtype='float32').reshape(2,2,4,4))
-    neib_shape = shared(array((2,2), dtype='float32'))
+    neib_shape = T.as_tensor_variable((2,2))#(array((2,2), dtype='float32'))
 
     f = function([], images2neibs(images, neib_shape))
 

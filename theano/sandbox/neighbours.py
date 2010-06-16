@@ -156,13 +156,14 @@ class GpuImages2Neibs(Images2Neibs):
 
     def make_node(self, ten4, neib_shape):
         assert ten4.dtype == 'float32'
-        assert neib_shape.dtype == 'float32'
+        #assert neib_shape.dtype == 'float32'
         if not isinstance(ten4.type, CudaNdarrayType):
             raise TypeError('pvals must be cudandarray', ten4)
-        if not isinstance(neib_shape.type, CudaNdarrayType):
-            raise TypeError('unis must be cudandarray', neib_shape)
+        #if not isinstance(neib_shape.type, CudaNdarrayType):
+        #    raise TypeError('unis must be cudandarray', neib_shape)
+        print 'neib_shape type and dtype', type(neib_shape), neib_shape.dtype
 
-        return Apply(self, [ten4, neib_shape], [CudaNdarrayType(broadcastable=(false,)*2)()])
+        return Apply(self, [ten4, neib_shape], [CudaNdarrayType(broadcastable=(False,)*2)()])
 
     def c_code_cache_version(self):
         return ()
@@ -225,26 +226,30 @@ class GpuImages2Neibs(Images2Neibs):
                 %(fail)s;
             }
             
-            if (CudaNdarray_HOST_DIMS(%(neib_shape)s)[0] != 2)
+            //if (CudaNdarray_HOST_DIMS(%(neib_shape)s)[0] != 2)
+            if (%(neib_shape)s->dimensions[0] != 2)
             {
                 PyErr_Format(PyExc_ValueError, "neib_shape has to contain two elements");
                 %(fail)s;
             }
 
-            if (!CudaNdarray_is_c_contiguous(%(neib_shape)s))
+            /*if (!CudaNdarray_is_c_contiguous(%(neib_shape)s))
             {
                 PyErr_Format(PyExc_NotImplementedError, "require unis to be contiguous");
                 %(fail)s;
-            }
+            }*/
             if (!CudaNdarray_is_c_contiguous(%(ten4)s))
             {
                 PyErr_Format(PyExc_NotImplementedError, "require ten4 to be contiguous");
                 %(fail)s;
             }
+
+            const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
+            const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
             
-            const float * cd = CudaNdarray_DEV_DATA(%(neib_shape)s);
-            const int c = (int) cd[0];
-            const int d = (int) cd[1];
+            //const float * cd = CudaNdarray_DEV_DATA(%(neib_shape)s);
+            //const int c = (int) cd[0];
+            //const int d = (int) cd[1];
             
             if ( CudaNdarray_HOST_DIMS(%(ten4)s)[2] %% c != 0)
             {
@@ -290,9 +295,12 @@ class GpuImages2Neibs(Images2Neibs):
             const int width = CudaNdarray_HOST_DIMS(%(ten4)s)[3];
             
             // (c,d) = neib_shape
-            const float * cd = CudaNdarray_DEV_DATA(%(neib_shape)s);
-            const int c = (int) cd[0];
-            const int d = (int) cd[1];
+            //const float * cd = CudaNdarray_DEV_DATA(%(neib_shape)s);
+            //const int c = (int) cd[0];
+            //const int d = (int) cd[1];
+
+            const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
+            const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
             
             const int grid_c = height/c;
             const int grid_d = width/d;
@@ -339,7 +347,7 @@ gpu_images2neibs = GpuImages2Neibs()
 @local_optimizer()
 def use_gpu_images2neibs(node):
     if node.op == images2neibs:
-        return [host_from_gpu(gpu_images2neibs(*[gpu_from_host(i) for i in node.inputs]))]
+        return [host_from_gpu(gpu_images2neibs(*[gpu_from_host(node.inputs[0]),node.inputs[1]]))]
 if theano.config.device.startswith('gpu'):
     register_specialize(use_gpu_images2neibs)
     
