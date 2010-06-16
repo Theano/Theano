@@ -434,9 +434,9 @@ if 0:
 
     def softmax_grad_simplifier(numerators, denominators):
         print "mul simplify numerators"
-        debugprint(numerators)
+        printing.debugprint(numerators)
         print "mul simplify denominators"
-        debugprint(denominators)
+        printing.debugprint(denominators)
         for numerator in list(numerators):
             #TODO: a single softmax'd vector??
             if not numerator.type.dtype.startswith('float'):

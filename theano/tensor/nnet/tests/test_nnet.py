@@ -910,32 +910,46 @@ class Test_softmax_opt():
         p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0,'x')
 
         # test that function contains softmax and no div.
-        function([c],p_y)
+        f = theano.function([c],p_y)
+        f_ops = [n.op for n in f.maker.env.toposort()]
+        print '--- f ='
+        printing.debugprint(f)
+        print '==='
+        assert len(f_ops) == 1
+        assert softmax in f_ops
+
 
         # test that function contains softmax and no div.
-        function([c],T.grad(p_y.sum(), c))
+        g = theano.function([c],T.grad(p_y.sum(), c))
+        print '--- g ='
+        printing.debugprint(g)
+        print '==='
 
     def test_transpose_basic(self):
         # this should be a transposed softmax
-        c = T.matrix()                
+        c = T.matrix()
         p_y = T.exp(c) / T.exp(c).sum(axis=0)
 
         # test that function contains softmax and no div.
-        function([c],p_y)
+        f = theano.function([c],p_y)
+        printing.debugprint(f)
 
         # test that function contains softmax and no div.
-        function([c],T.grad(p_y.sum(), c))
+        g = theano.function([c],T.grad(p_y.sum(), c))
+        printing.debugprint(g)
 
     def test_1d_basic(self):
         # this should be a softmax, but of a one-row matrix
-        c = T.vector()                
+        c = T.vector()
         p_y = T.exp(c) / T.exp(c).sum()
 
         # test that function contains softmax and no div.
-        function([c], p_y)
+        f = theano.function([c], p_y)
+        printing.debugprint(f)
 
         # test that function contains softmax and no div.
-        function([c], T.grad(p_y.sum(), c))
+        g = theano.function([c], T.grad(p_y.sum(), c))
+        printing.debugprint(g)
 
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing etc.
 
