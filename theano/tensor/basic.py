@@ -3578,6 +3578,11 @@ class Dot(Op):
 
     """
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+    def __hash__(self):
+        return hash(type(self))
+
     # the rationale for Dot22 is related to getting GEMM Ops into the graph.  See Dot22 in tensor.blas for details.
     
     def make_node(self, *inputs):

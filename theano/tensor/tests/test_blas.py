@@ -21,6 +21,9 @@ else: mode_not_fast_compile = config.mode
 
 mode_blas_opt = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
 
+def test_dot_eq():
+    assert T.Dot() == T.Dot()
+
 class t_gemm(TestCase):
     """This test suite is supposed to establish that gemm works as it is supposed to."""
     def setUp(self):
