@@ -905,6 +905,11 @@ class Test_softmax_opt():
     # In future, we may modify the CrossEntropySoftmax...grad to look for the more basic
     # pattern.
     #
+
+    def setUp(self):
+        utt.seed_rng()
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
     def test_basic(self):
         c = T.matrix()
         p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0,'x')
@@ -917,13 +922,15 @@ class Test_softmax_opt():
         print '==='
         assert len(f_ops) == 1
         assert softmax in f_ops
-
+        f(self.rng.rand(3,4))
 
         # test that function contains softmax and no div.
-        g = theano.function([c],T.grad(p_y.sum(), c))
+        w = T.matrix()
+        g = theano.function([c,w],T.grad((p_y*w).sum(), c))
         print '--- g ='
         printing.debugprint(g)
         print '==='
+        g(self.rng.rand(3,4), self.rng.uniform(.5, 1, (3,4)))
 
     def test_transpose_basic(self):
         # this should be a transposed softmax
