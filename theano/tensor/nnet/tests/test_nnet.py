@@ -895,8 +895,49 @@ def test_asymptotic_32():
         assert gxval[0,1] == 0.25
 
 
+class Test_softmax_opt():
+    # Test that expressions of softmax in terms of exponentiated things divided by row sums
+    # are replaced by softmax expressions.
 
+    #
+    # Softmax_grad isn't that interesting as an Op, but it's the signature we look for when
+    # trying to insert CrossEntropySoftmax... grad.  So for now, we add softmax_grad to graphs.
+    # In future, we may modify the CrossEntropySoftmax...grad to look for the more basic
+    # pattern.
+    #
+    def test_basic(self):
+        c = T.matrix()
+        p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0,'x')
 
-    #   hint - call the argmax push-down optimization first too
+        # test that function contains softmax and no div.
+        function([c],p_y)
+
+        # test that function contains softmax and no div.
+        function([c],T.grad(p_y.sum(), c))
+
+    def test_transpose_basic(self):
+        # this should be a transposed softmax
+        c = T.matrix()                
+        p_y = T.exp(c) / T.exp(c).sum(axis=0)
+
+        # test that function contains softmax and no div.
+        function([c],p_y)
+
+        # test that function contains softmax and no div.
+        function([c],T.grad(p_y.sum(), c))
+
+    def test_1d_basic(self):
+        # this should be a softmax, but of a one-row matrix
+        c = T.vector()                
+        p_y = T.exp(c) / T.exp(c).sum()
+
+        # test that function contains softmax and no div.
+        function([c], p_y)
+
+        # test that function contains softmax and no div.
+        function([c], T.grad(p_y.sum(), c))
+
+    # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing etc.
+
 if __name__ == '__main__':
     unittest.main()
