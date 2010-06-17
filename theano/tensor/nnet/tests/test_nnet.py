@@ -927,9 +927,13 @@ class Test_softmax_opt():
         # test that function contains softmax and no div.
         w = T.matrix()
         g = theano.function([c,w],T.grad((p_y*w).sum(), c))
+        g_ops = [n.op for n in g.maker.env.toposort()]
         print '--- g ='
         printing.debugprint(g)
         print '==='
+        assert len(g_ops) == 2
+        assert softmax in g_ops
+        assert softmax_grad in g_ops
         g(self.rng.rand(3,4), self.rng.uniform(.5, 1, (3,4)))
 
     def test_transpose_basic(self):
