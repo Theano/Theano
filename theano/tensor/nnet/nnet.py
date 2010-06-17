@@ -418,10 +418,10 @@ if 0:
                     if denominator.owner.op.new_order == (0,'x'):
                         z = denominator.owner.inputs[0] # thing getting dimshuffled
                         if z.owner and isinstance(z.owner.op, tensor.Sum):
-                            print 'ASDF', denominator.owner.op.new_order
-                            print z.owner.op.axis
+                            #print 'ASDF', denominator.owner.op.new_order
+                            #print z.owner.op.axis
                             if z.owner.op.axis == (1,):
-                                print "almost there.. softmax", x, z.owner.inputs[0]
+                                #print "almost there.. softmax", x, z.owner.inputs[0]
                                 if z.owner.inputs[0] is numerator:
                                     matching_denom = denominator
                                     break
