@@ -472,7 +472,106 @@ if 0:
                 denominators.remove(matching_denom)
                 numerators.append(softmax(x))
         return numerators, denominators
-    opt.local_mul_canonizer.add_simplifier(softmax_grad_simplifier, 'softmax_grad_simplifier')
+    #opt.local_mul_canonizer.add_simplifier(softmax_grad_simplifier, 'softmax_grad_simplifier')
+
+    @opt.register_specialize
+    @gof.local_optimizer([])
+    def local_softmax_grad(node):
+        '''dy*sm - DimShuffle{0,'x'}(sum{1}(dy*sm))*sm -> softmax_grad(dy,sm)'''
+        #TODO what if the signs are changed?
+        #TODO and if a scalar is distributed before each of the terms?
+        #TODO 'dy' could also be a product
+        if node.op == tensor.add and node.out.ndim==2:
+            add_inputs = node.inputs
+            # Trying to locate two nodes in the sum:
+            #   dy * sm, prod_term
+            #   - DimShuffle{0,'x'}(sum{1}(dy*sm))*sm
+            prod_term = None
+            other_terms = []
+            # First, prod_term
+            for add_in in add_inputs:
+                if add_in.owner and add_in.owner.op == tensor.mul and prod_term is None:
+                    mul_inputs = add_in.owner.inputs
+                    if len(mul_inputs) == 2 and all([mul_in.ndim==2 for mul_in in mul_inputs]):
+                        prod_term = add_in
+                    else:
+                        other_terms.append(add_in)
+                else:
+                    other_terms.append(add_in)
+            if prod_term is None:
+                #print 'no prod_term'
+                return
+            assert len(other_terms) == len(add_inputs)-1
+
+            ds_term = None
+            rest = []
+            for add_in in other_terms:
+                if add_in.owner and add_in.owner.op == tensor.neg:
+                    neg_input = add_in.owner.inputs[0]
+                    if neg_input.owner and neg_input.owner.op == tensor.mul:
+                        mul2_inputs = neg_input.owner.inputs
+                        if len(mul2_inputs) != 2:
+                            rest.append(add_in)
+                            #print 'len(mul2_inputs) =', len(mul2_inputs)
+                            continue
+                        # Try and find DimShuffle(Sum)
+                        maybe_ds = None
+                        for i, mul2_in in enumerate(mul2_inputs):
+                            if mul2_in.owner and isinstance(mul2_in.owner.op, elemwise.DimShuffle):
+                                maybe_ds = mul2_in
+                                maybe_sm = mul2_inputs[1-i] # The other one
+                        if maybe_ds is None or maybe_ds.ndim != 2 or maybe_sm.ndim != 2:
+                            rest.append(add_in)
+                            #print 'maybe_ds =', maybe_ds
+                            #if maybe_ds:
+                            #    print 'maybe_ds.ndim =', maybe_ds.ndim, ', maybe_sm.ndim =', maybe_sm.ndim
+                            continue
+
+                        if maybe_sm is mul_inputs[0]:
+                            maybe_dy = mul_inputs[1]
+                        elif maybe_sm is mul_inputs[1]:
+                            maybe_dy = mul_inputs[0]
+                        else:
+                            rest.append(add_in)
+                            #print 'maybe_sm, maybe_dy =', maybe_sm, maybe_dy
+                            #print 'mul_inputs =', mul_inputs
+                            continue
+
+                        ds_order = maybe_ds.owner.op.new_order
+                        ds_input = maybe_ds.owner.inputs[0]
+                        axis = None
+                        if ds_input.owner and isinstance(ds_input.owner.op, elemwise.Sum):
+                            axis = ds_input.owner.op.axis
+                            sum_input = ds_input.owner.inputs[0]
+
+                        if (ds_order!=(0,'x')) or (axis!=(1,)) or (sum_input is not prod_term):
+                            rest.append(add_in)
+                            #print 'ds_order =', ds_order
+                            #print 'axis =', axis
+                            #if axis is not None:
+                            #    print 'sum_input =', sum_input, ', prod_term =', prod_term
+                            #else:
+                            #    print 'ds_input.owner =', ds_input.owner
+                            #print 'add_in =', add_in
+                            continue
+
+                        ds_term = add_in
+
+                    else:
+                        #print 'neg_input.owner =', neg_input.owner
+                        rest.append(add_in)
+                else:
+                    #print 'add_in.owner =', add_in.owner
+                    rest.append(add_in)
+
+            if ds_term is None:
+                #print 'no ds_term'
+                return
+            if len(rest) == 0:
+                return [softmax_grad(maybe_dy, maybe_sm)]
+            else:
+                return [tensor.add(softmax_grad(maybe_dy, maybe_sm), *rest)]
+
 
 class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     """A special compound L{Op} for the output of neural-net classifiers.
