@@ -119,53 +119,67 @@ def exec_timeit_2vector(expr, nb_call_scal=1, fname=None, do_unalign=False, do_a
         pylab.show()
 
 def execs_timeit_2vector(exprs, fname=None):
-    exp = [(1,100000),(1e1,100000),(1e2,100000),(1e3,100000), (5e3,50000),
+    """
+    exprs is a list of list of expr to evaluate
+    The first level of list is put into different graph section in the same graph.
+    The second level is the expression to put in each section
+    """
+    exp = [(1,10000),(1e1,10000),(1e2,100000),(1e3,100000), (5e3,50000),
            (1e4,10000),(5e4,5000),(1e5,2000),(1e6,200),(1e7,10)
            ]
+#TO TEST UNCOMMENT THIS LINE
+#    exp = [(1,1000),(1e1,1000),(1e2,1000),]
     times=[]
     str_expr=[]
-    for expr in exprs:
-        nb_call_scal=1
-        if isinstance(expr,tuple):
-            nb_call_scal=expr[1]
-            expr = expr[0]
-        str_expr.append(expr)
-        time=[]
-        for nb_e, nb_c in exp:
-            time.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_amd=False))
-        times.append(time)
+    for g_exprs in exprs:
+        for expr in g_exprs:
+            nb_call_scal=1
+            if isinstance(expr,tuple):
+                nb_call_scal=expr[1]
+                expr = expr[0]
+            str_expr.append(expr)
+            time=[]
+            for nb_e, nb_c in exp:
+                time.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_amd=False))
+            times.append(time)
 
     nb_calls=[e[0] for e in exp]
-    legend=[]
+    legends=[]
     colors=['b','r','g','c', 'm', 'y']
     assert len(colors)>=len(times)
-    for time,expr,color in zip(times,str_expr,colors):
-        speedup = [t[0].min()/t[1].min() for t in time]
-        pylab.semilogx(nb_calls, speedup, linewidth=1.0, linestyle='--', color=color)
-        speedup = [t[0].min()/t[2].min() for t in time]
-        pylab.semilogx(nb_calls, speedup, linewidth=1.0, color=color)
-        legend += ["Numexpr "+expr,"Theano "+expr]
-    pylab.axhline(y=1, linewidth=1.0, color='black')
+    fig = pylab.figure()
+    for idx,graph in enumerate(exprs):
+        legend=[]
+        plot = fig.add_subplot(1,len(exprs),idx)
+        for time,expr,color in zip(times,str_expr,colors):
+            speedup = [t[0].min()/t[1].min() for t in time]
+            plot.semilogx(nb_calls, speedup, linewidth=1.0, linestyle='--', color=color)
+            speedup = [t[0].min()/t[2].min() for t in time]
+            plot.semilogx(nb_calls, speedup, linewidth=1.0, color=color)
+            legend += ["Numexpr "+expr,"Theano "+expr]
         
+        
+    pylab.title('Speed up Numexpr and Theano vs NumPy')
+    pylab.grid(True)
     pylab.xlabel('Nb element')
     pylab.ylabel('Speed up vs NumPy')
-    pylab.title('Speed up Numexpr and Theano vs NumPy for "%(expr)s"'%locals())
+    pylab.axhline(y=1, linewidth=1.0, color='black')
     pylab.legend(legend,loc='upper left')
+#    fig.legend(legend,loc='upper left')
 
-    pylab.grid(True)
     if fname:
-        pylab.savefig(fname)
+        fig.savefig(fname)
         pylab.clf()
     else:
         pylab.show()
     
 execs_timeit_2vector([
-"a**2 + b**2 + 2*a*b",
-"2*a + 3*b",
-("2*a + b**10",.2),
+        ["a**2 + b**2 + 2*a*b",
+         "2*a + 3*b",
+         "a+1",],
+        [("2*a + b**10",.2)]
 #"2*a + b*b*b*b*b*b*b*b*b*b",
 #("2*a + exp(b)",.3),
-"a+1",
 ],fname="multiple_graph.png"
 )
 ###
