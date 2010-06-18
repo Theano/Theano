@@ -1933,6 +1933,17 @@ register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
 
+def check_for_x_over_absX(numerators, denominators):
+    # TODO: this function should dig/search through dimshuffles
+    # This won't catch a dimshuffled absolute value
+    for den in list(denominators):
+        if den.owner and den.owner.op == T.abs_ and den.owner.inputs[0] in numerators:
+            denominators.remove(den)
+            numerators.remove(den.owner.inputs[0])
+            numerators.append(T.sgn(den.owner.inputs[0]))
+    return numerators, denominators
+local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'teststest')
+
 @register_stabilize
 @gof.local_optimizer([T.log])
 def local_log1p(node):
