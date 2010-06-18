@@ -1,6 +1,7 @@
 ## PENDING REWRITE OF tensor_opt.py
 
 
+import time
 import numpy
 
 import theano
@@ -13,7 +14,7 @@ from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint, shared
 from theano.tests import unittest_tools as utt
-#import scalar_opt
+import scalar as scal
 
 from theano import function, compile
 from nose.plugins.skip import SkipTest
@@ -680,7 +681,6 @@ class test_fusion(unittest.TestCase):
             ]
         if slice:
             cases = cases[slice]
-        import time
         times=numpy.zeros(len(cases))
         fail1=[]
         fail2=[]
@@ -1216,6 +1216,119 @@ def test_local_mul_specialize():
     assert nodes == [T.mul]
 
 
+def speed_local_pow_specialize_range():
+    val = numpy.random.rand(1e7)
+    v = T.vector()
+    mode = compile.mode.get_default_mode()
+    mode_without_pow_opt = mode.excluding('local_pow_specialize')
+    for i in range(500,513):
+        f1 = function([v], v**i, mode=mode)
+        f2 = function([v], v**i, mode=mode_without_pow_opt)
+        assert len(f1.maker.env.toposort())==1
+        t1=time.time()
+        f1(val)
+        t2=time.time()
+        f2(val)
+        t3=time.time()
+        print i,t2-t1,t3-t2,t2-t1<t3-t2
+        if not t2-t1<t3-t2:
+            print "WARNING WE ARE SLOWER"
+    for i in range(-3,-1500,-1):
+        f1 = function([v], v**i, mode=mode)
+        f2 = function([v], v**i, mode=mode_without_pow_opt)
+        assert len(f1.maker.env.toposort())==1
+        t1=time.time()
+        f1(val)
+        t2=time.time()
+        f2(val)
+        t3=time.time()
+        print i,t2-t1,t3-t2,t2-t1<t3-t2
+        if not t2-t1<t3-t2:
+            print "WARNING WE ARE SLOWER"
+
+def test_local_pow_specialize():
+
+    # test a few cases to make sure that the basics are covered
+    # 
+
+    mode = theano.config.mode
+    if mode == 'FAST_COMPILE':
+       mode = 'FAST_RUN'
+    mode = compile.mode.get_mode(mode)
+    mode = mode.excluding('fusion')
+
+    v = T.vector()
+    val = numpy.arange(10,dtype=theano.config.floatX)
+    val_no0 = numpy.arange(1,10,dtype=theano.config.floatX)
+    f = function([v], v**0, mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert nodes == [Shape_i(0), T.alloc]
+    assert numpy.allclose(f(val),val**0)
+
+    f = function([v], v**1, mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert nodes == []
+    assert numpy.allclose(f(val),val**1)
+
+    f = function([v], v**(-1), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert nodes == [T.inv]
+    assert numpy.allclose(f(val_no0),val_no0**(-1))
+
+    f = function([v], v**2, mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert nodes == [T.sqr]
+    assert numpy.allclose(f(val),val**2)
+
+    f = function([v], v**(-2), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes)==2
+    assert nodes[0] == T.sqr
+    assert isinstance(nodes[1].scalar_op,theano.scalar.basic.Inv)
+#    assert nodes == [T.sqr,T.inv]#Why this don't work?
+    assert numpy.allclose(f(val_no0),val_no0**(-2))
+
+    f = function([v], v**(.5), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert nodes == [T.sqrt]
+    assert numpy.allclose(f(val),val**(.5))
+
+    f = function([v], v**(-.5), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes)==2
+    assert nodes[0] == T.sqrt
+    assert isinstance(nodes[1].scalar_op,theano.scalar.basic.Inv)
+#    assert nodes == [T.sqrt,T.inv]#Why this don't work?
+    assert numpy.allclose(f(val_no0),val_no0**(-.5))
+
+    if config.experimental.pow:
+        print "Test experimental.pow=True"
+        f = function([v], v**(15), mode=mode)
+        nodes = [node.op for node in f.maker.env.toposort()]
+        assert len(nodes)==1
+        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+        assert numpy.allclose(f(val),val**15)
+        
+        f = function([v], v**(-15), mode=mode)
+        nodes = [node.op for node in f.maker.env.toposort()]
+        assert len(nodes)==2
+        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+        assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
+        assert numpy.allclose(f(val_no0),val_no0**(-15))
+        
+        f = function([v], v**(16), mode=mode)
+        nodes = [node.op for node in f.maker.env.toposort()]
+        assert len(nodes) == 1
+        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+        assert numpy.allclose(f(val),val**16)
+        
+        f = function([v], v**(-16), mode=mode)
+        nodes = [node.op for node in f.maker.env.toposort()]
+        assert len(nodes) == 2
+        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+        assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
+        assert numpy.allclose(f(val_no0),val_no0**(-16))
+    
 class T_Rebroadcast(unittest.TestCase):
 
     def test_local_useless_rebroadcast(self):
