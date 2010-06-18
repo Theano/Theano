@@ -5,18 +5,19 @@ import theano.tensor as T
 from neighbours import images2neibs, neibs2images
 
 def neibs_test():
-
-    images = shared(arange(2*2*4*4, dtype='float32').reshape(2,2,4,4))
+    
+    shape = (100,40,18,18)
+    images = shared(arange(prod(shape), dtype='float32').reshape(shape))
     neib_shape = T.as_tensor_variable((2,2))#(array((2,2), dtype='float32'))
 
     f = function([], images2neibs(images, neib_shape))
 
-    print images.value
+    #print images.value
     neibs = f()
-    print neibs
+    #print neibs
     g = function([], neibs2images(neibs, neib_shape, images.shape))
     
-    print g()
+    #print g()
     assert allclose(images.value,g())
 
 neibs_test()
