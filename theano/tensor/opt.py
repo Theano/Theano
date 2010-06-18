@@ -1828,6 +1828,33 @@ def local_pow_specialize(node):
             if N.all(y == -2):
                 rval = [T.inv(T.sqr(xsym))]
 
+            # Optimize all integral powers in [-RANGE, RANGE]
+            if config.experimental.pow and rval is None and abs(y)==int(abs(y)) and abs(y) <= 512:# 512 is too small for the cpu and too big for some gpu!
+                pow2 = [xsym]
+                pow2_scal = [theano.scalar.Scalar(xsym.dtype)()]
+                y_to_do = abs(y)
+                for i in range(int(numpy.log2(y_to_do))):
+                    pow2.append(T.sqr(pow2[i]))
+                    pow2_scal.append(theano.scalar.sqr(pow2_scal[i]))
+                rval1 = None
+                rval1_scal = None
+                while y_to_do>0:
+                    log_to_do = int(numpy.log2(y_to_do))                    
+                    if rval1:
+                        rval1 *= pow2[log_to_do]
+                        rval1_scal *= pow2_scal[log_to_do]
+                    else: 
+                        rval1 = pow2[log_to_do]
+                        rval1_scal = pow2_scal[log_to_do]
+                    y_to_do -= 2**log_to_do
+
+                if abs(y)>2:
+                    #We fuse all the pow together here to make compilation faster
+                    rval1 = Elemwise(theano.scalar.Composite([pow2_scal[0]],[rval1_scal])).make_node(xsym)
+                if y<0:
+                    rval = [T.inv(rval1)]
+                else:
+                    rval = [rval1]
             if rval:
                 rval[0] = T.cast(rval[0], odtype)
                 assert rval[0].type == node.outputs[0].type, (rval, node.outputs)
@@ -1835,6 +1862,10 @@ def local_pow_specialize(node):
     else:
         return False
 register_specialize(local_pow_specialize)
+theano.configparser.AddConfigVar('experimental.pow',
+        "Transform a pow to a constant integer to a graph of mul. Fast on cpu, but more work needed for gpu.",
+        theano.configparser.BoolParam(False),
+        )
 
 @gof.local_optimizer([T.mul])
 def local_mul_specialize(node):
