@@ -62,7 +62,8 @@ def timeit_2vector(nb_element=1e6, nb_repeat=3, nb_call=int(1e2), expr="a**2 + b
 
 def exec_timeit_2vector(expr, nb_call_scal=1, fname=None, do_unalign=False, do_amd=True):
     time=[]
-    exp = [(1,100000),(1e1,100000),(1e2,100000),(1e3,100000), (5e3,50000),
+    #exp = [(1,100000),(1e1,100000),(1e2,100000),(1e3,100000), (5e3,50000),
+    exp = [(1e3,100000),(5e3,50000), \
            (1e4,10000),(5e4,5000),(1e5,2000),(1e6,200),(1e7,10)
            ]
 
@@ -97,9 +98,8 @@ def exec_timeit_2vector(expr, nb_call_scal=1, fname=None, do_unalign=False, do_a
 
     pylab.axhline(y=1, linewidth=1.0, color='black')
         
-    pylab.xlabel('Nb element')
+    pylab.xlabel('Dimension of real valued vectors a and b')
     pylab.ylabel('Speed up vs NumPy')
-    pylab.title('Speed up Numexpr and Theano vs NumPy for "%(expr)s"'%locals())
     if do_unalign and do_amd:
         pylab.legend(("Numexpr","Theano","Theano(amdlibm)", "Numexpr(unalign)",
                       "Theano(unalign)","Theano(amdlibm,unalign)"),loc='upper left')
@@ -124,11 +124,12 @@ def execs_timeit_2vector(exprs, fname=None):
     The first level of list is put into different graph section in the same graph.
     The second level is the expression to put in each section
     """
-    exp = [(1,10000),(1e1,10000),(1e2,100000),(1e3,100000), (5e3,50000),
+    #exp = [(1,100000),(1e1,100000),(1e2,100000),(1e3,100000), (5e3,50000),
+    exp = [(1e3,100000),(5e3,50000), \
            (1e4,10000),(5e4,5000),(1e5,2000),(1e6,200),(1e7,10)
            ]
 #TO TEST UNCOMMENT THIS LINE
-#    exp = [(1,1000),(1e1,1000),(1e2,1000),]
+    #exp = [(1,1000),(1e1,1000),(1e2,1000),]
     times=[]
     str_expr=[]
     for g_exprs in exprs:
@@ -148,23 +149,38 @@ def execs_timeit_2vector(exprs, fname=None):
     colors=['b','r','g','c', 'm', 'y']
     assert len(colors)>=len(times)
     fig = pylab.figure()
-    for idx,graph in enumerate(exprs):
-        legend=[]
-        plot = fig.add_subplot(1,len(exprs),idx)
-        for time,expr,color in zip(times,str_expr,colors):
-            speedup = [t[0].min()/t[1].min() for t in time]
-            plot.semilogx(nb_calls, speedup, linewidth=1.0, linestyle='--', color=color)
-            speedup = [t[0].min()/t[2].min() for t in time]
-            plot.semilogx(nb_calls, speedup, linewidth=1.0, color=color)
-            legend += ["Numexpr "+expr,"Theano "+expr]
+    for idx,(time,expr) in enumerate(zip(times,str_expr)):
+        pylab.subplot(220+idx+1)
+        pylab.subplots_adjust(wspace=0.25, hspace=0.25)
+        #legend=[]
+        #plot = fig.add_subplot(1,len(exprs),idx)
+        speedup = [t[0].min()/t[1].min() for t in time]
+        pylab.semilogx(nb_calls, speedup, linewidth=1.0, linestyle = '--', color='r')
+        speedup = [t[0].min()/t[2].min() for t in time]
+        pylab.semilogx(nb_calls, speedup, linewidth=1.0, color = 'b')
+        pylab.grid(True)
+        if (idx == 2) or (idx == 3):
+            pylab.xlabel('Dimension of vectors a and b')
+        if (idx == 0) or (idx == 2):
+            pylab.ylabel('Speed up vs NumPy')
+        pylab.axhline(y=1, linewidth=1.0, color='black')
+        pylab.xlim(1e3,1e7)
+        pylab.xticks([1e3,1e5,1e7],['1e3','1e5','1e7'])
+        pylab.title(expr)
+        #for time,expr,color in zip(times,str_expr,colors):
+        #    speedup = [t[0].min()/t[1].min() for t in time]
+        #    plot.semilogx(nb_calls, speedup, linewidth=1.0, linestyle='--', color=color)
+        #    speedup = [t[0].min()/t[2].min() for t in time]
+        #    plot.semilogx(nb_calls, speedup, linewidth=1.0, color=color)
+            #legend += ["Numexpr "+expr,"Theano "+expr]
         
         
-    pylab.title('Speed up Numexpr and Theano vs NumPy')
-    pylab.grid(True)
-    pylab.xlabel('Nb element')
-    pylab.ylabel('Speed up vs NumPy')
-    pylab.axhline(y=1, linewidth=1.0, color='black')
-    pylab.legend(legend,loc='upper left')
+    #pylab.title('Speed up Numexpr and Theano vs NumPy')
+    #pylab.grid(True)
+    #pylab.xlabel('Nb element')
+    #pylab.ylabel('Speed up vs NumPy')
+
+    #pylab.legend(legend,loc='upper left')
 #    fig.legend(legend,loc='upper left')
 
     if fname:
@@ -180,7 +196,7 @@ execs_timeit_2vector([
         [("2*a + b**10",.2)]
 #"2*a + b*b*b*b*b*b*b*b*b*b",
 #("2*a + exp(b)",.3),
-],fname="multiple_graph.png"
+],fname="multiple_graph.pdf"
 )
 ###
 ### This case is the one gived on numexpr web site(http://code.google.com/p/numexpr/) as of 16 June 2010
