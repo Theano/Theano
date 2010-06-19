@@ -1715,7 +1715,14 @@ class GpuSubtensor(tensor.Subtensor):
         cdata = tuple(map(convert, self.idx_list))
         if len(cdata) == 1:
             cdata = cdata[0]
-        out[0] = x.__getitem__(cdata)
+
+        # some numpy installations don't expose the __index__() methods for
+        # numpy.int8/16/32/64. Casting to python's int instead
+        start = int(cdata.start) if cdata.start!=None else None
+        stop = int(cdata.stop) if cdata.stop!=None else None
+        step = int(cdata.step) if cdata.step!=None else None
+        newslice = slice(start,stop,step)
+        out[0] = x.__getitem__(newslice)
 
 class GpuIncSubtensor(tensor.IncSubtensor):
     def make_node(self, x, y, *inputs):
@@ -1759,7 +1766,9 @@ class GpuJoin(tensor.Join):
        
     def perform(self, node, axis_and_tensors, (out, )):
         axis, cndas = axis_and_tensors[0], axis_and_tensors[1:]
-   
+        # In case axis is numpy.int8 and has no __index__() method
+        axis = int(axis)
+
         # compute size/shape
         width_sum = 0
         template_shape = cndas[0].shape
