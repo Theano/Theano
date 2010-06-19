@@ -6,8 +6,6 @@ import __builtin__
 import sys # for sys.maxint
 from theano.configparser import config, AddConfigVar, BoolParam
 import traceback #for overriding Op.__call__
-if sys.version_info >= (2,5):
-  import functools
 
 import numpy, theano
 #from copy import copy as python_copy

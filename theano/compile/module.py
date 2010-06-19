@@ -10,11 +10,7 @@ from theano import gof
 from theano.printing import pprint
 import io, sys
 
-if sys.version_info[:2] >= (2,5):
-  from functools import partial
-  from collections import defaultdict
-else:
-  from theano.gof.python25 import any, all, defaultdict, partial
+from theano.gof.python25 import any, all, defaultdict, partial
 
 from itertools import chain
 

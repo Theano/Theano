@@ -8,8 +8,7 @@ import cPickle
 
 import sys, time, copy
 
-if sys.version_info[:2] >= (2,5):
-  from functools import partial
+from theano.gof.python25 import partial
 
 import numpy
 import theano.gof

@@ -65,7 +65,7 @@ else:
      import __builtin__
      all = __builtin__.all
      any = __builtin__.any
-     import functools
+     import functools, collections
      partial = functools.partial
-
+     defaultdict = collections.defaultdict
 __all__ = ['all', 'any']
