@@ -1978,7 +1978,7 @@ local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'teststest')
 @register_stabilize
 @gof.local_optimizer([T.log])
 def local_log1p(node):
-    # log(1+exp(x)) -> log1p(x)
+    # log(1+x) -> log1p(x)
     if node.op == T.log:
         log_arg, = node.inputs
         if log_arg.owner and log_arg.owner.op == T.add:
