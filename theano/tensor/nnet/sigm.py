@@ -95,10 +95,19 @@ softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
 pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 
+def _skip_mul_1(r):
+    print r
+    if r.owner and r.owner.op == tensor.mul:
+        not_is_1 = [i for i in r.owner.inputs if not _is_1(i) ]
+        print 'ni1', not_is_1
+        if len(not_is_1)==1:
+            return not_is_1[0]
+
 logsigm_to_softplus = gof.PatternSub(
     (tensor.log, (sigmoid, 'x')),
     (tensor.neg, (softplus, (tensor.neg, 'x'))),
-    allow_multiple_clients = True)
+    allow_multiple_clients = True,
+    skip_identities_fn=_skip_mul_1)
 
 def _is_1(expr):
     """rtype bool. True iff expr is a constant close to 1
@@ -115,7 +124,8 @@ log1msigm_to_softplus = gof.PatternSub(
             dict(pattern='y', constraint = _is_1),
             (sigmoid, 'x'))),
     (tensor.neg, (softplus, 'x')),
-    allow_multiple_clients = True)
+    allow_multiple_clients = True,
+    skip_identities_fn=_skip_mul_1)
 
 log1pexp_to_softplus = gof.PatternSub(
     (tensor.log1p, 
