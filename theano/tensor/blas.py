@@ -882,7 +882,6 @@ def local_dot_to_dot22(node):
         # TODO: upcast one so the types match
         info('Not optimizing dot with inputs', x, y, x.type, y.type)
         return
-    print 'asdfasdf'
     if y.type.dtype.startswith('float'):
         if _is_real_matrix(x) and _is_real_matrix(y):
             return [_dot22(*node.inputs)]
