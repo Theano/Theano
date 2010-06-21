@@ -1987,6 +1987,7 @@ register_specialize(local_add_specialize)
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut, local_fill_sink))
 
 def check_for_x_over_absX(numerators, denominators):
+    """Convert x/abs(x) into sign(x). """
     # TODO: this function should dig/search through dimshuffles
     # This won't catch a dimshuffled absolute value
     for den in list(denominators):

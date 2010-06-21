@@ -466,6 +466,23 @@ class test_canonize(unittest.TestCase):
                 topo=f.maker.env.toposort()
                 assert len(topo)==0
                 assert(out_dtype==out.dtype)
+                
+            #test x / abs(x) -> sign(x)
+            for id,(g, sym_inputs, val_inputs, out_dtype) in enumerate([
+                                                           (dx/abs(dx),[dx],[0.5-dxv],'float64'),
+                                                           (fx/abs(fx),[fx],[0.5-fxv],'float32'),
+                                                           (dx/abs(dx),[dx],[0.0*dxv],'float64'),
+                                                           (fx/abs(fx),[fx],[0.0*fxv],'float32'),
+                                                           (dv/abs(dv),[dv],[0.5-dvv],'float64'),
+                                                           (fv/abs(fv),[fv],[0.5-fvv],'float32'),
+                ]):
+                f = compile.function(list(sym_inputs), g,
+                                     mode=mode)
+                out = f(*val_inputs)
+                print out
+                assert numpy.all(numpy.isfinite(out))
+                assert numpy.allclose(out,numpy.sign(val_inputs[0]))
+                assert(out_dtype==out.dtype)
         finally:
             mode._optimizer = old_optimizer
 
