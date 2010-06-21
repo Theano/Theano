@@ -499,11 +499,15 @@ def basic_multinomialtest(f, steps, target_pvals, prefix="", mean_rtol=0.04):
 def test_multinomial():
 
     steps = 100
+    mode_ = mode
+    if mode == 'FAST_COMPILE': 
+        mode_ = 'FAST_RUN'
+
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (49,5)
     else:
         sample_size = (450,6)
-
+    mode_ = theano.compile.mode.get_mode(mode_)
     print ''
     print 'ON CPU:'
 
@@ -511,7 +515,7 @@ def test_multinomial():
     pvals = numpy.apply_along_axis(lambda row : row/numpy.sum(row), 1, pvals)
     R = MRG_RandomStreams(234, use_cuda=False)
     m = R.multinomial(pvals=pvals, dtype=config.floatX)
-    f = theano.function([], m, mode=mode)
+    f = theano.function([], m, mode=mode_)
     theano.printing.debugprint(f)
     
     basic_multinomialtest(f, steps, pvals, prefix='mrg ')
@@ -526,7 +530,7 @@ def test_multinomial():
         assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
         f = theano.function([], theano.Out(
             theano.sandbox.cuda.basic_ops.gpu_from_host(n),
-            borrow=True), mode=mode_with_gpu)
+            borrow=True), mode=mode_.including('gpu'))
 
         theano.printing.debugprint(f)
         sys.stdout.flush()

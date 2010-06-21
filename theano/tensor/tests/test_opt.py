@@ -14,7 +14,6 @@ from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint, shared
 from theano.tests import unittest_tools as utt
-import scalar as scal
 
 from theano import function, compile
 from nose.plugins.skip import SkipTest
@@ -1260,6 +1259,7 @@ def test_local_pow_specialize():
     v = T.vector()
     val = numpy.arange(10,dtype=theano.config.floatX)
     val_no0 = numpy.arange(1,10,dtype=theano.config.floatX)
+
     f = function([v], v**0, mode=mode)
     nodes = [node.op for node in f.maker.env.toposort()]
     assert nodes == [Shape_i(0), T.alloc]
@@ -1301,33 +1301,44 @@ def test_local_pow_specialize():
 #    assert nodes == [T.sqrt,T.inv]#Why this don't work?
     assert numpy.allclose(f(val_no0),val_no0**(-.5))
 
-    if config.experimental.pow:
-        print "Test experimental.pow=True"
-        f = function([v], v**(15), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes)==1
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert numpy.allclose(f(val),val**15)
-        
-        f = function([v], v**(-15), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes)==2
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
-        assert numpy.allclose(f(val_no0),val_no0**(-15))
-        
-        f = function([v], v**(16), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes) == 1
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert numpy.allclose(f(val),val**16)
-        
-        f = function([v], v**(-16), mode=mode)
-        nodes = [node.op for node in f.maker.env.toposort()]
-        assert len(nodes) == 2
-        assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
-        assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
-        assert numpy.allclose(f(val_no0),val_no0**(-16))
+def test_local_pow_specialize_device():
+
+    # test that on cpu we use more agressive optimization
+
+    mode = theano.config.mode
+    if mode == 'FAST_COMPILE':
+       mode = 'FAST_RUN'
+    mode = compile.mode.get_mode(mode)
+    mode = mode.excluding('fusion').excluding('gpu')
+
+    v = T.vector()
+    val = numpy.arange(10,dtype=theano.config.floatX)
+    val_no0 = numpy.arange(1,10,dtype=theano.config.floatX)
+    f = function([v], v**(15), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes)==1
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert numpy.allclose(f(val),val**15)
+    
+    f = function([v], v**(-15), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes)==2
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
+    assert numpy.allclose(f(val_no0),val_no0**(-15))
+    
+    f = function([v], v**(16), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes) == 1
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert numpy.allclose(f(val),val**16)
+    
+    f = function([v], v**(-16), mode=mode)
+    nodes = [node.op for node in f.maker.env.toposort()]
+    assert len(nodes) == 2
+    assert isinstance(nodes[0].scalar_op,theano.scalar.Composite)
+    assert isinstance(nodes[-1].scalar_op,theano.scalar.basic.Inv)
+    assert numpy.allclose(f(val_no0),val_no0**(-16))
     
 class T_Rebroadcast(unittest.TestCase):
 
