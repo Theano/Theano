@@ -96,10 +96,8 @@ softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 
 def _skip_mul_1(r):
-    print r
     if r.owner and r.owner.op == tensor.mul:
         not_is_1 = [i for i in r.owner.inputs if not _is_1(i) ]
-        print 'ni1', not_is_1
         if len(not_is_1)==1:
             return not_is_1[0]
 
@@ -339,3 +337,4 @@ register_local_1msigmoid = False
               
 if register_local_1msigmoid:
     opt.register_canonicalize(local_1msigmoid)
+
