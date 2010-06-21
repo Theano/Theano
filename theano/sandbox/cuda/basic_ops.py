@@ -1715,6 +1715,9 @@ class GpuSubtensor(tensor.Subtensor):
         cdata = tuple(map(convert, self.idx_list))
         if len(cdata) == 1:
             cdata = cdata[0]
+            
+        out[0] = x.__getitem__(cdata)
+        return #THE FOLLOWING FIX BROKE THE BUILDBOT
 
         # some numpy installations don't expose the __index__() methods for
         # numpy.int8/16/32/64. Casting to python's int instead
