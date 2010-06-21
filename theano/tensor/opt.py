@@ -1609,6 +1609,8 @@ def local_sum_div_dimshuffle(node):
 
     if isinstance(node.op, T.Sum):
         axis = node.op.axis
+        if axis is None:
+            axis = range(node.inputs[0].ndim)
         #print 'axis =', axis
         thing_summed = node.inputs[0]
         dimshuffled = None
