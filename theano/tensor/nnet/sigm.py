@@ -8,7 +8,7 @@ from theano import gof
 from theano import scalar
 from theano import printing
 from theano.tensor import basic as tensor
-from theano.printing import pprint
+from theano.printing import pprint, debugprint
 from theano.tensor import elemwise
 from theano.tensor import opt
 from theano.compile import optdb

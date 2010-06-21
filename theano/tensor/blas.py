@@ -7,7 +7,7 @@ from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, PatternSub, DestroyHandler, 
         SeqOptimizer, local_optimizer, Optimizer, LocalOptimizer, OpKeyOptimizer, 
         InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer)
-from theano.printing import pprint, FunctionPrinter
+from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import any
 import theano.scalar
@@ -1063,3 +1063,8 @@ blas_optdb.register('local_dot22_to_dot22scalar',
         11, 'fast_run')
 
 
+#@opt.register_stabilize
+@gof.local_optimizer([])
+def local_print_as_we_go_along(node):
+    if node.op == tensor.true_div:
+        debugprint(node)
