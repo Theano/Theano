@@ -14,7 +14,6 @@ from theano.gof import Env
 from theano.tensor.elemwise import DimShuffle
 from theano import pprint, shared
 from theano.tests import unittest_tools as utt
-import scalar as scal
 
 from theano import function, compile
 from nose.plugins.skip import SkipTest
