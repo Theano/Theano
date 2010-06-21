@@ -144,6 +144,11 @@ def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
     return lopt
 
+def register_specialize_device(lopt, *tags, **kwargs):
+    name = (kwargs and kwargs.pop('name')) or lopt.__name__
+    compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
+    return lopt
+
 def register_stabilize(lopt, *tags, **kwargs):
     name = (kwargs and kwargs.pop('name')) or lopt.__name__
     compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
@@ -1829,9 +1834,31 @@ def local_pow_specialize(node):
                 rval = [T.inv(xsym)]
             if N.all(y == -2):
                 rval = [T.inv(T.sqr(xsym))]
+            if rval:
+                rval[0] = T.cast(rval[0], odtype)
+                assert rval[0].type == node.outputs[0].type, (rval, node.outputs)
+                return rval
+    else:
+        return False
+register_specialize(local_pow_specialize)
 
-            # Optimize all integral powers in [-RANGE, RANGE]
-            if config.experimental.pow and rval is None and abs(y)==int(abs(y)) and abs(y) <= 512:# 512 is too small for the cpu and too big for some gpu!
+@register_specialize_device
+@gof.local_optimizer([T.pow])
+def local_pow_specialize_device(node):
+    """
+    This optimization is not the same on all device. We do it only on cpu here.
+    """
+    if node.op == T.pow:
+        #the idea here is that we have pow(x, y)
+        odtype = node.outputs[0].dtype
+        xsym = node.inputs[0]
+        ysym = node.inputs[1]
+        y = local_mul_canonizer.get_constant(ysym)
+        if (y is not None) \
+                and encompasses_broadcastable(xsym.type.broadcastable, ysym.type.broadcastable):
+            rval = None
+            # 512 is too small for the cpu and too big for some gpu!
+            if abs(y)==int(abs(y)) and abs(y) <= 512:
                 pow2 = [xsym]
                 pow2_scal = [theano.scalar.Scalar(xsym.dtype)()]
                 y_to_do = abs(y)
@@ -1861,14 +1888,7 @@ def local_pow_specialize(node):
                 rval[0] = T.cast(rval[0], odtype)
                 assert rval[0].type == node.outputs[0].type, (rval, node.outputs)
                 return rval
-    else:
-        return False
-register_specialize(local_pow_specialize)
-theano.configparser.AddConfigVar('experimental.pow',
-        "Transform a pow to a constant integer to a graph of mul. Fast on cpu, but more work needed for gpu.",
-        theano.configparser.BoolParam(False),
-        )
-
+   
 @gof.local_optimizer([T.mul])
 def local_mul_specialize(node):
     """Remove special-case constants from mul arguments
