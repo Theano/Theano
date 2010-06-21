@@ -479,7 +479,6 @@ class test_canonize(unittest.TestCase):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
                 out = f(*val_inputs)
-                print out
                 assert numpy.all(numpy.isfinite(out))
                 assert numpy.allclose(out,numpy.sign(val_inputs[0]))
                 assert(out_dtype==out.dtype)
