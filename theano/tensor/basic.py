@@ -3607,8 +3607,12 @@ class Dot(Op):
             nx = x.type.ndim
             ny = y.type.ndim
 
-            if nx not in (1,2): raise TypeError('not matrix or vector', x)
-            if ny not in (1,2): raise TypeError('not matrix or vector', y)
+            if nx not in (1,2):
+                raise TypeError(('dot supports matrix and vector args: email theano-dev about'
+                    ' enabling numpy dot semantics if you want them'), x)
+            if ny not in (1,2):
+                raise TypeError(('dot supports matrix and vector args: email theano-dev about'
+                    ' enabling numpy dot semantics if you want them'), y)
 
             if nx == 2 and ny == 2:
                 bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
