@@ -2236,7 +2236,7 @@ def local_elemwise_fusion_op(OP):
     """
     def local_fuse(node):
         """
-        As part of specialisation, we fusion two consecutif elemwise op of the same shape.
+        As part of specialisation, we fuse two consecutive elemwise op of the same shape.
 
         For mixed dtype, we let the Compise op do the cast. It let the C compile do the cast.
         The number of dimension is validated at call time by theano itself.
@@ -2269,7 +2269,7 @@ def local_elemwise_fusion_op(OP):
         for i in node.inputs:
             do_fusion = False
             catch = False
-            if i.owner and isinstance(i.owner.op, OP) and len(i.clients)<=1:
+            if i.owner and isinstance(i.owner.op, OP) and len(i.clients)==1:
                 #if the scalar_op don't have a c implementation, we skip its fusion to allow the fusion of the other ops.
                 do_fusion=True
                 try:
@@ -2325,7 +2325,7 @@ def local_elemwise_fusion_op(OP):
 
         # There is a hard limit of 256 bytes for the formal argument list to a GPU kernel function.
         # Here, we estimate how many bytes the new Op will need, and abort if it needs too much.
-        if True:
+        if OP != T.Elemwise:
             argument_limit = 240  # 16 bytes are used for block and thread coords etc.
             #TODO: read in from architecture to make this 4 or 8
             int_size = 8
