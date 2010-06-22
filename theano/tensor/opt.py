@@ -1608,7 +1608,7 @@ def local_sum_mul_by_scalar(node):
 @register_canonicalize
 @gof.local_optimizer([])
 def local_sum_div_dimshuffle(node):
-    '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis=l) / b,
+    '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
     if dimension l of the DimShuffle is 'x'.'''
     # TODO: extend it to product, and quotient of products
 
@@ -1621,7 +1621,7 @@ def local_sum_div_dimshuffle(node):
         dimshuffled = None
         if thing_summed.owner and thing_summed.owner.op == T.true_div:
             numerator, denominator = thing_summed.owner.inputs
-            if isinstance(numerator.owner.op, T.DimShuffle):
+            if numerator.owner and isinstance(numerator.owner.op, T.DimShuffle):
                 new_order = numerator.owner.op.new_order
                 #print 'new_order =', new_order
                 # check compatibility
@@ -1637,7 +1637,7 @@ def local_sum_div_dimshuffle(node):
                 #else:
                 #    print 'incompatible dims:', axis, new_order
 
-            if isinstance(denominator.owner.op, T.DimShuffle):
+            if denominator.owner and isinstance(denominator.owner.op, T.DimShuffle):
                 new_order = denominator.owner.op.new_order
                 #print 'new_order =', new_order
                 # check compatibility
