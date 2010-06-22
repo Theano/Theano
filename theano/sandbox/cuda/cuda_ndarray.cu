@@ -1604,6 +1604,35 @@ static PyTypeObject CudaNdarrayType =
     CudaNdarray_new,           /* tp_new */
 };
 
+
+//This fct return True it is able to find a cuda card and query its properti
+//Otherwise we return False
+PyObject *
+device_available(PyObject* _unsed, PyObject * args)
+{
+  int deviceCount;
+
+  cudaError err = cudaGetDeviceCount(&deviceCount);
+  if( cudaSuccess != err) {
+    Py_RETURN_FALSE;
+  }
+  if (deviceCount <= 0) {
+    Py_RETURN_FALSE;
+  }
+
+  cudaDeviceProp deviceProp;
+  err=cudaGetDeviceProperties(&deviceProp, 0);
+  if( cudaSuccess != err) {
+    Py_RETURN_FALSE;
+  }
+
+  if(deviceProp.major == 9999 && deviceProp.minor == 9999 ){
+    Py_RETURN_FALSE;
+  }
+  
+  Py_RETURN_TRUE;
+}
+
 PyObject *
 CudaNdarray_gpu_init(PyObject* _unsed, PyObject * args)
 {
@@ -1810,6 +1839,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
 
 static PyMethodDef module_methods[] = {
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
+    {"device_available", device_available, METH_VARARGS, "Return Py_True if a cuda card is available."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Allow to select the gpu card to use."},
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},    
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},

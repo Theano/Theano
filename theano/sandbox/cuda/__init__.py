@@ -21,8 +21,8 @@ def debug(*msg):
 # printed and this module will not be working properly (we set `cuda_available`
 # to False).
 
-# This variable is True by default, and set to False if something goes wrong
-# when trying to initialize cuda.
+# This variable is True by default, and set to False if nvcc is not available or
+# their is no cuda card or something goes wrong when trying to initialize cuda.
 cuda_available = True
 
 # Global variable to avoid displaying the same warning multiple times.
@@ -88,6 +88,9 @@ try:
 except Exception, e:
     error( "Failed to compile cuda_ndarray.cu: %s" % str(e))
     set_cuda_disabled()
+
+if cuda_available:
+    cuda_available=device_available()
 
 if cuda_available:
     #check if their is an old cuda_ndarray that was loading instead of the one we compiled!
