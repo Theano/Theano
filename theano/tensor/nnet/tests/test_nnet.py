@@ -924,6 +924,10 @@ class Test_softmax_opt():
         assert softmax in f_ops
         f(self.rng.rand(3,4))
 
+    def test_grad(self):
+        c = T.matrix()
+        p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0,'x')
+        
         # test that function contains softmax and no div.
         w = T.matrix()
         g = theano.function([c,w],T.grad((p_y*w).sum(), c))
