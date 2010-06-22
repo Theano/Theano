@@ -1991,9 +1991,16 @@ def check_for_x_over_absX(numerators, denominators):
     # This won't catch a dimshuffled absolute value
     for den in list(denominators):
         if den.owner and den.owner.op == T.abs_ and den.owner.inputs[0] in numerators:
-            denominators.remove(den)
-            numerators.remove(den.owner.inputs[0])
-            numerators.append(T.sgn(den.owner.inputs[0]))
+            if den.owner.inputs[0].type.dtype.startswith('complex'):
+                #TODO: Make an Op that projects a complex number to have unit length
+                #      but projects 0 to 0.  That would be a weird Op, but consistent with the 
+                #      special case below.  I heard there's some convention in Matlab that is 
+                #      similar to this... but not sure.
+                pass
+            else:
+                denominators.remove(den)
+                numerators.remove(den.owner.inputs[0])
+                numerators.append(T.sgn(den.owner.inputs[0]))
     return numerators, denominators
 local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'teststest')
 
