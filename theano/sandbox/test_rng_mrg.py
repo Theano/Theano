@@ -22,7 +22,6 @@ from theano.tests import unittest_tools as utt
 #TODO: make tests work when no flags gived. Now need: THEANO_FLAGS=device=gpu0,floatX=float32
 # Partly done, in test_consistency_GPU_{serial,parallel}
 
-#TODO: bug fix test_normal0, in normal() fct, n_samples currently need to be numpy.prod(size) not self.n_streams(size)
 
 mode = config.mode
 mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
@@ -324,7 +323,7 @@ def test_uniform():
         sample_size = (10,100)
         steps = 50
     else:
-        sample_size = (500,100)
+        sample_size = (500,50)
         steps = int(1e3)
     
     x = tensor.matrix()
@@ -383,7 +382,7 @@ def test_binomial():
         sample_size = (10,50)
         steps = 70
     else:
-        sample_size = (500,100)
+        sample_size = (500,50)
         steps = int(1e3)
     
     x = tensor.matrix()
@@ -430,9 +429,9 @@ def test_normal0():
 
     steps = 50
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
-        sample_size = (99,100)
+        sample_size = (99,30)
     else:
-        sample_size = (999,100)
+        sample_size = (999,50)
 
     print ''
     print 'ON CPU:'
