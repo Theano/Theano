@@ -671,7 +671,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
                 #TODO: insert a BLAS ddot Op
                 pass
             if Mr.ndim == 2:
-                print "RETURNING GEMV (case 2)"
+                #print "RETURNING GEMV (case 2)"
                 if Mr.dtype == Ml.dtype: 
                     rval = [gemv_no_inplace(L, alpha, Mr.T, Ml, beta)]
                     assert L.type == rval[0].type, (L.type, rval[0].type)
@@ -680,7 +680,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip = True):
                     pass
         if Ml.ndim == 2:
             if Mr.ndim == 1:
-                print "RETURNING GEMV (case 3)"
+                #print "RETURNING GEMV (case 3)"
                 if Mr.dtype == Ml.dtype:
                     rval = [gemv_no_inplace(L, alpha, Ml, Mr, beta)]
                     assert L.type == rval[0].type, (L.type, rval[0].type)
