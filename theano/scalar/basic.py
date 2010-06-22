@@ -302,7 +302,7 @@ class Scalar(Type):
             return ""
 
     def c_code_cache_version(self):
-        return (8,) # put const around operators and added unary '-' operator
+        return (8, numpy.__version__) # put const around operators and added unary '-' operator
         # no need to put lib.amdlibm here as c_compile_args() are put in the key.
         return (7,)  # make complex c code optional
         return (6,)  # added implemeentations of operators that work with scalar arguments
