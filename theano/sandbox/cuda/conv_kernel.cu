@@ -722,7 +722,9 @@ conv_rows_stack2( float* img, float* kern, float* out,
 	  if(preload_full_kern) idx_kern=&d_kern[row*kern_wid];
 	  else idx_kern=d_kern;
 	  const float* idx_in=&d_img[((shared_row+row)%nb_rows)*img_wid+out_col];
-	  convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+	  float sum_ =0.0f;
+	  convolutionRowNoFlip<KERN_WIDTH>(sum_,idx_in,idx_kern,kern_wid);
+	  sum+=sum_;//We pass by an intermediate variable to have more precission.
 	}
       }
     }
