@@ -11,6 +11,7 @@ if cuda_available:
 
 import unittest
 from theano.tests import unittest_tools as utt
+from nose.plugins.skip import SkipTest
 
 #TODO: test gpu
 # Done in test_consistency_GPU_{serial,parallel}
@@ -380,7 +381,7 @@ def test_binomial():
 
     if mode in ['DEBUG_MODE','FAST_COMPILE']:
         sample_size = (10,50)
-        steps = 70
+        steps = 50
     else:
         sample_size = (500,50)
         steps = int(1e3)
