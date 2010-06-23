@@ -287,6 +287,7 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=[],
     for i in xrange(steps):
         t0 = time.time()
         ival = f(*inputs)
+        assert ival.shape==sample_size
         dt += time.time() - t0
         ival = numpy.asarray(ival)
         if i == 0:
@@ -464,8 +465,8 @@ def test_normal0():
         print 'random?[:10]\n', numpy.asarray(f())[0,0:10]
         print '----'
         sys.stdout.flush()
-        basictest(f, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
-
+        basictest(f, steps, sample_size_odd, target_avg=-5.0, target_std=2.0, prefix='gpu mrg ', allow_01=True)
+        
 
     print ''
     print 'ON CPU w NUMPY:'
@@ -476,7 +477,7 @@ def test_normal0():
 
     basictest(ff, steps, sample_size, target_avg=-5.0, target_std=2.0, prefix='numpy ', allow_01=True)
 
-def basic_multinomialtest(f, steps, target_pvals, prefix="", mean_rtol=0.04):
+def basic_multinomialtest(f, steps, sample_size, target_pvals, prefix="", mean_rtol=0.04):
 
     dt = 0.0
     avg_pvals = numpy.zeros(target_pvals.shape, dtype=config.floatX)
@@ -484,6 +485,7 @@ def basic_multinomialtest(f, steps, target_pvals, prefix="", mean_rtol=0.04):
     for i in xrange(steps):
         t0 = time.time()
         ival = f()
+        assert ival.shape==sample_size
         dt += time.time() - t0
         #ival = numpy.asarray(ival)
         avg_pvals += ival
@@ -518,7 +520,7 @@ def test_multinomial():
     f = theano.function([], m, mode=mode_)
     theano.printing.debugprint(f)
     
-    basic_multinomialtest(f, steps, pvals, prefix='mrg ')
+    basic_multinomialtest(f, steps, sample_size, pvals, prefix='mrg ')
 
     sys.stdout.flush()
 
@@ -534,4 +536,4 @@ def test_multinomial():
 
         theano.printing.debugprint(f)
         sys.stdout.flush()
-        basic_multinomialtest(f, steps, pvals, prefix='gpu mrg ')
+        basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
