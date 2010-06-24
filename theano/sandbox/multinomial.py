@@ -109,12 +109,11 @@ class GpuMultinomial(Multinomial):
             raise TypeError('pvals must be cudandarray', pvals)
         if not isinstance(unis.type, CudaNdarrayType):
             raise TypeError('unis must be cudandarray', unis)
-
         return Apply(self, [pvals, unis], [pvals.type()])
 
     def c_code_cache_version(self):
-        #return ()
-        return (super(GpuMultinomial,self).c_code_cache_version(),1)
+        return ()
+        #return (super(GpuMultinomial,self).c_code_cache_version(),1)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -128,7 +127,7 @@ class GpuMultinomial(Multinomial):
             float * global_outs
         )
         {            
-            int n = 32*blockIdx.x + threadIdx.x;
+            int n = blockDim.x*blockIdx.x + threadIdx.x;
             if (n < nb_multi)
             {    
             
@@ -201,14 +200,31 @@ class GpuMultinomial(Multinomial):
             int nb_outcomes = CudaNdarray_HOST_DIMS(%(z)s)[0];
             int nb_multi = CudaNdarray_HOST_DIMS(%(z)s)[1];
             
-            int nb_block;
-            if (nb_multi %% 32 == 0)
-                nb_block = nb_multi/32;
-            else
-                nb_block = (int)((float)nb_multi/32. + 1.); 
+            //TODO : change this for a beautiful constant
+            int max_nb_blocks = 2<<15 - 1;
+            int nb_blocks = max_nb_blocks + 1;
+            int nb_threads=16; // so it really starts at 32, because of the *2
+            do
+            {
+                nb_threads*=2;
+                if (nb_multi %% nb_threads == 0)
+                    nb_blocks = nb_multi/nb_threads;
+                else
+                    nb_blocks = (int)((float)nb_multi/(float)nb_threads + 1.); 
+            } while (nb_blocks > max_nb_blocks);
+
+            //printf("\\nN=%%i b=%%i t=%%i t*b=%%i", nb_multi, nb_blocks, nb_threads, nb_blocks*nb_threads);
+
+            // TODO : next line is a bit hardcoded...
+            if (nb_threads > 512)
+            {
+                PyErr_Format(PyExc_ValueError, "Mutinomial is not implemented for as many rows in the matrix (%%i)", nb_multi);
+                %(fail)s;
+            }
+
                 
-            dim3 n_blocks(nb_block,1,1);
-            dim3 n_threads(32,1,1);
+            dim3 n_blocks(nb_blocks,1,1);
+            dim3 n_threads(nb_threads,1,1);
             int n_shared = 0;
 
             k_multi_warp_%(name)s<<<n_blocks, n_threads, n_shared>>>(
