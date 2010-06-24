@@ -889,6 +889,7 @@ def _gemm_from_node2(node):
     if len(lst) > 1:
         lst = _factor_canonicalized(lst)
         rval = _gemm_from_factored_list(lst)
+        #print "RVAL", rval
         if rval:
             assert rval[0].type == node.outputs[0].type, (rval[0].type, node.outputs[0].type)
         return rval
@@ -909,7 +910,6 @@ class GemmOptimizer(Optimizer):
             did_something = False
             nodelist.reverse()
             for node in nodelist:
-                #new_outputs = _gemm_from_node(node)
                 try:
                     new_outputs = _gemm_from_node2(node)
                 except InconsistencyError, e:
@@ -1193,9 +1193,10 @@ blas_optdb.register('local_dot22_to_dot22scalar',
         11, 'fast_run')
 
 
-from opt import register_specialize
+from opt import register_specialize, register_canonicalize
 #@register_specialize
 @local_optimizer([])
 def local_print_as_we_go_along(node):
     if node.op in (T.sub, T.add):
         debugprint(node)
+
