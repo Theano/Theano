@@ -194,6 +194,11 @@ def local_dimshuffle_lift(node):
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
+@register_canonicalize
+@local_optimizer([])
+def local_dimshuffle_no_inplace_at_canonicalize(node):
+    if isinstance(node.op, T.DimShuffle) and node.op.inplace:
+        return [T.DimShuffle(node.op.input_broadcastable, node.op.new_order, inplace=False)(node.inputs[0])]
 
 
 #####################################
