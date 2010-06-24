@@ -932,6 +932,7 @@ class IntDiv(BinaryScalarOp):
         return [None] * len(inputs)
 int_div = IntDiv(upcast_out, name = 'int_div')
 
+floor_div = int_div
 
 class Mod(BinaryScalarOp):
     def impl(self, x, y):
