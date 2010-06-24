@@ -887,6 +887,11 @@ class _tensor_py_operators:
         except Exception, e:
             return NotImplemented
 
+    def __truediv__(self,other): return true_div(self, other)
+    def __floordiv__(self,other): return floor_div(self, other)
+    def __rtruediv__(self,other): return true_div(other, self)
+    def __rfloordiv__(self,other): return floor_div(other, self)
+
 #     ##### DON"T USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED BY OPTIMIZATION ONLY
 #     #ARITHMETIC - INPLACE
 #     def __iadd__(self,other): return _add_inplace(self,other)
@@ -2064,6 +2069,11 @@ def mul(a, *other_terms):
 @_scal_elemwise
 def true_div(a, b):
     """elementwise [true] division (inverse of multiplication)"""
+    # see decorator for function body
+
+@_scal_elemwise
+def floor_div(a, b):
+    """elementwise [floor] division (inverse of multiplication)"""
     # see decorator for function body
 
 @_scal_elemwise
