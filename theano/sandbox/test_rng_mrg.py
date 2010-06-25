@@ -526,6 +526,7 @@ def test_multinomial():
         print ''
         print 'ON GPU:'
         R = MRG_RandomStreams(234, use_cuda=True)
+        pvals = numpy.asarray(pvals, dtype='float32')
         n = R.multinomial(pvals=pvals, dtype='float32')
         assert n.dtype == 'float32' #well, it's really that this test w GPU doesn't make sense otw
         f = theano.function([], theano.Out(
